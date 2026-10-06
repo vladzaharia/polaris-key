@@ -1,5 +1,7 @@
 import * as React from "react";
+import { flushSync } from "react-dom";
 import { cn } from "../../lib/cn.js";
+import { viewTransition } from "../../ui/motion/viewTransition.js";
 import { Link } from "../router.js";
 
 export interface PageTab {
@@ -17,11 +19,33 @@ const tabClass = (active: boolean) =>
     "relative inline-flex h-10 items-center gap-1.5 whitespace-nowrap border-b-2 px-1 text-sm",
     "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus",
     active
-      ? "border-accent font-bold text-fg-strong"
+      ? "border-transparent font-bold text-fg-strong"
       : "border-transparent text-fg-muted hover:border-border-strong hover:text-fg-strong",
   );
 
-function TabLabel({ tab }: { tab: PageTab }): React.ReactElement {
+/**
+ * The active tab's underline (S-23 §6.1 morph). It lies exactly over the tab's own 2 px bottom
+ * border, so the tab looks as it always has; being its own element, it is named `pk-indicator`
+ * during a `tab` (or `route`) View Transition and slides to the next tab. A border, not a fill, so
+ * forced-colors mode keeps it.
+ */
+function Indicator(): React.ReactElement {
+  return (
+    <span
+      aria-hidden
+      data-tab-indicator=""
+      className="pk-vt-indicator pointer-events-none absolute inset-x-0 -bottom-0.5 border-b-2 border-accent"
+    />
+  );
+}
+
+function TabLabel({
+  tab,
+  active,
+}: {
+  tab: PageTab;
+  active: boolean;
+}): React.ReactElement {
   return (
     <>
       {tab.label}
@@ -36,6 +60,7 @@ function TabLabel({ tab }: { tab: PageTab }): React.ReactElement {
           <span className="sr-only">(unsaved changes)</span>
         </>
       ) : null}
+      {active ? <Indicator /> : null}
     </>
   );
 }
@@ -47,6 +72,11 @@ function TabLabel({ tab }: { tab: PageTab }): React.ReactElement {
  *   the tab is in the URL (`/licenses/:id/keys`, fixes LDT-4).
  * - **Panel tabs** (no `to`) are WAI-ARIA tabs with arrow-key movement; pair each with a
  *   `TabPanel`, which keeps a dirty panel mounted while hidden.
+ *
+ * Motion (S-23 §6.1, MO-04): a switch is a `tab` View Transition. The underline slides to the new
+ * tab (`pk-vt-indicator`) and the panel fades through (`pk-vt-tabpanel`: `TabPanel`, or the
+ * record's own panel for route tabs); the header and the chrome stay still. Route tabs get it from
+ * the router, panel tabs here. Under reduced motion the switch is an instant swap.
  */
 export function PageTabs({
   items,
@@ -72,10 +102,11 @@ export function PageTabs({
             <li key={t.value}>
               <Link
                 to={t.to!}
+                transition="tab"
                 aria-current={t.value === value ? "page" : undefined}
                 className={tabClass(t.value === value)}
               >
-                <TabLabel tab={t} />
+                <TabLabel tab={t} active={t.value === value} />
               </Link>
             </li>
           ))}
@@ -84,10 +115,21 @@ export function PageTabs({
     );
   }
 
+  // The new tab's state lands inside the transition (flushSync), so the browser captures the
+  // finished panel. Focus has already moved, on the live page: the tab order is unchanged.
+  const select = (next: string): void => {
+    if (!onChange) return;
+    if (next === value) {
+      onChange(next);
+      return;
+    }
+    viewTransition(() => flushSync(() => onChange(next)), { type: "tab" });
+  };
+
   const move = (from: number, delta: number) => {
     const next = (from + delta + items.length) % items.length;
     refs.current[next]?.focus();
-    onChange?.(items[next]!.value);
+    select(items[next]!.value);
   };
 
   return (
@@ -110,7 +152,7 @@ export function PageTabs({
             aria-selected={active}
             aria-controls={`${idPrefix}-panel-${t.value}`}
             tabIndex={active ? 0 : -1}
-            onClick={() => onChange?.(t.value)}
+            onClick={() => select(t.value)}
             onKeyDown={(e) => {
               if (e.key === "ArrowRight") move(i, 1);
               else if (e.key === "ArrowLeft") move(i, -1);
@@ -121,7 +163,7 @@ export function PageTabs({
             }}
             className={tabClass(active)}
           >
-            <TabLabel tab={t} />
+            <TabLabel tab={t} active={active} />
           </button>
         );
       })}
@@ -131,7 +173,8 @@ export function PageTabs({
 
 /**
  * A panel for panel tabs. Inactive panels unmount unless `dirty`, in which case they stay
- * mounted and `hidden`, so a draft survives switching tabs (UI-8 `forceMount`).
+ * mounted and `hidden`, so a draft survives switching tabs (UI-8 `forceMount`). The visible panel
+ * fades through on a switch (`pk-vt-tabpanel`); a hidden one is not rendered, so it takes no part.
  */
 export function TabPanel({
   value,
@@ -157,7 +200,10 @@ export function TabPanel({
       aria-labelledby={`${idPrefix}-${value}`}
       hidden={!active}
       tabIndex={0}
-      className={cn("pt-4 focus-visible:outline-hidden", className)}
+      className={cn(
+        "pk-vt-tabpanel pt-4 focus-visible:outline-hidden",
+        className,
+      )}
     >
       {children}
     </div>

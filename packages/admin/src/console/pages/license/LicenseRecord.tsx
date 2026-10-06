@@ -197,7 +197,13 @@ function LicenseRecordBody({
             ]}
           />
         }
-        title={license.name || "Unnamed license"}
+        title={
+          // The other end of the Licenses table's name (S-23 §6.1 shared-element): named
+          // `pk-key` during a drill-down, fit-content like its source.
+          <span className="pk-vt-key inline-block max-w-full">
+            {license.name || "Unnamed license"}
+          </span>
+        }
         titleAside={<LicenseStatus license={license} />}
         description={expiry}
         meta={
@@ -297,9 +303,11 @@ function LicenseRecordBody({
         }
       />
 
-      {/* Overview stays mounted while its draft is dirty, so a tab switch keeps it. */}
+      {/* Overview stays mounted while its draft is dirty, so a tab switch keeps it. Each panel
+          is a `pk-vt-tabpanel`: the visible one fades through on a tab switch (S-23 §6.1); a
+          hidden one is not rendered, so it takes no part. */}
       {tab === "overview" || termsDirty ? (
-        <div hidden={tab !== "overview"}>
+        <div hidden={tab !== "overview"} className="pk-vt-tabpanel">
           <LicenseTerms
             slug={slug}
             license={license}
@@ -308,7 +316,7 @@ function LicenseRecordBody({
         </div>
       ) : null}
       {tab === "keys" ? (
-        <div className="space-y-6">
+        <div className="pk-vt-tabpanel space-y-6">
           <LicenseKeys slug={slug} license={license} />
           {/* F-21: tokens bound to this licence, while the product's package feeds are on. */}
           {product?.packageFeeds ? (
@@ -317,10 +325,12 @@ function LicenseRecordBody({
         </div>
       ) : null}
       {tab === "devices" ? (
-        <LicenseDevices slug={slug} license={license} seats={seats} />
+        <div className="pk-vt-tabpanel">
+          <LicenseDevices slug={slug} license={license} seats={seats} />
+        </div>
       ) : null}
       {configOpened ? (
-        <div hidden={tab !== "config"}>
+        <div hidden={tab !== "config"} className="pk-vt-tabpanel">
           <LicenseConfig slug={slug} license={license} configOn={configOn} />
         </div>
       ) : null}
