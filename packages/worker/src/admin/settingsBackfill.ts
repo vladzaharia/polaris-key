@@ -60,6 +60,10 @@ import {
   type BackfillReport,
   type BackfillSource,
 } from "../core/settingsBackfill.js";
+import { fitsValueSpec } from "../core/settings/rules.js";
+import type { SettingDef } from "../core/settings/types.js";
+import type { RowSettingInput } from "../core/settingsBackfill.js";
+import { SETTINGS } from "../mount.js";
 import type { FetchImpl } from "../services/release/githubApp.js";
 import {
   readLinkedManifest,
@@ -231,6 +235,46 @@ async function manifestFor(
   };
 }
 
+/**
+ * Whether `def` is a ROW-BACKED claimable product setting (LX-06: its value is the
+ * `product_settings` row): live, product scope, scalar storage, claimable, declared by a manifest
+ * path. The same predicate as `core/rowSettings.ts`' `isRowBacked`.
+ */
+function isRowBackedDef(def: SettingDef): boolean {
+  return (
+    def.scope === "product" &&
+    def.storage.kind === "scalar" &&
+    def.ownership === "claimable" &&
+    def.manifest !== undefined &&
+    !def.pending
+  );
+}
+
+/** The value a parsed manifest declares at a `product:<dotted path>` manifest path. */
+function declaredAt(manifest: unknown, path: string): unknown {
+  if (!path.startsWith("product:")) return undefined;
+  let node: unknown = manifest;
+  for (const seg of path.slice("product:".length).split(".")) {
+    if (!node || typeof node !== "object" || Array.isArray(node))
+      return undefined;
+    if (!Object.prototype.hasOwnProperty.call(node, seg)) return undefined;
+    node = (node as Record<string, unknown>)[seg];
+  }
+  return node;
+}
+
+/** The registry's row-backed claimable settings, each with what `manifest` declares for it. */
+function rowSettingInputs(manifest: unknown): RowSettingInput[] {
+  return SETTINGS.entries.filter(isRowBackedDef).map((def) => {
+    const declared = declaredAt(manifest, def.manifest!.path);
+    return {
+      key: def.key,
+      declared,
+      fits: declared === undefined || fitsValueSpec(def.value, declared),
+    };
+  });
+}
+
 /** The evidence bound (S-18 §4.14.2 steps 3–4): the last apply, else the product's creation. */
 async function evidenceBasis(
   db: Db,
@@ -364,6 +408,7 @@ export async function runSettingsBackfill(
       system: product.system === 1,
       profilePayload: (p, stored) =>
         withStoredSecrets(p.payload, stored?.payload_json, screened.catalog),
+      rowSettings: rowSettingInputs(manifest),
     },
   );
   const publishesCatalog = plan.items.some(

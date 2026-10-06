@@ -54,10 +54,13 @@ import {
   runSettingsBackfill,
   type BackfillRunOptions,
 } from "../src/admin/settingsBackfill.js";
-import type {
-  BackfillItem,
-  BackfillReport,
+import {
+  planBackfill,
+  type BackfillItem,
+  type BackfillManifest,
+  type BackfillReport,
 } from "../src/core/settingsBackfill.js";
+import type { ProductSettingRow } from "../src/core/settingsClaims.js";
 
 const SLUG = "acme";
 const PLATFORM_GROUP = "platform-admins";
@@ -918,6 +921,147 @@ describe("the apply", () => {
       expect(res.status, q).toBe(400);
     }
     expect(await reportRows(ctx.db)).toEqual([]);
+  });
+});
+
+// ── Row-backed claimable settings (LX-06), through the pure planner ──────────────────────────
+
+describe("row-backed claimable settings (the value is the product_settings row)", () => {
+  const product = {
+    slug: SLUG,
+    name: "Acme",
+    signing_kid: "k",
+    signing_pub: null,
+    compat_min: "0.0.0",
+    compat_max: "99.0.0",
+    default_max_offline_days: 14,
+    default_device_limit: 3,
+    admin_group: "acme-admins",
+    branding_json: null,
+    release_source: "github",
+    web_origins_json: null,
+    services_json: null,
+    services_source: "manifest",
+    created_at: NOW,
+    modified_at: NOW,
+  };
+  const manifest = {
+    product: {
+      slug: SLUG,
+      name: "Acme",
+      defaultMaxOfflineDays: 14,
+      defaultDeviceLimit: 3,
+      adminGroup: "acme-admins",
+    },
+    catalog: { schemaVersion: 1, entries: [] },
+    tiers: [],
+    profiles: [],
+    webOrigins: [],
+    services: parseServices(null).services,
+  } as unknown as BackfillManifest;
+  const row = (
+    key: string,
+    value: unknown,
+    source: "manifest" | "console",
+    expiresAt: number | null = null,
+  ): ProductSettingRow => ({
+    product: SLUG,
+    key,
+    value_json: JSON.stringify(value),
+    source,
+    version: 3,
+    updated_at: NOW,
+    updated_by: source === "console" ? "u1" : "resync",
+    reason: expiresAt ? "incident" : null,
+    expires_at: expiresAt,
+  });
+
+  it("classifies and plans each case", () => {
+    const plan = planBackfill(
+      manifest,
+      {
+        product,
+        settings: [
+          row("a.equalManifest", 1, "manifest"),
+          row("a.claimedEqual", 2, "console"),
+          row("a.claimedDiffers", 9, "console"),
+          row("a.manifestDiffers", 9, "manifest"),
+          row("a.breakGlass", 9, "console", NOW + 3600),
+          row("a.undeclaredConsole", 5, "console"),
+          row("a.undeclaredManifest", 5, "manifest"),
+        ],
+        tiers: [],
+        profiles: [],
+        activeSchema: {
+          product: SLUG,
+          catalog_version: 1,
+          catalog_json: JSON.stringify({ schemaVersion: 1, entries: [] }),
+          active: 1,
+          created_at: NOW,
+        },
+        evidence: [],
+      },
+      {
+        now: NOW + 100,
+        system: false,
+        profilePayload: (p) => p.payload,
+        rowSettings: [
+          { key: "a.equalManifest", declared: 1, fits: true },
+          { key: "a.claimedEqual", declared: 2, fits: true },
+          { key: "a.claimedDiffers", declared: 3, fits: true },
+          { key: "a.manifestDiffers", declared: 4, fits: true },
+          { key: "a.absent", declared: 5, fits: true },
+          { key: "a.breakGlass", declared: 6, fits: true },
+          { key: "a.outOfBounds", declared: 7, fits: false },
+          { key: "a.undeclaredConsole", declared: undefined, fits: true },
+          { key: "a.undeclaredManifest", declared: undefined, fits: true },
+          { key: "a.undeclaredNone", declared: undefined, fits: true },
+        ],
+      },
+    );
+    const byKey = new Map(
+      plan.items.filter((i) => i.key.startsWith("a.")).map((i) => [i.key, i]),
+    );
+    const view = (k: string) => {
+      const i = byKey.get(k);
+      return i && [i.class, i.owner, i.action];
+    };
+    expect(view("a.equalManifest")).toEqual(["equal", "manifest", "none"]);
+    expect(view("a.claimedEqual")).toEqual([
+      "equal",
+      "console",
+      "release-claim",
+    ]);
+    expect(view("a.claimedDiffers")).toEqual(["differs", "console", "revert"]);
+    expect(view("a.manifestDiffers")).toEqual([
+      "differs",
+      "manifest",
+      "revert",
+    ]);
+    expect(view("a.absent")).toEqual(["differs", "manifest", "revert"]);
+    expect(view("a.breakGlass")).toEqual(["differs", "break-glass", "keep"]);
+    expect(view("a.outOfBounds")).toEqual(["differs", "manifest", "keep"]);
+    expect(view("a.undeclaredConsole")).toEqual([
+      "not-declared",
+      "console",
+      "none",
+    ]);
+    expect(view("a.undeclaredManifest")).toEqual([
+      "not-declared",
+      "manifest",
+      "none",
+    ]);
+    expect(byKey.has("a.undeclaredNone")).toBe(false);
+    // One upsert per revert or released claim, each to `manifest` with the manifest's value.
+    const upserts = plan.writes.filter((w) =>
+      /INSERT INTO product_settings/.test(w.sql),
+    );
+    expect(upserts.map((w) => [w.params[1], w.params[2]])).toEqual([
+      ["a.claimedEqual", "2"],
+      ["a.claimedDiffers", "3"],
+      ["a.manifestDiffers", "4"],
+      ["a.absent", "5"],
+    ]);
   });
 });
 

@@ -237,6 +237,7 @@ export const EVIDENCE_ACTIONS = [
   "product.update",
   "product.services.update",
   "setting.claim",
+  "setting.update",
   "setting.revert",
   "schema.publish",
   "tier.create",
@@ -247,6 +248,15 @@ export const EVIDENCE_ACTIONS = [
   "profile.overrides",
   "profile.delete",
 ] as const;
+
+/** The settings whose console edit is the products PATCH (`product.update`). */
+const PRODUCT_ROW_KEYS: ReadonlySet<string> = new Set([
+  "core.name",
+  "license.defaults.maxOfflineDays",
+  "license.defaults.deviceLimit",
+  "core.web.origins",
+  "core.adminGroup",
+]);
 
 /** Evidence rows kept per item. */
 export const EVIDENCE_PER_ITEM = 5;
@@ -469,9 +479,8 @@ function evidenceFor(
       case "setting":
         if (r.target_kind === "setting" && r.target_id === item.key)
           return true;
-        return item.key === "config.catalog"
-          ? r.action === "schema.publish"
-          : r.action === "product.update";
+        if (item.key === "config.catalog") return r.action === "schema.publish";
+        return PRODUCT_ROW_KEYS.has(item.key) && r.action === "product.update";
     }
   });
   return {
@@ -498,6 +507,21 @@ export interface PlanOptions {
     profile: ManifestProfile,
     stored: ProfileRow | undefined,
   ) => Record<string, unknown>;
+  /**
+   * The ROW-BACKED claimable settings (LX-06: the value lives in `product_settings.value_json`),
+   * each with the value the manifest declares for it. The caller takes them from the registry, so
+   * Core names no service here.
+   */
+  rowSettings?: readonly RowSettingInput[];
+}
+
+/** One row-backed claimable setting as the backfill sees it. */
+export interface RowSettingInput {
+  key: string;
+  /** The manifest's value; `undefined` when the manifest does not declare it. */
+  declared: unknown;
+  /** Whether the registry's value spec accepts `declared` (a resync skips one it does not). */
+  fits: boolean;
 }
 
 const BREAK_GLASS_NOTE =
@@ -784,6 +808,68 @@ export function planBackfill(
       writes.push(stmtRowSource("tiers", slug, stored.id, "console"));
   }
 
+  // ── row-backed claimable settings (LX-06: the value is the `product_settings` row) ──────
+  for (const def of opts.rowSettings ?? []) {
+    const row =
+      state.settings.find((r) => r.key === def.key && r.value_json !== null) ??
+      null;
+    const stored = row ? parseJson(row.value_json) : null;
+    if (def.declared === undefined) {
+      // Not declared: a console row stays a console row; a manifest row is the resync's to clear
+      // (omit-clears). Nothing to report when there is no row at all.
+      if (!row) continue;
+      items.push({
+        kind: "setting",
+        key: def.key,
+        class: "not-declared",
+        owner: row.source === "console" ? "console" : "manifest",
+        before: stored,
+        action: "none",
+        ...(row.source === "manifest"
+          ? {
+              note: "omit-clears: the next resync removes the manifest row and the default applies",
+            }
+          : {}),
+      });
+      continue;
+    }
+    const breakGlass =
+      row !== null &&
+      row.source === "console" &&
+      row.expires_at !== null &&
+      row.expires_at > now;
+    const cls: BackfillClass =
+      row && canonical(stored) === canonical(def.declared)
+        ? "equal"
+        : "differs";
+    const item: BackfillItem = {
+      kind: "setting",
+      key: def.key,
+      class: cls,
+      owner: breakGlass
+        ? "break-glass"
+        : row?.source === "console"
+          ? "console"
+          : "manifest",
+      before: stored,
+      manifest: def.declared,
+      ...(row?.source === "console" ? { claim: claimOf(row) } : {}),
+      action: "none",
+    };
+    if (!def.fits) {
+      item.action = "keep";
+      item.note =
+        "the manifest's value is outside the registry's bounds, so no apply writes it";
+    } else if (breakGlass) {
+      item.action = "keep";
+      item.note = BREAK_GLASS_NOTE;
+    } else if (cls === "differs" || row?.source === "console") {
+      item.action = cls === "differs" ? "revert" : "release-claim";
+      writes.push(stmtRowSettingAsManifest(slug, def.key, def.declared, now));
+    }
+    items.push(differs(item));
+  }
+
   // ── the services marker (an existing `*_source` column, S-18 §4.14.1) ──────────────────
   {
     const stored = parseServices(product.services_json ?? null);
@@ -856,6 +942,25 @@ function stmtDropClaim(
     sql: `DELETE FROM product_settings
             WHERE product = ? AND key = ? AND source = 'console' AND version = ?`,
     params: [product, key, version],
+  };
+}
+
+/** A row-backed setting set to the manifest's value and handed to the manifest. */
+function stmtRowSettingAsManifest(
+  product: string,
+  key: string,
+  value: unknown,
+  now: number,
+): DbStatement {
+  return {
+    sql: `INSERT INTO product_settings
+            (product, key, value_json, source, version, updated_at, updated_by, reason, expires_at)
+          VALUES (?, ?, ?, 'manifest', 1, ?, 'backfill', NULL, NULL)
+          ON CONFLICT(product, key) DO UPDATE SET
+            value_json = excluded.value_json, source = 'manifest',
+            version = product_settings.version + 1, updated_at = excluded.updated_at,
+            updated_by = excluded.updated_by, reason = NULL, expires_at = NULL`,
+    params: [product, key, JSON.stringify(value), now],
   };
 }
 
