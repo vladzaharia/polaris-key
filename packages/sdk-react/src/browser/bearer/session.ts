@@ -73,6 +73,12 @@ import { PolarisError, type PolarisErrorCode } from "../../core/types.js";
 import type { BridgeState } from "../../desktop/bridge.js";
 import type { ServiceSlug } from "../../core/services.js";
 import type { TrustSet } from "../offline.js";
+import {
+  buildUpdateEvent,
+  type UpdateEventEntry,
+  type UpdateEventInput,
+} from "../../core/updateEvents.js";
+import type { UpdateEvent } from "../../constants.generated.js";
 
 /** How the current token was obtained, which picks the §5 re-acquire route (as Node). */
 export type TokenSource =
@@ -196,28 +202,12 @@ export type ClaimPayload =
   | { ticket: string; dlcAppId: string | number };
 
 /** A P6-03 update-health event, the Worker's `UpdateEventEntry` (`core/updateHealth.ts`). */
-export interface UpdateEventEntry {
-  eventId: string;
-  event:
-    | "update_offered"
-    | "update_downloaded"
-    | "update_applied"
-    | "update_confirmed"
-    | "update_reverted"
-    | "pack_failed"
-    | "boot_rolled_back";
-  deliverable: string;
-  release: string;
-  fromRelease?: string;
-  outlet: string;
-  channel: string;
-  packSetId?: string;
-  at: number;
-  code?: string;
-}
+export type { UpdateEventEntry, UpdateEventInput };
 
 /** At most this many update events go in one report; the rest wait (§3.13). */
 export const MAX_REPORT_UPDATES = 16;
+/** At most this many unsent update events are kept in the page. */
+export const MAX_JOURNAL = 64;
 /** A cached mint is reused until this many seconds before its `expiresAt` (as Node). */
 export const MINT_REUSE_MARGIN_SECONDS = 30;
 /** The router's recipe-id alphabet. */
@@ -296,6 +286,8 @@ export interface BearerSessionOptions {
   gate?: () => string | null;
   /** Jitter source for the sync backoff (tests). Defaults to `Math.random`. */
   random?: () => number;
+  /** A fresh update-event id (tests). Defaults to 16 random bytes in hex, then the event. */
+  eventId?: (event: UpdateEvent) => string;
 }
 
 type DocumentResult =
@@ -1031,15 +1023,35 @@ export class BearerSession {
     if (!res.ok) throw await refusal(res, "device_deauthorize_failed");
   }
 
-  /** Queue a P6-03 update-health event for the next report (§3.13). */
+  /**
+   * Journal a P6-03 update-health event for the next report (§3.13), with Node's defaults and
+   * validation (`core/updateEvents.ts`): the outlet is the report's outlet id, the channel this
+   * session's, the time now. Returns the entry, or null when a value was malformed (the event
+   * is not recorded). The in-page journal keeps at most `MAX_JOURNAL` unsent events, dropping
+   * the oldest, so a page that never reports cannot grow it without bound.
+   */
   recordUpdateEvent(
-    entry: Omit<UpdateEventEntry, "eventId" | "at"> & { at?: number },
-  ): void {
-    const eventId = randomId();
-    this.journal.push({ ...entry, eventId, at: entry.at ?? this.opts.now() });
-    // Bound the in-page journal: the oldest go first when a page never reports.
-    if (this.journal.length > 64)
-      this.journal.splice(0, this.journal.length - 64);
+    event: UpdateEvent,
+    input: UpdateEventInput,
+  ): UpdateEventEntry | null {
+    let outlet: string | null = null;
+    try {
+      const o = this.opts.outlet?.();
+      outlet = o && typeof o.id === "string" ? o.id : null;
+    } catch {
+      outlet = null;
+    }
+    const entry = buildUpdateEvent(event, input, {
+      outlet,
+      channel: this.channel,
+      now: this.opts.now(),
+      eventId: this.opts.eventId?.(event) ?? `${randomId()}-${event}`,
+    });
+    if (!entry) return null;
+    this.journal.push(entry);
+    if (this.journal.length > MAX_JOURNAL)
+      this.journal.splice(0, this.journal.length - MAX_JOURNAL);
+    return entry;
   }
 
   /** The events waiting for a report. */

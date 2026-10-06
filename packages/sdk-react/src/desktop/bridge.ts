@@ -134,7 +134,10 @@ export type BridgeActivation =
  *     call crossing the bridge): `("config","mint",{recipeId})` → `{token, expiresAt}`;
  *     `("commerce","binding")` → `{bindingId, products}`; `("commerce","claim",{store,payload})`
  *     → a `CommerceClaimResult`; `("core","discovery")`; `("core","storeStatus")`;
- *     `("devices","id")`.
+ *     `("devices","id")`; `("update","journal",{event, release, fromRelease?, deliverable?,
+ *     channel?, packSetId?, code?})` → the journalled `UpdateEventEntry` or `null` (SP-14: the
+ *     renderer's update-health events, recorded in the host's journal with
+ *     `client.update.journal.record(event, input)`, so its next report drains them).
  *
  * Reserved, not yet used by this package: pack verbs (`("packs", …)`), telemetry extras and the
  * `onPackProgress` push below are declared for a later revision; nothing here calls or

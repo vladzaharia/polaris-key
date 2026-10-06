@@ -158,16 +158,8 @@
       "note": "Desktop through invoke(\"devices\", \"report\"). Web in bearer mode (SP-R02): POST /<p>/devices/report after every sync and on report(), with the browser facts (os family, cores, memory bucket, locale, time zone), caps, outlet and the update-health journal (src/browser/bearer/facts.ts); telemetry-report replays through it. A cookie-session page throws report-unsupported."
     },
     "telemetry.updates": {
-      "status": "planned",
-      "wp": "SP-14",
-      "note": "Half built: bearer mode's BearerSession queues P6-03 update events and drains at most 16 per POST /<p>/devices/report (dropping them only on a 200), but nothing records them: the adapter exposes no record call and the browser update path journals no update_offered, and the desktop renderer forwards none (SP-R11, SDK-PARITY-PASS §5.2).",
-      "except": [
-        {
-          "runtime": "web",
-          "reason": "runtime",
-          "note": "No device bearer in a browser cookie session (as devices.report); SP-R02 removes it."
-        }
-      ]
+      "status": "implemented",
+      "note": "adapter.recordUpdateEvent(event, input) journals a P6-03 event with Node's defaults and validation (src/core/updateEvents.ts). Web in bearer mode (SP-R02): BearerSession's in-page journal, drained at most 16 per POST /<p>/devices/report and dropped only on a 200; decideUpdate() journals update_offered once per offered release; telemetry-report-updates replays through recorded events. A cookie-session page refuses typed (runtime). Desktop: forwarded to the host's journal over bridge v4 (invoke(\"update\", \"journal\")), a typed version N/A on an older host (SP-14)."
     },
     "devices.attest": {
       "status": "na",
