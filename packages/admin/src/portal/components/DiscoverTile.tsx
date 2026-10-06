@@ -74,6 +74,9 @@ export function DiscoverTile({
         tint={offer.tintColor}
         src={offer.headerUrl}
         variant="tile"
+        // No cover: a bare tint field; the icon (or its letter tile) in front of the art's lower
+        // edge already shows the letter, as on Library cards.
+        letter={false}
         className="aspect-video"
       >
         {added ? (
