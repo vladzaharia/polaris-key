@@ -238,15 +238,18 @@ export async function listSchemaPublishers(
 export async function listLicenses(
   db: Db,
   product: string,
-  filter: { holder?: HolderFilter } = {},
+  filter: { holder?: HolderFilter; batch?: string } = {},
 ): Promise<LicenseRow[]> {
   // LX-26: the holder filter is the derived rule as SQL (`core/licenseHolders.ts`), never a copy.
   const holder = filter.holder
     ? ` AND ${holderFilterSql(filter.holder, "licenses")}`
     : "";
+  // LX-28: one batch's licences (`idx_licenses_batch`).
+  const batch = filter.batch !== undefined ? " AND batch_id = ?" : "";
   return db.all<LicenseRow>(
-    `SELECT * FROM licenses WHERE product = ?${holder} ORDER BY activated_at DESC, id DESC`,
+    `SELECT * FROM licenses WHERE product = ?${holder}${batch} ORDER BY activated_at DESC, id DESC`,
     product,
+    ...(filter.batch !== undefined ? [filter.batch] : []),
   );
 }
 

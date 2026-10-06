@@ -362,6 +362,7 @@ const TABLE_OWNERS = {
     "tiers",
     "license_profiles",
     "license_store_grants",
+    "license_batches",
   ],
   config: [
     "product_schema",

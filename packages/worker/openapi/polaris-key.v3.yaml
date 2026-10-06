@@ -13062,8 +13062,9 @@ paths:
         account and whether it has an email (no column): `floating` (neither: whoever holds the key
         uses it) or `assigned` (in an account, or waiting for an account to verify its email). The
         holder's `email` is the licence's own, never the account's. `?holder=` filters: `floating`,
-        `assigned` (in an account or waiting), `waiting`, `inAccount`. Platform admins only; admin
-        session cookie.
+        `assigned` (in an account or waiting), `waiting`, `inAccount`. LX-28: each also carries
+        `batchId` (the batch it was created in, or `null`), and `?batch=` lists one batch's
+        licences. Platform admins only; admin session cookie.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - {
@@ -13073,6 +13074,13 @@ paths:
             schema:
               { type: string, enum: [floating, assigned, waiting, inAccount] },
             description: "Only licences in this holder state.",
+          }
+        - {
+            name: batch,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "Only the licences of this batch (LX-28). An unknown id lists none.",
           }
       responses:
         "200":
@@ -13261,6 +13269,170 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
           description: "An unknown tier or profile, a bad `deviceLimit`, or a value a signed document cannot carry."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  # ── Licence batches (LX-28: bulk floating keys and Disable unused keys) ──
+  /manage/api/products/{product}/license/batches:
+    get:
+      operationId: listAdminLicenseBatches
+      tags: [admin]
+      summary: The product's licence batches, newest first, with their used counts
+      description: >
+        Every batch of floating licences the product's operators created (LX-28, notes/S-24 §5.6,
+        §6.3), newest first. Each carries its label (not unique), how many licences it created,
+        its tier, who created it (the operator's session subject) and when, and three live counts:
+        `used` (licences a device was ever bound to: a device row names it, whatever its status, or
+        one of its keys was ever presented successfully), `unused` (active licences never used:
+        what Disable unused keys would disable) and `disabled`. Keys are never in a batch read.
+        Platform admins only; admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The batches, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [batches]
+                properties:
+                  batches:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminLicenseBatch" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+    post:
+      operationId: createAdminLicenseBatch
+      tags: [admin]
+      summary: Create up to 500 floating licences in one labelled batch (keys shown once)
+      description: >
+        Creates `count` licences (1 to 500) of one tier, each with its first key, in one labelled
+        batch (LX-28, notes/S-24 §5.6, §7.1, D10). Every licence is floating (no name, no email,
+        no account; a name, an email or profiles are refused), `origin: admin`, and carries the
+        batch's `batchId`. The batch row, the licences, their keys and the `license.batch.create`
+        audit row (label, count, tier) commit together or not at all. The answer carries every key
+        ONCE, `Cache-Control: no-store`: the Worker keeps only each key's peppered hash and can
+        never answer the keys again, so the console builds the CSV from this answer. `expiresAt`
+        absent takes the tier's policy, `null` is never, as on a single create; `deviceLimit` is
+        each licence's own limit (absent or `null` inherits). Platform admins only; admin session
+        cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminLicenseBatchCreate" }
+            examples:
+              steam:
+                {
+                  value: { label: "Steam keys, October", count: 50, tier: pro },
+                }
+      responses:
+        "201":
+          description: Created. The keys are in this answer only.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [batchId, licenses, batch, expiresAt]
+                properties:
+                  batchId: { type: string }
+                  licenses:
+                    type: array
+                    items:
+                      type: object
+                      required: [licenseId, key]
+                      properties:
+                        licenseId: { type: string }
+                        key:
+                          {
+                            type: string,
+                            description: "`pkey_<slug>_…`, shown once.",
+                          }
+                  batch: { $ref: "#/components/schemas/AdminLicenseBatch" }
+                  expiresAt:
+                    type: [integer, "null"]
+                    description: "Every licence's expiry (epoch seconds), `null` for never."
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "A `count` outside 1 to 500, a `label` that is not 1 to 80 characters on one line, a missing or unknown tier, a name, email or profiles, a bad `deviceLimit` or `expiresAt`, or a value a signed document cannot carry (`fields` names them)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/license/batches/{batchId}:
+    get:
+      operationId: getAdminLicenseBatch
+      tags: [admin]
+      summary: One licence batch with its used counts
+      description: >
+        One batch, as the list carries it (LX-28). Its licences are `GET
+        …/license/licenses?batch=<batchId>`. Platform admins only; admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: batchId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The batch.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminLicenseBatch" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product or batch.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/license/batches/{batchId}/disable-unused:
+    post:
+      operationId: disableUnusedAdminLicenseBatch
+      tags: [admin]
+      summary: Disable every licence of a batch that no device was ever bound to
+      description: >
+        Disable unused keys (LX-28, notes/S-24 §5.6, §7.1), for a batch whose keys leaked:
+        disables every ACTIVE licence of the batch no device was ever bound to, in one conditional
+        write, and answers how many. Used licences (a device row names it, whatever its status, or
+        one of its keys was ever presented successfully) and licences outside the batch are
+        untouched; a licence is re-enabled one at a time. Audited `license.batch.disable_unused`
+        with the count. Platform admins only; admin session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: batchId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Done.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [disabled]
+                properties:
+                  disabled:
+                    {
+                      type: integer,
+                      minimum: 0,
+                      description: "How many licences this call disabled.",
+                    }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product or batch.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -15643,6 +15815,52 @@ components:
           description: "The owner's pairwise subject (`ps_…`) for this product; `null` when the licence is in no account."
         holder: { $ref: "#/components/schemas/LicenseHolder" }
         origin: { type: string, enum: [admin, oidc, enroll] }
+        batchId:
+          type: [string, "null"]
+          description: "LX-28: the batch the licence was created in; `null` for a licence created on its own."
+    AdminLicenseBatch:
+      type: object
+      description: >
+        A batch of floating licences (LX-28) with its live counts. Never carries a key.
+      required:
+        [id, label, count, tier, createdBy, createdAt, used, unused, disabled]
+      properties:
+        id: { type: string }
+        label: { type: string, description: "1 to 80 characters; not unique." }
+        count:
+          {
+            type: integer,
+            minimum: 1,
+            maximum: 500,
+            description: "How many licences the batch created.",
+          }
+        tier: { type: [string, "null"] }
+        createdBy:
+          { type: string, description: "The operator's session subject." }
+        createdAt: { type: integer, description: Epoch seconds. }
+        used:
+          type: integer
+          minimum: 0
+          description: "Licences a device was ever bound to."
+        unused:
+          type: integer
+          minimum: 0
+          description: "Active licences never used: what Disable unused keys would disable."
+        disabled:
+          { type: integer, minimum: 0, description: "Disabled licences." }
+    AdminLicenseBatchCreate:
+      type: object
+      required: [label, count, tier]
+      properties:
+        label: { type: string, minLength: 1, maxLength: 80 }
+        count: { type: integer, minimum: 1, maximum: 500 }
+        tier: { type: string }
+        deviceLimit: { type: [integer, "null"], minimum: 1 }
+        expiresAt: { type: [integer, "null"] }
+        maxOfflineDays: { type: integer, minimum: 1, maximum: 365 }
+        channels: { type: array, items: { type: string } }
+        minVersion: { type: string }
+        maxVersion: { type: string }
     AdminLicenseCreate:
       type: object
       properties:

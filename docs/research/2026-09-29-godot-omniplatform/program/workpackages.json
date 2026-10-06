@@ -9952,7 +9952,7 @@
       "optional": false,
       "refs": ["notes/S-24-licence-holders.md §6.1, §6.3, §7.1, §8.5 (D10)"],
       "brief": "wp/LX-28-bulk-floating-keys.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "LX-29",
