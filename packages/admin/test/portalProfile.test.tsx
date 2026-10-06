@@ -269,6 +269,39 @@ describe("explicit choices (§4.30 rules 2 and 3)", () => {
     expect(card.querySelector("[data-avatar]")!.children).toHaveLength(1);
   });
 
+  it("a picked Steam picture that Steam has since replaced keeps its own tile; the new one is pickable", async () => {
+    const NEW_STEAM = { ...STEAM_PIC, asset: "d4".repeat(32) };
+    NEW_STEAM.url = `/media/avatar/${NEW_STEAM.asset}`;
+    NEW_STEAM.url96 = `${NEW_STEAM.url}-96`;
+    mockFetch(
+      profileRoutes({
+        ...CHOSEN,
+        sources: CHOSEN.sources.map((o) =>
+          o.linkId === "lnk_steam" ? { ...o, picture: NEW_STEAM } : o,
+        ),
+      }),
+    );
+    const card = await openEditor();
+    const picture = within(card).getByRole("group", { name: "Picture" });
+    const current = within(picture).getByRole("radio", {
+      name: /Current picture/,
+    }) as HTMLInputElement;
+    expect(current.checked).toBe(true);
+    expect(current.closest("label")!.textContent).toContain(
+      "An earlier picture from Steam",
+    );
+    expect(current.closest("label")!.textContent).toContain("In use");
+    await userEvent.click(
+      within(picture).getByRole("radio", { name: /^Steam/ }),
+    );
+    await userEvent.click(
+      within(card).getByRole("button", { name: "Save profile" }),
+    );
+    await waitFor(() =>
+      expect(patches()).toEqual([{ picture: { from: "lnk_steam" } }]),
+    );
+  });
+
   it("choosing nothing, or retyping the saved name, saves nothing", async () => {
     mockFetch(profileRoutes(FOLLOWING));
     const card = await openEditor();

@@ -13,6 +13,7 @@ import {
 } from "../api.js";
 import {
   chipLabel,
+  earlierPictureNote,
   nameFollowsHint,
   namePickedHint,
   nameTypedHint,
@@ -21,6 +22,7 @@ import {
 import { useUpdateProfile, useUploadPicture } from "../data.js";
 import {
   badgeProvider,
+  currentPictureOrigin,
   draftName,
   draftNameSource,
   draftPicture,
@@ -34,6 +36,7 @@ import {
   profileChange,
   profileErrorCopy,
   providerName,
+  reconcileDraft,
   selectedTile,
   tileInUse,
   UPLOAD_MAX_BYTES,
@@ -135,7 +138,7 @@ export function ProfileEditor({
           {
             id: "current" as const,
             title: C["profile.picture.current"],
-            note: C["profile.picture.currentNote"],
+            note: currentNote(currentPictureOrigin(profile)),
             picture: profile.picture?.url ?? null,
           },
         ]
@@ -147,6 +150,12 @@ export function ProfileEditor({
       picture: null,
     },
   ];
+
+  // A refused save re-reads the profile (`useUpdateProfile`): drop the choices whose source
+  // went away, so the field and the tiles show what is there now.
+  React.useEffect(() => {
+    setDraft((d) => reconcileDraft(profile, d));
+  }, [profile]);
 
   const typeName = (value: string): void => {
     setDraft((d) => ({ ...d, name: { kind: "typed", value } }));
@@ -194,10 +203,15 @@ export function ProfileEditor({
     save.mutate(change, {
       onSuccess: () => onDone(true),
       onError: (err) => {
-        const field =
-          err instanceof PortalApiError && err.reason
-            ? fieldOf(err.reason, change)
-            : "form";
+        const reason = err instanceof PortalApiError ? err.reason : undefined;
+        if (reason === "unknown_upload") {
+          // The upload was collected: it can't be picked anymore, so it leaves the tiles.
+          setUpload(null);
+          setDraft((d) =>
+            d.picture?.kind === "upload" ? { ...d, picture: null } : d,
+          );
+        }
+        const field = reason ? fieldOf(reason, change) : "form";
         setError({ field, text: profileErrorCopy(err, "save") });
         if (field === "name") nameRef.current?.focus();
       },
@@ -438,6 +452,14 @@ export function ProfileEditor({
   );
 }
 
+/** The note under the in-use picture's own tile: why it is not a method's current picture. */
+function currentNote(
+  origin: ReturnType<typeof currentPictureOrigin>,
+): string | null {
+  if (origin.removed) return C["profile.picture.currentNote"];
+  return origin.provider ? earlierPictureNote(origin.provider) : null;
+}
+
 /** Which field a save refusal belongs to (the Worker's `reason`). */
 function fieldOf(
   reason: string,
@@ -512,6 +534,11 @@ function PictureTileRadio({
         value={tile.id}
         checked={checked}
         onChange={onPick}
+        // A checked radio fires no change; picking it again still counts (it pins a followed
+        // picture, `pickTile`).
+        onClick={() => {
+          if (checked) onPick();
+        }}
         className="sr-only"
       />
       <Check

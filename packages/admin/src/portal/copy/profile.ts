@@ -39,7 +39,7 @@ export const PROFILE_COPY = {
   "profile.removedMethod": "a sign-in method you removed",
   "profile.error.invalidName": "Enter a name.",
   "profile.error.unknownSource":
-    "That sign-in method isn't on this account any more. Choose again.",
+    "That sign-in method isn't on this account anymore. Choose again.",
   "profile.error.noName":
     "That sign-in method didn't share a name. Choose another or type one.",
   "profile.error.noPicture":
@@ -91,6 +91,11 @@ export const sourceParts = {
   appleNoPicture: "Apple doesn't share a picture",
   noPicture: "no picture",
 } as const;
+
+/** `profile.picture.earlierNote`: a picked picture its method has since replaced. */
+export function earlierPictureNote(provider: string): string {
+  return `An earlier picture from ${provider}`;
+}
 
 /** `profile.name.chip`: a name chip's accessible name (its visible text is the name alone). */
 export function chipLabel(provider: string, name: string): string {

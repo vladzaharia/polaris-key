@@ -88,7 +88,12 @@ function optionFor(
 
 /** A typed name equal to the saved one changes nothing (no accidental pin by retyping it). */
 function typedChanges(profile: PortalProfile, value: string): boolean {
-  return value.trim() !== (profile.displayName ?? "").trim();
+  return collapse(value) !== collapse(profile.displayName ?? "");
+}
+
+/** Whitespace as the Worker keeps a name (`sanitizeDisplayName`): runs collapsed, ends trimmed. */
+function collapse(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
 }
 
 /** The name the editor shows. */
@@ -135,11 +140,34 @@ export function tileInUse(profile: PortalProfile): PictureTile {
   const src = profile.pictureSource;
   if (src?.kind === "upload") return "upload";
   const options = pictureOptions(profile);
-  if (src?.kind === "provider" && options.some((o) => o.linkId === src.linkId))
+  // A method's tile is in use only while it still holds the very picture in use: a picked
+  // picture sticks when its method later supplies a new one (rule 3), and that new one stays
+  // pickable.
+  if (
+    src?.kind === "provider" &&
+    options.some(
+      (o) => o.linkId === src.linkId && o.picture.asset === pic.asset,
+    )
+  )
     return `link:${src.linkId}`;
-  // A picture whose method was disconnected, or one a method no longer supplies: match by asset.
   const byAsset = options.find((o) => o.picture.asset === pic.asset);
   return byAsset ? `link:${byAsset.linkId}` : "current";
+}
+
+/**
+ * Why the picture in use has a tile of its own (`"current"`): its method was removed, or the
+ * method has since supplied a newer picture (the provider's name), or neither is known (null).
+ */
+export function currentPictureOrigin(
+  profile: PortalProfile,
+): { removed: true } | { removed: false; provider: string | null } {
+  const src = profile.pictureSource;
+  if (src?.kind === "provider" && src.provider === null)
+    return { removed: true };
+  return {
+    removed: false,
+    provider: src?.kind === "provider" ? providerName(src.provider) : null,
+  };
 }
 
 /** The tile the editor has selected. */
@@ -178,14 +206,23 @@ export function draftPicture(
   return { picture: profile.picture, source: profile.pictureSource };
 }
 
-/** The draft for picking a tile: picking the tile in use changes nothing. */
+/**
+ * The draft for picking a tile. Picking the tile in use changes nothing when it was chosen; when
+ * it only follows its source (an imported picture, or Initials because nothing supplied one), it
+ * pins it, as a name chip does.
+ */
 export function pickTile(
   profile: PortalProfile,
   tile: PictureTile,
   upload: PortalAvatar | null,
 ): PictureDraft {
-  if (tile === tileInUse(profile) && !(tile === "upload" && upload))
-    return null;
+  if (tile === tileInUse(profile) && !(tile === "upload" && upload)) {
+    if (profile.explicitPicture || tile === "current" || tile === "upload")
+      return null;
+    return tile === "initials"
+      ? { kind: "initials" }
+      : { kind: "from", linkId: tile.slice("link:".length) };
+  }
   if (tile === "initials") return { kind: "initials" };
   if (tile === "upload")
     return upload ? { kind: "upload", picture: upload } : null;
@@ -193,12 +230,44 @@ export function pickTile(
   return { kind: "from", linkId: tile.slice("link:".length) };
 }
 
-/** The draft for a name chip: the method the saved name already sticks to changes nothing. */
+/**
+ * The draft for a name chip. The method the saved name sticks to changes nothing while it still
+ * supplies that same name; once the method's name has changed (a new Steam persona), picking it
+ * takes the new one. A followed name is pinned.
+ */
 export function pickName(profile: PortalProfile, linkId: string): NameDraft {
   const src = profile.displayNameSource;
-  if (src?.kind === "provider" && src.linkId === linkId && profile.explicitName)
+  if (
+    src?.kind === "provider" &&
+    src.linkId === linkId &&
+    profile.explicitName &&
+    profile.displayName === optionFor(profile, linkId)?.name
+  )
     return null;
   return { kind: "from", linkId };
+}
+
+/**
+ * The draft without the choices whose source is gone (after a refused save re-reads the profile:
+ * a method removed, an upload collected). The name field then shows the saved name again.
+ */
+export function reconcileDraft(
+  profile: PortalProfile,
+  draft: ProfileDraft,
+): ProfileDraft {
+  const n = draft.name;
+  const p = draft.picture;
+  const name =
+    n?.kind === "from" &&
+    !nameOptions(profile).some((o) => o.linkId === n.linkId)
+      ? null
+      : n;
+  const picture =
+    p?.kind === "from" &&
+    !pictureOptions(profile).some((o) => o.linkId === p.linkId)
+      ? null
+      : p;
+  return name === n && picture === p ? draft : { name, picture };
 }
 
 /** A typed name that is empty once trimmed: the editor refuses it before asking (`invalid_name`). */
@@ -214,7 +283,7 @@ export function profileChange(
   const change: PortalProfileChange = {};
   const n = draft.name;
   if (n?.kind === "typed" && typedChanges(profile, n.value))
-    change.name = n.value.trim();
+    change.name = collapse(n.value);
   else if (n?.kind === "from") change.nameFrom = n.linkId;
   const p = draft.picture;
   if (p?.kind === "initials") change.picture = "initials";

@@ -18,6 +18,7 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/PX-W13.md`](../plans/PX-W13.md):** read `SignInRequestView` and `AppConsentView`; render the neutral frame when `nameVerified` is `false`; switch the device-code page to `303 /signin?request=rq_…` (a root path).
 - **[`plans/PX-W17.md`](../plans/PX-W17.md):** render the Identity-off card from the `error=identity_disabled` query parameter and the API code.
+- **From PX-22 (`Avatar`, PORTAL.md §4.30 rule 5):** Render `Avatar` with `picture={account.avatarUrl}` in the AppConsent person row and the device-code done row; never before authentication (from PX-22).
 
 ## Owner decision (2026-10-05): licence choice at sign-in
 

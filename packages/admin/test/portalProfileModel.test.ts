@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { PortalApiError } from "../src/portal/api.js";
 import { avatarSrc } from "../src/portal/components/Avatar.js";
 import {
+  currentPictureOrigin,
   NO_DRAFT,
   pickName,
+  reconcileDraft,
   pickTile,
   profileChange,
   profileErrorCopy,
@@ -13,6 +15,7 @@ import {
 } from "../src/portal/model/profile.js";
 import {
   APPLE_ONLY,
+  avatar,
   CHOSEN,
   FOLLOWING,
   GOOGLE_PIC,
@@ -112,6 +115,115 @@ describe("profileChange: only what the person chose is sent (rules 2 and 3)", ()
 
   it("Apple is never a picture tile, and no picture means Initials is in use", () => {
     expect(tileInUse(APPLE_ONLY)).toBe("initials");
+  });
+});
+
+describe("a picked method that later changes stays re-pickable (review B1)", () => {
+  // Steam was picked for both; then the person renamed themselves on Steam and changed avatar.
+  // The Worker keeps the account's chosen values and records the new ones on the link.
+  const NEW_STEAM = avatar("d4");
+  const renamed = {
+    ...CHOSEN,
+    displayName: "marafox",
+    displayNameSource: {
+      kind: "provider" as const,
+      linkId: "lnk_steam",
+      provider: "steam",
+    },
+    explicitName: true,
+    sources: CHOSEN.sources.map((s) =>
+      s.linkId === "lnk_steam"
+        ? { ...s, label: "marafox_2", name: "marafox_2", picture: NEW_STEAM }
+        : s,
+    ),
+  };
+
+  it("the Steam chip takes the new name", () => {
+    expect(pickName(renamed, "lnk_steam")).toEqual({
+      kind: "from",
+      linkId: "lnk_steam",
+    });
+    expect(
+      profileChange(renamed, {
+        name: pickName(renamed, "lnk_steam"),
+        picture: null,
+      }),
+    ).toEqual({ nameFrom: "lnk_steam" });
+    // Unchanged on Steam: picking it again is still no change.
+    expect(
+      pickName({ ...renamed, displayName: "marafox_2" }, "lnk_steam"),
+    ).toBeNull();
+  });
+
+  it("In use is the old picture's own tile, and the Steam tile takes the new picture", () => {
+    expect(tileInUse(renamed)).toBe("current");
+    expect(currentPictureOrigin(renamed)).toEqual({
+      removed: false,
+      provider: "Steam",
+    });
+    expect(pickTile(renamed, "link:lnk_steam", null)).toEqual({
+      kind: "from",
+      linkId: "lnk_steam",
+    });
+    expect(
+      profileChange(renamed, {
+        name: null,
+        picture: pickTile(renamed, "link:lnk_steam", null),
+      }),
+    ).toEqual({ picture: { from: "lnk_steam" } });
+  });
+});
+
+describe("re-picking what is followed pins it (review N1)", () => {
+  it("a followed picture's tile pins it; a chosen one is no change", () => {
+    expect(tileInUse(FOLLOWING)).toBe("link:lnk_google");
+    expect(pickTile(FOLLOWING, "link:lnk_google", null)).toEqual({
+      kind: "from",
+      linkId: "lnk_google",
+    });
+    expect(pickTile(CHOSEN, "link:lnk_steam", null)).toBeNull();
+  });
+
+  it("an Apple-only account can pin Initials", () => {
+    const draft = {
+      name: null,
+      picture: pickTile(APPLE_ONLY, "initials", null),
+    };
+    expect(profileChange(APPLE_ONLY, draft)).toEqual({ picture: "initials" });
+  });
+});
+
+describe("names and drafts as the Worker keeps them (review N2, N3)", () => {
+  it("whitespace collapses before comparing and sending", () => {
+    expect(
+      profileChange(FOLLOWING, {
+        name: { kind: "typed", value: " Mara   Fennick " },
+        picture: null,
+      }),
+    ).toBeNull();
+    expect(
+      profileChange(FOLLOWING, {
+        name: { kind: "typed", value: "Mara   F " },
+        picture: null,
+      }),
+    ).toEqual({ name: "Mara F" });
+  });
+
+  it("drops the choices whose method is gone after a re-read", () => {
+    const gone = {
+      ...FOLLOWING,
+      sources: FOLLOWING.sources.filter((s) => s.linkId !== "lnk_steam"),
+    };
+    const draft = {
+      name: { kind: "from" as const, linkId: "lnk_steam" },
+      picture: { kind: "from" as const, linkId: "lnk_steam" },
+    };
+    expect(reconcileDraft(gone, draft)).toEqual(NO_DRAFT);
+    const typed = {
+      name: { kind: "typed" as const, value: "x" },
+      picture: null,
+    };
+    expect(reconcileDraft(gone, typed)).toBe(typed);
   });
 });
 

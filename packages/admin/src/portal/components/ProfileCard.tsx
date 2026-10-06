@@ -83,30 +83,34 @@ export function ProfileCard({
           onDone={done}
         />
       ) : (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-4">
-            <Avatar
-              name={name}
-              email={account.email}
-              picture={picture}
-              size={56}
-              badge={providerBadge(badge)}
-            />
-            <div className="min-w-0 flex-1">
-              <p className="font-bold text-fg-strong [overflow-wrap:anywhere]">
-                {showName}
-              </p>
-              {profile ? (
-                <p className="text-sm text-fg-muted">
-                  {sourceSummary(profile)}
+        <div className="space-y-3 @container">
+          {/* Narrow: the action stacks under the name, which keeps the full line. */}
+          <div className="flex flex-col gap-3 @lg:flex-row @lg:items-center @lg:gap-4">
+            <div className="flex min-w-0 flex-1 items-center gap-4">
+              <Avatar
+                name={name}
+                email={account.email}
+                picture={picture}
+                size={56}
+                badge={providerBadge(badge)}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="font-bold text-fg-strong [overflow-wrap:anywhere]">
+                  {showName}
                 </p>
-              ) : null}
+                {profile ? (
+                  <p className="text-sm text-fg-muted">
+                    {sourceSummary(profile)}
+                  </p>
+                ) : null}
+              </div>
             </div>
             {profile && !profile.picture ? (
               <Button
                 variant="ghost"
                 iconStart={<Upload aria-hidden />}
                 onClick={() => setEditing("picture")}
+                className="self-start @lg:self-auto"
               >
                 {C["profile.addPicture"]}
               </Button>

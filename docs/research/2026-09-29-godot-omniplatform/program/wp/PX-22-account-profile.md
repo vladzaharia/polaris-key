@@ -88,7 +88,9 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test -- portal
 
 ## Hand-off
 
-none.
+[PX-14](PX-14-passthrough-header.md): render `Avatar` with `picture={account.avatarUrl}` in the
+AppConsent person row (frame 12) and the device-code done row (frame 15), never before
+authentication. Recorded in PX-14's Amendments.
 
 The role agent sets `--set PX-22 in-review` when it hands off. After review, the lead adds the last commit of the PR:
 `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set PX-22 done`.
