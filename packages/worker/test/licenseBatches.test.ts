@@ -28,7 +28,12 @@ import { isFloatingLicense } from "../src/core/accountSubjects.js";
 import { licenseHolder } from "../src/core/licenseHolders.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import { handleActivate } from "../src/services/license/activation.js";
-import { MAX_BATCH_COUNT } from "../src/services/license/batches.js";
+import {
+  disableUnusedAfterAuditStatement,
+  MAX_BATCH_COUNT,
+  unusedCountIs,
+} from "../src/services/license/batches.js";
+import { auditStatementFor } from "../src/admin/audit.js";
 import type { DbStatement } from "../src/db/types.js";
 
 const SLUG = "tonebox";
@@ -253,6 +258,14 @@ describe("POST …/license/batches", () => {
       [{ label: "   ", count: 2, tier: "pro" }, ["label"]],
       [{ label: "a".repeat(81), count: 2, tier: "pro" }, ["label"]],
       [{ label: "two\nlines", count: 2, tier: "pro" }, ["label"]],
+      // One line, in reading order too: the line and paragraph separators and the bidi
+      // embedding, override and isolate controls are refused.
+      ...["\u2028", "\u2029", "\u202a", "\u202e", "\u2066", "\u2069"].map(
+        (ch): [Record<string, unknown>, string[]] => [
+          { label: `Steam${ch}keys`, count: 2, tier: "pro" },
+          ["label"],
+        ],
+      ),
       [{ count: 2, tier: "pro" }, ["label"]],
       [{ label: "x", count: 2 }, ["tier"]],
       [{ label: "x", count: 2, tier: "nope" }, ["tier"]],
@@ -349,6 +362,11 @@ describe("POST …/license/batches", () => {
       });
     for (const r of await batchLicenses(b.batchId))
       expect(r.expires_at).toBe(NOW + 5);
+    // Ordinary non-ASCII text is a fine label; only line breaks and reordering controls are not.
+    const c = (
+      await createBatch({ label: "Clés · octobre 😀", count: 1, tier: "pro" })
+    ).body;
+    expect(c.batch.label).toBe("Clés · octobre 😀");
   });
 });
 
@@ -447,6 +465,75 @@ describe("batch reads, used counts and Disable unused keys", () => {
     ).toEqual({ disabled: 0 });
   });
 
+  it("commits Disable unused keys with its audit row, or neither", async () => {
+    const { body } = await createBatch({
+      label: "Pool",
+      count: 3,
+      tier: "pro",
+    });
+    const active = async () =>
+      (await db.first<{ n: number }>(
+        "SELECT COUNT(*) AS n FROM licenses WHERE batch_id = ? AND status = 'active'",
+        body.batchId,
+      ))!.n;
+    const audited = async () =>
+      (await listAudit(db, SLUG, { action: "license.batch.disable_unused" }))
+        .length;
+
+    // The audit row fails: nothing is disabled.
+    await db.run(
+      `CREATE TRIGGER lx28_audit_fail BEFORE INSERT ON audit
+       WHEN NEW.action = 'license.batch.disable_unused'
+       BEGIN SELECT RAISE(ABORT, 'injected failure'); END`,
+    );
+    let status = 0;
+    try {
+      status = (
+        await call("POST", `/license/batches/${body.batchId}/disable-unused`)
+      ).status;
+    } catch {
+      status = 500;
+    }
+    expect(status).toBe(500);
+    expect(await active()).toBe(3);
+    expect(await audited()).toBe(0);
+    await db.run("DROP TRIGGER lx28_audit_fail");
+
+    // A stale count (a device bound since it was read): neither statement writes.
+    const { session } = await issueSession(
+      env,
+      { sub: "op-1", name: "Op", email: "op@x.io", groups: [PLATFORM_GROUP] },
+      NOW,
+    );
+    const changes = await db.batchChanges([
+      auditStatementFor(
+        SLUG,
+        session,
+        NOW,
+        "license.batch.disable_unused",
+        { kind: "license_batch", id: body.batchId },
+        "stale",
+        unusedCountIs(SLUG, body.batchId, 2),
+      ),
+      disableUnusedAfterAuditStatement(SLUG, body.batchId, "op-1", NOW),
+    ]);
+    expect(changes).toEqual([0, 0]);
+    expect(await active()).toBe(3);
+    expect(await audited()).toBe(0);
+
+    // The real route: both commit, and the row records the count the UPDATE disabled.
+    expect(
+      await (
+        await call("POST", `/license/batches/${body.batchId}/disable-unused`)
+      ).json(),
+    ).toEqual({ disabled: 3 });
+    expect(await active()).toBe(0);
+    const [row] = await listAudit(db, SLUG, {
+      action: "license.batch.disable_unused",
+    });
+    expect(row?.summary).toBe('Disabled 3 unused licenses of batch "Pool"');
+  });
+
   it("lists batches newest first, 404s an unknown one, and filters licences by batch", async () => {
     const first = (await createBatch({ label: "One", count: 2, tier: "pro" }))
       .body;
@@ -521,21 +608,50 @@ describe("batch reads, used counts and Disable unused keys", () => {
   });
 
   it("is admin-only and CSRF-guarded", async () => {
-    const res = await handleAdmin(
-      new Request(
-        `https://key.plrs.im/manage/api/products/${SLUG}/license/batches`,
-        {
+    const path = `/api/products/${SLUG}/license/batches`;
+    const send = (headers: Record<string, string>) =>
+      handleAdmin(
+        new Request(`https://key.plrs.im/manage${path}`, {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "application/json", ...headers },
           body: JSON.stringify({ label: "x", count: 1, tier: "pro" }),
-        },
-      ) as unknown as Request,
+        }) as unknown as Request,
+        env,
+        db,
+        path,
+        { now: NOW },
+      );
+
+    // No session at all.
+    expect([401, 403]).toContain((await send({})).status);
+
+    // A platform admin's session without the CSRF header.
+    const admin = await issueSession(
       env,
-      db,
-      `/api/products/${SLUG}/license/batches`,
-      { now: NOW },
+      { sub: "op-1", name: "Op", email: "op@x.io", groups: [PLATFORM_GROUP] },
+      NOW,
     );
-    expect([401, 403]).toContain(res.status);
+    const noCsrf = await send({ cookie: `${ADMIN_COOKIE}=${admin.token}` });
+    expect(noCsrf.status).toBe(403);
+    expect(((await noCsrf.json()) as { message?: string }).message).toBe(
+      "csrf",
+    );
+
+    // A signed-in operator outside the platform-admin group, with a valid CSRF token.
+    const outsider = await issueSession(
+      env,
+      { sub: "u2", name: "Eve", email: "eve@x.io", groups: ["someone-else"] },
+      NOW,
+    );
+    expect(
+      (
+        await send({
+          cookie: `${ADMIN_COOKIE}=${outsider.token}`,
+          [CSRF_HEADER]: outsider.session.csrf,
+        })
+      ).status,
+    ).toBe(403);
+
     expect(
       await db.first<{ n: number }>(
         "SELECT COUNT(*) AS n FROM license_batches",

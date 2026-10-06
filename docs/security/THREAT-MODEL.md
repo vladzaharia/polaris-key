@@ -6370,8 +6370,9 @@ in one labelled batch (`license_batches`, License-owned; `licenses.batch_id`), a
 key once; `GET …/license/batches[/<id>]` reads a batch with its `used`, `unused` and `disabled`
 counts; `POST …/license/batches/<id>/disable-unused` disables its unused licences
 (`services/license/batches.ts`, `services/license/admin/batches.ts`; notes/S-24 §5.6, §7.1). The
-routes sit on the admin API, behind the platform-admin session, the CSRF header and the
-product-admin gate (a test pins the refusal).
+routes sit on the admin API, behind the admin session, the CSRF header and the
+platform-admin gate (tests pin each refusal: no session, no CSRF header, an operator outside the
+platform-admin group).
 
 - **T-H1: a leaked batch CSV activates strangers' devices.** A batch is the largest key leak
   surface the platform has: up to 500 working keys in one file, made for resellers and store key
@@ -6393,7 +6394,10 @@ product-admin gate (a test pins the refusal).
     browser key session, which stays when a device later moves to another licence). It is one
     conditional `UPDATE`, so a licence whose device was bound before the write is never
     disabled, and it then purges from KV the token of any device bound in the instant around it,
-    as the single disable does. Audited `license.batch.disable_unused` with the count.
+    as the single disable does. Audited `license.batch.disable_unused` with the count, in the
+    same D1 batch as the `UPDATE`: the audit row is written only while the batch still has the
+    count just read, and the `UPDATE` runs only after it (`changes()`), so the row always records
+    what was disabled and neither commits without the other (tested on better-sqlite3 and D1).
   - Residual, accepted: a key the thief already activated counts as used and stays active; the
     operator disables those licences one at a time (or revokes their keys), and the batch read
     says how many there are. A key added to an account in the portal but never activated binds no
@@ -6407,8 +6411,9 @@ product-admin gate (a test pins the refusal).
   on better-sqlite3 and on D1 in the workerd lane). 501 is refused (`422`).
 - **No personal data.** Every batch licence is floating (no name, no email, no account: the holder
   rule's `isFloatingLicense`); the create refuses a name, an email or profiles rather than
-  dropping them. A label is one line of 1 to 80 characters (control characters refused), so it
-  cannot break the audit summary or the CSV's rows; spreadsheet formula injection from a label
+  dropping them. A label is one line of 1 to 80 characters (C0 and C1 controls, U+2028, U+2029
+  and the bidi controls U+202A to U+202E and U+2066 to U+2069 refused), so it cannot break or
+  reorder the audit summary or the CSV's rows; spreadsheet formula injection from a label
   is the CSV writer's to neutralise (LX-29). A product deletion keeps its batch rows, as it keeps
   its audit rows: they name no customer.
 

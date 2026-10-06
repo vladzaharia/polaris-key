@@ -169,15 +169,23 @@ describe("licence batches on D1 (LX-28)", () => {
       unused: 0,
       disabled: MAX_BATCH_COUNT - used.length,
     });
+    // The audit row committed with the UPDATE and records what it disabled (`changes()` on D1).
+    const audit = await db.first<{ summary: string }>(
+      "SELECT summary FROM audit WHERE product = ? AND action = 'license.batch.disable_unused'",
+      SLUG,
+    );
+    expect(audit?.summary).toBe(
+      `Disabled ${MAX_BATCH_COUNT - used.length} unused licenses of batch "Store pool"`,
+    );
     expect(await activate(body.licenses[1]!.key, "dev-thief")).not.toBe(200);
     expect(await activate(body.licenses[0]!.key, "dev-0-again")).toBe(200);
   });
 
   it("rolls the whole batch back on D1 when one statement fails", async () => {
-    const before = await count("SELECT COUNT(*) AS n FROM licenses");
-    const beforeBatches = await count(
-      "SELECT COUNT(*) AS n FROM license_batches",
-    );
+    const tables = ["licenses", "license_batches", "keys_index", "audit"];
+    const before = new Map<string, number>();
+    for (const t of tables)
+      before.set(t, await count(`SELECT COUNT(*) AS n FROM ${t}`));
     await db.run(
       `CREATE TRIGGER lx28_fail BEFORE INSERT ON keys_index
        BEGIN SELECT RAISE(ABORT, 'injected failure'); END`,
@@ -196,10 +204,11 @@ describe("licence batches on D1 (LX-28)", () => {
         status = 500;
       }
       expect(status).toBe(500);
-      expect(await count("SELECT COUNT(*) AS n FROM licenses")).toBe(before);
-      expect(await count("SELECT COUNT(*) AS n FROM license_batches")).toBe(
-        beforeBatches,
-      );
+      // Nothing of the batch survives: no licence, batch row, key or audit row.
+      for (const t of tables)
+        expect(await count(`SELECT COUNT(*) AS n FROM ${t}`), t).toBe(
+          before.get(t),
+        );
     } finally {
       await db.run("DROP TRIGGER lx28_fail");
     }

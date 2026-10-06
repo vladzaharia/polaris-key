@@ -26,24 +26,28 @@ import { getTier } from "../../../core/data.js";
 import {
   adminJson,
   adminNotFound,
-  audit,
   auditStatementFor,
   err,
   readBody,
   WriteChecks,
+  type AdminSession,
 } from "../../../core/adminApi.js";
+import type { Db, DbStatement } from "../../../core/platform.js";
 import { describeHolder, licenseHolder } from "../../../core/licenseHolders.js";
 import { tierExpiresAt } from "../authz.js";
 import {
   batchDisabledDeviceTokens,
+  countUnusedBatchLicenses,
   createBatchStatements,
-  disableUnusedBatchLicenses,
+  disableUnusedAfterAuditStatement,
   getLicenseBatch,
   listLicenseBatches,
   MAX_BATCH_COUNT,
   MAX_BATCH_LABEL,
   type BatchLicenseKey,
   type LicenseBatchRow,
+  type LicenseBatchView,
+  unusedCountIs,
 } from "../batches.js";
 import type { LicenseAdminContext } from "./index.js";
 import { invalidLicenseDeviceLimit, parseChannels } from "./licenses.js";
@@ -51,15 +55,20 @@ import { invalidLicenseDeviceLimit, parseChannels } from "./licenses.js";
 /** Holder fields a batch refuses: its licences are floating (S-24 D1, D10). */
 const HOLDER_FIELDS = ["name", "email", "profiles", "profile"] as const;
 
-/** C0 and C1 control characters: a label is one line of display text. */
-const CONTROL = /[\u0000-\u001f\u007f-\u009f]/;
+/**
+ * What a one-line label may not hold: C0 and C1 controls, the line and paragraph separators
+ * (U+2028, U+2029), and the bidi embedding, override and isolate controls (U+202A to U+202E,
+ * U+2066 to U+2069), which would reorder the label, the audit summary or a CSV row around it.
+ */
+const NOT_ONE_LINE =
+  /[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/;
 
 /** The trimmed label, or `null` when it is not 1 to 80 characters of one-line text. */
 function batchLabel(raw: unknown): string | null {
   if (typeof raw !== "string") return null;
   const label = raw.trim();
   const length = [...label].length;
-  if (length < 1 || length > MAX_BATCH_LABEL || CONTROL.test(label))
+  if (length < 1 || length > MAX_BATCH_LABEL || NOT_ONE_LINE.test(label))
     return null;
   return label;
 }
@@ -112,13 +121,7 @@ export async function handleBatches(
   if (action === "disable-unused") {
     if (req.method !== "POST")
       return err(405, ErrorCode.BadRequest, "method not allowed");
-    const disabled = await disableUnusedBatchLicenses(
-      db,
-      slug,
-      id,
-      session.sub,
-      now,
-    );
+    const disabled = await disableUnused(db, slug, batch, session, now);
     // An unused licence has no device, so this is normally nothing. It purges a device bound in
     // the instant around the UPDATE, as the single disable purges its licence's devices.
     for (const tokenHash of await batchDisabledDeviceTokens(
@@ -129,19 +132,61 @@ export async function handleBatches(
       now,
     ))
       await deleteTokenRecord(ctx.env, slug, tokenHash);
-    await audit(
-      db,
-      slug,
-      session,
-      now,
-      "license.batch.disable_unused",
-      { kind: "license_batch", id },
-      `Disabled ${disabled} unused ${disabled === 1 ? "license" : "licenses"} of batch ${JSON.stringify(batch.label)}`,
-    );
     return adminJson({ disabled });
   }
 
   return adminNotFound();
+}
+
+/** Attempts at a Disable unused keys whose count moved between the read and the batch. */
+const DISABLE_ATTEMPTS = 3;
+
+/**
+ * Disable unused keys: the audit row (`license.batch.disable_unused`, with the count) and the
+ * UPDATE commit in ONE batch. The audit row is written only while the batch still has the count
+ * just read (`unusedCountIs`), and the UPDATE runs only after it (`changes()`), so the row always
+ * records what the UPDATE did. A device bound between the read and the batch moves the count:
+ * nothing is written and the count is read again.
+ */
+async function disableUnused(
+  db: Db,
+  slug: string,
+  batch: LicenseBatchView,
+  session: AdminSession,
+  now: number,
+): Promise<number> {
+  for (let attempt = 0; attempt < DISABLE_ATTEMPTS; attempt++) {
+    const expected = await countUnusedBatchLicenses(db, slug, batch.id);
+    const statements: DbStatement[] = [
+      auditStatementFor(
+        slug,
+        session,
+        now,
+        "license.batch.disable_unused",
+        { kind: "license_batch", id: batch.id },
+        `Disabled ${expected} unused ${expected === 1 ? "license" : "licenses"} of batch ${JSON.stringify(batch.label)}`,
+        unusedCountIs(slug, batch.id, expected),
+      ),
+      disableUnusedAfterAuditStatement(slug, batch.id, session.sub, now),
+    ];
+    const [audited, disabled] = await batchChanges(db, statements);
+    if (audited === 1) return disabled ?? 0;
+  }
+  throw new Error(
+    "disable-unused: the batch's unused count kept changing; try again",
+  );
+}
+
+/** `db.batchChanges` (both real engines); a test double without it runs the statements in turn. */
+async function batchChanges(
+  db: Db,
+  statements: DbStatement[],
+): Promise<number[]> {
+  if (db.batchChanges) return db.batchChanges(statements);
+  const out: number[] = [];
+  for (const st of statements)
+    out.push(await db.runChanges(st.sql, ...st.params));
+  return out;
 }
 
 async function createBatch(ctx: LicenseAdminContext): Promise<Response> {

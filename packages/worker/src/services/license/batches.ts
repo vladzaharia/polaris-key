@@ -27,11 +27,12 @@
  * activation or a browser key session stamps `keys_index.last_used_at`, which stays when the
  * device later moves to another licence). Adding a key to an account in the portal binds no
  * device, so it does not count. Disable unused keys disables exactly the active licences of the
- * batch that are not used, in one conditional UPDATE: the check and the write are one statement,
- * so a licence whose device was bound before it runs is never disabled.
+ * batch that are not used, in one conditional UPDATE committed in one batch with its audit row
+ * (which records the count): the check and the write are one statement, so a licence whose device
+ * was bound before it runs is never disabled.
  */
 
-import type { Db, DbStatement } from "../../core/platform.js";
+import type { Db, DbParam, DbStatement } from "../../core/platform.js";
 
 /** The most licences one batch creates. Measured at 500 on D1 (`test-workerd/licenseBatches`). */
 export const MAX_BATCH_COUNT = 500;
@@ -238,26 +239,59 @@ export async function getLicenseBatch(
   return row ? shapeBatch(row) : null;
 }
 
-/**
- * Disable every active licence of the batch that was never used, in one conditional UPDATE.
- * Answers how many it disabled.
- */
-export async function disableUnusedBatchLicenses(
+/** How many active licences of the batch were never used: what Disable unused keys disables. */
+export async function countUnusedBatchLicenses(
   db: Db,
+  product: string,
+  batchId: string,
+): Promise<number> {
+  const row = await db.first<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM licenses
+      WHERE product = ? AND batch_id = ? AND status = 'active'
+        AND NOT ${licenseEverBoundSql("licenses")}`,
+    product,
+    batchId,
+  );
+  return row?.n ?? 0;
+}
+
+/**
+ * "The batch still has exactly `expected` unused active licences", as a `when` condition for the
+ * audit row of a Disable unused keys (`auditStatementFor`). It is the first statement of the
+ * batch, so it reads the state the UPDATE will change.
+ */
+export function unusedCountIs(
+  product: string,
+  batchId: string,
+  expected: number,
+): { sql: string; params: DbParam[] } {
+  return {
+    sql: `(SELECT COUNT(*) FROM licenses
+        WHERE product = ? AND batch_id = ? AND status = 'active'
+          AND NOT ${licenseEverBoundSql("licenses")}) = ?`,
+    params: [product, batchId, expected],
+  };
+}
+
+/**
+ * Disable every active licence of the batch that was never used, in one conditional UPDATE that
+ * runs only when the statement before it in the batch (the guarded audit row) wrote its row
+ * (`changes()`, as `core/platformSettings.ts` guards its audit rows). Nothing runs between the two
+ * inside one batch, so the UPDATE disables exactly the count the audit row records.
+ */
+export function disableUnusedAfterAuditStatement(
   product: string,
   batchId: string,
   actor: string,
   now: number,
-): Promise<number> {
-  return db.runChanges(
-    `UPDATE licenses SET status = 'disabled', modified_by = ?, modified_at = ?
+): DbStatement {
+  return {
+    sql: `UPDATE licenses SET status = 'disabled', modified_by = ?, modified_at = ?
       WHERE product = ? AND batch_id = ? AND status = 'active'
-        AND NOT ${licenseEverBoundSql("licenses")}`,
-    actor,
-    now,
-    product,
-    batchId,
-  );
+        AND NOT ${licenseEverBoundSql("licenses")}
+        AND changes() = 1`,
+    params: [actor, now, product, batchId],
+  };
 }
 
 /**
