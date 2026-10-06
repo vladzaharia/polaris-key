@@ -525,7 +525,7 @@ wait for the owner's go and are never listed by `--ready` (see `deferred` in wor
 | [PS-07](wp/PS-07-store-owned-path.md) | `store_owned` obtain path: Steam ownership through the account's linked Steam sign-in, cached and budgeted, Add through the LX-11 holder binding | PS-03, LX-11, I-06 | implementer | 0.6–1 | todo |
 | [PS-08](wp/PS-08-product-idp-path.md) _optional_ | Optional: `product_idp` obtain path for products with their own IdP, from a verified product-scoped link | PS-03, I-22 | implementer | 0.4–0.6 | todo |
 | [PS-09](wp/PS-09-email-domain-path.md) _optional_ | Optional: `email_domain` obtain path: `.pkey/product` `autoIssue.emailDomains`, verified emails only, the same rule at product sign-in | PS-03 | implementer | 0.5–0.8 | todo |
-| [PS-10](wp/PS-10-direct-shown-as-polaris-key.md) | `direct` shown as "Polaris Key": console and download-page labels, docs and glossary, SDK READMEs, the S-19 grant source `polaris-key`; identifiers unchanged | — | implementer | 0.3–0.5 | todo |
+| [PS-10](wp/PS-10-direct-shown-as-polaris-key.md) | `direct` shown as "Polaris Key": console and download-page labels, docs and glossary, SDK READMEs, the S-19 grant source `polaris-key`; identifiers unchanged | — | implementer | 0.3–0.5 | in-review |
 | [PS-11](wp/PS-11-storefront-closeout.md) | Storefront close-out: docs, glossary, THREAT-MODEL S1–S11, ADMIN.md and PORTAL.md amendments, `discover_enabled` readers retired | PS-05, PS-06 | implementer | 0.4–0.6 | todo |
 
 ## CM: Polaris Key commerce (S-22): deferred until the owner's go

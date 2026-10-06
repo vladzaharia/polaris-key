@@ -520,7 +520,7 @@ says:
 
 | Option                       | Environment                 | Default                                                                                                                                                        |
 | ---------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `polaris_key/outlet`         | `PKEY_BUILD_OUTLET`         | `direct` on the desktop, `play`, `app-store`, `web`                                                                                                            |
+| `polaris_key/outlet`         | `PKEY_BUILD_OUTLET`         | `direct` (the Polaris Key outlet) on the desktop, `play`, `app-store`, `web`                                                                                   |
 | `polaris_key/outlet_kind`    | `PKEY_BUILD_OUTLET_KIND`    | empty: the outlet itself when it is one of the 17 kinds. A custom outlet id (`itch-beta`) needs its kind (`itch`)                                              |
 | `polaris_key/outlet_subkind` | `PKEY_BUILD_OUTLET_SUBKIND` | empty (none): `homebrew`, `npm`, `pnpm`, `npx`, `scoop`, `chocolatey`, `flatpak` or `appimage`                                                                 |
 | `polaris_key/format`         | `PKEY_BUILD_FORMAT`         | empty (none): the installed build's format (`zip`, `dmg`, `exe`, ...)                                                                                          |
@@ -853,7 +853,7 @@ is never talked into self-updating code.
 | AltStore, AltStore PAL, Obtainium, F-Droid repo, iOS `direct` | the feed has no listing: opens `PKeyOptions.update_page_url` (the source, repository or web-distribution page), else nothing | —                                     | —                   | —             |
 | Steam, itch, Flathub, Snap, App Installer, winget             | —                                                                                                                            | silent, with the outlet's own message | —                   | —             |
 | Web                                                           | —                                                                                                                            | "Reload"                              | —                   | —             |
-| Direct (desktop, Android)                                     | —                                                                                                                            | package-managed: silent               | per `method`, below | "Restart now" |
+| Polaris Key, `direct` (desktop, Android)                      | —                                                                                                                            | package-managed: silent               | per `method`, below | "Restart now" |
 | unknown                                                       | never offered anything                                                                                                       |                                       |                     |               |
 
 `binary` on a direct build dispatches on `method`:

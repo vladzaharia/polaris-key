@@ -264,10 +264,10 @@ breaking change for P6-10.
 Play forbids self-update and `REQUEST_INSTALL_PACKAGES` in Play builds, so a build is one or the
 other, fixed at build time (`PolarisKeyPlatform.flavor`):
 
-| Flavour  | Has                                                                                | Never has                                          |
-| -------- | ---------------------------------------------------------------------------------- | -------------------------------------------------- |
-| `play`   | install source, Keystore, Play In-App Updates, Play Asset Delivery, Play Integrity | PackageInstaller session code, install permissions |
-| `direct` | install source, Keystore, verified PackageInstaller self-update, status receiver   | any `com.google.android.play` class                |
+| Flavour  | Has                                                                                                                               | Never has                                          |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| `play`   | install source, Keystore, Play In-App Updates, Play Asset Delivery, Play Integrity                                                | PackageInstaller session code, install permissions |
+| `direct` | install source, Keystore, verified PackageInstaller self-update, status receiver (builds for the Polaris Key outlet, id `direct`) | any `com.google.android.play` class                |
 
 Neither AAR declares a permission: a direct app adds `REQUEST_INSTALL_PACKAGES` and
 `UPDATE_PACKAGES_WITHOUT_USER_ACTION` itself (the Godot export plugin does it for direct presets).
