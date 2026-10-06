@@ -99,6 +99,8 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // I-07: the login card's pre-authentication routes and the account sessions.
     ["/api/signin/email/start", ["post"]],
     ["/api/signin/email/verify", ["post"]],
+    // PX-W4: the code step's "Send a new code".
+    ["/api/signin/email/resend", ["post"]],
     ["/api/signin/flow", ["post"]],
     ["/api/signin/confirm-email", ["get", "post"]],
     ["/api/signin/confirm-email/verify", ["post"]],
