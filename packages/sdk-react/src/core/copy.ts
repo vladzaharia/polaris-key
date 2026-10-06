@@ -100,6 +100,16 @@ const EN: CopyBundle = {
       "This license was disabled. Contact the seller or your administrator.",
     license_unusable:
       "This license can no longer be used (disabled, expired or removed). Contact the seller or your administrator.",
+    // I-07's login-card codes, as conformance/parity/copy.en.json words them.
+    email_unavailable:
+      "Email sign-in isn't available right now. Choose another sign-in method.",
+    turnstile_failed:
+      "The security check didn't pass. Reload the page and try again.",
+    signin_expired: "This sign-in has expired. Start again.",
+    invalid_code: "That code didn't work. Check the email and type it again.",
+    email_in_use:
+      "Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.",
+    terms_required: "Agree to the terms to continue.",
     license_expired:
       "This license has expired. Renew it to keep using the app.",
     not_entitled: "Your license doesn't include this.",
@@ -276,6 +286,16 @@ const FR: CopyBundle = {
       "Cette licence a été désactivée. Contactez le vendeur ou votre administrateur.",
     license_unusable:
       "Cette licence n'est plus utilisable (désactivée, expirée ou supprimée). Contactez le vendeur ou votre administrateur.",
+    email_unavailable:
+      "La connexion par e-mail n'est pas disponible pour le moment. Choisissez une autre méthode de connexion.",
+    turnstile_failed:
+      "La vérification de sécurité a échoué. Rechargez la page et réessayez.",
+    signin_expired: "Cette connexion a expiré. Recommencez.",
+    invalid_code:
+      "Ce code n'a pas fonctionné. Vérifiez l'e-mail et saisissez-le à nouveau.",
+    email_in_use:
+      "Un autre compte Polaris Key utilise déjà cet e-mail. Rattachez cette connexion à ce compte, ou utilisez un autre e-mail.",
+    terms_required: "Acceptez les conditions pour continuer.",
     license_expired:
       "Cette licence a expiré. Renouvelez-la pour continuer à utiliser l'application.",
     not_entitled: "Votre licence n'inclut pas cela.",
