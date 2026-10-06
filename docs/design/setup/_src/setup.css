@@ -1253,3 +1253,220 @@ table.trk td .sub {
   margin-top: 2px;
   vertical-align: 0;
 }
+
+/* ---- automation pass (SETUP.md D33): "Polaris Key does this" ---- */
+.stepper li.auto .sx {
+  border-style: dashed;
+  border-color: var(--pk-accent);
+  color: var(--pk-accent-fg);
+}
+.stepper li.auto.done .sx {
+  border-style: solid;
+  background: var(--pk-accent-subtle);
+}
+.stepper li.auto {
+  color: var(--pk-text-subtle);
+  font-weight: 400;
+}
+.stepper li .by {
+  font-size: 11.5px;
+  color: var(--pk-text-subtle);
+  font-weight: 400;
+}
+.autolist {
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-lg);
+  overflow: hidden;
+  background: var(--pk-surface-raised);
+}
+.autolist > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pk-text-strong);
+  background: var(--pk-accent-subtle);
+  border-bottom: 1px solid var(--pk-border-subtle);
+}
+.autolist > header .i {
+  width: 15px;
+  height: 15px;
+  color: var(--pk-accent-fg);
+}
+.autolist > header .r {
+  margin-left: auto;
+  font-weight: 400;
+  color: var(--pk-text-subtle);
+  font-size: 12.5px;
+}
+.autolist .qrow {
+  padding: 8px 14px;
+  font-size: 13.5px;
+}
+.autolist .qrow .qt b {
+  font-weight: 600;
+}
+.qrow.auto .qk {
+  background: var(--pk-accent-subtle);
+  color: var(--pk-accent-fg);
+}
+.qrow.run .qk {
+  background: var(--pk-accent-subtle);
+}
+.qrow.run .qk::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pk-accent);
+}
+.qrow .via {
+  font-size: 11.5px;
+  color: var(--pk-text-subtle);
+  white-space: nowrap;
+}
+.autobadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--pk-accent-fg);
+  background: var(--pk-accent-subtle);
+  border-radius: var(--pk-radius-full);
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+.autobadge .i {
+  width: 12px;
+  height: 12px;
+}
+.humanlist .qrow .qa .btn {
+  white-space: nowrap;
+}
+.copycards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.copycards > div {
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-md, 8px);
+  padding: 8px 10px;
+  background: var(--pk-surface-sunken);
+  font-size: 12px;
+  color: var(--pk-text-subtle);
+  min-width: 0;
+}
+.copycards > div b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--pk-font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  color: var(--pk-text-strong);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.copycards > div b .i {
+  width: 13px;
+  height: 13px;
+  margin-left: auto;
+  flex: none;
+  color: var(--pk-text-subtle);
+}
+.prlink {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface-raised);
+}
+.prlink .pi {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--pk-success-subtle);
+  color: var(--pk-success);
+  flex: none;
+}
+.prlink .pi .i {
+  width: 18px;
+  height: 18px;
+}
+.prlink .prt {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+}
+.prlink .prt b {
+  display: block;
+  color: var(--pk-text-strong);
+}
+.prlink .prt span {
+  display: block;
+  font-size: 12.5px;
+  color: var(--pk-text-subtle);
+}
+.amsum {
+  display: none;
+}
+@media (max-width: 760px) {
+  .autolist .qrow .via {
+    display: none;
+  }
+  .autolist.collapse .qrow.ok.auto {
+    display: none;
+  }
+  .autolist.collapse .amsum {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 14px;
+    font-size: 13px;
+    color: var(--pk-text-default);
+  }
+  .autolist.collapse .amsum .i {
+    width: 14px;
+    height: 14px;
+    margin-left: auto;
+  }
+  .prlink {
+    flex-wrap: wrap;
+  }
+  .prlink .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+.prl .copycards {
+  padding: 0 14px 12px 48px;
+}
+@media (max-width: 760px) {
+  .prl .copycards {
+    padding: 0 12px 12px;
+  }
+}
+@media (max-width: 760px) {
+  .humanlist .qrow {
+    flex-wrap: wrap;
+  }
+  .humanlist .qrow .qt {
+    flex: 1 1 calc(100% - 40px);
+  }
+  .humanlist .qrow .qa {
+    width: 100%;
+    padding-left: 34px;
+  }
+  .prl .copycards {
+    grid-template-columns: 1fr 1fr;
+  }
+}

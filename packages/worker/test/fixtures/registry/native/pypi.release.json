@@ -1,0 +1,34 @@
+{
+  "ecosystem": "pypi",
+  "name": "acme-tools",
+  "version": "1.0.0",
+  "deliverable_id": "pypi.tools",
+  "release_id": "pypi.tools@1.0.0",
+  "state": "live",
+  "files_json": [
+    {
+      "name": "acme_tools-1.0.0.tar.gz",
+      "type": "sdist",
+      "sha256": "cf94cb8dc9d2c50b8f49cdf946875128ed9e21baa0850ad0f4f544febfcd20c4",
+      "size": 31
+    },
+    {
+      "name": "acme_tools-1.0.0-py3-none-any.whl",
+      "type": "wheel",
+      "sha256": "f91e00697f8464e85eb5a7c6cb94132f9af391a8f7c667cba5c08d41253fe24a",
+      "size": 31
+    }
+  ],
+  "metadata_json": {
+    "summary": "Acme tools",
+    "requiresPython": ">=3.9",
+    "license": "MIT",
+    "name": "acme-tools",
+    "version": "1.0.0"
+  },
+  "source_json": {
+    "kind": "registry",
+    "tokenId": "rtok_<id>",
+    "client": "twine"
+  }
+}
