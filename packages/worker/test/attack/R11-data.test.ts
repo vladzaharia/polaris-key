@@ -697,6 +697,12 @@ describe("R11-05 product scoping", () => {
       // (a hash of the account and the picture) and owned by the account, never by a
       // product. An app sees a picture only through the account's consent step.
       "account_avatars",
+      // PS-04 — the storefront's library entries, keyed (account, product) like the grants: an
+      // open product in one account's library, no licence behind it. Product deletion clears a
+      // product's rows through `idx_library_entries_product`; no tenant route lists them. (The
+      // storefront's aggregates and dedupe keys, `storefront_daily` and `storefront_seen`, ARE
+      // product-first: this loop checks them.)
+      "library_entries",
       // 0070 (A-18e) — the Play edit lease: one row per (store, app) while a caller holds an edit
       // on that app. An app id belongs to the store account, not a product (the platform service
       // account serves every product pinned to it; A-16's lister is team-wide), and the row holds

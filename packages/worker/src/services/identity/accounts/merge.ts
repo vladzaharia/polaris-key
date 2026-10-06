@@ -206,6 +206,17 @@ export async function mergeAccounts(
     },
     // LX-26 (S-24 D19): a licence the absorbed account removed stays out of the survivor too.
     ...stmtsMoveAccountAutoAttachBlocks(A, S),
+    // PS-04: the absorbed account's library entries join the survivor's; the survivor's own entry
+    // for a product (its earlier add) wins.
+    {
+      sql: `INSERT OR IGNORE INTO library_entries (account_id, product, via, added_at)
+            SELECT ?, product, via, added_at FROM library_entries WHERE account_id = ?`,
+      params: [S, A],
+    },
+    {
+      sql: "DELETE FROM library_entries WHERE account_id = ?",
+      params: [A],
+    },
     // Personal details fill in where the survivor has none. So does the WebAuthn user handle
     // (I-16): a survivor without one takes the absorbed account's, so the passkeys that moved
     // over and the next one added share one "Polaris Key" entry in an authenticator.

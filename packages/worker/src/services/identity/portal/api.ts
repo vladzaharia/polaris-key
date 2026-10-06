@@ -79,7 +79,11 @@ import {
 import { avatarUrl, handleCardApi, turnstileSiteKey } from "../card/index.js";
 import { handleAccountPasskeys } from "../passkeys/routes.js";
 import { clearDeviceSubjects } from "../../../core/subjectHooks.js";
-import { libraryView, productView } from "./library.js";
+import {
+  handleLibraryEntryRemove,
+  libraryView,
+  productView,
+} from "./library.js";
 import { signInConsentView, signInRequestView } from "../passthrough/routes.js";
 import {
   handleActivatePreview,
@@ -100,6 +104,7 @@ import {
   discoverCount,
   handleDiscover,
   handleDiscoverClaim,
+  handleStorefrontPage,
 } from "./discover.js";
 import {
   DEVICE_LOGIN_APPROVE_LIMIT,
@@ -1492,12 +1497,21 @@ export async function handlePortalApi(
         session.accountId,
         now,
         new Set(view.products.map((p) => String(p.product))),
+        hooksFor,
       ),
     });
   }
-  // PX-W10 (G24, G25): Discover's offers and "Add to library" (`discover.ts`).
+  // PS-04: remove a library ENTRY (an open product added from the storefront); never a licence.
+  if (head === "library" && rest.length === 1 && rest[0]) {
+    return handleLibraryEntryRemove(req, db, session.accountId, rest[0], now);
+  }
+  // PX-W10 (G24, G25), PS-04: Discover's offers, the storefront product page and "Add to
+  // library" (`discover.ts`).
   if (head === "discover" && rest.length === 0) {
     return handleDiscover(req, env, db, session, now, hooksFor);
+  }
+  if (head === "discover" && rest.length === 1 && rest[0]) {
+    return handleStorefrontPage(req, env, db, session, rest[0], now, hooksFor);
   }
   if (
     head === "discover" &&
@@ -1505,7 +1519,7 @@ export async function handlePortalApi(
     rest[0] &&
     rest[1] === "claim"
   ) {
-    return handleDiscoverClaim(req, env, db, session, rest[0], now);
+    return handleDiscoverClaim(req, env, db, session, rest[0], now, hooksFor);
   }
   if (head === "products" && rest.length === 1 && rest[0]) {
     if (req.method !== "GET") return err(405, "method_not_allowed");

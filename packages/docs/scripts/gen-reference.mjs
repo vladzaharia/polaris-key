@@ -447,6 +447,11 @@ const TABLE_OWNERS = {
     "license_relinks",
     // PX-W16: account pictures, re-encoded and content-addressed (renditions in R2 `avatars/`).
     "account_avatars",
+    // PS-04: the storefront's library entries (open products, no licence) and its daily
+    // aggregates with their two-day keyed-hash impression dedupe.
+    "library_entries",
+    "storefront_daily",
+    "storefront_seen",
     "portal_accounts",
     "portal_account_emails",
     "portal_account_identities",

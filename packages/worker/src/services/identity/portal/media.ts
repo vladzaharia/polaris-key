@@ -2,7 +2,8 @@
 
 /**
  * The customer portal's same-origin media proxy (PX-W1, docs/design/PORTAL.md G1):
- * `GET /media/<product>/<asset>`, where `<asset>` is `icon` or `header`.
+ * `GET /media/<product>/<asset>`, where `<asset>` is `icon`, `header`, or `screenshot-<n>` (the
+ * storefront product page's screenshots, PS-04: the n-th https screenshot of the listing).
  *
  * ── WHY A PROXY AT ALL ──────────────────────────────────────────────────────────────────────
  *
@@ -15,9 +16,10 @@
  *
  * A proxy turns "a URL a repository wrote" into "a fetch this Worker makes". Five rules bound it:
  *
- *   1. NO URL IN THE REQUEST. The path names a product and one of two FIXED listing fields; the
- *      source is the product's own stored listing (`delivery().listing()`, Distribution's
- *      `dist_listing`, written only by manifest ingest). A visitor cannot aim the fetch.
+ *   1. NO URL IN THE REQUEST. The path names a product and one FIXED listing slot (`icon`,
+ *      `header`, or a screenshot's position, at most `MAX_LISTING_SCREENSHOTS`); the source is
+ *      the product's own stored listing (`delivery().listing()`, Distribution's `dist_listing`,
+ *      written only by manifest ingest). A visitor cannot aim the fetch.
  *   2. ALLOWLISTED SOURCES ONLY. The source must be `https`, on the default port, with no
  *      credentials, on a GitHub-hosted name (`isAllowedStorageHost`: `github.com`,
  *      `*.githubusercontent.com`) — the same one predicate the release-asset fetch and the
@@ -28,7 +30,7 @@
  *      pass rule 2 again, so an allowlisted host cannot bounce the fetch elsewhere.
  *   4. BOUNDED. A 5 s timeout; a `Content-Length` over the asset's cap is refused before the body
  *      is read, and the body is read through a counter that stops at the cap whatever the header
- *      claimed (1 MiB for the icon, 5 MiB for the header).
+ *      claimed (1 MiB for the icon, 5 MiB for the header and for each screenshot).
  *   5. STRICT TYPE. The bytes must BE a PNG, JPEG, WebP or GIF by their magic numbers; the
  *      upstream `Content-Type` is ignored and the response carries the sniffed type, `nosniff`,
  *      and its own `default-src 'none'; sandbox` policy. SVG is never served (it is a document
@@ -49,7 +51,11 @@
  * exception: a rate-limited cache miss is `429 rate_limited`, so a client can back off.
  */
 
-import { listingImageUrl } from "@polaris-key/manifest";
+import {
+  MAX_LISTING_SCREENSHOTS,
+  listingImageUrl,
+  listingScreenshotUrls,
+} from "@polaris-key/manifest";
 import {
   isAllowedStorageHost,
   type Db,
@@ -67,7 +73,7 @@ import { portalSecurityHeaders } from "./headers.js";
 import type { PortalHooksFor } from "./api.js";
 
 /**
- * The two proxied listing slots, their path names and byte caps. Each slot's source is read with
+ * The two named listing slots, their path names and byte caps. Each slot's source is read with
  * `listingImageUrl` (HA-04): the normalised `icon` / `header` ref when it is an https URL, or the
  * legacy `iconUrl` / `headerUrl` of a listing row stored before HA-04. A repo-path ref has no
  * URL to proxy; HA-05 hosts it and HA-07 moves the portal to the media host.
@@ -77,10 +83,41 @@ export const MEDIA_ASSETS = {
   header: { maxBytes: 5 * 1024 * 1024 },
 } as const;
 
-export type MediaAsset = keyof typeof MEDIA_ASSETS;
+/** A screenshot's byte cap: the header's. */
+export const SCREENSHOT_MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * A proxied slot: `icon`, `header`, or `screenshot-<n>` (PS-04), the n-th of the listing's https
+ * screenshots as `listingScreenshotUrls` reads them (HA-04: normalised refs or pre-HA-04 strings,
+ * repo paths skipped), `n` below `MAX_LISTING_SCREENSHOTS`.
+ */
+export type MediaAsset = keyof typeof MEDIA_ASSETS | `screenshot-${number}`;
+
+const SCREENSHOT_RE = /^screenshot-(0|[1-9][0-9]?)$/;
 
 export function isMediaAsset(v: string): v is MediaAsset {
-  return Object.prototype.hasOwnProperty.call(MEDIA_ASSETS, v);
+  if (Object.prototype.hasOwnProperty.call(MEDIA_ASSETS, v)) return true;
+  const n = SCREENSHOT_RE.exec(v)?.[1];
+  return n !== undefined && Number(n) < MAX_LISTING_SCREENSHOTS;
+}
+
+/** The slot's byte cap. */
+function mediaMaxBytes(asset: MediaAsset): number {
+  return asset === "icon" || asset === "header"
+    ? MEDIA_ASSETS[asset].maxBytes
+    : SCREENSHOT_MAX_BYTES;
+}
+
+/** The raw source a slot names in the listing (not yet checked against rule 2). */
+function slotSource(
+  listing: object | null,
+  asset: MediaAsset,
+): string | undefined {
+  if (asset === "icon" || asset === "header")
+    return listingImageUrl(listing, asset);
+  return listingScreenshotUrls(listing)[
+    Number(asset.slice("screenshot-".length))
+  ];
 }
 
 /** Redirect hops followed (each re-checked against the allowlist): Core's guarded fetcher's. */
@@ -133,10 +170,30 @@ export async function mediaUrlFor(
   asset: MediaAsset,
   listing: Record<string, unknown> | null,
 ): Promise<string | null> {
-  const source = mediaSourceUrl(listingImageUrl(listing, asset));
+  const source = mediaSourceUrl(slotSource(listing, asset));
   if (!source) return null;
   const v = await mediaVersion(source.toString());
   return `/media/${encodeURIComponent(product)}/${asset}?v=${v}`;
+}
+
+/**
+ * The same-origin URLs of the listing's screenshots this route would serve, in listing order
+ * (PS-04, the storefront product page). A screenshot the proxy would refuse is left out.
+ */
+export async function screenshotUrlsFor(
+  product: string,
+  listing: Record<string, unknown> | null,
+): Promise<string[]> {
+  const out: string[] = [];
+  const count = Math.min(
+    listingScreenshotUrls(listing).length,
+    MAX_LISTING_SCREENSHOTS,
+  );
+  for (let n = 0; n < count; n++) {
+    const url = await mediaUrlFor(product, `screenshot-${n}`, listing);
+    if (url) out.push(url);
+  }
+  return out;
 }
 
 /** The image types served, by magic number (rule 5). */
@@ -260,8 +317,7 @@ export async function handlePortalMedia(
   if (settings.portal_enabled !== 1) return refused();
   const delivery = hooksFor(loaded, now).delivery();
   const listing = delivery ? await delivery.listing() : null;
-  const spec = MEDIA_ASSETS[asset];
-  const source = mediaSourceUrl(listingImageUrl(listing, asset));
+  const source = mediaSourceUrl(slotSource(listing, asset));
   if (!source) return refused();
 
   const version = await mediaVersion(source.toString());
@@ -297,7 +353,7 @@ export async function handlePortalMedia(
       now,
     );
     if (!ok) return refused(429);
-    image = await fetchMedia(source, spec.maxBytes, fetchImpl);
+    image = await fetchMedia(source, mediaMaxBytes(asset), fetchImpl);
     if (!image) return refused();
     if (cache) {
       await cache
