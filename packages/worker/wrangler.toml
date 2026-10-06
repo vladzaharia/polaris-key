@@ -221,6 +221,10 @@ PLATFORM_REPOSITORY_OWNER_ID = "79390"
 # I-18: the deploy-wide daily cap on one product's passthrough mail (default 500 in code; a
 # product's email_product_caps row wins).
 # EMAIL_PRODUCT_DAILY_CAP = "500"
+# I-07: Cloudflare Turnstile on the login card's email start. The site key is public; set it
+# here per environment and the secret with `wrangler secret put TURNSTILE_SECRET_KEY --env <env>`
+# (RUNBOOK "Login card"). Without the secret the card asks for no token.
+# TURNSTILE_SITE_KEY = "0x4AAAAAAA…"
 # I-18: sign-in and account mail. The binding may send only from these addresses: today's
 # noreply@plrs.im, and the auth sending subdomain's noreply@auth.plrs.im, which the Worker uses
 # once EMAIL_SENDER_ADDRESS above names it (RUNBOOK "Sign-in email").
@@ -403,6 +407,8 @@ PKEY_ENVIRONMENT = "test"
 #   PORTAL_SESSION_SECRET (falls back to ADMIN_SESSION_SECRET when omitted).
 # Portal licensed downloads (PX-W3; optional, without it licensed R2-only files stay not_hosted):
 #   DOWNLOAD_TICKET_KEY (32 random bytes, base64), DOWNLOAD_TICKET_KEY_PREVIOUS during a rotation.
+# Login card (I-07): TURNSTILE_SECRET_KEY, with the TURNSTILE_SITE_KEY var above. Copied
+#   avatars live in the BLOBS bucket under the `avatars/` prefix (no extra binding).
 # Console's own Pocket ID client (I-03; set all three in ONE `wrangler secret bulk`):
 #   ADMIN_OIDC_ISSUER, ADMIN_OIDC_CLIENT_ID, ADMIN_OIDC_CLIENT_SECRET. Until they are set the
 #   console signs in through PLATFORM_OIDC_*; the portal never reads them.
@@ -412,6 +418,17 @@ PKEY_ENVIRONMENT = "test"
 # Team store credentials and settings (A-16; optional, a console-managed value wins):
 #   PLATFORM_ASC_API_KEY, PLATFORM_APP_STORE_SERVER_KEY, PLATFORM_GOOGLE_SERVICE_ACCOUNT,
 #   PLATFORM_MS_PARTNER_CENTER, PLATFORM_STEAM_PUBLISHER_KEY; PLATFORM_APPLE_TEAM_ID (not secret).
+
+# Login-card providers (I-06, services/identity/providers/config.ts; optional, per environment;
+# a provider is offered only once ALL of its values are set and its sealed secret opens):
+#   Google: SIGNIN_GOOGLE_CLIENT_ID, SIGNIN_GOOGLE_CLIENT_SECRET (sealed).
+#   Apple:  SIGNIN_APPLE_SERVICES_ID, SIGNIN_APPLE_TEAM_ID, SIGNIN_APPLE_KEY_ID,
+#           SIGNIN_APPLE_PRIVATE_KEY (the sealed .p8).
+#   Steam:  SIGNIN_STEAM_WEB_API_KEY (sealed).
+#   The three secrets hold `pnpm --filter @polaris-key/worker signin:seal` blobs sealed under that
+#   environment's PLATFORM_KEK, never the raw credential (RUNBOOK "Login-card providers"). Set one
+#   provider's values in ONE `wrangler secret bulk --env <env>`; the ids are not secret but travel
+#   with them so a provider never comes up half-configured.
 # Sign-in and account email (I-18, core/emailSender.ts, core/emailDelivery.ts):
 #   prod and staging bind Cloudflare Email Service as EMAIL. The display name is never
 #   configurable ("Polaris Key", or "<App> via Polaris Key" for passthrough); EMAIL_SENDER_ADDRESS

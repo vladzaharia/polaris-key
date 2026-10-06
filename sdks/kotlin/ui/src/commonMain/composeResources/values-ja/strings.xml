@@ -1236,9 +1236,29 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">このサインイン方法は無効になっています。別の方法を選択してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_not_configured_title">メールでのサインインを利用できません</string>
+    <string name="core_codes_email_unavailable_title">メールでのサインインを利用できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_not_configured_message">現在、メールでのサインインを利用できません。別のサインイン方法を選択してください。</string>
+    <string name="core_codes_email_unavailable_message">現在、メールでのサインインを利用できません。別のサインイン方法を選択してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_turnstile_failed_title">確認に失敗しました</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_turnstile_failed_message">セキュリティ確認に失敗しました。ページを再読み込みして、もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signin_expired_title">サインインの期限が切れました</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signin_expired_message">このサインインは期限切れです。最初からやり直してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_code_title">コードが正しくありません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_code_message">そのコードは使用できませんでした。メールを確認して、もう一度入力してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_in_use_title">メールアドレスは使用中です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_in_use_message">別のPolaris Keyアカウントがすでにこのメールアドレスを使用しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_terms_required_title">規約に同意していません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_terms_required_message">続行するには規約に同意してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">別のアカウントのライセンス</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->

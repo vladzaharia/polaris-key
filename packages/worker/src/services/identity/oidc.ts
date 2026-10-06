@@ -446,7 +446,7 @@ const USER_CODE_ATTEMPTS = 5;
 
 /** A fresh user code, normalised (no separator). Rejection sampling keeps it unbiased:
  *  240 is the largest multiple of 20 that fits in a byte. */
-function generateUserCode(): string {
+export function generateUserCode(): string {
   let out = "";
   while (out.length < USER_CODE_LENGTH) {
     for (const b of randomBytes(USER_CODE_LENGTH * 2)) {
@@ -459,7 +459,7 @@ function generateUserCode(): string {
 }
 
 /** `WDJBMJHT` → `WDJB-MJHT`, the display (and `userCode` wire) form. */
-function formatUserCode(normalised: string): string {
+export function formatUserCode(normalised: string): string {
   return `${normalised.slice(0, 4)}-${normalised.slice(4)}`;
 }
 

@@ -12,6 +12,34 @@
 | Human input | none (owner decision 1 approved it on 2026-10-04)                                                                                                         |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                 |
 
+> **Corrections from implementation (2026-10-04).** The code is the fact; where this brief and
+> the branch disagree, the branch wins.
+>
+> - **The PUT is not a rule-table entry.** The upload operations' PUT goes to Apple's presigned
+>   upload hosts, not to an App Store Connect API path, so it cannot be an `ASC_WRITE_ALLOW` rule
+>   (the spec classification would reject it). It is one upload rule, `ASC_SCREENSHOT_UPLOAD`, on
+>   A-18a's upload matcher, checked by `checkAscUpload` (`rules/appStore.ts`) from
+>   `core/asc/upload.ts` before any byte is read: `PUT` only, `https` on an `apple.com` host, PNG or
+>   JPEG within 32 MiB. The PUT carries no `Authorization`. The allows added to the table are
+>   exactly the listed ones: the four version-localization attributes, `POST`/`PATCH
+appInfoLocalizations`, `POST appScreenshotSets`, `POST appScreenshots` (reserve) and `PATCH
+appScreenshots/{id}` (commit, `uploaded: true` only).
+> - **The set's membership `PATCH` stays denied.** `PATCH appScreenshotSets/{id}/relationships/
+appScreenshots` replaces the set and so drops screenshots; it stays in `uploads`. New
+>   screenshots are appended; removal and reordering are the deep link, as on Play.
+> - **Display types.** The model's Apple size classes map to `APP_IPHONE_67` (iPhone 6.9″ and
+>   6.7″), `APP_IPAD_PRO_3GEN_129` (iPad 13″ and 12.9″) and `APP_DESKTOP` (Mac); the gate admits
+>   those three on a version localization only. A-18b's Apple column gained the three image slots.
+> - **Where the push lives.** Two connector controls beside A-17d's Distribute,
+>   `listing/text` `{versionId, locale}` and `listing/screenshots` `{versionId, locale,
+sizeClass}` (`connectors/asc/listingPush.ts`), on A-17d's flow plumbing. The text push includes the
+>   model's promotional text (already allowed) but not What's New, which stays the release's
+>   (`distribute/version-localization`). The name, subtitle and privacy URL need an editable app
+>   information (`app_info_not_editable` otherwise).
+> - **Natural key of a screenshot.** Apple's `sourceFileChecksum` is an MD5, which the Worker
+>   computes by streaming the blob (`node:crypto`); the file name also carries the SHA-256, so
+>   either identifies the screenshot within its set.
+
 ## Goal
 
 The shared listing model reaches the App Store. The Apple rule table allows the listing text and
@@ -62,10 +90,10 @@ not filled from the model; A-17d only writes `whatsNew` and `promotionalText`
 
 ## Acceptance criteria
 
-- [ ] The rule-table diff adds exactly the listed allows; no `DELETE` and no never-list path
+- [x] The rule-table diff adds exactly the listed allows; no `DELETE` and no never-list path
       becomes reachable.
-- [ ] The spec classification and the conformance suite pass for Apple.
-- [ ] THREAT-MODEL records the change; the green gate passes (`AGENTS.md`).
+- [x] The spec classification and the conformance suite pass for Apple.
+- [x] THREAT-MODEL records the change; the green gate passes (`AGENTS.md`).
 
 ## Verify
 

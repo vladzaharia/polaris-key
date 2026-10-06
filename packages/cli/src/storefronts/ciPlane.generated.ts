@@ -320,6 +320,14 @@ export const CI_PLANE: CiPlaneDeclaration = {
         release: ["upload"],
       },
     },
+    {
+      id: "steam",
+      label: "Steamworks",
+      outletKinds: ["steam"],
+      ciOps: {
+        uploadBuild: ["run-app-build"],
+      },
+    },
   ],
   prStores: [
     {

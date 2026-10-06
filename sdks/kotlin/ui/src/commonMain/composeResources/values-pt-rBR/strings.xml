@@ -1256,9 +1256,29 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">Esse método de acesso está desativado. Escolha outro.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_not_configured_title">Acesso por e-mail indisponível</string>
+    <string name="core_codes_email_unavailable_title">Acesso por e-mail indisponível</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_not_configured_message">O acesso por e-mail não está disponível agora. Escolha outro método de acesso.</string>
+    <string name="core_codes_email_unavailable_message">O acesso por e-mail não está disponível agora. Escolha outro método de acesso.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_turnstile_failed_title">Verificação não aprovada</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_turnstile_failed_message">A verificação de segurança não foi aprovada. Recarregue a página e tente de novo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signin_expired_title">Acesso expirado</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signin_expired_message">Este acesso expirou. Comece de novo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_code_title">Código incorreto</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_code_message">Esse código não funcionou. Confira o e-mail e digite de novo.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_in_use_title">E-mail já em uso</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_in_use_message">Outra conta do Polaris Key já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_terms_required_title">Termos não aceitos</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_terms_required_message">Aceite os termos para continuar.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">Licença em outra conta</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->

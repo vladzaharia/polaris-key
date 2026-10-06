@@ -3,7 +3,7 @@ import { PortalPage } from "./identity/Portal.js";
 import { SignInPage } from "./identity/SignIn.js";
 import type { SectionPageProps } from "./types.js";
 
-/** Identity: Portal (T4) and Sign-in (T3, read-only). */
+/** Identity: Portal (T4) and Sign-in (T3, with I-12's sign-in-through-product settings). */
 export default function IdentityPages({
   route,
 }: SectionPageProps): React.ReactElement | null {

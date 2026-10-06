@@ -4,7 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
-import { CORE_ROUTES, DEVICE_ID } from "./coreFixtures.js";
+import { CORE_ROUTES, DEVICE_ID, USER_SUBJECT } from "./coreFixtures.js";
 
 /**
  * The Core pages (Overview, Services, Devices and the device drawer, Keys & secrets, Activity,
@@ -26,6 +26,17 @@ const PAGES: { name: string; hash: string; title: string }[] = [
     name: "device-drawer",
     hash: `#/p/djdl/devices/${DEVICE_ID}`,
     title: "Devices",
+  },
+  { name: "users", hash: "#/p/djdl/users", title: "Users" },
+  {
+    name: "user-record",
+    hash: `#/p/djdl/users/${USER_SUBJECT}`,
+    title: USER_SUBJECT,
+  },
+  {
+    name: "user-licenses",
+    hash: `#/p/djdl/users/${USER_SUBJECT}/licenses`,
+    title: USER_SUBJECT,
   },
   { name: "keys", hash: "#/p/djdl/keys", title: "Keys & secrets" },
   { name: "activity", hash: "#/p/djdl/activity", title: "Activity" },
@@ -148,6 +159,22 @@ describe("Core pages under the Worker's CSP", () => {
     await page.context().close();
   });
 
+  it("the relink dialog opens and closes cleanly (I-12)", async () => {
+    const page = await open("dark", `#/p/djdl/users/${USER_SUBJECT}/licenses`);
+    await page
+      .locator("[data-page-title]", { hasText: USER_SUBJECT })
+      .first()
+      .waitFor();
+    await violations(page);
+    await page.getByRole("button", { name: "Relink…" }).click();
+    await page.getByRole("alertdialog").waitFor();
+    await page.getByRole("link", { name: "Sign in again" }).waitFor();
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+    expect(await violations(page)).toEqual([]);
+    await page.context().close();
+  });
+
   // The shell owns scrolling: the document itself never scrolls, so nothing (an sr-only span, a
   // Radix bubble input) can push a blank band under the page or a sideways scroll at the window.
   it("the document never scrolls past the viewport, desktop or phone", async () => {
@@ -158,6 +185,13 @@ describe("Core pages under the Worker's CSP", () => {
       ["#/p/djdl/activity", "Activity", { width: 1440, height: 900 }],
       ["#/p/djdl/services", "Services", { width: 390, height: 844 }],
       ["#/p/djdl/devices", "Devices", { width: 390, height: 844 }],
+      ["#/p/djdl/users", "Users", { width: 1440, height: 900 }],
+      ["#/p/djdl/users", "Users", { width: 390, height: 844 }],
+      [
+        `#/p/djdl/users/${USER_SUBJECT}/licenses`,
+        USER_SUBJECT,
+        { width: 390, height: 844 },
+      ],
     ];
     for (const [hash, title, viewport] of cases) {
       const page = await open("dark", hash, viewport);

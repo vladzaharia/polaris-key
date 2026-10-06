@@ -10,6 +10,7 @@
  *      and `null` with License off.
  */
 
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -183,8 +184,9 @@ async function productPage(
   );
   for (const id of licenseIds)
     await linkLicense(db, account.id, SLUG, id, "admin", NOW);
-  const { token } = await issuePortalSession(
+  const { token } = await issuePortalSessionRow(
     env,
+    db,
     {
       accountId: account.id,
       email: account.primary_email,

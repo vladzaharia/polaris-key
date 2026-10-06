@@ -70,7 +70,8 @@ import { useProducts } from "../data/hooks.js";
 import { mutate } from "../data/mutations.js";
 import { qk } from "../data/queries.js";
 import { queryClient } from "../data/queryClient.js";
-import { Link, useSearchParam } from "../router.js";
+import { Link, navigate, useSearchParam } from "../router.js";
+import { setUpHref } from "../areas/storefronts/StorefrontsPage.js";
 import { codecs, r } from "../routes.js";
 import { CollectionTemplate } from "../templates/Collection.js";
 import { Panel } from "../templates/Dashboard.js";
@@ -1454,6 +1455,16 @@ function AppsTable({
         rowActions={(a) =>
           a.assignedVia === "platform"
             ? [
+                // A-18j: the product's storefront flow, pre-scoped to this store.
+                ...(s.storefront
+                  ? [
+                      {
+                        label: "Set up",
+                        onSelect: () =>
+                          navigate(setUpHref(a.assignedProduct!, s.store)),
+                      },
+                    ]
+                  : []),
                 {
                   label: `Release from ${names.get(a.assignedProduct!) ?? a.assignedProduct}`,
                   onSelect: () => setReleasing(a),

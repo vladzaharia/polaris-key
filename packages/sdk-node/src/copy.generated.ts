@@ -170,10 +170,31 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Sign-in method unavailable",
     message: "That sign-in method is turned off. Choose another one.",
   },
-  email_not_configured: {
+  email_unavailable: {
     title: "Email sign-in unavailable",
     message:
       "Email sign-in isn't available right now. Choose another sign-in method.",
+  },
+  turnstile_failed: {
+    title: "Check didn't pass",
+    message: "The security check didn't pass. Reload the page and try again.",
+  },
+  signin_expired: {
+    title: "Sign-in expired",
+    message: "This sign-in has expired. Start again.",
+  },
+  invalid_code: {
+    title: "Wrong code",
+    message: "That code didn't work. Check the email and type it again.",
+  },
+  email_in_use: {
+    title: "Email already in use",
+    message:
+      "Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.",
+  },
+  terms_required: {
+    title: "Terms not accepted",
+    message: "Agree to the terms to continue.",
   },
   license_owned: {
     title: "License in another account",

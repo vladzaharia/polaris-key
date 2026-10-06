@@ -306,6 +306,113 @@ const ROUTES: Record<string, unknown> = {
       },
     ],
   },
+  // A-18j: Distribution → Storefronts and Listing.
+  "/manage/api/products/djdl/distribution/storefronts": {
+    listing: { name: "DJDL", defaultLocale: "en-US", locales: ["en-US"] },
+    stores: [
+      {
+        id: "google-play",
+        label: "Google Play",
+        listingStore: "play",
+        connection: {
+          state: "connected",
+          credential: "google-play.service-account",
+          credentialLabel: "Google Play service account",
+          source: "console",
+          lastError: null,
+        },
+        app: { id: "gg.djdl.app", name: "DJDL" },
+        outlets: ["android"],
+        readOnly: null,
+        capabilities: [
+          {
+            op: "writeListingText",
+            label: "Listing text",
+            support: { mode: "api", plane: "worker", rules: [] },
+          },
+          {
+            op: "contentRating",
+            label: "Content rating",
+            support: {
+              mode: "deep-link",
+              link: "x",
+              verify: "operator-assertion",
+            },
+          },
+          {
+            op: "uploadBuild",
+            label: "Build upload",
+            support: { mode: "unsupported", reason: "CI only." },
+          },
+        ],
+        prerequisites: [
+          {
+            id: "connection",
+            label: "Team connection",
+            state: "met",
+            detail: "Stored.",
+            page: "platform-stores",
+          },
+        ],
+        steps: [
+          {
+            id: "submit",
+            ops: ["submit"],
+            phase: "submit",
+            label: "Send for review",
+            mode: "api",
+            typed: true,
+            state: "todo",
+            stateAt: null,
+            writes: ["POST commit"],
+            link: null,
+            ci: null,
+            pr: null,
+            run: {
+              method: "POST",
+              path: "/manage/api/products/djdl/distribution/storefronts/google-play/steps/submit",
+              body: {},
+              fields: [],
+              confirm: "typed",
+              verb: "Send the changes for review",
+              consequences: [
+                "Google Play sends every staged change for review.",
+              ],
+            },
+            assert: null,
+            next: null,
+            handoff: null,
+            copy: [],
+            detail: null,
+            blockedBy: null,
+          },
+        ],
+        pushListing: { stageOnly: true },
+        confirmationLabel: "Google Play",
+      },
+    ],
+  },
+  "/manage/api/products/djdl/distribution/storefronts/slots": { slots: [] },
+  "/manage/api/products/djdl/distribution/listing": {
+    listing: {
+      app: { defaultLocale: "en-US", name: "DJDL" },
+      source: "admin",
+      provenance: {},
+      modifiedAt: 1,
+      modifiedBy: "u1",
+    },
+    locales: [],
+    overrides: [],
+    limits: { name: 30 },
+    stores: [],
+    overrideStores: [],
+    modelFields: [],
+  },
+  "/manage/api/products/djdl/distribution/listing/fit": {
+    exists: true,
+    release: null,
+    stores: [],
+  },
 };
 
 let server: PreviewServer;
@@ -461,6 +568,58 @@ describe("overlays under the Worker's CSP", () => {
         .getByRole("button", { name: "Actions for Godot Demo" })
         .click();
       await page.getByRole("menuitem", { name: "Assign to product…" }).click();
+      await page.getByRole("alertdialog").waitFor();
+    });
+    await page.context().close();
+  });
+
+  it("Storefronts (A-18j): the tiles, Add to storefronts, the Listing tabs and their dialogs", async () => {
+    const page = await open({ width: 1440, height: 900 });
+    await violations(page);
+    for (const [hash, title] of [
+      ["#/p/djdl/distribution/storefronts", "Storefronts"],
+      [
+        "#/p/djdl/distribution/storefronts?flow=add&stores=google-play&step=prerequisites",
+        "Add to storefronts",
+      ],
+      [
+        "#/p/djdl/distribution/storefronts?flow=add&stores=google-play&step=plan",
+        "Add to storefronts",
+      ],
+      [
+        "#/p/djdl/distribution/storefronts?flow=add&stores=google-play&step=submit",
+        "Add to storefronts",
+      ],
+      ["#/p/djdl/distribution/listing", "Listing"],
+      ["#/p/djdl/distribution/listing?tab=fit", "Listing"],
+      ["#/p/djdl/distribution/listing?tab=images", "Listing"],
+      ["#/p/djdl/distribution/listing?tab=push", "Listing"],
+    ] as const) {
+      await page.evaluate((h) => {
+        location.hash = h;
+      }, hash);
+      await page
+        .locator("[data-page-title]", { hasText: title })
+        .first()
+        .waitFor();
+      await page.waitForTimeout(200);
+      expect(await violations(page), `${hash}: CSP violations`).toEqual([]);
+    }
+    await check(page, "listing push dialog", async () => {
+      await page.getByRole("button", { name: "Push listing" }).click();
+      await page.getByRole("alertdialog").waitFor();
+    });
+    await page.evaluate(() => {
+      location.hash =
+        "#/p/djdl/distribution/storefronts?flow=add&stores=google-play&step=submit";
+    });
+    await page
+      .getByRole("button", { name: "Send the changes for review" })
+      .waitFor();
+    await check(page, "typed submit dialog", async () => {
+      await page
+        .getByRole("button", { name: "Send the changes for review" })
+        .click();
       await page.getByRole("alertdialog").waitFor();
     });
     await page.context().close();

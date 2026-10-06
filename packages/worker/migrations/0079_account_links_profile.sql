@@ -1,0 +1,16 @@
+-- I-07 (S-16 owner decision "import profile data from identity providers"; PORTAL.md §4.30,
+-- G32/G33): what a provider supplied about the person at link time, per link, as one JSON object
+-- `{name, locale, pictureRef, avatarKey}`:
+--
+--   - `name` and `locale` as the provider sent them (`display_name` keeps the name too, for the
+--     notices that already read it);
+--   - `pictureRef`, a peppered hash of the provider's picture URL, so a sign-in re-fetches the
+--     picture only when the provider's URL changed;
+--   - `avatarKey`, the R2 object (under `avatars/`) holding the copied picture, served
+--     same-origin at `/media/avatar/<key>`. Account deletion reads it to remove the bytes.
+--
+-- The account's chosen values stay on `accounts` (`display_name`, `avatar_key`, `locale`), with
+-- their sources and the explicit-choice flags in `details_source_json`. Identity owns the table.
+--
+-- ONE statement per file (R11-04).
+ALTER TABLE account_links ADD COLUMN profile_json TEXT;

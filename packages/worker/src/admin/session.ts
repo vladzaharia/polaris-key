@@ -62,6 +62,24 @@ export interface AdminSession {
   csrf: string;
   /** Epoch-seconds expiry. */
   exp: number;
+  /**
+   * I-12: when the operator last authenticated interactively (epoch seconds): the IdP's
+   * `auth_time` when it sent one, else the callback time. The relink tool's step-up reads it. A
+   * session minted before this field existed has none, and counts as not stepped up.
+   */
+  authAt?: number;
+}
+
+/** I-12 (S-16 §5.4 item 9): the relink tool needs an operator sign-in no older than this. */
+export const STEP_UP_MAX_AGE_SECONDS = 5 * 60;
+
+/** True when the session's interactive sign-in is recent enough for a step-up action. */
+export function isSteppedUp(session: AdminSession, now: number): boolean {
+  return (
+    typeof session.authAt === "number" &&
+    session.authAt <= now + 60 &&
+    now - session.authAt <= STEP_UP_MAX_AGE_SECONDS
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -151,6 +169,8 @@ export interface SessionIdentity {
   name?: string;
   email?: string;
   groups: string[];
+  /** The ID token's `auth_time` (epoch seconds), when the IdP sent one. */
+  authTime?: number;
 }
 
 /** Mint a signed session token for a verified admin identity. */
@@ -166,6 +186,11 @@ export async function issueSession(
     groups: identity.groups,
     csrf: randomToken(16),
     exp: now + SESSION_TTL_SECONDS,
+    // A future auth_time is clock skew or a lie; never let it extend a step-up window.
+    authAt:
+      typeof identity.authTime === "number" && identity.authTime <= now
+        ? identity.authTime
+        : now,
   };
   const body = base64UrlEncodeString(JSON.stringify(session));
   const key = await sessionKey(env);

@@ -360,6 +360,44 @@ export interface Env {
    */
   ADMIN_OIDC_CLIENT_SECRET?: string;
   /**
+   * I-06: the login card's platform sign-in clients (`services/identity/providers/config.ts`).
+   * The ids are plain vars; the three secrets are SEALED blobs (`pnpm --filter
+   * @polaris-key/worker signin:seal`), not raw credentials. A provider is offered only when all
+   * of its values are set and its sealed secret opens. This one: the Google client id.
+   * @inventory var identity
+   */
+  SIGNIN_GOOGLE_CLIENT_ID?: string;
+  /**
+   * I-06: the Google client secret, sealed under `PLATFORM_KEK`.
+   * @inventory secret identity
+   */
+  SIGNIN_GOOGLE_CLIENT_SECRET?: string;
+  /**
+   * I-06: the Apple Services ID (Polaris's Sign in with Apple client).
+   * @inventory var identity
+   */
+  SIGNIN_APPLE_SERVICES_ID?: string;
+  /**
+   * I-06: the Apple team id that owns the Services ID.
+   * @inventory var identity
+   */
+  SIGNIN_APPLE_TEAM_ID?: string;
+  /**
+   * I-06: the id of the Sign in with Apple key.
+   * @inventory var identity
+   */
+  SIGNIN_APPLE_KEY_ID?: string;
+  /**
+   * I-06: the Sign in with Apple `.p8` key, sealed under `PLATFORM_KEK`.
+   * @inventory secret identity
+   */
+  SIGNIN_APPLE_PRIVATE_KEY?: string;
+  /**
+   * I-06: the Steam Web API key, sealed under `PLATFORM_KEK`.
+   * @inventory secret identity
+   */
+  SIGNIN_STEAM_WEB_API_KEY?: string;
+  /**
    * Older sender setting ("Name <addr>"). Only its ADDRESS is still honoured, and only while
    * `EMAIL_SENDER_ADDRESS` is unset; the display name is never configurable (I-18).
    * @inventory var email
@@ -470,6 +508,20 @@ export interface Env {
    * @inventory binding email
    */
   EMAIL?: SendEmail;
+  /**
+   * I-07 — Cloudflare Turnstile on the login card's email start (S-16 §5.4 item 4). The site key
+   * is public (a var; the portal reads it from `/api/capabilities`), the secret key is a secret
+   * (`wrangler secret put TURNSTILE_SECRET_KEY --env prod`). With no secret configured the
+   * Worker does not ask for a token (local development and tests); production sets both
+   * (RUNBOOK "Login card"). This one: the public site key.
+   * @inventory var identity
+   */
+  TURNSTILE_SITE_KEY?: string;
+  /**
+   * I-07 — the Turnstile secret key; with it unset the email start asks for no token.
+   * @inventory secret identity
+   */
+  TURNSTILE_SECRET_KEY?: string;
 
   // additional platform secrets/vars resolved by name
   [key: string]: unknown;

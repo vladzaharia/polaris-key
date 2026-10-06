@@ -1,0 +1,330 @@
+{
+  "source": {
+    "title": "Steamworks Web API reference (hand-written write list)",
+    "version": "2026-10-04",
+    "url": "https://partner.steamgames.com/doc/webapi",
+    "sha256": "01fc507d23ab8b1b88ee42254b77f7e0119d3dc0d2f2f2b90516f293483aca54"
+  },
+  "operations": [
+    {
+      "method": "POST",
+      "path": "/ISteamApps/SetAppBuildLive/v2/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamLeaderboards/DeleteLeaderboard/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamLeaderboards/DeleteLeaderboardScore/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamLeaderboards/ResetLeaderboard/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ICloudService/Delete/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IGameServersService/DeleteAccount/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IGameNotificationsService/DeleteSession/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IGameNotificationsService/DeleteSessionBatch/v1/"
+    },
+    {
+      "method": "GET",
+      "path": "/IPublishedFileService/Delete/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ICheatReportingService/ReportPlayerCheating/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ICheatReportingService/RequestPlayerGameBan/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ICheatReportingService/RemovePlayerGameBan/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ICheatReportingService/RequestVacStatusForUser/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ICheatReportingService/StartSecureMultiplayerSession/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ICheatReportingService/EndSecureMultiplayerSession/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ILobbyMatchmakingService/CreateLobby/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ILobbyMatchmakingService/RemoveUserFromLobby/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamCommunity/ReportAbuse/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamUserAuth/AuthenticateUser/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IGameNotificationsService/CreateSession/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IGameNotificationsService/UpdateSession/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IGameNotificationsService/RequestNotifications/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IBroadcastService/PostGameDataFrame/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IEconMarketService/CancelAppListingsForUser/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamMicroTxn/AdjustAgreement/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamMicroTxn/CancelAgreement/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamMicroTxn/FinalizeTxn/v2/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamMicroTxn/InitTxn/v3/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamMicroTxn/ProcessAgreement/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamMicroTxn/RefundTxn/v2/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamMicroTxnSandbox/AdjustAgreement/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamMicroTxnSandbox/CancelAgreement/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamMicroTxnSandbox/FinalizeTxn/v2/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamMicroTxnSandbox/InitTxn/v3/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamMicroTxnSandbox/ProcessAgreement/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamMicroTxnSandbox/RefundTxn/v2/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamEconomy/StartAssetTransaction/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamEconomy/FinalizeAssetTransaction/v1/"
+    },
+    {
+      "method": "GET",
+      "path": "/ISteamEconomy/StartTrade/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IWorkshopService/SetItemPaymentRules/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IGameServersService/CreateAccount/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IGameServersService/ResetLoginToken/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IGameServersService/SetMemo/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IInventoryService/AddItem/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IInventoryService/AddPromoItem/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IInventoryService/ConsumeItem/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IInventoryService/ExchangeItem/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IInventoryService/Consolidate/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IInventoryService/ModifyItems/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IGameInventory/HistoryExecuteCommands/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IGameInventory/UpdateItemDefs/v0001/"
+    },
+    {
+      "method": "POST",
+      "path": "/IEconService/FlushInventoryCache/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IEconService/FlushAssetAppearanceCache/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IEconService/FlushContextCache/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamLeaderboards/FindOrCreateLeaderboard/v2/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamLeaderboards/SetLeaderboardScore/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamUserStats/SetUserStatsForGame/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IPublishedFileService/SetDeveloperMetadata/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IPublishedFileService/UpdateAppUGCBan/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IPublishedFileService/UpdateBanStatus/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IPublishedFileService/UpdateIncompatibleStatus/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IPublishedFileService/UpdateTags/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IPublishedFileModerationService/ProcessApprovalRequest/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamRemoteStorage/SetUGCUsedByGC/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamRemoteStorage/SubscribePublishedFile/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamRemoteStorage/UnsubscribePublishedFile/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/IWorkshopService/PopulateItemDescriptions/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ICloudService/BeginAppUploadBatch/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ICloudService/CompleteAppUploadBatch/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ICloudService/BeginHTTPUpload/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ICloudService/CommitHTTPUpload/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamPublishedItemSearch/RankedByPublicationOrder/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamPublishedItemSearch/RankedByTrend/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamPublishedItemSearch/RankedByVote/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamPublishedItemSearch/ResultSetSummary/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamPublishedItemVoting/ItemVoteSummary/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamPublishedItemVoting/UserVoteSummary/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamRemoteStorage/EnumerateUserSubscribedFiles/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamRemoteStorage/GetCollectionDetails/v1/"
+    },
+    {
+      "method": "POST",
+      "path": "/ISteamRemoteStorage/GetPublishedFileDetails/v1/"
+    }
+  ]
+}

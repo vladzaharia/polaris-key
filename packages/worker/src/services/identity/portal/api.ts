@@ -69,6 +69,14 @@ import {
 } from "./session.js";
 import { handleMagicStart } from "./auth.js";
 import { licenseGrants } from "./entitlements.js";
+import {
+  checkAccountSession,
+  listAccountSessions,
+  revokeAccountSession,
+  revokeAllAccountSessions,
+} from "./accountSessions.js";
+import { avatarUrl, handleCardApi, turnstileSiteKey } from "../card/index.js";
+import { clearDeviceSubjects } from "../../../core/subjectHooks.js";
 import { libraryView, productView } from "./library.js";
 import {
   handleActivatePreview,
@@ -90,6 +98,13 @@ import {
   handleDiscover,
   handleDiscoverClaim,
 } from "./discover.js";
+import {
+  DEVICE_LOGIN_APPROVE_LIMIT,
+  handleDeviceLoginApprove,
+  handleDeviceLoginLookup,
+  handleDeviceLoginPoll,
+  handleDeviceLoginStart,
+} from "./deviceLogin.js";
 import { freeAccountDevice, portalActionLimit } from "./freeDevice.js";
 
 export function portalJson(
@@ -229,14 +244,19 @@ async function requireSession(
   env: Env,
   db: Db,
   now: number,
-): Promise<{ session: PortalSession } | Response> {
+): Promise<{ session: PortalSession; sessionIdHash: string } | Response> {
   const session = await portalSessionFromRequest(env, req, now);
   if (!session) return unauthorized();
-  // I-05: the id resolves through a merge tombstone (30 days), so a cookie of an absorbed
-  // account acts as the survivor, and every handler below reads the resolved id.
-  const account = await getPortalAccount(db, session.accountId, now);
-  if (!account || account.status !== "active") return unauthorized();
-  return { session: { ...session, accountId: account.id } };
+  // I-07: the cookie must name a live `account_sessions` row of the account it resolves to. I-05:
+  // the id resolves through a merge tombstone (30 days), so a cookie of an absorbed account acts
+  // as the survivor (the merge moved its session rows), and every handler below reads the
+  // resolved id.
+  const live = await checkAccountSession(env, db, session, now);
+  if (!live) return unauthorized();
+  return {
+    session: { ...session, accountId: live.accountId },
+    sessionIdHash: live.idHash,
+  };
 }
 
 export async function hasLinkedProductLicense(
@@ -503,6 +523,9 @@ async function handleMe(
       id: account.id,
       name: account.display_name ?? session.name,
       email: account.primary_email ?? session.email,
+      // I-07: the account's chosen picture, copied into R2 and served same-origin; null shows
+      // initials.
+      avatarUrl: avatarUrl(account.avatar_key ?? null),
     },
     csrf: session.csrf,
   });
@@ -596,6 +619,9 @@ async function handleCapabilities(
       magic:
         caps.portalEnabled && caps.magicEnabled && portalEmailConfigured(env),
     },
+    // I-07: the login card renders Cloudflare Turnstile on the email start with this public
+    // site key; null when the deploy has Turnstile off (no token is asked for).
+    turnstileSiteKey: turnstileSiteKey(env),
     modules: {
       licensing: caps.portalEnabled,
       claim: caps.portalEnabled && caps.licenseKeyClaimEnabled,
@@ -1109,7 +1135,7 @@ async function handleEmailDownload(
     return notFound();
   }
   if (!portalEmailConfigured(env)) {
-    return err(503, "email_not_configured", "email is not configured");
+    return err(503, "email_unavailable", "email is not configured");
   }
   const limited = await requireActionRateLimit(
     req,
@@ -1136,6 +1162,76 @@ async function handleEmailDownload(
     now,
   );
   return portalJson({ ok: true }, 202);
+}
+
+/**
+ * I-07 account sessions (S-16 §5.4 item 7): `GET /api/sessions` lists the account's live
+ * sessions (the current one marked); `DELETE /api/sessions/<id>` ends one; `POST
+ * /api/sessions/sign-out-everywhere` ends every one, this browser's included, and clears its
+ * cookie. Mutations carry the CSRF header (checked by the dispatcher above). I-11 builds the
+ * settings page on these.
+ */
+async function handleSessions(
+  req: Request,
+  env: Env,
+  db: Db,
+  session: PortalSession,
+  currentIdHash: string,
+  rest: string[],
+  now: number,
+): Promise<Response> {
+  if (rest.length === 0) {
+    if (req.method !== "GET") return err(405, "method_not_allowed");
+    return portalJson({
+      sessions: await listAccountSessions(
+        db,
+        session.accountId,
+        currentIdHash,
+        now,
+      ),
+    });
+  }
+  if (rest.length === 1 && rest[0] === "sign-out-everywhere") {
+    if (req.method !== "POST") return err(405, "method_not_allowed");
+    const ended = await revokeAllAccountSessions(db, session.accountId, now);
+    // The apps too (S-17 §5.8 item 2): Core's one clearing hook drops every device's binding to
+    // this account, releasing a seat only where the sign-in itself bound it.
+    const devices = await clearDeviceSubjects(
+      db,
+      env,
+      { kind: "account", accountId: session.accountId },
+      "signout_everywhere",
+    );
+    await portalAudit(db, {
+      accountId: session.accountId,
+      action: "portal.sessions.revoke_all",
+      summary: `Signed out everywhere (${ended} sessions, ${devices.cleared} devices)`,
+      now,
+    });
+    return portalJson({ ok: true, ended, devices: devices.cleared }, 200, {
+      "set-cookie": buildPortalClearCookie(),
+    });
+  }
+  if (rest.length === 1 && rest[0]) {
+    if (req.method !== "DELETE") return err(405, "method_not_allowed");
+    const id = rest[0];
+    if (!/^[A-Za-z0-9_-]{16,128}$/.test(id)) return notFound();
+    const ended = await revokeAccountSession(db, session.accountId, id, now);
+    if (!ended) return notFound();
+    await portalAudit(db, {
+      accountId: session.accountId,
+      action: "portal.sessions.revoke",
+      summary: "Ended a session",
+      now,
+    });
+    const current = id === currentIdHash;
+    return portalJson(
+      { ok: true, current },
+      200,
+      current ? { "set-cookie": buildPortalClearCookie() } : undefined,
+    );
+  }
+  return notFound();
 }
 
 /** "Email me the download" sends per account, per product, per hour. */
@@ -1178,12 +1274,24 @@ export async function handlePortalApi(
     return handleCapabilities(env, db, requested);
   }
   if (segments[0] === "magic" && segments[1] === "start") {
-    return handleMagicStart(req, env, db);
+    return handleMagicStart(req, env, db, now);
+  }
+  // I-07: the login card's pre-authentication routes (email code and link, the email gate).
+  if (segments[0] === "signin") {
+    return handleCardApi(req, env, db, segments, now);
+  }
+  // PX-W14 (G29): the new device's half of "Sign in with another device" is pre-auth: it has no
+  // session yet. The signed-in half (`lookup`, `approve`) is dispatched below.
+  if (segments[0] === "device-login" && segments.length === 2) {
+    if (segments[1] === "start")
+      return handleDeviceLoginStart(req, env, db, now);
+    if (segments[1] !== "lookup" && segments[1] !== "approve")
+      return handleDeviceLoginPoll(req, env, db, segments[1]!, now);
   }
 
   const sessionResult = await requireSession(req, env, db, now);
   if (sessionResult instanceof Response) return sessionResult;
-  const { session } = sessionResult;
+  const { session, sessionIdHash } = sessionResult;
   if (isMutation(req.method)) {
     const presented = req.headers.get(PORTAL_CSRF_HEADER);
     if (!presented || presented !== session.csrf) return forbidden("csrf");
@@ -1198,10 +1306,39 @@ export async function handlePortalApi(
   ) {
     return handleMeDelete(req, env, db, session, now);
   }
+  // PX-W14: the approver's half. Rate-limited per ACCOUNT alone (not account and client IP, as
+  // `requireActionRateLimit` keys it) before any code is looked up, so the budget is the bound on
+  // guessing someone else's code however many addresses the guesser rotates through.
+  if (
+    segments[0] === "device-login" &&
+    (segments[1] === "lookup" || segments[1] === "approve") &&
+    segments.length === 2
+  ) {
+    if (req.method !== "POST") return err(405, "method_not_allowed");
+    const allowed = await rateLimitOk(
+      env,
+      "_portal",
+      {
+        bucket: "portalDeviceApprove",
+        id: session.accountId,
+        limit: DEVICE_LOGIN_APPROVE_LIMIT,
+        windowSec: 60,
+      },
+      now,
+    );
+    if (!allowed) return err(429, "rate_limited", "too many attempts");
+    const body = await readBody(req);
+    return segments[1] === "lookup"
+      ? handleDeviceLoginLookup(req, env, session, body, now)
+      : handleDeviceLoginApprove(req, env, db, session, body, now);
+  }
   await syncAccountLicenseLinks(db, session.accountId, now);
 
   const [head, ...rest] = segments;
   if (head === "me") return handleMe(db, session, now);
+  if (head === "sessions") {
+    return handleSessions(req, env, db, session, sessionIdHash, rest, now);
+  }
   if (
     head === "licenses" &&
     rest[2] === "devices" &&

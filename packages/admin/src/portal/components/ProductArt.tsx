@@ -4,7 +4,8 @@ import { cn } from "../../lib/cn.js";
 /**
  * Product art (PORTAL.md §5.2 `ProductArt`): the listing's header art through the same-origin
  * media proxy (G1, PX-W1) when there is one, else (or when it fails to load) the flat fallback: a
- * tint field with the product's letter. No gradients. The tint is the developer's `tintColor`
+ * tint field with the product's letter (or a bare tint field with `letter={false}`, where an icon
+ * already stands in front of the art). No gradients. The tint is the developer's `tintColor`
  * when present, else a stable pick from a muted set by slug, so a product keeps its colour
  * everywhere.
  */
@@ -43,6 +44,7 @@ export function ProductArt({
   className,
   children,
   onError,
+  letter: showLetter = true,
 }: {
   slug: string;
   name: string;
@@ -55,6 +57,8 @@ export function ProductArt({
   children?: React.ReactNode;
   /** Told when the image fails to load (the fallback then renders). */
   onError?: () => void;
+  /** The fallback's letter; off where the product's icon (or its letter tile) sits on the art. */
+  letter?: boolean;
 }): React.ReactElement {
   const letter = letterOf(name);
   const background = tintFor(slug, tint);
@@ -87,17 +91,19 @@ export function ProductArt({
       style={{ backgroundColor: background }}
       className={cn("relative overflow-hidden", className)}
     >
-      <span
-        aria-hidden
-        className={cn(
-          "absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[22%] bg-black/25 font-bold text-[#f4f1ff]",
-          variant === "banner" && "size-28 text-6xl",
-          variant === "tile" && "size-16 text-3xl",
-          variant === "thumb" && "size-9 text-lg",
-        )}
-      >
-        {letter}
-      </span>
+      {showLetter ? (
+        <span
+          aria-hidden
+          className={cn(
+            "absolute left-1/2 top-1/2 inline-flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-[22%] bg-black/25 font-bold text-[#f4f1ff]",
+            variant === "banner" && "size-28 text-6xl",
+            variant === "tile" && "size-16 text-3xl",
+            variant === "thumb" && "size-9 text-lg",
+          )}
+        >
+          {letter}
+        </span>
+      ) : null}
       {children}
     </div>
   );

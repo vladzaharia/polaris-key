@@ -72,6 +72,10 @@ export interface Me {
   environment?: ConsoleEnvironment | null;
   /** When the admin session ends, epoch seconds (A-1; the session is a hard 8 h). */
   sessionExpiresAt?: number;
+  /** When the operator last signed in interactively (I-12 step-up); `null` on an older session. */
+  authAt?: number | null;
+  /** How recent that sign-in must be for a step-up action (the relink tool). */
+  stepUpMaxAgeSeconds?: number;
 }
 
 // ── platform (A-11 deploy identity, A-12 platform audit) ─────────────────────────
@@ -495,6 +499,8 @@ export interface PlatformStoreConnection {
   credentials: PlatformStoreCredential[];
   settings: PlatformStoreSetting[];
   appsListing: boolean;
+  /** A-18j: the store has a storefront adapter, so an assigned app offers "Set up". */
+  storefront?: boolean;
   /** Which product holds which app: credential id → pin. */
   assignments: { product: string; pins: Record<string, string> }[];
 }
@@ -918,6 +924,121 @@ export interface ProductDetail {
   adminGroup: string | null;
   createdAt: number;
   modifiedAt: number;
+}
+
+// ── users (Core; I-12) ───────────────────────────────────────────────────────
+
+/** A row of a product's Users page: one pairwise subject of this product, never the account. */
+export interface ProductUserSummary {
+  subject: string;
+  createdAt: number;
+  contactEmail: string | null;
+  contactSource: "license" | "consented" | null;
+  licenses: number;
+  devices: number;
+  /** Identity on only. */
+  signedInDevices?: number;
+  /** Identity on only. */
+  lastSignInAt?: number | null;
+  mergedFrom: number;
+}
+
+export interface ProductUserQuery {
+  q?: string;
+  limit?: number;
+  cursor?: string | null;
+}
+
+export interface ProductUsersPage {
+  identityOn: boolean;
+  users: ProductUserSummary[];
+  nextCursor: string | null;
+}
+
+export interface ProductUserLicense {
+  id: string;
+  name: string | null;
+  email: string | null;
+  tierId: string | null;
+  status: string;
+  activatedAt: number;
+  expiresAt: number | null;
+}
+
+export interface ProductUserDevice {
+  deviceId: string;
+  label: string | null;
+  status: string;
+  platform: string | null;
+  appVersion: string | null;
+  licenseId: string | null;
+  lastSeen: number;
+  signedIn?: boolean;
+}
+
+export interface ProductUserRelink {
+  id: string;
+  licenseId: string;
+  direction: "in" | "out";
+  otherSubject: string | null;
+  reason: string;
+  actorName: string | null;
+  createdAt: number;
+  undoUntil: number;
+  undoneAt: number | null;
+  undoable: boolean;
+}
+
+export interface ProductUserDetail {
+  subject: string;
+  createdAt: number;
+  identityOn: boolean;
+  contact: { email: string | null; source: "license" | "consented" | null };
+  name: string | null;
+  mergedFrom: Array<{ subject: string; mergedAt: number }>;
+  licenses: ProductUserLicense[];
+  devices: ProductUserDevice[];
+  data: { bytes: number; stores: Array<{ name: string; bytes: number }> };
+  signIns?: Array<{ at: number; method: string | null }>;
+  events: Array<{
+    id: string;
+    type: string;
+    at: number;
+    alias?: string;
+    licenseIds?: string[];
+  }>;
+  relinks: ProductUserRelink[];
+  audit: Array<{
+    id: string;
+    at: number;
+    action: string;
+    actorName: string | null;
+    targetKind: string | null;
+    targetId: string | null;
+    summary: string | null;
+  }>;
+}
+
+/** A row, or (for a subject absorbed by a merge) the survivor's subject. */
+export type ProductUserResponse =
+  | { user: ProductUserDetail; mergedInto?: undefined }
+  | { mergedInto: string; user?: undefined };
+
+export interface RelinkResult {
+  ok: true;
+  relinkId: string;
+  subject: string;
+  undoUntil: number;
+  noticesSent: number;
+  alert: boolean;
+}
+
+/** Identity → Sign-in's editable settings (I-12). */
+export interface SignInSettings {
+  claimByKey: boolean;
+  passthroughName: string | null;
+  effectiveName: string;
+  appReview48Warning: boolean;
 }
 
 export interface CreateManualProductBody {
@@ -1535,6 +1656,301 @@ export interface ConnectorStatusDto {
    * reports it inside `setup` (with `platformSource`); this top-level field is the fallback.
    */
   credentialSource?: string;
+}
+
+// ── distribution: storefronts and the listing (A-18j; worker `services/distribution/storefronts/`) ──
+
+/** How an adapter performs one operation (`core/adapters/contract.ts` `Support`), as declared. */
+export type SupportDto =
+  | { mode: "api"; plane: "worker"; rules: string[] }
+  | { mode: "ci"; plane: "ci"; tool: string; commands: string[] }
+  | { mode: "pr"; plane: "pr"; repo: string }
+  | {
+      mode: "deep-link";
+      link: string;
+      verify:
+        | { read: string; every: number; until: number }
+        | "operator-assertion";
+    }
+  | { mode: "unsupported"; reason: string };
+
+export type StorefrontStepState =
+  | "todo"
+  | "pending"
+  | "done"
+  | "failed"
+  | "ambiguous";
+
+/** One input a step's request asks for. */
+export interface StorefrontStepField {
+  name: string;
+  label: string;
+  help?: string;
+  value: string;
+  required: boolean;
+  options?: { value: string; label: string }[];
+  maxLength?: number;
+}
+
+/** A console request a step names: an admin route, its body, its fields and its confirmation. */
+export interface StorefrontStepRequest {
+  method: "POST" | "PUT";
+  path: string;
+  body: Record<string, unknown>;
+  fields: StorefrontStepField[];
+  confirm: "plain" | "typed";
+  verb: string;
+  consequences: string[];
+}
+
+export interface StorefrontStepDto {
+  id: string;
+  ops: string[];
+  phase: "setup" | "listing" | "assets" | "store" | "submit";
+  label: string;
+  mode: SupportDto["mode"];
+  typed: boolean;
+  state: StorefrontStepState;
+  stateAt: number | null;
+  writes: string[];
+  link: {
+    url: string | null;
+    verify: "read" | "operator-assertion";
+    every: number | null;
+    until: number | null;
+    missing: string[];
+  } | null;
+  ci: { tool: string; commands: string[] } | null;
+  pr: { repo: string } | null;
+  run: StorefrontStepRequest | null;
+  assert: StorefrontStepRequest | null;
+  next: StorefrontStepRequest | null;
+  handoff: { page: string; label: string } | null;
+  copy: { label: string; value: string }[];
+  detail: string | null;
+  blockedBy: string | null;
+}
+
+export interface StorefrontDto {
+  id: string;
+  label: string;
+  listingStore: string | null;
+  connection: {
+    state: "connected" | "not-configured" | "keyless";
+    credential: string | null;
+    credentialLabel: string | null;
+    source: "console" | "secret" | null;
+    lastError: string | null;
+  };
+  app: { id: string; name: string | null } | null;
+  outlets: string[];
+  readOnly: string | null;
+  capabilities: { op: string; label: string; support: SupportDto }[];
+  prerequisites: {
+    id: string;
+    label: string;
+    state: "met" | "unmet" | "unknown";
+    detail: string;
+    page: string | null;
+  }[];
+  steps: StorefrontStepDto[];
+  pushListing: { stageOnly: boolean } | null;
+  confirmationLabel: string;
+}
+
+/** `GET …/distribution/storefronts`. */
+export interface StorefrontsResponse {
+  stores: StorefrontDto[];
+  listing: {
+    name: string | null;
+    defaultLocale: string;
+    locales: string[];
+  } | null;
+}
+
+/** A step's or a push's outcome: the vendor's re-read, never the request. */
+export interface StorefrontRunResult {
+  ok: true;
+  outcome: "written" | "existing" | "replayed";
+  opId: string;
+  resultIds: Record<string, string>;
+  after: unknown;
+  /** What the operator still finishes in the store's own console (decision 6: the older Play
+   *  images a replaced set leaves, which Polaris Key never deletes). */
+  followUp?: StorefrontFollowUp;
+}
+
+/** A run's follow-up: one sentence with the count, and the store page (or what its link lacks). */
+export interface StorefrontFollowUp {
+  count: number;
+  text: string;
+  url: string | null;
+  missing: string[];
+}
+
+/** `POST …/steps/<op>/check`. */
+export interface StorefrontCheckResult {
+  ok: true;
+  state: StorefrontStepState;
+  satisfied: boolean;
+  resultIds?: Record<string, string>;
+  detail?: string | null;
+}
+
+export interface ListingSlotDto {
+  slot: string;
+  locale: string | null;
+  group: string;
+  kind: "human" | "derived" | "composed";
+  state: "missing" | "review" | "accepted";
+  spec: string | null;
+  textAllowed: string;
+  asset: {
+    sha256: string;
+    width: number | null;
+    height: number | null;
+    alpha: boolean;
+    derivedFrom: string | null;
+    source: string;
+    modifiedAt: number;
+    image: string;
+    acceptedAt: number | null;
+    acceptedBy: string | null;
+  } | null;
+}
+
+export interface ListingLocaleDto {
+  locale: string;
+  name?: string;
+  subtitle?: string;
+  shortDescription?: string;
+  description?: string;
+  keywords?: string[];
+  features?: string[];
+  promotionalText?: string;
+  source: string;
+  provenance: Record<string, string>;
+  modifiedAt: number;
+  modifiedBy: string;
+}
+
+/** `GET …/distribution/listing` (A-18b). */
+export interface ListingResponse {
+  listing: {
+    app: {
+      defaultLocale: string;
+      name?: string;
+      developerName?: string;
+      category?: string;
+      contactEmail?: string;
+      copyright?: string;
+      urls?: Record<string, string>;
+    };
+    source: string;
+    provenance: Record<string, string>;
+    modifiedAt: number;
+    modifiedBy: string;
+  } | null;
+  locales: ListingLocaleDto[];
+  overrides: {
+    store: string;
+    locale: string | null;
+    field: string;
+    value: string | string[];
+  }[];
+  limits: Record<string, number | { maxItems: number; maxItemChars: number }>;
+  stores: { store: string; label: string }[];
+  overrideStores: string[];
+  modelFields: string[];
+}
+
+export interface ListingFitIssue {
+  store: string;
+  field: string;
+  from: string;
+  locale: string | null;
+  issue: string;
+  severity: "warn" | "block";
+  limit: number | null;
+  actual: number | null;
+  unit: string | null;
+  proposal?: string;
+}
+
+/** `GET …/distribution/listing/fit`. */
+export interface ListingFitResponse {
+  exists: boolean;
+  release: string | null;
+  stores: {
+    store: string;
+    label: string;
+    status: "green" | "amber" | "red";
+    issues: ListingFitIssue[];
+    cells: {
+      field: string;
+      from: string;
+      locale: string | null;
+      plane: "api" | "copy" | "manual";
+      status: "green" | "amber" | "red";
+      present: boolean;
+    }[];
+  }[];
+}
+
+/** One field of an import's diff (A-18c `ImportChange`). */
+export interface ListingImportChange {
+  /** `name`, `urls.website`, `locales.de-DE.description`. */
+  field: string;
+  locale: string | null;
+  action: "add" | "replace" | "keep";
+  current: string | string[] | Record<string, unknown> | null;
+  currentSource: string | null;
+  proposed: string | string[] | Record<string, unknown>;
+  proposedSource: string;
+  reason: string | null;
+}
+
+/** The import's preview (or, with `confirm`, what it applied). */
+export interface ListingImportPreview {
+  applied: boolean;
+  digest: string;
+  createsListing: boolean;
+  defaultLocale: string;
+  sources: {
+    source: string;
+    ref: string | null;
+    ok: boolean;
+    reason?: string;
+    message?: string;
+  }[];
+  changes: ListingImportChange[];
+  refused: { field: string; message?: string; [key: string]: unknown }[];
+  skipped: { source: string; field: string; reason: string }[];
+  written: string[];
+}
+
+/** `POST …/distribution/listing/import`: the preview (or result) and the model after it. */
+export type ListingImportResponse = ListingResponse & {
+  import: ListingImportPreview;
+};
+
+/** `GET …/distribution/listing/release-notes/<release>`. */
+export interface ListingReleaseNotesResponse {
+  notes: {
+    releaseId: string;
+    version: string;
+    locales: {
+      locale: string;
+      text: string;
+      short: string | null;
+      /** `default` for the release record's own notes, shown until saved. */
+      source: string;
+      proposedShort: string | null;
+      modifiedAt: number | null;
+      modifiedBy: string | null;
+    }[];
+  };
+  limits: { short: number; text: number };
 }
 
 export interface ConnectorsResponse {
@@ -3643,6 +4059,120 @@ const rawApi = {
       { method: "DELETE" },
     ),
 
+  // ── distribution: storefronts and the listing (A-18j) ─────────────────────
+  storefronts: (slug: string) =>
+    call<StorefrontsResponse>(`${p(slug)}/distribution/storefronts`),
+  storefrontSlots: (slug: string) =>
+    call<{ slots: ListingSlotDto[] }>(
+      `${p(slug)}/distribution/storefronts/slots`,
+    ),
+  /** Accept exactly the bytes shown (`sha256`); 409 `asset_changed` when they moved since. */
+  acceptListingAsset: (
+    slug: string,
+    body: { slot: string; locale: string | null; sha256: string },
+  ) =>
+    call<{ ok: true; accepted: boolean }>(
+      `${p(slug)}/distribution/storefronts/slots/accept`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  /**
+   * A flow step's request, as the server's plan names it (`run`, `assert`, `next`): an absolute
+   * console path under `/manage/api/`, or one relative to the product's API. One
+   * `Idempotency-Key` per operator intent.
+   */
+  storefrontRequest: (
+    slug: string,
+    path: string,
+    method: string,
+    body: Record<string, unknown>,
+    opts?: { idempotencyKey?: string } | null,
+  ) => {
+    const absolute = path.startsWith("/");
+    if (absolute && (!path.startsWith("/manage/api/") || path.includes("..")))
+      throw new Error(`a flow step may only call the console API: ${path}`);
+    return call<Record<string, unknown>>(
+      absolute ? path : `${p(slug)}/${path.split("/").map(enc).join("/")}`,
+      {
+        method: method === "PUT" ? "PUT" : "POST",
+        body: JSON.stringify(body ?? {}),
+        ...(opts?.idempotencyKey
+          ? { headers: { "Idempotency-Key": opts.idempotencyKey } }
+          : {}),
+      },
+    );
+  },
+  /** A deep-linked step: `{}` runs its verifier read, `{assert: true}` records it done. */
+  storefrontCheck: (
+    slug: string,
+    store: string,
+    op: string,
+    body: { assert?: boolean; poll?: boolean },
+  ) =>
+    call<StorefrontCheckResult>(
+      `${p(slug)}/distribution/storefronts/${enc(store)}/steps/${enc(op)}/check`,
+      { method: "POST", body: JSON.stringify(body ?? {}) },
+    ),
+  /** "Push listing" (text and accepted images; plain confirm; always staged where the store stages, never sent for review). */
+  pushListing: (
+    slug: string,
+    store: string,
+    body: { stageOnly?: boolean },
+    opts?: { idempotencyKey?: string } | null,
+  ) =>
+    call<StorefrontRunResult>(
+      `${p(slug)}/distribution/storefronts/${enc(store)}/push-listing`,
+      {
+        method: "POST",
+        body: JSON.stringify(body ?? {}),
+        ...(opts?.idempotencyKey
+          ? { headers: { "Idempotency-Key": opts.idempotencyKey } }
+          : {}),
+      },
+    ),
+  listing: (slug: string) =>
+    call<ListingResponse>(`${p(slug)}/distribution/listing`),
+  putListing: (slug: string, body: Record<string, unknown>) =>
+    call<ListingResponse>(`${p(slug)}/distribution/listing`, {
+      method: "PUT",
+      body: JSON.stringify(body ?? {}),
+    }),
+  putListingOverride: (
+    slug: string,
+    body: {
+      store: string;
+      locale?: string | null;
+      field: string;
+      value: string | string[] | null;
+    },
+  ) =>
+    call<Record<string, unknown>>(`${p(slug)}/distribution/listing/overrides`, {
+      method: "PUT",
+      body: JSON.stringify(body ?? {}),
+    }),
+  listingFit: (slug: string, release?: string | null) =>
+    call<ListingFitResponse>(
+      `${p(slug)}/distribution/listing/fit${release ? `?release=${enc(release)}` : ""}`,
+    ),
+  /** Without `confirm`: the field-by-field diff (nothing is written). With the diff's `digest`: apply it. */
+  listingImport: (slug: string, body: Record<string, unknown>) =>
+    call<ListingImportResponse>(`${p(slug)}/distribution/listing/import`, {
+      method: "POST",
+      body: JSON.stringify(body ?? {}),
+    }),
+  listingReleaseNotes: (slug: string, release: string) =>
+    call<ListingReleaseNotesResponse>(
+      `${p(slug)}/distribution/listing/release-notes/${enc(release)}`,
+    ),
+  putListingReleaseNotes: (
+    slug: string,
+    release: string,
+    body: { locale: string; text: string | null; short?: string | null },
+  ) =>
+    call<Record<string, unknown>>(
+      `${p(slug)}/distribution/listing/release-notes/${enc(release)}`,
+      { method: "PUT", body: JSON.stringify(body ?? {}) },
+    ),
+
   // ── distribution: store connectors (P5-02 to P5-04) ─────────────────────────
   connectors: (slug: string) =>
     call<ConnectorsResponse>(`${p(slug)}/distribution/connectors`),
@@ -3905,6 +4435,62 @@ const rawApi = {
     call<{ ok: true; deviceId: string }>(
       `${p(slug)}/devices/${enc(deviceId)}/fingerprint/reset`,
       { method: "POST" },
+    ),
+
+  // ── users, product-wide (Core; I-12) ───────────────────────────────────────
+  productUsers: (slug: string, query: ProductUserQuery = {}) => {
+    const search = new URLSearchParams();
+    if (query.q) search.set("q", query.q);
+    if (query.limit) search.set("limit", String(query.limit));
+    if (query.cursor) search.set("cursor", query.cursor);
+    const qs = search.toString();
+    return call<ProductUsersPage>(`${p(slug)}/users${qs ? `?${qs}` : ""}`);
+  },
+  productUser: (slug: string, subject: string) =>
+    call<ProductUserResponse>(`${p(slug)}/users/${enc(subject)}`),
+  /** The subject's product data as one JSON document (audited server-side). */
+  productUserExport: (slug: string, subject: string) =>
+    call<Record<string, unknown>>(`${p(slug)}/users/${enc(subject)}/export`),
+  deleteProductUserData: (slug: string, subject: string) =>
+    call<{ ok: true; stores: string[] }>(
+      `${p(slug)}/users/${enc(subject)}/data/delete`,
+      { method: "POST" },
+    ),
+  detachProductUserLicense: (
+    slug: string,
+    subject: string,
+    licenseId: string,
+  ) =>
+    call<{ ok: true }>(
+      `${p(slug)}/users/${enc(subject)}/licenses/${enc(licenseId)}/detach`,
+      { method: "POST" },
+    ),
+  /** Needs a step-up (403 `step_up_required` otherwise). */
+  relinkProductUserLicense: (
+    slug: string,
+    subject: string,
+    licenseId: string,
+    body: { target: string; reason: string },
+  ) =>
+    call<RelinkResult>(
+      `${p(slug)}/users/${enc(subject)}/licenses/${enc(licenseId)}/relink`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  /** Needs a step-up, within 72 hours of the relink. */
+  undoRelink: (slug: string, relinkId: string, body: { reason: string }) =>
+    call<{ ok: true; licenseId: string; subject: string | null }>(
+      `${p(slug)}/users/relinks/${enc(relinkId)}/undo`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  signInSettings: (slug: string) =>
+    call<{ settings: SignInSettings }>(`${p(slug)}/identity/sign-in-settings`),
+  updateSignInSettings: (
+    slug: string,
+    patch: { claimByKey?: boolean; passthroughName?: string | null },
+  ) =>
+    call<{ ok: true; settings: SignInSettings }>(
+      `${p(slug)}/identity/sign-in-settings`,
+      { method: "PATCH", body: JSON.stringify(patch) },
     ),
 
   // ── offline bundles ─────────────────────────────────────────────────────────

@@ -15,7 +15,7 @@
  * Per-product resources are grouped by the SERVICE that owns them (plan §R1, spec §4.2). What is
  * left at the top level here is core/platform — the things a product has whether or not it runs
  * any service: `secrets/*`, `outlet-credentials/*`, `ci-publisher`, `ci-tokens/*`, `keys/rotate`,
- * `activity`, `refusals`, `services[/revert]`, `bundles`, `blob-gc[/bundles]`. Everything
+ * `activity`, `refusals`, `services[/revert]`, `bundles`, `blob-gc[/bundles]`, `devices/*`, `users/*`. Everything
  * else is dispatched into a `ServiceDescriptor.adminHandle` with the full remaining path:
  *
  *   license/{licenses…,tiers…,policy[/revert]}   config/{catalog,profiles…}
@@ -77,6 +77,7 @@ import {
 import { handleActivity } from "./handlers/activity.js";
 import { handleCiPublisher, handleCiTokens } from "./handlers/ciPublishing.js";
 import { handleProductDevices } from "./handlers/devices.js";
+import { handleProductUsers } from "./handlers/users.js";
 import { handleRefusals } from "./handlers/refusals.js";
 import { handleTrustPolicy } from "./handlers/trustPolicy.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
@@ -294,6 +295,12 @@ async function handleProductScoped(
       rest.slice(1),
       now,
     );
+  }
+
+  // The product's users, keyed by pairwise subject (I-12). CORE: the account is platform-level,
+  // so a product with Identity off still has users (its licence owners).
+  if (resource === "users") {
+    return handleProductUsers(req, env, db, session, slug, rest.slice(1), now);
   }
 
   return notFound();

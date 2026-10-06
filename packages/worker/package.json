@@ -9,6 +9,7 @@
     "assemble": "node scripts/assemble-assets.mjs",
     "feed:seq-ceiling": "node scripts/feed-seq-ceiling.mjs",
     "email:dns-check": "../../node_modules/.bin/tsx scripts/check-email-dns.ts",
+    "signin:seal": "../../node_modules/.bin/tsx scripts/seal-signin-secret.ts",
     "test": "vitest run",
     "test:workerd": "vitest run --config vitest.workers.config.ts && vitest run --config vitest.deltas.workers.config.ts",
     "typecheck:workerd": "tsc -p test-workerd && tsc -p test-workerd-deltas",

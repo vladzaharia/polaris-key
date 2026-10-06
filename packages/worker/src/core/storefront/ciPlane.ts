@@ -19,9 +19,10 @@
  *                                                                              UnlabelBinary, an argv
  *                                                                              client secret
  *
- * `itch` and `snap` are storefront adapters (`stores/itch.ts`, `stores/snap.ts`) whose `ci` is the
- * list here. Steam's and Microsoft's adapters (A-18g, A-18f) attach theirs when they land; until
- * then their lists are reachable through `pkey storefront exec` and the report-back. Epic is not an
+ * `itch`, `snap` and `steam` are storefront adapters (`stores/itch.ts`, `stores/snap.ts`,
+ * `stores/steam.ts`) whose `ci` is the list here. Microsoft's adapter (A-18f) is registered as
+ * `microsoft-store`, so its list (`msstore`) is reachable through `pkey storefront exec` and the
+ * report-back rather than as the adapter's `ci`. Epic is not an
  * outlet kind (owner decision 8): its list exists so a BuildPatchTool step is constrained, and no
  * Epic adapter ships.
  *

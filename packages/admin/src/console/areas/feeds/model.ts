@@ -26,6 +26,7 @@ import {
   type FeedSetupCredential,
   type FeedSnippet,
 } from "@polaris-key/manifest";
+import type { CapabilityItem } from "../../../ui/CapabilityBadge.js";
 import type {
   FeedEcosystem,
   FeedOffReason,
@@ -330,3 +331,22 @@ export const FEED_PANEL_TITLES: Record<FeedEcosystem, string> = {
   cargo: "Sparse index",
   go: "Module proxy",
 };
+
+/**
+ * A feed's version-state operations as capability items (A-18j: the same badge the storefront
+ * tiles use), from the adapter's declared `ops` when the server sends them, else from its booleans.
+ */
+export function feedVersionCapabilities(caps: {
+  yank: boolean;
+  deprecate: boolean;
+  ops?: Record<string, { mode: string; reason?: string }>;
+}): CapabilityItem[] {
+  const op = (id: "yank" | "deprecate", label: string): CapabilityItem => ({
+    op: id,
+    label,
+    support: caps.ops?.[id] ?? {
+      mode: caps[id] ? "api" : "unsupported",
+    },
+  });
+  return [op("yank", "Yank"), op("deprecate", "Deprecate")];
+}

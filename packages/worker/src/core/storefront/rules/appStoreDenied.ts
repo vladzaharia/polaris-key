@@ -28,7 +28,7 @@ export const ASC_DENY_REASONS = {
   tooling:
     "Xcode Cloud, analytics report requests and sandbox testers: outside the approved surface.",
   uploads:
-    "Uploads (builds, assets, screenshots, previews, images, documents): Polaris Key never uploads to App Store Connect (P5-02 README decision 7).",
+    "Uploads other than the listing's screenshots (builds, background assets, previews, App Clip, event and IAP images, documents), and replacing a screenshot set's membership, which drops screenshots: binaries reach App Store Connect from CI only, and of listing assets only screenshots are pushed from the Worker (README decision 7 as amended by S-15 decisions 1 and 2; A-18m).",
   inAppPurchasesOutsideSurface:
     "IAP operations beyond creating a non-consumable with its version, v2 localizations, price schedule and availability: offer codes, the v1 localization API, the portal-only first submission, changes to an existing IAP.",
   testFlightOutsideSurface:
@@ -36,9 +36,9 @@ export const ASC_DENY_REASONS = {
   webhooksOutsideSurface:
     "Webhook changes beyond P5-02's create and ping (redelivery, editing an existing webhook's URL or secret).",
   versionsOutsideSurface:
-    "Version operations beyond create, settings, build, release notes, phased release, submission and release: experiments, keywords, promotions, App Clip experiences, resolving submission items.",
+    "Version operations beyond create, settings, build, listing text, release notes, phased release, submission and release: experiments, search keyword relationships, promotions, App Clip experiences, resolving submission items.",
   listingOutsideSurface:
-    "Store listing and app metadata (app info, age rating, custom product pages, events, App Clips, EULA, routing coverage, encryption declarations, pre-orders, territory changes, review responses, nominations): outside the approved surface.",
+    "App metadata beyond the listing text A-18m pushes (app info categories, age rating, accessibility, custom product pages, events, App Clips, EULA, routing coverage, encryption declarations, pre-orders, territory changes, review responses, nominations): outside the approved surface.",
 } as const;
 
 export type AscDenyGroup = keyof typeof ASC_DENY_REASONS;
@@ -403,9 +403,6 @@ export const ASC_WRITE_DENIED: Readonly<
     "PATCH /v1/appPreviews/{id}",
     "POST /v1/appPreviewSets",
     "PATCH /v1/appPreviewSets/{id}/relationships/appPreviews",
-    "POST /v1/appScreenshots",
-    "PATCH /v1/appScreenshots/{id}",
-    "POST /v1/appScreenshotSets",
     "PATCH /v1/appScreenshotSets/{id}/relationships/appScreenshots",
     "POST /v1/backgroundAssets",
     "PATCH /v1/backgroundAssets/{id}",
@@ -496,8 +493,6 @@ export const ASC_WRITE_DENIED: Readonly<
     "PATCH /v1/appEventLocalizations/{id}",
     "POST /v1/appEvents",
     "PATCH /v1/appEvents/{id}",
-    "POST /v1/appInfoLocalizations",
-    "PATCH /v1/appInfoLocalizations/{id}",
     "PATCH /v1/appInfos/{id}",
     "PATCH /v1/appTags/{id}",
     "POST /v1/customerReviewResponses",

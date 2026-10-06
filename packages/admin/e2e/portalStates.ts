@@ -220,10 +220,13 @@ export const SHIPPED: ShippedState[] = [
   {
     section: "4.12",
     id: "library-empty",
-    title: "Library, empty",
+    title: "Library, empty, with the Discover teaser",
     scenario: "empty",
     path: "/",
-    ready: (p) => h1(p, "Your library"),
+    ready: async (p) => {
+      await h1(p, "Your library");
+      await p.getByRole("region", { name: /Ready to add/ }).waitFor();
+    },
   },
   {
     section: "4.13",
@@ -276,14 +279,44 @@ export const SHIPPED: ShippedState[] = [
     path: "/#/?view=list",
     ready: (p) => h1(p, "Your library"),
   },
-  // §4.16 Discover (PX-02's empty state until PX-16).
+  // §4.16 Discover (PX-16).
+  {
+    section: "4.16",
+    id: "discover",
+    title: "Discover, offers",
+    scenario: "three",
+    path: "/#/discover",
+    ready: async (p) => {
+      await h1(p, "Discover");
+      await p.getByRole("article", { name: "Pixel Forge SDK" }).waitFor();
+    },
+  },
+  {
+    section: "4.16",
+    id: "discover-added",
+    title: "Discover, just added",
+    scenario: "three",
+    path: "/#/discover",
+    ready: async (p) => {
+      await h1(p, "Discover");
+      await p
+        .getByRole("button", { name: "Add to library: Mossgarden" })
+        .click();
+      await p.getByRole("link", { name: "Open Mossgarden" }).waitFor();
+    },
+  },
   {
     section: "4.16",
     id: "discover-empty",
     title: "Discover, nothing to add",
-    scenario: "three",
+    scenario: "twelve",
     path: "/#/discover",
-    ready: (p) => h1(p, "Nothing to add right now"),
+    ready: async (p) => {
+      await h1(p, "Discover");
+      await p
+        .getByRole("heading", { level: 2, name: "Nothing to add right now" })
+        .waitFor();
+    },
   },
   // §4.17–4.19 Activate license (PX-06, PX-W5's preview).
   {
@@ -678,13 +711,6 @@ export const PENDING: PendingState[] = [
     wp: ["PX-15"],
   },
   { section: "4.11", title: "Link an existing account: join", wp: ["PX-15"] },
-  {
-    section: "4.12",
-    title: "Library, empty, with the Discover teaser",
-    wp: ["PX-16"],
-  },
-  { section: "4.16", title: "Discover, offers", wp: ["PX-16"] },
-  { section: "4.16", title: "Discover, just added", wp: ["PX-16"] },
   {
     section: "4.18",
     title: "Activate license: deep link from an app (product= notice)",

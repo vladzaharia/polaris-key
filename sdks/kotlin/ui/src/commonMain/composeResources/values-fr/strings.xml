@@ -1256,9 +1256,29 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">That sign-in method is turned off. Choose another one.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_not_configured_title">Email sign-in unavailable</string>
+    <string name="core_codes_email_unavailable_title">Email sign-in unavailable</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_not_configured_message">Email sign-in isn't available right now. Choose another sign-in method.</string>
+    <string name="core_codes_email_unavailable_message">Email sign-in isn't available right now. Choose another sign-in method.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_turnstile_failed_title">Check didn't pass</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_turnstile_failed_message">The security check didn't pass. Reload the page and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signin_expired_title">Sign-in expired</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signin_expired_message">This sign-in has expired. Start again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_code_title">Wrong code</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_code_message">That code didn't work. Check the email and type it again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_in_use_title">Email already in use</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_in_use_message">Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_terms_required_title">Terms not accepted</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_terms_required_message">Agree to the terms to continue.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">License in another account</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
