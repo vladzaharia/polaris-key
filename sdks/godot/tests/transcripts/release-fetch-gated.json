@@ -144,7 +144,8 @@
           "release": true,
           "distribution": true,
           "update": false,
-          "identity": false
+          "identity": false,
+          "sync": false
         }
       }
     },
