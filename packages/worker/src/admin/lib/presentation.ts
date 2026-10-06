@@ -8,10 +8,13 @@
  * variants (HA-03) for a `srcset`. The accent waits for HA-12, which stores `presentation_json`;
  * nothing here reads it until then.
  *
- * A copy counts when the image host serves it: a stored `sha256` of an image type the host
- * serves (`IMG_HOST_TYPES`). A first pull still in flight (`pending`) has none. A `failed` or
- * `stale` re-pull keeps the last good copy (`ingest` never drops it, `core/hostedAssets.ts`), and
- * the host keeps serving it, so the console keeps showing it rather than blanking the logo.
+ * The slot is chosen exactly as the image host's `/<p>/icon` alias chooses it (`core/imgHost.ts`
+ * `alias`): a slot's copy counts only when the image host would serve it, so a `presentation.icon`
+ * row without one falls through to `listing.icon`. Served means: a stored `sha256` that the
+ * product holds a `hosted-asset` blob ref to under that slot, of an image type the host serves
+ * (`IMG_HOST_TYPES`). A first pull still in flight has no copy. A `failed` or `stale` re-pull keeps
+ * the last good copy and its ref (`ingest` never drops it, `core/hostedAssets.ts`), and the host
+ * keeps serving it, so the console keeps showing it rather than blanking the logo.
  *
  * The list reads every product's icon in ONE query (`productIcons(env, db)`), so `GET
  * /products` costs one statement more however many products there are.
@@ -19,7 +22,8 @@
 
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
-import { parseVariants } from "../../core/hostedAssets.js";
+import { blobKey } from "../../core/blobs.js";
+import { HOSTED_ASSET_REF, parseVariants } from "../../core/hostedAssets.js";
 import { IMG_ALIASES, IMG_HOST_TYPES } from "../../core/imgHost.js";
 import { imgOrigin, imgUrl } from "../../core/imgHostname.js";
 
@@ -52,8 +56,11 @@ interface IconRow {
 
 const ICON_SLOTS: readonly string[] = IMG_ALIASES.icon;
 
+/** `blobs/sha256/`: the ungated blob key prefix the image host reads (`blobKey`). */
+const BLOB_PREFIX = blobKey("0".repeat(64)).slice(0, -64);
+
 function iconView(env: Env, row: IconRow): ProductIconView | null {
-  if (!row.sha256 || row.status === "pending") return null;
+  if (!row.sha256) return null;
   if (row.content_type === null || !IMG_HOST_TYPES.has(row.content_type))
     return null;
   const url = imgUrl(env, row.product, row.sha256);
@@ -75,12 +82,20 @@ export async function productIcons(
 ): Promise<Map<string, ProductIconView>> {
   const out = new Map<string, ProductIconView>();
   if (imgOrigin(env) === null) return out;
+  // The alias's tenancy check, for every product at once: the copy's hosted-asset ref must exist.
   const rows = await db.all<IconRow>(
-    `SELECT product, slot, sha256, content_type, variants_json, status
-       FROM hosted_assets
-      WHERE locale = '' AND slot IN (${ICON_SLOTS.map(() => "?").join(", ")})
-        AND sha256 IS NOT NULL${product === undefined ? "" : " AND product = ?"}`,
+    `SELECT h.product AS product, h.slot AS slot, h.sha256 AS sha256,
+            h.content_type AS content_type, h.variants_json AS variants_json, h.status AS status
+       FROM hosted_assets h
+      WHERE h.locale = '' AND h.slot IN (${ICON_SLOTS.map(() => "?").join(", ")})
+        AND h.sha256 IS NOT NULL
+        AND EXISTS (SELECT 1 FROM blob_refs r
+                     WHERE r.product = h.product AND r.ref_kind = ?
+                       AND r.ref_id = h.slot || '@' || h.locale
+                       AND r.storage_key = ? || h.sha256)${product === undefined ? "" : "\n        AND h.product = ?"}`,
     ...ICON_SLOTS,
+    HOSTED_ASSET_REF,
+    BLOB_PREFIX,
     ...(product === undefined ? [] : [product]),
   );
   // First slot wins: `presentation.icon`, then `listing.icon`.

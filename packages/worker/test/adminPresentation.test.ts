@@ -78,6 +78,8 @@ async function hosted(
     status: string;
     contentType?: string | null;
     variants?: { w: number; sha256: string }[];
+    /** The product's hosted-asset ref to the copy (what the image host's tenancy needs). */
+    ref?: boolean;
   },
 ): Promise<void> {
   await db.run(
@@ -97,6 +99,24 @@ async function hosted(
       })),
     ),
     row.status,
+    NOW,
+  );
+  if (!row.sha256 || row.ref === false) return;
+  const key = `blobs/sha256/${row.sha256}`;
+  await db.run(
+    `INSERT OR IGNORE INTO blob_objects (storage_key, sha256, size, kind, gated, verified_at, created_at)
+          VALUES (?, ?, 10, 'blob', 0, ?, ?)`,
+    key,
+    row.sha256,
+    NOW,
+    NOW,
+  );
+  await db.run(
+    `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+          VALUES (?, ?, 'hosted-asset', ?, ?)`,
+    product,
+    key,
+    `${slot}@`,
     NOW,
   );
 }
@@ -159,9 +179,45 @@ describe("presentation.icon on the registry", () => {
       status: "ready",
       contentType: "image/svg+xml",
     });
-    // A pending row that somehow kept a hash is still not served as an icon.
-    await hosted("acme", "presentation.icon", { sha256: B, status: "pending" });
+    // A hash with no ref is not something the host serves.
+    await hosted("acme", "presentation.icon", {
+      sha256: B,
+      status: "ready",
+      ref: false,
+    });
     expect(await icons()).toEqual({ djdl: null, acme: null });
+  });
+
+  it("falls back to listing.icon when the presentation.icon copy has no ref, as the /icon alias does", async () => {
+    await hosted("djdl", "presentation.icon", {
+      sha256: A,
+      status: "ready",
+      ref: false,
+    });
+    await hosted("djdl", "listing.icon", { sha256: B, status: "ready" });
+    // Another product's ref to the same bytes is never enough.
+    await hosted("acme", "presentation.icon", {
+      sha256: C,
+      status: "ready",
+      ref: false,
+    });
+    await db.run(
+      `INSERT INTO blob_objects (storage_key, sha256, size, kind, gated, verified_at, created_at)
+            VALUES (?, ?, 10, 'blob', 0, ?, ?)`,
+      `blobs/sha256/${C}`,
+      C,
+      NOW,
+      NOW,
+    );
+    await db.run(
+      `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+            VALUES ('djdl', ?, 'hosted-asset', 'presentation.icon@', ?)`,
+      `blobs/sha256/${C}`,
+      NOW,
+    );
+    const all = await icons();
+    expect((all.djdl as { url: string }).url).toBe(`${IMG}/djdl/a/${B}`);
+    expect(all.acme).toBeNull();
   });
 
   it("is null in an environment with no image host", async () => {

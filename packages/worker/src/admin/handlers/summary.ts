@@ -26,7 +26,8 @@ export async function handleSummary(
   now: number,
 ): Promise<Response> {
   if (rest.length > 0) return notFound();
-  if (req.method !== "GET" && req.method !== "HEAD")
+  // GET only, as the spec documents it and as the registry list answers (HEAD included).
+  if (req.method !== "GET")
     return err(405, "method_not_allowed", "the summary is read-only");
   if (!isPlatformAdmin(env, session))
     return forbidden("platform admin required");

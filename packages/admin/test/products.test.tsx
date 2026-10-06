@@ -95,6 +95,46 @@ describe("Products", () => {
     );
   });
 
+  it("shows each product's 24 px logo beside its name, or the monogram when it has none", async () => {
+    const url = "https://img.test/acme/a/" + "b".repeat(64);
+    boot("#/products", {
+      extra: {
+        "/manage/api/products": {
+          products: [
+            {
+              ...productRow("djdl", "DJDL", ALL_ON),
+              presentation: { icon: null },
+            },
+            {
+              ...productRow("acme", "Acme", ALL_ON),
+              presentation: {
+                icon: { url, w64: `${url}/64.webp`, w128: `${url}/128.webp` },
+              },
+            },
+          ],
+        },
+      },
+    });
+    await page();
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    const acme = rows().find((r) => r.textContent?.includes("acme"))!;
+    const link = within(acme).getByRole("link", { name: "Acme" });
+    const img = link.querySelector<HTMLImageElement>("img[data-logo=image]")!;
+    expect(img.getAttribute("sizes")).toBe("24px");
+    expect(img.getAttribute("srcset")).toBe(
+      `${url}/64.webp 64w, ${url}/128.webp 128w`,
+    );
+    // Decorative: the link's name is the product's name alone.
+    expect(img.getAttribute("alt")).toBe("");
+    const djdl = rows().find((r) => r.textContent?.includes("djdl"))!;
+    const mono = within(djdl)
+      .getByRole("link", { name: "DJDL" })
+      .querySelector("[data-logo=monogram]")!;
+    expect(mono.textContent).toBe("D");
+    expect(mono.getAttribute("aria-hidden")).toBe("true");
+    expect(mono.className).toContain("size-6");
+  });
+
   it("the product name links to its Overview, never a service page (PRD-1)", async () => {
     boot("#/products", { extra: registry() });
     await page();

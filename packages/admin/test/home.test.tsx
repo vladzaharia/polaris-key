@@ -2,10 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   cleanup,
   fireEvent,
+  render,
   screen,
   waitFor,
   within,
 } from "@testing-library/react";
+import { ProductCard } from "../src/console/pages/global/Home.js";
+import type { ProductAttention } from "../src/console/pages/global/attention.js";
+import type { ProductDetail } from "../src/api.js";
 import { configureAxe } from "vitest-axe";
 import {
   ALL_ON,
@@ -277,6 +281,42 @@ describe("Home", () => {
     expect(
       djdl.querySelector("[data-card-header] [data-status=pill]"),
     ).toBeNull();
+  });
+
+  it("never hides an issue: one on a service collapsed into the glyph links moves to the header pill", () => {
+    const issue = (
+      service: ProductAttention["service"],
+      short: string,
+    ): ProductAttention => ({
+      id: `djdl:${service}`,
+      product: { slug: "djdl", name: "DJDL" },
+      kind: "secret.missing",
+      tone: "warning",
+      reason: short,
+      service,
+      short,
+      action: { label: "Fix", href: "#/p/djdl/keys" },
+    });
+    // Four services need something; three take the rows, and Identity collapses.
+    const { container } = render(
+      <ProductCard
+        product={productRow("djdl", "DJDL", ALL_ON) as unknown as ProductDetail}
+        attention={[
+          issue("license", "Licence issue"),
+          issue("config", "Needs approval"),
+          issue("release", "Needs setup"),
+          issue("identity", "Secret missing"),
+        ]}
+      />,
+    );
+    const article = container.querySelector("article")!;
+    expect(
+      rows(article).map((r) => r.getAttribute("data-service-row")),
+    ).toEqual(["license", "config", "release"]);
+    expect(within(article).getByText("4 more")).toBeTruthy();
+    const header = article.querySelector("[data-card-header]")!;
+    expect(header.lastElementChild!.getAttribute("data-status")).toBe("pill");
+    expect(header.lastElementChild!.textContent).toBe("Secret missing");
   });
 
   it("an issue that belongs to the product is one pill, at the end of the card header", async () => {

@@ -401,8 +401,8 @@ function IssuePill({
  * the right edge or, when it needs something, a pill naming the problem. A row is a link (to the
  * fix when it carries a pill, to the service's page otherwise) that sits above the stretched name
  * link as a sibling, never nested in it. Past four services, three rows and the rest as glyph
- * links. Only an issue that belongs to the product itself (a signing key, its setup) is a pill in
- * the header. Healthy draws nothing (ADMIN.md §5.11).
+ * links. An issue that belongs to the product itself (a signing key, its setup), or to a service
+ * collapsed into the glyph links, is a pill in the header. Healthy draws nothing (ADMIN.md §5.11).
  *
  * Focus on the name rings the whole card; focus on a service rings only that link.
  */
@@ -431,6 +431,9 @@ export function ProductCard({
     else productIssues.push(a);
   }
   const { rows, more } = ledgerRows(services, new Set(issuesOf.keys()));
+  // Services with issues take the rows first, but past three of them the rest collapse into the
+  // glyph links: their issues move to the header pill, so no issue is ever hidden.
+  for (const s of more) productIssues.push(...(issuesOf.get(s) ?? []));
   const syncedAt = p.setup?.sync?.lastSyncedAt;
   const synced =
     releaseSourceOf(p) === "github" && typeof syncedAt === "number";

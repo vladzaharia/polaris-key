@@ -234,10 +234,13 @@ describe("GET /manage/api/summary", () => {
     expect(Object.keys(res.json.products as object)).toEqual(["acme"]);
   });
 
-  it("is read-only", async () => {
-    // A write without the CSRF header is refused before routing; with no session it is a 401.
+  it("answers GET only, as documented", async () => {
+    // A write without the CSRF header is refused before routing.
     const res = await summary([PLATFORM_GROUP], db, "POST");
     expect([403, 405]).toContain(res.status);
+    // HEAD is not documented, so it is refused like the registry list refuses it.
+    const head = await summary([PLATFORM_GROUP], db, "HEAD");
+    expect(head.status).toBe(405);
   });
 
   it("costs four grouped queries however many products there are", async () => {
