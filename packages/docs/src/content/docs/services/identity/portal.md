@@ -92,13 +92,16 @@ identities and the passthrough) hands its verified identity and the profile the 
 `beginProviderSignIn`. On an identity's first sign-in, while its account has no confirmed email,
 or when a product's terms version is not yet accepted, that opens the gate (a 15-minute
 `__Host-pkey_gate` cookie) and redirects to the card's step. No account row and no session exist
-until it passes. The email is prefilled from the provider (an Apple private-relay address
+until it passes, and an app's sign-in request is handed back only with the pass, so no app token
+can be issued before it. The email is prefilled from the provider (an Apple private-relay address
 included) and can be switched to a typed one. An address the provider asserts as verified
 (Google `email_verified: true`, Apple) passes without a code; a typed address, or a provider
 address that is not verified, gets a 6-digit code under the same limits. Steam and other
 providers with no email start with an empty field. The confirmed address becomes the account's
 primary email and an email sign-in method. When a product requires terms, the gate does not pass
-until that version is ticked; acceptances are kept per account, product and version.
+until that version is ticked; acceptances are kept per account, product and version. A new
+version asks again and is recorded beside the earlier ones, which are never overwritten; a merge
+carries them to the surviving account, and deleting the account or the product erases them.
 
 If the confirmed address belongs to another account, the gate answers `409 email_in_use` and
 offers "Join with your existing Polaris Key account". It never joins silently and never by email

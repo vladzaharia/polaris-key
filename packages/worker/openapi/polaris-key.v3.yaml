@@ -11777,9 +11777,12 @@ paths:
         `email_verified: true`, Apple) passes without a code (owner decision, 2026-10-04); a
         typed address, or a provider address that is not verified, gets a 6-digit code
         (`code_sent`, the same limits as the email start, enumeration-safe). `termsVersion` must
-        name the product's current version when it requires terms. `name` is an explicit choice
-        that later sign-ins never overwrite. A proven address that another account uses answers
-        `409 email_in_use` with the join offer; nothing is created or joined.
+        name the product's current version when it requires terms (`400 terms_required`
+        otherwise, an earlier version included); the acceptance is recorded when the gate passes,
+        one record per account, product and version, and a new version asks again. `name` is an
+        explicit choice that later sign-ins never overwrite. A proven address that another account
+        uses answers `409 email_in_use` with the join offer; nothing is created or joined. No
+        session cookie is set and no app sign-in request is handed back before the gate passes.
       requestBody:
         required: true
         content:
