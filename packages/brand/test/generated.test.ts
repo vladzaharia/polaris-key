@@ -10,6 +10,8 @@ import { describe, expect, it } from "vitest";
 
 import { run, svgTree } from "../scripts/gen.js";
 import { SERVICE_ACCENTS, THEME_TOKENS } from "../src/generated/tokens.js";
+import { KIT_MOTION, KIT_MOTION_MEASURES } from "../src/tokens/kit.js";
+import { MOTION } from "../src/tokens/scales.js";
 import { SERVICE_IDS, STATUS_IDS } from "../src/tokens/source.js";
 
 const PKG = join(import.meta.dirname, "..");
@@ -273,7 +275,7 @@ describe("tokens.css", () => {
 
   it("collapses motion under prefers-reduced-motion and never animates more than the bit", () => {
     expect(css).toMatch(
-      /@media \(prefers-reduced-motion: reduce\) \{\s*:root \{\s*--pk-duration-instant: 0ms;\s*--pk-duration-fast: 0ms;\s*--pk-duration-base: 0ms;\s*--pk-duration-slow: 0ms;/,
+      /@media \(prefers-reduced-motion: reduce\) \{\s*:root \{\s*--pk-duration-instant: 0ms;\s*--pk-duration-micro: 0ms;\s*--pk-duration-fast: 0ms;\s*--pk-duration-base: 0ms;\s*--pk-duration-moderate: 0ms;\s*--pk-duration-slow: 0ms;/,
     );
     expect(css).toMatch(/\.polaris-section-bit \{\s*transition: fill/);
     expect(css).not.toMatch(/animation|@keyframes|rotate/);
@@ -281,6 +283,149 @@ describe("tokens.css", () => {
 
   it("forbids synthetic weights", () => {
     expect(css).toContain("font-synthesis: none;");
+  });
+});
+
+describe("motion tokens (notes/S-23 §5)", () => {
+  /** The declarations of the first rule whose selector line matches, as a name → value map. */
+  function decls(selector: RegExp): Map<string, string> {
+    const m = selector.exec(css);
+    expect(m, String(selector)).not.toBeNull();
+    let depth = 0;
+    let i = css.indexOf("{", m!.index);
+    const start = i;
+    for (; i < css.length; i++) {
+      if (css[i] === "{") depth++;
+      else if (css[i] === "}" && --depth === 0) break;
+    }
+    const body = css.slice(start + 1, i).replace(/\/\*[\s\S]*?\*\//g, "");
+    const out = new Map<string, string>();
+    for (const d of body.matchAll(/(--pk-[\w-]+):\s*([^;]+);/g))
+      out.set(
+        d[1]!,
+        d[2]!.replace(/\s+/g, " ").replace(/\( /g, "(").replace(/ \)/g, ")"),
+      );
+    return out;
+  }
+
+  const expected: Record<string, string> = {
+    "--pk-duration-instant": "0ms",
+    "--pk-duration-micro": "80ms",
+    "--pk-duration-fast": "120ms",
+    "--pk-duration-base": "200ms",
+    "--pk-duration-moderate": "260ms",
+    "--pk-duration-slow": "320ms",
+    "--pk-duration-deliberate": "480ms",
+    "--pk-duration-shimmer": "1600ms",
+    "--pk-ease-standard": "cubic-bezier(0.2, 0, 0, 1)",
+    "--pk-ease-enter": "cubic-bezier(0, 0, 0, 1)",
+    "--pk-ease-exit": "cubic-bezier(0.3, 0, 1, 1)",
+    "--pk-ease-emphasized": "cubic-bezier(0.05, 0.7, 0.1, 1)",
+    "--pk-motion-distance-xs": "2px",
+    "--pk-motion-distance-sm": "4px",
+    "--pk-motion-distance-md": "8px",
+    "--pk-motion-distance-lg": "12px",
+    "--pk-motion-distance-xl": "24px",
+    "--pk-motion-scale-press": "0.98",
+    "--pk-motion-scale-enter": "0.98",
+    "--pk-motion-scale-pop": "0.9",
+    "--pk-stagger-step": "30ms",
+    "--pk-stagger-max": "6",
+    "--pk-delay-skeleton": "150ms",
+    "--pk-delay-highlight": "1600ms",
+  };
+  const root = decls(/^:root \{$/m);
+
+  it("carries every token with the listed value, and no quick step", () => {
+    for (const [name, value] of Object.entries(expected))
+      expect(root.get(name), name).toBe(value);
+    expect(css).not.toContain("--pk-duration-quick");
+  });
+
+  it("spring is a linear() curve with a 4 % overshoot and falls back to standard", () => {
+    const spring = root.get("--pk-ease-spring")!;
+    expect(spring).toMatch(/^linear\(0, .*, 1\)$/);
+    const peak = Math.max(
+      ...spring
+        .slice("linear(".length, -1)
+        .split(",")
+        .map((stop) => parseFloat(stop)),
+    );
+    expect(peak).toBeCloseTo(1.043, 3);
+    expect(peak).toBeLessThanOrEqual(1.045);
+    const fallback = decls(
+      /^@supports not \(transition-timing-function: linear\(0, 1\)\) \{$/m,
+    );
+    expect(fallback.get("--pk-ease-spring")).toBe(
+      expected["--pk-ease-standard"],
+    );
+  });
+
+  for (const [label, selector] of [
+    [
+      "prefers-reduced-motion: reduce",
+      /^@media \(prefers-reduced-motion: reduce\) \{\s*:root \{$/m,
+    ],
+    [':root[data-motion="reduce"]', /^:root\[data-motion="reduce"\] \{$/m],
+  ] as const) {
+    it(`collapses every duration and the stagger step, not the delays, under ${label}`, () => {
+      const reduced = decls(selector);
+      const durations = [...root.keys()].filter((k) =>
+        k.startsWith("--pk-duration-"),
+      );
+      expect(durations).toHaveLength(8);
+      for (const k of [...durations, "--pk-stagger-step"])
+        expect(reduced.get(k), k).toBe("0ms");
+      for (const k of [...root.keys()].filter((k) =>
+        k.startsWith("--pk-delay-"),
+      ))
+        expect(reduced.has(k), k).toBe(false);
+      expect([...reduced.keys()].sort()).toEqual(
+        [...durations, "--pk-stagger-step"].sort(),
+      );
+    });
+  }
+
+  it("theme.css maps every easing, the new ones included", () => {
+    for (const k of ["standard", "enter", "exit", "emphasized", "spring"])
+      expect(themeCss).toContain(`--ease-${k}: var(--pk-ease-${k});`);
+  });
+
+  it("the kit measures stay on the distance scale, and the kits get the new durations", () => {
+    expect(`${KIT_MOTION_MEASURES.stepSlide}px`).toBe(MOTION.distance.md);
+    expect(`${KIT_MOTION_MEASURES.sheetRise}px`).toBe(MOTION.distance.xl);
+    expect(KIT_MOTION_MEASURES.pressScale).toBe(MOTION.scale.press);
+    expect(Object.keys(KIT_MOTION.web)).toEqual([
+      "enter",
+      "exit",
+      "morph",
+      "press",
+      "meter",
+      "skeleton",
+      "success",
+    ]);
+    const read = (rel: string) => readFileSync(join(PKG, "../..", rel), "utf8");
+    const swift = read(
+      "sdks/swift/Sources/PolarisKeyUI/KitTokens.generated.swift",
+    );
+    const kotlin = read(
+      "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/brand/PolarisKitTokens.generated.kt",
+    );
+    const gd = read(
+      "sdks/godot/addons/polaris_key/ui/theme/kit_tokens_generated.gd",
+    );
+    for (const [k, ms] of [
+      ["micro", 80],
+      ["moderate", 260],
+      ["deliberate", 480],
+    ] as const) {
+      expect(swift).toContain(`public static let ${k}: Double = ${ms / 1000}`);
+      expect(kotlin).toContain(`public const val ${k}: Int = ${ms}`);
+      expect(gd).toContain(`const DURATION_${k.toUpperCase()}_MS := ${ms}`);
+    }
+    expect(swift).toContain("public static let distanceXl: Double = 24");
+    expect(kotlin).toContain("public const val distanceXl: Float = 24.0f");
+    expect(gd).toContain("const MOTION_DISTANCE_XL := 24.0");
   });
 });
 
