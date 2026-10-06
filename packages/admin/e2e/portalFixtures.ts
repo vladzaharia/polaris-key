@@ -878,7 +878,7 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
     return {
       "/api/me": { status: 401, body: { error: "unauthorized" } },
       "/api/capabilities": { body: CAPS },
-      "POST /api/magic/start": { body: { ok: true } },
+      "POST /api/signin/email/start": { body: { ok: true } },
     };
   }
   let licenses = licensesFor(s);

@@ -76,18 +76,28 @@ interface FlowRecord {
   returnTo?: string;
 }
 
-/** A portal sign-in error page: the branded, script-free shell (`core/brandHtml.ts`). Every
- *  message is a hard-coded literal, escaped anyway. A retry is offered where one can help. */
-export function htmlError(status: number, message: string): Response {
-  const retry = status === 400 || status === 401 || status === 429;
+/**
+ * A sign-in error page: the branded, script-free shell (`core/brandHtml.ts`) with no surface
+ * label (SIGN-IN.md §3.13, D-32). `heading` is a hard-coded literal, escaped anyway; `body` is
+ * TRUSTED markup. **Sign in again** is offered where one can help (by default on a 400, 401 or
+ * 502).
+ */
+export function htmlError(
+  status: number,
+  heading: string,
+  opts: { body?: string; retry?: boolean } = {},
+): Response {
+  const retry =
+    opts.retry ?? (status === 400 || status === 401 || status === 502);
   return new Response(
     renderBrandPage({
-      title: "Sign-in",
-      surface: "account",
-      heading: message,
-      body: retry
-        ? `<p class="actions"><a class="button" href="${escapeHtml("/")}">Back to sign-in</a></p>`
-        : "",
+      title: "Sign in",
+      heading,
+      body:
+        (opts.body ?? "") +
+        (retry
+          ? `<p class="actions"><a class="button" href="${escapeHtml("/")}">Sign in again</a></p>` // signin.again
+          : ""),
     }),
     {
       status,
@@ -100,6 +110,42 @@ export function htmlError(status: number, message: string): Response {
     },
   );
 }
+
+/**
+ * The Worker sign-in pages of SIGN-IN.md §3.13, shared by the platform-OIDC and the provider
+ * sign-ins. No "OIDC" or "portal" in UI copy.
+ */
+export const signInPage = {
+  /** Too many attempts: no button, the wait is the advice. */
+  tooMany: (): Response =>
+    htmlError(429, "Too many sign-in attempts", {
+      body: "<p>Wait a minute, then try again.</p>",
+    }),
+  /** Sign-in is off (no product context on these routes): `signin.off.any`. */
+  off: (): Response =>
+    htmlError(404, "Sign-in is unavailable. Try again later.", {
+      retry: false,
+    }),
+  /** The provider round trip's state expired or is unknown (D-31: not called a link). */
+  tookTooLong: (): Response => htmlError(400, "This sign-in took too long"),
+  /** The provider failed or is unreachable. */
+  unavailable: (provider?: string): Response =>
+    htmlError(
+      502,
+      provider
+        ? `${provider} sign-in isn't working right now`
+        : "Sign-in isn't working right now",
+      { body: "<p>Try another way to sign in.</p>" },
+    ),
+  /** The identity could not be verified. */
+  unverified: (): Response =>
+    htmlError(401, "We couldn't confirm that sign-in"),
+  /** The account is disabled. */
+  accountDisabled: (): Response =>
+    htmlError(403, "This account can't sign in", {
+      body: "<p>Contact Polaris Key support.</p>",
+    }),
+};
 
 function authJson(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -235,13 +281,13 @@ export async function handlePortalLogin(
     { bucket: "portalLogin", id: clientIp(req), limit: 20, windowSec: 60 },
     Math.floor(Date.now() / 1000),
   );
-  if (!ok) return htmlError(429, "Too many sign-in attempts.");
+  if (!ok) return signInPage.tooMany();
   const caps = await portalAuthCapabilities(db);
   if (!caps.portalEnabled || !caps.oidcEnabled) {
-    return htmlError(404, "OIDC sign-in is disabled.");
+    return signInPage.off();
   }
   const cfg = platformOidcConfig(env);
-  if (!cfg) return htmlError(500, "Portal OIDC is not configured.");
+  if (!cfg) return signInPage.off();
 
   const url = new URL(req.url);
   const rawReturnTo = url.searchParams.get("return_to");
@@ -292,20 +338,20 @@ export async function handlePortalCallback(
   if (!code || !state) return htmlError(400, "Missing authorization code.");
   const caps = await portalAuthCapabilities(db);
   if (!caps.portalEnabled || !caps.oidcEnabled) {
-    return htmlError(404, "OIDC sign-in is disabled.");
+    return signInPage.off();
   }
   // Atomic and single-use: of two racing callbacks for one `state`, one gets the flow.
   const raw = await consumeArtefact(env, await portalFlowKey(env, state));
-  if (!raw) return htmlError(400, "This sign-in link has expired.");
+  if (!raw) return signInPage.tookTooLong();
   let flow: FlowRecord;
   try {
     flow = JSON.parse(raw) as FlowRecord;
   } catch {
-    return htmlError(400, "This sign-in link has expired.");
+    return signInPage.tookTooLong();
   }
 
   const cfg = platformOidcConfig(env);
-  if (!cfg) return htmlError(500, "Portal OIDC is not configured.");
+  if (!cfg) return signInPage.off();
   const tokenRes = await fetch(
     `${cfg.issuer.replace(/\/$/, "")}/api/oidc/token`,
     {
@@ -321,10 +367,9 @@ export async function handlePortalCallback(
       }),
     },
   );
-  if (!tokenRes.ok) return htmlError(502, "OIDC token exchange failed.");
+  if (!tokenRes.ok) return signInPage.unavailable();
   const tokens = (await tokenRes.json()) as { id_token?: string };
-  if (!tokens.id_token)
-    return htmlError(502, "OIDC token response was invalid.");
+  if (!tokens.id_token) return signInPage.unavailable();
 
   const jwks = createRemoteJWKSet(
     new URL(`${cfg.issuer.replace(/\/$/, "")}/.well-known/jwks.json`),
@@ -345,11 +390,11 @@ export async function handlePortalCallback(
       throw new Error("nonce mismatch");
     }
   } catch {
-    return htmlError(401, "Sign-in could not be verified.");
+    return signInPage.unverified();
   }
 
   const identity = mapClaims(claims);
-  if (!identity.sub) return htmlError(401, "Sign-in could not be verified.");
+  if (!identity.sub) return signInPage.unverified();
   // Keyed by issuer (S-16 G14). Re-key any pre-I-01 rows first, so the lookup finds them.
   const issuerKey = portalIdentityIssuerKey(cfg.issuer);
   await rekeyLegacyPortalIdentities(db, issuerKey);
@@ -402,7 +447,7 @@ export function signInRefusal(result: SignInResult): Response | null {
     case "signed_in":
       return result.account.status === "active"
         ? null
-        : htmlError(403, "Account disabled.");
+        : signInPage.accountDisabled();
     case "join_offer":
       return htmlError(
         409,
@@ -410,8 +455,8 @@ export function signInRefusal(result: SignInResult): Response | null {
       );
     case "refused":
       return result.reason === "account_disabled"
-        ? htmlError(403, "Account disabled.")
-        : htmlError(401, "Sign-in could not be verified.");
+        ? signInPage.accountDisabled()
+        : signInPage.unverified();
   }
 }
 

@@ -661,8 +661,6 @@
     <string name="signin_code_resendIn__macos">%1$s后可发送新验证码</string>
     <!-- Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address. Arguments: 1=email. -->
     <string name="signin_code_resent">我们已向%1$s发送新的验证码和链接。</string>
-    <!-- Email code step (SIGN-IN.md §3.4). -->
-    <string name="signin_code_wrong">验证码不正确。请检查邮件后重试。</string>
     <!-- Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number. Arguments: 1=n. -->
     <plurals name="signin_code_triesLeft">
         <item quantity="other">还可尝试%1$d次。</item>

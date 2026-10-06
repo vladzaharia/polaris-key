@@ -345,8 +345,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resend": "Send a new code",
     "signin.code.resendIn": "Send a new code in {time}",
     "signin.code.resent": "We sent a new code and link to {email}.",
-    "signin.code.wrong":
-      "That code isn't right. Check the email and try again.",
     "signin.code.triesLeft":
       "{n, plural, one {# try left.} other {# tries left.}}",
     "signin.code.tooMany": "Too many tries. Send a new code.",
@@ -690,7 +688,7 @@ export const KIT_COPY: Readonly<
       "This sign-in has expired. Start again.",
     "core.codes.invalid_code.title": "Wrong code",
     "core.codes.invalid_code.message":
-      "That code didn't work. Check the email and type it again.",
+      "That code isn't right. Check the email and try again.",
     "core.codes.email_in_use.title": "Email already in use",
     "core.codes.email_in_use.message":
       "Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.",
@@ -1427,8 +1425,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resendIn": "Neuen Code senden in {time}",
     "signin.code.resent":
       "Wir haben einen neuen Code und Link an {email} gesendet.",
-    "signin.code.wrong":
-      "Dieser Code ist nicht korrekt. Prüfen Sie die E-Mail und versuchen Sie es erneut.",
     "signin.code.triesLeft":
       "{n, plural, one {Noch # Versuch.} other {Noch # Versuche.}}",
     "signin.code.tooMany":
@@ -2543,8 +2539,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resendIn": "Envoyer un nouveau code dans {time}",
     "signin.code.resent":
       "Nous avons envoyé un nouveau code et un nouveau lien à {email}.",
-    "signin.code.wrong":
-      "Ce code est incorrect. Vérifiez l’e-mail et réessayez.",
     "signin.code.triesLeft":
       "{n, plural, one {# essai restant.} many {# d’essais restants.} other {# essais restants.}}",
     "signin.code.tooMany": "Trop d’essais. Envoyez un nouveau code.",
@@ -2907,7 +2901,7 @@ export const KIT_COPY: Readonly<
       "This sign-in has expired. Start again.",
     "core.codes.invalid_code.title": "Wrong code",
     "core.codes.invalid_code.message":
-      "That code didn't work. Check the email and type it again.",
+      "That code isn't right. Check the email and try again.",
     "core.codes.email_in_use.title": "Email already in use",
     "core.codes.email_in_use.message":
       "Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.",
@@ -3631,8 +3625,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resend": "Enviar un código nuevo",
     "signin.code.resendIn": "Enviar un código nuevo en {time}",
     "signin.code.resent": "Enviamos un código y un enlace nuevos a {email}.",
-    "signin.code.wrong":
-      "Ese código no es correcto. Revisa el correo y vuelve a intentarlo.",
     "signin.code.triesLeft":
       "{n, plural, one {Queda # intento.} many {Quedan # de intentos.} other {Quedan # intentos.}}",
     "signin.code.tooMany": "Demasiados intentos. Envía un código nuevo.",
@@ -4737,8 +4729,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resend": "Enviar novo código",
     "signin.code.resendIn": "Enviar novo código em {time}",
     "signin.code.resent": "Enviamos um novo código e link para {email}.",
-    "signin.code.wrong":
-      "Esse código não está correto. Verifique o e-mail e tente novamente.",
     "signin.code.triesLeft":
       "{n, plural, one {# tentativa restante.} many {# de tentativas restantes.} other {# tentativas restantes.}}",
     "signin.code.tooMany": "Tentativas demais. Envie um novo código.",
@@ -5823,8 +5813,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resendIn": "Invia un nuovo codice tra {time}",
     "signin.code.resent":
       "Abbiamo inviato un nuovo codice e un nuovo link a {email}.",
-    "signin.code.wrong":
-      "Il codice non è corretto. Controlla l'email e riprova.",
     "signin.code.triesLeft":
       "{n, plural, one {Ancora # tentativo.} many {Ancora # di tentativi.} other {Ancora # tentativi.}}",
     "signin.code.tooMany": "Troppi tentativi. Invia un nuovo codice.",
@@ -6928,8 +6916,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resend": "新しいコードを送信",
     "signin.code.resendIn": "{time}後に新しいコードを送信",
     "signin.code.resent": "{email}に新しいコードとリンクを送信しました。",
-    "signin.code.wrong":
-      "コードが正しくありません。メールを確認して、もう一度お試しください。",
     "signin.code.triesLeft": "{n, plural, other {残り#回です。}}",
     "signin.code.tooMany":
       "試行回数が多すぎます。新しいコードを送信してください。",
@@ -8029,8 +8015,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resend": "새 코드 보내기",
     "signin.code.resendIn": "{time} 후 새 코드 보내기",
     "signin.code.resent": "{email} 주소로 새 코드와 링크를 보냈어요.",
-    "signin.code.wrong":
-      "코드가 올바르지 않아요. 이메일을 확인하고 다시 시도하세요.",
     "signin.code.triesLeft": "{n, plural, other {#번 더 시도할 수 있어요.}}",
     "signin.code.tooMany": "시도 횟수가 너무 많아요. 새 코드를 요청하세요.",
     "signin.code.expired": "코드가 만료됐어요. 새 코드를 요청하세요.",
@@ -9069,7 +9053,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resend": "发送新验证码",
     "signin.code.resendIn": "{time}后可发送新验证码",
     "signin.code.resent": "我们已向{email}发送新的验证码和链接。",
-    "signin.code.wrong": "验证码不正确。请检查邮件后重试。",
     "signin.code.triesLeft": "{n, plural, other {还可尝试#次。}}",
     "signin.code.tooMany": "尝试次数过多。请发送新验证码。",
     "signin.code.expired": "验证码已过期。请发送新验证码。",

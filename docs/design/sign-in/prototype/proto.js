@@ -31,7 +31,7 @@
   const ease = (name, fallback) =>
     css.getPropertyValue(name).trim() || fallback;
   const T = {
-    quick: ms("--pk-duration-quick", 160),
+    fast: ms("--pk-duration-fast", 120),
     base: ms("--pk-duration-base", 200),
     moderate: ms("--pk-duration-moderate", 260),
     standard: ease("--pk-ease-standard", "cubic-bezier(0.2, 0, 0, 1)"),
@@ -198,10 +198,10 @@
       .animate(
         [
           { opacity: 1, transform: "none" },
-          { opacity: 0, transform: `translateX(${-8 * sign}px)` },
+          { opacity: 0, transform: `translateX(${-8 * sign}px)` }, // --pk-motion-distance-md
         ],
         {
-          duration: T.quick,
+          duration: T.fast,
           easing: T.exit,
         },
       )

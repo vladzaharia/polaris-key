@@ -360,9 +360,16 @@ describe("approving a new device", () => {
     ).toBe("Approved a sign-in on Chrome on macOS near Portugal");
     expect(sent).toHaveLength(1);
     expect(sent[0]!.to).toBe("ana@example.com");
-    expect(sent[0]!.subject).toBe("A new device signed in to Polaris Key");
-    expect(sent[0]!.text).toContain("Chrome on macOS");
-    expect(sent[0]!.text).toContain("near Portugal");
+    // SIGN-IN.md §3.15: signin.mail.newDevice.* and Open Polaris Key.
+    expect(sent[0]!.subject).toBe(
+      "A new device signed in to your Polaris Key account",
+    );
+    expect(sent[0]!.text).toContain("Chrome on macOS signed in on ");
+    expect(sent[0]!.text).toContain("from Portugal");
+    expect(sent[0]!.text).toContain(
+      "If this wasn't you, sign it out in Polaris Key under Where you're signed in.",
+    );
+    expect(sent[0]!.text).toContain("Open Polaris Key: ");
   });
 
   it("denies: the poll answers denied and nobody is signed in", async () => {

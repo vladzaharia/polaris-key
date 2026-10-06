@@ -110,6 +110,8 @@ import {
   originOf,
   parseEmail,
   readJsonObject,
+  signInAgainAction,
+  wrongCodeMessage,
 } from "./http.js";
 import { fetchProviderPicture } from "./avatars.js";
 import {
@@ -226,11 +228,25 @@ function gateExpired(): Response {
   );
 }
 
+/** A provider sign-in this card refuses (SIGN-IN.md §3.13): the heading, then **Sign in again**. */
 function refusedPage(status: number, heading: string): Response {
   return cardPage(status, {
-    title: "Sign-in",
+    title: "Sign in",
     heading,
-    body: `<p class="actions"><a class="button" href="/">Back to sign-in</a></p>`,
+    body: signInAgainAction(),
+  });
+}
+
+/** "We couldn't confirm that sign-in" (SIGN-IN.md §3.13, Not verified). */
+const unverifiedPage = (): Response =>
+  refusedPage(401, "We couldn't confirm that sign-in");
+
+/** "This account can't sign in" (SIGN-IN.md §3.13, Account disabled). */
+function accountDisabledPage(): Response {
+  return cardPage(403, {
+    title: "Sign in",
+    heading: "This account can't sign in",
+    body: "<p>Contact Polaris Key support.</p>",
   });
 }
 
@@ -301,11 +317,11 @@ export async function beginProviderSignIn(
 ): Promise<Response> {
   const id = normalizeIdentity(input.identity);
   if (!id || id.kind === "email") {
-    return refusedPage(401, "Sign-in could not be verified.");
+    return unverifiedPage();
   }
   const scopes = [...(input.product?.tenantScopes ?? [])];
   if (id.tenantScope !== "" && !scopes.includes(id.tenantScope)) {
-    return refusedPage(401, "Sign-in could not be verified.");
+    return unverifiedPage();
   }
   const product = input.product?.slug ?? null;
   const terms = input.product?.terms ?? null;
@@ -319,7 +335,7 @@ export async function beginProviderSignIn(
   if (link) {
     account = await resolveAccount(db, link.account_id, now);
     if (!account || account.status !== "active") {
-      return refusedPage(403, "This account can't sign in.");
+      return accountDisabledPage();
     }
     const emailConfirmed = account.primary_email_verified_at !== null;
     if (emailConfirmed && !needsTerms(account, product, terms)) {
@@ -327,7 +343,7 @@ export async function beginProviderSignIn(
         product: product ? { slug: product, tenantScopes: scopes } : undefined,
       });
       if (result.status !== "signed_in") {
-        return refusedPage(403, "This account can't sign in.");
+        return accountDisabledPage();
       }
       await importProfile(
         env,
@@ -637,7 +653,9 @@ async function gateVerify(
     return cardJson(
       {
         error: "invalid_code",
-        message: "That code didn't work.",
+        message: wrongCodeMessage(
+          Math.max(0, EMAIL_CODE_MAX_ATTEMPTS - attempts),
+        ),
         triesLeft: Math.max(0, EMAIL_CODE_MAX_ATTEMPTS - attempts),
       },
       400,
@@ -726,7 +744,7 @@ async function gatePass(
     const account = await getAccountRow(db, gate.accountId);
     const link = await findLink(db, key);
     if (!account || account.status !== "active" || !link) {
-      return gateRefused(403, "This account can't sign in.");
+      return gateRefused(403, ACCOUNT_DISABLED);
     }
     if (email) {
       const added = await addEmailMethod(db, account.id, email, now);
@@ -901,6 +919,10 @@ function emailTaken(): Response {
   );
 }
 
+/** The JSON refusal's message for a disabled account (SIGN-IN.md §3.13). */
+const ACCOUNT_DISABLED =
+  "This account can't sign in. Contact Polaris Key support.";
+
 function gateRefused(status: number, message: string): Response {
   return cardJson({ error: "forbidden", message }, status, [clearGate()]);
 }
@@ -941,7 +963,7 @@ async function completeGate(
     now,
   );
   const account = await getAccountRow(db, done.accountId);
-  if (!account) return gateRefused(403, "This account can't sign in.");
+  if (!account) return gateRefused(403, ACCOUNT_DISABLED);
   const finished = await finishSignIn(
     env,
     db,
@@ -1022,7 +1044,7 @@ async function gateJoin(
         ? cardJson({ error: "link_conflict" }, 409, [clearGate()])
         : linked.error === "step_up_required"
           ? cardJson({ error: "step_up_required" }, 403, [clearGate()])
-          : gateRefused(403, "This account can't sign in.");
+          : gateRefused(403, ACCOUNT_DISABLED);
     }
     return completeGate(
       req,
@@ -1060,7 +1082,7 @@ async function gateJoin(
     tenantScope: gate.identity.tenantScope,
     subject: gate.identity.subject,
   });
-  if (!link) return gateRefused(403, "This account can't sign in.");
+  if (!link) return gateRefused(403, ACCOUNT_DISABLED);
   return completeGate(
     req,
     env,

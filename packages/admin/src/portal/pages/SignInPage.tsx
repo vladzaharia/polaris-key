@@ -1,24 +1,44 @@
 import * as React from "react";
-import { ArrowRight, Mail, RefreshCw, ShieldCheck } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { ArrowRight, KeyRound, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { Input } from "../../ui/Input.js";
+import { cn } from "../../lib/cn.js";
 import { portalApi, PortalApiError, type PortalCapabilities } from "../api.js";
 import { CardHeader, LoginCard } from "../components/signin/LoginCard.js";
 import { ProviderRow } from "../components/signin/ProviderRow.js";
-import { useCapabilities } from "../data.js";
+import { KeyField } from "../components/KeyField.js";
+import { portalKeys, useCapabilities } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
-import { useDocumentTitle } from "../router.js";
+import { checkKey, formatVerdict, productLabel } from "../model/key.js";
+import { setParams, useDocumentTitle, useRoute } from "../router.js";
 import { useSessionRecheck } from "../session.js";
+import { returnUrl, stashCarriedKey } from "../carriedKey.js";
 
 /**
- * Sign in, on today's auth (PORTAL.md §4.1, PX-05): the login card with the email link as the
- * identifier-first step, the provider row (only when the Worker names providers, G11), and the
- * single sign-on button. The sent screen is honest: it says how long the link works, offers
- * Resend and Use a different email, and signs this tab in by itself (`useSessionRecheck`).
+ * Sign in (SIGN-IN.md §3.1–§3.4, §3.9; PORTAL.md §4.1): the login card's steps, replacing each
+ * other in place.
+ *
+ * - **MethodsStep**: "Sign in to Polaris Key" (no lede) or, with product context, "Sign in" and
+ *   "Use the email you bought <Product> with."; the email and **Continue**, "or", the logo-only
+ *   provider row (when the Worker names providers), single sign-on, and under a rule the quiet,
+ *   centred **Have a license key?** link.
+ * - **CodeStep**: I-07's email carries a 6-digit code and a sign-in link. One input drawn as six
+ *   cells, submitted on the sixth digit; the link still signs this tab in by itself
+ *   (`useSessionRecheck`).
+ * - **KeyStep** (the on-ramp): the key field; Continue keeps the key in `#/?activate=` and moves
+ *   on to sign-in, after which the Activate dialog opens with it filled in (the same round trip
+ *   as `/activate?key=…`).
+ *
+ * Copy is inlined with its `signin.*` key (§5.2) until UK-02a ships the catalog.
  */
-type Step = { kind: "methods" } | { kind: "sent"; email: string };
+type Step =
+  | { kind: "methods" }
+  | { kind: "code"; email: string }
+  | { kind: "key" };
 
 const RESEND_AFTER_S = 60;
+const CODE_LENGTH = 6;
 
 function productFromUrl(): string | null {
   const search = new URLSearchParams(window.location.search).get("product");
@@ -27,16 +47,37 @@ function productFromUrl(): string | null {
   return hashQuery ? new URLSearchParams(hashQuery).get("product") : null;
 }
 
+/** The return URL every sign-in sends: never the carried license key (carriedKey.ts). */
 function returnTo(): string {
-  return window.location.href;
+  return returnUrl();
+}
+
+/** The key the on-ramp (or an `/activate?key=…` link) is carrying through sign-in, if valid. */
+function useCarriedKey(): string | null {
+  const route = useRoute();
+  const key = "params" in route ? route.params.get("activate") : null;
+  return key && checkKey(key).kind === "valid" ? key : null;
 }
 
 export function SignInPage(): React.ReactElement {
   const [product] = React.useState(productFromUrl);
   const caps = useCapabilities(product);
   const [step, setStep] = React.useState<Step>({ kind: "methods" });
-  useSessionRecheck(step.kind === "sent");
-  useDocumentTitle(step.kind === "sent" ? "Check your email" : "Sign in");
+  const [direction, setDirection] = React.useState<"forward" | "back">(
+    "forward",
+  );
+  const go = (next: Step, dir: "forward" | "back" = "forward"): void => {
+    setDirection(dir);
+    setStep(next);
+  };
+  useSessionRecheck(step.kind === "code");
+  useDocumentTitle(
+    step.kind === "code"
+      ? "Check your email"
+      : step.kind === "key"
+        ? "Have a license key?"
+        : "Sign in",
+  );
 
   const ctx = caps.data?.product;
   const header = ctx ? (
@@ -48,32 +89,70 @@ export function SignInPage(): React.ReactElement {
     />
   ) : undefined;
 
+  const stepKey = caps.isPending
+    ? "loading"
+    : caps.error
+      ? "unreachable"
+      : step.kind;
+
   return (
-    <LoginCard header={header} stepKey={step.kind}>
+    <LoginCard header={header} stepKey={stepKey} direction={direction}>
       {caps.isPending ? (
-        <>
-          <h1 className="text-2xl font-bold text-fg-strong">
-            Sign in to Polaris Key
-          </h1>
-          <p aria-busy className="text-fg-muted">
-            Getting the ways you can sign in…
-          </p>
-        </>
+        <MethodsSkeleton />
       ) : caps.error ? (
         <Unreachable error={caps.error} onRetry={() => void caps.refetch()} />
-      ) : step.kind === "sent" ? (
-        <SentStep
+      ) : step.kind === "code" ? (
+        <CodeStep
           email={step.email}
-          onChangeEmail={() => setStep({ kind: "methods" })}
+          onChangeEmail={() => go({ kind: "methods" }, "back")}
+        />
+      ) : step.kind === "key" ? (
+        <KeyStep
+          onBack={() => go({ kind: "methods" }, "back")}
+          onContinue={(key) => {
+            setParams({ activate: key });
+            go({ kind: "methods" });
+          }}
         />
       ) : (
         <MethodsStep
           caps={caps.data}
-          withContext={Boolean(ctx)}
-          onSent={(email) => setStep({ kind: "sent", email })}
+          context={ctx ?? null}
+          onSent={(email) => go({ kind: "code", email })}
+          onKey={() => go({ kind: "key" })}
         />
       )}
     </LoginCard>
+  );
+}
+
+/** The card's loading state (§3.3): a skeleton at the final size, never a "Getting…" line. */
+function MethodsSkeleton(): React.ReactElement {
+  return (
+    <div aria-busy className="space-y-5" data-testid="signin-skeleton">
+      <span className="sr-only">Loading</span>
+      <div aria-hidden className="h-8 w-2/3 rounded-md bg-hover" />
+      <div aria-hidden className="space-y-1.5">
+        <div className="h-4 w-12 rounded bg-hover" />
+        <div className="h-12 rounded-md bg-hover" />
+      </div>
+      <div aria-hidden className="h-12 rounded-md bg-hover" />
+    </div>
+  );
+}
+
+function Title({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <h1
+      tabIndex={-1}
+      className="text-2xl font-bold text-fg-strong outline-none"
+    >
+      {children}
+    </h1>
   );
 }
 
@@ -87,12 +166,7 @@ function Unreachable({
   const copy = portalErrorCopy(error);
   return (
     <>
-      <h1
-        tabIndex={-1}
-        className="text-2xl font-bold text-fg-strong outline-none"
-      >
-        {copy.title}
-      </h1>
+      <Title>{copy.title}</Title>
       <p className="text-fg-muted">{copy.description}</p>
       <Button
         variant="outline"
@@ -105,34 +179,85 @@ function Unreachable({
   );
 }
 
-function magicErrorText(err: unknown): string {
+function startErrorText(err: unknown): string {
   if (err instanceof PortalApiError) {
+    // signin.rateLimited (the Worker's 429 carries no wait yet, so no {minutes})
     if (err.status === 429 || err.code === "rate_limited")
-      return "Too many sign-in emails. Try again in a few minutes.";
+      return "Too many codes. Try again in a few minutes.";
+    // signin.emailDown
     if (err.code === "email_unavailable" || err.code === "email_not_configured")
       return "We can't send email right now. Try another way to sign in.";
+    // signin.email.invalid
     if (err.status === 422)
       return "Enter a full email address, like name@example.com.";
+    // signin.off.any
     if (err.code === "auth_method_disabled")
-      return "Email sign-in is turned off.";
+      return "Sign-in is unavailable. Try again later.";
+    if (err.code === "turnstile_failed")
+      return "The security check did not pass. Try again.";
   }
   return portalErrorCopy(err).title + ". " + portalErrorCopy(err).description;
 }
 
+/**
+ * The quiet links under a rule (§3.3), centred and evenly spaced: 24 px from the rule to the text
+ * and 24 px from the text to the card's bottom edge. Each link is a 44 px target with its 20 px
+ * line centred in it (12 px either side), so the row adds 12 px of padding above it and pulls the
+ * body's bottom padding (24 px on phones, 32 px wide) in by 12 px or 20 px below it.
+ */
+function QuietLinks({
+  children,
+}: {
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <div
+      data-quiet-links
+      className="-mb-3 flex flex-wrap items-center justify-center gap-x-5 border-t border-border pt-3 text-sm text-fg-muted sm:-mb-5"
+    >
+      {children}
+    </div>
+  );
+}
+
+function QuietLink({
+  onClick,
+  icon,
+  children,
+}: {
+  onClick: () => void;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex min-h-11 items-center gap-1.5 rounded-sm px-1 transition-colors duration-(--pk-duration-fast) hover:text-fg-strong"
+    >
+      {icon}
+      {children}
+    </button>
+  );
+}
+
 function MethodsStep({
   caps,
-  withContext,
+  context,
   onSent,
+  onKey,
 }: {
   caps: PortalCapabilities;
-  withContext: boolean;
+  context: { slug: string; name: string; developerName?: string | null } | null;
   onSent: (email: string) => void;
+  onKey: () => void;
 }): React.ReactElement {
   const [email, setEmail] = React.useState("");
   const [invalid, setInvalid] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [sending, setSending] = React.useState(false);
   const errorId = React.useId();
+  const carried = useCarriedKey();
   const providers = caps.auth.providers ?? [];
   const magic = caps.auth.magic;
   const oidc = caps.auth.oidc;
@@ -142,16 +267,13 @@ function MethodsStep({
   if (!magic && !oidc && providers.length === 0) {
     return (
       <>
-        <h1
-          tabIndex={-1}
-          className="text-2xl font-bold text-fg-strong outline-none"
-        >
-          Sign-in is turned off
-        </h1>
+        <Title>Sign-in is turned off</Title>
         <p className="text-fg-muted">
-          {withContext
-            ? "Sign-in is turned off for this product. Contact its developer."
-            : "There's no way to sign in to Polaris Key here right now. Try again later."}
+          {context
+            ? // signin.off.product
+              `Sign-in is turned off for ${context.name}. Contact ${context.developerName ?? "its developer"}.`
+            : // signin.off.any
+              "Sign-in is unavailable. Try again later."}
         </p>
       </>
     );
@@ -169,32 +291,35 @@ function MethodsStep({
     setError(null);
     setSending(true);
     try {
-      await portalApi.startMagic(value);
+      await portalApi.startEmailSignIn(value);
       onSent(value);
     } catch (err) {
-      setError(magicErrorText(err));
+      setError(startErrorText(err));
       if (err instanceof PortalApiError && err.status === 422) setInvalid(true);
     } finally {
       setSending(false);
     }
   };
 
+  const carriedCheck = carried ? checkKey(carried) : null;
+  const carriedName =
+    carriedCheck?.kind === "valid" ? productLabel(carriedCheck.slug) : null;
+  const title = carriedName
+    ? `Sign in to add ${carriedName}` // signin.key.carriedTitle
+    : context
+      ? "Sign in" // signin.methods.titleApp
+      : "Sign in to Polaris Key"; // signin.methods.title
+  const lede = carriedName
+    ? `Your key is ready. Sign in or create an account, and ${carriedName} joins your library.` // signin.key.carriedLede
+    : context
+      ? `Use the email you bought ${context.name} with.` // signin.methods.ledeApp
+      : null;
+
   return (
     <>
       <div className="space-y-2">
-        <h1
-          tabIndex={-1}
-          className="text-2xl font-bold text-fg-strong outline-none"
-        >
-          {withContext
-            ? "Sign in or create an account"
-            : "Sign in to Polaris Key"}
-        </h1>
-        <p className="text-fg-muted">
-          {withContext
-            ? "Use the email you bought it with."
-            : "Your library of games and apps from developers who use Polaris Key."}
-        </p>
+        <Title>{title}</Title>
+        {lede ? <p className="text-fg-muted">{lede}</p> : null}
       </div>
       {magic ? (
         <form onSubmit={submit} noValidate className="space-y-4">
@@ -209,7 +334,7 @@ function MethodsStep({
               id="pk-signin-email"
               type="email"
               inputMode="email"
-              autoComplete="email"
+              autoComplete="username webauthn"
               value={email}
               onValueChange={(v) => {
                 setEmail(v);
@@ -239,11 +364,12 @@ function MethodsStep({
       {(providers.length > 0 || oidc) && magic ? <Divider /> : null}
       <ProviderRow
         providers={providers}
-        // The provider start route arrives with G11 (S-16); the row renders only once the
-        // Worker names providers.
+        // I-06's start route is GET /login/<provider>; the row renders only once the Worker
+        // names providers in its capabilities (PX-12).
         hrefFor={(p) =>
-          `/login?provider=${p}&return_to=${encodeURIComponent(returnTo())}`
+          `/login/${p}?return_to=${encodeURIComponent(returnTo())}`
         }
+        onNavigate={() => stashCarriedKey()}
       />
       {oidc ? (
         <Button
@@ -252,11 +378,32 @@ function MethodsStep({
           size="lg"
           className="h-12 w-full"
         >
-          <a href={ssoHref}>
+          <a href={ssoHref} onClick={() => stashCarriedKey()}>
             <ShieldCheck aria-hidden />
             {ssoLabel}
           </a>
         </Button>
+      ) : null}
+      {carried ? (
+        <QuietLinks>
+          <QuietLink
+            onClick={() => setParams({ activate: null })}
+            icon={<KeyRound aria-hidden className="size-4" />}
+          >
+            {/* signin.key.withoutKey */}
+            Sign in without the key
+          </QuietLink>
+        </QuietLinks>
+      ) : caps.modules.claim ? (
+        <QuietLinks>
+          <QuietLink
+            onClick={onKey}
+            icon={<KeyRound aria-hidden className="size-4" />}
+          >
+            {/* signin.link.key */}
+            Have a license key?
+          </QuietLink>
+        </QuietLinks>
       ) : null}
     </>
   );
@@ -272,84 +419,297 @@ function Divider(): React.ReactElement {
   );
 }
 
-function SentStep({
+function codeErrorText(err: unknown): string {
+  if (err instanceof PortalApiError) {
+    if (err.code === "invalid_code") {
+      const left = err.triesLeft;
+      if (left === 0) return "Too many tries. Send a new code."; // signin.code.tooMany
+      const wrong = "That code isn't right. Check the email and try again."; // signin.code.wrong
+      // signin.code.triesLeft, with two or fewer left
+      if (left !== undefined && left <= 2)
+        return `${wrong} ${left === 1 ? "1 try left." : `${left} tries left.`}`;
+      return wrong;
+    }
+    if (err.code === "signin_expired")
+      return "That code has expired. Send a new code."; // signin.code.expired
+    if (err.status === 429 || err.code === "rate_limited")
+      return "Too many tries. Wait a minute, then try again.";
+    if (err.code === "forbidden" || err.code === "email_in_use")
+      return err.message;
+  }
+  return portalErrorCopy(err).title + ". " + portalErrorCopy(err).description;
+}
+
+function CodeStep({
   email,
   onChangeEmail,
 }: {
   email: string;
   onChangeEmail: () => void;
 }): React.ReactElement {
+  const qc = useQueryClient();
+  const [code, setCode] = React.useState("");
   const [wait, setWait] = React.useState(RESEND_AFTER_S);
   const [status, setStatus] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [verifying, setVerifying] = React.useState(false);
   const [sending, setSending] = React.useState(false);
+  const errorId = React.useId();
+  const inputId = React.useId();
   React.useEffect(() => {
     if (wait <= 0) return;
     const t = window.setTimeout(() => setWait((w) => w - 1), 1000);
     return () => window.clearTimeout(t);
   }, [wait]);
+
+  const verify = async (value: string): Promise<void> => {
+    if (value.length !== CODE_LENGTH || verifying) return;
+    setVerifying(true);
+    setError(null);
+    setStatus(null);
+    try {
+      await portalApi.verifySignInCode(value);
+      await qc.invalidateQueries({ queryKey: portalKeys.me });
+    } catch (err) {
+      setError(codeErrorText(err));
+      setCode("");
+      // Out of tries, or the code expired: "Send a new code" is the way on, at once.
+      if (
+        err instanceof PortalApiError &&
+        ((err.code === "invalid_code" && err.triesLeft === 0) ||
+          err.code === "signin_expired")
+      )
+        setWait(0);
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   const resend = async (): Promise<void> => {
     setSending(true);
     setError(null);
     try {
-      await portalApi.startMagic(email);
-      setStatus("We sent a new link. Either one works for 10 minutes.");
+      await portalApi.startEmailSignIn(email);
+      setStatus(`We sent a new code and link to ${email}.`); // signin.code.resent
+      setCode("");
       setWait(RESEND_AFTER_S);
     } catch (err) {
-      setError(magicErrorText(err));
+      setError(startErrorText(err));
     } finally {
       setSending(false);
     }
   };
+
+  const clock = `${Math.floor(wait / 60)}:${String(wait % 60).padStart(2, "0")}`;
+
   return (
     <>
-      <span className="inline-flex size-12 items-center justify-center rounded-full bg-accent-subtle text-accent-fg">
-        <Mail aria-hidden className="size-6" />
-      </span>
       <div className="space-y-2">
-        <h1
-          tabIndex={-1}
-          className="text-2xl font-bold text-fg-strong outline-none"
-        >
-          Check your email
-        </h1>
+        <Title>Check your email</Title>
         <p className="text-fg">
-          We sent a sign-in link to{" "}
-          <span className="font-bold text-fg-strong">{email}</span>. It works
+          {/* signin.code.sent */}
+          We sent a code and a sign-in link to{" "}
+          <span className="font-bold text-fg-strong">{email}</span>. Both work
           for 10 minutes.
         </p>
-        <p className="text-sm text-fg-muted">
-          Open it on this device and this page signs you in by itself.
-        </p>
       </div>
-      <div role="status" className="text-sm text-success">
+      <form
+        noValidate
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void verify(code);
+        }}
+      >
+        <div className="space-y-1.5">
+          <label htmlFor={inputId} className="text-sm font-bold text-fg-strong">
+            Code
+          </label>
+          <CodeCells
+            id={inputId}
+            value={code}
+            invalid={Boolean(error)}
+            describedBy={error ? errorId : undefined}
+            onChange={(v) => {
+              setCode(v);
+              if (error) setError(null);
+              if (v.length === CODE_LENGTH) void verify(v);
+            }}
+          />
+          {error ? (
+            <p id={errorId} role="alert" className="text-sm text-danger">
+              {error}
+            </p>
+          ) : null}
+        </div>
+        <p className="text-sm text-fg-muted">
+          {/* signin.code.link */}
+          Or open the link in the email. Keep this tab open.
+        </p>
+        <Button
+          type="submit"
+          size="lg"
+          className="h-12 w-full text-base font-bold"
+          disabled={code.length !== CODE_LENGTH}
+          loading={verifying}
+        >
+          Continue
+        </Button>
+      </form>
+      {/* Always in the tree so the resend is announced; visually hidden while empty. */}
+      <div
+        role="status"
+        className={status ? "text-sm text-success" : "sr-only"}
+      >
         {status}
       </div>
-      {error ? (
-        <p role="alert" className="text-sm text-danger">
-          {error}
-        </p>
-      ) : null}
-      <div className="flex flex-col gap-2">
-        <Button
-          variant="outline"
-          size="lg"
-          className="h-12"
-          loading={sending}
-          disabled={wait > 0}
-          onClick={() => void resend()}
-        >
-          {wait > 0 ? `Resend in ${wait} s` : "Resend the link"}
-        </Button>
-        <Button
-          variant="ghost"
-          size="lg"
-          className="h-12"
-          onClick={onChangeEmail}
-        >
+      <QuietLinks>
+        {wait > 0 ? (
+          <span className="inline-flex min-h-11 items-center px-1 text-fg-muted">
+            {/* signin.code.resendIn */}
+            Send a new code in {clock}
+          </span>
+        ) : (
+          <QuietLink onClick={() => void resend()}>
+            {sending ? "Sending…" : "Send a new code"}
+          </QuietLink>
+        )}
+        <QuietLink onClick={onChangeEmail}>
+          {/* signin.code.differentEmail */}
           Use a different email
-        </Button>
+        </QuietLink>
+      </QuietLinks>
+    </>
+  );
+}
+
+/**
+ * One input drawn as six cells (§3.4, §3.14): `autocomplete="one-time-code"`, numeric, one
+ * accessible name ("6-digit code", `signin.code.label`), paste fills it. The cells are a mirror
+ * behind the transparent input, never six inputs.
+ */
+function CodeCells({
+  id,
+  value,
+  invalid,
+  describedBy,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  invalid: boolean;
+  describedBy?: string;
+  onChange: (value: string) => void;
+}): React.ReactElement {
+  const [focused, setFocused] = React.useState(false);
+  const at = Math.min(value.length, CODE_LENGTH - 1);
+  return (
+    <div className="relative">
+      <div aria-hidden className="grid grid-cols-6 gap-2">
+        {Array.from({ length: CODE_LENGTH }, (_, i) => (
+          <div
+            key={i}
+            className={cn(
+              "flex h-14 items-center justify-center rounded-md border bg-surface-sunken font-mono text-2xl font-bold text-fg-strong",
+              invalid
+                ? "border-danger"
+                : focused && i === at
+                  ? "border-focus ring-2 ring-focus"
+                  : "border-border-strong",
+            )}
+          >
+            {value[i] ?? ""}
+          </div>
+        ))}
       </div>
+      <input
+        id={id}
+        aria-label="6-digit code"
+        aria-invalid={invalid || undefined}
+        aria-describedby={describedBy}
+        autoComplete="one-time-code"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        maxLength={CODE_LENGTH}
+        value={value}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
+        onChange={(e) =>
+          onChange(e.target.value.replace(/\D/g, "").slice(0, CODE_LENGTH))
+        }
+        className="absolute inset-0 size-full cursor-text bg-transparent text-transparent caret-transparent outline-none focus-visible:ring-0 focus-visible:ring-offset-0"
+      />
+    </div>
+  );
+}
+
+function KeyStep({
+  onBack,
+  onContinue,
+}: {
+  onBack: () => void;
+  onContinue: (key: string) => void;
+}): React.ReactElement {
+  const [key, setKey] = React.useState("");
+  const [touched, setTouched] = React.useState(false);
+  const check = checkKey(key);
+  const verdict = touched ? formatVerdict(check) : null;
+  return (
+    <>
+      <div className="space-y-2">
+        {/* signin.link.key: the on-ramp keeps the link's words as its title */}
+        <Title>Have a license key?</Title>
+        <p className="text-fg-muted">
+          {/* signin.key.onrampLede */}
+          Paste the key from your receipt email. Sign in next, and it joins your
+          library.
+        </p>
+      </div>
+      <form
+        noValidate
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          setTouched(true);
+          if (check.kind === "valid") onContinue(key);
+        }}
+      >
+        <KeyField
+          id="pk-signin-key"
+          value={key}
+          valid={check.kind === "valid"}
+          verdict={
+            verdict ? { tone: "danger", message: verdict.message } : null
+          }
+          onBlur={() => setTouched(true)}
+          onChange={(v, how) => {
+            setKey(v);
+            if (how === "paste") setTouched(true);
+          }}
+          hint={
+            check.kind === "valid" ? (
+              <p className="text-sm text-fg-muted">
+                Key for{" "}
+                <span className="font-bold text-fg-strong">
+                  {productLabel(check.slug)}
+                </span>
+              </p>
+            ) : null
+          }
+          help="Starts with pkey_. Case-sensitive."
+        />
+        <Button
+          type="submit"
+          size="lg"
+          className="h-12 w-full text-base font-bold"
+          iconEnd={<ArrowRight aria-hidden />}
+        >
+          Continue
+        </Button>
+      </form>
+      <QuietLinks>
+        <QuietLink onClick={onBack}>Back</QuietLink>
+      </QuietLinks>
     </>
   );
 }

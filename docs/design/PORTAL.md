@@ -449,7 +449,7 @@ that returns to the full method list for this context.
   itself." **True by construction**: the page re-checks `GET /api/me` on `focus` and
   `visibilitychange`, and every 5 s for 10 minutes while visible (ADMIN.md POR-1), and listens on a
   `BroadcastChannel` that the link-verify page posts to.
-- **States:** wrong code ("That code didn't work. 3 tries left."); expired; too many tries;
+- **States:** wrong code ("That code isn't right. Check the email and try again." with "2 tries left." once two or fewer remain, SIGN-IN.md §3.4); expired; too many tries;
   resend countdown, then **Resend**.
 
 ### 4.5 Use a license key

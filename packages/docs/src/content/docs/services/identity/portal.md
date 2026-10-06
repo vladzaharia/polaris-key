@@ -407,15 +407,15 @@ Every email is from **Polaris Key** (`PORTAL_EMAIL_FROM`, default `Polaris Key <
 and calls the service "Polaris Key", never "the portal". It names the product and the device by
 their names, not their slugs or ids, and links to the exact section of the signed-in app:
 
-| Email                 | Subject (example)                           | Links to                           | Goes to                |
-| --------------------- | ------------------------------------------- | ---------------------------------- | ---------------------- |
-| Sign-in code and link | Sign in to Polaris Key                      | `/magic/verify?token=…`            | the address typed      |
-| Email confirmation    | Confirm your email for Polaris Key          | nothing (a code only)              | the address confirmed  |
-| License added by key  | Mossgarden is in your library               | `#/p/<product>`                    | the session's address  |
-| Download link         | Download Mossgarden for macOS               | `#/p/<product>/download?platform=` | the account's address  |
-| Device removed        | Studio PC was removed from Tidewater Studio | `#/p/<product>/devices`            | every verified address |
-| New device signed in  | A new device signed in to Polaris Key       | `#/account/sessions`               | every verified address |
-| Account deleted       | Your Polaris Key account has been deleted   | nothing                            | every verified address |
+| Email                 | Subject (example)                                  | Links to                           | Goes to                |
+| --------------------- | -------------------------------------------------- | ---------------------------------- | ---------------------- |
+| Sign-in code and link | Your Polaris Key code: 123456                      | `/magic/verify?token=…`            | the address typed      |
+| Email confirmation    | Confirm your email for Polaris Key                 | nothing (a code only)              | the address confirmed  |
+| License added by key  | Mossgarden is in your library                      | `#/p/<product>`                    | the session's address  |
+| Download link         | Download Mossgarden for macOS                      | `#/p/<product>/download?platform=` | the account's address  |
+| Device removed        | Studio PC was removed from Tidewater Studio        | `#/p/<product>/devices`            | every verified address |
+| New device signed in  | A new device signed in to your Polaris Key account | `#/account/sessions`               | every verified address |
+| Account deleted       | Your Polaris Key account has been deleted          | nothing                            | every verified address |
 
 The security notices (a device removed, and the sign-in method and new-device templates the
 identity-linking work sends) carry "Wasn't you? Secure your account" and go to **every verified

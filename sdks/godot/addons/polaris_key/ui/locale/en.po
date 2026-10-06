@@ -1817,11 +1817,6 @@ msgstr "Send a New Code in {time}"
 msgid "signin.code.resent"
 msgstr "We sent a new code and link to {email}."
 
-#. That code isn't right. Check the email and try again.
-#. Email code step (SIGN-IN.md §3.4).
-msgid "signin.code.wrong"
-msgstr "That code isn't right. Check the email and try again."
-
 #. {n, plural, one {# try left.} other {# tries left.}}
 #. Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number.
 #. Plural on {n}.
@@ -3372,10 +3367,10 @@ msgstr "This sign-in has expired. Start again."
 msgid "core.codes.invalid_code.title"
 msgstr "Wrong code"
 
-#. That code didn't work. Check the email and type it again.
+#. That code isn't right. Check the email and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
-msgstr "That code didn't work. Check the email and type it again."
+msgstr "That code isn't right. Check the email and try again."
 
 #. Email already in use
 #. Core copy (conformance/parity/copy.en.json, codes).

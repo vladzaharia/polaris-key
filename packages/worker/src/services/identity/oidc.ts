@@ -1578,7 +1578,6 @@ async function renderDeviceConfirmation(
     .join("");
   const html = renderBrandPage({
     title: `Authorize ${product.name}`,
-    surface: "device",
     heading: `Authorize ${product.name}`,
     body:
       `<p>An app is asking to activate this device. Check that the code and device match what the app shows before signing in.</p>` +
@@ -1604,11 +1603,10 @@ function renderDeviceEntry(
 ): Response {
   const error =
     status === 404
-      ? `<p class="alert" role="alert">That code is not valid or has expired. Check the code on your device and try again.</p>`
+      ? `<p class="alert" role="alert">That code isn't valid or has expired. Check the code on your device.</p>` // SIGN-IN.md §3.13
       : "";
   const html = renderBrandPage({
     title: `Connect a device to ${product.name}`,
-    surface: "device",
     heading: `Connect a device to ${product.name}`,
     body:
       `<p class="muted">Enter the code shown on your device.</p>${error}` +
@@ -2097,7 +2095,7 @@ function choosePath(req: Request, product: Product): string {
 /** A branded chooser-family page: no caching, no Referer, optional cookies. */
 function choicePage(
   status: number,
-  opts: { title: string; heading: string; eyebrow?: string; body: string },
+  opts: { title: string; heading: string; body: string },
   cookies: string[] = [],
 ): Response {
   const headers = brandedHtmlSecurityHeaders(
@@ -2108,7 +2106,8 @@ function choicePage(
     }),
   );
   for (const c of cookies) headers.append("set-cookie", c);
-  return new Response(renderBrandPage({ ...opts, surface: "device" }), {
+  // No surface label or eyebrow on sign-in pages (SIGN-IN.md §3.13, D-32).
+  return new Response(renderBrandPage(opts), {
     status,
     headers,
   });
@@ -2423,22 +2422,23 @@ async function renderChooser(
     if (row && device) {
       return choicePage(200, {
         title: `Replace ${device.label}?`,
-        eyebrow: product.name,
-        heading: `Replace ${device.label}?`,
+        heading: `Replace ${device.label}?`, // signin.replace.title
         body: replaceConfirmBody({
           action,
           token,
           device: device.label,
-          tierName: row.tierName,
+          productName: product.name,
+          thisDevice: c.flow.viaDeviceCode ? c.deviceLabel : "this browser",
+          activeNow: device.activeNow,
         }),
       });
     }
     await updateArtefact(env, c.stateKey, { unset: ["choiceReplace"] });
   }
+  // No eyebrow (SIGN-IN.md §3.13, D-32): the lede names the product.
   return choicePage(200, {
     title: "Choose a license for this device",
-    eyebrow: product.name,
-    heading: "Choose a license for this device",
+    heading: "Choose a license for this device", // signin.choice.title
     body: chooserBody({
       productName: product.name,
       deviceLabel: c.deviceLabel,
@@ -2448,8 +2448,25 @@ async function renderChooser(
       notice: c.flow.choiceNotice ?? null,
       now,
       namedByDevice: Boolean(c.flow.viaDeviceCode),
+      developerName: await listingDeveloper(hooks),
     }),
   });
+}
+
+/** The developer's name from the product's listing (Distribution's hook), or null. */
+async function listingDeveloper(
+  hooks: ServiceHooks | undefined,
+): Promise<string | null> {
+  try {
+    const listing = (await hooks?.delivery()?.listing()) as
+      | Record<string, unknown>
+      | null
+      | undefined;
+    const name = listing?.developerName;
+    return typeof name === "string" && name.trim() ? name.trim() : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Record the person's choice and complete the flow (see `handleAuthChoose`). */

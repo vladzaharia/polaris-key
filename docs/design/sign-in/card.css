@@ -367,10 +367,13 @@ label.lab {
   width: 24px;
   height: 24px;
 }
+/* The quiet links under a rule: centred, with the same space above the text (from the rule) as
+   below it (the body's 24 px bottom padding), so the row sits evenly in its band. */
 .links {
   border-top: 1px solid var(--hair);
-  padding-top: 16px;
+  padding-top: 24px;
   display: flex;
+  justify-content: center;
   gap: 18px;
   flex-wrap: wrap;
   font-size: 14px;
@@ -1701,13 +1704,21 @@ label.lab {
   width: 18px;
   height: 18px;
 }
+/* Centred under the rule; the space above (padding) equals the pane's gap below. */
 .dk-links {
   display: flex;
+  justify-content: center;
   gap: 16px;
   font-size: 13px;
   color: var(--pk-text-muted);
-  padding-top: 12px;
+  padding-top: 14px;
   border-top: 1px solid var(--hair);
+}
+.tight .dk-links {
+  padding-top: 12px;
+}
+.small .dk-links {
+  padding-top: 10px;
 }
 .dk-links span {
   display: inline-flex;

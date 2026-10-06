@@ -114,8 +114,9 @@ describe("notice templates: copy", () => {
     expect(TEMPLATES.methodRemoved!().subject).toBe(
       "Steam was disconnected from your Polaris Key account",
     );
+    // SIGN-IN.md §3.15: signin.mail.newDevice.subject.
     expect(TEMPLATES.newDeviceSignIn!().subject).toBe(
-      "A new device signed in to Polaris Key",
+      "A new device signed in to your Polaris Key account",
     );
   });
 });

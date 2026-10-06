@@ -239,25 +239,52 @@ export function deviceRemovedNotice(input: {
   });
 }
 
-/** A new device signed in to the account. */
+/** "4 Oct 2026, 14:34 UTC": a unix time for a sentence in an email. */
+function emailDate(at: number): string {
+  const d = new Date(at * 1000);
+  const month = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ][d.getUTCMonth()]!;
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${d.getUTCDate()} ${month} ${d.getUTCFullYear()}, ${hh}:${mm} UTC`;
+}
+
+/**
+ * A new device signed in to the account (SIGN-IN.md §3.15): `signin.mail.newDevice.subject`,
+ * `signin.mail.newDevice.body` and **Open Polaris Key** (`signin.mail.open`).
+ */
 export function newDeviceSignInNotice(input: {
   deviceLabel: string | null | undefined;
   /** An approximate place, when the sign-in had one ("Lisbon, Portugal"). */
   location?: string | null;
+  /** When it signed in (unix seconds), for "signed in on {date}". */
+  at?: number;
   origin: string;
 }): NoticeMessage {
   const device = displayValue(input.deviceLabel, "A new device");
   const location = input.location ? displayValue(input.location, "") : "";
+  const when = input.at !== undefined ? ` on ${emailDate(input.at)}` : "";
+  const where = location ? ` from ${location}` : "";
   return buildNotice({
-    subject: "A new device signed in to Polaris Key",
+    subject: "A new device signed in to your Polaris Key account", // signin.mail.newDevice.subject
     paragraphs: [
-      location
-        ? `${device} signed in to your Polaris Key account, near ${location}.`
-        : `${device} signed in to your Polaris Key account.`,
-      "If this was you, there is nothing to do.",
+      // signin.mail.newDevice.body
+      `${device} signed in${when}${where}. If this wasn't you, sign it out in Polaris Key under Where you're signed in.`,
     ],
     action: {
-      label: "Review your sign-ins",
+      label: "Open Polaris Key", // signin.mail.open
       url: appLink(input.origin, "account/sessions"),
     },
     secureUrl: appLink(input.origin, "account/methods"),

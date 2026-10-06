@@ -218,8 +218,11 @@ describe("every server-rendered page on the console host uses the shell", () => 
     expect(res.status).toBe(400);
     const html = await expectBrandedPage(res);
     // I-07: a link with no token reads as an expired one (the landing page names no reason).
-    expect(html).toContain("This sign-in link has expired.");
-    expect(html).toContain('<span class="surface">account</span>');
+    // SIGN-IN.md §3.13: the expired page's copy, Sign in again, and no surface eyebrow (D-32).
+    expect(html).toContain("That code or link has expired");
+    expect(html).toContain("Codes and links work once, for 10 minutes.");
+    expect(html).toContain(">Sign in again</a>");
+    expect(html).not.toContain('class="surface"');
   });
 
   it("the device code entry page", async () => {
@@ -237,7 +240,9 @@ describe("every server-rendered page on the console host uses the shell", () => 
     expect(page.status).toBe(200);
     const html = await expectBrandedPage(page);
     expect(html).toContain('<input id="user_code" name="user_code"');
-    expect(html).toContain('<span class="surface">device</span>');
+    expect(html).toContain('placeholder="XXXX-XXXX"');
+    // No surface eyebrow on sign-in pages (SIGN-IN.md §3.13, D-32).
+    expect(html).not.toContain('class="surface"');
   });
 
   it("the device confirmation page keeps its IdP form target", async () => {

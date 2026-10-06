@@ -72,7 +72,9 @@ import {
   readJsonObject,
   requestPlace,
   safeReturnTo,
+  signInAgainAction,
   utcLabel,
+  wrongCodeMessage,
 } from "./http.js";
 import { verifyTurnstile } from "./turnstile.js";
 
@@ -330,7 +332,9 @@ export async function handleSigninEmailVerify(
     return cardJson(
       {
         error: "invalid_code",
-        message: "That code didn't work.",
+        message: wrongCodeMessage(
+          Math.max(0, EMAIL_CODE_MAX_ATTEMPTS - attempts),
+        ),
         triesLeft: Math.max(0, EMAIL_CODE_MAX_ATTEMPTS - attempts),
       },
       400,
@@ -381,7 +385,7 @@ async function completeEmailSignIn(
     const inUse = result.status === "join_offer";
     const message = inUse
       ? "A Polaris Key account already uses this email address, but not as a way to sign in. Sign in with the method you used before; you can add this email to that account afterwards."
-      : "This account can't sign in.";
+      : "This account can't sign in. Contact Polaris Key support.";
     return answer === "json"
       ? cardJson(
           inUse
@@ -390,9 +394,17 @@ async function completeEmailSignIn(
           inUse ? 409 : 403,
           [clearFlow()],
         )
-      : cardPage(inUse ? 409 : 403, { title: "Sign-in", heading: message }, [
-          clearFlow(),
-        ]);
+      : cardPage(
+          inUse ? 409 : 403,
+          inUse
+            ? { title: "Sign in", heading: message }
+            : {
+                title: "Sign in",
+                heading: "This account can't sign in",
+                body: "<p>Contact Polaris Key support.</p>",
+              },
+          [clearFlow()],
+        );
   }
   const finished = await finishSignIn(
     env,
@@ -415,11 +427,24 @@ async function completeEmailSignIn(
     : cardRedirect(next, [finished.cookie, clearFlow()]);
 }
 
-function expiredLinkPage(): Response {
+/**
+ * The expired or used code/link page (SIGN-IN.md §3.13, frame 15). The spec's **Send a new code**
+ * (a POST to the masked address) needs a route that does not exist yet, so the page offers
+ * **Sign in again**, back to where the sign-in was headed when the link's record still says so.
+ */
+function expiredLinkPage(returnTo?: string): Response {
   return cardPage(400, {
-    title: "Sign-in",
-    heading: "This sign-in link has expired.",
-    body: `<p>Links work once, for 10 minutes. Start again from the sign-in page.</p><p class="actions"><a class="button" href="/">Back to sign-in</a></p>`,
+    title: "Sign in",
+    heading: "That code or link has expired", // signin.expired.title
+    body: `<p>Codes and links work once, for 10 minutes.</p>${signInAgainAction(returnTo ?? "/")}`, // signin.expired.body
+  });
+}
+
+/** Email sign-in is off: `signin.off.any` (the card has no product context here). */
+function signInOffPage(): Response {
+  return cardPage(404, {
+    title: "Sign in",
+    heading: "Sign-in is unavailable. Try again later.", // signin.off.any
   });
 }
 
@@ -444,10 +469,7 @@ export async function handleMagicLanding(
   if (!token) return expiredLinkPage();
   const caps = await portalAuthCapabilities(db);
   if (!caps.portalEnabled || !caps.magicEnabled) {
-    return cardPage(404, {
-      title: "Sign-in",
-      heading: "Email sign-in is disabled.",
-    });
+    return signInOffPage();
   }
   const record = parse<MagicRecord>(
     await getArtefact(env, await portalMagicKey(env, token)),
@@ -468,11 +490,12 @@ export async function handleMagicLanding(
       : "a few minutes ago";
   return cardPage(200, {
     title: "Confirm sign-in",
-    heading: "Confirm sign-in",
+    // signin.confirmLink.title
+    heading: `Confirm sign-in, requested at ${when} from ${record.place ?? "an unknown location"}`,
     body:
-      `<p>A sign-in to Polaris Key as ${escapeHtml(record.email)} was requested at ${escapeHtml(when)} from ${escapeHtml(record.place ?? "an unknown location")}.</p>` +
-      `<p>Confirm only if you started it. The device that asked signs in, not this one.</p>` +
-      form("Confirm sign-in"),
+      `<p>Polaris Key account ${escapeHtml(record.email)}. Confirm only if you started it.</p>` +
+      `<p>The device that asked signs in, not this one.</p>` + // signin.confirmLink.note
+      form("Confirm"),
   });
 }
 
@@ -485,10 +508,7 @@ export async function handleMagicConfirm(
 ): Promise<Response> {
   const caps = await portalAuthCapabilities(db);
   if (!caps.portalEnabled || !caps.magicEnabled) {
-    return cardPage(404, {
-      title: "Sign-in",
-      heading: "Email sign-in is disabled.",
-    });
+    return signInOffPage();
   }
   let token: string | null = null;
   try {
@@ -510,7 +530,7 @@ export async function handleMagicConfirm(
         env,
         artefactRef("signin-flow", record.flow),
       );
-      if (!taken) return expiredLinkPage();
+      if (!taken) return expiredLinkPage(record.returnTo);
     }
     return completeEmailSignIn(req, env, db, record, now, "redirect");
   }
@@ -522,7 +542,8 @@ export async function handleMagicConfirm(
       set: { status: "confirmed", confirmedAt: now },
     },
   );
-  if (!confirmed.ok) return expiredLinkPage();
+  if (!confirmed.ok) return expiredLinkPage(record.returnTo);
+  // signin.confirmLink.done
   return cardPage(200, {
     title: "Sign-in confirmed",
     heading: "Sign-in confirmed",

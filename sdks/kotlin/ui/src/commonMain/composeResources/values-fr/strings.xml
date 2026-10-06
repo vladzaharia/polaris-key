@@ -671,8 +671,6 @@
     <string name="signin_code_resendIn__macos">Envoyer un nouveau code dans %1$s</string>
     <!-- Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address. Arguments: 1=email. -->
     <string name="signin_code_resent">Nous avons envoyé un nouveau code et un nouveau lien à %1$s.</string>
-    <!-- Email code step (SIGN-IN.md §3.4). -->
-    <string name="signin_code_wrong">Ce code est incorrect. Vérifiez l’e-mail et réessayez.</string>
     <!-- Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number. Arguments: 1=n. -->
     <plurals name="signin_code_triesLeft">
         <item quantity="one">%1$d essai restant.</item>
@@ -1270,7 +1268,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_invalid_code_title">Wrong code</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_invalid_code_message">That code didn't work. Check the email and type it again.</string>
+    <string name="core_codes_invalid_code_message">That code isn't right. Check the email and try again.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_in_use_title">Email already in use</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

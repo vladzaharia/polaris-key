@@ -39,7 +39,7 @@ import {
   type ArtefactRef,
 } from "../../../core/singleUse.js";
 import { beginProviderSignIn } from "../card/gate.js";
-import { htmlError, safeReturnTo } from "../portal/auth.js";
+import { htmlError, safeReturnTo, signInPage } from "../portal/auth.js";
 import { portalSecurityHeaders } from "../portal/headers.js";
 import { portalAuthCapabilities } from "../portal/repo.js";
 import {
@@ -209,12 +209,12 @@ export async function handleProviderStart(
     },
     opts.now,
   );
-  if (!ok) return htmlError(429, "Too many sign-in attempts.");
+  if (!ok) return signInPage.tooMany();
   const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled) return htmlError(404, "Sign-in is not available.");
+  if (!caps.portalEnabled) return signInPage.off();
   const label = PROVIDER_LABEL[kind];
   const client = await resolveSignInClient(env, kind);
-  if (!client) return htmlError(404, `Sign in with ${label} is not available.`);
+  if (!client) return signInPage.off();
 
   const url = new URL(req.url);
   const rawReturnTo = url.searchParams.get("return_to");
@@ -281,7 +281,7 @@ export async function handleProviderStart(
       }
     }
   } catch {
-    return htmlError(502, `${label} sign-in is unavailable right now.`);
+    return signInPage.unavailable(label);
   }
   record.bindingHash = await hashKey(binding, env.KEY_HASH_PEPPER);
   await putArtefact(
@@ -337,29 +337,29 @@ export async function handleProviderCallback(
     },
     opts.now,
   );
-  if (!ok) return htmlError(429, "Too many sign-in attempts.");
+  if (!ok) return signInPage.tooMany();
   const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled) return htmlError(404, "Sign-in is not available.");
+  if (!caps.portalEnabled) return signInPage.off();
   const label = PROVIDER_LABEL[kind];
 
   const params = await callbackParams(req, kind);
   if (!params) return htmlError(400, "This sign-in response was malformed.");
   // Steam's state rides in the return URL's own query, beside the openid.* fields.
   const state = params.get("state");
-  if (!state) return htmlError(400, "This sign-in link has expired.");
+  if (!state) return signInPage.tookTooLong();
   // Atomic and single-use: of two racing callbacks for one state, one gets the flow. A
   // cancelled or failed provider response still burns it.
   const raw = await consumeArtefact(env, await signInFlowKey(env, state));
-  if (!raw) return htmlError(400, "This sign-in link has expired.");
+  if (!raw) return signInPage.tookTooLong();
   let flow: SignInFlowRecord;
   try {
     flow = JSON.parse(raw) as SignInFlowRecord;
   } catch {
-    return htmlError(400, "This sign-in link has expired.");
+    return signInPage.tookTooLong();
   }
   // Mix-up defence: a state minted for one provider is never redeemed on another's callback.
   if (flow.provider !== kind) {
-    return htmlError(400, "This sign-in link has expired.");
+    return signInPage.tookTooLong();
   }
   const binding = readBindCookie(req);
   if (
@@ -372,7 +372,8 @@ export async function handleProviderCallback(
     );
   }
   if (params.get("error") || params.get("openid.mode") === "cancel") {
-    return htmlError(400, `Sign in with ${label} was cancelled.`);
+    // The h1 without its full stop, then Sign in again (htmlError's default on a 400).
+    return htmlError(400, `Sign in with ${label} was cancelled`);
   }
 
   let result: ProviderSignInResult;
@@ -380,9 +381,9 @@ export async function handleProviderCallback(
     result = await completeProvider(env, kind, flow, params, opts);
   } catch (err) {
     if (err instanceof ProviderNetworkError) {
-      return htmlError(502, `${label} sign-in is unavailable right now.`);
+      return signInPage.unavailable(label);
     }
-    return htmlError(401, "Sign-in could not be verified.");
+    return signInPage.unverified();
   }
 
   if (kind === "apple") {
@@ -545,7 +546,7 @@ export async function handleProviderSignInPath(
   const m = path.match(/^\/login\/([a-z]+)(?:\/(callback|notifications))?$/);
   const kind = m?.[1];
   if (!m || !isSignInProviderKind(kind)) {
-    return htmlError(404, "Sign-in is not available.");
+    return signInPage.off();
   }
   switch (m[2]) {
     case undefined:
@@ -555,5 +556,5 @@ export async function handleProviderSignInPath(
     case "notifications":
       if (kind === "apple") return handleAppleNotifications(req, env, db, opts);
   }
-  return htmlError(404, "Sign-in is not available.");
+  return signInPage.off();
 }

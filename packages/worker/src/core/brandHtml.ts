@@ -167,21 +167,22 @@ export const BRAND_PAGE_CSS = [
   `.button{display:flex;width:100%;align-items:center;justify-content:center;min-height:2.25rem;padding:0 1rem;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:.875rem;line-height:1.25rem;font-weight:400;text-decoration:none;cursor:pointer}`,
   `.button:hover{filter:brightness(1.1)}`,
   `.actions{margin:1.5rem 0 0}`,
-  // The secondary and destructive buttons, and a vertical button stack (the licence chooser).
+  // The secondary and destructive buttons, and a vertical button stack (the license chooser).
   `.button.secondary{border-color:var(--edge);background:transparent;color:var(--strong)}`,
   `.button.danger{border-color:var(--danger-edge);background:var(--danger-subtle);color:var(--strong)}`,
   `.stack{display:grid;gap:.5rem}`,
   `.small{font-size:.875rem;line-height:1.25rem}`,
   `.notice{margin:0 0 1rem;padding:.75rem 1rem;border:1px solid var(--rule);border-radius:6px;background:var(--sunken);color:var(--strong)}`,
   `.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}`,
-  // The licence chooser's rows (I-26): radio cards, the console's RadioCards look.
+  // The license chooser's rows (I-26): radio cards, the console's RadioCards look.
   `fieldset.choices{margin:0;padding:0;border:0;min-width:0}`,
   `ul.choices{display:grid;gap:.5rem;margin:0;padding:0;list-style:none}`,
   `.choice{display:flex;gap:.75rem;align-items:flex-start;margin:0;padding:.75rem 1rem;border:1px solid var(--edge);border-radius:6px;background:var(--sunken);color:var(--text);font-size:1rem;font-weight:400;cursor:pointer}`,
   `.choice:has(input:checked){border-color:var(--accent);background:var(--accent-subtle)}`,
   `.choice input{flex:none;width:1rem;height:1rem;margin:.25rem 0 0;accent-color:var(--accent)}`,
   `.choice.is-disabled{cursor:default;border-style:dashed}`,
-  `.choice.is-disabled .choice-title{color:var(--muted)}`,
+  // A full or blocked row keeps body-text contrast: only the missing radio marks it (SIGN-IN.md
+  // §3.14).
   `.choice.compact{padding:.5rem .75rem;margin:.5rem 0 0}`,
   `.choice-body{display:grid;gap:.125rem;min-width:0}`,
   `.choice-title{display:flex;flex-wrap:wrap;gap:.375rem;align-items:center;color:var(--strong);font-weight:700}`,
