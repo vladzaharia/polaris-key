@@ -556,6 +556,9 @@ PolarisKey.config.set_override_store(PKeyConfigFileStore.new("user://settings.cf
 PolarisKey.config.set_compiled_catalog(preload("res://catalog_generated.gd"))
 PolarisKey.config.bind_property($Dice, "roll_speed", "dice.animSpeed", 1.0)
 var minted := await PolarisKey.config.mint_token("leaderboard")   # minted.token, minted.expires_at
+var r := PolarisKey.config.set_value("dice.animSpeed", 2.0)    # PKeyResult; persisted
+PolarisKey.config.clear("dice.animSpeed")                        # and clear_all()
+var speed_setting := PolarisKey.config.setting("dice.animSpeed") # .value .source .locked, changed
 ```
 
 - Precedence is client-core's: enforced or hidden (remote) > local override > environment >
@@ -566,6 +569,15 @@ var minted := await PolarisKey.config.mint_token("leaderboard")   # minted.token
   made in `PKeySettingsPanel` survives a restart with no code. `set_override_store()` replaces
   it (point a `PKeyConfigFileStore` at your own `settings.cfg` to keep one file);
   `persist_settings = false` keeps the layer in memory.
+- **Device-local writes** (SDK parity §3.11, S-17 §5.11): `set_value(key, value)` writes through
+  the current store, so it persists, and emits `config_changed` once. It is refused
+  `managed_by_admin` for an enforced or hidden key (the document's state, else the catalog's
+  `managementDefault`) and `invalid-options` for a value that does not fit the catalog entry's
+  schema (type, enum, range, length) or, with no catalog entry, the document value's JSON type.
+  Numbers are typed by the catalog: `40.0` is a valid `integer` and is stored as `40`. `clear(key)`
+  and `clear_all()` remove overrides (`clear_all` only for keys the client knows; the rest of your
+  `settings.cfg` is left alone, with one `config_changed`). `setting(key)` returns a
+  `PKeyConfigSetting` handle whose `changed(value, source)` fires on every change.
 - The local layer is read at call time. `PKeyConfigFileStore` finds a key at its catalog
   `accessor` (`section.key` -> `[section] key`), then in an explicit table, then at the key
   itself.

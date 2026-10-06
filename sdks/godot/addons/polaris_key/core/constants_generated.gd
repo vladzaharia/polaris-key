@@ -1023,7 +1023,7 @@ static func capabilities() -> Dictionary:
 		"config.schema": {"status": "implemented", "service": "config", "na": []},
 		"config.mint": {"status": "implemented", "service": "config", "na": []},
 		"config.mirror": {"status": "implemented", "service": "config", "na": []},
-		"config.local": {"status": "planned", "service": "sdk", "na": []},
+		"config.local": {"status": "implemented", "service": "sdk", "na": []},
 		"devices.fingerprint": {"status": "implemented", "service": "core", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"devices.facts": {"status": "implemented", "service": "core", "na": []},
 		"devices.register": {"status": "implemented", "service": "core", "na": []},
@@ -1082,4 +1082,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "3f07eaea93694b5508fe5cc47cf7382a429504d36df892cdd818945a0266300d"
+const CAPABILITY_DIGEST := "3c45f3221a1b5232ac52b4dd864fda67957dca55f7e135b3868980d014aa9200"

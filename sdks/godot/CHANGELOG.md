@@ -20,6 +20,9 @@ The SDK parity pass (`notes/SDK-PARITY-PASS.md` §5.6).
 - **Attest and retry.** Edge-mint, gated downloads and pack objects, and the commerce claim
   attest once on a 403 `attestation_required` and retry once (`PKeyOptions.auto_attest`).
 - **Settings persist by default** in `user://pkey_settings.cfg` (`PKeyOptions.settings_path`).
+- **`config.set_value()`, `clear()`, `clear_all()` and `setting(key)`** (`config.local`): device-local
+  writes through the persisted store, checked against the catalog type and refused
+  `managed_by_admin` for an enforced or hidden key, one `config_changed` per write.
 - **`identity.current()`, `identity.sign_out()`**, a persisted `set_channel()` that update
   checks, decide and the dev menu read, `crash_tags()` and `PolarisKey.distribution`. No
   portal URLs are built client-side (owner decision Q6): the activation panel's **Manage
