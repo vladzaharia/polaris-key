@@ -7,6 +7,7 @@ import {
   type StatusDomain,
   type Tone,
 } from "../lib/status.js";
+import { useChangedSinceMount } from "./motion/changed.js";
 import { SignedGlyph } from "./SignedBadge.js";
 
 /**
@@ -19,6 +20,10 @@ import { SignedGlyph } from "./SignedBadge.js";
  * frame), so the only filled shapes on a page are the things that want the operator, plus
  * neutral facts such as "Schema v8". Where a healthy state says nothing a reader needs (a card,
  * a page title), callers render nothing at all instead.
+ *
+ * Motion (notes/S-23 §6.1 "status"; MO-09): the colours ease (`pk-pill`, `base`) and a changed word
+ * pops in (`pk-pop-in`, `slow`·`spring`), keyed on the word so each change pops once. A pill never
+ * pops when it first appears. Under reduced motion both are instant swaps.
  */
 export const TONE_CLASSES: Record<Tone, string> = {
   success: "border-success-border bg-success-subtle text-success",
@@ -65,13 +70,24 @@ export function StatusPill({
       ? null
       : (icon ?? entry?.icon ?? TONE_ICON[t]);
   const label = children ?? entry?.label ?? "";
+  // What the pill says, for the pop: the word when it is text, else the state or the tone.
+  const word =
+    typeof label === "string" || typeof label === "number"
+      ? String(label)
+      : (state ?? t);
+  const popped = useChangedSinceMount(word);
+  const text = (
+    <span key={word} className={cn("truncate", popped && "pk-pop-in")}>
+      {label}
+    </span>
+  );
   if (t === "success") {
     return (
       <span
         data-tone={t}
         data-status="text"
         className={cn(
-          "inline-flex max-w-full shrink-0 items-center gap-1 whitespace-nowrap text-xs font-normal text-success",
+          "pk-pill inline-flex max-w-full shrink-0 items-center gap-1 whitespace-nowrap text-xs font-normal text-success",
           size === "sm" ? "h-5" : "h-6",
           className,
         )}
@@ -81,7 +97,7 @@ export function StatusPill({
         ) : icon === false ? null : (
           <span aria-hidden className="size-1.5 rounded-full bg-current" />
         )}
-        <span className="truncate">{label}</span>
+        {text}
       </span>
     );
   }
@@ -90,7 +106,7 @@ export function StatusPill({
       data-tone={t}
       data-status="pill"
       className={cn(
-        "inline-flex max-w-full shrink-0 items-center gap-1 whitespace-nowrap rounded-full border font-normal",
+        "pk-pill inline-flex max-w-full shrink-0 items-center gap-1 whitespace-nowrap rounded-full border font-normal",
         size === "sm" ? "h-5 px-1.5 text-xs" : "h-6 px-2 text-xs",
         TONE_CLASSES[t],
         className,
@@ -103,7 +119,7 @@ export function StatusPill({
       ) : icon === false ? null : (
         <span aria-hidden className="size-1.5 rounded-full bg-current" />
       )}
-      <span className="truncate">{label}</span>
+      {text}
     </span>
   );
 }
