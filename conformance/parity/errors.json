@@ -217,7 +217,7 @@
       "code": "signin_expired",
       "kind": "wire",
       "service": "identity",
-      "description": "400 from the login card: this browser's email sign-in or email gate is gone (used, expired, cancelled, or started in another browser). Its cookie is cleared; start again (I-07)."
+      "description": "400 from the login card: this browser's email sign-in, email gate or passkey request (signing in, or adding a passkey) is gone (used, expired, cancelled, or started in another browser); start again (I-07, I-16). The flow's cookie is cleared, except where a newer flow may have replaced it: a lost race or a double click leaves it alone (PX-W4)."
     },
     {
       "code": "invalid_code",
@@ -259,7 +259,7 @@
       "code": "last_link",
       "kind": "wire",
       "service": "identity",
-      "description": "409: removing this sign-in method would leave the account with none, and an account is never orphaned (S-16 §5.1; I-05's link engine, surfaced by the portal's sign-in methods, I-11)."
+      "description": "409: removing this sign-in method (a provider link or a passkey) would leave the account with none, and an account is never orphaned (S-16 §5.1; I-05's link engine, surfaced by the portal's sign-in methods, I-11, and passkeys, I-16)."
     },
     {
       "code": "step_up_required",
