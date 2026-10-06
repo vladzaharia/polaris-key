@@ -268,7 +268,7 @@ export const FEED_EXTENSION_FIELDS: Record<string, FeedExtensionField> = {
   },
   retainUntaggedDays: {
     label: "Untagged manifests",
-    help: "Recorded with the feed: nothing removes an untagged image manifest, so every one is kept whatever this holds. A published version is never removed.",
+    help: "Recorded with the feed: nothing removes an untagged image manifest, so every one is kept whatever this holds. A published version is never removed, except by feed retention's prune of builds of main.",
     input: { kind: "number", min: 0, max: 3650, unit: "days" },
   },
   categoryId: {

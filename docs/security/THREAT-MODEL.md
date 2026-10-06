@@ -1375,12 +1375,17 @@ and the operations are in RUNBOOK "Feed retention".
 
 **Deletion authority: who can trigger it.**
 
-| Trigger                            | Who                                                                                      | Scope                                                  | Audited as              |
-| ---------------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------ | ----------------------- |
-| a stable publish (automatic)       | whoever may publish (`release:publish`, a trusted publisher, a `publish` registry token) | that package, below the version just published         | `system:feed-retention` |
-| `POST /<p>/release/packages/prune` | a `pkeyci_` token with `release:yank` (operator-granted, opt-in)                         | the product's packages, below each one's newest stable | `ci:<subject>`          |
-| `POST …/feeds/prune` (admin)       | a console session the Feeds admin gates admit                                            | the scope's owner's packages                           | `admin:<sub>`           |
-| `PUT …/feeds/retention` (admin)    | the same; refused for the system product                                                 | the setting only                                       | `feed.retention.update` |
+| Trigger                            | Who                                                                                                                      | Scope                                                  | Audited as              |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ | ----------------------- |
+| a stable publish (automatic)       | whoever may publish (`release:publish`, a trusted publisher, a `publish` registry token), only once the product opted in | that package, below the version just published         | `system:feed-retention` |
+| `POST /<p>/release/packages/prune` | a `pkeyci_` token of that product with `release:yank` (operator-granted, opt-in); another product's token is 401         | the product's packages, below each one's newest stable | `ci:<subject>`          |
+| `POST …/feeds/prune` (admin)       | a platform-admin console session (403 otherwise)                                                                         | the scope's owner's packages                           | `admin:<sub>`           |
+| `PUT …/feeds/retention` (admin)    | the same; refused for the system product                                                                                 | the setting only                                       | `feed.retention.update` |
+
+**Off by default.** `release.packages.prunePrereleases` is off for a tenant product: nothing is
+deleted automatically until a platform admin opts the product in (`PUT …/feeds/retention`, an L1
+confirmation, audited). Only the reserved system product (`polaris-key`) is on by default, and it
+is locked on.
 
 A publisher therefore gains no new power. The automatic prune only removes builds of main below
 a version the publisher was already allowed to publish as the stable release, and the
@@ -1393,8 +1398,12 @@ deliverable id.
 **What it can never touch.** A stable or beta version, a prerelease of a version newer than V,
 another package, another product, or a version that a channel policy points at or that any
 other row names (a revocation, a pack pin or hold, a download token). Those are reported as
-`kept`. Only a final release on the channel named exactly `stable` triggers a prune. A beta
-(prerelease tag) never does.
+`kept`; one that became held between the plan and its batch is reported as `skipped` and kept,
+never dropped silently. Only a final release on the channel named exactly `stable` triggers a
+prune. A beta (prerelease tag) never does. Only a LIVE stable release is a ceiling: a yanked or
+deprecated stable, even a far newer one, never pulls builds of main into the prune. A build of
+main published on any channel but `main` is never a candidate, and only the exact spellings
+`X-main.N` and PEP 440 `X.devN` (ASCII digits, nothing after) are.
 
 **Unique forever survives.** Each pruned version leaves a tombstone (`release_package_prunes`).
 Ingest refuses to republish it (`package-version-taken`), so a pruned npm tarball name, Swift
@@ -1408,7 +1417,10 @@ OCI push shares is never lost. The byte routes serve only keys the product still
 (`hasRef`), which leaves the shared bytes of kept versions intact.
 
 **Audit.** Every deletion is one audit row in the same batch (`package.version.prune`: package,
-version, actor, file count, bytes, bytes no longer referenced) plus its tombstone row. A failure
+version, actor, file count, bytes, bytes no longer referenced; `parent_id` the stable release
+that set the ceiling) plus its tombstone row. The bytes no longer referenced are counted per
+batch against the refs left after it, so a run the cap or a failure cuts short never claims a
+blob that an undeleted version still holds. A failure
 of the automatic prune is audited (`package.prune.failed`, the Worker has no console log), never thrown at the
 publish.
 
@@ -5648,7 +5660,7 @@ under a looser policy, a registry route answers CORS or a method other than GET,
 Swift's `POST …/login`, F-22's four publish writes and F-23's OCI push methods, or
 `authorizeFeedRead` moves after the cache lookup (F-02); feed retention deletes anything but a
 build of main below a stable release, gains a trigger, lets a request name the versions it
-deletes, deletes a blob-store object itself, or stops leaving its tombstone (2026-10-06); a push route that is not Release's, a push
+deletes, deletes a blob-store object itself, stops leaving its tombstone, or turns on by default for a tenant product (2026-10-06); a push route that is not Release's, a push
 credential other than an owner-bound `publish` token or a `release:publish` CI token, a push that
 creates a repository or moves a channel tag, or an `oci-push` ref that serves anything beyond its
 repository's digest reads (F-23); a new registry

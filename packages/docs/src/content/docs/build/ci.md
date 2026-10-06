@@ -377,8 +377,10 @@ needs `release:yank`, which an operator adds to the product's publisher policy i
 
 `pkey feeds prune --product your-product` is the package feeds' retention backfill. For each
 package, it deletes the builds of main below the package's newest stable release. It is a dry
-run that prints what would go, with counts and bytes, unless you pass `--apply`. It needs
-`release:yank` as well. A stable publish already runs the same prune for its own package; see
+run that prints what would go, with counts and bytes, unless you pass `--apply`. With `--apply`
+it lists any version it skipped (a channel took hold of it since the plan, so it was kept) and
+exits non-zero if any version failed. It needs `release:yank` as well. Once the product turned
+retention on (it is off by default), a stable publish runs the same prune for its own package; see
 [Install from the feeds](/docs/build/install-from-feeds/#builds-of-main-are-pruned-once-released).
 
 ## Distribution commands

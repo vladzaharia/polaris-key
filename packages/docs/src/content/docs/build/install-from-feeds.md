@@ -383,8 +383,8 @@ package shows the version just published. The whole flow is on
 ### Builds of main are pruned once released
 
 Each build of `main` is a prerelease of the next version, so it stops being useful once that
-version ships. When a version is published on `stable`, the feeds **prune** the package's builds
-of main below it: `<next>-main.<N>` (Python `<next>.dev<N>`) for every `<next>` at or below the
+version ships. When a version is published on `stable`, the platform's own feeds **prune** the
+package's builds of main below it: `<next>-main.<N>` (Python `<next>.dev<N>`) for every `<next>` at or below the
 released version. Stable and beta versions are never touched. Neither are builds of a newer
 version, nor any other package. Once `0.9.1` is released, `0.9.1-main.4` and `0.9.0-main.2` are
 gone and `0.9.2-main.1` stays.
@@ -397,10 +397,12 @@ version. A lockfile that pins a pruned build of main no longer installs. Pin a s
 release instead: those are never pruned. A pruned version can never be published again, because
 versions stay unique forever.
 
-A product's own feeds follow the same rule through the setting
-`release.packages.prunePrereleases`, which is on by default. An operator turns it off through
+A product's own feeds follow the same rule once the product opts in through the setting
+`release.packages.prunePrereleases`, which is off by default. An operator turns it on through
 the Feeds admin API: `PUT /manage/api/products/<slug>/distribution/feeds/retention` with
-`{"expectedVersion": <n>, "prunePrereleases": false}`. The platform's own feeds always prune.
-Versions released before this rule existed are cleaned up by the backfill,
-`pkey feeds prune --product <slug>`. It is a dry run unless `--apply` is given, and the token needs
-`release:yank`.
+`{"expectedVersion": <n>, "prunePrereleases": true}`. The platform's own feeds always prune. A
+yanked or deprecated stable release never sets the ceiling: only a live one does.
+Versions released before this rule existed, or before the product opted in, are cleaned up by the
+backfill, `pkey feeds prune --product <slug>`. It is a dry run unless `--apply` is given, and the
+token needs `release:yank`. With `--apply` it exits non-zero if any version failed; running it
+again finishes the rest.
