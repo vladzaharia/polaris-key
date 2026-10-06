@@ -753,7 +753,9 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         onClick={followRow}
         className={cn(
           rowHeight,
-          "border-b border-border bg-surface-raised text-sm text-fg outline-hidden",
+          // The line under a row is its cells' (border-separate), so a row's View Transition
+          // snapshot carries it and it moves with the row (S-23 §6.1 "list"; MO-09).
+          "bg-surface-raised text-sm text-fg outline-hidden [&>td]:border-b [&>td]:border-border",
           "hover:bg-surface-overlay focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
           "data-[selected]:bg-accent-subtle",
           // highlight(): a created or edited row's tint wins over the row's own surface.
@@ -1086,7 +1088,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       <tr
         key={`sk-${i}`}
         aria-hidden
-        className={cn(rowHeight, "border-b border-border")}
+        className={cn(rowHeight, "[&>td]:border-b [&>td]:border-border")}
       >
         {selection ? <td className="w-10 px-3" /> : null}
         {visibleColumns.map((c) => (
@@ -1133,10 +1135,10 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const headerSome = table.getIsSomeRowsSelected();
 
   const tableEl = (
-    <table className="w-full border-collapse text-sm">
+    <table className="w-full border-separate border-spacing-0 text-sm">
       <caption className="sr-only">{caption}</caption>
       <thead className="sticky top-0 z-[2] bg-surface-raised">
-        <tr className="border-b border-border">
+        <tr className="[&>th]:border-b [&>th]:border-border">
           {selection ? (
             <th
               scope="col"
@@ -1208,6 +1210,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         key={showSkeleton ? "skeleton" : "rows"}
         ref={setList}
         className={cn(
+          "pk-vt-table",
           showSkeleton
             ? "pk-skeleton-group"
             : sawSkeleton && !error && "pk-content-in",
@@ -1219,7 +1222,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   );
 
   const cards = (
-    <ul ref={setList} aria-label={caption} className="space-y-2">
+    <ul ref={setList} aria-label={caption} className="pk-vt-table space-y-2">
       {pageRows.map((row) => {
         const label = labelOf(row.original);
         const cells = row.getVisibleCells();
@@ -1398,25 +1401,28 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   return (
     <div className={cn("space-y-3", className)} data-table-id={id}>
       {hasToolbar ? toolbar : null}
-      {/* The keyboard handler serves j/k/Enter/x on the rows inside; it is not itself a control. */}
-      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
-      <div onKeyDown={onKeyDown}>
-        {isMobileCards && !error && !showSkeleton && !noResults ? (
-          cards
-        ) : (
-          <div
-            ref={scrollRef}
-            className={cn(
-              // pk-vt-scope: during a list transition the card and its table move with the rows.
-              "pk-vt-scope relative overflow-auto rounded-lg border border-border bg-surface-raised pk-scroll",
-              virtual && "max-h-[70vh]",
-            )}
-          >
-            {tableEl}
-          </div>
-        )}
+      {/* pk-vt-scope: during a list transition the card and the footer move with the rows instead
+          of jumping (S-23 §3.4 item 2); the toolbar above is part of the page and swaps at once. */}
+      <div className="pk-vt-scope space-y-3">
+        {/* The keyboard handler serves j/k/Enter/x on the rows inside; it is not itself a control. */}
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+        <div onKeyDown={onKeyDown}>
+          {isMobileCards && !error && !showSkeleton && !noResults ? (
+            cards
+          ) : (
+            <div
+              ref={scrollRef}
+              className={cn(
+                "relative overflow-auto rounded-lg border border-border bg-surface-raised pk-scroll",
+                virtual && "max-h-[70vh]",
+              )}
+            >
+              {tableEl}
+            </div>
+          )}
+        </div>
+        {footer}
       </div>
-      {footer}
       <LiveRegion
         message={showSkeleton ? `Loading ${caption.toLowerCase()}…` : ""}
       />

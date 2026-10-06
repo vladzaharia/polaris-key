@@ -340,13 +340,19 @@ describe("DataTable list transitions", () => {
     );
   });
 
-  it("marks the table card as the list's scope", () => {
+  it("marks the table as the list's scope, and draws each row's line on its own cells", () => {
     render(<Table />);
     expect(
       document
         .querySelector("table")!
-        .parentElement!.classList.contains("pk-vt-scope"),
+        .closest(".pk-vt-scope")!
+        .parentElement!.matches("[data-table-id]"),
     ).toBe(true);
+    // border-separate: the line under a row belongs to the row, so it moves with it.
+    expect(document.querySelector("table")!.className).toContain(
+      "border-separate",
+    );
+    expect(bodyRows()[0]!.className).toContain("[&>td]:border-b");
   });
 });
 
