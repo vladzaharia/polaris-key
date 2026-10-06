@@ -224,7 +224,7 @@ PLATFORM_REPOSITORY_OWNER_ID = "79390"
 # I-07: Cloudflare Turnstile on the login card's email start. The site key is public; set it
 # here per environment and the secret with `wrangler secret put TURNSTILE_SECRET_KEY --env <env>`
 # (RUNBOOK "Login card"). Without the secret the card asks for no token.
-# TURNSTILE_SITE_KEY = "0x4AAAAAAA…"
+TURNSTILE_SITE_KEY = "0x4AAAAAAFPA8Ladne6enDdh"
 # I-18: sign-in and account mail. The binding may send only from these addresses: today's
 # noreply@plrs.im, and the auth sending subdomain's noreply@auth.plrs.im, which the Worker uses
 # once EMAIL_SENDER_ADDRESS above names it (RUNBOOK "Sign-in email").
@@ -299,6 +299,8 @@ LAZY_DELTAS = "runtime"
 # check proves the very records production uses (RUNBOOK "Sign-in email"). Until the owner
 # onboards auth.plrs.im the provider refuses the sender and the Worker answers email_unavailable.
 EMAIL_SENDER_ADDRESS = "noreply@auth.plrs.im"
+# I-07: Turnstile site key (public); the secret stays unset until the portal renders the widget.
+TURNSTILE_SITE_KEY = "0x4AAAAAAFPA8ouKFZ_KIKJO"
 [[env.staging.send_email]]
 name = "EMAIL"
 allowed_sender_addresses = ["noreply@auth.plrs.im"]
@@ -366,6 +368,8 @@ BLOBS_BUCKET_NAME = "polaris-key-blobs-dev"
 # P4-17: lazy hot-pair deltas' kill switch. A-13: "runtime" = the console's platform settings
 # store decides (default off); "off" = a hard off no console value can override.
 LAZY_DELTAS = "runtime"
+# I-07: Turnstile site key (public); the secret stays unset until the portal renders the widget.
+TURNSTILE_SITE_KEY = "0x4AAAAAAFPA80GfFwEcAJOR"
 
 # F-02: the LOCAL registry-client harness only (`wrangler dev --env test`, run by
 # scripts/registry-clients/run.mjs and .github/workflows/registry-clients.yml). It is never

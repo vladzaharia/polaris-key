@@ -1,16 +1,16 @@
 # HA-02 Image host `img.plrs.im` (`img-staging`, `img-dev`): fourth custom domain, `IMG_ORIGIN`, `core/imgHost.ts` confinement, content-addressed immutable routes and stable aliases
 
-| Field       | Value                                                                                                                                     |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 1: substrate)                                                     |
-| Size        | 0.6–1 engineer-weeks                                                                                                                      |
-| Depends on  | [HA-01](HA-01-hosted-asset-core.md)                                                                                                       |
-| Unblocks    | [HA-06](HA-06-upload-paths.md), [HA-07](HA-07-serve-hosted-copies.md), [HA-12](HA-12-presentation-discovery.md)                           |
-| Role        | `pkey-implementer`                                                                                                                        |
-| Plan mode   | no                                                                                                                                        |
-| Gates       | wrangler config; rule 10 (OpenAPI + routeCoverage); THREAT-MODEL; workerd lane                                                            |
-| Human input | a deploy that attaches the custom domains img.plrs.im, img-staging.plrs.im and img-dev.plrs.im (the Worker routes create the DNS records) |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                 |
+| Field       | Value                                                                                                                                                                              |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 1: substrate)                                                                                              |
+| Size        | 0.6–1 engineer-weeks                                                                                                                                                               |
+| Depends on  | [HA-01](HA-01-hosted-asset-core.md)                                                                                                                                                |
+| Unblocks    | [HA-06](HA-06-upload-paths.md), [HA-07](HA-07-serve-hosted-copies.md), [HA-12](HA-12-presentation-discovery.md)                                                                    |
+| Role        | `pkey-implementer`                                                                                                                                                                 |
+| Plan mode   | no                                                                                                                                                                                 |
+| Gates       | wrangler config; rule 10 (OpenAPI + routeCoverage); THREAT-MODEL; workerd lane                                                                                                     |
+| Human input | none: the deploy attaches img.plrs.im, img-staging.plrs.im and img-dev.plrs.im (the Worker routes create the DNS records); the plrs.im zone is in the account (checked 2026-10-06) |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                          |
 
 ## Goal
 

@@ -1,16 +1,16 @@
 # HA-03 Image variant ladder at ingest through the Images binding (WebP, fixed widths, never upscale), with an original-only fallback
 
-| Field       | Value                                                                                                                 |
-| ----------- | --------------------------------------------------------------------------------------------------------------------- |
-| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 1: substrate)                                 |
-| Size        | 0.5–0.8 engineer-weeks                                                                                                |
-| Depends on  | [HA-01](HA-01-hosted-asset-core.md)                                                                                   |
-| Unblocks    | [HA-07](HA-07-serve-hosted-copies.md)                                                                                 |
-| Role        | `pkey-implementer`                                                                                                    |
-| Plan mode   | no                                                                                                                    |
-| Gates       | wrangler config; workerd lane; THREAT-MODEL                                                                           |
-| Human input | the Images binding enabled for the Worker on the Cloudflare account (free tier: 5,000 unique transformations a month) |
-| Repo        | `vladzaharia/polaris-key`                                                                                             |
+| Field       | Value                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 1: substrate)                                                                        |
+| Size        | 0.5–0.8 engineer-weeks                                                                                                                                       |
+| Depends on  | [HA-01](HA-01-hosted-asset-core.md)                                                                                                                          |
+| Unblocks    | [HA-07](HA-07-serve-hosted-copies.md)                                                                                                                        |
+| Role        | `pkey-implementer`                                                                                                                                           |
+| Plan mode   | no                                                                                                                                                           |
+| Gates       | wrangler config; workerd lane; THREAT-MODEL                                                                                                                  |
+| Human input | none: done 2026-10-06 (lead): Images is active on the account and image transformations are on for plrs.im (free tier: 5,000 unique transformations a month) |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                    |
 
 ## Goal
 

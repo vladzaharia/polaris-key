@@ -388,7 +388,7 @@
         "AGENTS.md rule 9"
       ],
       "brief": "wp/P0-14-slug-rule-shared-manifest.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "P1-01",
@@ -7694,9 +7694,7 @@
       "deps": ["HA-01"],
       "planMode": false,
       "gates": ["wrangler", "rule-10", "threat-model", "workerd"],
-      "humanInputs": [
-        "a deploy that attaches the custom domains img.plrs.im, img-staging.plrs.im and img-dev.plrs.im (the Worker routes create the DNS records)"
-      ],
+      "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": [
@@ -7718,9 +7716,7 @@
       "deps": ["HA-01"],
       "planMode": false,
       "gates": ["wrangler", "workerd", "threat-model"],
-      "humanInputs": [
-        "the Images binding enabled for the Worker on the Cloudflare account (free tier: 5,000 unique transformations a month)"
-      ],
+      "humanInputs": [],
       "repo": "polaris-key",
       "optional": false,
       "refs": ["notes/S-20 §6.6", "notes/S-20 owner decision 4"],

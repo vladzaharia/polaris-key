@@ -815,6 +815,15 @@ that already exists.
    > with `403 turnstile_failed`**. Set the site key var if you like; put the secret only once the
    > widget is live in the portal.
 
+   **Done (2026-10-06, by the lead through the Cloudflare API).** The three widgets exist, named
+   `Polaris Key login card (prod|staging|dev)`, mode Managed, one hostname each, and their site keys
+   are the `TURNSTILE_SITE_KEY` vars in `wrangler.toml`. No secret is set. To switch the check on
+   once PX-12/PX-21 render the widget, copy each widget's secret straight into the Worker without it
+   passing through a terminal or a file: one Cloudflare API call per environment that reads
+   `GET /accounts/{account}/challenges/widgets/{sitekey}` and writes the returned `secret` with
+   `PUT /accounts/{account}/workers/scripts/{script}/secrets` as `TURNSTILE_SECRET_KEY`
+   (`type: secret_text`), returning nothing. Then test email sign-in on staging before prod.
+
 2. **Avatars.** Copied provider pictures live in the environment's `BLOBS` bucket under the
    `avatars/` prefix; no extra binding or bucket is needed. To use a separate bucket instead, it
    would need a binding and a code change.
