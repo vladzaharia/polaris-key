@@ -424,10 +424,19 @@ function describeSpec(def: SettingDef): string {
   }
 }
 
+/**
+ * The version guard. A product row whose break-glass claim has expired (`expires_at`, ST-20) is
+ * no claim at all, exactly as the resolver reads it: its version is 0. Binds
+ * `[product, key, now, expected]` for a product key, `[key, expected]` for a platform one.
+ */
 const VERSION_OF = (table: "product_settings" | "platform_settings") =>
   table === "product_settings"
-    ? "COALESCE((SELECT version FROM product_settings WHERE product = ? AND key = ?), 0) = ?"
+    ? `COALESCE((SELECT version FROM product_settings WHERE product = ? AND key = ?
+         AND ${LIVE_ROW}), 0) = ?`
     : "COALESCE((SELECT version FROM platform_settings WHERE key = ?), 0) = ?";
+
+/** A `product_settings` row that is still a claim at `?` (no expiry, or not yet expired). */
+const LIVE_ROW = "(expires_at IS NULL OR expires_at > ?)";
 
 /** Run the batch; answer whether the first statement (the anchor audit row) applied. */
 async function applyBatch(
@@ -517,8 +526,9 @@ async function writeProduct(
   const claimRows = new Map(
     (
       await ctx.db.all<{ key: string; version: number; source: string }>(
-        `SELECT key, version, source FROM product_settings WHERE product = ?`,
+        `SELECT key, version, source FROM product_settings WHERE product = ? AND ${LIVE_ROW}`,
         slug,
+        opts.now,
       )
     ).map((r) => [r.key, r]),
   );
@@ -650,6 +660,7 @@ async function writeProduct(
         params: versionChecks.flatMap((p) => [
           slug,
           p.def.key,
+          opts.now,
           p.w.expectedVersion!,
         ]),
       }
@@ -716,7 +727,11 @@ async function writeProduct(
               SELECT ?, ?, ?, ?, 1, ?, ?, ?, NULL WHERE (${guard.sql})
               ON CONFLICT(product, key) DO UPDATE SET
                 value_json = excluded.value_json, source = excluded.source,
-                version = product_settings.version + 1, updated_at = excluded.updated_at,
+                version = CASE
+                  WHEN product_settings.expires_at IS NOT NULL
+                   AND product_settings.expires_at <= excluded.updated_at THEN 1
+                  ELSE product_settings.version + 1 END,
+                updated_at = excluded.updated_at,
                 updated_by = excluded.updated_by, reason = excluded.reason, expires_at = NULL`,
         params: [
           slug,
@@ -741,8 +756,9 @@ async function writeProduct(
     const current = new Map(
       (
         await ctx.db.all<{ key: string; version: number }>(
-          "SELECT key, version FROM product_settings WHERE product = ?",
+          `SELECT key, version FROM product_settings WHERE product = ? AND ${LIVE_ROW}`,
           slug,
+          opts.now,
         )
       ).map((r) => [r.key, r.version]),
     );

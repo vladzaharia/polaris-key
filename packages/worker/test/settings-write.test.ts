@@ -478,6 +478,72 @@ describe("writeSetting: a product write", () => {
   });
 });
 
+describe("writeSetting: an expired break-glass claim (ST-20's expires_at)", () => {
+  it("is no claim: its version is 0, as the resolver reads it, and a write over it starts at 1", async () => {
+    const { db, ctx } = await world({ linked: true });
+    await db.run(
+      `INSERT INTO product_settings
+         (product, key, value_json, source, version, updated_at, updated_by, reason, expires_at)
+       VALUES ('acme', 'license.test.mode', '"b"', 'console', 5, ?, 'u0', 'incident', ?)`,
+      NOW - 100,
+      NOW - 1,
+    );
+    expect(
+      await resolveProductSetting(ctx, "acme", "license.test.mode", {
+        now: NOW,
+      }),
+    ).toMatchObject({ value: "a", source: "default", version: 0 });
+    // The expired claim's version is not the one to name: no spurious 409 for 0, one for 5.
+    expect(
+      await writeSetting(
+        ctx,
+        {
+          key: "license.test.mode",
+          value: "b",
+          expectedVersion: 5,
+          reason: "r",
+        },
+        opts(),
+      ),
+    ).toMatchObject({
+      ok: false,
+      reason: "version_conflict",
+      details: { currentVersion: 0 },
+    });
+    expect(
+      await writeSetting(
+        ctx,
+        {
+          key: "license.test.mode",
+          value: "b",
+          expectedVersion: 0,
+          reason: "r",
+        },
+        opts(),
+      ),
+    ).toMatchObject({ ok: true, written: [{ version: 1 }] });
+    expect(await rows(db)).toEqual([
+      {
+        key: "license.test.mode",
+        value_json: '"b"',
+        source: "console",
+        version: 1,
+        reason: "r",
+      },
+    ]);
+    expect(
+      await db.first(
+        "SELECT expires_at FROM product_settings WHERE key = 'license.test.mode'",
+      ),
+    ).toEqual({ expires_at: null });
+    expect(
+      await resolveProductSetting(ctx, "acme", "license.test.mode", {
+        now: NOW,
+      }),
+    ).toMatchObject({ value: "b", source: "console", version: 1 });
+  });
+});
+
 describe("writeSetting: column-backed keys", () => {
   it("writes the column through its adapter and claims it on a linked product", async () => {
     const { db, real } = await world({ linked: true });
