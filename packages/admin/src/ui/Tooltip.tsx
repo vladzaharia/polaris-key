@@ -11,11 +11,12 @@ export const TooltipProvider = TooltipPrimitive.Provider;
 export const TooltipRoot = TooltipPrimitive.Root;
 
 /**
- * Whether the last input was the keyboard: the `:focus-visible` heuristic, kept by hand because
+ * Whether the last input was a pointer: the `:focus-visible` heuristic, kept by hand because
  * focus a script moves (a menu or a sheet handing focus back to its opener) carries no modality
- * of its own, and jsdom matches `:focus-visible` on every focused element.
+ * of its own, and jsdom matches `:focus-visible` on every focused element. A key press (Tab,
+ * Enter, Escape) clears it, and so does a page with no input yet.
  */
-let keyboardInput = false;
+let pointerInput = false;
 let listening = false;
 function listenForModality(): void {
   if (listening || typeof document === "undefined") return;
@@ -23,22 +24,22 @@ function listenForModality(): void {
   document.addEventListener(
     "keydown",
     (e) => {
-      if (!e.metaKey && !e.ctrlKey && !e.altKey) keyboardInput = true;
+      if (!e.metaKey && !e.ctrlKey && !e.altKey) pointerInput = false;
     },
     true,
   );
   const pointer = (): void => {
-    keyboardInput = false;
+    pointerInput = true;
   };
   for (const type of ["pointerdown", "mousedown", "touchstart"] as const)
     document.addEventListener(type, pointer, true);
 }
 
 /**
- * The trigger opens its tooltip on a keyboard user's focus (WCAG 1.4.13), not on focus a script
- * returns after a pointer interaction: a sheet saved with the mouse hands focus back to its
- * "More actions" opener, and a tooltip opened then would linger over the page, portaled outside
- * every landmark (LX-14a). Hover opens it as before.
+ * The trigger opens its tooltip on focus (WCAG 1.4.13) unless the last input was a pointer: a
+ * sheet saved with the mouse hands focus back to its "More actions" opener, and a tooltip opened
+ * then would linger over the page, portaled outside every landmark (LX-14a). Keyboard focus, and
+ * focus on a page with no input yet, open it as before; so does hover.
  */
 export function TooltipTrigger({
   onFocus,
@@ -55,7 +56,7 @@ export function TooltipTrigger({
       onFocus={(e) => {
         onFocus?.(e);
         // Radix skips its focus-open for a prevented event.
-        if (!keyboardInput) e.preventDefault();
+        if (pointerInput) e.preventDefault();
       }}
     />
   );
