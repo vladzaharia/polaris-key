@@ -5,7 +5,7 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase A: independent fixes)                                          |
 | Size        | 0.1–0.15 engineer-weeks                                                                                                          |
 | Depends on  | [LX-05](LX-05-reserved-names-warn.md)                                                                                            |
-| Unblocks    | none                                                                                                                             |
+| Unblocks    | [PX-W13b](PX-W13b-display-name-settings.md)                                                                                      |
 | Role        | `pkey-implementer`                                                                                                               |
 | Plan mode   | no                                                                                                                               |
 | Gates       | rule 9 (validator rule, mutation table, JSON schema)                                                                             |

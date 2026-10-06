@@ -32,9 +32,10 @@ const INDEX = join(HERE, "INDEX.md");
 // Polaris Key commerce (phase CM, notes/S-22) also uses a two-letter prefix; every CM package is
 // optional and carries `deferred` until the owner's go.
 // The customer portal (phase PX, docs/design/PORTAL.md §11) keeps the spec's own ids: PX-01…PX-22
-// for the front end and PX-W1…PX-W17 for the Worker additions.
+// for the front end and PX-W1…PX-W17 for the Worker additions; a follow-up split off a PX-W package
+// takes a letter suffix like every other phase's (PX-W13b).
 const ID_RE =
-  /^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|MO|PS|CM)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}))$/;
+  /^(?:(?:P0|P1|P1b|P2|P2b|P3|P4|P5|P6|X|S|D|F|A|I|U|ST|LX|SP|HA|UK|MO|PS|CM)-\d{2}[a-z]?|PX-(?:\d{2}|W\d{1,2}[a-z]?))$/;
 const DONE = new Set(["done", "dropped"]);
 
 const raw = readFileSync(GRAPH, "utf8");

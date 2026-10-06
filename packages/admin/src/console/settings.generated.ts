@@ -165,7 +165,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "operator",
     critical: false,
     secret: false,
-    pending: "ST-04",
+    pending: "PX-W13b",
     deprecated: null,
   },
   {
@@ -964,7 +964,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "operator",
     critical: false,
     secret: false,
-    pending: "ST-04",
+    pending: "PX-W13b",
     deprecated: null,
   },
   {

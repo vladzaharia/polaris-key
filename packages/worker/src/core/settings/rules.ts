@@ -153,7 +153,8 @@ const SECURITY_WIDENING_PATTERN =
 const KEY_RE = /^[a-z][a-zA-Z0-9]*(\.[a-z][a-zA-Z0-9]*)+$/;
 const MANIFEST_PATH_RE =
   /^(product|release|schema|distribution):[A-Za-z][A-Za-z0-9-]*(\.[A-Za-z][A-Za-z0-9-]*)*$/;
-const WP_RE = /^[A-Z]+[0-9]*-[0-9]+[a-z]?$/;
+// A work-package id: `ST-04`, `I-10a`, and the portal's Worker additions `PX-W13`, `PX-W13b`.
+const WP_RE = /^(?:[A-Z]+[0-9]*-[0-9]+[a-z]?|PX-W[0-9]{1,2}[a-z]?)$/;
 const CAPABILITY_RE = /^settings\.(platform|product|entity)\.[a-zA-Z]+\.write$/;
 const LEVELS: readonly ConfirmLevel[] = ["L0", "L1", "L2", "L3"];
 
