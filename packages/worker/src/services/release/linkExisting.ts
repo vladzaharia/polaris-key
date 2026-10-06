@@ -23,11 +23,11 @@
  *
  * The plan (`planRepoManifest`) has the shape S-18 §4.5 gives ST-17's resync dry run
  * (`apply`, `skipClaimed`, `delete`, `conflicts`) and reads the same ownership columns
- * `applyRepoManifest` honours, so it says what that function will do. ST-17 makes resync, the
- * webhook and the deploy hook record it too.
+ * `applyRepoManifest` honours, so it says what that function will do. The console's Resync
+ * confirm renders it through `planResync` (`POST …/release/resync?dryRun=1`, UX-78). ST-17 makes
+ * resync, the webhook and the deploy hook record it too.
  */
 
-import { Catalog } from "@polaris-key/catalog";
 import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import type { Db, Env } from "../../core/platform.js";
 import {
@@ -49,14 +49,17 @@ import {
   type FetchImpl,
   getInstallationToken,
 } from "./githubApp.js";
-import { isSafeBinaryName } from "./install.js";
-import {
-  digestManifestFiles,
-  manifestIssuerRefusal,
-  parseRepoUrl,
-} from "./linkRepo.js";
+import { digestManifestFiles, parseRepoUrl } from "./linkRepo.js";
 import { fetchPinnedManifestFiles } from "./manifestFetch.js";
-import { resyncRepo, type ResyncResult } from "./resync.js";
+import {
+  issuerChangeRefusal,
+  readLinkedManifest,
+  resolveManifestPublisher,
+  resyncRepo,
+  screenCatalog,
+  unsafeBinaryNameRefusal,
+  type ResyncResult,
+} from "./resync.js";
 import type { ManifestIngest } from "../../core/registry.js";
 
 /** Which check a refusal belongs to: the console marks the rows before it passed. */
@@ -246,35 +249,8 @@ export async function prepareLink(
 
   // The refusals `applyRepoManifest` reaches only after its first write, run here first so a
   // link either applies whole or not at all.
-  const binaryName = manifest.release?.binaryName || repo;
-  if (manifest.release && !isSafeBinaryName(binaryName))
-    return refuse(
-      "policy",
-      `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`,
-    );
-  if (manifest.oidc?.provider === "custom") {
-    const stored = await db.first<{ issuer: string | null }>(
-      "SELECT issuer FROM oidc_config WHERE product = ?",
-      slug,
-    );
-    if ((stored?.issuer ?? "") !== manifest.oidc.issuer) {
-      const refusal = manifestIssuerRefusal(env, manifest.oidc.issuer);
-      if (refusal) return refuse("policy", refusal);
-    }
-  }
-  // Screened only when it changed, as resync does: an unchanged catalog is already stored and
-  // resync will not publish it again.
-  const active = await getActiveSchema(db, slug);
-  try {
-    const catalog = new Catalog(manifest.catalog as never);
-    if (active?.catalog_json !== JSON.stringify(manifest.catalog))
-      catalog.compileAll();
-  } catch (e) {
-    return refuse(
-      "policy",
-      `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
-    );
-  }
+  const policy = await manifestPolicyRefusal(env, db, slug, repo, manifest);
+  if (policy) return refuse("policy", policy.summary);
 
   const plan = await planRepoManifest(db, slug, manifest);
   plan.apply.unshift({
@@ -421,6 +397,85 @@ export async function linkExistingProduct(
     ...(applied.packSets ? { packSets: applied.packSets } : {}),
     remainingSecrets: prepared.remainingSecrets,
   };
+}
+
+/**
+ * The refusals `applyRepoManifest` reaches only after its first write (an unsafe binary name, a
+ * catalog the validator refuses) plus its issuer gate, checked up front and writing nothing.
+ * Each check is the very helper `applyRepoManifest` calls (`resync.ts`), so link and the dry run
+ * cannot drift from what the resync refuses. `null` when the manifest passes all three. Link
+ * refuses on one; the resync dry run lists it as what blocks the resync.
+ */
+async function manifestPolicyRefusal(
+  env: Env,
+  db: Db,
+  slug: string,
+  repo: string,
+  manifest: ParsedManifest,
+): Promise<PlanItem | null> {
+  const binary = unsafeBinaryNameRefusal(manifest, repo);
+  if (binary) return { area: "release", summary: binary };
+  const issuer = await issuerChangeRefusal(env, db, slug, manifest);
+  if (issuer) return { area: "oidc", summary: issuer };
+  // Screened only when it changed, as resync does: an unchanged catalog is already stored and
+  // resync will not publish it again.
+  const active = await getActiveSchema(db, slug);
+  const screened = screenCatalog(
+    manifest,
+    active?.catalog_json !== JSON.stringify(manifest.catalog),
+  );
+  if (!screened.ok) return { area: "catalog", summary: screened.error };
+  return null;
+}
+
+/** The resync dry run's answer (`POST …/release/resync?dryRun=1`, UX-78, S-18 §4.5 item 4). */
+export type PlannedResync =
+  | {
+      ok: true;
+      /** `owner/repo`, from the product's stored coordinates. */
+      repository: string;
+      /** The default-branch commit the files were read at. */
+      commit: string;
+      plan: ManifestPlan;
+    }
+  | LinkRefusal;
+
+/**
+ * What a resync of `slug` would do now: the manifest read by `readLinkedManifest`, the same read
+ * `resyncRepo` makes (one pinned commit of the default branch), its pre-write refusals, and `planRepoManifest`'s plan.
+ * Writes nothing: no sync state, no audit row, no snapshot. A refusal that the resync itself
+ * would answer with (the product not linked, GitHub unreachable, the manifest invalid or not
+ * this product's) refuses here too, naming the check; a policy refusal or a dropped row still in
+ * use is a `conflicts` item, since that is what blocks the resync.
+ */
+export async function planResync(
+  env: Env,
+  db: Db,
+  slug: string,
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<PlannedResync> {
+  const read = await readLinkedManifest(env, db, slug, now, fetchImpl);
+  if (!read.ok) return refuse(read.check, read.error, read.errors);
+  const { owner, repo, token, commit, manifest } = read;
+
+  const plan = await planRepoManifest(db, slug, manifest);
+  const policy = await manifestPolicyRefusal(env, db, slug, repo, manifest);
+  // The resync resolves the trusted publisher's repository ids before its first write and
+  // refuses the push when GitHub cannot answer; the dry run makes the same lookup.
+  const publisher = await resolveManifestPublisher(
+    db,
+    slug,
+    manifest,
+    token,
+    owner,
+    repo,
+    fetchImpl,
+  );
+  if (!publisher.ok)
+    plan.conflicts.unshift({ area: "publisher", summary: publisher.error });
+  if (policy) plan.conflicts.unshift(policy);
+  return { ok: true, repository: `${owner}/${repo}`, commit, plan };
 }
 
 /** The distinct secret NAMES a manifest references (OIDC, edge-mint, provisioning hooks). */

@@ -178,3 +178,160 @@ describe("Core pages under the Worker's CSP", () => {
     }
   });
 });
+
+/**
+ * The one resync flow (UX-78, FLOWS.md C-10): the confirm shows the dry run's plan, a plan that
+ * conflicts keeps the button disabled, a refusal is worded for its check, and the result panel
+ * takes focus once the confirm has gone. Every state under the CSP, both themes, 1440 and 390.
+ */
+const RESYNC = "/manage/api/products/djdl/release/resync";
+const PLAN = {
+  ok: true,
+  dryRun: true,
+  slug: "djdl",
+  repository: "polaris/djdl",
+  commit: "4be1c0ffee5a7d2e",
+  plan: {
+    apply: [
+      { area: "tiers", id: "studio", summary: "Tier studio added" },
+      {
+        area: "catalog",
+        summary: "Publishes a new catalog version: adds run.mode",
+      },
+    ],
+    skipClaimed: [
+      {
+        area: "services",
+        summary:
+          "Services stay as set in the console (the manifest turns on distribution)",
+      },
+    ],
+    delete: [{ area: "tiers", id: "legacy", summary: "Tier legacy" }],
+    conflicts: [] as { area: string; id?: string; summary: string }[],
+  },
+};
+const RESULT = {
+  ok: true,
+  slug: "djdl",
+  updated: ["tiers", "schema"],
+  packSets: { ok: true, sets: 2 },
+};
+
+async function resyncPage(
+  theme: "dark" | "light",
+  viewport: { width: number; height: number },
+  dryRun: { status: number; json: unknown },
+): Promise<Page> {
+  const page = await open(theme, "#/p/djdl/settings", viewport);
+  await page.route(`**${RESYNC}*`, (route) => {
+    const dry = new URL(route.request().url()).searchParams.get("dryRun");
+    return dry === "1"
+      ? route.fulfill(dryRun)
+      : route.fulfill({ json: RESULT });
+  });
+  await page.locator("[data-page-title]", { hasText: "Settings" }).waitFor();
+  await page.getByRole("button", { name: "Resync from repo…" }).click();
+  await page.getByRole("alertdialog").waitFor();
+  return page;
+}
+
+describe("One resync flow (UX-78)", () => {
+  const sizes = [
+    { width: 1440, height: 900 },
+    { width: 390, height: 844 },
+  ];
+  for (const theme of ["dark", "light"] as const) {
+    it(`plan, conflict, refusal and focused result under the CSP (${theme})`, async () => {
+      for (const viewport of sizes) {
+        const tag = `${theme}-${viewport.width}`;
+        // The plan, then the result.
+        let page = await resyncPage(theme, viewport, {
+          status: 200,
+          json: PLAN,
+        });
+        const dialog = page.getByRole("alertdialog");
+        await dialog.getByText("Tier studio added").waitFor();
+        await dialog.getByText("polaris/djdl").waitFor();
+        await page.waitForTimeout(300);
+        if (SHOTS)
+          await page.screenshot({ path: `${SHOTS}/resync-plan-${tag}.png` });
+        await dialog.getByRole("button", { name: "Resync from repo" }).click();
+        const panel = page.getByTestId("resync-result");
+        await panel.waitFor();
+        await expect
+          .poll(() =>
+            page.evaluate(
+              () => document.activeElement?.getAttribute("data-testid") ?? "",
+            ),
+          )
+          .toBe("resync-result");
+        expect(await panel.textContent()).toContain(
+          "Resynced DJDL from polaris/djdl",
+        );
+        await page.waitForTimeout(300);
+        if (SHOTS)
+          await page.screenshot({ path: `${SHOTS}/resync-result-${tag}.png` });
+        expect(await violations(page), `result ${tag}`).toEqual([]);
+        await page.context().close();
+
+        // A conflict blocks the resync.
+        page = await resyncPage(theme, viewport, {
+          status: 200,
+          json: {
+            ...PLAN,
+            plan: {
+              ...PLAN.plan,
+              conflicts: [
+                {
+                  area: "tiers",
+                  id: "pro",
+                  summary:
+                    "Tier pro is not in the manifest but 3 licenses use it: add it to .pkey/product or move them first",
+                },
+              ],
+            },
+          },
+        });
+        await page.getByText("Blocks the resync").waitFor();
+        const button = page
+          .getByRole("alertdialog")
+          .getByRole("button", { name: "Resync from repo" });
+        expect(
+          (await button.getAttribute("aria-disabled")) === "true" ||
+            (await button.isDisabled()),
+        ).toBe(true);
+        await page.waitForTimeout(300);
+        if (SHOTS)
+          await page.screenshot({
+            path: `${SHOTS}/resync-conflict-${tag}.png`,
+          });
+        expect(await violations(page), `conflict ${tag}`).toEqual([]);
+        await page.context().close();
+
+        // A refusal, worded for its check.
+        page = await resyncPage(theme, viewport, {
+          status: 422,
+          // The worker's `err()` shape: the fields nested and at the top level.
+          json: {
+            error: {
+              code: "bad_request",
+              message: "manifest validation failed",
+              reason: "manifest",
+              errors: ["product.tiers[0].id: required"],
+            },
+            code: "bad_request",
+            message: "manifest validation failed",
+            reason: "manifest",
+            errors: ["product.tiers[0].id: required"],
+          },
+        });
+        await page.getByText("1 problem in .pkey/").waitFor();
+        await page.waitForTimeout(300);
+        if (SHOTS)
+          await page.screenshot({ path: `${SHOTS}/resync-refused-${tag}.png` });
+        expect(await violations(page), `refused ${tag}`).toEqual([]);
+        await page.context().close();
+      }
+    });
+  }
+});
