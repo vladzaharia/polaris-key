@@ -5833,7 +5833,10 @@ item 15 (merge takeover) are the threats; the rules below are what the routes ad
   account), so a join made with stolen proof of one account is reversible by its owner after the
   notice. Only methods still on the kept account go back: a method disconnected since the join (a
   lost passkey, a compromised provider account) never comes back silently, and the snapshot holds
-  method ids only, never their subjects, addresses or keys. The undo refuses (`last_link`) when an
+  method ids only, never their subjects, addresses or keys. Nor does an address come back as the
+  restored account's primary email on the snapshot's word: a primary none of the returning
+  methods carries (verified, if the primary is) gives way to the oldest verified address they
+  carry, or to none (a test). The undo refuses (`last_link`) when an
   account would be left with no way to sign in; that guard is the first statement of the undo's
   batch and aborts it, so a removal racing the undo cannot orphan either side (a test). A licence
   that goes back revokes every registry token the kept account minted on it during the window
