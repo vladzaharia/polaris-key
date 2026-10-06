@@ -95,7 +95,9 @@ The portal API serves the storefront: offers with all their paths, a storefront 
 - [x] Claim is idempotent (double submit) for every path kind, including `open`.
 - [x] Library shows an entry for an open product and hides it once a licence exists.
 - [x] Analytics tables hold no account id (test).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+      (GATE GREEN with the migration numbered; `record-deploy` refuses the `00XX` placeholder by
+      design until the lead assigns the number, as with I-16 and PX-W12.)
 
 ## Verify
 
