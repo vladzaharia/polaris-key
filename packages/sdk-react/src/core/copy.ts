@@ -122,7 +122,14 @@ const EN: CopyBundle = {
     oidc_error: "The sign-in provider didn't answer correctly. Try again.",
     unavailable: "Sign-in is busy right now. Try again in a moment.",
     auth_method_disabled: "That sign-in method is turned off.",
-    email_not_configured: "Email sign-in isn't available right now.",
+    email_unavailable: "Email sign-in isn't available right now.",
+    turnstile_failed:
+      "The security check didn't pass. Reload the page and try again.",
+    signin_expired: "This sign-in has expired. Start again.",
+    invalid_code: "That code didn't work. Check the email and type it again.",
+    email_in_use:
+      "Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.",
+    terms_required: "Agree to the terms to continue.",
     license_owned:
       "This license belongs to another account. Sign in with that account.",
     email_mismatch: "This license was sold to a different email address.",
@@ -301,8 +308,16 @@ const FR: CopyBundle = {
     unavailable:
       "La connexion est saturée pour le moment. Réessayez dans un instant.",
     auth_method_disabled: "Cette méthode de connexion est désactivée.",
-    email_not_configured:
+    email_unavailable:
       "La connexion par e-mail n'est pas disponible pour le moment.",
+    turnstile_failed:
+      "La vérification de sécurité a échoué. Rechargez la page et réessayez.",
+    signin_expired: "Cette connexion a expiré. Recommencez.",
+    invalid_code:
+      "Ce code n'a pas fonctionné. Vérifiez l'e-mail et saisissez-le à nouveau.",
+    email_in_use:
+      "Un autre compte Polaris Key utilise déjà cette adresse e-mail. Associez cette connexion à ce compte, ou utilisez une autre adresse.",
+    terms_required: "Acceptez les conditions pour continuer.",
     license_owned:
       "Cette licence appartient à un autre compte. Connectez-vous avec ce compte.",
     email_mismatch: "Cette licence a été vendue à une autre adresse e-mail.",
