@@ -235,7 +235,14 @@ export async function msStoreSource(c: SourceContext): Promise<SourceOutcome> {
 
 // ── The manifest and the product ─────────────────────────────────────────────────────────────
 
-const MANIFEST_ASSETS = ["iconUrl", "headerUrl", "screenshots"] as const;
+/** The listing art fields (HA-04's `icon`/`header`, and the pre-HA-04 aliases a stored row may hold). */
+const MANIFEST_ASSETS = [
+  "icon",
+  "header",
+  "iconUrl",
+  "headerUrl",
+  "screenshots",
+] as const;
 
 /**
  * `.pkey/distribution` `listing` as `outletId` shows it (or the first live outlet with one):

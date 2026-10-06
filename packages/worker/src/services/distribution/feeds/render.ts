@@ -30,6 +30,8 @@
  * Products are data: nothing here names a product or a store beyond the outlet-kind vocabulary.
  */
 
+import { listingImageUrl, listingScreenshotUrls } from "@polaris-key/manifest";
+
 /** One release as a feed lists it: a release, the outlet's build of it, and its payload. */
 export interface RenderEntry {
   releaseId: string;
@@ -53,16 +55,25 @@ export interface RenderEntry {
   url: string;
 }
 
-/** The store-page metadata a feed shows (the outlet's merged `.pkey/distribution` listing). */
+/**
+ * The store-page metadata a feed shows (the outlet's merged `.pkey/distribution` listing). The art
+ * is read through `listingImageUrl` / `listingScreenshotUrls`: a stored row holds normalised
+ * asset refs (HA-04) or, when written before HA-04, the legacy URL strings, and only an https ref
+ * has a URL a feed can name.
+ */
 export interface RenderListing {
   name?: string;
   subtitle?: string;
   description?: string;
-  iconUrl?: string;
-  headerUrl?: string;
+  icon?: unknown;
+  header?: unknown;
+  /** Pre-HA-04 rows only. */
+  iconUrl?: unknown;
+  /** Pre-HA-04 rows only. */
+  headerUrl?: unknown;
   tintColor?: string;
   category?: string;
-  screenshots?: string[];
+  screenshots?: unknown[];
   website?: string;
   developerName?: string;
 }
@@ -141,6 +152,7 @@ function iosMeta(m: Record<string, unknown> | null): IosMeta | null {
 export function renderAltStoreSource(input: AltStoreInput): unknown {
   const l = input.listing ?? {};
   const name = str(l.name) ?? input.productName;
+  const screenshots = listingScreenshotUrls(l);
   const seen = new Set<string>();
   const versions: Record<string, unknown>[] = [];
   let newest: IosMeta | null = null;
@@ -189,13 +201,13 @@ export function renderAltStoreSource(input: AltStoreInput): unknown {
         developerName: str(l.developerName),
         subtitle: str(l.subtitle),
         localizedDescription: str(l.description) ?? str(l.subtitle) ?? name,
-        iconURL: str(l.iconUrl),
+        iconURL: listingImageUrl(l, "icon"),
         tintColor: str(l.tintColor)?.replace(/^#/, ""),
         category:
           l.category && ALTSTORE_CATEGORIES.has(l.category)
             ? l.category
             : undefined,
-        screenshots: l.screenshots?.length ? [...l.screenshots] : undefined,
+        screenshots: screenshots.length ? screenshots : undefined,
         versions,
         appPermissions: permissions,
         // The legacy app-level copy of the newest version (SideStore issue #735).
@@ -214,8 +226,8 @@ export function renderAltStoreSource(input: AltStoreInput): unknown {
     sourceURL: input.sourceUrl,
     subtitle: str(l.subtitle),
     description: str(l.description),
-    iconURL: str(l.iconUrl),
-    headerURL: str(l.headerUrl),
+    iconURL: listingImageUrl(l, "icon"),
+    headerURL: listingImageUrl(l, "header"),
     website: str(l.website),
     tintColor: str(l.tintColor)?.replace(/^#/, ""),
     apps,

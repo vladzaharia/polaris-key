@@ -42,6 +42,7 @@ The core of OC ([S-19 owner decisions](../../notes/S-19-licensing-model.md) item
 **In:**
 
 - The resolver in Core; holder report; caching; switch the document, pack gate, registry tokens, portal and Cloud Sync callers; cost measurement.
+- `deviceLimit` reads `licenses.device_limit` (LX-14a) as the licence value of S-19 C2, beating the tier, with seat packs adding on top; until LX-14a lands, keep today's order.
 
 **Out** (and where it belongs instead):
 

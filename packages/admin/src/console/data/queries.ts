@@ -114,6 +114,9 @@ export const qk = {
   licenses: (slug: string) => product(slug, "license", "licenses"),
   license: (slug: string, id: string) =>
     product(slug, "license", "licenses", id),
+  /** The "Clean up duplicates" list; under the licenses prefix, so every licence write refreshes it. */
+  licenseCleanup: (slug: string) =>
+    product(slug, "license", "licenses", "_cleanup"),
   tiers: (slug: string) => product(slug, "license", "tiers"),
   fingerprintPolicy: (slug: string) => product(slug, "license", "enrollment"),
 

@@ -85,6 +85,7 @@ import { handleBlobGcAdmin } from "../core/blobGc.js";
 import { loadProduct } from "../core/products.js";
 import { buildHooks } from "../core/hooks.js";
 import { manifestIngestFor } from "../core/registry.js";
+import { licenseDeleteFor } from "../core/licenseDelete.js";
 import { SERVICES } from "../mount.js";
 import type { ServiceSlug } from "../core/services.js";
 
@@ -187,6 +188,8 @@ async function handleProductScoped(
         session,
         // Core's ingest pipeline over the same registry (P2b-02): Release's resync route runs it.
         ingest: manifestIngestFor(SERVICES),
+        // Core's licence-deletion collector (`core/licenseDelete.ts`): License's delete route.
+        licenseDelete: licenseDeleteFor(SERVICES),
         // Same gate as the public path: a hook whose providing service is off answers `null`,
         // even though the admin route itself is reachable while its own service is off.
         hooks: buildHooks(SERVICES, loaded.services, {

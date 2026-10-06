@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-service="license">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>S-23 motion prototype: console</title>
+    <link
+      rel="stylesheet"
+      href="../../../../../packages/brand/fonts/fonts.css"
+    />
+    <link
+      rel="stylesheet"
+      href="../../../../../packages/brand/css/tokens.css"
+    />
+    <link rel="stylesheet" href="motion.css" />
+    <link rel="stylesheet" href="proto.css" />
+    <link rel="stylesheet" href="console.css" />
+    <script type="module" src="console.js"></script>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="side" aria-label="Sections">
+        <div class="side-brand">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path
+              d="M12 1.5l2.6 7.9L22.5 12l-7.9 2.6L12 22.5l-2.6-7.9L1.5 12l7.9-2.6z"
+            />
+          </svg>
+          Polaris Key
+        </div>
+        <nav>
+          <p class="side-group core">Core</p>
+          <a href="#/overview" data-route="overview">Overview</a>
+          <a href="#/devices" data-route="devices">Devices</a>
+          <p class="side-group license">License</p>
+          <a href="#/licenses" data-route="licenses">Licenses</a>
+          <a href="#/tiers" data-route="tiers">Tiers</a>
+        </nav>
+      </aside>
+      <div class="main-col">
+        <header class="bar">
+          <button class="switcher pk-pressable" type="button">
+            Nightfall <span class="mono muted">nightfall</span>
+          </button>
+          <button class="search pk-pressable" id="palette-open" type="button">
+            Search or jump to… <kbd>⌘K</kbd>
+          </button>
+        </header>
+        <main id="view" class="pk-vt-main" tabindex="-1"></main>
+      </div>
+    </div>
+
+    <div id="overlay" class="overlay pk-overlay" hidden></div>
+    <div
+      id="drawer"
+      class="drawer pk-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="drawer-title"
+      hidden
+    ></div>
+    <div id="overlay2" class="overlay pk-overlay" hidden></div>
+    <div
+      id="dialog"
+      class="dialog pk-transient pk-sheet"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="dlg-title"
+      hidden
+    ></div>
+    <div
+      id="palette"
+      class="palette pk-transient"
+      role="dialog"
+      aria-label="Command palette"
+      hidden
+    ></div>
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+
+    <div class="proto-bar" role="group" aria-label="Prototype controls">
+      <button class="btn" id="t-theme" type="button">Theme</button>
+      <button class="btn" id="t-motion" type="button" aria-pressed="false">
+        Reduce motion
+      </button>
+      <button class="btn" id="t-replay" type="button">Replay</button>
+    </div>
+  </body>
+</html>

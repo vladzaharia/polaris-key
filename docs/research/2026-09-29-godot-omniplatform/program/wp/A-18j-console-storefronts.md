@@ -112,7 +112,7 @@ the area. The capability badge is one component used by storefront tiles and fee
   review; Microsoft: staged listing, typed commit). Unbound `api` steps are absent per the owner's
   rule; Play release and rollout stay on P5-03's Rollouts page.
 - **Crop acceptance needed storage.** A-18d registers outputs but recorded no acceptance, so this
-  package adds migration `0082_dist_listing_asset_acceptance` (renumbered at integration) (`accepted_sha256`, `_at`, `_by` on
+  package adds migration `0083_dist_listing_asset_acceptance` (renumbered at integration) (`accepted_sha256`, `_at`, `_by` on
   `dist_listing_assets`) and the slot board routes; pushes send accepted assets only.
 - **Store connections' Set up** needs to know which stores have an adapter: the connections list
   gains `storefront: boolean`.

@@ -93,7 +93,7 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test:workerd
 - **Sessions:** the portal cookie keeps its signed form and now names an `account_sessions` row
   (the table exists since I-05's `0068_a`); a cookie signed before this deploy is refused, so every
   portal visitor signs in once afterwards (RUNBOOK "Login card").
-- **Migrations** `0078` (`account_links.profile_json`) and `0079`
+- **Migrations** `0079` (`account_links.profile_json`) and `0080`
   (`accounts.nudge_shown_at`); no new tables, so the table-owner list is unchanged.
 - `POST /api/magic/start` stays as an alias of `POST /api/signin/email/start`; `/magic/verify` is
   now the landing page (`GET` consumes nothing, `POST` completes or confirms).
