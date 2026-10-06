@@ -479,23 +479,6 @@ export const PENDING: readonly PendingEntry[] = [
   // Q1). The duplicate spellings ST-06 parked here left with ST-19: the generated NOT_A_SETTING
   // row "Deprecated manifest spellings" covers them.
   {
-    target: "table:ci_publishers",
-    owner: "ST-19b",
-    note: "release.publishing.trustedPublisher",
-  },
-  { target: "column:ci_publishers.source", owner: "ST-19b" },
-  {
-    target: "table:release_channel_policy",
-    owner: "ST-19b",
-    note: "release.channelPolicy",
-  },
-  { target: "column:release_channel_policy.source", owner: "ST-19b" },
-  {
-    target: "column:release_deliverables.def_source",
-    owner: "ST-19b",
-    note: "release.deliverables",
-  },
-  {
     target: "table:provisioning_config",
     owner: "ST-19b",
     note: "identity.provisioning",
@@ -521,31 +504,6 @@ export const PENDING: readonly PendingEntry[] = [
     note: "core.secrets (names only)",
   },
   {
-    target: "manifest:release:release.provider",
-    owner: "ST-19b",
-    note: "release.github",
-  },
-  { target: "manifest:release:release.binaryName", owner: "ST-19b" },
-  { target: "manifest:release:release.channelWorkflow", owner: "ST-19b" },
-  { target: "manifest:release:release.betaBranch", owner: "ST-19b" },
-  { target: "manifest:release:release.summaryMarker", owner: "ST-19b" },
-  { target: "manifest:release:release.manualChannels", owner: "ST-19b" },
-  {
-    target: "manifest:release:release.deliverables",
-    owner: "ST-19b",
-    note: "release.deliverables",
-  },
-  {
-    target: "manifest:release:release.publishing",
-    owner: "ST-19b",
-    note: "release.publishing.trustedPublisher",
-  },
-  {
-    target: "manifest:release:release.releaseKeys",
-    owner: "ST-19b",
-    note: "release.keys",
-  },
-  {
     target: "manifest:distribution:transports",
     owner: "ST-19b",
     note: "distribution.transports",
@@ -553,7 +511,7 @@ export const PENDING: readonly PendingEntry[] = [
 ];
 
 /** `PENDING.length`, written down: lower it with every removal; raising it needs a review. */
-export const PENDING_CEILING = 46;
+export const PENDING_CEILING = 32;
 
 export interface CoverageInputs {
   targets: readonly CoverageTarget[];

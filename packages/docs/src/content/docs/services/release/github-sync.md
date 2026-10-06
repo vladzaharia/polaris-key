@@ -58,6 +58,28 @@ character class (it is later interpolated into a shell script), a channel workfl
 reference must look like a workflow file or numeric id, and so on. A manifest that fails
 validation is rejected in full — nothing partial is ever applied.
 
+## The release block
+
+`.pkey/release` keeps its fields in a `release:` block. The fields below configure the GitHub sync
+itself. Linking writes them into the product's release configuration and every resync rewrites
+them, so editing the file is the only way to change them; the console shows them read-only. Each
+one is a setting in the [settings reference](/docs/reference/settings/).
+
+| Field             | What it does                                                                                                                                                                     | When unset                                       |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `provider`        | `{ type: github, owner, repo }`: the repository releases come from. The stored coordinates are those of the repository you link, with its App installation.                      | required                                         |
+| `binaryName`      | The executable's name in artifact file names and in the install script (see [Binary name safety](#binary-name-safety)).                                                          | the repository's name                            |
+| `channelWorkflow` | A workflow file name or numeric id. `beta` is the newest tag a successful run of it built from `betaBranch`, and `pr-<n>` the newest tag it built from that pull request's head. | `beta` and `pr-<n>` fall back to prerelease tags |
+| `betaBranch`      | The branch whose `channelWorkflow` runs make `beta`.                                                                                                                             | `main`                                           |
+| `summaryMarker`   | The marker that fences a release's summary in its notes, `<!-- pkey:summary -->` … `<!-- /pkey:summary -->`. The changelog route and the appcast show the fenced text.           | `pkey:summary`                                   |
+| `manualChannels`  | Named channels beyond `stable` and `beta`, each `{ name, regex }`, matched anchored against release tags. See [Channels and policy](/docs/services/release/channels/).           | none                                             |
+
+The rest of the block is covered elsewhere: `deliverables`, with each channel's `includes`, under
+[Release deliverables](/docs/build/manifest/authoring/#release-deliverables-deliverablesapp-and-the-artifact-map);
+`publishing.trustedPublisher` under [Trusted publishing](/docs/services/release/artifacts/#trusted-publishing);
+`releaseKeys` under [Release records](/docs/services/update/signed-feed/#release-records); and
+`artifactPolicy` and `access` on [Artifacts, changelog & install](/docs/services/release/artifacts/).
+
 ## Installation tokens
 
 Polaris Key authenticates to GitHub as its App, not as a person. An App JWT (signed RS256,

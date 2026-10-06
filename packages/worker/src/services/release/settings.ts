@@ -1,10 +1,13 @@
 /**
  * Release's settings slice (ST-03, notes/S-18 Appendix A.2 `release.*`), contributed through the
- * descriptor (`releaseService.settings`), never imported by Core (rule 6).
+ * descriptor (`releaseService.settings`), never imported by Core (rule 6). The `.pkey/release`
+ * block's own fields (ST-19b) live in `manifestSettings.ts` and are spread in after the
+ * compatibility window.
  */
 
 import { setting } from "../../core/settings/define.js";
 import type { ServiceSettingsSlice } from "../../core/settings/types.js";
+import { RELEASE_MANIFEST_SETTINGS } from "./manifestSettings.js";
 
 const VISIBLE = { service: "release", offBehaviour: "hide" } as const;
 
@@ -39,6 +42,7 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
       readers: ["core/products.ts", "core/discovery.ts", "core/gate.ts"],
       storage: { kind: "column", table: "products", column: "compat_min" },
     }),
+    ...RELEASE_MANIFEST_SETTINGS,
     setting({
       key: "release.artifactPolicy",
       scope: "product",
