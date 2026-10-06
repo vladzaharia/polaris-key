@@ -11,6 +11,11 @@
 //     `enforced` and `hidden` are locked to the server and an input that silently discards
 //     what you typed is worse than no input.
 //
+// An override is saved through the adapter's device-local store (`config.set`, `config.local`):
+// `localStorage` in a browser, the host's state directory over bridge v4 on desktop. A refusal
+// (`bad_request` for a value the catalog rejects) is shown under the input from the copy
+// catalog. A host that keeps overrides itself passes `onOverride`, which takes over the save.
+//
 // Slots follow the `LicenseGate` pattern: every region is replaceable while the data layer and
 // the a11y contract stay.
 
@@ -23,6 +28,7 @@ import { FONT } from "@polaris-key/brand";
 import { Panel, chipStyle, mutedText, titleText } from "./primitives/card.js";
 import { MessageScreen } from "./primitives/MessageScreen.js";
 import { TextField } from "./primitives/input.js";
+import { describeError } from "../core/copy.js";
 import type { PolarisTheme } from "./theme.js";
 
 /** One row as the panel renders it: the effective value plus where it came from. */
@@ -49,9 +55,9 @@ export interface ConfigPanelSlots {
 export interface ConfigPanelProps {
   slots?: ConfigPanelSlots;
   className?: string;
-  /** Called when the user commits an override for an overridable key. The panel does NOT
-   *  persist overrides itself: they are the host's `localOverrides`, which the host owns
-   *  (a renderer writing to disk is exactly what the desktop bridge exists to prevent). */
+  /** Called when the user commits an override for an overridable key, INSTEAD of the panel's
+   *  own `config.set` (a host that owns its overrides, as `localOverrides`). Without it the
+   *  panel saves through the adapter's device-local store when `supports("config.local")`. */
   onOverride?: (key: string, value: string) => void;
   /** Hide the override affordance entirely (read-only settings display). */
   readOnly?: boolean;
@@ -149,6 +155,9 @@ export function ConfigPanel(props: ConfigPanelProps): JSX.Element {
                   theme={theme}
                   readOnly={props.readOnly}
                   onOverride={props.onOverride}
+                  canSet={cfg.canSet}
+                  set={cfg.set}
+                  clear={cfg.clear}
                 />
               )}
             </li>
@@ -164,12 +173,28 @@ function ConfigEntryRow(props: {
   theme: PolarisTheme;
   readOnly?: boolean;
   onOverride?: (key: string, value: string) => void;
+  canSet: boolean;
+  set: (key: string, value: JSONValue) => Promise<void>;
+  clear: (key: string) => Promise<void>;
 }): JSX.Element {
   const { row, theme } = props;
   const inputId = useId();
+  const errorId = useId();
   const [draft, setDraft] = useState(() => stringify(row.value));
+  const [error, setError] = useState<string | null>(null);
+  const ownSave = !props.onOverride && props.canSet;
   const showOverride =
-    !props.readOnly && row.overridable && Boolean(props.onOverride);
+    !props.readOnly &&
+    row.overridable &&
+    (Boolean(props.onOverride) || ownSave);
+  const fail = (e: unknown) =>
+    setError(
+      describeError(
+        e && typeof e === "object"
+          ? (e as Parameters<typeof describeError>[0])
+          : null,
+      ),
+    );
 
   return (
     <>
@@ -190,23 +215,62 @@ function ConfigEntryRow(props: {
           style={{ display: "flex", flexDirection: "column", gap: "6px" }}
           onSubmit={(e) => {
             e.preventDefault();
-            props.onOverride?.(row.key, draft);
+            if (props.onOverride) {
+              props.onOverride(row.key, draft);
+              return;
+            }
+            setError(null);
+            props.set(row.key, parseDraft(draft, row.value)).catch(fail);
           }}
         >
           <TextField
             id={inputId}
             label={`${row.key} ${theme.copy.configOverrideLabel}`}
             value={draft}
-            onChange={setDraft}
+            onChange={(v) => {
+              setDraft(v);
+              setError(null);
+            }}
             data-polaris-config-input={row.key}
+            invalid={Boolean(error)}
+            errorId={error ? errorId : undefined}
           />
-          <Button
-            variant="secondary"
-            type="submit"
-            style={{ fontSize: "14px" }}
-          >
-            {theme.copy.configOverrideLabel}
-          </Button>
+          {error ? (
+            <span
+              id={errorId}
+              role="alert"
+              style={{ fontSize: "14px", color: "var(--pk-danger)" }}
+              data-polaris-config-error={row.key}
+            >
+              {error}
+            </span>
+          ) : null}
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <Button
+              variant="secondary"
+              type="submit"
+              style={{ fontSize: "14px" }}
+            >
+              {theme.copy.configOverrideLabel}
+            </Button>
+            {ownSave && row.source === "local" ? (
+              <Button
+                variant="secondary"
+                type="button"
+                style={{ fontSize: "14px" }}
+                data-polaris-config-reset={row.key}
+                onClick={() => {
+                  setError(null);
+                  props
+                    .clear(row.key)
+                    .then(() => setDraft(stringify(row.value)))
+                    .catch(fail);
+                }}
+              >
+                {theme.copy.configResetLabel}
+              </Button>
+            ) : null}
+          </div>
         </form>
       ) : (
         <span
@@ -222,4 +286,16 @@ function ConfigEntryRow(props: {
 
 function stringify(value: JSONValue): string {
   return typeof value === "string" ? value : JSON.stringify(value);
+}
+
+/** The typed value for what the user typed: text for a string setting, otherwise JSON when it
+ *  parses (`8`, `true`, `["a"]`), else the text itself, which the catalog check then refuses
+ *  when the key wants another type. */
+function parseDraft(draft: string, current: JSONValue): JSONValue {
+  if (typeof current === "string") return draft;
+  try {
+    return JSON.parse(draft) as JSONValue;
+  } catch {
+    return draft;
+  }
 }

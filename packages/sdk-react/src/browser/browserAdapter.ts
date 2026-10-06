@@ -87,6 +87,7 @@ import {
   readConfig,
   readEntitled,
   readEntitledChannels,
+  withOverrides,
 } from "../core/adapter.js";
 import { ErrorCode, Feature, Platform, SdkId } from "../constants.generated.js";
 import { createStore, type Store } from "../core/store.js";
@@ -186,6 +187,11 @@ import {
   type UpdateSlices,
 } from "./update.js";
 import { fetchCatalog } from "./catalog.js";
+import {
+  LocalConfigEngine,
+  browserLocalConfigBackend,
+  type ConfigStorage,
+} from "../core/localConfig.js";
 import {
   buildDownloadUrl,
   buildInstallUrl,
@@ -291,6 +297,13 @@ export interface BrowserAdapterOptions {
   /** Client-supplied local/user overrides for `default`-state config keys. Never override
    *  `enforced`/`hidden` keys (server wins). */
   localOverrides?: Record<string, JSONValue>;
+  /** Where `config.set()` keeps device-local overrides (`config.local`). Defaults to
+   *  `localStorage`, under one key per product; `null` (or storage that throws) keeps them in
+   *  memory, which `config.persistent()` reports. */
+  configStorage?: ConfigStorage | null;
+  /** The product catalog `config.set()` validates against. Absent ⇒ fetched once
+   *  (`fetchSchema()`) on the first write. */
+  catalog?: ProductCatalog | null;
   /** The host app's version, reported as `X-PKey-Version` so a browser device row carries
    *  the same app-version metadata a native one does. Also the basis of `updateAvailable`. */
   version?: string;
@@ -411,7 +424,10 @@ export class BrowserAdapter implements PolarisAdapter {
   private readonly navigate: (url: string) => void;
   private readonly clock: () => number;
   private readonly store: Store<PolarisState>;
-  private readonly localOverrides: Record<string, JSONValue>;
+  /** The host's `localOverrides`, then the persisted `config.set()` layer over them. */
+  private localOverrides: Record<string, JSONValue>;
+  /** Device-local overrides (`config.local`), persisted in `localStorage`. */
+  readonly config: LocalConfigEngine;
   private readonly version?: string;
   private csrf: string | null = null;
   private hadSession = false;
@@ -457,7 +473,12 @@ export class BrowserAdapter implements PolarisAdapter {
         if (typeof window !== "undefined") window.location.assign(url);
       });
     this.clock = opts.now ?? nowSec;
-    this.localOverrides = opts.localOverrides ?? {};
+    const hostOverrides = opts.localOverrides ?? {};
+    const localBackend = browserLocalConfigBackend(
+      this.product,
+      opts.configStorage,
+    );
+    this.localOverrides = { ...hostOverrides, ...localBackend.read() };
     this.version = opts.version;
     // D-21: the pre-discovery belief. Never all-true.
     this.capabilities = copyServices(opts.expectServices ?? defaultServices());
@@ -555,6 +576,18 @@ export class BrowserAdapter implements PolarisAdapter {
     this.store = createStore<PolarisState>(
       initialState("browser", this.capabilities, this.localOverrides),
     );
+    this.config = new LocalConfigEngine({
+      backend: localBackend,
+      hostOverrides,
+      snapshot: () => this.store.get(),
+      subscribe: (cb) => this.store.subscribe(cb),
+      applyOverrides: (merged) => {
+        this.localOverrides = merged;
+        this.store.set((s) => withOverrides(s, merged));
+      },
+      fetchSchema: () => this.fetchSchema(),
+      ...(opts.catalog !== undefined ? { catalog: opts.catalog } : {}),
+    });
     this.updateConfig?.packs?.seedFeedDeltas?.(() =>
       this.committedFeedDeltas(),
     );
@@ -1907,7 +1940,7 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   dispose(): void {
-    // No long-lived listeners/timers to clean up in browser mode.
+    this.config.dispose();
   }
 }
 

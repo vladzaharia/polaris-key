@@ -126,9 +126,8 @@
       "note": "The TypeScript mirror is rendered by tools/gen-mirrors.ts."
     },
     "config.local": {
-      "status": "planned",
-      "wp": "SP-13",
-      "note": "Not built: React has no persisted device-local override API (config.set, config.setting, onConfigChange); ConfigPanel shows the delivered values only (SP-R05, SDK-PARITY-PASS §5.2)."
+      "status": "implemented",
+      "note": "adapter.config.set/clear/clearAll/setting/onConfigChange (SP-13): validated against the catalog type, refused for an admin-managed key, a change event per resolved-value move. Browser: localStorage per product, a memory fallback reported by config.persistent(). Desktop: forwarded to the host's client.config over bridge v4 (a v3 host is refused typed, reason version). useConfigSetting(key) re-renders on change; ConfigPanel saves overrides itself."
     },
     "devices.fingerprint": {
       "status": "na",

@@ -141,7 +141,7 @@ Two axes, and they compose — a **transport** entry says how you talk to the co
 | `@polaris-key/react/browser`  | the browser adapter + discovery client                                                |
 | `@polaris-key/react/desktop`  | the desktop adapter + the `PolarisBridge` IPC contract                                |
 | `@polaris-key/react/license`  | `useLicense`, `useLicenseGate`, `useImportBundle`, `<LicenseGate>`, `<DeviceManager>` |
-| `@polaris-key/react/config`   | `useManagedConfig`, `<ConfigPanel>`                                                   |
+| `@polaris-key/react/config`   | `useManagedConfig`, `useConfigSetting`, `<ConfigPanel>`                               |
 | `@polaris-key/react/identity` | `usePolarisAuth`, `<PolarisLogin>`, `<PolarisLogout>`                                 |
 | `@polaris-key/react/update`   | `useLatestVersion`, `useUpdateDecision`, `<UpdatePrompt>`, `createBrowserPacks`       |
 | `@polaris-key/react/release`  | `useChangelog`                                                                        |
@@ -157,7 +157,9 @@ Two axes, and they compose — a **transport** entry says how you talk to the co
 - **`<ConfigPanel>`** (`./config`) — a settings panel over the shipped
   `listUserConfig`/`getConfigSource` data layer (one row per document entry, `hidden` ones
   excluded), with per-entry provenance badges and an override affordance on `default`-state
-  keys only.
+  keys only. It saves an override itself through `config.set` (and offers a reset for one it
+  set) wherever `supports("config.local")`; a host that keeps its own overrides passes
+  `onOverride`, which takes over the save.
 - **`<DeviceManager>`** (`./license`) — list / rename / disconnect, rendering the
   `device-management-unsupported` refusal as an explanation rather than an error.
 - **`<UpdatePrompt>`** (`./update`) — a polite banner (or a blocking dialog) over
@@ -175,7 +177,8 @@ All five are assembled from the exported primitives (`MessageScreen`, `Button`, 
 | `useLicense()`           | `{ gate, status, usable, loading, enabled, activation, highWaterMark, entitledChannels, … }` |
 | `useImportBundle()`      | `{ importBundle(jws), busy, error, activation }` — offline bundles (§7)                      |
 | `useChangelog(opts)`     | `{ entries, busy, error, enabled, reload }` — the Release changelog                          |
-| `useManagedConfig()`     | `{ config, get(key, fallback), listUserConfig, getConfigSource, enabled }`                   |
+| `useManagedConfig()`     | `{ config, get(key, fallback), listUserConfig, getConfigSource, enabled, set, clear, … }`    |
+| `useConfigSetting(key)`  | `{ value, source, locked, overridden, set, clear }` — one key, re-rendered on change         |
 | `usePolarisAuth()`       | profile + auth actions + `supportsOidcLogin` / `supportsKeyEntry`                            |
 | `useLatestVersion(opts)` | `{ latest, updateAvailable, busy, error, enabled, check }`                                   |
 | `useUpdateDecision(o)`   | `{ check, decision, boot, undismissable, busy, error, enabled, decide }` — wire v4 (below)   |
@@ -214,6 +217,22 @@ override supplies is not listed, though it stays in `config` and `get`. The **en
 layer never applies in React: a browser has no environment and a renderer must not inherit the
 privileged process's, so env layering resolves in `@polaris-key/node` on the desktop side and
 nowhere at all in the browser (rule 3; `config-matrix.json` pins it as `expectNoEnv`).
+
+### Device-local overrides (`config.local`)
+
+`adapter.config` is the same API as `@polaris-key/node`'s `client.config`: `set(key, value)`,
+`clear(key)`, `clearAll()`, `setting(key)` and `onConfigChange(key | "*", listener)`. A write is
+validated against the catalog type (`bad_request`; the catalog is the `catalog` option, or
+fetched once on the first write) and refused for a key the operator locked
+(`managed_by_admin`). Every move of a resolved value, a local write or a sync, fires one change.
+
+- **Browser:** `localStorage`, one entry per product (`configStorage` replaces it). Storage that
+  cannot be used keeps the values in memory and `config.persistent()` answers false.
+- **Desktop:** forwarded to the host's `client.config` over bridge v4 (`invoke("config", "set" |
+"clear")`, the stored values on `BridgeState.localConfig`). A v3 host refuses the write with
+  the typed `UnsupportedError` (reason `version`).
+
+Device-local only: Cloud Sync adds sync state under the same names later.
 
 The browser adapter sends `X-PKey-Platform: web`, `X-PKey-SDK: react` and no `X-PKey-Arch`
 (§5.2).

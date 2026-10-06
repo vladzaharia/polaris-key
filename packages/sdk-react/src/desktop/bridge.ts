@@ -74,6 +74,9 @@ export interface BridgeState {
   capabilities?: ServicesMap;
   /** The CONFIG document's entries (v3 split them off the license document). */
   config?: Record<string, ManagedEntry>;
+  /** v4 (`config.local`): the host's persisted device-local overrides,
+   *  `client.config.localValues()`. Absent ⇒ the renderer keeps what it last knew. */
+  localConfig?: Record<string, JSONValue>;
 }
 
 /** The result of a desktop OIDC begin — a verification URL/code to render while polling. */
@@ -141,6 +144,10 @@ export type BridgeActivation =
  *     `("commerce","binding")` → `{bindingId, products}`; `("commerce","claim",{store,payload})`
  *     → a `CommerceClaimResult`; `("core","discovery")`; `("core","storeStatus")`;
  *     `("devices","id")`.
+ *   * `config.local` (SP-13): `("config","set",{key,value})` and `("config","clear",{key})` →
+ *     the host's `client.config.set`/`clear` (a refusal keeps its `managed_by_admin` or
+ *     `bad_request` code), and `BridgeState.localConfig` = `client.config.localValues()` on
+ *     every state, so the renderer resolves with the host's persisted overrides.
  *
  * Reserved, not yet used by this package: pack verbs (`("packs", …)`), telemetry extras and the
  * `onPackProgress` push below are declared for a later revision; nothing here calls or

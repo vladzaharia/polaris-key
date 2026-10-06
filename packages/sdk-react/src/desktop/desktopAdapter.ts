@@ -22,7 +22,12 @@ import {
   readConfig,
   readEntitled,
   readEntitledChannels,
+  withOverrides,
 } from "../core/adapter.js";
+import {
+  LocalConfigEngine,
+  type LocalConfigBackend,
+} from "../core/localConfig.js";
 import { ErrorCode, Feature } from "../constants.generated.js";
 import type { CapabilityContext } from "@polaris-key/client-core";
 import { isManageUrl } from "@polaris-key/client-core";
@@ -103,6 +108,7 @@ const V4_FEATURES = new Set<string>([
   Feature.releaseDistribution,
   Feature.updateFeeds,
   Feature.crashTags,
+  Feature.configLocal,
 ]);
 
 export interface DesktopAdapterOptions {
@@ -113,6 +119,9 @@ export interface DesktopAdapterOptions {
   /** Client-supplied local/user overrides for `default`-state config keys. Never override
    *  `enforced`/`hidden` keys (server wins). The node host owns env layering, not this. */
   localOverrides?: Record<string, JSONValue>;
+  /** The product catalog `config.set()` checks a value against before it crosses the bridge.
+   *  Absent ⇒ the host's `fetchSchema` once, on the first write. The host validates again. */
+  catalog?: ProductCatalog | null;
   /** What the host EXPECTS this product to run, used only while the bridge has not reported
    *  a capability map (D-21). Defaults to license + config; never all-true. */
   expectServices?: ServicesMap;
@@ -125,7 +134,10 @@ export class DesktopAdapter implements PolarisAdapter {
   private readonly bridge: PolarisBridge;
   private readonly store: Store<PolarisState>;
   private readonly clock: () => number;
-  private readonly localOverrides: Record<string, JSONValue>;
+  /** The host's `localOverrides` option, then the host's persisted `config.set()` values. */
+  private localOverrides: Record<string, JSONValue>;
+  /** Device-local overrides (`config.local`), kept by the host over bridge v4. */
+  readonly config: LocalConfigEngine;
   private readonly fallbackServices: ServicesMap;
   private capabilities: ServicesMap;
   /** `supports()`'s inputs: the generated table, runtime `desktop-bridge`, and `capabilities`. */
@@ -142,7 +154,8 @@ export class DesktopAdapter implements PolarisAdapter {
     }
     this.bridge = bridge;
     this.clock = opts.now ?? nowSec;
-    this.localOverrides = opts.localOverrides ?? {};
+    const hostOverrides = opts.localOverrides ?? {};
+    this.localOverrides = { ...hostOverrides };
     this.fallbackServices = copyServices(
       opts.expectServices ?? defaultServices(),
     );
@@ -154,6 +167,18 @@ export class DesktopAdapter implements PolarisAdapter {
     this.store = createStore<PolarisState>(
       initialState("desktop", this.capabilities, this.localOverrides),
     );
+    this.config = new LocalConfigEngine({
+      backend: this.localConfigBackend(),
+      hostOverrides,
+      snapshot: () => this.store.get(),
+      subscribe: (cb) => this.store.subscribe(cb),
+      applyOverrides: (merged) => {
+        this.localOverrides = merged;
+        this.store.set((s) => withOverrides(s, merged));
+      },
+      fetchSchema: () => this.fetchSchema(),
+      ...(opts.catalog !== undefined ? { catalog: opts.catalog } : {}),
+    });
     // Subscribe to state changes from the privileged process.
     this.offBridge = this.bridge.on("stateChanged", (s) => this.apply(s));
     // Kick off the first load. Errors surface into the snapshot, not as a throw.
@@ -179,6 +204,12 @@ export class DesktopAdapter implements PolarisAdapter {
     this.capabilities = s.capabilities
       ? copyServices(s.capabilities)
       : this.fallbackServices;
+    // config.local: a v4 host reports its persisted overrides with every state, so a write made
+    // in the host (or another window) reaches this renderer on the next push.
+    if (s.localConfig) {
+      this.config.adopt(s.localConfig);
+      this.localOverrides = this.config.merged();
+    }
     this.store.set(
       projectState(
         "desktop",
@@ -198,6 +229,37 @@ export class DesktopAdapter implements PolarisAdapter {
         },
       ),
     );
+  }
+
+  /**
+   * `config.local` on desktop: the host persists the overrides in its state directory, so a write
+   * is `invoke("config", "set", {key, value})` or `invoke("config", "clear", {key})` (the host's
+   * `client.config.set`/`clear`), sent only to a bridge v4 host. A v3 host is refused with the
+   * typed `UnsupportedError` (reason `version`) before anything crosses the bridge. The host's
+   * stored values arrive on `BridgeState.localConfig`.
+   */
+  private localConfigBackend(): LocalConfigBackend {
+    return {
+      read: () => ({}),
+      persistent: () => true,
+      write: async (_next, { key, value }) => {
+        const [method, args] =
+          value === undefined
+            ? (["clear", { key }] as const)
+            : (["set", { key, value }] as const);
+        try {
+          await this.invokeV4(
+            Feature.configLocal,
+            "device-local config overrides",
+            "config",
+            method,
+            args,
+          );
+        } catch (e) {
+          throw localConfigError(e);
+        }
+      },
+    };
   }
 
   private async load(): Promise<void> {
@@ -971,6 +1033,7 @@ export class DesktopAdapter implements PolarisAdapter {
   dispose(): void {
     this.offBridge?.();
     this.offBridge = null;
+    this.config.dispose();
   }
 }
 
@@ -1021,6 +1084,15 @@ function classifyRefused(
 function asPolarisError(e: unknown): PolarisError {
   if (e instanceof PolarisError) return e;
   return new PolarisError("unknown", (e as Error)?.message ?? String(e));
+}
+
+/** A host's `config.set` refusal keeps its code (`managed_by_admin`, `bad_request`). */
+function localConfigError(e: unknown): PolarisError {
+  if (e instanceof PolarisError) return e;
+  const code = errorCode(e);
+  if (code === ErrorCode.managedByAdmin || code === ErrorCode.badRequest)
+    return new PolarisError(code, (e as Error)?.message ?? code, code);
+  return asPolarisError(e);
 }
 
 /** The `code` a host-side error carries across the bridge, when it kept one. */
