@@ -726,17 +726,27 @@ export function navigate(to: string): void {
   window.location.hash = to;
 }
 
+/** The current hash's query, read now (a page's `params` prop is the last render's). */
+export function currentParams(): URLSearchParams {
+  const raw = window.location.hash || "#/";
+  return new URLSearchParams(raw.split("?", 2)[1] ?? "");
+}
+
 /**
- * Merge `patch` into the current hash's query (null or "" removes a key), without adding a
- * history entry.
+ * Merge `patch` into the current hash's query (null, "" or an empty list removes a key; a list
+ * repeats the key once per value), without adding a history entry.
  */
-export function setParams(patch: Record<string, string | null>): void {
+export function setParams(
+  patch: Record<string, string | readonly string[] | null>,
+): void {
   const raw = window.location.hash || "#/";
   const [path = "#/", query = ""] = raw.split("?", 2) as [string, string?];
   const params = new URLSearchParams(query);
   for (const [k, v] of Object.entries(patch)) {
-    if (v == null || v === "") params.delete(k);
-    else params.set(k, v);
+    params.delete(k);
+    if (typeof v === "string") {
+      if (v !== "") params.set(k, v);
+    } else if (v) for (const one of v) if (one !== "") params.append(k, one);
   }
   const q = params.toString();
   window.history.replaceState(

@@ -13,9 +13,20 @@ import {
 import { ErrorPanel } from "../components/States.js";
 import { useClaimDiscover, useDiscover, useLibraryView } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
-import { addedOfferFromLibrary, mergeAdded } from "../model/discover.js";
+import {
+  addedOfferFromLibrary,
+  addedParam,
+  mergeAdded,
+  withAdded,
+} from "../model/discover.js";
 import { withoutHeld } from "../model/owned.js";
-import { href, navigate, setParams, useDocumentTitle } from "../router.js";
+import {
+  currentParams,
+  href,
+  navigate,
+  setParams,
+  useDocumentTitle,
+} from "../router.js";
 import { useFirstLoad, useFirstLoadStagger } from "../stagger.js";
 
 interface TileError {
@@ -28,8 +39,9 @@ interface TileError {
  * Discover (PORTAL.md §4.16): every product the account could add for free right now, as
  * Discover tiles with their terms and the always-visible reason. **Add to library** mints once
  * (the button is guarded while its request runs, and the Worker's claim is idempotent), then the
- * tile shows the just-added state, also after a reload through `?added=<product>`. With nothing
- * to add, the star and **Back to your library**.
+ * tile shows the just-added state, also after a reload through `?added=<product>` (repeated once
+ * per product added, so a second add keeps the first one's tile; the most recent few). With
+ * nothing to add, the star and **Back to your library**.
  *
  * Motion (MO-07): the tiles stagger in when the offers first arrive (`stagger.ts`), never on a
  * refetch, a return to the page or inside a View Transition; a just-added tile's ring pops in
@@ -44,10 +56,16 @@ export function DiscoverPage({
   const discover = useDiscover();
   const library = useLibraryView();
   const claim = useClaimDiscover();
+  // `?added=<p>` (repeated) after a reload: those products are in the library now.
+  const query = params.toString();
+  const addedParams = React.useMemo(
+    () => addedParam(new URLSearchParams(query)),
+    [query],
+  );
   // Only the document's first load staggers: never a return, never inside a View Transition.
   const firstLoad = useFirstLoad(
     "discover",
-    discover.isPending || (params.get("added") !== null && library.isPending),
+    discover.isPending || (addedParams.length > 0 && library.isPending),
   );
   const stagger = useFirstLoadStagger(firstLoad);
 
@@ -71,20 +89,23 @@ export function DiscoverPage({
     setFocusOpen(null);
   }, [focusOpen]);
 
-  // `?added=<p>` after a reload: the product is in the library now, so its tile comes from there.
-  const addedParam = params.get("added");
-  const fromReload = React.useMemo(() => {
-    if (!addedParam || added.has(addedParam)) return null;
-    const item = library.data?.products.find((p) => p.product === addedParam);
-    return item ? addedOfferFromLibrary(item) : null;
-  }, [addedParam, added, library.data]);
+  // `?added=` after a reload: each product is in the library now, so its tile comes from there.
+  const fromReload = React.useMemo(
+    () =>
+      addedParams.flatMap((slug) => {
+        if (added.has(slug)) return [];
+        const item = library.data?.products.find((p) => p.product === slug);
+        return item ? [addedOfferFromLibrary(item)] : [];
+      }),
+    [addedParams, added, library.data],
+  );
 
   // The server's offers never include what the library holds (`withoutHeld`, G24); the tiles
   // added on this page are merged in afterwards, so a just-added product keeps its tile.
   const offers = withoutHeld(discover.data ?? [], library.data?.products);
   const addedTiles = [...added.values()];
-  if (fromReload && !offers.some((o) => o.product === fromReload.product))
-    addedTiles.push(fromReload);
+  for (const tile of fromReload)
+    if (!offers.some((o) => o.product === tile.product)) addedTiles.push(tile);
   const addedSlugs = new Set(addedTiles.map((o) => o.product));
   const tiles = mergeAdded(
     offers.filter((o) => !addedSlugs.has(o.product)),
@@ -105,7 +126,8 @@ export function DiscoverPage({
       await claim.mutateAsync(slug);
       setAdded((m) => new Map(m).set(slug, offer));
       setFocusOpen(slug);
-      setParams({ added: slug });
+      // Read now, not from this render: another add may have finished meanwhile.
+      setParams({ added: withAdded(addedParam(currentParams()), slug) });
       toast.success(`${offer.name} is in your library`, {
         action: {
           label: "Open",
@@ -125,7 +147,7 @@ export function DiscoverPage({
   };
 
   const pending =
-    discover.isPending || (addedParam !== null && library.isPending);
+    discover.isPending || (addedParams.length > 0 && library.isPending);
   const empty = !pending && !discover.error && tiles.length === 0;
 
   return (

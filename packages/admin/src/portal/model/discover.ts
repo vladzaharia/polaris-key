@@ -59,6 +59,29 @@ export function offerPlatforms(platforms: readonly string[]): PlatformKey[] {
   return PLATFORM_ORDER.filter((k) => keys.has(k));
 }
 
+/** How many just-added products `?added=` remembers for a reload: the most recent ones. */
+export const ADDED_PARAM_MAX = 12;
+
+/**
+ * The just-added products a Discover URL names (`#/discover?added=<p>&added=<q>`): each once,
+ * oldest first, at most {@link ADDED_PARAM_MAX} (the most recent).
+ */
+export function addedParam(params: URLSearchParams): string[] {
+  const out: string[] = [];
+  for (const slug of params.getAll("added")) {
+    if (!slug) continue;
+    const at = out.indexOf(slug);
+    if (at >= 0) out.splice(at, 1);
+    out.push(slug);
+  }
+  return out.slice(-ADDED_PARAM_MAX);
+}
+
+/** `?added=` once `slug` is added too: the earlier ones kept, `slug` the most recent. */
+export function withAdded(current: readonly string[], slug: string): string[] {
+  return [...current.filter((s) => s !== slug), slug].slice(-ADDED_PARAM_MAX);
+}
+
 /**
  * A just-added product's tile after a reload (`#/discover?added=<p>`): the offer is gone from
  * `GET /api/discover` (the account holds it now), so the tile is rebuilt from the library item.
