@@ -193,6 +193,9 @@ change to `packages/worker/wrangler.toml` (`[env.<env>.vars]`) and a deploy.
   for it. If two or more accounts use it, nothing is written or offered. A subject with no
   verified email gets an account whose only method is the temporary one. The licences its
   sign-ins created attach to the account (platform products only, first attach only).
+- **One browser.** `/login` binds the single sign-on flow to the browser that started it
+  (`__Host-pkey_sso`, ten minutes); a `/callback` opened anywhere else is refused with _We couldn't
+  confirm that sign-in_, in every mode. Someone who switches browsers mid-sign-in starts again.
 - **`operators-only`.** Only subjects that already moved still sign in through Pocket ID. Anyone
   else sees _This way of signing in has ended_. Until I-08 moves `provider: platform` apps to the
   login card, that includes new users of those apps, so turn it on only after I-08 ships, or
@@ -254,14 +257,15 @@ client to the people it had ended.
 
 The owner signs off each step; the lead records the date and value here in the change that makes it.
 
-| Owner decision                       | Date    | Value   |
-| ------------------------------------ | ------- | ------- |
-| Go for `claim` on staging            | pending | pending |
-| Go for `claim` on production         | pending | pending |
-| Email-less count read (`emailLess`)  | pending | pending |
-| Sunset date (`PLATFORM_OIDC_SUNSET`) | pending | pending |
-| Go for `operators-only`              | pending | pending |
-| End users removed from Pocket ID     | pending | pending |
+| Owner decision                                    | Date    | Value   |
+| ------------------------------------------------- | ------- | ------- |
+| Pocket ID `email_verified` precondition confirmed | pending | pending |
+| Go for `claim` on staging                         | pending | pending |
+| Go for `claim` on production                      | pending | pending |
+| Email-less count read (`emailLess`)               | pending | pending |
+| Sunset date (`PLATFORM_OIDC_SUNSET`)              | pending | pending |
+| Go for `operators-only`                           | pending | pending |
+| End users removed from Pocket ID                  | pending | pending |
 
 ### Platform store connections (A-16)
 

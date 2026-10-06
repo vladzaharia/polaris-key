@@ -74,6 +74,22 @@ Operators and customers should not share a directory ([S-16 §5.4](../../notes/S
   works with the mode off). It cannot be read from this repository, so the PR reports it as
   pending: the owner reads it after deploying this build with both vars unset (RUNBOOK).
 - **No bulk export**: optional, and no admin API key was issued.
+- **Review fix round (2026-10-06), lead decisions.**
+  - **B1: the portal's single sign-on is bound to its browser, in every mode.** `/login` sets
+    `__Host-pkey_sso` (random, `SameSite=Lax`, ten minutes, in `ACCOUNT_REALM_COOKIES`) and the
+    flow keeps its peppered hash; `/callback` refuses any other browser with the generic "We
+    couldn't confirm that sign-in" before exchanging the code, and clears the cookie once used.
+    This deliberately changes `off` behaviour too: it closes the login CSRF this path had (R8-03;
+    `R8-oidc.test.ts` now asserts the fix), and the planted-join attack the review proved in
+    `claim` mode (regression test in `identityPlatformMigration.test.ts`). A flow minted before
+    the binding existed is refused; the person starts again.
+  - **N3:** `signIn` keeps a provider address another account uses as unverified on an existing
+    method, as the gate's `createAccount` does, so no address is verified on two accounts.
+  - **N5:** a `provider: platform` product's `/auth/start` (the page) and `/device/start`
+    (`404 disabled`, the answer a device client already gets when sign-in is off) refuse past the
+    sunset before anyone is sent to the IdP.
+  - **N9 (follow-up, not changed):** a disabled account's subject still signs in to a product
+    through its floating `sub`-keyed licence, as before I-17.
 
 ## Steps
 
@@ -100,6 +116,10 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- identity platform
 ## Hand-off
 
 - The owner sets the sunset date from the count.
+- Follow-up (N9, pre-existing): a product sign-in through the platform IdP for a subject whose
+  account is disabled still completes on its floating `sub`-keyed licence; the claim does not
+  refuse it. Owner: whoever takes account disable across product sign-ins (the login card's
+  `signIn` refuses a disabled account; the legacy product flow never consults it).
 
 The role agent sets `--set I-17 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

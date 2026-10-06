@@ -25,18 +25,17 @@ import {
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
-import { artefacts } from "./singleUseMock.js";
 import { Device, seededWorld, type CardWorld } from "./identityCardHarness.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import {
   handleAuthCallback,
+  handleAuthChoose,
   handleAuthDeviceEntry,
   handleAuthDevicePoll,
   handleAuthDeviceStart,
   handleAuthStart,
 } from "../src/services/identity/oidc.js";
 import { LICENSE_CHOICE_BINDER_COOKIE } from "../src/services/identity/licenseChoice.js";
-import { portalFlowKey } from "../src/services/identity/portal/auth.js";
 import { EMAIL_GATE_LANDING } from "../src/services/identity/card/gate.js";
 import {
   ACCOUNT_SESSION_COOKIE,
@@ -363,6 +362,8 @@ describe("claim at next sign-in through a provider: platform product", () => {
   async function browserSignIn(
     claims: Record<string, unknown> = { email: ADA, email_verified: true },
     sub = SUB,
+    /** Runs between the start and the callback (e.g. the sunset passing meanwhile). */
+    meanwhile: () => void = () => {},
   ): Promise<Response> {
     const start = await handleAuthStart(
       new Request(`${ORIGIN}/djdl/identity/auth/start`) as unknown as Request,
@@ -379,6 +380,7 @@ describe("claim at next sign-in through a provider: platform product", () => {
       nonce: authorize.searchParams.get("nonce"),
       ...claims,
     });
+    meanwhile();
     return handleAuthCallback(
       new Request(
         `${ORIGIN}/djdl/identity/auth/callback?code=c&state=${authorize.searchParams.get("state")}`,
@@ -611,10 +613,12 @@ describe("claim at next sign-in through a provider: platform product", () => {
     );
     expect(last?.last_sign_in_at).toBe(NOW);
 
-    // Past the sunset it does not, and no code is exchanged for it.
-    env.PLATFORM_OIDC_SUNSET = PAST;
-    fetched = [];
-    const ended = await browserSignIn({});
+    // Past the sunset it does not: a flow started before the day is refused at the callback, and
+    // no code is exchanged for it.
+    const ended = await browserSignIn({}, SUB, () => {
+      env.PLATFORM_OIDC_SUNSET = PAST;
+      fetched = [];
+    });
     expect(ended.status).toBe(403);
     expect(await ended.text()).toContain("This way of signing in has ended");
     expect(fetched).toEqual([]);
@@ -627,6 +631,140 @@ describe("claim at next sign-in through a provider: platform product", () => {
     expect(await res.text()).toContain("This way of signing in has ended");
     expect(await count(db, "SELECT COUNT(*) AS n FROM accounts")).toBe(0);
     expect(await licenseOf()).toBeNull();
+  });
+
+  it("past the sunset /auth/start and /device/start refuse before sending anyone to the IdP", async () => {
+    env.PLATFORM_OIDC_MIGRATION = "claim";
+    env.PLATFORM_OIDC_SUNSET = PAST;
+    const start = await handleAuthStart(
+      new Request(`${ORIGIN}/djdl/identity/auth/start`) as unknown as Request,
+      env,
+      db,
+      product,
+    );
+    expect(start.status).toBe(403);
+    expect(start.headers.get("location")).toBeNull();
+    expect(await start.text()).toContain("This way of signing in has ended");
+    const device = await handleAuthDeviceStart(
+      new Request(`${ORIGIN}/djdl/identity/auth/device/start`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ deviceId: "dev-1" }),
+      }) as unknown as Request,
+      env,
+      db,
+      product,
+    );
+    expect(device.status).toBe(404);
+    expect(((await device.json()) as { error: string }).error).toBe("disabled");
+    // Before the day both start as usual.
+    env.PLATFORM_OIDC_SUNSET = FUTURE;
+    expect(
+      (
+        await handleAuthStart(
+          new Request(
+            `${ORIGIN}/djdl/identity/auth/start`,
+          ) as unknown as Request,
+          env,
+          db,
+          product,
+        )
+      ).status,
+    ).toBe(302);
+  });
+
+  it("a licence the I-26 chooser activates joins the claimed account", async () => {
+    // The person's account already owns a licence here, so the sign-in asks which to use; their
+    // own floating `sub`-keyed licence is a row, and choosing it activates it.
+    env.PLATFORM_OIDC_MIGRATION = "claim";
+    const account = await platformLinkedAccount(db, SUB);
+    await insertSubLicense(db, "djdl", "lic-owned", "someone-else", {
+      account,
+    });
+    await db.run("UPDATE licenses SET tier_id = 'free' WHERE id = 'lic-owned'");
+    await insertSubLicense(db, "djdl", "lic-own", SUB);
+    await db.run("UPDATE licenses SET tier_id = 'free' WHERE id = 'lic-own'");
+
+    const start = await handleAuthStart(
+      new Request(`${ORIGIN}/djdl/identity/auth/start`) as unknown as Request,
+      env,
+      db,
+      product,
+    );
+    const binder = cookieOf(start, LICENSE_CHOICE_BINDER_COOKIE)!;
+    const authorize = new URL(start.headers.get("location")!);
+    installIdp({
+      sub: SUB,
+      groups: ["members"],
+      nonce: authorize.searchParams.get("nonce"),
+    });
+    const cb = await handleAuthCallback(
+      new Request(
+        `${ORIGIN}/djdl/identity/auth/callback?code=c&state=${authorize.searchParams.get("state")}`,
+        { headers: { cookie: `${LICENSE_CHOICE_BINDER_COOKIE}=${binder}` } },
+      ) as unknown as Request,
+      env,
+      db,
+      product,
+      NOW,
+    );
+    expect(cb.status).toBe(303);
+    expect((await licenseOf())?.account_id).toBeNull();
+
+    const chooser = (method: string, form?: Record<string, string>) =>
+      handleAuthChoose(
+        new Request(`${ORIGIN}/djdl/identity/auth/choose`, {
+          method,
+          headers: {
+            cookie: `${LICENSE_CHOICE_BINDER_COOKIE}=${binder}`,
+            ...(form
+              ? {
+                  "content-type": "application/x-www-form-urlencoded",
+                  "sec-fetch-site": "same-origin",
+                }
+              : {}),
+          },
+          body: form ? new URLSearchParams(form).toString() : undefined,
+        }) as unknown as Request,
+        env,
+        db,
+        product,
+        NOW,
+      );
+    const page = await (await chooser("GET")).text();
+    const token = /name="choice" value="([^"]+)"/.exec(page)![1]!;
+    expect(page).toContain('value="lic-own"');
+    const done = await chooser("POST", {
+      choice: token,
+      action: "use",
+      license: "lic-own",
+    });
+    expect(done.status).toBe(200);
+    expect((await licenseOf())?.account_id).toBe(account);
+  });
+
+  it("a provider address another account uses is kept unverified on the method, so it attaches nothing", async () => {
+    env.PLATFORM_OIDC_MIGRATION = "claim";
+    const mine = await platformLinkedAccount(db, SUB);
+    await emailAccount(db, ADA);
+    // A licence waiting on ADA's address (no subject): it belongs to whoever proves ADA.
+    await insertSubLicense(db, "djdl", "lic-waiting", "unused", { email: ADA });
+    await db.run(
+      "UPDATE licenses SET sub = NULL, origin = 'admin' WHERE id = 'lic-waiting'",
+    );
+
+    expect((await browserSignIn()).status).toBe(200);
+    const link = await db.first<{ email: string; email_verified: number }>(
+      "SELECT email, email_verified FROM account_links WHERE account_id = ? AND kind = 'oidc'",
+      mine,
+    );
+    expect(link).toEqual({ email: ADA, email_verified: 0 });
+    const waiting = await db.first<{ account_id: string | null }>(
+      "SELECT account_id FROM licenses WHERE id = 'lic-waiting'",
+    );
+    expect(waiting?.account_id).toBeNull();
+    // Its own licence, from this sign-in, joins it as usual.
+    expect((await licenseOf())?.account_id).toBe(mine);
   });
 
   it("a custom-issuer product never claims, whatever the mode", async () => {
@@ -648,31 +786,42 @@ describe("claim at next sign-in through a provider: platform product", () => {
 // ── the portal's platform-IdP sign-in ───────────────────────────────────────────────────────
 
 describe("the portal's single sign-on", () => {
-  const STATE = "portal-state-1";
-  const NONCE = "portal-nonce-1";
-
   async function portalWorld(extra: Partial<Env> = {}): Promise<CardWorld> {
     const w = await seededWorld();
     platformEnv(w.env, extra);
     return w;
   }
 
-  /** The IdP round trip on a device: plant the flow `/login` would have made, then call back. */
+  /** `/login` on `d`: the authorize redirect's `state` and `nonce`; `d` keeps the binding. */
+  async function startPortalLogin(
+    d: Device,
+  ): Promise<{ state: string; nonce: string }> {
+    const login = await d.send("GET", "/login");
+    expect(login.status).toBe(302);
+    const authorize = new URL(login.headers.get("location")!);
+    return {
+      state: authorize.searchParams.get("state")!,
+      nonce: authorize.searchParams.get("nonce")!,
+    };
+  }
+
+  /** The IdP leg with `claims`, then the callback opened on `finisher`. */
+  async function finishPortalLogin(
+    finisher: Device,
+    flow: { state: string; nonce: string },
+    claims: Record<string, unknown>,
+  ): Promise<Response> {
+    installIdp({ nonce: flow.nonce, ...claims });
+    return finisher.send("GET", `/callback?code=c&state=${flow.state}`);
+  }
+
+  /** The whole round trip in one browser: `/login`, the IdP, `/callback`. */
   async function portalCallback(
-    w: CardWorld,
+    _w: CardWorld,
     d: Device,
     claims: Record<string, unknown>,
   ): Promise<Response> {
-    await artefacts(w.env).put(
-      await portalFlowKey(w.env, STATE),
-      JSON.stringify({
-        verifier: "v".repeat(43),
-        nonce: NONCE,
-        redirectUri: `${ORIGIN}/callback`,
-      }),
-    );
-    installIdp({ nonce: NONCE, ...claims });
-    return d.send("GET", `/callback?code=c&state=${STATE}`);
+    return finishPortalLogin(d, await startPortalLogin(d), claims);
   }
 
   it("claim: an email another account uses opens the email step; joining needs that account proven here", async () => {
@@ -825,11 +974,87 @@ describe("the portal's single sign-on", () => {
     expect(
       ((await after.json()) as { auth: { oidc: boolean } }).auth.oidc,
     ).toBe(false);
+    // A flow started before the sunset is not finished after it, and no code is exchanged.
+    w.env.PLATFORM_OIDC_SUNSET = FUTURE;
+    const flow = await startPortalLogin(d);
+    w.env.PLATFORM_OIDC_SUNSET = PAST;
     fetched = [];
-    const cb = await portalCallback(w, d, { sub: "moved-1" });
+    const cb = await finishPortalLogin(d, flow, { sub: "moved-1" });
     expect(cb.status).toBe(403);
     expect(fetched).toEqual([]);
     expect(d.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
+  });
+
+  it("a callback opened in another browser is refused: no gate, no session, no method, no exchange", async () => {
+    const w = await portalWorld({ PLATFORM_OIDC_MIGRATION: "claim" });
+    await emailAccount(w.db, ADA);
+    const starter = new Device(w);
+    const other = new Device(w, "198.51.100.40");
+    const flow = await startPortalLogin(starter);
+    fetched = [];
+    const res = await finishPortalLogin(other, flow, {
+      sub: SUB,
+      email: ADA,
+      email_verified: true,
+    });
+    expect(res.status).toBe(401);
+    expect(other.jar.has(EMAIL_GATE_COOKIE)).toBe(false);
+    expect(other.jar.has(ACCOUNT_SESSION_COOKIE)).toBe(false);
+    expect(fetched).toEqual([]);
+    expect(
+      await count(
+        w.db,
+        "SELECT COUNT(*) AS n FROM account_links WHERE kind = 'oidc'",
+      ),
+    ).toBe(0);
+    // The flow is spent: the starting browser cannot reuse it either.
+    expect((await finishPortalLogin(starter, flow, { sub: SUB })).status).toBe(
+      400,
+    );
+  });
+
+  it("REGRESSION (I-17 review B1): an attacker's callback handed to a victim never joins the attacker's sign-in to the victim's account", async () => {
+    const w = await portalWorld({ PLATFORM_OIDC_MIGRATION: "claim" });
+    // The attacker's Pocket ID asserts a verified address an existing account uses, so a
+    // completed callback would open the email step's join offer.
+    await emailAccount(w.db, "att@example.com");
+    // The victim has an account and is signed in to it in their browser.
+    const victimEmail = "victim@example.com";
+    const victimAccount = await emailAccount(w.db, victimEmail);
+    const victim = new Device(w, "198.51.100.41");
+    expect((await victim.signInWithCode(victimEmail)).status).toBe(200);
+
+    // The attacker starts single sign-on in their own browser and finishes the IdP leg...
+    const attacker = new Device(w, "198.51.100.42");
+    const flow = await startPortalLogin(attacker);
+    // ...then hands the callback URL to the victim, whose browser opens it.
+    const res = await finishPortalLogin(victim, flow, {
+      sub: "attacker-sub",
+      email: "att@example.com",
+      email_verified: true,
+    });
+    expect(res.status).toBe(401);
+    expect(victim.jar.has(EMAIL_GATE_COOKIE)).toBe(false);
+
+    // The victim's own proof (a code to their address) has no gate to complete.
+    const typed = await victim.send("POST", "/api/signin/confirm-email", {
+      choice: "typed",
+      email: victimEmail,
+    });
+    expect(typed.status).toBe(400);
+    expect(
+      (await victim.send("POST", "/api/signin/confirm-email/join")).status,
+    ).toBe(400);
+
+    expect(await linksOf(w.db, victimAccount)).toEqual([
+      `email:email:${victimEmail}`,
+    ]);
+    expect(
+      await count(
+        w.db,
+        "SELECT COUNT(*) AS n FROM account_links WHERE subject = 'attacker-sub'",
+      ),
+    ).toBe(0);
   });
 });
 

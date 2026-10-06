@@ -164,14 +164,18 @@ export async function signIn(
     if (account.status !== "active") {
       return { status: "refused", reason: "account_disabled" };
     }
+    // A provider address another account already uses is kept on this link as unverified, as
+    // the email gate's `createAccount` does: no address is verified on two accounts, so a
+    // provider cannot carry this account onto licences waiting on someone else's address (I-17).
+    const email = id.kind === "email" ? null : id.email;
+    const emailVerified =
+      email && id.emailVerified
+        ? (await accountUsingEmail(db, email, account.id)) === null
+        : id.emailVerified;
     await touchLink(
       db,
       existing.id,
-      {
-        email: id.kind === "email" ? null : id.email,
-        emailVerified: id.emailVerified,
-        displayName: id.displayName,
-      },
+      { email, emailVerified, displayName: id.displayName },
       now,
     );
     await touchAccountSignIn(db, account.id, now);

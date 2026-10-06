@@ -2,7 +2,8 @@
 
 // The account realm's cookies (I-07; S-16 §5.4 item 7, "Sessions"): the Polaris Key account
 // session and the short-lived login-card cookies that bind a sign-in to the browser that started
-// it (the email flow, the email gate and, since I-16, the passkey challenge). All are host-only on
+// it (the email flow, the email gate, since I-16 the passkey challenge, and since I-17 the
+// portal's single sign-on). All are host-only on
 // key.plrs.im (`__Host-`, `Path=/`, no `Domain`), `HttpOnly`, `Secure` and `SameSite=Lax`.
 //
 // A host-only `Path=/` cookie is sent by the browser to EVERY path on the host, product routes
@@ -22,6 +23,9 @@ export const EMAIL_GATE_COOKIE = "__Host-pkey_gate";
 /** The login card's pending passkey sign-in (I-16): names the WebAuthn challenge this browser
  *  was given, so the assertion completes only here, once. Same attributes as the other two. */
 export const PASSKEY_FLOW_COOKIE = "__Host-pkey_passkey";
+/** The portal's single sign-on through the platform IdP (`/login` → `/callback`): binds the flow
+ *  to the browser that started it (I-17; THREAT-MODEL "Moving end users off the platform IdP"). */
+export const PORTAL_SSO_COOKIE = "__Host-pkey_sso";
 
 /** Every cookie of the account realm. */
 export const ACCOUNT_REALM_COOKIES: readonly string[] = [
@@ -29,6 +33,7 @@ export const ACCOUNT_REALM_COOKIES: readonly string[] = [
   SIGNIN_FLOW_COOKIE,
   EMAIL_GATE_COOKIE,
   PASSKEY_FLOW_COOKIE,
+  PORTAL_SSO_COOKIE,
 ];
 
 function isAccountCookie(name: string): boolean {

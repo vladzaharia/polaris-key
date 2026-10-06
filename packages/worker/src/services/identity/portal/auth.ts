@@ -52,6 +52,12 @@ import {
   isSameOriginNavigation,
 } from "../../../core/platform.js";
 import { escapeHtml, renderBrandPage } from "../../../core/brandHtml.js";
+import {
+  PORTAL_SSO_COOKIE,
+  accountRealmCookie,
+  clearAccountRealmCookie,
+  readCookie,
+} from "../../../core/accountCookies.js";
 
 const FLOW_TTL_SECONDS = 600;
 
@@ -80,6 +86,9 @@ interface FlowRecord {
   nonce: string;
   redirectUri: string;
   returnTo?: string;
+  /** I-17: the peppered hash of the `__Host-pkey_sso` cookie `/login` set on the browser that
+   *  started the flow. `/callback` completes only in that browser. */
+  bindingHash?: string;
 }
 
 /**
@@ -314,7 +323,16 @@ export async function handlePortalLogin(
   const nonce = b64url(randomBytes(16));
   const { verifier, challenge } = await pkce();
   const redirectUri = `${url.origin}/callback`;
-  const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo };
+  // I-17: the flow is bound to this browser. Pocket ID returns by a top-level GET, which carries a
+  // `SameSite=Lax` cookie, so the callback can require it (login CSRF, and a planted join offer).
+  const binding = b64url(randomBytes(32));
+  const flow: FlowRecord = {
+    verifier,
+    nonce,
+    redirectUri,
+    returnTo,
+    bindingHash: await hashKey(binding, env.KEY_HASH_PEPPER),
+  };
   await putArtefact(
     env,
     await portalFlowKey(env, state),
@@ -336,9 +354,25 @@ export async function handlePortalLogin(
     headers: portalSecurityHeaders(
       new Headers({
         location: authorize.toString(),
+        "set-cookie": accountRealmCookie(
+          PORTAL_SSO_COOKIE,
+          binding,
+          FLOW_TTL_SECONDS,
+        ),
         "cache-control": "no-store",
       }),
     ),
+  });
+}
+
+/** `res` with the spent single sign-on binding cleared (I-17). */
+function clearingBinding(res: Response): Response {
+  const headers = new Headers(res.headers);
+  headers.append("set-cookie", clearAccountRealmCookie(PORTAL_SSO_COOKIE));
+  return new Response(res.body, {
+    status: res.status,
+    statusText: res.statusText,
+    headers,
   });
 }
 
@@ -365,7 +399,33 @@ export async function handlePortalCallback(
   } catch {
     return signInPage.tookTooLong();
   }
+  // I-17: only the browser that started the flow may finish it. Without this, anyone could hand
+  // a victim the callback URL of their own sign-in: the victim's browser would get the
+  // attacker's session (login CSRF) or, in `claim` mode, the attacker's email gate, whose join
+  // the victim's own proof would complete onto the victim's account. Refused generically before
+  // the code is exchanged; a flow without a binding (minted before this check) is refused too.
+  const binding = readCookie(req.headers.get("cookie"), PORTAL_SSO_COOKIE);
+  if (
+    !binding ||
+    !flow.bindingHash ||
+    (await hashKey(binding, env.KEY_HASH_PEPPER)) !== flow.bindingHash
+  ) {
+    return signInPage.unverified();
+  }
+  return clearingBinding(
+    await completePortalCallback(req, env, db, flow, code, now),
+  );
+}
 
+/** The rest of `/callback`, once the flow is known to be this browser's. */
+async function completePortalCallback(
+  req: Request,
+  env: Env,
+  db: Db,
+  flow: FlowRecord,
+  code: string,
+  now: number,
+): Promise<Response> {
   const cfg = platformOidcConfig(env);
   if (!cfg) return signInPage.off();
   // I-17: a flow started before the sunset is not completed after it (the flow is spent above).

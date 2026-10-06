@@ -1245,6 +1245,17 @@ async function beginAuthFlow(
 > {
   const oidc = await resolveOidcConfig(env, db, product);
   if (oidc instanceof Response) return oidc;
+  // I-17: past the sunset nobody is sent to the platform IdP only to be refused on the way back.
+  // The browser gets the page; a device-code client the answer it already gets when this
+  // product's sign-in is off (`disabled`), so nothing new crosses the device wire.
+  if (
+    (oidc.row.provider ?? "platform") === "platform" &&
+    platformSignInEnded(env, Math.floor(Date.now() / 1000))
+  ) {
+    return opts.browser
+      ? platformSignInEndedPage()
+      : errorResponse(404, "disabled", "platform sign-in has ended");
+  }
   const state = b64url(randomBytes(16));
   const nonce = b64url(randomBytes(16));
   const { verifier, challenge } = await pkce();

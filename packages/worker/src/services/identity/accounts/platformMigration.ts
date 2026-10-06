@@ -193,7 +193,11 @@ export type PlatformClaim =
     }
   | { status: "refused"; result: Extract<SignInResult, { status: "refused" }> };
 
-/** The distinct active accounts that use `email` (an email method, or a verified primary). */
+/**
+ * Every account that uses `email` the way `accountUsingEmail` (the join offer's lookup) reads it:
+ * as an email sign-in method (whatever the account's status), or as the verified primary email
+ * of an account that is not deleted. All of them, where that one stops at the first.
+ */
 export async function accountsUsingEmail(
   db: Db,
   email: string,

@@ -860,8 +860,12 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
         nonce,
       }),
     );
+    // The same browser finishes it: it carries the binding `/login` set (I-17).
+    const binding = login.headers.get("set-cookie")!.split(";")[0]!;
     const callback = await handlePortalCallback(
-      signInReq(`${SIGN_IN_ORIGIN}/callback?code=c&state=${state}`),
+      signInReq(`${SIGN_IN_ORIGIN}/callback?code=c&state=${state}`, {
+        headers: { cookie: binding },
+      }),
       env,
       db,
       NOW,
