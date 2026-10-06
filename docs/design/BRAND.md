@@ -549,7 +549,8 @@ stagger-list, success, skeleton, press; S-23 §6).
   in-app preference (`data-motion="reduce"` on `<html>`), tokens.css sets every
   `--pk-duration-*` and `--pk-stagger-step` to 0 ms, and no View Transition, shimmer or burst
   runs. The delays (`--pk-delay-skeleton`, `--pk-delay-highlight`) are not motion and stay: a
-  skeleton still waits 150 ms, a new row keeps its tint for 1.6 s.
+  skeleton still waits 150 ms, a new row keeps its tint for 1.6 s. The spinner keeps turning: it
+  is a loading indicator, not decoration (S-23 §6.6).
 - **The star never animates, rotates, pulses, twinkles or orbits**, anywhere: not in a loader, not
   in an empty state, not on hover, not in a success moment. Loading indicators are neutral (a bar
   or a ring in `text-subtle`), never the mark.

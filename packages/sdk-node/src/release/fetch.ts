@@ -9,8 +9,9 @@
 //     plane's own origin (gated delivery needs them); a cross-origin redirect drops the bearer
 //     (the fetch standard's rule, which undici follows);
 //   * `Accept-Encoding: identity`, because a compressed body breaks `Range`;
-//   * the bytes land in `<to>.part`; a later call resumes with `Range: bytes=<have>-` (a 206
-//     appends, a 200 starts over, a 416 means the part is already complete);
+//   * the bytes land in `<to>.part`; a later call resumes with `Range: bytes=<have>-` and
+//     `If-Range: "<sha256>"` (a 206 appends, a 200 starts over, a 416 means the part is already
+//     complete);
 //   * size and SHA-256 are checked against the record's payload artifact BEFORE the part is
 //     renamed to `to`; a mismatch deletes the part and throws `payload-mismatch`. A partial or
 //     unverified file is never left at `to`.
@@ -149,7 +150,11 @@ export async function releaseFetch(
   const headers = ctx.headers({
     "accept-encoding": "identity",
     ...(token && sameOrigin ? { authorization: `Bearer ${token}` } : {}),
-    ...(have > 0 ? { range: `bytes=${have}-` } : {}),
+    // Resume only the same bytes: If-Range names the payload's strong ETag (its quoted SHA-256),
+    // so a server holding different bytes answers 200 and the download starts over.
+    ...(have > 0
+      ? { range: `bytes=${have}-`, "if-range": `"${payload.sha256}"` }
+      : {}),
   });
   if (have < payload.size || have === 0) {
     let res: Response;

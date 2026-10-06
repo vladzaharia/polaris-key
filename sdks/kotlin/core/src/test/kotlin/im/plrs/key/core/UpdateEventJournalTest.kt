@@ -1,4 +1,4 @@
-// @pkey-feature devices.report update.bootguard
+// @pkey-feature devices.report update.bootguard telemetry.updates
 //
 // The update-health journal (notes/SDK-PARITY-PASS.md §3.13; P6-03): every entry is one the
 // Worker's allowlist keeps (W/core/updateHealth.ts boundedEntry), a report carries at most 16 and

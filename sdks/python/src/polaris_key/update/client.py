@@ -51,6 +51,7 @@ from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlsplit, urlunsp
 from ..constants_generated import (
     ARCH_VALUES,
     BINARY_METHOD_VALUES,
+    CHANNEL_ALIASES,
     MAX_RECORD_JWS_BYTES,
     PLATFORM_VALUES,
     ErrorCode,
@@ -568,7 +569,10 @@ class UpdateClient:
         ``update.endpoints`` templates: ``kind`` is ``appcast`` (Sparkle; ``arch`` adds
         ``?arch=``), ``winsparkle``, ``velopack`` (``velopack_channel``: the channel the app was
         packed with, e.g. ``win-x64``), ``appInstaller`` or ``zsync`` (``build_id``: an AppImage
-        build's artifact-map id). ``channel`` defaults to the client's.
+        build's artifact-map id). ``channel`` defaults to the client's; an alias (``staging``,
+        ``latest``) is rewritten to its canonical channel first, and ``velopack`` without
+        ``velopack_channel`` is the feed directory Velopack's ``UpdateManager`` opens
+        (``conformance/corpus/v2/feed-url-matrix.json`` pins every expansion).
 
         Returns the URL string, or a typed :class:`~polaris_key.core.caps.Unsupported` with
         reason ``product`` when discovery is not loaded, the product runs no Update service or
@@ -578,7 +582,9 @@ class UpdateClient:
 
         if kind not in FEED_KINDS:
             raise _invalid(f"feed kind must be one of {', '.join(FEED_KINDS)}")
-        channel = channel or self._ctx.channel
+        channel = channel or self._ctx.channel or "stable"
+        # An alias names its canonical channel's feed (feed-url-matrix.json).
+        channel = CHANNEL_ALIASES.get(channel, channel)
         manifest = self._discovery()
 
         def unsupported(why: str) -> Unsupported:
@@ -597,7 +603,12 @@ class UpdateClient:
         values = {"channel": channel}
         if "{velopackChannel}" in template:
             if not velopack_channel:
-                raise _invalid("a velopack feed needs velopack_channel (e.g. win-x64)")
+                # The feed directory Velopack's UpdateManager opens: the template up to
+                # ``releases.`` (it picks ``releases.<its channel>.json`` itself).
+                cut = template.rfind("releases.")
+                if cut < 0:
+                    raise _invalid("a velopack feed needs velopack_channel (e.g. win-x64)")
+                return _expand(template[:cut], self._ctx.base_url, values)
             values["velopackChannel"] = velopack_channel
         if "{buildId}" in template:
             if not build_id:

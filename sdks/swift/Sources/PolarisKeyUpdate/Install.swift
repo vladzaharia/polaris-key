@@ -45,7 +45,76 @@ public enum InstallOutcome: Sendable, Equatable {
 public enum UpdateFeedKind: String, Sendable, CaseIterable {
     case appcast, winsparkle, velopack, appInstaller, zsync
 
-    var endpointKey: String { self == .appcast ? "channelAppcast" : rawValue }
+    /// The `update.endpoints` key the kind reads (feed-url-matrix.json `kinds`).
+    var endpointKey: String { rawValue }
+}
+
+/// A feed URL, or the typed N/A (`product`) when the endpoints carry no template for the kind.
+public enum FeedURLAnswer: Sendable, Equatable {
+    case url(URL)
+    case unsupported(Unsupported)
+}
+
+/// Expand an updater feed URL from `update.endpoints` (conformance/corpus/v2/feed-url-matrix.json,
+/// the `update.feeds` proof). An absent channel is `stable`; an alias is rewritten through
+/// `CHANNEL_ALIASES` first. `appcast` reads `endpoints.appcast` (the stable feed) and, for any
+/// other channel, inserts the channel as a path segment before `/appcast.xml`; `velopack` without
+/// a `velopackChannel` is the feed directory Velopack's UpdateManager opens (the template up to
+/// `releases.`). Every value is encoded as encodeURIComponent.
+public func updateFeedURL(
+    _ kind: UpdateFeedKind, endpoints: [String: String], baseUrl: String, channel: String? = nil,
+    velopackChannel: String? = nil, buildId: String? = nil
+) -> FeedURLAnswer {
+    func no(_ detail: String) -> FeedURLAnswer {
+        .unsupported(
+            Unsupported(feature: Feature.updateFeeds, reason: UnsupportedReason.product, detail: detail))
+    }
+    let requested = channel ?? CHANNEL_STABLE
+    let canonical = CHANNEL_ALIASES[requested] ?? requested
+    guard let template = endpoints[kind.endpointKey] else {
+        return no("The product publishes no \(kind.rawValue) feed.")
+    }
+    if kind == .appcast {
+        var url = template
+        if canonical != CHANNEL_STABLE {
+            let encoded = feedComponent(canonical)
+            guard var parts = URLComponents(string: template),
+                parts.percentEncodedPath.hasSuffix("/appcast.xml")
+            else { return no("The appcast template has no /appcast.xml to place a channel before.") }
+            parts.percentEncodedPath =
+                String(parts.percentEncodedPath.dropLast("/appcast.xml".count)) + "/\(encoded)/appcast.xml"
+            url = parts.string ?? template
+        }
+        guard let resolved = URL(string: url, relativeTo: URL(string: baseUrl + "/"))?.absoluteURL else {
+            return no("The appcast template is not a URL.")
+        }
+        return .url(resolved)
+    }
+    var values = ["channel": canonical]
+    var expanded = template
+    if template.contains("{velopackChannel}") {
+        if let velopackChannel {
+            values["velopackChannel"] = velopackChannel
+        } else if let cut = template.range(of: "releases.", options: .backwards) {
+            expanded = String(template[..<cut.lowerBound])
+        }
+    }
+    if template.contains("{buildId}") {
+        guard let buildId else { return no("The \(kind.rawValue) feed needs the buildId.") }
+        values["buildId"] = buildId
+    }
+    guard let url = expandTemplate(expanded, baseUrl: baseUrl, values) else {
+        return no("The \(kind.rawValue) feed template could not be expanded.")
+    }
+    return .url(url)
+}
+
+/// `value` encoded as encodeURIComponent.
+private func feedComponent(_ value: String) -> String {
+    var allowed = CharacterSet.alphanumerics.intersection(
+        CharacterSet(charactersIn: Unicode.Scalar(0)...Unicode.Scalar(0x7F)))
+    allowed.insert(charactersIn: "-_.!~*'()")
+    return value.addingPercentEncoding(withAllowedCharacters: allowed) ?? value
 }
 
 /// Opens a URL with the system (the App Store app, a browser). Injected in tests.
@@ -137,9 +206,10 @@ extension UpdateClient {
         }
     }
 
-    /// The updater feed URL of `kind` for `channel`, from discovery's `update.endpoints`.
-    /// Throws `UnsupportedError` (reason `product`) when the product publishes no such template,
-    /// and `PolarisError(not-configured)` before discovery has run.
+    /// The updater feed URL of `kind` for `channel` (default: the client's channel), from
+    /// discovery's `update.endpoints` (`updateFeedURL`). Throws `UnsupportedError` (reason
+    /// `product`) when the product publishes no such template, and `PolarisError(not-configured)`
+    /// before discovery has run.
     public func feedUrl(
         _ kind: UpdateFeedKind, channel: String? = nil, velopackChannel: String? = nil,
         buildId: String? = nil
@@ -148,22 +218,15 @@ extension UpdateClient {
             throw PolarisError(
                 code: ErrorCode.notConfigured, message: "Run discover() before asking for feed URLs.")
         }
-        guard let template = doc.services[.update]?.endpoints[kind.endpointKey] else {
-            throw UnsupportedError(
-                Unsupported(
-                    feature: Feature.updateFeed, reason: UnsupportedReason.product,
-                    detail: "The product publishes no \(kind.rawValue) feed."))
+        let update = doc.services[.update]
+        switch updateFeedURL(
+            kind, endpoints: update?.enabled == true ? update?.endpoints ?? [:] : [:],
+            baseUrl: core.endpoints.baseUrl, channel: channel ?? core.channel,
+            velopackChannel: velopackChannel, buildId: buildId)
+        {
+        case .url(let url): return url
+        case .unsupported(let u): throw UnsupportedError(u)
         }
-        var values = ["channel": channel ?? core.channel]
-        if let velopackChannel { values["velopackChannel"] = velopackChannel }
-        if let buildId { values["buildId"] = buildId }
-        guard let url = expandTemplate(template, baseUrl: core.endpoints.baseUrl, values) else {
-            throw UnsupportedError(
-                Unsupported(
-                    feature: Feature.updateFeed, reason: UnsupportedReason.product,
-                    detail: "The \(kind.rawValue) feed needs a value this call did not give."))
-        }
-        return url
     }
 
     /// A verified download of one build (§3.6). `size` and `sha256` come from the verified

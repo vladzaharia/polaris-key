@@ -1,3 +1,4 @@
+# @pkey-feature ui.cli
 """Tests for the composable CLI command hooks.
 
 The ``core`` commands are exercised against a tiny *fake* client that duck-types only the

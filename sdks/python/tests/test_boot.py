@@ -1,3 +1,4 @@
+# @pkey-feature ui.boot
 # @pkey-feature update.bootguard ui.stages
 """``client.boot()``, ``ensure_activated()`` and the app build's boot guard (SDK parity pass §3.4,
 §3.15; SP-P08). The guard's decision and the confirmation timing come from

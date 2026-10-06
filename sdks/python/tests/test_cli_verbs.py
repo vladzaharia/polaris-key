@@ -1,3 +1,4 @@
+# @pkey-feature ui.cli
 # @pkey-feature identity.devicecode devices.manage config.resolve release.changelog
 """The CLI kit's full verb set (SDK parity pass §2.1, SP-P12) through all three front ends, over a
 real client and a mock Worker. One table (``polaris_key.cli.verbs.VERBS``) builds every front end,

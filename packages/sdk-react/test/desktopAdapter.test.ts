@@ -198,7 +198,9 @@ describe("DesktopAdapter — submitKey", () => {
     await expect(adapter.submitKey("k")).rejects.toMatchObject({
       code: "sign-in-failed",
     });
-    expect(adapter.snapshot().error.license?.message).toMatch(/device limit/i);
+    expect(adapter.snapshot().error.license?.message).toMatch(
+      /already on all its devices/i,
+    );
     adapter.dispose();
   });
 
@@ -212,7 +214,9 @@ describe("DesktopAdapter — submitKey", () => {
     await expect(adapter.submitKey("k")).rejects.toMatchObject({
       code: "sign-in-failed",
     });
-    expect(adapter.snapshot().error.license?.message).toMatch(/not accepted/i);
+    expect(adapter.snapshot().error.license?.message).toMatch(
+      /license key wasn't accepted/i,
+    );
     adapter.dispose();
   });
 
@@ -241,7 +245,7 @@ describe("DesktopAdapter — submitKey", () => {
       expect(err).toMatchObject({ activation: { kind, code } });
       if ("message" in result)
         expect(err).toMatchObject({ activation: { message: result.message } });
-      expect((err as Error).message).not.toMatch(/device limit/i);
+      expect((err as Error).message).not.toMatch(/all its devices/i);
       adapter.dispose();
     },
   );

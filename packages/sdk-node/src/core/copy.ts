@@ -1,192 +1,31 @@
-// The error copy catalog (SDK parity pass §3.2, proposed id `core.copy`): one human sentence and
-// one short title per registry code, gate status and activation kind, so a CLI, an Electron
-// renderer and a server log describe the same refusal the same way.
+// The error copy catalog (`core.copy`, SDK parity pass §3.2): one human sentence and one short
+// title per registry code, gate status and activation result, so a CLI, an Electron renderer and
+// a server log describe the same refusal the same way.
 //
-// The English base below is this SDK's copy of the shared base the parity pass plans as
-// `conformance/parity/copy.en.json` (SP-00/SP-03, a conformance change still in plan mode). When
-// that file lands, `gen:constants` emits it and this table is replaced by the generated one; the
-// API does not change. More locales are content: `registerCopy("fr", {...})` adds one, and a code
-// a locale lacks falls back to English, then to a generic sentence that names the code. A raw
-// response body is never used as copy.
+// ENGLISH IS GENERATED: `../copy.generated.ts` is written by `pnpm gen:constants` from
+// `conformance/parity/copy.en.json` (checked against errors.json and enums.json), as three
+// tables — COPY_CODES (per error code), COPY_GATE (per licenseStatus) and COPY_ACTIVATION (per
+// activationResult). `copy.message(code)` looks a code up in that order, after mapping a §3.1
+// kind (`device-limit`, `deviceLimit`) to its wire code (`device_limit`); `copy.activation(kind)`
+// reads the activation table only (the error code `unauthorized` reads "Not signed in", the
+// activation result "Key not accepted"). A code with no entry gives COPY_FALLBACK with `{code}`
+// filled in. A raw response body is never used as copy.
+//
+// More locales are content: `registerCopy("fr", {...})` adds one, keyed by error code, gate
+// status or activation result, and a code a locale lacks falls back to the generated English.
 
-/** One entry: a short title and the sentence a host shows. `{detail}` is replaced. */
+import {
+  COPY_ACTIVATION,
+  COPY_CODES,
+  COPY_FALLBACK,
+  COPY_GATE,
+} from "../copy.generated.js";
+
+/** One entry: a short title and the sentence a host shows. */
 export interface CopyEntry {
   title: string;
   message: string;
 }
-
-const EN: Record<string, CopyEntry> = {
-  // ── Activation kinds (§3.1) and their wire codes ──────────────────────────────────────
-  device_limit: {
-    title: "Device limit reached",
-    message:
-      "This licence is already in use on its maximum number of devices{detail}. Free a device from your account, then try again.",
-  },
-  fingerprint_required: {
-    title: "Hardware check needed",
-    message:
-      "This licence needs a hardware fingerprint, and this device could not produce one.",
-  },
-  hardware_mismatch: {
-    title: "Hardware changed",
-    message:
-      "This device's hardware changed{detail}, so its previous activation was released. Activate again to re-bind it.",
-  },
-  enroll_claimed: {
-    title: "Sign in to continue",
-    message:
-      "This device's free licence now belongs to an account. Sign in to use it.",
-  },
-  enroll_disabled: {
-    title: "Free tier unavailable",
-    message: "This product does not offer a free licence without a key.",
-  },
-  license_disabled: {
-    title: "Licence disabled",
-    message: "This licence was disabled. Contact the seller for help.",
-  },
-  license_expired: {
-    title: "Licence expired",
-    message: "This licence has expired. Renew it to keep using the product.",
-  },
-  attestation_required: {
-    title: "Device check required",
-    message:
-      "This product only runs on devices that can prove their integrity, and this device cannot.",
-  },
-  rate_limited: {
-    title: "Too many attempts",
-    message: "Too many attempts. Wait a moment, then try again{detail}.",
-  },
-  unauthorized: {
-    title: "Key not accepted",
-    message: "That licence key is not valid, or it was revoked.",
-  },
-  registration_closed: {
-    title: "Activation needed",
-    message:
-      "This product does not register devices without a licence. Enter a key or sign in.",
-  },
-  not_entitled: {
-    title: "Not included",
-    message: "Your licence does not include this.",
-  },
-  forbidden: {
-    title: "Not allowed",
-    message: "The server refused this request.",
-  },
-  not_found: {
-    title: "Not found",
-    message: "The server does not know this product or resource.",
-  },
-  bad_request: {
-    title: "Request refused",
-    message: "The server could not read this request.",
-  },
-  managed_by_admin: {
-    title: "Managed setting",
-    message:
-      "An administrator manages this setting, so it cannot be changed here.",
-  },
-  version_blocked: {
-    title: "Update required",
-    message:
-      "This version can no longer be used. Install an update to continue.",
-  },
-  channel_not_allowed: {
-    title: "Channel not included",
-    message: "Your licence does not include this release channel.",
-  },
-  download_auth_required: {
-    title: "Licence needed",
-    message: "This download needs an active licence on this device.",
-  },
-  license_owned: {
-    title: "Licence owned by another account",
-    message:
-      "This licence belongs to another account. Sign in with that account to use it.",
-  },
-  network: {
-    title: "No connection",
-    message:
-      "The server could not be reached. Check the connection and try again.",
-  },
-  "network-error": {
-    title: "No connection",
-    message:
-      "The server could not be reached. Check the connection and try again.",
-  },
-  server: {
-    title: "Server problem",
-    message: "The server had a problem. Try again in a moment.",
-  },
-  "server-error": {
-    title: "Server problem",
-    message: "The server had a problem. Try again in a moment.",
-  },
-  "service-unavailable": {
-    title: "Not available",
-    message: "This product does not offer that feature.",
-  },
-  unsupported: {
-    title: "Not supported here",
-    message: "This feature is not supported on this device{detail}.",
-  },
-  "local-only": {
-    title: "Offline build",
-    message: "This build never connects to the server.",
-  },
-  "payload-mismatch": {
-    title: "Download damaged",
-    message:
-      "The downloaded file did not match its signed record, so it was discarded.",
-  },
-  "sign-in-expired": {
-    title: "Code expired",
-    message: "The sign-in code expired. Start again for a new code.",
-  },
-  "sign-in-denied": {
-    title: "Sign-in failed",
-    message: "The sign-in was refused or did not complete.",
-  },
-  // ── Gate statuses (client-core `licenseState`) ────────────────────────────────────────
-  ok: { title: "Licensed", message: "This device is licensed." },
-  grace: {
-    title: "Working offline",
-    message:
-      "The licence could not be checked recently. It keeps working offline{detail}.",
-  },
-  expired: {
-    title: "Licence expired",
-    message: "This licence has expired. Renew it to keep using the product.",
-  },
-  revoked: {
-    title: "Licence revoked",
-    message:
-      "This licence was revoked on this device. Activate again to continue.",
-  },
-  "needs-activation": {
-    title: "Activation needed",
-    message: "Enter a licence key, sign in, or continue with the free tier.",
-  },
-  "version-too-old": {
-    title: "Update required",
-    message:
-      "This version is too old for your licence. Install an update to continue.",
-  },
-  "version-too-new": {
-    title: "Version not available",
-    message: "This version is newer than your licence allows.",
-  },
-  "channel-not-entitled": {
-    title: "Channel not included",
-    message: "Your licence does not include this build's release channel.",
-  },
-  "not-applicable": {
-    title: "No licence needed",
-    message: "This product does not need a licence.",
-  },
-};
 
 /** The §3.1 kinds, mapped onto the code their copy lives under. */
 const KIND_ALIASES: Record<string, string> = {
@@ -210,53 +49,115 @@ const KIND_ALIASES: Record<string, string> = {
   rateLimited: "rate_limited",
 };
 
-const LOCALES = new Map<string, Record<string, CopyEntry>>([["en", EN]]);
+const LOCALES = new Map<string, Record<string, CopyEntry>>();
 let defaultLocale = "en";
 
-function lookup(code: string, locale?: string): CopyEntry | null {
-  const key = KIND_ALIASES[code] ?? code;
-  const tag = locale ?? defaultLocale;
-  // `fr-CA` falls back to `fr`, then to English.
-  for (const l of [tag, tag.split("-")[0]!, "en"]) {
-    const entry = LOCALES.get(l)?.[key];
-    if (entry) return entry;
-  }
-  return null;
+function own(
+  table: Readonly<Record<string, CopyEntry>> | undefined,
+  key: string,
+): CopyEntry | undefined {
+  return table && Object.prototype.hasOwnProperty.call(table, key)
+    ? table[key]
+    : undefined;
 }
 
-function fill(template: string, detail?: string): string {
-  return template.replace("{detail}", detail ? ` (${detail})` : "");
+/** A §3.1 kind in its activationResult spelling (`deviceLimit` → `device-limit`). */
+function activationResult(kind: string): string {
+  return kind.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+}
+
+/** The generated English entry: error code (a kind mapped to its wire code first), then gate
+ *  status, then activation result. */
+function english(code: string): CopyEntry | undefined {
+  return (
+    own(COPY_CODES, KIND_ALIASES[code] ?? code) ??
+    own(COPY_GATE, code) ??
+    own(COPY_ACTIVATION, activationResult(code))
+  );
+}
+
+/** A registered locale's own entry (`fr-CA` falls back to `fr`); for `en` this is the host's
+ *  override layer, never the generated English. */
+function localised(code: string, locale?: string): CopyEntry | undefined {
+  const tag = (locale ?? defaultLocale).toLowerCase();
+  for (const l of [tag, tag.split("-")[0]!]) {
+    const table = LOCALES.get(l);
+    const entry = own(table, code) ?? own(table, KIND_ALIASES[code] ?? code);
+    if (entry) return entry;
+  }
+  return undefined;
+}
+
+/** Fill `{code}` with the code and `{detail}` with ` (detail)`; any other placeholder (a value
+ *  this call was not given) is dropped with the space before it, so a raw `{name}` never shows.
+ *  A `detail` the sentence has no slot for is appended in parentheses. */
+function fill(template: string, code: string, detail?: string): string {
+  let used = false;
+  const out = template.replace(
+    /( ?)\{(\w+)\}/g,
+    (_m, space: string, name: string) => {
+      if (name === "code") return `${space}${code}`;
+      if (name === "detail") {
+        used = true;
+        return detail ? ` (${detail})` : "";
+      }
+      return "";
+    },
+  );
+  if (!detail || used) return out;
+  return /[.!?]$/.test(out)
+    ? `${out.slice(0, -1)} (${detail})${out.slice(-1)}`
+    : `${out} (${detail})`;
 }
 
 /** The copy catalog. `copy.message("device_limit", "3/3")`. */
 export const copy = {
   /** The sentence for `code` (a registry code, a gate status or an activation kind). An
-   *  unknown code gives a generic sentence that names it, never a raw body. */
+   *  unknown code gives COPY_FALLBACK naming it, never a raw body. */
   message(code: string, detail?: string, locale?: string): string {
-    const entry = lookup(code, locale);
-    if (entry) return fill(entry.message, detail);
-    return `Something went wrong (${code}).`;
+    const entry = localised(code, locale) ?? english(code);
+    return fill((entry ?? COPY_FALLBACK).message, code, detail);
   },
   /** The short title for `code`. */
   title(code: string, locale?: string): string {
-    return lookup(code, locale)?.title ?? "Something went wrong";
+    return (localised(code, locale) ?? english(code) ?? COPY_FALLBACK).title;
   },
-  /** Whether a locale has its own entry for `code` (no fallback). */
+  /** The sentence for a typed activation result (`ActivationResult.kind`), from the activation
+   *  table only; `code` fills `{code}` (a `refused` result names the server's code). */
+  activation(
+    kind: string,
+    opts: { code?: string; detail?: string; locale?: string } = {},
+  ): string {
+    const result = activationResult(kind);
+    const entry =
+      localised(result, opts.locale) ?? own(COPY_ACTIVATION, result);
+    if (!entry)
+      return copy.message(opts.code ?? kind, opts.detail, opts.locale);
+    return fill(entry.message, opts.code ?? kind, opts.detail);
+  },
+  /** Whether `code` has an entry in a locale (English: a host override or the generated
+   *  tables; no fallback). */
   has(code: string, locale = "en"): boolean {
-    return LOCALES.get(locale)?.[KIND_ALIASES[code] ?? code] !== undefined;
+    return (
+      localised(code, locale) !== undefined ||
+      (locale === "en" && english(code) !== undefined)
+    );
   },
-  /** Every code the English base covers. */
+  /** Every code the generated English error-code table covers. */
   codes(): string[] {
-    return Object.keys(EN);
+    return Object.keys(COPY_CODES);
   },
 };
 
-/** Add or extend a locale. Entries a locale lacks fall back to English. */
+/** Add or extend a locale. Entries a locale lacks fall back to the generated English.
+ *  `registerCopy("en", {...})` is the host's English override layer: its entries win per key
+ *  over the generated text, which stays the default for every key the host does not name. */
 export function registerCopy(
   locale: string,
   entries: Record<string, CopyEntry>,
 ): void {
-  LOCALES.set(locale, { ...(LOCALES.get(locale) ?? {}), ...entries });
+  const tag = locale.toLowerCase();
+  LOCALES.set(tag, { ...(LOCALES.get(tag) ?? {}), ...entries });
 }
 
 /** The locale `copy` uses when a call names none (default `en`). */

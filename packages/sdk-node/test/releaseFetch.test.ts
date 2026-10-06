@@ -1,4 +1,4 @@
-// @pkey-feature release.download release.record
+// @pkey-feature release.download release.record release.fetch
 // SDK parity pass §3.6: release.fetch streams a build from discovery's builds route, resumes with
 // Range, verifies size and SHA-256 against the verified record, and never leaves a partial or
 // unverified file at `to`. installUrl/downloadUrl follow discovery's distribution endpoints.
@@ -37,6 +37,7 @@ async function setup(o: { corrupt?: boolean; cut?: number } = {}) {
   const requests: {
     path: string;
     range: string | null;
+    ifRange: string | null;
     auth: string | null;
   }[] = [];
   let cut = o.cut;
@@ -49,6 +50,7 @@ async function setup(o: { corrupt?: boolean; cut?: number } = {}) {
     requests.push({
       path: url.pathname,
       range: h.get("range"),
+      ifRange: h.get("if-range"),
       auth: h.get("authorization"),
     });
     if (url.pathname === `/${PRODUCT}/.well-known/polaris.json`)
@@ -118,7 +120,7 @@ describe("release.fetch (§3.6)", () => {
     expect(events.map((e) => e.event)).toEqual(["update_downloaded"]);
   });
 
-  it("resumes a cut download with Range", async () => {
+  it("resumes a cut download with Range and If-Range", async () => {
     const { client, hash, requests, to } = await setup({ cut: 100 });
     await expect(
       client.release.fetch({ sha256: hash, buildId: "macos-zip" }, { to }),
@@ -128,6 +130,10 @@ describe("release.fetch (§3.6)", () => {
     expect(readFileSync(to).equals(BYTES)).toBe(true);
     expect(requests.filter((q) => q.range).map((q) => q.range)).toEqual([
       "bytes=100-",
+    ]);
+    // If-Range names the payload's strong ETag, so only the same bytes are appended.
+    expect(requests.filter((q) => q.range).map((q) => q.ifRange)).toEqual([
+      `"${SHA}"`,
     ]);
   });
 

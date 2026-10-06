@@ -84,6 +84,7 @@ import {
 } from "@polaris-key/client-core";
 import {
   ARCH_VALUES,
+  CHANNEL_ALIASES,
   ErrorCode,
   Feature,
   PLATFORM_VALUES,
@@ -779,11 +780,13 @@ export class UpdateClient {
   }
 
   /**
-   * The URL a native updater polls (SDK parity pass §3.7, proposed id `update.feeds`), expanded
-   * from discovery's `update.endpoints` templates: `appcast` (Sparkle; the channel sibling for a
-   * non-stable channel), `winsparkle`, `velopack` (needs `velopackChannel`, e.g. `win-x64`),
-   * `appInstaller` and `zsync` (needs `buildId`). Loads discovery when this session has not. A
-   * product that publishes no such template answers the typed `Unsupported` (`reason: product`).
+   * The URL a native updater polls (`update.feeds`, conformance/corpus/v2/feed-url-matrix.json),
+   * expanded from discovery's `update.endpoints` templates: `appcast` (Sparkle; the channel
+   * sibling for a non-stable channel), `winsparkle`, `velopack` (with `velopackChannel`, e.g.
+   * `win-x64`, the releases file; without it the feed directory), `appInstaller` and `zsync`
+   * (needs `buildId`). A channel alias is rewritten to its canonical channel first. Loads
+   * discovery when this session has not. A product that publishes no such template answers the
+   * typed `Unsupported` (`reason: product`).
    */
   async feedUrl(
     kind: FeedKind,
@@ -796,7 +799,12 @@ export class UpdateClient {
   ): Promise<FeedUrl> {
     await this.ensureDiscovery();
     const doc = this.discovery();
-    const channel = opts.channel ?? this.ctx.channel;
+    // An alias names its canonical channel's feed (feed-url-matrix.json: `staging` → `beta`,
+    // `latest` → `stable`).
+    const requested = opts.channel ?? this.ctx.channel;
+    const channel = Object.hasOwn(CHANNEL_ALIASES, requested)
+      ? CHANNEL_ALIASES[requested as keyof typeof CHANNEL_ALIASES]
+      : requested;
     const unsupported = (detail: string): FeedUrl => ({
       supported: false,
       feature: Feature.updateDriver,
@@ -817,10 +825,20 @@ export class UpdateClient {
     if (!template) return unsupported(`the product publishes no ${kind} feed`);
     const values: Record<string, string> = { channel };
     if (template.includes("{velopackChannel}")) {
-      if (!opts.velopackChannel)
-        return unsupported(
-          "velopack needs velopackChannel (win, osx-arm64, …)",
-        );
+      // Without a Velopack channel the answer is the feed DIRECTORY Velopack's UpdateManager
+      // opens: the template up to `releases.` (it appends `releases.<channel>.json` itself).
+      if (!opts.velopackChannel) {
+        const cut = template.lastIndexOf("releases.");
+        if (cut < 0)
+          return unsupported(
+            "the velopack feed template has no releases. file to cut the directory from",
+          );
+        const dir = template.slice(0, cut);
+        return {
+          supported: true,
+          url: expand(dir, this.ctx.baseUrl, values).toString(),
+        };
+      }
       values.velopackChannel = opts.velopackChannel;
     }
     if (template.includes("{buildId}")) {
