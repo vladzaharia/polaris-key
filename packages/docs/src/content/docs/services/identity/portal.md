@@ -217,10 +217,12 @@ session's CSRF value (`403` otherwise).
   sign-in). Each offer carries the presentation, the newest release's `platforms`, what the
   account would get (`offer`: `tier`, `tierLabel`, `deviceLimit`, `expiresAt`, `expiryDays`) and
   its `reason`, which is always present. Only products that run License, sign in through the
-  platform issuer with auto-linking on, and have the portal and Discover on are considered;
+  platform issuer with auto-linking on, and have the portal on and are not unlisted are
+  considered, and none while the deployment's `storefront.polarisKey.enabled` is off;
   purchase-only and operator-issued products, and products the account already holds, never
   appear. An account that has only ever signed in by email link has no platform identity and is
-  offered nothing.
+  offered nothing. A group member of a product that also auto-issues sees the group's offer: the
+  policy grants the group's tier, and that is what the claim would mint.
 - **`POST /api/discover/<product>/claim`** — "Add to library". Re-evaluates the offer and mints
   the license through the sign-in's own auto-issue path, so it has exactly the tier, limits and
   entitlements a first sign-in would give; links it to the account and audits it
@@ -483,7 +485,15 @@ They are the settings `storefront.polarisKey.listed`, `.audience`, `.offerPaths`
 - **`auto`** is today's Discover: the product is offered where auto-issue or a mapped group would
   give it to the person. **`unlisted`** hides it in the portal while every policy, sign-in and
   auto-issue keeps working. **`listed`** lets the other ways to obtain the product list it as well,
-  as those ways are built.
+  as those ways are built. The first besides the two above is **`open`**: License is off for the
+  product and every download is `public` or `authenticated`, so there is nothing to license. The
+  storefront evaluates it now; Discover lists and adds it once the storefront's portal API ships
+  (until then Discover shows the auto-issue and group offers only).
+- **`storeOfferPaths`** narrows which ways count, in `auto` as in `listed`; Discover's claim
+  follows it, so a way that is not offered cannot be added.
+- **The deployment switch** `storefront.polarisKey.enabled` (platform scope, on by default) hides
+  every listing on the deployment when off; licenses, sign-in and auto-issue keep working. A stored
+  value other than `on` reads as off.
 - **`discoverEnabled`** and `storeListed` stay in step: `discoverEnabled: false` reads as
   `unlisted`, setting `storeListed` sets `discoverEnabled` to match, and turning Discover back on
   returns an `unlisted` product to `auto`. Products that had Discover off were moved to
