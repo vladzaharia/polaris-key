@@ -47,6 +47,15 @@ WCAG 2.3.3 asks for a way to turn off motion from interactions; the OS setting c
 
 `src/main.tsx`, `src/portal/main.tsx`, `console/shell/{ThemeMenu,UserMenu}.tsx`, `portal/components/AccountMenu.tsx`, `portal/pages/AccountPage.tsx`, tests. In flight: `wp/UX-10`.
 
+**Corrections from the code (MO-12, 2026-10-05):**
+
+- There is no `UX-10` package in `workpackages.json`; the menus on `main` are the current ones and the work started from MO-02's merge.
+- The console theme control is its own menu (`ThemeMenu`) beside the account menu, so the Motion row went into `ThemeMenu` under the theme group (each group labelled, `Theme` and `Motion`). `UserMenu.tsx` is unchanged.
+- The portal account menu already links to Account → Appearance, so `AccountMenu.tsx` is unchanged; the Motion group is on `AccountPage.tsx`.
+- The storage and attribute live in a new `src/components/motionPreference.ts` beside `theme.tsx`.
+- Tailwind's `motion-reduce:` and `motion-safe:` follow only the OS query, so `styles.css` redefines both with `@custom-variant` to honour `html[data-motion="reduce"]` as well (from the MO-02 review: the refetch bar froze at a third width under the preference alone).
+- The real-browser check (data-motion now and after a reload, every `--pk-duration-*` at 0, both variants, zero CSP violations) is in `e2e/csp.e2e.test.ts`. The portal Account baselines were re-recorded because Appearance gained the Motion group.
+
 ## Steps
 
 1. Storage and attribute.

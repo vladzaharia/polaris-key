@@ -9104,7 +9104,7 @@
       "optional": false,
       "refs": ["notes/S-23 D3", "notes/S-23 §6.6"],
       "brief": "wp/MO-12-reduce-motion-preference.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "MO-13",
