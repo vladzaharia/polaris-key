@@ -3923,6 +3923,15 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
         "404": { $ref: "#/components/responses/NotFound" }
+    options:
+      operationId: preflightCommerceBinding
+      tags: [distribution]
+      summary: CORS preflight
+      description: Browser preflight for a page on one of the product's `web.origins` (a bearer-mode page reading its licence's purchase binding; SP-16). See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
 
   /{product}/distribution/commerce/claim:
     post:
@@ -4069,6 +4078,15 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WireError" }
+    options:
+      operationId: preflightCommerceClaim
+      tags: [distribution]
+      summary: CORS preflight
+      description: Browser preflight for a page on one of the product's `web.origins` (a bearer-mode page claiming a store purchase with its device token; SP-16). See `CorsPreflight`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "204": { $ref: "#/components/responses/CorsPreflight" }
 
   /{product}/distribution/hooks/app-store:
     post:

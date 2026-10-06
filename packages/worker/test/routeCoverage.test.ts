@@ -505,10 +505,9 @@ const CORS_EXCLUDED = new Set([
   "/{product}/devices/attest",
   // P6-03: the Sentry alert webhook, called server-to-server by Sentry.
   "/{product}/distribution/hooks/sentry",
-  // P6-01: the commerce bridge. The claim and binding routes serve store builds (App Store,
-  // Play, Steam), never a browser page; the two hooks are called server-to-server by the stores.
-  "/{product}/distribution/commerce/binding",
-  "/{product}/distribution/commerce/claim",
+  // P6-01: the commerce bridge's two store hooks, called server-to-server by the stores. (The
+  // binding and claim routes take the device bearer and are covered since SP-16, for a
+  // bearer-mode page.)
   "/{product}/distribution/hooks/app-store",
   "/{product}/distribution/hooks/play-rtdn",
   // P2b-05: the F-Droid CI route, authenticated by a `pkeyci_` bearer.
