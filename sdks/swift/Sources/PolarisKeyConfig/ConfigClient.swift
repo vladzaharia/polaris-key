@@ -90,6 +90,10 @@ public actor ConfigClient {
     private var persisted: [String: JSONValue]
     /// The catalog, fetched once per process when `set` first needs it.
     private var catalog: ConfigCatalog?
+    /// `onConfigChange` / `configChanges` registrations (`ConfigSetting.swift`).
+    nonisolated let listeners = ConfigListeners()
+    /// The facade's change observation, when one is installed (`setChangeObserver`).
+    nonisolated let changeObserver = LockedValue<(@Sendable () async -> Void)?>(nil)
 
     /// - Parameter reacquire: the §5 single re-acquire an edge-mint 401 gets — the facade's one
     ///   closure, the same a document 401 uses, so the route (`license/token`, or re-registration
@@ -227,26 +231,53 @@ public actor ConfigClient {
             }
         }
         if persisted[key] == value { return }
-        persisted[key] = value
-        localStore.save(persisted)
-        core.emit(.config(key: key))
+        await writeLocal { $0[key] = value }
     }
 
     /// Remove the user's own value for `key` (resolution falls back to the next layer) and raise
-    /// `config(key:)` when there was one.
-    public func clear(_ key: String) {
-        guard persisted.removeValue(forKey: key) != nil else { return }
-        localStore.save(persisted)
-        core.emit(.config(key: key))
+    /// a `config` change when the effective value moved.
+    public func clear(_ key: String) async {
+        guard persisted[key] != nil else { return }
+        await writeLocal { $0.removeValue(forKey: key) }
     }
 
     /// Remove every value `set` kept.
-    public func clearAll() {
-        let keys = Array(persisted.keys)
-        guard !keys.isEmpty else { return }
-        persisted = [:]
+    public func clearAll() async {
+        guard !persisted.isEmpty else { return }
+        await writeLocal { $0.removeAll() }
+    }
+
+    /// Apply `change` to the kept values, persist them and deliver what moved: through the
+    /// facade's observation when installed, else by diffing this client's own snapshot.
+    private func writeLocal(_ change: (inout [String: JSONValue]) -> Void) async {
+        let observer = changeObserver.current
+        let before = observer == nil ? await snapshot() : [:]
+        change(&persisted)
         localStore.save(persisted)
-        for k in keys.sorted() { core.emit(.config(key: k)) }
+        if let observer {
+            await observer()
+            return
+        }
+        let after = await snapshot()
+        for key in Set(before.keys).union(after.keys).sorted() where before[key] != after[key] {
+            deliver(
+                ConfigChange(key: key, value: after[key], previous: before[key], source: await configSource(key)))
+        }
+    }
+
+    /// Whether the operator locked `key`: an `enforced` or `hidden` signed-document entry.
+    public func isLocked(_ key: String) async -> Bool {
+        guard let state = await doc()?.config[key]?.state else { return false }
+        return state == .enforced || state == .hidden
+    }
+
+    /// `key`'s effective value, its source and whether it is locked (`setting(key).current()`).
+    public func settingState(_ key: String) async -> ConfigSettingState {
+        let ctx = await context()
+        let state = ctx.remote?[key]?.state
+        return ConfigSettingState(
+            value: ConfigResolution.resolveValue(ctx, key), source: ConfigResolution.resolveSource(ctx, key),
+            locked: state == .enforced || state == .hidden)
     }
 
     /// The values `set` kept, by key.

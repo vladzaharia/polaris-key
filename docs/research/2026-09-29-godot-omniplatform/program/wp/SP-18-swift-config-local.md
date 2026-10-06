@@ -53,10 +53,10 @@ The row is planned only because `setting(key)` and `onConfigChange` are missing;
 
 ## Acceptance criteria
 
-- [ ] `@pkey-feature config.local` tests cover persist, clear, type refusal, `setting(key)` and per-key change delivery.
-- [ ] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
-- [ ] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
-- [ ] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
+- [x] `@pkey-feature config.local` tests cover persist, clear, type refusal, `setting(key)` and per-key change delivery.
+- [x] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
+- [x] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
+- [x] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
 
 ## Verify
 
