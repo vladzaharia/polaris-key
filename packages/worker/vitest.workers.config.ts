@@ -83,6 +83,8 @@ export default defineConfig(async () => {
             BLOB_ORIGIN: "https://dl.workerd.test",
             // F-02: a registry host for its isolation smoke test, likewise.
             PKG_ORIGIN: "https://pkg.workerd.test",
+            // HA-02: an image host for its isolation and serving smoke test, likewise.
+            IMG_ORIGIN: "https://img.workerd.test",
             TEST_MIGRATIONS: migrations,
             // 32 zero bytes, base64 — the same constant the Node lane seeds with.
             PLATFORM_KEK: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",

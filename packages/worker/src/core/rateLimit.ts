@@ -193,6 +193,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   // F-21: credentialed registry reads bypass the Cache API; a per-token cost budget, nothing
   // secret behind it (the read is already authenticated), so an outage must not stop installs.
   registryPrivateRead: "open",
+  // HA-02: the image host's R2 reads, per product and client IP, charged on a cache miss only.
+  // The images are public and nothing secret is behind the limit, so an outage must not blank
+  // every icon on every page.
+  imgHost: "open",
 };
 
 function failModeFor(bucket: string): FailMode {

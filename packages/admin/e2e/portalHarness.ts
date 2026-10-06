@@ -17,9 +17,9 @@ import {
 
 /**
  * The customer site's browser harness (PORTAL.md §8, §9; PX-20): the BUILT SPA served by
- * `vite preview`, in real Chromium, with the Worker's exact Content-Security-Policy on every
- * document, the portal API answered from `portalFixtures.ts`, and the four checks every §4 state
- * must pass:
+ * `vite preview`, in real Chromium, with the Worker's exact Content-Security-Policy and
+ * Referrer-Policy on every document, the portal API answered from `portalFixtures.ts`, every
+ * request recorded (`all`), and the four checks every §4 state must pass:
  *
  * - `violations()`: CSP violations seen by the page (`securitypolicyviolation`), drained per call;
  * - `axe(page)`: axe-core's WCAG 2.2 A/AA and best-practice rules, zero violations (§9);
@@ -51,6 +51,8 @@ import {
 const here = fileURLToPath(new URL("..", import.meta.url));
 const require = createRequire(import.meta.url);
 const CSP = appSecurityHeaders().get("content-security-policy")!;
+/** The shell's `no-referrer`, so a legacy `/activate?key=` never reaches a subresource's Referer. */
+const REFERRER_POLICY = appSecurityHeaders().get("referrer-policy")!;
 const AXE_SOURCE = readFileSync(require.resolve("axe-core/axe.min.js"), "utf8");
 
 export const BASELINE_ROOT = `${here}e2e/__baselines__/portal`;
@@ -78,6 +80,12 @@ export interface Opened {
   violations: () => Promise<string[]>;
   /** `METHOD /path?query` of every portal API and media request, in order. */
   requests: string[];
+  /**
+   * `METHOD <url> referer=<Referer>` of EVERY request the page made, in order: the document
+   * navigation, `/assets/*`, fonts, favicons and the manifest as well as the API and media
+   * requests. What the deep-link tests check for a key in a request line or a `Referer`.
+   */
+  all: string[];
   /**
    * Closes the context. The catch-all route passes static assets through, and a font fetch can
    * still be in flight when a test ends; dropping the routes first (Playwright's own advice)
@@ -152,8 +160,12 @@ export async function startPortal(): Promise<PortalHarness> {
       ...opts.routes,
     };
     const requests: string[] = [];
+    const all: string[] = [];
     await ctx.route("**/*", async (route) => {
       const req = route.request();
+      all.push(
+        `${req.method()} ${req.url()} referer=${req.headers()["referer"] ?? ""}`,
+      );
       const url = new URL(req.url());
       if (url.pathname.startsWith("/api/") || url.pathname === "/logout") {
         requests.push(`${req.method()} ${url.pathname}${url.search}`);
@@ -167,7 +179,7 @@ export async function startPortal(): Promise<PortalHarness> {
       }
       // PX-08: developer art as the media proxy answers it (same origin, its own headers).
       if (url.pathname.startsWith("/media/")) {
-        requests.push(`${req.method()} ${url.pathname}`);
+        requests.push(`${req.method()} ${url.pathname}${url.search}`);
         const png = portalMedia(url.pathname);
         if (!png) return route.fulfill({ status: 404, body: "" });
         const headers = Object.fromEntries(
@@ -189,8 +201,10 @@ export async function startPortal(): Promise<PortalHarness> {
         url.pathname.endsWith(".html") ||
         url.pathname === "/" ||
         url.pathname === "/activate"
-      )
+      ) {
         headers["content-security-policy"] = CSP;
+        headers["referrer-policy"] = REFERRER_POLICY;
+      }
       return route.fulfill({ response: res, headers });
     });
     const page = await ctx.newPage();
@@ -198,6 +212,7 @@ export async function startPortal(): Promise<PortalHarness> {
     return {
       page,
       requests,
+      all,
       violations: () =>
         page.evaluate(() =>
           (window as unknown as { __v: string[] }).__v.splice(0),

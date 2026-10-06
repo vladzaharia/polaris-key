@@ -15,6 +15,7 @@ import {
   HOSTED_ASSET_REF,
   getHostedAsset,
   ingest,
+  parseVariants,
   type IngestContext,
 } from "../src/core/hostedAssets.js";
 import type { FetchImpl } from "../src/core/safeFetch.js";
@@ -170,5 +171,68 @@ describe("hosted-asset ingest on R2 and D1", LANE, () => {
     const obj = await bucket().get(blobKey(h));
     expect(obj?.httpMetadata?.contentType).toBe("image/png");
     expect(await hex(new Uint8Array(await obj!.arrayBuffer()))).toBe(h);
+  });
+
+  it("stores the variant ladder (HA-03) as WebP objects, held with the original in one batch", async () => {
+    const ctx = await context("ha-ladder");
+    const png = bytesWith(PNG_SIG, 50_000);
+    const h = await hex(png);
+    const webpSig = [...new TextEncoder().encode("RIFF"), 1, 2, 3, 4];
+    const webp = (w: number) =>
+      bytesWith([...webpSig, ...new TextEncoder().encode("WEBPVP8 ")], 500 + w);
+    const made = new Map<number, Uint8Array>();
+    // A stub binding: miniflare's local Images is not what this lane proves; R2 and D1 are.
+    ctx.env = {
+      BLOBS: bucket(),
+      IMAGES: {
+        info: async () => ({
+          format: "image/png",
+          fileSize: png.length,
+          width: 200,
+          height: 200,
+        }),
+        input: () => {
+          let w = 0;
+          const t = {
+            transform: (tr: { width: number }) => ((w = tr.width), t),
+            output: async () => {
+              const b = webp(w);
+              made.set(w, b);
+              return {
+                image: () => streamOf(b),
+                contentType: () => "image/webp",
+              };
+            },
+          };
+          return t;
+        },
+      } as unknown as ImagesBinding,
+    };
+    const res = await ingest(ctx, "ha-ladder", "presentation.icon", {
+      kind: "stream",
+      body: streamOf(png),
+      size: png.length,
+      sourceKind: "upload",
+      origin: "console",
+    });
+    expect(res).toMatchObject({ ok: true, sha256: h, width: 200 });
+    const row = await getHostedAsset(ctx.db, "ha-ladder", "presentation.icon");
+    const variants = parseVariants(row?.variants_json ?? null);
+    expect(variants.map((v) => v.w)).toEqual([64, 128]);
+    for (const v of variants) {
+      expect(v.sha256).toBe(await hex(made.get(v.w)!));
+      const obj = await bucket().get(blobKey(v.sha256));
+      expect(obj?.httpMetadata?.contentType).toBe("image/webp");
+      expect(await hex(new Uint8Array(await obj!.arrayBuffer()))).toBe(
+        v.sha256,
+      );
+    }
+    const refs = await ctx.db.all<{ storage_key: string; ref_id: string }>(
+      "SELECT storage_key, ref_id FROM blob_refs WHERE product = 'ha-ladder' ORDER BY storage_key",
+    );
+    expect(refs.map((r) => r.storage_key)).toEqual(
+      [h, ...variants.map((v) => v.sha256)].map((x) => blobKey(x)).sort(),
+    );
+    expect(refs.every((r) => r.ref_id === "presentation.icon@")).toBe(true);
   });
 });
