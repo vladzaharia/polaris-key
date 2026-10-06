@@ -333,7 +333,9 @@ describe("Releases → guided first release (UX-23)", () => {
     await user.click(within(drawer).getByRole("button", { name: "Check" }));
     await within(drawer).findByText("Tier pro added");
     await user.click(
-      within(drawer).getByRole("button", { name: "Link repository" }),
+      within(drawer).getByRole("button", {
+        name: /^Link (repository|and remove)/,
+      }),
     );
     await waitFor(() =>
       expect(fns.linkProductRepo).toHaveBeenCalledWith(

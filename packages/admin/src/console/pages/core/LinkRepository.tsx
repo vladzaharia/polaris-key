@@ -246,6 +246,7 @@ export function LinkRepositoryDrawer({
 
   const plan = checked?.plan ?? null;
   const blocked = (plan?.conflicts.length ?? 0) > 0;
+  const removes = plan?.delete.length ?? 0;
   const failed = refusal?.check ?? null;
 
   return (
@@ -404,6 +405,8 @@ export function LinkRepositoryDrawer({
           </Button>
           <Button
             type="submit"
+            // Removing rows is the destructive half of a link: say so on the button.
+            variant={removes > 0 ? "danger" : undefined}
             iconStart={<GitBranch aria-hidden />}
             loading={linking}
             disabled={!checked || blocked || phase !== "passed"}
@@ -415,7 +418,7 @@ export function LinkRepositoryDrawer({
                   : undefined
             }
           >
-            Link repository
+            {removes > 0 ? `Link and remove ${removes}` : "Link repository"}
           </Button>
         </DrawerFooter>
       </form>

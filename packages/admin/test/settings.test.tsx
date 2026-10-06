@@ -225,7 +225,7 @@ describe("Core → Settings", () => {
       });
       const drawer = await openDrawer(user);
       const link = within(drawer).getByRole("button", {
-        name: "Link repository",
+        name: /^Link (repository|and remove)/,
       });
       expect(link.getAttribute("aria-disabled")).toBe("true");
 
@@ -240,11 +240,17 @@ describe("Core → Settings", () => {
         within(drawer).getByText("Stays (set in the console)"),
       ).toBeTruthy();
       expect(within(drawer).getByText("Tier legacy")).toBeTruthy();
+      // The plan removes a tier: the button says so.
+      expect(
+        within(drawer).getByRole("button", { name: "Link and remove 1" }),
+      ).toBeTruthy();
       expect(within(drawer).getByText("OIDC_SECRET__DJDL")).toBeTruthy();
       await expectNoAxeViolations(drawer);
 
       await user.click(
-        within(drawer).getByRole("button", { name: "Link repository" }),
+        within(drawer).getByRole("button", {
+          name: /^Link (repository|and remove)/,
+        }),
       );
       await waitFor(() =>
         expect(fns.linkProductRepo).toHaveBeenCalledWith(
@@ -331,7 +337,7 @@ describe("Core → Settings", () => {
       await user.click(within(drawer).getByRole("button", { name: "Check" }));
       expect(await within(drawer).findByText("Blocks the link")).toBeTruthy();
       const link = within(drawer).getByRole("button", {
-        name: "Link repository",
+        name: /^Link (repository|and remove)/,
       });
       expect(link.getAttribute("aria-disabled")).toBe("true");
 
@@ -352,7 +358,9 @@ describe("Core → Settings", () => {
       await user.click(within(drawer).getByRole("button", { name: "Check" }));
       await within(drawer).findByText("Tier pro added");
       await user.click(
-        within(drawer).getByRole("button", { name: "Link repository" }),
+        within(drawer).getByRole("button", {
+          name: /^Link (repository|and remove)/,
+        }),
       );
       expect(
         await within(drawer).findByText("The manifest changed since the check"),

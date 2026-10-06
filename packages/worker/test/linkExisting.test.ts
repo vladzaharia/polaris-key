@@ -54,10 +54,12 @@ function contents(text: string): Response {
 /** Installation discovery, the token exchange and `.pkey/` files; `installed: false` 404s. */
 function stubFetch(
   files: Record<string, string>,
-  opts: { installed?: boolean } = {},
+  opts: { installed?: boolean; identity?: boolean } = {},
 ): FetchImpl {
   return withDefaultHead(async (input) => {
     const url = String(input);
+    if (opts.identity === false && /\/repos\/[^/]+\/[^/]+$/.test(url))
+      return new Response("boom", { status: 502 });
     if (url.includes("/installation"))
       return opts.installed === false
         ? new Response("not found", { status: 404 })
@@ -221,6 +223,37 @@ describe("prepareLink (the dry run)", () => {
       check: "slug",
       error: "manifest slug ghost does not match product tonebox",
     });
+  });
+
+  it("parses with the platform's reserved-name severity (LX-05)", async () => {
+    const { db, env } = await manualProduct();
+    env.LICENSING_RESERVED_NAMES = "error";
+    const reserved = JSON.stringify({
+      schemaVersion: 1,
+      entries: [
+        {
+          key: "deviceLimit",
+          kind: "flag",
+          category: "Seats",
+          label: "Seats",
+          description: "",
+          schema: { type: "boolean" },
+        },
+      ],
+    });
+    const res = await prepareLink(
+      env,
+      db,
+      "tonebox",
+      URL_,
+      NOW,
+      stubFetch({ ...files(), ".pkey/schema.json": reserved }),
+    );
+    expect(res).toMatchObject({ ok: false, check: "manifest" });
+    if (!res.ok)
+      expect(res.errors?.join("\n")).toContain(
+        "deviceLimit is a reserved entitlement name",
+      );
   });
 
   it("refuses an issuer outside the allowlist before anything is written", async () => {
@@ -403,6 +436,81 @@ describe("linkExistingProduct", () => {
   });
 });
 
+describe("linkExistingProduct rolls back what it wrote", () => {
+  const PUBLISHING = JSON.stringify({
+    release: {
+      ghOwner: "acme",
+      ghRepo: "tonebox",
+      binaryName: "tonebox",
+      publishing: {
+        trustedPublisher: { workflow: ".github/workflows/release.yml" },
+      },
+    },
+  });
+
+  it("a refusal after the coordinates are written puts the product back to manual", async () => {
+    const { db, env } = await manualProduct();
+    // The check never resolves the repository's ids; resync does (for the trusted publisher),
+    // so failing that lookup refuses the apply after the link wrote its coordinates.
+    const fetchImpl = stubFetch(
+      { ...files(), ".pkey/release.json": PUBLISHING },
+      { identity: false },
+    );
+    const check = await prepareLink(env, db, "tonebox", URL_, NOW, fetchImpl);
+    expect(check.ok).toBe(true);
+    if (!check.ok) return;
+    const res = await linkExistingProduct(
+      env,
+      db,
+      "tonebox",
+      URL_,
+      check.manifestDigest,
+      NOW,
+      fetchImpl,
+    );
+    expect(res).toMatchObject({ ok: false, afterWrite: true, check: "policy" });
+    if (!res.ok) expect(res.error).toContain("trustedPublisher");
+    expect((await getProduct(db, "tonebox"))?.release_source).toBeNull();
+    expect(await getReleaseConfig(db, "tonebox")).toBeNull();
+  });
+
+  it("a throw from the apply rolls back too, then propagates", async () => {
+    const { db, env } = await manualProduct();
+    const fetchImpl = stubFetch(files());
+    const check = await prepareLink(env, db, "tonebox", URL_, NOW, fetchImpl);
+    expect(check.ok).toBe(true);
+    if (!check.ok) return;
+    // The link's own batch (1st) and the rollback (3rd) go through; resync's batch (2nd) throws.
+    let batches = 0;
+    const flaky = new Proxy(db, {
+      get(target, prop, receiver) {
+        if (prop === "batch")
+          return async (...a: Parameters<Db["batch"]>) => {
+            batches += 1;
+            if (batches === 2) throw new Error("D1 went away");
+            return target.batch(...a);
+          };
+        const v = Reflect.get(target, prop, receiver);
+        return typeof v === "function" ? v.bind(target) : v;
+      },
+    }) as Db;
+    await expect(
+      linkExistingProduct(
+        env,
+        flaky,
+        "tonebox",
+        URL_,
+        check.manifestDigest,
+        NOW,
+        fetchImpl,
+      ),
+    ).rejects.toThrow("D1 went away");
+    expect(batches).toBe(3);
+    expect((await getProduct(db, "tonebox"))?.release_source).toBeNull();
+    expect(await getReleaseConfig(db, "tonebox")).toBeNull();
+  });
+});
+
 describe("POST …/release/link (the console route)", () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -478,6 +586,48 @@ describe("POST …/release/link (the console route)", () => {
       "SELECT status FROM product_sync_state WHERE product = 'tonebox'",
     );
     expect(sync?.status).toBe("ok");
+  });
+
+  it("audits a link refused after its coordinates were written", async () => {
+    const { db, env } = await manualProduct();
+    vi.stubGlobal(
+      "fetch",
+      stubFetch(
+        {
+          ...files(),
+          ".pkey/release.json": JSON.stringify({
+            release: {
+              ghOwner: "acme",
+              ghRepo: "tonebox",
+              binaryName: "tonebox",
+              publishing: {
+                trustedPublisher: { workflow: ".github/workflows/release.yml" },
+              },
+            },
+          }),
+        },
+        { identity: false },
+      ),
+    );
+    const dry = await call(
+      env,
+      db,
+      "/api/products/tonebox/release/link?dryRun=1",
+      {
+        repoUrl: URL_,
+      },
+    );
+    const { manifestDigest } = (await dry.json()) as { manifestDigest: string };
+    const res = await call(env, db, "/api/products/tonebox/release/link", {
+      repoUrl: URL_,
+      manifestDigest,
+    });
+    expect(res.status).toBe(422);
+    const audit = await db.first<{ summary: string }>(
+      "SELECT summary FROM audit WHERE product = 'tonebox' AND action = 'product.link.refused'",
+    );
+    expect(audit?.summary).toContain("put back to manual");
+    expect((await getProduct(db, "tonebox"))?.release_source).toBeNull();
   });
 
   it("answers a refusal with the failed check", async () => {

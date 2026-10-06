@@ -40,6 +40,7 @@ import {
   stmtInsertReleaseConfig,
 } from "../../core/ingest.js";
 import { parseServices } from "../../core/services.js";
+import { reservedNamesMode } from "../../core/reservedNames.js";
 import { getPublisherPolicy } from "../../core/publisher.js";
 import { getReleaseConfig } from "./config.js";
 import { parseManifest, type ParsedManifest } from "./manifest.js";
@@ -101,6 +102,8 @@ export type LinkRefusal = {
   ok: false;
   /** 409 when the manifest moved since the check; 422 for every other refusal. */
   status: 409 | 422;
+  /** The coordinates had been written when the apply refused (or threw) and were put back. */
+  afterWrite?: true;
   check: LinkCheck;
   error: string;
   errors?: string[];
@@ -239,7 +242,10 @@ export async function prepareLink(
       err instanceof Error ? err.message : "github manifest fetch failed",
     );
   }
-  const result = parseManifest(files);
+  // The same reserved-name severity link, resync and the deploy hook parse with (LX-05).
+  const result = parseManifest(files, {
+    reservedNames: await reservedNamesMode(env, db),
+  });
   if (!result.ok)
     return refuse("manifest", "manifest validation failed", result.errors);
   const manifest = result.manifest;
@@ -268,8 +274,13 @@ export async function prepareLink(
       if (refusal) return refuse("policy", refusal);
     }
   }
+  // Screened only when it changed, as resync does: an unchanged catalog is already stored and
+  // resync will not publish it again.
+  const active = await getActiveSchema(db, slug);
   try {
-    new Catalog(manifest.catalog as never).compileAll();
+    const catalog = new Catalog(manifest.catalog as never);
+    if (active?.catalog_json !== JSON.stringify(manifest.catalog))
+      catalog.compileAll();
   } catch (e) {
     return refuse(
       "policy",
@@ -374,9 +385,11 @@ export async function linkExistingProduct(
     },
   ]);
 
-  const applied = await resyncRepo(env, db, slug, now, fetchImpl, ingest);
-  if (!applied.ok) {
-    await db.batch([
+  // Put the product back to manual: the source and the coordinates as they were. What a refused
+  // resync already wrote stays, as for any resync (the checks above leave only a push racing
+  // the apply able to get that far).
+  const rollback = () =>
+    db.batch([
       {
         sql: "UPDATE products SET release_source = ? WHERE slug = ?",
         params: [previous?.release_source ?? null, slug],
@@ -396,7 +409,20 @@ export async function linkExistingProduct(
             params: [slug],
           },
     ]);
-    return refuse("policy", applied.error, applied.errors);
+
+  let applied: ResyncResult;
+  try {
+    applied = await resyncRepo(env, db, slug, now, fetchImpl, ingest);
+  } catch (err) {
+    await rollback();
+    throw err;
+  }
+  if (!applied.ok) {
+    await rollback();
+    return {
+      ...refuse("policy", applied.error, applied.errors),
+      afterWrite: true,
+    };
   }
   return {
     ok: true,

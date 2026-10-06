@@ -176,17 +176,38 @@ async function handleLink(
       "manifestDigest is required: check the repository first (?dryRun=1)",
       { fields: ["manifestDigest"] },
     );
-  const result = await linkExistingProduct(
-    env,
-    db,
-    slug,
-    repoUrl,
-    digest,
-    now,
-    fetch,
-    ctx.ingest,
-  );
-  if (!result.ok) return linkRefusal(result);
+  // A refusal or a throw after the coordinates were written is put back by
+  // `linkExistingProduct`, and audited here: a link that half-ran must leave a trace.
+  const refusedAfterWrite = (why: string) =>
+    audit(
+      db,
+      slug,
+      session,
+      now,
+      "product.link.refused",
+      { kind: "product", id: slug },
+      `Link of ${slug} to ${repoUrl} refused while applying, put back to manual: ${why}`,
+    );
+  let result: Awaited<ReturnType<typeof linkExistingProduct>>;
+  try {
+    result = await linkExistingProduct(
+      env,
+      db,
+      slug,
+      repoUrl,
+      digest,
+      now,
+      fetch,
+      ctx.ingest,
+    );
+  } catch (e) {
+    await refusedAfterWrite(e instanceof Error ? e.message : "apply failed");
+    throw e;
+  }
+  if (!result.ok) {
+    if (result.afterWrite) await refusedAfterWrite(result.error);
+    return linkRefusal(result);
+  }
   await upsertProductSyncState(db, {
     product: slug,
     source: "manual",
