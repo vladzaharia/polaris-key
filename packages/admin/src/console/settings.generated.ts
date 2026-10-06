@@ -321,7 +321,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "general",
     label: "Manifest-authoritative",
     description:
-      "The product's .pkey/ is the only writer of its manifest-declared settings: a console edit to one is refused unless it is a break-glass claim, which needs a reason and expires after 7 days or at the first resync or deploy that changes that field, whichever comes first. Off by default; always on, and locked, for the system product.",
+      "The product's .pkey/ is the only writer of its display name, licence defaults, web origins and catalog: a console edit to one is refused unless it is a break-glass claim, which needs a reason and expires after 7 days or at the first resync or deploy that changes that field, whichever comes first. Other manifest-declared settings are not refused yet. Off by default; always on, and locked, for the system product.",
     keywords: ["break-glass", "gitops", "claims", "lock", "single writer"],
     docs: "/docs/admin/products/",
     ownership: "operator",

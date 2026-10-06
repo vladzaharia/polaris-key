@@ -203,7 +203,7 @@ export function stmtSetManifestAuthority(
  * The refusal text for a console write to a claimable setting of a manifest-authoritative
  * product made without a break-glass claim.
  */
-export function systemClaimRefusal(product: {
+export function manifestAuthoritativeRefusal(product: {
   slug: string;
   system?: number | null;
 }): string {
@@ -258,7 +258,7 @@ export async function decideClaim(
       ok: false,
       status: 409,
       reason: "manifest_authoritative",
-      message: systemClaimRefusal(product),
+      message: manifestAuthoritativeRefusal(product),
     };
   const raw =
     typeof breakGlass === "object"
@@ -645,9 +645,15 @@ async function revertStatements(
             params: [product],
           },
           {
+            // The next number comes from an inner aggregate, and the statement ends in an OUTER
+            // WHERE on no aggregate: a caller's guard (`guardUnclaimed`) is appended there. Put on
+            // the aggregate's own WHERE it would still answer one row (MAX over nothing is NULL,
+            // so version 1) and the insert would hit the primary key and abort the whole batch.
             sql: `INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at)
-                  SELECT ?, COALESCE(MAX(catalog_version), 0) + 1, ?, 1, ?
-                    FROM product_schema WHERE product = ?`,
+                  SELECT ?, next.v, ?, 1, ?
+                    FROM (SELECT COALESCE(MAX(catalog_version), 0) + 1 AS v
+                            FROM product_schema WHERE product = ?) AS next
+                   WHERE next.v > 0`,
             params: [product, json, now, product],
           },
         ],
@@ -824,7 +830,10 @@ export async function claimsForApply(
   return out;
 }
 
-/** `stmt` (ending in a WHERE clause) that matches nothing while `key` holds a live claim. */
+/**
+ * `stmt` (ending in a WHERE clause on no aggregate) that matches nothing while `key` holds a live
+ * claim.
+ */
 function guardUnclaimed(
   stmt: DbStatement,
   product: string,

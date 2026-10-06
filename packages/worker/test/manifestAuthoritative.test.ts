@@ -34,8 +34,13 @@ import { SERVICES } from "../src/mount.js";
 import {
   BREAK_GLASS_MAX_SECONDS,
   claimedKeys,
+  claimsForApply,
+  endBreakGlassStatements,
+  RESYNC_ACTOR,
+  stmtClaim,
   SYSTEM_RESYNC_REFUSAL,
 } from "../src/core/settingsClaims.js";
+import { getManifestSnapshot } from "../src/core/manifestSnapshot.js";
 import { withDefaultHead } from "./githubHead.js";
 
 const SLUG = "acme";
@@ -500,6 +505,41 @@ describe("a break-glass claim (ST-20)", () => {
     expect(res.breakGlass).toBeUndefined();
   });
 
+  it("a claim re-taken between the apply's read and its batch survives, and the batch neither writes nor throws", async () => {
+    const ctx = await authoritative();
+    const consoleCatalog = JSON.parse(schemaJson("run.name", "console.only"));
+    await call(ctx, "PUT", "config/catalog", {
+      catalog: consoleCatalog,
+      breakGlass: { reason: REASON },
+    });
+    // An apply whose manifest changes the catalog reads the claim as ended…
+    const snapshot = await getManifestSnapshot(ctx.db, SLUG);
+    const next = {
+      ...(JSON.parse(snapshot!.manifest_json) as Record<string, unknown>),
+      catalog: JSON.parse(schemaJson("run.other")),
+    };
+    const at = NOW + 60;
+    const { ended } = await claimsForApply(ctx.db, SLUG, next, at);
+    expect(ended.map((e) => e.key)).toEqual(["config.catalog"]);
+    // …an operator re-takes it before the batch runs…
+    await ctx.db.batch([
+      stmtClaim(SLUG, "config.catalog", "u2", at, "again", at + 600),
+    ]);
+    // …and the batch (the deploy hook's form, which writes the value) leaves everything alone.
+    const statements = await endBreakGlassStatements(ctx.db, SLUG, ended, {
+      actor: RESYNC_ACTOR,
+      sha: null,
+      now: at,
+      apply: next,
+    });
+    await expect(ctx.db.batch(statements)).resolves.not.toThrow();
+    expect(await activeCatalog(ctx)).toEqual(["run.name", "console.only"]);
+    expect(
+      (await settingRows(ctx)).find((r) => r.key === "config.catalog"),
+    ).toMatchObject({ reason: "again", expires_at: at + 600 });
+    expect(await audits(ctx, "setting.breakGlass.end")).toEqual([]);
+  });
+
   it("a catalog publish is a break-glass claim too", async () => {
     const ctx = await authoritative();
     const catalog = JSON.parse(schemaJson("run.name", "console.only"));
@@ -553,6 +593,23 @@ describe("the system product (ST-20, S-18 §4.5 item 8)", () => {
         breakGlass: { reason: REASON },
       }),
     ).toMatchObject({ status: 409, json: { reason: "system_product" } });
+    // A same-name save claims nothing on the name (F-03): no apply could end a claim on it and
+    // rename the system product.
+    expect(
+      (
+        await call(ctx, "PATCH", "", {
+          name: "Acme",
+          defaultMaxOfflineDays: 20,
+          breakGlass: { reason: REASON },
+        })
+      ).json,
+    ).toMatchObject({
+      ok: true,
+      claimed: ["license.defaults.maxOfflineDays"],
+    });
+    expect(
+      (await settingRows(ctx)).map((r) => r.key).includes("core.name"),
+    ).toBe(false);
     expect(await call(ctx, "PATCH", "", { adminGroup: "x" })).toMatchObject({
       status: 409,
       json: { reason: "manifest_only" },
@@ -610,8 +667,9 @@ describe("the system product (ST-20, S-18 §4.5 item 8)", () => {
       counting,
     );
     expect(res.status).toBe(200);
+    // The refusal is expected, not a failed sync: the delivery's answer stays ok.
     expect(await res.json()).toMatchObject({
-      ok: false,
+      ok: true,
       products: [
         {
           product: SLUG,

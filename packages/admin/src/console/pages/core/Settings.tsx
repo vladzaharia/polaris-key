@@ -503,7 +503,7 @@ function RepositorySection({
         label="Source"
         help={
           system
-            ? "Every production deploy applies the monorepo's .pkey/ at the deployed commit. Pushes and Resync do not: the deploy hook is the only writer."
+            ? "The deploy hook is the only writer: every production deploy applies the monorepo's .pkey/ release configuration, deliverables, trusted publisher and service rows at the deployed commit. Pushes and Resync do not apply it."
             : linked
               ? "Pushes to the repository re-apply its .pkey/ manifest."
               : "Set in the console. Link a repository to manage it from .pkey/ instead."
@@ -594,8 +594,8 @@ function ManifestAuthorityRow({
       label="Manifest-authoritative"
       help={
         mode.locked
-          ? "Always on for the system product: a console change is a break-glass claim with a reason, which ends within 7 days."
-          : "When on, .pkey/ is the only writer of the settings it declares: a console change is a break-glass claim with a reason, which ends after 7 days or at the first resync that changes it."
+          ? "Always on for the system product: a console change to a licence default is a break-glass claim with a reason, which ends within 7 days or at the first deploy that changes it."
+          : "When on, .pkey/ is the only writer of the display name, licence defaults, web origins and catalog: a console change to one is a break-glass claim with a reason, which ends after 7 days or at the first resync that changes it. Other settings .pkey/ declares are not covered yet."
       }
     >
       {mode.locked ? (
@@ -620,14 +620,15 @@ function ManifestAuthorityRow({
         }
         description={
           asking
-            ? `Console changes to the settings ${product.name}'s .pkey/ declares are refused, except as break-glass claims.`
-            : `A console change to a setting ${product.name}'s .pkey/ declares claims it again, until it is reverted.`
+            ? `Console changes to ${product.name}'s display name, licence defaults, web origins and catalog are refused, except as break-glass claims.`
+            : `A console change to ${product.name}'s display name, licence defaults, web origins or catalog claims it again, until it is reverted.`
         }
         consequences={
           asking
             ? [
                 "A break-glass claim needs a reason and ends after 7 days, or at the first resync that changes the value.",
                 "Settings already claimed in the console stay claimed until you revert them.",
+                "Not covered yet: services, the fingerprint and auto-issue policies, the compatibility window, access modes, tiers, profiles and the trusted publisher still claim on a console edit.",
               ]
             : ["Live break-glass claims keep their expiry."]
         }

@@ -216,8 +216,10 @@ profile that holds the id of a tier or profile the manifest newly declares is ke
 resync reports the conflict.
 
 A product can be **manifest-authoritative** instead (the switch in Settings → Repository): the
-console then refuses those claims except as expiring break-glass claims, and a resync ends a
-break-glass claim when it changes that field. The system product is always manifest-authoritative,
+console then refuses claims on the product name, the licence defaults, the web origins and the
+catalog except as expiring break-glass claims, and a resync ends a break-glass claim when it
+changes that field. Tiers, profiles, services and the fingerprint and auto-issue policies are not
+covered yet: a console edit still claims them. The system product is always manifest-authoritative,
 and its only writer is the deploy hook: a push webhook for the platform repository and a console
 Resync of it are refused ("the system product is applied by the deploy hook"). See
 [Manifest-authoritative mode](/docs/admin/products/#manifest-authoritative-mode).

@@ -407,8 +407,12 @@ export async function handleProducts(
     // for the console in the same batch, so the next resync leaves it alone until a Revert.
     // ST-20: a manifest-authoritative product refuses the write unless it is a break-glass claim
     // (`breakGlass: { reason }`, L2 in the console), which expires in 7 days at the latest.
+    // The system product keeps its name (F-03): a same-name save is not a claim on it, so no
+    // break-glass claim on `core.name` can exist there for an apply to end and rename it by.
     const claimable: ClaimKey[] = [
-      ...(fields.name !== undefined ? (["core.name"] as const) : []),
+      ...(fields.name !== undefined && row.system !== 1
+        ? (["core.name"] as const)
+        : []),
       ...(fields.default_max_offline_days !== undefined
         ? (["license.defaults.maxOfflineDays"] as const)
         : []),

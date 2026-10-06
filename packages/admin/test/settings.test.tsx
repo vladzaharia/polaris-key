@@ -404,6 +404,8 @@ describe("Core → Settings", () => {
     await user.click(screen.getByRole("button", { name: "Save settings" }));
     let dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByText("Make a break-glass claim?")).toBeTruthy();
+    // The open dialog passes axe, its reason field included.
+    await expectNoAxeViolations(dialog);
     expect(
       within(dialog).getByText(/at the first deploy that changes the value/),
     ).toBeTruthy();

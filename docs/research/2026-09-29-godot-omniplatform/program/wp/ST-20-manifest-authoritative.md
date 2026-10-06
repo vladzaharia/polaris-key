@@ -91,7 +91,12 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test
 
 ## Hand-off
 
-- ST-17's dry run shows break-glass claims.
+- ST-17's dry run shows break-glass claims (the worker's dry run already returns `breakGlass`).
+- ST-04/ST-05: route the older-marker claimables through `decideClaim`, so manifest-authoritative
+  mode refuses them too (services and registration, fingerprint and auto-issue policies, compat
+  window, release access modes, tiers and profiles, trusted publisher).
+- ST-17: the deploy hook applies every declared system-product field (today it applies only a
+  field whose break-glass claim it ends).
 
 The role agent sets `--set ST-20 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

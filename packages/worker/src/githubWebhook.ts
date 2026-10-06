@@ -421,7 +421,11 @@ export async function handleGithubWebhook(
   }
 
   return json({
-    ok: results.every((result) => result.ok),
+    // ST-20: the system product's refusal is expected (the deploy hook is its writer), not a
+    // failed sync, so it is listed without turning the delivery's answer into a failure.
+    ok: results.every(
+      (result) => result.ok || result.reason === "system_product",
+    ),
     repository: `${coords.owner}/${coords.repo}`,
     commitSha: payload.after ?? null,
     changedPaths: paths,

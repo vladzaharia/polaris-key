@@ -385,12 +385,21 @@ export async function linkSystemProduct(
   }
   // ST-20: break-glass claims, compared against the snapshot this batch replaces (read first).
   const claims = await claimsForApply(db, slug, manifest, now);
+  // F-03: the system product keeps its name, so an ended `core.name` claim (none can be made:
+  // the console never claims its name) never writes the manifest's name.
+  const ended = (name: boolean) =>
+    claims.ended.filter((e) => (e.key === "core.name") === name);
   stmts.push(
-    ...(await endBreakGlassStatements(db, slug, claims.ended, {
+    ...(await endBreakGlassStatements(db, slug, ended(false), {
       actor: DEPLOY_ACTOR,
       sha: applied.sha,
       now,
       apply: manifest,
+    })),
+    ...(await endBreakGlassStatements(db, slug, ended(true), {
+      actor: DEPLOY_ACTOR,
+      sha: applied.sha,
+      now,
     })),
   );
   stmts.push(
