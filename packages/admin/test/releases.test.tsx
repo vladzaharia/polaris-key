@@ -874,9 +874,7 @@ describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
   it("says where it is live: each rollout's share, each channel, and the previous release", async () => {
     mountStatus();
     const live = await screen.findByRole("region", { name: "Where it’s live" });
-    expect(
-      await within(live).findByText("Direct download · stable"),
-    ).toBeTruthy();
+    expect(await within(live).findByText("Polaris Key · stable")).toBeTruthy();
     expect(within(live).getByText("25 %")).toBeTruthy();
     expect(
       within(live).getByRole("link", { name: "0.4.1" }).getAttribute("href"),
@@ -917,7 +915,7 @@ describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
     mountStatus();
     expect(
       await screen.findByText(
-        /^Halted on Direct download by auto-halt, 38 min\. ago$/,
+        /^Halted on Polaris Key by auto-halt, 38 min\. ago$/,
       ),
     ).toBeTruthy();
     expect(
@@ -957,9 +955,7 @@ describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
     });
     mountStatus();
     expect(
-      await screen.findByText(
-        /^Halted on Direct download by Vlad, 38 min\. ago$/,
-      ),
+      await screen.findByText(/^Halted on Polaris Key by Vlad, 38 min\. ago$/),
     ).toBeTruthy();
     expect(
       screen
@@ -1000,7 +996,7 @@ describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
       ),
     ).toBeTruthy();
     const rows = within(dialog).getAllByRole("listitem");
-    const direct = rows.find((x) => x.textContent?.includes("Direct"))!;
+    const direct = rows.find((x) => x.textContent?.includes("Polaris Key"))!;
     expect(direct.getAttribute("aria-disabled")).toBe("true");
     expect(within(direct).getByText("Already halted")).toBeTruthy();
     expect(within(direct).queryByRole("checkbox")).toBeNull();
@@ -1070,7 +1066,7 @@ describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
 
   it("rolls back by pinning the channel to the previous release, through the pin confirm", async () => {
     mountStatus();
-    await screen.findByText("Direct download · stable");
+    await screen.findByText("Polaris Key · stable");
     await userEvent.click(
       screen.getAllByRole("button", { name: "Roll back…" })[0]!,
     );
@@ -1104,7 +1100,7 @@ describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
 
   it("offers the rollback floor when the channel has one, and yank as the last resort", async () => {
     mountStatus();
-    await screen.findByText("Direct download · stable");
+    await screen.findByText("Polaris Key · stable");
     await userEvent.click(
       screen.getAllByRole("button", { name: "Roll back…" })[0]!,
     );
@@ -1134,7 +1130,7 @@ describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
 
   it("passes axe, with the Halt everywhere confirm open", async () => {
     const { container } = mountStatus();
-    await screen.findByText("Direct download · stable");
+    await screen.findByText("Polaris Key · stable");
     await expectNoAxeViolations(container);
     const halt = screen.getByRole("button", { name: "Halt everywhere…" });
     await userEvent.click(halt);

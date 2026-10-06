@@ -145,6 +145,7 @@ describe("the listing: read, create, edit", () => {
       "snap",
       "winget",
       "fdroid",
+      "polaris-key",
     ]);
     expect(v.precedence.name).toEqual({
       order: ["app-store", "play", "ms-store", "godot", "manifest", "product"],

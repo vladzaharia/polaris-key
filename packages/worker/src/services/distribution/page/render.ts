@@ -293,7 +293,9 @@ function primaryBlock(
 /** One entry of "Other ways to get it". */
 function way(a: PageAction, group: PagePlatformGroup): string {
   const parts: string[] = [];
-  const head = a.kind === "download" && a.build ? `Direct download` : a.label;
+  // The `direct` outlet is presented as Polaris Key (S-21 §6.8); its id stays `direct`.
+  const head =
+    a.kind === "download" && a.build ? `Download from Polaris Key` : a.label;
   parts.push(
     `<span class="way-head">${esc(head)}</span>${
       a.version ? ` <span class="meta">Version ${esc(a.version)}</span>` : ""

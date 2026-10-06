@@ -33,7 +33,20 @@ import {
   getPortalProductSettings,
   portalProductSettingsView,
   upsertPortalProductSettings,
+  type PortalProductSettingsView,
 } from "./portal/repo.js";
+import {
+  isListingAudience,
+  isListingState,
+  parseGroupLabels,
+  parseOfferPaths,
+} from "../../core/storefront/polarisKeyListing.js";
+
+/**
+ * The typed confirmation widening the audience to `everyone` needs (S-21 owner decision 5,
+ * confirm level L2): the setting's registry key, as the platform-settings route asks for its key.
+ */
+export const STOREFRONT_AUDIENCE_CONFIRM = "storefront.polarisKey.audience";
 
 export async function handleIdentityAdmin(
   ctx: ServiceContext & { session: AdminSession },
@@ -135,13 +148,50 @@ async function handlePortalSettings(
     else fields.push("autoLinkEnabled");
   }
   if (body.branding !== undefined) patch.branding = body.branding;
+  // PS-02: the Polaris Key listing state (S-21 §6.2). Accepted here until ST-05's generic
+  // settings API exists; the registry entries are `storefront.polarisKey.*`.
+  if (body.storeListed !== undefined) {
+    if (isListingState(body.storeListed)) patch.storeListed = body.storeListed;
+    else fields.push("storeListed");
+  }
+  if (body.storeAudience !== undefined) {
+    if (isListingAudience(body.storeAudience))
+      patch.storeAudience = body.storeAudience;
+    else fields.push("storeAudience");
+  }
+  if (body.storeOfferPaths !== undefined) {
+    const paths = parseOfferPaths(body.storeOfferPaths);
+    if (paths === undefined) fields.push("storeOfferPaths");
+    else patch.storeOfferPaths = paths;
+  }
+  if (body.storeGroupLabels !== undefined) {
+    const labels = parseGroupLabels(body.storeGroupLabels);
+    if (labels === undefined) fields.push("storeGroupLabels");
+    else patch.storeGroupLabels = labels;
+  }
   if (fields.length > 0) {
     return err(422, ErrorCode.BadRequest, "invalid portal settings", {
       fields,
     });
   }
 
+  const before = portalProductSettingsView(
+    await getPortalProductSettings(db, slug),
+  );
+  if (
+    patch.storeAudience === "everyone" &&
+    before.storeAudience !== "everyone" &&
+    body.confirm !== STOREFRONT_AUDIENCE_CONFIRM
+  )
+    return err(
+      400,
+      ErrorCode.BadRequest,
+      `type ${STOREFRONT_AUDIENCE_CONFIRM} to confirm`,
+      { reason: "confirm_required", level: "L2" },
+    );
+
   const settings = await upsertPortalProductSettings(db, slug, patch, now);
+  const after = portalProductSettingsView(settings);
   await audit(
     db,
     slug,
@@ -151,8 +201,45 @@ async function handlePortalSettings(
     { kind: "product", id: slug },
     `Updated portal settings for ${slug}`,
   );
+  const listingChanges = describeListingChanges(before, after);
+  if (listingChanges.length > 0)
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "storefront.polarisKey.update",
+      { kind: "product", id: slug },
+      `Changed the Polaris Key listing for ${slug}: ${listingChanges.join("; ")}`,
+    );
   return adminJson({
     ok: true,
     settings: portalProductSettingsView(settings),
   });
+}
+
+/** The listing values that changed, as `name before → after`; group labels are counted, never quoted. */
+function describeListingChanges(
+  before: PortalProductSettingsView,
+  after: PortalProductSettingsView,
+): string[] {
+  const out: string[] = [];
+  const paths = (v: PortalProductSettingsView["storeOfferPaths"]) =>
+    v === null ? "all" : v.length === 0 ? "none" : v.join(", ");
+  if (before.storeListed !== after.storeListed)
+    out.push(`listing ${before.storeListed} → ${after.storeListed}`);
+  if (before.storeAudience !== after.storeAudience)
+    out.push(`audience ${before.storeAudience} → ${after.storeAudience}`);
+  if (paths(before.storeOfferPaths) !== paths(after.storeOfferPaths))
+    out.push(
+      `ways to obtain ${paths(before.storeOfferPaths)} → ${paths(after.storeOfferPaths)}`,
+    );
+  if (
+    JSON.stringify(before.storeGroupLabels) !==
+    JSON.stringify(after.storeGroupLabels)
+  )
+    out.push(
+      `group labels for ${Object.keys(after.storeGroupLabels).length} group(s)`,
+    );
+  return out;
 }

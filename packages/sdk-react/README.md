@@ -292,7 +292,8 @@ browserAdapter({
   `updateRevokedContentBody` ("Some of this game's content was withdrawn by its developer and
   can't be used. Update the app to keep playing."), with the offer's button when the answer is an
   offer and none for `blocked`; a content floor uses `updateContentFloorBody`.
-- **Outlet.** A host's `update.outlet` (a kind, or `{id, kind, subkind?}`) wins. Otherwise the
+- **Outlet.** A host's `update.outlet` (a kind such as `"direct"`, the Polaris Key outlet, or
+  `{id, kind, subkind?}`) wins. Otherwise the
   browser adapter detects in-page (`update.detect`, default true): `readOutletSignals()` reads
   the display mode (`matchMedia('(display-mode: standalone)')`, `navigator.standalone`, an
   `android-app://` referrer) and client-core's `detectOutlet` (re-exported here) maps it, with

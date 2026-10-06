@@ -70,7 +70,11 @@ export function buildSettingsRegistry(
       namespaces: [],
       entries: base.platform ?? PLATFORM_SLICE,
     },
-    { owner: "core", namespaces: ["core"], entries: base.core ?? CORE_SLICE },
+    {
+      owner: "core",
+      namespaces: ["core", "storefront"],
+      entries: base.core ?? CORE_SLICE,
+    },
   ];
   for (const c of contributors)
     if (c.settings)

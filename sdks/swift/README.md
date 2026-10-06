@@ -549,18 +549,18 @@ The answer is an `UpdateCheck`: `channel` (the canonical channel — record it a
 (`.network`, `.cache` or `.none`) and `errors` (`[UpdateCheckError]`, each a `code` and a
 `detail`). `check.json` spells it as the transcripts and the other SDKs do.
 
-| `UpdateClientOptions` | Notes                                                                                                                                                                                     |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pinnedReleaseKeys`   | `[kid: raw Ed25519 key, base64url]`: the **only** keys a release record verifies against. Compiled in; never merged with the trust pins, never persisted, never learned from the network. |
-| `outlet`              | `.kind("direct")`, or `.outlet(id:kind:subkind:)` for a product outlet id. Wins over `stamp` and `detected`; without it the client detects the outlet (`detect`).                         |
-| `stamp`, `detected`   | The build stamp's outlet fields (with `outletIds`) and a detection result the host computed itself, through `resolveUpdateOutlet`.                                                        |
-| `detect`              | Default `true`: at the first decision, `readOutletSignals()` and `detectOutlet` run over this install and the stamp. `outlet()` and `detected()` expose the answer.                       |
-| `buildNumber`         | Informational in v4. Default: the main bundle's `CFBundleVersion`.                                                                                                                        |
-| `format`              | The installed build's format; a binary build of another format is never offered. Default nil (any).                                                                                       |
-| `methods`             | What the host can do with a `binary` answer: a subset of `native`, `download`, `sidecar-pck`. Default `["native", "download"]` on macOS, where Sparkle is linked; `["download"]` on iOS.  |
-| `binaryVersion`       | The executable's version when it differs from `CoreOptions.version`. Defaults to `version`.                                                                                               |
-| `engine`              | `godot-<major>.<minor>` for a host that runs Godot code packs; nil otherwise.                                                                                                             |
-| `platform`, `arch`    | Default to this binary's (`macos`/`ios`, `arm64`/`x86_64`).                                                                                                                               |
+| `UpdateClientOptions` | Notes                                                                                                                                                                                      |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pinnedReleaseKeys`   | `[kid: raw Ed25519 key, base64url]`: the **only** keys a release record verifies against. Compiled in; never merged with the trust pins, never persisted, never learned from the network.  |
+| `outlet`              | `.kind("direct")` (the Polaris Key outlet), or `.outlet(id:kind:subkind:)` for a product outlet id. Wins over `stamp` and `detected`; without it the client detects the outlet (`detect`). |
+| `stamp`, `detected`   | The build stamp's outlet fields (with `outletIds`) and a detection result the host computed itself, through `resolveUpdateOutlet`.                                                         |
+| `detect`              | Default `true`: at the first decision, `readOutletSignals()` and `detectOutlet` run over this install and the stamp. `outlet()` and `detected()` expose the answer.                        |
+| `buildNumber`         | Informational in v4. Default: the main bundle's `CFBundleVersion`.                                                                                                                         |
+| `format`              | The installed build's format; a binary build of another format is never offered. Default nil (any).                                                                                        |
+| `methods`             | What the host can do with a `binary` answer: a subset of `native`, `download`, `sidecar-pck`. Default `["native", "download"]` on macOS, where Sparkle is linked; `["download"]` on iOS.   |
+| `binaryVersion`       | The executable's version when it differs from `CoreOptions.version`. Defaults to `version`.                                                                                                |
+| `engine`              | `godot-<major>.<minor>` for a host that runs Godot code packs; nil otherwise.                                                                                                              |
+| `platform`, `arch`    | Default to this binary's (`macos`/`ios`, `arm64`/`x86_64`).                                                                                                                                |
 
 **Outlet detection** (plans/P3-01.md §2.9). With no `outlet`, the update client detects one at its
 first decision. `readOutletSignals()` reads, on iOS, MarketplaceKit's `AppDistributor.current`

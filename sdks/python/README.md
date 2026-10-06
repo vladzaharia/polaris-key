@@ -616,7 +616,7 @@ client = PolarisKeyClient.create(
     update=UpdateClientOptions(
         # kid -> raw Ed25519 release key (base64url). PLACEHOLDER: your product's release key.
         pinned_release_keys={"<your-release-key-id>": "<your-release-key-b64url>"},
-        outlet="direct",                   # where this install came from; turns offers on
+        outlet="direct",                   # the Polaris Key outlet (id direct); turns offers on
         format="dmg",                      # only builds of this format are offered (optional)
         methods=("download",),             # what this host can do with a `binary` decision
     ),
