@@ -2440,7 +2440,7 @@
         "notes/S-16 §8 I-06"
       ],
       "brief": "wp/I-06-login-providers.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-07",
@@ -2474,7 +2474,7 @@
         "notes/S-16 §8 I-07"
       ],
       "brief": "wp/I-07-login-card-email.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-08",
@@ -2690,7 +2690,7 @@
         "notes/S-16 §10 D15 D19"
       ],
       "brief": "wp/I-12-console-users.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-13",
@@ -4829,7 +4829,7 @@
         "notes/S-15 §13 decision 5"
       ],
       "brief": "wp/A-18g-steam-adapter.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-18h",
@@ -4902,7 +4902,7 @@
       "optional": false,
       "refs": ["notes/S-15 §8", "notes/S-15 §6.1", "notes/S-15 §11 (A-18j)"],
       "brief": "wp/A-18j-console-storefronts.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-18k",
@@ -4952,7 +4952,7 @@
         "notes/S-15 §13 decisions 1, 2"
       ],
       "brief": "wp/A-18m-apple-listing-push.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-01",
@@ -5422,7 +5422,7 @@
         "design/PORTAL §11.2 PX-W14"
       ],
       "brief": "wp/PX-W14-approve-device.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-W15",
@@ -5703,7 +5703,7 @@
       "optional": false,
       "refs": ["design/PORTAL §4.16", "design/PORTAL §11.3 PX-16"],
       "brief": "wp/PX-16-discover-page.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-17",
