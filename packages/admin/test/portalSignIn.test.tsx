@@ -37,14 +37,14 @@ function signedOut(caps = CAPS_ALL, extra = {}) {
     ...signedIn(),
     "/api/me": () => me,
     "/api/capabilities": caps,
-    "POST /api/magic/start": { ok: true },
+    "POST /api/signin/email/start": { ok: true },
     ...extra,
   };
   mockFetch(routes);
   return { signIn: () => (me = { account: ACCOUNT, csrf: "c" }) };
 }
 
-describe("LoginCard on today's auth (PX-05)", () => {
+describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
   it("is one card: email first, one primary, then single sign-on", async () => {
     signedOut();
     renderPortal();
@@ -113,12 +113,15 @@ describe("LoginCard on today's auth (PX-05)", () => {
     const field = screen.getByRole("textbox", { name: "Email" });
     expect(field.getAttribute("aria-invalid")).toBe("true");
     expect(screen.getByRole("alert").textContent).toMatch(/full email address/);
-    expect(fetchedRequests()).not.toContain("POST /api/magic/start");
+    expect(fetchedRequests()).not.toContain("POST /api/signin/email/start");
   });
 
   it("says when too many emails were sent", async () => {
     signedOut(CAPS_ALL, {
-      "POST /api/magic/start": { status: 429, body: { error: "rate_limited" } },
+      "POST /api/signin/email/start": {
+        status: 429,
+        body: { error: "rate_limited" },
+      },
     });
     renderPortal();
     await userEvent.type(
@@ -127,11 +130,11 @@ describe("LoginCard on today's auth (PX-05)", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect((await screen.findByRole("alert")).textContent).toMatch(
-      /Too many sign-in emails/,
+      /Too many codes/,
     );
   });
 
-  it("sends the link to an honest sent screen with resend and change-email", async () => {
+  it("sends a code and a link: one six-cell input, a resend countdown and change-email", async () => {
     signedOut();
     renderPortal();
     await userEvent.type(
@@ -144,16 +147,31 @@ describe("LoginCard on today's auth (PX-05)", () => {
       name: "Check your email",
     });
     await waitFor(() => expect(document.activeElement).toBe(h1));
-    expect(screen.getByText(/It works for 10 minutes/)).toBeTruthy();
-    expect(screen.getByText(/this page signs you in by itself/)).toBeTruthy();
+    expect(fetchedRequests()).toContain("POST /api/signin/email/start");
     expect(
-      (
-        screen.getByRole("button", {
-          name: /Resend in \d+ s/,
-        }) as HTMLButtonElement
-      ).disabled,
+      screen.getByText(/We sent a code and a sign-in link to/).textContent,
+    ).toBe(
+      "We sent a code and a sign-in link to mara@fennick.studio. Both work for 10 minutes.",
+    );
+    const code = screen.getByRole("textbox", { name: "6-digit code" });
+    expect(code.getAttribute("autocomplete")).toBe("one-time-code");
+    expect(code.getAttribute("inputmode")).toBe("numeric");
+    expect(
+      (screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement)
+        .disabled,
     ).toBe(true);
+    expect(screen.getByText(/Send a new code in \d:\d\d/)).toBeTruthy();
+    expect(
+      screen.getByText("Or open the link in the email. Keep this tab open."),
+    ).toBeTruthy();
     expect(document.title).toBe("Check your email · Polaris Key");
+    // The live region announces the new step once.
+    await waitFor(() =>
+      expect(document.querySelector("[data-step-announcer]")?.textContent).toBe(
+        "Check your email",
+      ),
+    );
+    expect(await axeViolations()).toEqual([]);
     await userEvent.click(
       screen.getByRole("button", { name: "Use a different email" }),
     );
@@ -163,6 +181,144 @@ describe("LoginCard on today's auth (PX-05)", () => {
         name: "Sign in to Polaris Key",
       }),
     ).toBeTruthy();
+  });
+
+  it("signs in on the sixth digit of the code", async () => {
+    const s = signedOut(CAPS_ALL, {
+      "POST /api/signin/email/verify": () => {
+        s.signIn();
+        return { status: "signed_in", next: "/" };
+      },
+    });
+    renderPortal();
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "Email" }),
+      "mara@fennick.studio",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "6-digit code" }),
+      "48 1-207",
+    );
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Your library" }),
+    ).toBeTruthy();
+    const verify = vi
+      .mocked(fetch)
+      .mock.calls.find(([u]) =>
+        String(u).includes("/api/signin/email/verify"),
+      )!;
+    expect(JSON.parse(String(verify[1]!.body))).toEqual({ code: "481207" });
+  });
+
+  it("says a wrong code plainly, with the tries left once two or fewer remain", async () => {
+    signedOut(CAPS_ALL, {
+      "POST /api/signin/email/verify": {
+        status: 400,
+        body: { error: "invalid_code", message: "x", triesLeft: 2 },
+      },
+    });
+    renderPortal();
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "Email" }),
+      "mara@fennick.studio",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    const code = await screen.findByRole("textbox", { name: "6-digit code" });
+    await userEvent.type(code, "000000");
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      "That code isn't right. Check the email and try again. 2 tries left.",
+    );
+    expect(code.getAttribute("aria-invalid")).toBe("true");
+    expect((code as HTMLInputElement).value).toBe("");
+  });
+
+  it("puts the quiet Have a license key? link under a rule, centred", async () => {
+    signedOut();
+    renderPortal();
+    const link = await screen.findByRole("button", {
+      name: "Have a license key?",
+    });
+    const row = link.closest("[data-quiet-links]")!;
+    expect(row.className).toContain("justify-center");
+    expect(row.className).toContain("border-t");
+    // 24 px from the rule to the text and from the text to the card's edge: 12 px of padding
+    // plus half the 44 px target's slack above; the body's 24 / 32 px padding pulled in by
+    // 12 / 20 px below.
+    expect(row.className).toMatch(/(^| )pt-3( |$)/);
+    expect(row.className).toMatch(/(^| )-mb-3( |$)/);
+    expect(row.className).toMatch(/(^| )sm:-mb-5( |$)/);
+    expect(link.className).toContain("min-h-11");
+    expect(row.parentElement!.className).toMatch(/(^| )py-6( |$)/);
+    expect(row.parentElement!.className).toMatch(/(^| )sm:py-8( |$)/);
+  });
+
+  it("takes a license key before sign-in and carries it through (the on-ramp)", async () => {
+    signedOut();
+    renderPortal();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Have a license key?" }),
+    );
+    const h1 = await screen.findByRole("heading", {
+      level: 1,
+      name: "Have a license key?",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+    const field = screen.getByRole("textbox", { name: "License key" });
+    await userEvent.type(field, "pkey_mossgarden_short");
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByRole("alert").textContent).toMatch(/cut short/);
+    await userEvent.clear(field);
+    await userEvent.type(field, "pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w");
+    expect(
+      screen.getByText(
+        (_, el) =>
+          el?.tagName === "P" && el.textContent === "Key for Mossgarden",
+      ),
+    ).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Sign in to add Mossgarden",
+      }),
+    ).toBeTruthy();
+    expect(window.location.hash).toBe(
+      "#/?activate=pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Sign in without the key" }),
+    );
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Sign in to Polaris Key",
+      }),
+    ).toBeTruthy();
+    expect(window.location.hash).not.toContain("activate");
+  });
+
+  it("goes Back from the key step to the methods", async () => {
+    signedOut();
+    renderPortal();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Have a license key?" }),
+    );
+    await userEvent.click(await screen.findByRole("button", { name: "Back" }));
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Sign in to Polaris Key",
+      }),
+    ).toBeTruthy();
+  });
+
+  it("has no Polaris Key · key.plrs.im line and no Getting… line", async () => {
+    signedOut();
+    renderPortal();
+    await screen.findByRole("textbox", { name: "Email" });
+    expect(document.body.textContent).not.toMatch(/key\.plrs\.im/);
+    expect(document.body.textContent).not.toMatch(/Getting the ways/);
   });
 
   it("signs this tab in by itself when the link is used (focus re-check)", async () => {
@@ -213,16 +369,16 @@ describe("LoginCard on today's auth (PX-05)", () => {
     });
     renderPortal();
     expect(
-      await screen.findByRole("heading", {
-        level: 1,
-        name: "Sign in or create an account",
-      }),
+      await screen.findByRole("heading", { level: 1, name: "Sign in" }),
     ).toBeTruthy();
-    expect(screen.getByText(/Manage your copy of/).textContent).toBe(
-      "Manage your copy of Nightfall",
+    expect(
+      screen.getByText("Use the email you bought Nightfall with."),
+    ).toBeTruthy();
+    expect(screen.getByText("Lanternworks", { exact: false }).textContent).toBe(
+      "Nightfall · Lanternworks",
     );
     expect(
-      screen.getByText("Lanternworks · downloads, license and devices"),
+      screen.getByText("Your license, downloads and devices"),
     ).toBeTruthy();
     expect(fetchedRequests()).toContain(
       "GET /api/capabilities?product=nightfall",

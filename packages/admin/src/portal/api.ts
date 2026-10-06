@@ -423,6 +423,8 @@ export interface PortalDiscoverClaim {
 }
 
 export class PortalApiError extends Error {
+  /** A refusal's numeric extras the card shows (`triesLeft` on a wrong sign-in code). */
+  triesLeft?: number;
   constructor(
     public readonly status: number,
     public readonly code?: string,
@@ -463,18 +465,22 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     let code: string | undefined;
     let message: string | undefined;
+    let triesLeft: number | undefined;
     try {
       const body = (await res.json()) as {
         error?: string;
         message?: string;
+        triesLeft?: unknown;
       };
       code = body.error;
       message = body.message;
+      if (typeof body.triesLeft === "number") triesLeft = body.triesLeft;
     } catch {
       // non-JSON response
     }
     const error = new PortalApiError(res.status, code);
     if (message) error.message = message;
+    if (triesLeft !== undefined) error.triesLeft = triesLeft;
     throw error;
   }
   const text = await res.text();
@@ -496,12 +502,25 @@ export const portalApi = {
   licenses: () => call<{ licenses: PortalLicenseSummary[] }>("/api/licenses"),
   license: (product: string, id: string) =>
     call<PortalLicenseDetail>(`/api/licenses/${enc(product)}/${enc(id)}`),
-  startMagic: async (email: string) => {
-    const out = await call<{ ok: true }>("/api/magic/start", {
+  /**
+   * I-07's identifier-first email start: one email with a 6-digit code and a sign-in link
+   * (SIGN-IN.md §3.4). `/api/magic/start` is the older alias of the same route.
+   */
+  startEmailSignIn: async (email: string) => {
+    const out = await call<{ ok: true }>("/api/signin/email/start", {
       method: "POST",
       body: JSON.stringify({ email, returnTo: window.location.href }),
     });
     signInPending = true;
+    return out;
+  },
+  /** Redeems the emailed code for this browser's sign-in (the Worker sets the session cookie). */
+  verifySignInCode: async (code: string) => {
+    const out = await call<{ status: string; next?: string }>(
+      "/api/signin/email/verify",
+      { method: "POST", body: JSON.stringify({ code }) },
+    );
+    signInPending = false;
     return out;
   },
   /**

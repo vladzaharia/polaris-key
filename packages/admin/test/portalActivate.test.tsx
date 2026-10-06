@@ -194,7 +194,7 @@ describe("key verdicts (UX-05)", () => {
       code: "entries",
       tone: "warning",
       message:
-        "This key has no entries left in Ember Tactics. Add it to your account and the app signs you in instead.",
+        "This key has no entries left in Ember Tactics. Add it to your account and Ember Tactics signs you in instead.",
     });
     expect(blocksResend(notice)).toBe(false);
   });
@@ -575,7 +575,7 @@ describe("Activate license modal (PX-06)", () => {
       ...routes(),
       "/api/me": () => me,
       "/api/capabilities": CAPS_ALL,
-      "POST /api/magic/start": (init: RequestInit | undefined) => ({
+      "POST /api/signin/email/start": (init: RequestInit | undefined) => ({
         ok: true,
         echo: init?.body,
       }),
@@ -591,7 +591,7 @@ describe("Activate license modal (PX-06)", () => {
     // The link returns here: the return URL carries the key.
     const call = vi
       .mocked(fetch)
-      .mock.calls.find(([u]) => String(u).includes("/api/magic/start"))!;
+      .mock.calls.find(([u]) => String(u).includes("/api/signin/email/start"))!;
     const body = JSON.parse(String(call[1]!.body)) as { returnTo: string };
     expect(body.returnTo).toContain(`#/?activate=${KEY}`);
     me = { account: ACCOUNT, csrf: "c" };
@@ -739,7 +739,7 @@ describe("Activate license modal (PX-06)", () => {
       name: "Add Mossgarden to your account?",
     });
     expect(within(confirm).getByRole("status").textContent).toBe(
-      "This key has no entries left in Mossgarden. Add it to your account and the app signs you in instead.",
+      "This key has no entries left in Mossgarden. Add it to your account and Mossgarden signs you in instead.",
     );
     const add = within(confirm).getByRole("button", {
       name: "Add Mossgarden",

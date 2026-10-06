@@ -891,7 +891,7 @@ describe("main flows", () => {
     await o.close();
   });
 
-  it("signs in with an email link: the honest sent screen", async () => {
+  it("signs in with an email code: the six-cell code step", async () => {
     const o = await open("signedOut", "/", { width: 390, height: 844 });
     await h1(o.page, "Sign in to Polaris Key");
     await o.page
@@ -899,8 +899,9 @@ describe("main flows", () => {
       .fill("mara@fennick.studio");
     await o.page.getByRole("button", { name: "Continue" }).click();
     await h1(o.page, "Check your email");
+    await o.page.getByRole("textbox", { name: "6-digit code" }).waitFor();
     await shoot(o.page, "signin-sent-mobile-dark");
-    expect(o.requests).toContain("POST /api/magic/start");
+    expect(o.requests).toContain("POST /api/signin/email/start");
     expect(await o.violations()).toEqual([]);
     await o.close();
   });

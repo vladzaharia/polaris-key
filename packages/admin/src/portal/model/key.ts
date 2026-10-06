@@ -316,7 +316,7 @@ export function entriesVerdict(
   return {
     code: "entries",
     tone: "warning",
-    message: `This key has no entries left in ${name}. Add it to your account and the app signs you in instead.`,
+    message: `This key has no entries left in ${name}. Add it to your account and ${name} signs you in instead.`,
   };
 }
 
