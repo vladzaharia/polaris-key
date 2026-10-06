@@ -535,11 +535,16 @@
     background: var(--pk-accent-fg);
   }
 
-  /* countdown ring: drains linearly over --pk-countdown (set through the CSSOM). */
+  /* countdown ring: drains linearly over --pk-countdown (set through the CSSOM), starting
+     --pk-countdown-elapsed into it, so a ring that mounts mid-window shows the window as it
+     stands (MO-11: the key rotation's trust window). --pk-countdown-spent (0–100) is the still
+     picture: what reduced motion shows with the animation off, so both end in the same place. */
   .pk-countdown circle {
     --pk-draw-length: 100;
     stroke-dasharray: 100;
+    stroke-dashoffset: var(--pk-countdown-spent, 0);
     animation: pk-draw var(--pk-countdown, 3000ms) linear reverse forwards;
+    animation-delay: calc(-1 * var(--pk-countdown-elapsed, 0ms));
   }
 
   /* press: 0.98 on :active (`micro` in, `fast`·`spring` out); colours at `micro`. */

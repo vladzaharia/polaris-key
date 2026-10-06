@@ -390,6 +390,11 @@ describe("collapsible section headers (owner, 2026-10-03)", () => {
   it("persists nothing: no storage writes, and a peek does not survive a reload", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();
+    // Overview's own reads land first: its first visit records what it saw for its one-time
+    // moments (MO-11). The sidebar is what this test watches.
+    await screen.findByText("0 keys");
+    await screen.findByText("No releases");
+    await screen.findByText("Issue a first license");
     const before = { ...window.localStorage };
     const setItem = vi.spyOn(Storage.prototype, "setItem");
     await expand("Config");

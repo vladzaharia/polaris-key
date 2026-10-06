@@ -6,6 +6,9 @@
  * The record lives in `sessionStorage` and is consumed when Overview reads it, so a refresh or a
  * later visit shows the ordinary Overview. Nothing in it is secret: a name, a key id, the public
  * key and the names (never values) of the secrets a linked manifest still needs.
+ *
+ * It is EXPERIENCE §0.7's "Product created" moment: the heading carries the success check and
+ * sparks (MO-11), once per product.
  */
 
 import * as React from "react";
@@ -13,6 +16,8 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { CopyButton } from "../../../ui/CopyButton.js";
 import { SignedBadge } from "../../../ui/SignedBadge.js";
+import { Celebration } from "../../../ui/motion/index.js";
+import { momentKey } from "../../components/Moment.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 
@@ -105,9 +110,15 @@ export function WelcomeHeader({
       <div className="min-w-0 flex-1 space-y-2">
         <h2
           id="product-welcome-title"
-          className="text-lg font-bold text-fg-strong"
+          className="flex items-center gap-2 text-lg font-bold text-fg-strong"
         >
           {welcome.name} is ready
+          <span className="text-accent-fg">
+            <Celebration
+              momentKey={momentKey("product-created", welcome.slug)}
+              size={20}
+            />
+          </span>
         </h2>
         <p className="text-sm text-fg-muted">
           {welcome.repo

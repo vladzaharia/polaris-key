@@ -43,4 +43,11 @@ export const PREF_KEYS = {
   recentProducts: "pk-admin-recent-products",
   /** The command palette's recent commands. */
   recentCommands: "pk-admin-recent-commands",
+  /**
+   * Prefix: a one-time moment shown, `<prefix><moment>:<slug>` (EXPERIENCE.md §0.7; MO-11). Written
+   * by `ui/motion`'s `Celebration` (which the portal shares), listed here so every console key is.
+   */
+  momentPrefix: "pk-moment:",
+  /** Prefix: when the console last saw a product before a moment's milestone (`components/Moment`). */
+  momentBeforePrefix: "pk-moment-before:",
 } as const;

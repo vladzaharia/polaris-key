@@ -9,6 +9,8 @@
  * - Flow conformance (FLOWS.md C-17, §2 C3, C5, C13, C18): "Step n of 2 for you" with a step
  *   heading that takes focus on every step change, each step and the result announced once,
  *   primaries that name their action, and a draft that Escape cannot drop without asking.
+ * - The product's first license (EXPERIENCE.md §0.7; MO-11) is a moment: Done carries the success
+ *   check and sparks, once per product, and a **Try it** that opens the SDK quick start on Overview.
  */
 
 import * as React from "react";
@@ -35,6 +37,10 @@ import { OrderedMultiSelect } from "../../../ui/OrderedMultiSelect.js";
 import { Select } from "../../../ui/Select.js";
 import { VersionInput } from "../../../ui/VersionInput.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
+import { momentSeen } from "../../../ui/motion/index.js";
+import { MomentLine, momentKey } from "../../components/Moment.js";
+import { focusWhenReady } from "../../shell/palette/focus.js";
+import { SDK_QUICK_START_ID } from "../core/sdkQuickStart.js";
 import {
   EMAIL_RE,
   EffectivePolicy,
@@ -42,6 +48,7 @@ import {
   MIN_OFFLINE_DAYS,
   effectivePolicy,
   tierSummary,
+  useLicenses,
   useManualChannels,
   useProfiles,
   useTiers,
@@ -149,6 +156,8 @@ export function CreateLicenseDialog({
   const profilesQ = useProfiles(slug);
   const manual = useManualChannels(slug);
   const product = useProduct(slug).data;
+  // The product's licenses as the page knows them: an empty list means the next one is the first.
+  const licensesQ = useLicenses(slug);
   const tiers = React.useMemo(() => tiersQ.data?.tiers ?? [], [tiersQ.data]);
   const profiles = profilesQ.data?.profiles ?? [];
 
@@ -160,6 +169,8 @@ export function CreateLicenseDialog({
   const [created, setCreated] = React.useState<{
     id: string;
     key: string;
+    /** The product had no license before this one, and its moment has not been shown. */
+    first: boolean;
   } | null>(null);
   const [acknowledged, setAcknowledged] = React.useState(false);
   const [asking, setAsking] = React.useState(false);
@@ -237,9 +248,15 @@ export function CreateLicenseDialog({
     if (Object.keys(errs).length) return focusFirst(errs);
     setSubmitting(true);
     setSubmitError(null);
+    // Read before the create invalidates the list. An unknown list (still loading, failed) is
+    // not an empty one: no moment.
+    const first =
+      licensesQ.data !== undefined &&
+      licensesQ.data.licenses.length === 0 &&
+      !momentSeen(momentKey("first-license", slug));
     try {
       const res = await mutate("createLicense", slug, createBody(draft));
-      setCreated({ id: res.licenseId, key: res.key });
+      setCreated({ id: res.licenseId, key: res.key, first });
       go("result");
     } catch (err) {
       setSubmitError(err);
@@ -613,8 +630,36 @@ export function CreateLicenseDialog({
           onCancelClose={() => setAsking(false)}
           onConfirmClose={close}
           onDone={close}
+          details={
+            created.first ? (
+              <MomentLine
+                momentKey={momentKey("first-license", slug)}
+                title={`${product?.name ?? slug}'s first license`}
+                className="rounded-md border border-border bg-surface-raised p-3"
+              >
+                Try it in your app: the SDK quick start on Overview installs the
+                SDK and pins your signing key.
+              </MomentLine>
+            ) : undefined
+          }
           actions={
             <>
+              {created.first ? (
+                <Button
+                  variant="ghost"
+                  disabledReason={
+                    acknowledged ? undefined : "Copy the license key first"
+                  }
+                  onClick={() => {
+                    close();
+                    navigate(r.overview(slug));
+                    // Lands on the SDK chooser, as the palette's "SDK quick start" does.
+                    focusWhenReady(SDK_QUICK_START_ID);
+                  }}
+                >
+                  Try it
+                </Button>
+              ) : null}
               <Button
                 variant="ghost"
                 disabledReason={

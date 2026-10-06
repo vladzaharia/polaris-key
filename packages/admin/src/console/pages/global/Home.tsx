@@ -25,6 +25,7 @@ import {
   AttentionList,
   DashboardTemplate,
   Panel,
+  useFirstLoad,
   type AttentionItem,
 } from "../../templates/Dashboard.js";
 import {
@@ -123,6 +124,10 @@ function worstTone(items: ProductAttention[]): AttentionTone {
  *
  * Recent activity across products needs A-2b (a platform-wide feed); without it the panel is
  * omitted rather than faked.
+ *
+ * Motion (MO-11): the Needs attention list staggers in when the products arrive on Home's first
+ * visit in this document (`useFirstLoad`), never on a refetch or a return visit. The product cards
+ * below do not stagger: the list is the one thing that enters.
  */
 export function Home(): React.ReactElement {
   const products = useProducts();
@@ -145,6 +150,7 @@ export function Home(): React.ReactElement {
 
   const loading = products.isPending;
   const failed = products.isError && !products.data;
+  const firstLoad = useFirstLoad("home", loading);
   const description = loading
     ? "Loading your products"
     : `${formatCount(list.length)} ${list.length === 1 ? "product" : "products"}`;
@@ -250,7 +256,12 @@ export function Home(): React.ReactElement {
   return (
     <DashboardTemplate
       header={header}
-      attention={<AttentionList items={items} />}
+      // Mounted with the data, so the first load's stagger starts with it (MO-11).
+      attention={
+        loading ? undefined : (
+          <AttentionList items={items} stagger={firstLoad} />
+        )
+      }
       tiles={
         <>
           <StatTile

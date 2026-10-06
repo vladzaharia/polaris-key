@@ -17,6 +17,10 @@
  *   (`sdkQuickStart.ts`, UX-59): the install from pkg.plrs.im with its registry line first, and
  *   an initialisation pinning every active and staged key, with a placeholder for the app's own
  *   version (OVR-3).
+ * - Moments (EXPERIENCE.md §0.7; MO-11): the first catalog publish, the first release, the first
+ *   store connected and the product launched each show once per product, as one line with the
+ *   success check and sparks (`components/Moment.tsx`); the attention list staggers in on the
+ *   page's first load.
  */
 
 import * as React from "react";
@@ -34,6 +38,7 @@ import {
   api,
   type LicenseSummary,
   type ProductDetail,
+  type ReleaseDto,
   type ServiceSlug,
 } from "../../../api.js";
 import { cn } from "../../../lib/cn.js";
@@ -52,7 +57,14 @@ import { ServiceGlyph, serviceLabel } from "../../../ui/ServiceBadge.js";
 import { PageSkeleton, Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timeline, TimelineItem } from "../../../ui/Timeline.js";
+import { Timestamp } from "../../../ui/Timestamp.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
+import {
+  MomentBanner,
+  momentKey,
+  useMoment,
+  type MomentObservation,
+} from "../../components/Moment.js";
 import { PageHeader } from "../../components/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { qk } from "../../data/queries.js";
@@ -63,6 +75,7 @@ import {
   AttentionList,
   DashboardTemplate,
   Panel,
+  useFirstLoad,
   type AttentionItem,
 } from "../../templates/Dashboard.js";
 import { ActivityTarget, actorName, useActivityFeed } from "./Activity.js";
@@ -101,6 +114,8 @@ const on = (p: ProductDetail, s: ServiceSlug): boolean =>
 export function OverviewPage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug);
   useLoadingAnnouncement("overview", product.isPending);
+  // The attention list staggers in on this page's first load in the document (MO-11).
+  const firstLoad = useFirstLoad(`overview:${slug}`, product.isPending);
   if (product.isPending) {
     return (
       <div className="space-y-6">
@@ -120,15 +135,28 @@ export function OverviewPage({ slug }: { slug: string }): React.ReactElement {
       </div>
     );
   }
-  return <OverviewBody slug={slug} product={product.data} />;
+  return (
+    <OverviewBody
+      slug={slug}
+      product={product.data}
+      firstLoad={firstLoad}
+      placeholder={product.isPlaceholderData}
+    />
+  );
 }
 
 function OverviewBody({
   slug,
   product: p,
+  firstLoad,
+  placeholder = false,
 }: {
   slug: string;
   product: ProductDetail;
+  /** The page's first-load key (`useFirstLoad`), for the attention list's stagger. */
+  firstLoad?: string;
+  /** The product is the products list's row standing in until its own read lands. */
+  placeholder?: boolean;
 }): React.ReactElement {
   const enabled = SERVICE_ORDER.filter((s) => on(p, s));
   const licenses = useQuery(
@@ -139,9 +167,22 @@ function OverviewBody({
     },
     queryClient,
   );
-  const checklist = useChecklist(slug, p, licenses.data?.licenses.length);
+  const { items: checklist, settled } = useChecklist(
+    slug,
+    p,
+    licenses.data?.licenses.length,
+  );
   const [showChecklist, setShowChecklist] = React.useState(false);
   const complete = checklist.every((i) => i.state === "done");
+  // Launched: every setup step done, judged only once every input has loaded (a list still
+  // loading is not a step done, and the products list's row is not the product's own read).
+  const launched: MomentObservation =
+    enabled.length > 0 &&
+    !placeholder &&
+    settled &&
+    (!on(p, "license") || licenses.data !== undefined)
+      ? { state: complete ? "after" : "before" }
+      : UNKNOWN;
   const attention = useAttention(slug, p, licenses.data?.licenses);
   const sync = p.setup?.sync;
   // A product created a moment ago lands here with a one-time welcome (UX-20, EXPERIENCE.md S1).
@@ -205,7 +246,8 @@ function OverviewBody({
           {welcome ? (
             <WelcomeHeader welcome={welcome} onDismiss={dismissWelcome} />
           ) : null}
-          <AttentionList items={attention} />
+          <OverviewMoments slug={slug} product={p} launched={launched} />
+          <AttentionList items={attention} stagger={firstLoad} />
         </>
       }
       firstRun={
@@ -315,6 +357,253 @@ function useAttention(
   return items;
 }
 
+// ── Moments (EXPERIENCE.md §0.7; MO-11) ────────────────────────────────────────────────────────
+
+const UNKNOWN: MomentObservation = { state: "unknown" };
+const BEFORE: MomentObservation = { state: "before" };
+
+const ACTION_LINK =
+  "inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline";
+
+/** The first catalog: published once it has entries; a 404 is "not yet", any other error unknown. */
+export function catalogMoment(
+  enabled: boolean,
+  catalog: { data?: { entries?: unknown[] }; error: unknown; isError: boolean },
+): MomentObservation {
+  if (!enabled) return UNKNOWN;
+  if (catalog.isError)
+    return catalog.error instanceof ApiError && catalog.error.status === 404
+      ? BEFORE
+      : UNKNOWN;
+  if (!catalog.data) return UNKNOWN;
+  return (catalog.data.entries?.length ?? 0) > 0 ? { state: "after" } : BEFORE;
+}
+
+/** The first release: the product's app releases that stand (yanked ones do not), and when. */
+export function releaseMoment(
+  enabled: boolean,
+  releases:
+    | Pick<ReleaseDto, "deliverable" | "publishedAt" | "yank">[]
+    | undefined,
+): MomentObservation {
+  if (!enabled || !Array.isArray(releases)) return UNKNOWN;
+  const live = releases.filter((x) => x.deliverable === "app" && !x.yank);
+  if (live.length === 0) return BEFORE;
+  const times = live
+    .map((x) => x.publishedAt)
+    .filter((t): t is number => typeof t === "number");
+  return { state: "after", at: times.length ? Math.min(...times) : null };
+}
+
+/**
+ * The once-per-product moments Overview owns, each a `MomentBanner` above the attention list. The
+ * queries are the tiles' own (the same keys and fetchers), so they cost no extra request, except
+ * the storefronts read, made only while Distribution is on.
+ */
+function OverviewMoments({
+  slug,
+  product: p,
+  launched,
+}: {
+  slug: string;
+  product: ProductDetail;
+  launched: MomentObservation;
+}): React.ReactElement {
+  const catalog = useQuery(
+    {
+      queryKey: qk.catalog(slug),
+      queryFn: () => api.schema(slug),
+      enabled: on(p, "config"),
+      retry: false,
+    },
+    queryClient,
+  );
+  const store = useQuery(
+    {
+      queryKey: qk.releases(slug),
+      queryFn: () => api.releases(slug),
+      enabled: on(p, "release"),
+    },
+    queryClient,
+  );
+  const stores = useQuery(
+    {
+      queryKey: qk.storefronts(slug),
+      queryFn: () => api.storefronts(slug),
+      enabled: on(p, "distribution"),
+      retry: false,
+    },
+    queryClient,
+  );
+  const connected = stores.data?.stores?.find(
+    (s) => s.connection.state === "connected",
+  );
+  const latest = latestAppRelease(store.data?.releases);
+  const channel = latest
+    ? (latest.channel ??
+      store.data?.channels?.find((c) => c.releaseId === latest.releaseId)
+        ?.channel ??
+      null)
+    : null;
+  const titles = {
+    launched: `${p.name} is launched`,
+    release: latest
+      ? channel
+        ? `${latest.version} is live on ${channel}`
+        : `${latest.version} is live`
+      : "",
+    catalog: catalog.data
+      ? `Catalog v${catalog.data.schemaVersion} is live`
+      : "",
+    store: connected ? `${connected.label} is connected` : "",
+  };
+  const keys = {
+    launched: momentKey("product-launched", slug),
+    release: momentKey("first-release", slug),
+    catalog: momentKey("first-catalog", slug),
+    store: momentKey("store-connected", slug),
+  };
+  // The announcement is said only for a moment that lands while the page is open.
+  const shows = {
+    launched: useMoment(keys.launched, launched, `${titles.launched}.`),
+    release: useMoment(
+      keys.release,
+      releaseMoment(on(p, "release"), store.data?.releases),
+      `${titles.release}: your first release.`,
+    ),
+    catalog: useMoment(
+      keys.catalog,
+      catalogMoment(on(p, "config"), catalog),
+      `${titles.catalog}.`,
+    ),
+    store: useMoment(
+      keys.store,
+      !on(p, "distribution") || !Array.isArray(stores.data?.stores)
+        ? UNKNOWN
+        : connected
+          ? { state: "after" }
+          : BEFORE,
+      `${titles.store}.`,
+    ),
+  };
+  const [dismissed, setDismissed] = React.useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const visible = (key: string, show: boolean): boolean =>
+    show && !dismissed.has(key);
+  // Dismissing a banner removes the focused button: focus moves to the next banner's Dismiss, or
+  // else to the page's heading, never to the body. Consumed by the commit that removes it.
+  const focusAfterDismiss = React.useRef<string | null>(null);
+  const dismiss = (key: string) => () => {
+    const banners = [
+      ...document.querySelectorAll<HTMLElement>("section[data-moment]"),
+    ];
+    const i = banners.findIndex((b) => b.dataset.moment === key);
+    focusAfterDismiss.current = banners[i + 1]?.dataset.moment ?? "";
+    setDismissed((d) => new Set(d).add(key));
+  };
+  React.useLayoutEffect(() => {
+    const next = focusAfterDismiss.current;
+    if (next === null) return;
+    focusAfterDismiss.current = null;
+    const banner = next
+      ? [
+          ...document.querySelectorAll<HTMLElement>("section[data-moment]"),
+        ].find((b) => b.dataset.moment === next)
+      : undefined;
+    const target =
+      banner?.querySelector<HTMLElement>("[data-moment-dismiss]") ??
+      document.querySelector<HTMLElement>("h1[data-page-title]");
+    if (target && target.tagName === "H1" && !target.hasAttribute("tabindex"))
+      target.setAttribute("tabindex", "-1");
+    target?.focus({ preventScroll: true });
+  }, [dismissed]);
+
+  return (
+    <>
+      {visible(keys.launched, shows.launched) ? (
+        <MomentBanner
+          momentKey={keys.launched}
+          title={titles.launched}
+          detail="Every setup step is done."
+          onDismiss={dismiss(keys.launched)}
+        />
+      ) : null}
+      {visible(keys.release, shows.release) && latest ? (
+        <MomentBanner
+          momentKey={keys.release}
+          title={titles.release}
+          detail={
+            <>
+              Your first release
+              {latest.signer?.kid ? (
+                <>
+                  {" · signed by "}
+                  <span className="font-mono">{latest.signer.kid}</span>
+                </>
+              ) : null}
+              {latest.publishedAt ? (
+                <>
+                  {" · published "}
+                  <Timestamp
+                    at={fromSeconds(latest.publishedAt)}
+                    format="relative"
+                  />
+                </>
+              ) : null}
+            </>
+          }
+          action={
+            on(p, "distribution") ? (
+              <Link to={r.rollouts(slug)} className={ACTION_LINK}>
+                Roll it out
+                <ArrowRight aria-hidden className="size-3.5" />
+              </Link>
+            ) : (
+              <Link
+                to={r.release(slug, latest.releaseId)}
+                className={ACTION_LINK}
+              >
+                View release
+                <ArrowRight aria-hidden className="size-3.5" />
+              </Link>
+            )
+          }
+          onDismiss={dismiss(keys.release)}
+        />
+      ) : null}
+      {visible(keys.catalog, shows.catalog) && catalog.data ? (
+        <MomentBanner
+          momentKey={keys.catalog}
+          title={titles.catalog}
+          detail="Your app reads it on its next launch."
+          action={
+            <Link to={r.catalog(slug)} className={ACTION_LINK}>
+              Catalog
+              <ArrowRight aria-hidden className="size-3.5" />
+            </Link>
+          }
+          onDismiss={dismiss(keys.catalog)}
+        />
+      ) : null}
+      {visible(keys.store, shows.store) && connected ? (
+        <MomentBanner
+          momentKey={keys.store}
+          title={titles.store}
+          detail="Builds and the listing can go out to it from Storefronts."
+          action={
+            <Link to={r.storefronts(slug)} className={ACTION_LINK}>
+              Storefronts
+              <ArrowRight aria-hidden className="size-3.5" />
+            </Link>
+          }
+          onDismiss={dismiss(keys.store)}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function moduleOf(
   p: ProductDetail,
   id: string,
@@ -341,7 +630,11 @@ function useChecklist(
   slug: string,
   p: ProductDetail,
   licenseCount: number | undefined,
-): ChecklistItem[] {
+): {
+  items: ChecklistItem[];
+  /** Every query the items read has answered (a 404 catalog is an answer: unpublished). */
+  settled: boolean;
+} {
   const catalog = useQuery(
     {
       queryKey: qk.catalog(slug),
@@ -421,7 +714,11 @@ function useChecklist(
       action: ok ? undefined : { label: "Edge mint", href: r.edgeMint(slug) },
     });
   }
-  return items;
+  const settled =
+    !on(p, "config") ||
+    catalog.data !== undefined ||
+    (catalog.isError && !catalogUnknown);
+  return { items, settled };
 }
 
 const ITEM_STATE: Record<
@@ -775,16 +1072,14 @@ function ReleaseTile({ slug }: { slug: string }): React.ReactElement {
   );
 }
 
-function latestAppRelease(
-  releases:
-    | {
-        deliverable: string;
-        version: string;
-        publishedAt: number | null;
-        yank: unknown;
-      }[]
-    | undefined,
-): { version: string } | undefined {
+function latestAppRelease<
+  T extends {
+    deliverable: string;
+    version: string;
+    publishedAt: number | null;
+    yank: unknown;
+  },
+>(releases: T[] | undefined): T | undefined {
   return (releases ?? [])
     .filter((x) => x.deliverable === "app" && !x.yank)
     .sort((a, b) => (b.publishedAt ?? 0) - (a.publishedAt ?? 0))[0];
