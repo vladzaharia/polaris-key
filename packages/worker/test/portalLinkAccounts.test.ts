@@ -20,6 +20,7 @@ import {
   undoMerge,
 } from "../src/services/identity/accounts/mergeUndo.js";
 import type { Db } from "../src/db/types.js";
+import { EMAIL_ISSUER } from "../src/services/identity/accounts/repo.js";
 
 const LINK = "/api/me/link";
 
@@ -738,6 +739,90 @@ describe("undo within 72 hours", () => {
       ["other", NOW - 10],
     ]);
     expect(await library(b.accountId)).toEqual([["other", NOW - 5]]);
+  });
+
+  it("never restores a primary email the joined account no longer holds", async () => {
+    const primary = (w: CardWorld, accountId: string) =>
+      w.db.first<{
+        primary_email: string | null;
+        primary_email_verified_at: number | null;
+      }>(
+        "SELECT primary_email, primary_email_verified_at FROM accounts WHERE id = ?",
+        accountId,
+      );
+    const disconnect = async (d: Device, display: string) => {
+      const methods = (await (
+        await d.send("GET", "/api/me/methods")
+      ).json()) as {
+        methods: Array<{ id: string; display: string }>;
+      };
+      const m = methods.methods.find((x) => x.display === display)!;
+      expect((await d.send("DELETE", `/api/me/methods/${m.id}`)).status).toBe(
+        200,
+      );
+    };
+    const otherMethod = (w: CardWorld, accountId: string, row: string) =>
+      w.db.run(
+        `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind,
+                                    email, email_verified, display_name, created_at, last_used_at)
+         VALUES ${row}`,
+        accountId,
+      );
+
+    // Its primary address was disconnected during the window; its other address takes over.
+    {
+      const w = await seededWorld();
+      const b = await emailAccount(w, "mara@fennick.studio");
+      const a = await emailAccount(w, "a@example.com");
+      await otherMethod(
+        w,
+        a.accountId,
+        `('lnk_a2', ?, '${EMAIL_ISSUER}', '', 'a2@example.com', 'email', 'a2@example.com', 1,
+          NULL, ${NOW + 1}, ${NOW + 1})`,
+      );
+      await proveBoth(a, b);
+      const mergeId = (
+        (await (await join(a.d)).json()) as { merge: { id: string } }
+      ).merge.id;
+      await disconnect(a.d, "a@example.com");
+      expect(
+        (await a.d.send("POST", `${LINK}/undo`, { merge: mergeId })).status,
+      ).toBe(200);
+      expect(await primary(w, a.accountId)).toEqual({
+        primary_email: "a2@example.com",
+        primary_email_verified_at: NOW + 1,
+      });
+    }
+
+    // Disconnected, and another account's since: with no other address, it has none.
+    {
+      const w = await seededWorld();
+      const b = await emailAccount(w, "mara@fennick.studio");
+      const a = await emailAccount(w, "a@example.com");
+      await otherMethod(
+        w,
+        a.accountId,
+        `('lnk_steam_a', ?, 'steam', '', '76561198000000001', 'steam', NULL, 0, 'marafox',
+          ${NOW}, ${NOW})`,
+      );
+      await proveBoth(a, b);
+      const mergeId = (
+        (await (await join(a.d)).json()) as { merge: { id: string } }
+      ).merge.id;
+      await disconnect(a.d, "a@example.com");
+      const c = await emailAccount(w, "a@example.com");
+      expect(
+        (await a.d.send("POST", `${LINK}/undo`, { merge: mergeId })).status,
+      ).toBe(200);
+      expect(await linksOf(w, a.accountId)).toEqual(["76561198000000001"]);
+      expect(await primary(w, a.accountId)).toEqual({
+        primary_email: null,
+        primary_email_verified_at: null,
+      });
+      expect((await primary(w, c.accountId))?.primary_email).toBe(
+        "a@example.com",
+      );
+    }
   });
 
   it("never orphans the survivor (last_link)", async () => {

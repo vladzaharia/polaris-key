@@ -13,7 +13,10 @@
  * ── WHAT AN UNDO RESTORES, AND WHAT IT CANNOT ───────────────────────────────────────────────
  *
  *   - The absorbed account comes back under its own id, with its own primary email and profile,
- *     and its tombstone goes, so its old session cookies act as it again.
+ *     and its tombstone goes, so its old session cookies act as it again. A primary address none
+ *     of its returning methods carries (verified, if the primary is), such as one disconnected
+ *     during the window and perhaps another account's now, gives way to the oldest verified
+ *     address they do carry, an email method first, or to none.
  *   - Its sign-in methods that are still on the survivor go back, passkeys with their WebAuthn
  *     material. A method disconnected since the join stays disconnected: a lost passkey or a
  *     compromised provider account that was removed never comes back silently. The snapshot
@@ -22,9 +25,9 @@
  *     relink history, consents, terms acceptances, auto-attach blocks and library entries (PS-04).
  *     What the survivor had before the join stays, and so does anything added to it since. A
  *     licence the survivor detached since the join stays floating (it is added again by its key,
- *     under the claim rules).
- *     A licence that goes back revokes every registry token the survivor minted on it during the
- *     window (F-21, `onLicenseOwnershipEnded`), and its devices' bindings go.
+ *     under the claim rules). A licence that goes back revokes every registry token the survivor
+ *     minted on it during the window (F-21, `onLicenseOwnershipEnded`), and its devices' bindings
+ *     go.
  *   - Details the survivor took from the absorbed account (a name, a picture, a primary email, the
  *     passkey user handle) are cleared again where they are still the absorbed account's values.
  *   - **Developers keep what they were told.** The join told each developer that the absorbed
@@ -70,7 +73,7 @@ import {
 import { sendNotice, securityNoticeRecipients } from "../portal/email.js";
 import { accountsSeparatedNotice } from "../portal/notices.js";
 import { isFresh, type AccountContext, type AccountProof } from "./links.js";
-import { getAccountRow } from "./repo.js";
+import { EMAIL_ISSUER, getAccountRow } from "./repo.js";
 
 /** How long a join can be undone (owner, PORTAL.md §4.11). */
 export const MERGE_UNDO_SECONDS = 72 * 3600;
@@ -530,6 +533,25 @@ export async function undoMerge(
       sql: `UPDATE account_links SET account_id = ?
              WHERE account_id = ? AND id IN (SELECT value FROM json_each(?))`,
       params: [A, S, JSON.stringify([...moved])],
+    },
+    // The restored primary email must be an address one of the absorbed account's own methods
+    // still carries (verified, if the primary is): one disconnected during the window, perhaps
+    // another account's since, gives way to the oldest verified address its methods carry, an
+    // email method first, or to none.
+    {
+      sql: `UPDATE accounts SET
+              primary_email = (SELECT email FROM account_links
+                                WHERE account_id = ? AND email IS NOT NULL AND email_verified = 1
+                                ORDER BY issuer_key = ? DESC, created_at, id LIMIT 1),
+              primary_email_verified_at = (SELECT created_at FROM account_links
+                                WHERE account_id = ? AND email IS NOT NULL AND email_verified = 1
+                                ORDER BY issuer_key = ? DESC, created_at, id LIMIT 1)
+            WHERE id = ? AND primary_email IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM account_links l
+                               WHERE l.account_id = ? AND l.email = accounts.primary_email
+                                 AND (l.email_verified = 1
+                                      OR accounts.primary_email_verified_at IS NULL))`,
+      params: [A, EMAIL_ISSUER, A, EMAIL_ISSUER, A, A],
     },
   );
   stmts.push({
