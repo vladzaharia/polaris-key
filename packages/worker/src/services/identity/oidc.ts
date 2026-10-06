@@ -85,6 +85,8 @@ import {
   tierExpiresAt,
 } from "../../core/authz.js";
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
+import { applyProvisionedAccountSecrets } from "../../core/accountOverrides.js";
+import { licenseConfigOverridesFrozen } from "../../core/overrideMigration.js";
 import { createBrowserSession } from "./browserSession.js";
 import type { ServiceHooks } from "../../core/hooks.js";
 import {
@@ -988,13 +990,27 @@ async function updateLicenseOnSignIn(
   identity: OidcIdentity,
   existing: LicenseRow,
   now: number,
+  env?: Env,
 ): Promise<void> {
-  const { provisioned, declared } = await signInProvisioning(
-    db,
-    product,
-    identity,
-    now,
-  );
+  const signIn = await signInProvisioning(db, product, identity, now);
+  const declared = signIn.declared;
+  // U-03 (S-19 §8 U-03 row): from the licence-override migration's run on, provisioned SECRETS
+  // target the licence owner's account overrides; the licence keeps only the entitlement half
+  // (its declared secret keys are still removed from it, so nothing stale lingers there).
+  const frozen = await licenseConfigOverridesFrozen(db);
+  const provisioned = frozen
+    ? { ...signIn.provisioned, secrets: {} }
+    : signIn.provisioned;
+  if (frozen && existing.account_id)
+    await applyProvisionedAccountSecrets(
+      env,
+      db,
+      product.slug,
+      existing.account_id,
+      signIn.provisioned.secrets,
+      declared.secrets,
+      now,
+    );
   let current = existing.overrides_json;
   for (let attempt = 0; attempt < SIGNIN_UPDATE_ATTEMPTS; attempt++) {
     const changed = await db.runChanges(
@@ -1043,6 +1059,9 @@ export async function activateFromIdentity(
      *  identity's licence; without it the migrate is refused (`license-merge-unavailable`)
      *  rather than strand them on a disabled row. */
     licenseMerge?: LicenseMerge;
+    /** U-03: seals provisioned secrets written to the owner's account overrides (from the
+     *  licence-override migration's run on). Every caller passes it. */
+    env?: Env;
   } = {},
 ): Promise<
   { licenseId: string; merged?: "claimed" | "migrated" } | { error: string }
@@ -1051,7 +1070,13 @@ export async function activateFromIdentity(
   if ("error" in tier) return tier;
   const { tierId, expiresAt } = tier;
 
-  const overrides = await provisionedOverrides(db, product, identity, now);
+  const provisionedAll = await provisionedOverrides(db, product, identity, now);
+  // U-03: from the migration run on, provisioned secrets go to the owner's account overrides
+  // (below, for a licence that has an owner); the licence column keeps entitlements only.
+  const frozen = await licenseConfigOverridesFrozen(db);
+  const overrides: ManagedPayload = frozen
+    ? { ...provisionedAll, secrets: {} }
+    : provisionedAll;
 
   // The enrolled license this device is currently on, if it is genuinely a claimable
   // anonymous one. Anything else (an admin or OIDC license) is left alone.
@@ -1089,6 +1114,20 @@ export async function activateFromIdentity(
       product.slug,
       claimable.id,
     );
+    // Every key the provisioning DECLARES, not just the ones this identity's claims provide, so
+    // a declared key whose claim is absent is cleared from the owner's row (revocation on claim
+    // loss), exactly as the sign-in rewrite does.
+    if (frozen && claimable.account_id)
+      await applyProvisionedAccountSecrets(
+        opts.env,
+        db,
+        product.slug,
+        claimable.account_id,
+        provisionedAll.secrets,
+        provisioningDeclaredKeys(await getProvisioning(db, product.slug))
+          .secrets,
+        now,
+      );
     await appendAudit(db, {
       product: product.slug,
       id: randomId("aud"),
@@ -1167,7 +1206,7 @@ export async function activateFromIdentity(
 
   if (existing) {
     if (!licenseUsable(existing, now)) return { error: "license-unusable" };
-    await updateLicenseOnSignIn(db, product, identity, existing, now);
+    await updateLicenseOnSignIn(db, product, identity, existing, now, opts.env);
     return {
       licenseId: existing.id,
       ...(claimable ? { merged: "migrated" as const } : {}),
@@ -2050,7 +2089,9 @@ export async function handleAuthCallback(
     await updateArtefact(env, stateKey, { set: { identity } });
     return signedInPage([], migration.notice);
   }
-  const result = await activateFromIdentity(db, product, identity, now);
+  const result = await activateFromIdentity(db, product, identity, now, {
+    env,
+  });
   if ("error" in result) {
     // Failed activation: drop the flow so the poller gets a generic error, not the reason.
     await deleteArtefact(env, stateKey);
@@ -2691,7 +2732,9 @@ async function completeChoice(
 
   let licenseId: string;
   if (activate) {
-    const result = await activateFromIdentity(db, product, identity, now);
+    const result = await activateFromIdentity(db, product, identity, now, {
+      env,
+    });
     if ("error" in result) {
       await deleteArtefact(env, c.stateKey);
       return errorResponse(403, "forbidden", "not entitled");
@@ -2929,6 +2972,7 @@ async function pollAuthFlow(
     const result = await activateFromIdentity(db, product, identity, now, {
       enrolledLicenseId,
       licenseMerge: ask.licenseMerge,
+      env,
     });
     if ("error" in result) {
       // The callback checked this; it can still change underneath a waiting flow (the

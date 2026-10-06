@@ -497,6 +497,7 @@ describe("the nav model (nav.ts)", () => {
       "platform-operations",
       "platform-stores",
       "platform-feeds",
+      "platform-override-migration",
       "package-feeds",
       "overview",
       "services",
@@ -703,6 +704,7 @@ describe("global pages", () => {
       "platform-operations",
       "platform-stores",
       "platform-feeds",
+      "platform-override-migration",
     ]);
     for (const p of PLATFORM_GROUP.items) {
       expect(isPlatformPage(p.page)).toBe(true);
@@ -718,6 +720,7 @@ describe("global pages", () => {
       "platform-operations",
       "platform-stores",
       "platform-feeds",
+      "platform-override-migration",
     ]);
   });
 
@@ -729,6 +732,9 @@ describe("global pages", () => {
       parseLocation("#/platform/store-connections").redirect,
     ).toBeUndefined();
     expect(parseLocation("#/platform/feeds").redirect).toBeUndefined();
+    expect(
+      parseLocation("#/platform/override-migration").redirect,
+    ).toBeUndefined();
     expect(r.platform()).toBe("#/platform");
     expect(r.platformDeployment()).toBe("#/platform/deployment");
     expect(r.productNew({ via: "github" })).toBe("#/products/new?via=github");

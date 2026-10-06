@@ -54,6 +54,8 @@ const LICENSE_KEYED = [
   "license_refusals",
   "license_relinks",
   "license_store_grants",
+  // U-03: Config's licence-override migration report.
+  "override_migration_report",
   "portal_license_links",
   "registry_tokens",
 ].sort();

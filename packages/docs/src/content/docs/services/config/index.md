@@ -98,8 +98,9 @@ rows through a Core-mediated seam.
 | `edge_mint_config`    | Edge-mint recipes — `id`, `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `audience`, `auth_page_template`.                                                                                                            |
 | `edge_mint_approvals` | Operator approvals of edge-mint recipes — the approved `alg`, `signing_key_secret`, `kid`, `claims_template_json`, `ttl_seconds`, `audience`, plus `open_registration_acknowledged`, `approved_at`, `approved_by`. Written only by the admin API. |
 
-The layered merge that turns a catalog, a tier's profile, a license's profiles, license overrides,
-and device overrides into one effective payload lives in **Core** (`core/payload.ts`), not here —
+The layered merge that turns a catalog, a tier's profile, a license's profiles, store grants,
+license overrides, account overrides and device overrides into one effective payload lives in
+**Core** (`core/payload.ts`), not here —
 License's entitlements and Config's `config` + `secrets` maps are sliced from the _same_ merged
 result, by different services, so the walk has to happen once or the two documents could quietly
 disagree about precedence. Document **assembly** — stamping the envelope onto that slice — lives

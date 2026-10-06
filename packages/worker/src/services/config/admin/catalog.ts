@@ -27,6 +27,8 @@
  * `ProductCatalog`), so the admin surface now says so.
  */
 
+import { parseAccountOverridePayload } from "../../../core/accountOverrides.js";
+import { licenseConfigOverridesRetired } from "../../../core/overrideMigration.js";
 import { Catalog } from "@polaris-key/catalog";
 import { validateCatalogCloudSync } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
@@ -289,9 +291,12 @@ async function oneVersion(
 
 /**
  * `GET config/catalog/usage?key=a&key=b` (A-7b): for each key, the profiles whose payload sets
- * it, the tiers that inherit one of those profiles, and the licenses whose own overrides set it.
- * The catalog editor's review cross-checks removed keys against this, and the catalog's key
- * drawer lists it as "Overridden by". Ids and names only — never a value.
+ * it, the tiers that inherit one of those profiles, the licenses whose own overrides set it, and
+ * the accounts whose account overrides set it (U-03, by pairwise subject). The catalog editor's
+ * review cross-checks removed keys against this, and the catalog's key drawer lists it as
+ * "Overridden by". Ids and names only — never a value. Once the licence-override migration has
+ * completed, a licence's config and secrets are no longer delivered, so only its entitlement
+ * overrides count as a licence's use.
  */
 async function usage(ctx: ConfigAdminContext): Promise<Response> {
   const { req, db, product } = ctx;
@@ -321,12 +326,25 @@ async function usage(ctx: ConfigAdminContext): Promise<Response> {
   }));
   const sets = (p: ReturnType<typeof parsePayload>, key: string): boolean =>
     key in p.config || key in p.secrets || key in p.entitlements;
+  const retired = await licenseConfigOverridesRetired(db);
+  const licenseSets = (p: ReturnType<typeof parsePayload>, key: string) =>
+    retired ? key in p.entitlements : sets(p, key);
+  const accounts = (
+    await db.all<{ subject: string; payload_json: string }>(
+      "SELECT subject, payload_json FROM account_overrides WHERE product = ? ORDER BY subject",
+      product.slug,
+    )
+  ).map((a) => ({
+    subject: a.subject,
+    payload: parseAccountOverridePayload(a.payload_json),
+  }));
   const out: Record<
     string,
     {
       profiles: { id: string; name: string }[];
       tiers: { id: string; label: string; profile: string }[];
       licenses: { id: string; name: string | null; email: string | null }[];
+      accounts: { subject: string }[];
     }
   > = {};
   for (const key of keys) {
@@ -338,8 +356,11 @@ async function usage(ctx: ConfigAdminContext): Promise<Response> {
         .filter((t) => t.profile_id !== null && ids.has(t.profile_id))
         .map((t) => ({ id: t.id, label: t.label, profile: t.profile_id! })),
       licenses: parsedLicenses
-        .filter((l) => sets(l.payload, key))
+        .filter((l) => licenseSets(l.payload, key))
         .map((l) => ({ id: l.row.id, name: l.row.name, email: l.row.email })),
+      accounts: accounts
+        .filter((a) => key in a.payload.config || key in a.payload.secrets)
+        .map((a) => ({ subject: a.subject })),
     };
   }
   return adminJson({ keys: out });

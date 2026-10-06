@@ -9,7 +9,8 @@
  * they are assembled from the SAME stack of stored layers:
  *
  *     catalog defaults  →  tier's profile  →  the license's profiles (in order)
- *                       →  store grants (P6-01)  →  license overrides  →  device overrides
+ *                       →  store grants (P6-01)  →  license overrides  →  ACCOUNT OVERRIDES (U-03)
+ *                       →  device overrides
  *
  * and that stack is jointly owned: the catalog and the profiles are Config's rows, the tier and
  * the license are License's, the device is Core's. Duplicating the walk in both services would
@@ -36,6 +37,8 @@ import type { ManagedEntry } from "@polaris-key/protocol";
 import type { Db } from "../db/types.js";
 import { mergePayloads } from "../merge.js";
 import { storeGrantLayer } from "./storeGrants.js";
+import { accountOverrideLayer } from "./accountOverrides.js";
+import { licenseConfigOverridesRetired } from "./overrideMigration.js";
 import {
   getActiveSchema,
   getProfile,
@@ -99,6 +102,35 @@ async function catalogDefaultPayload(
 }
 
 /**
+ * The licence overrides as the merge reads them. Before the licence-override migration's run
+ * completes, the whole column (the expand phase: both layers are read, S-17 §5.12). From its
+ * completion, `entitlements` only (step 5): config and secrets live on the account override layer,
+ * and whatever the column still holds until the nightly sweep empties it is never delivered.
+ * The migration state is read only when the column carries a config or secret key at all.
+ */
+async function licenseOverrideLayer(
+  db: Db,
+  overridesJson: string | null,
+): Promise<string | null> {
+  if (!overridesJson) return overridesJson;
+  let parsed: Partial<ManagedPayload>;
+  try {
+    parsed = JSON.parse(overridesJson) as Partial<ManagedPayload>;
+  } catch {
+    return overridesJson;
+  }
+  const carries = (b: unknown): boolean =>
+    b !== null && typeof b === "object" && Object.keys(b).length > 0;
+  if (!carries(parsed.config) && !carries(parsed.secrets)) return overridesJson;
+  if (!(await licenseConfigOverridesRetired(db))) return overridesJson;
+  return JSON.stringify({
+    config: {},
+    secrets: {},
+    entitlements: parsed.entitlements ?? {},
+  });
+}
+
+/**
  * Walk every managed-payload layer for one device into a single effective payload.
  *
  * `license` is NULLABLE, and that is the D-08 case on the wire: a product that runs Config with
@@ -106,6 +138,15 @@ async function catalogDefaultPayload(
  * (WIRE-CONTRACT-V3 §2.2). With no licence the tier, the licence profiles and the licence
  * overrides simply contribute no layer — catalog defaults and the device's own overrides remain,
  * which is exactly the right answer rather than a special case.
+ *
+ * The ACCOUNT OVERRIDE layer (U-03, plans/U-01.md §6.3) is read OUTSIDE the licence block: a
+ * licence-less device signed in to an account gets its account's layer, and a floating licence
+ * gets none (`core/accountOverrides.ts` `overrideSubject`). It carries only `config` and
+ * `secrets`, so the buckets stay disjoint: entitlements still come from the tier, the profiles,
+ * the store grants and the licence's own overrides alone. It sits after the licence overrides and
+ * before the device's, so an operator's account override beats a store grant and a licence-level
+ * value (S-17 §5.12), and a device override still beats both. `opts.entitlementsOnly` skips it for
+ * a caller that reads `entitlements` alone (the result's entitlements are identical either way).
  *
  * No sealed value is opened here and no admin policy is injected here; see the file header.
  */
@@ -115,6 +156,7 @@ export async function resolveMergedPayload(
   license: LicenseRow | null,
   device: DeviceRow | null | undefined,
   now: number,
+  opts: { entitlementsOnly?: boolean } = {},
 ): Promise<MergedPayload> {
   const layers: (string | null | undefined)[] = [
     await catalogDefaultPayload(db, product, now),
@@ -139,8 +181,16 @@ export async function resolveMergedPayload(
     // and BEFORE the licence's own overrides, so an operator's override of the same flag wins
     // (`core/storeGrants.ts`).
     layers.push(await storeGrantLayer(db, product, license.id));
-    layers.push(license.overrides_json);
+    layers.push(
+      opts.entitlementsOnly
+        ? license.overrides_json
+        : await licenseOverrideLayer(db, license.overrides_json),
+    );
   }
+
+  // U-03: outside `if (license)`, so a licence-less signed-in device gets its account's layer.
+  if (!opts.entitlementsOnly)
+    layers.push(await accountOverrideLayer(db, product, license, device));
 
   layers.push(device?.overrides_json ?? null);
   return { payload: mergePayloads(...layers), tier };

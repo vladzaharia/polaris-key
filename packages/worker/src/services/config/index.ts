@@ -17,6 +17,9 @@ import { handleConfigRoutes } from "./routes.js";
 import { hasApprovedEdgeMintRecipes } from "./mint.js";
 import { handleConfigAdmin } from "./admin/index.js";
 import { CONFIG_SETTINGS_SLICE } from "./settings.js";
+// U-03: registers the account override layer with Core's subject-store registry (merge, delete,
+// export), at module load like every store (`core/subjectHooks.ts`).
+import "./accountOverrideStore.js";
 
 export const configService: ServiceDescriptor = {
   slug: "config",
@@ -25,6 +28,19 @@ export const configService: ServiceDescriptor = {
   handle: handleConfigRoutes,
   /** `config/{catalog,profiles,mint}` on the console API (§R1; `mint` is P0-12). */
   adminHandle: handleConfigAdmin,
+  /**
+   * Licence deletion (`core/licenseDelete.ts`): the licence-override migration's report rows for
+   * the deleted licence go with it (U-03). The account override layer is keyed by the account,
+   * not the licence, so it stays.
+   */
+  licenseDelete: {
+    statements: ({ product, licenseId }) => [
+      {
+        sql: "DELETE FROM override_migration_report WHERE product = ? AND license_id = ?",
+        params: [product, licenseId],
+      },
+    ],
+  },
   /**
    * Config's slice of `/.well-known/polaris.json` (design spec §4.3): the document and catalog
    * URLs, the catalog version a client should expect, and whether edge minting is available.

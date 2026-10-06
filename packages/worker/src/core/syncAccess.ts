@@ -72,6 +72,7 @@ export async function syncAccess(
       anchor,
       device,
       now,
+      { entitlementsOnly: true },
     );
     injectAdminPolicy(payload, tier, anchor, tighterMin, tighterMax);
     entitlements = Object.fromEntries(

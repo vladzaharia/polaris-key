@@ -53,7 +53,14 @@ export function stepUpHref(hash: string): string {
   return `/manage/login?stepUp=1&returnTo=${encodeURIComponent(`/manage/${hash}`)}`;
 }
 
-function StepUpCallout({ hash }: { hash: string }): React.ReactElement {
+/** "Sign in again to continue", landing back on `hash`. `children` says what needs it. */
+export function StepUpCallout({
+  hash,
+  children,
+}: {
+  hash: string;
+  children?: React.ReactNode;
+}): React.ReactElement {
   return (
     <Callout
       tone="warning"
@@ -67,13 +74,14 @@ function StepUpCallout({ hash }: { hash: string }): React.ReactElement {
         </a>
       }
     >
-      Moving a license needs a sign-in from the last five minutes. You come back
-      to this user afterwards.
+      {children ??
+        "Moving a license needs a sign-in from the last five minutes. You come back to this user afterwards."}
     </Callout>
   );
 }
 
-function useStepUp(open: boolean): {
+/** Is the operator's sign-in fresh enough while `open`; `markStale` after a 403 `step_up_required`. */
+export function useStepUp(open: boolean): {
   fresh: boolean;
   markStale: () => void;
 } {

@@ -368,13 +368,13 @@ is still under it, and _Safe to delete PLATFORM_KEK_ once nothing is.
 
 Five classes of value are covered, and all five are counted and swept together:
 
-| `counts` bucket       | Where it lives                                                                                                  |
-| --------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `keys`                | `product_keys.enc_private_json` — per-product signing keys                                                      |
-| `secrets`             | `product_secrets.enc_value_json` — per-product secrets                                                          |
-| `outletCredentials`   | `outlet_credentials.enc_value_json` — store credentials (App Store Connect, Google Play, Partner Center; P5-01) |
-| `managed`             | catalog-declared managed secrets sealed inside `profiles.payload_json` and `licenses.overrides_json` (R12-02)   |
-| `platformCredentials` | `platform_credentials.enc_value_json` — team store credentials stored in the console (A-16)                     |
+| `counts` bucket       | Where it lives                                                                                                                                        |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `keys`                | `product_keys.enc_private_json` — per-product signing keys                                                                                            |
+| `secrets`             | `product_secrets.enc_value_json` — per-product secrets                                                                                                |
+| `outletCredentials`   | `outlet_credentials.enc_value_json` — store credentials (App Store Connect, Google Play, Partner Center; P5-01)                                       |
+| `managed`             | catalog-declared managed secrets sealed inside `profiles.payload_json`, `licenses.overrides_json` and `account_overrides.payload_json` (R12-02, U-03) |
+| `platformCredentials` | `platform_credentials.enc_value_json` — team store credentials stored in the console (A-16)                                                           |
 
 ### Rotating PLATFORM_KEK
 
@@ -448,7 +448,7 @@ migration). Do not skip step 6.
    ```
 
    - `limit` bounds the work per call: one unit per `product_keys` / `product_secrets` row, and
-     one per `profiles` / `licenses` row (a payload row may carry several managed secrets, all
+     one per `profiles` / `licenses` / `account_overrides` row (a payload row may carry several managed secrets, all
      re-sealed together under one compare-and-swap).
    - `skipped` — a concurrent admin write (key rotation, `secret.set`) won the compare-and-swap
      for that row. It is already sealed under the active kid or will be picked up next pass.
@@ -1459,6 +1459,100 @@ not available_ and the rest of the card works as before.
 - **Discovery.** Google's and Apple's discovery documents and keys are cached for an hour per
   isolate. A sign-in that answers _… sign-in is unavailable right now_ is the provider's endpoint
   failing, or answering with a host outside the allowlist (`providers/net.ts`).
+
+## Licence override migration (U-03)
+
+The licence-level config override layer is removed on every product and replaced by the
+**account override**: managed config an operator sets for one account on one product (notes/S-17
+§5.12; owner decisions 3, 4, 20 and 21). Devices get the layer of the account signed in on them,
+else of their licence's owner; a floating licence gets none. Entitlement overrides stay on the
+licence. Operators edit the layer on a user's record (Users → a user → Overview), or with
+`PUT /manage/api/products/<slug>/users/<subject>/overrides`.
+
+Until the migration runs, both layers are read (the account layer above the licence's) and every
+document is byte-identical to before: the account layer is empty until someone writes one. The
+migration is **one platform-wide run that the owner schedules**. Nothing in the Worker starts it;
+it stays off until the steps below are taken by hand, in order. Agents never run any of it against
+staging or production, and never run `wrangler` against a remote.
+
+**Owner steps (production).**
+
+1. **Deploy.** The `account_overrides` migration ships with the release that carries U-03 and is
+   applied by the normal deploy. Every licence keeps working unchanged.
+2. **Dry run on a production-shaped copy.** Either in the console (Platform → Override migration →
+   Dry run), which writes nothing, or offline, with no Worker and no KEK:
+
+   ```sh
+   npx wrangler d1 export polaris_key_prod --env prod --remote --output prod.sql   # owner only
+   pnpm --filter @polaris-key/worker override-migration:dry-run -- --sql prod.sql --out ovm-dry
+   ```
+
+   `ovm-dry/` then holds `inventory.json`, `report.json` and `report.csv`: per product, every
+   licence carrying config or secret overrides, whether it moves to its owner's account overrides
+   (`moved`), loses values to another licence of the same owner (`collapsed`, with the kept and
+   lost values), or is dropped (`dropped`: no account). Secret values are never in any of them
+   (names only). The tool loads the copy into memory and fails if the dry run changed anything.
+   Delete `prod.sql` afterwards: it holds customer data.
+
+3. **Flag the prerequisites** once the login card (I-07) **and** the portal Library with Activate
+   License (I-11) are live in production (decision 21: customers must be able to add their
+   licence to an account during the notice). Platform → Override migration → flag each, or
+   `PUT /manage/api/platform/override-migration/prerequisites` with `{"loginCard":true,"library":true}`.
+   The notice is refused until both are set.
+
+   **Before the notice: OIDC-provisioned secrets on licences with no account (decision 4).** A
+   product whose Identity provisioning writes a secret from a sign-in claim (djdl's
+   `proxy.subscriptionUrl`) keeps that secret on the licence until the run; from the run on, its
+   only target is the licence owner's account overrides. So **OIDC licences that are not in an
+   account** (no `account_id`: the customer never added the licence in the portal Library, and
+   LX-26's auto-attach never matched a verified email) **stop receiving provisioned secrets**:
+   from the run's start, every sign-in (`updateLicenseOnSignIn`, and `activateFromIdentity`'s
+   claim and new-licence paths in `services/identity/oidc.ts`) removes them from the licence
+   instead of renewing them, and from the run's completion the licence stops delivering any it
+   still holds. A sign-in during the run can strip the secret before the run reaches the product,
+   so such a licence may then be missing from the report: count them from the dry run, before the
+   notice. They are the `dropped` rows whose `keys.secrets` include a key the provisioning
+   declares:
+
+   ```sh
+   jq '[.[] | select(.outcome == "dropped" and (.keys.secrets | index("proxy.subscriptionUrl")))] | length' ovm-dry/report.json
+   ```
+
+   In the console, the product's licence list under Platform → Override migration shows the same
+   licences with their `secretKeys`. Ask those customers to add the licence to their account
+   during the notice: one that does keeps the secret through the owner line.
+
+4. **Start the notice** (`POST …/override-migration/notice`). The run becomes possible 30 days
+   later (`runNotBefore`). During the window the inventory is recomputed nightly, so the count to
+   be dropped falls as customers attach; the console shows it on every affected product's
+   Licenses page. Operators can ask those customers to add the licence to their account (the
+   licence page offers the portal's Activate License link). Withdraw with
+   `DELETE …/override-migration/notice` if needed; a new notice starts a fresh 30 days.
+5. **Run it** on or after the run date: sign in to the console again (the run needs a sign-in from
+   the last 5 minutes), then Platform → Override migration → Run, or
+   `POST /manage/api/platform/override-migration/run`, repeated while `progress.done` is false
+   (each call processes up to 25 products). From the first call,
+   `PUT …/licenses/<id>/overrides` refuses config and secrets (entitlements stay writable) and the
+   OIDC provisioning writer targets the owner's account overrides; an OIDC licence with no account
+   stops receiving its provisioned secrets from here on (see before step 4). When `done` is true,
+   documents stop reading config and secrets from licences. Each licence touched has an audit row
+   (`license.overrides.migrated` or `license.overrides.dropped`), and the platform activity log
+   has the start and the completion.
+6. **The report** (Platform → Override migration → Report, or
+   `GET …/override-migration/report?format=csv[&product=<slug>]`) stays 90 days; use it to
+   re-apply a dropped or lost value by hand once the customer has an account. Secret values are
+   never in it: re-enter those from the source.
+7. **After 90 days** the nightly job deletes the report and empties the licences' config and
+   secrets columns (entitlements kept). Nothing to do.
+
+**Rolling back.** Before step 5 nothing changed. Between the run and the 90-day mark the licences
+still hold their old config and secrets, so a Worker built before U-03 would deliver them again
+(the account rows it ignores); a dropped licence's values come back that way too. **Do not roll
+back past U-03 once the columns are emptied:** the licence values are gone, and only the account
+rows (which an older Worker does not read) hold them.
+
+**KEK rotation** covers the account rows: their sealed secrets are counted and re-sealed by the
+`managed` bucket of the KEK sweep (above).
 
 ## The blob collector (P4-14)
 

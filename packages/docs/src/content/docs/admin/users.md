@@ -53,6 +53,17 @@ The record has four tabs:
 
 A **Data** tab joins them on products that run Cloud Sync.
 
+### Account overrides
+
+With Config on, **Overview** also holds the person's **account overrides**: managed config (config
+and secret keys) for this person on this product. They reach every device signed in to their
+account on the product and the devices of licenses they own that were activated with a key; a
+license with no account gets none. Entitlement overrides stay on each license. Values are checked
+against the active catalog, secrets are stored sealed and never shown again, and each save is
+recorded in **Activity** with the key names. When two accounts merge, the surviving account's
+values win and every key both had set is listed in **Activity**. See
+[Account overrides](/docs/services/config/management-states/#account-overrides).
+
 ### Export and data deletion
 
 **Export JSON** downloads everything this product holds for the person: the record above and

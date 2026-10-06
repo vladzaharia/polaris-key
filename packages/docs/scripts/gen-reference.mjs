@@ -372,6 +372,10 @@ const TABLE_OWNERS = {
     "profiles",
     "edge_mint_config",
     "edge_mint_approvals",
+    // U-03: the account override layer and the licence-override migration (S-17 §5.12).
+    "account_overrides",
+    "override_migration_report",
+    "override_migration",
   ],
   release: [
     "release_config",

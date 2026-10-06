@@ -6059,6 +6059,69 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   `export`; no claimed table has an `account_id` column. A store added without its hooks fails the
   gate instead of leaving data behind after a merge or a deletion.
 
+### The account override layer and the licence-override migration (U-03)
+
+Operators' managed config for one account on one product (`account_overrides`, keyed by the
+product's pairwise subject) replaces the licence's config and secret overrides on every product
+(notes/S-17 §5.12, owner decisions 3, 4, 20 and 21). Core merges it after the licence overrides
+and before the device's (`core/payload.ts`); a one-time, owner-run migration moves owned licences'
+values onto it and drops unowned licences'.
+
+- **Whose layer (S-17 T16, intended).** `overrideSubject` (`core/accountOverrides.ts`) is the
+  Cloud Sync principal (`resolveSyncPrincipal`, with all of its checks: an authorized device, a
+  live or aliased subject, never a floating licence, never a licence the bound account removed
+  from its library) and, failing that, the licence owner's existing subject. The owner line is
+  Config's alone: it lets a licence-key device of an owned licence receive the owner's overrides,
+  which is exactly what the licence override delivered before the migration, and nothing of the
+  account itself (no Cloud Sync data, no personal details). Cloud Sync code may still not call any
+  owner accessor (`test/subjectStores.test.ts`). A floating licence gets no layer, even with a
+  binding on the device. The owner line reads the subject without creating one, so a document GET
+  writes nothing.
+- **No account id leaves.** Rows, the console route, the inventory, the dry run, the report, the
+  audit rows and the export name the owner only by the product's pairwise subject (S-16 §5.1);
+  the run groups licences by account internally only. Tests assert no account id appears.
+- **Secrets stay sealed.** Account-layer secrets (and config keys the catalog flags `secret`) are
+  sealed under PLATFORM_KEK with the same AAD as the licence's (`…:product-secret:managed:<key>`),
+  so the run copies sealed values as they are and seals any legacy plaintext on the way; the KEK
+  sweep covers the table. The console never echoes a value back (`redactPayload`). The inventory,
+  the dry run, the report (and its CSV), the export and the merge's collision audit row never
+  carry a secret: a value is shown only when the active catalog positively declares the key a
+  non-secret `config` key and the stored value is not a sealed envelope (fail closed). Tests feed
+  sealed and plaintext secrets through every output and search for them.
+- **The migration cannot start early or by accident.** The notice is refused until an operator
+  flags the login card (I-07) and the Library (I-11) live in production, and the guard is the
+  conditional write itself; the run is refused before the 30-day notice window ends, needs the
+  operator's step-up (a sign-in from the last 5 minutes), runs under a lease so two requests never
+  process one product at once (renewed per product, cleared only by its holder), and resumes
+  exactly (report rows are the per-licence progress marker). Its account-row write is a
+  compare-and-set on the row it planned from, with that unit's report and audit rows written only
+  if it applied, so an operator's edit or a sign-in that lands meanwhile is re-planned on, never
+  overwritten. The licence route's freeze check and its write are one statement. Every step is in the platform activity log; every licence the run touches has an audit
+  row. Nothing in the Worker starts the run: the nightly job only refreshes the inventory, purges
+  the report after 90 days and, after the report window, empties the licences' config and secrets
+  columns. Residual: the prerequisites are facts about production that only an operator can
+  assert; a wrong flag starts the notice early (the owner sets them, RUNBOOK).
+- **Freeze, then retire.** From the run's start, `PUT /licenses/<id>/overrides` refuses config and
+  secrets (entitlements stay writable, decision 20) and the OIDC provisioning writer puts its
+  secrets on the owner's account row; from its completion, documents stop reading config and
+  secrets from licences. Until the columns are emptied (90 days later), the licence values remain
+  in D1 and the run can be reasoned about or reversed by hand; the report keeps non-secret values
+  for re-application.
+- **Data the report holds.** A licence's own email (`buyer_email`), key names, non-secret config
+  values and the owner's subject, for 90 days, platform admins only. A subject's report rows go
+  with its account × product data (the store's `delete`: per-product removal, account deletion,
+  the console's data deletion) and follow it through a merge. Deleting a product deletes all of
+  its account overrides and report rows (`deleteProduct`), and deleting a licence its report rows.
+- **Merges never overwrite silently.** The registered store's `merge` keeps the survivor's value
+  per key, copies keys only the absorbed account had (secrets copied sealed, never decrypted),
+  deletes the absorbed row in the same batch, and lists every collision in the product's activity
+  log (`user.overrides.merge`, non-secret values only). It is idempotent, as the registry requires.
+- **Remove from my library (S-24 D19, PX-23).** A device bound to the account that removed the
+  licence from its library gets no account layer from that licence: `overrideSubject` reads
+  LX-26's auto-attach block for the (licence, account) pair itself (PX-23 adds the same check to
+  the Cloud Sync principal), and the owner line follows `licenses.account_id`, which the removal
+  cleared. Re-adding the key lifts the block; other accounts' devices are unaffected (a test).
+
 ### Discover: free offers and "Add to library" (PX-W10, PS-03, PS-04)
 
 `GET /api/discover` lists the products the signed-in account could add, `GET /api/discover/<p>` is

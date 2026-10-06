@@ -34,6 +34,7 @@ import {
   type Facet,
 } from "../../../ui/data-table/index.js";
 import { CreateLicenseDialog } from "./CreateLicenseDialog.js";
+import { OverrideMigrationNotice } from "./OverrideMigrationNotice.js";
 import {
   BulkDeleteDialog,
   CleanupDialog,
@@ -364,6 +365,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         ) : undefined
       }
     >
+      <OverrideMigrationNotice slug={slug} />
       <DataTable<LicenseSummary>
         id="licenses"
         caption="Licenses"

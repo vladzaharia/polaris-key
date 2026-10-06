@@ -275,6 +275,150 @@ export interface PlatformSettingsView {
   warnings: { code: string; message: string; names: string[] }[];
 }
 
+// ── platform: the licence override migration (U-03) ─────────────────────────────
+
+/**
+ * Where the platform-wide migration of licence config and secret overrides onto account
+ * overrides stands (worker `admin/handlers/overrideMigration.ts` `stateView`):
+ * `idle` (no notice), `notice` (the 30-day notice runs), `running` (the run started; licence
+ * config and secrets are frozen) and `completed`.
+ */
+export type OverrideMigrationPhase =
+  | "idle"
+  | "notice"
+  | "running"
+  | "completed";
+
+/** One prerequisite flagged live in production by a platform admin (`by` is a subject). */
+export interface OverrideMigrationFlag {
+  liveAt: number | null;
+  by: string | null;
+}
+
+/** One product's counts in the daily inventory. */
+export interface OverrideMigrationProductCounts {
+  product: string;
+  /** Licences carrying config or secret overrides. */
+  licences: number;
+  /** …of which owned: they move to the owner's account overrides. */
+  owned: number;
+  /** …of which unowned: dropped at the run. */
+  dropped: number;
+  /** Accounts holding several such licences of the product (their values collapse). */
+  collapsingAccounts: number;
+}
+
+export interface OverrideMigrationInventory {
+  computedAt: number;
+  products: OverrideMigrationProductCounts[];
+  totals: { licences: number; owned: number; dropped: number };
+}
+
+export interface OverrideMigrationState {
+  phase: OverrideMigrationPhase;
+  noticeDays: number;
+  reportDays: number;
+  prerequisites: {
+    /** I-07: the login card. */
+    loginCard: OverrideMigrationFlag;
+    /** I-11: the portal Library. */
+    library: OverrideMigrationFlag;
+  };
+  notice: {
+    startedAt: number | null;
+    by: string | null;
+    runNotBefore: number | null;
+    /** The notice window ended and the run has not completed. */
+    runAllowed: boolean;
+  };
+  run: {
+    id: string | null;
+    startedAt: number | null;
+    by: string | null;
+    completedAt: number | null;
+    productsDone: string[];
+    reportExpiresAt: number | null;
+    columnsEmptiedAt: number | null;
+  };
+  inventory: OverrideMigrationInventory | null;
+}
+
+/** One licence of a product's inventory: key names only, never a value or an account id. */
+export interface OverrideMigrationLicence {
+  licenseId: string;
+  owned: boolean;
+  ownerSubject: string | null;
+  buyerEmail: string | null;
+  configKeys: string[];
+  secretKeys: string[];
+  lastUpdatedAt: number;
+}
+
+export interface OverrideMigrationResponse {
+  state: OverrideMigrationState;
+  /** With `?product=`: that product's licences and its live report row count. */
+  product?: {
+    slug: string;
+    counts: OverrideMigrationProductCounts;
+    licences: OverrideMigrationLicence[];
+    reportRows: number;
+  };
+}
+
+export type OverrideMigrationOutcome = "moved" | "collapsed" | "dropped";
+
+/** A value lost when several licences of one account collapse onto its account overrides. */
+export interface OverrideMigrationCollapse {
+  bucket: "config" | "secrets";
+  key: string;
+  /** The licence id whose value won, or `"account"` for a value already on the account. */
+  keptFrom: string;
+  /** Present only for a reportable value: never a secret. */
+  kept?: unknown;
+  lost?: unknown;
+}
+
+/** A report row, as the dry run returns it and the run writes it. Never a secret value. */
+export interface OverrideMigrationReportRow {
+  product: string;
+  licenseId: string;
+  outcome: OverrideMigrationOutcome;
+  /** The owner's subject; `null` when dropped, or (dry run) before the run creates it. */
+  subject: string | null;
+  subjectCreatedAtRun?: true;
+  buyerEmail: string | null;
+  keys: { config: string[]; secrets: string[] };
+  values: {
+    config?: Record<string, unknown>;
+    collapsed?: OverrideMigrationCollapse[];
+  };
+}
+
+/** A stored report row (`GET …/report`), kept for the report window. */
+export interface OverrideMigrationStoredRow extends OverrideMigrationReportRow {
+  runId: string;
+  createdAt: number;
+  expiresAt: number;
+}
+
+export interface OverrideMigrationDryRun {
+  computedAt: number;
+  inventory: OverrideMigrationInventory;
+  report: OverrideMigrationReportRow[];
+}
+
+export interface OverrideMigrationProgress {
+  runId: string;
+  done: boolean;
+  completedAt: number | null;
+  productsDone: string[];
+  productsRemaining: string[];
+  /** Accounts whose row kept changing under the run in this call: their product is retried by the
+   *  next call (absent from a Worker before the review fix). */
+  conflicts?: number;
+  written: Record<OverrideMigrationOutcome, number>;
+}
+
 /** `PATCH /manage/api/platform/settings/<key>`. `confirm` echoes the key for an L2+ change. */
 export interface PlatformSettingWrite {
   value: string | number;
@@ -1134,6 +1278,29 @@ export interface ProductUserDetail {
 export type ProductUserResponse =
   | { user: ProductUserDetail; mergedInto?: undefined }
   | { mergedInto: string; user?: undefined };
+
+/**
+ * `GET users/<subject>/overrides` (U-03; worker `admin/handlers/accountOverrides.ts`): one
+ * account's managed config on one product, keyed by its pairwise subject. Config and secrets only
+ * (entitlements stay on the licence); a secret, and a config key the catalog flags `secret`, come
+ * back without their value.
+ */
+export interface AccountOverridesView {
+  subject: string;
+  configOn: boolean;
+  overrides: {
+    config: Record<string, ManagedEntry>;
+    secrets: Record<string, ManagedSecretView>;
+  };
+  /** Epoch seconds of the last write; `null` when the account has none yet. */
+  updatedAt: number | null;
+  updatedBy: string | null;
+  /**
+   * The licence override migration has completed: a licence's config and secrets no longer reach
+   * devices. Until then the licence layer sits below this one, so a value here already wins.
+   */
+  licenseLayerRetired: boolean;
+}
 
 export interface RelinkResult {
   ok: true;
@@ -3212,6 +3379,31 @@ export interface FingerprintPolicyResponse {
   source: "manifest" | "admin";
 }
 
+/**
+ * Where a licence's config and secret overrides live (U-03; worker
+ * `services/license/admin/licenses.ts` `configOverridesView`). Entitlement overrides stay on the
+ * licence in every phase.
+ *
+ * - `license`: before any notice; the licence editor edits them.
+ * - `notice`: the migration's 30-day notice is running; `runNotBefore` is the earliest run.
+ * - `moving`: the run has started; config and secrets are frozen here (the PUT refuses them).
+ * - `moved`: the run completed; they live on the owner's account overrides and this licence no
+ *   longer delivers them (the response's `overrides.config` and `overrides.secrets` are empty).
+ */
+export type LicenseConfigPhase = "license" | "notice" | "moving" | "moved";
+
+export interface LicenseConfigOverrides {
+  phase: LicenseConfigPhase;
+  /** An account owns the licence. An unowned licence has no account layer. */
+  owned: boolean;
+  /** The owner's subject on this product, for the Users record link. */
+  ownerSubject: string | null;
+  /** Epoch seconds: the earliest the run can happen (set once the notice started). */
+  runNotBefore: number | null;
+  /** The portal's Activate License page: an offer for the customer, never forced. */
+  signUpUrl: string | null;
+}
+
 export interface LicenseDetail extends LicenseSummary {
   groups?: string[];
   maxOfflineDays?: number | null;
@@ -3219,6 +3411,8 @@ export interface LicenseDetail extends LicenseSummary {
    *  PATCH's `overLimit` apply (a dormant device's seat is reclaimed at the next activation). */
   seatDeviceCount?: number;
   overrides: RedactedPayload;
+  /** U-03. Absent from an older Worker, which reads as phase `license`. */
+  configOverrides?: LicenseConfigOverrides;
   keys: KeyDto[];
   devices: DeviceDto[];
 }
@@ -3319,6 +3513,8 @@ export interface CatalogKeyUsage {
   /** Tiers that inherit one of those profiles as their baseline. */
   tiers: { id: string; label: string; profile: string }[];
   licenses: { id: string; name: string | null; email: string | null }[];
+  /** U-03: the accounts whose account overrides set it, by pairwise subject. */
+  accounts?: { subject: string }[];
 }
 
 // ── tiers ─────────────────────────────────────────────────────────────────────
@@ -3703,6 +3899,19 @@ export class ApiError extends Error {
 }
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await send(path, init);
+  // 204/empty bodies are tolerated (returns undefined cast to T).
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}
+
+/** A read whose body is a file, not JSON (a CSV report): its text, with `call`'s error handling. */
+async function callText(path: string): Promise<string> {
+  return (await send(path)).text();
+}
+
+/** One request: the CSRF header on a write, the sign-in redirect on 401, an `ApiError` on a refusal. */
+async function send(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   const mutating = init.method != null && init.method !== "GET";
   if (mutating) {
@@ -3763,9 +3972,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (message) error.message = message;
     throw error;
   }
-  // 204/empty bodies are tolerated (returns undefined cast to T).
-  const text = await res.text();
-  return (text ? JSON.parse(text) : undefined) as T;
+  return res;
 }
 
 const enc = encodeURIComponent;
@@ -3840,6 +4047,65 @@ const rawApi = {
     call<PlatformSetting>(
       `/manage/api/platform/settings/${enc(key)}?expectedVersion=${expectedVersion}`,
       { method: "DELETE" },
+    ),
+  /**
+   * The licence override migration (U-03): its state and daily inventory; with `product`, that
+   * product's licences (key names only) and its live report row count.
+   */
+  overrideMigration: (product?: string) =>
+    call<OverrideMigrationResponse>(
+      `/manage/api/platform/override-migration${product ? `?product=${enc(product)}` : ""}`,
+    ),
+  /** Flag I-07 (`loginCard`) or I-11 (`library`) live in production, or unflag one before the
+   *  notice (409 `notice_started` after). */
+  putOverrideMigrationPrerequisites: (body: {
+    loginCard?: boolean;
+    library?: boolean;
+  }) =>
+    call<{ state: OverrideMigrationState }>(
+      "/manage/api/platform/override-migration/prerequisites",
+      { method: "PUT", body: JSON.stringify(body) },
+    ),
+  /** Start the 30-day notice. 409 `prerequisites_missing`, `notice_started` or `run_started`. */
+  startOverrideMigrationNotice: () =>
+    call<{ state: OverrideMigrationState }>(
+      "/manage/api/platform/override-migration/notice",
+      { method: "POST" },
+    ),
+  /** Withdraw the notice, before the run only (409 `run_started`). */
+  withdrawOverrideMigrationNotice: () =>
+    call<{ state: OverrideMigrationState }>(
+      "/manage/api/platform/override-migration/notice",
+      { method: "DELETE" },
+    ),
+  /** What the run would do, for every product or one: writes nothing, reads no secret. */
+  overrideMigrationDryRun: (product?: string) =>
+    call<OverrideMigrationDryRun>(
+      "/manage/api/platform/override-migration/dry-run",
+      {
+        method: "POST",
+        body: JSON.stringify(product ? { product } : {}),
+      },
+    ),
+  /**
+   * Start or continue the run: up to 25 products a call, `progress.done` once every product is
+   * through. Needs a step-up (403 `step_up_required`); 409 `notice_not_started`, `notice_window`,
+   * `run_completed` or `run_in_progress`.
+   */
+  runOverrideMigration: () =>
+    call<{
+      progress: OverrideMigrationProgress;
+      state: OverrideMigrationState;
+    }>("/manage/api/platform/override-migration/run", { method: "POST" }),
+  /** The run's report, kept for the report window; secret values are never in it. */
+  overrideMigrationReport: (product?: string) =>
+    call<{ rows: OverrideMigrationStoredRow[] }>(
+      `/manage/api/platform/override-migration/report${product ? `?product=${enc(product)}` : ""}`,
+    ),
+  /** The same report as CSV text, to save as a file. */
+  overrideMigrationReportCsv: (product?: string) =>
+    callText(
+      `/manage/api/platform/override-migration/report?${product ? `product=${enc(product)}&` : ""}format=csv`,
     ),
   /** The KEK keyring: active kid, the ring, per-kid counts. 503 when the ring does not parse. */
   platformKek: () => call<PlatformKekStatus>("/manage/api/products/kek"),
@@ -4751,6 +5017,23 @@ const rawApi = {
   /** The subject's product data as one JSON document (audited server-side). */
   productUserExport: (slug: string, subject: string) =>
     call<Record<string, unknown>>(`${p(slug)}/users/${enc(subject)}/export`),
+  /** The subject's account overrides (U-03): config and secrets, secrets by name only. */
+  productUserOverrides: (slug: string, subject: string) =>
+    call<AccountOverridesView>(`${p(slug)}/users/${enc(subject)}/overrides`),
+  /**
+   * The account override editor's batch, the licence editor's shape. 422 `fields` (catalog
+   * validation, or a `flag` key: entitlements stay on the licence); 409 `conflict` when the row
+   * changed in the meantime.
+   */
+  putProductUserOverrides: (
+    slug: string,
+    subject: string,
+    updates: OverrideUpdate[],
+  ) =>
+    call<{ ok: true; subject: string }>(
+      `${p(slug)}/users/${enc(subject)}/overrides`,
+      { method: "PUT", body: JSON.stringify({ updates }) },
+    ),
   deleteProductUserData: (slug: string, subject: string) =>
     call<{ ok: true; stores: string[] }>(
       `${p(slug)}/users/${enc(subject)}/data/delete`,

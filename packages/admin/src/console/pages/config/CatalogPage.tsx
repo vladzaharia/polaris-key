@@ -473,7 +473,8 @@ function KeyDrawer({
               ) : used &&
                 (used.profiles.length ||
                   used.tiers.length ||
-                  used.licenses.length) ? (
+                  used.licenses.length ||
+                  used.accounts?.length) ? (
                 <DescriptionList
                   items={[
                     {
@@ -530,11 +531,30 @@ function KeyDrawer({
                         "None"
                       ),
                     },
+                    {
+                      // U-03: account overrides, by the product's pairwise subject.
+                      term: "Accounts (account overrides)",
+                      detail: used.accounts?.length ? (
+                        <LinkList>
+                          {used.accounts.map((a) => (
+                            <EntityLink
+                              key={a.subject}
+                              slug={slug}
+                              kind="user"
+                              id={a.subject}
+                            />
+                          ))}
+                        </LinkList>
+                      ) : (
+                        "None"
+                      ),
+                    },
                   ]}
                 />
               ) : (
                 <p className="text-sm text-fg-muted">
-                  No profile or license sets this key; clients use the default.
+                  No profile, license or account sets this key; clients use the
+                  default.
                 </p>
               )}
             </section>

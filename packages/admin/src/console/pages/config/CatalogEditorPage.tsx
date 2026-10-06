@@ -745,6 +745,7 @@ function ReviewDrawer({
     const refs = [
       ...u.profiles.map((p) => `profile ${p.id}`),
       ...u.licenses.map((l) => `license ${l.name || l.id}`),
+      ...(u.accounts ?? []).map((a) => `account ${a.subject}`),
     ];
     for (const p of u.profiles) profilesAffected.add(p.id);
     if (refs.length) referencedBy[key] = refs;
@@ -890,7 +891,7 @@ function ReviewDrawer({
               ) : null}
               {breaking ? (
                 <Checkbox
-                  label={`I understand removed keys are dropped from ${profilesAffected.size} ${profilesAffected.size === 1 ? "profile's" : "profiles'"} payloads and the licenses listed above`}
+                  label={`I understand removed keys are dropped from ${profilesAffected.size} ${profilesAffected.size === 1 ? "profile's" : "profiles'"} payloads and the licenses and accounts listed above`}
                   checked={ack}
                   onCheckedChange={setAck}
                 />

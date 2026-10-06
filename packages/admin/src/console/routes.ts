@@ -403,6 +403,7 @@ export const r = {
   platformOperations: () => globalPage("platform-operations"),
   platformStores: () => globalPage("platform-stores"),
   platformFeeds: () => globalPage("platform-feeds"),
+  platformOverrideMigration: () => globalPage("platform-override-migration"),
   platformFeed: (eco: string, tab?: string) =>
     globalPage("platform-feeds", undefined, { id: eco, tab }),
   platformFeedPackage: (

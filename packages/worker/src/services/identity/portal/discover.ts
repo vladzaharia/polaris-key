@@ -435,14 +435,17 @@ async function issueIdentityLicense(
   account: IssueAccount,
   target: IssueTarget,
 ): Promise<IssueResult> {
-  const { db, now } = ctx;
+  const { env, db, now } = ctx;
   const evidence = target.identity;
   if (!evidence) return { error: "not_eligible" };
   const { identity } = evidence;
   const { product } = target;
   let licenseId: string;
   try {
-    const result = await activateFromIdentity(db, product, identity, now);
+    // U-03: `env` seals provisioned secrets written to the owner's account overrides.
+    const result = await activateFromIdentity(db, product, identity, now, {
+      env,
+    });
     if ("error" in result) return { error: "not_eligible" };
     licenseId = result.licenseId;
   } catch (e) {

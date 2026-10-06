@@ -80,6 +80,7 @@ describe("the sources", () => {
       "Operations",
       "Store connections",
       "Package feeds",
+      "Override migration",
     ]);
   });
 

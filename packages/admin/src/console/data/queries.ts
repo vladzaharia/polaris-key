@@ -46,6 +46,18 @@ export const qk = {
   /** Settings → History: the settings writes of the platform trail (under `platformActivity`). */
   platformSettingsHistory: (): QueryKey => ["platform", "activity", "settings"],
   platformOperations: (): QueryKey => ["platform", "operations"],
+  /**
+   * The licence override migration (U-03): its state and inventory. As a prefix, also the
+   * per-product reads and the report.
+   */
+  overrideMigration: (): QueryKey => ["platform", "override-migration"],
+  /** The run's report, all products (`""`) or one. Under `overrideMigration`. */
+  overrideMigrationReport: (product: string): QueryKey => [
+    "platform",
+    "override-migration",
+    "report",
+    product,
+  ],
   /** Every store connection; as a prefix, also every store's apps listing. */
   platformStores: (): QueryKey => ["platform", "store-connections"],
   platformStoreApps: (store: string, tracks: boolean): QueryKey => [
@@ -105,6 +117,9 @@ export const qk = {
   users: (slug: string) => product(slug, "core", "users"),
   user: (slug: string, subject: string) =>
     product(slug, "core", "users", "record", subject),
+  /** U-03: the subject's account overrides; under the record, so a Users write refreshes it. */
+  userOverrides: (slug: string, subject: string) =>
+    product(slug, "core", "users", "record", subject, "overrides"),
   activity: (slug: string) => product(slug, "core", "activity"),
   secrets: (slug: string) => product(slug, "core", "secrets"),
   keys: (slug: string) => product(slug, "core", "keys"),

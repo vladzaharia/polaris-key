@@ -7,6 +7,8 @@ import { PresentationPage } from "./core/Presentation.js";
 import { ServicesPage } from "./core/Services.js";
 import { SettingsPage } from "./core/Settings.js";
 import { UsersPage } from "./core/Users.js";
+// U-03: fills the user record's account override slot (a side effect, before any record renders).
+import "./core/accountOverridesSlot.js";
 import type { SectionPageProps } from "./types.js";
 
 /** Core: Overview, Services, Devices (with the routed device drawer), Users (I-12), Presentation (HA-06),
