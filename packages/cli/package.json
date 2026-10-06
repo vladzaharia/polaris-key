@@ -12,6 +12,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./mirrors": {
+      "types": "./dist/mirrors.d.ts",
+      "default": "./dist/mirrors.js"
     }
   },
   "files": [
@@ -27,6 +31,7 @@
     "bundle:action": "node scripts/bundle-action.mjs"
   },
   "dependencies": {
+    "@polaris-key/catalog": "workspace:*",
     "@polaris-key/client-core": "workspace:*",
     "@polaris-key/jws": "workspace:*",
     "@polaris-key/manifest": "workspace:*",

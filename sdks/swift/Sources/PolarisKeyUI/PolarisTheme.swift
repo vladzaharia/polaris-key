@@ -33,8 +33,14 @@ public struct PolarisCopy: Sendable {
     public var versionTooNewTitle: String
     public var channelNotEntitledTitle: String
     public var versionBlockSubtitle: String
-    /// PX-W8: the device-limit message, and the action that opens the refusal's `manageUrl`.
-    public var deviceLimitMessage: String
+    /// Activation outcomes (§3.1), defaulting to the shared `ErrorCopy` base. A product overrides
+    /// one by code: `copy.activationMessages[ErrorCode.deviceLimit] = "…"`.
+    public var activationMessages: [String: String]
+    /// Shown when a sign-out could not clear the stored licence.
+    public var signOutFailedMessage: String
+    /// Copy for every other kit component (sign-in, settings, devices, …).
+    public var kit = PolarisKitCopy()
+    /// PX-W8: the action that opens the refusal's `manageUrl` (SIGN-IN.md D-49).
     public var freeDeviceButton: String
     /// Shown under the QR code on a TV, where the link is scanned on a phone.
     public var freeDeviceScanCaption: String
@@ -60,7 +66,8 @@ public struct PolarisCopy: Sendable {
         versionTooNewTitle: String = "Version not yet allowed",
         channelNotEntitledTitle: String = "Channel not entitled",
         versionBlockSubtitle: String = "Your current version isn't permitted to run.",
-        deviceLimitMessage: String = "This license has reached its device limit.",
+        activationMessages: [String: String] = [:],
+        signOutFailedMessage: String = "Sign-out couldn't clear the stored license.",
         freeDeviceButton: String = "Replace a device",
         freeDeviceScanCaption: String =
             "Scan with your phone to free a device, then try again."
@@ -84,9 +91,18 @@ public struct PolarisCopy: Sendable {
         self.versionTooNewTitle = versionTooNewTitle
         self.channelNotEntitledTitle = channelNotEntitledTitle
         self.versionBlockSubtitle = versionBlockSubtitle
-        self.deviceLimitMessage = deviceLimitMessage
         self.freeDeviceButton = freeDeviceButton
         self.freeDeviceScanCaption = freeDeviceScanCaption
+        self.activationMessages = activationMessages
+        self.signOutFailedMessage = signOutFailedMessage
+    }
+
+    /// The sentence for an activation outcome: the product's override for its code, else the
+    /// shared copy (`ActivationResult.message`); nil for `.ok`. Never the raw server body.
+    public func activationMessage(_ result: ActivationResult) -> String? {
+        if result.isOK { return nil }
+        if let custom = activationMessages[result.code] { return custom }
+        return result.message
     }
 }
 

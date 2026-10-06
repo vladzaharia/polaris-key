@@ -162,7 +162,7 @@
     "identity.oidc": {
       "status": "planned",
       "unowned": true,
-      "note": "Native Godot has no completion path for the OIDC redirect; see P1-07, which ships device-code sign-in instead."
+      "note": "Native Godot has no completion path for the OIDC redirect: it waits on the native redirect token route (I-15). The deprecated /identity/auth/poll route is not a substitute. Until then P1-07's device-code sign-in is the path, and identity.sign_in_with_browser() opens it in the system browser."
     },
     "identity.devicecode": {
       "status": "implemented",

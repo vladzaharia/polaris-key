@@ -31,6 +31,7 @@ const ACTIVATE =
 function browserWith(body: unknown): PolarisAdapter {
   const base = makeFakeFetch(null);
   return browserAdapter({
+    auth: "cookie",
     productSlug: "acme",
     fetchImpl: (async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === "string" ? input : String(input);
@@ -69,7 +70,9 @@ describe("adapters forward manageUrl on device-limit", () => {
     });
     const err = await adapter.submitKey("k").catch((e: unknown) => e);
     expect(err).toMatchObject({
-      message: "This license has reached its device limit.",
+      wireCode: "device_limit",
+      activation: { kind: "deviceLimit" },
+      message: expect.stringMatching(/device limit/),
     });
     expect((err as { manageUrl?: string }).manageUrl).toBeUndefined();
     adapter.dispose();

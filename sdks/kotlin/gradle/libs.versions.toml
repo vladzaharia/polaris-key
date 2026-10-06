@@ -18,6 +18,10 @@ godot = "4.7.2.stable"
 playAppUpdate = "2.1.0"
 playAssetDelivery = "2.3.0"
 playIntegrity = "1.6.0"
+# Play Billing for :billing (SP-K05): the latest 8.x on 2026-10-05. Google Play requires Billing
+# Library 8 or later for new apps and app updates from 31 August 2026; 8.3.0 declares minSdk 23
+# (below ours) and no minCompileSdk, so it builds under compileSdk 36 and AGP 8.6.1.
+playBilling = "8.3.0"
 junit = "4.13.2"
 robolectric = "4.14.1"
 androidxTestCore = "1.6.1"
@@ -52,6 +56,7 @@ godot = { module = "org.godotengine:godot", version.ref = "godot" }
 play-app-update = { module = "com.google.android.play:app-update", version.ref = "playAppUpdate" }
 play-asset-delivery = { module = "com.google.android.play:asset-delivery", version.ref = "playAssetDelivery" }
 play-integrity = { module = "com.google.android.play:integrity", version.ref = "playIntegrity" }
+play-billing = { module = "com.android.billingclient:billing", version.ref = "playBilling" }
 junit = { module = "junit:junit", version.ref = "junit" }
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTestCore" }

@@ -6,13 +6,37 @@ services.
 - **Desktop** (Electron/Tauri): wraps `@polaris-key/node` through an injected
   `PolarisBridge` (default `window.polarisKey`). The privileged process owns the token,
   keyring, and loopback-OIDC; the renderer is a thin proxy.
-- **Browser**: cookie-session OIDC against `key.plrs.im` over `fetch(..., { credentials:
-"include" })`. Online-only — no token/keyring/loopback. Sign-in is a full-page redirect.
+- **Browser**: a first-party page uses the cookie session against `key.plrs.im` over
+  `fetch(..., { credentials: "include" })`, signing in by a full-page redirect. A cross-origin
+  or Tauri page uses bearer mode (a device token in IndexedDB, documents verified in-page against
+  `trust.pinnedKeys`). See "Changes in the SDK parity pass" below.
 
 Both adapters satisfy the **same `PolarisAdapter`** and the hooks return the **same shapes**,
 so a component renders identically in either mode (mode-parity). The gate itself is
 `@polaris-key/client-core`'s — the one implementation every JS SDK and the
 conformance corpus run, clock floor included.
+
+## Changes in the SDK parity pass
+
+Three changes can break an existing integration:
+
+- **Entitlements are false unless the gate is usable (S-19 G11).** `isEntitled()`,
+  `useEntitlement()` and the entitlement-value reads now answer `false` (or `undefined`) when the
+  licence is revoked, expired, blocked or otherwise not usable, even though the snapshot still
+  holds the last verified grants. Before, a lapsed licence's grants kept unlocking features.
+- **The browser auth mode defaults to `"auto"`.** A page on the Worker's own origin keeps the
+  cookie session. A page on another origin (an opaque `"null"` origin counts) or inside Tauri
+  now uses bearer mode: a device token in IndexedDB over the CORS-covered routes, every document
+  verified in-page. Bearer mode needs `trust.pinnedKeys` (a Provider prop or a
+  `browserAdapter()` option); without them an `"auto"` page reports `invalid-options` as its
+  identity error and makes no request. Pass `auth: "cookie"` to keep the old behaviour. The
+  Provider also builds its adapter without I/O and starts it from an effect, so a render
+  (server-side included) makes no request.
+- **`PolarisAdapter` has new required methods.** `enroll`, `beginSignIn`, `mintToken`,
+  `commerceBinding`, `commerceClaim`, `discovery`, `offlineDeviceId` and `storeStatus`. The
+  built-in adapters implement all of them, throwing the typed `UnsupportedError` where a
+  transport cannot serve one. A custom adapter passed through `<PolarisKeyProvider adapter>`
+  must add them.
 
 ## Install
 

@@ -18,11 +18,19 @@ extends PKeyResult
 ##   license-disabled      403 license_disabled: the operator disabled the licence
 ##   hardware-mismatch     409: the hardware drifted past the tier's tolerance and the binding was
 ##                         retired (`drift`, `changed`); activating again re-binds and takes a seat
+##   license-expired       403 license_expired: the licence's term ended
+##   attestation-required  403 attestation_required: the product's trust policy wants an
+##                         attested device (PolarisKey.devices.attest() where it runs)
 ##   rate-limited          429: too many attempts; try later (there is no Retry-After)
+##   refused               any other 4xx that carries a server code (registration_closed,
+##                         managed_by_admin, not_found, bad_request, a 403 without a known code,
+##                         and codes a later server adds): `code` is the server's, never
+##                         device-limit (SDK parity §3.1: mapping goes by the code, not the status)
 ##   unsupported           nothing was sent: enrol on web (no machine anchor), `code`
 ##                         `unsupported`, `detail` {feature, reason: "runtime", detail}
 ##   error                 anything else: no answer (`code` is the transport's: `network-error`,
-##                         `timeout`, `local-only`, …), another status, or a 200 without a token
+##                         `timeout`, `local-only`, …), a 5xx, a 4xx without a code, or a 200
+##                         without a token
 ##
 ## The token itself is never on the result: the licence client stores it.
 
@@ -35,6 +43,9 @@ const KIND_ENROLL_CLAIMED := &"enroll-claimed"
 const KIND_LICENSE_DISABLED := &"license-disabled"
 const KIND_HARDWARE_MISMATCH := &"hardware-mismatch"
 const KIND_RATE_LIMITED := &"rate-limited"
+const KIND_LICENSE_EXPIRED := &"license-expired"
+const KIND_ATTESTATION_REQUIRED := &"attestation-required"
+const KIND_REFUSED := &"refused"
 const KIND_UNSUPPORTED := &"unsupported"
 const KIND_ERROR := &"error"
 

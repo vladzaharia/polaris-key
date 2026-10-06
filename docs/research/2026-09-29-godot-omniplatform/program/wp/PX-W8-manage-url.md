@@ -92,6 +92,17 @@ How the branch applied it (fix round 1, after merging main):
   `authorizeDevice`, `license_refusals`) and still answer `authorizationError(authorized, await
 refusalManageUrl(...))`, so a `device_limit` refusal is logged and carries its link.
   `Constants.generated.kt` was regenerated with `gen:constants`, not merged by hand.
+- **Merged with the SDK parity pass (`integ/sdk-parity`).** Main now maps every activation answer
+  by its body code (SDK-PARITY-PASS §3.1). `manageUrl` moved into that mapping: Node
+  `activationRefusal`, React `classifyActivation` and `bridgeActivationOutcome` (so
+  `ActivationOutcome.manageUrl`, mirrored on `PolarisError.manageUrl`), Python
+  `activation_result_from`, Swift `ErrorBody.manageURL`, Kotlin `LicenseEndpoints`. Main's
+  placeholder "Manage devices" button in the Godot panel, with its `manage_url()` stub that
+  returned "", is replaced by PX-W8's **Replace a device**. The Swift kit uses main's public
+  `PolarisQRCode`, and the device-limit message now comes from main's
+  `PolarisCopy.activationMessage`, so PX-W8's `deviceLimitMessage` field is gone. The React
+  transcript replayer, which now replays every transcript, maps the camelCase kinds to the
+  transcripts' kebab case and asserts `manageUrl`.
 - **One validation rule, enforced everywhere** (review round 1 parity nit). client-core's
   `parseManage` no longer leans on `new URL` alone: it requires `<scheme>://` and refuses an `@` or
   `\` in the authority, the rule the Godot and Kotlin ports already applied. Python and Swift now

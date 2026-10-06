@@ -107,7 +107,7 @@ export function ProductHeader({
                 {tier}
               </span>
             ) : null}
-            {/* A quiet non-issue status ("Account-wide") reads as text after a dot, like the tier. */}
+            {/* A quiet non-issue status ("From signing in") reads as text after a dot, like the tier. */}
             {!isIssueStatus(product.status) &&
             product.status.tone !== "success" &&
             (pres.developer || tier) ? (

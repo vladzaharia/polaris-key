@@ -330,7 +330,7 @@
     "signin.choice.origin.keyAdded": "키로 추가됨",
     "signin.choice.origin.storeKey": "{last6}(으)로 끝나는 {store} 키",
     "signin.choice.origin.storeKeyAdded": "{store} 키",
-    "signin.choice.origin.store": "{store}에서 구매",
+    "signin.choice.origin.store": "{store}에서 받음",
     "signin.choice.origin.developer": "{developer} 제공",
     "signin.choice.origin.free": "무료",
     "signin.choice.origin.gift": "선물",

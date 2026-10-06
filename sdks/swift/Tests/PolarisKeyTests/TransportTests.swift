@@ -94,10 +94,10 @@ final class TransportTests: XCTestCase {
 
         // Activation surfaces the refusal as a code the host can render, rather than as an
         // indistinguishable transport failure.
-        guard case .error(let message) = await c.activate(key: "PKEY-XXXX") else {
+        guard case .error(let code, _, _) = await c.activate(key: "PKEY-XXXX") else {
             return XCTFail("activation must refuse")
         }
-        XCTAssertTrue(message.contains("local-only"))
+        XCTAssertEqual(code, PolarisError.localOnly)
 
         // Registration and discovery likewise.
         guard case .error = await c.register() else {
@@ -282,7 +282,8 @@ final class TransportTests: XCTestCase {
         let cases: [(Int, String, ActivationResult)] = [
             (200, #"{"token":"pkeyt_x","schemaVersion":4}"#, .ok(token: "pkeyt_x", schemaVersion: 4)),
             (401, "{}", .unauthorized),
-            (404, "{}", .enrollDisabled),
+            // §3.1: an activation 404 without a code is not "enrolment disabled".
+            (404, "{}", .refused(code: "not_found", status: 404, message: nil)),
             (
                 403, #"{"error":"device_limit","limit":3,"deviceCount":5}"#,
                 .deviceLimit(limit: 3, deviceCount: 5)

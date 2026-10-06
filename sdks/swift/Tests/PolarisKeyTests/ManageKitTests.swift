@@ -13,7 +13,6 @@
         func testCopy() {
             let copy = PolarisCopy()
             XCTAssertEqual(copy.freeDeviceButton, "Replace a device")
-            XCTAssertEqual(copy.deviceLimitMessage, "This license has reached its device limit.")
             XCTAssertFalse(copy.freeDeviceScanCaption.isEmpty)
             XCTAssertEqual(PolarisCopy(freeDeviceButton: "Libérer").freeDeviceButton, "Libérer")
         }

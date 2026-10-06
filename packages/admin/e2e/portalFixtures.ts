@@ -13,8 +13,8 @@ export type PortalScenario =
   | "one"
   | "three"
   | "twelve"
-  /** Account-wide licences: Quill alone, and Drift Kart held by key and account-wide. */
-  | "accountWide";
+  /** Sign-in licences: Quill alone, and Drift Kart held by a Steam key and by signing in. */
+  | "signIn";
 
 type Reply = { status?: number; body: unknown };
 export type Handler = Reply | ((req: Request) => Reply);
@@ -116,17 +116,17 @@ const MORE = [
   lic("saltwind", "Saltwind", { activatedAt: NOW - 15 * DAY }),
 ];
 
-/** Account-wide (signed in, no key) with a device: the License card's "Account-wide · 1 of 5". */
-const QUILL_WIDE = lic("quill", "Quill", {
+/** A sign-in licence (no key) with a device: the License card's "1 of 5 devices", "From signing in". */
+const QUILL_SIGNIN = lic("quill", "Quill", {
   identityProvider: "oidc",
   keyCount: 0,
   activeKeyCount: 0,
   deviceCount: 1,
   activatedAt: NOW - 13 * DAY,
 });
-/** Drift Kart held twice: by key (the best, listed first) and account-wide. */
+/** Drift Kart held twice: by a Steam key (the best, listed first) and by signing in. */
 const DRIFT_KEY = MORE.find((l) => l.product === "drift-kart")!;
-const DRIFT_WIDE = lic("drift-kart", "Drift Kart", {
+const DRIFT_SIGNIN = lic("drift-kart", "Drift Kart", {
   id: "lic_drift-kart-acct",
   identityProvider: "oidc",
   keyCount: 0,
@@ -134,7 +134,7 @@ const DRIFT_WIDE = lic("drift-kart", "Drift Kart", {
   deviceCount: 1,
   activatedAt: NOW - 3 * DAY,
 });
-const ACCOUNT_WIDE_DEVICE: Record<string, [string, string, string]> = {
+const SIGN_IN_DEVICE: Record<string, [string, string, string]> = {
   lic_quill: ["quill-tv", "Living room PC", "windows"],
   "lic_drift-kart-acct": ["drift-deck", "Mara's Steam Deck", "linux"],
 };
@@ -728,8 +728,8 @@ function licensesFor(s: PortalScenario) {
       return [NIGHTFALL, TIDEWATER, EMBER];
     case "twelve":
       return [NIGHTFALL, TIDEWATER, EMBER, MOSSGARDEN, ...MORE];
-    case "accountWide":
-      return [NIGHTFALL, QUILL_WIDE, DRIFT_KEY, DRIFT_WIDE];
+    case "signIn":
+      return [NIGHTFALL, QUILL_SIGNIN, DRIFT_KEY, DRIFT_SIGNIN];
     default:
       return [];
   }
@@ -857,14 +857,14 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
     EMBER,
     MOSSGARDEN,
     ...MORE.filter((l) => l.product !== "quill"),
-    QUILL_WIDE,
-    DRIFT_WIDE,
+    QUILL_SIGNIN,
+    DRIFT_SIGNIN,
   ];
-  // Quill is keyless in every scenario that lists it; only "accountWide" gives it a device.
+  // Quill is keyless in every scenario that lists it; only "signIn" gives it a device.
   const quill =
-    s === "accountWide" ? QUILL_WIDE : MORE.find((l) => l.product === "quill")!;
+    s === "signIn" ? QUILL_SIGNIN : MORE.find((l) => l.product === "quill")!;
   for (const l of ALL.map((x) => (x.product === "quill" ? quill : x))) {
-    const own = ACCOUNT_WIDE_DEVICE[l.id];
+    const own = SIGN_IN_DEVICE[l.id];
     routes[`/api/licenses/${l.product}/${l.id}`] = () => ({
       body: {
         ...l,
@@ -913,6 +913,12 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
       body: { url: "/download/tok" },
     };
   }
+  // PX-W6: where each licence came from; Drift Kart's key licence was bought on Steam (store
+  // name only, never an order id), so its origin reads "Steam key".
+  const purchaseOf = (id: string) =>
+    id === DRIFT_KEY.id
+      ? { source: "store", store: "steam" }
+      : { source: "developer", store: null };
   // PX-10: the product view for the focused flows (seats, devices, declared return targets).
   for (const slug of new Set(ALL.map((x) => x.product))) {
     routes[`/api/products/${slug}`] = () => {
@@ -962,12 +968,14 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
               deviceCount: seats,
               entitlements: [],
               devices,
+              purchase: purchaseOf(l.id),
             },
             // The product's other licences, with their own seats.
             ...held.slice(1).map((x) => ({
               ...libraryItem(x).license,
               entitlements: [],
               devices: [],
+              purchase: purchaseOf(x.id),
             })),
           ],
         },
@@ -1047,7 +1055,7 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
       removed.add("work");
       return { body: { ok: true, deviceId: "work" } };
     };
-  for (const [id, [deviceId]] of Object.entries(ACCOUNT_WIDE_DEVICE)) {
+  for (const [id, [deviceId]] of Object.entries(SIGN_IN_DEVICE)) {
     const product = id === "lic_quill" ? "quill" : "drift-kart";
     routes[`DELETE /api/licenses/${product}/${id}/devices/${deviceId}`] =
       () => {

@@ -21,17 +21,23 @@
 import Foundation
 import PolarisKeyCore
 
-/// The outcome of an activation-like call (`/license/{activate,enroll,token}`).
+/// The outcome of an activation-like call (`/license/{activate,enroll,token}`), sorted by the
+/// body's error CODE, never by status alone (notes/SDK-PARITY-PASS.md §3.1). Every kind carries a
+/// `code`; a refusal this build has no kind for is `.refused` with the server's own code, so a
+/// code the Worker adds later (I-09's `license_owned`, `key_entry_limit`) is never mislabelled as
+/// a device limit.
 public enum ActivationResult: Sendable, Equatable {
     case ok(token: String, schemaVersion: Int)
-    /// Every seat is taken. `manageURL` (PX-W8, WIRE-CONTRACT-V4 §5.3) is the customer-portal
-    /// link that frees one, present while the product's portal is on and already validated by
-    /// `ManageLink.read`. Add the app's return with `ManageLink.withReturn` and, on an
-    /// `/activate` link, the key with `ManageLink.withKey`. It is never an auth failure: open it
-    /// only behind a user action.
+    /// 403 `device_limit`: every seat is taken. `manageURL` (PX-W8, WIRE-CONTRACT-V4 §5.3) is
+    /// the customer-portal link that frees one, present while the product's portal is on and
+    /// already validated by `ManageLink.read`. Add the app's return with `ManageLink.withReturn`
+    /// and, on an `/activate` link, the key with `ManageLink.withKey`. It is never an auth
+    /// failure: open it only behind a user action.
     case deviceLimit(limit: Int?, deviceCount: Int?, manageURL: String? = nil)
+    /// 401: the key is unknown, revoked or no longer usable.
     case unauthorized
-    /// The tier requires a hardware fingerprint this host could not produce.
+    /// 403 `fingerprint_required`: the tier requires a hardware fingerprint this host could not
+    /// produce.
     case fingerprintRequired
     /// Hardware drifted past the tier's tolerance; the binding was retired. Retrying activation
     /// re-binds the new hardware and consumes a seat. (The Worker answers 409, not 403,
@@ -40,7 +46,80 @@ public enum ActivationResult: Sendable, Equatable {
     /// The product does not offer keyless enrollment — surfaced from a 404, which the Worker
     /// uses deliberately to hide the route rather than admit it exists and is closed.
     case enrollDisabled
-    case error(message: String)
+    /// 403 `enroll_claimed`: this machine's free licence belongs to an identity now; sign in.
+    case enrollClaimed
+    /// 403 `license_disabled`: an operator disabled the licence.
+    case licenseDisabled
+    /// 403 `license_expired`.
+    case licenseExpired
+    /// 403 `attestation_required`: the product's device-trust policy wants an attested device.
+    case attestationRequired
+    /// 429 `rate_limited`; `retryAfterSeconds` from a `Retry-After` header when one was sent.
+    case rateLimited(retryAfterSeconds: Int?)
+    /// Any other 4xx: the server's code (or `forbidden` / `not_found` / `bad_request` when the
+    /// body carried none), the status and the server's message.
+    case refused(code: String, status: Int, message: String?)
+    /// No usable answer: `network` (no answer), `server-error` (5xx), `bad_response` (a 200
+    /// without a token), `local-only`, or `store-failed` (the token could not be persisted).
+    case error(code: String, message: String, status: Int? = nil)
+
+    /// The kind's code: the wire code for a refusal, a client code for `.error`, `""` for `.ok`.
+    public var code: String {
+        switch self {
+        case .ok: return ""
+        case .deviceLimit: return ErrorCode.deviceLimit
+        case .unauthorized: return ErrorCode.unauthorized
+        case .fingerprintRequired: return ErrorCode.fingerprintRequired
+        case .hardwareMismatch: return ErrorCode.hardwareMismatch
+        case .enrollDisabled: return ErrorCode.enrollDisabled
+        case .enrollClaimed: return ErrorCode.enrollClaimed
+        case .licenseDisabled: return ErrorCode.licenseDisabled
+        case .licenseExpired: return ErrorCode.licenseExpired
+        case .attestationRequired: return ErrorCode.attestationRequired
+        case .rateLimited: return ErrorCode.rateLimited
+        case .refused(let code, _, _): return code
+        case .error(let code, _, _): return code
+        }
+    }
+
+    public var isOK: Bool {
+        if case .ok = self { return true }
+        return false
+    }
+
+    /// The kind's name in the transcripts' vocabulary (`ok`, `device-limit`, `refused`, …).
+    public var kind: String {
+        switch self {
+        case .ok: return "ok"
+        case .deviceLimit: return "device-limit"
+        case .unauthorized: return "unauthorized"
+        case .fingerprintRequired: return "fingerprint-required"
+        case .hardwareMismatch: return "hardware-mismatch"
+        case .enrollDisabled: return "enroll-disabled"
+        case .enrollClaimed: return "enroll-claimed"
+        case .licenseDisabled: return "license-disabled"
+        case .licenseExpired: return "license-expired"
+        case .attestationRequired: return "attestation-required"
+        case .rateLimited: return "rate-limited"
+        case .refused: return "refused"
+        case .error: return "error"
+        }
+    }
+
+    /// The person-facing sentence for this outcome (`ErrorCopy`), or nil for `.ok`. A hardware
+    /// mismatch names the components that changed.
+    public var message: String? {
+        switch self {
+        case .ok: return nil
+        case .hardwareMismatch(_, let changed):
+            guard let changed, !changed.isEmpty else { return ErrorCopy.message(code) }
+            return ErrorCopy.message(code)
+                .replacingOccurrences(
+                    of: "hardware changed.",
+                    with: "hardware changed (\(changed.joined(separator: ", "))).")
+        default: return ErrorCopy.message(code)
+        }
+    }
 }
 
 public enum LicenseEndpoints {
@@ -103,35 +182,83 @@ public enum LicenseEndpoints {
         do {
             response = try await core.request(url, method: "POST", headers: headers, body: body)
         } catch let error as PolarisError {
-            return .error(message: error.message)
+            return .error(
+                code: error.code == PolarisError.localOnly ? error.code : ErrorCode.network,
+                message: error.message)
         } catch {
-            return .error(message: error.localizedDescription)
+            return .error(code: ErrorCode.network, message: error.localizedDescription)
         }
+        return mapActivationResponse(response, enroll: url == core.endpoints.licenseEnroll)
+    }
 
-        switch response.status {
-        case 200:
+    /// The shared status ladder over one answer (§3.1). Internal so the unit table can drive it
+    /// without a transport.
+    static func mapActivationResponse(_ response: PolarisResponse, enroll: Bool)
+        -> ActivationResult
+    {
+        if response.status == 200 {
             guard let ok = try? JSONDecoder().decode(ActivationOkBody.self, from: response.body)
-            else { return .error(message: "malformed activation response") }
+            else {
+                return .error(
+                    code: ErrorCode.badResponse, message: "malformed activation response",
+                    status: 200)
+            }
             return .ok(token: ok.token, schemaVersion: ok.schemaVersion)
-        case 409:
-            let body = try? JSONDecoder().decode(HardwareMismatchBody.self, from: response.body)
-            return .hardwareMismatch(
-                drift: body?.drift ?? body?.error?.drift,
-                changed: body?.changed ?? body?.error?.changed)
-        case 403:
-            let body = try? JSONDecoder().decode(ForbiddenBody.self, from: response.body)
-            if body?.code == "fingerprint_required" { return .fingerprintRequired }
-            return .deviceLimit(
-                limit: body?.limit ?? body?.error?.limit,
-                deviceCount: body?.deviceCount ?? body?.error?.deviceCount,
-                manageURL: ManageLink.read(body?.manageUrl, body?.error?.manageUrl))
+        }
+        let body = try? JSONDecoder().decode(ErrorBody.self, from: response.body)
+        let code = body?.code
+        let message = body?.message
+        switch response.status {
         case 401:
             return .unauthorized
-        case 404:
+        case 409 where code == nil || code == ErrorCode.hardwareMismatch:
+            return .hardwareMismatch(drift: body?.drift, changed: body?.changed)
+        case 429:
+            return .rateLimited(retryAfterSeconds: retryAfter(response.header("retry-after")))
+        case 404 where code == ErrorCode.enrollDisabled || (enroll && code == nil):
             return .enrollDisabled
+        case 400..<500:
+            switch code {
+            case ErrorCode.deviceLimit?:
+                return .deviceLimit(
+                    limit: body?.limit, deviceCount: body?.deviceCount, manageURL: body?.manageURL)
+            case ErrorCode.fingerprintRequired?: return .fingerprintRequired
+            case ErrorCode.enrollClaimed?: return .enrollClaimed
+            case ErrorCode.licenseDisabled?: return .licenseDisabled
+            case ErrorCode.licenseExpired?: return .licenseExpired
+            case ErrorCode.attestationRequired?: return .attestationRequired
+            case ErrorCode.hardwareMismatch?:
+                return .hardwareMismatch(drift: body?.drift, changed: body?.changed)
+            case ErrorCode.enrollDisabled?: return .enrollDisabled
+            case ErrorCode.rateLimited?:
+                return .rateLimited(retryAfterSeconds: retryAfter(response.header("retry-after")))
+            case let code?:
+                return .refused(code: code, status: response.status, message: message)
+            case nil:
+                // An unknown refusal is never a device limit: it keeps a generic code for its
+                // status, so the host still branches on something stable.
+                let generic: String
+                switch response.status {
+                case 403: generic = ErrorCode.forbidden
+                case 404: generic = ErrorCode.notFound
+                default: generic = ErrorCode.badRequest
+                }
+                return .refused(code: generic, status: response.status, message: message)
+            }
         default:
-            return .error(message: String(decoding: response.body, as: UTF8.self))
+            return .error(
+                code: ErrorCode.serverError,
+                message: message ?? "activation failed with status \(response.status).",
+                status: response.status)
         }
+    }
+
+    /// `Retry-After` in whole seconds (the delta-seconds form; an HTTP date is ignored).
+    static func retryAfter(_ value: String?) -> Int? {
+        guard let value, let seconds = Int(value.trimmingCharacters(in: .whitespaces)),
+            seconds >= 0
+        else { return nil }
+        return seconds
     }
 }
 
@@ -140,73 +267,69 @@ private struct ActivationOkBody: Decodable {
     let schemaVersion: Int
 }
 
-/// The 409 body in BOTH spellings. `error` is a bare CODE STRING in the flat shape the moved
-/// routes kept, and an object in the nested v3 one — so it is decoded permissively rather than
-/// typed, since a decoder that threw on the string form would lose the `drift`/`changed` detail
-/// sitting beside it at the top level.
-private struct HardwareMismatchBody: Decodable {
-    struct Nested: Decodable {
-        let drift: Int?
-        let changed: [String]?
-    }
-    let drift: Int?
-    let changed: [String]?
-    let error: Nested?
-
-    private enum CodingKeys: String, CodingKey {
-        case error, drift, changed
-    }
-
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        drift = try c.decodeIfPresent(Int.self, forKey: .drift)
-        changed = try c.decodeIfPresent([String].self, forKey: .changed)
-        error = try? c.decode(Nested.self, forKey: .error)
-    }
-}
-
-/// The 403 body in BOTH spellings: `{"error":"device_limit","limit":3}` (flat, from the routes
-/// that merely moved) and `{"error":{"code":"…","limit":3}}` (nested, v3). `code` collapses them.
-private struct ForbiddenBody: Decodable {
+/// An error body in BOTH spellings the Worker uses: flat `{"error":"device_limit","limit":3}`
+/// (the routes that merely moved) and nested `{"error":{"code":"…","limit":3}}` (v3). The extra
+/// fields are read at the top level first and inside `error` second. `error` is decoded
+/// permissively, since a decoder that threw on one spelling would lose the detail beside it.
+struct ErrorBody: Decodable {
     struct Nested: Decodable {
         let code: String?
+        let message: String?
         let limit: Int?
         let deviceCount: Int?
+        let drift: Int?
+        let changed: [String]?
+        /// PX-W8: read leniently, so a malformed link never costs the caller the other fields.
         let manageUrl: String?
 
         private enum CodingKeys: String, CodingKey {
-            case code, limit, deviceCount, manageUrl
+            case code, message, limit, deviceCount, drift, changed, manageUrl
         }
 
         init(from decoder: Decoder) throws {
             let c = try decoder.container(keyedBy: CodingKeys.self)
-            code = try? c.decode(String.self, forKey: .code)
-            limit = try? c.decode(Int.self, forKey: .limit)
-            deviceCount = try? c.decode(Int.self, forKey: .deviceCount)
+            code = try c.decodeIfPresent(String.self, forKey: .code)
+            message = try c.decodeIfPresent(String.self, forKey: .message)
+            limit = try c.decodeIfPresent(Int.self, forKey: .limit)
+            deviceCount = try c.decodeIfPresent(Int.self, forKey: .deviceCount)
+            drift = try c.decodeIfPresent(Int.self, forKey: .drift)
+            changed = try c.decodeIfPresent([String].self, forKey: .changed)
             manageUrl = try? c.decode(String.self, forKey: .manageUrl)
         }
     }
-    let error: Nested?
-    let errorCode: String?
-    let limit: Int?
-    let deviceCount: Int?
-    /// PX-W8: read leniently, so a malformed link never costs the caller `limit`/`deviceCount`.
-    let manageUrl: String?
+    let flatCode: String?
+    let nested: Nested?
+    let topMessage: String?
+    let topLimit: Int?
+    let topDeviceCount: Int?
+    let topDrift: Int?
+    let topChanged: [String]?
+    let topManageUrl: String?
 
-    var code: String? { errorCode ?? error?.code }
+    var code: String? { flatCode ?? nested?.code }
+    var message: String? { topMessage ?? nested?.message }
+    var limit: Int? { topLimit ?? nested?.limit }
+    var deviceCount: Int? { topDeviceCount ?? nested?.deviceCount }
+    var drift: Int? { topDrift ?? nested?.drift }
+    var changed: [String]? { topChanged ?? nested?.changed }
+    /// The validated refusal link (PX-W8): the top-level member, else the nested one.
+    var manageURL: String? { ManageLink.read(topManageUrl, nested?.manageUrl) }
 
     private enum CodingKeys: String, CodingKey {
-        case error, limit, deviceCount, manageUrl
+        case error, message, limit, deviceCount, drift, changed, manageUrl
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        limit = try c.decodeIfPresent(Int.self, forKey: .limit)
-        deviceCount = try c.decodeIfPresent(Int.self, forKey: .deviceCount)
-        manageUrl = try? c.decode(String.self, forKey: .manageUrl)
-        // `error` is a string in the flat shape and an object in the nested one.
-        errorCode = try? c.decode(String.self, forKey: .error)
-        error = errorCode == nil ? try? c.decode(Nested.self, forKey: .error) : nil
+        topManageUrl = try? c.decode(String.self, forKey: .manageUrl)
+        topMessage = try? c.decodeIfPresent(String.self, forKey: .message)
+        topLimit = try? c.decodeIfPresent(Int.self, forKey: .limit)
+        topDeviceCount = try? c.decodeIfPresent(Int.self, forKey: .deviceCount)
+        topDrift = try? c.decodeIfPresent(Int.self, forKey: .drift)
+        topChanged = try? c.decodeIfPresent([String].self, forKey: .changed)
+        let flat = try? c.decode(String.self, forKey: .error)
+        flatCode = flat?.isEmpty == true ? nil : flat
+        nested = flat == nil ? try? c.decode(Nested.self, forKey: .error) : nil
     }
 }
 

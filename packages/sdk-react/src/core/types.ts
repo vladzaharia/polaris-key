@@ -24,6 +24,8 @@ import type { ProductCatalog } from "@polaris-key/catalog";
 // `services.ts` imports only the `PolarisError` TYPE from this module, and `import type` is
 // erased, so this value import creates no runtime cycle.
 import { noBusy, noErrors } from "./services.js";
+import type { ActivationOutcome } from "./activation.js";
+import type { ErrorCode } from "../constants.generated.js";
 import type {
   ServiceBusyMap,
   ServiceErrorMap,
@@ -71,7 +73,11 @@ export type PolarisErrorCode =
   | "feed-rollback"
   | "record-rejected"
   | "record-mismatch"
-  | "unknown";
+  | "unknown"
+  /** Any other registered code (conformance/parity/errors.json): bearer mode surfaces the
+   *  server's code as-is when the registry holds it (`forbidden`, `rate_limited`, `not_found`,
+   *  `no-token`, `store-failed`, …). Still closed over the registry. */
+  | ErrorCode;
 
 /** One user-facing config row for a settings UI: `hidden` keys are excluded entirely, and
  *  `enforced` flags whether the row should render read-only (server value wins). */
@@ -150,18 +156,31 @@ export class PolarisError extends Error {
   /** On a device-limit refusal (PX-W8): the customer-portal link that frees a seat, already
    *  validated (`readManageUrl`). Show it behind a user action; it is not an auth failure. */
   readonly manageUrl?: string;
+  /** An activation or enrolment refusal, classified (SDK-PARITY-PASS §3.1): the kind, the
+   *  server's code, and `limit`/`deviceCount`/`retryAfterSeconds` where the server sent them.
+   *  Present on the `sign-in-failed` a key submission throws. */
+  readonly activation?: ActivationOutcome;
+  /** The HTTP status behind the refusal, when there was one. */
+  readonly status?: number;
   constructor(
     code: PolarisErrorCode,
     message?: string,
     wireCode?: string,
     detail?: string,
-    manageUrl?: string,
+    extra: {
+      activation?: ActivationOutcome;
+      status?: number;
+      manageUrl?: string;
+    } = {},
   ) {
     super(message ?? code);
     this.name = "PolarisError";
     this.code = code;
     if (wireCode !== undefined) this.wireCode = wireCode;
     if (detail !== undefined) this.detail = detail;
+    if (extra.activation !== undefined) this.activation = extra.activation;
+    if (extra.status !== undefined) this.status = extra.status;
+    const manageUrl = extra.manageUrl ?? extra.activation?.manageUrl;
     if (manageUrl !== undefined) this.manageUrl = manageUrl;
   }
 }
@@ -242,6 +261,78 @@ export interface OidcSignInHandle {
   /** Optional user code to display alongside the URL. */
   userCode?: string;
 }
+
+/** A device-code sign-in in progress (identity.devicecode, RFC 8628): what a sign-in screen
+ *  shows, plus the wait that completes it. The poll credential never leaves the adapter. */
+export interface DeviceSignIn {
+  /** What the person types on the verification page, e.g. `WDJB-MJHT`. */
+  userCode: string;
+  /** The page to open and type the code into. */
+  verificationUri: string;
+  /** The same page with the code pre-filled: the QR payload and the "Open" link. */
+  verificationUriComplete: string;
+  /** Epoch seconds the code expires at, on this client's clock. */
+  expiresAt: number;
+  /** The minimum seconds between polls. */
+  interval: number;
+  /** Poll until it settles. `ready` carries the signed-in identity when the server named one.
+   *  Rejects with the signal's reason when `signal` aborts. */
+  wait(opts?: { signal?: AbortSignal }): Promise<DeviceSignInResult>;
+}
+
+export type DeviceSignInResult =
+  | { status: "ready"; identity?: { name?: string; email?: string } }
+  | { status: "expired" }
+  | { status: "denied" }
+  | { status: "error"; message: string };
+
+/** A short-lived token edge-mint signed for a third-party API (config.mint). Memory only. */
+export interface MintedToken {
+  token: string;
+  /** Epoch seconds. */
+  expiresAt: number;
+}
+
+/** One store product a licence's commerce binding sells (commerce.receipt, P6-01). */
+export interface CommerceProduct {
+  store: string;
+  productId: string;
+  flag: string;
+  deliverable: string;
+}
+
+export interface CommerceBinding {
+  /** Hand this to the store BEFORE buying (App Store `appAccountToken`, Play
+   *  `obfuscatedAccountId`, Steam `GetAuthTicketForWebApi` identity). */
+  bindingId: string;
+  products: CommerceProduct[];
+}
+
+/** SDK-PARITY-PASS §3.9's claim result. On `ok` the adapter has already synced. */
+export type CommerceClaimResult =
+  | {
+      kind: "ok";
+      store: string;
+      productId: string;
+      flag: string;
+      deliverable: string;
+      state: string;
+      granted: boolean;
+      changed: boolean;
+    }
+  | { kind: "notOwned"; code: string; reason: string; status: number }
+  | { kind: "attestationRequired"; code: string; status: number }
+  | { kind: "refused"; code: string; reason?: string; status: number };
+
+export type CommerceStore = "app-store" | "play" | "steam";
+
+export type CommercePayload =
+  | { signedTransaction: string }
+  | { productId: string; purchaseToken: string }
+  | { ticket: string; dlcAppId: string | number };
+
+/** How a browser adapter authenticates (SDK-PARITY-PASS §3.17). */
+export type BrowserAuthMode = "cookie" | "bearer";
 
 /** The unified transport contract. The hooks ONLY ever talk to this — they never know
  *  which mode is active. Both `browserAdapter` and `desktopAdapter` implement it. */
@@ -340,6 +431,31 @@ export interface PolarisAdapter {
    *  `invoke("devices", "report")`; a browser holds no device bearer, so it throws
    *  `report-unsupported` (a registered runtime N/A). */
   report(): Promise<boolean>;
+  // ── SDK parity pass additions. Every adapter implements every verb; a transport that cannot
+  //    serve one throws the typed `UnsupportedError` (PARITY §2.2), never a missing method. ──
+  /** `POST /<p>/license/enroll`: a free licence with no key, when the product offers one, then a
+   *  sync. Throws `sign-in-failed` with the §3.1 `activation` on a refusal. */
+  enroll(): Promise<void>;
+  /** Begin a device-code sign-in (identity.devicecode). Desktop: the bridge's
+   *  `beginSignIn`/`pollSignIn`; browser bearer mode: the CORS-covered device-code routes. */
+  beginSignIn(opts?: { deviceName?: string }): Promise<DeviceSignIn>;
+  /** Edge-mint a short-lived third-party token (config.mint). Memory-cached per device token. */
+  mintToken(recipeId: string): Promise<MintedToken>;
+  /** The licence's commerce binding (commerce.receipt). */
+  commerceBinding(): Promise<CommerceBinding>;
+  /** Forward one store purchase; on `ok` the flag arrives with the sync the adapter runs. */
+  commerceClaim(
+    store: CommerceStore,
+    payload: CommercePayload,
+  ): Promise<CommerceClaimResult>;
+  /** The verified discovery document, once it answered (null before, or on a failure). */
+  discovery(): Promise<Record<string, unknown> | null>;
+  /** The id an operator mints an offline bundle against (`OfflineActivation`), or null where
+   *  this transport keeps none. */
+  offlineDeviceId(): Promise<string | null>;
+  /** Where the device credential lives, and why if that is weaker than this platform's best
+   *  (core.store). Null where the transport holds no credential (the cookie session). */
+  storeStatus(): Promise<import("@polaris-key/client-core").StoreStatus | null>;
   /** Dispose any listeners/timers the adapter owns. */
   dispose(): void;
 }

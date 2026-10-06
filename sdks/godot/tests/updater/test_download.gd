@@ -88,6 +88,22 @@ func run(t: PKeyTestContext) -> void:
 	sup.plan = {"/f/": [{"status": 404}]}
 	r = await PKeyDownload.fetch(tr, server.base_url() + "/f/a", dest, auth, {"expected_size": 10})
 	t.check("download: a 404 is http-error with its status", not r.ok and r.code == PKeyErrors.HTTP_ERROR and r.detail.get("status") == 404)
+	# SDK parity §3.10: a gated build's refusal keeps the server's code, so the updater can attest
+	# and retry once (PKeyUpdater.with_attestation).
+	sup.plan = {"/f/": [{"status": 403, "headers": {"Content-Type": "application/json"}, "body": "{\"error\":{\"code\":\"attestation_required\",\"message\":\"this operation requires an attested device\"}}"}]}
+	r = await PKeyDownload.fetch(tr, server.base_url() + "/f/a", dest, auth, {"expected_size": 10})
+	t.check("download: a 403 keeps the server's code", not r.ok and r.code == &"attestation_required" and r.detail.get("status") == 403 and r.message == "this operation requires an attested device", str(r))
+	var core_ish := PKeyCore.new()
+	core_ish.options = PKeyOptions.new()
+	var attests := [0]
+	core_ish.attest_hook = func() -> PKeyResult:
+		attests[0] += 1
+		sup.plan = {"/f/": [S.ranged(body)]}
+		return PKeyResult.success({"trust_level": "attested"})
+	DirAccess.remove_absolute(dest + ".part")
+	r = await core_ish.with_attestation(func() -> PKeyResult: return await PKeyDownload.fetch(tr, server.base_url() + "/f/a", dest, auth, {"expected_size": body.size()}))
+	t.check("download: attestation_required attests once and the retry downloads", r.ok and attests[0] == 1 and r.detail.get("attested_retry") == true and S.read(dest + ".part") == body, str(r))
+	DirAccess.remove_absolute(dest + ".part")
 
 	# local-only refuses before dialling.
 	var lo := PKeyTransport.new(server)

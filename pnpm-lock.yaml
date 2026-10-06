@@ -278,6 +278,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@polaris-key/catalog':
+        specifier: workspace:*
+        version: link:../shared-catalog
       '@polaris-key/client-core':
         specifier: workspace:*
         version: link:../client-core
@@ -381,6 +384,9 @@ importers:
         specifier: workspace:*
         version: link:../zstd-wasm
     devDependencies:
+      '@polaris-key/react':
+        specifier: workspace:*
+        version: link:../sdk-react
       '@types/node':
         specifier: ^22.14.0
         version: 22.20.0
@@ -558,6 +564,9 @@ importers:
       '@polaris-key/catalog':
         specifier: workspace:*
         version: link:../packages/shared-catalog
+      '@polaris-key/cli':
+        specifier: workspace:*
+        version: link:../packages/cli
       '@polaris-key/client-core':
         specifier: workspace:*
         version: link:../packages/client-core

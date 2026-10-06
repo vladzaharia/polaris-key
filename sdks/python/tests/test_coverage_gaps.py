@@ -398,9 +398,12 @@ def test_service_commands_group_every_verb_by_owner() -> None:
         "deactivate",
         "status",
     )
-    assert core.SERVICE_COMMANDS["devices"] == ("register",)
-    assert core.SERVICE_COMMANDS["config"] == ("config",)
-    assert core.SERVICE_COMMANDS["core"] == ("import-bundle",)
+    assert core.SERVICE_COMMANDS["devices"] == ("register", "devices")
+    assert core.SERVICE_COMMANDS["config"] == ("config", "secret", "mint")
+    assert core.SERVICE_COMMANDS["core"] == ("import-bundle", "offline-request", "boot", "doctor")
+    assert core.SERVICE_COMMANDS["identity"] == ("sign-in", "sign-out")
+    assert core.SERVICE_COMMANDS["release"] == ("changelog",)
+    assert core.SERVICE_COMMANDS["update"] == ("update", "packs")
 
 
 def test_no_service_flags_reads_as_silence_not_as_an_empty_expectation() -> None:

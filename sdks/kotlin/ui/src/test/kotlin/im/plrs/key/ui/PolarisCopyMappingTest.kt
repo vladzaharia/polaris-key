@@ -68,6 +68,16 @@ class PolarisCopyMappingTest {
         assertEquals(copy.activationEnrollDisabled, copy.activationMessage(ActivationResult.EnrollDisabled))
         // The SDK's error text is for logs, never shown.
         assertEquals(copy.activationError, copy.activationMessage(ActivationResult.Error("HTTP 500 at /license/activate")))
+        assertEquals(copy.activationEnrollClaimed, copy.activationMessage(ActivationResult.EnrollClaimed))
+        assertEquals(copy.activationLicenseDisabled, copy.activationMessage(ActivationResult.LicenseDisabled))
+        assertEquals(copy.activationLicenseExpired, copy.activationMessage(ActivationResult.LicenseExpired))
+        assertEquals(copy.activationAttestationRequired, copy.activationMessage(ActivationResult.AttestationRequired))
+        assertEquals(copy.activationRateLimited, copy.activationMessage(ActivationResult.RateLimited(null)))
+        assertEquals("Too many attempts. Try again in 2 minutes.", copy.activationMessage(ActivationResult.RateLimited(150)))
+        assertEquals(copy.activationNetwork, copy.activationMessage(ActivationResult.Error("offline", "network")))
+        // A known code arriving as a bare refusal reads as its own copy; an unknown one names the code, never the body.
+        assertEquals(copy.activationEnrollDisabled, copy.activationMessage(ActivationResult.Refused("registration_closed", 403, "raw body")))
+        assertEquals("The license server refused this activation (license_owned).", copy.activationMessage(ActivationResult.Refused("license_owned", 403, "raw body")))
     }
 
     @Test

@@ -68,6 +68,41 @@ stop). At `ready`, your content renders. `PolarisKeyClient.bootHost()` does each
 the umbrella client. Pass `fetch` and `mount` to do your own content work there, or send
 `BootEvent`s yourself with `boot.send(...)`.
 
+By default `bootHost()` wires every stage (notes/SDK-PARITY-PASS.md §3.4): the guard is
+`client.bootGuard()` (it counts unconfirmed launches and confirms the launch once the boot settles,
+after `BOOT_OK_SECONDS` of `ready` where the stage machine asks for that), decide hands each
+`UpdateCheck` to `onCheck` (pass `updateState::show`), and fetch is `client.packs.bootFetch` over
+the content stamp when packs are configured, with the metered-download consent.
+
+### One call: `PolarisKeyApp`
+
+```kotlin
+setContent { MyAppTheme { PolarisTheme { PolarisKeyApp(client) { App() } } } }
+```
+
+`PolarisKeyApp` composes the pieces above, unchanged: the boot shell over `client.bootHost()`, the
+gate for its activation stop, pack progress, and the update banner over `client.updateActions()`
+(`client.update.install(check)`; a Play flexible update's progress and "Restart to finish", which
+runs `finish()`). It provides the client through `LocalPolarisKey`, so any screen reads it with
+`polarisKey()` and the live helpers `rememberPolarisLicense()`, `rememberPolarisEntitled(name)` and
+`rememberPolarisSetting(key)`.
+
+### Headless behaviour the screens consume
+
+- `PolarisGateState.continueFree()` runs keyless enrolment (`client.enroll()`); a refusal lands on
+  the activation form like an activation's.
+- `client.settingsActions(editable = true)` types each row from the served catalog
+  (`PolarisSettingEntry.editor`: `Toggle`, `Choice`, `Number`, `Text`; none for an enforced row or a
+  secret), and `PolarisSettingsState.set(key, value)` / `reset(key)` persist or clear a local
+  override (`client.config.set` / `clear`), with a refusal in `PolarisSettingsUi.error`.
+- `PolarisUpdateState.install(actions, scope)` hands the offer to the installer, `follow(actions,
+scope)` tracks a background install (`progress`, then the `Restart` kind) and the offer's `error`
+  carries a failure.
+
+The settings screen still renders the read-only summary, and the activation screen has no "Continue
+free", "Buy", "Activate offline" or "Manage devices" buttons yet: drawing those belongs to the UI-kit
+program (`docs/design/UI-KITS.md`), which rebuilds the kit's look.
+
 The gate renders your content when the licence is `ok` or `not-applicable`. When it is `grace`, it
 renders your content under an offline-grace banner. It shows the activation screen for
 `needs-activation`, and for `revoked` with the revocation notice on top. It shows a full-screen

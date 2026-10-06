@@ -67,6 +67,7 @@ function browserWith(
     return inner(input, init);
   }) as typeof fetch;
   const adapter = browserAdapter({
+    auth: "cookie",
     productSlug: "acme",
     fetchImpl,
     now: () => NOW_SEC,

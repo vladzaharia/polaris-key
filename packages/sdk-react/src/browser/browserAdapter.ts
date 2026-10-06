@@ -59,7 +59,6 @@ import {
   effectiveNow,
   highWaterMark,
   isValidHostOutlet,
-  readManageUrl,
   reloadFeeds,
   resolveUpdateOutlet,
   type DetectedOutlet,
@@ -92,6 +91,7 @@ import { ErrorCode, Feature, Platform, SdkId } from "../constants.generated.js";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
+  UnsupportedError,
   capabilityContext,
   capsIn,
   initialState,
@@ -101,6 +101,7 @@ import {
   type Support,
   type DeviceInfo,
   type JSONValue,
+  type OidcSignInHandle,
   type PolarisAdapter,
   type PolarisDocs,
   type PolarisState,
@@ -123,6 +124,31 @@ import {
   type ServicesMap,
 } from "../core/services.js";
 import { discoverProduct, type DiscoveryDocument } from "./discovery.js";
+import {
+  BearerSession,
+  type AccountDevice,
+  type SignInResult,
+} from "./bearer/session.js";
+import {
+  indexedDbStore,
+  memoryStore,
+  type BrowserStore,
+} from "./bearer/store.js";
+import { browserFacts } from "./bearer/facts.js";
+import { classifyActivation } from "../core/activation.js";
+import { activationError } from "../core/activationError.js";
+import type { HardwareFingerprint } from "@polaris-key/protocol/core";
+import type { StoreStatus } from "@polaris-key/client-core";
+import type {
+  BrowserAuthMode,
+  CommerceBinding,
+  CommerceClaimResult,
+  CommercePayload,
+  CommerceStore,
+  DeviceSignIn,
+  DeviceSignInResult,
+  MintedToken,
+} from "../core/types.js";
 import {
   buildDownloadUrlFor,
   decideBrowserUpdate,
@@ -250,6 +276,37 @@ export interface BrowserAdapterOptions {
   /** Wire v4 update decisions (`decideUpdate()`). Absent ⇒ it throws `not-configured`. Needs
    *  `trust.pinnedKeys` too: a feed verifies against the pinned product keys. */
   update?: BrowserUpdateConfig;
+  /**
+   * How the page authenticates (SDK-PARITY-PASS §3.17, owner decision Q1):
+   *
+   *   "auto" (the default)  bearer when the page runs inside Tauri or on another origin than
+   *                         `baseUrl` (an opaque `"null"` origin counts as another), cookie
+   *                         when it is first-party.
+   *   "cookie"              the Worker's first-party session cookie. Same origin only: those
+   *                         routes never answer CORS. Signed-out pages sign in by redirect.
+   *   "bearer"              a `pkeyt_` device token in IndexedDB over the CORS-covered routes
+   *                         (the product lists the page under `web.origins`). Needs
+   *                         `trust.pinnedKeys`: every document is verified in-page.
+   *
+   * An explicit "bearer" without `trust.pinnedKeys` throws `invalid-options` at construction.
+   * "auto" resolving to bearer without them does not throw (that would crash a render): the
+   * adapter makes no request and reports `invalid-options` as the identity error in its state.
+   */
+  auth?: "cookie" | "bearer" | "auto";
+  /** Bearer mode's `core.store`. Defaults to IndexedDB (`indexedDbStore`), or to a page-lived
+   *  memory store where IndexedDB does not exist, which `storeStatus()` reports as degraded. */
+  store?: BrowserStore;
+  /** Bearer mode: register this device keylessly at load when it holds no token and discovery
+   *  says the product's registration policy is `open`. Default true. */
+  autoRegister?: boolean;
+  /** A hashed hardware fingerprint for bearer requests. A browser has none (the default);
+   *  the seam exists for tests and for hosts (a kiosk shell) that do. */
+  fingerprint?: () => HardwareFingerprint | null;
+  /** The page's own origin, for `auth: "auto"`. Defaults to `window.location.origin`. */
+  pageOrigin?: string;
+  /** Start loading at construction (default true). The Provider passes false and calls
+   *  `start()` from an effect, so a server render performs no network call (SP-R13). */
+  autoStart?: boolean;
 }
 
 /** The JSON shape the Worker's authenticated session endpoint returns. Unchanged by §R1's
@@ -335,12 +392,22 @@ export class BrowserAdapter implements PolarisAdapter {
   private readonly updateOutlet: ResolvedOutlet | null;
   private readonly updateDetected: DetectedOutlet | null;
   /** The verified discovery document, once it answered. */
-  private discovery: DiscoveryDocument | null = null;
+  private discovery_: DiscoveryDocument | null = null;
   private discovered: Promise<void> = Promise.resolve();
   /** The update slices when there is no offline store to keep them in. */
   private memorySlices: UpdateSlices = {};
   /** Decisions run one at a time: each is a read-modify-write of the slices. */
   private updateQueue: Promise<unknown> = Promise.resolve();
+  /** How this page authenticates (§3.17). */
+  readonly authMode: BrowserAuthMode;
+  /** Bearer mode's engine; null in cookie mode. */
+  private readonly bearer: BearerSession | null = null;
+  private readonly bearerStore: BrowserStore | null = null;
+  private readonly autoRegister: boolean;
+  private started = false;
+  /** A configuration the adapter cannot run with that must not throw from the constructor
+   *  ("auto" resolved to bearer without pinned keys). Every load and verb reports it. */
+  private readonly configError: PolarisError | null = null;
 
   constructor(opts: BrowserAdapterOptions) {
     this.product = opts.productSlug;
@@ -402,12 +469,61 @@ export class BrowserAdapter implements PolarisAdapter {
         detected,
       });
     }
+    this.authMode = resolveAuthMode(opts.auth, this.base, opts.pageOrigin);
+    this.autoRegister = opts.autoRegister !== false;
+    if (this.authMode === "bearer" && !this.pinned) {
+      const err = new PolarisError(
+        "invalid-options",
+        opts.auth === "bearer"
+          ? 'auth: "bearer" verifies every document in-page and needs trust.pinnedKeys.'
+          : "This page is cross-origin to the Worker (or inside Tauri), so it authenticates with a device token, which verifies every document in-page and needs trust.pinnedKeys.",
+      );
+      if (opts.auth === "bearer") throw err;
+      this.configError = err;
+    } else if (this.authMode === "bearer" && this.pinned) {
+      this.bearerStore =
+        opts.store ??
+        (opts.offlineStore === undefined
+          ? indexedDbStore(this.product)
+          : null) ??
+        memoryStore(this.product, this.offline ?? undefined);
+      this.bearer = new BearerSession({
+        baseUrl: this.base,
+        product: this.product,
+        version: this.version ?? "0.0.0",
+        fetchImpl: this.fetchImpl,
+        now: this.clock,
+        pinned: this.pinned,
+        store: this.bearerStore,
+        enabled: (slug) => this.capabilities[slug].enabled,
+        ...(opts.fingerprint ? { fingerprint: opts.fingerprint } : {}),
+        facts: () => browserFacts(),
+        caps: () => this.caps(),
+        outlet: () =>
+          this.updateOutlet
+            ? ({
+                id: this.updateOutlet.id,
+                kind: this.updateOutlet.kind,
+                ...(this.updateOutlet.subkind
+                  ? { subkind: this.updateOutlet.subkind }
+                  : {}),
+              } as Record<string, JSONValue>)
+            : null,
+      });
+    }
     this.store = createStore<PolarisState>(
       initialState("browser", this.capabilities, this.localOverrides),
     );
     this.updateConfig?.packs?.seedFeedDeltas?.(() =>
       this.committedFeedDeltas(),
     );
+    if (opts.autoStart !== false) this.start();
+  }
+
+  /** Begin the first load. Idempotent; the constructor calls it unless `autoStart: false`. */
+  start(): void {
+    if (this.started) return;
+    this.started = true;
     void this.load();
   }
 
@@ -590,7 +706,7 @@ export class BrowserAdapter implements PolarisAdapter {
       });
       if (result.kind === "ok") {
         this.capabilities = result.services;
-        this.discovery = result.document;
+        this.discovery_ = result.document;
       }
     })().catch(() => undefined);
     return this.discovered;
@@ -614,6 +730,22 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   private async load(): Promise<void> {
+    if (this.configError) {
+      this.store.set(() =>
+        projectState(
+          "browser",
+          { license: null, config: {} },
+          { activation: null, now: this.clock(), highWaterMark: 0 },
+          {
+            error: withError(noErrors(), "identity", this.configError!),
+            localOverrides: this.localOverrides,
+            capabilities: this.capabilities,
+          },
+        ),
+      );
+      return;
+    }
+    if (this.bearer) return this.loadBearer();
     const sessionRequest = this.fetchSession();
     const capabilities = this.loadCapabilities().catch(() => undefined);
     const offline = this.loadOfflineState().catch(() => undefined);
@@ -649,7 +781,100 @@ export class BrowserAdapter implements PolarisAdapter {
     }
   }
 
+  // ── Bearer mode (§3.17) ────────────────────────────────────────────────────────────────
+
+  /** Project the bearer session's verified state, exactly as the desktop adapter projects a
+   *  bridge's (`BridgeState`). */
+  private applyBearer(
+    flags: { busy?: ServiceBusyMap; error?: ServiceErrorMap } = {},
+  ): void {
+    const s = this.bearer!.syncState();
+    this.store.set(
+      projectState(
+        "browser",
+        { license: s.doc, config: s.config ?? {} },
+        {
+          activation: s.activation,
+          now: this.clock(),
+          highWaterMark: s.highWaterMark ?? 0,
+          lastSyncUnauthorized: s.lastSyncUnauthorized,
+          blocked: s.blocked ?? null,
+          lastVerifiedAt: s.lastVerifiedAt ?? null,
+        },
+        {
+          ...flags,
+          localOverrides: this.localOverrides,
+          capabilities: this.capabilities,
+        },
+      ),
+    );
+  }
+
+  /** The registration policy discovery published (`core.registration`), or null. */
+  private registrationPolicy(): string | null {
+    const core = this.discovery_?.core as
+      | { registration?: unknown }
+      | undefined;
+    return typeof core?.registration === "string" ? core.registration : null;
+  }
+
+  private async loadBearer(): Promise<void> {
+    const b = this.bearer!;
+    const capabilities = this.loadCapabilities().catch(() => undefined);
+    try {
+      await b.init();
+      await capabilities;
+      // A config-only (or otherwise `open`) product's page becomes a device keylessly.
+      if (
+        !b.hasToken &&
+        this.autoRegister &&
+        this.registrationPolicy() === "open"
+      )
+        await b.register();
+      if (b.hasToken) await b.sync();
+      this.applyBearer();
+    } catch (e) {
+      await capabilities;
+      this.applyBearer({
+        error: withError(
+          noErrors(),
+          "license",
+          e instanceof PolarisError
+            ? e
+            : new PolarisError("network", (e as Error).message),
+        ),
+      });
+    }
+  }
+
+  /** The bearer session, or the typed refusal a cookie page gives for a bearer-only verb. */
+  private requireBearer(feature: string, detail: string): BearerSession {
+    if (this.bearer) return this.bearer;
+    if (this.configError) throw this.configError;
+    throw new UnsupportedError(
+      { supported: false, feature, reason: "runtime", detail },
+      feature === Feature.devicesManage
+        ? "device-management-unsupported"
+        : feature === Feature.devicesReport
+          ? ErrorCode.reportUnsupported
+          : "unsupported",
+      detail,
+    );
+  }
+
+  /** `POST /<p>/devices/register` (bearer mode): the keyless mint, then a sync. */
+  async register(): Promise<boolean> {
+    const b = this.requireBearer(Feature.devicesRegister, COOKIE_DETAIL);
+    const r = await b.register();
+    if (r.kind !== "ok") return false;
+    await b.sync().catch(() => undefined);
+    this.applyBearer({ busy: noBusy(), error: noErrors() });
+    return true;
+  }
+
   async refresh(): Promise<void> {
+    if (this.configError) throw this.fail("license", this.configError);
+    if (this.bearer) return this.refreshBearer();
     this.setBusy("license", true);
     this.setBusy("config", true);
     try {
@@ -688,7 +913,37 @@ export class BrowserAdapter implements PolarisAdapter {
     }
   }
 
-  async signInWithOidc(): Promise<void> {
+  private async refreshBearer(): Promise<void> {
+    this.setBusy("license", true);
+    this.setBusy("config", true);
+    try {
+      await this.bearer!.sync();
+      this.applyBearer({ busy: noBusy(), error: noErrors() });
+    } catch (e) {
+      const err =
+        e instanceof PolarisError
+          ? e
+          : new PolarisError("refresh-failed", (e as Error).message);
+      this.patch((prev) => ({
+        busy: withBusy(withBusy(prev.busy, "license", false), "config", false),
+        error: withError(prev.error, "license", err),
+      }));
+      throw err;
+    }
+  }
+
+  /** Cookie mode: the OIDC redirect (never resolves: the page unloads). Bearer mode: a
+   *  device-code sign-in whose handle carries the URL and code, completed in the background. */
+  async signInWithOidc(): Promise<OidcSignInHandle | void> {
+    if (this.configError) throw this.fail("identity", this.configError);
+    if (this.bearer) {
+      const flow = await this.beginSignIn();
+      void flow.wait().catch(() => undefined);
+      return {
+        verificationUrl: flow.verificationUriComplete,
+        userCode: flow.userCode,
+      };
+    }
     if (!this.capabilities.identity.enabled) {
       throw this.fail(
         "identity",
@@ -707,6 +962,7 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   async submitKey(key: string): Promise<void> {
+    if (this.configError) throw this.fail("license", this.configError);
     if (!this.capabilities.license.enabled) {
       throw this.fail(
         "license",
@@ -717,6 +973,22 @@ export class BrowserAdapter implements PolarisAdapter {
       );
     }
     this.setBusy("license", true);
+    if (this.bearer) {
+      try {
+        const outcome = await this.bearer.activate(key);
+        if (outcome.kind !== "ok") throw activationError(outcome);
+        await this.bearer.sync();
+        this.applyBearer({ busy: noBusy(), error: noErrors() });
+        return;
+      } catch (e) {
+        throw this.fail(
+          "license",
+          e instanceof PolarisError
+            ? e
+            : new PolarisError("sign-in-failed", (e as Error).message),
+        );
+      }
+    }
     try {
       const res = await this.fetchImpl(this.url("/identity/session/license"), {
         method: "POST",
@@ -728,46 +1000,13 @@ export class BrowserAdapter implements PolarisAdapter {
         },
         body: JSON.stringify({ key }),
       });
-      if (res.status === 401) {
-        throw new PolarisError("sign-in-failed", "That key was not accepted.");
-      }
-      if (res.status === 403) {
-        let message = `activation ${res.status}`;
-        let wireCode: string | undefined;
-        let manageUrl: string | undefined;
-        try {
-          const body = (await res.json()) as {
-            error?: string | { code?: string; message?: string };
-            message?: string;
-          };
-          const code =
-            typeof body.error === "string" ? body.error : body.error?.code;
-          if (code === "device_limit") {
-            wireCode = code;
-            // PX-W8: the portal link that frees a seat, validated; absent from older Workers.
-            manageUrl = readManageUrl(body);
-          }
-          message =
-            code === "device_limit"
-              ? "This license has reached its device limit."
-              : ((typeof body.error === "object"
-                  ? body.error?.message
-                  : undefined) ??
-                body.message ??
-                message);
-        } catch {
-          // Keep the generic message when the response is not JSON.
-        }
-        throw new PolarisError(
-          "sign-in-failed",
-          message,
-          wireCode,
-          undefined,
-          manageUrl,
-        );
-      }
       if (!res.ok) {
-        throw new PolarisError("sign-in-failed", `activation ${res.status}`);
+        // SDK-PARITY-PASS §3.1: classify by the body's code, never by status alone — an
+        // unknown 403 is `refused` with the server's code, never "device limit".
+        const body: unknown = await res.json().catch(() => null);
+        throw activationError(
+          classifyActivation(res.status, body, res.headers.get("retry-after")),
+        );
       }
       this.apply(await this.fetchSession(), {
         busy: noBusy(),
@@ -784,7 +1023,22 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   async signOut(): Promise<void> {
+    if (this.configError) throw this.fail("identity", this.configError);
     this.setBusy("identity", true);
+    if (this.bearer) {
+      try {
+        await this.bearer.deactivate();
+        this.applyBearer({ busy: noBusy(), error: noErrors() });
+        return;
+      } catch (e) {
+        throw this.fail(
+          "identity",
+          e instanceof PolarisError
+            ? e
+            : new PolarisError("sign-out-failed", (e as Error).message),
+        );
+      }
+    }
     try {
       const headers: Record<string, string> = { accept: "application/json" };
       if (this.csrf) headers["x-csrf-token"] = this.csrf; // CSRF echo on the write.
@@ -849,17 +1103,32 @@ export class BrowserAdapter implements PolarisAdapter {
    * merely unimplemented. `DeviceManager` renders this refusal as an explanation.
    */
   async listDevices(): Promise<DeviceInfo[]> {
-    refuse(this.capabilityCtx, Feature.devicesManage, {
-      code: "device-management-unsupported",
-      detail: "Listing devices is not supported from a browser session.",
-    });
+    const b = this.requireBearer(
+      Feature.devicesManage,
+      'Listing devices needs a device token; this page uses the cookie session (auth: "bearer" adds it).',
+    );
+    this.setBusy("license", true);
+    try {
+      const rows = await b.listDevices();
+      this.setBusy("license", false);
+      return rows.map(deviceInfo);
+    } catch (e) {
+      throw this.fail("license", asError(e));
+    }
   }
 
-  async renameDevice(_deviceId: string, _label: string | null): Promise<void> {
-    refuse(this.capabilityCtx, Feature.devicesManage, {
-      code: "device-management-unsupported",
-      detail: "Renaming devices is not supported from a browser session.",
-    });
+  async renameDevice(deviceId: string, label: string | null): Promise<void> {
+    const b = this.requireBearer(
+      Feature.devicesManage,
+      'Renaming devices needs a device token; this page uses the cookie session (auth: "bearer" adds it).',
+    );
+    this.setBusy("license", true);
+    try {
+      await b.renameDevice(deviceId, label);
+      this.setBusy("license", false);
+    } catch (e) {
+      throw this.fail("license", asError(e));
+    }
   }
 
   async deauthorizeDevice(deviceId: string): Promise<void> {
@@ -868,11 +1137,18 @@ export class BrowserAdapter implements PolarisAdapter {
       await this.signOut();
       return;
     }
-    refuse(this.capabilityCtx, Feature.devicesManage, {
-      code: "device-management-unsupported",
-      detail:
-        "Disconnecting another device is not supported from a browser session.",
-    });
+    const b = this.requireBearer(
+      Feature.devicesManage,
+      'Disconnecting another device needs a device token; this page uses the cookie session (auth: "bearer" adds it).',
+    );
+    this.setBusy("license", true);
+    try {
+      await b.deauthorizeDevice(deviceId);
+      await b.sync().catch(() => undefined);
+      this.applyBearer({ busy: noBusy(), error: noErrors() });
+    } catch (e) {
+      throw this.fail("license", asError(e));
+    }
   }
 
   /** `GET /<product>/update/version` — the newest build on a channel plus whether the HOST
@@ -981,7 +1257,7 @@ export class BrowserAdapter implements PolarisAdapter {
         product: this.product,
         fetchImpl: this.fetchImpl,
         headers: this.metadataHeaders(),
-        discovery: this.discovery,
+        discovery: this.discovery_,
         trust: this.pinned,
         releaseKeys: u.pinnedReleaseKeys,
         // §2.5: the effective clock, max(system, highWaterMark) (V3 §4.2), so winding the
@@ -1045,16 +1321,21 @@ export class BrowserAdapter implements PolarisAdapter {
   /** A build's download URL, from discovery's `distribution.endpoints.builds` template. */
   async buildUrl(version: string, buildId: string): Promise<string | null> {
     await this.discovered;
-    return buildDownloadUrlFor(this.discovery, this.base, version, buildId);
+    return buildDownloadUrlFor(this.discovery_, this.base, version, buildId);
   }
 
-  /** The metadata a public read carries. */
+  /** The metadata a public read carries; in bearer mode, plus the device bearer, so an
+   *  `entitled` changelog or a licensed download answers this device (§3.17). */
   private requestOpts() {
+    const token = this.bearer?.bearer ?? null;
     return {
       baseUrl: this.base,
       product: this.product,
       fetchImpl: this.fetchImpl,
-      headers: this.metadataHeaders(),
+      headers: {
+        ...this.metadataHeaders(),
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+      },
     };
   }
 
@@ -1120,8 +1401,13 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   /** This browser's device id — the id an operator mints an offline bundle against. Minted
-   *  (randomly) and persisted on first use; `null` where there is nowhere to keep it. */
+   *  (randomly) and persisted on first use; `null` where there is nowhere to keep it. In bearer
+   *  mode it is also the id the device token is bound to: one device, online or offline. */
   async offlineDeviceId(): Promise<string | null> {
+    if (this.bearer) {
+      await this.bearer.init();
+      return this.bearer.deviceId;
+    }
     if (!this.offline) return null;
     return (await ensureRecord(this.offline, this.product)).deviceId;
   }
@@ -1150,6 +1436,11 @@ export class BrowserAdapter implements PolarisAdapter {
         },
       );
       await this.loadOfflineState();
+      if (this.bearer) {
+        await this.bearer.reload();
+        this.applyBearer({ busy: noBusy(), error: noErrors() });
+        return result;
+      }
       if (this.hadSession) {
         // A session supersedes the bundle (§7): the gate does not move.
         this.patch((prev) => ({
@@ -1170,14 +1461,153 @@ export class BrowserAdapter implements PolarisAdapter {
     }
   }
 
-  /** `POST /<p>/devices/report` takes a device bearer, which a cookie session does not hold:
-   *  the `devices.report` web N/A (`runtime`), stated rather than silently skipped. */
+  /** `POST /<p>/devices/report`: bearer mode only. A cookie session holds no device bearer, so
+   *  it refuses with the typed `report-unsupported`, stated rather than silently skipped. */
   async report(): Promise<boolean> {
-    refuse(this.capabilityCtx, Feature.devicesReport, {
-      code: ErrorCode.reportUnsupported,
-      detail:
-        "Device telemetry needs a device token; a browser session has none.",
-    });
+    const b = this.requireBearer(
+      Feature.devicesReport,
+      'Device telemetry needs a device token; this page uses the cookie session (auth: "bearer" adds it).',
+    );
+    return b.report();
+  }
+
+  async enroll(): Promise<void> {
+    const b = this.requireBearer(Feature.licenseEnroll, COOKIE_DETAIL);
+    this.setBusy("license", true);
+    try {
+      const outcome = await b.enroll();
+      if (outcome.kind !== "ok") throw activationError(outcome);
+      await b.sync();
+      this.applyBearer({ busy: noBusy(), error: noErrors() });
+    } catch (e) {
+      throw this.fail("license", asError(e, "sign-in-failed"));
+    }
+  }
+
+  async beginSignIn(opts: { deviceName?: string } = {}): Promise<DeviceSignIn> {
+    if (!this.capabilities.identity.enabled)
+      throw this.fail(
+        "identity",
+        new UnsupportedError(
+          {
+            supported: false,
+            feature: Feature.identityDevicecode,
+            reason: "product",
+            detail: "the product does not run the identity service",
+          },
+          "service-disabled",
+        ),
+      );
+    const b = this.requireBearer(
+      Feature.identityDevicecode,
+      'A browser on the cookie session signs in by redirect (signInWithOidc); device-code sign-in needs auth: "bearer".',
+    );
+    this.setBusy("identity", true);
+    try {
+      const prompt = await b.beginSignIn(opts);
+      return {
+        userCode: prompt.userCode,
+        verificationUri: prompt.verificationUri,
+        verificationUriComplete: prompt.verificationUriComplete,
+        expiresAt: prompt.expiresAt,
+        interval: prompt.interval,
+        wait: async (w = {}) => {
+          try {
+            const r = await b.waitForSignIn(prompt, w);
+            const out = signInResult(r);
+            if (out.status === "ready")
+              this.applyBearer({ busy: noBusy(), error: noErrors() });
+            else
+              this.fail(
+                "identity",
+                new PolarisError(
+                  out.status === "expired"
+                    ? "sign-in-expired"
+                    : "sign-in-failed",
+                  out.status === "error" ? out.message : out.status,
+                ),
+              );
+            return out;
+          } catch (e) {
+            this.setBusy("identity", false);
+            throw e;
+          }
+        },
+      };
+    } catch (e) {
+      throw this.fail("identity", asError(e, "sign-in-unavailable"));
+    }
+  }
+
+  async mintToken(recipeId: string): Promise<MintedToken> {
+    if (!this.capabilities.config.enabled)
+      throw this.fail(
+        "config",
+        new PolarisError(
+          "service-disabled",
+          "This product does not run Config.",
+        ),
+      );
+    const b = this.requireBearer(
+      Feature.configMint,
+      'Edge-mint needs a device token; this page uses the cookie session (auth: "bearer" adds it).',
+    );
+    try {
+      return await b.mint(recipeId);
+    } catch (e) {
+      throw this.fail("config", asError(e));
+    }
+  }
+
+  private requireCommerce(): BearerSession {
+    if (
+      !this.capabilities.license.enabled ||
+      !this.capabilities.distribution.enabled
+    )
+      throw new UnsupportedError(
+        {
+          supported: false,
+          feature: Feature.commerceReceipt,
+          reason: "product",
+          detail: "commerce needs the license and distribution services",
+        },
+        "service-unavailable",
+      );
+    return this.requireBearer(
+      Feature.commerceReceipt,
+      'A commerce claim needs a device token; this page uses the cookie session (auth: "bearer" adds it).',
+    );
+  }
+
+  async commerceBinding(): Promise<CommerceBinding> {
+    return this.requireCommerce().commerceBinding();
+  }
+
+  async commerceClaim(
+    store: CommerceStore,
+    payload: CommercePayload,
+  ): Promise<CommerceClaimResult> {
+    const b = this.requireCommerce();
+    const r = await b.commerceClaim(store, payload);
+    if (r.kind === "ok") {
+      await b.sync().catch(() => undefined);
+      this.applyBearer({ busy: noBusy(), error: noErrors() });
+    }
+    return r;
+  }
+
+  async discovery(): Promise<Record<string, unknown> | null> {
+    await this.discovered;
+    return this.discovery_ ?? null;
+  }
+
+  async storeStatus(): Promise<StoreStatus | null> {
+    if (!this.bearerStore) return null;
+    try {
+      return await this.bearerStore.status();
+    } catch {
+      return null;
+    }
   }
 
   entitledChannels(): string[] {
@@ -1205,11 +1635,26 @@ export class BrowserAdapter implements PolarisAdapter {
   }
 
   supports(feature: string): Support {
+    // A cookie page cannot do what needs a device token, whatever the web row says (§3.17):
+    // the same `runtime` answer the registry allows for the web, with the reason in `detail`.
+    if (!this.bearer && BEARER_ONLY.has(feature)) {
+      const s = supportsIn(this.capabilityCtx, feature);
+      return s.supported
+        ? {
+            supported: false,
+            feature,
+            reason: "runtime",
+            detail: COOKIE_DETAIL,
+          }
+        : s;
+    }
     return supportsIn(this.capabilityCtx, feature);
   }
 
   caps(): string[] {
-    return capsIn(this.capabilityCtx);
+    return capsIn(this.capabilityCtx).filter(
+      (f) => this.bearer !== null || !BEARER_ONLY.has(f),
+    );
   }
 
   isEntitled(name: string): boolean {
@@ -1219,6 +1664,108 @@ export class BrowserAdapter implements PolarisAdapter {
   dispose(): void {
     // No long-lived listeners/timers to clean up in browser mode.
   }
+}
+
+/** What a cookie page says about a verb that needs a device token. */
+const COOKIE_DETAIL =
+  'This page uses the cookie session, which holds no device token; pass auth: "bearer" (with trust.pinnedKeys and the page under the product\'s web.origins) to enable it.';
+
+/** The features only bearer mode serves on the web (the rows SP-R02 moved from N/A). */
+const BEARER_ONLY = new Set<string>([
+  Feature.coreStore,
+  Feature.coreCache,
+  Feature.devicesRegister,
+  Feature.devicesManage,
+  Feature.devicesReport,
+  Feature.licenseEnroll,
+  Feature.licenseReregister,
+  Feature.identityDevicecode,
+  Feature.configMint,
+  Feature.commerceReceipt,
+]);
+
+/** True when the page runs inside a Tauri webview: Tauri's injected globals, or its custom
+ *  protocol / `tauri.localhost` origin. A Tauri page is never first-party to the Worker. */
+export function isTauriPage(pageOrigin?: string | null): boolean {
+  const g = globalThis as Record<string, unknown>;
+  if (g.__TAURI_INTERNALS__ !== undefined || g.__TAURI__ !== undefined)
+    return true;
+  if (!pageOrigin || pageOrigin === "null") return false;
+  try {
+    const u = new URL(pageOrigin);
+    return u.protocol === "tauri:" || u.hostname === "tauri.localhost";
+  } catch {
+    return false;
+  }
+}
+
+/** The page's own origin, SSR-safe: null where there is no `window.location`. */
+function currentPageOrigin(): string | null {
+  try {
+    return typeof window !== "undefined" && window.location
+      ? window.location.origin
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `auth` resolved (owner decision Q1). "auto" (the default) is bearer when the page runs inside
+ * Tauri or on another origin than the Worker (an opaque `"null"` origin counts as another),
+ * and cookie when the page is first-party. With no page at all (a server render) it is cookie:
+ * nothing loads there anyway.
+ */
+export function resolveAuthMode(
+  requested: "cookie" | "bearer" | "auto" | undefined,
+  base: string,
+  pageOrigin?: string,
+): BrowserAuthMode {
+  if (requested === "bearer") return "bearer";
+  if (requested === "cookie") return "cookie";
+  const page = pageOrigin ?? currentPageOrigin();
+  if (isTauriPage(page)) return "bearer";
+  if (page === null) return "cookie";
+  if (page === "null") return "bearer";
+  try {
+    return new URL(base).origin === page ? "cookie" : "bearer";
+  } catch {
+    return "cookie";
+  }
+}
+
+function deviceInfo(d: AccountDevice): DeviceInfo {
+  return {
+    id: d.id,
+    current: d.current === true,
+    status: (d.status as DeviceInfo["status"]) ?? "ok",
+    ...(d.licenseId ? { licenseId: d.licenseId } : {}),
+    ...(d.lastSeen !== undefined ? { lastVerifiedAt: d.lastSeen } : {}),
+    label: d.label ?? null,
+    platform: d.platform ?? null,
+    arch: d.arch ?? null,
+    appVersion: d.appVersion ?? null,
+    sdkName: d.sdkName ?? null,
+    sdkVersion: d.sdkVersion ?? null,
+  };
+}
+
+function signInResult(r: SignInResult): DeviceSignInResult {
+  if (r.status === "ready")
+    return r.identity
+      ? { status: "ready", identity: r.identity }
+      : { status: "ready" };
+  if (r.status === "expired") return { status: "expired" };
+  return { status: "error", message: r.message };
+}
+
+function asError(
+  e: unknown,
+  fallback: "network" | "sign-in-failed" | "sign-in-unavailable" = "network",
+): PolarisError {
+  return e instanceof PolarisError
+    ? e
+    : new PolarisError(fallback, (e as Error)?.message ?? String(e));
 }
 
 /** Construct a browser adapter (the canonical factory the Provider uses). */

@@ -16,6 +16,9 @@ signal activated()
 ## Offer "Continue free" (keyless enrolment, POST /license/enroll) where License runs. Off by
 ## default: only a product with a free tier turns it on.
 @export var offer_enrollment := false
+## Show key entry even on an App Store, TestFlight or Play build (off: hidden there, as the
+## stores' payment rules require; PKeyActivationController.STORE_OUTLETS).
+@export var allow_key_entry_on_store := false
 
 ## Where the portal sends the player back once a seat is free (PX-W8): one of the product's
 ## declared return targets, or "" for none.
@@ -50,6 +53,8 @@ var _message: Label
 var _manage: Button
 var _manage_qr: PKeyQrRect
 var _manage_caption: Label
+## The last result's kind.
+var last_kind: StringName = &""
 var _main: VBoxContainer
 var sign_in_dialog: PKeySignInDialog
 var offline_dialog: PKeyOfflineDialog
@@ -110,7 +115,7 @@ func set_capabilities(caps: Variant) -> void:
 func capabilities() -> Dictionary:
 	if _caps_override is Dictionary:
 		return _caps_override
-	return PKeyActivationController.capabilities_from(sdk, offer_enrollment)
+	return PKeyActivationController.capabilities_from(sdk, offer_enrollment, OS.has_feature("web"), allow_key_entry_on_store)
 
 
 func _render() -> void:
@@ -176,6 +181,7 @@ func manage_presentation() -> String:
 func show_result(r: PKeyActivationResult, key := "") -> void:
 	manage_url = PKeyActivationController.manage_link(r, key, return_url, manage_presentation() == "qr")
 	var m := PKeyActivationController.message_for(r)
+	last_kind = r.kind if r != null else &""
 	message = c().text(m[0], m[1])
 	message_ok = r != null and r.ok
 	refresh_view()

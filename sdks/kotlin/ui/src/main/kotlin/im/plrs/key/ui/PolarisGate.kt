@@ -138,6 +138,9 @@ public interface PolarisGateActions {
     /** A Core sync pass, for Retry and Reconnect. */
     public suspend fun sync() {}
 
+    /** Keyless enrolment ("Continue free"); answers `EnrollDisabled` unless the host offers it. */
+    public suspend fun enroll(): ActivationResult = ActivationResult.EnrollDisabled
+
     /** Licence-state changes the SDK pushes (a sync that changed the document). */
     public val changes: Flow<LicenseState> get() = emptyFlow()
 }
@@ -148,6 +151,7 @@ public fun PolarisKeyClient.gateActions(): PolarisGateActions {
     return object : PolarisGateActions {
         override suspend fun status(): LicenseState = client.status()
         override suspend fun activate(key: String): ActivationResult = client.activate(key)
+        override suspend fun enroll(): ActivationResult = client.enroll()
         override suspend fun sync() {
             client.sync()
         }
@@ -227,6 +231,24 @@ public class PolarisGateState(
                         manageQrUrl = offeredManageUrl(result, key, returnUrl, forQr = true),
                     )
                 }
+            }
+            reload()
+        }
+    }
+
+    /**
+     * "Continue free": keyless enrolment; a refusal lands on the activation form like an
+     * activation's. The kit's button for it belongs to the UI-kit program (UK-*); hosts call this.
+     */
+    public fun continueFree() {
+        if (_activation.value.busy) return
+        scope.launch {
+            _activation.update { it.copy(busy = true, error = null) }
+            val result = guarded { actions.enroll() } ?: ActivationResult.Error("enrolment threw")
+            if (result is ActivationResult.Ok) {
+                _activation.value = PolarisActivationUi()
+            } else {
+                _activation.update { it.copy(busy = false, error = PolarisActivationError.Refused(result)) }
             }
             reload()
         }
