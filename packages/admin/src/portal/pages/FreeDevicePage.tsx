@@ -1,6 +1,5 @@
 import * as React from "react";
 import {
-  CheckCircle2,
   Glasses,
   Info,
   Laptop,
@@ -13,6 +12,7 @@ import { Button } from "../../ui/Button.js";
 import { RadioCards } from "../../ui/RadioCards.js";
 import { Skeleton } from "../../ui/Skeleton.js";
 import { announce } from "../../ui/LiveRegion.js";
+import { SuccessCheck } from "../../ui/motion/index.js";
 import { formatRelative } from "../../lib/format.js";
 import type {
   PortalAccount,
@@ -37,7 +37,12 @@ import {
 } from "../model/library.js";
 import { deviceSeats } from "../model/product.js";
 import { allowedReturn } from "../model/returnUrl.js";
-import { focusPageHeading, href, useDocumentTitle } from "../router.js";
+import {
+  focusPageHeading,
+  href,
+  scrollBehavior,
+  useDocumentTitle,
+} from "../router.js";
 import { NotFoundProduct } from "./NotFoundProduct.js";
 
 /** The `for=` label as display text only (it is never markup): trimmed and bounded. */
@@ -177,8 +182,15 @@ function FreeDevice({
   const [removed, setRemoved] = React.useState<string | null>(null);
   const remove = useRemoveDevice(product.product, license.id);
   const headingRef = React.useRef<HTMLHeadingElement>(null);
+  // The device is removed: focus the success heading (MO-05's page focus, which never scrolls),
+  // and bring it into view, smoothly or (reduced motion) at once: the same place either way.
   React.useEffect(() => {
-    if (removed) headingRef.current?.focus();
+    if (!removed) return;
+    headingRef.current?.scrollIntoView?.({
+      block: "nearest",
+      behavior: scrollBehavior(),
+    });
+    focusPageHeading(() => headingRef.current);
   }, [removed]);
   // Arriving from the Activate dialog (`next=free-device`, PX-17): focus the flow's heading once
   // the dialog has left (through its exit) and handed focus back to its opener (§9.4, MO-05).
@@ -235,7 +247,14 @@ function FreeDevice({
           tabIndex={-1}
           className="flex items-center gap-3 text-[1.75rem] font-bold leading-tight text-fg-strong outline-none"
         >
-          <CheckCircle2 aria-hidden className="size-7 shrink-0 text-success" />
+          {/* The success check draws once (S-23 §6.4): no sparks, freeing a device is not a
+              first-time moment. It sits in a ring, as the icon it replaces did. */}
+          <span
+            aria-hidden
+            className="inline-flex size-7 shrink-0 items-center justify-center rounded-full border-2 border-current text-success"
+          >
+            <SuccessCheck size={16} />
+          </span>
           {removed} was removed
         </h1>
         <p className="text-fg">

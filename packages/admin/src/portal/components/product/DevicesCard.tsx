@@ -1,4 +1,5 @@
 import * as React from "react";
+import { flushSync } from "react-dom";
 import {
   Glasses,
   Info,
@@ -12,6 +13,13 @@ import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { announce } from "../../../ui/LiveRegion.js";
 import { toast } from "../../../ui/toast.js";
+import {
+  CountUp,
+  Expand,
+  reducedMotion,
+  viewTransition,
+  viewTransitionsSupported,
+} from "../../../ui/motion/index.js";
 import { formatRelative } from "../../../lib/format.js";
 import type { PortalDevice, PortalLicenseDetail } from "../../api.js";
 import { useRemoveDevice } from "../../data.js";
@@ -22,6 +30,7 @@ import {
   deviceOsName,
   isSignInLicense,
 } from "../../model/library.js";
+import { focusPageHeading, scrollBehavior } from "../../router.js";
 import { ErrorPanel } from "../States.js";
 import { SeatMeter } from "../SeatMeter.js";
 import { SectionCard } from "./Card.js";
@@ -33,6 +42,13 @@ import { SectionCard } from "./Card.js";
  * count reads "2 of 3 devices in use"; without it the limit is never guessed. Every licence, from
  * a key or from signing in, lists its devices with Remove (remote deauthorize); a key licence
  * drops its counter when a sign-in licence covers the product (owner, 2026-10-05).
+ *
+ * Motion (notes/S-23 §6.1; MO-06): the confirm opens with the expand pattern; when the devices
+ * using a seat change (one removed here or elsewhere, one activated), the rows leave, close up and
+ * enter in one `list` View Transition with the card as its scope, while the count counts and the
+ * meter drains or fills. The new state is in the DOM before anything moves, and every change is
+ * also said in words (the count, the announcement). Under reduced motion it is the same change at
+ * once.
  */
 export function DevicesCard({
   productName,
@@ -56,14 +72,19 @@ export function DevicesCard({
   error: unknown;
   onRetry: () => void;
 }): React.ReactElement {
-  const active = detail?.devices.filter((d) => d.status === "authorized") ?? [];
-  const idle = (detail?.devices.length ?? 0) - active.length;
-  const signIn = detail ? isSignInLicense(detail) : false;
+  const { view, listRef } = useListTransition(detail, !loading && !error);
+  // What is drawn comes from `view` (the old one while a transition captures it); what a click
+  // acts on comes from `detail`, the live data (a row already gone there does nothing).
+  const live = activeOf(detail);
+  const liveIds = new Set(live.map((d) => d.deviceId));
+  const active = activeOf(view);
+  const idle = (view?.devices.length ?? 0) - active.length;
+  const signIn = view ? isSignInLicense(view) : false;
   return (
-    <SectionCard id="devices" title="Devices">
+    <SectionCard id="devices" title="Devices" className="pk-vt-scope">
       {loading ? (
         <Skeleton className="h-28 w-full" />
-      ) : error || !detail ? (
+      ) : error || !view ? (
         <ErrorPanel
           error={error}
           onRetry={onRetry}
@@ -73,9 +94,10 @@ export function DevicesCard({
         <>
           {showCount ? (
             <p className="mb-2 text-fg-muted">
-              <span className="text-xl font-bold text-fg-strong">
-                {active.length}
-              </span>{" "}
+              <CountUp
+                value={active.length}
+                className="text-xl font-bold text-fg-strong"
+              />{" "}
               {seatLimit
                 ? `of ${seatLimit} ${seatLimit === 1 ? "device" : "devices"}`
                 : active.length === 1
@@ -99,17 +121,23 @@ export function DevicesCard({
                 : `No device is using this license. Open ${productName} on a device to activate it.`}
             </p>
           ) : (
-            <ul className="divide-y divide-border border-t border-border">
+            // pk-vt-table: rows entering in a list transition wait for the others to close up
+            // (motion.css, MO-09's timing).
+            <ul
+              ref={listRef}
+              className="pk-vt-table divide-y divide-border border-t border-border"
+            >
               {active.map((d) => (
                 <DeviceRow
                   key={d.deviceId}
                   device={d}
-                  detail={detail}
+                  detail={view}
                   productName={productName}
-                  inUse={active.length}
+                  inUse={live.length}
                   seatLimit={showCount ? seatLimit : null}
                   showCount={showCount}
                   emailConfigured={emailConfigured}
+                  gone={!liveIds.has(d.deviceId)}
                 />
               ))}
             </ul>
@@ -124,6 +152,84 @@ export function DevicesCard({
       )}
     </SectionCard>
   );
+}
+
+/** The devices using a seat. */
+function activeOf(detail: PortalLicenseDetail | undefined): PortalDevice[] {
+  return detail?.devices.filter((d) => d.status === "authorized") ?? [];
+}
+
+function sameIds(a: PortalDevice[], b: PortalDevice[]): boolean {
+  return (
+    a.length === b.length && a.every((d, i) => d.deviceId === b[i]!.deviceId)
+  );
+}
+
+function listMotionOn(): boolean {
+  return viewTransitionsSupported() && !reducedMotion();
+}
+
+/**
+ * The list transition (S-23 §6.1 "list", §6.3), as DataTable runs it (MO-09): when a refetch
+ * changes which devices of the same licence use a seat, the old view is held for the frame a
+ * `list` View Transition needs to capture it, and the newest data lands inside the transition.
+ * Everything else lands in the same render: the first load, another licence, a refetch that
+ * changes nothing or only a device's details, an error, reduced motion, no View Transitions API.
+ */
+function useListTransition(
+  detail: PortalLicenseDetail | undefined,
+  ready: boolean,
+): {
+  view: PortalLicenseDetail | undefined;
+  listRef: React.RefObject<HTMLUListElement | null>;
+} {
+  const [held, setHeld] = React.useState(detail);
+  const moving =
+    ready &&
+    held !== undefined &&
+    detail !== undefined &&
+    held !== detail &&
+    held.id === detail.id &&
+    held.product === detail.product &&
+    !sameIds(activeOf(held), activeOf(detail)) &&
+    listMotionOn();
+  if (held !== detail && !moving) setHeld(detail);
+  /** The newest data, for a transition whose update runs a frame later. */
+  const latest = React.useRef(detail);
+  latest.current = detail;
+  /** A transition has started and its update has not landed yet. */
+  const pending = React.useRef(false);
+  const listRef = React.useRef<HTMLUListElement>(null);
+
+  React.useLayoutEffect(() => {
+    if (!moving || pending.current) return;
+    pending.current = true;
+    const land = (): void => {
+      if (!pending.current) return;
+      pending.current = false;
+      flushSync(() => setHeld(latest.current));
+    };
+    let finished: Promise<void>;
+    try {
+      ({ finished } = viewTransition(land, {
+        type: "list",
+        list: listRef.current,
+      }));
+    } catch {
+      pending.current = false;
+      setHeld(latest.current);
+      return;
+    }
+    // If the browser never ran the update (it always should), the rows still land, and the
+    // flag never outlives the transition.
+    void finished.then(() => {
+      if (!pending.current) return;
+      pending.current = false;
+      setHeld(latest.current);
+    });
+  });
+
+  return { view: moving ? held : detail, listRef };
 }
 
 /** The page's `h1` (the product header's, focusable with `tabIndex={-1}`), from inside it. */
@@ -168,15 +274,22 @@ export function DeviceRow({
   seatLimit,
   showCount = true,
   emailConfigured = false,
+  gone = false,
 }: {
   device: PortalDevice;
   detail: PortalLicenseDetail;
   productName: string;
+  /** The devices using a seat now (the live count, for the consequences and the announcement). */
   inUse: number;
   seatLimit?: number | null;
   /** False drops the new count from the consequences (the card shows no counter). */
   showCount?: boolean;
   emailConfigured?: boolean;
+  /**
+   * The device no longer uses a seat in the live data: the row is only on screen while a list
+   * transition captures it, and its buttons do nothing.
+   */
+  gone?: boolean;
 }): React.ReactElement {
   const [confirming, setConfirming] = React.useState(false);
   const headingRef = React.useRef<HTMLHeadingElement>(null);
@@ -184,9 +297,6 @@ export function DeviceRow({
   const rowRef = React.useRef<HTMLLIElement>(null);
   const remove = useRemoveDevice(detail.product, detail.id);
   const name = deviceName(device);
-  React.useEffect(() => {
-    if (confirming) headingRef.current?.focus();
-  }, [confirming]);
   const meta = [
     deviceOsName(device.platform),
     device.appVersion,
@@ -215,79 +325,100 @@ export function DeviceRow({
             aria-label={`Remove ${name}`}
             aria-expanded={false}
             aria-controls={panelId}
-            onClick={() => setConfirming(true)}
+            onClick={() => {
+              if (!gone) setConfirming(true);
+            }}
           >
             Remove
           </Button>
         )}
       </div>
-      {confirming ? (
-        <div
-          id={panelId}
-          className="mt-3 space-y-3 rounded-lg border border-danger-border bg-danger-subtle p-4"
-        >
-          <h3
-            ref={headingRef}
-            tabIndex={-1}
-            className="font-bold text-fg-strong outline-none"
-          >
-            Remove {name}?
-          </h3>
-          <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
-            <li>
-              {showCount
-                ? `Its seat is free straight away: ${devicesText(inUse - 1, seatLimit)} in use.`
-                : "Its seat is free straight away."}
-            </li>
-            <li>
-              {isSignInLicense(detail)
-                ? `${productName} on that device asks you to sign in again the next time it starts.`
-                : `${productName} on that device asks to be activated the next time it starts.`}
-            </li>
-            {emailConfigured ? <li>We'll email you to confirm.</li> : null}
-          </ul>
-          {remove.error ? (
-            <p role="alert" className="text-sm text-danger">
-              {portalErrorCopy(remove.error).title}.{" "}
-              {portalErrorCopy(remove.error).description}
-            </p>
-          ) : null}
-          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setConfirming(false);
-                requestAnimationFrame(() => removeRef.current?.focus());
-              }}
+      {/* The confirm opens in place (the expand pattern, S-23 §6.1): focus goes to its heading
+          as soon as it shows, and once it has opened the region is brought into view. */}
+      <Expand
+        id={panelId}
+        open={confirming}
+        onOpen={() => headingRef.current?.focus({ preventScroll: true })}
+        onOpened={(region) =>
+          region.scrollIntoView?.({
+            block: "nearest",
+            behavior: scrollBehavior(),
+          })
+        }
+      >
+        <div className="pt-3">
+          <div className="space-y-3 rounded-lg border border-danger-border bg-danger-subtle p-4">
+            <h3
+              ref={headingRef}
+              tabIndex={-1}
+              className="font-bold text-fg-strong outline-none"
             >
-              Keep it
-            </Button>
-            <Button
-              variant="danger"
-              loading={remove.isPending}
-              onClick={() => {
-                // The row leaves with the removal; find the page's heading while it is here.
-                const heading = pageHeading(rowRef.current);
-                remove.mutate(device.deviceId, {
-                  onSuccess: () => {
-                    toast.success(`${name} was removed`, {
-                      description: `${productName} has a free seat now.`,
-                    });
-                    announce(`${name} was removed`);
-                    // Focus never falls to `body` (FLOWS.md P-7): it goes to the product's `h1`
-                    // once the list has re-rendered without the row.
-                    requestAnimationFrame(() => {
-                      if (heading?.isConnected) heading.focus();
-                    });
-                  },
-                });
-              }}
-            >
-              Remove {name}
-            </Button>
+              Remove {name}?
+            </h3>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
+              <li>
+                {showCount
+                  ? `Its seat is free straight away: ${devicesText(inUse - 1, seatLimit)} in use.`
+                  : "Its seat is free straight away."}
+              </li>
+              <li>
+                {isSignInLicense(detail)
+                  ? `${productName} on that device asks you to sign in again the next time it starts.`
+                  : `${productName} on that device asks to be activated the next time it starts.`}
+              </li>
+              {emailConfigured ? <li>We'll email you to confirm.</li> : null}
+            </ul>
+            {remove.error ? (
+              <p role="alert" className="text-sm text-danger">
+                {portalErrorCopy(remove.error).title}.{" "}
+                {portalErrorCopy(remove.error).description}
+              </p>
+            ) : null}
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setConfirming(false);
+                  requestAnimationFrame(() => removeRef.current?.focus());
+                }}
+              >
+                Keep it
+              </Button>
+              <Button
+                variant="danger"
+                loading={remove.isPending}
+                onClick={() => {
+                  if (gone) return;
+                  // The row leaves with the removal; find the page's heading while it is here.
+                  const heading = pageHeading(rowRef.current);
+                  // Said once, with the new count (S-23 §6.5: a freed seat is counted in text).
+                  const left = inUse - 1;
+                  remove.mutate(device.deviceId, {
+                    onSuccess: () => {
+                      toast.success(`${name} was removed`, {
+                        description: `${productName} has a free seat now.`,
+                      });
+                      announce(
+                        showCount
+                          ? `${name} was removed. ${devicesText(left, seatLimit)} in use.`
+                          : `${name} was removed.`,
+                      );
+                      // Focus never falls to `body` (FLOWS.md P-7): it goes to the product's
+                      // `h1` (MO-05's page focus), without scrolling away from the list, which
+                      // closes up where the person is looking.
+                      focusPageHeading(() =>
+                        heading?.isConnected ? heading : pageHeading(null),
+                      );
+                    },
+                  });
+                }}
+              >
+                Remove {name}
+              </Button>
+            </div>
           </div>
         </div>
-      ) : null}
+      </Expand>
     </li>
   );
 }

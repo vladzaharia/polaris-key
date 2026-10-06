@@ -1,9 +1,11 @@
 import * as React from "react";
+import { flushSync } from "react-dom";
 import { AlertTriangle, ArrowRight, Check } from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { Button } from "../../ui/Button.js";
 import { Dialog, DialogBody, DialogFooter } from "../../ui/Dialog.js";
 import { toast } from "../../ui/toast.js";
+import { Celebration, viewTransition } from "../../ui/motion/index.js";
 import {
   PortalApiError,
   type PortalKeyPreview,
@@ -15,6 +17,7 @@ import {
   useLicenses,
   usePreviewKey,
   useProduct,
+  useSession,
 } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
 import { requestHeadingFocus } from "../focus.js";
@@ -61,6 +64,14 @@ import { ProductIcon } from "./ProductIcon.js";
  * (`/signin?request=…`, plans/I-04.md) at once, or offers **Back to <product>** on Done for a
  * target the product declares (PX-10's rule). Nothing is followed that `model/returnUrl.ts`
  * refuses, and none of it ever carries the key.
+ *
+ * **Motion** (notes/S-23 §6.1 morph and success; MO-06): a step change is one `dialog` View
+ * Transition with the panel as `pk-vt-dialog`: the old step leaves in `fast`, the new one comes
+ * in after `micro` while the panel morphs its size at `moderate`; focus moves on
+ * `updateCallbackDone`, when the new step is in the DOM. The first add on an account shows the
+ * success moment on Done (`<Celebration momentKey="first-activation:<account>">`: the check
+ * draws and six sparks burst, once per account); every later Done shows the check only. Under
+ * reduced motion the step swaps at once and the check is static.
  */
 export type ConfirmPreview = PortalKeyPreview &
   KeyVerdictExtras & {
@@ -115,6 +126,7 @@ export function ActivateDialog({
   const claim = useClaimKey();
   const preview = usePreviewKey();
   const licenses = useLicenses(open);
+  const accountId = useSession().data?.account.id ?? null;
   const fieldId = React.useId();
   const noticeId = React.useId();
   /** Set while the page leaves for the login card, so the busy state holds until it unloads. */
@@ -146,24 +158,43 @@ export function ActivateDialog({
   };
 
   /*
-   * Focus follows the step (FLOWS.md §2 C18, P-5): a new step's heading takes focus once it has
-   * rendered, so a screen reader hears where it is and focus never stays on the dialog itself;
+   * Focus follows the step (FLOWS.md §2 C18, P-5): a new step's heading takes focus once it is in
+   * the DOM, so a screen reader hears where it is and focus never stays on the dialog itself;
    * coming back to the key (Back, Change key, a refused claim) puts it on the field. A refusal
    * (an inline verdict) also puts focus on the field: Continue is disabled until the key
    * changes, and a disabled button that held focus would drop it to `body`.
    */
   const anchorRef = React.useRef<HTMLSpanElement>(null);
-  const lastStep = React.useRef<Step["kind"]>(step.kind);
-  React.useEffect(() => {
-    if (lastStep.current === step.kind) return;
-    lastStep.current = step.kind;
-    const frame = requestAnimationFrame(() => {
-      if (step.kind === "enter") focusField();
+  /** The step on screen now (a step change in flight has not landed yet). */
+  const stepRef = React.useRef(step);
+  stepRef.current = step;
+
+  /**
+   * Change step (with `also`, the state that changes with it) in one `dialog` View Transition:
+   * the update runs once the old step is captured, and focus moves when it has landed
+   * (`updateCallbackDone`), never after the animation. Without the API or under reduced motion
+   * the update runs here and focus moves right after: the same end state, at once. A step change
+   * made while another is in flight is the newer one: the running transition is skipped to its
+   * end, its update lands first and this one after it, and focus follows the step that is on
+   * screen when each lands.
+   */
+  const goTo = (next: Step, also?: () => void): void => {
+    const apply = (): void => {
+      also?.();
+      setStep(next);
+    };
+    if (stepRef.current.kind === next.kind) {
+      apply();
+      return;
+    }
+    const handle = viewTransition(() => flushSync(apply), { type: "dialog" });
+    void handle.updateCallbackDone.then(() => {
+      if (stepRef.current.kind !== next.kind) return;
+      if (next.kind === "enter") focusField();
       else focusDialogHeading(anchorRef.current);
     });
-    return () => cancelAnimationFrame(frame);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step.kind]);
+  };
+
   React.useEffect(() => {
     if (!serverVerdict || step.kind !== "enter") return;
     const frame = requestAnimationFrame(focusField);
@@ -172,12 +203,13 @@ export function ActivateDialog({
   }, [serverVerdict]);
 
   const reset = (): void => {
-    setKey("");
-    setTouched(false);
-    setServerVerdict(null);
-    claim.reset();
-    preview.reset();
-    setStep({ kind: "enter" });
+    goTo({ kind: "enter" }, () => {
+      setKey("");
+      setTouched(false);
+      setServerVerdict(null);
+      claim.reset();
+      preview.reset();
+    });
   };
 
   /**
@@ -208,7 +240,7 @@ export function ActivateDialog({
       browser.go(toCard);
       return;
     }
-    setStep(done);
+    goTo(done);
   };
 
   /** Add the key (the claim); refusals go back to the enter step, inline. */
@@ -231,8 +263,8 @@ export function ActivateDialog({
         });
       },
       onError: (err) => {
-        setStep({ kind: "enter" });
-        setServerVerdict(claimError(err, product?.name ?? nameFor(slugToAdd)));
+        const verdict = claimError(err, product?.name ?? nameFor(slugToAdd));
+        goTo({ kind: "enter" }, () => setServerVerdict(verdict));
       },
     });
   };
@@ -256,7 +288,7 @@ export function ActivateDialog({
             [slugNow]: named.name,
           }));
         if (p.verdict === "addable" && p.product) {
-          setStep({
+          goTo({
             kind: "confirm",
             preview: p as ConfirmPreview,
             slug: slugNow,
@@ -319,6 +351,7 @@ export function ActivateDialog({
         !done && !confirm && fromProduct && linkContext ? noticeId : undefined
       }
       size="md"
+      className="pk-vt-dialog"
     >
       <span ref={anchorRef} hidden />
       {confirm ? (
@@ -326,7 +359,7 @@ export function ActivateDialog({
           preview={confirm.preview}
           licenseKey={key}
           adding={claim.isPending || leaving}
-          onBack={() => setStep({ kind: "enter" })}
+          onBack={() => goTo({ kind: "enter" })}
           onAdd={() => add(confirm.slug, confirm.preview.product)}
         />
       ) : done ? (
@@ -336,6 +369,11 @@ export function ActivateDialog({
           headerUrl={done.product?.headerUrl}
           already={done.already}
           appReturn={toCard ? undefined : returnTo}
+          momentKey={
+            accountId && !done.already
+              ? `first-activation:${accountId}`
+              : undefined
+          }
           onAnother={reset}
           onOpen={() => openProduct(done.slug)}
         />
@@ -526,6 +564,11 @@ function LinkNotice({
  * /api/products/<p>` `returnTo`, PX-10's rule), the way forward is the app that sent the person:
  * **Back to <product>**, with **See it in your library** beside it. An undeclared target is
  * dropped and Done stays as it is.
+ *
+ * An add carries `momentKey`: the plate's check is the success moment (EXPERIENCE §0.7, S-23 D5),
+ * which draws and bursts the first time the key is seen and is a still check after that (and
+ * under reduced motion). The plate sits over the art, outside its clipping box, so the sparks are
+ * never cut off. A key that was already yours changed nothing: the plate keeps its plain check.
  */
 function DoneStep({
   slug,
@@ -533,6 +576,7 @@ function DoneStep({
   headerUrl,
   already,
   appReturn,
+  momentKey,
   onAnother,
   onOpen,
 }: {
@@ -542,6 +586,8 @@ function DoneStep({
   already: boolean;
   /** The link's `return=`, not yet validated; absent for the login card (gone to already). */
   appReturn?: string;
+  /** `first-activation:<account>` for an add; absent when nothing was added. */
+  momentKey?: string;
   onAnother: () => void;
   onOpen: () => void;
 }): React.ReactElement {
@@ -560,19 +606,24 @@ function DoneStep({
   return (
     <>
       <DialogBody className="space-y-4">
-        <ProductArt
-          slug={slug}
-          name={name}
-          tint={null}
-          src={headerUrl}
-          variant="banner"
-          className="h-36 rounded-lg"
-        >
+        <div className="relative">
+          <ProductArt
+            slug={slug}
+            name={name}
+            tint={null}
+            src={headerUrl}
+            variant="banner"
+            className="h-36 rounded-lg"
+          />
           <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full border border-success-border bg-surface-overlay px-2.5 py-1 text-xs font-bold text-success shadow-elevation-2">
-            <Check aria-hidden className="size-3.5" />
+            {momentKey ? (
+              <Celebration momentKey={momentKey} size={14} />
+            ) : (
+              <Check aria-hidden className="size-3.5" />
+            )}
             In your library
           </span>
-        </ProductArt>
+        </div>
         <p className="text-fg">{lede}</p>
       </DialogBody>
       {/* §8: side by side when both fit, primary last (right); otherwise stacked full
