@@ -16,6 +16,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | Method | Path | Service | Summary |
 | --- | --- | --- | --- |
 | GET | `/manage/api/github/repositories` | admin | The repositories the Polaris Key GitHub App can read |
+| GET | `/manage/api/products/{product}/assets` | admin | The product's hosted assets, their sources and pull status |
 | POST | `/manage/api/products/link-repo` | admin | Create a product from a repository's `.pkey/`, or dry-run it |
 | GET | `/manage/api/products/slug-check` | admin | Is a slug free for a new product |
 | GET | `/{product}/{channel}/appcast.xml` | aliases | Alias → /\{product\}/update/\{channel\}/appcast.xml |
