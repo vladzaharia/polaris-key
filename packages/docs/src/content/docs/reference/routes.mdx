@@ -104,6 +104,10 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/api/discover/{product}/claim` | portal | Add a Discover product to the library |
 | GET | `/api/discover` | portal | The products the signed-in account could add for free |
 | GET | `/api/library` | portal | The signed-in account's library |
+| DELETE | `/api/me/passkeys/{passkeyId}` | portal | Remove a passkey |
+| POST | `/api/me/passkeys/options` | portal | A registration challenge for this session |
+| GET | `/api/me/passkeys` | portal | The account's passkeys, and whether one can be added |
+| POST | `/api/me/passkeys` | portal | Add a passkey (the attestation for this session's challenge) |
 | GET | `/api/products/{product}` | portal | One product in the signed-in account's library |
 | DELETE | `/api/sessions/{sessionId}` | portal | End one of the account's sessions |
 | POST | `/api/sessions/sign-out-everywhere` | portal | End every session of the account, this one included |
@@ -117,6 +121,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/api/signin/email/start` | portal | Identifier-first email start (a code and a magic link) |
 | POST | `/api/signin/email/verify` | portal | Redeem the emailed code in the browser that asked |
 | POST | `/api/signin/flow` | portal | The asking browser's poll after the link was confirmed elsewhere |
+| POST | `/api/signin/passkey/options` | portal | A passkey sign-in challenge for this browser |
+| POST | `/api/signin/passkey/verify` | portal | Sign in with the passkey's assertion |
 | GET | `/api/signin/requests/{request}/consent` | portal | What the app gets if the signed-in person continues (app consent) |
 | GET | `/api/signin/requests/{request}` | portal | One app sign-in request, as the sign-in card renders it |
 | GET | `/media/{product}/{asset}` | portal | A product's listing art, served same-origin |
