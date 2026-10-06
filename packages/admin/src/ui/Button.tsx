@@ -18,11 +18,16 @@ import { Tooltip } from "./Tooltip.js";
  * - `type` defaults to `"button"`, so a button inside a `<form>` never submits by accident; a
  *   submit button says `type="submit"` (fixes UI-3).
  * - `asChild` honours `loading` and `disabledReason` with `aria-disabled` and a click guard.
+ * - Hover and press never snap (MO-08): the filled variants lighten their token colour by mixing,
+ *   not with a `brightness` filter (filters are not transitioned and never animate per frame,
+ *   S-23 §6.2), so the hover eases with the other colours; `pk-pressable` gives the press.
  */
 export const buttonVariants = cva(
   [
     "inline-flex select-none items-center justify-center gap-2 whitespace-nowrap rounded-md font-normal",
-    "transition-colors duration-(--pk-duration-fast) ease-standard",
+    // The press pattern (src/motion.css `.pk-pressable`, S-23 §6.1): 0.98 on :active, never when
+    // disabled or busy, with the colours at `micro`. Scale is paint only, so neighbours never move.
+    "pk-pressable",
     "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
     "disabled:cursor-not-allowed disabled:opacity-50 aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
     "[&_svg]:shrink-0",
@@ -31,7 +36,7 @@ export const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          "bg-accent text-accent-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:brightness-110",
+          "bg-accent text-accent-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-accent),white_10%)]",
         secondary:
           "bg-hover text-fg-strong hover:not-disabled:not-aria-disabled:bg-surface-sunken",
         outline:
@@ -39,10 +44,10 @@ export const buttonVariants = cva(
         ghost:
           "bg-transparent text-fg hover:not-disabled:not-aria-disabled:bg-hover hover:not-disabled:not-aria-disabled:text-fg-strong",
         danger:
-          "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:brightness-110",
+          "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),white_10%)]",
         /** Deprecated alias of `danger`, kept for the legacy views until chunk 11. */
         destructive:
-          "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:brightness-110",
+          "bg-danger text-danger-on shadow-elevation-1 hover:not-disabled:not-aria-disabled:bg-[color-mix(in_oklab,var(--pk-danger),white_10%)]",
         link: "h-auto px-0 text-accent-fg underline-offset-4 hover:underline",
         /**
          * The customer portal's outlined quick action (PORTAL.md §5.2): transparent, a

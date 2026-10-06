@@ -14,7 +14,10 @@ import { describe, expect, it } from "vitest";
  *   4. a JSX `style` that sets `transition*`, `animation*` or `transform` (D8: motion lives in
  *      the stylesheet; dynamic values go through the CSSOM in the motion layer);
  *   5. `animate-pulse`, beyond today's sites (D6: blocks do not pulse; MO-09 and MO-10 retire the
- *      allowlisted ones and shrink the list).
+ *      allowlisted ones and shrink the list);
+ *   6. a hover or press state that changes a filter (`hover:brightness-110`): filters are not
+ *      transitioned and never animate per frame (S-23 §6.2), so the change snaps; mix the token
+ *      colour instead (MO-08).
  *
  * The repo has no ESLint (AGENTS.md rule 6), so, like the boundary check, this is a test.
  */
@@ -38,7 +41,8 @@ export interface MotionFinding {
     | "arbitrary-timing"
     | "raw-ms-class"
     | "style-motion"
-    | "animate-pulse";
+    | "animate-pulse"
+    | "hover-filter";
   line: number;
   text: string;
 }
@@ -49,6 +53,8 @@ const ARBITRARY_TIMING = new RegExp(
   `(^|[\\s"'\`:])(${["duration", "ease", "delay"].join("|")})-\\[`,
 );
 const PULSE = new RegExp(`\\b${"animate"}-${"pulse"}\\b`);
+const STATE_FILTER =
+  /(^|:)(hover|active|group-hover|peer-hover):(?:[^:\s]+:)*-?(brightness|contrast|saturate|hue-rotate|grayscale|invert|sepia|blur|drop-shadow)(-|$)/;
 const STYLE_MOTION_KEY =
   /(?:^|[{,\s])["']?(transition[A-Za-z]*|animation[A-Za-z]*|transform)["']?\s*:/;
 
@@ -146,6 +152,8 @@ export function lintMotion(source: string): MotionFinding[] {
       // A class-shaped token (a utility, a variant or an arbitrary value) holding a raw ms value.
       if (/\d+(\.\d+)?ms\b/.test(token) && /[-[:]/.test(token))
         findings.push({ rule: "raw-ms-class", line: s.line, text: token });
+      else if (STATE_FILTER.test(token))
+        findings.push({ rule: "hover-filter", line: s.line, text: token });
   for (const p of styleProps(code)) {
     const m = p.value.match(STYLE_MOTION_KEY);
     if (m) findings.push({ rule: "style-motion", line: p.line, text: m[1]! });
@@ -177,7 +185,7 @@ describe("the motion lint", () => {
     );
   });
 
-  it("finds no transition-all, arbitrary timing, raw ms classes or motion in JSX style", () => {
+  it("finds no transition-all, arbitrary timing, raw ms classes, hover filters or motion in JSX style", () => {
     const bad = files.flatMap((f) =>
       f.findings
         .filter((x) => x.rule !== "animate-pulse")
@@ -219,6 +227,7 @@ describe("the motion lint's fixture", () => {
     `export const G = () => <div style={{ "transform": "scale(2)" }} />;`,
     `export const H = () => <div className="h-4 animate-${"pulse"}" />;`,
     `export const I = () => <div className={cn("${de}-[80ms]", a)} />;`,
+    `export const J = () => <b className="hover:not-disabled:brightness-110" />;`,
   ].join("\n");
 
   it("fails on each banned pattern", () => {
@@ -234,6 +243,7 @@ describe("the motion lint's fixture", () => {
     expect(byLine(7)).toEqual(["style-motion"]);
     expect(byLine(8)).toEqual(["animate-pulse"]);
     expect(byLine(9)).toContain("arbitrary-timing");
+    expect(byLine(10)).toEqual(["hover-filter"]);
   });
 
   it("passes the token forms, geometry styles, comments and prose", () => {
@@ -245,6 +255,7 @@ describe("the motion lint's fixture", () => {
       `/* animate-${"pulse"} in a block comment */`,
       `const d = "Retry in 500ms";`,
       `el.style.setProperty("--pk-countdown", \`\${ms}ms\`);`,
+      `const e = <b className="brightness-90 hover:bg-[color-mix(in_oklab,var(--pk-accent),white_10%)]" />;`,
     ].join("\n");
     expect(lintMotion(ok)).toEqual([]);
   });
