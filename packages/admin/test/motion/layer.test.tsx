@@ -224,6 +224,54 @@ describe("setMeter and highlight", () => {
     expect(row.classList.contains("pk-row")).toBe(true);
   });
 
+  /** A `transitionend` for `property` (jsdom has no TransitionEvent constructor). */
+  const transitionEnd = (property: string): Event =>
+    Object.assign(new Event("transitionend"), { propertyName: property });
+
+  it("drops .pk-row once the fade ends, so the row's hover is its neighbours' again", () => {
+    vi.useFakeTimers();
+    const row = document.createElement("tr");
+    highlight(row);
+    vi.advanceTimersByTime(1600);
+    expect(row.classList.contains("pk-row-highlight")).toBe(false);
+    // The fade is still running: the transition stays for it.
+    expect(row.classList.contains("pk-row")).toBe(true);
+    row.dispatchEvent(transitionEnd("color"));
+    expect(row.classList.contains("pk-row")).toBe(true);
+    row.dispatchEvent(transitionEnd("background-color"));
+    expect(row.classList.contains("pk-row")).toBe(false);
+  });
+
+  it("drops .pk-row after the fade's duration when no transitionend fires", () => {
+    vi.useFakeTimers();
+    html.dataset.motion = "reduce";
+    const row = document.createElement("tr");
+    const clear = highlight(row);
+    clear();
+    expect(row.classList.contains("pk-row")).toBe(true);
+    vi.advanceTimersByTime(530);
+    expect(row.classList.contains("pk-row")).toBe(false);
+    // The hold's own timer, firing later, changes nothing.
+    vi.advanceTimersByTime(2000);
+    expect(row.className).toBe("");
+  });
+
+  it("a second highlight of the same row gets a full hold, and keeps its transition", () => {
+    vi.useFakeTimers();
+    const row = document.createElement("tr");
+    highlight(row);
+    vi.advanceTimersByTime(1000);
+    highlight(row);
+    // The first hold ends here: it no longer owns the tint.
+    vi.advanceTimersByTime(600);
+    expect(row.classList.contains("pk-row-highlight")).toBe(true);
+    vi.advanceTimersByTime(1000);
+    expect(row.classList.contains("pk-row-highlight")).toBe(false);
+    expect(row.classList.contains("pk-row")).toBe(true);
+    vi.advanceTimersByTime(530);
+    expect(row.classList.contains("pk-row")).toBe(false);
+  });
+
   it("keeps the tint under reduced motion (a delay, not motion)", () => {
     vi.useFakeTimers();
     html.dataset.motion = "reduce";
