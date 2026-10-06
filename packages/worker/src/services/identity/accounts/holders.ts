@@ -18,7 +18,7 @@
 import { getLicense } from "../../../core/data.js";
 import { licenseEmail } from "../../../core/accountSubjects.js";
 import {
-  autoAttachBlocked,
+  autoAttachBlockedAccounts,
   registerLicenseHolderHooks,
   type LicenseHolderContext,
 } from "../../../core/licenseHolders.js";
@@ -50,9 +50,10 @@ export async function accountEmailVerified(
 }
 
 /**
- * Association at creation or assignment (S-24 D3, D4). The account lookup runs whenever the
- * licence has an email, BEFORE anything decides the outcome, so an owned licence, an auto-link-off
- * product and an unknown address all cost the same read (no timing tell about who has an account).
+ * Association at creation or assignment (S-24 D3, D4). The account lookup and the read of the
+ * licence's blocks run whenever the licence has an email, BEFORE anything decides the outcome, so
+ * an owned licence, an auto-link-off product and an unknown address all cost the same two reads,
+ * however many accounts match (no timing tell about who has an account).
  *
  * Which account: the one holding the address as an email sign-in method, when there is one (that
  * link is unique); otherwise the single account that verified it some other way. Two accounts
@@ -68,15 +69,15 @@ export async function licenseEmailAssigned(
   const email = license ? licenseEmail(license) : null;
   if (!license || email === null) return false;
   const candidates = await accountsVerifyingEmail(db, email);
+  // One read of the licence's blocks, whatever the candidates: filtered in memory below.
+  const blocked = await autoAttachBlockedAccounts(
+    db,
+    args.product,
+    args.licenseId,
+  );
   if ((license.account_id ?? null) !== null) return false;
   if (!(await autoLinkEnabled(db, args.product))) return false;
-  const eligible: typeof candidates = [];
-  for (const c of candidates) {
-    if (
-      !(await autoAttachBlocked(db, args.product, args.licenseId, c.accountId))
-    )
-      eligible.push(c);
-  }
+  const eligible = candidates.filter((c) => !blocked.has(c.accountId));
   const chosen =
     eligible.find((c) => c.emailMethod) ??
     (eligible.length === 1 ? eligible[0] : undefined);

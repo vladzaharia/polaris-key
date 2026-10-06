@@ -6129,7 +6129,9 @@ whether it is in an account, never the account's details (D6).
   into the account (a reassignment's undo). The block is per account: another account that
   verifies the email still gets the licence. An account merge moves the absorbed account's blocks
   to the survivor (the survivor inherits the absorbed account's verified addresses, so it must
-  inherit its refusals too); an account deletion and a licence deletion remove the rows. Tests
+  inherit its refusals too); an account, licence or product deletion removes the rows. The
+  block is written BEFORE the owner pointer moves, so no sweep running between the two can
+  re-attach the licence; a move that then fails removes a block it created. Tests
   cover each path.
 - **Clearing an assigned licence's email is refused** on the console PATCH (`400 bad_request`):
   removing a holder is the relink tool's Make floating (I-12, LX-30), which takes a step-up, a

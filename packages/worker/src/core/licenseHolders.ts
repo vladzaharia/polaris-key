@@ -142,6 +142,24 @@ export async function autoAttachBlocked(
   return row !== null;
 }
 
+/**
+ * Every account the licence is blocked for, in one read. The creation-time association reads this
+ * unconditionally after its account lookup and filters in memory, so the number of candidate
+ * accounts does not change how many statements run (no timing tell, S-24 D4).
+ */
+export async function autoAttachBlockedAccounts(
+  db: Db,
+  product: string,
+  licenseId: string,
+): Promise<Set<string>> {
+  const rows = await db.all<{ account_id: string }>(
+    "SELECT account_id FROM license_auto_attach_blocks WHERE product = ? AND license_id = ?",
+    product,
+    licenseId,
+  );
+  return new Set(rows.map((r) => r.account_id));
+}
+
 /** Block automatic attach of the licence to the account (idempotent; the newest time wins). */
 export function stmtBlockAutoAttach(
   product: string,
@@ -199,6 +217,16 @@ export function stmtsMoveAccountAutoAttachBlocks(
       params: [from],
     },
   ];
+}
+
+/** A product deletion: its licences' blocks go with it, in the deletion batch (R11-09). */
+export function stmtDeleteProductAutoAttachBlocks(
+  product: string,
+): DbStatement {
+  return {
+    sql: "DELETE FROM license_auto_attach_blocks WHERE product = ?",
+    params: [product],
+  };
 }
 
 /** An account deletion: its blocks go with it, in the deletion batch. */

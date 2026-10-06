@@ -19,10 +19,15 @@ Where the brief and the code disagreed, the code was the fact:
 - **A fourth list filter, `inAccount`.** `holder=floating|assigned|waiting` cannot express LX-30's
   "In an account" filter (`assigned` is in an account or waiting), so the list also takes
   `holder=inAccount`. An unknown value is `400 bad_request` (`fields: ["holder"]`).
-- **No "Added to your library" notice exists, and `via: "email"` sends none.** `attachLicense`
-  notifies only a licence email the account has NOT verified (S-16); an email attach is by
-  definition to an address the account verified, so nothing is sent. The person's message on
-  creation is LX-27's key email.
+- **The "Added to your library" notice is not reused for an email attach.** It exists as
+  `licenseAddedNotice` (`portal/notices.ts`, "<Product> is in your library"), sent on a portal key
+  claim (`portal/selfService.ts`), but its copy says the licence was added "with a license key",
+  which is false for an association by email. S-24 D11 and D12 make LX-27's key email ("Your
+  <Product> license", sent in the create request) the person's message for a licence the
+  developer assigned. `attachLicense`'s own notice goes only to a licence email the account has
+  NOT verified (S-16), which an email attach never is, so `via: "email"` sends nothing.
+  Follow-up for LX-27: a "from <Developer>" variant of the library notice, if a separate notice is
+  wanted for an association that happens after creation (at the email's first verification).
 - **Removal keeps the email, so the licence reads assigned and waiting, not floating.** The
   acceptance ("another account that verifies the email still can") needs the email kept; the
   derived holder of an email-bearing licence with no account is assigned/waiting. PX-23's
@@ -146,10 +151,10 @@ request (H5: `detachLicense` keeps `email`; `syncAccountLicenseLinks` re-attache
       that account; another account that verifies the email still can (tests).
 - [x] The create answer is the same shape whether or not an account exists (test).
 - [x] OpenAPI and `routeCoverage` pass; THREAT-MODEL rows T-H2 and T-H4 added.
-- [x] The green gate passes (AGENTS.md), including the migration and workerd checks. (With the
-      migration named `00XX_…`, `recordDeploy.test.ts` refuses the placeholder as
-      `LATEST_MIGRATION`; the gate is green with the lead's number in place, checked with a
-      provisional `0091`.)
+- [x] The green gate passes (AGENTS.md), including the migration and workerd checks. The
+      migration is `0092_license_auto_attach_blocks.sql` (the lead's number) and `LATEST_MIGRATION`
+      names it. The gate ran before the numbering, with the file under a provisional number,
+      because `recordDeploy.test.ts` refuses a `00XX_` placeholder as `LATEST_MIGRATION`.
 
 ## Verify
 

@@ -178,7 +178,9 @@ export async function insertLink(
  * Every address this account has verified: its verified email sign-in methods, the
  * provider-verified email of any link, and the primary email once verified. The licence claim
  * rule (an email-carrying licence attaches only to an account that verified that email) and the
- * security-notice fan-out both read this one list.
+ * security-notice fan-out both read this one list. {@link accountsVerifyingEmail} is its inverse
+ * and must stay in step: change what "verified" means here and change it there too
+ * (`test/licenseHolders.test.ts` pins the two agree).
  */
 export async function verifiedAccountEmails(
   db: Db,
@@ -201,7 +203,9 @@ export async function verifiedAccountEmails(
  * The ACTIVE accounts that verified `email`: the inverse of {@link verifiedAccountEmails}. The
  * account holding it as an email sign-in method comes first (that link key is unique, so at most
  * one), then any other account in id order. INTERNAL: for the licence association only (LX-26);
- * nothing about it reaches a developer.
+ * nothing about it reaches a developer. The same two sources as `verifiedAccountEmails` (a link
+ * whose email is verified, a verified primary email), read the other way; only active accounts
+ * answer. Keep the two in step (`test/licenseHolders.test.ts` pins that they agree).
  */
 export async function accountsVerifyingEmail(
   db: Db,

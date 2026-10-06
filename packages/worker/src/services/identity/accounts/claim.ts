@@ -195,17 +195,40 @@ export async function attachLicense(
 }
 
 /**
- * LX-26 (S-24 D19): keep the licence out of `accountId` until an explicit act brings it back, and
- * audit it (`account.license.auto_attach_block`) in the account's own history.
+ * LX-26 (S-24 D19): keep the licence out of `accountId` until an explicit act brings it back.
+ * Written BEFORE the owner pointer moves, so no sweep running between the two can re-attach it
+ * (a block on a licence the account still holds is inert: the sweeps touch only licences in no
+ * account). Answers the undo for a move that then did not happen: it deletes the row only if this
+ * call created it, so a block the account already had survives.
  */
-async function blockAutoAttach(
+async function writeAutoAttachBlock(
   ctx: AccountContext,
   args: { accountId: string; product: string; licenseId: string },
-): Promise<void> {
+): Promise<() => Promise<void>> {
+  const had = await autoAttachBlocked(
+    ctx.db,
+    args.product,
+    args.licenseId,
+    args.accountId,
+  );
   await runBlockStatement(
     ctx.db,
     stmtBlockAutoAttach(args.product, args.licenseId, args.accountId, ctx.now),
   );
+  return async () => {
+    if (!had)
+      await runBlockStatement(
+        ctx.db,
+        stmtUnblockAutoAttach(args.product, args.licenseId, args.accountId),
+      );
+  };
+}
+
+/** The block's row in the account's own history (`account.license.auto_attach_block`). */
+async function auditAutoAttachBlock(
+  ctx: AccountContext,
+  args: { accountId: string; product: string; licenseId: string },
+): Promise<void> {
   await portalAudit(ctx.db, {
     accountId: args.accountId,
     action: "account.license.auto_attach_block",
@@ -267,6 +290,13 @@ export async function detachLicense(
   // Every portal link to the licence ends BEFORE the pointer clears, so the scheduled catch-up
   // can never re-point the floating licence at a not-yet-settled §8 Q1 loser.
   await endLicenseLinks(ctx, args.product, args.licenseId, [args.accountId]);
+  // LX-26: the block lands BEFORE the pointer clears, so no sweep in between re-attaches it.
+  const target = {
+    accountId: args.accountId,
+    product: args.product,
+    licenseId: args.licenseId,
+  };
+  const undoBlock = await writeAutoAttachBlock(ctx, target);
   const moved = await moveLicenseOwnerEndingLinks(
     ctx,
     args.product,
@@ -274,12 +304,11 @@ export async function detachLicense(
     args.accountId,
     null,
   );
-  if (!moved) return { ok: false };
-  await blockAutoAttach(ctx, {
-    accountId: args.accountId,
-    product: args.product,
-    licenseId: args.licenseId,
-  });
+  if (!moved) {
+    await undoBlock();
+    return { ok: false };
+  }
+  await auditAutoAttachBlock(ctx, target);
   await onLicenseOwnershipEnded(db, env, {
     product: args.product,
     licenseId: args.licenseId,
@@ -353,6 +382,13 @@ export async function reassignLicense(
     previous,
     args.toAccountId,
   ]);
+  // LX-26: as in detachLicense, the previous owner's block lands BEFORE the move.
+  const blockTarget = previous
+    ? { accountId: previous, product: args.product, licenseId: args.licenseId }
+    : null;
+  const undoBlock = blockTarget
+    ? await writeAutoAttachBlock(ctx, blockTarget)
+    : null;
   if (
     !(await moveLicenseOwnerEndingLinks(
       ctx,
@@ -362,8 +398,10 @@ export async function reassignLicense(
       args.toAccountId,
     ))
   ) {
+    if (undoBlock) await undoBlock();
     return { ok: false, reason: "conflict" };
   }
+  if (blockTarget) await auditAutoAttachBlock(ctx, blockTarget);
   if (previous) {
     await clearDeviceSubjects(
       db,
@@ -377,13 +415,6 @@ export async function reassignLicense(
       accountId: previous,
       reason: "relinked",
       now,
-    });
-  }
-  if (previous) {
-    await blockAutoAttach(ctx, {
-      accountId: previous,
-      product: args.product,
-      licenseId: args.licenseId,
     });
   }
   if (args.toAccountId) {

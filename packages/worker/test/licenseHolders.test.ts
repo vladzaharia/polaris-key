@@ -44,6 +44,7 @@ import { linkIdentity } from "../src/services/identity/accounts/links.js";
 import {
   attachLicense,
   detachLicense,
+  reassignLicense,
 } from "../src/services/identity/accounts/claim.js";
 import { mergeAccounts } from "../src/services/identity/accounts/merge.js";
 import { deleteAccount } from "../src/services/identity/accounts/deletion.js";
@@ -51,7 +52,13 @@ import {
   relinkLicense,
   undoRelink,
 } from "../src/services/identity/accounts/productUsers.js";
-import { insertLink } from "../src/services/identity/accounts/repo.js";
+import {
+  accountsVerifyingEmail,
+  insertLink,
+  verifiedAccountEmails,
+} from "../src/services/identity/accounts/repo.js";
+import { deleteProduct } from "../src/admin/repo.js";
+import type { Db, DbStatement } from "../src/db/types.js";
 import {
   syncAccountLicenseLinks,
   upsertPortalProductSettings,
@@ -702,6 +709,244 @@ describe("blocks follow merges, relinks and deletions", () => {
     });
     expect(await blocks(created.licenseId)).toEqual([ada.id]);
     expect(await deleteAccount(ctx, ada.id)).toEqual({ ok: true });
+    expect(await blocks(created.licenseId)).toEqual([]);
+  });
+});
+
+/** A provider sign-in method on `accountId` whose email is (or is not) provider-verified. */
+async function providerLink(
+  accountId: string,
+  subject: string,
+  email: string,
+  emailVerified: boolean,
+): Promise<void> {
+  await insertLink(
+    db,
+    accountId,
+    {
+      issuerKey: "https://accounts.google.com",
+      tenantScope: "",
+      subject,
+      kind: "google",
+      email,
+      emailVerified,
+      displayName: null,
+      amr: null,
+    },
+    NOW,
+  );
+}
+
+describe("which account an email attaches to (D2, D3)", () => {
+  it("two provider-only accounts leave the licence waiting; an email-method account wins; an unverified link never attaches", async () => {
+    // Two accounts that each verified shared@ only through a provider: ambiguous, so it waits.
+    const a = await account("a@example.com");
+    const b = await account("b@example.com");
+    await providerLink(a.id, "g-a", "shared@example.com", true);
+    await providerLink(b.id, "g-b", "shared@example.com", true);
+    const shared = await create({ email: "shared@example.com" });
+    expect(shared.license.holder).toEqual({
+      kind: "assigned",
+      inAccount: false,
+      email: "shared@example.com",
+    });
+    expect(await ownerOf(shared.licenseId)).toBeNull();
+
+    // The account holding the address as its email sign-in method beats a provider one.
+    const c = await account("c@example.com");
+    const d = await account("d@example.com");
+    await providerLink(d.id, "g-d", "c@example.com", true);
+    const forC = await create({ email: "c@example.com" });
+    expect(await ownerOf(forC.licenseId)).toBe(c.id);
+
+    // A link whose email the provider did NOT verify is no proof: nothing attaches.
+    const e = await account("e@example.com");
+    await providerLink(e.id, "g-e", "unverified@example.com", false);
+    const unverified = await create({ email: "unverified@example.com" });
+    expect(await ownerOf(unverified.licenseId)).toBeNull();
+    expect(
+      await onAccountEmailVerified(db, e.id, "unverified@example.com", NOW),
+    ).toBe(0);
+  });
+
+  it("accountsVerifyingEmail is the exact inverse of verifiedAccountEmails (active accounts)", async () => {
+    const a = await account("a@example.com");
+    const b = await account("b@example.com");
+    const c = await account("c@example.com");
+    await providerLink(a.id, "g-a", "x@example.com", true);
+    await providerLink(b.id, "g-b", "x@example.com", false);
+    await providerLink(c.id, "g-c", "y@example.com", true);
+    // A verified primary email with no email method, and an unverified one.
+    await db.run(
+      "UPDATE accounts SET primary_email = 'z@example.com', primary_email_verified_at = ? WHERE id = ?",
+      NOW,
+      b.id,
+    );
+    await db.run(
+      "UPDATE accounts SET primary_email = 'w@example.com', primary_email_verified_at = NULL WHERE id = ?",
+      c.id,
+    );
+    const accounts = [a.id, b.id, c.id];
+    const addresses = [
+      "a@example.com",
+      "b@example.com",
+      "c@example.com",
+      "x@example.com",
+      "y@example.com",
+      "z@example.com",
+      "w@example.com",
+    ];
+    const verified = new Map<string, string[]>();
+    for (const id of accounts)
+      verified.set(id, await verifiedAccountEmails(db, id));
+    for (const address of addresses) {
+      const forward = accounts
+        .filter((id) => verified.get(id)!.includes(address))
+        .sort();
+      const inverse = (await accountsVerifyingEmail(db, address))
+        .map((r) => r.accountId)
+        .sort();
+      expect(inverse, address).toEqual(forward);
+    }
+    // A disabled account answers neither direction's licence question.
+    await db.run("UPDATE accounts SET status = 'disabled' WHERE id = ?", a.id);
+    expect(
+      (await accountsVerifyingEmail(db, "x@example.com")).map(
+        (r) => r.accountId,
+      ),
+    ).toEqual([]);
+  });
+});
+
+/**
+ * `db`, with a callback run just before the batch that moves a licence's owner pointer
+ * (`moveLicenseOwnerEndingLinks`): the moment a sweep could slip in.
+ */
+function beforeOwnerMove(inner: Db, onMove: () => Promise<void>): Db {
+  const moves = (stmts: DbStatement[]) =>
+    stmts.some((s) => /UPDATE licenses SET account_id/.test(s.sql));
+  return new Proxy(inner, {
+    get(target, prop) {
+      const value = Reflect.get(target, prop, target) as unknown;
+      if (
+        (prop === "batch" || prop === "batchChanges") &&
+        typeof value === "function"
+      )
+        return async (stmts: DbStatement[]) => {
+          if (moves(stmts)) await onMove();
+          return (value as (s: DbStatement[]) => Promise<unknown>).call(
+            target,
+            stmts,
+          );
+        };
+      return typeof value === "function"
+        ? (value as (...a: unknown[]) => unknown).bind(target)
+        : value;
+    },
+  });
+}
+
+describe("the block lands before the owner moves (no sweep in between re-attaches)", () => {
+  it("detach: blocked at the moment of the move; a sweep then attaches nothing", async () => {
+    const ada = await account("ada@example.com");
+    const created = await create({ email: "ada@example.com" });
+    const seen: string[][] = [];
+    const spy = beforeOwnerMove(db, async () => {
+      seen.push(await blocks(created.licenseId));
+    });
+    expect(
+      await detachLicense(
+        { ...ctx, db: spy },
+        { accountId: ada.id, product: SLUG, licenseId: created.licenseId },
+      ),
+    ).toEqual({ ok: true });
+    expect(seen).toEqual([[ada.id]]);
+    await syncAccountLicenseLinks(db, ada.id, NOW);
+    expect(await ownerOf(created.licenseId)).toBeNull();
+  });
+
+  it("detach that loses the race: no new block is left behind, an earlier one is kept", async () => {
+    const ada = await account("ada@example.com");
+    const bo = await account("bo@example.com");
+    const created = await create({ email: "ada@example.com" });
+    // Someone else moves the licence between the check and the move: the move fails.
+    const racing = beforeOwnerMove(db, async () => {
+      await db.run(
+        "UPDATE licenses SET account_id = ? WHERE product = ? AND id = ?",
+        bo.id,
+        SLUG,
+        created.licenseId,
+      );
+    });
+    expect(
+      await detachLicense(
+        { ...ctx, db: racing },
+        { accountId: ada.id, product: SLUG, licenseId: created.licenseId },
+      ),
+    ).toEqual({ ok: false });
+    expect(await blocks(created.licenseId)).toEqual([]);
+    expect(
+      await portalAudit(ada.id, "account.license.auto_attach_block"),
+    ).toEqual([]);
+
+    // With a block already there (an earlier removal), a lost race keeps it.
+    await db.run(
+      "UPDATE licenses SET account_id = ? WHERE product = ? AND id = ?",
+      ada.id,
+      SLUG,
+      created.licenseId,
+    );
+    await db.run(
+      "INSERT INTO license_auto_attach_blocks (product, license_id, account_id, created_at) VALUES (?, ?, ?, ?)",
+      SLUG,
+      created.licenseId,
+      ada.id,
+      NOW - 60,
+    );
+    expect(
+      await detachLicense(
+        { ...ctx, db: racing },
+        { accountId: ada.id, product: SLUG, licenseId: created.licenseId },
+      ),
+    ).toEqual({ ok: false });
+    expect(await blocks(created.licenseId)).toEqual([ada.id]);
+  });
+
+  it("reassign: the previous owner is blocked at the moment of the move", async () => {
+    const ada = await account("ada@example.com");
+    const bo = await account("bo@example.com");
+    const created = await create({ email: "ada@example.com" });
+    const seen: string[][] = [];
+    const spy = beforeOwnerMove(db, async () => {
+      seen.push(await blocks(created.licenseId));
+    });
+    const moved = await reassignLicense(
+      { ...ctx, db: spy },
+      {
+        product: SLUG,
+        licenseId: created.licenseId,
+        toAccountId: bo.id,
+        actor: "admin:u1",
+        expectedPreviousAccountId: ada.id,
+      },
+    );
+    expect(moved).toEqual({ ok: true, previousAccountId: ada.id });
+    expect(seen).toEqual([[ada.id]]);
+    expect(await ownerOf(created.licenseId)).toBe(bo.id);
+  });
+});
+
+describe("a product deletion removes its licences' blocks", () => {
+  it("leaves no account id behind", async () => {
+    const ada = await account("ada@example.com");
+    const created = await create({ email: "ada@example.com" });
+    await detachLicense(ctx, {
+      accountId: ada.id,
+      product: SLUG,
+      licenseId: created.licenseId,
+    });
+    expect(await blocks(created.licenseId)).toEqual([ada.id]);
+    await deleteProduct(db, SLUG, NOW);
     expect(await blocks(created.licenseId)).toEqual([]);
   });
 });

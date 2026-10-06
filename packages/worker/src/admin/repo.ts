@@ -6,7 +6,11 @@
 
 import { stmtRevokeProductCiTokens } from "../core/publisher.js";
 import { stmtRevokeProductRegistryTokens } from "../core/registryTokens.js";
-import { holderFilterSql, type HolderFilter } from "../core/licenseHolders.js";
+import {
+  holderFilterSql,
+  stmtDeleteProductAutoAttachBlocks,
+  type HolderFilter,
+} from "../core/licenseHolders.js";
 import type { Db, DbStatement } from "../db/types.js";
 import type {
   KeyRow,
@@ -98,6 +102,8 @@ export async function deleteProduct(
       sql: "DELETE FROM portal_license_links WHERE product = ?",
       params: [slug],
     },
+    // LX-26: the auto-attach blocks name accounts; the licences they guarded are erased above.
+    stmtDeleteProductAutoAttachBlocks(slug),
     // I-05: the product's pairwise subjects, their aliases and its "Continue to" grants go with
     // it; no account keeps a link to a product that no longer exists.
     {
