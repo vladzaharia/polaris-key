@@ -769,8 +769,30 @@ act on it by itself.
   connected early survives it.
 - There is no throttle: the caller decides when to check (P1-10's DECIDE stage checks once per
   boot). A periodic caller must not let a failed check consume its interval.
-- `download_url` only builds the URL. Fetching it needs the transport's credential-safe redirects
-  and no gzip (gzip breaks `Range`); that is P3-10's.
+- `download_url` only builds the legacy `release/dl` URL. To download a build, use
+  `release.fetch` (below).
+
+### Verified download (`release.fetch`, SP-25)
+
+```gdscript
+var r := await PolarisKey.release.fetch(check, "user://downloads/game.tar.gz")  # a binary PKeyUpdateCheck
+# or {record = <verified record>, build = "linux-x64"}, or {sha256 = <record hash>, build = …}
+if r.ok:
+	print(r.detail.path, " ", r.detail.size, " ", r.detail.sha256)
+else:
+	print(r.code)   # download_auth_required, not_entitled, payload-mismatch, network, …
+```
+
+- The URL is discovery's `distribution.endpoints.builds` (else Release's `builds`), never
+  `release/dl`. The request carries the `X-PKey-*` headers and, only when that URL is the control
+  plane's own origin, the device bearer; a cross-origin redirect drops it.
+- Bytes land in `<to>.part`. Calling again resumes with `Range` and `If-Range: "<sha256>"` (the
+  payload's strong ETag), so a server holding different bytes restarts the download.
+- Size and SHA-256 are checked against the verified record's payload artifact before the part is
+  renamed to `to`. A short body keeps the part (`network`); wrong bytes delete it
+  (`payload-mismatch`). A refusal keeps the body's code and leaves no file.
+- Options: `timeout` (seconds, default 600) and `progress` (`Callable(received, total)`). The
+  updater's sidecar and Android APK paths use the same download.
 
 ## Updates by outlet (P3-10)
 

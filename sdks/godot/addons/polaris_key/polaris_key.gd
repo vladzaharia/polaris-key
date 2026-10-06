@@ -61,8 +61,8 @@ var config := PKeyConfig.new()
 var identity := PKeyIdentity.new()
 ## The version check and appcast URL (services/update.gd). Refuses until configure().
 var update := PKeyUpdate.new()
-## The changelog and the install and download URLs (services/release.gd). Refuses until
-## configure().
+## The changelog, the install and download URLs and the verified build download, fetch()
+## (services/release.gd). Refuses until configure().
 var release := PKeyRelease.new()
 ## Store purchases as licence flags (services/commerce.gd, P6-01). Refuses until configure().
 var commerce := PKeyCommerce.new()
@@ -104,7 +104,7 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	core.store_error.connect(_on_store_error)
 	config.attach(core)
 	update.attach(core)
-	release.attach(core)
+	release.attach(core, update)
 	devices = PKeyDevices.new(core)
 	devices.install(core)
 	devices.on_wiped = _emit_state

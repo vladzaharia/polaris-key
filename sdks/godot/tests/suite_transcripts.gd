@@ -5,6 +5,7 @@ extends RefCounted
 # @pkey-feature commerce.receipt
 # @pkey-feature packs.apply.chunk
 # @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
+# @pkey-feature release.fetch
 # The Godot transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read from the
 # generator-owned mirror res://tests/transcripts/ (written by `pnpm gen:transcripts`; never edit
 # it). Drives the `PolarisKey` root through every recorded conversation that
@@ -37,6 +38,14 @@ extends RefCounted
 # pulled from PKeyFakeServer), against the blobs template the last discover returned, rebased
 # onto the loopback server (the recording names the transcript's base). `range` is the fetch's
 # status; `bytes` the body it returned, as a string.
+#
+# `releaseFetch` (SP-25) is PolarisKey.release.fetch({record, build}, to) with a release record
+# built from the step's args (one build: id, platform, arch, and one payload artifact of `size`
+# and `sha256`), into a fresh scratch directory; the discovered builds template is rebased onto the
+# loopback server like `chunkRange`'s. `partial` seeds `<to>.part` with the first bytes of the
+# payload an earlier step fetched, so the SDK resumes with Range and If-Range. `result` is `ok`
+# (with the verified file's `size` and `sha256`), `refused` for a wire or SDK error code
+# (PKeyConstants.ERROR_CODE_VALUES) with its `code`, else `error`.
 #
 # `activate` and `enroll` report the PKeyActivationResult's `kind` as `result` and, on a refusal,
 # its `code` (the body's wire code, activate-refusals). `boot` is PolarisKey.boot() with a
@@ -121,7 +130,7 @@ static func replay(tr: Dictionary) -> Array:
 			if step["action"] == "updateDecide" and sdk.core.discovery_manifest == null:
 				# The transcript ran no discovery: the Worker's standard templates, as React's replayer.
 				sdk.core.discovery_manifest = _standard_discovery(server.base_url(), tr["product"])
-			if step["action"] == "chunkRange" and sdk.core.discovery_manifest is Dictionary:
+			if step["action"] in ["chunkRange", "releaseFetch"] and sdk.core.discovery_manifest is Dictionary:
 				# The discovered blobs template names the transcript's base; the bytes come from the
 				# loopback server.
 				sdk.core.discovery_manifest = _rebased(sdk.core.discovery_manifest, tr["baseUrl"], server.base_url())
@@ -277,6 +286,8 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 						break
 					bytes.append_array(got)
 				out["bytes"] = bytes.get_string_from_ascii()
+		"releaseFetch":
+			out.merge(await _release_fetch(sdk, step["args"]), true)
 		_:
 			out["unsupported"] = step["action"]
 	var services := {}
@@ -287,6 +298,34 @@ static func _act(sdk: Node, store: PKeyMemoryStore, step: Dictionary) -> Diction
 	out["licenseStatus"] = sdk.status()["status"]
 	out["tokenHeld"] = store.token != ""
 	return out
+
+
+## `releaseFetch`: the step's target as a release record, fetched into a fresh directory (see the
+## header). The whole payload a step fetched is kept on the SDK node for a later `partial` seed.
+static func _release_fetch(sdk: Node, a: Dictionary) -> Dictionary:
+	var record := {
+		"schemaVersion": 1, "aud": sdk.core.product, "deliverable": "app", "kind": "app",
+		"version": String(a["version"]), "seq": 1, "issuedAt": 1,
+		"builds": [{
+			"id": String(a["build"]), "platform": String(a["platform"]), "arch": String(a["arch"]), "format": "tar.gz",
+			"artifacts": [{"name": "payload", "role": "payload", "sha256": String(a["sha256"]), "size": int(a["size"])}],
+		}],
+	}
+	var to := PKeyTestFixtures.scratch_dir("transcript-fetch").path_join("payload")
+	var partial = a.get("partial")
+	if PKeyClaims.is_number(partial) and int(partial) > 0:
+		var whole = sdk.get_meta("pkey_payload", null)
+		if not (whole is PackedByteArray):
+			return {"result": "error", "code": "a partial releaseFetch needs an earlier whole fetch"}
+		var f := FileAccess.open(to + ".part", FileAccess.WRITE)
+		f.store_buffer((whole as PackedByteArray).slice(0, int(partial)))
+		f.close()
+	var r: PKeyResult = await sdk.release.fetch({"record": record, "build": String(a["build"])}, to)
+	if not r.ok:
+		return {"result": "refused" if PKeyConstants.ERROR_CODE_VALUES.has(String(r.code)) else "error", "code": String(r.code), "fileLeft": FileAccess.file_exists(to)}
+	var data := FileAccess.get_file_as_bytes(String(r.detail["path"]))
+	sdk.set_meta("pkey_payload", data)
+	return {"result": "ok", "size": data.size(), "sha256": PKeyReleaseRecord.sha256_hex(data), "path": r.detail["path"]}
 
 
 ## The refusal body's `reason` (P6-01's commerce refusals carry one beside `error`).
@@ -351,15 +390,18 @@ static func _standard_discovery(base: String, product: String) -> Dictionary:
 	}
 
 
-## `manifest` with its distribution blobs template moved from `from` (the recorded base) to `to`
-## (the loopback server).
+## `manifest` with its distribution and release blobs and builds templates moved from `from` (the
+## recorded base) to `to` (the loopback server).
 static func _rebased(manifest: Dictionary, from: String, to: String) -> Dictionary:
 	var m: Dictionary = manifest.duplicate(true)
-	var dist = m.get("services", {}).get("distribution")
-	if dist is Dictionary and dist.get("endpoints") is Dictionary:
-		var t = dist["endpoints"].get("blobs")
-		if t is String and (t as String).begins_with(from + "/"):
-			dist["endpoints"]["blobs"] = to + (t as String).substr(from.length())
+	for service in ["distribution", "release"]:
+		var frag = m.get("services", {}).get(service)
+		if not (frag is Dictionary) or not (frag.get("endpoints") is Dictionary):
+			continue
+		for name in ["blobs", "builds"]:
+			var t = frag["endpoints"].get(name)
+			if t is String and (t as String).begins_with(from + "/"):
+				frag["endpoints"][name] = to + (t as String).substr(from.length())
 	return m
 
 
@@ -420,6 +462,23 @@ func _negative(t: PKeyTestContext) -> void:
 			x["response"]["headers"]["content-range"] = "bytes 17-40/64"
 		f = await replay(doctored)
 		t.check("negative: a chunk range with another Content-Range fails", _mentions(f, "step 1 (chunkRange): range"), "\n  ".join(f))
+
+	# release-fetch-gated passes only when the resume really sends the recorded If-Range, and the
+	# record's hash is really checked: a doctored validator fails the request match, and a doctored
+	# SHA-256 is payload-mismatch with no file left at `to`.
+	var gated = PKeyTestFixtures.transcript("release-fetch-gated")
+	if t.check("negative: release-fetch-gated present", gated is Dictionary):
+		var validator: Dictionary = gated.duplicate(true)
+		for x in validator["steps"][2]["exchanges"]["items"]:
+			x["request"]["headers"]["if-range"] = "\"doctored\""
+		f = await replay(validator)
+		t.check("negative: a resume without the recorded If-Range fails", _mentions(f, "header if-range: expected"), "\n  ".join(f))
+		var hashed: Dictionary = gated.duplicate(true)
+		hashed["steps"][1]["args"]["sha256"] = "0".repeat(64)
+		hashed["steps"][1]["expect"] = {"result": "refused", "code": "payload-mismatch", "fileLeft": false}
+		hashed["steps"].resize(2)
+		f = await replay(hashed)
+		t.check("negative: bytes that miss the record's SHA-256 are payload-mismatch and leave no file", f.is_empty(), "\n  ".join(f))
 
 
 ## JSON equality without GDScript's cross-type `==` errors (a String compared with a bool), and

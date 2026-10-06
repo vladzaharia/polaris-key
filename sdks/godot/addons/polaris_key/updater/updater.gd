@@ -331,20 +331,10 @@ func feed_url(name: String) -> String:
 	return ""
 
 
-## The download URL of build `build_id` of release `version`: discovery's
-## `distribution.endpoints.builds`, else `release.endpoints.builds` (never the R2-only `blobs`
-## route, plans/P3-01.md §2.4), with `{selector}` and `{buildId}` percent-encoded; "" without one.
+## The download URL of build `build_id` of release `version` (PKeyRelease.builds_url, the same
+## URL PolarisKey.release.fetch() downloads from); "" without one.
 func build_url(version: String, build_id: String) -> String:
-	var c := core()
-	if c == null or c.discovery_manifest == null or version == "" or build_id == "":
-		return ""
-	var t := PKeyUpdate._endpoint(c.discovery_manifest, "distribution", "builds")
-	if t == "":
-		t = PKeyUpdate._endpoint(c.discovery_manifest, "release", "builds")
-	if t == "":
-		return ""
-	t = t.replace("{selector}", PKeyUri.component(version))
-	return PKeyUpdate._expand(c, t, "buildId", build_id)
+	return PKeyRelease.builds_url(core(), version, build_id)
 
 
 ## The adapter's `ctx` for `decision` (see PKeyOutletAdapter).
