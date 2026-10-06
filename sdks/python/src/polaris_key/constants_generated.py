@@ -603,6 +603,7 @@ class Feature:
     LICENSE_ACTIVATE: Final = "license.activate"
     LICENSE_ENROLL: Final = "license.enroll"
     LICENSE_DEACTIVATE: Final = "license.deactivate"
+    LICENSE_MANAGE: Final = "license.manage"
     LICENSE_ENTITLEMENTS: Final = "license.entitlements"
     LICENSE_CHANNELS: Final = "license.channels"
     LICENSE_REREGISTER: Final = "license.reregister"
@@ -665,6 +666,7 @@ class Feature:
     UI_STAGES: Final = "ui.stages"
     UI_BOOT: Final = "ui.boot"
     UI_KIT: Final = "ui.kit"
+    UI_KIT_MANAGE: Final = "ui.kit.manage"
     UI_CLI: Final = "ui.cli"
     COMMERCE_RECEIPT: Final = "commerce.receipt"
 
@@ -686,6 +688,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "license.activate",
     "license.enroll",
     "license.deactivate",
+    "license.manage",
     "license.entitlements",
     "license.channels",
     "license.reregister",
@@ -748,6 +751,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "ui.stages",
     "ui.boot",
     "ui.kit",
+    "ui.kit.manage",
     "ui.cli",
     "commerce.receipt",
 )
@@ -1629,6 +1633,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "license.activate": CapabilityRow("implemented", "license", ()),
         "license.enroll": CapabilityRow("implemented", "license", ()),
         "license.deactivate": CapabilityRow("implemented", "license", ()),
+        "license.manage": CapabilityRow("implemented", "license", ()),
         "license.entitlements": CapabilityRow("implemented", "license", ()),
         "license.channels": CapabilityRow("implemented", "license", ()),
         "license.reregister": CapabilityRow("implemented", "license", ()),
@@ -1691,10 +1696,11 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.stages": CapabilityRow("implemented", "sdk", ()),
         "ui.boot": CapabilityRow("implemented", "sdk", ()),
         "ui.kit": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
+        "ui.kit.manage": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.cli": CapabilityRow("implemented", "sdk", ()),
         "commerce.receipt": CapabilityRow("implemented", "license", ()),
     }
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "d8004dac64db6e7100825ae27a7b05059a141ce4e1052bd636873df97c0c7bef"
+CAPABILITY_DIGEST: Final[str] = "5f28148bf77c8b1ebc813b96c7af0ea36510a21744cee67a413339de08e3cd5c"

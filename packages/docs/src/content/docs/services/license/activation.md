@@ -143,11 +143,20 @@ atomically in the database. Either failure is:
   "error": "device_limit",
   "message": "device limit reached",
   "limit": 5,
-  "deviceCount": 5
+  "deviceCount": 5,
+  "manageUrl": "https://key.plrs.im/activate?product=djdl&next=free-device&for=macOS%20arm64"
 }
 ```
 
 with status `403`. A non-positive limit denies rather than meaning "unlimited".
+
+`manageUrl` is the customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), built by
+`core/manageUrl.ts` and present only while the product's portal is on. For a licence attached to
+an account it opens the free-device flow for that licence
+(`/#/p/<slug>/free-device?license=<id>`); for a floating licence it opens the activate page, which
+goes on to free-device once the key is added. `for` is a coarse platform-and-arch label from the
+request's metadata headers. The link never carries the key, an account id or a device id, and it
+is not an auth failure: SDKs offer it behind a "Replace a device" action.
 
 ### 7. `bindDevice`
 

@@ -14,6 +14,8 @@
 // server's code and whose `activation` is the kind below, so a component branches on
 // `err.activation.kind` and reads its copy by `err.wireCode` (`./copy.ts`).
 
+import { readManageUrl } from "@polaris-key/client-core";
+
 /** The §3.1 kinds. `ok` never appears on an error. */
 export type ActivationKind =
   | "ok"
@@ -41,6 +43,9 @@ export interface ActivationOutcome {
   limit?: number;
   /** `deviceLimit`: how many devices hold a seat now, when the server said. */
   deviceCount?: number;
+  /** `deviceLimit` (PX-W8): the customer-portal link that frees a seat, validated
+   *  (`readManageUrl`), present while the product's portal is on. Never an auth failure. */
+  manageUrl?: string;
   /** `rateLimited`: the server's `Retry-After`, in seconds, when it sent one. */
   retryAfterSeconds?: number;
   /** The server's own human message, when it sent one (never shown verbatim by the kits). */
@@ -123,12 +128,14 @@ export function classifyActivation(
   if (named === "deviceLimit") {
     const limit = asInt(b.limit) ?? asInt(nested?.limit);
     const deviceCount = asInt(b.deviceCount) ?? asInt(nested?.deviceCount);
+    const manageUrl = readManageUrl(body);
     return {
       kind: "deviceLimit",
       code: code!,
       ...base,
       ...(limit !== undefined ? { limit } : {}),
       ...(deviceCount !== undefined ? { deviceCount } : {}),
+      ...(manageUrl !== undefined ? { manageUrl } : {}),
     };
   }
   if (named === "rateLimited" || (status === 429 && !code)) {

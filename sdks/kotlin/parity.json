@@ -77,6 +77,10 @@
     "license.deactivate": {
       "status": "implemented"
     },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": {
       "status": "implemented"
     },
@@ -367,6 +371,10 @@
     "ui.kit": {
       "status": "implemented",
       "note": "Android only: there is no JVM desktop kit yet (SP-K12's Compose Multiplatform target), and the registry allows no jvm exception for ui.kit until SP-00 adds one (notes/SDK-PARITY-PASS.md SP-01). P6-11's :ui (polaris-key-ui, Jetpack Compose + Material 3, Android): PolarisKeyApp (the one-call wiring, LocalPolarisKey and the remember* helpers), PolarisBoot over :core's stage machine, the gate (every terminal state and the grace banner), activation, sign-in with QR, settings, devices, the update banner and prompt and pack progress, each with a StateFlow state holder; neutral over the host's MaterialTheme by default, Polaris Key branding behind PolarisBranding.PolarisKey and the Powered-by badge behind showPoweredBy. Proof: every screen's Roborazzi snapshots (light, dark, 200 % font, phone, tablet; neutral and branded) plus the branding, contrast and TalkBack suites."
+    },
+    "ui.kit.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the Compose activation screen shows Replace a device on device-limit, or a QR on Android TV."
     },
     "ui.cli": {
       "status": "na",

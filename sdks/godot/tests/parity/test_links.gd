@@ -2,7 +2,7 @@ extends RefCounted
 # @pkey-feature crash.tags
 # Crash tags (SDK parity §3.14): the release/environment/outlet tags W/services/distribution/
 # sentry.ts maps. No portal URLs are built client-side (owner decision Q6): a server-supplied
-# manageUrl (PX-W8) is the only portal link, and the Worker does not send one yet.
+# manageUrl (PX-W8) is the only portal link.
 
 const S := preload("res://tests/license/support.gd")
 
@@ -18,7 +18,7 @@ func run(t: PKeyTestContext) -> void:
 	t.check("portal: no client-side builder (owner Q6)", sdk.get("portal") == null)
 	var panel := PKeyActivationPanel.new()
 	panel.sdk = sdk
-	t.check("portal: Manage devices has no URL until the server supplies manageUrl", panel.manage_url() == "")
+	t.check("portal: Replace a device has no URL until the server supplies manageUrl", panel.manage_url == "")
 	panel.free()
 	tags = sdk.crash_tags()
 	t.check("crash tags: release is app@<version> (no +0 in the editor)", tags["release"] == "app@%s" % h.F["version"], str(tags))

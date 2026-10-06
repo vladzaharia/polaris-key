@@ -57,6 +57,10 @@
     "license.deactivate": {
       "status": "implemented"
     },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": {
       "status": "implemented"
     },
@@ -331,6 +335,10 @@
       "status": "planned",
       "wp": "UK-07",
       "note": "PolarisLoginView, PolarisGate, PolarisSignIn and PolarisOfflineActivation over the @Observable PolarisKeyModel; the rest of the kit (PARITY §5.9) belongs to the UI-kit program (UK-*)."
+    },
+    "ui.kit.manage": {
+      "status": "implemented",
+      "note": "PX-W8: PolarisLoginView shows Replace a device on device-limit (a button on macOS and iOS, a QR on tvOS)."
     },
     "ui.cli": {
       "status": "na",

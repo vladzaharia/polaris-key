@@ -25,6 +25,7 @@ import {
 } from "../core/adapter.js";
 import { ErrorCode, Feature } from "../constants.generated.js";
 import type { CapabilityContext } from "@polaris-key/client-core";
+import { isManageUrl } from "@polaris-key/client-core";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
@@ -988,6 +989,8 @@ export function bridgeActivationOutcome(
         code: "device_limit",
         ...(r.limit !== undefined ? { limit: r.limit } : {}),
         ...(r.deviceCount !== undefined ? { deviceCount: r.deviceCount } : {}),
+        // PX-W8: re-validated here, because the bridge is a process boundary.
+        ...(isManageUrl(r.manageUrl) ? { manageUrl: r.manageUrl } : {}),
       };
     case "unauthorized":
       return { kind: "unauthorized", code: "unauthorized" };

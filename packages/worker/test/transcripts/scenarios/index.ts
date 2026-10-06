@@ -16,7 +16,11 @@ import {
   devicecodeHappy,
   identityDisabled,
 } from "./identity.js";
-import { activateEnrollDeactivate, activateRefusals } from "./license.js";
+import {
+  activateEnrollDeactivate,
+  activateRefusals,
+  licenseDeviceLimit,
+} from "./license.js";
 import { configSchemaFetch } from "./catalog.js";
 import {
   releaseChangelog,
@@ -36,6 +40,7 @@ export const SCENARIOS: Scenario[] = [
   syncErrors,
   syncConfigLicenseUnusable,
   activateEnrollDeactivate,
+  licenseDeviceLimit,
   registerOpen,
   registerReregister401,
   telemetryReport,

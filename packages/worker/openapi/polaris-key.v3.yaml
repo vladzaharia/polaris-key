@@ -1101,19 +1101,21 @@ paths:
         "403":
           description: >
             Seat pool exhausted, or a `strict`-mode tier with no fingerprint — LEGACY FLAT.
-            `device_limit` carries `limit` and `deviceCount` at the top level.
+            `device_limit` carries `limit` and `deviceCount` at the top level, plus
+            `manageUrl` (PX-W8) while the product's customer portal is on.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 deviceLimit:
-                  summary: test/licensing.test.ts
+                  summary: test/manageUrl.test.ts
                   value:
                     {
                       error: device_limit,
                       message: device limit reached,
                       limit: 1,
                       deviceCount: 1,
+                      manageUrl: "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64",
                     }
                 fingerprintRequired:
                   summary: test/fingerprintActivation.test.ts
@@ -1264,7 +1266,9 @@ paths:
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: >
-            No fingerprint, no anchor, or an already-claimed machine license — LEGACY FLAT.
+            No fingerprint, no anchor, an already-claimed machine license, or the free tier's
+            seat pool is exhausted — LEGACY FLAT. `device_limit` carries `limit`,
+            `deviceCount` and, while the product's customer portal is on, `manageUrl`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -1295,6 +1299,16 @@ paths:
                     {
                       error: license_disabled,
                       message: "this machine's free license has been disabled",
+                    }
+                deviceLimit:
+                  summary: test/enroll.test.ts
+                  value:
+                    {
+                      error: device_limit,
+                      message: device limit reached,
+                      limit: 2,
+                      deviceCount: 2,
+                      manageUrl: "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64",
                     }
         "404":
           description: >
@@ -6431,8 +6445,9 @@ paths:
         `key` or, if that is absent, as `Authorization: Bearer`. Success is 201, not 200, and
         the body is only `{"ok": true}` — the payload is the `Set-Cookie`. Seat accounting
         applies: a browser session takes a seat like any other device, so an exhausted pool
-        is a 403 `device_limit` carrying `limit` and `deviceCount` at the top level. All
-        errors are LEGACY FLAT.
+        is a 403 `device_limit` carrying `limit` and `deviceCount` at the top level, plus
+        `manageUrl` (PX-W8) while the product's customer portal is on. All errors are LEGACY
+        FLAT.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       requestBody:
         required: false
@@ -6464,7 +6479,9 @@ paths:
                   { value: { error: bad_request, message: invalid body } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
-          description: The license's seat pool is exhausted — LEGACY FLAT.
+          description: >
+            The license's seat pool is exhausted — LEGACY FLAT, with `manageUrl` while the
+            product's customer portal is on.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -6477,6 +6494,7 @@ paths:
                         message: device limit reached,
                         limit: 5,
                         deviceCount: 5,
+                        manageUrl: "https://key.plrs.im/#/p/djdl/free-device?license=lic_djdl_1",
                       },
                   }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
@@ -13950,6 +13968,18 @@ components:
         deviceCount:
           type: integer
           description: On `device_limit` — how many seats are already taken.
+        manageUrl:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: >
+            On `device_limit` (PX-W8, WIRE-CONTRACT-V4 §5.3) — the customer-portal link that
+            frees a seat: `<portal>/#/p/<product>/free-device?license=<id>[&for=<label>]` for a
+            licence attached to an account, else
+            `<portal>/activate?product=<product>&next=free-device[&for=<label>]`. Present only
+            while the product's portal is on. Never carries the key, an account id or a device
+            id; a client may add `return=` and, on an `/activate` link, the fragment `#key=`.
+            Not an auth failure.
         drift:
           type: integer
           description: On `hardware_mismatch` — how many fingerprint components changed.

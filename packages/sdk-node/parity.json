@@ -68,6 +68,10 @@
     "license.deactivate": {
       "status": "implemented"
     },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": {
       "status": "implemented"
     },
@@ -311,6 +315,11 @@
       "note": "client.boot(): discovery, the keyless registration when the product is open and no token is held, the sync pass, then the client-core stage machine to its outcome (SP-N05)."
     },
     "ui.kit": {
+      "status": "na",
+      "runtime": "headless",
+      "reason": "runtime"
+    },
+    "ui.kit.manage": {
       "status": "na",
       "runtime": "headless",
       "reason": "runtime"

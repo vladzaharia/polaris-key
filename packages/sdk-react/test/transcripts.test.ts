@@ -284,6 +284,8 @@ async function replay(t: Transcript): Promise<void> {
           (c) => `-${c.toLowerCase()}`,
         );
         observed.code = r.code;
+        // PX-W8: the refusal link, validated, or null when the Worker sent none.
+        if (r.kind === "deviceLimit") observed.manageUrl = r.manageUrl ?? null;
         break;
       }
       case "deactivate":

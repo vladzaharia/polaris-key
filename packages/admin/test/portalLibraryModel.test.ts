@@ -492,12 +492,12 @@ describe("the server-side library (PX-W1: G1, G5, G16)", () => {
       attention: true,
     });
     expect(quickAction(p!, MAC, ph)).toMatchObject({
-      label: "Free up a device",
+      label: "Free a device",
       href: "#/p/x/devices",
     });
     const [att] = attentionItems([p!], (s) => `#/p/${s}/devices`);
     expect(att!.action).toEqual({
-      label: "Free up a device",
+      label: "Free a device",
       href: "#/p/x/devices",
       external: false,
     });

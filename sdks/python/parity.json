@@ -66,6 +66,10 @@
     "license.deactivate": {
       "status": "implemented"
     },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": {
       "status": "implemented"
     },
@@ -305,6 +309,11 @@
       "status": "implemented"
     },
     "ui.kit": {
+      "status": "na",
+      "runtime": "headless",
+      "reason": "runtime"
+    },
+    "ui.kit.manage": {
       "status": "na",
       "runtime": "headless",
       "reason": "runtime"

@@ -80,6 +80,10 @@
     "license.deactivate": {
       "status": "implemented"
     },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": {
       "status": "implemented"
     },
@@ -400,6 +404,10 @@
     },
     "ui.kit": {
       "status": "implemented"
+    },
+    "ui.kit.manage": {
+      "status": "implemented",
+      "note": "PX-W8: LicenseGate and PolarisLogin show Replace a device on device-limit."
     },
     "ui.cli": {
       "status": "na",

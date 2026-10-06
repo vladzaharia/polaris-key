@@ -339,6 +339,30 @@ def test_activation_unauthorized() -> None:
     c.close()
 
 
+# @pkey-feature license.manage
+def test_activation_device_limit_surfaces_manage_url() -> None:
+    url = "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64"
+    for body in (
+        {"error": "device_limit", "limit": 1, "deviceCount": 1, "manageUrl": url},
+        {"error": {"code": "device_limit", "limit": 1, "deviceCount": 1, "manageUrl": url}},
+    ):
+        c = make_client(lambda r, b=body: httpx.Response(403, json=b))
+        r = c.license.activate_with_key("k")
+        assert r.kind == "device-limit" and r.manage_url == url
+        assert c.status(now=NOW + 100).status == "needs-activation"
+        c.close()
+    # An invalid link is dropped; an unknown member never changes the outcome.
+    c = make_client(
+        lambda r: httpx.Response(
+            403,
+            json={"error": "device_limit", "manageUrl": "javascript:x", "somethingNew": 1},
+        )
+    )
+    r = c.license.activate_with_key("k")
+    assert r.kind == "device-limit" and r.manage_url is None
+    c.close()
+
+
 # @pkey-feature license.activate
 def test_activation_device_limit_reads_both_body_shapes() -> None:
     for body in ({"limit": 3, "deviceCount": 3}, {"error": {"limit": 3, "deviceCount": 3}}):

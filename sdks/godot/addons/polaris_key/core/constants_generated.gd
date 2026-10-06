@@ -331,6 +331,7 @@ class Feature:
 	const LICENSE_ACTIVATE := "license.activate"
 	const LICENSE_ENROLL := "license.enroll"
 	const LICENSE_DEACTIVATE := "license.deactivate"
+	const LICENSE_MANAGE := "license.manage"
 	const LICENSE_ENTITLEMENTS := "license.entitlements"
 	const LICENSE_CHANNELS := "license.channels"
 	const LICENSE_REREGISTER := "license.reregister"
@@ -393,12 +394,13 @@ class Feature:
 	const UI_STAGES := "ui.stages"
 	const UI_BOOT := "ui.boot"
 	const UI_KIT := "ui.kit"
+	const UI_KIT_MANAGE := "ui.kit.manage"
 	const UI_CLI := "ui.cli"
 	const COMMERCE_RECEIPT := "commerce.receipt"
 
 
 ## Every `Feature` value, in source order.
-const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.toggle", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.cli", "commerce.receipt"]
+const FEATURE_VALUES := ["core.verify", "core.cache", "core.bundle", "core.discover", "core.sync", "core.local", "core.headers", "core.errors", "core.caps", "core.store", "core.copy", "license.gate", "license.activate", "license.enroll", "license.deactivate", "license.manage", "license.entitlements", "license.channels", "license.reregister", "license.refusals", "config.resolve", "config.list", "config.secret", "config.schema", "config.mint", "config.mirror", "config.local", "devices.fingerprint", "devices.facts", "devices.register", "devices.manage", "devices.report", "telemetry.updates", "devices.attest", "identity.oidc", "identity.devicecode", "identity.toggle", "release.changelog", "release.download", "release.record", "release.fetch", "release.distribution", "update.check", "update.feed", "update.feeds", "update.decide", "update.content", "update.driver", "update.bootguard", "outlet.detect", "crash.tags", "packs.record", "packs.revoke", "packs.delegation", "packs.delta.feed", "packs.plan", "packs.index.files", "packs.index.chunks", "packs.apply.full", "packs.apply.file", "packs.apply.chunk", "packs.apply.delta", "packs.state", "packs.handlers", "packs.type.godot.zip", "packs.type.l10n.table", "packs.type.data.json", "packs.type.audio.bank", "packs.type.ml.model", "packs.provides", "packs.transport.apple", "packs.transport.play", "packs.transport.steam", "packs.transport.msix", "packs.transport.flatpak", "ui.stages", "ui.boot", "ui.kit", "ui.kit.manage", "ui.cli", "commerce.receipt"]
 
 
 ## Why a feature is unsupported here: the `supports()` reason enum (PARITY §2.2).
@@ -977,6 +979,7 @@ static func capabilities() -> Dictionary:
 		"license.activate": {"status": "implemented", "service": "license", "na": []},
 		"license.enroll": {"status": "implemented", "service": "license", "na": [{"runtime": "web", "reason": "runtime"}]},
 		"license.deactivate": {"status": "implemented", "service": "license", "na": []},
+		"license.manage": {"status": "implemented", "service": "license", "na": []},
 		"license.entitlements": {"status": "implemented", "service": "license", "na": []},
 		"license.channels": {"status": "implemented", "service": "license", "na": []},
 		"license.reregister": {"status": "implemented", "service": "license", "na": []},
@@ -1039,9 +1042,10 @@ static func capabilities() -> Dictionary:
 		"ui.stages": {"status": "implemented", "service": "sdk", "na": []},
 		"ui.boot": {"status": "implemented", "service": "sdk", "na": []},
 		"ui.kit": {"status": "implemented", "service": "sdk", "na": []},
+		"ui.kit.manage": {"status": "implemented", "service": "sdk", "na": []},
 		"ui.cli": {"status": "na", "service": "sdk", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"commerce.receipt": {"status": "implemented", "service": "license", "na": []},
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "fde375e5edc0d1927889e5c1600d79ff9ce067187db459349146bcb042605267"
+const CAPABILITY_DIGEST := "76219da74f4dd20db24853fe6942f53d76a2c9302bd51a75b583d23f7e2ef62a"

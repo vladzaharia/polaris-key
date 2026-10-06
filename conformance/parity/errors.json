@@ -91,7 +91,7 @@
       "code": "device_limit",
       "kind": "wire",
       "service": "license",
-      "description": "The licence has no free device seat."
+      "description": "The licence has no free device seat; the body may carry `manageUrl`, the customer-portal link that frees one."
     },
     {
       "code": "license_disabled",

@@ -476,6 +476,7 @@ export const Feature = {
   licenseActivate: "license.activate",
   licenseEnroll: "license.enroll",
   licenseDeactivate: "license.deactivate",
+  licenseManage: "license.manage",
   licenseEntitlements: "license.entitlements",
   licenseChannels: "license.channels",
   licenseReregister: "license.reregister",
@@ -538,6 +539,7 @@ export const Feature = {
   uiStages: "ui.stages",
   uiBoot: "ui.boot",
   uiKit: "ui.kit",
+  uiKitManage: "ui.kit.manage",
   uiCli: "ui.cli",
   commerceReceipt: "commerce.receipt",
 } as const;
@@ -560,6 +562,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "license.activate",
   "license.enroll",
   "license.deactivate",
+  "license.manage",
   "license.entitlements",
   "license.channels",
   "license.reregister",
@@ -622,6 +625,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "ui.stages",
   "ui.boot",
   "ui.kit",
+  "ui.kit.manage",
   "ui.cli",
   "commerce.receipt",
 ];
@@ -1423,6 +1427,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
   "license.deactivate": { status: "implemented", service: "license", na: [] },
+  "license.manage": { status: "implemented", service: "license", na: [] },
   "license.entitlements": { status: "implemented", service: "license", na: [] },
   "license.channels": { status: "implemented", service: "license", na: [] },
   "license.reregister": {
@@ -1586,6 +1591,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "ui.stages": { status: "implemented", service: "sdk", na: [] },
   "ui.boot": { status: "implemented", service: "sdk", na: [] },
   "ui.kit": { status: "implemented", service: "sdk", na: [] },
+  "ui.kit.manage": { status: "implemented", service: "sdk", na: [] },
   "ui.cli": {
     status: "na",
     service: "sdk",
@@ -1599,4 +1605,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "58069557838befefb3bb1dc441639c8c8f299af5ad8a584ec2fa7cb163a04d3b";
+  "41f36fa375166b4e5e5a82b1b8d72c6cfb1b715f41beb624e8b498552faa50ea";

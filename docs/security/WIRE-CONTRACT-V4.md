@@ -759,6 +759,49 @@ architecture it was built for. For example:
    values. The `engine` object that an engine SDK adds carries an `id` of the form
    `<engine>-<major>.<minor>`, in lowercase ASCII, such as `godot-4.7`.
 
+### 5.3 Refusal links (`manageUrl`) [C]
+
+Pinned by `license-device-limit.json` (transcript) and the `readManageUrl`, `withManageReturn` and
+`withManageKey` table that every SDK repeats (client-core `test/manage.test.ts`).
+
+A seat refusal carries a link to the customer portal, so an app can offer **Replace a device**
+instead of a dead end. It is one optional member of an unsigned flat refusal body. No signed
+document, claim, header or error code changes, and `PROTOCOL_VERSION` stays 4.
+
+| Refusal (403)     | Routes                                                                                         | Link                                                                                |
+| ----------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `device_limit`    | `POST /<p>/license/activate`, `POST /<p>/license/enroll`, `POST /<p>/identity/session/license` | attached licence: `<portal>/#/p/<slug>/free-device?license=<id>[&for=<label>]`      |
+|                   |                                                                                                | floating licence: `<portal>/activate?product=<slug>&next=free-device[&for=<label>]` |
+| `key_entry_limit` | the Identity key-entry routes (I-09)                                                           | `<portal>/activate?product=<slug>`                                                  |
+
+1. **Shape.** `manageUrl` is an absolute `https` URL of at most `MANAGE_URL_MAX_LENGTH` (2048)
+   characters on the portal origin: `CONSOLE_ORIGIN`, else the request's own origin. The body keeps
+   `limit` and `deviceCount` beside it. An attached licence is one with an account; the licence
+   named is the device's anchor licence.
+2. **Presence.** The Worker emits it only while the product's customer portal is on, and omits it
+   otherwise. A client treats its absence as "no link" and shows the refusal as before.
+3. **Never in the link.** The licence key, an account id, a subject or holder hint, a hostname, a
+   device id or an IP. `for` is a coarse `"<Platform> <arch>"` label built from the §5.2 headers
+   (for example `macOS arm64`), at most `MANAGE_FOR_MAX_LENGTH` (64) characters, omitted without
+   metadata. It is display text only.
+4. **Client validation.** A client keeps the member (top level, else nested under `error`) only if
+   it is an absolute `https` URL, or `http` to `localhost`, `127.0.0.1` or `[::1]`, written
+   `<scheme>://` with a host, no `@` (userinfo) or `\` in the authority, no whitespace or control
+   characters, and within the length limit. Anything else is dropped, never repaired. Every SDK
+   applies this rule itself rather than trusting a platform URL parser, which may be laxer.
+5. **What a client may add.** Only two things, each spelled with the
+   `application/x-www-form-urlencoded` byte serializer:
+   - `return=<app URL>`: into the query inside the fragment when the fragment holds a portal
+     route (`#/…`), otherwise into the URL's query, replacing an earlier `return`. The portal
+     accepts it only against the product's declared return targets.
+   - `#key=<key>`, on an `/activate` link only, and only when the link opens in a browser on the
+     same device (a button). A fragment never reaches a server or a log, but the browser keeps it
+     in history, so the portal page drops it with `history.replaceState` once read (PX-17). A
+     link drawn as a QR code never carries the key: anyone who can see the screen can scan it,
+     so the phone's `/activate` page asks for the key instead (THREAT-MODEL.md, PX-W8).
+6. **Not an auth failure.** A client never wipes state, retries or opens the link on its own; it
+   offers the link behind a user action (a button, or a QR code where a joypad is the only input).
+
 ## 6. Device principal
 
 - **Token:** `pkeyt_` + 43 base64url chars (256-bit). Hash-stored server-side; KV hot record `{product, deviceId, licenseId | null}` — `licenseId` is null for registered-without-license devices. `pkeyt_` tokens are rejected (pre-launch, no migration).

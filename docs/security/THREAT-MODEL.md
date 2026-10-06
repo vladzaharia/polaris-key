@@ -4899,7 +4899,46 @@ is signed out it rides along in the OIDC `return_to` and the magic link's return
 the design (PORTAL.md §4.18); mitigated by `Referrer-Policy: no-referrer` on every page (the key
 never leaves in a `Referer`), by the SPA moving it into the hash (`#/?activate=`) on load, and by a
 key alone only ever adding a licence through the claim rules (no ownership move, verified-email
-gate, one rate bucket with the preview). Revisit when PX-17 or PX-W8 adds `manageUrl`.
+gate, one rate bucket with the preview). PX-W8's refusal links (below) do not use this query
+form: they carry the key only as a fragment.
+
+### Refusal links: `manageUrl` and the `#key=` fragment (PX-W8)
+
+A `device_limit` or `key_entry_limit` refusal carries `manageUrl`, a portal link an app offers as
+**Replace a device** (WIRE-CONTRACT-V4 §5.3). The Worker builds it, and the link itself never names
+the key, an account, a holder, a hostname, a device id or an IP. The licence id (on an attached
+licence) and a coarse `for` label (`macOS arm64`) are the only identifiers in it. Asset: the
+licence key, a bearer credential (whoever holds it can activate seats and add the licence through
+the claim rules), so A7 and, through the claim, the buyer's account (A6).
+
+- **The key never rides in a query string.** On an `/activate` link the UI kits (React, Swift,
+  Kotlin, Godot) add the key the person just typed as the fragment `#key=`, so the portal's page
+  can fill it in. A fragment never reaches a server, an edge log, a `Referer` or the OIDC
+  `return_to`. The query only ever gains `return=` (an app URL the portal checks against the
+  product's declared return targets). The `free-device` route of an attached licence never gets
+  the key at all.
+- **A fragment is still kept by the browser.** The opened URL, key included, lands in the
+  browser's history and in history sync to the person's other devices, and can be restored by a
+  session restore. Residual, accepted: it is the person's own browser, holding the person's own
+  key, which they just typed on the same machine. Required mitigation, owned by PX-17 (the portal
+  `/activate` page): read `#key=` once on load, then drop it with `history.replaceState` before
+  any other work, so the history entry and any later share of the address bar hold no key.
+- **A QR code never carries the key.** Where a joypad is the only input (tvOS, Android TV, a
+  console or joypad-only Godot) the link is drawn as a QR code on a screen others can see, and
+  anyone in the room can scan it into their own phone's history. So the QR form is built without
+  `#key=` in every kit (Swift `presentation: .qr`, Kotlin `manageQrUrl`, Godot
+  `manage_link(..., for_qr)`); the phone opens `/activate` with an empty field and the person types
+  or pastes the key there (plans/PX-W8.md Q2). The QR still holds the licence id (attached
+  licence) and the `for` label, which alone add or move nothing.
+- **The CLIs leave the key out too.** `pkey` (Node) and the Python CLI print the served link
+  without `#key=`: a terminal scrollback is a log.
+- **Untrusted input from the server.** Every SDK keeps `manageUrl` only if it is `https` (or
+  `http` to loopback), has a host and no userinfo, whitespace or control characters, and fits in
+  2048 characters; anything else is dropped, never repaired, and the link opens only on a user
+  action. Residual: the hand-written parsers (Godot, Kotlin, Swift) can disagree with
+  client-core's `new URL()` on odd but valid inputs (dot segments, percent normalisation); the
+  links come only from the Worker, so the disagreement decides at most whether a key fragment is
+  offered on a non-`/activate` path of the portal origin, never where the link points.
 
 ### Portal emails: security notices and "Email me the download" (PX-W7)
 

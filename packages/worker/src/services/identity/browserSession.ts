@@ -48,6 +48,7 @@ import {
   type LicenseRow,
 } from "../../core/data.js";
 import { deviceMetadata } from "../../core/devices.js";
+import { buildManageUrl } from "../../core/manageUrl.js";
 // The seat decision, the licence-gated device check and the fused merge all live in
 // `core/authz.ts`: Core's `validateDeviceToken` answers only "is this token a live device",
 // because a config-only product has devices with no licence at all (D-08), and the
@@ -380,13 +381,21 @@ export async function handleBrowserSessionLicense(
     now,
     req,
   );
-  if (!session.ok)
-    return errorResponse(
-      session.status,
-      session.code,
-      session.message,
-      session.extra,
-    );
+  if (!session.ok) {
+    // PX-W8: the browser key entry's seat refusal carries the refusal link. The OIDC return
+    // path (oidc.ts) does not: sign-in seat refusals are LX-18's (plans/PX-W8.md Q5).
+    const manageUrl =
+      session.code === ErrorCode.DeviceLimit
+        ? await buildManageUrl(env, db, req, product, {
+            kind: "device_limit",
+            license,
+          })
+        : undefined;
+    return errorResponse(session.status, session.code, session.message, {
+      ...session.extra,
+      ...(manageUrl !== undefined ? { manageUrl } : {}),
+    });
+  }
   await touchKey(db, product.slug, keyHash, now);
   return json(
     { ok: true },

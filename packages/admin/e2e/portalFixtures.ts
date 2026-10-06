@@ -286,7 +286,7 @@ const PRESENTATION: Record<
     support: "https://kiln.example/renew",
   },
   mossgarden: { developerName: "Little Fern", deviceLimit: 5 },
-  // At its limit: the 12-product shelf shows "Free up a device" (§4.15, mockup 35).
+  // At its limit: the 12-product shelf shows "Free a device" (§4.15, mockup 35).
   quill: { developerName: "Inkwell", deviceLimit: 5 },
   "drift-kart": { developerName: "Tarmac Toys", deviceLimit: 3 },
   "orbit-survey": {
