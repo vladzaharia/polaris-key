@@ -68,8 +68,9 @@ export interface Env {
   BLOBS?: R2Bucket;
   /**
    * The Cloudflare Images binding (S-20 §6.3 step 6, §6.6). OPTIONAL: `core/hostedAssets.ts` reads
-   * an ingested image's dimensions with `.info()` when it is bound, and records none otherwise.
-   * HA-03 binds it in `wrangler.toml` and builds the variant ladder with it.
+   * an ingested image's dimensions with `.info()` and builds the WebP variant ladder with it at
+   * ingest (HA-03). Unbound (env.test), or out of transformations (9422): no dimensions, no
+   * variants, and the ingest still succeeds. Bound in `wrangler.toml` for prod, staging and dev.
    * @inventory binding delivery
    */
   IMAGES?: ImagesBinding;
@@ -171,6 +172,16 @@ export interface Env {
    */
   PKG_ORIGIN?: string;
   /**
+   * The image host's origin, e.g. `https://img.plrs.im` (HA-02, notes/S-20 §6.5). A request whose
+   * host is this origin's host reaches ONLY the hosted-image routes (`core/imgHost.ts`): the
+   * content-addressed `/<product>/a/<sha256>[/<w>.webp]` and the stable aliases `/<product>/icon`,
+   * `/<product>/header` and `/<product>/screenshots/<n>`; everything else answers not-found.
+   * Unset (or unparsable, or equal to the bytes or registry host) ⇒ there is no image host and
+   * routing is byte-identical to a Worker without it. A `[vars]` value, public, per environment.
+   * @inventory var delivery
+   */
+  IMG_ORIGIN?: string;
+  /**
    * The console host's origin, e.g. `https://key.plrs.im` (P2b-06). The public download page on
    * the bytes host links the storefront feeds, which are served here, through it. Unset (or
    * equal to the bytes host) ⇒ the page leaves the feed rows (AltStore, SideStore, Obtainium,
@@ -271,15 +282,22 @@ export interface Env {
   //     PLATFORM_KEK    = "<base64 of 32 bytes>"
   //     PLATFORM_KEK_ID = "default"   ← OPTIONAL, and DANGEROUS to change on its own
   //
+  //   both (the rotation path when nobody holds the current PLATFORM_KEK): the ring is
+  //   PLATFORM_KEK_KEYS, plus PLATFORM_KEK under its legacy kid for OPENING ONLY. New seals use
+  //   PLATFORM_KEK_ACTIVE, which must be a PLATFORM_KEK_KEYS entry. The same kid in both with
+  //   different bytes fails closed. RUNBOOK § "Rotating when the old KEK is unknown".
+  //
   /**
-   * Legacy single platform KEK: base64 of 32 random bytes. Ignored when PLATFORM_KEK_KEYS
-   * is set.
+   * Legacy single platform KEK: base64 of 32 random bytes. On its own it is the whole ring.
+   * Beside PLATFORM_KEK_KEYS it is the legacy key: open-only, under the kid PLATFORM_KEK_ID
+   * names, kept until the sweep has re-sealed every value under it, then deleted.
    * @inventory secret keyring
    */
   PLATFORM_KEK?: string;
   /**
-   * The kid stamped into blobs sealed under the legacy `PLATFORM_KEK`. Defaults to
-   * `"default"`, which is the kid every pre-keyring blob carries.
+   * The kid stamped into blobs sealed under the legacy `PLATFORM_KEK`, and the kid that key opens
+   * under when it sits beside `PLATFORM_KEK_KEYS`. Defaults to `"default"`, which is the kid every
+   * pre-keyring blob carries.
    *
    * DO NOT set this to rotate a KEK: it renames the kid `seal` writes AND the only kid the
    * legacy shape can open, so every existing blob becomes unopenable and every product route

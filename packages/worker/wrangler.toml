@@ -118,6 +118,13 @@ crons = ["17 3 * * *", "*/15 * * * *"]
 # confine that host to the package-feed routes, its landing page and OCI's /v2/ root. It keeps
 # every bytes-host compensation (test/registryHost.test.ts). Its rendered index documents live
 # under registry/ in the same bucket, a prefix that gets NO age lock and NO lifecycle rule.
+#
+# The image host (HA-02; docs/DEPLOYMENT.md "Image host") is the same Worker on a FOURTH custom
+# domain, img*.plrs.im, with IMG_ORIGIN naming it so src/core/imgHost.ts can confine that host to
+# the hosted-image routes (/<p>/a/<sha256>[/<w>.webp] and the /<p>/icon, /<p>/header and
+# /<p>/screenshots/<n> aliases). Public, inline, cookie-less raster images only, read from the
+# same BLOBS bucket under blobs/ (test/imgHost.test.ts). No new bucket and no new Worker: the
+# deploy attaches the route and creates its DNS record.
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -150,6 +157,9 @@ pattern = "dl.plrs.im"
 custom_domain = true
 [[env.prod.routes]]
 pattern = "pkg.plrs.im"
+custom_domain = true
+[[env.prod.routes]]
+pattern = "img.plrs.im"
 custom_domain = true
 [[env.prod.durable_objects.bindings]]
 name = "RL"
@@ -211,6 +221,8 @@ PKEY_ENVIRONMENT = "prod"
 BLOB_ORIGIN = "https://dl.plrs.im"
 # F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
 PKG_ORIGIN = "https://pkg.plrs.im"
+# HA-02: the image host (core/imgHost.ts); it answers only the hosted-image routes.
+IMG_ORIGIN = "https://img.plrs.im"
 # P2b-06: the console host, where the download page on dl.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
@@ -256,6 +268,9 @@ pattern = "dl-staging.plrs.im"
 custom_domain = true
 [[env.staging.routes]]
 pattern = "pkg-staging.plrs.im"
+custom_domain = true
+[[env.staging.routes]]
+pattern = "img-staging.plrs.im"
 custom_domain = true
 [[env.staging.durable_objects.bindings]]
 name = "RL"
@@ -317,6 +332,8 @@ PKEY_ENVIRONMENT = "staging"
 BLOB_ORIGIN = "https://dl-staging.plrs.im"
 # F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
 PKG_ORIGIN = "https://pkg-staging.plrs.im"
+# HA-02: the image host (core/imgHost.ts); it answers only the hosted-image routes.
+IMG_ORIGIN = "https://img-staging.plrs.im"
 # P2b-06: the console host, where the download page on dl-staging.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key-staging.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
@@ -344,6 +361,9 @@ pattern = "dl-dev.plrs.im"
 custom_domain = true
 [[env.dev.routes]]
 pattern = "pkg-dev.plrs.im"
+custom_domain = true
+[[env.dev.routes]]
+pattern = "img-dev.plrs.im"
 custom_domain = true
 [[env.dev.durable_objects.bindings]]
 name = "RL"
@@ -405,6 +425,8 @@ PKEY_ENVIRONMENT = "dev"
 BLOB_ORIGIN = "https://dl-dev.plrs.im"
 # F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
 PKG_ORIGIN = "https://pkg-dev.plrs.im"
+# HA-02: the image host (core/imgHost.ts); it answers only the hosted-image routes.
+IMG_ORIGIN = "https://img-dev.plrs.im"
 # P2b-06: the console host, where the download page on dl-dev.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key-dev.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
@@ -452,6 +474,8 @@ PKEY_ENVIRONMENT = "test"
 #   PLATFORM_OIDC_ISSUER, PLATFORM_OIDC_CLIENT_ID, PLATFORM_OIDC_CLIENT_SECRET.
 # The KEK keyring (rotation-capable; replaces PLATFORM_KEK, written in ONE `wrangler secret bulk`):
 #   PLATFORM_KEK_KEYS, PLATFORM_KEK_ACTIVE. PLATFORM_KEK_ID stays unset (src/env.ts says why).
+#   A PLATFORM_KEK left beside them is the legacy key, open-only, until the re-seal sweep has
+#   moved every value off it; then delete it (RUNBOOK "Rotating when the old KEK is unknown").
 # Optional portal-specific secret:
 #   PORTAL_SESSION_SECRET (falls back to ADMIN_SESSION_SECRET when omitted).
 # Portal licensed downloads (PX-W3; optional, without it licensed R2-only files stay not_hosted):

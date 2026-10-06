@@ -8,10 +8,15 @@ import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   HOSTED_ASSET_REF,
   HostedAssetError,
+  IMAGES_QUOTA_ERROR,
   SLOT_CLASSES,
+  VARIANT_LADDERS,
   getHostedAsset,
   ingest,
+  ladderWidths,
+  parseVariants,
   slotClass,
+  variantFamily,
   type IngestContext,
 } from "../src/core/hostedAssets.js";
 import { peekStream, sniffContentType } from "../src/core/sniff.js";
@@ -592,6 +597,273 @@ describe("ingest", () => {
       }),
     ).toEqual({ ok: false, reason: "unavailable" });
     expect(await db.all("SELECT * FROM hosted_assets")).toEqual([]);
+  });
+});
+
+// ── The variant ladder (HA-03; S-20 §6.6) ────────────────────────────────────────────────────
+
+/** A fake WebP whose bytes depend on the source and the width, so each variant is distinct. */
+function fakeWebp(width: number, source: number): Uint8Array {
+  return filled(
+    [...enc("RIFF"), 1, 2, 3, 4, ...enc("WEBPVP8 ")],
+    200 + width,
+    width * 31 + source,
+  );
+}
+
+interface StubOptions {
+  width: number | null;
+  /** Throw this ImagesError code from `output()` at the nth transformation (0-based). */
+  failAt?: { n: number; code: number };
+  /** Answer bytes that are not WebP. */
+  notWebp?: boolean;
+}
+
+/** A stub Images binding: `.info()` answers `width`, and each transform answers a fake WebP. */
+function stubImages(opts: StubOptions): ImagesBinding & { widths: number[] } {
+  const widths: number[] = [];
+  const binding = {
+    widths,
+    info: async (s: ReadableStream<Uint8Array>) => {
+      const bytes = new Uint8Array(await new Response(s).arrayBuffer());
+      if (opts.width === null)
+        throw Object.assign(new Error("not an image"), { code: 9412 });
+      return {
+        format: "image/png",
+        fileSize: bytes.length,
+        width: opts.width,
+        height: opts.width,
+      };
+    },
+    input: (s: ReadableStream<Uint8Array>) => {
+      let w = 0;
+      const t = {
+        transform(tr: { width?: number; fit?: string }) {
+          expect(tr.fit).toBe("scale-down");
+          w = tr.width ?? 0;
+          return t;
+        },
+        async output(o: { format: string }) {
+          expect(o.format).toBe("image/webp");
+          const src = new Uint8Array(await new Response(s).arrayBuffer());
+          if (opts.failAt && widths.length === opts.failAt.n)
+            throw Object.assign(new Error(`ERROR ${opts.failAt.code}`), {
+              code: opts.failAt.code,
+            });
+          widths.push(w);
+          const bytes = opts.notWebp
+            ? PNG.slice(0, 300)
+            : fakeWebp(w, src.length);
+          return {
+            image: () => stream(bytes),
+            contentType: () => "image/webp",
+            response: () => new Response(bytes),
+          };
+        },
+      };
+      return t;
+    },
+  };
+  return binding as unknown as ImagesBinding & { widths: number[] };
+}
+
+async function variantsOf(slot: string) {
+  return parseVariants(
+    (await getHostedAsset(db, "djdl", slot))?.variants_json ?? null,
+  );
+}
+
+function upload(bytes: Uint8Array) {
+  return {
+    kind: "stream" as const,
+    body: stream(bytes),
+    size: bytes.length,
+    sourceKind: "upload" as const,
+    origin: "console" as const,
+  };
+}
+
+describe("variant ladder", () => {
+  it("has the S-20 §6.6 ladders per slot family, and only for those slots", () => {
+    expect(VARIANT_LADDERS).toEqual({
+      icon: [64, 128, 256, 512, 1024],
+      header: [640, 1280, 1920],
+      screenshots: [480, 960, 1920],
+    });
+    expect(variantFamily("presentation.icon")).toBe("icon");
+    expect(variantFamily("listing.icon")).toBe("icon");
+    expect(variantFamily("listing.header")).toBe("header");
+    expect(variantFamily("listing.screenshot:16")).toBe("screenshots");
+    expect(variantFamily("listing.screenshot:17")).toBeNull();
+    // Store-exact art (A-18d), notes images, video and release files get no ladder.
+    for (const slot of [
+      "play:icon",
+      "play:feature-graphic",
+      "notes-image:0123456789abcdef",
+      "trailer-master",
+      "release-file",
+    ])
+      expect(variantFamily(slot)).toBeNull();
+  });
+
+  it("never upscales", () => {
+    expect(ladderWidths("presentation.icon", 512)).toEqual([64, 128, 256, 512]);
+    expect(ladderWidths("presentation.icon", 63)).toEqual([]);
+    expect(ladderWidths("listing.header", 1919)).toEqual([640, 1280]);
+    expect(ladderWidths("listing.screenshot:1", 4000)).toEqual([
+      480, 960, 1920,
+    ]);
+    expect(ladderWidths("listing.header", null)).toEqual([]);
+  });
+
+  it("a 512 px icon yields the 64, 128, 256 and 512 variants, and no 1024", async () => {
+    const images = stubImages({ width: 512 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    const res = await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    expect(res).toMatchObject({ ok: true, width: 512 });
+    expect(images.widths).toEqual([64, 128, 256, 512]);
+    const variants = await variantsOf("presentation.icon");
+    expect(variants.map((v) => v.w)).toEqual([64, 128, 256, 512]);
+    for (const v of variants) {
+      const bytes = fakeWebp(v.w, PNG.length);
+      expect(v).toEqual({
+        w: v.w,
+        format: "image/webp",
+        sha256: sha(bytes),
+        size: bytes.length,
+      });
+      const head = await asR2(r2).head(blobKey(v.sha256));
+      expect(head?.httpMetadata?.contentType).toBe("image/webp");
+      expect(head?.size).toBe(bytes.length);
+    }
+    // Each variant is held by the slot's ref, beside the original.
+    expect((await refs()).map((r) => r.storage_key).sort()).toEqual(
+      [sha(PNG), ...variants.map((v) => v.sha256)]
+        .map((h) => blobKey(h))
+        .sort(),
+    );
+    expect((await refs()).every((r) => r.ref_id === "presentation.icon@")).toBe(
+      true,
+    );
+    expect((await audits()).at(-1)?.summary).toBe(
+      `presentation.icon: hosted from upload (image/png, ${PNG.length} bytes; sizes 64, 128, 256, 512)`,
+    );
+  });
+
+  it("without the binding, variants_json is [] and the ingest succeeds", async () => {
+    ctx.env = { BLOBS: asR2(r2) };
+    const res = await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    expect(res).toMatchObject({ ok: true, status: "ready", sha256: sha(PNG) });
+    expect(
+      (await getHostedAsset(db, "djdl", "presentation.icon"))?.variants_json,
+    ).toBe("[]");
+    expect(r2.keys()).toEqual([blobKey(sha(PNG))]);
+    expect(await refs()).toHaveLength(1);
+  });
+
+  it(`on error ${IMAGES_QUOTA_ERROR} (quota), variants_json is [] and the ingest succeeds`, async () => {
+    const images = stubImages({
+      width: 1920,
+      failAt: { n: 1, code: IMAGES_QUOTA_ERROR },
+    });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    const res = await ingest(ctx, "djdl", "listing.header", upload(PNG));
+    expect(res).toMatchObject({ ok: true, status: "ready" });
+    const row = await getHostedAsset(db, "djdl", "listing.header");
+    expect(row).toMatchObject({
+      status: "ready",
+      variants_json: "[]",
+      error: null,
+    });
+    // All or nothing: the one variant made before the failure is not held by any ref.
+    expect(await refs()).toEqual([
+      {
+        storage_key: blobKey(sha(PNG)),
+        ref_kind: HOSTED_ASSET_REF,
+        ref_id: "listing.header@",
+      },
+    ]);
+  });
+
+  it("makes no variants when the width is unknown or the output is not WebP", async () => {
+    ctx.env = { BLOBS: asR2(r2), IMAGES: stubImages({ width: null }) };
+    expect(
+      await ingest(ctx, "djdl", "presentation.icon", upload(PNG)),
+    ).toMatchObject({
+      ok: true,
+      width: null,
+    });
+    expect(await variantsOf("presentation.icon")).toEqual([]);
+    ctx.env = {
+      BLOBS: asR2(r2),
+      IMAGES: stubImages({ width: 960, notWebp: true }),
+    };
+    expect(
+      await ingest(ctx, "djdl", "listing.screenshot:2", upload(PNG)),
+    ).toMatchObject({
+      ok: true,
+    });
+    expect(await variantsOf("listing.screenshot:2")).toEqual([]);
+  });
+
+  it("makes no variants for a slot without a ladder", async () => {
+    const images = stubImages({ width: 4096 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    await ingest(ctx, "djdl", "notes-image:0123456789abcdef", upload(PNG));
+    expect(images.widths).toEqual([]);
+    expect(await variantsOf("notes-image:0123456789abcdef")).toEqual([]);
+  });
+
+  it("reuses the variants of unchanged bytes, and drops a replaced copy's with it", async () => {
+    const images = stubImages({ width: 1000 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    await ingest(ctx, "djdl", "listing.screenshot:1", upload(PNG));
+    const first = await variantsOf("listing.screenshot:1");
+    expect(first.map((v) => v.w)).toEqual([480, 960]);
+    // The same bytes again: no new transformations, the same variants and refs.
+    await ingest(ctx, "djdl", "listing.screenshot:1", upload(PNG));
+    expect(images.widths).toEqual([480, 960]);
+    expect(await variantsOf("listing.screenshot:1")).toEqual(first);
+    expect(await refs()).toHaveLength(3);
+    // New bytes: the old original and its variants lose their refs in the same batch.
+    await ingest(ctx, "djdl", "listing.screenshot:1", upload(PNG2));
+    const second = await variantsOf("listing.screenshot:1");
+    expect(second.map((v) => v.w)).toEqual([480, 960]);
+    expect((await refs()).map((r) => r.storage_key).sort()).toEqual(
+      [sha(PNG2), ...second.map((v) => v.sha256)].map((h) => blobKey(h)).sort(),
+    );
+  });
+
+  it("builds the ladder on a re-ingest of bytes that had none (the binding came back)", async () => {
+    ctx.env = { BLOBS: asR2(r2) };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    expect(await variantsOf("presentation.icon")).toEqual([]);
+    ctx.env = { BLOBS: asR2(r2), IMAGES: stubImages({ width: 128 }) };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    expect((await variantsOf("presentation.icon")).map((v) => v.w)).toEqual([
+      64, 128,
+    ]);
+    expect(await refs()).toHaveLength(3);
+  });
+
+  it("keeps the variants with the last good copy when a later ingest fails", async () => {
+    ctx.env = { BLOBS: asR2(r2), IMAGES: stubImages({ width: 256 }) };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    const refused = await ingest(ctx, "djdl", "presentation.icon", upload(SVG));
+    expect(refused).toEqual({ ok: false, reason: "not-an-image" });
+    expect((await variantsOf("presentation.icon")).map((v) => v.w)).toEqual([
+      64, 128, 256,
+    ]);
+    expect(await refs()).toHaveLength(4);
+  });
+
+  it("reads a malformed variants_json as no variants", () => {
+    expect(parseVariants(null)).toEqual([]);
+    expect(parseVariants("not json")).toEqual([]);
+    expect(parseVariants('{"w":64}')).toEqual([]);
+    expect(
+      parseVariants('[{"w":64,"format":"image/png","sha256":"x","size":1}]'),
+    ).toEqual([]);
   });
 });
 

@@ -61,6 +61,7 @@ import {
   resolveEffective,
 } from "../../core/authz.js";
 import { validatePayload } from "../../core/payload.js";
+import { clearDeviceSubjects } from "../../core/subjectHooks.js";
 import { checkBuildGate, tighterMax, tighterMin } from "../../core/gate.js";
 import { buildDoc, type FusedSessionDoc } from "./doc.js";
 
@@ -418,6 +419,18 @@ export async function handleBrowserLogout(
     const deviceTokenHash = await hashKey(
       session.record.token,
       env.KEY_HASH_PEPPER,
+    );
+    // U-02: sign-out runs Core's clearing hook, so the device loses its Cloud Sync principal
+    // with its session (S-17 §5.8 item 2), whatever deauthorizing the row does afterwards.
+    await clearDeviceSubjects(
+      db,
+      env,
+      {
+        kind: "device",
+        product: product.slug,
+        deviceId: session.record.deviceId,
+      },
+      "signout",
     );
     await setDeviceStatus(
       db,

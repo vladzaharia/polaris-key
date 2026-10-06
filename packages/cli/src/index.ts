@@ -75,6 +75,7 @@ import { steamVdf } from "./transportSteam.js";
 import { cmdStorefront } from "./storefronts/command.js";
 import { buildFdroidFeed, FEEDS_USAGE } from "./feeds.js";
 import { feedsSetup, FEEDS_SETUP_USAGE } from "./feedSetup.js";
+import { feedsPrune, FEEDS_PRUNE_USAGE } from "./feedPrune.js";
 import { formatImport, listingImport, LISTING_USAGE } from "./listing.js";
 import { listingAssets, LISTING_ASSETS_USAGE } from "./listingAssets.js";
 import {
@@ -1308,7 +1309,8 @@ async function cmdRelease(
   }
 }
 
-/** `pkey feeds fdroid` (P2b-05, `feeds.ts`) and `pkey feeds setup` (F-12, `feedSetup.ts`). */
+/** `pkey feeds fdroid` (P2b-05, `feeds.ts`), `pkey feeds setup` (F-12, `feedSetup.ts`) and
+ *  `pkey feeds prune` (feed retention, `feedPrune.ts`). */
 async function cmdFeeds(
   parsed: ParsedArgs,
   cwd: string,
@@ -1331,11 +1333,31 @@ async function cmdFeeds(
     );
     return 0;
   }
+  if (parsed.positional[0] === "prune") {
+    const prunedProduct = flagString(parsed, "product");
+    if (!prunedProduct) throw new Error(FEEDS_PRUNE_USAGE);
+    const report = await feedsPrune({
+      product: prunedProduct,
+      deliverable: flagString(parsed, "deliverable"),
+      apply: flagBool(parsed, "apply"),
+      json: flagBool(parsed, "json"),
+      baseUrl: flagString(parsed, "base-url"),
+      env: ci.env,
+      stdout,
+      stderr,
+      fetchImpl: ci.fetchImpl,
+      sleep: ci.sleep,
+    });
+    // An applied prune with failed versions is not done: exit non-zero so CI notices.
+    return report.totals.failed > 0 ? 1 : 0;
+  }
   const product = flagString(parsed, "product");
   const channel = flagString(parsed, "channel");
   const out = flagString(parsed, "out");
   if (parsed.positional[0] !== "fdroid" || !product || !channel || !out)
-    throw new Error(`${FEEDS_USAGE}\n${FEEDS_SETUP_USAGE}`);
+    throw new Error(
+      `${FEEDS_USAGE}\n${FEEDS_SETUP_USAGE}\n${FEEDS_PRUNE_USAGE}`,
+    );
   await buildFdroidFeed({
     cwd,
     product,
@@ -1668,6 +1690,7 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot --owner slug
               [--namespace key=value ...] [--package name [--version v]] [--origin url]
               [--token-env NAME] [--json]
+  pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]
   pkey listing assets --out dir [--icon png] [--key-art png] [--key-art-portrait png]
               [--wordmark png] [--screenshots dir] [--focal x,y] [--focal-portrait x,y]
               [--background #rrggbb] [--accept store/class/name ...] [--pad store/class/name ...]
@@ -1756,6 +1779,12 @@ pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, entry.
 from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the
 password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs
 distribution:feeds. Without --keystore it writes the unsigned files and stops.
+
+pkey feeds prune deletes each package's builds of main (X-main.N, PyPI X.devN) below its newest
+stable release, the backfill of the Worker's automatic feed retention. It is a dry run unless
+--apply: it prints what would go, per package, with counts and bytes. With --apply it also lists
+any version skipped (held since the plan, so kept) and exits non-zero if any version failed. The
+token needs release:yank, which an operator grants.
 
 pkey feeds setup prints the copy-paste setup for one package feed on the registry host (default
 https://pkg.plrs.im), the same snippets the console's Setup tab shows: strict routing only (the

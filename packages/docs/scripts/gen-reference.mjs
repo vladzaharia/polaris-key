@@ -392,6 +392,8 @@ const TABLE_OWNERS = {
     "release_lazy_deltas",
     "release_packages",
     "release_native_uploads",
+    "release_package_prunes",
+    "release_package_retention",
   ],
   distribution: [
     "dist_outlets",

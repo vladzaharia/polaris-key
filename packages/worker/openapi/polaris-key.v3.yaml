@@ -88,6 +88,13 @@ tags:
       SwiftPM, Maven and Gradle, OCI, Godot). Same Worker, third custom domain; every path here
       carries a `servers` override. No cookies, no CORS, GET and HEAD only, a sandbox CSP on
       every answer and an explicit type allowlist (`core/registryHost.ts`).
+  - name: img
+    description: >
+      The image host, `img.plrs.im` (HA-02): a product's public hosted images, content-addressed
+      and immutable, plus stable aliases for the current icon, header and screenshots. Same
+      Worker, fourth custom domain; every path here carries a `servers` override. GET and HEAD
+      only, no cookies, `Access-Control-Allow-Origin: *`, a sandbox CSP and raster image types
+      only (`core/imgHost.ts`).
   - name: portal
     description: >
       The customer portal's library, product and media routes (PX-W1): root paths on the console
@@ -4961,6 +4968,177 @@ paths:
         "403": { $ref: "#/components/responses/CiForbidden" }
         "404": { $ref: "#/components/responses/CiRefusal" }
         "422": { $ref: "#/components/responses/CiRefusal" }
+
+  /{product}/release/packages/prune:
+    post:
+      operationId: ciPrunePackages
+      tags: [release]
+      summary: Prune builds of main below each package's newest stable release (CI)
+      description: >
+        Feed retention's backfill. For each package deliverable of the product (or the one
+        `deliverable` names), the `main`-channel prereleases below its newest stable release —
+        semver `X-main.N` and PEP 440 `X.devN` with X at or below that release — are deleted
+        from every feed: their release rows and files go, their blob refs are dropped (the blob
+        collector reclaims an object only once no ref from any product holds it), a tombstone
+        keeps each version unique forever, and the package re-renders. Stable and beta versions,
+        prereleases of newer versions, and a version a channel points at are never touched, and
+        a yanked or deprecated stable is never the ceiling. The same prune runs automatically
+        right after a stable publish once the product turned
+        `release.packages.prunePrereleases` on (off by default for a tenant product; always on
+        for the platform's own). A DRY RUN unless `apply` is `true`: the report lists what would
+        go, with counts and bytes (`freedBytes`: the part no remaining ref holds; with `apply`,
+        only what this request's own deletions left unreferenced). A version that became held
+        between the plan and its deletion is kept and listed in its package's `skipped`.
+        Requires a `pkeyci_` token of this product with `release:yank` (operator-granted). Every
+        deletion is audited as `package.version.prune` under `ci:<subject>`, its parent the
+        stable release that set the ceiling. Idempotent. No CORS.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                apply: { type: boolean, default: false }
+                deliverable: { type: string }
+            examples:
+              dryRun: { value: {} }
+              apply: { value: { apply: true, deliverable: npm.node } }
+      responses:
+        "200":
+          description: The plan (a dry run) or what was pruned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, product, dryRun, packages, skipped, totals]
+                properties:
+                  ok: { type: boolean, const: true }
+                  product: { type: string }
+                  dryRun: { type: boolean }
+                  prunePrereleases:
+                    type: boolean
+                    description: The product's automatic retention setting.
+                  packages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        deliverableId: { type: string }
+                        ecosystem: { type: string }
+                        name: { type: string }
+                        stable:
+                          type: string
+                          description: The newest live stable release, the ceiling.
+                        stableReleaseId:
+                          type: string
+                          description: >
+                            That release's id (`<deliverable>@<stable>`), the audit rows'
+                            `parent_id`.
+                        prune:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              releaseId: { type: string }
+                              version: { type: string }
+                              files: { type: integer }
+                              bytes: { type: integer }
+                              freedBytes: { type: integer }
+                        kept:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              releaseId: { type: string }
+                              version: { type: string }
+                              reason:
+                                { type: string, enum: [pinned, referenced] }
+                        bytes: { type: integer }
+                        freedBytes: { type: integer }
+                        failed:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              version: { type: string }
+                              error: { type: string }
+                        skipped:
+                          type: array
+                          description: >
+                            With `apply`: planned versions a channel pointer or another row
+                            took hold of before their deletion, so they were kept.
+                          items:
+                            type: object
+                            properties:
+                              releaseId: { type: string }
+                              version: { type: string }
+                              reason:
+                                { type: string, enum: [pinned, referenced] }
+                  skipped:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        deliverableId: { type: string }
+                        reason: { type: string, enum: [no-stable] }
+                  totals:
+                    type: object
+                    properties:
+                      versions: { type: integer }
+                      bytes: { type: integer }
+                      freedBytes: { type: integer }
+                      failed: { type: integer }
+                      skipped:
+                        type: integer
+                        description: Versions skipped because they became held (with `apply`).
+                  more:
+                    type: boolean
+                    description: >
+                      With `apply`, versions were left for another request: at most 200 are
+                      deleted per request. Repeat until it is false (`pkey feeds prune --apply`
+                      does).
+              examples:
+                dryRun:
+                  summary: test/feedPrune.test.ts
+                  value:
+                    ok: true
+                    product: acme
+                    dryRun: true
+                    prunePrereleases: true
+                    packages:
+                      - deliverableId: npm.sdk
+                        ecosystem: npm
+                        name: "@acme/sdk"
+                        stable: 1.1.0
+                        stableReleaseId: npm.sdk@1.1.0
+                        prune:
+                          - {
+                              releaseId: npm.sdk@1.1.0-main.1,
+                              version: 1.1.0-main.1,
+                              files: 1,
+                              bytes: 1200,
+                              freedBytes: 1200,
+                            }
+                        kept: []
+                        bytes: 1200
+                        freedBytes: 1200
+                    skipped: []
+                    totals:
+                      {
+                        versions: 1,
+                        bytes: 1200,
+                        freedBytes: 1200,
+                        failed: 0,
+                        skipped: 0,
+                      }
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
 
   /{product}/release/publish/token:
     post:
@@ -13536,6 +13714,245 @@ paths:
       responses:
         "200": { description: "The crate's headers." }
         "404": { description: "The not-found." }
+  # ── image host (img.plrs.im) ──────────────────────────────────────────────────
+  #
+  # HA-02 (notes/S-20 §6.5). The image host is the same Worker on a fourth custom domain, so its
+  # paths carry a path-level `servers` override and tag `img`. The routes are Core's own
+  # (`core/imgHost.ts`), not a service's; `test/routeCoverage.test.ts` pins this section against
+  # `matchImgPath` (its `IMG_PATHS` table). Every answer, errors included, carries `nosniff`,
+  # `Content-Security-Policy: default-src 'none'; sandbox`, `Access-Control-Allow-Origin: *`,
+  # `Cross-Origin-Resource-Policy: cross-origin` and `Referrer-Policy: no-referrer`, and never a
+  # `Set-Cookie`. No preflight is documented: a public image is a simple `GET`.
+  /{product}/a/{sha256}:
+    servers:
+      - url: https://img.plrs.im
+        description: The image host (img-staging and img-dev in the other environments).
+    get:
+      operationId: imgOriginal
+      tags: [img]
+      summary: A hosted image, content-addressed (image host only)
+      description: >
+        HA-02. The original bytes of a product's hosted image (`core/hostedAssets.ts`), named by
+        their SHA-256. Served only when `{product}` holds a `hosted-asset` ref to the object
+        through an image slot (`presentation.icon`, `listing.header`, `listing.screenshot:<n>`,
+        an A-18 listing image, a notes image) whose sniffed type is PNG, JPEG, WebP, GIF or AVIF.
+        A hash held only by another product, a release file, anything gated and anything not
+        hosted are the plain not-found (never a 401). Immutable: `Cache-Control: public,
+        max-age=31536000, immutable, no-transform`, `ETag: "<sha256>"`, `If-None-Match` answers
+        304, `Content-Disposition: inline`. A cache miss counts against the `imgHost` rate limit
+        (per product and client IP).
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: sha256
+          in: path
+          required: true
+          description: Lowercase hex SHA-256 of the original.
+          schema: { type: string, pattern: "^[0-9a-f]{64}$" }
+      responses:
+        "200":
+          description: The image, with its sniffed `Content-Type`.
+          content:
+            image/png: { schema: { type: string, format: binary } }
+            image/jpeg: { schema: { type: string, format: binary } }
+            image/webp: { schema: { type: string, format: binary } }
+            image/gif: { schema: { type: string, format: binary } }
+            image/avif: { schema: { type: string, format: binary } }
+        "304": { description: "`If-None-Match` matched the ETag." }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "405":
+          {
+            description: "Any method but GET and HEAD (`Allow: GET, HEAD`, no body).",
+          }
+        "429":
+          description: Too many R2 reads from this client for this product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                limited:
+                  {
+                    value:
+                      { error: rate_limited, message: too many image requests },
+                  }
+    head:
+      operationId: imgOriginalHead
+      tags: [img]
+      summary: A hosted image, headers only (image host only)
+      description: HA-02. As `GET /{product}/a/{sha256}`, with no body.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: sha256, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          { description: "The image's headers, `Content-Length` included." }
+        "304": { description: "`If-None-Match` matched the ETag." }
+        "404": { description: "The not-found." }
+  /{product}/a/{sha256}/{w}.webp:
+    servers:
+      - url: https://img.plrs.im
+        description: The image host (img-staging and img-dev in the other environments).
+    get:
+      operationId: imgVariant
+      tags: [img]
+      summary: A width variant of a hosted image (image host only)
+      description: >
+        HA-02. The `{w}`-pixel WebP variant of the original `{sha256}`, generated once at ingest
+        (HA-03's ladder, never on the fly). Served only when the original's `hosted_assets` row
+        lists the width in `variants_json` and the same slot of `{product}` holds a `hosted-asset`
+        ref to the variant's object; otherwise the plain not-found (without the Images binding
+        there are no variants, and consumers use the original). Same headers as the original;
+        the `ETag` is the variant's own SHA-256.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - {
+            name: sha256,
+            in: path,
+            required: true,
+            schema: { type: string, pattern: "^[0-9a-f]{64}$" },
+          }
+        - name: w
+          in: path
+          required: true
+          description: The variant's width in pixels (1–4096).
+          schema: { type: integer, minimum: 1, maximum: 4096 }
+      responses:
+        "200":
+          description: The WebP variant.
+          content:
+            image/webp: { schema: { type: string, format: binary } }
+        "304": { description: "`If-None-Match` matched the ETag." }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "405":
+          {
+            description: "Any method but GET and HEAD (`Allow: GET, HEAD`, no body).",
+          }
+        "429":
+          {
+            description: "Too many R2 reads from this client for this product (`rate_limited`).",
+          }
+    head:
+      operationId: imgVariantHead
+      tags: [img]
+      summary: A width variant of a hosted image, headers only (image host only)
+      description: HA-02. As `GET /{product}/a/{sha256}/{w}.webp`, with no body.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: sha256, in: path, required: true, schema: { type: string } }
+        - { name: w, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          { description: "The variant's headers, `Content-Length` included." }
+        "304": { description: "`If-None-Match` matched the ETag." }
+        "404": { description: "The not-found." }
+  /{product}/icon:
+    servers:
+      - url: https://img.plrs.im
+        description: The image host (img-staging and img-dev in the other environments).
+    get:
+      operationId: imgIconAlias
+      tags: [img]
+      summary: The product's current icon, a stable alias (image host only)
+      description: >
+        HA-02. A 302 to the content-addressed URL of the product's current icon: the every-locale
+        `presentation.icon` copy, else the `listing.icon` copy. `Cache-Control: public,
+        max-age=300`, so a new icon reaches emails already sent, third-party mirrors and SDKs
+        without discovery within five minutes. The plain not-found when neither slot has a copy
+        the original route would serve.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "302":
+          description: "`Location: https://img.plrs.im/{product}/a/{sha256}`."
+          headers:
+            Location: { schema: { type: string, format: uri } }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "405":
+          {
+            description: "Any method but GET and HEAD (`Allow: GET, HEAD`, no body).",
+          }
+    head:
+      operationId: imgIconAliasHead
+      tags: [img]
+      summary: The product's current icon alias, headers only (image host only)
+      description: HA-02. As `GET /{product}/icon`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "302": { description: "As `GET`." }
+        "404": { description: "The not-found." }
+  /{product}/header:
+    servers:
+      - url: https://img.plrs.im
+        description: The image host (img-staging and img-dev in the other environments).
+    get:
+      operationId: imgHeaderAlias
+      tags: [img]
+      summary: The product's current header art, a stable alias (image host only)
+      description: >
+        HA-02. A 302 to the content-addressed URL of the every-locale `listing.header` copy,
+        `Cache-Control: public, max-age=300`; the plain not-found when there is none.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "302":
+          description: "`Location: https://img.plrs.im/{product}/a/{sha256}`."
+          headers:
+            Location: { schema: { type: string, format: uri } }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "405":
+          {
+            description: "Any method but GET and HEAD (`Allow: GET, HEAD`, no body).",
+          }
+    head:
+      operationId: imgHeaderAliasHead
+      tags: [img]
+      summary: The product's current header art alias, headers only (image host only)
+      description: HA-02. As `GET /{product}/header`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      responses:
+        "302": { description: "As `GET`." }
+        "404": { description: "The not-found." }
+  /{product}/screenshots/{n}:
+    servers:
+      - url: https://img.plrs.im
+        description: The image host (img-staging and img-dev in the other environments).
+    get:
+      operationId: imgScreenshotAlias
+      tags: [img]
+      summary: The product's current screenshot n, a stable alias (image host only)
+      description: >
+        HA-02. A 302 to the content-addressed URL of the every-locale `listing.screenshot:{n}`
+        copy, `Cache-Control: public, max-age=300`; the plain not-found when there is none.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: n
+          in: path
+          required: true
+          description: The screenshot's position, 1–16 (no leading zero).
+          schema: { type: integer, minimum: 1, maximum: 16 }
+      responses:
+        "302":
+          description: "`Location: https://img.plrs.im/{product}/a/{sha256}`."
+          headers:
+            Location: { schema: { type: string, format: uri } }
+        "404": { $ref: "#/components/responses/LegacyNotFound" }
+        "405":
+          {
+            description: "Any method but GET and HEAD (`Allow: GET, HEAD`, no body).",
+          }
+    head:
+      operationId: imgScreenshotAliasHead
+      tags: [img]
+      summary: The product's current screenshot alias, headers only (image host only)
+      description: HA-02. As `GET /{product}/screenshots/{n}`.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - { name: n, in: path, required: true, schema: { type: integer } }
+      responses:
+        "302": { description: "As `GET`." }
+        "404": { description: "The not-found." }
+
 components:
   securitySchemes:
     ciToken:

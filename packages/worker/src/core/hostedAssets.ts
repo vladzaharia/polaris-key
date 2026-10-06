@@ -17,8 +17,11 @@
  *   5. put: `putVerified` at `blobs/sha256/<hex>` with the sniffed `Content-Type`. The key is
  *      content-addressed, so a re-ingest of the same bytes stores nothing new and adds the ref;
  *   6. describe: an image's width and height from the Images binding's `.info()`, when bound;
- *   7. ref: the `hosted_assets` row, its `hosted-asset` ref (`<slot>@<locale>`), the drop of the
- *      refs a replaced copy held, and the `assets.ingest` audit row, in ONE D1 batch.
+ *   7. vary (HA-03): the slot's WebP width ladder (`VARIANT_LADDERS`), never upscaled, each
+ *      variant stored content-addressed like the original. Best effort: see VARIANTS below;
+ *   8. ref: the `hosted_assets` row (with `variants_json`), its `hosted-asset` refs
+ *      (`<slot>@<locale>`: the original and every variant), the drop of the refs a replaced copy
+ *      held, and the `assets.ingest` audit row, in ONE D1 batch.
  *
  * ── POSSESSION (THREAT-MODEL §3) ────────────────────────────────────────────────────────────
  *
@@ -32,6 +35,19 @@
  * A refusal is a stable reason code (`IngestReason`), stored in `hosted_assets.error` and in the
  * audit row. A slot that already had a good copy KEEPS it: the row keeps its `sha256` and its
  * refs, and goes `failed` (or `stale`, when the source answered 404 or 410: the source is gone).
+ *
+ * ── VARIANTS (HA-03; notes/S-20 §6.6, owner decision 4) ──────────────────────────────────────
+ *
+ * Sizes are generated once, here, and never on a request: the binding bills per unique
+ * transformation, so one ingest costs at most one transformation per ladder width, and a
+ * re-ingest of the same bytes reuses the variants it already has. Only the slot families in
+ * `VARIANT_LADDERS` get a ladder (store-exact art stays with the CLI, A-18d). A width above the
+ * original's is never requested, and `fit: "scale-down"` would refuse to enlarge anyway.
+ *
+ * The ladder is all or nothing and never fails the ingest. Without the binding, without the
+ * original's width, on error 9422 (the account's transformations are used up) or on any other
+ * binding or store error, `variants_json` is `[]` and every consumer uses the original. A
+ * variant whose bytes do not sniff as WebP, or exceed the slot's cap, voids the ladder too.
  *
  * ── SIZES ───────────────────────────────────────────────────────────────────────────────────
  *
@@ -367,6 +383,8 @@ interface Stored {
   contentType: string;
   width: number | null;
   height: number | null;
+  /** The bytes, for an image slot (buffered), so the ladder can be built from them. */
+  bytes?: Uint8Array;
 }
 
 /** Record the stored object, then confirm it is still there (the collector race, `promote`). */
@@ -456,7 +474,7 @@ async function storeBuffered(
     cls.accept === "image"
       ? await imageInfo(ctx.env, bytes)
       : { width: null, height: null };
-  return { sha256, size: bytes.byteLength, contentType, ...dims };
+  return { sha256, size: bytes.byteLength, contentType, ...dims, bytes };
 }
 
 /** Streamed path: video and release-file slots, verified by R2 against the expected hash. */
@@ -526,6 +544,134 @@ async function storeStreamed(
     width: null,
     height: null,
   };
+}
+
+// ── The variant ladder (HA-03) ────────────────────────────────────────────────────────────
+
+/** The fixed WebP width ladders, per slot family (S-20 §6.6). Code constants. */
+export const VARIANT_LADDERS = {
+  icon: [64, 128, 256, 512, 1024],
+  header: [640, 1280, 1920],
+  screenshots: [480, 960, 1920],
+} as const satisfies Record<string, readonly number[]>;
+
+export type VariantFamily = keyof typeof VARIANT_LADDERS;
+
+/** The one output format of a variant. */
+export const VARIANT_FORMAT = "image/webp";
+
+/** The binding's error code when the account's transformations are used up. */
+export const IMAGES_QUOTA_ERROR = 9422;
+
+/** One entry of `hosted_assets.variants_json`. */
+export interface HostedAssetVariant {
+  w: number;
+  format: typeof VARIANT_FORMAT;
+  sha256: string;
+  size: number;
+}
+
+/** The ladder family of `slot`, or `null` when the slot gets no variants. */
+export function variantFamily(slot: string): VariantFamily | null {
+  if (slot === "presentation.icon" || slot === "listing.icon") return "icon";
+  if (slot === "listing.header") return "header";
+  if (SCREENSHOT_RE.test(slot) && slotClass(slot) !== null)
+    return "screenshots";
+  return null;
+}
+
+/** The ladder widths for `slot` at an original `width` px wide: never wider (no upscale). */
+export function ladderWidths(slot: string, width: number | null): number[] {
+  const family = variantFamily(slot);
+  if (!family || width === null || !Number.isSafeInteger(width) || width < 1)
+    return [];
+  return VARIANT_LADDERS[family].filter((w) => w <= width);
+}
+
+/** A row's `variants_json`, read defensively: anything malformed reads as no variants. */
+export function parseVariants(json: string | null): HostedAssetVariant[] {
+  if (!json) return [];
+  try {
+    const v: unknown = JSON.parse(json);
+    if (!Array.isArray(v)) return [];
+    const ok = v.every(
+      (e: Partial<HostedAssetVariant> | null) =>
+        !!e &&
+        Number.isSafeInteger(e.w) &&
+        e.format === VARIANT_FORMAT &&
+        typeof e.sha256 === "string" &&
+        /^[0-9a-f]{64}$/.test(e.sha256) &&
+        Number.isSafeInteger(e.size),
+    );
+    return ok ? (v as HostedAssetVariant[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Store one variant's bytes content-addressed, as the original is; `false` when it cannot. */
+async function storeVariant(
+  ctx: IngestContext,
+  bucket: R2Bucket,
+  bytes: Uint8Array,
+  sha256: string,
+): Promise<boolean> {
+  const key = blobKey(sha256);
+  const expect = { sha256, size: bytes.byteLength };
+  const opts = { contentType: VARIANT_FORMAT };
+  const put = await putVerified(bucket, key, bytes, expect, opts);
+  let alreadyStored = false;
+  if (!put.ok) {
+    if (put.reason !== "exists") return false;
+    if (!(await existingMatches(bucket, key, sha256, bytes.byteLength)))
+      return false;
+    alreadyStored = true;
+  }
+  return recordAndConfirm(
+    ctx,
+    bucket,
+    key,
+    expect,
+    alreadyStored,
+    async () => (await putVerified(bucket, key, bytes, expect, opts)).ok,
+  );
+}
+
+/**
+ * Build `slot`'s ladder from the original's bytes. All or nothing, and never throws: `[]` when
+ * the binding is missing, the width unknown, the quota used up (9422), or anything else fails.
+ */
+async function buildLadder(
+  ctx: IngestContext,
+  bucket: R2Bucket,
+  cls: SlotClass,
+  slot: string,
+  original: Uint8Array,
+  width: number | null,
+): Promise<HostedAssetVariant[]> {
+  const images = ctx.env.IMAGES;
+  const widths = ladderWidths(slot, width);
+  if (!images || widths.length === 0) return [];
+  const out: HostedAssetVariant[] = [];
+  try {
+    for (const w of widths) {
+      const result = await images
+        .input(new Response(original).body as ReadableStream<Uint8Array>)
+        .transform({ width: w, fit: "scale-down" })
+        .output({ format: VARIANT_FORMAT });
+      const bytes = await readAll(cappedStream(result.image(), cls.maxBytes));
+      if (sniffContentType(bytes.subarray(0, SNIFF_BYTES)) !== VARIANT_FORMAT)
+        return [];
+      const sha256 = hexOf(await crypto.subtle.digest("SHA-256", bytes));
+      if (!(await storeVariant(ctx, bucket, bytes, sha256))) return [];
+      out.push({ w, format: VARIANT_FORMAT, sha256, size: bytes.byteLength });
+    }
+  } catch {
+    // 9422 (`IMAGES_QUOTA_ERROR`: the month's transformations are used up), a binding failure,
+    // an over-cap output or a store error: no variants; the original still serves.
+    return [];
+  }
+  return out;
 }
 
 function auditRow(
@@ -656,23 +802,30 @@ export async function ingest(
   if (typeof stored === "string")
     return fail(ctx, product, slot, locale, prev, source, actor, stored);
 
-  // 7. The row, the ref, the drop of a replaced copy's refs, the audit: one batch.
+  // 7. The ladder. The same bytes keep the variants they already have (no new transformations).
+  const kept =
+    prev?.sha256 === stored.sha256 ? parseVariants(prev.variants_json) : [];
+  const variants =
+    kept.length > 0 || !stored.bytes
+      ? kept
+      : await buildLadder(ctx, bucket, cls, slot, stored.bytes, stored.width);
+
+  // 8. The row, the refs, the drop of a replaced copy's refs, the audit: one batch.
   const key = blobKey(stored.sha256);
   const refId = hostedAssetRefId(slot, locale);
+  const keys = [key, ...variants.map((v) => blobKey(v.sha256))];
   await ctx.db.batch([
     {
       sql: `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, source_ref,
               source_etag, sha256, size, content_type, width, height, variants_json, status, error,
               checked_at, modified_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '[]', 'ready', NULL, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ready', NULL, ?, ?)
             ON CONFLICT(product, slot, locale) DO UPDATE SET
               origin = excluded.origin, source_kind = excluded.source_kind,
               source_ref = excluded.source_ref, source_etag = excluded.source_etag,
               sha256 = excluded.sha256, size = excluded.size,
               content_type = excluded.content_type, width = excluded.width,
-              height = excluded.height,
-              variants_json = CASE WHEN hosted_assets.sha256 IS excluded.sha256
-                                   THEN hosted_assets.variants_json ELSE '[]' END,
+              height = excluded.height, variants_json = excluded.variants_json,
               status = 'ready', error = NULL, checked_at = excluded.checked_at,
               modified_at = excluded.modified_at`,
       params: [
@@ -688,36 +841,37 @@ export async function ingest(
         stored.contentType,
         stored.width,
         stored.height,
+        JSON.stringify(variants),
         ctx.now,
         ctx.now,
       ],
     },
-    stmtRecordRef(
-      { product, storageKey: key, refKind: HOSTED_ASSET_REF, refId },
-      ctx.now,
-    ),
-    // A replaced copy's refs (its original and its variants) go in the same batch. Unchanged
-    // bytes keep their variants' refs, as the row keeps its `variants_json`.
+    // The slot's refs are exactly the original and the variants in `variants_json`: a replaced
+    // copy's refs (its original and its variants) are dropped in this batch, and unchanged bytes
+    // keep theirs, as the row keeps its variants.
     {
       sql: `DELETE FROM blob_refs
-             WHERE product = ? AND ref_kind = ? AND ref_id = ? AND storage_key <> ?
-               AND ? <> ?`,
-      params: [
-        product,
-        HOSTED_ASSET_REF,
-        refId,
-        key,
-        prev?.sha256 ?? "",
-        stored.sha256,
-      ],
+             WHERE product = ? AND ref_kind = ? AND ref_id = ?
+               AND storage_key NOT IN (${keys.map(() => "?").join(", ")})`,
+      params: [product, HOSTED_ASSET_REF, refId, ...keys],
     },
+    ...keys.map((storageKey) =>
+      stmtRecordRef(
+        { product, storageKey, refKind: HOSTED_ASSET_REF, refId },
+        ctx.now,
+      ),
+    ),
     auditRow(
       product,
       slot,
       locale,
       actor,
       ctx.now,
-      `${slot}: hosted from ${source.kind} (${stored.contentType}, ${stored.size} bytes)`,
+      `${slot}: hosted from ${source.kind} (${stored.contentType}, ${stored.size} bytes${
+        variants.length > 0
+          ? `; sizes ${variants.map((v) => v.w).join(", ")}`
+          : ""
+      })`,
     ),
   ]);
   return {
