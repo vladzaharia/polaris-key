@@ -70,10 +70,10 @@ This is the owner's "just pull the files". It also retires DJDL's public `djdl-a
 
 ## Acceptance criteria
 
-- [ ] Resyncing an unchanged manifest enqueues nothing (test).
-- [ ] Changing the icon URL swaps the copy only after the new ingest is `ready` (test).
-- [ ] A 404 source leaves the old copy serving, with status `stale` (test).
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] Resyncing an unchanged manifest enqueues nothing (test).
+- [x] Changing the icon URL swaps the copy only after the new ingest is `ready` (test).
+- [x] A 404 source leaves the old copy serving, with status `stale` (test).
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 
