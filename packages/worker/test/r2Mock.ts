@@ -3,7 +3,9 @@ import { createHash, randomBytes } from "node:crypto";
 
 /**
  * An in-memory R2Bucket fake covering exactly the surface `core/blobs.ts` uses: `head`, `get`
- * with `range` + `onlyIf`, `put` with a `sha256` checksum + `onlyIf`, `delete` and `list`.
+ * with `range` + `onlyIf`, `put` with a `sha256` checksum + `onlyIf`, `delete` and `list`, plus
+ * the multipart upload F-23's OCI push uses (R2's part-size rule enforced at `complete`; a
+ * completed object carries no SHA-256, as on R2).
  *
  * It mirrors the R2 behaviours the store's invariants depend on:
  *   - a `sha256` put option is checked against the bytes received and a mismatch THROWS (R2
@@ -252,6 +254,102 @@ export class R2Mock {
           cursor: page.at(-1)!,
         }
       : { objects, delimitedPrefixes: [], truncated: false };
+  }
+
+  // ── Multipart uploads (F-23's OCI push) ──────────────────────────────────────────────────
+
+  private uploads = new Map<
+    string,
+    {
+      key: string;
+      parts: Map<number, { bytes: Uint8Array; etag: string }>;
+      httpMetadata: R2HTTPMetadata;
+    }
+  >();
+  /** R2's smallest part but the last; a test may lower it (never in production code). */
+  minPartBytes = 5 * 1024 * 1024;
+
+  async createMultipartUpload(
+    key: string,
+    options?: R2MultipartOptions,
+  ): Promise<R2MultipartUpload> {
+    const uploadId = randomBytes(12).toString("hex");
+    this.uploads.set(uploadId, {
+      key,
+      parts: new Map(),
+      httpMetadata: httpMetadataOf(options?.httpMetadata),
+    });
+    return this.resumeMultipartUpload(key, uploadId);
+  }
+
+  /** Every multipart upload still open (test introspection). */
+  openUploads(): number {
+    return this.uploads.size;
+  }
+
+  resumeMultipartUpload(key: string, uploadId: string): R2MultipartUpload {
+    const self = this;
+    const open = () => {
+      const u = self.uploads.get(uploadId);
+      if (!u || u.key !== key)
+        throw new Error("R2Mock: no such multipart upload");
+      return u;
+    };
+    return {
+      key,
+      uploadId,
+      async uploadPart(partNumber: number, value: unknown) {
+        const u = open();
+        if (partNumber < 1 || partNumber > 10_000)
+          throw new Error("R2Mock: part number out of range");
+        const bytes = await readAll(value);
+        const etag = randomBytes(8).toString("hex");
+        u.parts.set(partNumber, { bytes, etag });
+        return { partNumber, etag };
+      },
+      async abort() {
+        self.uploads.delete(uploadId);
+      },
+      async complete(parts: R2UploadedPart[]) {
+        const u = open();
+        const ordered = [...parts].sort((a, b) => a.partNumber - b.partNumber);
+        const chunks: Uint8Array[] = [];
+        for (const [i, p] of ordered.entries()) {
+          const stored = u.parts.get(p.partNumber);
+          if (!stored || stored.etag !== p.etag)
+            throw new Error("R2Mock: a part's etag does not match");
+          const last = i === ordered.length - 1;
+          // R2's rule: every part but the last the same size, at least the minimum.
+          if (!last) {
+            if (stored.bytes.length < self.minPartBytes)
+              throw new Error(
+                "R2Mock: a part but the last is under the minimum",
+              );
+            const first = u.parts.get(ordered[0]!.partNumber)!.bytes.length;
+            if (stored.bytes.length !== first)
+              throw new Error("R2Mock: parts but the last differ in size");
+          } else if (
+            ordered.length > 1 &&
+            stored.bytes.length >
+              u.parts.get(ordered[0]!.partNumber)!.bytes.length
+          )
+            throw new Error("R2Mock: the last part is larger than the others");
+          chunks.push(stored.bytes);
+        }
+        self.uploads.delete(uploadId);
+        const bytes = new Uint8Array(Buffer.concat(chunks));
+        const stored: Stored = {
+          bytes,
+          etag: randomBytes(16).toString("hex"),
+          uploaded: new Date(),
+          md5: ab(createHash("md5").update(bytes).digest()),
+          customMetadata: {},
+          httpMetadata: u.httpMetadata,
+        };
+        self.store.set(key, stored);
+        return self.meta(key, stored);
+      },
+    } as unknown as R2MultipartUpload;
   }
 
   // ── Test-only seams ──────────────────────────────────────────────────────────────────────

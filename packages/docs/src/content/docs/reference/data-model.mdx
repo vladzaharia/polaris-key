@@ -30,7 +30,7 @@ this page or fails the freshness gate.
 | `blob_objects` | 0026_blob_store.sql | `storage_key`, `sha256`, `size`, `kind`, `gated`, `verified_at`, `created_at`, `unreferenced_since (0048)`, `gc_claimed_at (0048)` |
 | `blob_refs` | 0026_blob_store.sql | `product`, `storage_key`, `ref_kind`, `ref_id`, `created_at` |
 | `blob_gc_log` | 0048_a_dist_readiness_blob_gc.sql | `id`, `at`, `action`, `storage_key`, `product`, `ref_kind`, `ref_id`, `size`, `detail` |
-| `hosted_assets` | 0075_hosted_assets.sql | `product`, `slot`, `locale`, `origin`, `source_kind`, `source_ref`, `source_etag`, `sha256`, `size`, `content_type`, `width`, `height`, `variants_json`, `status`, `error`, `modified_at` |
+| `hosted_assets` | 0078_hosted_assets.sql | `product`, `slot`, `locale`, `origin`, `source_kind`, `source_ref`, `source_etag`, `sha256`, `size`, `content_type`, `width`, `height`, `variants_json`, `status`, `error`, `modified_at` |
 | `ci_publishers` | 0035_a_ci_publishing.sql | `product`, `provider`, `repository_id`, `repository_owner_id`, `repository`, `workflow`, `environment`, `scopes_json`, `source`, `created_at`, `modified_at`, `modified_by` |
 | `ci_tokens` | 0035_a_ci_publishing.sql | `product`, `token_hash`, `token_id`, `kind`, `scopes_json`, `subject`, `label`, `jti`, `issued_at`, `expires_at`, `revoked_at`, `created_by` |
 | `ci_upload_tickets` | 0035_a_ci_publishing.sql | `product`, `ticket_hash`, `ticket_id`, `token_hash`, `objects_json`, `issued_at`, `expires_at`, `redeemed_at` |
@@ -96,6 +96,7 @@ this page or fails the freshness gate.
 | `release_delegated_records` | 0049_release_delegations.sql | `product`, `record_sha256`, `delegation_sha256` |
 | `release_lazy_deltas` | 0051_lazy_deltas.sql | `product`, `deliverable_id`, `build_id`, `from_sha256`, `to_sha256`, `method`, `state`, `reason`, `storage_key`, `artifact_sha256`, `artifact_bytes`, `descriptor_json`, `created_at`, `updated_at` |
 | `release_packages` | 0058_c_release_packages.sql | `product`, `ecosystem`, `name_norm`, `version`, `deliverable_id`, `release_id`, `name`, `state`, `state_message`, `files_json`, `metadata_json`, `source_json`, `published_at`, `deprecation_message (0058)` |
+| `release_native_uploads` | 0075_release_native_uploads.sql | `product`, `ecosystem`, `name_norm`, `version`, `deliverable_id`, `name`, `session_id`, `principal_id`, `principal_json`, `client`, `files_json`, `metadata_json`, `channel`, `state`, `error`, `release_id`, `touch_seq`, `created_at`, `updated_at` |
 
 ## distribution
 
