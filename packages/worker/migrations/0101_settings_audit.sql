@@ -2,8 +2,10 @@
 -- (`src/core/settings/write.ts`) is the one write path for registry-backed settings, and every
 -- write it makes appends one audit row in the same batch as the change, now carrying:
 --
---   before_json  the value before, as `{"value": …, "source": …}` (presence only for a secret)
---   after_json   the value after, the same shape
+--   before_json  the side before, as `{"stored": …, "version": …, "effective": …, "source": …}`
+--                (A-13's platform-audit shape; a secret's `stored`/`effective` are `{"set": bool}`,
+--                presence only). The resync's per-field rows write `{"effective": …}` alone.
+--   after_json   the side after, the same shape
 --   origin       who caused it: console | api | resync | manifest-push | revert | restore |
 --                system | ci (the vocabulary lives in `core/settings/types.ts` `SETTING_ORIGINS`;
 --                no CHECK, so a later origin needs no rebuild of this append-only table)
