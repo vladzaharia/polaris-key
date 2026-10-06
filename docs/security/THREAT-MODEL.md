@@ -5856,7 +5856,12 @@ item 15 (merge takeover) are the threats; the rules below are what the routes ad
   binding to the kept account's subject is cleared with the licence's other bindings at the undo,
   but a device bound to the kept account's subject on a licence that stays with the kept account
   is untouched. A picture the kept account did not use may be swept before an undo
-  (`sweepAvatars`, after a day), and the restored account then shows initials.
+  (`sweepAvatars`, after a day), and the restored account then shows initials. A kept account
+  that took the joined account's WebAuthn user handle and created a passkey under it during the
+  window keeps that handle after an undo, so both accounts share one `passkey_user_handle`.
+  Availability only: a credential is found by its id and belongs to one account, so neither signs
+  in as the other, but an authenticator keeps one passkey per RP id and user handle, and enrolling
+  on one account can replace the other's, which then signs in another way.
 
 ### The console's Users page and the relink tool (I-12)
 
