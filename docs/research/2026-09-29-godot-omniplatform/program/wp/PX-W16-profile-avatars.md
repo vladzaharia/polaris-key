@@ -104,6 +104,12 @@ outbound fetcher. The provider host allowlist stays specific to this route
 - **Content-addressed, peppered.** The asset id is `HMAC(KEY_HASH_PEPPER, account ‖ SHA-256 of
   the source)`, so the same picture is stored once per account and the id is not computable from a
   public provider picture. A migration adds `account_avatars` (one row per asset) for deletion and GC.
+- **Refusals use registered codes.** Every `error` the Worker answers must be in
+  `conformance/parity/errors.json`, and each code there needs copy in all eight locales and a
+  regenerated copy module in every SDK. The profile routes therefore answer `bad_request`,
+  `not_found` and `body_too_large` with a `reason` field naming the case (`invalid_name`,
+  `unknown_source`, `no_name`, `no_picture`, `unknown_upload`, `too_large`, `unsupported_type`,
+  `unreadable_image`) rather than eight new codes.
 - **Rule 10 for portal routes** is the OpenAPI spec (tag `portal`) plus `PORTAL_KIND_PATHS` in
   `routeCoverage.test.ts` (PX-W1 changed this; PORTAL.md §10.1's "narrative only" sentence is
   older), and the docs site's portal page.

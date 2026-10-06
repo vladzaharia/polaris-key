@@ -199,14 +199,16 @@ session's CSRF value (`403` otherwise).
   `sources`, what each sign-in method supplied (its name and picture: the editor's chips and
   tiles). **`PATCH /api/me/profile`** makes explicit choices, which later sign-ins never
   overwrite: `name` (typed) or `nameFrom` (a method's id), and `picture` as `"initials"`,
-  `{"from": <method id>}` or `{"upload": <asset>}`. It answers the updated profile; refusals are
-  `bad_request`, `invalid_name`, `unknown_source`, `unknown_upload`, `no_name` and `no_picture`.
+  `{"from": <method id>}` or `{"upload": <asset>}`. It answers the updated profile. Refusals use registered codes with a `reason` naming
+  the case: `400 bad_request` (`invalid_name`, `no_name`, `no_picture`, or a malformed body) and
+  `404 not_found` (`unknown_source`, `unknown_upload`).
   **`POST /api/me/profile/picture`** takes the raw bytes of a PNG or JPEG (the bytes decide), at
   most 5 MB, re-encodes them like a provider's picture and answers `201 {"upload": {asset, url,
 url96}}`; it does not change the profile until a `PATCH` puts it to use. An unused upload is kept
   for a day, at most three per account. Uploads are limited to 10 an hour per account (`429`);
-  `415 unsupported_type`, `413 too_large`, `422 unreadable_image`, and `503 unavailable` without
-  the Images binding. Both mutations need the CSRF header.
+  other refusals are `413 body_too_large`, `415 bad_request` (`reason: unsupported_type`),
+  `422 bad_request` (`reason: unreadable_image`), and `503 unavailable` without the Images
+  binding. Both mutations need the CSRF header.
 - **`GET /api/sessions`** — the account's live sessions, newest first, each with when it started
   and was last seen, its browser and operating system (`browser`, a coarse label such as
   "Firefox on Windows"), how the person signed in (`methods`) and whether it is this

@@ -333,27 +333,36 @@ describe("PATCH /api/me/profile refusals", () => {
     const emailLink = (await w.db.first<{ id: string }>(
       "SELECT id FROM account_links WHERE kind = 'email'",
     ))!.id;
-    const cases: Array<[unknown, number, string]> = [
-      [{}, 400, "bad_request"],
-      [{ nickname: "x" }, 400, "bad_request"],
-      [{ name: "A", nameFrom: emailLink }, 400, "bad_request"],
-      [{ picture: "rainbow" }, 400, "bad_request"],
+    // Each refusal is a registered code with `reason` naming the case.
+    const cases: Array<[unknown, number, string, string | undefined]> = [
+      [{}, 400, "bad_request", undefined],
+      [{ nickname: "x" }, 400, "bad_request", undefined],
+      [{ name: "A", nameFrom: emailLink }, 400, "bad_request", undefined],
+      [{ picture: "rainbow" }, 400, "bad_request", undefined],
       [
         { picture: { from: emailLink, upload: "a".repeat(64) } },
         400,
         "bad_request",
+        undefined,
       ],
-      [{ name: "\u202e\u0000  " }, 400, "invalid_name"],
-      [{ nameFrom: "lnk_notmine000" }, 404, "unknown_source"],
-      [{ picture: { from: emailLink } }, 409, "no_picture"],
-      [{ nameFrom: emailLink }, 409, "no_name"],
-      [{ picture: { upload: "a".repeat(64) } }, 404, "unknown_upload"],
+      [{ name: "\u202e\u0000  " }, 400, "bad_request", "invalid_name"],
+      [{ nameFrom: "lnk_notmine000" }, 404, "not_found", "unknown_source"],
+      [{ picture: { from: emailLink } }, 400, "bad_request", "no_picture"],
+      [{ nameFrom: emailLink }, 400, "bad_request", "no_name"],
+      [
+        { picture: { upload: "a".repeat(64) } },
+        404,
+        "not_found",
+        "unknown_upload",
+      ],
     ];
     const before = await profile(d);
-    for (const [body, status, error] of cases) {
+    for (const [body, status, error, reason] of cases) {
       const res = await patch(d, body);
       expect(res.status, JSON.stringify(body)).toBe(status);
-      expect(((await res.json()) as { error: string }).error).toBe(error);
+      const got = (await res.json()) as { error: string; reason?: string };
+      expect(got.error, JSON.stringify(body)).toBe(error);
+      expect(got.reason, JSON.stringify(body)).toBe(reason);
     }
     expect(await profile(d)).toEqual(before);
   });
@@ -396,9 +405,10 @@ describe("POST /api/me/profile/picture", () => {
     for (const bytes of [gif, svg, html]) {
       const res = await upload(w, d, bytes, { "content-type": "image/png" });
       expect(res.status).toBe(415);
-      expect(((await res.json()) as { error: string }).error).toBe(
-        "unsupported_type",
-      );
+      expect(await res.json()).toMatchObject({
+        error: "bad_request",
+        reason: "unsupported_type",
+      });
     }
     const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
     expect((await upload(w, d, jpeg)).status).toBe(201);
@@ -407,6 +417,7 @@ describe("POST /api/me/profile/picture", () => {
     big.set(PNG, 0);
     const tooBig = await upload(w, d, big);
     expect(tooBig.status).toBe(413);
+    expect(await tooBig.json()).toMatchObject({ error: "body_too_large" });
   });
 
   it("refuses what the encoder cannot turn into the asked image", async () => {
@@ -416,9 +427,10 @@ describe("POST /api/me/profile/picture", () => {
     }).binding;
     const res = await upload(w, d, PNG);
     expect(res.status).toBe(422);
-    expect(((await res.json()) as { error: string }).error).toBe(
-      "unreadable_image",
-    );
+    expect(await res.json()).toMatchObject({
+      error: "bad_request",
+      reason: "unreadable_image",
+    });
   });
 
   it("is unavailable without the Images binding", async () => {

@@ -368,7 +368,7 @@ export interface ProfileChange {
   picture?: { initials: true } | { from: string } | { upload: string };
 }
 
-export type ProfileChangeError =
+export type ProfileChangeRefusal =
   /** The typed name is empty once made safe. */
   | "invalid_name"
   /** The named sign-in method is not this account's. */
@@ -402,7 +402,7 @@ export async function updateProfile(
   accountId: string,
   change: ProfileChange,
   now: number,
-): Promise<{ ok: true } | { ok: false; error: ProfileChangeError }> {
+): Promise<{ ok: true } | { ok: false; reason: ProfileChangeRefusal }> {
   const account = await db.first<{
     display_name: string | null;
     avatar_key: string | null;
@@ -411,20 +411,20 @@ export async function updateProfile(
     "SELECT display_name, avatar_key, details_source_json FROM accounts WHERE id = ?",
     accountId,
   );
-  if (!account) return { ok: false, error: "unknown_source" };
+  if (!account) return { ok: false, reason: "unknown_source" };
   const details = parseJson<DetailsSources>(account.details_source_json) ?? {};
   let displayName = account.display_name;
   let avatarKey = account.avatar_key;
 
   if (change.name && "typed" in change.name) {
     const clean = sanitizeDisplayName(change.name.typed);
-    if (!clean) return { ok: false, error: "invalid_name" };
+    if (!clean) return { ok: false, reason: "invalid_name" };
     displayName = clean;
     details.name = { source: "explicit", explicit: true };
   } else if (change.name) {
     const link = await linkProfileOf(db, accountId, change.name.from);
-    if (!link) return { ok: false, error: "unknown_source" };
-    if (!link.name) return { ok: false, error: "no_name" };
+    if (!link) return { ok: false, reason: "unknown_source" };
+    if (!link.name) return { ok: false, reason: "no_name" };
     displayName = link.name;
     details.name = { source: `link:${change.name.from}`, explicit: true };
   }
@@ -434,9 +434,9 @@ export async function updateProfile(
     details.picture = { source: "initials", explicit: true };
   } else if (change.picture && "from" in change.picture) {
     const link = await linkProfileOf(db, accountId, change.picture.from);
-    if (!link) return { ok: false, error: "unknown_source" };
+    if (!link) return { ok: false, reason: "unknown_source" };
     if (!link.avatarKey || !AVATAR_ASSET_PATTERN.test(link.avatarKey))
-      return { ok: false, error: "no_picture" };
+      return { ok: false, reason: "no_picture" };
     avatarKey = link.avatarKey;
     details.picture = { source: `link:${change.picture.from}`, explicit: true };
   } else if (change.picture) {
@@ -446,7 +446,7 @@ export async function updateProfile(
       change.picture.upload,
       accountId,
     );
-    if (!upload) return { ok: false, error: "unknown_upload" };
+    if (!upload) return { ok: false, reason: "unknown_upload" };
     avatarKey = upload.asset;
     details.picture = { source: "upload", explicit: true };
   }

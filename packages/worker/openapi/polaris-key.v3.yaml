@@ -12249,7 +12249,7 @@ paths:
                 properties:
                   profile: { $ref: "#/components/schemas/AccountProfile" }
         "400":
-          description: "`bad_request` (not one of the shapes above) or `invalid_name` (nothing left once made safe)."
+          description: "`bad_request`: not one of the shapes above; or, with `reason`, `invalid_name` (nothing left once made safe), `no_name` or `no_picture` (that sign-in method supplied none)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -12264,12 +12264,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
         "404":
-          description: "`unknown_source` (not this account's sign-in method) or `unknown_upload` (not this account's upload, or already collected)."
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-        "409":
-          description: "`no_name` or `no_picture`: that sign-in method supplied none."
+          description: "`not_found` with `reason`: `unknown_source` (not this account's sign-in method) or `unknown_upload` (not this account's upload, or already collected)."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -12321,17 +12316,17 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
         "413":
-          description: "`too_large`: over 5 MB (declared or counted)."
+          description: "`body_too_large` (`reason: too_large`): over 5 MB, declared or counted."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
         "415":
-          description: "`unsupported_type`: the bytes are not a PNG or a JPEG."
+          description: "`bad_request` with `reason: unsupported_type`: the bytes are not a PNG or a JPEG."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
         "422":
-          description: "`unreadable_image`: the encoder could not read it."
+          description: "`bad_request` with `reason: unreadable_image`: the encoder could not read it."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }

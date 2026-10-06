@@ -32,7 +32,7 @@ import {
   profileView,
   updateProfile,
   type ProfileChange,
-  type ProfileChangeError,
+  type ProfileChangeRefusal,
 } from "../card/profile.js";
 import { err, notFound, portalJson, requireActionRateLimit } from "./api.js";
 import { portalAudit } from "./repo.js";
@@ -49,13 +49,80 @@ const TYPED_NAME_MAX = 256;
 /** A sign-in method's id, as `account_links.id` holds it. */
 const LINK_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
-const CHANGE_MESSAGES: Record<ProfileChangeError, [number, string]> = {
-  invalid_name: [400, "Enter a name."],
-  unknown_source: [404, "That sign-in method isn't on this account."],
-  no_name: [409, "That sign-in method didn't share a name."],
-  no_picture: [409, "That sign-in method didn't share a picture."],
-  unknown_upload: [404, "That upload has expired. Upload the picture again."],
+/**
+ * Refusals answer a registered code (`conformance/parity/errors.json`: `bad_request`,
+ * `not_found`, `body_too_large`) with `reason` naming the case for the profile editor, and a
+ * message.
+ */
+const CHANGE_REFUSALS: Record<
+  ProfileChangeRefusal,
+  { status: number; body: { error: string; reason: string; message: string } }
+> = {
+  invalid_name: {
+    status: 400,
+    body: {
+      error: "bad_request",
+      reason: "invalid_name",
+      message: "Enter a name.",
+    },
+  },
+  unknown_source: {
+    status: 404,
+    body: {
+      error: "not_found",
+      reason: "unknown_source",
+      message: "That sign-in method isn't on this account.",
+    },
+  },
+  no_name: {
+    status: 400,
+    body: {
+      error: "bad_request",
+      reason: "no_name",
+      message: "That sign-in method didn't share a name.",
+    },
+  },
+  no_picture: {
+    status: 400,
+    body: {
+      error: "bad_request",
+      reason: "no_picture",
+      message: "That sign-in method didn't share a picture.",
+    },
+  },
+  unknown_upload: {
+    status: 404,
+    body: {
+      error: "not_found",
+      reason: "unknown_upload",
+      message: "That upload has expired. Upload the picture again.",
+    },
+  },
 };
+
+/** The upload's own refusals, likewise. */
+const UPLOAD_REFUSALS = {
+  tooLarge: {
+    error: "body_too_large",
+    reason: "too_large",
+    message: "Use a picture of 5 MB or less.",
+  },
+  patchTooLarge: {
+    error: "body_too_large",
+    reason: "too_large",
+    message: "Send at most 4 KB.",
+  },
+  unsupported: {
+    error: "bad_request",
+    reason: "unsupported_type",
+    message: "Use a PNG or JPEG picture.",
+  },
+  unreadable: {
+    error: "bad_request",
+    reason: "unreadable_image",
+    message: "We couldn't read that picture. Try another PNG or JPEG.",
+  },
+} as const;
 
 /** The PATCH body as a change, or the reason it is not one. */
 export function parseProfileChange(
@@ -131,7 +198,8 @@ async function handlePatch(
   );
   if (limited) return limited;
   const raw = await readBodyCapped(req.body, PATCH_MAX_BYTES);
-  if (raw === "too-large") return err(413, "too_large");
+  if (raw === "too-large")
+    return portalJson(UPLOAD_REFUSALS.patchTooLarge, 413);
   let body: unknown;
   try {
     body = JSON.parse(new TextDecoder().decode(raw));
@@ -148,8 +216,8 @@ async function handlePatch(
     now,
   );
   if (!done.ok) {
-    const [status, message] = CHANGE_MESSAGES[done.error];
-    return err(status, done.error, message);
+    const refusal = CHANGE_REFUSALS[done.reason];
+    return portalJson(refusal.body, refusal.status);
   }
   await portalAudit(db, {
     accountId: session.accountId,
@@ -195,16 +263,15 @@ async function handleUpload(
   const declared = Number(req.headers.get("content-length") ?? "");
   if (Number.isFinite(declared) && declared > AVATAR_UPLOAD_MAX_BYTES) {
     await req.body?.cancel().catch(() => undefined);
-    return err(413, "too_large", "Use a picture of 5 MB or less.");
+    return portalJson(UPLOAD_REFUSALS.tooLarge, 413);
   }
   const bytes = await readBodyCapped(req.body, AVATAR_UPLOAD_MAX_BYTES);
-  if (bytes === "too-large")
-    return err(413, "too_large", "Use a picture of 5 MB or less.");
+  if (bytes === "too-large") return portalJson(UPLOAD_REFUSALS.tooLarge, 413);
   if (bytes.byteLength === 0)
     return err(400, "bad_request", "No picture was sent.");
   // The bytes decide, never the declared type.
   if (!UPLOAD_TYPES.has(sniffContentType(bytes.subarray(0, SNIFF_BYTES))))
-    return err(415, "unsupported_type", "Use a PNG or JPEG picture.");
+    return portalJson(UPLOAD_REFUSALS.unsupported, 415);
   const stored = await storeAvatar(
     env,
     db,
@@ -213,11 +280,7 @@ async function handleUpload(
   );
   if (!stored.ok) {
     if (stored.reason === "unreadable")
-      return err(
-        422,
-        "unreadable_image",
-        "We couldn't read that picture. Try another PNG or JPEG.",
-      );
+      return portalJson(UPLOAD_REFUSALS.unreadable, 422);
     return err(
       503,
       "unavailable",
