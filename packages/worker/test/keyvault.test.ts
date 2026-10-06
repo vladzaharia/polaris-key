@@ -920,6 +920,52 @@ describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
     });
   });
 
+  it("re-seals managed secrets in account overrides (U-03), keyed by subject", async () => {
+    const { db, kv } = await seedSealedRows();
+    const sealed = await sealManagedValue(
+      env,
+      "djdl",
+      "API_TOKEN",
+      "account-plaintext",
+    );
+    await db.run(
+      `INSERT INTO account_overrides (product, subject, payload_json, updated_at, updated_by)
+       VALUES ('djdl', 'ps_AAAAAAAAAAAAAAAAAAAAAA', ?, ?, 'op')`,
+      JSON.stringify({
+        config: {},
+        secrets: {
+          API_TOKEN: { state: "hidden", value: sealed, updatedAt: NOW },
+        },
+      }),
+      NOW,
+    );
+    const promoted = kekAdminEnv(kv, {
+      PLATFORM_KEK_KEYS: JSON.stringify({ default: KEK_OLD, k2: KEK_NEW }),
+      PLATFORM_KEK_ACTIVE: "k2",
+    });
+    expect((await kek(promoted, db, "GET")).body.counts!.managed).toEqual({
+      default: 1,
+    });
+    const sweep = await kek(promoted, db, "POST");
+    expect(sweep.body).toMatchObject({ failed: 0, remaining: 0 });
+    const retired = kekAdminEnv(kv, {
+      PLATFORM_KEK_KEYS: JSON.stringify({ k2: KEK_NEW }),
+      PLATFORM_KEK_ACTIVE: "k2",
+    });
+    const row = await db.first<{ payload_json: string }>(
+      "SELECT payload_json FROM account_overrides WHERE product = 'djdl'",
+    );
+    const payload = JSON.parse(row!.payload_json) as ManagedPayload;
+    expect(
+      await openManagedValue(
+        retired,
+        "djdl",
+        "API_TOKEN",
+        payload.secrets.API_TOKEN!.value,
+      ),
+    ).toBe("account-plaintext");
+  });
+
   it("rotates off an unknown PLATFORM_KEK: legacy blobs open, the sweep moves them, zero remain", async () => {
     // Every seeded row is sealed under `default` with KEK_OLD — the key nobody holds. The
     // operator adds a NEW ring and leaves PLATFORM_KEK where it is.
