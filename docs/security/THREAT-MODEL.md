@@ -5503,6 +5503,16 @@ proxy now fetches through the same guard.
   this change.
 - **The portal media proxy** keeps its GitHub-only host rule on every hop (`allowHost`) on top of
   this guard until HA-07 serves hosted copies; its cap, 5 s budget and sniff are unchanged.
+- **Image variants (HA-03, S-20 §6.6).** The Images binding decodes developer-supplied images
+  only at ingest, never on a request, so no viewer can make it transform anything and the
+  transformation bill is bounded at one per ladder width per new original (a re-ingest of the
+  same bytes reuses its variants). The ladders and widths are code constants, a width above the
+  original's is never requested (`fit: "scale-down"`), and each output is capped at the slot's
+  byte cap and must sniff as WebP or the whole ladder is dropped. Variants are content-addressed
+  objects of Polaris Key's own making, held by the slot's `hosted-asset` refs beside the original
+  and dropped with it in the same batch. Without the binding, on error 9422 (quota) or on any
+  binding error the ladder is empty and the ingest still succeeds: a degraded binding costs sizes,
+  never a copy.
 
 ### Linking an existing product to a repository (UX-23)
 
