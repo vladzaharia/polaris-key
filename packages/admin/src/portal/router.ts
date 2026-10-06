@@ -234,8 +234,9 @@ function current(): Resolved {
  * How one route follows another:
  *
  * - `forward`: into a product from the Library or Discover; `back`: from a product to the Library
- *   or Discover. The main region slides along the reading direction, and the product's art and
- *   name fly between its tile and the product hero (`pk-hero`, `pk-hero-title`).
+ *   or Discover. The main region slides along the reading direction, and the product's art, icon
+ *   and name fly between its tile and the product hero (`pk-hero`, `pk-hero-icon`,
+ *   `pk-hero-title`).
  * - `route`: between any other two pages (the top-level pages, one product to another, the
  *   focused flows). The main region fades through.
  * - `section`: the same page, another section (`#/p/<slug>/devices` from the product itself).
@@ -328,7 +329,8 @@ function scrollToTop(behavior: ScrollBehavior = "instant"): void {
 /**
  * The shared element (S-23 §6.1): the Library or Discover tile a product was opened from. A
  * delegated click listener marks it with `data-vt-source="<slug>"` (LibraryTile and DiscoverTile
- * stay as they are); the navigation that follows names its art and title for that one transition.
+ * stay as they are); the navigation that follows names its art, icon and title for that one
+ * transition.
  */
 export const VT_SOURCE = "data-vt-source";
 const TILE = "article, tr";
@@ -418,12 +420,15 @@ function nameNewEnds(ends: Ends): void {
   }
 }
 
-/** Back on the Library: bring the tile on screen before the new state is captured. */
+/**
+ * Back on the Library: bring the tile on screen before the new state is captured, so the morph
+ * lands on it. The page is at the top by then, so this scrolls only as far as the tile needs.
+ */
 function reveal(tile: Element): void {
   const r = tile.getBoundingClientRect();
   if (r.height === 0) return;
   if (r.top < 0 || r.bottom > window.innerHeight)
-    tile.scrollIntoView?.({ block: "center", behavior: "instant" });
+    tile.scrollIntoView?.({ block: "nearest", behavior: "instant" });
 }
 
 // The route store: one listener set for every useRoute() (the shell, each QuickAction, the sign-in
