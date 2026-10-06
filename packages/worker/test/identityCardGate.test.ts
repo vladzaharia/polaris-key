@@ -477,12 +477,12 @@ describe("terms", () => {
       termsVersion: "2026-10",
     });
     expect(ok.status).toBe(200);
-    const terms = JSON.parse(
-      (await w.db.first<{ terms_json: string }>(
-        "SELECT terms_json FROM accounts",
-      ))!.terms_json,
-    ) as Record<string, { version: string }>;
-    expect(terms.acme?.version).toBe("2026-10");
+    // PX-W15: one row per account, product and version (`account_terms_acceptances`).
+    expect(
+      await w.db.all<{ product: string; version: string }>(
+        "SELECT product, version FROM account_terms_acceptances",
+      ),
+    ).toEqual([{ product: "acme", version: "2026-10" }]);
 
     // Same version: straight through. A new version asks again (terms only).
     const same = new Device(w, "198.51.100.20");
@@ -500,6 +500,14 @@ describe("terms", () => {
     expect(
       (await next.send("POST", GATE, { termsVersion: "2027-01" })).status,
     ).toBe(200);
+    // The new version is added beside the old one, which is kept.
+    expect(
+      (
+        await w.db.all<{ version: string }>(
+          "SELECT version FROM account_terms_acceptances ORDER BY version",
+        )
+      ).map((r) => r.version),
+    ).toEqual(["2026-10", "2027-01"]);
   });
 });
 

@@ -18,6 +18,7 @@ export interface AccountRow {
   avatar_key: string | null;
   locale: string | null;
   details_source_json: string | null;
+  /** Superseded by `account_terms_acceptances` (PX-W15): neither read nor written. */
   terms_json: string | null;
   created_at: number;
   modified_at: number;
