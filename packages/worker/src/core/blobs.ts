@@ -834,6 +834,107 @@ export function stmtRecordRef(ref: BlobRef, now: number): DbStatement {
 }
 
 /**
+ * Drop `product`'s refs of one kind held by any of `refIds` — the inverse of `stmtRecordRef`, for
+ * a writer that deletes the holder in ITS batch (feed retention's prune of a package version,
+ * `services/release/packages/prune.ts`). Dropping a ref never deletes bytes: an object left with
+ * no ref from ANY product is stamped by the collector's mark and reclaimed by its sweep, after the
+ * grace period and the bucket lock (`blobGc.ts`), and an object another ref still holds stays.
+ */
+export function stmtDropRefs(
+  product: string,
+  refKind: string,
+  refIds: readonly string[],
+): DbStatement {
+  return {
+    sql: `DELETE FROM blob_refs
+           WHERE product = ? AND ref_kind = ?
+             AND ref_id IN (SELECT value FROM json_each(?))`,
+    params: [product, refKind, JSON.stringify([...new Set(refIds)])],
+  };
+}
+
+/** One ref of `product` and the object it holds, with the object's recorded size. */
+export interface HeldObject {
+  refId: string;
+  storageKey: string;
+  size: number;
+}
+
+/** Ids per `json_each` parameter (well inside D1's value limit). */
+const JSON_IDS = 500;
+
+/**
+ * The objects `product`'s refs of `refKind` with these ids hold, each with its recorded size
+ * (`blob_objects.size`; 0 for a key whose row is gone). Internal bookkeeping, never an answer.
+ */
+export async function heldObjects(
+  db: Db,
+  product: string,
+  refKind: string,
+  refIds: readonly string[],
+): Promise<HeldObject[]> {
+  const out: HeldObject[] = [];
+  const unique = [...new Set(refIds)];
+  for (let i = 0; i < unique.length; i += JSON_IDS) {
+    const chunk = unique.slice(i, i + JSON_IDS);
+    const rows = await db.all<{
+      ref_id: string;
+      storage_key: string;
+      size: number | null;
+    }>(
+      `SELECT r.ref_id, r.storage_key, o.size
+         FROM blob_refs r
+         LEFT JOIN blob_objects o ON o.storage_key = r.storage_key
+        WHERE r.product = ? AND r.ref_kind = ?
+          AND r.ref_id IN (SELECT value FROM json_each(?))
+        ORDER BY r.ref_id, r.storage_key`,
+      product,
+      refKind,
+      JSON.stringify(chunk),
+    );
+    for (const r of rows)
+      out.push({
+        refId: r.ref_id,
+        storageKey: r.storage_key,
+        size: r.size ?? 0,
+      });
+  }
+  return out;
+}
+
+/**
+ * For each of `storageKeys`, how many refs from ANY product hold it besides `product`'s refs of
+ * `refKind` named in `excluding` — the refcount a deletion of those holders leaves. A key at 0 is
+ * one the collector will reclaim once they are dropped; any other is shared and stays.
+ */
+export async function refsBeyond(
+  db: Db,
+  storageKeys: readonly string[],
+  excluding: { product: string; refKind: string; refIds: readonly string[] },
+): Promise<Map<string, number>> {
+  const out = new Map<string, number>();
+  const unique = [...new Set(storageKeys)];
+  for (const k of unique) out.set(k, 0);
+  const excluded = JSON.stringify([...new Set(excluding.refIds)]);
+  for (let i = 0; i < unique.length; i += JSON_IDS) {
+    const chunk = unique.slice(i, i + JSON_IDS);
+    const rows = await db.all<{ storage_key: string; n: number }>(
+      `SELECT storage_key, COUNT(*) AS n FROM blob_refs
+        WHERE storage_key IN (SELECT value FROM json_each(?))
+          AND NOT (product = ? AND ref_kind = ?
+                   AND ref_id IN (SELECT value FROM json_each(?)))
+        GROUP BY storage_key`,
+      JSON.stringify(chunk),
+      excluding.product,
+      excluding.refKind,
+      excluded,
+    );
+    for (const r of rows) out.set(r.storage_key, r.n);
+  }
+  return out;
+}
+
+/**
  * The recorded objects among `storageKeys`, with the hash and size `promote` verified — internal
  * bookkeeping like `storedKeys` (never a tenant-facing answer), for a caller that must check a
  * claim about the bytes against what was actually stored.
