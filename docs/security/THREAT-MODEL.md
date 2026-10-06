@@ -6094,8 +6094,9 @@ neither is a ref of another kind: a release file, a pack or a bundle is the byte
 `release-file` hosted copy is refused even when its bytes are a PNG. A variant answers only when
 the original's row lists it in `variants_json` and the same slot holds a ref to the variant's
 object. The tenancy check runs on every request and is never cached, so dropping a slot (or
-HA-06's delete-a-copy) stops the answer at once; only the bytes, named by their hash, are kept in
-the Cache API.
+HA-06's delete-a-copy) stops the answer at once, unless another image slot of the same product
+still holds the same bytes, which keep answering at the same URL; only the bytes, named by their
+hash, are kept in the Cache API.
 
 **Never gated (owner decision 7).** The host builds only ungated `blobs/` keys and carries no auth
 code: anything under `gated/`, anything licensed and anything not hosted is a 404, never a 401.
@@ -6234,6 +6235,10 @@ false`): bytes that never became the copy cannot mark the copy `failed`.
   from `blobs/` only when this product already holds a `hosted-asset` ref to that object. Either
   way the ingest re-reads and re-hashes every byte before it grants a ref, so a digest alone never
   earns one, and whether another product stores the same bytes never leaves the module.
+- **A pull's follow-up writes respect a claim.** The consumer's back-off and success bookkeeping
+  after `ingest` (`stmtPullFailed`, including the `repo:no-access` path, and the success update)
+  apply only while the slot is not console-claimed, so an upload that lands mid-pull is never
+  marked failed or held off its ladder retry.
 - **Precedence is enforced atomically.** A console upload claims its slot (`origin = 'console'`);
   otherwise the manifest's source fills it; otherwise CI. A lower way in names who it yields to
   (`yieldsTo`): a manifest pull yields to a claim, a CI push to a claim and to any slot a manifest
@@ -6244,10 +6249,15 @@ false`): bytes that never became the copy cannot mark the copy `failed`.
 admin`, which the A-18d register and a CI push never replace.
 - **Revert and delete-a-copy.** Revert (a claim whose source the manifest still names) deletes the
   console's copy and its refs at once and queues one pull of the manifest's ref (reason
-  `operator`), held to HA-05's queue rules above. Delete-a-copy drops the row and its refs in one
-  batch guarded on the copy the decision saw, and a store slot's listing row and ref only while the
-  row holds the same bytes. The image host's tenancy check is never cached, so the copy stops
-  answering on the next request; the bytes fall to the collector after the age lock and grace.
+  `operator`), held to HA-05's queue rules above. Delete-a-copy drops the row and its refs. Both
+  run in one batch guarded on the copy the decision saw (its origin and its `sha256`), so a
+  Replace from another tab or a pull that lands first is never undone (`asset_changed`); a store
+  slot's listing row and ref go only while that row holds the same bytes. The image host's
+  tenancy check is never cached, so the slot's copy stops answering on the next request; the bytes
+  fall to the collector after the age lock and grace. **Delete-a-copy is per slot:** the same bytes
+  held by another slot of the product (the listing icon falls back to the product icon) keep
+  answering at the same content-addressed URL until that slot is deleted or replaced too, and the
+  console says so in the confirmation.
   Polaris Key never writes to a developer's source. This is the content-risk control S-20 §6.12
   names: an operator can drop an abusive image at once (a manifest-declared one returns at the
   next resync until the manifest stops naming it, or a replacement claims the slot).

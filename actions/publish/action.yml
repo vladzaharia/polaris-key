@@ -32,8 +32,8 @@ inputs:
     description: The canonical channel the release is published to (stable, beta or a declared one).
     required: false
   dir:
-    description: The directory of built files, searched recursively, relative to the workspace. For a pack, each declared variant's payload sits at <dir>/<variant key or "default">/ (one .pck file, or the tree).
-    required: true
+    description: The directory of built files, searched recursively, relative to the workspace. For a pack, each declared variant's payload sits at <dir>/<variant key or "default">/ (one .pck file, or the tree). Required for every step but assets, where it is only the base the globs resolve against (default the workspace).
+    required: false
   source:
     description: App only. Where the bytes live. `r2` (the default) uploads them to Polaris Key; `github` locates them on the tagged, immutable GitHub release. No `default:` here on purpose, because GitHub passes every defaulted input, and a package publish or a transport step refuses this one; the Action applies `r2` for the app itself.
     required: false

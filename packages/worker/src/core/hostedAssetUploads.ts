@@ -34,9 +34,11 @@
  * Revert applies to a console claim whose slot a manifest still declares (`wanted_ref`): the
  * console's copy and its refs are dropped at once, the row returns to the manifest as `pending`
  * (no copy served, a pull owed), and the pull is queued (`reason: "operator"`). Anything else is
- * delete-a-copy: the row and its refs go, so the image host stops answering at once (its tenancy
- * check is never cached); the bytes fall to the collector after the age lock. A manifest-declared
- * slot is pulled again at the next resync. Neither touches a developer's source.
+ * delete-a-copy: the row and its refs go, so the image host stops answering for this slot at once
+ * (its tenancy check is never cached); the bytes fall to the collector after the age lock. It is
+ * per slot: the same bytes held by another slot of the product (the listing icon that falls back
+ * to the product icon) keep serving at the same content-addressed URL. A manifest-declared slot is
+ * pulled again at the next resync. Neither touches a developer's source.
  */
 
 import type { Db, DbStatement } from "../db/types.js";
@@ -362,8 +364,10 @@ export type ReleaseOutcome =
   | { outcome: "reverted"; pulling: boolean }
   /** The copy (and its row) were dropped. */
   | { outcome: "deleted" }
-  /** No row for the slot (or it changed under the request). */
-  | { outcome: "missing" };
+  /** No row for the slot. */
+  | { outcome: "missing" }
+  /** The slot changed after it was read (a Replace or a pull landed first): nothing was done. */
+  | { outcome: "changed" };
 
 export interface ReleaseContext {
   env: Pick<Env, "HOSTED_ASSET_QUEUE">;
@@ -416,7 +420,7 @@ export async function releaseHostedAsset(
       params: guardParams,
     },
   ];
-  if (!(await applied(ctx.db, statements))) return { outcome: "missing" };
+  if (!(await applied(ctx.db, statements))) return { outcome: "changed" };
   if (mirror && row.sha256 && isListingModelSlot(slot))
     await mirror.drop(ctx.db, { product, slot, locale, sha256: row.sha256 });
   return { outcome: "deleted" };
@@ -458,13 +462,14 @@ function auditStatement(
   return {
     sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,
             target_kind, target_id, parent_id, summary)
-          SELECT ?, ?, ?, ?, ?, NULL, ?, 'hosted-asset', ?, NULL, ? WHERE ${guard}`,
+          SELECT ?, ?, ?, ?, ?, ?, ?, 'hosted-asset', ?, NULL, ? WHERE ${guard}`,
     params: [
       product,
       randomId("aud"),
       now,
       actor.sub,
       actor.name,
+      actor.email ?? null,
       action,
       refId,
       summary,
@@ -494,9 +499,12 @@ async function revert(
   }
   const queued =
     !!ctx.env.HOSTED_ASSET_QUEUE && (wanted.kind === "url" || commit !== null);
+  // Pinned to the copy this decision saw, as delete is: a Replace from another tab that lands
+  // first is a newer claim, and this Revert must not remove it.
   const guard = `EXISTS (SELECT 1 FROM hosted_assets
-    WHERE product = ? AND slot = ? AND locale = '' AND origin = 'console' AND wanted_ref = ?)`;
-  const guardParams = [product, slot, wantedRef];
+    WHERE product = ? AND slot = ? AND locale = '' AND origin = 'console' AND wanted_ref = ?
+      AND sha256 IS ?)`;
+  const guardParams = [product, slot, wantedRef, row.sha256];
   const statements: DbStatement[] = [
     {
       sql: `DELETE FROM blob_refs WHERE product = ? AND ref_kind = ? AND ref_id = ? AND ${guard}`,
@@ -522,7 +530,7 @@ async function revert(
               checked_at = NULL, modified_at = ?, pulled_ref = NULL, source_blob = NULL,
               attempts = 0, next_attempt_at = ?
              WHERE product = ? AND slot = ? AND locale = '' AND origin = 'console'
-               AND wanted_ref = ?`,
+               AND wanted_ref = ? AND sha256 IS ?`,
       params: [
         wanted.kind,
         wanted.kind === "repo" && commit
@@ -533,10 +541,11 @@ async function revert(
         product,
         slot,
         wantedRef,
+        row.sha256,
       ],
     },
   ];
-  if (!(await applied(ctx.db, statements))) return { outcome: "missing" };
+  if (!(await applied(ctx.db, statements))) return { outcome: "changed" };
   if (!queued) return { outcome: "reverted", pulling: false };
   const message: AssetPullMessage = {
     v: 1,

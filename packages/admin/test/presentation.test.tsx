@@ -147,9 +147,13 @@ describe("Core → Presentation", () => {
     expect(
       within(header).getByRole("button", { name: "Revert to manifest" }),
     ).toBeTruthy();
-    // Revert only for a console claim the manifest names.
+    // Revert only for a console claim the manifest names, and then no Delete copy: the server
+    // would revert it rather than leave it for the next resync.
     expect(
       within(icon).queryByRole("button", { name: "Revert to manifest" }),
+    ).toBeNull();
+    expect(
+      within(header).queryByRole("button", { name: "Delete copy" }),
     ).toBeNull();
     const shot = await row("Screenshot 1");
     expect(within(shot).getByText("Source gone")).toBeTruthy();

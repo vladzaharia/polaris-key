@@ -49,12 +49,13 @@ import {
   imageHeaderInfo,
   isListingModelSlot,
   isUploadSlot,
+  releaseHostedAsset,
   uploadSlotMaxBytes,
 } from "../src/core/hostedAssetUploads.js";
 import { blobKey, putVerified, stagingKey } from "../src/core/blobs.js";
 import { issueUploadTicket } from "../src/core/publisher.js";
 import type { FetchImpl } from "../src/core/safeFetch.js";
-import type { Db } from "../src/db/types.js";
+import type { Db, DbStatement } from "../src/db/types.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/env.js";
 import { dispatch } from "../src/dispatch.js";
@@ -824,6 +825,191 @@ describe("the console's upload, list and delete", () => {
       now: NOW,
     });
     expect(plan.messages.map((m) => m.slot)).toEqual(["listing.icon"]);
+  });
+});
+
+// ── Races (review round) ────────────────────────────────────────────────────────────────────
+
+/** `db`, with `hook` run once before the first call `when` matches (a write landing mid-flight). */
+function landing(
+  method: "first" | "batch",
+  when: (arg: unknown) => boolean,
+  hook: () => Promise<void>,
+): Db {
+  let fired = false;
+  return new Proxy(db, {
+    get(target, prop, receiver) {
+      if (prop === method)
+        return async (arg: unknown, ...rest: unknown[]) => {
+          const call = () =>
+            (target[method] as (...a: unknown[]) => Promise<unknown>).call(
+              target,
+              arg,
+              ...rest,
+            );
+          if (fired || !when(arg)) return call();
+          fired = true;
+          if (method === "first") {
+            const out = await call();
+            await hook();
+            return out;
+          }
+          await hook();
+          return call();
+        };
+      const v = Reflect.get(target, prop, receiver);
+      return typeof v === "function" ? v.bind(target) : v;
+    },
+  }) as Db;
+}
+
+describe("races with a console upload", () => {
+  it("a pull refused after an upload landed mid-pull never marks the claim failed or backs it off", async () => {
+    await syncHostedAssets(env, db, {
+      product: SLUG,
+      manifest: iconManifest(URL_A),
+      commit: null,
+      now: NOW,
+    });
+    const msg = q.sent.find((m) => m.slot === "presentation.icon")!;
+    const midPull = (async () => {
+      expect((await upload("presentation.icon", ICON_C)).status).toBe(200);
+      return new Response("gone", { status: 404 });
+    }) as FetchImpl;
+    expect(await processAssetPull(ctx(midPull), msg, noRepo)).toBe("failed");
+    expect(await getHostedAsset(db, SLUG, "presentation.icon")).toMatchObject({
+      origin: "console",
+      status: "ready",
+      error: null,
+      sha256: sha(ICON_C),
+    });
+    expect(
+      await db.first(
+        "SELECT attempts, next_attempt_at, pulled_ref FROM hosted_assets WHERE product = ? AND slot = 'presentation.icon'",
+        SLUG,
+      ),
+    ).toEqual({ attempts: 0, next_attempt_at: null, pulled_ref: null });
+  });
+
+  it("a pull's success bookkeeping skips a slot an upload claimed after the pull's ingest", async () => {
+    await syncHostedAssets(env, db, {
+      product: SLUG,
+      manifest: iconManifest(URL_A),
+      commit: null,
+      now: NOW,
+    });
+    const msg = q.sent.find((m) => m.slot === "presentation.icon")!;
+    const hooked = landing(
+      "batch",
+      (stmts) =>
+        Array.isArray(stmts) &&
+        (stmts as DbStatement[])[0]!.sql.includes("SET pulled_ref"),
+      async () => {
+        expect((await upload("presentation.icon", ICON_C)).status).toBe(200);
+      },
+    );
+    const res = await processAssetPull(
+      { env, db: hooked, now: NOW, fetchImpl: upstream({ [URL_A]: ICON_A }) },
+      msg,
+      noRepo,
+    );
+    expect(res).toBe("ready");
+    expect(
+      await db.first(
+        "SELECT origin, sha256, pulled_ref, attempts FROM hosted_assets WHERE product = ? AND slot = 'presentation.icon'",
+        SLUG,
+      ),
+    ).toEqual({
+      origin: "console",
+      sha256: sha(ICON_C),
+      pulled_ref: null,
+      attempts: 0,
+    });
+  });
+
+  it("a Revert racing a Replace from another tab never removes the newer upload", async () => {
+    await syncAndPull(iconManifest(URL_A), upstream({ [URL_A]: ICON_A }));
+    await upload("presentation.icon", ICON_C);
+    const before = q.sent.length;
+    const racing = landing(
+      "first",
+      (sql) => typeof sql === "string" && sql.includes("FROM hosted_assets"),
+      async () => {
+        expect((await upload("presentation.icon", ICON_B)).status).toBe(200);
+      },
+    );
+    const out = await releaseHostedAsset(
+      { env, db: racing, now: NOW },
+      SLUG,
+      "presentation.icon",
+      "",
+      { sub: "u2", name: "Bo" },
+    );
+    expect(out).toEqual({ outcome: "changed" });
+    expect(await getHostedAsset(db, SLUG, "presentation.icon")).toMatchObject({
+      origin: "console",
+      sha256: sha(ICON_B),
+    });
+    expect(await refsOf("presentation.icon")).toEqual([blobKey(sha(ICON_B))]);
+    expect(q.sent.length).toBe(before);
+  });
+});
+
+describe("the slot routes' gate", () => {
+  async function raw(
+    method: string,
+    opts: { csrf: boolean; groups: string[] },
+  ): Promise<Response> {
+    const { token, session } = await issueSession(
+      env,
+      { sub: "u9", name: "Eve", email: "eve@x.io", groups: opts.groups },
+      NOW,
+    );
+    const url = `${CONSOLE}/manage/api/products/${SLUG}/assets/presentation.icon`;
+    return handleAdmin(
+      new Request(url, {
+        method,
+        headers: {
+          cookie: `${ADMIN_COOKIE}=${token}`,
+          ...(opts.csrf ? { "x-pkey-csrf": session.csrf } : {}),
+          "content-length": String(ICON_C.length),
+        },
+        ...(method === "POST" ? { body: ICON_C } : {}),
+      }),
+      env,
+      db,
+      new URL(url).pathname.slice("/manage".length),
+      { now: NOW },
+    );
+  }
+
+  it("refuses an upload or a delete without CSRF, and from a non-admin", async () => {
+    for (const method of ["POST", "DELETE"]) {
+      expect(
+        (await raw(method, { csrf: false, groups: [ADMIN_GROUP] })).status,
+        method,
+      ).toBe(403);
+      expect(
+        (await raw(method, { csrf: true, groups: ["someone-else"] })).status,
+        method,
+      ).toBe(403);
+    }
+    expect(await getHostedAsset(db, SLUG, "presentation.icon")).toBeNull();
+  });
+
+  it("records the session's email on the console's audit rows", async () => {
+    await syncAndPull(iconManifest(URL_A), upstream({ [URL_A]: ICON_A }));
+    await upload("presentation.icon", ICON_C);
+    await release("presentation.icon");
+    expect(
+      await db.all(
+        "SELECT action, actor_sub, actor_email FROM audit WHERE product = ? AND actor_sub = 'u1' AND action LIKE 'assets.%' ORDER BY at, rowid",
+        SLUG,
+      ),
+    ).toEqual([
+      { action: "assets.ingest", actor_sub: "u1", actor_email: "ada@x.io" },
+      { action: "assets.revert", actor_sub: "u1", actor_email: "ada@x.io" },
+    ]);
   });
 });
 

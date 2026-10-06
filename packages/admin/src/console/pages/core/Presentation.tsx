@@ -271,7 +271,10 @@ function SlotRow({
   const uploadable = asset?.uploadable ?? true;
   const maxBytes = asset?.maxBytes ?? slotCap(slot);
   const canRevert = asset?.origin === "console" && asset.wanted !== null;
-  const canDelete = uploadable && asset !== null && asset.sha256 !== null;
+  // The server turns a delete of a claim the manifest still names into a Revert, so the page
+  // offers Revert there and never promises "pulled again at the next resync".
+  const canDelete =
+    uploadable && asset !== null && asset.sha256 !== null && !canRevert;
   const status = asset ? statusOf(asset) : null;
 
   const upload = async (file: File): Promise<void> => {
@@ -304,12 +307,22 @@ function SlotRow({
   };
 
   const release = async (): Promise<void> => {
-    const out = await mutate(
-      "deleteHostedAsset",
-      slug,
-      slot,
-      locale ? locale : undefined,
-    );
+    let out;
+    try {
+      out = await mutate(
+        "deleteHostedAsset",
+        slug,
+        slot,
+        locale ? locale : undefined,
+      );
+    } catch (e) {
+      // Another upload or a pull landed first: show the slot as it is now.
+      if (e instanceof ApiError && e.code === "asset_changed")
+        void queryClient.invalidateQueries({
+          queryKey: qk.hostedAssets(slug),
+        });
+      throw e;
+    }
     if (out.outcome === "reverted")
       toast.success(`${label} returned to the manifest`, {
         description: out.pulling
@@ -444,7 +457,7 @@ function SlotRow({
         intent="danger"
         title={`Delete the hosted copy of ${label}?`}
         consequences={[
-          "The image host stops serving it at once.",
+          "The image host stops serving this slot's copy at once. The same file in another slot (the listing icon that falls back to the product icon) keeps serving.",
           ...(asset?.wanted
             ? [
                 "The manifest still names this file, so the next resync pulls it again. Remove it from the manifest, or upload a replacement, to keep it gone.",

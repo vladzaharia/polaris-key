@@ -211,6 +211,8 @@ export type IngestReason =
 export interface IngestActor {
   sub: string | null;
   name: string | null;
+  /** The console session's email, recorded as every console write records it. */
+  email?: string | null;
 }
 
 /** The sources a lower-precedence way in yields to (S-20 §6.3: console, then manifest, then CI). */
@@ -1068,7 +1070,7 @@ function auditRow(
     at: now,
     actor_sub: actor.sub,
     actor_name: actor.name,
-    actor_email: null,
+    actor_email: actor.email ?? null,
     action: "assets.ingest",
     target_kind: "hosted-asset",
     target_id: hostedAssetRefId(slot, locale),
@@ -1344,13 +1346,14 @@ export async function ingest(
       {
         sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,
                 target_kind, target_id, parent_id, summary)
-              SELECT ?, ?, ?, ?, ?, NULL, 'assets.ingest', 'hosted-asset', ?, NULL, ?${where}`,
+              SELECT ?, ?, ?, ?, ?, ?, 'assets.ingest', 'hosted-asset', ?, NULL, ?${where}`,
         params: [
           product,
           randomId("aud"),
           ctx.now,
           actor.sub,
           actor.name,
+          actor.email ?? null,
           refId,
           summary,
           ...guardParams,

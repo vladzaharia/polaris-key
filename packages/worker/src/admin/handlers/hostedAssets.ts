@@ -129,7 +129,11 @@ export async function handleHostedAssets(
   const locale = new URL(req.url).searchParams.get("locale") ?? "";
   if (!isHostedAssetLocale(locale))
     return err(400, "bad_locale", "locale must be a language tag");
-  const actor = { sub: session.sub, name: session.name };
+  const actor = {
+    sub: session.sub,
+    name: session.name,
+    email: session.email,
+  };
 
   if (req.method === "POST") {
     if (!env.BLOBS)
@@ -192,6 +196,12 @@ export async function handleHostedAssets(
     listingSlotMirror,
   );
   if (out.outcome === "missing") return err(404, ErrorCode.NotFound);
+  if (out.outcome === "changed")
+    return err(
+      409,
+      "asset_changed",
+      "the slot changed since it was read (another upload or pull landed first); reload and try again",
+    );
   return adminJson(out);
 }
 

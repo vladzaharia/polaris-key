@@ -13239,8 +13239,9 @@ paths:
         HA-06. For a slot the console claimed whose source a manifest still declares: Revert. The
         console's copy is deleted now, the slot returns to the manifest with no copy served, and
         the manifest's source is pulled again (`pulling` says the pull was queued). For any other
-        slot: delete-a-copy. The copy and its row are dropped, so the image host stops serving it
-        at once; a slot a manifest declares is pulled again at the next resync. A listing-model
+        slot: delete-a-copy. The slot's copy and its row are dropped, so the image host stops serving
+        it for this slot at once (the same bytes held by another slot keep serving at the same
+        content-addressed URL); a slot a manifest declares is pulled again at the next resync. A listing-model
         slot also loses its listing row when that row holds the same bytes. Polaris Key never
         touches the developer's source. Audited as `assets.revert` or `assets.delete`. Platform
         admins only; admin session cookie and `X-PKey-CSRF`.
@@ -13273,6 +13274,13 @@ paths:
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "404":
           description: No such product, or nothing hosted in the slot.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: >
+            The slot changed after it was read (`asset_changed`: a Replace from another tab, or a
+            pull, landed first). Nothing was done; reload and decide again.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }

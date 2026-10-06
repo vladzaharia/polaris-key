@@ -47,9 +47,12 @@ until it arrives.
 
 ## Delete copy
 
-Drops Polaris Key's copy at once: the image host stops serving it on the next request. If the
-manifest still names the file, the next resync pulls it again; remove it from the manifest, or
-upload a replacement, to keep it gone. A store slot of the shared listing also loses its listing
+Drops this slot's copy at once: the image host stops serving it for this slot on the next
+request. Delete copy is per slot: the same file held by another slot (the listing icon falls back
+to the product icon, for example) keeps serving at the same content-addressed URL until that slot
+is deleted or replaced too. If the manifest still names the file, the next resync pulls it again;
+remove it from the manifest, or upload a replacement, to keep it gone. A slot you uploaded whose
+source the manifest still names offers Revert to manifest instead. A store slot of the shared listing also loses its listing
 row when that row holds the same file.
 
 ## From CI

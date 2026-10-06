@@ -657,7 +657,10 @@ export type PullOutcome =
   /** No blob store bound: nothing attempted. */
   | "unavailable";
 
-/** Record a failed pull's back-off (the row's status and error are `ingest`'s, or set here). */
+/**
+ * Record a failed pull's back-off (the row's status and error are `ingest`'s, or set here). Never
+ * on a slot an operator uploaded while the pull ran (HA-06): the claim is not the pull's to mark.
+ */
 function stmtPullFailed(
   product: string,
   slot: string,
@@ -669,7 +672,8 @@ function stmtPullFailed(
     sql: `UPDATE hosted_assets SET attempts = attempts + 1,
             next_attempt_at = ? + ${backoffAfterFailureSql()}
             ${error ? ", status = 'failed', error = ?, checked_at = ?" : ""}
-           WHERE product = ? AND slot = ? AND locale = '' AND wanted_ref = ?`,
+           WHERE product = ? AND slot = ? AND locale = '' AND wanted_ref = ?
+             AND origin <> 'console'`,
     params: error
       ? [now, error, now, product, slot, wanted]
       : [now, product, slot, wanted],
@@ -754,7 +758,8 @@ export async function processAssetPull(
         sql: `UPDATE hosted_assets SET pulled_ref = ?, source_blob = ?,
                 attempts = CASE WHEN ${owed} THEN 1 ELSE 0 END,
                 next_attempt_at = CASE WHEN ${owed} THEN ? ELSE NULL END
-               WHERE product = ? AND slot = ? AND locale = '' AND wanted_ref = ?`,
+               WHERE product = ? AND slot = ? AND locale = '' AND wanted_ref = ?
+                 AND origin <> 'console'`,
         params: [
           msg.wanted,
           blob,

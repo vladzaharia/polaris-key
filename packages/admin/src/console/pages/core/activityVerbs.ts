@@ -90,10 +90,10 @@ const VERBS: Record<string, string> = {
   "package.prune.failed": "failed to prune the builds of main of",
   "feed.retention.update": "changed the retention of package feeds",
   // HA-05, HA-06: hosted assets (the target is the slot, `<slot>@<locale>`).
-  "assets.ingest": "hosted a copy of",
-  "assets.revert": "gave back to the manifest",
-  "assets.delete": "deleted the hosted copy of",
-  "assets.push": "pushed hosted assets from CI",
+  "assets.ingest": "hosted a copy in",
+  "assets.revert": "restored the manifest's file in",
+  "assets.delete": "deleted the hosted copy in",
+  "assets.push": "pushed hosted assets from CI into",
   "assets.variants": "built image sizes for",
 };
 
