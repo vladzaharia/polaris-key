@@ -55,11 +55,13 @@ async function open(
   theme: "dark" | "light",
   viewport = { width: 1440, height: 900 },
   consoleErrors?: string[],
+  reducedMotion?: "reduce" | "no-preference",
 ): Promise<Page> {
   const ctx = await browser.newContext({
     viewport,
     colorScheme: theme,
     permissions: ["clipboard-read", "clipboard-write"],
+    ...(reducedMotion ? { reducedMotion } : {}),
   });
   await ctx.addInitScript(() => {
     (window as unknown as { __v: string[] }).__v = [];
@@ -390,5 +392,231 @@ describe("the kit gallery's overlays under the Worker's CSP", () => {
 
   afterAll(() => {
     console.log("kit overlay CSP report", JSON.stringify(report, null, 2));
+  });
+});
+
+/**
+ * Exit animations (notes/S-23 §6.1; MO-02): every Radix overlay keeps its `animate-pk-in` /
+ * `animate-pk-overlay-in` class, and src/motion.css gives its `data-state="closed"` state an exit
+ * on the motion tokens, which Radix waits for before it unmounts. This records each closing node's
+ * `getAnimations()` the moment it flips to closed. Under reduced motion the swap is instant: no
+ * animation, the node gone at once, and nothing left running.
+ */
+interface ExitRecord {
+  kind: "content" | "scrim";
+  animations: Array<{ name: string; duration: number }>;
+  connectedAfter: boolean;
+}
+
+/** Start recording the overlays that close from now on. */
+async function armExitProbe(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      __exits: Array<{ el: Element; kind: string; animations: unknown[] }>;
+      __exitProbe?: MutationObserver;
+    };
+    w.__exitProbe?.disconnect();
+    w.__exits = [];
+    w.__exitProbe = new MutationObserver((records) => {
+      for (const r of records) {
+        const el = r.target as Element;
+        if (el.getAttribute("data-state") !== "closed") continue;
+        if (!el.matches(".animate-pk-in, .animate-pk-overlay-in")) continue;
+        w.__exits.push({
+          el,
+          kind: el.matches(".animate-pk-overlay-in") ? "scrim" : "content",
+          animations: el.getAnimations().map((a) => ({
+            name: (a as CSSAnimation).animationName,
+            duration: Number(a.effect?.getTiming().duration ?? 0),
+          })),
+        });
+      }
+    });
+    w.__exitProbe.observe(document.body, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["data-state"],
+    });
+  });
+}
+
+/** What closed since armExitProbe, and whether each node has been removed since. */
+async function readExitProbe(page: Page): Promise<ExitRecord[]> {
+  return page.evaluate(() => {
+    const w = window as unknown as {
+      __exits: Array<{
+        el: Element;
+        kind: "content" | "scrim";
+        animations: Array<{ name: string; duration: number }>;
+      }>;
+    };
+    return w.__exits.map((x) => ({
+      kind: x.kind,
+      animations: x.animations,
+      connectedAfter: x.el.isConnected,
+    }));
+  });
+}
+
+/**
+ * Animations still running on the page, aside from the spinners (loading indicators that keep
+ * turning) and the gallery's legacy `animate-pulse` skeletons (allowlisted until MO-09).
+ */
+const running = (page: Page): Promise<string[]> =>
+  page.evaluate(() =>
+    document
+      .getAnimations()
+      .map((a) => (a as CSSAnimation).animationName ?? "")
+      .filter((n) => !/spin/.test(n) && n !== "pulse"),
+  );
+
+/**
+ * Closing an overlay returns focus to its trigger, which can open that trigger's own tooltip;
+ * blur it and let that tooltip close before the next overlay, so each probe sees its own node.
+ */
+async function settleFocus(page: Page): Promise<void> {
+  await page.evaluate(() =>
+    (document.activeElement as HTMLElement | null)?.blur(),
+  );
+  await page.waitForTimeout(400);
+}
+
+describe("overlay exit animations (MO-02)", () => {
+  const overlays: Array<{
+    name: string;
+    open: (page: Page) => Promise<void>;
+    content: { name: string; duration: number };
+    scrim?: boolean;
+  }> = [
+    // First, on a fresh page: a tooltip opens on keyboard focus, and the overlays below return
+    // focus to their triggers as they close, which Radix's tooltip then treats differently.
+    {
+      name: "tooltip",
+      open: async (page) => {
+        await story(page, "button-states")
+          .locator("[aria-disabled=true]")
+          .first()
+          .focus();
+        await page.getByRole("tooltip").waitFor();
+      },
+      content: { name: "pk-fade-out", duration: 120 },
+    },
+    {
+      name: "dialog",
+      open: async (page) => {
+        await story(page, "dialog")
+          .getByRole("button", { name: "Open md dialog" })
+          .click();
+        await page.getByRole("dialog", { name: "Edit holder" }).waitFor();
+      },
+      content: { name: "pk-exit", duration: 200 },
+      scrim: true,
+    },
+    {
+      name: "drawer",
+      open: async (page) => {
+        await story(page, "drawer")
+          .getByRole("button", { name: "Open drawer from the end" })
+          .click();
+        await page.getByRole("dialog").waitFor();
+      },
+      content: { name: "pk-exit", duration: 200 },
+    },
+    {
+      name: "action menu",
+      open: async (page) => {
+        await story(page, "action-menu")
+          .getByRole("button", { name: "More actions" })
+          .click();
+        await page.getByRole("menu").waitFor();
+      },
+      content: { name: "pk-fade-out", duration: 120 },
+    },
+    {
+      name: "select",
+      open: async (page) => {
+        await story(page, "form-select")
+          .getByRole("combobox", { name: /Usage/ })
+          .click();
+        await page.getByRole("listbox").waitFor();
+      },
+      content: { name: "pk-fade-out", duration: 120 },
+    },
+    {
+      name: "popover",
+      open: async (page) => {
+        await story(page, "source-badges").getByRole("button").first().click();
+        await page.getByRole("dialog").waitFor();
+      },
+      content: { name: "pk-fade-out", duration: 120 },
+    },
+  ];
+
+  it("each overlay animates out on the tokens, then unmounts", async () => {
+    const page = await open("dark", undefined, undefined, "no-preference");
+    for (const o of overlays) {
+      await settleFocus(page);
+      await o.open(page);
+      await page.waitForTimeout(400);
+      await armExitProbe(page);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(500);
+      const exits = await readExitProbe(page);
+      const content = exits.find((x) => x.kind === "content");
+      expect(content, `${o.name}: a closing node was seen`).toBeTruthy();
+      expect(content!.animations, `${o.name}: exit animation`).toEqual([
+        o.content,
+      ]);
+      expect(content!.connectedAfter, `${o.name}: unmounted after`).toBe(false);
+      if (o.scrim) {
+        const scrim = exits.find((x) => x.kind === "scrim");
+        expect(scrim?.animations, `${o.name}: scrim exit`).toEqual([
+          { name: "pk-fade-out", duration: 200 },
+        ]);
+      }
+      expect(await running(page), `${o.name}: nothing left running`).toEqual(
+        [],
+      );
+    }
+    expect(await violations(page)).toEqual([]);
+    await page.context().close();
+  });
+
+  it("under reduced motion each overlay closes instantly with no animation", async () => {
+    const page = await open("dark", undefined, undefined, "reduce");
+    for (const o of overlays) {
+      await settleFocus(page);
+      await o.open(page);
+      await page.waitForTimeout(100);
+      expect(await running(page), `${o.name}: no enter animation`).toEqual([]);
+      await armExitProbe(page);
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(50);
+      const exits = await readExitProbe(page);
+      for (const x of exits) {
+        expect(x.animations, `${o.name}: no exit animation`).toEqual([]);
+        expect(x.connectedAfter, `${o.name}: gone at once`).toBe(false);
+      }
+      expect(await running(page), `${o.name}: nothing running`).toEqual([]);
+    }
+    await page.context().close();
+  });
+
+  it("the refetch bar's sweep is defined, and stops under reduced motion", async () => {
+    for (const motion of ["no-preference", "reduce"] as const) {
+      const page = await open("dark", undefined, undefined, motion);
+      const names = await page.evaluate(() => {
+        const bar = document.createElement("div");
+        bar.className = "animate-pk-refetch";
+        document.body.append(bar);
+        const n = bar
+          .getAnimations()
+          .map((a) => (a as CSSAnimation).animationName);
+        bar.remove();
+        return n;
+      });
+      expect(names, motion).toEqual(motion === "reduce" ? [] : ["pk-refetch"]);
+      await page.context().close();
+    }
   });
 });
