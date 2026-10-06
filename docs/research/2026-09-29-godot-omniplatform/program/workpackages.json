@@ -7178,7 +7178,7 @@
         "packages/sdk-react/parity.json: ui.boot, release.fetch, release.distribution, update.feeds, crash.tags"
       ],
       "brief": "wp/SP-12-react-boot-download.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-13",
