@@ -47,7 +47,25 @@ Deferred: there is no Rust SDK. The standing rule makes it required the day one 
 
 ## Acceptance criteria
 
-- [ ] The client matrix is green. `routeCoverage` passes. The green gate passes (`AGENTS.md`).
+- [x] The client matrix is green. `routeCoverage` passes. The green gate passes (`AGENTS.md`).
+
+## Corrections (recorded while implementing, against the code)
+
+- **auth-required no longer waits.** F-21 is done, so the feed ships it: a non-public feed answers
+  `config.json` 401, Cargo retries with its token (the ladder's existing `raw` credential), and the
+  admitted answer carries `auth-required: true`. Cargo refuses an authenticated registry unless a
+  credential provider is named, so the setup snippet adds `credential-provider = "cargo:token"`
+  (found by the harness's `--auth` run with real Cargo).
+- **"Published through pkey" needs a CLI extractor.** `packages/cli/src/package/cargo.ts` reads the
+  `.crate`'s normalised `Cargo.toml` (new direct dependency `smol-toml`, already in the lockfile)
+  into the metadata the index renders from; the Worker never unpacks a crate.
+- **A policy row is required.** The access ladder reads a missing `dist_registry_policy` row as
+  off, so migration `0076_cargo_registry_policy.sql` seeds Cargo's (on, 50 MiB). The contribute
+  checklist now says so for the next feed.
+- **Beyond the brief's file list,** adding an ecosystem also touched the console's per-ecosystem
+  tables (`FeedEcosystem`, labels, icon, yank copy, namespace copy) and the portal's label, which
+  TypeScript requires; the CI matrix has two rows (Cargo stable and 1.74, the first with sparse
+  auth).
 
 ## Verify
 

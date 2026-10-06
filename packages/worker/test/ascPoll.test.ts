@@ -631,7 +631,8 @@ describe("the poll skips a product that is not set up", () => {
     );
     const report = await poll(w);
     expect(w.fake.requests).toEqual([]);
-    expect(report.results[SLUG]).toEqual({});
+    // Distribution's poll never ran (F-22: only Release's native-upload sweep did).
+    expect(report.results[SLUG]).not.toHaveProperty("distribution");
   });
 });
 
@@ -650,7 +651,9 @@ describe("the cron dispatch", () => {
     );
     expect(w.fake.requests.length).toBeGreaterThan(0);
     expect(report.counts.indexes).toBeUndefined();
-    expect(report.counts[`poll:${SLUG}`]).toBe(1);
+    // Distribution's poll ran (the store requests above) and Release's native-upload sweep
+    // (F-22) beside it: one result per service with a `scheduled` hook.
+    expect(report.counts[`poll:${SLUG}`]).toBe(2);
   });
 
   it("the maintenance cron (and no cron at all) runs maintenance and polls nothing", async () => {

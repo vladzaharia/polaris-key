@@ -3980,6 +3980,15 @@ describe("package release descriptors (F-03)", () => {
         ],
         "1.4.0",
       ],
+      [
+        "go",
+        "go.acme.dev/sdk/v2",
+        [
+          { type: "go-zip", name: "v2.4.0.zip" },
+          { type: "go-mod", name: "go.mod" },
+        ],
+        "2.4.0",
+      ],
     ];
     for (const [ecosystem, name, files, version] of cases) {
       const manifest = descriptorManifest();
@@ -4013,6 +4022,57 @@ describe("package release descriptors (F-03)", () => {
         `${ecosystem}: ${JSON.stringify(validateDescriptorSchema.errors)}`,
       ).toBe(true);
     }
+  });
+
+  it("a Go version is semver without build metadata, its major agrees with the path, and its files are one zip and one go.mod", () => {
+    const run = (name: string, version: string, types: string[]) => {
+      const manifest = descriptorManifest();
+      manifest.release!.packages = [{ id: "acme.sdk", ecosystem: "go", name }];
+      const d = basePackageDescriptor();
+      d.version = version;
+      d.package = {
+        ecosystem: "go",
+        name,
+        files: types.map((type, i) => {
+          const sha = String(i + 1).repeat(64);
+          return {
+            name: type === "go-mod" ? `go${i}.mod` : `v${i}.zip`,
+            role: "payload",
+            type,
+            sha256: sha,
+            size: 1,
+            locations: [{ provider: "r2", key: `blobs/sha256/${sha}` }],
+          };
+        }),
+        metadata: { name, version },
+      };
+      const res = validateReleaseDescriptor(d, manifest);
+      return res.ok ? [] : res.errors.map((e) => `${e.path} ${e.code}`);
+    };
+    const pair = ["go-zip", "go-mod"];
+    expect(run("go.acme.dev/sdk", "1.4.0", pair)).toEqual([]);
+    expect(run("go.acme.dev/sdk", "0.3.0-beta.1", pair)).toEqual([]);
+    expect(run("go.acme.dev/sdk/v3", "3.0.0", pair)).toEqual([]);
+    // Build metadata, a v prefix, a v2+ module without its suffix and a suffix on v1 are refused.
+    expect(run("go.acme.dev/sdk", "1.4.0+build.1", pair)).toEqual([
+      "/version invalid_descriptor",
+    ]);
+    expect(run("go.acme.dev/sdk", "v1.4.0", pair)).toEqual([
+      "/version invalid_descriptor",
+    ]);
+    expect(run("go.acme.dev/sdk", "2.0.0", pair)).toEqual([
+      "/version invalid_descriptor",
+    ]);
+    expect(run("go.acme.dev/sdk/v2", "1.0.0", pair)).toEqual([
+      "/version invalid_descriptor",
+    ]);
+    expect(run("go.acme.dev/sdk/v1", "1.0.0", pair)).toEqual([
+      "/version invalid_descriptor",
+    ]);
+    // Exactly one module zip and one go.mod.
+    expect(run("go.acme.dev/sdk", "1.4.0", ["go-zip"])).toEqual([
+      "/package/files invalid_descriptor",
+    ]);
   });
 
   it("an OCI version carries no '+', and a non-Maven file no classifier", () => {

@@ -616,13 +616,19 @@ describe("the access ladder in front of the feed", () => {
     }
   });
 
-  it("GET and HEAD only", async () => {
+  it("GET and HEAD only, beside F-22's deploy PUT (which needs a publish credential)", async () => {
     const res = await get(`${DIR}/1.0.0/demo-1.0.0.jar`, {
-      method: "PUT",
+      method: "POST",
       body: "x",
     });
     expect(res.status).toBe(405);
     expect(res.headers.get("allow")).toBe("GET, HEAD");
+    const put = await get(`${DIR}/1.0.0/demo-1.0.0.jar`, {
+      method: "PUT",
+      body: "x",
+    });
+    expect(put.status).toBe(401);
+    expect(put.headers.get("www-authenticate")).toMatch(/^Basic realm=/);
   });
 });
 

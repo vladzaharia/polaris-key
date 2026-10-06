@@ -226,7 +226,7 @@ the offending value, or the allowed set.
 `validateReleaseDescriptor` (`@polaris-key/manifest`, P2-04) checks a release descriptor
 (`pkey-release.json`) against its own shape and the product's declared artifact map. Every
 problem is an error; the Worker reports them under the ingest refusal reason
-`invalid_descriptor`. 94 distinct emit sites.
+`invalid_descriptor`. 95 distinct emit sites.
 
 | Code | Path | Message |
 | --- | --- | --- |
@@ -298,6 +298,7 @@ problem is an error; the Worker reports them under the ingest refusal reason
 | `invalid_descriptor` | `/product` | product must be a product slug. |
 | `invalid_descriptor` | `/version` | version must be 1-64 characters of letters, digits, '.', '+' and '-'. |
 | `invalid_descriptor` | `/version` | a $\{eco\} package version is a semantic version. |
+| `invalid_descriptor` | `/version` | a Go module version is a semantic version without the v (Go adds it) and without build metadata. |
 | `invalid_descriptor` | `/version` | an OCI package version is also its tag, so it has no '+'. |
 | `invalid_descriptor` | `${at}/${extra}` | $\{extra\} is not a field of a package file. |
 | `invalid_descriptor` | `${at}/classifier` | a Maven classifier is 1-64 letters, digits, '_', '.' and '-'. |

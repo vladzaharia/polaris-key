@@ -1008,15 +1008,15 @@ writer can push.
   page through a stale link sees a release up to five minutes old. QR codes carry the same URLs
   the links do; one too long for the encoder (an Obtainium app config) is simply not drawn.
 
-### The registry host and package feeds (F-02 to F-11)
+### The registry host and package feeds (F-02 to F-11, F-30)
 
 **What it is.** `pkg.plrs.im` (with `pkg-staging` and `pkg-dev`) is the same Worker on a third
 custom domain, beside the console (`key.plrs.im`) and the bytes host (`dl.plrs.im`). It serves
-package feeds to registry clients: npm, PyPI, SwiftPM, Maven and Gradle, OCI and Godot (plans/F-01.md
-§6). `PKG_ORIGIN` names it, and `core/registryHost.ts` confines it to `mount.ts`
+package feeds to registry clients: npm, PyPI, SwiftPM, Maven and Gradle, OCI, Godot, Cargo and Go
+(plans/F-01.md §6). `PKG_ORIGIN` names it, and `core/registryHost.ts` confines it to `mount.ts`
 `REGISTRY_ROUTES`, a static landing page at `/` and OCI's fixed `/v2/` root. F-02 ships the host
 and the framework, F-03 the tables and ingest, F-04 to F-09 one feed each (npm, PyPI, Swift,
-Maven, OCI, Godot) and F-11 the console's Feeds pages; each part is below. Tests: `test/registryHost.test.ts`, `test/registryFeeds.test.ts`,
+Maven, OCI, Godot), F-11 the console's Feeds pages, F-30 the Cargo feed and F-31 the Go module proxy (tier 3); each part is below. Tests: `test/registryHost.test.ts`, `test/registryFeeds.test.ts`,
 `test/feedAdapters.test.ts` (the adapter conformance suite), `test/registryDrain.test.ts`,
 `test-workerd/registry.test.ts`, and the curl client of `registry-clients.yml`.
 
@@ -1031,7 +1031,7 @@ separate them, exactly as for the bytes host. Its compensations, against `dl.plr
 | `sandbox` CSP with no sources on every answer | `BLOB_CSP`                                             | `REGISTRY_CSP` (the same value)                                                     |
 | `Cross-Origin-Resource-Policy: same-origin`   | no                                                     | yes                                                                                 |
 | CORS                                          | the product's `web.origins`, via `core/cors.ts`        | **none**: route headers dropped, `OPTIONS` is 405                                   |
-| Methods                                       | per route                                              | `GET` and `HEAD` only (405 otherwise)                                               |
+| Methods                                       | per route                                              | `GET` and `HEAD`; Swift's login and F-22's publish writes (405 otherwise)           |
 | Errors and throws                             | flat JSON; JSON 500                                    | flat JSON, `problem+json` (Swift) or OCI error JSON; JSON 500                       |
 | Service off for the owner                     | the not-found                                          | the not-found, and the feed ladder below answers it too                             |
 | The one HTML answer                           | `/` and the download page, under `inertDocumentPolicy` | `/`, and the PyPI simple page on its one flagged route, under `inertDocumentPolicy` |
@@ -1129,13 +1129,16 @@ render's keys and types are ones the host admits. A new feed that skips any of t
 which turns the review of a new ecosystem into reviewing its own protocol code rather than
 re-checking the shared gate.
 
-**Every route is built by `feedRoute`.** `registry/serve.ts` `feedRoute` is the only way to
-build a registry route: its handler runs the route's read-only lookup (`resolve`, e.g. a package
+**Every read route is built by `feedRoute`.** `registry/serve.ts` `feedRoute` is the only way to
+build a registry read route: its handler runs the route's read-only lookup (`resolve`, e.g. a package
 name to its deliverable), then `serveFeedRead` (the access ladder, then the Cache API, then the
 route's work), then an optional `finish` that sees every answer after the ladder (OCI's API
 version header, Swift's `Content-Version` and `Accept` checks). `test/registryHost.test.ts`
-requires the `feedRoute` mark on every `REGISTRY_ROUTES` entry, so a hand-written handler that
-skips the ladder fails the build. The mark stops accidents, not malice (a route could copy the
+requires one of three marks on every `REGISTRY_ROUTES` entry: `FEED_READ_ROUTE` (set by
+`feedRoute`) on every read route, `FEED_AUTH_ROUTE` on F-21's one credential route (`swift.login`,
+`POST`), and `FEED_PUBLISH_ROUTE` on F-22's four publish routes (`service: "release"`, one write
+method each); any other non-read route fails it, so a hand-written handler that skips the ladder
+fails the build. The mark stops accidents, not malice (a route could copy the
 symbol); review catches the rest.
 
 **How a package version gets in (F-03), and what keeps it out of everything else.**
@@ -1156,9 +1159,11 @@ symbol); review catches the rest.
   protocol-fixed names (npm tarballs, Swift archives, Maven files) immutable for clients that
   cache by name, and Swift's trust-on-first-use safe.
 - **Dependency confusion.** A feed takes only names in its operator-set namespace (npm and Swift
-  scope, Maven group prefixes, PyPI names and prefixes, the Godot publisher), enforced at ingest
+  scope, Maven group prefixes, PyPI names and prefixes, the Godot publisher, Go module prefixes;
+  OCI and Cargo names sit under the owner, and Cargo takes a crate only for a dependency naming
+  the registry), enforced at ingest
   (`package-namespace`); an ecosystem with no configured feed takes nothing. Names collide after
-  each ecosystem's normalisation (PEP 503; case-insensitive npm, Swift, Maven), in the manifest
+  each ecosystem's normalisation (PEP 503; case-insensitive npm, Swift, Maven, Go), in the manifest
   (`package_name_collision`) and in the key. `upstream` is pinned to `none` by a CHECK, so no feed
   proxies a public registry. The residual risk is that no public name is claimed on npmjs or Maven
   Central (owner decision Q2: account-level claims only), which the setup docs warn about.
@@ -1297,6 +1302,51 @@ package stricter than its feed is left out of every list. The per-package docume
 fresh: a stored render whose stamp (package rows plus feed settings) differs from D1 is rendered
 again before it is served, so a yank is never hidden behind a stale document.
 
+**The Cargo feed (F-30).** A read-only sparse index (`services/distribution/registry/cargo/`;
+tests: `test/registry/cargo.test.ts`, the conformance suite, the Cargo rows of
+`registry-clients.yml`): `config.json`, one JSON-lines index file per crate and the `dl` downloads.
+Adding it was a review trigger; it adds no type to `REGISTRY_HOST_TYPES` (both documents are
+`application/json`, crates `application/octet-stream` attachments), no write route and no new
+credential path.
+
+- **No publish API.** `config.json` carries no `api`, so `cargo publish`, `cargo yank` and
+  `cargo owner` have nothing to call; a crate enters only through `pkey release publish` and
+  Release's ingest, like every package. Cargo's bare `Authorization: <token>` is the ladder's
+  existing `raw` credential, judged like any other registry token.
+- **Index content is tenant input, re-shaped.** The index lines are rendered from the metadata the
+  CLI extracted from the crate's normalised `Cargo.toml`; the Worker never unpacks a crate. Each
+  dependency, feature and string is re-checked and bounded in the renderer (a malformed entry is
+  dropped) and the lines leave only as JSON. A dependency's `registry` is copied from the
+  publisher's own manifest: a crate can name another registry for its dependencies, which Cargo
+  then contacts for that crate. That is Cargo's own model (crates.io crates can do the same) and
+  is visible in the lockfile; this feed never proxies or vouches for another registry.
+- **Bytes are what was published.** `dl` is `files/<sha256>/<crate>-<version>.crate`: served only
+  when the hash, the crate name and the version all match one published version of the owner's
+  crate and the owner holds the blob's reference (`hasRef`). Cargo verifies every download
+  against the line's `cksum`; like PyPI's fragment hashes, that is integrity against the index,
+  not authenticity beyond TLS.
+- **Yank is not a recall.** A yanked version keeps its line (`yanked: true`) and its download, so
+  existing lockfiles build; a new resolution skips it (Cargo's semantics, the PEP 592 residual).
+- **Platform switch.** Migration `0076_cargo_registry_policy.sql` seeds Cargo's
+  `dist_registry_policy` row (on, 50 MiB); a missing row would read as off.
+- **Private feeds.** A non-public feed answers `config.json` 401; the admitted answer says
+  `auth-required: true`, so Cargo sends the token on every request, never as a URL. A crate
+  stricter than its public feed is refused (401) to a client the feed admits anonymously.
+
+**The Go module proxy (F-31).** A GOPROXY at `/go/<owner>/`: `@v/list`, `@latest` and `.info`
+are rendered JSON or opaque bytes (the list leaves as `application/octet-stream`, never `text/*`),
+and `.mod` and `.zip` are the release's own blobs by SHA-256 (attachments, immutable). The Worker
+never unzips: the publishing CLI splits the go.mod out of the module zip and records both go.sum
+`h1:` hashes; the go command recomputes them from the served bytes and pins them in go.sum.
+Module paths are matched exactly after the go command's case decoding (an upper-case letter in a
+URL, or a dangling `!`, matches nothing), and a v2+ module's `/vN` suffix must agree with its
+version at publish. A path the feed does not hold is the plain 404, which is what makes the go
+command fall through to the next GOPROXY entry; the setup tells clients to name the feed's
+prefixes in GONOSUMDB, so these modules never reach the public checksum database, and never in
+GOPRIVATE (which would bypass the proxy). Go has no proxy-side authenticity beyond TLS and
+go.sum's trust-on-first-use, the same as any private GOPROXY. The go command sends `.netrc`
+credentials over https only. The host never serves a `go-import` `<meta>` page.
+
 **The Feeds console and its admin API (F-11).** `/manage/api/platform/feeds/*` and
 `/manage/api/products/<slug>/distribution/feeds/*` (`admin/handlers/feeds.ts`) sit behind the
 same session, CSRF, limiter and platform-admin gates as every admin route (403 otherwise; there
@@ -1329,7 +1379,9 @@ which sends no credentials, carries a narrow URL token in its configured URL. Te
 **A new bearer asset.** A token is 256 random bits, stored only as an HMAC under
 `KEY_HASH_PEPPER` (a global unique index), shown once, never logged or echoed; the list shows the
 last four characters. Every token expires, at most 365 days out (default 90, 30 for a URL token,
-Q6), and is bound to one owner. Scope is `read`; `publish` is refused until F-22 and F-23. At most
+Q6), and is bound to one owner. Scope is `read`, or `publish` (F-22 and F-23, below: it implies
+`read`, is owner-bound and header-presented only, names its publish ecosystems, and lives at most
+30 days). At most
 10 live tokens per licence and 500 per owner. A deleted product's tokens stop at once (the lookup
 joins `products.status`, and the deletion batch revokes them); an erased portal account's tokens
 are revoked in the erasure batch (`account_deleted`); a disabled or expired licence's tokens stop
@@ -1373,7 +1425,8 @@ re-runs the ladder, so a revoked token or a tightened feed stops it within 30 s 
 `/v2/token` grants a scope only when the ladder admits the caller for that repository; anonymous
 callers get anonymous tokens for public repositories only; refusals are 401 for anyone without a
 valid credential, whether the owner exists, is disabled or is private, so the endpoint is no
-oracle. `push`, `delete` and `registry:catalog:*` are refused. With `REGISTRY_TOKEN_KEY` unset,
+oracle. `push` is granted only to a publisher (see "Native OCI push" below); `delete`, `*` and
+`registry:catalog:*` are refused. With `REGISTRY_TOKEN_KEY` unset,
 `/v2/token` is 503 and `/v2/` stays the plain 200; once set, `/v2/` challenges a request without a
 valid pull token (Q1).
 
@@ -1392,6 +1445,141 @@ reads that bypass the Cache API) fails open. A refusal is a native 429.
 **One credential per host.** docker, SwiftPM and netrc hold one credential per registry host, so
 one machine can hold a token for only one owner on `pkg.plrs.im` (Q2, accepted and documented).
 Platform feeds stay public, so they never take the slot.
+
+### Native-client publish (F-22)
+
+**What it is.** Release's write routes on `pkg.plrs.im` (`services/release/packages/native/`):
+`PUT /npm/<owner>/<name>` (`npm publish`, pnpm, Yarn, Bun), `POST /pypi/<owner>/legacy/` (twine's
+legacy upload), `PUT /swift/<owner>/<scope>/<name>/<version>` (`swift package-registry publish`)
+and `PUT /maven/<owner>/…` (Maven and Gradle deploys). Each request is translated into the release
+descriptor `pkey release publish` sends and ingested through F-03's path, so every ingest rule
+(declared deliverable, namespace, ceiling, unique forever, Swift signing, no snapshots) applies
+unchanged. Tests: `test/registryPublish.test.ts` (with golden releases under
+`test/fixtures/registry/native/`), the publish rows of `registry-clients.yml`.
+
+**A publish secret where CI used to need none.** Trusted publishing exists so a repository holds
+no long-lived publish secret; a native client needs a credential it can send. The design keeps
+that property for CI and bounds it everywhere else:
+
+- **In CI, the credential is the 30-minute `pkeyci_`** `pkey auth github-oidc` exchanges for the
+  job's OIDC token (the same principal, publisher policy and `release:publish` scope as
+  `pkey release publish`). Nothing long-lived is stored; the docs and the console say so.
+- **A `pkeyr_` publish token** is the owner's own: owner-bound only (never a licence), header
+  only (never a Godot URL token), narrowed to explicitly named publish ecosystems (npm, PyPI,
+  Swift, Maven, and OCI for F-23's `docker push`; never "every feed", never Godot), and short-lived: 1 to 30 days, 7 by
+  default, against the read token's 365. It is minted only by a platform admin in the console
+  (audited `registry_token.create`, naming "publish"), revocable within the 30-second resolution
+  window like every token, and its plaintext is shown once. Residual: a publish token pasted into
+  a CI secret is a long-lived-ish secret again (at most 30 days); a leak can publish new versions
+  (never replace one) under the owner's namespace until revoked, and every such version names the
+  token on its package record and in the audit.
+- **Never on the platform's own feeds.** The system product's (`polaris-key`) SDK feeds are
+  published only by `publish-sdks.yml`, in lockstep with the server (F-10 owner ruling), because
+  versions are unique forever and one hand-published version would block the pipeline's next
+  publish of it: `mintRegistryToken` refuses a publish token for the system product
+  (`system_feeds_pipeline_only`), the console offers no publish option on the platform scope, and
+  `authorizeRegistryPublish` answers `403` to every native publish to it, whatever the credential
+  (a system-product `pkeyci_` with `release:publish` included).
+- **Everything else is refused before the body is read**: no credential, another owner's, a pull
+  or URL token is the native `401`; a read-only, licence-bound or narrowed-away token, or a CI
+  token without `release:publish`, is `403`. A licence holder can therefore never publish.
+
+**Bytes through the Worker.** A native client sends the package in its request, so unlike the CLI
+path the bytes transit the Worker: each request is capped at 32 MiB (`Content-Length` first, then
+counted), held once in memory, hashed and staged by the Worker itself under
+`staging/<owner>/<session>/` with R2 checking the SHA-256 (no client ever gets a staging
+credential), then promoted through `core/blobs.ts` `promote`. npm's `dist.integrity`/`shasum`,
+twine's `sha256_digest`/`md5_digest` and Maven's checksum sidecars must match the bytes received,
+so a corrupted upload is refused rather than served. The `registryPublish` budget (per token, 600
+a minute, fail closed) bounds storage writes.
+
+**The one place the Worker reads inside a package.** SwiftPM fetches `Package.swift` from the
+registry, and a native publish sends only the archive, so `swiftArchive.ts` reads the manifests
+out of the zip: only the central directory and entries named `Package.swift` /
+`Package@swift-<v>.swift` at the root or in the single top-level directory, at most 32, stored or
+deflated, unencrypted, at most 1 MiB each declared AND inflated (the inflater is cancelled past
+the cap, so a zip bomb costs at most 1 MiB per entry), CRC-checked; ZIP64 and split archives are
+refused. Every other byte of the archive is opaque. The manifests served are the archive's own
+bytes, which SwiftPM checksums (and, signed, carry their signatures), so this departs from the
+F-06 rule "never re-extracted from the archive" for native publishes only, without serving
+anything a client would not find in the archive it verifies. npm, twine and Maven need no read
+inside a package: their metadata arrives as JSON, form fields or a POM (parsed as text, bounded).
+
+**Multi-request versions.** twine and Maven send a version as several requests, and a version
+never gains files after it is published, so its files gather in an upload session
+(`release_native_uploads`, Release's) owned by the uploading token alone: another token's upload
+of the same version is refused while it is open, a staged file is never replaced by other bytes,
+and every refusal is checked per file by a dry run of the version as gathered, so the client is
+told. A session publishes on Maven's `maven-metadata.xml`, ten seconds after twine's last upload
+(held back while any request of the same token on the feed is in flight), or by the cron after
+ten idle minutes; a failure then is recorded on the row and audited (`release.publish.failed`).
+Residual: twine's "published" is eventual (the client is answered before the version exists).
+
+**Host rules unchanged.** The publish routes carry `FEED_PUBLISH_ROUTE`, name `service:
+"release"`, declare exactly one write method each, and are matched from the path before any
+owner loads, like Swift's login; every other write stays `405`. Their answers pass the same
+type allowlist, cookie stripping, sandbox CSP and no-CORS rules. A feed that is off, an unknown
+owner and Distribution off all answer the host's one not-found before any credential is judged.
+
+Review triggers (§9): a publish token longer than 30 days or not owner-bound; any read inside a
+package beyond Swift manifests; a raised native body cap; a write method on the host beyond these
+routes and Swift's login.
+
+### Native OCI push (F-23)
+
+**What it is.** `docker push` (and `podman`, `crane`, `oras`) to an owner's OCI feed: the
+distribution spec's blob upload state machine over R2 multipart
+(`services/release/packages/ociUpload.ts`, adapted from cloudflare/serverless-registry, Apache-2.0)
+and the manifest `PUT` (`ociPush.ts`). The routes are RELEASE's (`FEED_PUSH_ROUTE`, `service:
+"release"`): a manifest pushed under a version tag becomes a package release through Release's
+own package ingest, the same rows, refusals and audit as a ticket publish. Tests:
+`test/registryPush.test.ts`, the workerd lane's push (`test-workerd/registryOci.test.ts`), and the
+`oci-push-*` rows of `registry-clients.yml` (docker, crane, the conformance suite's push
+workflow).
+
+**Who may push.** Only a request bearing an OCI token from `/v2/token` whose `push` claim names the
+repository, and whose subject still resolves, through the 30-second cache, to a publisher of the
+owner (`registryPublisher`): an owner-bound header `pkeyr_` holding `publish` and naming the OCI
+ecosystem (a publish token always names its ecosystems, F-22's mint rule), or a `pkeyci_` holding
+`release:publish`. Never for the system product, whose feeds the deploy pipeline alone publishes. A licence-bound or URL token never
+publishes; another owner's credential never does. `/v2/token` grants `push` only to such a
+publisher and only for a declared package deliverable, so a push never creates a repository
+(rule 5). The push routes check the token before anything else: an unauthorised caller gets the
+same 401 Bearer challenge (`scope="repository:<owner>/<repo>:pull,push"`) for a repository that
+exists and one that does not. A revoked publisher stops within 30 s although its push token lives
+300 s. Budget: `registryOciPush` (per push subject, fail closed).
+
+**Earning a blob ref: a third way.** An upload's hash is known only when it finishes, so its staged
+bytes (under `staging/<owner>/oci-upload-<uuid>/`) cannot be named by it. Core's `landUpload`
+copies them to `blobs/sha256/<hex>` through `putVerified` (R2 itself checks the SHA-256; verify
+before lock holds), and when the key already exists (another tenant's object) earns the ref only
+after confirming THIS upload's bytes hash to it (`verifyStaged`, streamed), so a tenant cannot
+claim another's object by naming its digest; no answer tells whether the object already existed.
+The ref is `oci-push` (possession, ref id the deliverable): it lets the owner's later manifest
+name the object, and it serves nothing on the bytes host (`blobAccess.ts` ignores it as a holder,
+so an untagged upload never falls back to the app's access mode). A cross-repository mount is
+granted only for an object the owner already holds. A manifest may name only objects the owner
+holds, at the size declared.
+
+**Read-after-write.** An object pushed to a repository and not yet in a version is served by
+digest from that repository only, privately (`no-store`), under the feed's own access ladder; it
+never appears in a tag. On a public feed that means a pushed-but-unpublished layer is readable by
+anyone who knows its digest, which is OCI's model (and what the conformance suite requires); the
+publisher chose to push it to a public feed.
+
+**Versions never move; nothing is deleted.** A tag pushed is a version and goes through the
+ingest's unique-forever rule; channel tags (`latest`, `stable`, `beta`, `pr-<n>`, manual channels)
+are refused, so a push can never repoint a moving tag. `DELETE` is 405. Cancelling an upload only
+aborts its multipart upload and removes its own staging objects.
+
+**Abuse bounds.** Each request is bounded by the zone's body limit (100 MB); a body without
+`Content-Length` (docker's chunked layer `PATCH`) is never held whole: R2 needs every stream's
+length, so it is read in pieces of 16 MiB, each appended to the upload as soon as it is full, and
+the isolate holds one piece at a time (a manifest, at most 4 MiB, is the only body read whole). Chunks append only in order (`Content-Range`), the upload state
+is compare-and-swapped on its R2 etag, each blob is held to the feed's per-blob ceiling, a manifest
+to 4 MiB and a tag push's walk to 256 manifests. Abandoned uploads expire with the staging prefix
+(one day) and R2's incomplete-multipart rule. Untagged objects are kept (nothing removes them yet;
+`retainUntaggedDays` is a stored setting, a follow-up for the collector).
 
 ### App-updater feeds (P3-09)
 
@@ -5062,11 +5250,17 @@ than the `app` delivery-access row (it runs whatever the service's enablement); 
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to
 `BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a type is added to
 `REGISTRY_HOST_TYPES`, the PyPI HTML fallback is admitted anywhere but its one flagged route or
-under a looser policy, a registry route answers CORS or a method other than GET, HEAD and
-Swift's `POST …/login`, or `authorizeFeedRead` moves after the cache lookup (F-02); a new registry
+under a looser policy, a registry route answers CORS or a method other than GET, HEAD,
+Swift's `POST …/login`, F-22's four publish writes and F-23's OCI push methods, or
+`authorizeFeedRead` moves after the cache lookup (F-02); a push route that is not Release's, a push
+credential other than an owner-bound `publish` token or a `release:publish` CI token, a push that
+creates a repository or moves a channel tag, or an `oci-push` ref that serves anything beyond its
+repository's digest reads (F-23); a new registry
 principal kind, a registry token accepted in a URL outside Godot, any increase of
 `REGISTRY_TOKEN_TTL_SECONDS` or of the OCI pull token's lifetime, or a credentialed registry
-answer reaching the Cache API (F-21); the bucket-lock duration
+answer reaching the Cache API (F-21); a publish token longer than 30 days, not owner-bound or
+reaching Godot, any read inside a package beyond Swift manifests, or a raised native
+publish body cap (F-22); the bucket-lock duration
 changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the
 domain-separation note in the audit report — the two realms share HMAC key material by default);
