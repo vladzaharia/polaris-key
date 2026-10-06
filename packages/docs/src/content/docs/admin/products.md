@@ -88,9 +88,15 @@ refuse the same list:
 `docs` · `manage` · `api` · `assets` · `login` · `logout` · `callback` · `magic` · `download` ·
 `webhooks` · `well-known` · `media` · `activate` · `avatar`
 
-The link-repo path gets this for free from manifest validation (`reserved_slug` — see
-[Manifest validation codes](/docs/reference/validation-codes/)); manual create checks the same
-list explicitly.
+The admin API's own one-segment actions under `/manage/api/products/` are reserved the same way,
+because a product slugged like one would have its console record shadowed: `kek` · `link-repo` ·
+`slug-check`.
+
+The shape is one rule too: lowercase letters, digits and hyphens, 1–64 characters, starting with a
+letter or digit (`^[a-z0-9][a-z0-9-]{0,63}$`). The manifest validator (so `pkey validate`,
+link-repo and resync), the slug check and manual create all apply the same shape and lists from
+`@polaris-key/manifest`, and refuse with the same codes (`invalid_slug`, `reserved_slug` — see
+[Manifest validation codes](/docs/reference/validation-codes/)).
 
 ### The system product
 
