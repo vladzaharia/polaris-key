@@ -3,7 +3,8 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import { X } from "lucide-react";
 import { type Me } from "../../api.js";
 import { AdminProvider } from "../../context.js";
-import { Spinner, TooltipProvider } from "../../components/ui/index.js";
+import { Spinner } from "../../ui/Spinner.js";
+import { TooltipProvider } from "../../ui/Tooltip.js";
 import { usePlatformVersion, useProduct, useProducts } from "../data/hooks.js";
 import {
   accentOf,

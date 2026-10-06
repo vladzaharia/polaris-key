@@ -1,4 +1,4 @@
-// LX-14a: a per-licence device limit (`licenses.device_limit`, 0078).
+// LX-14a: a per-licence device limit (`licenses.device_limit`, 0079).
 //
 // Precedence: the licence's own limit, else the tier's, else a `deviceLimit` entitlement (a
 // profile, store grant or licence override), else the product default. These tests pin that the

@@ -470,6 +470,7 @@ public object Feature {
     public const val coreErrors: String = "core.errors"
     public const val coreCaps: String = "core.caps"
     public const val coreStore: String = "core.store"
+    public const val coreCopy: String = "core.copy"
     public const val licenseGate: String = "license.gate"
     public const val licenseActivate: String = "license.activate"
     public const val licenseEnroll: String = "license.enroll"
@@ -477,30 +478,37 @@ public object Feature {
     public const val licenseEntitlements: String = "license.entitlements"
     public const val licenseChannels: String = "license.channels"
     public const val licenseReregister: String = "license.reregister"
+    public const val licenseRefusals: String = "license.refusals"
     public const val configResolve: String = "config.resolve"
     public const val configList: String = "config.list"
     public const val configSecret: String = "config.secret"
     public const val configSchema: String = "config.schema"
     public const val configMint: String = "config.mint"
     public const val configMirror: String = "config.mirror"
+    public const val configLocal: String = "config.local"
     public const val devicesFingerprint: String = "devices.fingerprint"
     public const val devicesFacts: String = "devices.facts"
     public const val devicesRegister: String = "devices.register"
     public const val devicesManage: String = "devices.manage"
     public const val devicesReport: String = "devices.report"
+    public const val telemetryUpdates: String = "telemetry.updates"
     public const val devicesAttest: String = "devices.attest"
     public const val identityOidc: String = "identity.oidc"
     public const val identityDevicecode: String = "identity.devicecode"
     public const val releaseChangelog: String = "release.changelog"
     public const val releaseDownload: String = "release.download"
     public const val releaseRecord: String = "release.record"
+    public const val releaseFetch: String = "release.fetch"
+    public const val releaseDistribution: String = "release.distribution"
     public const val updateCheck: String = "update.check"
     public const val updateFeed: String = "update.feed"
+    public const val updateFeeds: String = "update.feeds"
     public const val updateDecide: String = "update.decide"
     public const val updateContent: String = "update.content"
     public const val updateDriver: String = "update.driver"
     public const val updateBootguard: String = "update.bootguard"
     public const val outletDetect: String = "outlet.detect"
+    public const val crashTags: String = "crash.tags"
     public const val packsRecord: String = "packs.record"
     public const val packsRevoke: String = "packs.revoke"
     public const val packsDelegation: String = "packs.delegation"
@@ -526,7 +534,9 @@ public object Feature {
     public const val packsTransportMsix: String = "packs.transport.msix"
     public const val packsTransportFlatpak: String = "packs.transport.flatpak"
     public const val uiStages: String = "ui.stages"
+    public const val uiBoot: String = "ui.boot"
     public const val uiKit: String = "ui.kit"
+    public const val uiCli: String = "ui.cli"
     public const val commerceReceipt: String = "commerce.receipt"
 }
 
@@ -542,6 +552,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "core.errors",
     "core.caps",
     "core.store",
+    "core.copy",
     "license.gate",
     "license.activate",
     "license.enroll",
@@ -549,30 +560,37 @@ public val FEATURE_VALUES: List<String> = listOf(
     "license.entitlements",
     "license.channels",
     "license.reregister",
+    "license.refusals",
     "config.resolve",
     "config.list",
     "config.secret",
     "config.schema",
     "config.mint",
     "config.mirror",
+    "config.local",
     "devices.fingerprint",
     "devices.facts",
     "devices.register",
     "devices.manage",
     "devices.report",
+    "telemetry.updates",
     "devices.attest",
     "identity.oidc",
     "identity.devicecode",
     "release.changelog",
     "release.download",
     "release.record",
+    "release.fetch",
+    "release.distribution",
     "update.check",
     "update.feed",
+    "update.feeds",
     "update.decide",
     "update.content",
     "update.driver",
     "update.bootguard",
     "outlet.detect",
+    "crash.tags",
     "packs.record",
     "packs.revoke",
     "packs.delegation",
@@ -598,7 +616,9 @@ public val FEATURE_VALUES: List<String> = listOf(
     "packs.transport.msix",
     "packs.transport.flatpak",
     "ui.stages",
+    "ui.boot",
     "ui.kit",
+    "ui.cli",
     "commerce.receipt",
 )
 
@@ -1088,6 +1108,36 @@ public val DATA_ONLY_EXTENSION_VALUES: List<String> = listOf(
     "otf",
 )
 
+/** Every gate status a licence evaluates to (`LicenseStatus` in `@polaris-key/protocol/license`, `client-core`'s gate). A tools/gen-sdk-constants.test.ts case keeps them equal; `copy.en.json`'s `gate` keys equal it (plans/SP-00.md §4). Every value, in source order. */
+public val LICENSE_STATUS_VALUES: List<String> = listOf(
+    "ok",
+    "grace",
+    "expired",
+    "revoked",
+    "needs-activation",
+    "version-too-old",
+    "version-too-new",
+    "channel-not-entitled",
+    "not-applicable",
+)
+
+/** The typed activation results of `license.activate` and `license.enroll` (SDK-PARITY-PASS §3.1), in the transcript (kebab) form; each SDK spells its own kinds in its casing. `copy.en.json`'s `activation` keys equal it (plans/SP-00.md §4). Every value, in source order. */
+public val ACTIVATION_RESULT_VALUES: List<String> = listOf(
+    "ok",
+    "device-limit",
+    "fingerprint-required",
+    "hardware-mismatch",
+    "enroll-claimed",
+    "license-disabled",
+    "license-expired",
+    "attestation-required",
+    "rate-limited",
+    "unauthorized",
+    "enroll-disabled",
+    "refused",
+    "error",
+)
+
 /** The `X-PKey-*` request header names (wire contract v3 §5). */
 public object HeaderName {
     public const val arch: String = "X-PKey-Arch"
@@ -1301,6 +1351,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "core.errors" to CapabilityRow("implemented", "core", listOf()),
     "core.caps" to CapabilityRow("implemented", "core", listOf()),
     "core.store" to CapabilityRow("implemented", "core", listOf(CapabilityNa("jvm", "dependency"))),
+    "core.copy" to CapabilityRow("planned", "sdk", listOf()),
     "license.gate" to CapabilityRow("implemented", "license", listOf()),
     "license.activate" to CapabilityRow("implemented", "license", listOf()),
     "license.enroll" to CapabilityRow("implemented", "license", listOf()),
@@ -1308,30 +1359,37 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "license.entitlements" to CapabilityRow("implemented", "license", listOf()),
     "license.channels" to CapabilityRow("implemented", "license", listOf()),
     "license.reregister" to CapabilityRow("implemented", "license", listOf()),
+    "license.refusals" to CapabilityRow("planned", "license", listOf()),
     "config.resolve" to CapabilityRow("implemented", "config", listOf()),
     "config.list" to CapabilityRow("implemented", "config", listOf()),
     "config.secret" to CapabilityRow("implemented", "config", listOf()),
     "config.schema" to CapabilityRow("implemented", "config", listOf()),
     "config.mint" to CapabilityRow("implemented", "config", listOf()),
     "config.mirror" to CapabilityRow("implemented", "config", listOf()),
+    "config.local" to CapabilityRow("planned", "sdk", listOf()),
     "devices.fingerprint" to CapabilityRow("implemented", "core", listOf()),
     "devices.facts" to CapabilityRow("implemented", "core", listOf()),
     "devices.register" to CapabilityRow("implemented", "core", listOf()),
     "devices.manage" to CapabilityRow("implemented", "core", listOf()),
     "devices.report" to CapabilityRow("implemented", "core", listOf()),
+    "telemetry.updates" to CapabilityRow("planned", "core", listOf()),
     "devices.attest" to CapabilityRow("planned", "core", listOf(CapabilityNa("jvm", "runtime"))),
     "identity.oidc" to CapabilityRow("planned", "identity", listOf()),
     "identity.devicecode" to CapabilityRow("implemented", "identity", listOf()),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
     "release.record" to CapabilityRow("implemented", "release", listOf()),
+    "release.fetch" to CapabilityRow("planned", "distribution", listOf()),
+    "release.distribution" to CapabilityRow("planned", "distribution", listOf()),
     "update.check" to CapabilityRow("implemented", "update", listOf()),
     "update.feed" to CapabilityRow("implemented", "update", listOf()),
+    "update.feeds" to CapabilityRow("planned", "update", listOf()),
     "update.decide" to CapabilityRow("implemented", "update", listOf()),
     "update.content" to CapabilityRow("implemented", "update", listOf()),
     "update.driver" to CapabilityRow("implemented", "update", listOf()),
     "update.bootguard" to CapabilityRow("implemented", "update", listOf()),
     "outlet.detect" to CapabilityRow("implemented", "update", listOf()),
+    "crash.tags" to CapabilityRow("planned", "sdk", listOf()),
     "packs.record" to CapabilityRow("implemented", "release", listOf()),
     "packs.revoke" to CapabilityRow("implemented", "release", listOf()),
     "packs.delegation" to CapabilityRow("implemented", "release", listOf()),
@@ -1357,9 +1415,11 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "packs.transport.msix" to CapabilityRow("na", "distribution", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "packs.transport.flatpak" to CapabilityRow("na", "distribution", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "ui.stages" to CapabilityRow("implemented", "sdk", listOf()),
+    "ui.boot" to CapabilityRow("planned", "sdk", listOf()),
     "ui.kit" to CapabilityRow("implemented", "sdk", listOf()),
+    "ui.cli" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "commerce.receipt" to CapabilityRow("planned", "license", listOf()),
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "259e65477d0567e5e08973938631a16752f9d5f5702179df1be3213981f83711"
+public const val CAPABILITY_DIGEST: String = "a0e79d75a1ba7bc2b06320c5bce910fe89103b886802920b119b81fe2e789516"

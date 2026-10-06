@@ -288,7 +288,8 @@ function CellBody({
                 <li
                   key={r.channel}
                   data-rollout={`${r.outletId}:${r.channel}`}
-                  className="space-y-2 rounded-md border border-border p-3"
+                  // A card of its own (rounded-lg): its rows end at its padding, not the section's.
+                  className="space-y-2 rounded-lg border border-border p-3"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-sm font-bold text-fg-strong">

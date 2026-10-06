@@ -16,6 +16,7 @@ const fns = vi.hoisted(() => ({
   updateSettings: vi.fn(),
   portalSettings: vi.fn(),
   activity: vi.fn(),
+  productKeys: vi.fn(),
 }));
 
 vi.mock("../src/api.js", async () => {
@@ -81,6 +82,20 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
   };
 }
 
+function signingKey(kid: string, status: string, publicKey: string) {
+  return {
+    kid,
+    status,
+    alg: "EdDSA",
+    publicKey,
+    createdAt: NOW - 100,
+    activateAfter: null,
+    activatedAt: status === "active" ? NOW - 50 : null,
+    retiredAt: null,
+    revokedAt: null,
+  };
+}
+
 const mount = () => renderAt("#/p/djdl", <OverviewPage slug="djdl" />);
 
 beforeEach(() => {
@@ -128,6 +143,13 @@ beforeEach(() => {
     settings: { portalEnabled: true, oidcEnabled: true, magicEnabled: false },
   });
   fns.activity.mockResolvedValue({ items: [], nextCursor: null });
+  fns.productKeys.mockResolvedValue({
+    keys: [
+      signingKey("djdl-a", "active", "PUBKEY-A"),
+      signingKey("djdl-old", "retired", "PUBKEY-OLD"),
+    ],
+    now: NOW,
+  });
 });
 afterEach(cleanup);
 
@@ -243,8 +265,7 @@ describe("Core → Overview", () => {
     ).toBeTruthy();
   });
 
-  it("shows the signing key in gold with copy, and a quick start using the latest release (OVR-6)", async () => {
-    const user = userEvent.setup();
+  it("shows the signing key in gold with copy, and a quick start that installs from pkg.plrs.im (UX-59)", async () => {
     fns.product.mockResolvedValue({
       product: product({
         services: enablement(["license", "config", "release"]),
@@ -255,13 +276,64 @@ describe("Core → Overview", () => {
     expect(
       screen.getByRole("button", { name: /Copy signing key/ }),
     ).toBeTruthy();
-    await waitFor(() =>
-      expect(document.body.textContent).toContain('version: "2.4.0"'),
+    const text = () => document.body.textContent ?? "";
+    // The registry line comes before the install, never a bare npm install against npmjs.
+    const registry =
+      "@polaris-key:registry=https://pkg.plrs.im/npm/polaris-key/";
+    expect(text()).toContain(registry);
+    expect(text()).toContain("npm install @polaris-key/node");
+    expect(text().indexOf(registry)).toBeLessThan(
+      text().indexOf("npm install @polaris-key/node"),
     );
-    await user.click(screen.getByRole("radio", { name: "Swift" }));
-    expect(document.body.textContent).toContain(
-      'pinnedKeys: ["djdl-a": "PUBKEY-A"]',
+    // The app's own version is a placeholder, never the latest release's (2.4.0).
+    expect(text()).toContain(
+      `version: "1.0.0", // your app's version, not Polaris Key's`,
     );
+    expect(text()).not.toContain('version: "2.4.0"');
+    expect(text()).toContain('"djdl-a": "PUBKEY-A"');
+    expect(text()).not.toContain("PUBKEY-OLD");
+  });
+
+  it("pins the active and the staged key, and offers every SDK (UX-59)", async () => {
+    const user = userEvent.setup();
+    fns.productKeys.mockResolvedValue({
+      keys: [
+        signingKey("djdl-b", "staged", "PUBKEY-B"),
+        signingKey("djdl-a", "active", "PUBKEY-A"),
+      ],
+      now: NOW,
+    });
+    mount();
+    expect(
+      await screen.findByText(/Pins the active key and the key staged/),
+    ).toBeTruthy();
+    const text = () => document.body.textContent ?? "";
+    expect(text()).toContain('"djdl-b": "PUBKEY-B"');
+    const pick = async (label: string) => {
+      await user.click(
+        screen.getByRole("combobox", { name: "SDK quick start" }),
+      );
+      await user.click(await screen.findByRole("option", { name: label }));
+    };
+    await pick("Swift");
+    expect(text()).toContain("import PolarisKey");
+    expect(text()).toContain("swift/polaris-key");
+    await pick("React and web");
+    expect(text()).toContain("npm install @polaris-key/react");
+    expect(text()).toContain("<PolarisKeyProvider");
+    await pick("Python");
+    expect(text()).toContain("https://pkg.plrs.im/pypi/polaris-key/simple/");
+    expect(text()).toContain("from polaris_key import PolarisKeyClient");
+    // pip installs the package alone: its description says to install the dependencies first.
+    expect(text()).toContain("dependencies from your usual index");
+    await pick("Kotlin and Android");
+    expect(text()).toContain("https://pkg.plrs.im/maven/polaris-key/");
+    expect(text()).toContain('"djdl-a" to "PUBKEY-A"');
+    await pick("Godot");
+    expect(text()).toContain(
+      '[gd_resource type="Resource" script_class="PKeyOptions" load_steps=2 format=3]',
+    );
+    expect(text()).toContain("https://pkg.plrs.im/godot/polaris-key/");
   });
 
   it("shows an error state with Retry when the product cannot load", async () => {

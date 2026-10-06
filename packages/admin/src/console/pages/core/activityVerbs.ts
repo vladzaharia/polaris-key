@@ -7,6 +7,8 @@
 const VERBS: Record<string, string> = {
   "product.create": "created the product",
   "product.link": "linked the product to a repository",
+  "product.link.refused":
+    "had a repository link refused while applying (put back to manual)",
   "product.update": "updated product settings",
   "product.delete": "deleted the product",
   "product.services.update": "changed enabled services",
@@ -30,6 +32,7 @@ const VERBS: Record<string, string> = {
   "license.overrides": "changed config overrides of license",
   "license.enable": "enabled license",
   "license.disable": "disabled license",
+  "license.delete": "deleted license",
   "license.enroll": "enrolled a keyless license",
   "device.deauthorize": "deauthorized device",
   "device.fingerprint.reset": "reset the hardware binding of device",

@@ -31,8 +31,22 @@ under the meter ("set on this license", "from Pro", "product default"): see
 **Email** and **Id** columns are hidden at first; **Columns** shows them, and **Export CSV**
 downloads what the filters show.
 
-Select rows to **Disable**, **Enable** or **Export** them together. Disable and Enable ask first
-and list the effect.
+Select rows to **Disable**, **Enable**, **Export** or **Delete** them together. Disable and Enable
+ask first and list the effect. **Delete…** deletes the selected licenses that may be deleted (see
+[Delete a license](#delete-a-license)), names the ones it skips and why, and asks you to type
+`delete <n> licenses`. It is unavailable, with the reason, when none of the selection can be
+deleted.
+
+### Clean up duplicates
+
+**Clean up duplicates…** (beside **Create license**) lists the sign-in licenses whose account also
+holds another usable license for the product. The account keeps one usable license: one that
+didn't come from a sign-in if it has one, otherwise its oldest. A license is never listed only
+because it is disabled; deleting a disabled license is a decision for its own record.
+
+Each row names the license the account keeps. Candidates that can't be deleted (for example,
+because a store purchase is recorded on them) are listed separately with the reason. Deleting the
+rest asks you to type `delete <n> licenses`.
 
 ## Creating a license
 
@@ -89,7 +103,7 @@ The header shows the holder, the state, the expiry ("Expires 30 Sep 2027 (in 361
 email, the license id (with a copy button), how the holder signs in, and who changed the license
 last and when. The primary action is **Mint key** (or **Enable license** while it is disabled);
 **More actions** holds **Edit holder…**, **Mint offline bundle…**, **View in activity** and, last,
-**Disable license…**.
+**Disable license…** and **Delete license…**.
 
 The record has four tabs, and each is part of the URL (`…/licenses/<id>/keys`):
 **Overview**, **Keys**, **Devices** and **Config overrides**.
@@ -151,6 +165,33 @@ every one of its devices' cached bearer tokens from the hot KV store immediately
 waiting for the next request to notice the license is unusable: a disabled license stops
 authenticating right away, not at the next check-in. Keys, devices and terms are kept;
 **Enable license** restores access.
+
+### Delete a license
+
+**Delete license…** (in **More actions**) removes the license for good. You can delete a license
+that is **disabled**, or one that a **sign-in** or an **auto-issue** created. An active license
+you issued yourself must be disabled first. A license with **store purchases** (a store grant or
+a recorded purchase, whatever its state) can never be deleted: disable it instead. Nor can a
+disabled auto-issued license still bound to its machine: it is what stops that machine enrolling
+for another free license. When a license can't be deleted, the menu item stays visible with the
+reason.
+
+Deleting a **disabled sign-in license** lifts the refusal that disabling it expressed: if its
+holder signs in again, they get a new license. The confirmation says so.
+
+The confirmation asks you to type `delete <license id>`. Deleting removes, in one step, the
+license, its keys, its devices (their bearer tokens are purged at once, so they stop
+authenticating), their facts and hardware bindings, the license's registry tokens, its purchase
+binding and the customer portal's links to it. The activity log keeps the license's history and
+records a **license deleted** entry with its tier, how it was created, the account's pairwise
+subject and the device count.
+
+The API is `DELETE /manage/api/products/<slug>/license/licenses/<id>` with
+`{ "confirm": "delete <id>" }`; a refusal is `409 license_not_deletable` with every reason and
+`"suggestion": "disable"`. Bulk deletion is `POST …/license/deletions` with
+`{ "ids": [...], "confirm": "delete <n> licenses" }` (at most 100 per request; the console sends
+a larger selection in chunks), and the cleanup list is
+`GET …/license/deletions/candidates`.
 
 ## Keys
 

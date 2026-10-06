@@ -1,8 +1,9 @@
 /**
  * License → Licenses (ADMIN.md §6.5.1, T2): facet tiles over the computed state (LIC-1), a
  * client-mode table (search over name, email and id; status, tier, channel and sign-in facets;
- * CSV; virtualized above 200 rows; LIC-7), bulk Disable / Enable / Export, and the stepped Create
- * license dialog. Every filter is in the URL.
+ * CSV; virtualized above 200 rows; LIC-7), bulk Disable / Enable / Export / Delete, the "Clean up
+ * duplicates" helper (`LicenseDelete.tsx`), and the stepped Create license dialog. Every filter is
+ * in the URL.
  */
 
 import * as React from "react";
@@ -34,6 +35,12 @@ import {
 } from "../../../ui/data-table/index.js";
 import { CreateLicenseDialog } from "./CreateLicenseDialog.js";
 import {
+  BulkDeleteDialog,
+  CleanupDialog,
+  deletable,
+  deletionBlockedReason,
+} from "./LicenseDelete.js";
+import {
   LICENSE_STATE_LABELS,
   LicenseStatus,
   licenseState,
@@ -54,6 +61,10 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug).data;
   const [state, setState] = useTableUrlState("licenses", { facets: FACETS });
   const [createOpen, setCreateOpen] = React.useState(false);
+  const [cleanupOpen, setCleanupOpen] = React.useState(false);
+  const [bulkDelete, setBulkDelete] = React.useState<LicenseSummary[] | null>(
+    null,
+  );
   const [bulk, setBulk] = React.useState<{
     enable: boolean;
     rows: LicenseSummary[];
@@ -321,6 +332,12 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
               Create license
             </Button>
           }
+          secondaryActions={[
+            {
+              label: "Clean up duplicates…",
+              onSelect: () => setCleanupOpen(true),
+            },
+          ]}
           refetching={licensesQ.isFetching && !licensesQ.isPending}
         />
       }
@@ -369,6 +386,17 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
               onSelect: (rows) => setBulk({ enable: true, rows }),
             },
             { label: "Export", onSelect: (rows) => exportRows(rows) },
+            {
+              label: "Delete…",
+              tone: "danger",
+              onSelect: (rows) => setBulkDelete(rows),
+              disabledReason: (rows) =>
+                rows.some(deletable)
+                  ? undefined
+                  : rows.length === 1
+                    ? deletionBlockedReason(rows[0]!.deletion)
+                    : "None of the selected licenses can be deleted: disable them first, and a license with store purchases is never deleted.",
+            },
           ],
         }}
         loading={licensesQ.isPending}
@@ -395,6 +423,17 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         slug={slug}
         open={createOpen}
         onOpenChange={setCreateOpen}
+      />
+
+      <BulkDeleteDialog
+        slug={slug}
+        rows={bulkDelete}
+        onOpenChange={(o) => !o && setBulkDelete(null)}
+      />
+      <CleanupDialog
+        slug={slug}
+        open={cleanupOpen}
+        onOpenChange={setCleanupOpen}
       />
 
       <ConfirmDialog
