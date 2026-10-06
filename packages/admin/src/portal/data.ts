@@ -446,8 +446,25 @@ export function useUpdateProfile() {
           : me,
       );
     },
+    onError: (err) => {
+      // The profile changed under the editor (a method removed, an upload collected): re-read it
+      // so the chips and tiles offer what is there now.
+      if (
+        err instanceof PortalApiError &&
+        err.reason &&
+        STALE_PROFILE_REASONS.has(err.reason)
+      )
+        void qc.invalidateQueries({ queryKey: portalKeys.profile });
+    },
   });
 }
+
+const STALE_PROFILE_REASONS = new Set([
+  "unknown_source",
+  "no_name",
+  "no_picture",
+  "unknown_upload",
+]);
 
 /** Upload a picture: it is kept unused (for a day) until `useUpdateProfile` picks it. */
 export function useUploadPicture() {

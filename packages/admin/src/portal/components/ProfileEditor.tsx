@@ -119,7 +119,6 @@ export function ProfileEditor({
       title: providerName(o.provider) ?? o.label ?? "",
       note: o.label,
       picture: o.picture.url,
-      provider: o.provider,
     })),
     ...(uploadTile
       ? [
@@ -128,7 +127,6 @@ export function ProfileEditor({
             title: C["profile.picture.yourUpload"],
             note: C["profile.picture.yourUploadNote"],
             picture: uploadTile.url,
-            provider: null,
           },
         ]
       : []),
@@ -139,7 +137,6 @@ export function ProfileEditor({
             title: C["profile.picture.current"],
             note: C["profile.picture.currentNote"],
             picture: profile.picture?.url ?? null,
-            provider: null,
           },
         ]
       : []),
@@ -148,7 +145,6 @@ export function ProfileEditor({
       title: C["profile.picture.initials"],
       note: C["profile.picture.initialsNote"],
       picture: null,
-      provider: null,
     },
   ];
 
@@ -477,7 +473,6 @@ interface TileSpec {
   title: string;
   note: string | null;
   picture: string | null;
-  provider: string | null;
 }
 
 /**
