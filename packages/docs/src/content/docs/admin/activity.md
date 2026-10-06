@@ -28,7 +28,7 @@ Grouped by what triggers them:
 | Tiers                     | `tier.create`, `tier.update`, `tier.delete`                                                                         |
 | Release                   | `release.resync`, `release.channel.floor`                                                                           |
 | Update                    | `update.settings.update`                                                                                            |
-| Identity                  | `portal.settings.update`                                                                                            |
+| Identity                  | `portal.settings.update`, `storefront.polarisKey.update`                                                            |
 | Offline bundles           | `bundle.minted` — see [Offline bundles](/docs/admin/bundles/#nothing-is-stored-but-the-audit-row)                   |
 | Access                    | `access.denied`                                                                                                     |
 

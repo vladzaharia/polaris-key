@@ -13,6 +13,13 @@ import type {
 } from "../../../core/data.js";
 import { parseServices } from "../../../core/services.js";
 import {
+  resolveListing,
+  type GroupLabels,
+  type ListingAudience,
+  type ListingState,
+  type ObtainPathKind,
+} from "../../../core/storefront/polarisKeyListing.js";
+import {
   attachLicenseAccount,
   licenseAccountId,
   subjectFor,
@@ -53,6 +60,13 @@ export interface PortalProductSettingsRow {
   claim_by_key: number;
   /** PX-W10 (G24): the product may be offered on Discover. Default 1 (migrations/0071). */
   discover_enabled: number;
+  /** PS-02: the Polaris Key listing state (migrations/0079). Read through `resolveListing`. */
+  store_listed: ListingState;
+  store_audience: ListingAudience;
+  /** A JSON array of obtain-path kinds; NULL = every kind. */
+  store_offer_paths_json: string | null;
+  /** A JSON object `{<group>: <label>}`; NULL = no labels. */
+  store_group_labels_json: string | null;
   branding_json: string | null;
   created_at: number;
   modified_at: number;
@@ -68,6 +82,12 @@ export interface PortalProductSettingsView {
   keyReissueEnabled: boolean;
   claimByKey: boolean;
   discoverEnabled: boolean;
+  /** PS-02: the effective listing state (`discoverEnabled: false` reads `unlisted`). */
+  storeListed: ListingState;
+  storeAudience: ListingAudience;
+  /** `null` = every obtain-path kind. */
+  storeOfferPaths: readonly ObtainPathKind[] | null;
+  storeGroupLabels: GroupLabels;
   branding: unknown;
   modifiedAt: number;
 }
@@ -532,6 +552,11 @@ export async function getPortalProductSettings(
       claim_by_key: 0,
       // Discover defaults ON, as the migration's column default does (migrations/0071).
       discover_enabled: 1,
+      // The Polaris Key listing defaults, as the migration's column defaults (migrations/0079).
+      store_listed: "auto",
+      store_audience: "eligible",
+      store_offer_paths_json: null,
+      store_group_labels_json: null,
       branding_json: null,
       created_at: 0,
       modified_at: 0,
@@ -553,9 +578,79 @@ export function portalProductSettingsView(
       row.auto_link_enabled == null ? null : row.auto_link_enabled === 1,
     keyReissueEnabled: row.key_reissue_enabled === 1,
     claimByKey: row.claim_by_key === 1,
-    discoverEnabled: row.discover_enabled === 1,
+    ...listingView(row),
     branding: parseJsonUnknown(row.branding_json),
     modifiedAt: row.modified_at,
+  };
+}
+
+function listingView(
+  row: PortalProductSettingsRow,
+): Pick<
+  PortalProductSettingsView,
+  | "discoverEnabled"
+  | "storeListed"
+  | "storeAudience"
+  | "storeOfferPaths"
+  | "storeGroupLabels"
+> {
+  const l = resolveListing(row);
+  return {
+    // Derived from the resolved state, so a deploy-window row (`discover_enabled = 1` written by
+    // a pre-0079 Worker over `store_listed = 'unlisted'`) never reads "Discover on" while hidden.
+    discoverEnabled: l.listed !== "unlisted",
+    storeListed: l.listed,
+    storeAudience: l.audience,
+    storeOfferPaths: l.offerPathsAll ? null : l.offerPaths,
+    storeGroupLabels: l.groupLabels,
+  };
+}
+
+/**
+ * The listing columns after a patch, with `discover_enabled` kept in step (PS-02 dual-write):
+ * a listing state sets `discover_enabled` to 0 exactly when `unlisted`; the Discover switch alone
+ * turned off makes the product `unlisted`, and turned back on returns an `unlisted` product to
+ * `auto` (any other state is kept).
+ */
+function nextListingColumns(
+  current: PortalProductSettingsRow,
+  patch: {
+    discoverEnabled?: boolean;
+    storeListed?: ListingState;
+    storeAudience?: ListingAudience;
+    storeOfferPaths?: readonly ObtainPathKind[] | null;
+    storeGroupLabels?: GroupLabels;
+  },
+): Pick<
+  PortalProductSettingsRow,
+  | "discover_enabled"
+  | "store_listed"
+  | "store_audience"
+  | "store_offer_paths_json"
+  | "store_group_labels_json"
+> {
+  // The effective state today (dual-read), so a pre-0079 Worker's Discover-off is carried.
+  let listed: ListingState = resolveListing(current).listed;
+  if (patch.storeListed !== undefined) listed = patch.storeListed;
+  else if (patch.discoverEnabled === false) listed = "unlisted";
+  else if (patch.discoverEnabled === true && listed === "unlisted")
+    listed = "auto";
+  return {
+    store_listed: listed,
+    discover_enabled: listed === "unlisted" ? 0 : 1,
+    store_audience: patch.storeAudience ?? current.store_audience,
+    store_offer_paths_json:
+      patch.storeOfferPaths === undefined
+        ? current.store_offer_paths_json
+        : patch.storeOfferPaths === null
+          ? null
+          : JSON.stringify(patch.storeOfferPaths),
+    store_group_labels_json:
+      patch.storeGroupLabels === undefined
+        ? current.store_group_labels_json
+        : Object.keys(patch.storeGroupLabels).length === 0
+          ? null
+          : JSON.stringify(patch.storeGroupLabels),
   };
 }
 
@@ -573,11 +668,21 @@ export async function upsertPortalProductSettings(
     keyReissueEnabled: boolean;
     claimByKey: boolean;
     discoverEnabled: boolean;
+    /**
+     * PS-02. Writing the listing state keeps `discover_enabled` in step (0 exactly when
+     * `unlisted`), so a pre-0079 Worker still reading it agrees. It wins over `discoverEnabled`.
+     */
+    storeListed: ListingState;
+    storeAudience: ListingAudience;
+    /** `null` restores "every kind". */
+    storeOfferPaths: readonly ObtainPathKind[] | null;
+    storeGroupLabels: GroupLabels;
     branding: unknown;
   }>,
   now: number,
 ): Promise<PortalProductSettingsRow> {
   const current = await getPortalProductSettings(db, product);
+  const listing = nextListingColumns(current, patch);
   const next = {
     portal_enabled:
       patch.portalEnabled === undefined
@@ -629,12 +734,7 @@ export async function upsertPortalProductSettings(
         : patch.claimByKey
           ? 1
           : 0,
-    discover_enabled:
-      patch.discoverEnabled === undefined
-        ? current.discover_enabled
-        : patch.discoverEnabled
-          ? 1
-          : 0,
+    ...listing,
     branding_json:
       patch.branding === undefined
         ? current.branding_json
@@ -646,9 +746,10 @@ export async function upsertPortalProductSettings(
     `INSERT INTO portal_product_settings
        (product, portal_enabled, oidc_enabled, magic_enabled,
         license_key_claim_enabled, releases_enabled, auto_link_enabled,
-        key_reissue_enabled, claim_by_key, discover_enabled, branding_json, created_at,
+        key_reissue_enabled, claim_by_key, discover_enabled, store_listed, store_audience,
+        store_offer_paths_json, store_group_labels_json, branding_json, created_at,
         modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(product) DO UPDATE SET
        portal_enabled = excluded.portal_enabled,
        oidc_enabled = excluded.oidc_enabled,
@@ -659,6 +760,10 @@ export async function upsertPortalProductSettings(
        key_reissue_enabled = excluded.key_reissue_enabled,
        claim_by_key = excluded.claim_by_key,
        discover_enabled = excluded.discover_enabled,
+       store_listed = excluded.store_listed,
+       store_audience = excluded.store_audience,
+       store_offer_paths_json = excluded.store_offer_paths_json,
+       store_group_labels_json = excluded.store_group_labels_json,
        branding_json = excluded.branding_json,
        modified_at = excluded.modified_at`,
     product,
@@ -671,6 +776,10 @@ export async function upsertPortalProductSettings(
     next.key_reissue_enabled,
     next.claim_by_key,
     next.discover_enabled,
+    next.store_listed,
+    next.store_audience,
+    next.store_offer_paths_json,
+    next.store_group_labels_json,
     next.branding_json,
     current.created_at || now,
     now,
@@ -1184,7 +1293,8 @@ export async function getPlatformIdentity(
 
 /**
  * The products Discover may consider for any account (PX-W10, G24), before the policy runs: live,
- * portal on, Discover on, and authenticating against the PLATFORM issuer with auto-linking on.
+ * portal on, Discover on and not `unlisted` (PS-02: either column hides it until PS-11 retires
+ * `discover_enabled`), and authenticating against the PLATFORM issuer with auto-linking on.
  * The last two are exactly `syncAccountLicenseLinks`'s subject predicates, for the same reasons
  * (R5-01/R5-02): a licence keyed by the account's platform subject is only meaningful, and is only
  * linked back into this account, on a product whose own sign-in uses that issuer.
@@ -1202,6 +1312,7 @@ export async function listDiscoverCandidates(
       WHERE COALESCE(p.status, 'active') = 'active'
         AND COALESCE(s.portal_enabled, 1) = 1
         AND COALESCE(s.discover_enabled, 1) = 1
+        AND COALESCE(s.store_listed, 'auto') <> 'unlisted'
         AND COALESCE(o.provider, 'platform') = 'platform'
         AND ${AUTO_LINK_ENABLED_SQL}
         AND (? IS NULL OR p.slug = ?)
