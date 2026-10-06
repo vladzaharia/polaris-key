@@ -111,7 +111,7 @@ The note proposed an operator-reviewed preserve step with a 30-day default. The 
 - [x] After apply every declared field equals the manifest and every undeclared console row has `source = 'console'` (test).
 - [x] The dry-run report is stored and readable after apply (test).
 - [x] A second apply is a no-op (test).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header. (Scoped lead gate: steps 1–9 and 11–25 green; step 10's one red test is `recordDeploy`'s migration-name check on the `00XX` placeholder, green once the lead numbers the migration.)
 
 ## Verify
 
