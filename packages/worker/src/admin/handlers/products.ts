@@ -69,9 +69,11 @@ import {
   generateEd25519,
   open,
   seal,
+  type LegacyKey,
   type Sealed,
 } from "../../keyvault.js";
 import { linkRepo, MAX_MANIFEST_BYTES } from "../../services/release/sync.js";
+import { SIGNIN_ENV } from "../../services/identity/providers/config.js";
 import { checkSlug, prepareCreate } from "../../services/release/linkRepo.js";
 import { manifestIngestFor } from "../../core/registry.js";
 import { SERVICES } from "../../mount.js";
@@ -794,6 +796,63 @@ function progressOf(
   return { remaining, unopenable };
 }
 
+/**
+ * The Worker secrets that hold a sealed envelope rather than a raw value: the login card's
+ * provider secrets (I-06). The sweep cannot re-seal them (a Worker secret is write-only from
+ * here), so they are reported by name next to the legacy key: each must be re-sealed with
+ * `pnpm --filter @polaris-key/worker signin:seal` and set again BEFORE `PLATFORM_KEK` goes, or
+ * that provider silently drops off the login card (`resolveSignInClient` reads an unopenable
+ * blob as "not configured"). Only the envelope's kid is read; nothing is opened.
+ */
+const SEALED_WORKER_SECRETS: readonly string[] = Object.values(SIGNIN_ENV).map(
+  (spec) => spec.sealed,
+);
+
+/**
+ * The legacy-key progress, present only while `PLATFORM_KEK` sits in a `PLATFORM_KEK_KEYS` ring
+ * (`LegacyKey`). `remaining` is the D1 values still sealed under the legacy kid — the sweep's
+ * job, done when it reaches 0. `workerSecrets` are the sealed Worker secrets still under it —
+ * the operator's job. `safeToDelete` is the gate for `wrangler secret delete PLATFORM_KEK`: both
+ * empty, or the legacy key is a redundant copy of a `PLATFORM_KEK_KEYS` entry anyway.
+ */
+function legacyProgress(
+  env: Env,
+  legacy: LegacyKey | undefined,
+  counts: KekCounts,
+):
+  | {
+      legacy: LegacyKey & {
+        remaining: number;
+        workerSecrets: string[];
+        safeToDelete: boolean;
+      };
+    }
+  | Record<string, never> {
+  if (!legacy) return {};
+  let remaining = 0;
+  // An own-property read: a legacy kid such as `toString` must not pick up an inherited member.
+  for (const perKid of Object.values(counts))
+    if (Object.hasOwn(perKid, legacy.kid)) remaining += perKid[legacy.kid]!;
+  const workerSecrets = SEALED_WORKER_SECRETS.filter((name) => {
+    const value = env[name];
+    // Trimmed as `providers/config.ts` reads it: a blob piped into `wrangler secret put` keeps
+    // the script's trailing newline.
+    return (
+      envelopeKekId(typeof value === "string" ? value.trim() : value) ===
+      legacy.kid
+    );
+  });
+  return {
+    legacy: {
+      ...legacy,
+      remaining,
+      workerSecrets,
+      safeToDelete:
+        !legacy.openOnly || (remaining === 0 && workerSecrets.length === 0),
+    },
+  };
+}
+
 interface ResealFailure {
   table: string;
   product: string;
@@ -1003,8 +1062,9 @@ async function handleKekKeyring(
 
   let active: string;
   let kids: string[];
+  let legacy: LegacyKey | undefined;
   try {
-    ({ active, kids } = await describeKeyring(env));
+    ({ active, kids, legacy } = await describeKeyring(env));
   } catch (e) {
     // The keyring is the one piece of configuration whose failure mode is otherwise INVISIBLE:
     // `loadProduct` swallows the `open()` throw and every product route 404s. Report it
@@ -1024,6 +1084,7 @@ async function handleKekKeyring(
       kids,
       counts,
       ...progressOf(counts, active, kids),
+      ...legacyProgress(env, legacy, counts),
     });
   }
 
@@ -1090,6 +1151,7 @@ async function handleKekKeyring(
     failures: sweep.failures,
     counts,
     ...after,
+    ...legacyProgress(env, legacy, counts),
   });
 }
 

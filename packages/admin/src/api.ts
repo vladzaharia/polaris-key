@@ -293,6 +293,21 @@ export interface PlatformKekStatus {
   remaining: number;
   /** Values under a kid that is no longer in the ring. */
   unopenable: number;
+  /**
+   * Present only while `PLATFORM_KEK` is set beside `PLATFORM_KEK_KEYS`: the legacy key, kept for
+   * opening only (RUNBOOK "Rotating when the old KEK is unknown").
+   */
+  legacy?: {
+    kid: string;
+    /** False when `PLATFORM_KEK_KEYS` holds the same key under the same kid. */
+    openOnly: boolean;
+    /** Stored values still sealed under the legacy kid; the sweep brings this to 0. */
+    remaining: number;
+    /** Sealed Worker secrets still under the legacy kid; re-sealed by hand (`signin:seal`). */
+    workerSecrets: string[];
+    /** Whether deleting `PLATFORM_KEK` leaves nothing unopenable. */
+    safeToDelete: boolean;
+  };
 }
 
 // ── platform operations (A-14) ─────────────────────────────────────────────────

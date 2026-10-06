@@ -50,8 +50,13 @@
  *
  * ── WHICH REFS ARE DROPPED ──────────────────────────────────────────────────────────────────
  *
- *   artifact, feed, anything else   never: an app release's artifacts are served as long as its
- *                                   row exists, and the F-Droid relay replaces its own `feed` refs
+ *   artifact, feed, anything else   never by the collector: an app release's artifacts are served
+ *                                   as long as its row exists, and the F-Droid relay replaces its
+ *                                   own `feed` refs. A package version's `artifact` refs are
+ *                                   dropped by feed retention's prune
+ *                                   (`services/release/packages/prune.ts`), in the batch that
+ *                                   deletes the version's rows; the mark and sweep then reclaim an
+ *                                   object no other ref holds, like any other unreferenced one
  *   hosted-asset (ref id =          never: a hosted asset's refs live exactly as long as its
  *     `<slot>@<locale>`)            `hosted_assets` slot holds that copy. `core/hostedAssets.ts`
  *                                   drops a replaced copy's refs in the batch that writes the new

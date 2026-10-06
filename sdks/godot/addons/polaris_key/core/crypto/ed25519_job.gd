@@ -15,6 +15,9 @@ extends RefCounted
 
 var ok := false
 var done := false
+## The thread `run()` ran on (`OS.get_thread_caller_id()`), 0 until it runs: a test hook that
+## says whether a verify really left the main thread, whatever the machine's load.
+var ran_on := 0
 
 var _sig: PackedByteArray
 var _Ai: Array
@@ -58,13 +61,19 @@ func progress() -> float:
 
 ## Runs to completion.
 func run() -> void:
+	ran_on = OS.get_thread_caller_id()
 	step(0)
 
 
 ## Works until done or until `budget_usec` microseconds have passed (0: no budget). Returns
-## `done`.
-func step(budget_usec: int) -> bool:
-	var deadline := Time.get_ticks_usec() + budget_usec
+## `done`. `clock` returns the time in microseconds (empty: `Time.get_ticks_usec`); a test
+## injects a fake one so the slice count does not depend on the machine's speed or load.
+func step(budget_usec: int, clock: Callable = Callable()) -> bool:
+	var timed := budget_usec > 0
+	var fake := clock.is_valid()
+	var deadline := 0
+	if timed:
+		deadline = (int(clock.call()) if fake else Time.get_ticks_usec()) + budget_usec
 	while not done:
 		match _phase:
 			0:
@@ -79,7 +88,7 @@ func step(budget_usec: int) -> bool:
 					_phase = 3
 			3:
 				_finish()
-		if budget_usec > 0 and Time.get_ticks_usec() >= deadline:
+		if timed and (int(clock.call()) if fake else Time.get_ticks_usec()) >= deadline:
 			break
 	return done
 

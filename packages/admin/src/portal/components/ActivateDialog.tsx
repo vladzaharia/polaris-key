@@ -69,7 +69,7 @@ export function ActivateDialog({
   onOpenChange,
 }: {
   open: boolean;
-  /** A key from `/activate?key=…`, filled in and checked. */
+  /** A key from `/activate#key=…`, filled in and checked. */
   prefill?: string;
   /** The product slug an app sent along (`&product=`). */
   fromProduct?: string;

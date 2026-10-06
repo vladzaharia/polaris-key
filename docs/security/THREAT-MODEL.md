@@ -25,7 +25,7 @@ and what binary it installs next.
 
 | #    | Asset                                                                                                                                        | Where it lives                                                                                        | Loss impact                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A1   | **`PLATFORM_KEK`**                                                                                                                           | Worker secret                                                                                         | Decrypts every tenant's signing key and every product secret. Total platform compromise. Cannot be rotated today (see A9).                                                                                                                                                                                                                                                                                                                                                      |
+| A1   | **`PLATFORM_KEK`**                                                                                                                           | Worker secret                                                                                         | Decrypts every tenant's signing key and every product secret. Total platform compromise. Rotatable without downtime through the keyring, even when nobody holds the current key (§3, "The platform KEK keyring").                                                                                                                                                                                                                                                               |
 | A2   | **Per-product Ed25519 signing keys**                                                                                                         | `product_keys.enc_private_json`, sealed under A1                                                      | Forge any config doc, entitlement, or secret for that product. **Unrevocable for already-provisioned clients** — see §6.                                                                                                                                                                                                                                                                                                                                                        |
 | A3   | **The release channel**                                                                                                                      | GitHub App key, webhook secret, `release_config`                                                      | Ship arbitrary code to every installed client. Equal to A1 in practical severity.                                                                                                                                                                                                                                                                                                                                                                                               |
 | A4   | **`ADMIN_SESSION_SECRET`**                                                                                                                   | Worker secret                                                                                         | Forge admin sessions → reach A2, A3, A5, A6 through the API.                                                                                                                                                                                                                                                                                                                                                                                                                    |
@@ -1360,9 +1360,76 @@ F-21 every access mode can be set: leaving `public` is an L1 confirmation that n
 clients will get, and the system product's feeds change only from the platform scope. A version verb the protocol
 has no state for is refused (`unsupported_by_ecosystem`) rather than recorded as a console-only
 fiction; the verbs that apply run Release's own yank, unyank and deprecation (the same batch,
-render enqueue and pack-set invalidation as Release's routes). There is no delete. A write drops
+render enqueue and pack-set invalidation as Release's routes). There is no per-version delete;
+the only deletion is feed retention's (below), and only of builds of main. A write drops
 its isolate's cached registry settings; other isolates follow within the 30-second TTL. Tests:
 `test/adminFeeds.test.ts`.
+
+### Feed retention: pruning builds of main (owner request 2026-10-06)
+
+**What it is.** `services/release/packages/prune.ts` deletes a package's `main`-channel
+prereleases once a version at or above them is released. When version V is published on
+`stable`, it deletes semver `X-main.N` and PEP 440 `X.devN` with X ≤ V. This is the one place a
+package version is ever deleted. The lead made the decisions under delegated owner authority,
+and the operations are in RUNBOOK "Feed retention".
+
+**Deletion authority: who can trigger it.**
+
+| Trigger                            | Who                                                                                                                      | Scope                                                  | Audited as              |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ | ----------------------- |
+| a stable publish (automatic)       | whoever may publish (`release:publish`, a trusted publisher, a `publish` registry token), only once the product opted in | that package, below the version just published         | `system:feed-retention` |
+| `POST /<p>/release/packages/prune` | a `pkeyci_` token of that product with `release:yank` (operator-granted, opt-in); another product's token is 401         | the product's packages, below each one's newest stable | `ci:<subject>`          |
+| `POST …/feeds/prune` (admin)       | a platform-admin console session (403 otherwise)                                                                         | the scope's owner's packages                           | `admin:<sub>`           |
+| `PUT …/feeds/retention` (admin)    | the same; refused for the system product                                                                                 | the setting only                                       | `feed.retention.update` |
+
+**Off by default.** `release.packages.prunePrereleases` is off for a tenant product: nothing is
+deleted automatically until a platform admin opts the product in (`PUT …/feeds/retention`, an L1
+confirmation, audited). Only the reserved system product (`polaris-key`) is on by default, and it
+is locked on.
+
+A publisher therefore gains no new power. The automatic prune only removes builds of main below
+a version the publisher was already allowed to publish as the stable release, and the
+publisher's own publish triggers it. A publisher cannot choose what goes. A forged or mistaken
+stable publish already moves `latest`, which is the larger harm, and it prunes only builds of
+main, which are disposable by design. Nothing a client sends selects a version to delete: the
+candidates are computed from D1. The backfill routes take only `apply` and an optional
+deliverable id.
+
+**What it can never touch.** A stable or beta version, a prerelease of a version newer than V,
+another package, another product, or a version that a channel policy points at or that any
+other row names (a revocation, a pack pin or hold, a download token). Those are reported as
+`kept`; one that became held between the plan and its batch is reported as `skipped` and kept,
+never dropped silently. Only a final release on the channel named exactly `stable` triggers a
+prune. A beta (prerelease tag) never does. Only a LIVE stable release is a ceiling: a yanked or
+deprecated stable, even a far newer one, never pulls builds of main into the prune. A build of
+main published on any channel but `main` is never a candidate, and only the exact spellings
+`X-main.N` and PEP 440 `X.devN` (ASCII digits, nothing after) are.
+
+**Unique forever survives.** Each pruned version leaves a tombstone (`release_package_prunes`).
+Ingest refuses to republish it (`package-version-taken`), so a pruned npm tarball name, Swift
+archive or Maven file can never come back with different bytes under the same coordinates.
+
+**Bytes and refcount.** The prune drops only the version's own `artifact` refs, in the same batch
+as its rows. It never deletes an object. The blob collector reclaims an object only when no ref
+from any product of any kind holds it, after the grace period and the bucket lock. So a
+content-addressed blob that a remaining version, another package, another product, a pack or an
+OCI push shares is never lost. The byte routes serve only keys the product still references
+(`hasRef`), which leaves the shared bytes of kept versions intact.
+
+**Audit.** Every deletion is one audit row in the same batch (`package.version.prune`: package,
+version, actor, file count, bytes, bytes no longer referenced; `parent_id` the stable release
+that set the ceiling) plus its tombstone row. The bytes no longer referenced are counted per
+batch against the refs left after it, so a run the cap or a failure cuts short never claims a
+blob that an undeleted version still holds. A failure
+of the automatic prune is audited (`package.prune.failed`, the Worker has no console log), never thrown at the
+publish.
+
+**Residual.** The immutable byte URLs of a pruned version can still be answered by a data centre
+whose Cache API already holds them, until that copy is evicted. The Worker cannot purge other
+data centres, and the bytes stay in R2 until the collector takes them. A pinned lockfile of a
+build of main stops installing once it is pruned. That is the intended effect, and the
+install-from-feeds page tells adopters to pin stable or beta releases. Tests:
+`test/feedPrune.test.ts`, `test/feedPruneRoutes.test.ts`.
 
 ### Registry credentials (F-20, F-21)
 
@@ -5116,16 +5183,114 @@ CSRF header like every other portal mutation.
   control or format characters (no bidirectional overrides that make one name render as another);
   owner-only, rate limited in the product's shard, audited. They are rendered as text everywhere.
 
-### Key-bearing deep links: `/activate?key=` (PX-01)
+### Key-bearing deep links: `/activate#key=` (PX-01, fix/keys-out-of-logs)
 
-`/activate?key=<license key>` (an app at its entry limit, an email, a printed card) puts a whole
-key in a server-visible query string: it reaches edge and Worker request logs, and when the visitor
-is signed out it rides along in the OIDC `return_to` and the magic link's return URL. Accepted by
-the design (PORTAL.md §4.18); mitigated by `Referrer-Policy: no-referrer` on every page (the key
-never leaves in a `Referer`), by the SPA moving it into the hash (`#/?activate=`) on load, and by a
-key alone only ever adding a licence through the claim rules (no ownership move, verified-email
-gate, one rate bucket with the preview). PX-W8's refusal links (below) do not use this query
-form: they carry the key only as a fragment.
+The Activate license deep link (an app at its entry limit, an email, a printed card) opens the
+Library with the modal filled in. Asset: the licence key, a bearer credential (A7; whoever holds it
+activates seats and adds the licence through the claim rules). As first built (PX-01) it carried
+the key as a query, `/activate?key=<license key>`, so the key was in every record of the request
+URL: Workers Logs (`[observability.logs] invocation_logs = true` records each invocation's URL),
+Cloudflare's edge logs, any proxy or analytics that reads URLs, and the browser's history. That is
+no longer accepted.
+
+- **The key rides in the fragment.** The link is `/activate[?product=<slug>]#key=<key>`. A
+  fragment is never sent in a request, a `Referer` or a redirect, so the key reaches no server,
+  edge log or Worker log. The Worker builds no link with a key in it (`manageUrl` carries none,
+  PX-W8); the UI kits add `#key=` only to an `/activate` link (PX-W8).
+- **The portal drops it before the app's first request.** `rewriteActivatePath`
+  (`packages/admin/src/portal/router.ts`) runs before the first render and before the app's first
+  request: it reads `#key=`, or a legacy `?key=` (the fragment wins), and `history.replaceState`s
+  the address to `/#/?activate=<key>[&product=]`, so neither `?key=` nor `#key=` stays in the
+  address bar or the history entry. The shell's own subresource requests (`/assets/*`, fonts,
+  icons) come first, issued by the document before any script runs. Their URLs never carry the
+  key, and a fragment is never in a `Referer`; for the legacy form their `Referer` would carry
+  the `?key=` query, and stays empty only because the shell is served with
+  `Referrer-Policy: no-referrer` (next item). Signed in, the shell consumes `#/?activate=` as the
+  modal opens (the address becomes `/#/`). Signed out, the key waits in this tab's fragment
+  through sign-in; every sign-in's return URL leaves it out and a sign-in that navigates away
+  keeps it in this tab's `sessionStorage` (`carriedKey.ts`, SIGN-IN.md §3.9).
+  `test/portalRouter.test.ts` and `test/portalActivate.test.tsx` pin both link forms, and that no
+  app request URL carries the key. `e2e/portal.e2e.test.ts` opens both forms in Chromium, with
+  the Worker's CSP and Referrer-Policy on the shell, and checks every request the page makes
+  (the document, `/assets/*`, fonts, icons and the API) for the key in its URL or `Referer`; the
+  only request excluded is a legacy link's own navigation, which carries `?key=` by definition.
+- **A legacy `GET /activate?key=…` (a link already out) still works, and the Worker adds nothing
+  to it.** It answers with the same SPA shell: `Cache-Control: no-store`,
+  `Referrer-Policy: no-referrer`, the key in no response byte or header, and the shell fetched
+  from `ASSETS` without the query, so the key reaches no subrequest. It is deliberately **not** a
+  redirect. The request that brought the key is already in the invocation log, the edge log and
+  any proxy's, and no answer can take it back. A `302` to `/activate#key=…` would echo the key in
+  a `Location` header (one more place to capture it) for a round trip's cost, and one that drops
+  the key would break the link. The SPA's in-place rewrite gives the address bar and the history
+  entry what a redirect would. `packages/worker/test/keysOutOfLogs.test.ts` pins this.
+- **Nothing in the Worker writes a URL down.** `src/` has no `console.*` (R12's static guard;
+  `keysOutOfLogs.test.ts` also proves no console call on the deep link and on an accepted and a
+  refused activation), no error reporter, and no `audit`, `portal_audit` or `license_refusals`
+  row records a request URL, path or query; the release gateway's edge-cache keys are built from
+  chosen fields, never `req.url`. So no redaction helper is needed. The one record of a legacy
+  link's key is the platform's: that request's invocation log and Cloudflare's own request logs.
+
+Residuals:
+
+- **A legacy link's key stays in Workers Logs for the retention period.** An operator who wants
+  even that gone can set `invocation_logs = false` (losing every invocation record), or add a zone
+  URL-rewrite rule that drops the query of `/activate` before the Worker runs: the browser keeps
+  its address, so the SPA still reads the key. Neither is done here (an operator decision).
+- **A fragment is still kept by the browser.** The opened address, key included, can be written
+  to the browser's history (and history sync) at navigation, before any script runs, and restored
+  by session restore. Accepted: it is the person's own browser holding the person's own key.
+  Signed out, the key also sits in the current entry's `#/?activate=` until sign-in completes.
+- **A key alone adds only through the claim rules:** no ownership move, the verified-email gate,
+  and one rate bucket with the preview (PX-W5, I-05).
+
+Other secrets audited in URLs with this change, and left as they are:
+
+- **Device tokens and licence keys on the device wire** travel only in `Authorization: Bearer`
+  headers or JSON bodies, in every SDK; no SDK route puts either in a query or a path.
+- **`/magic/verify?token=`** (I-02): the sign-in link's token, in the email by design. The `GET`
+  is a landing page that consumes nothing, the token is single-use and lives 10 minutes, and
+  anywhere but the browser that asked it only confirms that browser's sign-in (I-07), so a token
+  read from a log cannot sign its reader in. A fragment form would need script on a script-free
+  page.
+- **`/download/<token>` and the bytes host's `?ticket=`** (PX-W3; the Velopack package route
+  too): a single-use redemption token and a two-minute, one-file ticket that a browser or an
+  updater download has to carry in its URL (a `302` cannot add a header). Both are useless once
+  spent or expired.
+- **Godot registry URL tokens** (`/godot/<owner>/t/<token>/…`): accepted above under "Godot URL
+  tokens" (the editor sends no `Authorization`; the token is read-only, Godot-only and 30 days
+  by default).
+- **`/<p>/identity/auth/device/verify?device_code=`**: a legacy route kept for flows started
+  before `/device`; `/device/start` no longer hands the URL out. Removing it is a route change
+  (AGENTS.md rule 10), proposed as a follow-up.
+- **The deprecated `/<p>/identity/auth/poll?state=&device=`** (`handleAuthPoll`, `oidc.ts`) puts
+  both halves of the poll pair in one URL. Nothing starts a device-bound flow it can redeem any
+  more: `/auth/start` binds no device, and `/auth/poll` refuses a `/device/start` flow
+  (`viaDeviceCode`), so it never returns a token. Retiring it is a route change (rule 10),
+  proposed as a follow-up.
+- **`/<p>/identity/auth/device?user_code=`**, the RFC 8628 `verification_uri_complete`: a short
+  code a person types or scans, not a bearer. It only opens the confirmation page. Confirming is
+  a CSRF-checked `POST` and then a sign-in, so whoever confirms signs the device in as
+  themselves, which the device shows (P1-06); the token goes only to the device-code holder (the
+  device code is never in a URL), and a confirmed code stops resolving.
+- **The OIDC callbacks' `?code=&state=`** on `/callback` (the portal), `/manage/callback` (the
+  console) and `/<p>/identity/auth/callback` (and Google's `/login/google/callback`): the code is
+  in the URL by the protocol. Every one of these flows uses PKCE S256 with the verifier held in
+  the server's flow record, so a code read from a log is useless without it, and the `state` is
+  single-use. Apple posts its code (`form_post`), never in a URL.
+- **Steam's OpenID callback** (`/login/steam/callback?state=&openid.*=`): the positive
+  assertion rides in the query by the protocol. A logged one cannot be replayed: the `state` is
+  single-use, the callback needs the starting browser's binding cookie, and Steam refuses an
+  `openid.response_nonce` it has already verified. What a log keeps is a SteamID64, a public
+  identifier.
+- **pip and uv's userinfo form** (`https://__token__:<token>@pkg.plrs.im/pypi/<owner>/simple/`,
+  `build/install-from-feeds.md`): the client moves the URL's userinfo into a Basic
+  `Authorization` header, and userinfo is never part of a request line, so the `pkeyr_` token
+  reaches no request line, edge log or Worker log. What remains is client-side: the command
+  line, token included, in shell history, the process list and CI logs. The environment
+  (`UV_INDEX_<NAME>_USERNAME` / `_PASSWORD`) and `~/.netrc` forms avoid it.
+- **Steam's key-activation page** (`activateUrl`, `services/distribution/page/customer.ts`) takes
+  a Steam key as `?key=` on Steam's own site. That is Steam's interface and Steam's logs; the
+  portal must never put the Steam key in its own address when it builds that link.
 
 ### Refusal links: `manageUrl` and the `#key=` fragment (PX-W8)
 
@@ -5145,9 +5310,10 @@ the claim rules), so A7 and, through the claim, the buyer's account (A6).
 - **A fragment is still kept by the browser.** The opened URL, key included, lands in the
   browser's history and in history sync to the person's other devices, and can be restored by a
   session restore. Residual, accepted: it is the person's own browser, holding the person's own
-  key, which they just typed on the same machine. Required mitigation, owned by PX-17 (the portal
-  `/activate` page): read `#key=` once on load, then drop it with `history.replaceState` before
-  any other work, so the history entry and any later share of the address bar hold no key.
+  key, which they just typed on the same machine. The required mitigation is in place: the portal
+  reads `#key=` once on load and drops it with `history.replaceState` before any other work, so
+  the history entry and any later share of the address bar hold no key ("Key-bearing deep links"
+  above, fix/keys-out-of-logs).
 - **A QR code never carries the key.** Where a joypad is the only input (tvOS, Android TV, a
   console or joypad-only Godot) the link is drawn as a QR code on a screen others can see, and
   anyone in the room can scan it into their own phone's history. So the QR form is built without
@@ -5496,6 +5662,53 @@ One account per person; a product's `identity` toggle gates only sign-in through
   listing `text/html`) can only widen the answer to a redirect to a fixed same-origin path built
   from the product slug, never to a caller-chosen URL.
 
+### The Cloud Sync principal and the subject store registry (U-02)
+
+Cloud Sync (S-17) is the first service a device writes account data to, so a wrong principal is a
+cross-account or cross-tenant leak (S-17 §7.1 risk 1). U-02 adds Core's answer and the guard that
+keeps every subject-keyed store honest (plans/U-01.md §6.1).
+
+- **The principal is the binding, never the licence owner.** `resolveSyncPrincipal(device)`
+  (`core/accountSubjects.ts`) reads `devices.subject` from the D1 row `validateDeviceToken`
+  returned, never the KV mirror or anything the request carried, and checks it once against
+  `account_product_subjects`: an alias resolves to the survivor (D21), a deleted or malformed
+  subject and a device that is not authorized resolve to no principal (`account_required`). Owning
+  a device's licence does not make an account its principal; a key-activated device on an owned
+  licence has none until someone signs in on it. A device on a floating licence
+  (`account_id IS NULL AND email IS NULL`) has none at all, even with a binding: a floating
+  licence has no account features (S-24, owner 2026-10-06). A licence-less device on a
+  License-off product (`NO_LICENSE_ID`) is not floating. Cloud
+  Sync code may not call `subjectFor`, `licenseOwnerSubject` or read an account id (a test scans
+  `core/syncAccess.ts` and `services/sync/`); `subjectFor` stays Config's owner fallback (U-03).
+- **One module for the licence question.** `syncAccess` (`core/syncAccess.ts`) answers
+  `requireLicense`, `requiresFlag` and the `byTier` tier from the anchor licence alone (`legacy`
+  mode) until LX-09 replaces its body with `resolveDeviceEntitlements`; it never reads the owner
+  pointer and its answer carries the pairwise subject only. A licence-less or unusable anchor
+  leaves the principal (reads stay allowed) with an empty entitlement set.
+- **No inherited binding.** Any re-bind without a sign-in (licence key re-entry, enrolment, open
+  re-registration) mints a new credential and drops the binding; only an account sign-in through
+  Identity writes one. Otherwise anyone who knows an authorized device id on an `open`
+  registration product (or holds the licence key) could re-bind it and get a token whose Cloud
+  Sync principal is the signed-in victim's subject. Before U-02 a device id that once carried a
+  sign-in, then was revoked or moved to another licence by key, also got the old account back.
+  The browser session's logout now runs the clearing hook (`signout`) before it deauthorizes the
+  row.
+- **Every trigger clears it.** Sign-out, sign out everywhere, account disable and deletion,
+  per-product removal and a relink of the device's licence clear the binding (one test each); a
+  plain detach does not (S-17 §5.8 item 2), though the principal is hidden while the licence is
+  floating (S-24). Residual: `POST /<p>/identity/signout` and the sign out everywhere surface are
+  I-09's and I-11's; until they land only the hook and the browser logout exercise those reasons.
+  Residual: after a detach and a later first attach by another account, the device keeps the
+  first account's binding (attach is not a clearing trigger). It is hidden only while the licence
+  floats; once the second account owns the licence, the device's principal is the first account
+  until that person signs out or the device re-binds.
+- **The registry guard** (`test/subjectStores.test.ts`, S-17 §7.1 risk 8). Every D1 table with a
+  `subject` column is claimed by a registered store (`registerSubjectStore` with `tables`) or is
+  listed as Identity's own with its reason; every Durable Object class is claimed
+  (`durableObjects`) or listed as not named by subject; every store has `merge`, `delete` and
+  `export`; no claimed table has an `account_id` column. A store added without its hooks fails the
+  gate instead of leaving data behind after a merge or a deletion.
+
 ### Discover: free offers and "Add to library" (PX-W10)
 
 `GET /api/discover` lists the products whose licence policy would auto-issue to the signed-in
@@ -5696,6 +5909,69 @@ proxy now fetches through the same guard.
   this change.
 - **The portal media proxy** keeps its GitHub-only host rule on every hop (`allowHost`) on top of
   this guard until HA-07 serves hosted copies; its cap, 5 s budget and sniff are unchanged.
+- **Image variants (HA-03, S-20 §6.6).** The Images binding decodes developer-supplied images
+  only at ingest, never on a request, so no viewer can make it transform anything and the
+  transformation bill is bounded at one per ladder width per new original (a re-ingest of the
+  same bytes reuses its variants). The ladders and widths are code constants, a width above the
+  original's is never requested (`fit: "scale-down"`), and each output is capped at the slot's
+  byte cap and must sniff as WebP or the whole ladder is dropped. Variants are content-addressed
+  objects of Polaris Key's own making, held by the slot's `hosted-asset` refs beside the original
+  and dropped with it in the same batch. Without the binding, on error 9422 (quota) or on any
+  binding error the ladder is empty and the ingest still succeeds: a degraded binding costs sizes,
+  never a copy.
+
+### The image host (HA-02)
+
+**What it is.** `img.plrs.im` (with `img-staging` and `img-dev`) is the same Worker on a fourth
+custom domain, beside the console, the bytes host and the registry host (notes/S-20 §6.5, owner
+decision 2). `IMG_ORIGIN` names it, and `core/imgHost.ts` confines it to five path shapes, all
+Core's own: `/<p>/a/<sha256>` (an original), `/<p>/a/<sha256>/<w>.webp` (a width variant) and the
+stable aliases `/<p>/icon`, `/<p>/header` and `/<p>/screenshots/<n>`, which 302 to the current
+content-addressed URL. Everything else, the console, the portal, `/docs`, discovery, every byte
+route and every registry route, is the plain not-found. No new bucket and no new secret: it reads
+the same `BLOBS` bucket under `blobs/`. Tests: `test/imgHost.test.ts`,
+`test-workerd/imgHost.test.ts`, and `test/routeCoverage.test.ts`'s `IMG_PATHS`.
+
+**Same-site exposure.** The host is a `*.plrs.im` sibling of the console, so `SameSite` does not
+separate them. Its compensations are the bytes host's, kept and narrowed:
+
+| Compensation                              | `img.plrs.im`                                                                                 |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Only an allowlist of paths answers        | the five shapes above (`matchImgPath`, strict: lowercase hex, no trailing slash, no encoding) |
+| No cookie read; `Set-Cookie` stripped     | yes: no code on the host reads a request header but `If-None-Match` and the client IP         |
+| `nosniff`, `Referrer-Policy: no-referrer` | yes, on every answer, the not-found, 405, 429 and the JSON 500 included                       |
+| CSP on every answer                       | `default-src 'none'; sandbox` (`IMG_CSP`)                                                     |
+| Types                                     | `IMG_HOST_TYPES` = PNG, JPEG, WebP, GIF, AVIF, from the sniffed `hosted_assets.content_type`  |
+| CORS                                      | `Access-Control-Allow-Origin: *`, never credentials; a route's own `Access-Control-*` dropped |
+| `Cross-Origin-Resource-Policy`            | `cross-origin`: public images, embeddable by any page, email or store                         |
+| Methods                                   | `GET` and `HEAD`; anything else on an image path is 405                                       |
+
+The two deliberate differences from `dl.plrs.im`, reviewed here: `Access-Control-Allow-Origin: *`
+and `Cross-Origin-Resource-Policy: cross-origin`. Both are safe only because nothing on this host
+is private: no answer depends on a credential, no cookie is read, and every byte served is a
+product's public presentation image. A raster image cannot carry script; SVG, HTML, XML and
+`text/*` are never served at any status, and an image a browser opens as a document still runs
+under the sandbox with an opaque origin.
+
+**Tenancy.** An original answers only when `<p>` holds a `hosted-asset` ref to
+`blobs/sha256/<hex>` through a `hosted_assets` row of an IMAGE slot (`slotClass(slot).accept ===
+"image"`) whose sniffed type is on `IMG_HOST_TYPES`. Another product's ref is never enough, and
+neither is a ref of another kind: a release file, a pack or a bundle is the bytes host's, and a
+`release-file` hosted copy is refused even when its bytes are a PNG. A variant answers only when
+the original's row lists it in `variants_json` and the same slot holds a ref to the variant's
+object. The tenancy check runs on every request and is never cached, so dropping a slot (or
+HA-06's delete-a-copy) stops the answer at once; only the bytes, named by their hash, are kept in
+the Cache API.
+
+**Never gated (owner decision 7).** The host builds only ungated `blobs/` keys and carries no auth
+code: anything under `gated/`, anything licensed and anything not hosted is a 404, never a 401.
+
+**Cost.** A cache miss reads R2 and is charged to the `imgHost` rate-limit bucket (per product and
+client IP, 600 a minute, fail open: nothing secret is behind it). A stored object whose checksum
+is missing or disagrees with its name is the not-found, as in `blobResponse`.
+
+Residual risk: an operator can host abusive or illegal images, now served from a Polaris Key host.
+The operator terms apply, and HA-06 adds delete-a-copy, which takes effect at the next request.
 
 ### Pull on register and resync (HA-05)
 
@@ -5934,6 +6210,59 @@ be disabled.
   writes one `license.delete` row (written only while the licence still exists, so a racing
   double delete audits once) naming tier, origin, the account's pairwise subject (never the
   global account id) and the device count.
+
+### The platform KEK keyring and the legacy open-only key (R2-09)
+
+A1 is a keyring, not a single key (`src/keyvault.ts`). `PLATFORM_KEK_KEYS` maps kids to 32-byte
+AES-256-GCM keys, `PLATFORM_KEK_ACTIVE` names the one every new seal uses, and each blob carries
+the kid it was sealed under: `open` uses exactly that kid's key and refuses an unknown one. The
+AAD (`pkey:v2:<product>:<kind>:<id>`) leaves the kid out, so a re-seal keeps the slot binding.
+The re-seal sweep (`POST /manage/api/products/kek`: platform admin, CSRF-checked) moves every
+stored value to the active kid with a compare-and-swap, and verifies the new envelope opens to
+the same plaintext before it writes.
+
+**The legacy key.** Worker secrets are write-only, so an environment whose `PLATFORM_KEK` was
+never escrowed cannot copy it into a ring. With both `PLATFORM_KEK` and `PLATFORM_KEK_KEYS` set,
+the Worker adds `PLATFORM_KEK` to the ring under its legacy kid (`PLATFORM_KEK_ID`, else
+`default`), for opening only. The operator procedure is RUNBOOK "Rotating when the old KEK is
+unknown". Controls:
+
+- **It never seals.** `PLATFORM_KEK_ACTIVE` must name a `PLATFORM_KEK_KEYS` entry, checked before
+  the legacy key joins, and the legacy key is imported without the `encrypt` usage, so no path
+  can seal under it.
+- **No silent choice.** The same kid in both shapes with different bytes refuses to load the ring
+  (fail closed: `503` on the keyring endpoint, every product route 404s) instead of picking one.
+  A precedence rule would orphan one set of blobs, chosen by a rule an operator mid-rotation is
+  unlikely to know. Equal keys, compared as decoded bytes, are accepted.
+- **No key material in diagnostics.** The configuration error (also raised on Platform →
+  Settings as `kek_keyring_unusable`), the `kek_legacy_open_only` warning, the endpoint's
+  `legacy` block and the console name kids and counts only. The sealed `SIGNIN_*` Worker
+  secrets are reported by name when their envelope names the legacy kid; the kid is read from
+  the envelope and nothing is opened.
+- **A bounded life.** The `kek_legacy_open_only` warning stays while `PLATFORM_KEK` is the only
+  source of its kid (not for a same-bytes copy of a `PLATFORM_KEK_KEYS` entry), and the endpoint
+  reports `legacy.remaining` (stored values under the legacy kid), `legacy.workerSecrets` and
+  `safeToDelete`, the gate for deleting it.
+
+**Residual risk.** (1) Re-sealing does not erase old ciphertext: D1 backups and Time Travel from
+before the sweep still hold blobs under the old key, so whoever holds that key and such a dump
+reads them. If the old key may have leaked, this is the KEK compromise case (RUNBOOK,
+containment): the rotation runs the same steps, and every product signing key sealed under the
+old key is rotated as well. (2) Deleting `PLATFORM_KEK` while a value is still under it makes
+that value dark (its product 404s, or a sign-in provider leaves the login card). `safeToDelete`
+is the gate, and the operator applies it; the Worker cannot stop a `wrangler secret delete`.
+(3) The legacy key adds no new writer: whoever can set Worker secrets could already replace the
+whole ring. (4) A `PLATFORM_KEK` left beside a ring re-admits the key it holds for opening,
+under the legacy kid, even after that kid is retired from `PLATFORM_KEK_KEYS`. The kid stays
+open-capable until `PLATFORM_KEK` is deleted, and while it does, an early retirement reads
+`unopenable: 0`, so the re-check cannot catch it. The RUNBOOK's retirement step therefore
+deletes `PLATFORM_KEK` in the same `wrangler secret bulk` call that drops the kid ("Rotating
+PLATFORM_KEK", step 8), or, if that was missed, deletes it only once `legacy.safeToDelete` is
+true. In the KEK compromise case this matters more: while
+`PLATFORM_KEK` holds the leaked key, that key still opens, so whoever holds it and can write to
+D1 can plant a value the Worker accepts. The containment steps (RUNBOOK, "KEK compromise
+(containment)") delete `PLATFORM_KEK`, and containment is not complete until `legacy` is gone
+from the keyring endpoint.
 
 ### Boundaries that are weaker than they look
 
@@ -6287,11 +6616,13 @@ control, calls a host other than its store's API, writes from a store object wit
 routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to
-`BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a type is added to
+`BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a path shape is added to the image host (`matchImgPath`), a type to `IMG_HOST_TYPES`, the image host serves a ref kind other than `hosted-asset`, a non-image slot or anything gated, reads a cookie or a credential, or caches its tenancy check (HA-02); a type is added to
 `REGISTRY_HOST_TYPES`, the PyPI HTML fallback is admitted anywhere but its one flagged route or
 under a looser policy, a registry route answers CORS or a method other than GET, HEAD,
 Swift's `POST …/login`, F-22's four publish writes and F-23's OCI push methods, or
-`authorizeFeedRead` moves after the cache lookup (F-02); a push route that is not Release's, a push
+`authorizeFeedRead` moves after the cache lookup (F-02); feed retention deletes anything but a
+build of main below a stable release, gains a trigger, lets a request name the versions it
+deletes, deletes a blob-store object itself, stops leaving its tombstone, or turns on by default for a tenant product (2026-10-06); a push route that is not Release's, a push
 credential other than an owner-bound `publish` token or a `release:publish` CI token, a push that
 creates a repository or moves a channel tag, or an `oci-push` ref that serves anything beyond its
 repository's digest reads (F-23); a new registry
