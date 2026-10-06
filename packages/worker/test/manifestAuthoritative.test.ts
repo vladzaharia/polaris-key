@@ -245,7 +245,6 @@ const audits = (ctx: Ctx, action: string) =>
     action,
   );
 
-
 const KEY = "license.defaults.deviceLimit";
 const REASON = "incident 42: raise the limit while the fix ships";
 /** The console API's clock (`call`): a claim made through it expires at this. */
@@ -358,15 +357,15 @@ describe("core.manifest.authoritative (ST-20)", () => {
 describe("a break-glass claim (ST-20)", () => {
   it("is the only console write a manifest-authoritative product takes, and needs a reason", async () => {
     const ctx = await authoritative();
-    expect(await call(ctx, "PATCH", "", { defaultDeviceLimit: 9 })).toMatchObject(
-      {
-        status: 409,
-        json: {
-          reason: "manifest_authoritative",
-          fields: ["defaultDeviceLimit"],
-        },
+    expect(
+      await call(ctx, "PATCH", "", { defaultDeviceLimit: 9 }),
+    ).toMatchObject({
+      status: 409,
+      json: {
+        reason: "manifest_authoritative",
+        fields: ["defaultDeviceLimit"],
       },
-    );
+    });
     for (const reason of ["   ", "x".repeat(501), 42])
       expect(
         await call(ctx, "PATCH", "", {
@@ -504,9 +503,9 @@ describe("a break-glass claim (ST-20)", () => {
   it("a catalog publish is a break-glass claim too", async () => {
     const ctx = await authoritative();
     const catalog = JSON.parse(schemaJson("run.name", "console.only"));
-    expect(
-      await call(ctx, "PUT", "config/catalog", { catalog }),
-    ).toMatchObject({ status: 409, json: { reason: "manifest_authoritative" } });
+    expect(await call(ctx, "PUT", "config/catalog", { catalog })).toMatchObject(
+      { status: 409, json: { reason: "manifest_authoritative" } },
+    );
     expect(
       await call(ctx, "PUT", "config/catalog", {
         catalog,
@@ -554,9 +553,10 @@ describe("the system product (ST-20, S-18 §4.5 item 8)", () => {
         breakGlass: { reason: REASON },
       }),
     ).toMatchObject({ status: 409, json: { reason: "system_product" } });
-    expect(
-      await call(ctx, "PATCH", "", { adminGroup: "x" }),
-    ).toMatchObject({ status: 409, json: { reason: "manifest_only" } });
+    expect(await call(ctx, "PATCH", "", { adminGroup: "x" })).toMatchObject({
+      status: 409,
+      json: { reason: "manifest_only" },
+    });
   });
 
   it("refuses a webhook resync: the deploy hook is its single writer", async () => {

@@ -221,7 +221,9 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
     return adminJson({
       ok: true,
       schemaVersion: version,
-      ...(breakGlass ? { breakGlass: { expiresAt: breakGlass.expiresAt } } : {}),
+      ...(breakGlass
+        ? { breakGlass: { expiresAt: breakGlass.expiresAt } }
+        : {}),
     });
   }
   return err(405, ErrorCode.BadRequest, "method not allowed");

@@ -470,7 +470,9 @@ export async function handleProducts(
       ok: true,
       slug,
       ...(claimed.length ? { claimed } : {}),
-      ...(breakGlass ? { breakGlass: { expiresAt: breakGlass.expiresAt } } : {}),
+      ...(breakGlass
+        ? { breakGlass: { expiresAt: breakGlass.expiresAt } }
+        : {}),
     });
   }
   if (req.method === "DELETE") {

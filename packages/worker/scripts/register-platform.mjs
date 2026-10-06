@@ -148,7 +148,8 @@ export function breakGlassLines(body, env = process.env) {
   const live = Array.isArray(body.breakGlass) ? body.breakGlass : [];
   const ended = Array.isArray(body.breakGlassEnded) ? body.breakGlassEnded : [];
   const at = (s) => new Date(s * 1000).toISOString();
-  const warn = env.GITHUB_ACTIONS === "true" ? "::warning title=Break-glass claim::" : "";
+  const warn =
+    env.GITHUB_ACTIONS === "true" ? "::warning title=Break-glass claim::" : "";
   return [
     ...live.map(
       (b) =>

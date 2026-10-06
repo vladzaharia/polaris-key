@@ -189,7 +189,13 @@ export function stmtSetManifestAuthority(
             value_json = excluded.value_json, source = 'console',
             version = product_settings.version + 1,
             updated_at = excluded.updated_at, updated_by = excluded.updated_by`,
-    params: [product, MANIFEST_AUTHORITATIVE_KEY, JSON.stringify(value), now, by],
+    params: [
+      product,
+      MANIFEST_AUTHORITATIVE_KEY,
+      JSON.stringify(value),
+      now,
+      by,
+    ],
   };
 }
 
@@ -302,7 +308,10 @@ export async function listClaims(
 }
 
 /** The live claims among `rows` (one product's `product_settings` rows). */
-function claimViews(rows: readonly ProductSettingRow[], now: number): ClaimView[] {
+function claimViews(
+  rows: readonly ProductSettingRow[],
+  now: number,
+): ClaimView[] {
   return rows
     .filter(
       (r) =>
