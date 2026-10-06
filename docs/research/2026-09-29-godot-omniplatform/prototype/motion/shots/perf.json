@@ -1,0 +1,366 @@
+{
+  "chromium": "153.0.8010.12",
+  "host": "darwin",
+  "rows": [
+    {
+      "moment": "portal: tile → product (shared element)",
+      "cpu": "1x",
+      "frames": 47,
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 66.7,
+      "over25ms": 1,
+      "actMs": 122
+    },
+    {
+      "moment": "portal: tile → product (shared element)",
+      "cpu": "4x",
+      "frames": 48,
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 166.8,
+      "over25ms": 1,
+      "actMs": 241
+    },
+    {
+      "moment": "portal: tile → product (shared element)",
+      "cpu": "6x",
+      "frames": 49,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 266.7,
+      "over25ms": 1,
+      "actMs": 366
+    },
+    {
+      "moment": "portal: free a device (list)",
+      "cpu": "1x",
+      "frames": 44,
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 33
+    },
+    {
+      "moment": "portal: free a device (list)",
+      "cpu": "4x",
+      "frames": 45,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 33.3,
+      "over25ms": 1,
+      "actMs": 81
+    },
+    {
+      "moment": "portal: free a device (list)",
+      "cpu": "6x",
+      "frames": 46,
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 66.7,
+      "over25ms": 1,
+      "actMs": 114
+    },
+    {
+      "moment": "portal: library load (stagger + skeleton)",
+      "cpu": "1x",
+      "frames": 83,
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 0
+    },
+    {
+      "moment": "portal: library load (stagger + skeleton)",
+      "cpu": "4x",
+      "frames": 83,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 0
+    },
+    {
+      "moment": "portal: library load (stagger + skeleton)",
+      "cpu": "6x",
+      "frames": 84,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 0
+    },
+    {
+      "moment": "console: overview load (count-up, meter, burst)",
+      "cpu": "1x",
+      "frames": 90,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 0
+    },
+    {
+      "moment": "console: overview load (count-up, meter, burst)",
+      "cpu": "4x",
+      "frames": 90,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 0
+    },
+    {
+      "moment": "console: overview load (count-up, meter, burst)",
+      "cpu": "6x",
+      "frames": 89,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 33.4,
+      "over25ms": 1,
+      "actMs": 0
+    },
+    {
+      "moment": "console: filter 8 rows (list)",
+      "cpu": "1x",
+      "frames": 44,
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 35
+    },
+    {
+      "moment": "console: filter 8 rows (list)",
+      "cpu": "4x",
+      "frames": 45,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 33.3,
+      "over25ms": 1,
+      "actMs": 52
+    },
+    {
+      "moment": "console: filter 8 rows (list)",
+      "cpu": "6x",
+      "frames": 45,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 50,
+      "over25ms": 1,
+      "actMs": 92
+    },
+    {
+      "moment": "console: filter 60 rows (list)",
+      "cpu": "1x",
+      "frames": 39,
+      "p50": 16.7,
+      "p95": 33.4,
+      "max": 50,
+      "over25ms": 4,
+      "actMs": 29
+    },
+    {
+      "moment": "console: filter 60 rows (list)",
+      "cpu": "4x",
+      "frames": 42,
+      "p50": 16.7,
+      "p95": 33.3,
+      "max": 66.7,
+      "over25ms": 3,
+      "actMs": 85
+    },
+    {
+      "moment": "console: filter 60 rows (list)",
+      "cpu": "6x",
+      "frames": 43,
+      "p50": 16.7,
+      "p95": 33.3,
+      "max": 83.4,
+      "over25ms": 4,
+      "actMs": 130
+    },
+    {
+      "moment": "console: filter 200 rows (list)",
+      "cpu": "1x",
+      "frames": 38,
+      "p50": 16.7,
+      "p95": 33.4,
+      "max": 50,
+      "over25ms": 5,
+      "actMs": 34
+    },
+    {
+      "moment": "console: filter 200 rows (list)",
+      "cpu": "4x",
+      "frames": 42,
+      "p50": 16.7,
+      "p95": 33.3,
+      "max": 83.4,
+      "over25ms": 5,
+      "actMs": 129
+    },
+    {
+      "moment": "console: filter 200 rows (list)",
+      "cpu": "6x",
+      "frames": 40,
+      "p50": 16.7,
+      "p95": 33.4,
+      "max": 150,
+      "over25ms": 4,
+      "actMs": 155
+    },
+    {
+      "moment": "console: row → record (forward)",
+      "cpu": "1x",
+      "frames": 44,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 28
+    },
+    {
+      "moment": "console: row → record (forward)",
+      "cpu": "4x",
+      "frames": 43,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 33.4,
+      "over25ms": 1,
+      "actMs": 38
+    },
+    {
+      "moment": "console: row → record (forward)",
+      "cpu": "6x",
+      "frames": 47,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 50,
+      "over25ms": 1,
+      "actMs": 102
+    },
+    {
+      "moment": "console: drawer open",
+      "cpu": "1x",
+      "frames": 44,
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 29
+    },
+    {
+      "moment": "console: drawer open",
+      "cpu": "4x",
+      "frames": 45,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 33.3,
+      "over25ms": 1,
+      "actMs": 56
+    },
+    {
+      "moment": "console: drawer open",
+      "cpu": "6x",
+      "frames": 46,
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 70
+    },
+    {
+      "moment": "portal: tile → product (shared element) [instant baseline]",
+      "cpu": "1x",
+      "frames": 47,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 33.3,
+      "over25ms": 1,
+      "actMs": 89
+    },
+    {
+      "moment": "portal: tile → product (shared element) [instant baseline]",
+      "cpu": "4x",
+      "frames": 49,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 133.4,
+      "over25ms": 1,
+      "actMs": 235
+    },
+    {
+      "moment": "portal: tile → product (shared element) [instant baseline]",
+      "cpu": "6x",
+      "frames": 51,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 183.3,
+      "over25ms": 1,
+      "actMs": 309
+    },
+    {
+      "moment": "console: filter 60 rows (list) [instant baseline]",
+      "cpu": "1x",
+      "frames": 45,
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 43
+    },
+    {
+      "moment": "console: filter 60 rows (list) [instant baseline]",
+      "cpu": "4x",
+      "frames": 46,
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 64
+    },
+    {
+      "moment": "console: filter 60 rows (list) [instant baseline]",
+      "cpu": "6x",
+      "frames": 47,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 82
+    },
+    {
+      "moment": "console: filter 200 rows (list) [instant baseline]",
+      "cpu": "1x",
+      "frames": 44,
+      "p50": 16.7,
+      "p95": 16.7,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 45
+    },
+    {
+      "moment": "console: filter 200 rows (list) [instant baseline]",
+      "cpu": "4x",
+      "frames": 47,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 16.8,
+      "over25ms": 0,
+      "actMs": 93
+    },
+    {
+      "moment": "console: filter 200 rows (list) [instant baseline]",
+      "cpu": "6x",
+      "frames": 48,
+      "p50": 16.7,
+      "p95": 16.8,
+      "max": 33.3,
+      "over25ms": 1,
+      "actMs": 106
+    }
+  ]
+}

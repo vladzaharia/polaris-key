@@ -1,0 +1,248 @@
+{
+  "feedUrlMatrixVersion": 1,
+  "description": "App-updater feed URLs from discovery's `update.endpoints` (plans/SP-00.md D5; proof of `update.feeds`). `endpointSets` holds the Worker's templates — `everything` is the `everything` product of the Worker's byte-checked discovery golden, `withoutAppUpdaterFeeds` the same Worker before P3-09 added `winsparkle`, `velopack`, `appInstaller` and `zsync`, and `updateOff` a product with Update off — and `kinds` maps each feed kind to the endpoints key it reads. Each row names an endpoint set and an input `{kind, channel?, velopackChannel?, buildId?}`; `expect` is `{url}`, or `{unsupported: \"product\"}` when the set carries no template for the kind. The expansion: an absent channel is `stable`, and an alias is rewritten through CHANNEL_ALIASES (`staging` → `beta`, `latest` → `stable`) first; `{channel}`, `{velopackChannel}` and `{buildId}` are each replaced by the value encoded as encodeURIComponent. `appcast` reads `endpoints.appcast` (the stable feed) and, for any other channel, inserts the channel as a path segment before `/appcast.xml`. `velopack` without a `velopackChannel` is the feed directory Velopack's UpdateManager opens (the template up to `releases.`). A `zsync` input always carries a `buildId`. Channel-name validity is not pinned here (gate-matrix's channel rows pin it): the percent-encoded rows use a value outside the channel alphabet only to pin the encoding.",
+  "kinds": {
+    "appcast": "appcast",
+    "winsparkle": "winsparkle",
+    "velopack": "velopack",
+    "appInstaller": "appInstaller",
+    "zsync": "zsync"
+  },
+  "endpointSets": {
+    "everything": {
+      "version": "https://key.plrs.im/full/update/version",
+      "appcast": "https://key.plrs.im/full/update/appcast.xml",
+      "channelAppcast": "https://key.plrs.im/full/update/{channel}/appcast.xml",
+      "feed": "https://key.plrs.im/full/update/{channel}/feed.jws",
+      "winsparkle": "https://key.plrs.im/full/update/{channel}/winsparkle.xml",
+      "velopack": "https://key.plrs.im/full/update/{channel}/velopack/releases.{velopackChannel}.json",
+      "appInstaller": "https://key.plrs.im/full/update/{channel}/app.appinstaller",
+      "zsync": "https://key.plrs.im/full/update/{channel}/{buildId}.AppImage.zsync"
+    },
+    "withoutAppUpdaterFeeds": {
+      "version": "https://key.plrs.im/full/update/version",
+      "appcast": "https://key.plrs.im/full/update/appcast.xml",
+      "channelAppcast": "https://key.plrs.im/full/update/{channel}/appcast.xml",
+      "feed": "https://key.plrs.im/full/update/{channel}/feed.jws"
+    },
+    "updateOff": {}
+  },
+  "rows": [
+    {
+      "name": "appcast — no channel is the stable feed",
+      "endpoints": "everything",
+      "input": { "kind": "appcast" },
+      "expect": { "url": "https://key.plrs.im/full/update/appcast.xml" }
+    },
+    {
+      "name": "appcast — stable",
+      "endpoints": "everything",
+      "input": { "kind": "appcast", "channel": "stable" },
+      "expect": { "url": "https://key.plrs.im/full/update/appcast.xml" }
+    },
+    {
+      "name": "appcast — beta is a path segment",
+      "endpoints": "everything",
+      "input": { "kind": "appcast", "channel": "beta" },
+      "expect": { "url": "https://key.plrs.im/full/update/beta/appcast.xml" }
+    },
+    {
+      "name": "appcast — staging is the beta alias",
+      "endpoints": "everything",
+      "input": { "kind": "appcast", "channel": "staging" },
+      "expect": { "url": "https://key.plrs.im/full/update/beta/appcast.xml" }
+    },
+    {
+      "name": "appcast — latest is the stable alias",
+      "endpoints": "everything",
+      "input": { "kind": "appcast", "channel": "latest" },
+      "expect": { "url": "https://key.plrs.im/full/update/appcast.xml" }
+    },
+    {
+      "name": "appcast — a manual channel",
+      "endpoints": "everything",
+      "input": { "kind": "appcast", "channel": "nightly" },
+      "expect": { "url": "https://key.plrs.im/full/update/nightly/appcast.xml" }
+    },
+    {
+      "name": "appcast — a channel is percent-encoded",
+      "endpoints": "everything",
+      "input": { "kind": "appcast", "channel": "qa build/ü~*" },
+      "expect": {
+        "url": "https://key.plrs.im/full/update/qa%20build%2F%C3%BC~*/appcast.xml"
+      }
+    },
+    {
+      "name": "winsparkle — no channel is stable",
+      "endpoints": "everything",
+      "input": { "kind": "winsparkle" },
+      "expect": {
+        "url": "https://key.plrs.im/full/update/stable/winsparkle.xml"
+      }
+    },
+    {
+      "name": "winsparkle — beta",
+      "endpoints": "everything",
+      "input": { "kind": "winsparkle", "channel": "beta" },
+      "expect": { "url": "https://key.plrs.im/full/update/beta/winsparkle.xml" }
+    },
+    {
+      "name": "winsparkle — staging is the beta alias",
+      "endpoints": "everything",
+      "input": { "kind": "winsparkle", "channel": "staging" },
+      "expect": { "url": "https://key.plrs.im/full/update/beta/winsparkle.xml" }
+    },
+    {
+      "name": "winsparkle — a channel is percent-encoded",
+      "endpoints": "everything",
+      "input": { "kind": "winsparkle", "channel": "qa build/ü~*" },
+      "expect": {
+        "url": "https://key.plrs.im/full/update/qa%20build%2F%C3%BC~*/winsparkle.xml"
+      }
+    },
+    {
+      "name": "velopack — beta, win-x64 releases file",
+      "endpoints": "everything",
+      "input": {
+        "kind": "velopack",
+        "channel": "beta",
+        "velopackChannel": "win-x64"
+      },
+      "expect": {
+        "url": "https://key.plrs.im/full/update/beta/velopack/releases.win-x64.json"
+      }
+    },
+    {
+      "name": "velopack — staging is the beta alias",
+      "endpoints": "everything",
+      "input": {
+        "kind": "velopack",
+        "channel": "staging",
+        "velopackChannel": "linux"
+      },
+      "expect": {
+        "url": "https://key.plrs.im/full/update/beta/velopack/releases.linux.json"
+      }
+    },
+    {
+      "name": "velopack — no velopackChannel is the UpdateManager feed directory",
+      "endpoints": "everything",
+      "input": { "kind": "velopack", "channel": "stable" },
+      "expect": { "url": "https://key.plrs.im/full/update/stable/velopack/" }
+    },
+    {
+      "name": "velopack — a velopackChannel is percent-encoded",
+      "endpoints": "everything",
+      "input": {
+        "kind": "velopack",
+        "channel": "stable",
+        "velopackChannel": "win x64"
+      },
+      "expect": {
+        "url": "https://key.plrs.im/full/update/stable/velopack/releases.win%20x64.json"
+      }
+    },
+    {
+      "name": "appInstaller — stable",
+      "endpoints": "everything",
+      "input": { "kind": "appInstaller", "channel": "stable" },
+      "expect": {
+        "url": "https://key.plrs.im/full/update/stable/app.appinstaller"
+      }
+    },
+    {
+      "name": "appInstaller — latest is the stable alias",
+      "endpoints": "everything",
+      "input": { "kind": "appInstaller", "channel": "latest" },
+      "expect": {
+        "url": "https://key.plrs.im/full/update/stable/app.appinstaller"
+      }
+    },
+    {
+      "name": "appInstaller — a pr channel",
+      "endpoints": "everything",
+      "input": { "kind": "appInstaller", "channel": "pr-42" },
+      "expect": {
+        "url": "https://key.plrs.im/full/update/pr-42/app.appinstaller"
+      }
+    },
+    {
+      "name": "zsync — beta build",
+      "endpoints": "everything",
+      "input": {
+        "kind": "zsync",
+        "channel": "beta",
+        "buildId": "linux-x64.appimage"
+      },
+      "expect": {
+        "url": "https://key.plrs.im/full/update/beta/linux-x64.appimage.AppImage.zsync"
+      }
+    },
+    {
+      "name": "zsync — no channel is stable",
+      "endpoints": "everything",
+      "input": { "kind": "zsync", "buildId": "linux-arm64" },
+      "expect": {
+        "url": "https://key.plrs.im/full/update/stable/linux-arm64.AppImage.zsync"
+      }
+    },
+    {
+      "name": "zsync — a channel is percent-encoded",
+      "endpoints": "everything",
+      "input": {
+        "kind": "zsync",
+        "channel": "qa build/ü~*",
+        "buildId": "linux-arm64"
+      },
+      "expect": {
+        "url": "https://key.plrs.im/full/update/qa%20build%2F%C3%BC~*/linux-arm64.AppImage.zsync"
+      }
+    },
+    {
+      "name": "appcast — a Worker before P3-09 still serves it",
+      "endpoints": "withoutAppUpdaterFeeds",
+      "input": { "kind": "appcast", "channel": "beta" },
+      "expect": { "url": "https://key.plrs.im/full/update/beta/appcast.xml" }
+    },
+    {
+      "name": "winsparkle — unsupported without the template",
+      "endpoints": "withoutAppUpdaterFeeds",
+      "input": { "kind": "winsparkle", "channel": "beta" },
+      "expect": { "unsupported": "product" }
+    },
+    {
+      "name": "velopack — unsupported without the template",
+      "endpoints": "withoutAppUpdaterFeeds",
+      "input": {
+        "kind": "velopack",
+        "channel": "beta",
+        "velopackChannel": "win"
+      },
+      "expect": { "unsupported": "product" }
+    },
+    {
+      "name": "appInstaller — unsupported without the template",
+      "endpoints": "withoutAppUpdaterFeeds",
+      "input": { "kind": "appInstaller" },
+      "expect": { "unsupported": "product" }
+    },
+    {
+      "name": "zsync — unsupported without the template",
+      "endpoints": "withoutAppUpdaterFeeds",
+      "input": { "kind": "zsync", "buildId": "linux-arm64" },
+      "expect": { "unsupported": "product" }
+    },
+    {
+      "name": "appcast — unsupported with Update off",
+      "endpoints": "updateOff",
+      "input": { "kind": "appcast" },
+      "expect": { "unsupported": "product" }
+    },
+    {
+      "name": "winsparkle — unsupported with Update off",
+      "endpoints": "updateOff",
+      "input": { "kind": "winsparkle", "channel": "beta" },
+      "expect": { "unsupported": "product" }
+    }
+  ]
+}

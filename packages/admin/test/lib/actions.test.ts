@@ -60,6 +60,7 @@ const SPEC: Record<0 | 1 | 2 | 3, ActionId[]> = {
     "signing.breakGlassActivate",
     "kek.reseal",
     "portalAccount.delete",
+    "license.delete",
     "connector.releaseVersion",
     "connector.phasedComplete",
     "connector.iapAvailability",

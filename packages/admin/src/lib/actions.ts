@@ -21,15 +21,15 @@ export interface ActionPolicy {
   /** The confirm dialog's intent (`none` for L0: no dialog). */
   intent: ConfirmIntent;
   /**
-   * L3: the operator types a value (the slug, the kid, "reseal", "delete", the store app's name)
-   * to confirm.
+   * L3: the operator types a value (the slug, the kid, "reseal", "delete", the store app's name,
+   * or `delete <id>`) to confirm.
    */
   typedConfirmation: boolean;
   /**
    * What is typed, for L3 actions. `appName` is the app's name as App Store Connect shows it; the
    * console does not know it, so the dialog supplies its own input and the Worker compares it.
    */
-  typed?: "slug" | "kid" | "reseal" | "delete" | "appName";
+  typed?: "slug" | "kid" | "reseal" | "delete" | "appName" | "deleteId";
 }
 
 /** Every action named in §5.2, by stable id. */
@@ -133,6 +133,9 @@ export const ACTION_LEVELS = {
   // Users (I-12): the subject's data of this product (config overrides, Cloud Sync) is gone for
   // good. The subject, its licences and the account stay.
   "user.deleteData": 3,
+  // Owner request (2026-10-05): deleting a licence removes it, its keys and its devices for good;
+  // typed `delete <id>` (a bulk deletion types `delete <n> licenses`). The Worker compares.
+  "license.delete": 3,
   // A-17a (owner decision, 2026-10-04): releasing a held App Store version is typed. The Worker
   // compares `confirm` with the app's name in App Store Connect.
   "connector.releaseVersion": 3,
@@ -184,6 +187,7 @@ const TYPED: Partial<Record<ActionId, ActionPolicy["typed"]>> = {
   "kek.reseal": "reseal",
   "portalAccount.delete": "delete",
   "user.deleteData": "delete",
+  "license.delete": "deleteId",
   "connector.releaseVersion": "appName",
   "connector.phasedComplete": "appName",
   "connector.iapAvailability": "appName",

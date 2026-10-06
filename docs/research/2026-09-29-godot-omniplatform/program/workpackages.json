@@ -80,6 +80,10 @@
       "title": "UI kits: one design system for every SDK (docs/design/UI-KITS.md)"
     },
     {
+      "id": "MO",
+      "title": "Motion system for the portal and console (notes/S-23)"
+    },
+    {
       "id": "PS",
       "title": "Polaris Key storefront: the Library as a distribution channel (S-21)"
     },
@@ -2440,7 +2444,7 @@
         "notes/S-16 §8 I-06"
       ],
       "brief": "wp/I-06-login-providers.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-07",
@@ -2474,7 +2478,7 @@
         "notes/S-16 §8 I-07"
       ],
       "brief": "wp/I-07-login-card-email.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-08",
@@ -2690,7 +2694,7 @@
         "notes/S-16 §10 D15 D19"
       ],
       "brief": "wp/I-12-console-users.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-13",
@@ -4829,7 +4833,7 @@
         "notes/S-15 §13 decision 5"
       ],
       "brief": "wp/A-18g-steam-adapter.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-18h",
@@ -4902,7 +4906,7 @@
       "optional": false,
       "refs": ["notes/S-15 §8", "notes/S-15 §6.1", "notes/S-15 §11 (A-18j)"],
       "brief": "wp/A-18j-console-storefronts.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "A-18k",
@@ -4952,7 +4956,7 @@
         "notes/S-15 §13 decisions 1, 2"
       ],
       "brief": "wp/A-18m-apple-listing-push.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-01",
@@ -5422,7 +5426,7 @@
         "design/PORTAL §11.2 PX-W14"
       ],
       "brief": "wp/PX-W14-approve-device.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-W15",
@@ -5703,7 +5707,7 @@
       "optional": false,
       "refs": ["design/PORTAL §4.16", "design/PORTAL §11.3 PX-16"],
       "brief": "wp/PX-16-discover-page.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-17",
@@ -5787,7 +5791,7 @@
         "design/PORTAL §11.3 PX-20"
       ],
       "brief": "wp/PX-20-quality-bar.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PX-21",
@@ -6762,6 +6766,36 @@
       "status": "todo"
     },
     {
+      "id": "LX-14a",
+      "title": "Per-license device limit: `licenses.device_limit` set through the admin API and a console **Device limit…** action (raise, lower, clear to inherit); the console shows the effective limit and its source; a license limit beats the tier",
+      "phase": "LX",
+      "stage": "phase A: independent fixes",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": [
+        "migration",
+        "rule-10",
+        "table-owners",
+        "console-csp-parity",
+        "threat-model",
+        "docs-links"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/design/SIGN-IN.md D-53 (owner, 2026-10-05)",
+        "plans/I-04.md §F.6",
+        "docs/design/EXPERIENCE.md §0.5 O1 item 5",
+        "notes/S-19 §7.2 (seat packs), C2 (licence value over tier)"
+      ],
+      "brief": "wp/LX-14a-per-license-device-limit.md",
+      "status": "todo"
+    },
+    {
       "id": "LX-14",
       "title": "Console licensing: Entitlements and Grants tabs, comp, trial, suppress and move actions, tier rank, catalog `combine` and `entitlementKind`, commerce mappings and restore policy, licensing report",
       "phase": "LX",
@@ -6769,7 +6803,7 @@
       "lane": "console",
       "role": "pkey-implementer",
       "estimateWeeks": [0.7, 1],
-      "deps": ["LX-06", "LX-09", "LX-10", "LX-11", "LX-12"],
+      "deps": ["LX-06", "LX-09", "LX-10", "LX-11", "LX-12", "LX-14a"],
       "planMode": false,
       "gates": ["console-csp-parity", "docs-links"],
       "humanInputs": [],
@@ -7029,7 +7063,7 @@
         "plans/SP-00.md (approved 2026-10-05; decisions delegated to Claude)"
       ],
       "brief": "wp/SP-00-parity-registry-plan.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-08",
@@ -7146,7 +7180,7 @@
         "notes/S-20 §9 HA-01"
       ],
       "brief": "wp/HA-01-hosted-asset-core.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-02",
@@ -7212,7 +7246,7 @@
         "notes/S-20 §10.2 Q5"
       ],
       "brief": "wp/HA-04-manifest-presentation.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-05",
@@ -8408,6 +8442,285 @@
       "optional": false,
       "refs": ["docs/design/UI-KITS.md §7.4, §10", "plans/HA-11.md"],
       "brief": "wp/UK-41-must-tier-closeout.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-01",
+      "title": "Motion tokens in `@polaris-key/brand`: `micro`, `moderate`, `deliberate`, `shimmer` durations, `emphasized` and `spring` easings, distances, scales, stagger and delays through `gen:brand` to CSS, Tailwind, TS, JSON and the kit languages; BRAND §7.5 and UI-KITS §4.8 updated",
+      "phase": "MO",
+      "stage": "wave 1: foundation",
+      "lane": "ui",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": [],
+      "planMode": false,
+      "gates": ["drift-gate", "generator-goldens", "docs-links"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-23 §5",
+        "notes/S-23 D3, D4",
+        "docs/design/BRAND.md §7.5",
+        "docs/design/UI-KITS.md §4.8"
+      ],
+      "brief": "wp/MO-01-brand-motion-tokens.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-02",
+      "title": "The motion layer in the console app: `src/ui/motion/` (`viewTransition`, `useReducedMotion`, `Presence`, `CountUp`, `setMeter`, `highlight`, `Celebration`) and `src/motion.css` (keyframes, the nine patterns, gated View Transition rules), exit animations for every Radix overlay, sonner on the tokens, the missing `pk-refetch`, and a motion lint",
+      "phase": "MO",
+      "stage": "wave 1: foundation",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 1.0],
+      "deps": ["MO-01"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-23 §6",
+        "notes/S-23 D1, D2, D7, D8",
+        "prototype/motion/motion.css",
+        "prototype/motion/motion.js"
+      ],
+      "brief": "wp/MO-02-motion-layer.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-03",
+      "title": "E2E determinism and the motion smoke suite: every e2e context runs with reduced motion; a new `e2e/motion.e2e.test.ts` asserts token durations, exits, View Transitions, the list budget and zero CSP violations with motion on",
+      "phase": "MO",
+      "stage": "wave 1: foundation",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": ["MO-02"],
+      "planMode": false,
+      "gates": ["portal-e2e", "console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-23 §6.8", "notes/S-23 D9"],
+      "brief": "wp/MO-03-e2e-motion-determinism.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-04",
+      "title": "Console navigation motion: route fade-through, forward/back drill-down by route depth, licence key and record title as shared elements, record-tab indicator morph and panel fade-through, SegmentedControl thumb",
+      "phase": "MO",
+      "stage": "wave 2: areas",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["MO-03"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-23 §6.1 morph, shared-element",
+        "notes/S-23 §6.3",
+        "prototype/motion/console.html"
+      ],
+      "brief": "wp/MO-04-console-navigation-motion.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-05",
+      "title": "Portal navigation motion: route transitions with scroll reset and heading focus, Library tile → product hero shared element, smooth section scroll gated by reduced motion, JumpPalette exit",
+      "phase": "MO",
+      "stage": "wave 2: areas",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["MO-03"],
+      "planMode": false,
+      "gates": ["portal-e2e", "console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-23 §6.1 shared-element",
+        "notes/S-23 §4.2",
+        "prototype/motion/portal.html"
+      ],
+      "brief": "wp/MO-05-portal-navigation-motion.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-06",
+      "title": "Portal devices and activation moments: Remove/Replace inline confirm expands, freed devices leave the list, the seat meter and count animate, the Activate dialog morphs between steps and celebrates the first activation, FreeDevicePage success",
+      "phase": "MO",
+      "stage": "wave 2: areas",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.5, 0.8],
+      "deps": ["MO-03", "SP-08"],
+      "planMode": false,
+      "gates": ["portal-e2e", "console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-23 §6.1 expand, list, success",
+        "EXPERIENCE.md §0.7",
+        "SIGN-IN.md §3.7, §3.14",
+        "prototype/motion/portal.html"
+      ],
+      "brief": "wp/MO-06-portal-device-activation-motion.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-07",
+      "title": "Portal Library and Discover motion: first-load stagger, tile lift and press, developer art fades in on decode, grid ↔ list morph, the \"Added just now\" ring, Discover tiles",
+      "phase": "MO",
+      "stage": "wave 2: areas",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["MO-03", "PX-16"],
+      "planMode": false,
+      "gates": ["portal-e2e", "console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-23 §6.1 stagger-list, press",
+        "PORTAL.md §4.12–§4.16",
+        "prototype/motion/portal.html"
+      ],
+      "brief": "wp/MO-07-portal-library-motion.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-08",
+      "title": "Console overlays and controls: the Drawer slides from the edge, popovers, menus, selects and tooltips enter from their side, press states on buttons, icon buttons, switches, radio cards and copy buttons, the Button hover filter transitioned, the ⌘K palette",
+      "phase": "MO",
+      "stage": "wave 2: areas",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["MO-02"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-23 §6.1 enter, exit, press", "notes/S-23 §4.2"],
+      "brief": "wp/MO-08-console-overlay-controls-motion.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-09",
+      "title": "Console data surfaces: table rows enter, leave and reorder within the 30-row budget, facet chips pop, the bulk-action bar presence, status pills ease and pop, chart fills and counts animate, StatTile and Skeleton get the shimmer (no more `animate-pulse` in `ui/`), RefetchBar, Stepper",
+      "phase": "MO",
+      "stage": "wave 2: areas",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.6, 1.0],
+      "deps": ["MO-03"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "notes/S-23 §6.1 list, skeleton, status",
+        "notes/S-23 §6.2",
+        "notes/S-23 §3.5"
+      ],
+      "brief": "wp/MO-09-console-data-motion.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-10",
+      "title": "Console shell motion (after UX-10 merges): the phone bottom sheet slides up, the phone nav drawer slides from the edge, the route Suspense fallback becomes a skeleton, sidebar and state pages, Tailwind aliases for the new keyframes, and `animate-pulse` retired on platform pages and Home",
+      "phase": "MO",
+      "stage": "wave 3: after UX-10",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.7],
+      "deps": ["MO-02"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-23 §4.2", "notes/S-23 §6.1"],
+      "brief": "wp/MO-10-console-shell-motion.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-11",
+      "title": "Console moments and counters: EXPERIENCE §0.7's first-time celebrations (first licence, first catalog publish, first release, store connected, product launched), the key-rotation countdown ring and refreshed-devices meter, Overview and Home attention lists stagger",
+      "phase": "MO",
+      "stage": "wave 3: after UX-29 and UX-12",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": ["MO-09"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "EXPERIENCE.md §0.7",
+        "EXPERIENCE.md §0.4 S2, O3",
+        "notes/S-23 §6.4"
+      ],
+      "brief": "wp/MO-11-console-moments-counters.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-12",
+      "title": "Reduce-motion preference: a Motion row (System, Reduced) beside the theme in the console account menu and in the portal's Account → Appearance, stored per browser and applied as `html[data-motion]` from the entry modules",
+      "phase": "MO",
+      "stage": "wave 3: after UX-10",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.3],
+      "deps": ["MO-02"],
+      "planMode": false,
+      "gates": ["console-csp-parity", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-23 D3", "notes/S-23 §6.6"],
+      "brief": "wp/MO-12-reduce-motion-preference.md",
+      "status": "todo"
+    },
+    {
+      "id": "MO-13",
+      "title": "Motion QA closeout: frame strips of every pattern in the real app (both themes, reduced), the 4× CPU frame budget in CI-optional e2e, the contributor docs page and the component inventory updated",
+      "phase": "MO",
+      "stage": "wave 4: closeout",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.3, 0.5],
+      "deps": [
+        "MO-04",
+        "MO-05",
+        "MO-06",
+        "MO-07",
+        "MO-08",
+        "MO-09",
+        "MO-10",
+        "MO-11",
+        "MO-12"
+      ],
+      "planMode": false,
+      "gates": ["console-csp-parity", "docs-links", "ci"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": ["notes/S-23 §3.5", "notes/S-23 §6.2 rule 7", "notes/S-23 §11"],
+      "brief": "wp/MO-13-motion-qa-closeout.md",
       "status": "todo"
     },
     {

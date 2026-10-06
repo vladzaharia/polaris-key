@@ -91,7 +91,7 @@ Developers only ever see data for their own products (owner). With no recovery d
   fill their slots (Cloud Sync is not a service yet, so `cloudSyncOn` answers false).
 - **Deleting a user's product data is L3** (typed `delete`), like deleting a portal account; detach
   and relink are L2 and undo is L1 (`lib/actions.ts`, ADMIN.md §5.2).
-- **Migration** `license_relinks` is `0081` (renumbered at integration, after main's `0077` and I-07's and I-06's `0078`–`0080`).
+- **Migration** `license_relinks` is `0082` (renumbered at integration, after main's `0078` and I-07's and I-06's `0079`–`0081`).
 - **Amendment `plans/I-24.md` (seat holders on the Users page) is a follow-up for I-24a.** The
   `license_seat_holders` table does not exist until I-24a lands, and I-24's plan puts the holders
   in the licence record's Seats panel; I-24a adds them to the Users row when it creates the table.

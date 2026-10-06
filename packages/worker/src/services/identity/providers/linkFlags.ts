@@ -1,5 +1,5 @@
 /**
- * Flags a provider puts on a sign-in method after it was linked (I-06; migration 0080). Only
+ * Flags a provider puts on a sign-in method after it was linked (I-06; migration 0081). Only
  * Sign in with Apple reports such events today (`apple.ts`, `verifyAppleNotification`).
  *
  * A flag never deletes the link: removing a sign-in method stays the person's own step-up action

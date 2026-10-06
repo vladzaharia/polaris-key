@@ -730,6 +730,9 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             key={a.label}
             size="sm"
             variant={a.tone === "danger" ? "danger" : "outline"}
+            disabledReason={a.disabledReason?.(
+              selectedRows.map((r) => r.original),
+            )}
             onClick={() =>
               a.onSelect(
                 selectedRows.map((r) => r.original),

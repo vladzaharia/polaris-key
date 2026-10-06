@@ -51,8 +51,10 @@ export function PortalShell({
 
   return (
     <div className="flex min-h-dvh flex-col bg-surface-page text-fg">
+      {/* "#content", not "#/": the hash router never sees it (onClick), and axe recognises a skip
+          link only by an in-page fragment (PX-20). */}
       <a
-        href="#/"
+        href="#content"
         onClick={(e) => {
           e.preventDefault();
           mainRef.current?.focus();

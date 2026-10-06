@@ -18,7 +18,7 @@
  *   - `composed`: laid out from key art and the wordmark, or a screenshot fitted (cropped or
  *     padded) to a store's rule. Shown with its preview until accepted.
  *
- * Acceptance is the digest the operator looked at (`accepted_sha256`, migration 0082): new bytes
+ * Acceptance is the digest the operator looked at (`accepted_sha256`, migration 0083): new bytes
  * are unaccepted again with no write. An asset the operator uploaded (`source = 'admin'`) is
  * theirs and counts as accepted. The store pushes read `acceptedAssets` and send nothing else.
  * Nothing is deleted here; the console offers no delete (owner rule).

@@ -5,6 +5,10 @@ import { configureAxe } from "vitest-axe";
 import type { ConfigEntry, ProductCatalog } from "../src/api.js";
 import { resetConsole } from "./consoleHarness.js";
 import { apiError, bootConfig } from "./configHarness.js";
+import {
+  guessDefault,
+  labelFromKey,
+} from "../src/console/pages/config/CatalogEntryForm.js";
 
 /**
  * Config → Catalog (docs/design/ADMIN.md §6.6.1) and its editor (§6.6.2), driven through the
@@ -139,8 +143,7 @@ describe("Catalog page", () => {
     );
     await screen.findByRole("heading", { level: 1, name: "Edit catalog" });
     expect(window.location.hash).toBe("#/p/djdl/config/catalog/edit");
-    expect(screen.getByText("v1")).toBeTruthy();
-    expect(screen.getByText("Draft")).toBeTruthy();
+    expect(screen.getByText("Draft v1")).toBeTruthy();
     expect(screen.getByText("No entries yet")).toBeTruthy();
   });
 
@@ -272,7 +275,7 @@ const labelBox = async (): Promise<HTMLInputElement> =>
 describe("Catalog editor", () => {
   it("edits an entry in the form and publishes it with expectedVersion (A-6)", async () => {
     const backend = await openEditor();
-    expect(screen.getByText("v8 → v9")).toBeTruthy();
+    expect(screen.getByText("Draft v9")).toBeTruthy();
     const label = await labelBox();
     await userEvent.clear(label);
     await userEvent.type(label, "Request timeout");
@@ -495,5 +498,126 @@ describe("Catalog editor", () => {
     await openEditor();
     await labelBox();
     await axeClean();
+  });
+});
+
+// ── the entry form's progressive disclosure (EXPERIENCE.md §0.4 S4, UX-34) ──────────────────────
+
+describe("Catalog entry form", () => {
+  it("derives a label from the key's last segment", () => {
+    expect(labelFromKey("audio.bufferSize")).toBe("Buffer size");
+    expect(labelFromKey("net.retry_count")).toBe("Retry count");
+    expect(labelFromKey("ui.dark-mode")).toBe("Dark mode");
+    expect(labelFromKey("sentry.DSN")).toBe("DSN");
+    expect(labelFromKey("telemetry.sentryDSNUrl")).toBe("Sentry DSN url");
+    expect(labelFromKey("")).toBe("");
+  });
+
+  it("guesses a type from a typed default", () => {
+    expect(guessDefault("")).toBeNull();
+    expect(guessDefault("true")).toEqual({ type: "boolean", value: true });
+    expect(guessDefault("512")).toEqual({ type: "integer", value: 512 });
+    expect(guessDefault("-0.5")).toEqual({ type: "number", value: -0.5 });
+    expect(guessDefault("[1, 2]")).toEqual({ type: "array", value: [1, 2] });
+    expect(guessDefault('{"a":1}')).toEqual({
+      type: "object",
+      value: { a: 1 },
+    });
+    expect(guessDefault("[not json")).toEqual({
+      type: "string",
+      value: "[not json",
+    });
+    expect(guessDefault(" eu-west ")).toEqual({
+      type: "string",
+      value: " eu-west ",
+    });
+  });
+
+  it("leads with key, kind, type and default and collapses the rest", async () => {
+    await openEditor(
+      {},
+      "#/p/djdl/config/catalog/edit?entry=network.proxy.url",
+    );
+    for (const name of [/^Key/, /^Label/])
+      expect(await screen.findByRole("textbox", { name })).toBeTruthy();
+    // A category suggests the draft's others, so it is a combobox.
+    expect(screen.getByRole("combobox", { name: /^Category/ })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: /^Type/ })).toBeTruthy();
+    expect(screen.getByRole("textbox", { name: /^Default/ })).toBeTruthy();
+    const validation = screen.getByText("Validation").closest("details")!;
+    const hints = screen.getByText("Form hints").closest("details")!;
+    expect(validation.open).toBe(false);
+    expect(hints.open).toBe(false);
+    await userEvent.click(screen.getByText("Validation"));
+    await waitFor(() => expect(validation.open).toBe(true));
+  });
+
+  it("opens Validation by itself when the entry has rules", async () => {
+    await openEditor();
+    const validation = (await screen.findByText("Validation")).closest(
+      "details",
+    )!;
+    expect(validation.open).toBe(true);
+    expect(screen.getByRole("spinbutton", { name: /^Minimum$/ })).toBeTruthy();
+  });
+
+  it("rewrites a derived label as the key changes, never a typed one", async () => {
+    const backend = await openEditor(
+      {
+        [`${P}/config/catalog`]: apiError(404),
+        [`PUT ${P}/config/catalog`]: { ok: true, schemaVersion: 1 },
+      },
+      "#/p/djdl/config/catalog/edit",
+    );
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Add entry" })[0]!,
+    );
+    const key = await screen.findByRole("textbox", { name: /^Key/ });
+    await userEvent.clear(key);
+    await userEvent.type(key, "audio.bufferSize");
+    expect((await labelBox()).value).toBe("Buffer size");
+
+    const label = await labelBox();
+    await userEvent.clear(label);
+    await userEvent.type(label, "Buffer");
+    await userEvent.type(key, "Ms");
+    expect((await labelBox()).value).toBe("Buffer");
+
+    // The type follows the typed default on a new entry.
+    const value = screen.getByRole("textbox", { name: /^Default/ });
+    await userEvent.type(value, "512");
+    expect(await screen.findByText("Guessed from the default.")).toBeTruthy();
+    expect(
+      screen.getByRole("combobox", { name: /^Type/ }).textContent,
+    ).toContain("Whole number");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Review changes" }),
+    );
+    const drawer = await screen.findByRole("dialog");
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Publish version 1" }),
+    );
+    await waitFor(() => expect(backend.writes()).toHaveLength(1));
+    expect(backend.writes()[0]!.body).toMatchObject({
+      catalog: {
+        entries: [
+          {
+            key: "audio.bufferSizeMs",
+            label: "Buffer",
+            schema: { type: "integer" },
+            default: 512,
+          },
+        ],
+      },
+    });
+  });
+
+  it("keeps the typed default control on an entry that already exists", async () => {
+    await openEditor();
+    // network.timeout is an integer with a default: its Default is the number box, not a guess.
+    expect(
+      await screen.findByRole("spinbutton", { name: /^Default/ }),
+    ).toBeTruthy();
+    expect(screen.queryByText("Guessed from the default.")).toBeNull();
   });
 });

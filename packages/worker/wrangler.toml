@@ -186,6 +186,10 @@ queue = "pkey-deltas-dlq-prod"
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.prod.version_metadata]
 binding = "CF_VERSION_METADATA"
+# HA-01: the Cloudflare Images binding (`core/hostedAssets.ts` reads ingested image dimensions
+# with `.info()`; HA-03 builds the variant ladder with it). A binding, so one per env.
+[env.prod.images]
+binding = "IMAGES"
 [env.prod.vars]
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "prod"
@@ -273,6 +277,10 @@ queue = "pkey-deltas-dlq-staging"
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.staging.version_metadata]
 binding = "CF_VERSION_METADATA"
+# HA-01: the Cloudflare Images binding (`core/hostedAssets.ts` reads ingested image dimensions
+# with `.info()`; HA-03 builds the variant ladder with it). A binding, so one per env.
+[env.staging.images]
+binding = "IMAGES"
 [env.staging.vars]
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "staging"
@@ -340,6 +348,10 @@ queue = "pkey-deltas-dlq-dev"
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.dev.version_metadata]
 binding = "CF_VERSION_METADATA"
+# HA-01: the Cloudflare Images binding (`core/hostedAssets.ts` reads ingested image dimensions
+# with `.info()`; HA-03 builds the variant ladder with it). A binding, so one per env.
+[env.dev.images]
+binding = "IMAGES"
 [env.dev.vars]
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "dev"

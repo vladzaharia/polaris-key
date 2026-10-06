@@ -1,6 +1,7 @@
 /**
- * Licenses (`/manage/api/products/<slug>/license/licenses/...`): list/create, detail/patch,
- * enable/disable, catalog-validated override batches, and the keys/devices sub-resources.
+ * Licenses (`/manage/api/products/<slug>/license/licenses/...`): list/create, detail/patch/delete,
+ * enable/disable, catalog-validated override batches, and the keys/devices sub-resources. Every
+ * summary carries its deletion verdict (`deletion.ts`).
  * Creating a license mints its first key (returned ONCE). Override values validate against the
  * active catalog.
  */
@@ -54,6 +55,7 @@ import { tierExpiresAt } from "../authz.js";
 import type { LicenseAdminContext } from "./index.js";
 import { handleKeys } from "./keys.js";
 import { handleAdminDevices } from "./devices.js";
+import { deletionVerdicts, handleDeleteLicense } from "./deletion.js";
 
 /** Normalize a request-body `channels` field into a JSON string array column value.
  *  An array (even empty) is stored as JSON; anything else (absent/null) clears the column. */
@@ -118,8 +120,12 @@ export async function handleLicenses(
   if (!id) {
     if (req.method === "GET") {
       const rows = await listLicenses(db, slug);
+      const verdicts = await deletionVerdicts(ctx, rows);
       const licenses = await Promise.all(
-        rows.map((r) => licenseSummary(db, slug, r)),
+        rows.map(async (r) => ({
+          ...(await licenseSummary(db, slug, r)),
+          deletion: verdicts.get(r.id),
+        })),
       );
       return adminJson({ licenses });
     }
@@ -226,6 +232,7 @@ export async function handleLicenses(
       const overrides = parsePayload(license.overrides_json);
       return adminJson({
         ...(await licenseSummary(db, slug, license)),
+        deletion: (await deletionVerdicts(ctx, [license])).get(id),
         // R11-06: guarded reads — a corrupt column degrades to empty/undefined, never a 500.
         groups: parseJsonList(license.groups_json),
         profiles: profiles.map((p) => p.profile_id),
@@ -394,6 +401,7 @@ export async function handleLicenses(
       }
       return adminJson({ ok: true, id, ...(overLimit ? { overLimit } : {}) });
     }
+    if (req.method === "DELETE") return handleDeleteLicense(ctx, license);
     return err(405, ErrorCode.BadRequest, "method not allowed");
   }
 
