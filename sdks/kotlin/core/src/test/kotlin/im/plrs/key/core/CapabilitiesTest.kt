@@ -47,8 +47,12 @@ class CapabilitiesTest {
         for (c in listOf(jvm, android)) assertEquals(UnsupportedReason.runtime, reason(c.supports(Feature.packsTypeGodotZip, DEFAULT_SERVICES)))
         // `except jvm:runtime` on an implemented row (P6-12): runtime on the JVM only; on Android the
         // row asks for its opt-in service like any other.
+        val withDistribution = servicesFromList(listOf(ServiceSlug.distribution))
+        assertEquals(UnsupportedReason.runtime, reason(jvm.supports(Feature.packsTransportPlay, withDistribution)))
+        assertTrue(android.supports(Feature.packsTransportPlay, withDistribution).isSupported)
+        // UK-40: the JVM desktop has an install driver now, so update.driver is supported on both.
         val withUpdate = servicesFromList(listOf(ServiceSlug.update))
-        assertEquals(UnsupportedReason.runtime, reason(jvm.supports(Feature.updateDriver, withUpdate)))
+        assertTrue(jvm.supports(Feature.updateDriver, withUpdate).isSupported)
         assertTrue(android.supports(Feature.updateDriver, withUpdate).isSupported)
     }
 

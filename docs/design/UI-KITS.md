@@ -165,11 +165,11 @@ screen:
 - **Polaris Key appears only as an optional "Powered by Polaris Key"** line or badge (`poweredBy`,
   off by default, §4.5). No kit screen shows the Pinned K, the Star Cut or the "Polaris Key" name
   otherwise. Two exceptions, both true statements about who handles a step:
-  - the sign-in footnote "Polaris Key handles sign-in. <Developer> never sees your passkeys."
-    (EXPERIENCE §8 passthrough footer);
+  - the sign-in footnote "Polaris Key signs you in for <App>. <Developer> never sees your codes or
+    passkeys." (`signin.footer`, SIGN-IN.md D-15);
   - the device-code URL. The product's `deviceCodeUrl` (for example `driftkart.gg/tv`) is used when
-    set, otherwise `key.plrs.im/tv` on TV and console and `key.plrs.im/activate` in desktop
-    hand-offs.
+    set, otherwise `key.plrs.im/tv` on TV and console and `key.plrs.im/device` in desktop and
+    phone hand-offs (SIGN-IN.md D-16; `/activate` is only the license-key route).
 - **Service cues are off on product screens.** Users neither know nor care that License is
   chartreuse. In product-facing kit screens the six service accents do not appear at all. They
   return only for integrators who opt in: `theme.serviceCues: true` adds the small tinted glyph tiles
@@ -213,11 +213,13 @@ One identity, rendered in each platform's current idiom. These stay identical ev
 | **Windows**                                     | Fluent 2                            | The `windows` platform variant for Electron, Tauri, Compose Desktop and Qt Quick. **Chrome:** a Mica title bar with caption buttons on the right (`DwmSetWindowAttribute` `DWMWA_SYSTEMBACKDROP_TYPE` natively). **Controls:** 32 px at radius 4; overlays at radius 8. **Focused steps:** a `ContentDialog` on a smoke layer, with the footer buttons at equal width, primary first. **Focus:** the Fluent two-tone ring                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | **Linux (GNOME)**                               | libadwaita                          | The `linux` platform variant: a header bar with only the close button, window radius 12, 34 px controls at radius 8, a pill suggested-action for the primary, and focused steps in an `AdwDialog` (radius 12, a soft libadwaita shadow with a 7 % edge in light, never a drawn dark outline)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | **Godot**                                       | Modern game UI                      | **Scheme:** `colorScheme` defaults to `"dark"`; light is opt-in. **Glass:** panels over a 35–45 % scrim, with an opaque `surface-raised` at 0.94 under `gl_compatibility`, on web exports and when `ui_reduce_transparency` is set; blur at half resolution in one cached pass. **Controls:** 60 px, with a 3 px focus ring at a 2 px offset plus an accent glow; scale 1.03 only on tiles and rows, from the centre. **Identity and type:** a `product.wordmark` texture beside the icon, and `typography.display` for the game's heading face. **Input:** `PKeyInputGlyphs` (monochrome filled glyphs that follow the last input device and honour the confirm-button swap). **Also:** a type floor (§1.5 rule 5), title-safe areas, a host-set toast anchor, UI sound hooks and optional haptics                                                                                                         |
-| **Terminal** (Node, Python)                     | 2026 CLI (gh, uv, clack)            | **Colour:** ANSI-16 for status roles by default, so output follows the user's terminal theme; truecolor only for the product chip, and only with `COLORTERM=truecolor`; light background detected via OSC 11, then `COLORFGBG`. **Layout:** 80 columns, degrading to 60, with keys truncated in the middle; a continuous rail on every line. **Feedback:** a braille spinner in `mute`; a half-block QR, hidden below 70 columns or 20 rows. **Interaction:** OSC 8 links, OSC 52 copy, masked key entry, `--json` on every verb. **Fallbacks:** `NO_COLOR` and ascii symbols                                                                                                                                                                                                                                                                                                                               |
+| **Terminal** (Node, Python)                     | 2026 CLI (gh, uv, clack)            | **Colour:** ANSI-16 for status roles by default, so output follows the user's terminal theme; truecolor only for the product chip, and only with `COLORTERM=truecolor`; light background detected via OSC 11, then `COLORFGBG`. **Layout:** 80 columns, degrading to 60, with keys truncated in the middle; a continuous rail on every line. **Feedback:** a braille spinner in `mute`; a half-block QR, hidden below 70 columns or 20 rows, and never for sign-in (SIGN-IN.md D-67, D-68: browser and loopback, or a device code without a QR when headless). **Interaction:** OSC 8 links, OSC 52 copy, masked key entry, `--json` on every verb. **Fallbacks:** `NO_COLOR` and ascii symbols                                                                                                                                                                                                             |
 | **Qt** (Python)                                 | Platform variants above             | **Qt:** Qt Quick (QML with `MultiEffect` blur and `Behavior` springs) is the drop-in, rendering the macOS, Windows or Linux variant. QWidget is layer (b) only, with its limits stated: QSS has no blur, transitions or transforms. There is no Tk kit (owner, 2026-10-05)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
-**Desktop dialog model.** Focused steps (Activate, SignInHandoff, DeviceLimit) are sheets on macOS
-and in-window dialogs on Windows (`ContentDialog`) and Linux (`AdwDialog`). The update prompt and
+**Desktop dialog model.** Focused steps (Activate, SignInHandoff, LicenseChoice, DeviceLimit) are
+sheets on macOS and in-window dialogs on Windows (`ContentDialog`) and Linux (`AdwDialog`); the
+sign-in waiting step, the code view and the in-app license choice are drawn in SIGN-IN.md frames
+18, 24 and 28–31. The update prompt and
 Settings are real windows on desktop. This replaces UK-10's "dialogs as real windows".
 
 ### 1.5 Nothing dated: the hard rules
@@ -367,25 +369,35 @@ inset, minimum 8.
 
 **New targets:**
 
-| Target                  | File (generated)                                                                             | Consumer                                                |
-| ----------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| CSS (exists) + kit vars | `packages/brand/css/kit.css` (`--pk-kit-*`)                                                  | React, elements, Vue, Svelte, Angular, Electron, Tauri  |
-| JS objects              | `packages/brand/src/generated/kit.ts`                                                        | ui-core theme resolver, React Native                    |
-| Swift (exists) + kit    | `sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift` + `KitTokens.generated.swift`  | SwiftUI, UIKit, AppKit                                  |
-| Kotlin (exists) + kit   | `sdks/kotlin/ui/src/commonMain/.../PolarisKitTokens.generated.kt`                            | Compose (all targets), Views interop                    |
-| Godot (exists) + themes | `PKeyBrand` + `pkey_brand_{dark,light}.tres` + `ui/theme/icons/*.svg` (engine control icons) | Godot kit                                               |
-| **Python (new)**        | `sdks/python/src/polaris_key/ui/_tokens.py`, Qt Quick `Theme.qml` + QSS                      | Qt, rich/Textual                                        |
-| **Terminal (new)**      | `packages/sdk-node/src/cli/tokens.generated.ts`, `polaris_key/ui/ansi.py`                    | Node and Python CLIs (ANSI-16 roles + truecolor accent) |
-| **C# (new)**            | `sdks/godot/addons/polaris_key/dotnet/PKeyBrand.generated.cs`                                | Godot .NET facade                                       |
+| Target                  | File (generated)                                                                            | Consumer                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| CSS (exists) + kit vars | `packages/brand/css/kit.css` (`--pk-kit-*`)                                                 | React, elements, Vue, Svelte, Angular, Electron, Tauri  |
+| JS objects              | `packages/brand/src/generated/kit.ts`                                                       | ui-core theme resolver, React Native                    |
+| Swift (exists) + kit    | `sdks/swift/Sources/PolarisKeyUI/BrandTokens.generated.swift` + `KitTokens.generated.swift` | SwiftUI, UIKit, AppKit                                  |
+| Kotlin (exists) + kit   | `sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/brand/PolarisKitTokens.generated.kt` (¹)     | Compose (all targets), Views interop                    |
+| Godot (exists) + themes | `PKeyBrand` + `PKeyKitTokens` + `PKeyKitIcons` (engine control icons) (²)                   | Godot kit                                               |
+| **Python (new)**        | `sdks/python/src/polaris_key/ui/_tokens.py`, `ui/qt/Theme.qml` + `qmldir` + QSS per scheme  | Qt, rich/Textual                                        |
+| **Terminal (new)**      | `packages/sdk-node/src/cli/tokens.generated.ts`, `polaris_key/ui/ansi.py`                   | Node and Python CLIs (ANSI-16 roles + truecolor accent) |
+| **C# (new)**            | `sdks/godot/addons/polaris_key/dotnet/PKeyBrand.generated.cs`                               | Godot .NET facade                                       |
+
+(¹) The Compose kit is an Android library module today (`src/main`); the file moves to
+`commonMain` when UK-09/UK-10 make it Kotlin Multiplatform. (²) `pkey_brand_{dark,light}.tres`
+stay Godot-saved resources written by `tools/gen_theme.gd` from `PKeyUiTheme` and drift-checked by
+the `brand` suite; the engine control icons are SVG templates in `kit_icons_generated.gd`
+(rasterised at run time) rather than imported `.svg` files, because an import's parameters differ
+between engine versions. UK-01 implemented this table (2026-10-05); the design source is
+`packages/brand/src/tokens/{kit,terminal}.ts` and the renderers are `scripts/gen-kit.ts`.
 
 **Fonts per platform.** Rubik ships as a **variable font** (wght 300–900; about 35 KB as latin
 WOFF2), replacing today's 400 and 700 statics, which forced every non-body string to Bold. The
 kits also ship one **kit mono**, JetBrains Mono (OFL, 400–600 variable, latin, about 31 KB), as
 `--pk-font-mono` for keys, user codes and hashes, so a key looks the same on every OS.
 
-- Formats: WOFF2 for the web, TTFs for Swift, Compose Resources fonts for KMP (moving from
-  Android `R.font`), Godot `FontFile`s (MSDF, so focus scaling stays sharp), and TTFs with
-  `OFL.txt` in the Python wheel (`polaris_key/ui/fonts/`).
+- Formats: WOFF2 for the web (`packages/brand/fonts/`, with the unmodified variable TTFs in
+  `fonts/ttf/`), TTFs for Swift, Android resource fonts for Compose (Compose Resources once the kit
+  is KMP), Godot `FontFile`s (MSDF, so focus scaling stays sharp), and TTFs with the OFL texts in
+  the Python wheel (`polaris_key/ui/fonts/`). The SDKs keep the static 400/700 copies beside the
+  variable ones until each kit's typography moves over (UK-07, UK-09, UK-11).
 - Every web kit **loads its fonts itself** (an `@font-face` in the elements stylesheet and
   `@polaris-key/react/styles.css`), with `size-adjust` and `ascent-override` fallback faces so a
   host page does not shift when Rubik arrives (RE).
@@ -470,17 +482,38 @@ The focus ring takes the resolved accent (one learnable focus signal within the 
 colours never change with the accent; the danger `solid` behind white labels follows the same
 white-first rule.
 
-| Vector (input → scheme)      | `solid`               | `on`  | `fg`      | `subtle`  |
-| ---------------------------- | --------------------- | ----- | --------- | --------- |
-| Tidewater icon teal → dark   | `#0f8075`             | white | `#4fd8c4` | `#0c2628` |
-| Tidewater icon teal → light  | `#0d7268`             | white | `#0b6b62` | `#dff2ef` |
-| Core violet → dark           | `#7a3df0`             | white | `#b688fe` | `#18132e` |
-| Core violet → light          | `#7a2fff`             | white | `#6a1fef` | `#eae4ff` |
-| Drift Kart `#ff6a3d` → dark  | `#ff6a3d`             | ink   | `#ff8a63` | 16 % tint |
-| Drift Kart `#ff6a3d` → light | `#ff6a3d`             | ink   | `#c2410c` | 14 % tint |
-| Danger → dark / light        | `#c83b2c` / `#be2323` | white | token     | token     |
+| Vector (input → scheme)              | `solid`               | `on`  | `fg`      | `subtle`  |
+| ------------------------------------ | --------------------- | ----- | --------- | --------- |
+| Tidewater icon teal `#369186` → dark | `#26847a`             | white | `#72cabe` | `#0a181e` |
+| Tidewater icon teal → light          | `#26847a`             | white | `#14796f` | `#e1ecf2` |
+| Core violet `#9a5cff` → dark         | `#9051f3`             | white | `#c0a6ff` | `#17122d` |
+| Core violet `#7a2fff` → light        | `#7a2fff`             | white | `#7321f6` | `#eae4ff` |
+| Drift Kart `#ff6a3d` → dark          | `#ff6a3d`             | ink   | `#ff987a` | `#241517` |
+| Drift Kart `#ff6a3d` → light         | `#ec592a`             | ink   | `#b73500` | `#f5e8ea` |
+| Danger → dark / light                | `#db3a2b` / `#be2323` | white | token     | token     |
 
 A pinned test asserts that `on` is the same colour in both schemes for every vector.
+
+**As implemented (UK-01, 2026-10-05).** `packages/brand/src/accent.ts` is the reference; the
+Swift (`PolarisAccent`), Kotlin (`PolarisAccent`), GDScript (`PKeyAccent`) and Python
+(`polaris_key.ui.accent`) ports reproduce every vector in `packages/brand/fixtures/accent-vectors.json`
+exactly (generated by `pnpm gen:brand` from `src/tokens/accent-vectors.ts`, with the spec rows
+above plus edge cases). The table above is the resolver's output; the first draft's values were
+hand-tuned mockup colours and were replaced by it. The rules the draft left open are fixed as:
+
+- **deriveAccent:** opaque means alpha ≥ 128; a pixel is grey below OKLCH chroma 0.04; clusters are
+  30° hue bins; a cluster must cover ≥ 8 % of the opaque pixels; the highest mean chroma wins (ties:
+  the larger cluster, then the lower hue); the answer is the cluster's mean OKLab colour with its
+  lightness clamped to 0.45–0.60 (an icon colour is art, the accent is UI).
+- **solid:** white label → the smallest darkening that gives white 4.5:1, then (dark schemes only)
+  the smallest lift that clears 3:1 on every surface; ink label → the smallest lightening that
+  gives ink 4.5:1, then (light schemes only) the smallest darkening that clears 3:1 on every surface.
+  This is why Drift Kart's light solid is `#ec592a`, not the raw `#ff6a3d` (2.9:1 on white).
+- **fg:** from the input at lightness ≥ 0.78 (dark) or ≤ 0.52 (light), moved until it clears 4.5:1
+  on every surface. **subtle:** `solid` at 12 % (dark) or 10 % (light) over the page, flattened,
+  like the section accents. **focus:** `fg` in dark, `solid` in light.
+- Every search is a 32-step bisection on lightness, compared on the rounded hex, so the ports agree
+  bit for bit.
 
 ### 3.4 The `native` preset
 
@@ -518,30 +551,31 @@ React exports bare names from `@polaris-key/react`. Headless names follow each l
 (`useActivate`, `ActivateModel`, `rememberActivateState`, `PKeyActivateController`,
 `ActivateViewModel`).
 
-| Component             | What it is                                                                                                                                                                          | States                                                                                                                        | Priority |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | -------- |
-| **PolarisKeyGate**    | The drop-in root. Boots, gates, and runs every flow below as needed; renders the app when licensed; adds the grace banner, update prompt and toasts                                 | booting · needs-activation · licensed · grace · blocked (revoked, expired, version too old/new, channel not entitled) · error | must     |
-| **Boot**              | First-paint screen while the stage machine runs (`ui.stages`): product hero, a neutral indicator, consent for metered downloads, offline and blocked stops                          | progress · consent · fetching · offline · blocked · error                                                                     | must     |
-| **Welcome**           | The gate's first screen: product hero, Sign in, Use a license key, and the extras the product supports (trial, restore purchase, activate offline)                                  | default · busy · capability-limited (only the paths the build supports, GO)                                                   | must     |
-| **SignIn**            | Method chooser: platform-native first (Sign in with Apple, Google on Android), email via the hosted card, Steam, Use another device                                                 | default · busy · method error · no method enabled                                                                             | must     |
-| **SignInHandoff**     | "Finish in your browser": the RFC 8628 user code, a QR, Open browser again, the countdown; moves on by itself                                                                       | starting · waiting · link copied · confirm · ok · denied · expired · cancelled                                                | must     |
-| **Activate**          | License key entry with live verdict: the key field names the product and tier as soon as it parses, catches cut-short keys (EXPERIENCE P2), paste button, Return submits            | empty · typing · parsed · cut short · busy · rejected · device limit (hands to DeviceLimit) · done                            | must     |
-| **OfflineActivation** | Request code (text + QR), load or drop a response file, paste box                                                                                                                   | default · loaded · rejected signature · done                                                                                  | must     |
-| **DeviceLimit**       | The focused "Replace a device" flow (PORTAL §4.25; renamed 2026-10-05): seat meter, devices as radio rows, least recent preselected, consequences, "Replace <device>"               | default · busy · removed · failed · browser mode (links to the portal)                                                        | must     |
-| **Devices**           | Device list: icon by form factor, friendly name, platform and last seen, "This device", rename (inline, not an always-open form, RE), Remove with an L1 inline confirm              | loading · list · renaming · confirming · empty · browser mode                                                                 | must     |
-| **UpdatePrompt**      | Available / downloading / ready / mandatory / blocked / store outlet, with notes and the right verb per outlet ("Update on the App Store", "Restart when ready", "Get it on Steam") | available · downloading · ready · mandatory · blocked · store · platform · revoked-required-content · up to date              | must     |
-| **UpdateProgress**    | Compact download and install progress for app updates and content packs: toast, pill, or inline row                                                                                 | queued · downloading · installing · paused (metered) · failed · done                                                          | must     |
-| **ReleaseNotes**      | The changelog for one or many versions, from `ReleaseClient.changelog()`                                                                                                            | loading · list · empty · error                                                                                                | must     |
-| **StatusScreen**      | Blocking states with their fix: revoked ("Use a different key", "Sign out"), expired ("Renew"), version too old ("Update"), too new, channel not entitled                           | one per state, each with a primary fix                                                                                        | must     |
-| **GraceBanner**       | Offline grace: deadline and countdown, Reconnect, dismissible per session (the prop doc already promises it, RE)                                                                    | days left · last day · expired → StatusScreen                                                                                 | must     |
-| **AccountAndLicense** | The settings pane: product and tier, holder, Manage (portal), Devices, Cloud Sync status, Updates (automatic, channel, check now, version), managed settings, Sign out, Powered-by  | loading · signed in · key-only (no account) · offline                                                                         | must     |
-| **Settings**          | Config-catalog-driven settings with typed controls (switch, slider, select, text), categories, search above 12 rows, provenance as text, locked rows "Set by <org>", reset          | loading · list · dirty · saving · locked · error                                                                              | must     |
-| **Paywall**           | Entitlement-gated upsell: what a tier adds, purchase or redeem; StoreKit 2 views on Apple, Play Billing on Android, the portal elsewhere                                            | loading · offers · purchasing · purchased · restore · not available here                                                      | must     |
-| **EntitlementGate**   | Renders children only when an entitlement holds; otherwise a slot or the Paywall                                                                                                    | entitled · not entitled · loading                                                                                             | must     |
-| **CloudSyncStatus**   | A small status: synced time, syncing, conflict, offline; opens details                                                                                                              | synced · syncing · offline · conflict · error                                                                                 | should   |
-| **About**             | Product, version, build, licenses (OSS notices), the Powered-by badge, Copy diagnostics                                                                                             | default                                                                                                                       | should   |
-| **ChannelPicker**     | Release channel choice, locked when the outlet fixes it                                                                                                                             | default · locked                                                                                                              | should   |
-| **Toast**             | Bottom-right (bottom full width on phones), one line plus a consequence, ≤ 2 actions, 6 s with a visible timer, errors persist (EXPERIENCE §7)                                      | info · success · warning · error · with progress                                                                              | must     |
+| Component             | What it is                                                                                                                                                                                                                                                                          | States                                                                                                                                       | Priority |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| **PolarisKeyGate**    | The drop-in root. Boots, gates, and runs every flow below as needed; renders the app when licensed; adds the grace banner, update prompt and toasts                                                                                                                                 | booting · needs-activation · licensed · grace · blocked (revoked, expired, version too old/new, channel not entitled) · error                | must     |
+| **Boot**              | First-paint screen while the stage machine runs (`ui.stages`): product hero, a neutral indicator, consent for metered downloads, offline and blocked stops                                                                                                                          | progress · consent · fetching · offline · blocked · error                                                                                    | must     |
+| **Welcome**           | The gate's first screen: product hero, Sign in, Use a license key, and the extras the product supports (trial, restore purchase, activate offline)                                                                                                                                  | default · busy · capability-limited (only the paths the build supports, GO)                                                                  | must     |
+| **SignIn**            | Method chooser: the logo-only provider row (native Apple and Google behind it), passkey, email via the hosted card, Sign in on your phone or computer (SIGN-IN.md §5.1)                                                                                                             | default · busy · method error · no method enabled                                                                                            | must     |
+| **SignInHandoff**     | "Finish in your browser": the RFC 8628 user code, a QR, Open browser again, the countdown; moves on by itself                                                                                                                                                                       | starting · waiting · link copied · confirm · ok · denied · expired · cancelled                                                               | must     |
+| **Activate**          | License key entry with live verdict: the key field names the product and tier as soon as it parses, catches cut-short keys (EXPERIENCE P2), paste button, Return submits                                                                                                            | empty · typing · parsed · cut short · busy · rejected · device limit (hands to DeviceLimit) · done                                           | must     |
+| **OfflineActivation** | Request code (text + QR), load or drop a response file, paste box                                                                                                                                                                                                                   | default · loaded · rejected signature · done                                                                                                 | must     |
+| **DeviceLimit**       | The focused **Replace a device** flow (PORTAL §4.25; SIGN-IN.md §3.7, D-08): seat meter, devices as radio rows, least recent preselected, the "Replace <device>?" confirm, **Replace and continue**                                                                                 | default · busy · removed · failed · browser mode (opens `manageUrl`)                                                                         | must     |
+| **LicenseChoice**     | "Choose a license for this device" after a native sign-in (SIGN-IN.md §3.6; I-13 `choose`): license rows (tier pill with "{n} of {limit} devices" and a seat meter, or "Account-wide · unlimited devices"; SIGN-IN.md O-11), full licenses without a radio, inline Replace a device | loading · many · one · current · keep · new · create · all full · account-wide · mixed · replace open · raced · none (keys) · none (no keys) | must     |
+| **Devices**           | Device list: icon by form factor, friendly name, platform and last seen, "This device", rename (inline, not an always-open form, RE), Remove with an L1 inline confirm                                                                                                              | loading · list · renaming · confirming · empty · browser mode                                                                                | must     |
+| **UpdatePrompt**      | Available / downloading / ready / mandatory / blocked / store outlet, with notes and the right verb per outlet ("Update on the App Store", "Restart when ready", "Get it on Steam")                                                                                                 | available · downloading · ready · mandatory · blocked · store · platform · revoked-required-content · up to date                             | must     |
+| **UpdateProgress**    | Compact download and install progress for app updates and content packs: toast, pill, or inline row                                                                                                                                                                                 | queued · downloading · installing · paused (metered) · failed · done                                                                         | must     |
+| **ReleaseNotes**      | The changelog for one or many versions, from `ReleaseClient.changelog()`                                                                                                                                                                                                            | loading · list · empty · error                                                                                                               | must     |
+| **StatusScreen**      | Blocking states with their fix: revoked ("Use a different key", "Sign out"), expired ("Renew"), version too old ("Update"), too new, channel not entitled                                                                                                                           | one per state, each with a primary fix                                                                                                       | must     |
+| **GraceBanner**       | Offline grace: deadline and countdown, Reconnect, dismissible per session (the prop doc already promises it, RE)                                                                                                                                                                    | days left · last day · expired → StatusScreen                                                                                                | must     |
+| **AccountAndLicense** | The settings pane: product and tier, holder, Manage (portal), Devices, Cloud Sync status, Updates (automatic, channel, check now, version), managed settings, Sign out, Powered-by                                                                                                  | loading · signed in · key-only (no account) · offline                                                                                        | must     |
+| **Settings**          | Config-catalog-driven settings with typed controls (switch, slider, select, text), categories, search above 12 rows, provenance as text, locked rows "Set by <org>", reset                                                                                                          | loading · list · dirty · saving · locked · error                                                                                             | must     |
+| **Paywall**           | Entitlement-gated upsell: what a tier adds, purchase or redeem; StoreKit 2 views on Apple, Play Billing on Android, the portal elsewhere                                                                                                                                            | loading · offers · purchasing · purchased · restore · not available here                                                                     | must     |
+| **EntitlementGate**   | Renders children only when an entitlement holds; otherwise a slot or the Paywall                                                                                                                                                                                                    | entitled · not entitled · loading                                                                                                            | must     |
+| **CloudSyncStatus**   | A small status: synced time, syncing, conflict, offline; opens details                                                                                                                                                                                                              | synced · syncing · offline · conflict · error                                                                                                | should   |
+| **About**             | Product, version, build, licenses (OSS notices), the Powered-by badge, Copy diagnostics                                                                                                                                                                                             | default                                                                                                                                      | should   |
+| **ChannelPicker**     | Release channel choice, locked when the outlet fixes it                                                                                                                                                                                                                             | default · locked                                                                                                                             | should   |
+| **Toast**             | Bottom-right (bottom full width on phones), one line plus a consequence, ≤ 2 actions, 6 s with a visible timer, errors persist (EXPERIENCE §7)                                                                                                                                      | info · success · warning · error · with progress                                                                                             | must     |
 
 **Styled parts** shared by the screens, each exported on its own: `ProductHeader`, `KeyField`,
 `CodeDisplay` (user code + copy), `QrCode` (forced black on white, with a larger view), `SeatMeter`,
@@ -644,9 +678,10 @@ Mockups: [web](ui-kits/shots/web-gate-dark.png), [web 390](ui-kits/shots/web-gat
   way in the middle, keeping the prefix and the last six characters ("pkey_tidewater_7Q2M…3WPLDA"),
   because those are what people compare against the purchase email; the field scrolls to the caret
   while editing. A key wrapping mid-token inside a field reads as broken.
-- **Live verdict.** The key parses as you type: `pkey_<product>_<22>` puts a verdict under the field
-  ("✓ Tidewater Studio Pro · Lifetime · 3 devices", with only the icon in success colour), and the
-  product header gains the tier. A cut-short key gets "This key is cut short. After tidewater\_ come
+- **Live verdict.** The key parses as you type: `pkey_<product>_<22>` puts "Key for Tidewater Studio" under the
+  field from the prefix alone; the tier and terms ("✓ Tidewater Studio Pro · Lifetime · 3 devices",
+  with only the icon in success colour) and the header's tier follow the server's answer, never
+  before it (SIGN-IN.md D-20). A cut-short key gets "This key is cut short. After tidewater\_ come
   22 characters, and this has 10." Errors are inline under the field, `aria-invalid`, announced, and
   cleared on edit.
 - **Device limit is not an error string:** Activate hands off to **DeviceLimit** with the device
@@ -654,20 +689,43 @@ Mockups: [web](ui-kits/shots/web-gate-dark.png), [web 390](ui-kits/shots/web-gat
 
 #### SignIn and SignInHandoff
 
+> **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** Its §5 matrix says which steps
+> a kit renders natively and which hand off to the browser, and its §5.2 holds the `signin.*` copy
+> keys. It supersedes this section, Welcome and Activate, and DeviceLimit where they differ, and
+> adds the **LicenseChoice** component (with **Replace a device**) used after a native sign-in.
+>
+> **Desktop kits** (macOS 15+ SwiftUI and AppKit, Compose Desktop, Qt Quick, Electron and Tauri,
+> Godot desktop, the terminals) follow SIGN-IN.md §3.17 and §4.15 (D-60–D-77, frames 23–34):
+>
+> - the Welcome window's chooser leads with **Continue in browser**, keeps the logo-only provider
+>   row as shortcuts, and has no passkey or "Sign in on your phone or computer" row (D-69);
+> - sign-in runs in the **default browser** with a loopback redirect (a registered scheme when the
+>   app cannot listen), and the window shows the waiting step in its desktop dialog: "Finish in
+>   your browser", **Open browser again**, **Cancel** and **Use a code instead** (D-61, D-62,
+>   D-66);
+> - **no QR on any desktop surface** (D-67): the code view shows the URL, the code with **Copy**
+>   and **Open browser**. That supersedes the QR line below for desktop sheets and the QR in the
+>   macOS `desktop-sign-in` mockup;
+> - the tab ends on the hosted desktop ReturnStep ("You can close this tab and return to <App>",
+>   no timer), and the app comes to the front with the toast "Signed in as <name> · <Tier>
+>   license" (D-63–D-65);
+> - sign-out is the platform dialog from Settings → Account (D-71), and an ended sign-in is a
+>   non-blocking banner while grace holds (D-72).
+
 Mockups: [web](ui-kits/shots/web-sign-in-light.png), [iOS](ui-kits/shots/ios-sign-in-dark.png),
 [Android](ui-kits/shots/android-sign-in-dark.png),
 [macOS](ui-kits/shots/desktop-sign-in-dark.png), [Godot TV](ui-kits/shots/godot-sign-in-dark.png),
 [terminal](ui-kits/shots/terminal-sign-in-dark.png).
 
-- **Methods** follow PORTAL §4.1's provider rules:
-  - **Sign in with Apple** whenever the product ships on Apple platforms, as the system
-    `SignInWithAppleButton` / `ASAuthorizationAppleIDButton` (App Review requires it);
-  - **a passkey** row;
-  - **Credential Manager first on Android** (passkey and Google accounts in one system sheet);
-  - Steam where the product sells on Steam;
-  - email through the hosted card (`ASWebAuthenticationSession` / Custom Tabs / the system
-    browser);
-  - **Use another device** (device code).
+- **Methods** follow PORTAL §4.1's provider rules and the owner's logo-only row (SIGN-IN.md D-21):
+  - the **provider row**: Apple, Google and Steam as the product ships, logo only, equal width, in
+    that order. Apple runs native `ASAuthorization` behind a logo-only button drawn to Apple's
+    logo-only guidelines (App Review 4.8 is met by equal prominence). Google runs through
+    Credential Manager on Android. Steam goes through the hosted card;
+  - **Sign in with a passkey** (the platform passkey sheet);
+  - **Continue with email** through the hosted card (`ASWebAuthenticationSession` / Custom Tabs /
+    the system browser);
+  - **Sign in on your phone or computer** (device code).
 
   The iOS method sheet is titled "Sign in to <Product>", with no second product icon and no X at
   the medium detent.
@@ -678,18 +736,19 @@ Mockups: [web](ui-kits/shots/web-sign-in-light.png), [iOS](ui-kits/shots/ios-sig
     everywhere:** two groups of four joined by a hyphen, `WDJB-MJHT`, exactly as the activate page
     asks for it. TV and handheld sizes only get larger type and tracking; the terminal shows the
     same string in reverse video. No spaced-out letters, no space in place of the hyphen;
-  - "Or go to key.plrs.im/activate", with copy;
+  - "Or go to key.plrs.im/device", with copy;
   - "Check the code there matches this one";
   - the determinate countdown ring with "code expires in 4:12";
   - **Open browser again** (primary) and **Cancel** (secondary).
 
-  The QR sits beside the code when the card is ≥ 560 px (desktop sheets, web), and behind "Scan with
-  your phone instead" when narrower. The screen moves on by itself.
+  The QR sits beside the code when the card is ≥ 560 px (web), and behind "Scan with your phone
+  instead" when narrower. **Desktop sheets, dialogs and terminals show no QR** (SIGN-IN.md D-67).
+  The screen moves on by itself.
 
 - **TV and consoles** (tvOS, Android TV, Godot on console or Steam Deck in game mode) open on the
   device-code path:
   - the product's `deviceCodeUrl`, or `key.plrs.im/tv`;
-  - the code as two groups of four, with a gap and no hyphen;
+  - the code as two groups of four joined by a hyphen, as everywhere (SIGN-IN.md D-17);
   - a QR tile in 92 % white with an 8 px quiet zone;
   - focusable **Use a license key instead** and **Cancel**, so the screen is never a dead end
     without B.
@@ -718,10 +777,11 @@ PORTAL §4.25 in every kit, top to bottom:
    (Mac mini, towers), tablet, phone, handheld; `laptop_windows`, `laptop_mac`, `desktop_mac`,
    `tablet_android` and `phone_android` in Material Symbols.
 6. Selection: `accent-subtle` plus one indicator (§1.5 rule 2).
-7. The consequence line, "<device> will need to sign in again."
-8. **Replace <device>** as the primary, after one confirm: "Replace <device>? It will need to sign
-   in again." On macOS it reads "Replace “<device>”". It stacks full width when the label runs past
-   half the row.
+7. The confirm block under the list follows the selection (SIGN-IN.md §3.7): "Replace <device>?",
+   then "<device> signs out of <Product> and <this device> takes its seat. <device> can sign in
+   again later if a seat is free."
+8. **Replace and continue** as the primary and **Back** (SIGN-IN.md D-08). On macOS the confirm
+   reads "Replace “<device>”?". The buttons stack full width when a label runs past half the row.
 
 **Naming and data source (owner decision, 2026-10-05).** The component is titled **Replace a
 device** in every kit, matching the sign-in card's inline Replace (`plans/I-04.md`, "Owner
@@ -1101,10 +1161,12 @@ them, and it is fixed before review.
 ## 8. Mockups
 
 HTML mockups of the key components in the Polaris look, rendered from the generated tokens
-(`packages/brand/css/tokens.css`) with the kit fonts (variable Rubik, JetBrains Mono, and the
-Material Symbols subset for Android) from `docs/design/ui-kits/fonts/`.
+(`packages/brand/css/tokens.css` and `kit.css`) with the kit fonts as the package ships them
+(`packages/brand/fonts/fonts.css`: variable Rubik and JetBrains Mono) and the Material Symbols subset
+for Android (`docs/design/ui-kits/fonts/`). Every accent on the boards is the resolver's output
+(§3.3).
 
-- **Sources:** `docs/design/ui-kits/{web,ios,android,desktop,windows,linux,godot,terminal}.html`.
+- **Sources:** `docs/design/ui-kits/{web,ios,apple,android,desktop,windows,linux,qt,godot,terminal}.html`.
   `shared.css` holds the kit primitives and maps §3 onto `--kit-*` vars; `shared.js` holds icons,
   the fake QR, product art, the countdown ring and the platform marks.
 - **Render:** `NODE_PATH=packages/admin/node_modules node docs/design/ui-kits/render.cjs`. It writes
@@ -1133,19 +1195,25 @@ busy, plus field errors and row states. The components board covers Boot, Status
 GraceBanner, Toast, Devices, Paywall and CloudSyncStatus; the layers board shows (b) and (c); the
 motion board shows keyframes.
 
-| Dark                                                     | Light                                                     |
-| -------------------------------------------------------- | --------------------------------------------------------- |
-| ![Gate](ui-kits/shots/web-gate-dark.png)                 | ![Gate](ui-kits/shots/web-gate-light.png)                 |
-| ![Activate](ui-kits/shots/web-activate-dark.png)         | ![Activate](ui-kits/shots/web-activate-light.png)         |
-| ![Sign in](ui-kits/shots/web-sign-in-dark.png)           | ![Sign in](ui-kits/shots/web-sign-in-light.png)           |
-| ![Device limit](ui-kits/shots/web-device-limit-dark.png) | ![Device limit](ui-kits/shots/web-device-limit-light.png) |
-| ![Update](ui-kits/shots/web-update-dark.png)             | ![Update](ui-kits/shots/web-update-light.png)             |
-| ![Settings](ui-kits/shots/web-settings-dark.png)         | ![Settings](ui-kits/shots/web-settings-light.png)         |
-| ![Theming](ui-kits/shots/web-theming-dark.png)           | ![Theming](ui-kits/shots/web-theming-light.png)           |
-| ![States](ui-kits/shots/web-states-dark.png)             | ![States](ui-kits/shots/web-states-light.png)             |
-| ![Components](ui-kits/shots/web-components-dark.png)     | ![Components](ui-kits/shots/web-components-light.png)     |
-| ![Layers](ui-kits/shots/web-layers-dark.png)             | ![Layers](ui-kits/shots/web-layers-light.png)             |
-| ![Motion](ui-kits/shots/web-motion-dark.png)             | ![Motion](ui-kits/shots/web-motion-light.png)             |
+| Dark                                                           | Light                                                           |
+| -------------------------------------------------------------- | --------------------------------------------------------------- |
+| ![Gate](ui-kits/shots/web-gate-dark.png)                       | ![Gate](ui-kits/shots/web-gate-light.png)                       |
+| ![Activate](ui-kits/shots/web-activate-dark.png)               | ![Activate](ui-kits/shots/web-activate-light.png)               |
+| ![Sign in](ui-kits/shots/web-sign-in-dark.png)                 | ![Sign in](ui-kits/shots/web-sign-in-light.png)                 |
+| ![Device limit](ui-kits/shots/web-device-limit-dark.png)       | ![Device limit](ui-kits/shots/web-device-limit-light.png)       |
+| ![Update](ui-kits/shots/web-update-dark.png)                   | ![Update](ui-kits/shots/web-update-light.png)                   |
+| ![Settings](ui-kits/shots/web-settings-dark.png)               | ![Settings](ui-kits/shots/web-settings-light.png)               |
+| ![Theming](ui-kits/shots/web-theming-dark.png)                 | ![Theming](ui-kits/shots/web-theming-light.png)                 |
+| ![States](ui-kits/shots/web-states-dark.png)                   | ![States](ui-kits/shots/web-states-light.png)                   |
+| ![Components](ui-kits/shots/web-components-dark.png)           | ![Components](ui-kits/shots/web-components-light.png)           |
+| ![Layers](ui-kits/shots/web-layers-dark.png)                   | ![Layers](ui-kits/shots/web-layers-light.png)                   |
+| ![Motion](ui-kits/shots/web-motion-dark.png)                   | ![Motion](ui-kits/shots/web-motion-light.png)                   |
+| ![forced-colors](ui-kits/shots/web-forced-colors-dark.png)     | ![forced-colors](ui-kits/shots/web-forced-colors-light.png)     |
+| ![Native, full screen](ui-kits/shots/web-native-full-dark.png) | ![Native, full screen](ui-kits/shots/web-native-full-light.png) |
+
+`forced-colors` is drawn in the Windows contrast themes (Night sky for dark, Desert for light): every
+colour is a system colour, borders return, the ambient and tints go, and the product icon stays
+because it is an image.
 
 At 390 × 844:
 
@@ -1165,6 +1233,25 @@ settings.
 | ![](ui-kits/shots/ios-gate-dark.png)  | ![](ui-kits/shots/ios-activate-dark.png)  | ![](ui-kits/shots/ios-sign-in-dark.png)  | ![](ui-kits/shots/ios-device-limit-dark.png)  | ![](ui-kits/shots/ios-update-dark.png)  | ![](ui-kits/shots/ios-update-required-dark.png)  | ![](ui-kits/shots/ios-settings-dark.png)  |
 | ![](ui-kits/shots/ios-gate-light.png) | ![](ui-kits/shots/ios-activate-light.png) | ![](ui-kits/shots/ios-sign-in-light.png) | ![](ui-kits/shots/ios-device-limit-light.png) | ![](ui-kits/shots/ios-update-light.png) | ![](ui-kits/shots/ios-update-required-light.png) | ![](ui-kits/shots/ios-settings-light.png) |
 
+The iOS 18 fallback (the same layout on system materials), AX3 Dynamic Type, the StoreKit paywall,
+the Live Activity, and boot, status and error:
+
+| iOS 18                                 | AX3                                  | Paywall                                  | Live Activity                                  | Boot, status, error                     |
+| -------------------------------------- | ------------------------------------ | ---------------------------------------- | ---------------------------------------------- | --------------------------------------- |
+| ![](ui-kits/shots/ios-ios18-dark.png)  | ![](ui-kits/shots/ios-ax3-dark.png)  | ![](ui-kits/shots/ios-paywall-dark.png)  | ![](ui-kits/shots/ios-live-activity-dark.png)  | ![](ui-kits/shots/ios-states-dark.png)  |
+| ![](ui-kits/shots/ios-ios18-light.png) | ![](ui-kits/shots/ios-ax3-light.png) | ![](ui-kits/shots/ios-paywall-light.png) | ![](ui-kits/shots/ios-live-activity-light.png) | ![](ui-kits/shots/ios-states-light.png) |
+
+#### iPadOS, visionOS, tvOS and watchOS
+
+iPad at regular width with the activate form sheet, the welcome window in a visionOS room (glass is
+always the system material; a gaze-hover state), tvOS device-code sign-in under the focus engine,
+and the watchOS glance.
+
+| iPad                                    | visionOS                                    | tvOS                                    | watchOS                                  |
+| --------------------------------------- | ------------------------------------------- | --------------------------------------- | ---------------------------------------- |
+| ![](ui-kits/shots/apple-ipad-dark.png)  | ![](ui-kits/shots/apple-visionos-dark.png)  | ![](ui-kits/shots/apple-tvos-dark.png)  | ![](ui-kits/shots/apple-watch-dark.png)  |
+| ![](ui-kits/shots/apple-ipad-light.png) | ![](ui-kits/shots/apple-visionos-light.png) | ![](ui-kits/shots/apple-tvos-light.png) | ![](ui-kits/shots/apple-watch-light.png) |
+
 #### Android (Compose, Material 3 Expressive)
 
 The Android board shows the product icon in the adaptive mask, filled fields with the IME up,
@@ -1176,19 +1263,29 @@ wavy progress and equal-width buttons.
 | ![](ui-kits/shots/android-gate-dark.png)  | ![](ui-kits/shots/android-activate-dark.png)  | ![](ui-kits/shots/android-sign-in-dark.png)  | ![](ui-kits/shots/android-sign-in-handoff-dark.png)  | ![](ui-kits/shots/android-device-limit-dark.png)  | ![](ui-kits/shots/android-update-dark.png)  | ![](ui-kits/shots/android-settings-dark.png)  |
 | ![](ui-kits/shots/android-gate-light.png) | ![](ui-kits/shots/android-activate-light.png) | ![](ui-kits/shots/android-sign-in-light.png) | ![](ui-kits/shots/android-sign-in-handoff-light.png) | ![](ui-kits/shots/android-device-limit-light.png) | ![](ui-kits/shots/android-update-light.png) | ![](ui-kits/shots/android-settings-light.png) |
 
+Tablet list-detail, 200 % font, predictive back, dynamic colour under `native`, and boot, status
+and error:
+
+| Tablet                                      | 200 % font                                    | Predictive back                                      | Native, dynamic colour                              | Boot, status, error                         |
+| ------------------------------------------- | --------------------------------------------- | ---------------------------------------------------- | --------------------------------------------------- | ------------------------------------------- |
+| ![](ui-kits/shots/android-tablet-dark.png)  | ![](ui-kits/shots/android-font-200-dark.png)  | ![](ui-kits/shots/android-predictive-back-dark.png)  | ![](ui-kits/shots/android-native-dynamic-dark.png)  | ![](ui-kits/shots/android-states-dark.png)  |
+| ![](ui-kits/shots/android-tablet-light.png) | ![](ui-kits/shots/android-font-200-light.png) | ![](ui-kits/shots/android-predictive-back-light.png) | ![](ui-kits/shots/android-native-dynamic-light.png) | ![](ui-kits/shots/android-states-light.png) |
+
 #### macOS 26 (SwiftUI; Electron and Tauri on macOS)
 
 The macOS board is drawn at Mac scale: the split Welcome window with product art, inset rounded
 sheets below the title-bar row, the single-column update window, and the Settings scene.
 
-| Dark                                                         | Light                                                         |
-| ------------------------------------------------------------ | ------------------------------------------------------------- |
-| ![Gate](ui-kits/shots/desktop-gate-dark.png)                 | ![Gate](ui-kits/shots/desktop-gate-light.png)                 |
-| ![Activate](ui-kits/shots/desktop-activate-dark.png)         | ![Activate](ui-kits/shots/desktop-activate-light.png)         |
-| ![Sign in](ui-kits/shots/desktop-sign-in-dark.png)           | ![Sign in](ui-kits/shots/desktop-sign-in-light.png)           |
-| ![Device limit](ui-kits/shots/desktop-device-limit-dark.png) | ![Device limit](ui-kits/shots/desktop-device-limit-light.png) |
-| ![Update](ui-kits/shots/desktop-update-dark.png)             | ![Update](ui-kits/shots/desktop-update-light.png)             |
-| ![Settings](ui-kits/shots/desktop-settings-dark.png)         | ![Settings](ui-kits/shots/desktop-settings-light.png)         |
+| Dark                                                          | Light                                                          |
+| ------------------------------------------------------------- | -------------------------------------------------------------- |
+| ![Gate](ui-kits/shots/desktop-gate-dark.png)                  | ![Gate](ui-kits/shots/desktop-gate-light.png)                  |
+| ![Activate](ui-kits/shots/desktop-activate-dark.png)          | ![Activate](ui-kits/shots/desktop-activate-light.png)          |
+| ![Sign in](ui-kits/shots/desktop-sign-in-dark.png)            | ![Sign in](ui-kits/shots/desktop-sign-in-light.png)            |
+| ![Device limit](ui-kits/shots/desktop-device-limit-dark.png)  | ![Device limit](ui-kits/shots/desktop-device-limit-light.png)  |
+| ![Update](ui-kits/shots/desktop-update-dark.png)              | ![Update](ui-kits/shots/desktop-update-light.png)              |
+| ![Settings](ui-kits/shots/desktop-settings-dark.png)          | ![Settings](ui-kits/shots/desktop-settings-light.png)          |
+| ![macOS 15](ui-kits/shots/desktop-macos15-dark.png)           | ![macOS 15](ui-kits/shots/desktop-macos15-light.png)           |
+| ![Boot, status, error](ui-kits/shots/desktop-states-dark.png) | ![Boot, status, error](ui-kits/shots/desktop-states-light.png) |
 
 #### Windows 11 and GNOME (Electron, Tauri, Compose Desktop, Qt Quick)
 
@@ -1204,6 +1301,21 @@ and an `AdwDialog`.
 | ![](ui-kits/shots/windows-settings-dark.png) | ![](ui-kits/shots/windows-settings-light.png) |
 | ![](ui-kits/shots/linux-gate-dark.png)       | ![](ui-kits/shots/linux-gate-light.png)       |
 | ![](ui-kits/shots/linux-activate-dark.png)   | ![](ui-kits/shots/linux-activate-light.png)   |
+| ![](ui-kits/shots/windows-states-dark.png)   | ![](ui-kits/shots/windows-states-light.png)   |
+| ![](ui-kits/shots/linux-states-dark.png)     | ![](ui-kits/shots/linux-states-light.png)     |
+
+#### Qt (Qt Quick and QWidget, Python)
+
+Drawn as Qt draws them, from the generated `Theme.qml` and QSS: the Qt Quick gate on Windows, the
+activate dialog on Linux in the KDE Breeze frame, the QWidget parts by object name, and boot, status
+and error.
+
+| Dark                                          | Light                                          |
+| --------------------------------------------- | ---------------------------------------------- |
+| ![](ui-kits/shots/qt-quick-gate-dark.png)     | ![](ui-kits/shots/qt-quick-gate-light.png)     |
+| ![](ui-kits/shots/qt-quick-activate-dark.png) | ![](ui-kits/shots/qt-quick-activate-light.png) |
+| ![](ui-kits/shots/qt-widgets-dark.png)        | ![](ui-kits/shots/qt-widgets-light.png)        |
+| ![](ui-kits/shots/qt-states-dark.png)         | ![](ui-kits/shots/qt-states-light.png)         |
 
 #### Godot (Control nodes)
 
@@ -1222,6 +1334,9 @@ the game's menu.
 | ![Update](ui-kits/shots/godot-update-dark.png)             | ![Update](ui-kits/shots/godot-update-light.png)             |
 | ![Settings](ui-kits/shots/godot-settings-dark.png)         | ![Settings](ui-kits/shots/godot-settings-light.png)         |
 | ![Steam Deck](ui-kits/shots/godot-gate-deck-dark.png)      | ![Steam Deck](ui-kits/shots/godot-gate-deck-light.png)      |
+| ![Boot](ui-kits/shots/godot-boot-dark.png)                 | ![Boot](ui-kits/shots/godot-boot-light.png)                 |
+| ![Status](ui-kits/shots/godot-status-dark.png)             | ![Status](ui-kits/shots/godot-status-light.png)             |
+| ![Error](ui-kits/shots/godot-error-dark.png)               | ![Error](ui-kits/shots/godot-error-light.png)               |
 
 #### Terminal (Node and Python CLIs, Textual)
 
@@ -1243,6 +1358,7 @@ blocks.
 | ![Fallbacks](ui-kits/shots/terminal-fallbacks-dark.png)       | ![Fallbacks](ui-kits/shots/terminal-fallbacks-light.png)       |
 | ![60 columns](ui-kits/shots/terminal-narrow-dark.png)         | ![60 columns](ui-kits/shots/terminal-narrow-light.png)         |
 | ![Textual](ui-kits/shots/terminal-textual-dark.png)           | ![Textual](ui-kits/shots/terminal-textual-light.png)           |
+| ![States](ui-kits/shots/terminal-states-dark.png)             | ![States](ui-kits/shots/terminal-states-light.png)             |
 
 #### Critique round 1 (2026-10-05)
 
@@ -1260,7 +1376,7 @@ spec and in every board:
 - **Scale and layout:** mobile-sized desktop controls and Sparkle-era update windows; no responsive
   or Windows and Linux boards; terminal shots that no terminal could draw.
 
-**Still to draw before UK-01 closes** (§7.4 needs a reference for each):
+**Drawn in UK-01 (2026-10-05)**, so §7.4 has a reference for each (the boards above):
 
 - web: `forced-colors`, and the native preset at full screen;
 - Apple: iPad regular width, visionOS, tvOS, the watchOS glance, the iOS 18 and macOS 15 fallbacks, AX3

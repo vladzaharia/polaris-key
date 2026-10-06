@@ -97,6 +97,33 @@ async function toConfirm(page: Page): Promise<void> {
     .waitFor();
 }
 
+/**
+ * The product page's section nav marks the section on screen through an IntersectionObserver,
+ * which can lag a deep-link scroll or a layout change (more so under CI's emulation). Wait until
+ * the marked section and the scroll position have held for 750 ms so the shot is deterministic.
+ */
+async function sectionNavSettled(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () => {
+      const w = window as unknown as { __navKey?: string; __navAt?: number };
+      const key = `${[
+        ...document.querySelectorAll('a[aria-current="location"]'),
+      ]
+        .map((a) => a.textContent)
+        .join("|")}@${window.scrollY}`;
+      const now = performance.now();
+      if (w.__navKey !== key) {
+        w.__navKey = key;
+        w.__navAt = now;
+        return false;
+      }
+      return now - (w.__navAt ?? now) >= 750;
+    },
+    null,
+    { polling: 100 },
+  );
+}
+
 export const SHIPPED: ShippedState[] = [
   // §4.1 The login card (PX-05).
   {
@@ -240,6 +267,14 @@ export const SHIPPED: ShippedState[] = [
       await h1(p, "Your library");
       await p.getByText("Showing 1 of 12 ·").waitFor();
     },
+  },
+  {
+    section: "4.15",
+    id: "library-account-wide",
+    title: "Library with key and account-wide licences, list",
+    scenario: "accountWide",
+    path: "/#/?view=list",
+    ready: (p) => h1(p, "Your library"),
   },
   // §4.16 Discover (PX-02's empty state until PX-16).
   {
@@ -404,6 +439,48 @@ export const SHIPPED: ShippedState[] = [
     ready: (p) => h1(p, "Quill"),
   },
   {
+    // Account-wide: the Standard pill with "Account-wide · 1 of 5 devices", and its devices.
+    section: "4.20",
+    id: "product-account-wide",
+    title: "Product page, account-wide licence with its devices (Quill)",
+    scenario: "accountWide",
+    path: "/#/p/quill",
+    ready: async (p) => {
+      await h1(p, "Quill");
+      await p.getByText("Account-wide · 1 of 5 devices").waitFor();
+      await p.getByText("Living room PC").first().waitFor();
+    },
+  },
+  {
+    // Held by key and account-wide: the key licence drops its counter, keeps its devices.
+    section: "4.20",
+    id: "product-both-key",
+    title:
+      "Product page, key and account-wide licences, key selected (Drift Kart)",
+    scenario: "accountWide",
+    path: "/#/p/drift-kart",
+    ready: async (p) => {
+      await h1(p, "Drift Kart");
+      await p.getByText("Activated").first().waitFor();
+      await p
+        .getByRole("button", { name: /^Remove / })
+        .first()
+        .waitFor();
+    },
+  },
+  {
+    section: "4.20",
+    id: "product-both-account-wide",
+    title:
+      "Product page, key and account-wide licences, account-wide selected (Drift Kart)",
+    scenario: "accountWide",
+    path: "/#/p/drift-kart?license=lic_drift-kart-acct",
+    ready: async (p) => {
+      await h1(p, "Drift Kart");
+      await p.getByText("Account-wide · 1 of 3 devices").waitFor();
+    },
+  },
+  {
     section: "4.20",
     id: "product-load-error",
     title: "Product page, load error",
@@ -439,6 +516,7 @@ export const SHIPPED: ShippedState[] = [
       await h1(p, "Nightfall");
       await p.getByRole("button", { name: "Remove Studio PC" }).first().click();
       await p.getByRole("heading", { name: "Remove Studio PC?" }).waitFor();
+      await sectionNavSettled(p);
     },
   },
   // §4.25 Focused flows (PX-10).

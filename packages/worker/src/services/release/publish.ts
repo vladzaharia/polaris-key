@@ -461,7 +461,11 @@ function parseTicketReleases(
  * created it first, and P2-04's ingest refuses any other), else the next one for its
  * deliverable — counting the new releases named before it in the same request. A re-run asks
  * again and gets the stored value, so it stays idempotent; two publishes racing for one new
- * `seq` meet at ingest (`seq_not_increasing`) and CI retries with a new ticket.
+ * `seq` meet at ingest (`seq_not_increasing`) and CI retries with a new ticket. That is for the
+ * releases whose signed record carries the seq (app, packs). A package release is never signed,
+ * so `pkey` sends its descriptor without a `seq` and the ingest takes the next one at insert:
+ * a `main` prerelease and a tag's stable release of one package can then publish concurrently
+ * in either order (the v0.8.22 `npm.zstd-wasm` refusal).
  */
 async function seqsFor(
   ctx: ServiceContext,

@@ -109,7 +109,7 @@ describe("status model (§5.3), first match wins", () => {
     expect(s.note).not.toMatch(/of/);
   });
 
-  it("an OIDC license with no key is a signed-in app", () => {
+  it("an OIDC license with no key is account-wide, tier first", () => {
     const s = licenseStatus(
       license({
         product: "a",
@@ -121,9 +121,22 @@ describe("status model (§5.3), first match wins", () => {
     );
     expect(s).toMatchObject({
       kind: "signedInApp",
+      label: "Account-wide",
+      note: "Standard · Account-wide",
       tone: "neutral",
       attention: false,
     });
+    const pro = licenseStatus(
+      license({
+        product: "a",
+        tier: "pro",
+        identityProvider: "oidc",
+        keyCount: 0,
+        activeKeyCount: 0,
+      }),
+      NOW_S,
+    );
+    expect(pro.note).toBe("Pro · Account-wide");
   });
 
   it("the best license is the most favourable, then the newest", () => {

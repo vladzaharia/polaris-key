@@ -66,6 +66,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/distribution/obtainium/{channel}.json` | distribution | Obtainium app config for one channel |
 | GET | `/{product}/distribution/packs/{pack}/{variant}/payload/{sha256}` | distribution | Download a pack's decoded container payload (Compression Dictionary Transport) |
 | HEAD | `/{product}/distribution/packs/{pack}/{variant}/payload/{sha256}` | distribution | The headers of a pack payload answer |
+| GET | `/{product}/distribution/pr/{store}` | distribution | A PR-plane generator's inputs (CI) |
 | POST | `/{product}/distribution/report` | distribution | Report availability, a submission state or a signing key (CI) |
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}/complete` | distribution | Complete an outlet rollout (CI) |
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}/halt` | distribution | Halt an outlet rollout (CI) |
@@ -74,6 +75,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/{product}/distribution/rollouts/{outlet}/{channel}` | distribution | Start an outlet rollout, or set its percentage (CI) |
 | GET | `/{product}/distribution/scoop/{channel}.json` | distribution | Scoop app manifest for one channel |
 | GET | `/{product}/identity/auth/callback` | identity | OIDC redirect URI |
+| GET | `/{product}/identity/auth/choose` | identity | The legacy sign-in's license chooser (I-26) |
+| POST | `/{product}/identity/auth/choose` | identity | Record a step of the license chooser, or the choice (I-26) |
 | POST | `/{product}/identity/auth/device/poll` | identity | Poll the device-code flow |
 | POST | `/{product}/identity/auth/device/start` | identity | Begin the device-code flow |
 | GET | `/{product}/identity/auth/device/verify` | identity | The device-authorization page (side-effect-free GET) |

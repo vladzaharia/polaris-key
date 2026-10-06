@@ -5,7 +5,7 @@
 | Phase       | ST: Settings architecture (S-18) (phase 5: governance and environments) |
 | Size        | 0.5–0.7 engineer-weeks                                                  |
 | Depends on  | [ST-05](ST-05-settings-admin-api.md)                                    |
-| Unblocks    | [ST-22](ST-22-per-product-roles.md)                                     |
+| Unblocks    | [ST-22](ST-22-per-product-roles.md), [CM-03](CM-03-merchants.md)        |
 | Role        | `pkey-implementer`                                                      |
 | Plan mode   | no                                                                      |
 | Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL                       |

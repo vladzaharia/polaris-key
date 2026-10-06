@@ -12,6 +12,15 @@
 | Human input | none                                                                                                                                                                                                 |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                            |
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- E2E covers every LicenseChoice state of SIGN-IN.md §6.2's conformance list (incl. account-wide and mixed) in both themes at 1440 and 390; axe and keyboard checks per §3.14 (no radio on full and blocked rows, Replace reachable by Tab, focus to the h1, one code input).
+
 ## Goal
 
 CI runs Playwright over every §4 state in both themes at 1440 and 390 px with axe on every state, a CSP browser test, a visual baseline and the horizontal-scroll assertion; the suite grows with each PX front-end package and is complete when the last one lands.

@@ -173,8 +173,14 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
               (a) => a.getAttribute("aria-labelledby") === "tile-nightfall",
             )!;
             const art = article.querySelector<HTMLElement>("[data-art]")!;
-            const plate = art.querySelector<HTMLElement>("span.absolute")!;
+            // Healthy is silence on art (UX-03): Nightfall has no plate; the issue plate
+            // (owner's padding) is measured on Ember Tactics, which has expired.
+            const emberArt = document.querySelector<HTMLElement>(
+              "article[aria-labelledby='tile-ember-tactics'] [data-art]",
+            )!;
+            const plate = emberArt.querySelector<HTMLElement>("span.absolute")!;
             const a = art.getBoundingClientRect();
+            const e = emberArt.getBoundingClientRect();
             const p = plate.getBoundingClientRect();
             const pill = plate.firstElementChild!.getBoundingClientRect();
             const icon = article.querySelector<HTMLElement>("img[data-art]")!;
@@ -186,8 +192,11 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
             const q = getComputedStyle(square);
             return {
               ratio: a.width / a.height,
-              insetRight: a.right - p.right,
-              insetBottom: a.bottom - p.bottom,
+              healthyPlate:
+                (art.querySelector("span.absolute")?.childElementCount ?? 0) >
+                0,
+              insetRight: e.right - p.right,
+              insetBottom: e.bottom - p.bottom,
               plateHeight: pill.height,
               byline: article.textContent!.includes("Lanternworks"),
               iconFrame: [
@@ -205,6 +214,7 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
             1,
           );
           expect(card.insetRight).toBeGreaterThanOrEqual(16);
+          expect(card.healthyPlate).toBe(false);
           expect(card.insetBottom).toBeGreaterThanOrEqual(16);
           expect(card.insetRight).toBe(card.insetBottom);
           expect(card.plateHeight).toBeGreaterThanOrEqual(32);
@@ -296,7 +306,8 @@ describe("focused flows (PX-10)", () => {
     await shoot(o.page, "device-limit-done-mobile-dark");
     expect(
       await o.page
-        .getByRole("link", { name: "Return to Orbit Survey" })
+        .getByRole("link", { name: "Back to Orbit Survey" })
+        .last()
         .getAttribute("href"),
     ).toBe("orbitsurvey://retry");
     expect(o.requests).toContain(
@@ -314,7 +325,7 @@ describe("focused flows (PX-10)", () => {
     await h1(o.page, "Your license is on 2 of 2 devices");
     expect(
       await o.page
-        .getByRole("link", { name: "Back to Orbit Survey" })
+        .getByRole("link", { name: "See Orbit Survey in your library" })
         .getAttribute("href"),
     ).toBe("#/p/orbit-survey");
     expect(await o.page.content()).not.toContain("evil.example");
@@ -436,6 +447,52 @@ describe("main flows", () => {
     expect(o.requests.some((r) => r.startsWith("DELETE /api/licenses/"))).toBe(
       true,
     );
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("an account-wide licence lists its devices and removes one remotely", async () => {
+    const o = await open("accountWide", "/#/p/quill/devices");
+    await h1(o.page, "Quill");
+    await o.page.getByText("Account-wide · 1 of 5 devices").waitFor();
+    await o.page
+      .getByRole("button", { name: "Remove Living room PC" })
+      .first()
+      .click();
+    await o.page
+      .getByRole("heading", { name: "Remove Living room PC?" })
+      .waitFor();
+    await o.page
+      .getByRole("button", { name: "Remove Living room PC", exact: true })
+      .last()
+      .click();
+    await o.page.getByText("Living room PC was removed").first().waitFor();
+    expect(
+      o.requests.some(
+        (r) => r === "DELETE /api/licenses/quill/lic_quill/devices/quill-tv",
+      ),
+    ).toBe(true);
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("with a key and an account-wide licence, the key licence hides its counter", async () => {
+    const o = await open("accountWide", "/#/p/drift-kart");
+    await h1(o.page, "Drift Kart");
+    const card = o.page.getByRole("region", { name: "Drift Kart license" });
+    await card.getByText("Activated").waitFor();
+    const picker = card.getByRole("combobox");
+    expect((await picker.locator("option").allTextContents()).sort()).toEqual([
+      "Standard · Account-wide",
+      "Standard · Key",
+    ]);
+    expect(await card.getByText(/\d+ (of \d+ )?devices?$/).count()).toBe(0);
+    const devices = o.page.getByRole("region", { name: "Devices" });
+    await devices.getByText("Mara's MacBook Pro").waitFor();
+    expect(await devices.getByText(/in use/).count()).toBe(0);
+    await picker.selectOption({ label: "Standard · Account-wide" });
+    await card.getByText("Account-wide · 1 of 3 devices").waitFor();
+    await devices.getByText("Mara's Steam Deck").waitFor();
     expect(await o.violations()).toEqual([]);
     await o.close();
   });
