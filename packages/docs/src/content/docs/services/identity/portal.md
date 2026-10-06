@@ -94,9 +94,11 @@ or when a product's terms version is not yet accepted, that opens the gate (a 15
 `__Host-pkey_gate` cookie) and redirects to the card's step. No account row and no session exist
 until it passes, and an app's sign-in request is handed back only with the pass, so no app token
 can be issued before it. The email is prefilled from the provider (an Apple private-relay address
-included) and can be switched to a typed one. An address the provider asserts as verified
-(Google `email_verified: true`, Apple) passes without a code; a typed address, or a provider
-address that is not verified, gets a 6-digit code under the same limits. Steam and other
+included) and can be switched to a typed one. An address the provider vouches for passes
+without a code: Apple's verified address (a private-relay one included), or a Google address with
+`email_verified: true` that is `@gmail.com` or `@googlemail.com`, or whose domain the token's `hd`
+claim names (a Workspace account). A typed address, or a provider address outside that rule, gets
+a 6-digit code under the same limits. Steam and other
 providers with no email start with an empty field. The confirmed address becomes the account's
 primary email and an email sign-in method. When a product requires terms, the gate does not pass
 until that version is ticked; acceptances are kept per account, product and version. A new

@@ -139,7 +139,10 @@ describe("Sign in with Google", () => {
 
   it("signs in against the recorded provider and yields a verified identity", async () => {
     const h = await makeProviderHarness();
-    const res = await googleCallback(h, (n) => googleClaims(n));
+    // A Workspace account (`hd` = the address's domain): Google vouches for the address (PX-W15).
+    const res = await googleCallback(h, (n) =>
+      googleClaims(n, { hd: "example.com" }),
+    );
     expect(res.status).toBe(302);
     // A first sign-in goes to I-07's email gate; Google's verified address passes it without a
     // code, and only then do the account and its session exist.
@@ -225,7 +228,10 @@ describe("Sign in with Google", () => {
       },
       1,
     );
-    const res = await googleCallback(h, (n) => googleClaims(n));
+    // A Workspace address Google vouches for (PX-W15), so the gate confirms it without a code.
+    const res = await googleCallback(h, (n) =>
+      googleClaims(n, { hd: "example.com" }),
+    );
     // Confirming the address at the gate stops with the join offer; nothing joins silently.
     const confirmed = await passGate(h, res);
     expect(confirmed.status).toBe(409);
@@ -400,7 +406,9 @@ describe("Sign in with Google", () => {
         "google",
         "https://key.plrs.im/#/library",
       );
-      h.idToken.google = await h.signGoogle(googleClaims(nonceOf(location)));
+      h.idToken.google = await h.signGoogle(
+        googleClaims(nonceOf(location), { hd: "example.com" }),
+      );
       const res = await h.request(
         `/login/google/callback?code=c&state=${state}&iss=${encodeURIComponent("https://accounts.google.com")}`,
         { cookie },

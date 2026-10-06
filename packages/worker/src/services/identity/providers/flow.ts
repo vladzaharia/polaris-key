@@ -408,6 +408,7 @@ export async function handleProviderCallback(
         name: result.profile.firstConsentName ?? result.profile.displayName,
         pictureUrl: result.profile.avatarUrl,
       },
+      hostedDomain: result.hostedDomain ?? null,
       returnTo: flow.returnTo ?? null,
     },
     opts.now,

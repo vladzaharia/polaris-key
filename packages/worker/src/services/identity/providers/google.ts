@@ -95,8 +95,14 @@ export async function completeGoogleSignIn(
   const emailVerified = Boolean(
     email && providerAssertsVerified(claims.email_verified),
   );
+  // The Workspace domain, signed in the token: the email gate's Google rule reads it (PX-W15).
+  const hostedDomain =
+    typeof claims.hd === "string" && claims.hd.trim()
+      ? claims.hd.trim().toLowerCase()
+      : null;
   return {
     provider: "google",
+    hostedDomain,
     identity: {
       issuerKey: GOOGLE_ISSUER_KEY,
       subject: claims.sub as string,

@@ -64,10 +64,10 @@ The first provider sign-in must not ship without the gate ([PORTAL.md §11.4](..
 
 ## Acceptance criteria
 
-- [x] Tests: Google unverified → code; Apple relay → no code; Steam → empty field; no token before pass.
+- [x] Tests: Google unverified → code; Apple relay → no code; Steam → empty field; no token before pass. Google rule (lead, 2026-10-06): Gmail verified → no code; Workspace with a matching `hd` → no code; non-Gmail without `hd` → code; `hd` mismatch → code.
 - [x] The migration and `TABLE_OWNERS` entry land together; OpenAPI and `routeCoverage` cover every route.
 - [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
-- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header. (Until the lead numbers the migration, `record-deploy`'s name pattern refuses the `00XX` placeholder in two `test/recordDeploy.test.ts` tests; with a number they pass.)
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 
@@ -87,7 +87,7 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- portal
 - **Terms acceptances per version.** I-07 kept only the latest version per product in
   `accounts.terms_json` (`plans/I-04.md` §6.1), so a new version overwrote the record of the old
   one. PX-W15 moves them to `account_terms_acceptances` (one row per account, product and version,
-  written once; migration `00XX_account_terms_acceptances.sql`, the lead numbers it; `TABLE_OWNERS`
+  written once; migration `0091_account_terms_acceptances.sql`, the lead's number; `TABLE_OWNERS`
   identity), read and written through `accounts/terms.ts`. A merge moves the absorbed account's
   rows to the survivor, account deletion and product deletion erase them. `terms_json` stays but
   is neither read nor written; there is no backfill because no deployed Worker ever wrote it (no
@@ -105,11 +105,16 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- portal
 - **Left as is:** the platform-OIDC (`/callback`) `join_offer` page (SIGN-IN.md D-34). Routing it
   into the gate before PX-21 renders the step would land people on a screen the portal cannot
   show yet; it moves with PX-21 or I-17.
-- **The non-Gmail `email_verified` residual** is recorded in THREAT-MODEL ("The email gate: G31's
-  checks and terms acceptances"); closing it (a code for a Google address outside `gmail.com`
-  without `hd`) is an owner decision.
-- **Migration name.** Until the lead numbers it, `00XX_…` fails `record-deploy`'s name pattern
-  (two tests in `test/recordDeploy.test.ts`); with a number they pass.
+- **Google's `email_verified` is narrowed (lead decision under the owner's delegation,
+  2026-10-06).** A Google address counts as provider-verified, with no code, only when
+  `email_verified` is true AND it is `@gmail.com`/`@googlemail.com` or the token's `hd` claim
+  equals its domain (Workspace), case-insensitively; otherwise the gate asks for a code as for a
+  typed address. Apple, private relay included, is unchanged. I-06's Google module passes the
+  signed `hd` claim through (`hostedDomain`), and the gate applies the rule to the identity as it
+  enters (`providerVouchesForEmail`), so the Google link also stores such an address as
+  unverified and it claims no licence. This closes the residual THREAT-MODEL recorded; SIGN-IN.md
+  §3.5 and §4.6, the OpenAPI operation and the portal page say so. I-07's and I-06's tests that
+  relied on a verified non-Gmail Google address now give it a matching `hd`.
 - The tests are `test/portalEmailGate.test.ts` (matched by the Verify filter) beside I-07's
   `test/identityCardGate.test.ts`.
 

@@ -11951,9 +11951,11 @@ paths:
       tags: [portal]
       summary: Confirm the provider's email or a typed one (and accept terms)
       description: >
-        `choice: provider` with an address the provider asserted as verified (Google
-        `email_verified: true`, Apple) passes without a code (owner decision, 2026-10-04); a
-        typed address, or a provider address that is not verified, gets a 6-digit code
+        `choice: provider` with an address the provider vouches for passes without a code (owner
+        decision, 2026-10-04): Apple's verified address (a private-relay one included), or a
+        Google address with `email_verified: true` that is `@gmail.com`/`@googlemail.com` or
+        whose domain the token's `hd` claim names (lead decision, 2026-10-06). A typed address,
+        or a provider address outside that rule, gets a 6-digit code
         (`code_sent`, the same limits as the email start, enumeration-safe). `termsVersion` must
         name the product's current version when it requires terms (`400 terms_required`
         otherwise, an earlier version included); the acceptance is recorded when the gate passes,

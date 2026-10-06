@@ -19,10 +19,13 @@
  *   - It runs once per account: an account with a confirmed email never sees it again, whichever
  *     method it later uses (Terms aside: a product's new terms version asks again).
  *   - The email is prefilled from the provider, an Apple private-relay address included, and can
- *     be switched to a typed one. A PROVIDER-VERIFIED address (Google `email_verified: true`,
- *     Apple always) is accepted without a code (owner, 2026-10-04); a typed address, or a provider
- *     address that is not verified, gets a 6-digit code on I-02's store, bound to this gate. Steam
- *     and other providers with no email start with an empty field.
+ *     be switched to a typed one. A PROVIDER-VERIFIED address is accepted without a code (owner,
+ *     2026-10-04): Apple's always (relay included), and Google's only when `email_verified` is
+ *     true AND the address is `@gmail.com`/`@googlemail.com` or the token's `hd` claim equals the
+ *     address's domain (Workspace; lead decision 2026-10-06, `providerVouchesForEmail`). A typed
+ *     address, or a provider address that is not vouched for, gets a 6-digit code on I-02's
+ *     store, bound to this gate. Steam and other providers with no email start with an empty
+ *     field.
  *   - Terms: when the product requires them, the gate does not pass until this version is ticked;
  *     acceptances are stored per account, product and version (`account_terms_acceptances`,
  *     `accounts/terms.ts`, PX-W15), and a new version asks again.
@@ -143,6 +146,8 @@ export interface ProviderSignIn {
     tenantScopes?: readonly string[];
     terms?: TermsRequirement | null;
   } | null;
+  /** Google only: the signed `hd` claim (the Workspace domain), for `providerVouchesForEmail`. */
+  hostedDomain?: string | null;
   /** Where to go afterwards: a same-origin path the front door already checked. */
   returnTo?: string | null;
   /** I-08's passthrough request handle, opaque here and handed back when the gate passes. */
@@ -252,6 +257,34 @@ function accountDisabledPage(): Response {
   });
 }
 
+/** Google's consumer domains: an address there is Google's own, so `email_verified` is current. */
+const GOOGLE_CONSUMER_DOMAINS: ReadonlySet<string> = new Set([
+  "gmail.com",
+  "googlemail.com",
+]);
+
+/**
+ * Whether the provider's own assertion stands in for our code (owner, 2026-10-04; for Google,
+ * lead decision 2026-10-06). Apple's verified address always does, a private-relay address
+ * included. Google's `email_verified` alone does not: for an address outside Google's own domains
+ * it only says Google verified it once (a former employee's company address stays "verified"), so
+ * it counts only for `@gmail.com`/`@googlemail.com`, or when the signed `hd` claim names the
+ * address's domain (a Workspace account, whose addresses the domain's admin controls). Anything
+ * else gets our code, like a typed address. Case-insensitive.
+ */
+export function providerVouchesForEmail(
+  identity: Pick<VerifiedIdentity, "kind" | "email" | "emailVerified">,
+  hostedDomain: string | null | undefined,
+): boolean {
+  const email = identity.email?.trim().toLowerCase();
+  if (!email || !identity.emailVerified) return false;
+  if (identity.kind !== "google") return true;
+  const domain = email.slice(email.lastIndexOf("@") + 1);
+  if (GOOGLE_CONSUMER_DOMAINS.has(domain)) return true;
+  const hd = hostedDomain?.trim().toLowerCase();
+  return Boolean(hd) && hd === domain;
+}
+
 /** Whether the account still has to accept `terms` (no row for this version yet). */
 async function needsTerms(
   db: Db,
@@ -276,7 +309,14 @@ export async function beginProviderSignIn(
   input: ProviderSignIn,
   now: number,
 ): Promise<Response> {
-  const id = normalizeIdentity(input.identity);
+  // The provider's assertion counts only where it vouches for the address today: everything
+  // downstream (the gate's fast path, the link's stored `email_verified`, which feeds the licence
+  // claim rules) sees an address Google does not vouch for as unverified.
+  const identity: VerifiedIdentity = {
+    ...input.identity,
+    emailVerified: providerVouchesForEmail(input.identity, input.hostedDomain),
+  };
+  const id = normalizeIdentity(identity);
   if (!id || id.kind === "email") {
     return unverifiedPage();
   }
@@ -300,7 +340,7 @@ export async function beginProviderSignIn(
     }
     const emailConfirmed = account.primary_email_verified_at !== null;
     if (emailConfirmed && !(await needsTerms(db, account, product, terms))) {
-      const result = await signIn(db, input.identity, now, {
+      const result = await signIn(db, identity, now, {
         product: product ? { slug: product, tenantScopes: scopes } : undefined,
       });
       if (result.status !== "signed_in") {

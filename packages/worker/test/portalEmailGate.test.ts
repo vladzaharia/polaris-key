@@ -4,6 +4,9 @@
  *   - The provider rule through the real front doors (I-06's callbacks into I-07's gate): Google
  *     with `email_verified: false` gets a code; an Apple private-relay address gets none; Steam
  *     starts with an empty field. The confirm step always shows the address it is confirming.
+ *   - Google's rule (lead decision, 2026-10-06): `email_verified` stands in for our code only for
+ *     `@gmail.com`/`@googlemail.com` or when the signed `hd` claim names the address's domain; a
+ *     non-Gmail address without `hd`, or with another domain's `hd`, gets a code.
  *   - No session and no app token before the gate passes: at every step before the pass no
  *     session cookie is set, no `account_sessions` row exists, and every session-gated route
  *     (the account, the sessions list, app consent for a passthrough request, device approval)
@@ -38,6 +41,7 @@ import { resetProviderCaches } from "../src/services/identity/providers/discover
 import {
   beginProviderSignIn,
   EMAIL_GATE_LANDING,
+  providerVouchesForEmail,
   type ProviderSignIn,
 } from "../src/services/identity/card/gate.js";
 import {
@@ -333,6 +337,151 @@ describe("the provider rule, through the real front doors (owner, 2026-10-04)", 
       "SELECT email FROM account_links WHERE kind = 'steam'",
     );
     expect(steam).toEqual({ email: null });
+  });
+});
+
+describe("Google's email_verified counts only for Gmail or a matching Workspace hd (lead, 2026-10-06)", () => {
+  /** The Google link the pass created: its stored address and whether it counts as verified. */
+  async function googleLink(
+    h: ProviderHarness,
+  ): Promise<{ email: string; email_verified: number } | null> {
+    return h.db.first<{ email: string; email_verified: number }>(
+      "SELECT email, email_verified FROM account_links WHERE kind = 'google'",
+    );
+  }
+
+  it("a verified Gmail address needs no code", async () => {
+    const h = await makeProviderHarness();
+    const mail = captureMail(h.env);
+    const { gate, view } = await openedGate(
+      h,
+      await googleCallback(h, { email: "Ada.Lovelace@Gmail.com" }),
+    );
+    expect(view.email).toMatchObject({
+      provider: "ada.lovelace@gmail.com",
+      providerVerified: true,
+    });
+    const passed = await gateCall(h, gate, GATE, { choice: "provider" });
+    expect(await passed.json()).toMatchObject({ status: "signed_in" });
+    expect(cookieFrom(passed, PORTAL_COOKIE)).toBeTruthy();
+    expect(mail).toHaveLength(0);
+    expect(await googleLink(h)).toEqual({
+      email: "ada.lovelace@gmail.com",
+      email_verified: 1,
+    });
+  });
+
+  it("a Workspace address whose hd names its domain needs no code", async () => {
+    const h = await makeProviderHarness();
+    const mail = captureMail(h.env);
+    const { gate, view } = await openedGate(
+      h,
+      await googleCallback(h, {
+        email: "ada@lumen.example",
+        hd: "Lumen.Example",
+      }),
+    );
+    expect(view.email).toMatchObject({
+      provider: "ada@lumen.example",
+      providerVerified: true,
+    });
+    const passed = await gateCall(h, gate, GATE, { choice: "provider" });
+    expect(await passed.json()).toMatchObject({ status: "signed_in" });
+    expect(mail).toHaveLength(0);
+    expect(await googleLink(h)).toEqual({
+      email: "ada@lumen.example",
+      email_verified: 1,
+    });
+  });
+
+  it("a verified non-Gmail address without hd gets a code; the Google link keeps it unverified", async () => {
+    const h = await makeProviderHarness();
+    const mail = captureMail(h.env);
+    const { gate, view } = await openedGate(
+      h,
+      await googleCallback(h, { email: "ada@former-employer.example" }),
+    );
+    // Google said `email_verified: true`, but only that it verified the address once.
+    expect(view.email).toMatchObject({
+      provider: "ada@former-employer.example",
+      providerVerified: false,
+    });
+    const sent = await gateCall(h, gate, GATE, { choice: "provider" });
+    expect(await sent.json()).toMatchObject({
+      status: "code_sent",
+      email: "ada@former-employer.example",
+    });
+    expect(cookieFrom(sent, PORTAL_COOKIE)).toBeNull();
+    expect(await accountCount(h.db)).toBe(0);
+    // The person picks another address instead and proves it: the Google address is stored, but
+    // never as verified, so it claims nothing (`verifiedAccountEmails`).
+    await gateCall(h, gate, GATE, {
+      choice: "typed",
+      email: "ada@example.com",
+    });
+    const passed = await gateCall(h, gate, `${GATE}/verify`, {
+      code: codeIn(mail, "ada@example.com"),
+    });
+    expect(passed.status).toBe(200);
+    expect(await googleLink(h)).toEqual({
+      email: "ada@former-employer.example",
+      email_verified: 0,
+    });
+  });
+
+  it("an hd that names another domain gets a code", async () => {
+    const h = await makeProviderHarness();
+    const mail = captureMail(h.env);
+    const { gate, view } = await openedGate(
+      h,
+      await googleCallback(h, {
+        email: "ada@lumen.example",
+        hd: "other.example",
+      }),
+    );
+    expect(view.email.providerVerified).toBe(false);
+    const sent = await gateCall(h, gate, GATE, { choice: "provider" });
+    expect(await sent.json()).toMatchObject({ status: "code_sent" });
+    expect(mail.map((m) => m.to)).toEqual(["ada@lumen.example"]);
+    expect(await accountCount(h.db)).toBe(0);
+  });
+
+  it("the predicate: Google by domain or hd, case-insensitive; Apple as before", () => {
+    const g = (email: string | null, emailVerified = true) => ({
+      kind: "google",
+      email,
+      emailVerified,
+    });
+    expect(providerVouchesForEmail(g("ada@gmail.com"), null)).toBe(true);
+    expect(providerVouchesForEmail(g("Ada@GoogleMail.COM"), null)).toBe(true);
+    expect(
+      providerVouchesForEmail(g("ada@lumen.example"), "LUMEN.example"),
+    ).toBe(true);
+    expect(providerVouchesForEmail(g("ada@lumen.example"), null)).toBe(false);
+    expect(providerVouchesForEmail(g("ada@lumen.example"), "")).toBe(false);
+    expect(
+      providerVouchesForEmail(g("ada@sub.lumen.example"), "lumen.example"),
+    ).toBe(false);
+    expect(providerVouchesForEmail(g("ada@gmail.com", false), null)).toBe(
+      false,
+    );
+    expect(providerVouchesForEmail(g(null), "gmail.com")).toBe(false);
+    expect(
+      providerVouchesForEmail(
+        {
+          kind: "apple",
+          email: "q7x9k2@privaterelay.appleid.com",
+          emailVerified: true,
+        },
+        null,
+      ),
+    ).toBe(true);
+    expect(
+      providerVouchesForEmail(
+        { kind: "apple", email: "grace@example.com", emailVerified: false },
+        null,
+      ),
+    ).toBe(false);
   });
 });
 

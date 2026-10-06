@@ -338,11 +338,14 @@ PORTAL §4.29 stands, with these rules made explicit (O-8):
   lede (in an app: "One step before <App>. We send sign-in codes, receipts and security notices
   here."); **ProfileImport**; the email radio cards; Terms when the product requires them; the
   primary; the Polaris Key terms line.
-- **Fast path:** a provider-verified address needs **no code**. That means Google with
-  `email_verified: true`, or any Apple address, private relay included. The primary is **Continue**
-  (in passthrough, **Continue to <App>**).
-- **Code path:** a typed or unverified address shows six cells, and the primary is **Verify and
-  continue**.
+- **Fast path:** a provider-verified address needs **no code**. That means any Apple address,
+  private relay included, or a Google address with `email_verified: true` that is either
+  `@gmail.com`/`@googlemail.com` or carries a signed `hd` claim equal to its domain (a Workspace
+  account). The primary is **Continue** (in passthrough, **Continue to <App>**). Google's
+  `email_verified` on any other address only says Google verified it once, so it gets a code like
+  a typed address (lead decision under the owner's delegation, 2026-10-06; PX-W15).
+- **Code path:** a typed or unverified address, or a Google address outside that rule, shows six
+  cells, and the primary is **Verify and continue**.
 - **Steam** has no email. The field starts empty, with the help "Steam doesn't share an email. Add
   one so you can get back in without Steam." The primary is **Send code** (frame 04).
 - **Email already in another account** (known only after proof): **Join into one account** (PORTAL
@@ -1034,13 +1037,14 @@ to the existing `portal/` renders, which stand where this document does not redr
 
 ### 4.6 First sign-in from a provider
 
-- **Verified email** (Google `email_verified`, Apple incl. relay): the strip, ProfileImport, the
+- **Verified email** (Apple incl. relay; Google `email_verified` on a Gmail address or a matching
+  Workspace `hd`, §3.5): the strip, ProfileImport, the
   provider address preselected, **Continue to <App>** with no code. In the app it then continues to
   LicenseChoiceStep. Profile import shows what came from the provider ("Name and picture from
   Google") with **Change picture**; the person can disconnect the provider later in Account →
   Sign-in methods, once another method exists.
-- **Unverified or typed email:** the selected card sends a code, and the primary is **Verify and
-  continue**.
+- **Unverified or typed email** (or a Google address outside §3.5's rule): the selected card sends
+  a code, and the primary is **Verify and continue**.
 - **Steam** (frame 04): an empty field and **Send code**.
 - **Email in another account:** **Join into one account** or **Use a different email**.
 
@@ -1141,7 +1145,7 @@ one tap together with the sheet it opens.
 | Returning, web redirect, passkey in the email field (conditional UI) | 2    | Passkey, Use this license and continue                                                       |
 | Returning, device code, phone already signed in to Polaris Key       | 1    | Scan the QR, Use this license and continue                                                   |
 | Returning, native redirect, email code                               | 2    | Continue (code submits on the sixth digit), Use this license and continue                    |
-| First time, Google with a verified email, native redirect            | 4    | Google, Continue (email gate, no code), Use this license and continue, Continue to <App>     |
+| First time, Google with a Gmail address, native redirect             | 4    | Google, Continue (email gate, no code), Use this license and continue, Continue to <App>     |
 | First time, Steam, native redirect                                   | 4    | Steam, Send code (the code submits itself), Use this license and continue, Continue to <App> |
 | Kit native Apple sign-in, grant exists, a choice is due              | 2    | Apple sheet, Use this license and continue                                                   |
 | Returning, desktop app, browser already signed in                    | 2    | Continue in browser, Use this license and continue (in the app's form)                       |

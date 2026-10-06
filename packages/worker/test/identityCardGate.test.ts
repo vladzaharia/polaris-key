@@ -51,6 +51,15 @@ function google(
   };
 }
 
+/** A Google Workspace sign-in: `hd` names the address's domain, so Google vouches for it
+ *  (PX-W15; a non-Gmail address without a matching `hd` gets our code). */
+function workspace(subject: string, email: string): ProviderSignIn {
+  return {
+    ...google(subject, email),
+    hostedDomain: email.slice(email.indexOf("@") + 1),
+  };
+}
+
 /** The front door's hand-off, as a device: the gate cookie lands in its jar. */
 async function arrive(
   w: CardWorld,
@@ -294,7 +303,7 @@ describe("the join offer (owner, 2026-10-04)", () => {
     const w = await seededWorld();
     const ada = await emailAccount(w, "ada@example.com");
     const d = new Device(w);
-    await arrive(w, d, google("g-1", "ada@example.com"));
+    await arrive(w, d, workspace("g-1", "ada@example.com"));
     const res = await d.send("POST", GATE, { choice: "provider" });
     expect(res.status).toBe(409);
     expect(await res.json()).toEqual(
@@ -316,7 +325,7 @@ describe("the join offer (owner, 2026-10-04)", () => {
     const w = await seededWorld();
     const ada = await emailAccount(w, "ada@example.com");
     const d = new Device(w);
-    await arrive(w, d, google("g-1", "ada@example.com"));
+    await arrive(w, d, workspace("g-1", "ada@example.com"));
     await d.send("POST", GATE, { choice: "provider" });
     // The same browser signs in to the existing account by any of its methods...
     expect((await d.signInWithCode("ada@example.com")).status).toBe(200);
@@ -437,7 +446,7 @@ describe("the join offer (owner, 2026-10-04)", () => {
     const w = await seededWorld();
     await emailAccount(w, "ada@example.com");
     const d = new Device(w);
-    await arrive(w, d, google("g-1", "ada@example.com"));
+    await arrive(w, d, workspace("g-1", "ada@example.com"));
     expect((await d.send("POST", GATE, { choice: "provider" })).status).toBe(
       409,
     );

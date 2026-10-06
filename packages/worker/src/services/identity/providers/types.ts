@@ -4,7 +4,8 @@
  * `identity` is the account-layer credential: issuer, subject, kind, the provider's email and
  * whether the provider itself asserted it verified. I-07's interstitial reads `emailVerified` to
  * decide whether the address needs a code (a provider-verified email does not; owner, S-16
- * header). `profile` is display material only, never an identifier: the name and avatar a
+ * header), and for Google also `hostedDomain` (a Gmail address or a matching Workspace `hd`
+ * only; PX-W15). `profile` is display material only, never an identifier: the name and avatar a
  * provider offered, for the interstitial and profile import (PX-W16). Nothing here is stored by
  * the provider modules, and no upstream token survives the callback (S-16 §5.5).
  */
@@ -28,6 +29,10 @@ export interface ProviderSignInResult {
   provider: SignInProviderKind;
   identity: VerifiedIdentity;
   profile: ProviderProfile;
+  /** Google only: the signed ID token's `hd` claim (the Workspace domain), lower-cased, or `null`.
+   *  The email gate needs it to decide whether Google's `email_verified` stands in for our code
+   *  (PX-W15). Not an identifier and not stored. */
+  hostedDomain?: string | null;
 }
 
 /** Trim a provider-supplied display string: no control characters, bounded. */
