@@ -21,6 +21,7 @@ import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
+import { writeListing } from "./listingWrites.js";
 import { handlePortalApi, portalHooksFor } from "./portalHarness.js";
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
@@ -34,7 +35,7 @@ import {
   getOrCreateAccountByEmail,
   getOrCreateAccountByIdentity,
   linkLicense,
-  upsertPortalProductSettings,
+  type ListingPatch,
 } from "../src/services/identity/portal/repo.js";
 import {
   PORTAL_COOKIE,
@@ -163,9 +164,10 @@ async function website(db: Db, slug: string, url: string): Promise<void> {
 async function listing(
   db: Db,
   slug: string,
-  patch: Parameters<typeof upsertPortalProductSettings>[2],
+  patch: ListingPatch,
 ): Promise<void> {
-  await upsertPortalProductSettings(db, slug, patch, NOW);
+  // ST-04: the listing is a registry setting, written through `writeSetting()`.
+  await writeListing(db, slug, patch);
 }
 
 async function holdLicense(

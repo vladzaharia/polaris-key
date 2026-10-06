@@ -13,6 +13,7 @@
 
 import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { describe, expect, it } from "vitest";
+import { writeListing } from "./listingWrites.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct, seedTier } from "./seed.js";
@@ -319,12 +320,7 @@ describe("GET /api/discover (G24)", () => {
     });
     // Discover turned off by the developer.
     await freeProduct(db, "hidden");
-    await upsertPortalProductSettings(
-      db,
-      "hidden",
-      { discoverEnabled: false },
-      NOW,
-    );
+    await writeListing(db, "hidden", { discoverEnabled: false });
     // The portal turned off.
     await freeProduct(db, "noportal");
     await upsertPortalProductSettings(
@@ -373,30 +369,15 @@ describe("GET /api/discover (G24)", () => {
     const db = makeTestDb();
     for (const slug of ["auto", "listed", "unlisted", "legacyoff", "stale"])
       await freeProduct(db, slug);
-    await upsertPortalProductSettings(
-      db,
-      "listed",
-      { storeListed: "listed" },
-      NOW,
-    );
-    await upsertPortalProductSettings(
-      db,
-      "unlisted",
-      { storeListed: "unlisted" },
-      NOW,
-    );
+    await writeListing(db, "listed", { storeListed: "listed" });
+    await writeListing(db, "unlisted", { storeListed: "unlisted" });
     // A pre-0085 Worker turned Discover off: store_listed still says auto (dual-read).
     await upsertPortalProductSettings(db, "legacyoff", {}, NOW);
     await db.run(
       "UPDATE portal_product_settings SET discover_enabled = 0 WHERE product = 'legacyoff'",
     );
     // A pre-0085 Worker turned Discover back on for a product the new one had unlisted.
-    await upsertPortalProductSettings(
-      db,
-      "stale",
-      { storeListed: "unlisted" },
-      NOW,
-    );
+    await writeListing(db, "stale", { storeListed: "unlisted" });
     await db.run(
       "UPDATE portal_product_settings SET discover_enabled = 1 WHERE product = 'stale'",
     );
@@ -793,12 +774,7 @@ describe("POST /api/discover/<p>/claim (G25)", () => {
     expect((await list(env, db, who)).body.offers).toHaveLength(2);
 
     await autoIssue(db, "mossgarden", null);
-    await upsertPortalProductSettings(
-      db,
-      "hidden",
-      { discoverEnabled: false },
-      NOW,
-    );
+    await writeListing(db, "hidden", { discoverEnabled: false });
     for (const slug of ["mossgarden", "hidden", "no-such-product"]) {
       const res = await claim(env, db, who, slug);
       expect(res.status, slug).toBe(409);
@@ -879,12 +855,9 @@ describe("the stored groups claim (migrations/0071)", () => {
     await seedProduct(db, "mossgarden");
     const on = await upsertPortalProductSettings(db, "mossgarden", {}, NOW);
     expect(on.discover_enabled).toBe(1);
-    const off = await upsertPortalProductSettings(
-      db,
-      "mossgarden",
-      { discoverEnabled: false },
-      NOW,
-    );
+    const off = await writeListing(db, "mossgarden", {
+      discoverEnabled: false,
+    });
     expect(off.discover_enabled).toBe(0);
   });
 });
