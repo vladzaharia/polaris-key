@@ -1247,6 +1247,7 @@ const DELIVERY_VARS = [
   "CONSOLE_ORIGIN",
   "BLOB_ORIGIN",
   "PKG_ORIGIN",
+  "IMG_ORIGIN",
   "BLOBS_BUCKET_NAME",
   "R2_ACCOUNT_ID",
   "GITHUB_APP_ID",
@@ -1345,6 +1346,11 @@ const DEPLOY_LABELS: Record<
   PKG_ORIGIN: {
     label: "Registry host",
     help: "The origin that serves package feeds. Requests there reach only registry routes.",
+    unset: "Not set",
+  },
+  IMG_ORIGIN: {
+    label: "Image host",
+    help: "The origin that serves products' public hosted images. Requests there reach only image routes.",
     unset: "Not set",
   },
 };

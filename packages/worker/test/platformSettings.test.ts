@@ -164,6 +164,7 @@ describe("PLATFORM_SETTINGS", () => {
     const DENIED = [
       "BLOB_ORIGIN",
       "CONSOLE_ORIGIN",
+      "IMG_ORIGIN",
       "PLATFORM_ADMIN_GROUP",
       "PLATFORM_OIDC_ISSUER",
       "PLATFORM_OIDC_CLIENT_ID",

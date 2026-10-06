@@ -66,8 +66,9 @@ These steps are browser/provider tasks. Complete them before deploying.
 
 1. Confirm the `plrs.im` zone is active in the `Polaris` Cloudflare account.
 2. Confirm `key.plrs.im` is available for a Worker custom domain, and so are the bytes hosts
-   (`dl.plrs.im`, `dl-staging.plrs.im`, `dl-dev.plrs.im`) and the registry hosts
-   (`pkg.plrs.im`, `pkg-staging.plrs.im`, `pkg-dev.plrs.im`, F-02). `wrangler deploy` attaches
+   (`dl.plrs.im`, `dl-staging.plrs.im`, `dl-dev.plrs.im`), the registry hosts
+   (`pkg.plrs.im`, `pkg-staging.plrs.im`, `pkg-dev.plrs.im`, F-02) and the image hosts
+   (`img.plrs.im`, `img-staging.plrs.im`, `img-dev.plrs.im`, HA-02). `wrangler deploy` attaches
    each `custom_domain = true` route in `wrangler.toml` and creates its DNS record and
    certificate; a name that already has a DNS record outside the Worker must be cleared first.
 3. Onboard the auth sending subdomain `auth.plrs.im` on Cloudflare Email Sending, add its
@@ -499,6 +500,50 @@ curl -sI https://pkg.plrs.im/ | grep -iE '^(HTTP|content-type|set-cookie)'
 # HTTP/2 200, content-type: text/html; charset=utf-8, and no set-cookie line
 curl -s -o /dev/null -w '%{http_code}\n' -X OPTIONS https://pkg.plrs.im/npm/x/y
 # 405 (no preflight is ever answered)
+```
+
+### Image host (HA-02)
+
+A product's public hosted images (notes/S-20 §6.5) answer on a FOURTH custom domain of the same
+Worker, the **image host**, confined by `packages/worker/src/core/imgHost.ts` to five path shapes:
+`/<product>/a/<sha256>` and `/<product>/a/<sha256>/<w>.webp` (content-addressed, immutable) and
+the stable aliases `/<product>/icon`, `/<product>/header` and `/<product>/screenshots/<n>` (a 302
+to the current copy, cached for five minutes). It serves raster images only (PNG, JPEG, WebP, GIF,
+AVIF), inline, with `Access-Control-Allow-Origin: *`, `Cross-Origin-Resource-Policy:
+cross-origin`, `nosniff`, `Content-Security-Policy: default-src 'none'; sandbox`, and no cookie
+in or out. Declared in `wrangler.toml`, beside `dl…` and `pkg…`:
+
+| Env     | Route (`custom_domain = true`) | `IMG_ORIGIN` in `[env.<env>.vars]` |
+| ------- | ------------------------------ | ---------------------------------- |
+| prod    | `img.plrs.im`                  | `https://img.plrs.im`              |
+| staging | `img-staging.plrs.im`          | `https://img-staging.plrs.im`      |
+| dev     | `img-dev.plrs.im`              | `https://img-dev.plrs.im`          |
+
+- No owner input: the `plrs.im` zone is in the account, and the deploy attaches each route and
+  creates its DNS record and certificate. No new bucket, queue or secret; the host reads the
+  same `BLOBS` bucket under `blobs/`, which keeps its age lock.
+- `vars` is not inheritable, so each environment carries its own `IMG_ORIGIN`. An `img` route
+  without it would hand the whole console to the sibling; `test/imgHost.test.ts` checks every
+  committed environment, and an `IMG_ORIGIN` equal to `BLOB_ORIGIN` or `PKG_ORIGIN` is refused
+  (the host is then off).
+- An image is served only when the product holds a hosted copy of it (`hosted_assets`, HA-01).
+  Until HA-05 and HA-06 start hosting copies, every image path answers the not-found.
+- Optional: a WAF rate-limiting rule for the host. The Worker already limits R2 reads on cache
+  misses per product and IP (`imgHost`, 600 a minute, fail open).
+
+After the next deploy, check the host from outside:
+
+```sh
+curl -sI https://img.plrs.im/manage | grep -iE '^(HTTP|content-security-policy|access-control-allow-origin|set-cookie)'
+# HTTP/2 404, content-security-policy: default-src 'none'; sandbox,
+# access-control-allow-origin: *, and no set-cookie line
+curl -sI https://img.plrs.im./manage | head -1
+# HTTP/2 404 (the fully-qualified form is the image host too)
+curl -sI https://img.plrs.im/<slug>/icon | grep -iE '^(HTTP|location|cache-control)'
+# HTTP/2 302 to https://img.plrs.im/<slug>/a/<sha256>, cache-control: public, max-age=300
+# (HTTP/2 404 while the product hosts no icon)
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://img.plrs.im/<slug>/icon
+# 405
 ```
 
 ### Trusted publishing: the R2 parent token (P2-02)
@@ -973,6 +1018,9 @@ Validate portal email:
   `content-security-policy: sandbox; …` and no `set-cookie`; `OPTIONS` on any path answers 405.
 - `PKG_ORIGIN` is set in every deployed environment's `[env.<env>.vars]`, and no R2 lock or
   lifecycle rule covers `registry/`.
+- `https://img.plrs.im/manage` and `https://img.plrs.im./manage` answer 404 with
+  `content-security-policy: default-src 'none'; sandbox`, `access-control-allow-origin: *` and no
+  `set-cookie`; `IMG_ORIGIN` is set in every deployed environment's `[env.<env>.vars]`.
 - Email Service binding `EMAIL` is present in prod and can send as `noreply@plrs.im`.
 - GitHub App webhooks validate with `GITHUB_WEBHOOK_SECRET`.
 - DJDL is linked through `.pkey/`, not seeded.

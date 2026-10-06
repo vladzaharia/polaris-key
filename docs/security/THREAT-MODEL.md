@@ -5504,6 +5504,59 @@ proxy now fetches through the same guard.
 - **The portal media proxy** keeps its GitHub-only host rule on every hop (`allowHost`) on top of
   this guard until HA-07 serves hosted copies; its cap, 5 s budget and sniff are unchanged.
 
+### The image host (HA-02)
+
+**What it is.** `img.plrs.im` (with `img-staging` and `img-dev`) is the same Worker on a fourth
+custom domain, beside the console, the bytes host and the registry host (notes/S-20 §6.5, owner
+decision 2). `IMG_ORIGIN` names it, and `core/imgHost.ts` confines it to five path shapes, all
+Core's own: `/<p>/a/<sha256>` (an original), `/<p>/a/<sha256>/<w>.webp` (a width variant) and the
+stable aliases `/<p>/icon`, `/<p>/header` and `/<p>/screenshots/<n>`, which 302 to the current
+content-addressed URL. Everything else, the console, the portal, `/docs`, discovery, every byte
+route and every registry route, is the plain not-found. No new bucket and no new secret: it reads
+the same `BLOBS` bucket under `blobs/`. Tests: `test/imgHost.test.ts`,
+`test-workerd/imgHost.test.ts`, and `test/routeCoverage.test.ts`'s `IMG_PATHS`.
+
+**Same-site exposure.** The host is a `*.plrs.im` sibling of the console, so `SameSite` does not
+separate them. Its compensations are the bytes host's, kept and narrowed:
+
+| Compensation                              | `img.plrs.im`                                                                                 |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Only an allowlist of paths answers        | the five shapes above (`matchImgPath`, strict: lowercase hex, no trailing slash, no encoding) |
+| No cookie read; `Set-Cookie` stripped     | yes: no code on the host reads a request header but `If-None-Match` and the client IP         |
+| `nosniff`, `Referrer-Policy: no-referrer` | yes, on every answer, the not-found, 405, 429 and the JSON 500 included                       |
+| CSP on every answer                       | `default-src 'none'; sandbox` (`IMG_CSP`)                                                     |
+| Types                                     | `IMG_HOST_TYPES` = PNG, JPEG, WebP, GIF, AVIF, from the sniffed `hosted_assets.content_type`  |
+| CORS                                      | `Access-Control-Allow-Origin: *`, never credentials; a route's own `Access-Control-*` dropped |
+| `Cross-Origin-Resource-Policy`            | `cross-origin`: public images, embeddable by any page, email or store                         |
+| Methods                                   | `GET` and `HEAD`; anything else on an image path is 405                                       |
+
+The two deliberate differences from `dl.plrs.im`, reviewed here: `Access-Control-Allow-Origin: *`
+and `Cross-Origin-Resource-Policy: cross-origin`. Both are safe only because nothing on this host
+is private: no answer depends on a credential, no cookie is read, and every byte served is a
+product's public presentation image. A raster image cannot carry script; SVG, HTML, XML and
+`text/*` are never served at any status, and an image a browser opens as a document still runs
+under the sandbox with an opaque origin.
+
+**Tenancy.** An original answers only when `<p>` holds a `hosted-asset` ref to
+`blobs/sha256/<hex>` through a `hosted_assets` row of an IMAGE slot (`slotClass(slot).accept ===
+"image"`) whose sniffed type is on `IMG_HOST_TYPES`. Another product's ref is never enough, and
+neither is a ref of another kind: a release file, a pack or a bundle is the bytes host's, and a
+`release-file` hosted copy is refused even when its bytes are a PNG. A variant answers only when
+the original's row lists it in `variants_json` and the same slot holds a ref to the variant's
+object. The tenancy check runs on every request and is never cached, so dropping a slot (or
+HA-06's delete-a-copy) stops the answer at once; only the bytes, named by their hash, are kept in
+the Cache API.
+
+**Never gated (owner decision 7).** The host builds only ungated `blobs/` keys and carries no auth
+code: anything under `gated/`, anything licensed and anything not hosted is a 404, never a 401.
+
+**Cost.** A cache miss reads R2 and is charged to the `imgHost` rate-limit bucket (per product and
+client IP, 600 a minute, fail open: nothing secret is behind it). A stored object whose checksum
+is missing or disagrees with its name is the not-found, as in `blobResponse`.
+
+Residual risk: an operator can host abusive or illegal images, now served from a Polaris Key host.
+The operator terms apply, and HA-06 adds delete-a-copy, which takes effect at the next request.
+
 ### Linking an existing product to a repository (UX-23)
 
 **What changes hands.** `POST /manage/api/products/<slug>/release/link` turns a manual product
@@ -5969,7 +6022,7 @@ control, calls a host other than its store's API, writes from a store object wit
 routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to
-`BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a type is added to
+`BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a path shape is added to the image host (`matchImgPath`), a type to `IMG_HOST_TYPES`, the image host serves a ref kind other than `hosted-asset`, a non-image slot or anything gated, reads a cookie or a credential, or caches its tenancy check (HA-02); a type is added to
 `REGISTRY_HOST_TYPES`, the PyPI HTML fallback is admitted anywhere but its one flagged route or
 under a looser policy, a registry route answers CORS or a method other than GET, HEAD,
 Swift's `POST …/login`, F-22's four publish writes and F-23's OCI push methods, or

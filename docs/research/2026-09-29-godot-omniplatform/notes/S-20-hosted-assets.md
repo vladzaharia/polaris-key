@@ -31,7 +31,7 @@
 >    release files and release-note images. Polaris Key keeps its own copy of every file it
 >    serves. A developer's GitHub release or external URL stays a _source_ and a fallback
 >    location, never a requirement.
-> 2. **A separate media host.** It is `img.plrs.im`, with `media-staging` and `media-dev`. It is
+> 2. **A separate image host.** It is `img.plrs.im`, with `img-staging` and `img-dev`. It is
 >    the same Worker on a fourth custom domain, `IMG_ORIGIN`. It serves public, inline,
 >    cookie-less, immutable images only. `dl.plrs.im` keeps the downloads (§6.5).
 > 3. **Pull from any public https host.** There is no host allowlist. The guard in §6.3 applies
@@ -51,7 +51,7 @@
 >    - No signed document changes, because the signed documents carry hashes, not URLs (§4.3).
 >    - Product setting: `assets.releases.mirror`, operator-scope.
 > 7. **Licensed bytes reuse PX-W3's download ticket.** Presentation media are never gated, and
->    the media host refuses anything that is.
+>    the image host refuses anything that is.
 > 8. **Retention.**
 >    - Polaris Key never deletes or modifies a developer's source.
 >    - Its copies are held by `blob_refs` and fall to the existing collector after the 180-day
@@ -277,7 +277,7 @@ All rows are [V] unless marked.
 
    **Fix in HA-07:** make the threat model true by excluding the `listing-asset` and
    `hosted-asset` ref kinds from the app-side blob route. These images are served from the
-   media host instead.
+   image host instead.
 
 3. **Licensed bytes on dl do not reach SDKs.** This is noted, not fixed in HA.
    - Every SDK sends the device Bearer only when the URL's origin equals `baseUrl`'s
@@ -512,7 +512,7 @@ today.
 ### 6.7 Licensed versus public bytes
 
 - **Presentation media and listing art** are always public. HA-07 removes these ref kinds from
-  the app-side `blobs` route (§4.6 #2), so they are served only from the media host.
+  the app-side `blobs` route (§4.6 #2), so they are served only from the image host.
 - **Release files** keep their deliverable's `dist_access` mode:
   - public: anyone, on dl;
   - `authenticated`, `licensed`, `entitled`:
@@ -550,7 +550,7 @@ today.
 - **Optional DJDL simplification.** DJDL can later move its art into its private repo (for
   example `icon: .pkey/art/icon.png`) and retire `djdl-assets` and the publish script.
 - **The `/media/<p>/{icon,header}` portal route** stays during the deprecation window and
-  302s to the media host's stable alias. The SPA switches to the media URLs from
+  302s to the image host's stable alias. The SPA switches to the media URLs from
   `presentationFor` (HA-07).
 - **AltStore and SideStore sources** emit image-host URLs on their next render. Third-party
   copies of an old source keep the developer's URL, which works as long as the developer keeps
@@ -677,7 +677,7 @@ bounds or vendor limits, and S-18 §5.6 keeps those out of settings.
   is noted for its brief.
 - **S-18.** HA-10 registers four entries once ST-03 lands.
 - **S-19.** No interaction beyond PX-W3.
-- **I-18 (email).** It may add the product icon from the media host's stable alias. This is
+- **I-18 (email).** It may add the product icon from the image host's stable alias. This is
   optional, and not an HA package.
 
 ## 9. Work packages (`HA-`)
@@ -763,7 +763,7 @@ Each question shows the recommendation (adopted) in bold and the alternative con
 - **New:** `P/wp/HA-01…HA-17` briefs. They are registered in `workpackages.json` under the new
   `HA` phase, and the `check.mjs` and schema id patterns now accept `HA-`.
 - **A-18i** (Flathub screenshots need public URLs). Add a hand-off note: the URLs come from
-  HA-02's media host, via HA-07's `source='manifest'` rows or HA-06 uploads. **Edited in this
+  HA-02's image host, via HA-07's `source='manifest'` rows or HA-06 uploads. **Edited in this
   branch.**
 - **A-18j** (console storefronts). Its slot board uses HA-06's upload route and renders
   image-host URLs. **Edited in this branch.**
