@@ -783,9 +783,15 @@ function legacyProgress(
   let remaining = 0;
   for (const perKid of Object.values(counts))
     remaining += perKid[legacy.kid] ?? 0;
-  const workerSecrets = SEALED_WORKER_SECRETS.filter(
-    (name) => envelopeKekId(env[name]) === legacy.kid,
-  );
+  const workerSecrets = SEALED_WORKER_SECRETS.filter((name) => {
+    const value = env[name];
+    // Trimmed as `providers/config.ts` reads it: a blob piped into `wrangler secret put` keeps
+    // the script's trailing newline.
+    return (
+      envelopeKekId(typeof value === "string" ? value.trim() : value) ===
+      legacy.kid
+    );
+  });
   return {
     legacy: {
       ...legacy,

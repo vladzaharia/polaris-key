@@ -880,12 +880,14 @@ describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
       PLATFORM_KEK_KEYS: JSON.stringify({ k2: KEK_NEW }),
       PLATFORM_KEK_ACTIVE: "k2",
       PLATFORM_KEK: KEK_OLD,
-      // A sealed Worker secret under the legacy kid: the sweep cannot move it.
-      SIGNIN_STEAM_WEB_API_KEY: await seal(
-        { PLATFORM_KEK: KEK_OLD } as unknown as Env,
-        "ABCDEF0123456789",
-        steamCtx,
-      ),
+      // A sealed Worker secret under the legacy kid: the sweep cannot move it. Set as
+      // `signin:seal | wrangler secret put` leaves it, with the trailing newline.
+      SIGNIN_STEAM_WEB_API_KEY:
+        (await seal(
+          { PLATFORM_KEK: KEK_OLD } as unknown as Env,
+          "ABCDEF0123456789",
+          steamCtx,
+        )) + "\n",
     });
 
     const before = await kek(env, db, "GET");
