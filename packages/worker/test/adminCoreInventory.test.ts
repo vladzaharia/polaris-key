@@ -322,6 +322,25 @@ describe("UX-29: GET …/keys reports how many active devices refreshed after a 
     expect(body.refresh).toBeNull();
   });
 
+  it("is null when the only retired key is a staged one cancelled before it went live", async () => {
+    const w = await world();
+    const { kid } = (await (await w.call("POST", "/keys/prepare")).json()) as {
+      kid: string;
+    };
+    // Cancelled later than the active key's activation, as an operator would.
+    await w.db.run(
+      "UPDATE product_keys SET status = 'retired', rotated_at = ? WHERE product = ? AND kid = ?",
+      NOW + 120,
+      SLUG,
+      kid,
+    );
+    await seedDevice(w.db, "d1", NOW);
+    const body = (await (await w.call("GET", "/keys")).json()) as {
+      refresh: unknown;
+    };
+    expect(body.refresh).toBeNull();
+  });
+
   it("counts authorized devices seen in 30 days, and those seen since activation", async () => {
     const w = await world();
     const { kid } = (await (await w.call("POST", "/keys/prepare")).json()) as {

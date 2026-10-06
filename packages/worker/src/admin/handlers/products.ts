@@ -1220,10 +1220,17 @@ async function signingKeyRefresh(
   now: number,
 ): Promise<SigningKeyRefresh | null> {
   const active = keys.find((k) => k.status === "active");
+  if (!active || active.activatedAt === null) return null;
+  // A key the active one REPLACED: retired in the activation's own batch (same timestamp), or
+  // created before the active key (and since revoked). A staged key cancelled before it went live
+  // is retired too, but it was created after the active key and never signed, so cancelling one
+  // is not a rotation and must not read as "refreshed since …".
   const replacedOne = keys.some(
-    (k) => k.status === "retired" || k.status === "revoked",
+    (k) =>
+      (k.status === "retired" || k.status === "revoked") &&
+      (k.retiredAt === active.activatedAt || k.createdAt < active.createdAt),
   );
-  if (!active || active.activatedAt === null || !replacedOne) return null;
+  if (!replacedOne) return null;
   const since = now - REFRESH_ACTIVE_WINDOW_SECONDS;
   if (active.activatedAt < since) return null;
   const row = await db.first<{ active: number; refreshed: number | null }>(
