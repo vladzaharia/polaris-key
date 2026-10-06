@@ -44,6 +44,12 @@ enum { _VALUE, _VALUE_OR_CLOSE, _KEY, _KEY_OR_CLOSE, _COLON, _COMMA_OR_CLOSE, _E
 const MAX_JSON_DEPTH := 64
 const _MAX_WIRE_DIGITS := "9007199254740991"
 
+## A work counter for `walk` (P1-13), a test hook like `PKeyPck.type_reads`: the characters of
+## path segments resolved (or built into a pointer string) to record each non-wire number. A
+## linear walk resolves a member name once however many numbers sit under it; one pointer
+## string per number would add the whole path every time. The complexity check diffs it around
+## a call, so it holds on a machine of any speed or load.
+static var path_bytes := 0
 static var _token_re: RegEx
 static var _nul_re: RegEx
 static var _plain_int_re: RegEx
@@ -204,6 +210,7 @@ static func walk(text: String) -> Dictionary:
 					k -= 1
 				var node := 0 if k < 0 else ids[k]
 				for j in range(k + 1, segs.size()):
+					path_bytes += segs[j].length()
 					node = non_wire.child(node, segs[j])
 					ids[j] = node
 				non_wire.add(node)
