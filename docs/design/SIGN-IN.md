@@ -1349,6 +1349,11 @@ keys (`conformance/parity/copy.en.json`) for refusal codes instead of duplicatin
 `AuthCard`, the Worker's `renderAuthCard()` and the emails read the same catalog (§8 drift: UK-02,
 UX-40, UX-43, UX-44). Placeholders are ICU.
 
+UK-02a (2026-10-05) applied two corrections when it built the catalog: `signin.cli.headless` says
+"this computer", not "this machine" (AGENTS rule 4), and `signin.key.owned` is not a kit key because
+the catalog never repeats a core copy string; surfaces read `core.codes.license_owned.message`,
+which now has the same words.
+
 | Key                                 | English                                                                                                                                                                                    |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `signin.methods.title`              | Sign in to Polaris Key                                                                                                                                                                     |
@@ -1481,7 +1486,7 @@ UX-40, UX-43, UX-44). Placeholders are ICU.
 | `signin.key.entriesLeftShort`       | {left, plural, one {# key entry left} other {# key entries left}}                                                                                                                          |
 | `signin.key.noEntries`              | This key has no entries left in {product}. Add it to your account and {product} signs you in instead.                                                                                      |
 | `signin.key.skip`                   | Skip for now                                                                                                                                                                               |
-| `signin.key.owned`                  | This {product} license is already in another Polaris Key account. A license never moves by its key.                                                                                        |
+| `signin.key.owned`                  | → `core.codes.license_owned.message` (the same words; not a kit key)                                                                                                                       |
 | `signin.key.ownedSignIn`            | Sign in to that account                                                                                                                                                                    |
 | `signin.key.differentKey`           | Use a different key                                                                                                                                                                        |
 | `signin.return.yours`               | {product} is yours                                                                                                                                                                         |
@@ -1526,7 +1531,7 @@ UX-40, UX-43, UX-44). Placeholders are ICU.
 | `signin.cli.opening`                | Opening Polaris Key in your browser…                                                                                                                                                       |
 | `signin.cli.ifNotOpened`            | If it didn't open, go to {url}                                                                                                                                                             |
 | `signin.cli.keys`                   | Enter open again · c use a code · Esc cancel                                                                                                                                               |
-| `signin.cli.headless`               | No browser on this machine. Use a code instead:                                                                                                                                            |
+| `signin.cli.headless`               | No browser on this computer. Use a code instead:                                                                                                                                           |
 | `signin.cli.signedIn`               | Signed in as {name} ({email})                                                                                                                                                              |
 | `signin.cli.license`                | {license} · {term} · {device} is device {position} of {limit}                                                                                                                              |
 | `signin.cli.licenseAccount`         | {license} · Account-wide                                                                                                                                                                   |

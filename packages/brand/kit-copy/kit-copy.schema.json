@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/brand/kit-copy.schema.json",
+  "title": "Polaris Key kit copy, English source (packages/brand/kit-copy/en.json)",
+  "description": "Every string a Polaris Key UI kit shows that is not core copy (plans/UK-02.md §3.1). packages/brand/scripts/kit-copy.ts adds the checks a schema cannot say: the ICU subset, the closed argument set, the duplicate ban against conformance/parity/copy.en.json, banned vocabulary and components.json coverage.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kitCopyVersion", "locale", "messages"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "$comment": { "type": "string" },
+    "kitCopyVersion": { "const": 1 },
+    "locale": { "const": "en" },
+    "messages": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)+$",
+        "not": { "pattern": "^core\\." }
+      },
+      "additionalProperties": { "$ref": "#/$defs/message" }
+    }
+  },
+  "$defs": {
+    "text": {
+      "description": "ICU MessageFormat subset: {arg}, one {n, plural, …} on an integer argument or one {formFactor, select, …}.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\n\\t%]*$"
+    },
+    "message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "role", "note"],
+      "properties": {
+        "value": { "$ref": "#/$defs/text" },
+        "role": {
+          "enum": [
+            "title",
+            "body",
+            "label",
+            "button",
+            "menu",
+            "windowTitle",
+            "a11y",
+            "hint"
+          ]
+        },
+        "note": {
+          "description": "Translator context. Required.",
+          "type": "string",
+          "minLength": 1
+        },
+        "variants": {
+          "description": "Platform wording for the verb or the casing; button, menu and windowTitle keys only (UI-KITS §4.7).",
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "properties": {
+            "macos": { "$ref": "#/$defs/text" },
+            "ios": { "$ref": "#/$defs/text" },
+            "android": { "$ref": "#/$defs/text" },
+            "windows": { "$ref": "#/$defs/text" },
+            "linux": { "$ref": "#/$defs/text" },
+            "web": { "$ref": "#/$defs/text" },
+            "godot": { "$ref": "#/$defs/text" },
+            "terminal": { "$ref": "#/$defs/text" },
+            "tv": { "$ref": "#/$defs/text" }
+          }
+        }
+      }
+    }
+  }
+}

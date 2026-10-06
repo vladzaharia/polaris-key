@@ -17,6 +17,10 @@
     "$schema": { "type": "string" },
     "$comment": { "type": "string" },
     "copyVersion": { "const": 1 },
+    "reviewed": {
+      "description": "A translated pack only (plans/UK-02.md D4): false until a native speaker has reviewed it. copy.en.json, the source, has no such field.",
+      "type": "boolean"
+    },
     "locale": {
       "description": "A BCP-47 tag (`en`, `fr`, `pt-BR`, `zh-Hans`).",
       "type": "string",

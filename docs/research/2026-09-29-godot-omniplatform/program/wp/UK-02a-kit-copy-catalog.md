@@ -92,11 +92,79 @@ Copy drift between kits was a root cause in critique round 1, and every audit fo
 2. Implement exactly the plan, in its order.
 3. Run the gates in the header.
 
+## Implementation record (UK-02a, 2026-10-05)
+
+Built on SP-00's core copy slice (`copy.en.json`, `copy.schema.json`, the six generated core copy
+modules). The code is the fact; where it differs from plans/UK-02.md the choice is recorded here,
+each the recommended option.
+
+- **Catalog size.** `kit-copy/en.json` holds 479 keys: 250 kit keys over the §4.1 components,
+  parts, `common` and `a11y`, plus SIGN-IN.md §5.2's `signin.*` namespace (229 keys, `main` after
+  the one-form sign-in, with the eight keys of the section above), including the `deviceLimit.*`
+  keys of the owner decision above.
+- **Two SIGN-IN.md §5.2 corrections** (recorded there, on top of `main`'s text):
+  `signin.cli.headless` says "this computer" (AGENTS rule 4, "device, not machine"), and
+  `signin.key.owned` is not a kit key because `main`'s core copy now gives
+  `core.codes.license_owned.message` the same words (the duplicate ban); surfaces read the core
+  key. `signin.again` stays a kit key: `core.codes.step_up_required.title` became "Confirm it's
+  you" on `main`.
+- **No license-type label** (owner, 2026-10-05: every license is account-bound). Every license
+  shows its tier pill and "N of M devices"; `signin.choice.accountWide`,
+  `signin.consent.licenseLineAccount`, `signin.desktop.toastAccount`, `signin.cli.licenseAccount`
+  and `signin.origin.*` are gone. The origin is plain words on the meta line,
+  `signin.choice.origin.{signIn,key,keyAdded,storeKey,storeKeyAdded,store,developer,free,gift,org}`
+  ("From signing in", "Key ending {last6}", "{store} key ending {last6}", "From {store}" …), key
+  names aligned with `fix/drop-account-wide-label` (not yet on `main`). The picker's short option
+  is `signin.choice.picker.{signIn,key,storeKey,store}` ("{tier} · Sign-in", "{tier} · Key
+  …{last6}", "{tier} · {store} key …{last6}", "{tier} · {store}"). The mixed rule (a key license
+  hides its counter beside a sign-in license) is kit behaviour, not copy.
+- **Components follow `main`'s UI-KITS §4.1:** SignIn's states are the one form's (methods,
+  handoff, code, finishing, choose, replace, key, done, error, expired), SignInHandoff gains
+  `no-browser` and `code`, and LicenseChoice drops `account-wide` and gains `grant-expired`.
+- **Namespaces.** `signin` joins the plan's first-segment list. `part`, `common`, `a11y` and
+  `signin` are shared groups: a component state may list their keys but need not. Every other key
+  must be listed by a `components.json` state, which may also list `core.*` keys.
+- **Closed argument set.** The plan's set plus the arguments SIGN-IN.md §5.2 uses (`app`,
+  `developer`, `provider`, `code`, `email`, `place`, `name`, `origin`, `term`, `license`,
+  `position`, `thisDevice`, `newDevice`, `platform`, `when`, `url`, `identity`, `tier`, `command`,
+  `idp`, `host`, `s`, `last6`) and `prefix` (the cut-short key error). Integer (plural) arguments add
+  `seconds`, `left` and `n`.
+- **ICU subset, tightened from D5** so every target expresses it natively: one complex argument
+  per message (a plural or the formFactor select, never both); plural case text holds `#` and text
+  only, with plain arguments outside the plural (Swift plural substitutions); no `%`, no ICU
+  apostrophe quoting. Variants are not allowed on plural or select messages, and D13 title case
+  skips them.
+- **The duplicate ban and the vocabulary ban apply to English**, the source; translations are
+  checked for keys, arguments, plural categories, control characters and "Polaris Key".
+- **Core packs (D4).** `copy.de/es/pt-BR/it/ja/ko/zh-Hans.json` are written, `reviewed: false`,
+  and follow `main`'s core copy fixes (`license_owned`, `step_up_required`, `server-error`);
+  `copy.schema.json` gains the optional `reviewed` flag and `gen:constants` now validates every
+  `copy.<locale>.json` (keys, placeholders, locale, reviewed) without emitting it. `copy.fr.json`
+  stays with SP-03: until it lands, the French kit tables carry English core strings, listed in
+  each table's `KIT_COPY_CORE_FALLBACK` (`CORE_PACK_PENDING` in `scripts/kit-copy.ts`); any other
+  missing core pack fails the generator.
+- **Variants in the outputs.** Swift maps `macos`/`ios`/`tv` to device variations; Kotlin and
+  Godot carry `<name>__<platform>` entries and `msgctxt <platform>` in every locale (the locale's
+  own value outside English, so a lookup never leaves the locale); web, Node and Python expose an
+  English `KIT_COPY_VARIANTS` map.
+- **Swift (risk §8).** `.xcstrings` builds with the Swift 6.4 toolchain, so no `.strings` /
+  `.stringsdict` fallback. `Package.swift` gains `defaultLocalization: "en"` and
+  `.process("Resources/Localizable.xcstrings")`.
+- **Web.** `src/generated/kit-copy/<locale>.json` plus `index.ts` (`KitCopyKey`, `KIT_COPY_EN`,
+  `loadKitCopy(locale)` with JSON import attributes), exported as `@polaris-key/brand/kit-copy`;
+  the brand `tsconfig.json` turns on `resolveJsonModule`, and the brand package takes `ajv` as a dev
+  dependency for the source schemas.
+- **Python.** `polaris_key/ui/__init__.py` is not generated: `main`'s UI foundations work owns it
+  (hand-written), so the generator writes only `kit_copy_generated.py` and the `.pot` beside it.
+- **Translation registers.** de formal "Sie", fr "vous", es "tú" (neutral international), pt-BR
+  "você", it "tu", ja です・ます, ko 해요체, zh-Hans "你". Terminal prompts keep "(y/N)" in every locale.
+  Each pack's `$comment` says it is unreviewed; the native-speaker review is a release follow-up.
+
 ## Acceptance criteria
 
-- [ ] Every key has a value in all nine locales; a missing key fails the generator.
-- [ ] The generator's `--check` mode is in the green gate and passes.
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] Every key has a value in all nine locales; a missing key fails the generator (`validateKitCopy`, tested in `packages/brand/test/kit-copy.test.ts`).
+- [x] The generator's `--check` mode is in the green gate and passes (`gen:brand` writes the kit copy outputs; `test/generated.test.ts` runs `run({ check: true })`).
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header (`gate.sh`, scope changed, 2026-10-05: `gen:brand -- --check`, `gen:constants -- --check`, pytest, `swift test`, the Godot suite and `pnpm format` included).
 
 ## Verify
 
