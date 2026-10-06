@@ -98,7 +98,7 @@ function licenseWriteChecks(body: Record<string, unknown>): Response | null {
 /**
  * LX-14a: a licence's own `deviceLimit` is a positive integer, or `null` to inherit; absent keeps
  * it. Anything else (zero, a fraction, a string) is refused rather than silently ignored, the
- * same rule `invalidDeviceLimit` applies to a tier and 0079's CHECK applies at the database.
+ * same rule `invalidDeviceLimit` applies to a tier and 0084's CHECK applies at the database.
  */
 function invalidLicenseDeviceLimit(body: Record<string, unknown>): boolean {
   if (!("deviceLimit" in body) || body.deviceLimit === null) return false;

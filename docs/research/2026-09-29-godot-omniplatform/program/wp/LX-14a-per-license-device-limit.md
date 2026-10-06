@@ -95,7 +95,7 @@ temporary raise through seat-pack grants).
   the existing licence `PATCH`). `routeCoverage` is unchanged; the admin API is documented in
   `admin/licenses-and-devices.md` instead.
 - `TABLE_OWNERS` needs no entry: `licenses` is already License's; the generated data-model page
-  picks up the column (`device_limit (0079)`).
+  picks up the column (`device_limit (0084)`).
 - The licence read also answers `inheritedDeviceLimit` and `inheritedDeviceLimitSource`, which
   the sheet's placeholder ("Inherits 5 from Pro") and **Use inherited limit** need.
 - `reservedNames.ts` is bundled into `actions/publish/dist`, so the bundle is regenerated with it.

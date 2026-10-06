@@ -5002,7 +5002,7 @@ device id. Only the platform-admin session reads it (`GET /manage/api/products/<
 
 ### Licence administration: the per-licence device limit (LX-14a)
 
-`licenses.device_limit` (0079) lets an operator set one licence's seat limit, seat or
+`licenses.device_limit` (0084) lets an operator set one licence's seat limit, seat or
 Account-wide alike, through `PATCH /manage/api/products/<slug>/license/licenses/<id>`
 `deviceLimit`. It beats the tier's limit, any `deviceLimit` entitlement and the product default
 (`core/authz.ts` `licenseDeviceLimitInfo`, `core/entitlements.ts` `injectAdminPolicy`).
