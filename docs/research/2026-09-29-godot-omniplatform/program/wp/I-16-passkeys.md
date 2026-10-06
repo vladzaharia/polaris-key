@@ -50,7 +50,8 @@ Passkeys are the main defence of a high-value shared account and are phishing-re
   one-statement `ALTER`s instead: `accounts.passkey_user_handle` (the ONE random account-level
   handle, minted on first use and kept, so an abandoned first ceremony does not leave a second
   "Polaris Key" entry) and `account_passkeys.details_json` (AAGUID, backup flags, the browser it
-  was added from, for the settings list). Named `00XX_a_…` and `00XX_b_…` for the lead to number.
+  was added from, for the settings list): `0094_a_accounts_passkey_user_handle.sql` and
+  `0094_b_account_passkeys_details.sql` (numbers assigned by the lead).
 - **Each passkey is also a sign-in method** (`account_links`, `issuer_key = 'passkey'`, subject
   = the credential id, as S-16 §5.1's link list names it). The last-method guard, step-up, audit,
   notices, the nudge's method count, merge and deletion therefore apply unchanged; the link
@@ -66,13 +67,13 @@ Passkeys are the main defence of a high-value shared account and are phishing-re
   `key-staging.plrs.im` on staging), not a constant, and a ceremony is served only on that origin.
 - **Dependency.** `@simplewebauthn/server` is pinned at 13.3.3 (the last 13.x; 14.x adds a
   post-quantum ASN.1 module the Worker does not need).
-- **The workerd lane** ordered migrations by `parseInt` of the prefix, so a `00XX_` placeholder
-  that alters a table ran before the table existed. It now sorts by filename, as the Node lane,
-  `record-deploy` and `LATEST_MIGRATION` do. Two Node-lane files still need the lead's numbers:
-  `test/recordDeploy.test.ts` (its migration-name check refuses any `00XX_` placeholder by design)
-  and `test/checkRepresentable.test.ts` (real `wrangler d1 migrations apply`, which also orders
-  by the leading number, so an `ALTER` placeholder runs first). Both pass with the files numbered
-  (verified with `0091_a`/`0091_b` after merging main, which holds 0090).
+- **The workerd lane** ordered migrations by `parseInt` of the prefix, so an unnumbered
+  placeholder that alters a table ran before the table existed. It now sorts by filename, as the
+  Node lane, `record-deploy` and `LATEST_MIGRATION` do (identical for numbered files). While the
+  migrations were unnumbered, `test/recordDeploy.test.ts` (its migration-name check refuses a
+  placeholder by design) and `test/checkRepresentable.test.ts` (real `wrangler d1 migrations
+apply`, which also orders by the leading number) failed; with the lead's numbers (0094) both
+  pass.
 
 ## Steps
 
