@@ -51,6 +51,23 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 - Native LicenseChoice on I-13's `choose` (SwiftUI `LicenseChoiceModel`, Compose `rememberLicenseChoiceState`, Godot `PKeyLicenseChoiceController`); Godot's P1-07 "Is this you?" attach confirm stays and shows only after **Keep** (D-10); StatusScreen **signed-out**; "Signed in · <Tier> license" after `ready`.
 - Replay `devicecode-account-wide.json` (I-04 §F.6) with no SDK change.
 
+## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
+
+The owner decided on 2026-10-05 that every in-app sign-in step happens in **one form whose body
+morphs in place** (no stacked sheets), that the license is chosen **inside the app** when it can
+show it, that the presentation is configurable with native controls kept, that there are **two
+equal ways to integrate** (the hosted card, and the kit form with headless primitives), and that
+the web flow is one continuous, animated card. The wire is
+[`plans/I-04.md`](../plans/I-04.md) §G (a pending sign-in grant, `licenseChoice: "app" | "card"`);
+the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) §2.4, §3.17, §3.18, §4.16 and
+D-78–D-93. Where this brief differs, they win. **No device-wire version change**
+(`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2; no corpus file). New UI copy uses
+the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
+every row, no "Account-wide"). For this package:
+
+- **Headless primitives** (I-04 §G.9) in Swift, Godot and Kotlin, with I-10a's names: `choice.licenses`, `choice.devices`, `choice.complete` (incl. `{kind: "key"}`), `choice.cancel`, and the `choose` answer of `redirect/token`. Feature-detect the `choice*` endpoints; without them run card mode. Replay the §G.8 transcripts through the Swift and Godot mirrors; parity row `identity.choice`.
+- `PolarisKeyUI`, the Kotlin component and the Godot `ui` follow UK-07/UK-09/UK-11's one form; the Godot P1-07 attach stays offered only after **Keep**.
+
 ## Goal
 
 Swift, Kotlin and Godot (Godot first) handle layer 1 identity with the same calls and refusals as I-10a, using device-code passthrough with a QR code; `PolarisKeyUI`, the Kotlin activation component and Godot's `addons/polaris_key/ui` show the refusals and the "add to your Library" prompt.

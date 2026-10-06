@@ -1981,3 +1981,187 @@ label.lab {
   --pk-accent-subtle: #e0f4f1;
   --pk-focus: #0d7369;
 }
+
+/* ---------- the one sign-in form (SIGN-IN.md §3.17; consolidated 2026-10-05) ---------- */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.grow {
+  flex: 1;
+}
+/* ReplaceDevice as a step: the license it replaces on, as a summary card */
+.licsum {
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: 14px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--pk-surface-raised);
+}
+.licsum .tl,
+.licsum .lm {
+  grid-column: auto;
+}
+.desk .licsum {
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+.desk .licsum .ln {
+  font-size: 13.5px;
+}
+/* the phone kit form, inline (full screen, no grabber) */
+.kit .sheet.inline {
+  border-radius: 0;
+  border-top: 0;
+  padding-top: 24px;
+}
+/* waiting: a breathing status dot, never a spinner on the web (SIGN-IN.md §3.18, D-89) */
+.breath {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--pk-accent-fg);
+  box-shadow: 0 0 0 5px
+    color-mix(in oklab, var(--pk-accent-fg) 22%, transparent);
+  flex: none;
+  margin: 0 3px;
+}
+/* the persisting hero icon, with the success badge on step 4 */
+.hero-icon.badged {
+  position: relative;
+  overflow: visible;
+}
+.hero-icon.badged > svg {
+  border-radius: 15px;
+}
+.hero-icon .badge {
+  position: absolute;
+  right: -8px;
+  bottom: -8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--pk-success);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid var(--pk-surface-page);
+}
+.hero-icon .badge svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2.6;
+}
+.split .pane.tight {
+  padding: 48px 56px 28px;
+  gap: 12px;
+}
+.split .pane.small {
+  padding: 40px 28px 24px;
+  gap: 10px;
+}
+.split .pane.small .hero-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+}
+.split .pane.small h2.big {
+  font-size: 19px;
+  line-height: 24px;
+}
+.split .pane.small .dk-foot {
+  flex-wrap: wrap;
+}
+.dk-person {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--pk-surface-sunken);
+}
+.desk .dk-person .n {
+  font-size: 13px;
+}
+.desk .dk-person .e {
+  font-size: 12px;
+}
+.card.scaled {
+  transform: scale(0.8);
+  transform-origin: top center;
+}
+/* the macOS system confirmation over the form (D-80): the one thing allowed to stack */
+.malert {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 52px;
+  transform: translateX(-50%);
+  width: 290px;
+  padding: 22px 20px 18px;
+  border-radius: 22px;
+  background: color-mix(in oklab, var(--pk-surface-raised) 92%, transparent);
+  backdrop-filter: blur(30px) saturate(1.4);
+  border: 1px solid var(--pk-border-subtle);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+[data-theme="light"] .malert {
+  box-shadow: 0 24px 60px rgba(30, 40, 80, 0.28);
+}
+.malert .icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.malert h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--pk-text-strong);
+}
+.malert p {
+  font-size: 12px;
+  line-height: 17px;
+  color: var(--pk-text-muted);
+}
+.malert .db {
+  align-self: stretch;
+  height: 30px;
+}
+.db.destructive {
+  background: var(--pk-danger);
+  color: var(--pk-danger-on);
+}
+/* Godot: the wider in-game form for the license list */
+.gpanel.wide {
+  width: 580px;
+}
+.gpanel .lic {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(233, 225, 255, 0.16);
+}
+.gpanel .lic.sel {
+  background: rgba(123, 108, 240, 0.16);
+  border-color: var(--pk-accent);
+}
+.gpanel .who {
+  font-size: 14px;
+}
+.gpanel .lic .ln {
+  color: var(--pk-text-strong);
+}
+.gpanel .lm,
+.gpanel .tl {
+  color: var(--pk-text-muted);
+}
+.gpanel .lic .db.sm {
+  height: 32px;
+  font-size: 13px;
+}
