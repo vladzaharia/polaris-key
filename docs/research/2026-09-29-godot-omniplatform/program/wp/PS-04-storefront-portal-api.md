@@ -50,6 +50,38 @@ The portal API serves the storefront: offers with all their paths, a storefront 
 - Never mint a second licence for a held product (the I-26 rule); never bind a device.
 - `storefront_seen.account_key = HMAC(daily salt, account_id)`; delete rows older than two days.
 
+## Corrections (PS-04 builder, verified against the code)
+
+- **Migration name.** `packages/worker/migrations/00XX_storefront_library.sql` (all three tables);
+  the lead assigns the number. `LATEST_MIGRATION` and the data-model page follow it.
+- **`DELETE /api/library/<p>` never reaches a licence.** It deletes `library_entries` rows only and
+  answers `404` for a product with no entry, so LX-26's `detachLicense` (and its auto-attach block)
+  is not on its path: a licence leaves the library only by that detach, unchanged.
+- **`GET /api/products/<p>` answers for an entry too** (`kind: "entry"`, `licenses: []`): S-21 §6.5
+  sends the person to `#/p/:product` after Add, which reads this route. Licence items and views
+  gain `kind: "license"`. An entry reads `status: "active"`, `license: null`, `licenseCount: 0`.
+- **Additive fields beyond the brief's three:** `stores` (S-21 §6.3 names `stores[]`: a link
+  offer's live store pages, every live store page on the product page) and a `label` on each path
+  (the operator's group label, S-21 D10; own properties only).
+- **Screenshots need a media slot.** HA-07 (the media host) is `todo`, so the product page serves
+  screenshots through the existing `/media/<p>/<asset>` proxy, which gains `screenshot-<n>` (n below
+  16, 5 MiB, same allowlist and rules). No new route.
+- **The product page has its own budget** (`portalStorefrontPage`, 60 a minute per account, before
+  any lookup), so probing it is bounded like the claim.
+- **Activation counting** needs a seam Core did not have: `core/authorizationListeners.ts`, a
+  listener registry `authorizeDevice` notifies after a new authorization (total, `waitUntil`).
+  Identity's listener counts the first device on a licence whose `portal.discover.claim` row is at
+  most seven days old (PS-06's "within 7 days"), on the ADD's day and path kind, once per licence
+  (a marker row in the account's own `portal_audit`). The claim summary now carries
+  `path: <kind>`.
+- **`path_kind = 'link'`** counts impressions of audience-`everyone` links (no path to name).
+- **Deletion and merge.** Account deletion deletes entries (the brief), a merge moves them to the
+  survivor, and product deletion clears entries, `storefront_daily` and `storefront_seen`.
+- **The shipped portal client is guarded.** PX-16's Discover tile reads `offer` as terms and the
+  library model reads `license` on every item, so `packages/admin/src/portal/api.ts` filters open
+  offers, links and entries out until PS-05 renders them (a few lines; no UI change). PS-05 removes
+  the filter.
+
 ## Steps
 
 1. Re-read the S-21 sections above; verify this brief against the code and record any correction here.
@@ -59,10 +91,10 @@ The portal API serves the storefront: offers with all their paths, a storefront 
 
 ## Acceptance criteria
 
-- [ ] Route coverage and OpenAPI updated; tests for each route, including the identical-answer cases.
-- [ ] Claim is idempotent (double submit) for every path kind, including `open`.
-- [ ] Library shows an entry for an open product and hides it once a licence exists.
-- [ ] Analytics tables hold no account id (test).
+- [x] Route coverage and OpenAPI updated; tests for each route, including the identical-answer cases.
+- [x] Claim is idempotent (double submit) for every path kind, including `open`.
+- [x] Library shows an entry for an open product and hides it once a licence exists.
+- [x] Analytics tables hold no account id (test).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
