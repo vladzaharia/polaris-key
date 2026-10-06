@@ -2184,7 +2184,7 @@ unchanged; add `me` fields), `main.tsx` (`QueryClientProvider`), and the worker 
   same API and reference counting, the CSS applied through a constructable stylesheet
   (`adoptedStyleSheets`), falling back to `insertRule` on an existing same-origin sheet, never a
   `<style>` element. `test/styleSingleton.test.tsx` covers the shim; `e2e/csp.e2e.test.ts`
-  (`pnpm --filter @polaris-key/admin test:e2e`, run in CI's browser job) opens the palette, the
+  (`pnpm --filter @polaris-key/admin test:e2e`, run in CI's `console` job) opens the palette, the
   account and theme menus, the shortcut sheet, a dialog, the switcher and the mobile drawer in
   Chromium under the Worker's exact policy and requires zero violations and a real scroll lock.
 - **The mobile drawer closes** when the window grows past 1024 px (a `matchMedia` listener), so
