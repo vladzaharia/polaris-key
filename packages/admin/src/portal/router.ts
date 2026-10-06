@@ -1,4 +1,11 @@
 import * as React from "react";
+import { flushSync } from "react-dom";
+import {
+  reducedMotion,
+  viewTransition,
+  viewTransitionsSupported,
+} from "../ui/motion/index.js";
+import { pendingHeadingFocus } from "./focus.js";
 
 /**
  * The customer site's router (PORTAL.md §3.3). Hash routing for the signed-in SPA (ADMIN.md lead
@@ -13,6 +20,11 @@ import * as React from "react";
  * Query parameters live inside the hash (`#/?view=list&q=fern`). `setParams` rewrites them in
  * place (no history entry per keystroke) and notifies subscribers itself, because
  * `replaceState` fires no `hashchange`.
+ *
+ * Every navigation between pages (MO-05, notes/S-23 §6.3) runs through the motion layer's
+ * `viewTransition()`, typed `forward`, `back` or `route` ({@link navigationKind}); under reduced
+ * motion it is an instant swap. It lands at the top of the new page (or the section a deep link
+ * names) and focuses the page's `h1`, so a screen reader hears the new page once.
  */
 
 export const PRODUCT_SECTIONS = [
@@ -216,19 +228,340 @@ function current(): Resolved {
   return resolved;
 }
 
-/** The current route, following redirects; re-renders on navigation. */
-export function useRoute(): PortalRoute {
-  const [route, setRoute] = React.useState<PortalRoute>(() => current().route);
-  React.useEffect(() => {
-    const onChange = (): void => setRoute(current().route);
-    window.addEventListener("hashchange", onChange);
-    window.addEventListener(ROUTE_EVENT, onChange);
-    return () => {
-      window.removeEventListener("hashchange", onChange);
-      window.removeEventListener(ROUTE_EVENT, onChange);
+// ── Navigation motion, scroll and focus (notes/S-23 §6.3, §6.5; MO-05) ────────────────────────────
+
+/**
+ * How one route follows another:
+ *
+ * - `forward`: into a product from the Library or Discover; `back`: from a product to the Library
+ *   or Discover. The main region slides along the reading direction, and the product's art and
+ *   name fly between its tile and the product hero (`pk-hero`, `pk-hero-title`).
+ * - `route`: between any other two pages (the top-level pages, one product to another, the
+ *   focused flows). The main region fades through.
+ * - `section`: the same page, another section (`#/p/<slug>/devices` from the product itself).
+ *   No transition and no focus move: the page scrolls there, like an in-page link.
+ * - `params`: the same page and section with other query parameters (filters, the selected
+ *   license, the Activate modal). Nothing moves, so typing never animates (S-23 §6.2 rule 4).
+ */
+export type PortalNavigation =
+  | "forward"
+  | "back"
+  | "route"
+  | "section"
+  | "params";
+
+function pageOf(r: PortalRoute): string {
+  switch (r.kind) {
+    case "product":
+      return `product:${r.product}`;
+    case "focused":
+      return `focused:${r.flow}:${r.product}`;
+    default:
+      return r.kind;
+  }
+}
+
+function sectionOf(r: PortalRoute): string | null {
+  return r.kind === "product" || r.kind === "account" ? r.section : null;
+}
+
+const isTopLevel = (r: PortalRoute): boolean =>
+  r.kind === "library" || r.kind === "discover";
+
+/** The kind of navigation from one route to the next (pure). */
+export function navigationKind(
+  from: PortalRoute,
+  to: PortalRoute,
+): PortalNavigation {
+  if (pageOf(from) === pageOf(to))
+    return sectionOf(from) === sectionOf(to) ? "params" : "section";
+  if (isTopLevel(from) && to.kind === "product") return "forward";
+  if (from.kind === "product" && isTopLevel(to)) return "back";
+  return "route";
+}
+
+/** Overlays that can be on screen during a navigation (Radix keeps one mounted through its exit). */
+const OVERLAYS = '[role="dialog"], [role="alertdialog"]';
+const CLOSING_OVERLAYS =
+  '[role="dialog"][data-state="closed"], [role="alertdialog"][data-state="closed"]';
+const OPEN_OVERLAYS =
+  '[role="dialog"]:not([data-state="closed"]), [role="alertdialog"]:not([data-state="closed"])';
+
+/**
+ * Focus the page heading (`main h1`, unless `target` names another) without scrolling, so a
+ * screen reader starts on the new page and hears it once (S-23 §6.5). A dialog still running its
+ * exit hands focus back to its opener when it leaves (ui/Dialog.tsx), so this waits for it to go
+ * first; a dialog that is open keeps focus. The heading becomes programmatically focusable
+ * (`tabindex="-1"`, which styles.css draws no ring for).
+ */
+export function focusPageHeading(
+  target: () => HTMLElement | null = () =>
+    document.querySelector<HTMLElement>("main h1"),
+): void {
+  let frames = 0;
+  const attempt = (): void => {
+    if (document.querySelector(CLOSING_OVERLAYS) && frames++ < 60) {
+      requestAnimationFrame(attempt);
+      return;
+    }
+    // A Radix dialog returns focus in a task after it unmounts: run after that one.
+    window.setTimeout(() => {
+      const el = target();
+      if (!el?.isConnected || document.querySelector(OPEN_OVERLAYS)) return;
+      if (!el.hasAttribute("tabindex")) el.tabIndex = -1;
+      el.focus({ preventScroll: true });
+    }, 0);
+  };
+  attempt();
+}
+
+/** Smooth scrolling only when motion is allowed: it is instant under reduced motion (S-23 §6.6). */
+export function scrollBehavior(): ScrollBehavior {
+  return reducedMotion() ? "auto" : "smooth";
+}
+
+function scrollToTop(behavior: ScrollBehavior = "instant"): void {
+  if (window.scrollX !== 0 || window.scrollY !== 0)
+    window.scrollTo({ top: 0, left: 0, behavior });
+}
+
+/**
+ * The shared element (S-23 §6.1): the Library or Discover tile a product was opened from. A
+ * delegated click listener marks it with `data-vt-source="<slug>"` (LibraryTile and DiscoverTile
+ * stay as they are); the navigation that follows names its art and title for that one transition.
+ */
+export const VT_SOURCE = "data-vt-source";
+const TILE = "article, tr";
+
+type Ends = Array<readonly [Element | null, string]>;
+
+/** A tile's (or list row's) art, icon and title: the ends that fly into the product hero. */
+function endsOf(tile: Element, slug: string): Ends {
+  // The art is the tile's direct child (ProductArt); a list row has none. Only real art flies: a
+  // tint field has no hero banner to pair with. The icon (ProductIcon, data-art too) sits in
+  // front of the art's lower edge, so it flies as well, or the art would cover it mid-flight.
+  const art = tile.querySelector(':scope > [data-art="image"]');
+  const icon =
+    Array.from(tile.querySelectorAll("[data-art]")).find(
+      (el) => el.parentElement !== tile,
+    ) ?? null;
+  const title =
+    tile.querySelector("h2, h3") ??
+    Array.from(tile.querySelectorAll("a[href]")).find(
+      (a) => a.getAttribute("href") === href.product(slug),
+    ) ??
+    null;
+  return [
+    [art, "pk-hero"],
+    [icon, "pk-hero-icon"],
+    [title, "pk-hero-title"],
+  ];
+}
+
+function markSource(e: MouseEvent): void {
+  if (
+    e.defaultPrevented ||
+    e.button !== 0 ||
+    e.metaKey ||
+    e.ctrlKey ||
+    e.shiftKey ||
+    e.altKey
+  )
+    return;
+  const link = (e.target as Element | null)?.closest?.("a[href]");
+  const to = link?.getAttribute("href") ?? "";
+  if (!link || !to.startsWith("#") || !link.closest("main")) return;
+  const { route } = resolveHash(to);
+  // The product's page itself, not a deep link into one of its sections.
+  if (route.kind !== "product" || route.section) return;
+  const tile = link.closest(TILE);
+  if (!tile) return;
+  for (const el of Array.from(document.querySelectorAll(`[${VT_SOURCE}]`)))
+    el.removeAttribute(VT_SOURCE);
+  tile.setAttribute(VT_SOURCE, route.product);
+}
+
+/** The tile marked as the source for `slug`; any other mark is dropped. */
+function takeSource(slug: string): Element | null {
+  let found: Element | null = null;
+  for (const el of Array.from(document.querySelectorAll(`[${VT_SOURCE}]`))) {
+    if (!found && el.getAttribute(VT_SOURCE) === slug) found = el;
+    else el.removeAttribute(VT_SOURCE);
+  }
+  return found;
+}
+
+/** The tile that opens `slug` on the page now showing (the Library's grid or list, Discover). */
+function tileFor(slug: string): Element | null {
+  const target = href.product(slug);
+  const link = Array.from(document.querySelectorAll("main a[href]")).find(
+    (a) => a.getAttribute("href") === target,
+  );
+  return link?.closest(TILE) ?? null;
+}
+
+/** Elements the router named through the CSSOM for the running transition (S-23 D8). */
+let named: HTMLElement[] = [];
+
+function clearNamed(keep: Element | null = null): void {
+  for (const el of named) el.style.removeProperty("view-transition-name");
+  named = [];
+  for (const el of Array.from(document.querySelectorAll(`[${VT_SOURCE}]`)))
+    if (el !== keep) el.removeAttribute(VT_SOURCE);
+}
+
+function nameNewEnds(ends: Ends): void {
+  for (const [el, name] of ends) {
+    if (!(el instanceof HTMLElement)) continue;
+    el.style.setProperty("view-transition-name", name);
+    named.push(el);
+  }
+}
+
+/** Back on the Library: bring the tile on screen before the new state is captured. */
+function reveal(tile: Element): void {
+  const r = tile.getBoundingClientRect();
+  if (r.height === 0) return;
+  if (r.top < 0 || r.bottom > window.innerHeight)
+    tile.scrollIntoView?.({ block: "center", behavior: "instant" });
+}
+
+// The route store: one listener set for every useRoute() (the shell, each QuickAction, the sign-in
+// page), so a navigation runs its transition, scroll and focus once.
+const listeners = new Set<() => void>();
+let snapshot: PortalRoute | null = null;
+let generation = 0;
+let restoration: ScrollRestoration | null = null;
+
+function read(): PortalRoute {
+  snapshot ??= current().route;
+  return snapshot;
+}
+
+function publish(next: PortalRoute): void {
+  snapshot = next;
+  for (const listener of Array.from(listeners)) listener();
+}
+
+function go(from: PortalRoute, to: PortalRoute): void {
+  const kind = navigationKind(from, to);
+  if (kind === "params") {
+    publish(to);
+    return;
+  }
+  if (kind === "section") {
+    publish(to);
+    const section = sectionOf(to);
+    const el = section ? document.getElementById(`section-${section}`) : null;
+    if (el) el.scrollIntoView?.({ behavior: scrollBehavior(), block: "start" });
+    else if (!section) scrollToTop(scrollBehavior());
+    return;
+  }
+
+  const gen = ++generation;
+  // A dialog on screen (the JumpPalette or Activate running its exit) means no View Transition:
+  // one would lift the page above the scrim (S-23 §3.4 item 1). The page swaps under the closing
+  // overlay instead, and its focus waits for the overlay to leave.
+  const animate =
+    viewTransitionsSupported() &&
+    !reducedMotion() &&
+    document.querySelector(OVERLAYS) === null;
+  const source =
+    animate && kind === "forward" && to.kind === "product"
+      ? takeSource(to.product)
+      : null;
+  // An earlier transition's names go (it is skipped); the source keeps its mark for this one.
+  clearNamed(source);
+  const shared =
+    source && to.kind === "product" ? endsOf(source, to.product) : [];
+  // Back pairs the hero's art only if the product page had one (a cover).
+  const heroArt =
+    animate &&
+    kind === "back" &&
+    document.querySelector(".pk-vt-hero") !== null;
+  const update = (): void => {
+    // Before the new page renders, so its own deep link (a section) can scroll on from here.
+    scrollToTop();
+    flushSync(() => publish(to));
+    if (!animate || kind !== "back" || from.kind !== "product") return;
+    const tile = tileFor(from.product);
+    if (!tile) return;
+    reveal(tile);
+    nameNewEnds(
+      endsOf(tile, from.product).filter(
+        ([, name]) => heroArt || name !== "pk-hero",
+      ),
+    );
+  };
+  let handle: { updateCallbackDone: Promise<void>; finished: Promise<void> };
+  if (animate) handle = viewTransition(update, { type: kind, shared });
+  else {
+    update();
+    handle = {
+      updateCallbackDone: Promise.resolve(),
+      finished: Promise.resolve(),
     };
-  }, []);
-  return route;
+  }
+  void handle.updateCallbackDone.then(() => {
+    // The product page takes a pending request itself, once its heading exists (focus.ts).
+    if (gen === generation && pendingHeadingFocus() === null)
+      focusPageHeading();
+  });
+  void handle.finished.then(() => {
+    if (gen === generation) clearNamed();
+  });
+}
+
+function onHashChange(e: Event): void {
+  const oldURL = (e as HashChangeEvent).oldURL;
+  let from = read();
+  if (oldURL) {
+    try {
+      from = resolveHash(new URL(oldURL).hash || "#/").route;
+    } catch {
+      // an unreadable old URL: compare with the route on screen
+    }
+  }
+  go(from, current().route);
+}
+
+function onParams(): void {
+  publish(current().route);
+}
+
+function subscribe(listener: () => void): () => void {
+  if (listeners.size === 0) {
+    window.addEventListener("hashchange", onHashChange);
+    window.addEventListener(ROUTE_EVENT, onParams);
+    document.addEventListener("click", markSource);
+    // The router places the page on every navigation (the top, a section, or the tile Back came
+    // from); the browser's own restoration would move the outgoing page first.
+    if ("scrollRestoration" in window.history) {
+      restoration = window.history.scrollRestoration;
+      window.history.scrollRestoration = "manual";
+    }
+  }
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size > 0) return;
+    window.removeEventListener("hashchange", onHashChange);
+    window.removeEventListener(ROUTE_EVENT, onParams);
+    document.removeEventListener("click", markSource);
+    if (restoration) window.history.scrollRestoration = restoration;
+    restoration = null;
+    snapshot = null;
+  };
+}
+
+/**
+ * The current route, following redirects; re-renders on navigation. A navigation between pages
+ * runs in a View Transition typed by {@link navigationKind} (an instant swap under reduced
+ * motion), lands at the top of the new page (or the section its deep link names) and focuses the
+ * page's heading once the new page is in the DOM.
+ */
+export function useRoute(): PortalRoute {
+  return React.useSyncExternalStore(subscribe, read, read);
 }
 
 export function navigate(to: string): void {
