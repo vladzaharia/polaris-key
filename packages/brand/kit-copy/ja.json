@@ -330,7 +330,7 @@
     "signin.choice.origin.keyAdded": "キーで追加",
     "signin.choice.origin.storeKey": "末尾が{last6}の{store}キー",
     "signin.choice.origin.storeKeyAdded": "{store}キー",
-    "signin.choice.origin.store": "{store}で購入",
+    "signin.choice.origin.store": "{store}から",
     "signin.choice.origin.developer": "{developer}から提供",
     "signin.choice.origin.free": "無料",
     "signin.choice.origin.gift": "ギフト",

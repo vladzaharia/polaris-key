@@ -451,10 +451,11 @@ describe("main flows", () => {
     await o.close();
   });
 
-  it("an account-wide licence lists its devices and removes one remotely", async () => {
-    const o = await open("accountWide", "/#/p/quill/devices");
+  it("a sign-in licence lists its devices and removes one remotely", async () => {
+    const o = await open("signIn", "/#/p/quill/devices");
     await h1(o.page, "Quill");
-    await o.page.getByText("Account-wide · 1 of 5 devices").waitFor();
+    await o.page.getByText("From signing in · Lifetime").waitFor();
+    expect(await o.page.getByText(/Account-wide/).count()).toBe(0);
     await o.page
       .getByRole("button", { name: "Remove Living room PC" })
       .first()
@@ -476,22 +477,24 @@ describe("main flows", () => {
     await o.close();
   });
 
-  it("with a key and an account-wide licence, the key licence hides its counter", async () => {
-    const o = await open("accountWide", "/#/p/drift-kart");
+  it("with a Steam key and a sign-in licence, the key licence hides its counter", async () => {
+    const o = await open("signIn", "/#/p/drift-kart");
     await h1(o.page, "Drift Kart");
     const card = o.page.getByRole("region", { name: "Drift Kart license" });
     await card.getByText("Activated").waitFor();
     const picker = card.getByRole("combobox");
     expect((await picker.locator("option").allTextContents()).sort()).toEqual([
-      "Standard · Account-wide",
-      "Standard · Key",
+      "Standard · Sign-in",
+      "Standard · Steam key",
     ]);
+    await card.getByText("Steam key · Lifetime").waitFor();
     expect(await card.getByText(/\d+ (of \d+ )?devices?$/).count()).toBe(0);
     const devices = o.page.getByRole("region", { name: "Devices" });
     await devices.getByText("Mara's MacBook Pro").waitFor();
     expect(await devices.getByText(/in use/).count()).toBe(0);
-    await picker.selectOption({ label: "Standard · Account-wide" });
-    await card.getByText("Account-wide · 1 of 3 devices").waitFor();
+    await picker.selectOption({ label: "Standard · Sign-in" });
+    await card.getByText("From signing in · Lifetime").waitFor();
+    await card.getByText(/^1 of \d+ devices?$/).waitFor();
     await devices.getByText("Mara's Steam Deck").waitFor();
     expect(await o.violations()).toEqual([]);
     await o.close();
