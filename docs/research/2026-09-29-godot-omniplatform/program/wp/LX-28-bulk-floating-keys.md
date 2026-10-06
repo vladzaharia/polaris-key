@@ -82,8 +82,8 @@ key}]}` with `Cache-Control: no-store`. Every licence is floating (`name` and `e
   (what Disable unused keys would disable) and `disabled` beside `used`. `name`, `email` and
   `profiles` are refused (`422`) rather than dropped; profiles on a batch are a follow-up if
   LX-29 needs them.
-- **Migrations** are `00XX_a_license_batches.sql`, `00XX_b_licenses_batch_id.sql` and
-  `00XX_c_licenses_batch_index.sql` (the lead numbers them); `LATEST_MIGRATION` names the `c` file.
+- **Migrations** are `0095_a_license_batches.sql`, `0095_b_licenses_batch_id.sql` and
+  `0095_c_licenses_batch_index.sql` (the lead's numbers); `LATEST_MIGRATION` names the `c` file.
 
 ## Steps
 

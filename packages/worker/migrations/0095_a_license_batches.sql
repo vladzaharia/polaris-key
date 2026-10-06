@@ -4,7 +4,7 @@
 -- store key pools), receives their keys ONCE in the create answer, can find the batch again with
 -- how many of its keys were used, and can disable every unused key of a batch that leaked
 -- (`POST …/license/batches/<id>/disable-unused`). One row here per batch; each licence of the
--- batch names it in `licenses.batch_id` (00XX_b).
+-- batch names it in `licenses.batch_id` (0095_b).
 --
 --   product     the product slug; first in the primary key, like every product-scoped table
 --   id          `batch_` and 12 random base64url characters

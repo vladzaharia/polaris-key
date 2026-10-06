@@ -4,5 +4,5 @@
 -- floating at creation (no name, no email).
 --
 -- ONE statement per file (R11-04): a bare ADD COLUMN cannot be made idempotent in SQLite, so a
--- replay fails here and strands nothing after it. The index is in 00XX_c.
+-- replay fails here and strands nothing after it. The index is in 0095_c.
 ALTER TABLE licenses ADD COLUMN batch_id TEXT;

@@ -107,7 +107,7 @@ export interface LicenseRow {
    *  read before the migration) inherits the tier, a `deviceLimit` entitlement, then the product
    *  default. Written only by the admin licence PATCH. */
   device_limit?: number | null;
-  /** LX-28 (00XX_b): the batch the licence was created in (`license_batches.id`); NULL (or absent
+  /** LX-28 (0095_b): the batch the licence was created in (`license_batches.id`); NULL (or absent
    *  on a row read before the migration) for every licence not created by a batch. Written only
    *  by the batch create (`services/license/batches.ts`). */
   batch_id?: string | null;
