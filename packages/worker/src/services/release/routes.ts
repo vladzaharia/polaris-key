@@ -6,6 +6,8 @@
  *     /release/changelog
  *     /release/channels/:channel/{promote,pin,unpin}  POST, `pkeyci_` + release:promote
  *     /release/releases/:releaseId/yank               POST, `pkeyci_` + release:yank
+ *     /release/packages/prune                         POST, `pkeyci_` + release:yank (feed
+ *                                                     retention's backfill; dry run by default)
  *     /release/publish/{token,uploads,submit}         POST (P2-02, trusted publishing)
  *     /release/records/:sha256                        GET, HEAD (P3-03, a CI-signed record)
  *
@@ -21,11 +23,12 @@
 
 import type { ServiceContext } from "../../core/registry.js";
 import { errorResponse, ErrorCode, json } from "../../core/errors.js";
-import { readCiJson, requireCiScope } from "../../core/ciScope.js";
+import { ciActor, readCiJson, requireCiScope } from "../../core/ciScope.js";
 import { handleRelease } from "./surfaces.js";
 import { getReleaseConfig } from "./config.js";
 import { handlePublishRoute } from "./publish.js";
 import { handleRecordRoute } from "./recordRoute.js";
+import { prunePackages } from "./packages/prune.js";
 import {
   applyPointerOp,
   yank,
@@ -64,6 +67,10 @@ export async function handleReleaseRoutes(
   if (rest.length === 3 && rest[0] === "releases" && rest[2] === "yank") {
     if (req.method !== "POST") return null;
     return handleCiYank(ctx, rest[1] as string);
+  }
+  if (rest.length === 2 && rest[0] === "packages" && rest[1] === "prune") {
+    if (req.method !== "POST") return null;
+    return handleCiPrune(ctx);
   }
 
   return null;
@@ -164,4 +171,51 @@ async function handleCiYank(
   );
   if (!result.ok) return refusal(result);
   return json({ ok: true, yank: result.yank, packSets: result.packSets });
+}
+
+/**
+ * `POST /<p>/release/packages/prune` `{apply?, deliverable?}` — `release:yank` (the opt-in,
+ * operator-granted scope that already covers taking a version out of circulation). Feed
+ * retention's backfill (`packages/prune.ts`): for each package (or the one named), the builds of
+ * main below its newest stable release. A DRY RUN unless `apply` is `true`; every deletion is
+ * audited as `ci:<subject>`.
+ */
+async function handleCiPrune(ctx: ServiceContext): Promise<Response> {
+  const { req, env, db, product, now } = ctx;
+  const principal = await requireCiScope(
+    req,
+    env,
+    db,
+    product.slug,
+    "release:yank",
+    now,
+  );
+  if (principal instanceof Response) return principal;
+  const body = await readCiBody(req);
+  if (body instanceof Response) return body;
+  if (body.apply !== undefined && typeof body.apply !== "boolean")
+    return errorResponse(400, ErrorCode.BadRequest, "apply is a boolean", {
+      reason: "bad_apply",
+      fields: ["apply"],
+    });
+  if (body.deliverable !== undefined && typeof body.deliverable !== "string")
+    return errorResponse(
+      400,
+      ErrorCode.BadRequest,
+      "deliverable is a package deliverable id",
+      { reason: "bad_deliverable", fields: ["deliverable"] },
+    );
+  const report = await prunePackages(db, env, product.slug, {
+    apply: body.apply === true,
+    ...(body.deliverable !== undefined
+      ? { deliverable: body.deliverable as string }
+      : {}),
+    actor: { sub: ciActor(principal), name: "CI" },
+    now,
+  });
+  if (!report)
+    return errorResponse(404, ErrorCode.NotFound, "no such package", {
+      reason: "unknown_deliverable",
+    });
+  return json({ ok: true, ...report });
 }

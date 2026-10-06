@@ -370,7 +370,7 @@ export const SHIPPED: ShippedState[] = [
     id: "activate-link",
     title: "Activate license: deep link, key prefilled",
     scenario: "three",
-    path: `/activate?key=${KEY}`,
+    path: `/activate#key=${KEY}`,
     ready: async (p) => {
       const dialog = p.getByRole("dialog", { name: "Activate a license" });
       await dialog.getByText("Filled in from your link").waitFor();

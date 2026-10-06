@@ -49,6 +49,16 @@ static var _keys: Dictionary = {}
 ## Called on the main thread with the job's progress (0.0 to 1.0) after every slice of a sliced
 ## verify (no-threads web): PolarisKey forwards it as `verify_progress`. Empty: nobody listens.
 static var progress_listener: Callable = Callable()
+## The microsecond clock the sliced verify measures its budget with (empty: the real one). A
+## test hook: a fake clock makes the slice count exact on any machine.
+static var slice_clock: Callable = Callable()
+## Test hooks, what the last `run_job` did (P1-13: the offload checks read these, not frame
+## counts): the mode it ran in (never AUTO), the slices it took (0 unless SLICED), and the
+## thread the job ran on (`OS.get_thread_caller_id()`; 0 for a sliced job, which never calls
+## `run`). Plain assignments, cheap enough to leave in.
+static var last_mode: Mode = Mode.INLINE
+static var last_slices := 0
+static var last_thread := 0
 
 
 ## Sets the slice budget, clamped to 4–8 ms.
@@ -103,6 +113,7 @@ static func run_job(job: PKeyEd25519Job, offload: bool) -> void:
 			how = Mode.SLICED
 	if tree == null:
 		how = Mode.INLINE
+	var slices := 0
 	match how:
 		Mode.THREAD:
 			var id := WorkerThreadPool.add_task(job.run, false, "PolarisKey verify")
@@ -110,7 +121,9 @@ static func run_job(job: PKeyEd25519Job, offload: bool) -> void:
 				await tree.process_frame
 			WorkerThreadPool.wait_for_task_completion(id)
 		Mode.SLICED:
-			while not job.step(slice_budget_usec):
+			slices = 1
+			while not job.step(slice_budget_usec, slice_clock):
+				slices += 1
 				if progress_listener.is_valid():
 					progress_listener.call(job.progress())
 				await tree.process_frame
@@ -118,6 +131,9 @@ static func run_job(job: PKeyEd25519Job, offload: bool) -> void:
 				progress_listener.call(1.0)
 		_:
 			job.run()
+	last_mode = how
+	last_slices = slices
+	last_thread = job.ran_on
 
 
 ## Steps 1–11. Returns the pending verification (a Dictionary: kid, sig, input, key, payload

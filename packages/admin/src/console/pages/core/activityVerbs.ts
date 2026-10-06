@@ -85,6 +85,10 @@ const VERBS: Record<string, string> = {
   "package.version.unyank": "unyanked package version",
   "package.version.deprecate": "deprecated package version",
   "package.version.undeprecate": "lifted the deprecation of package version",
+  // Feed retention: a stable publish prunes the package's builds of main below it.
+  "package.version.prune": "pruned package version",
+  "package.prune.failed": "failed to prune the builds of main of",
+  "feed.retention.update": "changed the retention of package feeds",
 };
 
 export function verbFor(action: string): string {
