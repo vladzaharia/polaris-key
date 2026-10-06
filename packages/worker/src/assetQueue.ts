@@ -23,7 +23,9 @@ import {
   readAssetPullMessage,
 } from "./core/hostedAssetPulls.js";
 import type { FetchImpl } from "./core/safeFetch.js";
+import { loadProductPublic } from "./core/products.js";
 import { resolveRepoAssetSource } from "./services/release/assetSource.js";
+import { syncManifestListingAssets } from "./services/distribution/listing/manifestAssets.js";
 
 /** The queue this consumer serves (`pkey-assets-<env>`); anything else is not ours. */
 export const ASSET_QUEUE_PREFIX = "pkey-assets-";
@@ -70,8 +72,28 @@ export async function handleAssetQueue(
       );
       if (outcome === "retry") message.retry({ delaySeconds: 60 });
       else message.ack();
+      // HA-07: a listing slot's new copy reaches Distribution's store-facing rows at once
+      // (`listing/manifestAssets.ts`). Best-effort and after the ack: the pull is done whatever
+      // happens here, and Distribution's connector cron runs the same idempotent sync.
+      if (outcome === "ready" && msg.slot.startsWith("listing."))
+        await syncListingArt(db, msg.product, now);
     } catch {
       message.retry();
     }
+  }
+}
+
+/** The manifest listing rows of one product, when it runs Distribution (never throws). */
+async function syncListingArt(
+  db: Db,
+  product: string,
+  now: number,
+): Promise<void> {
+  try {
+    const loaded = await loadProductPublic(db, product);
+    if (!loaded?.services.distribution.enabled) return;
+    await syncManifestListingAssets(db, product, now);
+  } catch {
+    // The connector cron reconciles within 15 minutes.
   }
 }

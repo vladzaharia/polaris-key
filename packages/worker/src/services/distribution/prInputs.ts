@@ -45,6 +45,8 @@ import type {
   ListingReleaseNotes,
 } from "../../core/storefront/listingModel.js";
 import { PR_STORE_IDS, type PrStoreId } from "../../core/storefront/prPlane.js";
+import { hostedScreenshotUrls } from "./feeds/art.js";
+import type { RenderListing } from "./feeds/render.js";
 
 const FALLBACK_LOCALE = "en-US";
 
@@ -283,8 +285,14 @@ export async function prInputs(
         { name: str(v.name), subtitle: str(v.subtitle) },
       ]),
     ),
-    // S-20 §4.2 L6: never the manifest listing's raw URLs. HA-07's hosted copies fill this.
-    screenshots: [],
+    // S-20 §4.2 L6: never the manifest listing's raw URLs, only Polaris Key's hosted copies of
+    // them (HA-07, `feeds/art.ts`): image-host originals, in the listing's order.
+    screenshots: await hostedScreenshotUrls(
+      fctx.env,
+      fctx.db,
+      slug,
+      manifest as RenderListing,
+    ),
   };
 
   const base = `${fctx.origin}/${encodeURIComponent(slug)}/distribution`;

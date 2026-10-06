@@ -16,6 +16,7 @@ import type {
   ListingModel,
   ListingOverride,
   ListingReleaseNotes,
+  ListingAssetSource,
   ListingSource,
   ModelField,
   PrecedenceSource,
@@ -71,7 +72,8 @@ export interface DistListingAssetRow {
   alpha: number;
   derived_from: string | null;
   text_allowed: string;
-  source: ListingSource;
+  /** `manifest` since HA-07: the manifest's art, through its hosted copy. */
+  source: ListingAssetSource;
   modified_at: number;
   modified_by: string;
   /** A-18j (0083): the digest the operator accepted on the slot board; accepted iff = sha256. */
@@ -314,11 +316,11 @@ export async function listAssets(
 export async function assetSources(
   db: Db,
   product: string,
-): Promise<Map<string, ListingSource>> {
+): Promise<Map<string, ListingAssetSource>> {
   const rows = await db.all<{
     slot: string;
     locale: string;
-    source: ListingSource;
+    source: ListingAssetSource;
   }>(
     "SELECT slot, locale, source FROM dist_listing_assets WHERE product = ?",
     product,
@@ -333,7 +335,7 @@ export async function assetSources(
 export function stmtUpsertAsset(
   product: string,
   a: ListingAssetInput,
-  source: ListingSource,
+  source: ListingAssetSource,
   now: number,
   by: string,
 ): DbStatement {

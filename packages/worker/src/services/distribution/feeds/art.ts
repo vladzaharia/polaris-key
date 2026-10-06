@@ -111,6 +111,24 @@ export async function feedArt(
 }
 
 /**
+ * The listing's screenshots as Polaris Key hosts them, and ONLY those: the image-host originals
+ * `feedArt` resolves (each pulled for the listing's own ref, or claimed), in the listing's order,
+ * never a developer URL. The PR plane's input for Flathub's MetaInfo `<screenshots>` (A-18i,
+ * `prInputs.ts`; S-20 §4.2 L6). Empty while nothing is served from the image host.
+ */
+export async function hostedScreenshotUrls(
+  env: Env,
+  db: Db,
+  product: string,
+  listing: RenderListing | null,
+): Promise<string[]> {
+  const origin = hostedImageOrigin(env);
+  const art = await feedArt(env, db, product, listing);
+  if (origin === null || art === null) return [];
+  return art.screenshots.filter((u) => u.startsWith(`${origin}/`));
+}
+
+/**
  * The part of the feed cache's stamp (`cache.ts`) the hosted art follows: whether hosted copies
  * are served (the kill switch, the image host) and every listing slot's copy and the ref it was
  * pulled for. A copy becoming ready, a re-pull, a claim or a flip of the switch is a new key, so a
