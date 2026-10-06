@@ -12,6 +12,49 @@
 | Human input | none                                                                                                                                                             |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                        |
 
+## Corrections (as built, 2026-10-06)
+
+Where the brief and the code disagreed, the code was the fact:
+
+- **A fourth list filter, `inAccount`.** `holder=floating|assigned|waiting` cannot express LX-30's
+  "In an account" filter (`assigned` is in an account or waiting), so the list also takes
+  `holder=inAccount`. An unknown value is `400 bad_request` (`fields: ["holder"]`).
+- **No "Added to your library" notice exists, and `via: "email"` sends none.** `attachLicense`
+  notifies only a licence email the account has NOT verified (S-16); an email attach is by
+  definition to an address the account verified, so nothing is sent. The person's message on
+  creation is LX-27's key email.
+- **Removal keeps the email, so the licence reads assigned and waiting, not floating.** The
+  acceptance ("another account that verifies the email still can") needs the email kept; the
+  derived holder of an email-bearing licence with no account is assigned/waiting. PX-23's
+  "Remove ... becomes floating" copy should say "not in an account" (follow-up for PX-23).
+- **There is no portal "Remove from my library" route on `main`.** `detachLicense` is reached by
+  I-12's console detach today; PX-23 adds the portal route. The tests call `detachLicense` as the
+  portal will.
+- **The hook is `onAccountEmailVerified(db, accountId, email, now)`** (`core/licenseHolders.ts`),
+  implemented by Identity (`services/identity/accounts/holders.ts`) and registered with Core at
+  module load, like a subject store; the creation direction is `associateLicenseHolder`. It
+  re-checks that the address is verified on the account. The link sweep's email half is its body,
+  run per verified address, so every sign-in on `main` (portal OIDC, the card's code, register,
+  gate and provider sign-ins through `finishSignIn`, device login) reaches it through the sweep it
+  already runs; `linkIdentity` (adding a sign-in method in Account) calls it directly. PX-W15 and
+  I-08 are not on `main`; they call the hook when they land, and the per-request sweeps stay.
+- **`reassignLicense` writes a block for the account it moves a licence away from and lifts the
+  block of the account it moves it into**, so a relink's undo deletes the block the relink wrote.
+  A key or device claim (`attachLicense` with `via: key | device`) lifts the claimer's block too.
+- **Both halves of the sweep honour the block** (a licence's `sub` re-attached it as well as its
+  email), and every automatic attach is now audited (`account.license.attach`, `email` or `oidc`);
+  before, the sweep attached silently.
+- **Also removed with their owner:** an account deletion deletes its blocks, and a licence
+  deletion deletes the licence's (`coreLicenseDeleteStatements`; `licenseDelete.test.ts` claims
+  the table).
+- **Floating is one helper** (U-02 follow-up): `isFloatingLicense` and `floatingLicenseSql` in
+  `core/accountSubjects.ts`; an email that is empty or only spaces counts as none. Create and PATCH
+  store the email trimmed, blank as `NULL`.
+- **Rule 10:** the admin licence routes were narrative only. `GET`/`POST …/license/licenses` and
+  `GET`/`PATCH …/license/licenses/{licenseId}` are now in the spec (tag `admin`, `routeCoverage`'s
+  `products` kind); `DELETE` stays narrative.
+- The migration is `00XX_license_auto_attach_blocks.sql`; the lead numbers it.
+
 ## Goal
 
 Every licence read says whether the licence is **floating** or **assigned** (in an account, or

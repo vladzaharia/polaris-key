@@ -5861,6 +5861,51 @@ Account-wide alike, through `PATCH /manage/api/products/<slug>/license/licenses/
 - **No wire change.** The signed licence document carries the resolved number in its existing
   `deviceLimit` entitlement, so a client cannot tell (or forge) where the number came from.
 
+### Licence holders: association by email and the auto-attach block (LX-26)
+
+A licence is floating (no account, no email) or assigned (in an account, or waiting for an account
+to verify its email), derived from `licenses.account_id` and `licenses.email` by one rule
+(`isFloatingLicense`, notes/S-24 D1). An assigned licence joins the account that verified its email
+automatically: in the create request when an account already did (D3), when an address becomes
+verified (Core's `onAccountEmailVerified` hook, which Identity implements and registers), and on
+the portal's per-request link sweep. The holder a read reports is the licence's own email and
+whether it is in an account, never the account's details (D6).
+
+- **T-H2: an operator learns whether a person has a Polaris Key account.** An operator who can
+  create licences could type addresses and watch the answer. Mitigations: the create answer has
+  the same shape whether or not an account exists (D4; a test compares the member names of both
+  answers); Identity's account lookup (`accountsVerifyingEmail`) runs on every create with an
+  email, before anything decides whether to attach, so an unknown address, a product with
+  auto-link off and an owned licence cost the same read; the console's copy is conditional ("when
+  they sign in with that email, it's in their library", LX-30). Residual, accepted (S-24 §7.3):
+  AFTER association the holder reads "in an account" (`inAccount: true`, and the pre-existing
+  `ownerSubject`), which the developer could already infer from its own Users page (I-12, pairwise
+  subject). So creating a licence for an address does tell the operator, after the fact, that the
+  address belongs to a verified account. The holder never carries the account id or any detail of
+  the account, and nothing is attached on an address no account verified (no placeholder
+  accounts, D2).
+- **T-H3 (unchanged): a tenant asserts a victim's email to pull a licence into their account.**
+  Every automatic attach reads only addresses the platform verified (`verifiedAccountEmails`), the
+  hook re-checks that the address is verified on the account before attaching anything, and only
+  on products whose auto-link resolves on (custom issuers default off, R5-01).
+- **T-H4: a removed licence returns to the account.** Before LX-26 "Remove from my library"
+  cleared the owner but kept the licence's email, so the next portal request attached it again
+  (S-24 H5). Now `detachLicense` (and a developer's move away, `reassignLicense`) writes a row in
+  `license_auto_attach_blocks` (Core-owned; audited `account.license.auto_attach_block` in
+  `portal_audit`), and every AUTOMATIC attach skips a blocked (licence, account) pair: both halves
+  of the link sweep (email and OIDC subject), the email hook, and the association at creation or
+  on an operator's email edit (`attachLicense` refuses `via: email | oidc` with
+  `auto_attach_blocked`). Only an explicit act brings it back and lifts the block: the person
+  adding the key (or the device's licence after the confirm screen), or the licence moving back
+  into the account (a reassignment's undo). The block is per account: another account that
+  verifies the email still gets the licence. An account merge moves the absorbed account's blocks
+  to the survivor (the survivor inherits the absorbed account's verified addresses, so it must
+  inherit its refusals too); an account deletion and a licence deletion remove the rows. Tests
+  cover each path.
+- **Clearing an assigned licence's email is refused** on the console PATCH (`400 bad_request`):
+  removing a holder is the relink tool's Make floating (I-12, LX-30), which takes a step-up, a
+  reason and has an undo, rather than an unaudited field edit.
+
 ### Passthrough request metadata (PX-W13)
 
 The sign-in card behind "<App> wants you to sign in" (docs/design/PORTAL.md §4.7, G28) shows the

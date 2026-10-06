@@ -2,6 +2,10 @@
  * The one way a login-card sign-in ends (I-07): the account's licence links are refreshed, the
  * sign-in is audited, an account session opens (`portal/accountSessions.ts`), and the answer says
  * whether to show the "add another way to sign in" card (PORTAL.md §4.10).
+ *
+ * LX-26: the refresh is the link sweep, whose email half is Core's `onAccountEmailVerified` body
+ * run for every address the account verified, the one just proved included. So a code, register,
+ * gate or provider sign-in brings the licences waiting on its address (S-24 §5.4).
  */
 
 import type { Db, Env } from "../../../core/platform.js";
