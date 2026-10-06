@@ -1,16 +1,9 @@
 {
   "$schema": "../../conformance/parity/manifest.schema.json",
   "sdk": "python",
-  "runtimes": [
-    "python"
-  ],
-  "traits": [
-    "headless"
-  ],
-  "testRoots": [
-    "sdks/python/tests",
-    "tools/gen-mirrors.test.ts"
-  ],
+  "runtimes": ["python"],
+  "traits": ["headless"],
+  "testRoots": ["sdks/python/tests", "tools/gen-mirrors.test.ts"],
   "features": {
     "core.verify": {
       "status": "implemented"
@@ -244,9 +237,7 @@
     },
     "packs.type.godot.zip": {
       "status": "na",
-      "runtime": [
-        "python"
-      ],
+      "runtime": ["python"],
       "reason": "runtime",
       "note": "P4-16: a godot.zip is mounted only by Godot's load_resource_pack."
     },
@@ -260,9 +251,7 @@
     },
     "packs.type.audio.bank": {
       "status": "na",
-      "runtime": [
-        "python"
-      ],
+      "runtime": ["python"],
       "reason": "runtime",
       "note": "P4-16: audio banks load through a game engine's middleware."
     },
