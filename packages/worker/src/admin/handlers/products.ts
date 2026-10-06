@@ -92,6 +92,7 @@ import {
   readBody,
 } from "../lib/respond.js";
 import { listProductSecretsView, productView } from "../lib/shape.js";
+import { productIcons } from "../lib/presentation.js";
 import {
   catalogRepresentabilityResponse,
   reservedNamesResponse,
@@ -261,9 +262,11 @@ export async function handleProducts(
   if (segments.length === 0) {
     if (req.method === "GET") {
       const rows = await listProducts(db);
+      // Every product's logo in one statement, not one per product.
+      const icons = await productIcons(env, db);
       return adminJson({
         products: await Promise.all(
-          rows.map((row) => productView(env, db, row, now)),
+          rows.map((row) => productView(env, db, row, now, icons)),
         ),
       });
     }

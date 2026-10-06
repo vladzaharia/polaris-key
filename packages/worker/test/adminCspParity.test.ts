@@ -50,6 +50,38 @@ describe("the SPA CSP allows the shells' inline scripts by hash", () => {
     expect(csp).not.toContain("unsafe-inline");
     expect(csp).toContain("style-src 'self'");
   });
+
+  it("img-src is 'self' data:, plus exactly the image host's origin when the shell passes one", () => {
+    const imgSrc = (h: Headers) =>
+      (h.get("content-security-policy") ?? "")
+        .split(";")
+        .map((d) => d.trim())
+        .find((d) => d.startsWith("img-src "));
+    expect(imgSrc(appSecurityHeaders())).toBe("img-src 'self' data:");
+    expect(
+      imgSrc(
+        appSecurityHeaders(new Headers(), { imgOrigin: "https://img.plrs.im" }),
+      ),
+    ).toBe("img-src 'self' data: https://img.plrs.im");
+    // Never a wildcard, a scheme-only source or anything carrying another directive.
+    for (const bad of [
+      "*",
+      "https:",
+      "https://*.plrs.im",
+      "https://x; script-src *",
+    ])
+      expect(
+        imgSrc(appSecurityHeaders(new Headers(), { imgOrigin: bad })),
+        bad,
+      ).toBe("img-src 'self' data:");
+    // The rest of the policy is the same with or without the image host.
+    const withImg = appSecurityHeaders(new Headers(), {
+      imgOrigin: "https://img.plrs.im",
+    }).get("content-security-policy")!;
+    expect(withImg.replace(" https://img.plrs.im", "")).toBe(
+      appSecurityHeaders().get("content-security-policy"),
+    );
+  });
 });
 
 describe.skipIf(!existsSync(join(dist, "manage.html")))(

@@ -12292,6 +12292,30 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products:
+    get:
+      operationId: listAdminProducts
+      tags: [admin]
+      summary: Every registered product, as the console's registry, Home and switcher read it
+      description: >
+        The product registry: one row per product that is not deleted, with its enablement
+        (`services`), its server-computed setup state (`setup`, the source of Home's Needs
+        attention list) and, for the console's logo, `presentation.icon`: the hosted copy of the
+        product's `presentation.icon` slot, else `listing.icon`, as image-host URLs (HA-02) with
+        the 64 and 128 px WebP variants (HA-03) for a `srcset`. Every product's icon is read in
+        one statement. `icon` is `null` when there is no copy the image host serves (nothing
+        declared, the first pull still pending or refused) or the environment has no image host;
+        a refused re-pull keeps its last good copy, which keeps showing. The schema below names
+        the members the console relies on; the row carries more (signing, onboarding, claims).
+        Platform admins only; admin session cookie.
+      responses:
+        "200":
+          description: The registry, ordered by slug.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminProductList" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
   /manage/api/products/link-repo:
     post:
       operationId: createAdminProductFromRepository
@@ -14623,6 +14647,77 @@ components:
           type: integer
           description: Repositories matching `q`, across every page.
         nextCursor: { type: [string, "null"] }
+    AdminProductList:
+      type: object
+      required: [products]
+      properties:
+        products:
+          type: array
+          items: { $ref: "#/components/schemas/AdminProduct" }
+    AdminProduct:
+      type: object
+      description: >
+        One registry row (`admin/lib/shape.ts` `productView`). Only the members the console's Home
+        and Products pages read are listed; the row carries more.
+      required:
+        [slug, name, services, setup, presentation, createdAt, modifiedAt]
+      additionalProperties: true
+      properties:
+        slug: { type: string }
+        name: { type: string }
+        system:
+          {
+            type: boolean,
+            description: "The platform's own product (F-03), kept out of the registry views.",
+          }
+        releaseSource: { type: string, enum: [github, manual] }
+        services:
+          type: object
+          description: Enablement per service slug.
+          additionalProperties:
+            type: object
+            required: [enabled]
+            properties: { enabled: { type: boolean } }
+        setup:
+          type: object
+          description: The server-computed setup state (next actions, missing secrets, modules, sync).
+          additionalProperties: true
+        presentation: { $ref: "#/components/schemas/AdminProductPresentation" }
+        createdAt: { type: integer }
+        modifiedAt: { type: integer }
+    AdminProductPresentation:
+      type: object
+      description: >
+        What the console draws for the product's identity. `icon` only today; the accent arrives
+        with HA-12 (`products.presentation_json`).
+      required: [icon]
+      properties:
+        icon:
+          oneOf:
+            - { $ref: "#/components/schemas/AdminProductIcon" }
+            - { type: "null" }
+    AdminProductIcon:
+      type: object
+      required: [url, w64, w128]
+      properties:
+        url:
+          {
+            type: string,
+            format: uri,
+            description: "The original on the image host: `<IMG_ORIGIN>/<product>/a/<sha256>`.",
+          }
+        w64:
+          {
+            type: [string, "null"],
+            format: uri,
+            description: "The 64 px WebP variant (`…/<sha256>/64.webp`), or null when the ladder has none.",
+          }
+        w128:
+          {
+            type: [string, "null"],
+            format: uri,
+            description: "The 128 px WebP variant, or null.",
+          }
     AdminHostedAssets:
       type: object
       required: [assets]

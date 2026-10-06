@@ -7,7 +7,11 @@
  * A-8's summary endpoint; until then Home does not guess at them.
  */
 
-import type { ProductDetail, ProductSetupAction } from "../../../api.js";
+import type {
+  ProductDetail,
+  ProductSetupAction,
+  ServiceSlug,
+} from "../../../api.js";
 import { r } from "../../routes.js";
 
 export type AttentionTone = "danger" | "warning" | "info";
@@ -28,7 +32,27 @@ export interface ProductAttention {
   tone: AttentionTone;
   /** One line: why it needs the operator. */
   reason: string;
+  /**
+   * The service the item belongs to, so Home's product card can put the pill in that service's
+   * row (docs/design/console-product-card/); `null` for the product itself (its signing key, its
+   * setup, a secret nothing names).
+   */
+  service: ServiceSlug | null;
+  /** The pill's word on the card: the problem in two or three words ("Needs approval"). */
+  short: string;
   action: { label: string; href: string };
+}
+
+/**
+ * Which service needs a product secret, from what the setup state says names it
+ * (`setup.secrets[].sources`, worker `collectRequiredSecrets`): the custom OIDC client secret is
+ * Identity's, an edge-mint recipe's signing key is Config's (Edge mint lives under Config).
+ */
+function secretService(p: ProductDetail, name: string): ServiceSlug | null {
+  const sources = p.setup?.secrets?.find((s) => s.name === name)?.sources ?? [];
+  if (sources.some((s) => s.startsWith("OIDC"))) return "identity";
+  if (sources.some((s) => s.startsWith("Edge mint"))) return "config";
+  return null;
 }
 
 function actionsOf(p: ProductDetail): ProductSetupAction[] {
@@ -70,6 +94,8 @@ export function attentionFor(p: ProductDetail): ProductAttention[] {
       kind: "secret.missing",
       tone: "warning",
       reason: `Missing required secret ${name}`,
+      service: secretService(p, name),
+      short: "Secret missing",
       action: { label: "Set secret", href: r.keys(p.slug) },
     });
   }
@@ -85,6 +111,8 @@ export function attentionFor(p: ProductDetail): ProductAttention[] {
         kind: "mint.pending",
         tone: "warning",
         reason: `Edge-mint recipe ${recipe} awaits approval`,
+        service: "config",
+        short: "Needs approval",
         action: { label: "Review recipe", href: r.edgeMint(p.slug) },
       });
     }
@@ -101,6 +129,8 @@ export function attentionFor(p: ProductDetail): ProductAttention[] {
       kind: "onboarding.next",
       tone: "info",
       reason: "Setup is not finished",
+      service: null,
+      short: "Setup not finished",
       action: { label: "Open", href: r.overview(p.slug) },
     });
   }
@@ -123,6 +153,8 @@ function fromActions(
           kind: "secret.missing",
           tone: "warning",
           reason: `Missing required secret ${subject}`,
+          service: secretService(p, subject),
+          short: "Secret missing",
           action: { label: "Set secret", href: r.keys(p.slug) },
         };
       case "secret-usage":
@@ -131,6 +163,8 @@ function fromActions(
           kind: "secret.usage",
           tone: "warning",
           reason: `Secret ${subject} is not marked for edge minting`,
+          service: "config",
+          short: "Secret not marked",
           action: { label: "Open keys & secrets", href: r.keys(p.slug) },
         };
       case "signing-key":
@@ -139,6 +173,8 @@ function fromActions(
           kind: "signing.missing",
           tone: "danger",
           reason: "No usable signing key: nothing this product signs verifies",
+          service: null,
+          short: "No signing key",
           action: { label: "Open settings", href: r.settings(p.slug) },
         };
       case "edge-mint":
@@ -147,6 +183,8 @@ function fromActions(
           kind: "mint.pending",
           tone: "warning",
           reason: `Edge-mint recipe ${subject} awaits approval`,
+          service: "config",
+          short: "Needs approval",
           action: { label: "Review recipe", href: r.edgeMint(p.slug) },
         };
       case "release":
@@ -155,6 +193,8 @@ function fromActions(
           kind: "release.health",
           tone: "info",
           reason: "Release setup is incomplete",
+          service: "release",
+          short: "Needs setup",
           action: { label: "Review releases", href: r.releases(p.slug) },
         };
       default:
@@ -163,6 +203,8 @@ function fromActions(
           kind: "onboarding.next",
           tone: "info",
           reason: a.label ?? a.title ?? "Finish setting up this product",
+          service: null,
+          short: "Setup not finished",
           action: {
             label: "Open",
             href: safeRoute(a.route ?? a.href, r.overview(p.slug)),

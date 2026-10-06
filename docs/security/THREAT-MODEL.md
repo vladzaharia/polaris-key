@@ -5930,6 +5930,37 @@ is missing or disagrees with its name is the not-found, as in `blobResponse`.
 Residual risk: an operator can host abusive or illegal images, now served from a Polaris Key host.
 The operator terms apply, and HA-06 adds delete-a-copy, which takes effect at the next request.
 
+### The console loads product logos from the image host (console product card)
+
+**What changed.** Home's product cards and the Products table show each product's hosted icon
+(owner request 2026-10-06). The registry read (`GET /manage/api/products`) carries
+`presentation.icon`: image-host URLs of the product's hosted `presentation.icon` copy, else its
+`listing.icon` copy, built by `imgUrl` (`admin/lib/presentation.ts`). The console shell's
+`Content-Security-Policy` therefore adds **exactly one** source to `img-src`: the image host's
+origin, `imgOrigin(env)` from `IMG_ORIGIN` (`img.plrs.im`, `img-staging`, `img-dev`).
+
+**Why this stays narrow.**
+
+- The source is a bare origin, checked by `cspImageOrigin` (`securityHeaders.ts`) before it is
+  written: HTTPS only, except a loopback HTTP host for local development. No wildcard, no path,
+  no whitespace or `;`. A malformed `IMG_ORIGIN` leaves the policy unchanged rather than widening
+  it. Only the console shell and its assets get the addition; the JSON API's policy, the portal's
+  shell (HA-07's change) and every other policy are untouched.
+- `img-src` grants images only. Nothing the image host serves can run in the console: it serves
+  public raster types only (`IMG_HOST_TYPES`), never SVG or HTML, under `default-src 'none';
+sandbox` (the image-host entry above).
+- The URLs are built server-side from content-addressed hashes the product holds. No developer
+  URL reaches the console, and no request to the image host carries the console's cookie: the
+  host is a different origin, and the logo images load with `crossorigin="anonymous"`, so no
+  credentials are sent. That also lets the console read one corner pixel (`iconShape`) to mask
+  full-bleed square icons.
+- A product's logo is the operator's own content; an abusive image is the residual risk the
+  image-host entry already names, and HA-06's delete-a-copy removes it.
+
+Tests: `test/adminPresentation.test.ts` (the field, the one-statement list read, the shell's
+`img-src` with and without `IMG_ORIGIN`, and the origins `cspImageOrigin` refuses) and
+`test/adminCspParity.test.ts`.
+
 ### Pull on register and resync (HA-05)
 
 A link or resync now plans pulls for the manifest's asset refs (`presentation.icon`, the

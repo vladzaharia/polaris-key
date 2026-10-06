@@ -884,9 +884,31 @@ export interface ProductOnboarding {
   nextActions?: ProductSetupAction[] | string[];
 }
 
+/** A product's hosted icon on the image host (worker `admin/lib/presentation.ts`). */
+export interface ProductIconRef {
+  /** The original, content-addressed. */
+  url: string;
+  /** The 64 px WebP variant, or `null` when the ladder has none. */
+  w64: string | null;
+  /** The 128 px WebP variant, or `null`. */
+  w128: string | null;
+}
+
+/** What the console draws for a product's identity (`ProductLogo`). */
+export interface ProductPresentation {
+  /** The hosted icon, or `null` when there is no copy the image host serves. */
+  icon: ProductIconRef | null;
+  /** HA-12: `presentation.accent` (`#rrggbb`). Not served yet, so always absent today. */
+  accent?: string | null;
+  /** HA-12: the accent on a dark ground. */
+  accentDark?: string | null;
+}
+
 export interface ProductDetail {
   slug: string;
   name: string;
+  /** The logo (owner request 2026-10-06). Absent from a Worker that predates it. */
+  presentation?: ProductPresentation;
   /** The platform's own product (F-03: the package-feeds owner of our SDKs); kept out of the
    *  product switcher and the Products registry. */
   system?: boolean;

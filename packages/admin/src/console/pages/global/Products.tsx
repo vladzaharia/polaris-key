@@ -12,6 +12,7 @@ import {
   type RowActionItem,
 } from "../../../ui/data-table/index.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
+import { ProductLogo } from "../../../ui/ProductLogo.js";
 import { ServiceGlyph } from "../../../ui/ServiceBadge.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
@@ -86,6 +87,18 @@ const COLUMNS: DataColumn<ProductRow>[] = [
     header: "Product",
     accessorKey: "name",
     meta: { priority: 1, primary: true, alwaysVisible: true },
+    // The same logo as Home's card (owner request 2026-10-06), decorative beside the name.
+    cell: ({ row }) => (
+      <span className="flex min-w-0 items-center gap-2">
+        <ProductLogo
+          name={row.original.name}
+          presentation={row.original.product.presentation}
+          size={24}
+        />
+        {/* Wraps like the plain name did: never clipped, never widening the table. */}
+        <span className="min-w-0 break-words">{row.original.name}</span>
+      </span>
+    ),
   },
   {
     id: "slug",
