@@ -163,18 +163,20 @@ const visitedPages = new Set<string>();
 const loadedPages = new Set<string>();
 
 /**
- * A dashboard's first load: `page` (a stable key such as `home` or `overview:<slug>`) when the
- * page's first mount in this document began with its data still on the way (`pending`), so the
- * data arrives while the person watches; `undefined` on any later visit, cached or not. Pass it
- * to `AttentionList`'s `stagger`. The first load ends with the first commit after `pending`
- * clears: a list mounted after that (a refetch that turns an empty list into one, a remount)
- * never staggers, however stale the prop it was given.
+ * A dashboard's first load: `page` (a stable key such as `home` or `overview:<slug>`) on the
+ * page's first mount in this document, `undefined` on every later one (a return visit, cached or
+ * not). Pass it to `AttentionList`'s `stagger`. The first load ends with the first commit that has
+ * the page's data (`pending` false): the list that mounts with the data is part of it, a list
+ * mounted after that (a refetch that turns an empty list into one, a remount) is not, however
+ * stale the prop it was given. Whether the page's data was cached does not matter (Overview gets
+ * its product at once from the products list); a route change's View Transition does, and
+ * `AttentionList` checks for one as its list mounts.
  */
 export function useFirstLoad(
   page: string,
   pending: boolean,
 ): string | undefined {
-  const [first] = React.useState(() => pending && !visitedPages.has(page));
+  const [first] = React.useState(() => !visitedPages.has(page));
   React.useEffect(() => {
     visitedPages.add(page);
   }, [page]);

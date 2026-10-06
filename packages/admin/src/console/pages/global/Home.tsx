@@ -126,7 +126,7 @@ function worstTone(items: ProductAttention[]): AttentionTone {
  * omitted rather than faked.
  *
  * Motion (MO-11): the Needs attention list staggers in when the products arrive on Home's first
- * load in this document (`useFirstLoad`), never on a refetch or a return visit. The product cards
+ * visit in this document (`useFirstLoad`), never on a refetch or a return visit. The product cards
  * below do not stagger: the list is the one thing that enters.
  */
 export function Home(): React.ReactElement {

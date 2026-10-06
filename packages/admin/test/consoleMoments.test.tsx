@@ -520,6 +520,14 @@ describe("Overview's attention list staggers in on the page's first load only", 
     expect(attentionList().className).toMatch(/\bpk-stagger\b/);
   });
 
+  it("staggers on the page's first visit even when the product is already cached", async () => {
+    // Overview gets its product at once from the products list (a placeholder): still its first load.
+    queryClient.setQueryData(["product", "djdl"], warned());
+    overview();
+    await screen.findByRole("region", { name: "Needs attention" });
+    expect(attentionList().className).toMatch(/\bpk-stagger\b/);
+  });
+
   it("a refetch keeps the same items (nothing restarts) and a remount does not stagger", async () => {
     overview();
     await screen.findByRole("region", { name: "Needs attention" });

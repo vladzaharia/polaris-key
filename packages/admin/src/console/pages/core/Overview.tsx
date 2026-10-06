@@ -114,7 +114,7 @@ const on = (p: ProductDetail, s: ServiceSlug): boolean =>
 export function OverviewPage({ slug }: { slug: string }): React.ReactElement {
   const product = useProduct(slug);
   useLoadingAnnouncement("overview", product.isPending);
-  // The attention list staggers in when the product arrives on this page's first load (MO-11).
+  // The attention list staggers in on this page's first load in the document (MO-11).
   const firstLoad = useFirstLoad(`overview:${slug}`, product.isPending);
   if (product.isPending) {
     return (
