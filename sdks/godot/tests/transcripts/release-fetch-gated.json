@@ -128,7 +128,8 @@
                     }
                   },
                   "update": { "enabled": false },
-                  "identity": { "enabled": false }
+                  "identity": { "enabled": false },
+                  "sync": { "enabled": false }
                 }
               }
             }
