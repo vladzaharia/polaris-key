@@ -4,7 +4,7 @@
 // @pkey-feature packs.apply.chunk
 // @pkey-feature core.sync core.cache core.store license.activate license.enroll license.deactivate
 // @pkey-feature license.reregister devices.register devices.report identity.devicecode config.mint
-// @pkey-feature commerce.receipt license.refusals
+// @pkey-feature commerce.receipt license.refusals telemetry.updates
 // @pkey-feature ui.boot release.fetch release.distribution
 //
 // BEARER MODE (SDK-PARITY-PASS §3.17, SP-R02). The transcripts that authenticate with a `pkeyt_`
@@ -56,6 +56,13 @@
 // which is the vocabulary's `not-found`. `services` is the map the browser adapter installs from
 // it (BrowserAdapter.loadCapabilities): the document's map on success, otherwise the
 // pre-discovery belief, which with no `expectServices` is `defaultServices()`.
+//
+// `initial.updateJournal` (telemetry.updates, SP-14) is not written into the journal by hand: each
+// entry is RECORDED through `session.recordUpdateEvent(event, input)` — the call the adapters'
+// `recordUpdateEvent` and the update_offered path make — with the clock at the entry's `at`, the
+// session's event-id source answering the entry's `eventId`, and the outlet the entry names, so
+// the replay holds the recording path to the recorded bytes. `updatesPending` is the length of
+// the session's journal.
 
 import { beforeAll, describe, expect, it } from "vitest";
 import { chunkRangeFetch, recordHash } from "@polaris-key/client-core";
@@ -93,6 +100,7 @@ import {
   BearerSession,
   type SignInPrompt,
 } from "../src/browser/bearer/session.js";
+import type { UpdateEventEntry } from "../src/core/updateEvents.js";
 import type { CacheRecordV3, Store } from "@polaris-key/client-core";
 import {
   copyServices,
@@ -212,6 +220,10 @@ async function replay(t: Transcript): Promise<void> {
   };
   let clock = t.now;
   const store = new TranscriptStore(t.initial.deviceId, t.initial.token);
+  const journal =
+    (t.initial as { updateJournal?: UpdateEventEntry[] }).updateJournal ?? [];
+  let nextEventId: string | null = null;
+  let outletId: string | null = null;
   const session = new BearerSession({
     baseUrl: t.baseUrl,
     product: t.product,
@@ -224,8 +236,25 @@ async function replay(t: Transcript): Promise<void> {
     fingerprint: () => FINGERPRINT,
     // PX-W13: `initial.deviceName` stands in for the label a host names; absent = none.
     deviceName: t.initial.deviceName ?? "",
+    outlet: () => (outletId === null ? null : { id: outletId }),
+    eventId: () => nextEventId ?? "unexpected-event-id",
   });
   await session.init();
+  for (const e of journal) {
+    clock = e.at;
+    nextEventId = e.eventId;
+    outletId = e.outlet;
+    const recorded = session.recordUpdateEvent(e.event, {
+      release: e.release,
+      fromRelease: e.fromRelease ?? null,
+      deliverable: e.deliverable,
+      channel: e.channel,
+      packSetId: e.packSetId ?? null,
+      code: e.code ?? null,
+    });
+    expect(recorded, `${t.id}: journal entry ${e.eventId}`).toEqual(e);
+  }
+  clock = t.now;
   /** The gate the adapter projects from the session's state (`projectState`). */
   const status = () => {
     const st = session.syncState();
@@ -295,6 +324,7 @@ async function replay(t: Transcript): Promise<void> {
         break;
       case "report":
         observed.result = await session.report();
+        observed.updatesPending = session.pendingUpdateEvents().length;
         break;
       case "beginSignIn": {
         const name = step.args.deviceName;
@@ -577,14 +607,9 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       (t) => t.id,
     );
     // Planned here, so their transcripts do not apply: commerce.receipt (LX-20; the Worker's CORS
-    // list does not cover distribution/commerce yet) and telemetry.updates (the bearer engine
-    // drains a journal, but nothing in the adapter records update events yet), and
-    // identity.toggle (PX-W17's identity-disabled transcript; React's port is I-10a).
-    const plannedHere = [
-      "commerce.receipt",
-      "telemetry.updates",
-      "identity.toggle",
-    ];
+    // list does not cover distribution/commerce yet) and identity.toggle (PX-W17's
+    // identity-disabled transcript; React's port is I-10a). telemetry.updates is SP-14's.
+    const plannedHere = ["commerce.receipt", "identity.toggle"];
     const expected = TRANSCRIPTS.filter(
       (t) => !t.features.some((f) => plannedHere.includes(f)),
     ).map((t) => t.id);

@@ -1516,11 +1516,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   },
   "devices.manage": { status: "implemented", service: "core", na: [] },
   "devices.report": { status: "implemented", service: "core", na: [] },
-  "telemetry.updates": {
-    status: "planned",
-    service: "core",
-    na: [{ runtime: "web", reason: "runtime" }],
-  },
+  "telemetry.updates": { status: "implemented", service: "core", na: [] },
   "devices.attest": {
     status: "na",
     service: "core",
@@ -1653,4 +1649,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "179284c7efec03b6490c0b10ba1ca8ad6087b0e8927e9a4229d96b0bf66c6cb6";
+  "38e25205180e65dc5ff87bd2ad46eecfe3cae2c2104d87ee90dd758c6e48f82c";

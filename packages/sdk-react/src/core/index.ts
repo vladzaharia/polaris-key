@@ -70,6 +70,7 @@ export {
   type CrashTags,
   type CrashTagsOptions,
 } from "./crash.js";
+export type { UpdateEventEntry, UpdateEventInput } from "./updateEvents.js";
 export type {
   StagedUpdate,
   UpdateCheck,

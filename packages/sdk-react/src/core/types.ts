@@ -28,6 +28,8 @@ import { noBusy, noErrors } from "./services.js";
 import type { ActivationOutcome } from "./activation.js";
 import type { BootResult, BootRunOptions } from "./boot.js";
 import type { CrashTags, CrashTagsOptions } from "./crash.js";
+import type { UpdateEvent } from "../constants.generated.js";
+import type { UpdateEventEntry, UpdateEventInput } from "./updateEvents.js";
 import type {
   FetchTarget,
   ReleaseFetchOptions,
@@ -465,6 +467,20 @@ export interface PolarisAdapter {
    *  `invoke("devices", "report")`; a browser holds no device bearer, so it throws
    *  `report-unsupported` (a registered runtime N/A). */
   report(): Promise<boolean>;
+  /**
+   * Journal one update-health event (telemetry.updates, SDK-PARITY-PASS §3.13) for the next
+   * device report, which carries at most 16, oldest first. `event` is a P6-03 name
+   * (`UpdateEvent`); the adapter fills in the id, the outlet, the channel (unless given) and the
+   * time. Resolves to the journalled entry, or null when a value was malformed (the event is not
+   * recorded). Browser: bearer mode's in-page journal; a cookie page holds no device token and
+   * throws the typed `UnsupportedError` (`runtime`). Desktop: forwarded to the host's journal
+   * over bridge v4 (`invoke("update", "journal", {event, ...input})`); an older host answers
+   * the typed `version` N/A.
+   */
+  recordUpdateEvent(
+    event: UpdateEvent,
+    input: UpdateEventInput,
+  ): Promise<UpdateEventEntry | null>;
   // ── SDK parity pass additions. Every adapter implements every verb; a transport that cannot
   //    serve one throws the typed `UnsupportedError` (PARITY §2.2), never a missing method. ──
   /** `POST /<p>/license/enroll`: a free licence with no key, when the product offers one, then a

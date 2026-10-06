@@ -143,7 +143,10 @@ export type BridgeActivation =
  *     call crossing the bridge): `("config","mint",{recipeId})` → `{token, expiresAt}`;
  *     `("commerce","binding")` → `{bindingId, products}`; `("commerce","claim",{store,payload})`
  *     → a `CommerceClaimResult`; `("core","discovery")`; `("core","storeStatus")`;
- *     `("devices","id")`.
+ *     `("devices","id")`; `("update","journal",{event, release, fromRelease?, deliverable?,
+ *     channel?, packSetId?, code?})` → the journalled `UpdateEventEntry` or `null` (SP-14: the
+ *     renderer's update-health events, recorded in the host's journal with
+ *     `client.update.journal.record(event, input)`, so its next report drains them).
  *   * `config.local` (SP-13): `("config","set",{key,value})` and `("config","clear",{key})` →
  *     the host's `client.config.set`/`clear` (a refusal keeps its `managed_by_admin` or
  *     `bad_request` code), and `BridgeState.localConfig` = `client.config.localValues()` on

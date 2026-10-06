@@ -7289,7 +7289,7 @@
         "packages/sdk-react/parity.json: telemetry.updates"
       ],
       "brief": "wp/SP-14-react-update-telemetry.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-15",

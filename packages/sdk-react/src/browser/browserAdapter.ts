@@ -89,7 +89,17 @@ import {
   readEntitledChannels,
   withOverrides,
 } from "../core/adapter.js";
-import { ErrorCode, Feature, Platform, SdkId } from "../constants.generated.js";
+import {
+  ErrorCode,
+  Feature,
+  Platform,
+  SdkId,
+  UpdateEvent,
+} from "../constants.generated.js";
+import type {
+  UpdateEventEntry,
+  UpdateEventInput,
+} from "../core/updateEvents.js";
 import { createStore, type Store } from "../core/store.js";
 import {
   PolarisError,
@@ -452,6 +462,8 @@ export class BrowserAdapter implements PolarisAdapter {
   readonly authMode: BrowserAuthMode;
   /** Bearer mode's engine; null in cookie mode. */
   private readonly bearer: BearerSession | null = null;
+  /** The releases an update_offered was journalled for this page (§3.13). */
+  private readonly offered = new Set<string>();
   private readonly bearerStore: BrowserStore | null = null;
   private readonly autoRegister: boolean;
   private started = false;
@@ -1353,6 +1365,7 @@ export class BrowserAdapter implements PolarisAdapter {
         ...(content ? { content } : {}),
       });
       await this.writeSlices(result.cache);
+      this.journalOffer(result.check);
       if (result.revocations && u.packs)
         await u.packs.recordRevocations(result.revocations);
       u.packs?.recordFeedDeltas?.(result.feedDeltas);
@@ -1369,6 +1382,21 @@ export class BrowserAdapter implements PolarisAdapter {
           : new PolarisError("network", (e as Error).message),
       );
     }
+  }
+
+  /** update_offered (§3.13): a decision that offers a newer build, once per release per page,
+   *  as Node's `update.decide()`. Bearer mode only: a cookie page has no journal to feed. */
+  private journalOffer(check: UpdateCheck): void {
+    const d = check.decision;
+    if (!this.bearer || d.action === "none" || !("release" in d)) return;
+    const release = d.release.version;
+    if (this.offered.has(release)) return;
+    this.offered.add(release);
+    this.bearer.recordUpdateEvent(UpdateEvent.updateOffered, {
+      release,
+      fromRelease: this.version ?? null,
+      channel: check.channel,
+    });
   }
 
   /** Core's read-modify-write of the update slices: everything else in the record stays. */
@@ -1543,6 +1571,15 @@ export class BrowserAdapter implements PolarisAdapter {
       'Device telemetry needs a device token; this page uses the cookie session (auth: "bearer" adds it).',
     );
     return b.report();
+  }
+
+  /** Bearer mode's in-page journal (telemetry.updates); a cookie page refuses typed. */
+  async recordUpdateEvent(
+    event: UpdateEvent,
+    input: UpdateEventInput,
+  ): Promise<UpdateEventEntry | null> {
+    const b = this.requireBearer(Feature.telemetryUpdates, COOKIE_DETAIL);
+    return b.recordUpdateEvent(event, input);
   }
 
   async enroll(): Promise<void> {
@@ -1955,6 +1992,7 @@ const BEARER_ONLY = new Set<string>([
   Feature.devicesRegister,
   Feature.devicesManage,
   Feature.devicesReport,
+  Feature.telemetryUpdates,
   Feature.licenseEnroll,
   Feature.licenseReregister,
   Feature.identityDevicecode,

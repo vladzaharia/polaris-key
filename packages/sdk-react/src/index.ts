@@ -318,6 +318,9 @@ export {
   type FeedKind,
   type FeedUrl,
   type FeedUrlOptions,
+  // telemetry.updates (SP-14): adapter.recordUpdateEvent
+  type UpdateEventEntry,
+  type UpdateEventInput,
 } from "./core/index.js";
 
 // ── Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts) ──

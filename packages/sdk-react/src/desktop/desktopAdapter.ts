@@ -28,7 +28,11 @@ import {
   LocalConfigEngine,
   type LocalConfigBackend,
 } from "../core/localConfig.js";
-import { ErrorCode, Feature } from "../constants.generated.js";
+import {
+  ErrorCode,
+  Feature,
+  type UpdateEvent,
+} from "../constants.generated.js";
 import type { CapabilityContext } from "@polaris-key/client-core";
 import { isManageUrl } from "@polaris-key/client-core";
 import { createStore, type Store } from "../core/store.js";
@@ -68,6 +72,10 @@ import type {
 import type { BootState, StoreStatus } from "@polaris-key/client-core";
 import type { BootResult, BootRunOptions } from "../core/boot.js";
 import type { CrashTags, CrashTagsOptions } from "../core/crash.js";
+import type {
+  UpdateEventEntry,
+  UpdateEventInput,
+} from "../core/updateEvents.js";
 import type { FeedKind, FeedUrl, FeedUrlOptions } from "../core/types.js";
 import type {
   FetchTarget,
@@ -109,6 +117,8 @@ const V4_FEATURES = new Set<string>([
   Feature.updateFeeds,
   Feature.crashTags,
   Feature.configLocal,
+  // SP-14: renderer update-health events, forwarded to the host's journal.
+  Feature.telemetryUpdates,
 ]);
 
 export interface DesktopAdapterOptions {
@@ -996,6 +1006,24 @@ export class DesktopAdapter implements PolarisAdapter {
       "crashTags",
       opts,
     );
+  }
+
+  /** `invoke("update", "journal", {event, ...input})`: the host's update-health journal
+   *  (`client.update.journal.record(event, input)`), which its next report drains. The host
+   *  fills in the id, outlet, channel and time, so the renderer's events and the host's own
+   *  share one journal. */
+  async recordUpdateEvent(
+    event: UpdateEvent,
+    input: UpdateEventInput,
+  ): Promise<UpdateEventEntry | null> {
+    const r = await this.invokeV4<UpdateEventEntry | null>(
+      Feature.telemetryUpdates,
+      "the update-health events",
+      "update",
+      "journal",
+      { ...input, event },
+    );
+    return r ?? null;
   }
 
   /** True when the host reports bridge protocol v4 or later (an absent `version` is 1). A v3
