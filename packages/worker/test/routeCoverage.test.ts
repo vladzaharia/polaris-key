@@ -88,8 +88,8 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
 const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   portalMedia: [
     ["/media/{product}/{asset}", ["get"]],
-    // I-07: copied provider avatars (`avatar` is a reserved product slug).
-    ["/media/avatar/{key}", ["get"]],
+    // I-07, PX-W16: account pictures, re-encoded (`avatar` is a reserved product slug).
+    ["/media/avatar/{asset}", ["get"]],
   ],
   portalApi: [
     ["/api/library", ["get"]],
@@ -111,6 +111,9 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/sessions", ["get"]],
     ["/api/sessions/{sessionId}", ["delete"]],
     ["/api/sessions/sign-out-everywhere", ["post"]],
+    // PX-W16 (G32, G33): Account → Profile and picture uploads.
+    ["/api/me/profile", ["get", "patch"]],
+    ["/api/me/profile/picture", ["post"]],
     // PX-W14 (G29): sign in with another device.
     ["/api/device-login/start", ["post"]],
     ["/api/device-login/lookup", ["post"]],

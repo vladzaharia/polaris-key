@@ -64,11 +64,11 @@ Owner decision: import profile data from identity providers ([PORTAL.md §4.30](
 
 ## Acceptance criteria
 
-- [ ] Explicit choices survive re-sign-in (test).
-- [ ] Fetch refuses non-allowlisted hosts (test); a CSP browser test shows proxied avatars with zero violations.
-- [ ] The migration and `TABLE_OWNERS` entry land together; OpenAPI and `routeCoverage` cover every route.
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] Explicit choices survive re-sign-in (test): `test/portalProfile.test.ts` ("explicit choices survive re-sign-in": typed name, picked name, picked picture, Initials, upload) and the gate's typed name in `test/identityCardProfile.test.ts`.
+- [x] Fetch refuses non-allowlisted hosts (test: off-list host never dialled, an allowlisted host redirecting elsewhere refused at the hop); a CSP browser test shows proxied avatars with zero violations (`packages/admin/e2e/portalAvatar.e2e.test.ts`, run with `test:e2e`; the gate script does not run it).
+- [x] The migration (`0093_account_avatars.sql`, the lead's number) and `TABLE_OWNERS` entry land together; OpenAPI and `routeCoverage` cover every route.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass (new `test-workerd/avatars.test.ts`); `gen:transcripts -- --check` stays green.
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 
@@ -82,6 +82,37 @@ The avatar copy reuses S-20's ingest core, `core/safeFetch.ts` and `core/hostedA
 [HA-01](HA-01-hosted-asset-core.md), with an `avatar` slot space. It must not build a second
 outbound fetcher. The provider host allowlist stays specific to this route
 ([notes/S-20 §8](../../notes/S-20-hosted-assets.md#8-interactions-with-other-plans)).
+
+## Corrections against the code (PX-W16 builder, 2026-10-06)
+
+- **I-07 landed first** and owns the shared code: claims capture per provider (`providers/*.ts` →
+  `card/gate.ts` → `card/profile.ts`), the profile record (`accounts.display_name`, `avatar_key`,
+  `locale` with sources and explicit flags in `details_source_json`, per-link imports in
+  `account_links.profile_json`), `GET /media/avatar/…` and the deletion hook. PX-W16 narrows to
+  what was left: the fetch moved onto `core/safeFetch.ts`, re-encoding, content-addressed storage,
+  the profile routes, upload, GC, and the media route serving only re-encoded renditions.
+- **Not an `avatar` slot space in `core/hostedAssets.ts`** (S-20 note above). The hosted-asset
+  store writes the original under `blobs/sha256/`, which carries a 180-day R2 age lock
+  (`docs/DEPLOYMENT.md`), so a deleted account's picture could not be erased for six months; its
+  rows, refs and audit are product-scoped, and an avatar belongs to an account. Avatars therefore
+  keep I-07's `avatars/` prefix in `BLOBS` (no lock; the human input, settled by I-07) and reuse
+  the S-20 substrate below the store: `safeFetch` (the one outbound fetcher, with this route's
+  own `allowHost`), `core/sniff.ts`, and the Images binding HA-03 binds. No second fetcher.
+- **Re-encoding uses the `IMAGES` binding** (already bound for prod, staging and dev). WebP and
+  PNG output always discards metadata. Without the binding nothing is copied and the account shows
+  initials; an avatar is never stored as fetched.
+- **Content-addressed, peppered.** The asset id is `HMAC(KEY_HASH_PEPPER, account ‖ SHA-256 of
+the source)` (a plain SHA-256 of the same string where no pepper is set), so the same picture is
+  stored once per account and the id is not computable from a public provider picture alone. A migration adds `account_avatars` (one row per asset) for deletion and GC.
+- **Refusals use registered codes.** Every `error` the Worker answers must be in
+  `conformance/parity/errors.json`, and each code there needs copy in all eight locales and a
+  regenerated copy module in every SDK. The profile routes therefore answer `bad_request`,
+  `not_found` and `body_too_large` with a `reason` field naming the case (`invalid_name`,
+  `unknown_source`, `no_name`, `no_picture`, `unknown_upload`, `too_large`, `unsupported_type`,
+  `unreadable_image`) rather than eight new codes.
+- **Rule 10 for portal routes** is the OpenAPI spec (tag `portal`) plus `PORTAL_KIND_PATHS` in
+  `routeCoverage.test.ts` (PX-W1 changed this; PORTAL.md §10.1's "narrative only" sentence is
+  older), and the docs site's portal page.
 
 ## Hand-off
 

@@ -123,7 +123,7 @@ import {
   signInAgainAction,
   wrongCodeMessage,
 } from "./http.js";
-import { fetchProviderPicture } from "./avatars.js";
+import { serveProviderPreview } from "./avatars.js";
 import {
   importProfile,
   sanitizeDisplayName,
@@ -447,7 +447,8 @@ export async function handleEmailGate(
     return cardJson({ error: "method_not_allowed" }, 405);
   }
   if (rest.length !== 1) return cardJson({ error: "not_found" }, 404);
-  if (action === "picture" && req.method === "GET") return gatePicture(gate);
+  if (action === "picture" && req.method === "GET")
+    return gatePicture(req, env, ref, gate, now);
   if (req.method !== "POST")
     return cardJson({ error: "method_not_allowed" }, 405);
   switch (action) {
@@ -463,20 +464,20 @@ export async function handleEmailGate(
   }
 }
 
-/** The provider's picture, proxied for the gate (copied to R2 only once the gate passes). */
-async function gatePicture(gate: GateRecord): Promise<Response> {
-  const url = gate.profile.pictureUrl;
-  const picture = url ? await fetchProviderPicture(url) : null;
-  if (!picture) return cardJson({ error: "not_found" }, 404);
-  return new Response(picture.bytes, {
-    status: 200,
-    headers: {
-      "content-type": picture.contentType,
-      "x-content-type-options": "nosniff",
-      "content-security-policy": "default-src 'none'; sandbox",
-      "cache-control": "no-store",
-      "referrer-policy": "no-referrer",
-    },
+/**
+ * The provider's picture, proxied and re-encoded for the gate (PX-W16, `avatars.ts`); it is
+ * copied to R2 only once the gate passes.
+ */
+async function gatePicture(
+  req: Request,
+  env: Env,
+  ref: ArtefactRef,
+  gate: GateRecord,
+  now: number,
+): Promise<Response> {
+  return serveProviderPreview(req, env, gate.profile.pictureUrl, {
+    gateId: ref.id,
+    now,
   });
 }
 

@@ -12101,21 +12101,27 @@ paths:
     get:
       operationId: getCardEmailGatePicture
       tags: [portal]
-      summary: The provider's picture, proxied for the gate
+      summary: The provider's picture, proxied and re-encoded for the gate
       description: >
-        Fetched server-side under the avatar rules (allowlisted provider hosts over https, redirects
-        re-checked, 2 MiB, PNG/JPEG/WebP/GIF by magic number) and served same-origin with
-        `nosniff` and `default-src 'none'; sandbox`; copied into R2 only once the gate passes.
+        Fetched server-side through the guarded fetcher under the avatar rules (the providers'
+        hosts only, over https, every redirect hop re-checked, 5 s, 2 MiB, PNG/JPEG/WebP/GIF by
+        magic number), then re-encoded like a stored picture (256 px, WebP or PNG by `Accept`) and
+        served same-origin with `nosniff`, `default-src 'none'; sandbox` and `no-store`; copied
+        into R2 only once the gate passes. `404` without the Images binding. Limited to 20 per
+        gate and 30 a minute per client address (`429 rate_limited`; both fail open).
       responses:
         "200":
           description: The image.
           content:
-            image/png: { schema: { type: string, format: binary } }
-            image/jpeg: { schema: { type: string, format: binary } }
             image/webp: { schema: { type: string, format: binary } }
-            image/gif: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
         "400": { $ref: "#/components/responses/CardError" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   # ── Passkeys on the login card (I-16, S-16 §5.4 items 7, 14 and 17; PORTAL.md §4.1). The RP id
   # is the console host (`key.plrs.im`); a ceremony is served only on that origin. Pinned in
   # `test/routeCoverage.test.ts` (PORTAL_KIND_PATHS).
@@ -12508,32 +12514,212 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
-  /media/avatar/{key}:
+  # ── Account → Profile (PX-W16, PORTAL.md §4.30, G32, G33). Session-authenticated by the
+  # portal cookie; the mutations need the `X-PKey-Portal-CSRF` header.
+  /api/me/profile:
+    get:
+      operationId: getAccountProfile
+      tags: [portal]
+      summary: The account's profile, with sources and explicit flags
+      description: >
+        The display name and picture with where each came from (a sign-in method, a typed name,
+        an upload, Initials) and whether it was chosen explicitly, the locale, and what each
+        sign-in method supplied (the editor's name chips and picture tiles). A value never chosen
+        follows its method on that method's next sign-in; an explicit choice is never overwritten
+        by a sign-in. `cache-control: no-store`.
+      responses:
+        "200":
+          description: The profile.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [profile]
+                properties:
+                  profile: { $ref: "#/components/schemas/AccountProfile" }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+    patch:
+      operationId: updateAccountProfile
+      tags: [portal]
+      summary: Make an explicit profile choice
+      description: >
+        Any of: `name` (a typed name, made safe: no control, bidirectional or zero-width
+        characters, at most 64 code points) or `nameFrom` (a sign-in method's id: that method's
+        name); `picture` as `"initials"`, `{"from": <method id>}` or `{"upload": <asset>}` (one of
+        this account's uploads from `POST /api/me/profile/picture`). Each value set is explicit
+        and survives later sign-ins. The picture moved away from is deleted once nothing uses it.
+        Answers the updated profile. Rate-limited per account and client (30 a minute).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              minProperties: 1
+              properties:
+                name: { type: string, maxLength: 256 }
+                nameFrom: { type: string, pattern: "^[A-Za-z0-9_-]{1,64}$" }
+                picture:
+                  oneOf:
+                    - { type: string, const: initials }
+                    - type: object
+                      additionalProperties: false
+                      required: [from]
+                      properties:
+                        from: { type: string, pattern: "^[A-Za-z0-9_-]{1,64}$" }
+                    - type: object
+                      additionalProperties: false
+                      required: [upload]
+                      properties:
+                        upload: { type: string, pattern: "^[0-9a-f]{64}$" }
+            examples:
+              typedNameSteamPicture:
+                value:
+                  { name: Mara Fennick, picture: { from: lnk_4QpX0aZ1bC2d } }
+      responses:
+        "200":
+          description: The updated profile.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [profile]
+                properties:
+                  profile: { $ref: "#/components/schemas/AccountProfile" }
+        "400":
+          description: "`bad_request`: not one of the shapes above; or, with `reason`, `invalid_name` (nothing left once made safe), `no_name` or `no_picture` (that sign-in method supplied none)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404":
+          description: "`not_found` with `reason`: `unknown_source` (not this account's sign-in method) or `unknown_upload` (not this account's upload, or already collected)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/profile/picture:
+    post:
+      operationId: uploadAccountPicture
+      tags: [portal]
+      summary: Upload a picture
+      description: >
+        The raw bytes of a PNG or JPEG (decided by the bytes, never the declared type), at most
+        5 MB. Decoded and re-encoded by the Images binding to WebP and PNG at 256 and 96 px
+        (square, one frame, metadata discarded); the original is not kept. Uploading does not
+        change the profile: `PATCH` with `{"picture": {"upload": <asset>}}` puts it to use. An
+        upload not in use is kept for a day, and at most three per account. Rate-limited per
+        account (10 an hour, charged before the body is read).
+      requestBody:
+        required: true
+        content:
+          image/png: { schema: { type: string, format: binary } }
+          image/jpeg: { schema: { type: string, format: binary } }
+      responses:
+        "201":
+          description: Stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [upload]
+                properties:
+                  upload: { $ref: "#/components/schemas/AvatarView" }
+        "400":
+          description: "`bad_request`: no bytes were sent."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "413":
+          description: "`body_too_large` (`reason: too_large`): over 5 MB, declared or counted."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "415":
+          description: "`bad_request` with `reason: unsupported_type`: the bytes are not a PNG or a JPEG."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "422":
+          description: "`bad_request` with `reason: unreadable_image`: the encoder could not read it."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "503":
+          description: "`unavailable`: no blob store or Images binding on this deployment, or the store refused the write."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /media/avatar/{asset}:
     get:
       operationId: getAccountAvatar
       tags: [portal]
-      summary: A copied provider picture, served same-origin
+      summary: An account picture, re-encoded and served same-origin
       description: >
-        I-07 (PORTAL.md §4.30, G33). A provider's picture is copied once per change into R2 under an
-        opaque random key (`avatar` is a reserved product slug, so this never shadows a product's
-        art at `/media/{product}/{asset}`). Served with the sniffed image type, `nosniff`,
-        `default-src 'none'; sandbox` and `cache-control: private, max-age=86400`. Account deletion
-        removes the bytes. Every refusal is the same `404`.
+        I-07, PX-W16 (PORTAL.md §4.30, G33). A provider's picture (fetched server-side from the
+        providers' hosts only) or an upload, decoded and re-encoded to WebP and PNG at 256 and 96
+        px (square, one frame, metadata discarded) and stored under a content address: an HMAC
+        under the deployment's pepper of the account and the source picture (a plain SHA-256 of
+        the same input where no pepper is set), so the id names nobody. `{asset}` is the id,
+        optionally `-96` (or `-256`, the default) and `.webp` or `.png`; without an extension the
+        format follows `Accept` (WebP when the browser takes it, else PNG) with `Vary: Accept`.
+        A rendition is served only when its bytes are the type its name says, with `nosniff`,
+        `default-src 'none'; sandbox`, `Content-Disposition: inline`, an `ETag` and
+        `cache-control: private, max-age=86400`; `avatar` is a reserved product slug, so this
+        never shadows a product's art at `/media/{product}/{asset}`. Account deletion removes
+        every rendition. Every refusal is the same `404`.
       parameters:
         - {
-            name: key,
+            name: asset,
             in: path,
             required: true,
-            schema: { type: string, pattern: "^[0-9a-f]{32}$" },
+            schema:
+              {
+                type: string,
+                pattern: "^[0-9a-f]{64}(-(96|256))?(\\.(webp|png))?$",
+              },
           }
       responses:
         "200":
           description: The image.
           content:
-            image/png: { schema: { type: string, format: binary } }
-            image/jpeg: { schema: { type: string, format: binary } }
             image/webp: { schema: { type: string, format: binary } }
-            image/gif: { schema: { type: string, format: binary } }
+            image/png: { schema: { type: string, format: binary } }
+        "304":
+          description: Not modified (`If-None-Match` named the current `ETag` and the picture still exists).
         "404": { $ref: "#/components/responses/NotFound" }
   # ── Admin create probes (UX-72, rule 10) ──
   /manage/api/github/repositories:
@@ -16152,6 +16338,84 @@ components:
             type: [string, "null"],
             description: "The browser it was added from, for example `Safari on iOS`.",
           }
+    AvatarView:
+      type: object
+      description: An account picture (PX-W16). Both URLs are same-origin; add `.webp` or `.png` to name a format.
+      required: [asset, url, url96]
+      properties:
+        asset: { type: string, pattern: "^[0-9a-f]{64}$" }
+        url: { type: string, description: "256 px: `/media/avatar/<asset>`." }
+        url96:
+          { type: string, description: "96 px: `/media/avatar/<asset>-96`." }
+    AccountProfileSource:
+      description: >
+        Where a profile value came from. `provider` names the sign-in method (`provider` is null
+        once that method was disconnected: the value stays and follows nothing).
+      oneOf:
+        - type: object
+          required: [kind, linkId, provider]
+          properties:
+            kind: { const: provider }
+            linkId: { type: string }
+            provider: { type: [string, "null"] }
+        - type: object
+          required: [kind]
+          properties:
+            kind: { enum: [typed, upload, initials] }
+    AccountProfile:
+      type: object
+      required:
+        [
+          displayName,
+          displayNameSource,
+          explicitName,
+          picture,
+          pictureSource,
+          explicitPicture,
+          locale,
+          sources,
+        ]
+      properties:
+        displayName: { type: [string, "null"] }
+        displayNameSource:
+          oneOf:
+            - { $ref: "#/components/schemas/AccountProfileSource" }
+            - { type: "null" }
+        explicitName: { type: boolean }
+        picture:
+          description: The picture in use; null shows initials.
+          oneOf:
+            - { $ref: "#/components/schemas/AvatarView" }
+            - { type: "null" }
+        pictureSource:
+          oneOf:
+            - { $ref: "#/components/schemas/AccountProfileSource" }
+            - { type: "null" }
+        explicitPicture: { type: boolean }
+        locale: { type: [string, "null"] }
+        sources:
+          type: array
+          description: Each sign-in method that supplied a name or a picture (Apple never supplies a picture).
+          items:
+            type: object
+            required: [linkId, provider, label, name, picture]
+            properties:
+              linkId: { type: string }
+              provider:
+                {
+                  type: string,
+                  description: "`google`, `apple`, `steam`, later the platform identities.",
+                }
+              label:
+                {
+                  type: [string, "null"],
+                  description: The connected identity (address or persona).,
+                }
+              name: { type: [string, "null"] }
+              picture:
+                oneOf:
+                  - { $ref: "#/components/schemas/AvatarView" }
+                  - { type: "null" }
     FlatError:
       type: object
       description: >

@@ -5513,15 +5513,8 @@ The login card is the one place a Polaris Key account's credentials are entered
   product code can neither read nor plant the account session.
 - **Profile import and avatars.** Provider names and locales are untrusted display data: names
   lose control, bidirectional and zero-width characters and are cut to 64 characters, locales
-  must look like BCP 47, nothing is rendered as markup. Pictures are fetched server-side only from
-  the providers' https hosts (Google's `lh3`–`lh6.googleusercontent.com`, Steam's avatar hosts),
-  redirects followed by hand and re-checked, 5 s and 2 MiB budgets, and stored only when the
-  bytes are PNG, JPEG, WebP or GIF by magic number (never SVG). They are served same-origin at
-  `/media/avatar/<key>` (an opaque random key; `avatar` is a reserved product slug) with the
-  sniffed type, `nosniff` and `default-src 'none'; sandbox`, so the CSP keeps `img-src 'self'`.
-  Residual: the Worker has no image codec, so a picture is stored as fetched rather than
-  re-encoded (the strict content-type alternative the design allows, as for the product media
-  proxy).
+  must look like BCP 47, nothing is rendered as markup. Pictures: see "Account pictures (PX-W16)"
+  below, which replaced I-07's own fetcher and its stored-as-fetched residual.
 
 ### Login-card providers: Google, Apple and Steam (I-06)
 
@@ -6419,6 +6412,72 @@ be disabled.
   writes one `license.delete` row (written only while the licence still exists, so a racing
   double delete audits once) naming tier, origin, the account's pairwise subject (never the
   global account id) and the device count.
+
+### Account pictures: profile import, re-encoding and uploads (PX-W16)
+
+Account → Profile and the pictures behind it (PORTAL.md §4.30, G32, G33):
+`services/identity/card/avatars.ts`, `card/profile.ts`, `portal/profile.ts`; routes
+`GET /media/avatar/<asset>`, `GET|PATCH /api/me/profile`, `POST /api/me/profile/picture` and the
+gate's `GET /api/signin/confirm-email/picture`; table `account_avatars`; tests
+`test/identityCardProfile.test.ts`, `test/portalProfile.test.ts`, `test-workerd/avatars.test.ts`
+and the console's `e2e/portalAvatar.e2e.test.ts`.
+
+- **SSRF on the provider fetch.** There is one outbound fetcher, `core/safeFetch.ts` (HA-01's
+  guard: https, port 443, no userinfo, no IP literal, never `plrs.im`, never a private-only
+  suffix). This route narrows it with its own `allowHost`, checked on the first URL and on every
+  redirect hop before it is dialled: Google's `lh3`–`lh6.googleusercontent.com` and Steam's
+  `avatars[.akamai|.cloudflare].steamstatic.com`. Five seconds, 2 MiB counted while reading,
+  three hops. **Who names the URL:** the provider, in its own answer (Google's verified ID token,
+  Steam's Web API over our key); a visitor cannot shape it, and a URL naming any other host is
+  never fetched (tests: an off-list host is refused without being dialled, and an allowlisted host
+  redirecting elsewhere is refused at the hop).
+- **Image-parser bugs and active content.** Bytes a provider or a person supplied are never
+  parsed by the Worker beyond a magic-number sniff (`core/sniff.ts`, which cannot answer SVG or
+  HTML): provider pictures must be PNG, JPEG, WebP or GIF, uploads PNG or JPEG. They are decoded
+  and re-encoded by the Cloudflare Images binding, outside the isolate, into WebP and PNG at 256
+  and 96 px (`fit: cover`, one frame), and only the encoder's output is stored; the original is
+  never kept. WebP and PNG output always discards metadata, so EXIF, GPS and comments in an upload
+  are gone. The encoder's output is itself sniffed and capped (512 KiB a rendition) before it is
+  stored. The media route serves a rendition only when its bytes sniff as the WebP or PNG its name
+  says, with `nosniff`, `default-src 'none'; sandbox` and `Content-Disposition: inline`, so the
+  response can only ever be an image; a test plants script-bearing SVG under a rendition key and
+  gets the 404. Without the binding nothing is copied (initials); a picture is never stored as
+  fetched. The gate's preview is fetched and re-encoded the same way and stored nowhere.
+- **CSP.** The portal keeps `img-src 'self'`: every picture is same-origin. The console's browser
+  test loads proxied avatars with zero violations and shows the provider's own host blocked.
+- **Cost of the gate's preview.** `GET /api/signin/confirm-email/picture` fetches and re-encodes
+  on every request (nothing is stored before the gate passes), so it is limited to 20 per gate
+  over the gate's 15 minutes and 30 a minute per client address (`429 rate_limited`). Both fail
+  open, like the other cost budgets: obtaining a gate already takes a provider sign-in.
+- **Storage abuse.** Uploads are rate-limited per account (10 an hour, counted before a byte is
+  read, failing closed), capped at 5 MB declared or counted, and at most three uploads not in use
+  are kept per account (older ones are deleted at once). Provider copies are re-fetched only when
+  the provider's URL changes. A picture nothing uses (`accounts.avatar_key`, a link's
+  `profile_json.avatarKey`) is deleted at once when replaced, and the nightly sweep deletes the
+  rest after a day, at most 200 a night.
+- **Privacy of the URL.** The asset id is an HMAC under `KEY_HASH_PEPPER` of the account and the
+  source picture's SHA-256: stable per picture (content-addressed, so a URL never changes under a
+  page) but not computable from a public provider picture, and it names nobody. Without the pepper
+  (`hashKey`'s fallback) it is a plain SHA-256 of the same string, which still needs the internal
+  account id, so a public picture alone does not give it. The route is public, as a
+  capability URL: anyone holding it sees the picture, which is display data the person shows in
+  the portal and, through the consent step, to apps. Responses are `private, max-age=86400`, so
+  no shared cache keeps a deleted account's picture, and revalidation of a deleted picture is a
+  404, not a 304.
+- **Deletion with the account.** `avatars/` has no R2 age lock (unlike `blobs/`, the reason
+  avatars are not hosted assets), so deletion is immediate: `deleteAccount` deletes every
+  rendition of every asset the account owns or uses, then the rows. An object the store refuses
+  to delete keeps a row with its clock at zero, which the next sweep retries once the account's
+  rows are gone. A merge moves the absorbed account's rows to the survivor.
+- **Untrusted display data.** Names and locales from providers, and typed names, are made safe
+  as in "Login card (I-07)" above; `PATCH` accepts only this account's sign-in methods and uploads
+  (a test tries another account's).
+- **Residual.** The nightly sweep re-checks each asset just before deleting it, and deletes the
+  row only if it is still unused, so a profile edit that picks a day-old upload keeps it. A claim
+  landing in the milliseconds between that check and the object delete (a PATCH or a
+  byte-identical re-store) keeps its row but loses the objects; the person sees initials until
+  the picture next changes. The Images binding is a Cloudflare dependency: while it is unbound or
+  failing, new pictures are not copied (no fallback to storing originals).
 
 ### The platform KEK keyring and the legacy open-only key (R2-09)
 

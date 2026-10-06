@@ -15,7 +15,7 @@ this section.
 ## Why the routes are root-level
 
 `/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*` (the login card's `/api/signin/*`
-included), `/download/<token>`, `/media/<product>/<asset>` and `/media/avatar/<key>` are reserved
+included), `/download/<token>`, `/media/<product>/<asset>` and `/media/avatar/<asset>` are reserved
 ahead of every product slug and dispatched from the composition root, not from this service's
 product-scoped sub-router. That is a consequence of what the portal _is_: one account can hold
 licenses for several products at once, so there is no single `<product>` to hang these paths
@@ -133,10 +133,20 @@ survives, and each product gets `subject.merged`). Declining means choosing a di
 **Profile import.** The gate shows what the provider sent (Google's name, picture and locale;
 Apple's name on first consent; Steam's persona name and avatar) for adjustment. The first
 provider fills the account's profile; a value nobody chose follows that provider on later
-sign-ins; a name typed in the gate sticks. Pictures are fetched server-side from the providers'
-hosts only (https, redirects re-checked, at most 2 MiB, PNG, JPEG, WebP or GIF by their magic
-numbers), copied into R2 under `avatars/` with an opaque random key, and served same-origin at
-`/media/avatar/<key>`. Account deletion removes them.
+sign-ins; a name typed in the gate sticks, and so does every choice made in Account → Profile
+(below). Pictures are fetched server-side through the Worker's one guarded fetcher, from the
+providers' hosts only (https, every redirect hop re-checked, 5 s, at most 2 MiB, PNG, JPEG, WebP
+or GIF by their magic numbers). They are then decoded and re-encoded by the Cloudflare Images
+binding into WebP and PNG at 256 and 96 px (square, one frame, metadata discarded; the original
+is never kept) and stored in R2 under `avatars/<asset>/`, where `<asset>` is a hash of the account
+and the picture, peppered with `KEY_HASH_PEPPER` (a plain SHA-256 when a deployment has no
+pepper): the same picture is stored once per account, and the id names nobody. They are served same-origin at `/media/avatar/<asset>` (`-96` for the small one; `.webp`
+or `.png` to name a format, otherwise `Accept` decides), only when the stored bytes are the type
+the name says, with `nosniff` and a sandboxing policy, so the portal's CSP keeps `img-src 'self'`.
+Without the Images binding nothing is copied and the account shows initials. A picture nothing
+uses any more is deleted at once when it is replaced, and a nightly sweep removes what is left
+after a day (a disconnected method's copy, an upload never saved); account deletion removes every
+picture the account owns or uses.
 
 After the first sign-in the answer carries `nudge: true` once, for the "add another way to sign
 in" card; it comes back after 30 days while the account still has a single sign-in method. The
@@ -229,9 +239,25 @@ session's CSRF value (`403` otherwise).
   start, or `null` when the deploy has Turnstile off. `auth.passkey` is true while the portal is on
   anywhere: passkeys are an account method, never a product's.
 
-- **`GET /api/me`** — account summary (`id`, `name`, `email`, and `avatarUrl`, the copied
-  picture's same-origin URL or `null`) plus the CSRF token, after folding in any newly-provable
+- **`GET /api/me`** — account summary (`id`, `name`, `email`, and `avatarUrl`, the picture in
+  use as a same-origin URL or `null`) plus the CSRF token, after folding in any newly-provable
   license links.
+- **`GET /api/me/profile`** — Account → Profile: the display name and picture, where each came
+  from (`{"kind": "provider", "linkId", "provider"}`, `typed`, `upload` or `initials`) and
+  whether it was chosen explicitly (`explicitName`, `explicitPicture`), the locale, and
+  `sources`, what each sign-in method supplied (its name and picture: the editor's chips and
+  tiles). **`PATCH /api/me/profile`** makes explicit choices, which later sign-ins never
+  overwrite: `name` (typed) or `nameFrom` (a method's id), and `picture` as `"initials"`,
+  `{"from": <method id>}` or `{"upload": <asset>}`. It answers the updated profile. Refusals use registered codes with a `reason` naming
+  the case: `400 bad_request` (`invalid_name`, `no_name`, `no_picture`, or a malformed body) and
+  `404 not_found` (`unknown_source`, `unknown_upload`).
+  **`POST /api/me/profile/picture`** takes the raw bytes of a PNG or JPEG (the bytes decide), at
+  most 5 MB, re-encodes them like a provider's picture and answers `201 {"upload": {asset, url,
+url96}}`; it does not change the profile until a `PATCH` puts it to use. An unused upload is kept
+  for a day, at most three per account. Uploads are limited to 10 an hour per account (`429`);
+  other refusals are `413 body_too_large`, `415 bad_request` (`reason: unsupported_type`),
+  `422 bad_request` (`reason: unreadable_image`), and `503 unavailable` without the Images
+  binding. Both mutations need the CSRF header.
 - **`GET /api/sessions`** — the account's live sessions, newest first, each with when it started
   and was last seen, its browser and operating system (`browser`, a coarse label such as
   "Firefox on Windows"), how the person signed in (`methods`) and whether it is this

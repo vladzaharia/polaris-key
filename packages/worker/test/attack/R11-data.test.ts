@@ -693,6 +693,10 @@ describe("R11-05 product scoping", () => {
       // them: the account's record of what it agreed to. Product deletion clears a product's rows
       // through its own index; no tenant route lists them.
       "account_terms_acceptances",
+      // 0093 (PX-W16) — the account's pictures: one row per re-encoded asset, keyed by the asset
+      // (a hash of the account and the picture) and owned by the account, never by a
+      // product. An app sees a picture only through the account's consent step.
+      "account_avatars",
       // 0070 (A-18e) — the Play edit lease: one row per (store, app) while a caller holds an edit
       // on that app. An app id belongs to the store account, not a product (the platform service
       // account serves every product pinned to it; A-16's lister is team-wide), and the row holds
