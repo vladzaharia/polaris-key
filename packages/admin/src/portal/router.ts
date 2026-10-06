@@ -281,19 +281,26 @@ export function navigationKind(
   return "route";
 }
 
-/** Overlays that can be on screen during a navigation (Radix keeps one mounted through its exit). */
-const OVERLAYS = '[role="dialog"], [role="alertdialog"]';
-const CLOSING_OVERLAYS =
-  '[role="dialog"][data-state="closed"], [role="alertdialog"][data-state="closed"]';
-const OPEN_OVERLAYS =
-  '[role="dialog"]:not([data-state="closed"]), [role="alertdialog"]:not([data-state="closed"])';
+/**
+ * Overlays that can be on screen during a navigation: Radix keeps one mounted through its exit
+ * (`data-state="closed"`) and, when it leaves, hands focus back to its trigger or opener. A menu
+ * counts: the account menu's links navigate.
+ */
+const OVERLAY_ROLES = ["dialog", "alertdialog", "menu"];
+const OVERLAYS = OVERLAY_ROLES.map((r) => `[role="${r}"]`).join(", ");
+const CLOSING_OVERLAYS = OVERLAY_ROLES.map(
+  (r) => `[role="${r}"][data-state="closed"]`,
+).join(", ");
+const OPEN_OVERLAYS = OVERLAY_ROLES.map(
+  (r) => `[role="${r}"]:not([data-state="closed"])`,
+).join(", ");
 
 /**
  * Focus the page heading (`main h1`, unless `target` names another) without scrolling, so a
- * screen reader starts on the new page and hears it once (S-23 §6.5). A dialog still running its
- * exit hands focus back to its opener when it leaves (ui/Dialog.tsx), so this waits for it to go
- * first; a dialog that is open keeps focus. The heading becomes programmatically focusable
- * (`tabindex="-1"`, which styles.css draws no ring for).
+ * screen reader starts on the new page and hears it once (S-23 §6.5). A dialog or menu still
+ * running its exit hands focus back to its opener when it leaves (ui/Dialog.tsx, Radix), so this
+ * waits for it to go first; one that is open keeps focus. The heading becomes programmatically
+ * focusable (`tabindex="-1"`, which styles.css draws no ring for).
  */
 export function focusPageHeading(
   target: () => HTMLElement | null = () =>
@@ -305,7 +312,7 @@ export function focusPageHeading(
       requestAnimationFrame(attempt);
       return;
     }
-    // A Radix dialog returns focus in a task after it unmounts: run after that one.
+    // Radix returns focus in a task after the overlay unmounts: run after that one.
     window.setTimeout(() => {
       const el = target();
       if (!el?.isConnected || document.querySelector(OPEN_OVERLAYS)) return;
@@ -464,9 +471,9 @@ function go(from: PortalRoute, to: PortalRoute): void {
   }
 
   const gen = ++generation;
-  // A dialog on screen (the JumpPalette or Activate running its exit) means no View Transition:
-  // one would lift the page above the scrim (S-23 §3.4 item 1). The page swaps under the closing
-  // overlay instead, and its focus waits for the overlay to leave.
+  // An overlay on screen (the JumpPalette, Activate or the account menu running its exit) means no
+  // View Transition: one would lift the page above it and its scrim (S-23 §3.4 item 1). The page
+  // swaps under the closing overlay instead, and its focus waits for the overlay to leave.
   const animate =
     viewTransitionsSupported() &&
     !reducedMotion() &&

@@ -384,27 +384,28 @@ describe("with the API: typed View Transitions and the one-shot shared element",
     await waitFor(() => expect(document.activeElement).toBe(h1));
   });
 
-  it("while a dialog is on screen (closing), no transition starts and focus waits for it to go", async () => {
-    withArt();
-    renderPortal();
-    await library();
-    const fake = installFake();
-    // A dialog still running its exit, as Radix keeps it mounted.
-    const closing = document.createElement("div");
-    closing.setAttribute("role", "dialog");
-    closing.setAttribute("data-state", "closed");
-    document.body.append(closing);
-    act(() => {
-      window.location.hash = "#/account";
+  for (const role of ["dialog", "menu"])
+    it(`while a ${role} is on screen (closing), no transition starts and focus waits for it to go`, async () => {
+      withArt();
+      renderPortal();
+      await library();
+      const fake = installFake();
+      // An overlay still running its exit, as Radix keeps it mounted.
+      const closing = document.createElement("div");
+      closing.setAttribute("role", role);
+      closing.setAttribute("data-state", "closed");
+      document.body.append(closing);
+      act(() => {
+        window.location.hash = "#/account";
+      });
+      const h1 = await screen.findByRole("heading", {
+        level: 1,
+        name: "Account",
+      });
+      expect(fake.calls).toBe(0);
+      await new Promise((r) => setTimeout(r, 60));
+      expect(document.activeElement).not.toBe(h1);
+      closing.remove();
+      await waitFor(() => expect(document.activeElement).toBe(h1));
     });
-    const h1 = await screen.findByRole("heading", {
-      level: 1,
-      name: "Account",
-    });
-    expect(fake.calls).toBe(0);
-    await new Promise((r) => setTimeout(r, 60));
-    expect(document.activeElement).not.toBe(h1);
-    closing.remove();
-    await waitFor(() => expect(document.activeElement).toBe(h1));
-  });
 });

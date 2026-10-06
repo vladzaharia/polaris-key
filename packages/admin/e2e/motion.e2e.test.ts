@@ -1030,6 +1030,42 @@ describe("motion on: the portal under the Worker's CSP", () => {
       await o.close();
     });
 
+    it(`a link in the account menu swaps the page under the closing menu; focus lands after it leaves (${theme})`, async () => {
+      const o = await portal.open("three", "/", {
+        theme,
+        reducedMotion: "no-preference",
+      });
+      const page = o.page;
+      await h1(page, "Your library");
+      await installProbe(page);
+      const tk = await tokens(page);
+      await atRest(page);
+      await page.getByRole("button", { name: /^Account: / }).click();
+      const menu = page.getByRole("menu");
+      await menu.waitFor();
+      await atRest(page);
+      await takeLog(page);
+      await armNavigation(page);
+      await menu.getByRole("menuitem", { name: "Sign-in methods" }).click();
+      const run = await settleNavigation(page, "Account");
+      await menu.waitFor({ state: "detached" });
+      await atRest(page);
+      expect(
+        pick(await takeLog(page), "end", (e) => e.role === "menu").map((e) => [
+          e.name,
+          e.duration,
+          e.connected,
+        ]),
+        "the menu left through its exit",
+      ).toEqual([["pk-fade-out", tk.fast, true]]);
+      expect(run.started, "no View Transition over the closing menu").toBe(0);
+      // The menu hands focus back to its trigger as it leaves; the heading takes it after that.
+      expect(run.active).toBe("H1 Account");
+      expect(await running(page)).toEqual([]);
+      expect(await o.violations()).toEqual([]);
+      await o.close();
+    });
+
     it(`a section link scrolls smoothly when motion is allowed (${theme})`, async () => {
       const o = await portal.open("three", "/#/p/nightfall", {
         theme,
