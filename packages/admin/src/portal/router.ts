@@ -7,8 +7,11 @@ import * as React from "react";
  * - `#/` is the Library and the default: any hash that names no other page lands there.
  * - The stable links of the old portal redirect (anti-pattern A10) with `history.replaceState`,
  *   so Back never bounces through a dead URL.
- * - `/activate?key=…` (the path form apps and emails print) becomes `#/?activate=<key>`: the
- *   Library with the Activate license modal open and the key filled in. It is never a page.
+ * - `/activate` (the path apps and emails link to) becomes `#/?activate=<key>`: the Library with
+ *   the Activate license modal open and the key filled in. It is never a page. The key comes from
+ *   the fragment (`/activate#key=…`), which never reaches a server; the legacy query form
+ *   (`/activate?key=…`, in links already out) is still read. Both are dropped from the address
+ *   bar before the first render (`rewriteActivatePath`).
  *
  * Query parameters live inside the hash (`#/?view=list&q=fern`). `setParams` rewrites them in
  * place (no history entry per keystroke) and notifies subscribers itself, because
@@ -186,15 +189,30 @@ export function resolveHash(hash: string): Resolved {
 }
 
 /**
- * `/activate?key=…[&product=…]` → `/#/?activate=…[&product=…]`, in place. Returns whether it
- * rewrote the URL. Run once before the first render.
+ * The license key in an `/activate` link's fragment (`#key=…`), or null. A fragment that is a
+ * hash route (`#/…`) carries no key. Pure.
+ */
+export function activateLinkKey(hash: string): string | null {
+  const raw = hash.replace(/^#/, "");
+  if (raw === "" || raw.startsWith("/")) return null;
+  return new URLSearchParams(raw).get("key") || null;
+}
+
+/**
+ * `/activate[?product=…]#key=…` → `/#/?activate=…[&product=…]`, in place, with
+ * `history.replaceState`. Returns whether it rewrote the URL. Run once, before the first render
+ * and before any request, so neither the `#key=` fragment nor a legacy `?key=` query (links
+ * already out; the fragment wins when both are there) stays in the address bar or the history
+ * entry. The key then lives only in this tab's `#/?activate=`, which the signed-in shell
+ * consumes as it opens the modal and every sign-in leaves out of its return URL
+ * (`carriedKey.ts`). See THREAT-MODEL.md, "Key-bearing deep links".
  */
 export function rewriteActivatePath(loc: Location = window.location): boolean {
   const path = loc.pathname.replace(/\/+$/, "");
   if (path !== "/activate") return false;
   const search = new URLSearchParams(loc.search);
   const params: Record<string, string> = {
-    activate: search.get("key") ?? "",
+    activate: activateLinkKey(loc.hash) ?? search.get("key") ?? "",
   };
   const product = search.get("product");
   if (product) params.product = product;

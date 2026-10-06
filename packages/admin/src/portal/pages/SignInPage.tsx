@@ -28,7 +28,7 @@ import { returnUrl, stashCarriedKey } from "../carriedKey.js";
  *   (`useSessionRecheck`).
  * - **KeyStep** (the on-ramp): the key field; Continue keeps the key in `#/?activate=` and moves
  *   on to sign-in, after which the Activate dialog opens with it filled in (the same round trip
- *   as `/activate?key=…`).
+ *   as `/activate#key=…`).
  *
  * Copy is inlined with its `signin.*` key (§5.2) until UK-02a ships the catalog.
  */
@@ -52,7 +52,7 @@ function returnTo(): string {
   return returnUrl();
 }
 
-/** The key the on-ramp (or an `/activate?key=…` link) is carrying through sign-in, if valid. */
+/** The key the on-ramp (or an `/activate#key=…` link) is carrying through sign-in, if valid. */
 function useCarriedKey(): string | null {
   const route = useRoute();
   const key = "params" in route ? route.params.get("activate") : null;

@@ -21,6 +21,7 @@ For a floating key already on devices, the confirm and Done copy ("It's on 2 dev
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/PX-W8.md`](../plans/PX-W8.md):** read `#key=` as well as `?key=`, and handle `next=free-device` from the activate link (PX-10 is done, so PX-17 carries the `next=` hand-off to free-device).
+  - _Already done (fix/keys-out-of-logs, 2026-10-06):_ `rewriteActivatePath` (`packages/admin/src/portal/router.ts`) reads `#key=`, then a legacy `?key=` (the fragment wins), and drops both with `history.replaceState` before the first render. PX-17 still owns `next=` and `return=`, which the rewrite does not carry yet; keep the key out of any URL it adds.
 - **[`plans/PX-W9.md`](../plans/PX-W9.md):** Q2: the Worker never puts the key in the link. The modal opens with the §4.18 notice and an empty field unless the SDK added a `#key=` fragment (PX-W8 Q2).
 
 ## Owner decision (2026-10-05): licence choice at sign-in

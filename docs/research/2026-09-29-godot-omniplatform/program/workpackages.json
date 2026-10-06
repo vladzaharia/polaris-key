@@ -625,7 +625,7 @@
         "CLAUDE.md Test budget"
       ],
       "brief": "wp/P1-13-godot-timing-tests.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "P1b-01",
@@ -3223,7 +3223,7 @@
         "notes/S-17 §7.3 decision 2"
       ],
       "brief": "wp/U-02-principal-binding.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "U-03",
@@ -5444,7 +5444,7 @@
         "plans/PX-W13.md (approved 2026-10-05; reserved names warn first)"
       ],
       "brief": "wp/PX-W13-passthrough-metadata.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-W14",
@@ -5920,7 +5920,7 @@
         "notes/S-18 §6.2 ST-01b"
       ],
       "brief": "wp/ST-01b-resync-claims.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-01c",
@@ -6357,7 +6357,7 @@
         "plans/ST-19.md (approved 2026-10-06)"
       ],
       "brief": "wp/ST-19-manifest-cleanup.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-19b",
@@ -7153,7 +7153,7 @@
         "plans/SP-08.md (approved 2026-10-05, decisions delegated to the lead)"
       ],
       "brief": "wp/SP-08-apple-platform-values.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-09",
@@ -7268,7 +7268,7 @@
         "packages/sdk-react/parity.json: config.local"
       ],
       "brief": "wp/SP-13-react-config-local.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-14",
@@ -7289,7 +7289,7 @@
         "packages/sdk-react/parity.json: telemetry.updates"
       ],
       "brief": "wp/SP-14-react-update-telemetry.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-15",
@@ -7331,7 +7331,7 @@
         "packages/sdk-react/parity.json: commerce.receipt"
       ],
       "brief": "wp/SP-16-react-commerce-cors.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-17",
@@ -7373,7 +7373,7 @@
         "sdks/swift/parity.json: config.local"
       ],
       "brief": "wp/SP-18-swift-config-local.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-19",
@@ -7394,7 +7394,7 @@
         "sdks/swift/parity.json: release.fetch"
       ],
       "brief": "wp/SP-19-swift-release-fetch.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-20",
@@ -7436,7 +7436,7 @@
         "sdks/kotlin/parity.json: core.copy"
       ],
       "brief": "wp/SP-21-kotlin-copy.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-22",
@@ -7499,7 +7499,7 @@
         "sdks/godot/parity.json: config.local"
       ],
       "brief": "wp/SP-24-godot-config-local.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-25",
@@ -7520,7 +7520,7 @@
         "sdks/godot/parity.json: release.fetch"
       ],
       "brief": "wp/SP-25-godot-release-fetch.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-26",
@@ -7541,7 +7541,7 @@
         "sdks/godot/parity.json: update.feeds"
       ],
       "brief": "wp/SP-26-godot-update-feeds.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-27",
@@ -7562,7 +7562,7 @@
         "sdks/godot/parity.json: core.store"
       ],
       "brief": "wp/SP-27-godot-desktop-keyring.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "SP-28",
@@ -7704,7 +7704,7 @@
         "notes/S-20 §9 HA-02"
       ],
       "brief": "wp/HA-02-img-host.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-03",
@@ -7722,7 +7722,7 @@
       "optional": false,
       "refs": ["notes/S-20 §6.6", "notes/S-20 owner decision 4"],
       "brief": "wp/HA-03-image-variants.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-04",
@@ -7772,7 +7772,7 @@
         "notes/S-20 owner decision 3"
       ],
       "brief": "wp/HA-05-pull-on-sync.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "HA-06",
@@ -8431,7 +8431,7 @@
       "optional": false,
       "refs": ["docs/design/UI-KITS.md §7", "docs/design/UI-KITS.md §1.5"],
       "brief": "wp/UK-15-visual-qa-harness.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-16",

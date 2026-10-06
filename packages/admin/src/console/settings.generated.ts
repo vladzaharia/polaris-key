@@ -763,6 +763,31 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     deprecated: null,
   },
   {
+    key: "release.packages.prunePrereleases",
+    aliases: [],
+    scope: "product",
+    entity: null,
+    service: "release",
+    area: "release.packages",
+    label: "Prune builds of main",
+    description:
+      "Feed retention: when a package version is published on stable, delete that package's builds of main below it (X-main.N, PyPI X.devN) from every feed. Stable and beta versions are never touched; the bytes are reclaimed once nothing else references them. Off by default: a product opts in. Always on for the platform's own feeds.",
+    keywords: [
+      "retention",
+      "prerelease",
+      "main channel",
+      "dev builds",
+      "feeds",
+      "cleanup",
+    ],
+    docs: "/docs/build/install-from-feeds/",
+    ownership: "operator",
+    critical: false,
+    secret: false,
+    pending: null,
+    deprecated: null,
+  },
+  {
     key: "distribution.access",
     aliases: [],
     scope: "product",
@@ -1109,7 +1134,7 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
       "Platform → Settings (secrets, by presence); Platform → Store connections",
   },
   {
-    thing: "Origins (console, blob and package hosts)",
+    thing: "Origins (console, blob, package and image hosts)",
     reason: "The S-13 §8.2 deny-list: an origin is deploy-time forever.",
     shows: "Platform → Settings (the read-only inventory)",
   },
@@ -1127,9 +1152,10 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     shows: "Platform → Settings (the read-only inventory)",
   },
   {
-    thing: "Key-encryption key identity (active key id and flag)",
+    thing:
+      "Key-encryption key identity (the active key id, and the legacy key id)",
     reason:
-      "Key material (the AT-2 deny-list); rotated by the keyring runbook.",
+      "Key material (the AT-2 deny-list); rotated by the keyring runbook. PLATFORM_KEK_ID is the legacy PLATFORM_KEK's key id: beside PLATFORM_KEK_KEYS that key is legacy and open-only.",
     shows: "Platform → Settings (the KEK keyring)",
   },
   {

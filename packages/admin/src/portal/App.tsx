@@ -155,7 +155,7 @@ function SignedInShell({
 }): React.ReactElement {
   const activate = useActivate();
 
-  // `#/?activate=<key>` (and `/activate?key=…`, rewritten to it) opens the modal over the
+  // `#/?activate=<key>` (and `/activate#key=…`, rewritten to it) opens the modal over the
   // Library with the key filled in; the parameter is consumed so a reload doesn't re-open it.
   const activateParam =
     route.kind === "library" ? route.params.get("activate") : null;

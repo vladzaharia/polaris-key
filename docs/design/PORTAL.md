@@ -300,7 +300,7 @@ Hash routing stays for the signed-in SPA (ADMIN.md lead decision Q2). Product id
 | -------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `#/`                                               | **Library** (default)                                       | `?view=grid\|list`, `?q=`, `?filter=attention\|games\|apps`, `?sort=recent\|name`                                                                                             |
 | `#/discover`                                       | Discover                                                    | `?added=<product>` shows the just-added state after a reload                                                                                                                  |
-| `/activate?product=…` (`#key=…`) → `#/?activate=…` | **Library with the Activate license modal open**            | The key fills only from a `#key=` fragment an app adds, or a printed `?key=`; the Worker never puts a key in a URL. Signed out → login card, then here. Never a separate page |
+| `/activate?product=…` (`#key=…`) → `#/?activate=…` | **Library with the Activate license modal open**            | Key from a `#key=` fragment (or a legacy `?key=`), dropped from the URL on load; the Worker never puts a key in any URL. Signed out → login card, then here. No separate page |
 | `#/p/:product`                                     | Product page                                                | `?license=<id>` picks a license when there are several                                                                                                                        |
 | `#/p/:product/:section`                            | Product page scrolled to a section                          | `get`, `sync` (only when the product has Cloud Sync), `new`, `license`, `devices`, `package`, `help`                                                                          |
 | `#/p/:product/free-device`                         | Focused flow: device limit                                  | `?for=<label>&return=<url>`; target of G15 `manageUrl`                                                                                                                        |
@@ -723,7 +723,7 @@ are entitled to sits unclaimed.
 ![Done](portal/28-activate-done-desktop-dark.png)
 
 Opened by the header action, the phone bar pill, ⌘K, the empty library, the not-found page, and
-`/activate?key=`. **Always a modal over the Library** (a bottom sheet on phones); there is no redeem
+`/activate#key=`. **Always a modal over the Library** (a bottom sheet on phones); there is no redeem
 page.
 
 1. **Enter:** "Activate a license", one line ("Paste a key from a store, a developer or an email.
@@ -779,8 +779,10 @@ The `KeyField`:
 ![Deep link](portal/30-activate-link-desktop-dark.png)
 
 `/activate?product=…` (from an app at its entry limit, an email) opens **Library** with the modal
-open; the key is filled in and checked only from a `#key=` fragment the app added or a printed
-`?key=` card, never from a Worker-built URL. With `product=` from an app, a notice names it:
+open; the key is filled in and checked only from a `#key=` fragment (an app, an email, a printed
+link; a legacy `?key=` still works), never from a Worker-built URL. The portal drops the fragment,
+or the query, from the address bar before it does anything else (THREAT-MODEL.md, "Key-bearing
+deep links"). With `product=` from an app, a notice names it:
 "Mossgarden sent you here. This key has no entries left in the game. Add it to your account and the
 game signs you in instead." The help line reads "Filled in from your link. Check it matches the key
 you have." Signed out, the login card (with product context) runs first and returns here.
@@ -1488,7 +1490,7 @@ WP is a wire change.
 | **PX-03** | **Scale features.** `LibraryToolbar`, `LibraryList`, `JumpPalette` from 8 products                                                                                                                                                                                                                                                                                                                                          | PX-02 | M    | Keyboard tests; axe on palette                                                       |
 | **PX-04** | **Product page on today's data.** `ProductHeader`, `SectionNav` (omits absent sections), `LicenseCard`, Devices with inline confirm, What's new and a first `GetItPanel`; not-found and error states                                                                                                                                                                                                                        | PX-01 | L    | Disconnect consequences and focus; reasons as text                                   |
 | **PX-05** | **`LoginCard` on today's auth.** The card frame with the header slot (context variant from `capabilities?product=`), IdP display-name button, email link with the honest sent screen, resend and change-email; no-method and network states                                                                                                                                                                                 | PX-01 | M    | Magic-link re-check tests; network vs signed out                                     |
-| **PX-06** | **Activate license modal.** `KeyField`, `ActivateDialog` (enter → done; confirm step appears with G22), mounted in the shell, opened from header, bar, ⌘K, empty state and `/activate?key=` (prefill, signed-out round trip); inline errors from today's claim codes                                                                                                                                                        | PX-01 | M    | Deep-link test (signed in and out); focus to the product `h1` after adding           |
+| **PX-06** | **Activate license modal.** `KeyField`, `ActivateDialog` (enter → done; confirm step appears with G22), mounted in the shell, opened from header, bar, ⌘K, empty state and `/activate#key=` (prefill, signed-out round trip); inline errors from today's claim codes                                                                                                                                                        | PX-01 | M    | Deep-link test (signed in and out); focus to the product `h1` after adding           |
 | **PX-07** | **Account v1.** Sign-in email, Appearance, Delete account, Sign out; section scaffold for Sign-in methods                                                                                                                                                                                                                                                                                                                   | PX-01 | S    | Typed-confirm test                                                                   |
 
 ### 11.2 Phase W: Worker additions
@@ -1662,7 +1664,7 @@ this document wins.
 | --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
 | 1   | Proto-Steam framing; top-level nav is Library (default) and Discover only; Cloud Sync is not a page                                                                     | §0, §3.2, §3.3                              |
 | 2   | Discover: eligible products evaluated without issuing; Add to library mints like auto-issue                                                                             | §4.16, G24, G25                             |
-| 3   | Activate license: right-aligned header action; always a modal; confirm step; inline errors; `/activate?key=`                                                            | §3.2, §4.17–4.19, G22                       |
+| 3   | Activate license: right-aligned header action; always a modal; confirm step; inline errors; `/activate#key=`                                                            | §3.2, §4.17–4.19, G22                       |
 | 4   | Legacy keys: limited entries; skippable then forced upgrade; apps refuse and deep-link; installs unaffected                                                             | §4.6, §4.18, G21, G15                       |
 | 5   | Cloud Sync is its own service; only a product-page section, only when on; nothing anywhere otherwise                                                                    | §4.20, G26, S-17                            |
 | 6   | "Polaris Key", never "Polaris Key Portal"                                                                                                                               | Naming, §6.1                                |
