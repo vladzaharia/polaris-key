@@ -3,7 +3,7 @@ import { setParams } from "./router.js";
 
 /**
  * A license key carried through sign-in (`#/?activate=<key>`: the KeyStep on-ramp and the
- * `/activate?key=…` deep link) never leaves the browser (SIGN-IN.md §3.9).
+ * `/activate#key=…` deep link) never leaves the browser (SIGN-IN.md §3.9).
  *
  * - `returnUrl()` is the page's URL with `activate` taken out of the hash: it is what every
  *   sign-in sends as its return URL (the email start body, `return_to` on the single sign-on and

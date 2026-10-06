@@ -26,6 +26,15 @@
  *                                                       `unsupported_by_ecosystem` where the
  *                                                       protocol has no such state
  *   POST <base>/:eco/rebuild                            re-render the feed — `feed.rebuild`
+ *   GET  <base>/retention                               feed retention: the owner's
+ *                                                       `release.packages.prunePrereleases`
+ *   PUT  <base>/retention                               {expectedVersion, prunePrereleases} —
+ *                                                       `feed.retention.update` (409 stale; the
+ *                                                       system product's is locked on)
+ *   POST <base>/prune                                   {apply?, deliverable?} — the backfill:
+ *                                                       each package's builds of main below its
+ *                                                       newest stable; a dry run unless `apply`,
+ *                                                       each deletion `package.version.prune`
  *   GET  <base>/:eco/activity                           the feed's audit trail
  *   …    <base>/tokens…                                 registry tokens (F-21,
  *                                                       `registryTokens.ts`)
@@ -67,6 +76,11 @@ import { packageFeedsOf } from "../../services/distribution/registryFeeds.js";
 import { handleRegistryTokensAdmin } from "./registryTokens.js";
 import { forgetRegistrySettings } from "../../services/distribution/registry/settings.js";
 import { packageCatalog } from "../../services/release/packages/catalog.js";
+import {
+  pruneRetentionOf,
+  prunePackages,
+  setPruneRetention,
+} from "../../services/release/packages/prune.js";
 import {
   setPackageDeprecation,
   unyank,
@@ -1139,6 +1153,111 @@ async function activity(
   return adminJson({ items: items.slice(0, 50) });
 }
 
+// ── Feed retention ───────────────────────────────────────────────────────────────────────────
+
+/** `GET <base>/retention`: the owner's `release.packages.prunePrereleases`. */
+async function getRetention(db: Db, scope: FeedScope): Promise<Response> {
+  const owner = await ownerOf(db, scope);
+  if (!owner) return notFound();
+  return adminJson({
+    product: owner.slug,
+    ...(await pruneRetentionOf(db, owner.slug)),
+  });
+}
+
+/** `PUT <base>/retention` `{expectedVersion, prunePrereleases}` — `feed.retention.update`. */
+async function putRetention(
+  req: Request,
+  db: Db,
+  session: AdminSession,
+  scope: FeedScope,
+  now: number,
+): Promise<Response> {
+  const owner = await ownerOf(db, scope);
+  if (!owner) return notFound();
+  const body = await readBody(req);
+  const fields: string[] = [];
+  if (!intOk(body.expectedVersion, 0, Number.MAX_SAFE_INTEGER))
+    fields.push("expectedVersion");
+  if (typeof body.prunePrereleases !== "boolean")
+    fields.push("prunePrereleases");
+  if (fields.length)
+    return err(422, "bad_request", "invalid retention setting", { fields });
+  const enabled = body.prunePrereleases as boolean;
+  const outcome = await setPruneRetention(
+    db,
+    owner.slug,
+    enabled,
+    body.expectedVersion as number,
+    `admin:${session.sub}`,
+    now,
+  );
+  if (outcome === "locked")
+    return err(
+      403,
+      "forbidden",
+      "the platform's own feeds always prune the builds of main once a version is released",
+      { reason: "retention_locked" },
+    );
+  if (outcome === "stale")
+    return err(
+      409,
+      "bad_request",
+      "the retention setting changed since you read it",
+      { reason: "version_conflict" },
+    );
+  await audit(
+    db,
+    owner.slug,
+    session,
+    now,
+    "feed.retention.update",
+    { kind: "feed", id: "retention" },
+    enabled
+      ? "Turned on pruning of the builds of main once a version is released"
+      : "Turned off pruning of the builds of main once a version is released",
+  );
+  return adminJson({
+    product: owner.slug,
+    ...(await pruneRetentionOf(db, owner.slug)),
+  });
+}
+
+/** `POST <base>/prune` `{apply?, deliverable?}`: the backfill, a dry run unless `apply`. */
+async function prune(
+  req: Request,
+  env: Env,
+  db: Db,
+  session: AdminSession,
+  scope: FeedScope,
+  now: number,
+): Promise<Response> {
+  const owner = await ownerOf(db, scope);
+  if (!owner) return notFound();
+  const body = await readBody(req);
+  const fields: string[] = [];
+  if (body.apply !== undefined && typeof body.apply !== "boolean")
+    fields.push("apply");
+  if (body.deliverable !== undefined && typeof body.deliverable !== "string")
+    fields.push("deliverable");
+  if (fields.length)
+    return err(422, "bad_request", "invalid prune request", { fields });
+  const report = await prunePackages(db, env, owner.slug, {
+    apply: body.apply === true,
+    ...(typeof body.deliverable === "string"
+      ? { deliverable: body.deliverable }
+      : {}),
+    actor: {
+      sub: `admin:${session.sub}`,
+      name: session.name,
+      email: session.email,
+    },
+    now,
+  });
+  if (!report) return notFound();
+  return adminJson(report);
+}
+
 /**
  * Route one Feeds request. `rest` is the path after `…/feeds`. The caller has already run the
  * session, CSRF, limiter and platform-admin gates; a product-scope caller has checked the product
@@ -1169,6 +1288,15 @@ export async function handleFeedsAdmin(
       rest.slice(1),
       now,
     );
+  if (rest.length === 1 && rest[0] === "retention") {
+    if (method === "GET") return getRetention(db, scope);
+    if (method === "PUT") return putRetention(req, db, session, scope, now);
+    return notAllowed();
+  }
+  if (rest.length === 1 && rest[0] === "prune") {
+    if (method !== "POST") return notAllowed();
+    return prune(req, env, db, session, scope, now);
+  }
   const eco = rest[0]!;
   if (!isPackageEcosystem(eco)) return notFound();
   if (rest.length === 1) {
