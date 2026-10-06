@@ -28,6 +28,7 @@ import { ErrorCode } from "../../core/errors.js";
 import { parseServices } from "../../core/services.js";
 import {
   isRowBacked,
+  manifestValueAt,
   readRowSettings,
   revertRowSetting,
   writeRowSetting,
@@ -35,7 +36,6 @@ import {
   type RowSettingView,
 } from "../../core/rowSettings.js";
 import { getManifestSnapshot } from "../../core/manifestSnapshot.js";
-import { manifestValueAt } from "../../core/rowSettings.js";
 import { claimsApply } from "../../core/settingsClaims.js";
 import type { SettingDef } from "../../core/settings/types.js";
 import { SETTINGS } from "../../mount.js";
@@ -158,7 +158,9 @@ export async function handleProductSettings(
     });
   }
 
-  const key = decodeURIComponent(segment);
+  // Registry keys are dotted lowerCamel words, which no URL encoding changes, so the raw segment
+  // is the key (as `claims/<key>` reads it); anything else is simply not a registry key.
+  const key = segment;
   const def = SETTINGS.get(key, "product");
   if (!def || !isRowBacked(def))
     return err(
