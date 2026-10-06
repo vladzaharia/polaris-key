@@ -1882,6 +1882,28 @@ describe("storefront feeds: the AltStore sources name hosted copies (HA-07)", ()
     expect(pal.iconURL).toBe(`${IMG}/${SLUG}/a/${I}`);
   });
 
+  it("an outlet that clears its screenshots names none, though manifest copies exist", async () => {
+    const w = await hostedWorld();
+    const row = await w.db.first<{ listing_json: string }>(
+      "SELECT listing_json FROM dist_outlets WHERE product = ? AND outlet_id = 'altstore'",
+      SLUG,
+    );
+    await w.db.run(
+      "UPDATE dist_outlets SET listing_json = ? WHERE product = ? AND outlet_id = 'altstore'",
+      JSON.stringify({ ...JSON.parse(row!.listing_json), screenshots: [] }),
+      SLUG,
+    );
+    const { doc } = await feed(w, "altstore/stable/source.json");
+    expect(doc.apps[0].screenshots ?? []).toEqual([]);
+    // A console claim still stands in when nothing is declared.
+    await w.db.run(
+      "UPDATE hosted_assets SET origin = 'console' WHERE product = ? AND slot = 'listing.screenshot:2'",
+      SLUG,
+    );
+    const claimed = (await feed(w, "altstore/stable/source.json")).doc;
+    expect(claimed.apps[0].screenshots).toEqual([`${IMG}/${SLUG}/a/${S2}`]);
+  });
+
   it("a console claim wins over the declared ref; a copy without its ref is never named", async () => {
     const w = await hostedWorld();
     await w.db.run(

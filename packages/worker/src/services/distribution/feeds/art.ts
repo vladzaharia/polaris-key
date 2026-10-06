@@ -93,11 +93,12 @@ export async function feedArt(
       if (shot !== undefined) screenshots.push(shot);
     }
   } else {
-    // Nothing declared: only a console claim can hold a screenshot slot (a manifest slot is
-    // removed with its declaration), in slot order.
+    // Nothing declared (or an outlet override that clears the list): only a console claim stands
+    // in, in slot order. A manifest copy was pulled for the root listing's screenshots and must
+    // not come back on an outlet that declares none.
     for (const slot of listingScreenshotSlots(16)) {
       const copy = images.get(slot);
-      const shot = copy ? url(copy) : null;
+      const shot = copy?.origin === "console" ? url(copy) : null;
       if (shot) screenshots.push(shot);
     }
   }
