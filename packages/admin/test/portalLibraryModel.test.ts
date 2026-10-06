@@ -5,7 +5,9 @@ import {
   buildLibrary,
   coverageNote,
   detectDevice,
+  licenseOrigin,
   licenseStatus,
+  shortOrigin,
   platformsOnlyNote,
   quickAction,
   readPresentation,
@@ -109,7 +111,7 @@ describe("status model (§5.3), first match wins", () => {
     expect(s.note).not.toMatch(/of/);
   });
 
-  it("an OIDC license with no key is account-wide, tier first", () => {
+  it("an OIDC license with no key reads by its quiet origin, tier first, never a type", () => {
     const s = licenseStatus(
       license({
         product: "a",
@@ -121,8 +123,8 @@ describe("status model (§5.3), first match wins", () => {
     );
     expect(s).toMatchObject({
       kind: "signedInApp",
-      label: "Account-wide",
-      note: "Standard · Account-wide",
+      label: "From signing in",
+      note: "Standard · From signing in · 1 device",
       tone: "neutral",
       attention: false,
     });
@@ -136,7 +138,40 @@ describe("status model (§5.3), first match wins", () => {
       }),
       NOW_S,
     );
-    expect(pro.note).toBe("Pro · Account-wide");
+    expect(pro.note).toBe("Pro · From signing in · 1 device");
+  });
+
+  it("words a licence's origin in plain words, naming the store with the key", () => {
+    const key = license({ product: "a" });
+    const signIn = license({
+      product: "a",
+      identityProvider: "oidc",
+      keyCount: 0,
+      activeKeyCount: 0,
+    });
+    const keyless = license({ product: "a", keyCount: 0, activeKeyCount: 0 });
+    const last = [{ last4: "3WPLDA" }];
+    expect(licenseOrigin(signIn)).toBe("From signing in");
+    expect(licenseOrigin(key)).toBe("Added with a key");
+    expect(licenseOrigin(key, { keys: last })).toBe("Key ending 3WPLDA");
+    expect(licenseOrigin(key, { store: "steam" })).toBe("Steam key");
+    expect(licenseOrigin(key, { store: "steam", keys: last })).toBe(
+      "Steam key ending 3WPLDA",
+    );
+    expect(licenseOrigin(keyless, { store: "steam" })).toBe("From Steam");
+    expect(licenseOrigin(signIn, { store: "app-store" })).toBe(
+      "From App Store",
+    );
+    expect(licenseOrigin(keyless)).toBe("From the developer");
+    expect(shortOrigin(signIn)).toBe("Sign-in");
+    expect(shortOrigin(key, { keys: last })).toBe("Key …3WPLDA");
+    expect(shortOrigin(key, { store: "steam", keys: last })).toBe(
+      "Steam key …3WPLDA",
+    );
+    expect(shortOrigin(keyless, { store: "steam" })).toBe("Steam");
+    expect(shortOrigin(keyless)).toBeNull();
+    for (const o of [signIn, key, keyless])
+      expect(licenseOrigin(o)).not.toMatch(/Account-wide/);
   });
 
   it("the best license is the most favourable, then the newest", () => {

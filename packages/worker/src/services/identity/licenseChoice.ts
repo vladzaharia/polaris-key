@@ -56,6 +56,7 @@ import {
   autoLinkEnabled,
   getPortalProductSettings,
   listVisibleDevices,
+  listVisibleKeys,
   portalIdentityIssuerKey,
 } from "./portal/repo.js";
 
@@ -170,10 +171,12 @@ export interface ReplaceDevice {
 export interface LegacyChoiceRow {
   id: string;
   tierName: string;
-  /** Display only; never authorises anything. */
+  /**
+   * How the licence came to be, in plain words: "From signing in", "Steam key", "From Steam",
+   * "Added with a key", "Free", "From the developer". Display only; never authorises anything.
+   * Every licence is account-bound, so none is labelled by type (owner decision, 2026-10-05).
+   */
   origin: string;
-  /** A sign-in licence (origin `oidc`): shown as "Account-wide" beside its real seat count. */
-  accountWide: boolean;
   seats: { used: number; limit: number };
   expiresAt: number | null;
   activatedAt: number;
@@ -204,12 +207,25 @@ const STORE_NAMES: Record<string, string> = {
   steam: "Steam",
 };
 
-function originLabel(kind: PurchaseSourceKind, store: string | null): string {
+/**
+ * The row's origin (owner, 2026-10-05): a key bought on a store names the store with the key
+ * ("Steam key"), a store-bound licence with no key reads "From Steam", any other key "Added with
+ * a key". Only the store's name is shown, never an order id or purchase key. The key's last
+ * characters aren't kept (G7), so "ending 3WPLDA" waits for them.
+ */
+export function originLabel(
+  kind: PurchaseSourceKind,
+  store: string | null,
+  hasKey: boolean,
+): string {
+  const storeLabel =
+    kind === "store" ? (store ? (STORE_NAMES[store] ?? store) : null) : null;
+  if (hasKey) return storeLabel ? `${storeLabel} key` : "Added with a key";
   switch (kind) {
     case "store":
-      return `Bought on ${store ? (STORE_NAMES[store] ?? store) : "a store"}`;
+      return `From ${storeLabel ?? "a store"}`;
     case "sign_in":
-      return "Account-wide";
+      return "From signing in";
     case "free":
       return "Free";
     default:
@@ -314,6 +330,7 @@ export async function legacyLicenseChoices(
         : "full";
     const source = sources.get(l.id);
     const kind = source ? source.kind : originKind(l.origin);
+    const hasKey = (await listVisibleKeys(db, product.slug, l.id)).length > 0;
     const owned = l.account_id === input.accountId;
     let replace: ReplaceDevice[] | null = null;
     if (state === "full" && owned && portalOn) {
@@ -334,8 +351,7 @@ export async function legacyLicenseChoices(
     rows.push({
       id: l.id,
       tierName: tier?.label ?? (l.tier_id ? l.tier_id : "Standard"),
-      origin: originLabel(kind, source?.store ?? null),
-      accountWide: kind === "sign_in",
+      origin: originLabel(kind, source?.store ?? null, hasKey),
       seats: { used, limit },
       expiresAt: l.expires_at,
       activatedAt: l.activated_at,
@@ -434,12 +450,8 @@ function rowHtml(row: LegacyChoiceRow, checked: boolean, now: number): string {
   const head =
     `<label class="choice${disabled ? " is-disabled" : ""}">${radio}` +
     `<span class="choice-body"><span class="choice-title tiered"><span class="tag">${escapeHtml(row.tierName)}</span>` +
-    `<span class="choice-seats">${escapeHtml(
-      row.accountWide
-        ? `Account-wide · ${devicesText(row.seats)}`
-        : devicesText(row.seats),
-    )}</span></span>` +
-    meta([...(row.accountWide ? [] : [row.origin]), expiry]) +
+    `<span class="choice-seats">${escapeHtml(devicesText(row.seats))}</span></span>` +
+    meta([row.origin, expiry]) +
     note +
     `</span></label>`;
   if (row.state !== "full") return `<li>${head}</li>`;
