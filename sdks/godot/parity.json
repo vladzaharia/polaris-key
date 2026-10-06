@@ -1,17 +1,8 @@
 {
   "$schema": "../../conformance/parity/manifest.schema.json",
   "sdk": "godot",
-  "runtimes": [
-    "linux",
-    "macos",
-    "windows",
-    "android",
-    "ios",
-    "web"
-  ],
-  "testRoots": [
-    "sdks/godot/tests"
-  ],
+  "runtimes": ["linux", "macos", "windows", "android", "ios", "web"],
+  "testRoots": ["sdks/godot/tests"],
   "features": {
     "core.verify": {
       "status": "implemented"
@@ -306,14 +297,7 @@
     },
     "packs.type.ml.model": {
       "status": "na",
-      "runtime": [
-        "linux",
-        "macos",
-        "windows",
-        "android",
-        "ios",
-        "web"
-      ],
+      "runtime": ["linux", "macos", "windows", "android", "ios", "web"],
       "reason": "runtime",
       "note": "P4-16: Godot has no ML runtime; a game that adds one registers its own handler."
     },
@@ -454,14 +438,7 @@
     },
     "ui.cli": {
       "status": "na",
-      "runtime": [
-        "linux",
-        "macos",
-        "windows",
-        "android",
-        "ios",
-        "web"
-      ],
+      "runtime": ["linux", "macos", "windows", "android", "ios", "web"],
       "reason": "runtime",
       "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
