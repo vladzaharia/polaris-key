@@ -34,6 +34,7 @@ import type { Db, DbStatement } from "../../../core/platform.js";
 import type { LicenseMergeChange } from "../../../core/licenseMerge.js";
 import {
   idChunks,
+  LicenseDeleteReason,
   type LicenseDeleteBlocker,
   type LicenseDeleteContributor,
 } from "../../../core/licenseDelete.js";
@@ -280,7 +281,7 @@ export const commerceDeleteContribution: LicenseDeleteContributor = {
       for (const r of rows)
         out.set(r.license_id, [
           {
-            code: "store_purchases",
+            code: LicenseDeleteReason.StorePurchases,
             message: `${r.n} store ${r.n === 1 ? "purchase is" : "purchases are"} recorded against it.`,
           },
         ]);
