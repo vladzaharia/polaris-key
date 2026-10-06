@@ -10,7 +10,11 @@
 import { describe, expect, it } from "vitest";
 import { packSetId } from "@polaris-key/client-core/packs";
 import type { FeedPackRow, FeedTarget } from "@polaris-key/protocol/update";
-import { documentFor, feedSelfCheck } from "../src/services/update/feedDoc.js";
+import {
+  documentFor,
+  feedDocWork,
+  feedSelfCheck,
+} from "../src/services/update/feedDoc.js";
 import type { ComposedFeed } from "../src/services/update/compose.js";
 
 const PLATFORMS = ["macos", "windows", "linux", "android", "ios", "web"];
@@ -113,7 +117,7 @@ async function worstCase(): Promise<ComposedFeed> {
 describe("feed content on workerd (P4-13)", () => {
   it("fits, checks and signs the worst-case content for every platform within the CPU budget", async () => {
     const c = await worstCase();
-    const t0 = Date.now();
+    const before = feedDocWork.serializations;
     for (const platform of PLATFORMS) {
       const d = documentFor("djdl", c, platform, 7, 1_700_000_000);
       expect(feedSelfCheck(d.doc, d.platform), platform).toBe(true);
@@ -121,9 +125,14 @@ describe("feed content on workerd (P4-13)", () => {
         c.targets.filter((t) => t.platform === platform),
       );
     }
-    // workerd's clock advances only across I/O, so this bounds the whole loop loosely; the
-    // real budget is the isolate's CPU limit, which a runaway loop here would exceed.
-    expect(Date.now() - t0).toBeLessThan(5000);
+    // Counted work (feedDocWork), not a clock: workerd's clock advances only across I/O, so a
+    // Date.now() bound here measured nothing. The cost is the whole-document serializations: per
+    // platform at most 2 for the channel-wide try, 9 for the platform's build and its four
+    // shedding steps (no delta menu here) and 1 for the self-check, so a re-measuring loop fails
+    // this inside the isolate long before its CPU limit would.
+    const serializations = feedDocWork.serializations - before;
+    expect(serializations).toBeGreaterThan(0);
+    expect(serializations).toBeLessThanOrEqual(PLATFORMS.length * 12);
   });
 
   it("P4-19: a delegation's revocation (kind delegation) is kept and passes the self-check inside the isolate", async () => {

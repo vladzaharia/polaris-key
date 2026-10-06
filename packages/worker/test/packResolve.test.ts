@@ -4,7 +4,7 @@
  * pack in every level, an engine bump, `includes` fallback, ties by `seq`, yanks, holds,
  * `packChannels` routing, the solver's dependencies and conflicts, the bounds, and one
  * `packSetId` for one input. A last case resolves a realistic product (20 packs × 200 releases ×
- * 3 levels × 6 platforms) inside a CPU budget.
+ * 3 levels × 6 platforms) inside the work budget. The bounds count work (`resolveWork`), never time.
  */
 
 import { describe, expect, it } from "vitest";
@@ -16,6 +16,7 @@ import {
   PackResolutionError,
   PackResolver,
   levelInRange,
+  resolveWork,
   versionInRange,
   type AppReleaseFacts,
   type PackInput,
@@ -168,6 +169,17 @@ function resolve(
   };
   const resolver = new PackResolver(input);
   return { resolver, ...resolver.resolve() };
+}
+
+/** The resolver's work counters (`resolveWork`) spent by `fn`, diffed around the call: counted
+ *  work, not milliseconds, so the bounds hold on a machine of any speed or load. */
+function workOf(fn: () => void): typeof resolveWork {
+  const before = { ...resolveWork };
+  fn();
+  const spent = { ...resolveWork };
+  for (const k of Object.keys(spent) as Array<keyof typeof resolveWork>)
+    spent[k] -= before[k];
+  return spent;
 }
 
 /** pack → version of a set. */
@@ -846,23 +858,35 @@ describe("bounds (review fix 1)", () => {
     }));
   };
 
+  it("the budget every counted bound below is measured against stays at 1,000,000 work units", () => {
+    // The bounds in this file scale with MAX_RESOLUTION_WORK, sized for about 150 ms on Node 22.
+    // Pinning it means raising the budget (say 50x) fails here, as the millisecond checks these
+    // bounds replaced would have.
+    expect(MAX_RESOLUTION_WORK).toBeLessThanOrEqual(1_000_000);
+  });
+
   it("MAX_SELECTORS distinct problems at the bound finish within the budget", () => {
-    const t0 = performance.now();
-    const { sets } = resolve([APP_15], coupled());
+    let sets: ResolvedSet[] = [];
+    const work = workOf(() => ({ sets } = resolve([APP_15], coupled())));
     expect(sets).toHaveLength(MAX_SELECTORS);
     expect(sets.every((s) => s.entries.length === 3)).toBe(true);
-    expect(performance.now() - t0).toBeLessThan(1500);
+    // Counted work, not time: one solver try per pack per row (no search), and every step at a
+    // work site inside the budget (about 222,000 steps).
+    expect(work.tries).toBeLessThanOrEqual(3 * MAX_SELECTORS);
+    expect(work.steps).toBeLessThanOrEqual(MAX_RESOLUTION_WORK);
   });
 
-  it("one more selector than the bound refuses cleanly, inside the budget's time", () => {
-    const t0 = performance.now();
-    expect(() =>
-      resolve([APP_15], coupled(), { channels: ["stable", "beta"] }),
-    ).toThrow(PackResolutionError);
-    expect(performance.now() - t0).toBeLessThan(1500);
+  it("one more selector than the bound refuses cleanly, inside the budget", () => {
+    const work = workOf(() =>
+      expect(() =>
+        resolve([APP_15], coupled(), { channels: ["stable", "beta"] }),
+      ).toThrow(PackResolutionError),
+    );
+    // Refused at the row bound, with the counted work still inside the budget.
+    expect(work.steps).toBeLessThanOrEqual(MAX_RESOLUTION_WORK);
   });
 
-  it("an adversarial search spends the whole-resolution budget, then refuses, in bounded time and memory", () => {
+  it("an adversarial search spends the whole-resolution budget, then refuses, in bounded work and memory", () => {
     // 64 packs of 200 releases chained by dependencies: the last requires the oldest release of
     // the first, so a newest-first search walks a huge space; the shared budget stops it.
     const packs: PackSpec[] = Array.from({ length: 64 }, (_, i) => ({
@@ -880,25 +904,28 @@ describe("bounds (review fix 1)", () => {
       })),
     }));
     const heap0 = process.memoryUsage().heapUsed;
-    const t0 = performance.now();
-    expect(() =>
-      resolve([{ ...APP_15, platforms: ["ios", "macos", "web"] }], packs),
-    ).toThrow(String(MAX_RESOLUTION_WORK));
-    // The budget is sized for about 150 ms on Node 22; CI machines get headroom.
-    expect(performance.now() - t0).toBeLessThan(1500);
+    const work = workOf(() =>
+      expect(() =>
+        resolve([{ ...APP_15, platforms: ["ios", "macos", "web"] }], packs),
+      ).toThrow(String(MAX_RESOLUTION_WORK)),
+    );
+    // The budget is sized for about 150 ms on Node 22. Counted work, not time: every step at a
+    // work site stays inside it (about 198,000), so nothing the search does escapes the budget.
+    expect(work.steps).toBeLessThanOrEqual(MAX_RESOLUTION_WORK);
     // An isolate has 128 MB; resolution must stay far below it.
     expect((process.memoryUsage().heapUsed - heap0) / 1048576).toBeLessThan(64);
   });
 });
 
 describe("bounds, round 2", () => {
-  it("dependency pruning is charged: 64 packs × 200 releases × 63 dependencies refuse cleanly in time", () => {
-    // Every pack requires the OLDEST release of every other: pruning examines whole domains.
+  /** 64 packs of `releases` releases, each requiring the OLDEST release of every other pack, so
+   *  pruning examines whole domains. */
+  const allRequireOldest = (releases: number): PackSpec[] => {
     const id = (i: number) => `p.p${String(i).padStart(2, "0")}`;
-    const packs: PackSpec[] = Array.from({ length: 64 }, (_, i) => ({
+    return Array.from({ length: 64 }, (_, i) => ({
       id: id(i),
       binding: "standalone" as const,
-      releases: Array.from({ length: 200 }, (_, n) => ({
+      releases: Array.from({ length: releases }, (_, n) => ({
         version: `1.${Math.floor(n / 50)}.${n % 50}`,
         seq: n + 1,
         packs: Object.fromEntries(
@@ -909,12 +936,58 @@ describe("bounds, round 2", () => {
         ),
       })),
     }));
+  };
+
+  it("64 packs × 200 releases × 63 dependencies refuse cleanly inside the budget (grouping and the stages spend it before pruning)", () => {
+    const packs = allRequireOldest(200);
     const heap0 = process.memoryUsage().heapUsed;
-    const t0 = performance.now();
-    expect(() => resolve([APP_15], packs)).toThrow(String(MAX_RESOLUTION_WORK));
-    // About 35 ms on Node 22 (it was 17.5 s with pruning outside the budget).
-    expect(performance.now() - t0).toBeLessThan(1500);
+    const work = workOf(() =>
+      expect(() => resolve([APP_15], packs)).toThrow(
+        String(MAX_RESOLUTION_WORK),
+      ),
+    );
+    // About 35 ms on Node 22 (it was 17.5 s with pruning outside the budget). Counted work, not
+    // time: every step at a work site stays inside the budget (about 911,000), so work that
+    // escaped the budget would show here however fast the machine. Reading every constraint and
+    // building every candidate spends the budget before pruning starts (no pruning probe), so
+    // the two cases below, with fewer releases, are the ones that reach pruning.
+    expect(work.pruneProbes).toBe(0);
+    expect(work.steps).toBeLessThanOrEqual(MAX_RESOLUTION_WORK);
     expect((process.memoryUsage().heapUsed - heap0) / 1048576).toBeLessThan(64);
+  });
+
+  it("dependency pruning runs inside the budget: 64 packs × 30 releases × 63 dependencies resolve, every pack at its oldest release", () => {
+    let sets: ResolvedSet[] = [];
+    const work = workOf(
+      () => ({ sets } = resolve([APP_15], allRequireOldest(30))),
+    );
+    // Counted: pruning asked its "does some candidate of T hold R" question (once per candidate
+    // and dependency, 64 × 30 × 63 = 120,960), range checks ran, and every step stayed inside the
+    // budget (about 745,000).
+    expect(work.pruneProbes).toBeGreaterThan(0);
+    expect(work.rangeChecks).toBeGreaterThan(0);
+    expect(work.steps).toBeLessThanOrEqual(MAX_RESOLUTION_WORK);
+    expect(sets).toHaveLength(1);
+    expect(sets[0]!.unsatisfied).toEqual([]);
+    expect(sets[0]!.entries).toHaveLength(64);
+    expect(sets[0]!.entries.every((e) => e.version === "1.0.0")).toBe(true);
+  });
+
+  it("dependency pruning is charged: with 55 releases the budget runs out inside pruning, before the solver tries anything", () => {
+    const work = workOf(() =>
+      expect(() => resolve([APP_15], allRequireOldest(55))).toThrow(
+        String(MAX_RESOLUTION_WORK),
+      ),
+    );
+    // Grouping and the stages leave too little budget for the whole pruning pass (64 × 55 × 63 =
+    // 221,760 probes), so the refusal comes from pruning's own charges: it started, did not
+    // finish (about 88,000 probes), and no solver try ran. Pruning outside the budget would run
+    // to the end and hand the search to the solver. Budget runs out in pruning for 50 to 60
+    // releases today; 55 sits in the middle of that window.
+    expect(work.pruneProbes).toBeGreaterThan(0);
+    expect(work.pruneProbes).toBeLessThan(64 * 55 * 63);
+    expect(work.tries).toBe(0);
+    expect(work.steps).toBeLessThanOrEqual(MAX_RESOLUTION_WORK);
   });
 
   it("the live levels are computed once per channel, not per row: 500 app releases × 4,000 rows", () => {
@@ -930,20 +1003,26 @@ describe("bounds, round 2", () => {
       contentApi: 3,
       platforms: ["android", "ios", "macos", "web"],
     }));
-    const t0 = performance.now();
-    const { sets, resolver } = resolve(apps, [
-      {
-        id: "x.x",
-        binding: "standalone",
-        axes: { locale: values, quality: values, texture: values },
-        releases: [{ version: "1.0.0", seq: 1, variants: keys }],
-      },
-    ]);
+    let sets: ResolvedSet[] = [];
+    const work = workOf(() => {
+      const r = resolve(apps, [
+        {
+          id: "x.x",
+          binding: "standalone",
+          axes: { locale: values, quality: values, texture: values },
+          releases: [{ version: "1.0.0", seq: 1, variants: keys }],
+        },
+      ]);
+      sets = r.sets;
+      // The publish check asks every row for its mapping: memoised, so this is free.
+      for (const s of sets) r.resolver.levelMapping(s.channel, s.contentApi);
+    });
     expect(sets).toHaveLength(4000);
-    // The publish check asks every row for its mapping: memoised, so this is free.
-    for (const s of sets) resolver.levelMapping(s.channel, s.contentApi);
-    // About 20 ms on Node 22 (3.3 s when it was recomputed per row).
-    expect(performance.now() - t0).toBeLessThan(1000);
+    // About 20 ms on Node 22 (3.3 s when it was recomputed per row). Counted work, not time: the
+    // levels are computed once for the one channel, and the whole run is a few steps per app
+    // release and per row (about 18,000), where a per-row recompute would be millions.
+    expect(work.levelRuns).toBe(1);
+    expect(work.steps).toBeLessThanOrEqual(5 * (500 * 5 + 4000));
   });
 });
 
@@ -968,9 +1047,12 @@ describe("bounds, round 3", () => {
           })),
         });
     }
-    const t0 = performance.now();
-    const { sets } = resolve([APP_15], packs);
-    expect(performance.now() - t0).toBeLessThan(1500);
+    let sets: ResolvedSet[] = [];
+    const work = workOf(() => ({ sets } = resolve([APP_15], packs)));
+    // Counted work, not time: a few tries per release (25 pairs × 400 releases = 10,000; about
+    // 10,050 tries), never one per pair of releases (25 × 40,000), and inside the budget.
+    expect(work.tries).toBeLessThanOrEqual(2 * 25 * 400);
+    expect(work.steps).toBeLessThanOrEqual(MAX_RESOLUTION_WORK);
     // Each pair keeps the earlier pack (newest release) and leaves the other out.
     expect(sets[0]!.entries).toHaveLength(25);
     expect(
@@ -1117,13 +1199,16 @@ describe("cost", () => {
             : {}),
         })),
       });
-    const t0 = performance.now();
-    const { sets } = resolve(apps, packs, { channels: ["stable", "beta"] });
-    const ms = performance.now() - t0;
+    let sets: ResolvedSet[] = [];
+    const work = workOf(
+      () => ({ sets } = resolve(apps, packs, { channels: ["stable", "beta"] })),
+    );
     // 2 channels × 3 levels × 6 platforms × (the axis-free group + 3 texture rows).
     expect(sets).toHaveLength(144);
     expect(sets.every((s) => s.unsatisfied.length === 0)).toBe(true);
     // Workers allow 30 s of CPU on the paid plan; resolution must stay far inside one request.
-    expect(ms).toBeLessThan(2000);
+    // Counted work, not time: every step at a work site inside the budget (about 192,000), which
+    // is sized for about 150 ms on Node 22.
+    expect(work.steps).toBeLessThanOrEqual(MAX_RESOLUTION_WORK);
   });
 });

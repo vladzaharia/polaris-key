@@ -106,6 +106,26 @@ export const MAX_RESOLUTION_WORK = 1_000_000;
 /** The most rows (sets) one product resolves in all its channels. */
 export const MAX_SELECTORS = 4096;
 
+/**
+ * Work counters, a test hook (like the Godot SDK's `PKeyPck.scan_probes`): the raw operations the
+ * resolver performs, counted at the work sites themselves and independently of `spend`, so the
+ * "bounds" and "cost" tests in `test/packResolve.test.ts` bound the work done rather than the
+ * wall-clock time (which a loaded machine inflates). Work that escapes the budget (pruning once
+ * cost 17.5 s outside it) still shows here. `steps` is every loop iteration at a work site (one
+ * per constraint read, release scanned, candidate built or examined, range check, solver try and
+ * row); `rangeChecks` the range answers asked for (memo hits included); `tries` the solver's
+ * candidate tries; `levelRuns` the `computeLevels` runs; `pruneProbes` the pruning pass's
+ * "does some candidate of T hold R" questions. A test diffs them around a call. Plain
+ * increments: they never change what a resolution returns.
+ */
+export const resolveWork = {
+  steps: 0,
+  rangeChecks: 0,
+  tries: 0,
+  levelRuns: 0,
+  pruneProbes: 0,
+};
+
 export const UNSATISFIED_REASONS = [
   "no-release",
   "content-api",
@@ -259,6 +279,8 @@ function inRange(
   version: string,
   range: string,
 ): boolean {
+  resolveWork.steps++;
+  resolveWork.rangeChecks++;
   const key = `${scheme}\u0000${version}\u0000${range}`;
   const hit = rangeMemo.get(key);
   if (hit !== undefined) return hit;
@@ -299,6 +321,8 @@ export function levelInRange(
   range: string | undefined,
   level: number,
 ): boolean {
+  resolveWork.steps++;
+  resolveWork.rangeChecks++;
   const cmp = parseRange(range, CONTENT_API_RANGE_PATTERN);
   return cmp !== null && contentApiInRange(cmp, level);
 }
@@ -477,8 +501,10 @@ export class PackResolver {
         for (const v of rel.variants) {
           // Every constraint a release declares is read once: charge it.
           this.spend(1 + v.conflicts.length);
+          resolveWork.steps += 1 + v.conflicts.length;
           for (const t in v.packs ?? {}) {
             this.spend(1);
+            resolveWork.steps++;
             linked.add(t);
           }
           for (const t of v.conflicts) linked.add(t);
@@ -547,6 +573,8 @@ export class PackResolver {
     if (cached) return cached;
     const { app, yanked } = this.input;
     const floor = app.minSupported.get(channel) ?? null;
+    // `channelCandidates` scans every app release once.
+    resolveWork.steps += app.candidates.length;
     const out: LiveRelease[] = [];
     for (const c of channelCandidates(
       {
@@ -592,6 +620,7 @@ export class PackResolver {
       channel,
     );
     this.spend(out.length);
+    resolveWork.steps += pack.candidates.length;
     this.channelCache.set(key, out);
     return out;
   }
@@ -603,6 +632,7 @@ export class PackResolver {
 
   /** `computeLevels` of `channel`'s live releases, memoised per channel (and charged once). */
   private levels(channel: string): ReturnType<PackResolver["computeLevels"]> {
+    resolveWork.steps++;
     const hit = this.levelsCache.get(channel);
     if (hit) return hit;
     const out = this.computeLevels(this.live(channel));
@@ -625,6 +655,7 @@ export class PackResolver {
         packChannels: Record<string, string> | null;
       }
     >();
+    resolveWork.levelRuns++;
     for (const r of live) {
       const facts = this.input.app.releases.get(r.releaseId)!;
       let level = out.get(r.contentApi);
@@ -634,6 +665,7 @@ export class PackResolver {
         out.set(r.contentApi, level);
       }
       this.spend(1 + facts.builds.length);
+      resolveWork.steps += 1 + facts.builds.length;
       // Each (platform, engine) once per release: a release with several builds there counts once.
       const seen = new Set<string>();
       for (const b of facts.builds) {
@@ -694,6 +726,7 @@ export class PackResolver {
     this.spend(ranked.length);
     const all: Cand[] = [];
     for (const c of ranked) {
+      resolveWork.steps++;
       const rel = pack.releases.get(c.releaseId);
       if (!rel) continue;
       const v =
@@ -705,6 +738,7 @@ export class PackResolver {
         let n = v.conflicts.length;
         for (const _ in v.packs ?? {}) n++;
         this.spend(2 * n);
+        resolveWork.steps += n;
       }
       all.push(cand(pack.id, rel, v));
     }
@@ -777,6 +811,7 @@ export class PackResolver {
     packWide?: true;
   } | null {
     for (const [target, range] of c.deps) {
+      resolveWork.steps++;
       if (!present.has(target))
         return {
           reason: "dependency",
@@ -792,6 +827,7 @@ export class PackResolver {
     }
     const scheme = this.packsById.get(c.pack)!.scheme;
     for (const j of chosen.values()) {
+      resolveWork.steps++;
       const range = j.v.packs?.[c.pack];
       if (range !== undefined && !inRange(scheme, c.rel.version, range))
         return {
@@ -830,6 +866,7 @@ export class PackResolver {
     let constrained = false;
     for (const p of order0) {
       this.spend(p.cands.length);
+      resolveWork.steps += p.cands.length;
       if (p.cands.some((c) => c.deps.length > 0 || c.conflicts.size > 0))
         constrained = true;
     }
@@ -868,6 +905,7 @@ export class PackResolver {
     for (const p of order)
       for (const c of p.cands) {
         this.spend(1 + c.deps.length + c.conflicts.size);
+        resolveWork.steps += 1 + c.deps.length + c.conflicts.size;
         for (const [t] of c.deps)
           if (parent.has(t)) parent.set(find(t), find(p.id));
         for (const t of c.conflicts)
@@ -896,6 +934,8 @@ export class PackResolver {
     const support = new Map<string, Map<string, boolean>>();
     const supported = (target: string, range: string): boolean => {
       this.spend(1);
+      resolveWork.steps++;
+      resolveWork.pruneProbes++;
       const memo = support.get(target);
       const hit = memo?.get(range);
       if (hit !== undefined) return hit;
@@ -914,6 +954,7 @@ export class PackResolver {
     while (pruned) {
       pruned = false;
       for (const [id, cands] of domains) {
+        resolveWork.steps += cands.length;
         const kept = cands.filter((c) =>
           c.deps.every(([t, r]) => supported(t, r)),
         );
@@ -950,6 +991,8 @@ export class PackResolver {
       for (const c of p.cands) {
         // A try costs a check against every chosen pack and every dependency.
         this.spend(1 + chosen.size + c.deps.length);
+        resolveWork.steps++;
+        resolveWork.tries++;
         const why = this.conflictWith(c, chosen, present);
         // A conflict names a whole pack: once a chosen pack refuses `p`, no release of `p` can
         // join, so its remaining releases are not tried (|A| + |B| tries, not |A| × |B|).
@@ -962,6 +1005,7 @@ export class PackResolver {
       if (omits === 0) return false;
       this.spend(1);
       // Leaving `p` out breaks every chosen pack that depends on it.
+      resolveWork.steps += 1 + chosen.size;
       for (const j of chosen.values())
         if (j.v.packs?.[p.id] !== undefined) return false;
       omitted.add(p.id);
@@ -1011,6 +1055,8 @@ export class PackResolver {
     const order: { id: string; cands: Cand[] }[] = [];
     const unsatisfied: Unsatisfied[] = [];
     const ids: number[] = [];
+    // One step per row, and one per pack's (memoised) stage lookup.
+    resolveWork.steps += 1 + ctx.group.packs.length;
     for (const pack of ctx.group.packs) {
       const s = this.stage(pack, { ...ctx, assignment });
       ids.push(s.id);

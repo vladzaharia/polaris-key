@@ -27,6 +27,7 @@ import {
   selfCheckPayload,
   zstdCli,
   type BuiltPayload,
+  type Zstd,
 } from "../src/index.js";
 import { sha } from "./packFixtures.js";
 
@@ -85,65 +86,121 @@ const shape = (o: object) => Object.keys(o).sort();
  *  a minute fails the run with "Timeout calling onTaskUpdate" though every test passes. */
 const yieldToLoop = () => new Promise<void>((r) => setImmediate(r));
 
+/** The real zstd CLI, remembering each frame it made by the input's hash. v2 shares most of its
+ *  files with v1, so building both compresses each shared file once; every frame is still the
+ *  CLI's own, from this run. */
+function rememberingZstd(z: Zstd): Zstd {
+  const frames = new Map<string, Uint8Array>();
+  return {
+    version: z.version,
+    compressMany(inputs) {
+      const keys = inputs.map((b) => sha(b));
+      const todo = new Map<string, Uint8Array>();
+      keys.forEach((k, i) => {
+        if (!frames.has(k)) todo.set(k, inputs[i]!);
+      });
+      const made = z.compressMany([...todo.values()]);
+      [...todo.keys()].forEach((k, i) => frames.set(k, made[i]!));
+      return keys.map((k) => frames.get(k)!);
+    },
+    patchFrom: (base, target) => z.patchFrom(base, target),
+    decodeMany: (frames) => z.decodeMany(frames),
+    decodePatch: (frame, base) => z.decodePatch(frame, base),
+  };
+}
+
+/** Each build test's own budget, kept at the 120 s the single two-payload test had, for half the
+ *  work. A payload build is mostly `zstd -19` over its 5.3 MB `full` object and its files, in
+ *  child processes: 2-3 s idle, at most 8 s measured with `--maxWorkers=2`, three runs at once,
+ *  beside 16 CPU-bound processes on an 18-core machine (load average about 60). The vitest
+ *  default (20 s) is within reach of a gate loaded harder than that. */
+const BUILD_MS = 120_000;
+
 describe("the CLI against the content corpus (P4-04)", () => {
-  const z = zstdCli(work);
+  const z = rememberingZstd(zstdCli(work));
   const { v1, v2, i1, i2 } = corpusPayloads();
-  const built: BuiltPayload[] = [];
+  /** Each payload is built and self-checked once, by whichever test needs it first, so no test
+   *  depends on another having run (or finished) before it. */
+  const builds = new Map<Uint8Array, Promise<BuiltPayload>>();
+  const built = (bytes: Uint8Array): Promise<BuiltPayload> => {
+    let b = builds.get(bytes);
+    if (!b) {
+      b = (async () => {
+        await yieldToLoop();
+        const out = await buildPayload(
+          z,
+          containerPayload(bytes, readPck(bytes)),
+        );
+        await yieldToLoop();
+        await selfCheckPayload(z, out);
+        return out;
+      })();
+      builds.set(bytes, b);
+    }
+    return b;
+  };
 
   it("rebuilds the corpus's v2 payload, the payload v2's index names", () => {
     expect({ size: v2.byteLength, sha256: sha(v2) }).toEqual(i2.payload);
     expect({ size: v1.byteLength, sha256: sha(v1) }).toEqual(i1.payload);
   });
 
-  it("builds files indexes with the corpus's structure for v1 and v2", async () => {
-    for (const [bytes, corpus] of [
-      [v1, i1],
-      [v2, i2],
-    ] as const) {
-      await yieldToLoop();
-      const b = await buildPayload(z, containerPayload(bytes, readPck(bytes)));
-      await yieldToLoop();
-      await selfCheckPayload(z, b);
-      built.push(b);
-      expect(shape(b.index)).toEqual(shape(corpus));
-      expect([b.index.format, b.index.layout]).toEqual([
-        corpus.format,
-        corpus.layout,
-      ]);
-      expect(b.index.payload).toEqual(corpus.payload);
-      expect(
-        b.index.files.map((e) => [e.path, e.offset, e.size, e.sha256]),
-      ).toEqual(corpus.files.map((e) => [e.path, e.offset, e.size, e.sha256]));
-      for (const [k, e] of b.index.files.entries()) {
-        const c = corpus.files[k]!;
-        expect(shape(e)).toEqual(shape(c));
-        expect(shape(e.blob)).toEqual(shape(c.blob));
-        expect(e.blob.codec).toBe(c.blob.codec);
-      }
-      expect(b.gaps!.ref.size).toBe(
-        corpus.payload.size - corpus.files.reduce((a, e) => a + e.size, 0),
-      );
-    }
-  }, 120_000);
-
-  it("builds the v1 → v2 files descriptor with the corpus's structure", async () => {
-    const corpus = doc<PatchDoc>(unzstd(blob("patch/v1-v2.files.zst")));
-    const [b1, b2] = built as [BuiltPayload, BuiltPayload];
-    const fd = buildFilesDelta(
-      z,
-      { sha256: b1.payload.sha256, files: b1.files },
-      b2,
+  // One payload a test (they were one test of about 5 s idle that timed out at 120 s on a loaded
+  // gate).
+  for (const [name, bytes, corpus] of [
+    ["v1", v1, i1],
+    ["v2", v2, i2],
+  ] as const)
+    it(
+      `builds ${name}'s files index with the corpus's structure`,
+      async () => {
+        const b = await built(bytes);
+        expect(shape(b.index)).toEqual(shape(corpus));
+        expect([b.index.format, b.index.layout]).toEqual([
+          corpus.format,
+          corpus.layout,
+        ]);
+        expect(b.index.payload).toEqual(corpus.payload);
+        expect(
+          b.index.files.map((e) => [e.path, e.offset, e.size, e.sha256]),
+        ).toEqual(
+          corpus.files.map((e) => [e.path, e.offset, e.size, e.sha256]),
+        );
+        for (const [k, e] of b.index.files.entries()) {
+          const c = corpus.files[k]!;
+          expect(shape(e)).toEqual(shape(c));
+          expect(shape(e.blob)).toEqual(shape(c.blob));
+          expect(e.blob.codec).toBe(c.blob.codec);
+        }
+        expect(b.gaps!.ref.size).toBe(
+          corpus.payload.size - corpus.files.reduce((a, e) => a + e.size, 0),
+        );
+      },
+      BUILD_MS,
     );
-    if ("skipped" in fd) throw new Error(fd.skipped);
-    expect(shape(fd.doc)).toEqual(shape(corpus));
-    const head = (d: PatchDoc) => [d.format, d.scope, d.method, d.from, d.to];
-    expect(head(fd.doc)).toEqual(head(corpus));
-    const entries = (d: PatchDoc) =>
-      d.entries.map((e) => [e.path, e.op, e.from ?? null, e.to, e.size]);
-    expect(entries(fd.doc)).toEqual(entries(corpus));
-    for (const [k, e] of fd.doc.entries.entries())
-      expect(shape(e)).toEqual(shape(corpus.entries[k]!));
-  }, 120_000);
+
+  it(
+    "builds the v1 → v2 files descriptor with the corpus's structure",
+    async () => {
+      const corpus = doc<PatchDoc>(unzstd(blob("patch/v1-v2.files.zst")));
+      const [b1, b2] = await Promise.all([built(v1), built(v2)]);
+      const fd = buildFilesDelta(
+        z,
+        { sha256: b1.payload.sha256, files: b1.files },
+        b2,
+      );
+      if ("skipped" in fd) throw new Error(fd.skipped);
+      expect(shape(fd.doc)).toEqual(shape(corpus));
+      const head = (d: PatchDoc) => [d.format, d.scope, d.method, d.from, d.to];
+      expect(head(fd.doc)).toEqual(head(corpus));
+      const entries = (d: PatchDoc) =>
+        d.entries.map((e) => [e.path, e.op, e.from ?? null, e.to, e.size]);
+      expect(entries(fd.doc)).toEqual(entries(corpus));
+      for (const [k, e] of fd.doc.entries.entries())
+        expect(shape(e)).toEqual(shape(corpus.entries[k]!));
+    },
+    BUILD_MS,
+  );
 });
 
 describe("the CLI chunker against the content corpus (P4-22)", () => {

@@ -12131,6 +12131,7 @@ function emitNode(p, node) {
     }
   }
 }
+var patternWork = { steps: 0 };
 var CompiledPattern = class {
   source;
   insts;
@@ -12146,6 +12147,7 @@ var CompiledPattern = class {
     const stack = [pc];
     while (stack.length) {
       const at = stack.pop();
+      patternWork.steps++;
       if (this.mark[at] === this.generation)
         continue;
       this.mark[at] = this.generation;
@@ -12202,6 +12204,7 @@ var CompiledPattern = class {
       next = [];
       this.generation++;
       for (const pc of cur) {
+        patternWork.steps++;
         const inst = this.insts[pc];
         const hit = inst.op === "any" ? !inRanges(cp3, LINE_TERMINATORS) : inst.op === "set" && matchesSet(cp3, inst.set);
         if (hit && this.addThread(next, pc + 1, pos + 1, len))
@@ -15246,6 +15249,7 @@ function sortedRecord(v) {
 function add3(list2, file, path28, code, message) {
   list2.push({ file, path: path28, code, message });
 }
+var globWork = { steps: 0 };
 var DESCRIPTOR_VERSION = 1;
 var MAX_DESCRIPTOR_BYTES = 64 * 1024;
 var LOCATION_PROVIDERS = [
@@ -17414,6 +17418,7 @@ function matchesArtifactGlob(glob, name) {
   let star = -1;
   let mark = 0;
   while (si < s.length) {
+    globWork.steps++;
     const c = p[pi];
     if (c !== void 0 && c !== "*" && (c === "?" || c === s[si])) {
       pi++;

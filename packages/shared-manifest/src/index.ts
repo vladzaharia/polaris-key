@@ -83,6 +83,7 @@ import {
   type DistributionDeliverable,
   type ManifestDistribution,
 } from "./distribution.js";
+import { globWork } from "./globWork.js";
 
 /**
  * The opt-in services and the `modules:` vocabulary come from the GENERATED service table
@@ -1154,6 +1155,7 @@ export function matchesArtifactGlob(glob: string, name: string): boolean {
   let star = -1;
   let mark = 0;
   while (si < s.length) {
+    globWork.steps++;
     const c = p[pi];
     if (c !== undefined && c !== "*" && (c === "?" || c === s[si])) {
       pi++;

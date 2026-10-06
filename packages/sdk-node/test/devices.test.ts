@@ -29,7 +29,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { signJws } from "@polaris-key/jws";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
 import type { LicenseDoc } from "@polaris-key/protocol/license";
@@ -268,12 +268,18 @@ describe("devices.register() — the fingerprint body is present or absent, neve
     });
     // `fingerprint()` hashes every component ON the device, so the raw serial/UUID/MAC never
     // crosses the wire. CPU model and RAM bucket are readable from any Node process, so this
-    // host always produces one.
-    const fingerprint = h.client.devices.fingerprint();
+    // host always produces one. The body is compared with the fingerprint register() itself
+    // collected, not with a second collection: each one runs the host's probes afresh (macOS's
+    // `diskutil` has a 2 s timeout), and on a loaded machine one run can lose a component the
+    // other read.
+    const collect = vi.spyOn(h.client.devices, "fingerprint");
+    await h.client.devices.register();
+    expect(collect).toHaveBeenCalledTimes(1);
+    const fingerprint = collect.mock.results[0]!.value as ReturnType<
+      typeof h.client.devices.fingerprint
+    >;
     expect(fingerprint).not.toBeNull();
     expect(fingerprint?.hwid).toBeTruthy();
-
-    await h.client.devices.register();
     const call = h.only();
     expect(call.contentType).toBe("application/json");
     // PX-W13 §8 Q2: the device label rides along on registration.

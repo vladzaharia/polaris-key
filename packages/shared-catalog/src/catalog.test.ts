@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Catalog, type ProductCatalog } from "./index.js";
+import { patternWork } from "./regex.js";
+import { validateWork } from "./validate.js";
 
 const CATALOG: ProductCatalog = {
   schemaVersion: 1,
@@ -341,6 +343,44 @@ describe("Catalog — ordering, dependsOn, idempotency", () => {
     // Validation still works after multiple compileAll() passes.
     expect(cat.validateKeyValue("k.enum", "pr").ok).toBe(true);
     expect(cat.validateKeyValue("k.enum", "bogus").ok).toBe(false);
+  });
+
+  it("prepares each entry's schema once, however many values it validates", () => {
+    // Counted (validateWork.prepares), not timed: the console's memoised `validate` relies on
+    // this, and its own test can only see that one Catalog serves every call.
+    const cat = new Catalog(KEYWORD_CATALOG);
+    const entry = cat.entryByKey("k.int")!;
+    const before = validateWork.prepares;
+    for (let i = 0; i < 2000; i++) cat.validateEntryValue(entry, i % 10);
+    cat.compileAll();
+    expect(validateWork.prepares - before).toBe(KEYWORD_CATALOG.entries.length);
+  });
+
+  it("validates `pattern` through the counted linear matcher: 10x the value, at most 11x the steps", () => {
+    // End to end: a Catalog validation reaches the linear matcher (patternWork.steps moves) and
+    // stays linear on the R10-09 bomb, where a backtracking engine costs about 2^n.
+    const cat = new Catalog({
+      schemaVersion: 1,
+      entries: [
+        {
+          key: "k",
+          kind: "config",
+          category: "c",
+          label: "l",
+          description: "",
+          schema: { type: "string", pattern: "(x+x+)+y" },
+        },
+      ],
+    });
+    const steps = (n: number): number => {
+      const before = patternWork.steps;
+      expect(cat.validateKeyValue("k", "x".repeat(n)).ok).toBe(false);
+      return patternWork.steps - before;
+    };
+    const small = steps(400);
+    const large = steps(4000);
+    expect(small).toBeGreaterThan(0);
+    expect(large).toBeLessThanOrEqual(11 * small);
   });
 
   it("validateEntryValue agrees with validateKeyValue for a known entry", () => {
