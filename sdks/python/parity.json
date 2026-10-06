@@ -5,15 +5,33 @@
   "traits": ["headless"],
   "testRoots": ["sdks/python/tests", "tools/gen-mirrors.test.ts"],
   "features": {
-    "core.verify": { "status": "implemented" },
-    "core.cache": { "status": "implemented" },
-    "core.bundle": { "status": "implemented" },
-    "core.discover": { "status": "implemented" },
-    "core.sync": { "status": "implemented" },
-    "core.local": { "status": "implemented" },
-    "core.headers": { "status": "implemented" },
-    "core.errors": { "status": "implemented" },
-    "core.caps": { "status": "implemented" },
+    "core.verify": {
+      "status": "implemented"
+    },
+    "core.cache": {
+      "status": "implemented"
+    },
+    "core.bundle": {
+      "status": "implemented"
+    },
+    "core.discover": {
+      "status": "implemented"
+    },
+    "core.sync": {
+      "status": "implemented"
+    },
+    "core.local": {
+      "status": "implemented"
+    },
+    "core.headers": {
+      "status": "implemented"
+    },
+    "core.errors": {
+      "status": "implemented"
+    },
+    "core.caps": {
+      "status": "implemented"
+    },
     "core.store": {
       "status": "implemented",
       "except": [
@@ -25,27 +43,81 @@
       ],
       "note": "keyring is an optional extra; without it the token is in a 0600 file and store_status() reports keyring-unavailable."
     },
-    "license.gate": { "status": "implemented" },
-    "license.activate": { "status": "implemented" },
-    "license.enroll": { "status": "implemented" },
-    "license.deactivate": { "status": "implemented" },
-    "license.entitlements": { "status": "implemented" },
-    "license.channels": { "status": "implemented" },
-    "license.reregister": { "status": "implemented" },
-    "config.resolve": { "status": "implemented" },
-    "config.list": { "status": "implemented" },
-    "config.secret": { "status": "implemented" },
-    "config.schema": { "status": "implemented" },
-    "config.mint": { "status": "implemented" },
+    "core.copy": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P14, SDK-PARITY-PASS §5.3."
+    },
+    "license.gate": {
+      "status": "implemented"
+    },
+    "license.activate": {
+      "status": "implemented"
+    },
+    "license.enroll": {
+      "status": "implemented"
+    },
+    "license.deactivate": {
+      "status": "implemented"
+    },
+    "license.entitlements": {
+      "status": "implemented"
+    },
+    "license.channels": {
+      "status": "implemented"
+    },
+    "license.reregister": {
+      "status": "implemented"
+    },
+    "license.refusals": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P01, SDK-PARITY-PASS §5.3."
+    },
+    "config.resolve": {
+      "status": "implemented"
+    },
+    "config.list": {
+      "status": "implemented"
+    },
+    "config.secret": {
+      "status": "implemented"
+    },
+    "config.schema": {
+      "status": "implemented"
+    },
+    "config.mint": {
+      "status": "implemented"
+    },
     "config.mirror": {
       "status": "implemented",
       "note": "The Python mirror is rendered by tools/gen-mirrors.ts."
     },
-    "devices.fingerprint": { "status": "implemented" },
-    "devices.facts": { "status": "implemented" },
-    "devices.register": { "status": "implemented" },
-    "devices.manage": { "status": "implemented" },
-    "devices.report": { "status": "implemented" },
+    "config.local": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P11, SDK-PARITY-PASS §5.3."
+    },
+    "devices.fingerprint": {
+      "status": "implemented"
+    },
+    "devices.facts": {
+      "status": "implemented"
+    },
+    "devices.register": {
+      "status": "implemented"
+    },
+    "devices.manage": {
+      "status": "implemented"
+    },
+    "devices.report": {
+      "status": "implemented"
+    },
+    "telemetry.updates": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P03, SDK-PARITY-PASS §5.3."
+    },
     "devices.attest": {
       "status": "na",
       "runtime": "python",
@@ -57,17 +129,40 @@
       "unowned": true,
       "note": "No browser sign-in in the Python SDK, and no work package ports it."
     },
-    "identity.devicecode": { "status": "implemented" },
-    "release.changelog": { "status": "implemented" },
-    "release.download": { "status": "implemented" },
+    "identity.devicecode": {
+      "status": "implemented"
+    },
+    "release.changelog": {
+      "status": "implemented"
+    },
+    "release.download": {
+      "status": "implemented"
+    },
     "release.record": {
       "status": "implemented",
       "note": "core/release_record.py verify_release_record (hash before signature, pinned release keys only, never a product key); client.update.release_record() and decide() fetch by hash and keep the releaseRecords slice while a committed feed pins it."
     },
-    "update.check": { "status": "implemented" },
+    "release.fetch": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P07, SDK-PARITY-PASS §5.3."
+    },
+    "release.distribution": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P07, SDK-PARITY-PASS §5.3."
+    },
+    "update.check": {
+      "status": "implemented"
+    },
     "update.feed": {
       "status": "implemented",
       "note": "core/feed.py verify_feed with floors keyed by the canonical channel; client.update.feed() and decide() fetch, verify and commit the feeds cache slice, re-verified on load."
+    },
+    "update.feeds": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P07, SDK-PARITY-PASS §5.3."
     },
     "update.decide": {
       "status": "implemented",
@@ -90,6 +185,11 @@
     "outlet.detect": {
       "status": "implemented",
       "note": "core/detection.py detect_outlet over update/outlet.py read_outlet_signals (environment, sys.executable and script path conventions, product-named markers, GetCurrentPackageFamilyName through ctypes); the update client detects when the host names no outlet. PEP 376 INSTALLER names no v4 signal and is not read."
+    },
+    "crash.tags": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P14, SDK-PARITY-PASS §5.3."
     },
     "packs.record": {
       "status": "implemented",
@@ -196,12 +296,28 @@
       "unowned": true,
       "note": "No work package owns the Flatpak extension transport (P5-08 Out)."
     },
-    "ui.stages": { "status": "implemented" },
-    "ui.kit": { "status": "na", "runtime": "headless", "reason": "runtime" },
-    "commerce.receipt": {
+    "ui.stages": {
+      "status": "implemented"
+    },
+    "ui.boot": {
       "status": "planned",
       "unowned": true,
-      "note": "P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+      "note": "SP-P08, SDK-PARITY-PASS §5.3."
+    },
+    "ui.kit": {
+      "status": "na",
+      "runtime": "headless",
+      "reason": "runtime"
+    },
+    "ui.cli": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-P12, SDK-PARITY-PASS §5.3."
+    },
+    "commerce.receipt": {
+      "status": "planned",
+      "wp": "LX-20",
+      "note": "Required (owner, 2026-10-05; reverses LX-20's planned allowedNa). LX-20 adds binding, claim and claim_steam over P6-01's Worker bridge."
     }
   }
 }
