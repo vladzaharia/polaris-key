@@ -24,6 +24,7 @@
  * AT-2): see `rules.ts` for what the registry refuses by construction.
  */
 
+import type { DbParam, DbStatement } from "../../db/types.js";
 import type { ServiceSlug } from "../services.js";
 
 export type SettingScope = "platform" | "product" | "entity";
@@ -64,6 +65,23 @@ export type SettingSource =
   | "manifest"
   | "console"
   | "derived";
+
+/**
+ * Who caused a settings write (S-18 §4.6): the `origin` column of every settings audit row
+ * (`audit`, `platform_audit`, ST-04). The vocabulary lives here rather than in a CHECK, so a later
+ * origin needs no rebuild of an append-only table; `writeSetting()` refuses any other value.
+ */
+export const SETTING_ORIGINS = [
+  "console",
+  "api",
+  "resync",
+  "manifest-push",
+  "revert",
+  "restore",
+  "system",
+  "ci",
+] as const;
+export type SettingOrigin = (typeof SETTING_ORIGINS)[number];
 
 /** ADMIN.md §5.2 destructive levels. L2 and above require a typed confirmation. */
 export type ConfirmLevel = "L0" | "L1" | "L2" | "L3";
@@ -226,6 +244,72 @@ export interface SettingDef<T = unknown> {
 }
 
 /**
+ * A boolean SQL condition a guarded statement ANDs into its own `WHERE`: `writeSetting()`'s
+ * all-or-nothing guard (ST-04). `{ sql: "1", params: [] }` when nothing guards the write.
+ */
+export interface SqlGuard {
+  sql: string;
+  params: DbParam[];
+}
+
+/** What a column adapter's `set` and `reset` are handed. */
+export interface ColumnWriteArgs {
+  product: string;
+  at: number;
+  /** The author: an admin subject, `resync`, `system`. */
+  by: string;
+  /** Every statement returned must AND this into its `WHERE` (an INSERT: `SELECT … WHERE`). */
+  guard: SqlGuard;
+}
+
+/**
+ * How one COLUMN-backed setting is read and written (ST-04, notes/S-18 §4.3: "column-backed is
+ * permanent, not an interim adapter"). The hot paths keep reading the typed column directly;
+ * the resolver reads it through `decode`, and `writeSetting()` is the only caller of `set` and
+ * `reset` (`test/settings-writes.test.ts` refuses a handler that writes the column itself).
+ *
+ * The adapter lives with the TABLE's owner: Core's (`core/settings/columns.ts`) for `products` and
+ * the storefront columns Core owns, a service's (its `settingsColumns.ts`, contributed through its
+ * slice's `columns`) for that service's tables.
+ */
+export interface SettingColumnAdapter {
+  /** The table holding the value; must equal the entry's `storage.table`. */
+  table: string;
+  /** The column naming the product (`products.slug`, everywhere else `product`). */
+  keyColumn: "slug" | "product";
+  /**
+   * The columns `decode` and `marker` read (the entry's `storage.column` among them). The resolver
+   * selects them in one statement per table.
+   */
+  columns: readonly string[];
+  /**
+   * The setting's value from those columns, or `undefined` when the row stores none (NULL, or no
+   * row at all: `row` is `null`), which the resolver reads as "unset".
+   */
+  decode(row: Readonly<Record<string, unknown>> | null): unknown;
+  /**
+   * A legacy ownership marker's reading (`services_source`, `compat_source`, …), which S-18 §4.3
+   * maps instead of rewriting: `NULL | manifest | import → manifest`, `admin → console`,
+   * `default → default`. Absent when the key has no marker.
+   */
+  marker?(
+    row: Readonly<Record<string, unknown>> | null,
+  ): "manifest" | "console" | "default";
+  /**
+   * Statements that store `value` (already validated against the entry; `null` only when the
+   * entry allows unset). A key with a legacy marker flips it to the console's spelling here.
+   * Absent: the column has no console writer (a manifest-only field), and a write is refused.
+   */
+  set?(args: ColumnWriteArgs & { value: unknown }): DbStatement[];
+  /**
+   * Statements for "Revert to manifest" / "Reset to default" when there is no value to put back:
+   * a legacy marker flips back to `manifest` (the next resync re-applies the manifest), an
+   * operator key clears to its default. Absent: a reset only drops the `product_settings` row.
+   */
+  reset?(args: ColumnWriteArgs): DbStatement[];
+}
+
+/**
  * One service's settings, contributed through its descriptor (`ServiceDescriptor.settings`).
  * `namespaces` are the key prefixes the service owns (its slug, plus any it was given by design:
  * License owns `licensing.*`, S-19 §7.13). Two slices may not claim the same namespace.
@@ -233,4 +317,9 @@ export interface SettingDef<T = unknown> {
 export interface ServiceSettingsSlice {
   namespaces: readonly string[];
   entries: readonly SettingDef[];
+  /**
+   * The column adapters for this slice's column-backed entries whose table the service owns
+   * (ST-04), keyed by registry key. Core's own tables are adapted in `core/settings/columns.ts`.
+   */
+  columns?: Readonly<Record<string, SettingColumnAdapter>>;
 }

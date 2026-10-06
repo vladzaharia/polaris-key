@@ -18,11 +18,13 @@
 import type { ServiceSlug } from "../services.js";
 import type {
   ServiceSettingsSlice,
+  SettingColumnAdapter,
   SettingDef,
   SettingScope,
 } from "./types.js";
 import { PLATFORM_SLICE } from "./platform.js";
 import { CORE_SLICE } from "./core.js";
+import { CORE_COLUMN_ADAPTERS } from "./columns.js";
 
 export { setting } from "./define.js";
 
@@ -51,6 +53,11 @@ export interface SettingsRegistry {
   get(keyOrAlias: string, scope?: SettingScope): SettingDef | undefined;
   /** The canonical key an alias (or a key) names, or `undefined`. */
   canonicalKey(keyOrAlias: string): string | undefined;
+  /**
+   * The column adapter for a product-scope `column`-backed key (ST-04): Core's for Core's tables
+   * (`columns.ts`), else the one the owning slice contributed (`ServiceSettingsSlice.columns`).
+   */
+  columnAdapter(key: string): SettingColumnAdapter | undefined;
 }
 
 /**
@@ -64,6 +71,7 @@ export function buildSettingsRegistry(
     core?: readonly SettingDef[];
   } = {},
 ): SettingsRegistry {
+  const contributors_ = [...contributors];
   const slices: RegisteredSlice[] = [
     {
       owner: "platform",
@@ -76,7 +84,7 @@ export function buildSettingsRegistry(
       entries: base.core ?? CORE_SLICE,
     },
   ];
-  for (const c of contributors)
+  for (const c of contributors_)
     if (c.settings)
       slices.push({
         owner: c.slug,
@@ -94,6 +102,20 @@ export function buildSettingsRegistry(
     for (const a of e.aliases ?? []) if (!aliasTo.has(a)) aliasTo.set(a, e.key);
   }
 
+  // ST-04: Core's adapters first, then each slice's for its own entries only (a slice cannot
+  // adapt a key another slice registered; `test/settings-resolver.test.ts` checks every live
+  // column-backed entry has exactly one adapter that names its table and column).
+  const adapters = new Map<string, SettingColumnAdapter>(
+    Object.entries(CORE_COLUMN_ADAPTERS),
+  );
+  for (const c of contributors_)
+    for (const [key, adapter] of Object.entries(c.settings?.columns ?? {}))
+      if (
+        !adapters.has(key) &&
+        (c.settings?.entries ?? []).some((e) => e.key === key)
+      )
+        adapters.set(key, adapter);
+
   const canonicalKey = (k: string): string | undefined => {
     if (entries.some((e) => e.key === k)) return k;
     return aliasTo.get(k);
@@ -103,6 +125,7 @@ export function buildSettingsRegistry(
     entries,
     slices,
     canonicalKey,
+    columnAdapter: (key) => adapters.get(key),
     get(keyOrAlias, scope) {
       const key = canonicalKey(keyOrAlias);
       if (key === undefined) return undefined;
@@ -114,4 +137,23 @@ export function buildSettingsRegistry(
       );
     },
   };
+}
+
+const BUILT = new WeakMap<object, SettingsRegistry>();
+
+/**
+ * The settings registry for a service table, built once per table (ST-04). Core's dispatchers
+ * hand it to service handlers (`ServiceContext.settings`) the way they hand `ingest` and `hooks`,
+ * so a service writes through `writeSetting()` without importing the composition root, and
+ * `mount.ts`' `SETTINGS` is this same object.
+ */
+export function settingsRegistryFor(
+  services: ReadonlyMap<string, SettingsContributor>,
+): SettingsRegistry {
+  let built = BUILT.get(services);
+  if (!built) {
+    built = buildSettingsRegistry(services.values());
+    BUILT.set(services, built);
+  }
+  return built;
 }
