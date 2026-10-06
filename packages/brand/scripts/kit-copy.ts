@@ -15,6 +15,7 @@
 //   Kotlin  sdks/kotlin/ui/src/commonMain/composeResources/values{,-<q>}/strings.xml
 //   Godot   sdks/godot/addons/polaris_key/ui/locale/polaris_key_ui.pot + <locale>.po
 //   Python  sdks/python/src/polaris_key/ui/kit_copy_generated.py + ui/locale/polaris_key_ui.pot
+//           (ui/__init__.py is hand-written by the UI foundations work, not generated here)
 //
 // The ICU subset (D5, tightened here so every target can express it without a runtime ICU
 // library): plain `{arg}` arguments; at most one complex argument per message, either
@@ -195,6 +196,7 @@ export const STRING_ARGS = [
   "idp",
   "host",
   "prefix",
+  "last6",
   "s",
 ] as const;
 
@@ -1498,11 +1500,7 @@ export const KIT_COPY_TARGETS: KitCopyTarget[] = [
     path: `${GODOT_LOCALE_DIR}/${GETTEXT_LOCALE[l]}.po`,
     render: () => gettextFile(model(), l, `Godot kit, ${l}`),
   })),
-  {
-    path: `${PY_UI}/__init__.py`,
-    render: () =>
-      `${banner("#")}\n"""Polaris Key UI kits for Python (Qt and the terminal; UK-12 and UK-13)."""\n`,
-  },
+
   {
     path: `${PY_UI}/kit_copy_generated.py`,
     render: () => pythonModule(model()),

@@ -43,7 +43,20 @@
 //   copy in conformance/parity/copy.<locale>.json: src/generated/kit-copy/<locale>.json + index.ts,
 //   packages/sdk-node/src/kitCopy.generated.ts, PolarisKeyUI/Resources/Localizable.xcstrings,
 //   sdks/kotlin/ui/src/commonMain/composeResources/values*/strings.xml, the Godot kit's
-//   ui/locale/*.po(t), and polaris_key/ui/{__init__,kit_copy_generated}.py + ui/locale/*.pot
+//   ui/locale/*.po(t), and polaris_key/ui/kit_copy_generated.py + ui/locale/*.pot
+//
+// The UI-kit outputs (docs/design/UI-KITS.md §2; renderers in ./gen-kit.ts, design source in
+// src/tokens/{kit,terminal,accent-vectors}.ts and src/accent.ts):
+//
+//   css/kit.css, src/generated/kit.ts   the kit component tokens, type scale, motion, danger solid
+//   fixtures/accent-vectors.json        the accent resolver's shared vectors, and their copies in
+//                                       every SDK's tests (Swift and Kotlin as literals)
+//   sdks/swift/.../KitTokens.generated.swift, sdks/kotlin/ui/.../PolarisKitTokens.generated.kt
+//   sdks/godot/.../ui/theme/{kit_tokens,kit_icons}_generated.gd, the variable fonts as MSDF
+//                                       FontFiles, addons/polaris_key/dotnet/PKeyBrand.generated.cs
+//   sdks/python/src/polaris_key/ui/     _tokens.py, ansi.py, qt/Theme.qml + qmldir + QSS, fonts/
+//   packages/sdk-node/src/cli/tokens.generated.ts   the terminal tables
+//   the variable Rubik and JetBrains Mono (fonts/ttf/) copied into the Kotlin and Python kits
 //
 // `--check` is the drift gate (CI, AGENTS.md's green gate). Like gen:constants, the TypeScript,
 // JSON and CSS outputs are prettier-formatted here so `pnpm lint` and `pnpm format` agree.
@@ -84,6 +97,27 @@ import {
   type Theme,
 } from "../src/tokens/source.js";
 import { DELIVERY_TITLE, deliveryLockups } from "./delivery.js";
+import {
+  accentVectorsJson,
+  csharpBrand,
+  gdIcons,
+  gdKit,
+  godotVariableFontTres,
+  kitCss,
+  kitModel,
+  kitTs,
+  kotlinKit,
+  kotlinVectors,
+  nodeTerminal,
+  pythonAnsi,
+  pythonTokens,
+  qtQml,
+  qtQmldir,
+  qtQss,
+  swiftKit,
+  swiftVectors,
+  type KitGenContext,
+} from "./gen-kit.js";
 import {
   KIT_PALETTES,
   LOCKUP_LAYOUTS,
@@ -289,7 +323,7 @@ ${durations}
   }
 }
 
-/* Rubik ships two weights; never let the browser fake a third. */
+/* Every weight and style in use ships in the variable fonts; never let a browser fake one. */
 :root {
   font-synthesis: none;
 }
@@ -353,6 +387,8 @@ function themeCss(): string {
   lines.push(`  --font-sans: var(--pk-font-sans);`);
   lines.push(`  --font-mono: var(--pk-font-mono);`);
   lines.push(`  --font-weight-normal: var(--pk-font-weight-regular);`);
+  lines.push(`  --font-weight-medium: var(--pk-font-weight-medium);`);
+  lines.push(`  --font-weight-semibold: var(--pk-font-weight-semibold);`);
   lines.push(`  --font-weight-bold: var(--pk-font-weight-bold);`);
   for (const k of Object.keys(TYPE_SCALE)) {
     lines.push(`  --text-${k}: var(--pk-font-size-${k});`);
@@ -447,6 +483,7 @@ function tokenModel() {
     fontWeight: FONT_WEIGHT,
     typeScale: TYPE_SCALE,
     letterSpacing: LETTER_SPACING,
+    kit: kitModel(),
   };
 }
 
@@ -1205,11 +1242,20 @@ interface Target {
   parser?: "typescript" | "json" | "css";
 }
 
-/** A kit file copied byte for byte (binary-safe), compared as bytes by `--check`. */
-interface Copy {
-  path: string;
-  kitPath: string;
-}
+/**
+ * A file copied byte for byte (binary-safe), compared as bytes by `--check`: a launch-kit file
+ * (`kitPath`, under kit/) or a package file (`pkgPath`, under packages/brand/).
+ */
+type Copy = { path: string } & (
+  | { kitPath: string; pkgPath?: never }
+  | { pkgPath: string; kitPath?: never }
+);
+
+const PYTHON_UI = "sdks/python/src/polaris_key/ui";
+const VARIABLE_FONTS: [string, string][] = [
+  ["Rubik-Variable.ttf", "polaris_rubik_variable.ttf"],
+  ["JetBrainsMono-Variable.ttf", "polaris_jetbrains_mono_variable.ttf"],
+];
 
 /**
  * The Compose kit's Rubik (P6-11): Android resource fonts must sit in res/font with lowercase
@@ -1226,6 +1272,17 @@ const COPIES: Copy[] = [
     path: `${KOTLIN_UI}/res/font/polaris_rubik_bold.ttf`,
     kitPath: "source/fonts/Rubik-Bold.ttf",
   },
+  // The variable Rubik and JetBrains Mono (UI-KITS.md §2.1). The static 400/700 above stay until
+  // the Compose kit's typography moves to the variable face (UK-09).
+  ...VARIABLE_FONTS.map(([ttf, res]) => ({
+    path: `${KOTLIN_UI}/res/font/${res}`,
+    pkgPath: `fonts/ttf/${ttf}`,
+  })),
+  // The Python wheel's fonts (polaris_key/ui/fonts), for the Qt kit.
+  ...VARIABLE_FONTS.map(([ttf]) => ({
+    path: `${PYTHON_UI}/fonts/${ttf}`,
+    pkgPath: `fonts/ttf/${ttf}`,
+  })),
 ];
 
 const DELIVERY_VARIANTS: KitVariant[] = [
@@ -1284,6 +1341,22 @@ const GODOT_FONTS: [string, string][] = [
   ["rubik_regular.tres", "Rubik-Regular.ttf"],
   ["rubik_bold.tres", "Rubik-Bold.ttf"],
 ];
+
+/** The variable fonts as MSDF FontFiles (UI-KITS.md §2.1); the statics stay until UK-11. */
+const GODOT_VARIABLE_FONTS: [string, string][] = [
+  ["rubik_variable.tres", "Rubik-Variable.ttf"],
+  ["jetbrains_mono_variable.tres", "JetBrainsMono-Variable.ttf"],
+];
+
+const KIT_CTX: KitGenContext = {
+  banner,
+  cssBanner,
+  bannerLines: BANNER_LINES,
+  pkg: PKG,
+};
+
+/** The font licences that travel with every copy of the variable fonts. */
+const FONT_LICENCES = ["OFL.txt", "OFL-JetBrainsMono.txt", "FONT-NOTICE.txt"];
 
 /** A kit TTF as a Godot text FontFile resource, with the banner as `;` comments. */
 export function godotFontTres(ttf: string): string {
@@ -1401,6 +1474,91 @@ const TARGETS: Target[] = [
     render: () =>
       readFileSync(join(PKG, "kit", "source", "fonts", name), "utf8"),
   })),
+
+  // ── UI kits (docs/design/UI-KITS.md §2; scripts/gen-kit.ts) ──
+  {
+    path: "packages/brand/css/kit.css",
+    render: () => kitCss(KIT_CTX),
+    parser: "css",
+  },
+  {
+    path: "packages/brand/src/generated/kit.ts",
+    render: () => kitTs(KIT_CTX),
+    parser: "typescript",
+  },
+  {
+    path: "packages/brand/fixtures/accent-vectors.json",
+    render: accentVectorsJson,
+    parser: "json",
+  },
+  {
+    path: "sdks/swift/Sources/PolarisKeyUI/KitTokens.generated.swift",
+    render: () => swiftKit(KIT_CTX),
+  },
+  {
+    path: "sdks/swift/Tests/PolarisKeyTests/AccentVectors.generated.swift",
+    render: () => swiftVectors(KIT_CTX),
+  },
+  {
+    path: `${KOTLIN_UI}/kotlin/im/plrs/key/ui/brand/PolarisKitTokens.generated.kt`,
+    render: () => kotlinKit(KIT_CTX),
+  },
+  {
+    path: "sdks/kotlin/ui/src/test/kotlin/im/plrs/key/ui/brand/AccentVectors.generated.kt",
+    render: () => kotlinVectors(KIT_CTX),
+  },
+  ...["OFL-JetBrainsMono.txt"].map((name) => ({
+    path: `${KOTLIN_UI}/assets/polaris-key/fonts/${name}`,
+    render: () => readFileSync(join(PKG, "fonts", name), "utf8"),
+  })),
+  {
+    path: "sdks/godot/addons/polaris_key/ui/theme/kit_tokens_generated.gd",
+    render: () => gdKit(KIT_CTX),
+  },
+  {
+    path: "sdks/godot/addons/polaris_key/ui/theme/kit_icons_generated.gd",
+    render: () => gdIcons(KIT_CTX),
+  },
+  ...GODOT_VARIABLE_FONTS.map(([name, ttf]) => ({
+    path: `${GODOT_FONT_DIR}/${name}`,
+    render: () => godotVariableFontTres(KIT_CTX, ttf),
+  })),
+  {
+    path: `${GODOT_FONT_DIR}/OFL-JetBrainsMono.txt`,
+    render: () =>
+      readFileSync(join(PKG, "fonts", "OFL-JetBrainsMono.txt"), "utf8"),
+  },
+  {
+    path: "sdks/godot/tests/brand/accent-vectors.json",
+    render: accentVectorsJson,
+    parser: "json",
+  },
+  {
+    path: "sdks/godot/addons/polaris_key/dotnet/PKeyBrand.generated.cs",
+    render: () => csharpBrand(KIT_CTX),
+  },
+  { path: `${PYTHON_UI}/_tokens.py`, render: () => pythonTokens(KIT_CTX) },
+  { path: `${PYTHON_UI}/ansi.py`, render: () => pythonAnsi(KIT_CTX) },
+  { path: `${PYTHON_UI}/qt/Theme.qml`, render: () => qtQml(KIT_CTX) },
+  { path: `${PYTHON_UI}/qt/qmldir`, render: qtQmldir },
+  ...(["dark", "light"] as const).map((theme) => ({
+    path: `${PYTHON_UI}/qt/polaris_key_${theme}.qss`,
+    render: () => qtQss(KIT_CTX, theme),
+  })),
+  ...FONT_LICENCES.map((name) => ({
+    path: `${PYTHON_UI}/fonts/${name}`,
+    render: () => readFileSync(join(PKG, "fonts", name), "utf8"),
+  })),
+  {
+    path: "sdks/python/tests/fixtures/accent-vectors.json",
+    render: accentVectorsJson,
+    parser: "json",
+  },
+  {
+    path: "packages/sdk-node/src/cli/tokens.generated.ts",
+    render: () => nodeTerminal(KIT_CTX),
+    parser: "typescript",
+  },
   // The kit copy catalog (plans/UK-02.md §3.3): web, Node, Swift, Kotlin, Godot and Python tables.
   ...KIT_COPY_TARGETS,
 ];
@@ -1422,17 +1580,25 @@ export async function renderAll(root = ROOT): Promise<Map<string, string>> {
   return out;
 }
 
+/** Every path the generator owns: the rendered targets and the byte-for-byte copies. */
+export function outputPaths(): string[] {
+  return [...TARGETS.map((t) => t.path), ...COPIES.map((c) => c.path)];
+}
+
 export async function run(opts: {
   check: boolean;
   root?: string;
+  /** Reads a committed output (tests substitute a hand-edited copy); default: the file system. */
+  read?: (abs: string) => Buffer;
 }): Promise<string[]> {
   const root = opts.root ?? ROOT;
+  const read = opts.read ?? ((abs: string) => readFileSync(abs));
   const stale: string[] = [];
   for (const [path, content] of await renderAll(root)) {
     const abs = join(root, path);
     let current: string | undefined;
     try {
-      current = readFileSync(abs, "utf8");
+      current = read(abs).toString("utf8");
     } catch {
       current = undefined;
     }
@@ -1444,10 +1610,14 @@ export async function run(opts: {
   }
   for (const copy of COPIES) {
     const abs = join(root, copy.path);
-    const content = readFileSync(join(PKG, "kit", copy.kitPath));
+    const content = readFileSync(
+      copy.kitPath !== undefined
+        ? join(PKG, "kit", copy.kitPath)
+        : join(PKG, copy.pkgPath),
+    );
     let current: Buffer | undefined;
     try {
-      current = readFileSync(abs);
+      current = read(abs);
     } catch {
       current = undefined;
     }

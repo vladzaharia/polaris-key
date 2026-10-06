@@ -328,17 +328,24 @@ export type KitCopyKey =
   | "signin.choice.group"
   | "signin.choice.meta"
   | "signin.choice.devices"
-  | "signin.choice.accountWide"
   | "signin.choice.metaNew"
   | "signin.term.lifetime"
   | "signin.term.until"
   | "signin.term.yearlyUntil"
-  | "signin.origin.store"
-  | "signin.origin.purchase"
-  | "signin.origin.key"
-  | "signin.origin.free"
-  | "signin.origin.developer"
-  | "signin.origin.signin"
+  | "signin.choice.origin.signIn"
+  | "signin.choice.origin.key"
+  | "signin.choice.origin.keyAdded"
+  | "signin.choice.origin.storeKey"
+  | "signin.choice.origin.storeKeyAdded"
+  | "signin.choice.origin.store"
+  | "signin.choice.origin.developer"
+  | "signin.choice.origin.free"
+  | "signin.choice.origin.gift"
+  | "signin.choice.origin.org"
+  | "signin.choice.picker.signIn"
+  | "signin.choice.picker.key"
+  | "signin.choice.picker.storeKey"
+  | "signin.choice.picker.store"
   | "signin.choice.tag.current"
   | "signin.choice.tag.new"
   | "signin.choice.tag.full"
@@ -361,6 +368,8 @@ export type KitCopyKey =
   | "signin.none.get"
   | "signin.none.otherAccount"
   | "signin.replace.open"
+  | "signin.replace.lede"
+  | "signin.replace.openSystem"
   | "signin.replace.meta"
   | "signin.replace.leastRecent"
   | "signin.replace.activeNow"
@@ -378,7 +387,7 @@ export type KitCopyKey =
   | "signin.consent.license"
   | "signin.consent.licenseLine"
   | "signin.consent.replaces"
-  | "signin.consent.licenseLineAccount"
+  | "signin.consent.licenseInApp"
   | "signin.consent.change"
   | "signin.consent.continue"
   | "signin.consent.alsoGets"
@@ -393,7 +402,6 @@ export type KitCopyKey =
   | "signin.key.entriesLeftShort"
   | "signin.key.noEntries"
   | "signin.key.skip"
-  | "signin.key.owned"
   | "signin.key.ownedSignIn"
   | "signin.key.differentKey"
   | "signin.return.yours"
@@ -401,6 +409,7 @@ export type KitCopyKey =
   | "signin.return.button"
   | "signin.return.timer"
   | "signin.return.stay"
+  | "signin.done.start"
   | "signin.device.title"
   | "signin.device.lede"
   | "signin.device.cancel"
@@ -415,9 +424,10 @@ export type KitCopyKey =
   | "signin.handoff.cancelled"
   | "signin.desktop.continue"
   | "signin.desktop.toast"
-  | "signin.desktop.toastAccount"
   | "signin.desktop.notifyTitle"
   | "signin.desktop.notifyBody"
+  | "signin.desktop.notifyChoose"
+  | "signin.menu.signIn"
   | "signin.handoff.browserBody"
   | "signin.handoff.waiting"
   | "signin.handoff.finishing"
@@ -431,6 +441,8 @@ export type KitCopyKey =
   | "signin.handoff.codeBody"
   | "signin.handoff.openBrowser"
   | "signin.return.closeTab"
+  | "signin.return.chooseInApp"
+  | "signin.return.signedInShort"
   | "signin.return.cancelled"
   | "signin.return.library"
   | "signin.choice.freed"
@@ -441,7 +453,6 @@ export type KitCopyKey =
   | "signin.cli.headless"
   | "signin.cli.signedIn"
   | "signin.cli.license"
-  | "signin.cli.licenseAccount"
   | "signin.cli.closeTab"
   | "signin.cli.logoutConfirm"
   | "signin.cli.signInAgain"
@@ -463,6 +474,7 @@ export type KitCopyKey =
   | "signin.console.notConfigured"
   | "signin.expired.title"
   | "signin.expired.body"
+  | "signin.again"
   | "signin.identityOff.notice"
   | "signin.identityOff.lede"
   | "signin.signout.title"
@@ -912,15 +924,18 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.key.ownedSignIn": { macos: "Sign In to That Account" },
   "signin.key.differentKey": { macos: "Use a Different Key" },
   "signin.return.stay": { macos: "Stay Here" },
+  "signin.done.start": { macos: "Start Using {product}" },
   "signin.device.signOut": { macos: "Sign the TV Out" },
   "signin.handoff.again": { macos: "Open Browser Again" },
   "signin.desktop.continue": { macos: "Continue in Browser" },
+  "signin.menu.signIn": { macos: "Sign In…" },
   "signin.handoff.useCode": { macos: "Use a Code Instead" },
   "signin.handoff.useBrowser": { macos: "Use Browser Sign-In" },
   "signin.handoff.copyLink": { macos: "Copy Link" },
   "signin.handoff.openBrowser": { macos: "Open Browser" },
   "signin.return.library": { macos: "Open Your Library" },
   "signin.approve.approve": { macos: "Approve and Sign It In" },
+  "signin.again": { macos: "Sign In Again" },
   "signin.signout.waitSync": { macos: "Wait for Sync" },
   "signin.provider.manage": { macos: "Manage Sign-In Methods in Polaris Key" },
   "signin.profile.changePicture": { macos: "Change Picture" },

@@ -1,341 +1,35 @@
-import { existsSync, mkdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { chromium, type Browser, type Page } from "playwright";
-import { preview, type PreviewServer } from "vite";
-import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
-import { mediaResponseHeaders } from "../../worker/src/services/identity/portal/media.js";
+import type { Page } from "playwright";
 import {
-  portalMedia,
-  portalRoutes,
-  type Handler,
-  type PortalScenario,
-} from "./portalFixtures.js";
+  h1,
+  shoot,
+  startPortal,
+  type OpenOptions,
+  type PortalHarness,
+} from "./portalHarness.js";
+import { portalRoutes, type PortalScenario } from "./portalFixtures.js";
 
 /**
- * The customer site (PORTAL.md) in real Chromium under the Worker's exact CSP: every main flow
- * loads with zero violations and no horizontal scroll at 360 px, in both themes.
+ * The customer site's main flows (PORTAL.md) in real Chromium under the Worker's exact CSP, driven
+ * end to end: activate, deep links, inline errors, device removal, ⌘K, search, focused flows,
+ * package access, sign-in and theme. Every screen and state is also checked on its own (both
+ * themes, both widths, axe, one h1, 360 px, visual baseline) by portalQuality.e2e.test.ts.
  *
- * Set `PK_SHOTS_DIR` to also save screenshots (dark and light, 1440 and 390 px) there.
+ * Set `PK_SHOTS_DIR` to also save screenshots there.
  */
 
-const here = fileURLToPath(new URL("..", import.meta.url));
-const CSP = appSecurityHeaders().get("content-security-policy")!;
-const SHOTS = process.env.PK_SHOTS_DIR;
-
-let server: PreviewServer;
-let browser: Browser;
-let base: string;
+let portal: PortalHarness;
 
 beforeAll(async () => {
-  if (!existsSync(`${here}dist/index.html`)) {
-    throw new Error(
-      "Build the console first: pnpm --filter @polaris-key/admin build",
-    );
-  }
-  if (SHOTS) mkdirSync(SHOTS, { recursive: true });
-  server = await preview({
-    root: here,
-    configFile: `${here}vite.config.ts`,
-    preview: { port: 0, strictPort: false, host: "127.0.0.1" },
-    logLevel: "silent",
-  });
-  base = server.resolvedUrls!.local[0]!.replace(/\/$/, "");
-  browser = await chromium.launch();
+  portal = await startPortal();
 });
 
 afterAll(async () => {
-  await browser?.close();
-  await new Promise<void>((r) => server?.httpServer.close(() => r()));
+  await portal?.stop();
 });
 
-interface Opened {
-  page: Page;
-  violations: () => Promise<string[]>;
-  requests: string[];
-  /**
-   * Closes the context. The catch-all route passes static assets through, and a font fetch can
-   * still be in flight when a test ends; dropping the routes first (Playwright's own advice)
-   * keeps that callback from rejecting into whichever test runs next.
-   */
-  close: () => Promise<void>;
-}
-
-async function open(
-  scenario: PortalScenario,
-  path: string,
-  opts: {
-    theme?: "dark" | "light";
-    width?: number;
-    height?: number;
-    /** Replies that replace the scenario's own for these routes. */
-    routes?: Record<string, Handler>;
-  } = {},
-): Promise<Opened> {
-  const theme = opts.theme ?? "dark";
-  const ctx = await browser.newContext({
-    viewport: { width: opts.width ?? 1440, height: opts.height ?? 900 },
-    colorScheme: theme,
-  });
-  await ctx.addInitScript((t) => {
-    window.localStorage.setItem("pk-admin-theme", t);
-    (window as unknown as { __v: string[] }).__v = [];
-    document.addEventListener("securitypolicyviolation", (e) =>
-      (window as unknown as { __v: string[] }).__v.push(
-        `${e.violatedDirective} ${e.blockedURI} ${e.sample}`,
-      ),
-    );
-  }, theme);
-  const routes = { ...portalRoutes(scenario), ...opts.routes };
-  const requests: string[] = [];
-  await ctx.route("**/*", async (route) => {
-    const req = route.request();
-    const url = new URL(req.url());
-    if (url.pathname.startsWith("/api/") || url.pathname === "/logout") {
-      requests.push(`${req.method()} ${url.pathname}${url.search}`);
-      const handler =
-        routes[`${req.method()} ${url.pathname}`] ?? routes[url.pathname];
-      if (!handler)
-        return route.fulfill({ status: 404, json: { error: "not_found" } });
-      const res = typeof handler === "function" ? handler(req) : handler;
-      return route.fulfill({ status: res.status ?? 200, json: res.body });
-    }
-    // PX-08: developer art as the media proxy answers it (same origin, its own headers).
-    if (url.pathname.startsWith("/media/")) {
-      requests.push(`${req.method()} ${url.pathname}`);
-      const png = portalMedia(url.pathname);
-      if (!png) return route.fulfill({ status: 404, body: "" });
-      const headers = Object.fromEntries(
-        mediaResponseHeaders({
-          "content-type": "image/png",
-          "content-length": String(png.byteLength),
-          "content-disposition": "inline",
-        }),
-      );
-      return route.fulfill({ status: 200, headers, body: png });
-    }
-    // The Worker serves the SPA shell for `/activate` (router.ts); vite preview does not.
-    const res =
-      url.pathname === "/activate"
-        ? await route.fetch({ url: `${base}/index.html` })
-        : await route.fetch();
-    const headers = { ...res.headers() };
-    if (
-      url.pathname.endsWith(".html") ||
-      url.pathname === "/" ||
-      url.pathname === "/activate"
-    )
-      headers["content-security-policy"] = CSP;
-    return route.fulfill({ response: res, headers });
-  });
-  const page = await ctx.newPage();
-  await page.goto(`${base}${path}`);
-  return {
-    page,
-    requests,
-    close: async () => {
-      await ctx.unrouteAll({ behavior: "ignoreErrors" });
-      await ctx.close();
-    },
-    violations: () =>
-      page.evaluate(() =>
-        (window as unknown as { __v: string[] }).__v.splice(0),
-      ),
-  };
-}
-
-async function noHorizontalScroll(page: Page): Promise<void> {
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - window.innerWidth,
-  );
-  expect(overflow, "horizontal page scroll").toBeLessThanOrEqual(0);
-}
-
-async function shoot(page: Page, name: string): Promise<void> {
-  if (!SHOTS) return;
-  await page.waitForTimeout(150);
-  await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
-}
-
-const h1 = (page: Page, name: string | RegExp) =>
-  page.getByRole("heading", { level: 1, name }).first().waitFor();
-
-/** Each screen at both widths in both themes: zero violations, no 360 px scroll. */
-const SCREENS: {
-  name: string;
-  scenario: PortalScenario;
-  path: string;
-  ready: (page: Page) => Promise<void>;
-  act?: (page: Page) => Promise<void>;
-}[] = [
-  {
-    name: "signin",
-    scenario: "signedOut",
-    path: "/",
-    ready: (p) => h1(p, "Sign in to Polaris Key"),
-  },
-  {
-    name: "library-empty",
-    scenario: "empty",
-    path: "/",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "library-1",
-    scenario: "one",
-    path: "/",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "library-3",
-    scenario: "three",
-    path: "/",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "library-12",
-    scenario: "twelve",
-    // No forced view: the desktop default grid, the phone default list (§8, mockup 21).
-    path: "/",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "library-12-list",
-    scenario: "twelve",
-    path: "/#/?view=list",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "product",
-    scenario: "three",
-    path: "/#/p/nightfall",
-    ready: (p) => h1(p, "Nightfall"),
-  },
-  {
-    // No art at all: the letter tile alone beside the name, no banner.
-    name: "product-no-cover",
-    scenario: "twelve",
-    path: "/#/p/hollow-pines",
-    ready: (p) => h1(p, "Hollow Pines"),
-  },
-  {
-    // Cover art and no icon: the letter tile in front of the cover.
-    name: "product-no-icon",
-    scenario: "twelve",
-    path: "/#/p/glyphsmith",
-    ready: (p) => h1(p, "Glyphsmith"),
-  },
-  {
-    // Account-wide: the Standard pill with "Account-wide · 1 of 5 devices", and its devices.
-    name: "product-account-wide",
-    scenario: "accountWide",
-    path: "/#/p/quill",
-    ready: async (p) => {
-      await h1(p, "Quill");
-      await p.getByText("Account-wide · 1 of 5 devices").waitFor();
-      await p.getByText("Living room PC").first().waitFor();
-    },
-  },
-  {
-    // Held by key and account-wide: the key licence drops its counter, keeps its devices.
-    name: "product-both-key",
-    scenario: "accountWide",
-    path: "/#/p/drift-kart",
-    ready: async (p) => {
-      await h1(p, "Drift Kart");
-      await p.getByText("Activated").first().waitFor();
-      await p
-        .getByRole("button", { name: /^Remove / })
-        .first()
-        .waitFor();
-    },
-  },
-  {
-    name: "product-both-account-wide",
-    scenario: "accountWide",
-    path: "/#/p/drift-kart?license=lic_drift-kart-acct",
-    ready: async (p) => {
-      await h1(p, "Drift Kart");
-      await p.getByText("Account-wide · 1 of 3 devices").waitFor();
-    },
-  },
-  {
-    name: "library-account-wide",
-    scenario: "accountWide",
-    path: "/#/?view=list",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "product-not-found",
-    scenario: "three",
-    path: "/#/p/unknown-thing",
-    ready: (p) => h1(p, "That product isn't in your library"),
-  },
-  {
-    name: "account",
-    scenario: "three",
-    path: "/#/account",
-    ready: (p) => h1(p, "Account"),
-  },
-  {
-    name: "product-package",
-    scenario: "three",
-    path: "/#/p/tidewater/package",
-    ready: async (p) => {
-      await h1(p, "Tidewater Studio");
-      await p.getByRole("heading", { name: /Package access/ }).waitFor();
-    },
-  },
-  {
-    name: "device-limit",
-    scenario: "twelve",
-    path: "/#/p/orbit-survey/free-device?for=Mara%E2%80%99s%20Steam%20Deck&return=orbitsurvey%3A%2F%2Fretry",
-    ready: (p) => h1(p, "Your license is on 2 of 2 devices"),
-  },
-  {
-    name: "download-flow",
-    scenario: "three",
-    path: "/#/p/nightfall/download?platform=linux",
-    ready: (p) => h1(p, "Download Nightfall for Linux"),
-  },
-  {
-    name: "discover-empty",
-    scenario: "three",
-    path: "/#/discover",
-    ready: (p) => h1(p, "Nothing to add right now"),
-  },
-];
-
-describe("the customer site under the Worker's CSP", () => {
-  for (const screen of SCREENS) {
-    it(`${screen.name}: both themes, 1440 and 390 px, no violations or 360 px scroll`, async () => {
-      for (const theme of ["dark", "light"] as const) {
-        for (const width of [1440, 390]) {
-          const o = await open(screen.scenario, screen.path, {
-            theme,
-            width,
-            height: width === 390 ? 844 : 900,
-          });
-          await screen.ready(o.page);
-          await shoot(
-            o.page,
-            `${screen.name}-${width === 390 ? "mobile" : "desktop"}-${theme}`,
-          );
-          if (width === 390) {
-            await o.page.setViewportSize({ width: 360, height: 780 });
-            await o.page.waitForTimeout(100);
-            await noHorizontalScroll(o.page);
-          }
-          expect(
-            await o.violations(),
-            `${screen.name} ${theme} ${width}`,
-          ).toEqual([]);
-          await o.close();
-        }
-      }
-    });
-  }
-});
+const open = (scenario: PortalScenario, path: string, opts?: OpenOptions) =>
+  portal.open(scenario, path, opts);
 
 /** What paints at the middle of the icon's top quarter, the part that overlaps the cover. */
 async function iconOnTop(
@@ -479,8 +173,14 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
               (a) => a.getAttribute("aria-labelledby") === "tile-nightfall",
             )!;
             const art = article.querySelector<HTMLElement>("[data-art]")!;
-            const plate = art.querySelector<HTMLElement>("span.absolute")!;
+            // Healthy is silence on art (UX-03): Nightfall has no plate; the issue plate
+            // (owner's padding) is measured on Ember Tactics, which has expired.
+            const emberArt = document.querySelector<HTMLElement>(
+              "article[aria-labelledby='tile-ember-tactics'] [data-art]",
+            )!;
+            const plate = emberArt.querySelector<HTMLElement>("span.absolute")!;
             const a = art.getBoundingClientRect();
+            const e = emberArt.getBoundingClientRect();
             const p = plate.getBoundingClientRect();
             const pill = plate.firstElementChild!.getBoundingClientRect();
             const icon = article.querySelector<HTMLElement>("img[data-art]")!;
@@ -492,8 +192,11 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
             const q = getComputedStyle(square);
             return {
               ratio: a.width / a.height,
-              insetRight: a.right - p.right,
-              insetBottom: a.bottom - p.bottom,
+              healthyPlate:
+                (art.querySelector("span.absolute")?.childElementCount ?? 0) >
+                0,
+              insetRight: e.right - p.right,
+              insetBottom: e.bottom - p.bottom,
               plateHeight: pill.height,
               byline: article.textContent!.includes("Lanternworks"),
               iconFrame: [
@@ -511,6 +214,7 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
             1,
           );
           expect(card.insetRight).toBeGreaterThanOrEqual(16);
+          expect(card.healthyPlate).toBe(false);
           expect(card.insetBottom).toBeGreaterThanOrEqual(16);
           expect(card.insetRight).toBe(card.insetBottom);
           expect(card.plateHeight).toBeGreaterThanOrEqual(32);
@@ -602,7 +306,8 @@ describe("focused flows (PX-10)", () => {
     await shoot(o.page, "device-limit-done-mobile-dark");
     expect(
       await o.page
-        .getByRole("link", { name: "Return to Orbit Survey" })
+        .getByRole("link", { name: "Back to Orbit Survey" })
+        .last()
         .getAttribute("href"),
     ).toBe("orbitsurvey://retry");
     expect(o.requests).toContain(
@@ -620,7 +325,7 @@ describe("focused flows (PX-10)", () => {
     await h1(o.page, "Your license is on 2 of 2 devices");
     expect(
       await o.page
-        .getByRole("link", { name: "Back to Orbit Survey" })
+        .getByRole("link", { name: "See Orbit Survey in your library" })
         .getAttribute("href"),
     ).toBe("#/p/orbit-survey");
     expect(await o.page.content()).not.toContain("evil.example");
@@ -795,6 +500,8 @@ describe("main flows", () => {
   it("jumps to a product with ⌘K from 8 products", async () => {
     const o = await open("twelve", "/");
     await h1(o.page, "Your library");
+    // ⌘K listens only once the library has loaded (8+ products), after the h1 shows.
+    await o.page.getByText("Glyphsmith").first().waitFor();
     await o.page.keyboard.press("Control+k");
     const palette = o.page.getByRole("dialog", { name: "Jump to a product" });
     await palette.waitFor();

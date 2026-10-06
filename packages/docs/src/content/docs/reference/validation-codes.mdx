@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 203 distinct emit sites.
+codes with their JSON-pointer paths. 208 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -42,6 +42,8 @@ the offending value, or the allowed set.
 | `invalid_artifact_match` | error | release | `/release/deliverables/app/artifacts/${i}/match` | artifacts[].match must be a file-name glob (* and ?) of 1 to $\{MAX_ARTIFACT_MATCH_LENGTH\} characters with no control characters. |
 | `invalid_artifact_platform` | error | release | `/release/deliverables/app/artifacts/${i}/platform` | artifacts[].platform must be one of $\{RELEASE_PLATFORMS.join(", ")\}. |
 | `invalid_artifact_role` | error | release | `/release/deliverables/app/artifacts/${i}/role` | artifacts[].role must be one of $\{ARTIFACT_ROLES.join(", ")\}. |
+| `invalid_asset_ref` | error | product | `/presentation/icon` | presentation.icon $\{problem\}. |
+| `invalid_asset_ref` | error | distribution | `${at}${below}` | $\{label\}.$\{field\} $\{refProblem\}. |
 | `invalid_auto_issue_mode` | error | product | `/autoIssue/mode` | autoIssue.mode must be one of $\{AUTO_ISSUE_MODE_VALUES.join(", ")\}. |
 | `invalid_auto_issue` | error | product | `/autoIssue/enabled` | autoIssue.enabled must be a boolean. |
 | `invalid_auto_issue` | error | product | `/autoIssue` | autoIssue must be an object. |
@@ -79,8 +81,7 @@ the offending value, or the allowed set.
 | `invalid_ignore_tags` | error | release | `/release/deliverables/app/versioning/ignoreTags` | deliverables.app.versioning.ignoreTags must be an array of at most $\{MAX_IGNORE_TAGS\} exact tag names. |
 | `invalid_ignore_tags` | error | release | `/release/ignoreTags/${i}` | release.ignoreTags entries must be non-empty tag names of at most $\{MAX_IGNORE_TAG_LENGTH\} characters with no spaces or control characters. |
 | `invalid_ignore_tags` | error | release | `/release/ignoreTags` | release.ignoreTags must be an array of at most $\{MAX_IGNORE_TAGS\} exact tag names. |
-| `invalid_listing` | error | distribution | `/listing` | listing $\{problem\}. |
-| `invalid_listing` | error | distribution | `/outlets/${id}/listing` | outlets.$\{id\}.listing $\{problem\}. |
+| `invalid_listing` | error | distribution | `${at}` | $\{label\} $\{problem\}. |
 | `invalid_manual_channel` | error | release | `/release/manualChannels` | release.manualChannels must be an array of \{ name, regex \} entries. |
 | `invalid_manual_channel` | error | release | `${at}/name` | manualChannels[].name must match ^[A-Za-z0-9][A-Za-z0-9._-]\{0,63\}$. |
 | `invalid_manual_channel` | error | release | `${at}/regex` | manualChannels[].regex must be a compilable regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags). |
@@ -128,6 +129,8 @@ the offending value, or the allowed set.
 | `invalid_package_field` | error | release | `${at}/artifacts` | artifacts maps 1 to $\{MAX_PACKAGE_ARTIFACT_ENTRIES\} entry ids ($\{ARTIFACT_ENTRY_ID_PATTERN.source\}) to \{ match: a file-name glob of at most $\{MAX_ARTIFACT_MATCH_LENGTH\} characters \}. |
 | `invalid_package_name` | error | release | `${at}/name` | name must be a $\{ecosystem\} package name: $\{PACKAGE_NAME_RULES[ecosystem]\}. |
 | `invalid_payload` | error | product | `/licensing/profiles/${i}/payload` | Profile payload must be an object. |
+| `invalid_presentation` | error | product | `/presentation/${field}` | presentation.$\{field\} must be a #rrggbb colour. |
+| `invalid_presentation` | error | product | `/presentation` | presentation must be an object \{ icon, accent, accentDark \}. |
 | `invalid_probe_id` | error | product | `/fingerprint/probes/${i}/id` | Probe ids must match ^[A-Za-z0-9._:-]\{1,64\}$. |
 | `invalid_probe_label` | error | product | `/fingerprint/probes/${i}/label` | Probe label |
 | `invalid_probe_target` | error | product | `/fingerprint/probes/${i}/${platform}` | Probe $\{platform\} target |
@@ -173,6 +176,8 @@ the offending value, or the allowed set.
 | `invalid_web_origin` | error | product | `/web/origins/${i}` | web.origins entries $\{problem\}. |
 | `invalid_web_origins` | error | product | `/web/origins` | web.origins must be an array of at most $\{MAX_WEB_ORIGINS\} origins. |
 | `invalid_web_origins` | error | product | `/web` | web must be an object. |
+| `listing_field_conflict` | error | distribution | `${at}/${alias}` | $\{label\} declares both $\{field\} and its deprecated alias $\{alias\}; keep $\{field\}. |
+| `listing_url_field_deprecated` | warning | distribution | `${at}/${alias}` | $\{label\}.$\{alias\} is deprecated; write $\{field\} instead (an https URL or a repo path). |
 | `missing_auto_issue_tier` | error | product | `/autoIssue/tierId` | autoIssue.tierId is required when autoIssue is enabled — a policy naming no tier cannot issue anything. |
 | `missing_content_api_range` | error | release | `${at}/requires/contentApi` | a compatible pack declares requires.contentApi (for example \{ $\{APP_DELIVERABLE_ID\}: ">=3 \<5" \}): the contentApi levels its releases support. |
 | `missing_github_repo` | error | release | `/release/provider` | GitHub releases require owner and repo. |
@@ -224,7 +229,7 @@ the offending value, or the allowed set.
 `validateReleaseDescriptor` (`@polaris-key/manifest`, P2-04) checks a release descriptor
 (`pkey-release.json`) against its own shape and the product's declared artifact map. Every
 problem is an error; the Worker reports them under the ingest refusal reason
-`invalid_descriptor`. 94 distinct emit sites.
+`invalid_descriptor`. 95 distinct emit sites.
 
 | Code | Path | Message |
 | --- | --- | --- |
@@ -296,6 +301,7 @@ problem is an error; the Worker reports them under the ingest refusal reason
 | `invalid_descriptor` | `/product` | product must be a product slug. |
 | `invalid_descriptor` | `/version` | version must be 1-64 characters of letters, digits, '.', '+' and '-'. |
 | `invalid_descriptor` | `/version` | a $\{eco\} package version is a semantic version. |
+| `invalid_descriptor` | `/version` | a Go module version is a semantic version without the v (Go adds it) and without build metadata. |
 | `invalid_descriptor` | `/version` | an OCI package version is also its tag, so it has no '+'. |
 | `invalid_descriptor` | `${at}/${extra}` | $\{extra\} is not a field of a package file. |
 | `invalid_descriptor` | `${at}/classifier` | a Maven classifier is 1-64 letters, digits, '_', '.' and '-'. |

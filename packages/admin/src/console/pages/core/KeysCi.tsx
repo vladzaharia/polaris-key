@@ -5,10 +5,12 @@
  * - Editing the publisher claims it from the manifest (`source` becomes `admin`); resyncs then
  *   leave it alone. Claiming is the only way to grant `release:yank`.
  * - A static token is shown once (`OneTimeSecretDialog`); only its hash is stored. Revoke is L2.
+ * - CI publishing lives here, but Release's guided first-release panel edits it too, through the
+ *   same `PublisherDrawer` and `IssueCiTokenFlow` (EXPERIENCE.md §0.4 S2).
  */
 
 import * as React from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { Pencil, Plus } from "lucide-react";
 import {
   CI_SCOPES,
@@ -66,6 +68,24 @@ export function fetchCiTokens(slug: string): Promise<CiTokenDto[]> {
   return api.ciTokens(slug).then((r) => r.tokens);
 }
 
+/** The trusted-publisher policy: one reader for this page and Release's guided panel. */
+export function useCiPublisher(
+  slug: string,
+): UseQueryResult<PublisherPolicyDto | null> {
+  return useQuery(
+    { queryKey: qk.ciPublisher(slug), queryFn: () => fetchCiPublisher(slug) },
+    queryClient,
+  );
+}
+
+/** The product's CI tokens: one reader for this page and Release's guided panel. */
+export function useCiTokens(slug: string): UseQueryResult<CiTokenDto[]> {
+  return useQuery(
+    { queryKey: qk.ciTokens(slug), queryFn: () => fetchCiTokens(slug) },
+    queryClient,
+  );
+}
+
 export function CiPublishingSection({
   slug,
 }: {
@@ -92,10 +112,7 @@ function ScopeList({ scopes }: { scopes: string[] }): React.ReactElement {
 }
 
 function PublisherRow({ slug }: { slug: string }): React.ReactElement {
-  const policy = useQuery(
-    { queryKey: qk.ciPublisher(slug), queryFn: () => fetchCiPublisher(slug) },
-    queryClient,
-  );
+  const policy = useCiPublisher(slug);
   const [editing, setEditing] = React.useState(false);
   return (
     <SettingsRow
@@ -183,7 +200,11 @@ function PublisherRow({ slug }: { slug: string }): React.ReactElement {
   );
 }
 
-function PublisherDrawer({
+/**
+ * Set or edit the trusted publisher. Keys & secrets → CI publishing and Release's guided panel
+ * open this same drawer, so CI publishing is edited the same way from either place.
+ */
+export function PublisherDrawer({
   slug,
   open,
   policy,
@@ -375,7 +396,7 @@ function ScopePicker({
   );
 }
 
-function tokenState(
+export function tokenState(
   t: CiTokenDto,
   nowSec: number,
 ): "active" | "expired" | "revoked" {
@@ -385,12 +406,8 @@ function tokenState(
 }
 
 function TokensRow({ slug }: { slug: string }): React.ReactElement {
-  const tokens = useQuery(
-    { queryKey: qk.ciTokens(slug), queryFn: () => fetchCiTokens(slug) },
-    queryClient,
-  );
+  const tokens = useCiTokens(slug);
   const [issuing, setIssuing] = React.useState(false);
-  const [issued, setIssued] = React.useState<IssuedCiToken | null>(null);
   const [revoking, setRevoking] = React.useState<CiTokenDto | null>(null);
   const nowSec = toSeconds(Date.now());
 
@@ -513,12 +530,49 @@ function TokensRow({ slug }: { slug: string }): React.ReactElement {
       >
         Issue token…
       </Button>
+      <IssueCiTokenFlow slug={slug} open={issuing} onOpenChange={setIssuing} />
+      <ConfirmDialog
+        open={revoking !== null}
+        onOpenChange={(o) => !o && setRevoking(null)}
+        intent={intentOf("ciToken.revoke")}
+        title={`Revoke ${revoking?.label ?? revoking?.tokenId ?? "token"}?`}
+        consequences={[
+          "CI runs using this token are refused from now on.",
+          "Upload tickets it bought and has not used are revoked too.",
+        ]}
+        confirmLabel="Revoke token"
+        describeError={(e) => errorCopy(e)}
+        onConfirm={async () => {
+          await mutate("revokeCiToken", slug, revoking!.tokenId);
+          toast.success("CI token revoked");
+        }}
+      />
+    </SettingsRow>
+  );
+}
+
+/**
+ * Issue a CI token, then show it once. Keys & secrets → CI publishing and Release's guided panel
+ * open this same flow.
+ */
+export function IssueCiTokenFlow({
+  slug,
+  open,
+  onOpenChange,
+}: {
+  slug: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}): React.ReactElement {
+  const [issued, setIssued] = React.useState<IssuedCiToken | null>(null);
+  return (
+    <>
       <IssueTokenDialog
         slug={slug}
-        open={issuing}
-        onOpenChange={setIssuing}
+        open={open}
+        onOpenChange={onOpenChange}
         onIssued={(t) => {
-          setIssuing(false);
+          onOpenChange(false);
           setIssued(t);
         }}
       />
@@ -537,23 +591,7 @@ function TokensRow({ slug }: { slug: string }): React.ReactElement {
         value={issued?.token ?? ""}
         onDone={() => setIssued(null)}
       />
-      <ConfirmDialog
-        open={revoking !== null}
-        onOpenChange={(o) => !o && setRevoking(null)}
-        intent={intentOf("ciToken.revoke")}
-        title={`Revoke ${revoking?.label ?? revoking?.tokenId ?? "token"}?`}
-        consequences={[
-          "CI runs using this token are refused from now on.",
-          "Upload tickets it bought and has not used are revoked too.",
-        ]}
-        confirmLabel="Revoke token"
-        describeError={(e) => errorCopy(e)}
-        onConfirm={async () => {
-          await mutate("revokeCiToken", slug, revoking!.tokenId);
-          toast.success("CI token revoked");
-        }}
-      />
-    </SettingsRow>
+    </>
   );
 }
 

@@ -4449,7 +4449,7 @@
       "optional": true,
       "refs": ["notes/S-12 §10 tier 2"],
       "brief": "wp/F-22-native-publish.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-23",
@@ -4467,7 +4467,7 @@
       "optional": true,
       "refs": ["notes/S-12 §9", "notes/S-12 §10 tier 2"],
       "brief": "wp/F-23-docker-push.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-30",
@@ -4485,7 +4485,7 @@
       "optional": true,
       "refs": ["notes/S-12 §4.1", "notes/S-12 §10 tier 3"],
       "brief": "wp/F-30-cargo-feed.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-31",
@@ -4503,7 +4503,7 @@
       "optional": true,
       "refs": ["notes/S-12 §4.1", "notes/S-12 §10 tier 3"],
       "brief": "wp/F-31-go-proxy.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "F-32",
@@ -4884,7 +4884,7 @@
         "notes/S-15 §13 decision 7"
       ],
       "brief": "wp/A-18i-pr-plane-generators.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "A-18j",
@@ -5787,7 +5787,7 @@
         "design/PORTAL §11.3 PX-20"
       ],
       "brief": "wp/PX-20-quality-bar.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "PX-21",
@@ -6762,6 +6762,36 @@
       "status": "todo"
     },
     {
+      "id": "LX-14a",
+      "title": "Per-license device limit: `licenses.device_limit` set through the admin API and a console **Device limit…** action (raise, lower, clear to inherit); the console shows the effective limit and its source; a license limit beats the tier",
+      "phase": "LX",
+      "stage": "phase A: independent fixes",
+      "lane": "console",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.4, 0.6],
+      "deps": [],
+      "planMode": false,
+      "gates": [
+        "migration",
+        "rule-10",
+        "table-owners",
+        "console-csp-parity",
+        "threat-model",
+        "docs-links"
+      ],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "docs/design/SIGN-IN.md D-53 (owner, 2026-10-05)",
+        "plans/I-04.md §F.6",
+        "docs/design/EXPERIENCE.md §0.5 O1 item 5",
+        "notes/S-19 §7.2 (seat packs), C2 (licence value over tier)"
+      ],
+      "brief": "wp/LX-14a-per-license-device-limit.md",
+      "status": "todo"
+    },
+    {
       "id": "LX-14",
       "title": "Console licensing: Entitlements and Grants tabs, comp, trial, suppress and move actions, tier rank, catalog `combine` and `entitlementKind`, commerce mappings and restore policy, licensing report",
       "phase": "LX",
@@ -6769,7 +6799,7 @@
       "lane": "console",
       "role": "pkey-implementer",
       "estimateWeeks": [0.7, 1],
-      "deps": ["LX-06", "LX-09", "LX-10", "LX-11", "LX-12"],
+      "deps": ["LX-06", "LX-09", "LX-10", "LX-11", "LX-12", "LX-14a"],
       "planMode": false,
       "gates": ["console-csp-parity", "docs-links"],
       "humanInputs": [],
@@ -7146,7 +7176,7 @@
         "notes/S-20 §9 HA-01"
       ],
       "brief": "wp/HA-01-hosted-asset-core.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-02",
@@ -7212,7 +7242,7 @@
         "notes/S-20 §10.2 Q5"
       ],
       "brief": "wp/HA-04-manifest-presentation.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-05",
@@ -7512,7 +7542,7 @@
         "docs/design/BRAND.md §4, §7.1, §12"
       ],
       "brief": "wp/UK-01-brand-kit-tokens.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "UK-02",
@@ -8375,7 +8405,7 @@
         "docs/design/UI-KITS.md owner decisions (2026-10-05)"
       ],
       "brief": "wp/UK-40-kotlin-jvm-desktop.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "UK-41",

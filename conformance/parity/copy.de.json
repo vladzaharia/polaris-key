@@ -143,7 +143,7 @@
     },
     "license_owned": {
       "title": "Lizenz in einem anderen Konto",
-      "message": "Diese Lizenz befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen: Melden Sie sich bei diesem Konto an oder verwenden Sie einen anderen Schlüssel."
+      "message": "Diese Lizenz für {product} befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen."
     },
     "email_mismatch": {
       "title": "E-Mail-Adresse nicht bestätigt",
@@ -158,7 +158,7 @@
       "message": "Dies ist die einzige Anmeldemethode Ihres Kontos. Fügen Sie eine weitere hinzu, bevor Sie sie entfernen."
     },
     "step_up_required": {
-      "title": "Erneut anmelden",
+      "title": "Bestätigen Sie, dass Sie es sind",
       "message": "Melden Sie sich zu Ihrer Sicherheit erneut an, um fortzufahren."
     },
     "not_eligible": {
@@ -315,7 +315,7 @@
     },
     "server-error": {
       "title": "Problem mit dem Dienst",
-      "message": "Beim Dienst ist ein Problem aufgetreten. Neuer Versuch…"
+      "message": "Beim Dienst ist ein Problem aufgetreten. Versuchen Sie es in ein paar Minuten erneut."
     },
     "cancelled": {
       "title": "Anmeldung abgebrochen",

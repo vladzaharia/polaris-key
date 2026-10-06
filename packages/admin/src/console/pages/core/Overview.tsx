@@ -13,8 +13,10 @@
  *   hides once complete; the header's "Setup checklist" action reopens it (healthy states get no
  *   pill, ADMIN.md §5.11). Each item states its status in
  *   words (OVR-2, OVR-7).
- * - Trust & SDK: the signing key in gold with copy, the JWKS URL, and a quick start per SDK whose
- *   version comes from the latest release (OVR-3, OVR-6).
+ * - Trust & SDK: the signing key in gold with copy, the JWKS URL, and a quick start per SDK
+ *   (`sdkQuickStart.ts`, UX-59): the install from pkg.plrs.im with its registry line first, and
+ *   an initialisation pinning every active and staged key, with a placeholder for the app's own
+ *   version (OVR-3).
  */
 
 import * as React from "react";
@@ -44,7 +46,8 @@ import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { IdChip } from "../../../ui/IdChip.js";
 import { KeyDisplay } from "../../../ui/KeyDisplay.js";
-import { SegmentedControl } from "../../../ui/SegmentedControl.js";
+import { Callout } from "../../../ui/Callout.js";
+import { Select } from "../../../ui/Select.js";
 import { ServiceGlyph, serviceLabel } from "../../../ui/ServiceBadge.js";
 import { PageSkeleton, Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
@@ -65,6 +68,17 @@ import {
 import { ActivityTarget, actorName, useActivityFeed } from "./Activity.js";
 import { verbFor } from "./activityVerbs.js";
 import { fetchDeviceSummary } from "./Devices.js";
+import { fetchSigningKeys } from "./Keys.js";
+import {
+  SDK_OPTIONS,
+  SDK_QUICK_START_ID,
+  sdkInit,
+  sdkInstall,
+  sdkInstallNote,
+  trustPins,
+  type SdkId,
+} from "./sdkQuickStart.js";
+import { useWelcome, WelcomeHeader } from "./Welcome.js";
 
 const DAY = 86_400;
 const SERVICE_ORDER: ServiceSlug[] = [
@@ -128,6 +142,8 @@ function OverviewBody({
   const complete = checklist.every((i) => i.state === "done");
   const attention = useAttention(slug, p, licenses.data?.licenses);
   const sync = p.setup?.sync;
+  // A product created a moment ago lands here with a one-time welcome (UX-20, EXPERIENCE.md S1).
+  const [welcome, dismissWelcome] = useWelcome(slug);
 
   const primary = on(p, "license") ? (
     <Button asChild>
@@ -182,7 +198,14 @@ function OverviewBody({
           ]}
         />
       }
-      attention={<AttentionList items={attention} />}
+      attention={
+        <>
+          {welcome ? (
+            <WelcomeHeader welcome={welcome} onDismiss={dismissWelcome} />
+          ) : null}
+          <AttentionList items={attention} />
+        </>
+      }
       firstRun={
         enabled.length === 0 ? (
           <EmptyState
@@ -862,8 +885,6 @@ function IdentityTile({ slug }: { slug: string }): React.ReactElement {
 
 // ── Trust & SDK ────────────────────────────────────────────────────────────────────────────────
 
-type SdkId = "node" | "swift" | "godot";
-
 function TrustPanel({
   slug,
   product: p,
@@ -872,20 +893,21 @@ function TrustPanel({
   product: ProductDetail;
 }): React.ReactElement {
   const [sdk, setSdk] = React.useState<SdkId>("node");
-  const store = useQuery(
-    {
-      queryKey: qk.releases(slug),
-      queryFn: () => api.releases(slug),
-      enabled: on(p, "release"),
-    },
+  // Every key an app pins: active plus staged, from the authenticated admin API (D16).
+  const keys = useQuery(
+    { queryKey: qk.keys(slug), queryFn: () => fetchSigningKeys(slug) },
     queryClient,
   );
-  const version = latestAppRelease(store.data?.releases)?.version ?? "1.0.0";
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const jwks = p.jwksUrl ? `${origin}${p.jwksUrl}` : undefined;
   const kid = p.signing?.kid ?? p.signingKid;
   const pub = p.signing?.publicKey;
   const services = SERVICE_ORDER.filter((s) => on(p, s));
+  const pins = trustPins(keys.data?.keys, { kid, publicKey: pub });
+  const staged = pins.length > 1;
+  const install = sdkInstall(sdk);
+  const note = sdkInstallNote(sdk);
+  const init = sdkInit(sdk, { slug, origin, pins, services });
   return (
     <Panel
       title="Trust & SDK"
@@ -924,85 +946,66 @@ function TrustPanel({
             </p>
           </div>
         ) : null}
-        <div className="space-y-2">
+        <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs font-bold text-fg-muted">SDK quick start</p>
-            <SegmentedControl<SdkId>
-              aria-label="SDK"
-              size="sm"
+            <label
+              htmlFor={SDK_QUICK_START_ID}
+              className="text-xs font-bold text-fg-muted"
+            >
+              SDK quick start
+            </label>
+            <Select
+              id={SDK_QUICK_START_ID}
+              className="w-auto min-w-44"
               value={sdk}
-              onChange={setSdk}
-              options={[
-                { value: "node", label: "Node" },
-                { value: "swift", label: "Swift" },
-                { value: "godot", label: "Godot" },
-              ]}
+              onChange={(v) => v && setSdk(v as SdkId)}
+              options={SDK_OPTIONS}
             />
           </div>
-          <CodeBlock
-            code={snippet(sdk, { slug, origin, version, kid, pub, services })}
-            language={sdk === "node" ? "ts" : "text"}
-            filename={
-              sdk === "node"
-                ? "client.ts"
-                : sdk === "swift"
-                  ? "App.swift"
-                  : "polaris_key.tres"
-            }
-            wrap
-          />
+          <p className="text-sm text-fg-muted">
+            Every Polaris Key SDK installs from pkg.plrs.im, and only from
+            there: route the package name to it before installing.
+          </p>
+          {install.map((s) => (
+            <div key={s.id} className="space-y-1.5">
+              <p className="text-xs font-bold text-fg-muted">{s.title}</p>
+              {s.warning ? <Callout tone="warning">{s.warning}</Callout> : null}
+              {s.description ? (
+                <p className="text-sm text-fg-muted">{s.description}</p>
+              ) : null}
+              <CodeBlock
+                code={s.code}
+                language={s.language}
+                filename={s.filename}
+                wrap
+              />
+            </div>
+          ))}
+          {note ? <p className="text-sm text-fg-muted">{note}</p> : null}
+          <div className="space-y-1.5">
+            <p className="text-xs font-bold text-fg-muted">
+              Initialise the client
+            </p>
+            {staged ? (
+              <p className="text-sm text-fg-muted">
+                Pins the active key and the key staged to replace it, so this
+                build keeps working after the rotation.
+              </p>
+            ) : null}
+            {init.hint ? (
+              <p className="text-sm text-fg-muted">{init.hint}</p>
+            ) : null}
+            <CodeBlock
+              code={init.code}
+              language={init.language}
+              filename={init.filename}
+              wrap
+            />
+          </div>
         </div>
       </div>
     </Panel>
   );
-}
-
-function snippet(
-  sdk: SdkId,
-  o: {
-    slug: string;
-    origin: string;
-    version: string;
-    kid: string;
-    pub?: string;
-    services: ServiceSlug[];
-  },
-): string {
-  const pin = o.pub ?? "<public key>";
-  const base = o.origin && o.origin !== "https://key.plrs.im" ? o.origin : null;
-  if (sdk === "swift") {
-    return [
-      "let client = try await PolarisKeyClient.create(options: .init(",
-      `    productSlug: "${o.slug}",`,
-      ...(base ? [`    baseUrl: "${base}",`] : []),
-      `    version: "${o.version}",`,
-      `    pinnedKeys: ["${o.kid}": "${pin}"],`,
-      `    expectedServices: [${o.services.map((s) => `.${s}`).join(", ")}]`,
-      "))",
-    ].join("\n");
-  }
-  if (sdk === "godot") {
-    return [
-      "; Set in the Polaris Key setup dock, saved to res://polaris_key.tres",
-      `product = "${o.slug}"`,
-      ...(base ? [`base_url = "${base}"`] : []),
-      `pinned_trust_keys = { "${o.kid}": "${pin}" }`,
-      `expected_services = [${o.services.map((s) => `"${s}"`).join(", ")}]`,
-    ].join("\n");
-  }
-  return [
-    'import { PolarisKeyClient } from "@polaris-key/node";',
-    "",
-    "const client = await PolarisKeyClient.create({",
-    `  productSlug: "${o.slug}",`,
-    ...(base ? [`  baseUrl: "${base}",`] : []),
-    `  version: "${o.version}",`,
-    `  trust: { pinnedKeys: { "${o.kid}": "${pin}" } },`,
-    `  expectedServices: [${o.services.map((s) => `"${s}"`).join(", ")}],`,
-    "});",
-    "await client.discover();",
-    "await client.sync();",
-  ].join("\n");
 }
 
 // ── Recent activity ────────────────────────────────────────────────────────────────────────────

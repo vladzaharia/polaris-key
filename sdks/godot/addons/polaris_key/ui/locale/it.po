@@ -2035,15 +2035,6 @@ msgstr[0] "{used} di {limit} dispositivo"
 msgstr[1] "{used} di {limit} di dispositivi"
 msgstr[2] "{used} di {limit} dispositivi"
 
-#. Account-wide · {used} of {limit, plural, one {# device} other {# devices}}
-#. Choose a license for this device (SIGN-IN.md §3.6). Account-wide licenses stay device-limited (owner, 2026-10-05). Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number.
-#. Plural on {limit}.
-msgid "signin.choice.accountWide"
-msgid_plural "signin.choice.accountWide"
-msgstr[0] "Per tutto l'account · {used} di {limit} dispositivo"
-msgstr[1] "Per tutto l'account · {used} di {limit} di dispositivi"
-msgstr[2] "Per tutto l'account · {used} di {limit} dispositivi"
-
 #. Created when you continue
 #. Choose a license for this device (SIGN-IN.md §3.6).
 msgid "signin.choice.metaNew"
@@ -2064,35 +2055,75 @@ msgstr "Fino al {date}"
 msgid "signin.term.yearlyUntil"
 msgstr "Annuale, fino al {date}"
 
-#. Bought on {store}
-#. Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {store} = a store's name (App Store, Google Play, Steam).
-msgid "signin.origin.store"
-msgstr "Acquistata su {store}"
+#. From signing in
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).
+msgid "signin.choice.origin.signIn"
+msgstr "Dall'accesso"
 
-#. Bought from {developer}
-#. Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated).
-msgid "signin.origin.purchase"
-msgstr "Acquistata da {developer}"
+#. Key ending {last6}
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is.
+msgid "signin.choice.origin.key"
+msgstr "Chiave che termina con {last6}"
 
 #. Added with a key
-#. Where a license came from, shown in license rows (SIGN-IN.md §3.6).
-msgid "signin.origin.key"
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).
+msgid "signin.choice.origin.keyAdded"
 msgstr "Aggiunta con una chiave"
 
-#. Free
-#. Where a license came from, shown in license rows (SIGN-IN.md §3.6).
-msgid "signin.origin.free"
-msgstr "Gratuita"
+#. {store} key ending {last6}
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is.
+msgid "signin.choice.origin.storeKey"
+msgstr "Chiave {store} che termina con {last6}"
+
+#. {store} key
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store).
+msgid "signin.choice.origin.storeKeyAdded"
+msgstr "Chiave {store}"
+
+#. From {store}
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). A store license with no key. Arguments: {store} = a store's name (Steam, App Store).
+msgid "signin.choice.origin.store"
+msgstr "Da {store}"
 
 #. From {developer}
-#. Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated).
-msgid "signin.origin.developer"
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {developer} = the developer's name (never translated).
+msgid "signin.choice.origin.developer"
 msgstr "Da {developer}"
 
-#. Created when you signed in
-#. Where a license came from, shown in license rows (SIGN-IN.md §3.6).
-msgid "signin.origin.signin"
-msgstr "Creata al tuo accesso"
+#. Free
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).
+msgid "signin.choice.origin.free"
+msgstr "Gratuita"
+
+#. Gift
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).
+msgid "signin.choice.origin.gift"
+msgstr "Regalo"
+
+#. Included with {org}
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {org} = the organization that provides the license.
+msgid "signin.choice.origin.org"
+msgstr "Inclusa con {org}"
+
+#. {tier} · Sign-in
+#. The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated).
+msgid "signin.choice.picker.signIn"
+msgstr "{tier} · Accesso"
+
+#. {tier} · Key …{last6}
+#. The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {last6} = the license key's last six characters, shown as is.
+msgid "signin.choice.picker.key"
+msgstr "{tier} · Chiave …{last6}"
+
+#. {tier} · {store} key …{last6}
+#. The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is.
+msgid "signin.choice.picker.storeKey"
+msgstr "{tier} · Chiave {store} …{last6}"
+
+#. {tier} · {store}
+#. The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store).
+msgid "signin.choice.picker.store"
+msgstr "{tier} · {store}"
 
 #. On this device
 #. Choose a license for this device (SIGN-IN.md §3.6).
@@ -2239,6 +2270,16 @@ msgctxt "macos"
 msgid "signin.replace.open"
 msgstr "Sostituisci un dispositivo"
 
+#. Choose a device to sign out. {thisDevice} takes its seat.
+#. Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice).
+msgid "signin.replace.lede"
+msgstr "Scegli un dispositivo da disconnettere. {thisDevice} ne prende il posto."
+
+#. Replace…
+#. Replace a device in a system dialog (SIGN-IN.md §3.7).
+msgid "signin.replace.openSystem"
+msgstr "Sostituisci…"
+
 #. {platform} · last used {when}
 #. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”).
 msgid "signin.replace.meta"
@@ -2333,10 +2374,10 @@ msgstr "{license} · {term} · {device} diventa il dispositivo {position} di {li
 msgid "signin.consent.replaces"
 msgstr "{license} · sostituisce {device}"
 
-#. {license} · Account-wide
-#. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier.
-msgid "signin.consent.licenseLineAccount"
-msgstr "{license} · Per tutto l'account"
+#. You'll choose a license in {app}.
+#. Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.consent.licenseInApp"
+msgstr "Sceglierai una licenza in {app}."
 
 #. Change
 #. Consent step before returning to the app (SIGN-IN.md §3.8).
@@ -2432,11 +2473,6 @@ msgctxt "macos"
 msgid "signin.key.skip"
 msgstr "Salta per ora"
 
-#. This {product} license is already in another Polaris Key account. A license never moves by its key.
-#. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
-msgid "signin.key.owned"
-msgstr "Questa licenza di {product} è già in un altro account Polaris Key. Una licenza non si sposta mai tramite la sua chiave."
-
 #. Sign in to that account
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.ownedSignIn"
@@ -2486,6 +2522,16 @@ msgstr "Resta qui"
 msgctxt "macos"
 msgid "signin.return.stay"
 msgstr "Resta qui"
+
+#. Start using {product}
+#. Last step of the in-app sign-in form (SIGN-IN.md §3.10). Arguments: {product} = the product's name (never translated).
+msgid "signin.done.start"
+msgstr "Inizia a usare {product}"
+
+#. macos: Start Using {product}
+msgctxt "macos"
+msgid "signin.done.start"
+msgstr "Inizia a usare {product}"
 
 #. Sign in to finish on {device}
 #. Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
@@ -2572,11 +2618,6 @@ msgstr "Continua nel browser"
 msgid "signin.desktop.toast"
 msgstr "Accesso effettuato come {name} · licenza {tier}"
 
-#. Signed in as {name} · Account-wide license
-#. Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {name} = the person's display name.
-msgid "signin.desktop.toastAccount"
-msgstr "Accesso effettuato come {name} · licenza per tutto l'account"
-
 #. You're signed in
 #. Desktop app after sign-in (SIGN-IN.md §3.17).
 msgid "signin.desktop.notifyTitle"
@@ -2586,6 +2627,21 @@ msgstr "Accesso effettuato"
 #. Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.desktop.notifyBody"
 msgstr "{app} è pronto."
+
+#. Choose a license · {app} is ready to finish signing in.
+#. Desktop system notification when the app needs a license choice to finish (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.desktop.notifyChoose"
+msgstr "Scegli una licenza · {app} è pronto a completare l'accesso."
+
+#. Sign in…
+#. App menu item that opens sign-in (SIGN-IN.md §3.17).
+msgid "signin.menu.signIn"
+msgstr "Accedi…"
+
+#. macos: Sign In…
+msgctxt "macos"
+msgid "signin.menu.signIn"
+msgstr "Accedi…"
 
 #. We opened Polaris Key in your browser. Sign in there and {app} continues by itself.
 #. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated).
@@ -2672,6 +2728,16 @@ msgstr "Apri browser"
 msgid "signin.return.closeTab"
 msgstr "Puoi chiudere questa scheda e tornare a {app}."
 
+#. Go back to {app} to choose a license. You can close this tab.
+#. Return step when the license is chosen in the app (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.return.chooseInApp"
+msgstr "Torna a {app} per scegliere una licenza. Puoi chiudere questa scheda."
+
+#. You're signed in
+#. Return step, short form (SIGN-IN.md §3.10).
+msgid "signin.return.signedInShort"
+msgstr "Hai effettuato l'accesso"
+
 #. Sign-in was cancelled in {app}. Start again from {app}.
 #. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
 msgid "signin.return.cancelled"
@@ -2726,11 +2792,6 @@ msgstr "Accesso effettuato come {name} ({email})"
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number.
 msgid "signin.cli.license"
 msgstr "{license} · {term} · {device} è il dispositivo {position} di {limit}"
-
-#. {license} · Account-wide
-#. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {license} = the license's name, usually product and tier.
-msgid "signin.cli.licenseAccount"
-msgstr "{license} · Per tutto l'account"
 
 #. You can close the browser tab.
 #. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
@@ -2841,6 +2902,16 @@ msgstr "Il codice o il link è scaduto"
 #. Expired code or link page (SIGN-IN.md §4.12).
 msgid "signin.expired.body"
 msgstr "Codici e link funzionano una sola volta, per 10 minuti."
+
+#. Sign in again
+#. Expired code or link page (SIGN-IN.md §4.12).
+msgid "signin.again"
+msgstr "Accedi di nuovo"
+
+#. macos: Sign In Again
+msgctxt "macos"
+msgid "signin.again"
+msgstr "Accedi di nuovo"
 
 #. {product} doesn't use Polaris Key sign-in. Open {product} and enter your license key there.
 #. The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated).
@@ -3291,10 +3362,10 @@ msgstr "L'accesso via email non è disponibile al momento. Scegli un altro metod
 msgid "core.codes.license_owned.title"
 msgstr "Licenza in un altro account"
 
-#. This license is already in another Polaris Key account. A license never moves by its key: sign in to that account, or use a different key.
+#. This {product} license is already in another Polaris Key account. A license never moves by its key.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.license_owned.message"
-msgstr "Questa licenza è già in un altro account Polaris Key. Una licenza non si sposta mai tramite la sua chiave: accedi a quell'account o usa una chiave diversa."
+msgstr "Questa licenza di {product} è già in un altro account Polaris Key. Una licenza non si sposta mai tramite la sua chiave."
 
 #. Email not verified
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -3326,10 +3397,10 @@ msgstr "Impossibile rimuovere"
 msgid "core.codes.last_link.message"
 msgstr "Questo è l'unico metodo di accesso del tuo account. Aggiungine un altro prima di rimuoverlo."
 
-#. Sign in again
+#. Confirm it's you
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.step_up_required.title"
-msgstr "Accedi di nuovo"
+msgstr "Conferma la tua identità"
 
 #. For your security, sign in again to continue.
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -3721,10 +3792,10 @@ msgstr "Impossibile raggiungere Polaris Key. Controlla la connessione e riprova.
 msgid "core.codes.server-error.title"
 msgstr "Problema del servizio"
 
-#. The service had a problem. Trying again…
+#. The service had a problem. Try again in a few minutes.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.server-error.message"
-msgstr "Il servizio ha avuto un problema. Nuovo tentativo in corso…"
+msgstr "Il servizio ha avuto un problema. Riprova tra qualche minuto."
 
 #. Sign-in cancelled
 #. Core copy (conformance/parity/copy.en.json, codes).

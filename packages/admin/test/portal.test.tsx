@@ -52,7 +52,13 @@ describe("portal shell and data layer (PX-01)", () => {
       await screen.findByRole("heading", { level: 1, name: "Your library" }),
     ).toBeTruthy();
     expect(screen.getByRole("banner")).toBeTruthy();
-    expect(screen.getByRole("main")).toBeTruthy();
+    expect(screen.getByRole("main").id).toBe("content");
+    // An in-page fragment, not a hash route: axe recognises a skip link only that way (PX-20).
+    expect(
+      screen
+        .getByRole("link", { name: "Skip to content" })
+        .getAttribute("href"),
+    ).toBe("#content");
     expect(screen.getByRole("contentinfo").textContent).toContain(
       "Polaris Key · key.plrs.im",
     );

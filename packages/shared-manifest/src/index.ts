@@ -60,6 +60,12 @@ import {
   type ServiceSlug,
 } from "./services.generated.js";
 import {
+  assetRefProblem,
+  isHexColour,
+  normalizeAssetRef,
+  type ManifestAssetRef,
+} from "./assets.js";
+import {
   normalizeDistribution,
   validateDistribution,
   type DistributionDeliverable,
@@ -145,6 +151,15 @@ export interface ManifestProduct {
   defaultMaxOfflineDays: number;
   defaultDeviceLimit: number;
   adminGroup: string;
+}
+
+/** `.pkey/product` `presentation`, normalised (HA-04). */
+export interface ManifestPresentation {
+  icon?: ManifestAssetRef;
+  /** `#rrggbb`, as written. */
+  accent?: string;
+  /** `#rrggbb`, as written: the accent on a dark ground. */
+  accentDark?: string;
 }
 
 export interface ManifestOidc {
@@ -480,6 +495,13 @@ export interface ParsedManifest {
    * origin gets any `Access-Control-*` header. Persisted to `products.web_origins_json`.
    */
   webOrigins: string[];
+  /**
+   * `presentation` (HA-04): the product's icon (a normalised asset ref, `kind` url or repo) and
+   * its accent colours. Present only when the manifest declares the block; each member only when
+   * declared. The Worker resolves a repo ref at the synced commit (HA-05), and the listing icon
+   * falls back to this one there, not here.
+   */
+  presentation?: ManifestPresentation;
   /**
    * `.pkey/distribution` (P2b-02), normalised: outlets with their identities, the resolved
    * transport per (deliverable, outlet), and the listing. Present whenever Distribution is enabled
@@ -2409,6 +2431,7 @@ function validateDocuments(
       errors,
       manifest.distribution,
       distributionContext(relDoc),
+      warnings,
     );
   }
 
@@ -2488,6 +2511,51 @@ function validateDocuments(
       "invalid_registration_policy",
       `devices.registration must be one of ${REGISTRATION_POLICIES.join(", ")}.`,
     );
+  }
+
+  // `presentation` (HA-04, notes/S-20 decision 5): the product's own icon and accent, declared
+  // here so a product without the Distribution service still has them. The icon is an asset ref
+  // (`./assets.ts`: an https URL or a repo path, optionally `{ src, sha256 }`); nothing is fetched
+  // at validate time (HA-05 pulls it). The block's shape and its colours are
+  // `invalid_presentation`; the icon's spelling is `invalid_asset_ref`.
+  if (productRoot.presentation !== undefined) {
+    const presentation = productRoot.presentation;
+    if (!isRecord(presentation)) {
+      add(
+        errors,
+        "product",
+        "/presentation",
+        "invalid_presentation",
+        "presentation must be an object { icon, accent, accentDark }.",
+      );
+    } else {
+      if (presentation.icon !== undefined) {
+        const problem = assetRefProblem(presentation.icon);
+        if (problem) {
+          add(
+            errors,
+            "product",
+            "/presentation/icon",
+            "invalid_asset_ref",
+            `presentation.icon ${problem}.`,
+          );
+        }
+      }
+      for (const field of ["accent", "accentDark"] as const) {
+        if (
+          presentation[field] !== undefined &&
+          !isHexColour(presentation[field])
+        ) {
+          add(
+            errors,
+            "product",
+            `/presentation/${field}`,
+            "invalid_presentation",
+            `presentation.${field} must be a #rrggbb colour.`,
+          );
+        }
+      }
+    }
   }
 
   // `web.origins` (P0-05): the browser origins the worker answers CORS for on this product's
@@ -3048,6 +3116,9 @@ const PACKAGE_NAME_RULES: Readonly<Record<PackageEcosystem, string>> = {
   maven: "groupId:artifactId",
   oci: "an OCI repository path of lower-case components joined by '/'",
   godot: "1-64 of a-z, 0-9 and '_'",
+  cargo:
+    "a crate name (an ASCII letter, then letters, digits, '-' and '_', at most 64 characters)",
+  go: "a Go module path (a lower-case host name with a dot, then '/'-separated elements of letters, digits and '-._~')",
 };
 
 /** A `deliverables.<packId>` entry against plans/P4-01.md §3's v1 subset. */
@@ -4186,6 +4257,9 @@ export function parseManifest(
       routedDeliverables(releaseDoc),
     );
   }
+  if (isRecord(productRoot.presentation)) {
+    parsed.presentation = normalizePresentation(productRoot.presentation);
+  }
   if (productRoot.fingerprint !== undefined) {
     parsed.fingerprint = normalizeFingerprint(productRoot.fingerprint);
   }
@@ -4193,6 +4267,18 @@ export function parseManifest(
     parsed.autoIssue = normalizeAutoIssue(productRoot.autoIssue);
   }
   return { ok: true, manifest: parsed };
+}
+
+/** A VALIDATED `presentation` block, normalised (members only when declared). */
+function normalizePresentation(
+  raw: Record<string, unknown>,
+): ManifestPresentation {
+  const out: ManifestPresentation = {};
+  const icon = normalizeAssetRef(raw.icon);
+  if (icon) out.icon = icon;
+  if (isHexColour(raw.accent)) out.accent = raw.accent;
+  if (isHexColour(raw.accentDark)) out.accentDark = raw.accentDark;
+  return out;
 }
 
 function normalizeRelease(rel: Record<string, unknown>): ManifestRelease {
@@ -5403,6 +5489,7 @@ export * from "./packages.js";
 export * from "./feedSetup.js";
 // `.pkey/distribution` (P2b-02): outlets, identities, transports and listing.
 export * from "./distribution.js";
+export * from "./assets.js";
 export * from "./releaseKeys.js";
 // Human-readable build and artifact labels: platform and architecture, together.
 export * from "./labels.js";

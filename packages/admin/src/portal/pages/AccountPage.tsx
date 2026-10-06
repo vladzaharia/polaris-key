@@ -181,12 +181,7 @@ function SignInMethods({
             <Mail aria-hidden className="size-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="flex flex-wrap items-center gap-2 font-bold text-fg-strong">
-              <span className="truncate">{account.email}</span>
-              <span className="inline-flex h-5 items-center rounded-full border border-border-strong px-2 text-xs font-normal text-fg-strong">
-                Primary
-              </span>
-            </p>
+            <p className="truncate font-bold text-fg-strong">{account.email}</p>
             <p className="text-sm text-fg-muted">
               Products bought with this email join your library by themselves.
             </p>

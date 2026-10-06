@@ -143,7 +143,7 @@
     },
     "license_owned": {
       "title": "Licença em outra conta",
-      "message": "Esta licença já está em outra conta do Polaris Key. Uma licença nunca é transferida pela chave: entre nessa conta ou use outra chave."
+      "message": "Esta licença de {product} já está em outra conta do Polaris Key. Uma licença nunca é transferida pela chave."
     },
     "email_mismatch": {
       "title": "E-mail não verificado",
@@ -158,7 +158,7 @@
       "message": "Este é o único método de acesso da sua conta. Adicione outro antes de removê-lo."
     },
     "step_up_required": {
-      "title": "Entre novamente",
+      "title": "Confirme que é você",
       "message": "Para sua segurança, entre novamente para continuar."
     },
     "not_eligible": {
@@ -315,7 +315,7 @@
     },
     "server-error": {
       "title": "Problema no serviço",
-      "message": "O serviço teve um problema. Tentando novamente…"
+      "message": "O serviço teve um problema. Tente novamente em alguns minutos."
     },
     "cancelled": {
       "title": "Acesso cancelado",

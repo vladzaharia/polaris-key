@@ -68,7 +68,7 @@ describe("the committed catalog", () => {
     }
   });
 
-  it("carries the owner's device-limit wording (plans/I-04.md, 2026-10-05)", () => {
+  it("carries the owner's device-limit and license-origin wording (2026-10-05)", () => {
     const m = REAL.en.messages;
     expect(m["deviceLimit.title"]!.value).toBe("Replace a device");
     expect(m["deviceLimit.confirmTitle"]!.value).toBe("Replace {device}?");
@@ -76,9 +76,24 @@ describe("the committed catalog", () => {
     expect(m["deviceLimit.consequence"]!.value).toBe(
       m["signin.replace.consequence"]!.value,
     );
-    expect(m["signin.choice.accountWide"]!.value).toBe(
-      // Account-wide licenses stay device-limited (owner, 2026-10-05; SIGN-IN.md D-53 on main)
-      "Account-wide · {used} of {limit, plural, one {# device} other {# devices}}",
+    // No license-type label (owner, 2026-10-05): every license shows its count; the origin is plain words.
+    expect(
+      Object.keys(m).some((k) =>
+        /accountWide|(licenseLine|toast|license)Account$/.test(k),
+      ),
+    ).toBe(false);
+    expect(Object.values(m).some((x) => x.value.includes("Account-wide"))).toBe(
+      false,
+    );
+    expect(m["signin.choice.origin.signIn"]!.value).toBe("From signing in");
+    expect(m["signin.choice.origin.key"]!.value).toBe("Key ending {last6}");
+    expect(m["signin.choice.origin.storeKey"]!.value).toBe(
+      "{store} key ending {last6}",
+    );
+    expect(m["signin.choice.origin.store"]!.value).toBe("From {store}");
+    expect(m["signin.choice.picker.signIn"]!.value).toBe("{tier} · Sign-in");
+    expect(m["signin.choice.picker.storeKey"]!.value).toBe(
+      "{tier} · {store} key …{last6}",
     );
     expect(m["signin.term.lifetime"]!.value).toBe("Lifetime");
   });

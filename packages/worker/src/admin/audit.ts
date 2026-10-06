@@ -9,10 +9,11 @@ import type { Db } from "../db/types.js";
 import {
   appendAudit,
   appendPlatformAudit,
+  auditStatement,
   platformAuditStatement,
   type PlatformAuditRow,
 } from "../repo.js";
-import type { DbStatement } from "../db/types.js";
+import type { DbParam, DbStatement } from "../db/types.js";
 import { randomId } from "../crypto.js";
 import type { AdminSession } from "./session.js";
 
@@ -38,6 +39,49 @@ export async function audit(
     parent_id: null,
     summary,
   });
+}
+
+/**
+ * `audit` as a statement, for a batch that commits the row with the change it records. `when`, a
+ * boolean SQL condition, writes the row only while it holds (a guarded batch, such as a licence
+ * deletion, whose other statements carry the same condition).
+ */
+export function auditStatementFor(
+  product: string,
+  session: AdminSession,
+  now: number,
+  action: string,
+  target: { kind: string; id: string } | null,
+  summary: string,
+  when?: { sql: string; params: DbParam[] },
+): DbStatement {
+  const stmt = auditStatement({
+    product,
+    id: randomId("aud"),
+    at: now,
+    actor_sub: session.sub,
+    actor_name: session.name,
+    actor_email: session.email,
+    action,
+    target_kind: target?.kind ?? null,
+    target_id: target?.id ?? null,
+    parent_id: null,
+    summary,
+  });
+  if (!when) return stmt;
+  const VALUES = /VALUES \(([^)]*)\)\s*$/;
+  // A silent no-match would drop the guard and write the row unconditionally: refuse instead.
+  if (!VALUES.test(stmt.sql))
+    throw new Error(
+      "auditStatementFor: the audit INSERT no longer ends in VALUES (…)",
+    );
+  return {
+    sql: stmt.sql.replace(
+      VALUES,
+      (_m, marks: string) => `SELECT ${marks} WHERE ${when.sql}`,
+    ),
+    params: [...stmt.params, ...when.params],
+  };
 }
 
 /**

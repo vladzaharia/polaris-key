@@ -739,10 +739,6 @@
     <plurals name="signin_choice_devices">
         <item quantity="other">%2$d台のデバイス中%1$s台</item>
     </plurals>
-    <!-- Choose a license for this device (SIGN-IN.md §3.6). Account-wide licenses stay device-limited (owner, 2026-10-05). Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
-    <plurals name="signin_choice_accountWide">
-        <item quantity="other">アカウント全体 · %2$d台のデバイス中%1$s台</item>
-    </plurals>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_metaNew">続行すると作成されます</string>
     <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). -->
@@ -751,18 +747,34 @@
     <string name="signin_term_until">%1$sまで</string>
     <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
     <string name="signin_term_yearlyUntil">年間、%1$sまで</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
-    <string name="signin_origin_store">%1$sで購入</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
-    <string name="signin_origin_purchase">%1$sから購入</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). -->
-    <string name="signin_origin_key">キーで追加</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). -->
-    <string name="signin_origin_free">無料</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
-    <string name="signin_origin_developer">%1$sから提供</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). -->
-    <string name="signin_origin_signin">サインイン時に作成</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_signIn">サインインで取得</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is. Arguments: 1=last6. -->
+    <string name="signin_choice_origin_key">末尾が%1$sのキー</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_keyAdded">キーで追加</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is. Arguments: 1=store, 2=last6. -->
+    <string name="signin_choice_origin_storeKey">末尾が%2$sの%1$sキー</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store). Arguments: 1=store. -->
+    <string name="signin_choice_origin_storeKeyAdded">%1$sキー</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). A store license with no key. Arguments: {store} = a store's name (Steam, App Store). Arguments: 1=store. -->
+    <string name="signin_choice_origin_store">%1$sで購入</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="signin_choice_origin_developer">%1$sから提供</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_free">無料</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_gift">ギフト</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {org} = the organization that provides the license. Arguments: 1=org. -->
+    <string name="signin_choice_origin_org">%1$sに付属</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_choice_picker_signIn">%1$s · サインイン</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {last6} = the license key's last six characters, shown as is. Arguments: 1=tier, 2=last6. -->
+    <string name="signin_choice_picker_key">%1$s · キー …%2$s</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is. Arguments: 1=tier, 2=store, 3=last6. -->
+    <string name="signin_choice_picker_storeKey">%1$s · %2$sキー …%3$s</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store). Arguments: 1=tier, 2=store. -->
+    <string name="signin_choice_picker_store">%1$s · %2$s</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_tag_current">このデバイスで使用中</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
@@ -814,6 +826,10 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_open">デバイスを置き換える</string>
     <string name="signin_replace_open__macos">デバイスを置き換える</string>
+    <!-- Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice). Arguments: 1=thisDevice. -->
+    <string name="signin_replace_lede">サインアウトするデバイスを選んでください。%1$sがその枠を使用します。</string>
+    <!-- Replace a device in a system dialog (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_openSystem">置き換え…</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
     <string name="signin_replace_meta">%1$s · 最終使用：%2$s</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -851,8 +867,8 @@
     <string name="signin_consent_licenseLine">%1$s · %2$s · %3$sは%5$s台中%4$s台目のデバイスになります</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
     <string name="signin_consent_replaces">%1$s · %2$sを置き換え</string>
-    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier. Arguments: 1=license. -->
-    <string name="signin_consent_licenseLineAccount">%1$s · アカウント全体</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_consent_licenseInApp">ライセンスは%1$sで選択します。</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_change">変更</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
@@ -887,8 +903,6 @@
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">今はスキップ</string>
     <string name="signin_key_skip__macos">今はスキップ</string>
-    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_key_owned">この%1$sのライセンスは、すでに別のPolaris Keyアカウントにあります。ライセンスがキーによって移動することはありません。</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_ownedSignIn">そのアカウントにサインイン</string>
     <string name="signin_key_ownedSignIn__macos">そのアカウントにサインイン</string>
@@ -906,6 +920,9 @@
     <!-- Return step (SIGN-IN.md §3.10). -->
     <string name="signin_return_stay">このページにとどまる</string>
     <string name="signin_return_stay__macos">このページにとどまる</string>
+    <!-- Last step of the in-app sign-in form (SIGN-IN.md §3.10). Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="signin_done_start">%1$sを使い始める</string>
+    <string name="signin_done_start__macos">%1$sを使い始める</string>
     <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_device_title">%1$sでのサインインを完了</string>
     <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
@@ -937,12 +954,15 @@
     <string name="signin_desktop_continue__macos">ブラウザで続ける</string>
     <!-- Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {name} = the person's display name; {tier} = the tier's name (never translated). Arguments: 1=name, 2=tier. -->
     <string name="signin_desktop_toast">%1$sとしてサインイン中 · %2$sライセンス</string>
-    <!-- Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {name} = the person's display name. Arguments: 1=name. -->
-    <string name="signin_desktop_toastAccount">%1$sとしてサインイン中 · アカウント全体のライセンス</string>
     <!-- Desktop app after sign-in (SIGN-IN.md §3.17). -->
     <string name="signin_desktop_notifyTitle">サインインしました</string>
     <!-- Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_desktop_notifyBody">%1$sの準備ができました。</string>
+    <!-- Desktop system notification when the app needs a license choice to finish (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_desktop_notifyChoose">ライセンスを選択 · %1$sでサインインを完了できます。</string>
+    <!-- App menu item that opens sign-in (SIGN-IN.md §3.17). -->
+    <string name="signin_menu_signIn">サインイン…</string>
+    <string name="signin_menu_signIn__macos">サインイン…</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_handoff_browserBody">ブラウザでPolaris Keyを開きました。そこでサインインすると、%1$sが自動的に続行します。</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
@@ -973,6 +993,10 @@
     <string name="signin_handoff_openBrowser__macos">ブラウザを開く</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_closeTab">このタブを閉じて%1$sに戻ってかまいません。</string>
+    <!-- Return step when the license is chosen in the app (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_return_chooseInApp">%1$sに戻ってライセンスを選択してください。このタブは閉じてかまいません。</string>
+    <!-- Return step, short form (SIGN-IN.md §3.10). -->
+    <string name="signin_return_signedInShort">サインインしました</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_cancelled">%1$sでサインインがキャンセルされました。%1$sからやり直してください。</string>
     <!-- Return step (SIGN-IN.md §3.10). -->
@@ -994,8 +1018,6 @@
     <string name="signin_cli_signedIn">%1$s（%2$s）としてサインインしました</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
     <string name="signin_cli_license">%1$s · %2$s · %3$sは%5$s台中%4$s台目のデバイスです</string>
-    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {license} = the license's name, usually product and tier. Arguments: 1=license. -->
-    <string name="signin_cli_licenseAccount">%1$s · アカウント全体</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
     <string name="signin_cli_closeTab">ブラウザのタブを閉じてかまいません。</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -1039,6 +1061,9 @@
     <string name="signin_expired_title">このコードまたはリンクの有効期限が切れています</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_expired_body">コードとリンクは1回限り、10分間有効です。</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). -->
+    <string name="signin_again">もう一度サインイン</string>
+    <string name="signin_again__macos">もう一度サインイン</string>
     <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_identityOff_notice">%1$sはPolaris Keyのサインインを使用しません。%1$sを開いて、そこでライセンスキーを入力してください。</string>
     <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -1216,8 +1241,8 @@
     <string name="core_codes_email_not_configured_message">現在、メールでのサインインを利用できません。別のサインイン方法を選択してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">別のアカウントのライセンス</string>
-    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_owned_message">このライセンスは、すでに別のPolaris Keyアカウントにあります。ライセンスがキーによって移動することはありません。そのアカウントにサインインするか、別のキーを使用してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_license_owned_message">この%1$sのライセンスは、すでに別のPolaris Keyアカウントにあります。ライセンスがキーによって移動することはありません。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">メールアドレスが確認されていません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1231,7 +1256,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_last_link_message">これはアカウントで唯一のサインイン方法です。削除する前に別の方法を追加してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_step_up_required_title">もう一度サインインしてください</string>
+    <string name="core_codes_step_up_required_title">本人確認</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_step_up_required_message">セキュリティのため、続けるにはもう一度サインインしてください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1389,7 +1414,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_server_error_title">サービスの問題</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_server_error_message">サービスで問題が発生しました。再試行しています…</string>
+    <string name="core_codes_server_error_message">サービスで問題が発生しました。数分後にもう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_cancelled_title">サインインがキャンセルされました</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

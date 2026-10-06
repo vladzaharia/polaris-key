@@ -739,10 +739,6 @@
     <plurals name="signin_choice_devices">
         <item quantity="other">기기 %2$d대 중 %1$s대</item>
     </plurals>
-    <!-- Choose a license for this device (SIGN-IN.md §3.6). Account-wide licenses stay device-limited (owner, 2026-10-05). Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
-    <plurals name="signin_choice_accountWide">
-        <item quantity="other">계정 전체 · 기기 %2$d대 중 %1$s대</item>
-    </plurals>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_metaNew">계속하면 생성돼요</string>
     <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). -->
@@ -751,18 +747,34 @@
     <string name="signin_term_until">%1$s까지</string>
     <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
     <string name="signin_term_yearlyUntil">연간, %1$s까지</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
-    <string name="signin_origin_store">%1$s에서 구매</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
-    <string name="signin_origin_purchase">%1$s에서 구매</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). -->
-    <string name="signin_origin_key">키로 추가됨</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). -->
-    <string name="signin_origin_free">무료</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
-    <string name="signin_origin_developer">%1$s 제공</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). -->
-    <string name="signin_origin_signin">로그인할 때 생성됨</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_signIn">로그인으로 받음</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is. Arguments: 1=last6. -->
+    <string name="signin_choice_origin_key">%1$s(으)로 끝나는 키</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_keyAdded">키로 추가됨</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is. Arguments: 1=store, 2=last6. -->
+    <string name="signin_choice_origin_storeKey">%2$s(으)로 끝나는 %1$s 키</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store). Arguments: 1=store. -->
+    <string name="signin_choice_origin_storeKeyAdded">%1$s 키</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). A store license with no key. Arguments: {store} = a store's name (Steam, App Store). Arguments: 1=store. -->
+    <string name="signin_choice_origin_store">%1$s에서 구매</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="signin_choice_origin_developer">%1$s 제공</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_free">무료</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_gift">선물</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {org} = the organization that provides the license. Arguments: 1=org. -->
+    <string name="signin_choice_origin_org">%1$s에 포함</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_choice_picker_signIn">%1$s · 로그인</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {last6} = the license key's last six characters, shown as is. Arguments: 1=tier, 2=last6. -->
+    <string name="signin_choice_picker_key">%1$s · 키 …%2$s</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is. Arguments: 1=tier, 2=store, 3=last6. -->
+    <string name="signin_choice_picker_storeKey">%1$s · %2$s 키 …%3$s</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store). Arguments: 1=tier, 2=store. -->
+    <string name="signin_choice_picker_store">%1$s · %2$s</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_tag_current">이 기기에서 사용 중</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
@@ -814,6 +826,10 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_open">기기 교체</string>
     <string name="signin_replace_open__macos">기기 교체</string>
+    <!-- Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice). Arguments: 1=thisDevice. -->
+    <string name="signin_replace_lede">로그아웃할 기기를 선택하세요. %1$s이(가) 그 자리를 사용해요.</string>
+    <!-- Replace a device in a system dialog (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_openSystem">교체…</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
     <string name="signin_replace_meta">%1$s · 마지막 사용 %2$s</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -851,8 +867,8 @@
     <string name="signin_consent_licenseLine">%1$s · %2$s · %3$s: %5$s대 중 %4$s번째 기기</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
     <string name="signin_consent_replaces">%1$s · %2$s 교체</string>
-    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier. Arguments: 1=license. -->
-    <string name="signin_consent_licenseLineAccount">%1$s · 계정 전체</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_consent_licenseInApp">라이선스는 %1$s에서 선택해요.</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_change">변경</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
@@ -887,8 +903,6 @@
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">지금은 건너뛰기</string>
     <string name="signin_key_skip__macos">지금은 건너뛰기</string>
-    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_key_owned">이 %1$s 라이선스는 이미 다른 Polaris Key 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_ownedSignIn">그 계정으로 로그인</string>
     <string name="signin_key_ownedSignIn__macos">그 계정으로 로그인</string>
@@ -906,6 +920,9 @@
     <!-- Return step (SIGN-IN.md §3.10). -->
     <string name="signin_return_stay">여기 머무르기</string>
     <string name="signin_return_stay__macos">여기 머무르기</string>
+    <!-- Last step of the in-app sign-in form (SIGN-IN.md §3.10). Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="signin_done_start">%1$s 사용 시작</string>
+    <string name="signin_done_start__macos">%1$s 사용 시작</string>
     <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_device_title">%1$s에서 완료하려면 로그인하세요</string>
     <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
@@ -937,12 +954,15 @@
     <string name="signin_desktop_continue__macos">브라우저에서 계속</string>
     <!-- Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {name} = the person's display name; {tier} = the tier's name (never translated). Arguments: 1=name, 2=tier. -->
     <string name="signin_desktop_toast">%1$s 님으로 로그인됨 · %2$s 라이선스</string>
-    <!-- Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {name} = the person's display name. Arguments: 1=name. -->
-    <string name="signin_desktop_toastAccount">%1$s 님으로 로그인됨 · 계정 전체 라이선스</string>
     <!-- Desktop app after sign-in (SIGN-IN.md §3.17). -->
     <string name="signin_desktop_notifyTitle">로그인했어요</string>
     <!-- Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_desktop_notifyBody">%1$s 준비가 완료됐어요.</string>
+    <!-- Desktop system notification when the app needs a license choice to finish (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_desktop_notifyChoose">라이선스 선택 · %1$s에서 로그인을 마칠 준비가 됐어요.</string>
+    <!-- App menu item that opens sign-in (SIGN-IN.md §3.17). -->
+    <string name="signin_menu_signIn">로그인…</string>
+    <string name="signin_menu_signIn__macos">로그인…</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_handoff_browserBody">브라우저에서 Polaris Key를 열었어요. 거기서 로그인하면 %1$s에서 자동으로 계속 진행돼요.</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
@@ -973,6 +993,10 @@
     <string name="signin_handoff_openBrowser__macos">브라우저 열기</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_closeTab">이 탭을 닫고 %1$s 앱으로 돌아가도 돼요.</string>
+    <!-- Return step when the license is chosen in the app (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_return_chooseInApp">%1$s(으)로 돌아가 라이선스를 선택하세요. 이 탭은 닫아도 돼요.</string>
+    <!-- Return step, short form (SIGN-IN.md §3.10). -->
+    <string name="signin_return_signedInShort">로그인했어요</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_cancelled">%1$s에서 로그인이 취소됐어요. %1$s에서 다시 시작하세요.</string>
     <!-- Return step (SIGN-IN.md §3.10). -->
@@ -994,8 +1018,6 @@
     <string name="signin_cli_signedIn">%1$s 님으로 로그인됨 (%2$s)</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
     <string name="signin_cli_license">%1$s · %2$s · %3$s: %5$s대 중 %4$s번째 기기</string>
-    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {license} = the license's name, usually product and tier. Arguments: 1=license. -->
-    <string name="signin_cli_licenseAccount">%1$s · 계정 전체</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
     <string name="signin_cli_closeTab">브라우저 탭을 닫아도 돼요.</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -1039,6 +1061,9 @@
     <string name="signin_expired_title">코드 또는 링크가 만료됐어요</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_expired_body">코드와 링크는 10분 동안 한 번만 사용할 수 있어요.</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). -->
+    <string name="signin_again">다시 로그인</string>
+    <string name="signin_again__macos">다시 로그인</string>
     <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_identityOff_notice">%1$s에서는 Polaris Key 로그인을 사용하지 않아요. %1$s을(를) 열어 라이선스 키를 입력하세요.</string>
     <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -1216,8 +1241,8 @@
     <string name="core_codes_email_not_configured_message">지금은 이메일 로그인을 사용할 수 없어요. 다른 로그인 방법을 선택하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">다른 계정의 라이선스</string>
-    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_owned_message">이 라이선스는 이미 다른 Polaris Key 계정에 있어요. 라이선스는 키로 옮겨지지 않아요. 그 계정으로 로그인하거나 다른 키를 사용하세요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_license_owned_message">이 %1$s 라이선스는 이미 다른 Polaris Key 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">인증되지 않은 이메일</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1231,7 +1256,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_last_link_message">계정의 유일한 로그인 방법이에요. 제거하기 전에 다른 방법을 추가하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_step_up_required_title">다시 로그인</string>
+    <string name="core_codes_step_up_required_title">본인 확인</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_step_up_required_message">보안을 위해 계속하려면 다시 로그인하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1389,7 +1414,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_server_error_title">서비스 문제</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_server_error_message">서비스에 문제가 발생했어요. 다시 시도하는 중…</string>
+    <string name="core_codes_server_error_message">서비스에 문제가 발생했어요. 몇 분 후에 다시 시도하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_cancelled_title">로그인 취소됨</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

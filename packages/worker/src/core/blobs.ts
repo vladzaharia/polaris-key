@@ -39,6 +39,7 @@ import type { Db, DbStatement } from "../db/types.js";
 import type { Env } from "../env.js";
 import { notFound } from "./errors.js";
 import { isBytesHost } from "./bytesHostname.js";
+import { peekStream, sniffContentType, SNIFF_BYTES } from "./sniff.js";
 
 // ── Key builders ────────────────────────────────────────────────────────────────────────────
 
@@ -245,12 +246,17 @@ type PutBody = ReadableStream | ArrayBuffer | ArrayBufferView;
  * - A key named by a hash (blobs, bundles, staging) must be named by THIS hash.
  * - A stream is wrapped in a `FixedLengthStream` where the runtime has one, so R2 knows the
  *   length up front and a short or long stream errors instead of being stored.
+ * - Every object is stored with `httpMetadata.contentType` (HA-01, S-20 §4.6 #1). It is the
+ *   caller's `opts.contentType` when given (a type the caller has itself sniffed, or a release
+ *   descriptor's), else the type `sniffContentType` reads from the first bytes, peeked without
+ *   buffering the body. A sender's declared type is never used: there is no parameter for it.
  */
 export async function putVerified(
   bucket: R2Bucket,
   key: string,
   body: PutBody,
   expected: Expected,
+  opts: { contentType?: string } = {},
 ): Promise<PutResult> {
   const parsed = parseKey(key);
   if (!parsed) return { ok: false, reason: "key_mismatch", detail: "layout" };
@@ -263,14 +269,40 @@ export async function putVerified(
     return { ok: false, reason: "size_mismatch" };
 
   let value: PutBody = body;
+  let contentType = opts.contentType;
   if (body instanceof ArrayBuffer || ArrayBuffer.isView(body)) {
     if (body.byteLength !== expected.size)
       return { ok: false, reason: "size_mismatch" };
+    if (contentType === undefined) {
+      const bytes =
+        body instanceof ArrayBuffer
+          ? new Uint8Array(body, 0, Math.min(body.byteLength, SNIFF_BYTES))
+          : new Uint8Array(
+              body.buffer,
+              body.byteOffset,
+              Math.min(body.byteLength, SNIFF_BYTES),
+            );
+      contentType = sniffContentType(bytes);
+    }
   } else {
+    let stream: ReadableStream = body;
+    if (contentType === undefined) {
+      try {
+        const peeked = await peekStream(body, SNIFF_BYTES);
+        contentType = sniffContentType(peeked.head);
+        stream = peeked.stream;
+      } catch (err) {
+        return {
+          ok: false,
+          reason: "rejected",
+          detail: err instanceof Error ? err.message : String(err),
+        };
+      }
+    }
     const Fixed = (
       globalThis as { FixedLengthStream?: typeof FixedLengthStream }
     ).FixedLengthStream;
-    if (Fixed) value = body.pipeThrough(new Fixed(expected.size));
+    value = Fixed ? stream.pipeThrough(new Fixed(expected.size)) : stream;
   }
 
   let object: R2Object | null;
@@ -278,6 +310,7 @@ export async function putVerified(
     object = await bucket.put(key, value, {
       sha256: expected.sha256,
       onlyIf: new Headers({ "If-None-Match": "*" }),
+      httpMetadata: { contentType },
     });
   } catch (err) {
     return {
@@ -350,7 +383,9 @@ export type PromoteResult =
  * Order is the invariant: verify → copy (streamed, pinned to the verified version, with the
  * checksum so R2 re-checks it) → record. A failed verification writes nothing, anywhere. The
  * R2 binding has no server-side copy, so the copy is a stream from `get` into `put`; the
- * staging object is left for the one-day lifecycle rule (P2-02 may delete it sooner).
+ * staging object is left for the one-day lifecycle rule (P2-02 may delete it sooner). The copy
+ * goes through `putVerified`, so the locked object carries the SNIFFED `Content-Type` (HA-01); a
+ * type the CI upload declared on the staged object is never carried over.
  *
  * Idempotent: promoting an object that is already stored succeeds with `alreadyStored` once
  * the stored object's own checksum is confirmed to be the expected one. `alreadyStored` is
@@ -448,6 +483,175 @@ export async function promote(
       return { ok: false, reason: "conflict" };
   }
   return { ok: true, key: targetKey, alreadyStored, verifiedBy: verified };
+}
+
+/** Where `landUpload` reads an upload from: a staged object, or the bytes themselves. */
+export type UploadSource =
+  /** An object under `staging/<product>/…` that is NOT named by its hash: the R2 multipart
+   *  object or the single staged chunk of an OCI blob upload (F-23). */
+  | { readonly stagingKey: string }
+  /** Bytes already in memory and hashed by the caller's request: an OCI manifest (≤ 4 MiB). */
+  | { readonly bytes: Uint8Array };
+
+export type LandUploadResult =
+  | { ok: true; key: string; alreadyStored: boolean }
+  | {
+      ok: false;
+      reason: VerifyRefusal | "bad_key" | "changed" | "conflict" | "rejected";
+    };
+
+async function bytesSha256(bytes: Uint8Array): Promise<string> {
+  return hexOf(
+    await crypto.subtle.digest(
+      "SHA-256",
+      bytes.buffer.slice(
+        bytes.byteOffset,
+        bytes.byteOffset + bytes.byteLength,
+      ) as ArrayBuffer,
+    ),
+  );
+}
+
+/**
+ * Land bytes a product uploaded through a registry protocol at their locked key and record them
+ * (F-23, OCI's blob upload and manifest PUT). The sibling of `promote` for an upload whose hash
+ * is known only once it finishes, so its staging object cannot be named by it:
+ *
+ *   - a staged source must sit under `staging/<record.product>/` (the earn-a-ref rule: a ref is
+ *     earned only from the product's own uploads);
+ *   - the copy goes through `putVerified` with the expected SHA-256, so R2 itself refuses bytes
+ *     that do not hash to it (invariant 1, verify before lock). A refused write is re-checked
+ *     against the source, so a digest mismatch answers `digest_mismatch` and only a real storage
+ *     failure answers `rejected`;
+ *   - when the locked key already holds an object (another product's bytes, or this product's
+ *     earlier upload), the ref is earned only once THIS upload's bytes are confirmed to hash to
+ *     it: a staged object through `verifyStaged` (pinned to the version it read, streamed when it
+ *     carries no checksum), in-memory bytes by hashing them. `alreadyStored` is bookkeeping and
+ *     must never reach a tenant (the cross-tenant existence oracle `promote` describes);
+ *   - then `recordObject`, and the same second look `promote` takes against the collector.
+ *
+ * Streams a staged object (never buffers it, invariant 3); in-memory bytes are the caller's.
+ */
+export async function landUpload(
+  bucket: R2Bucket,
+  source: UploadSource,
+  expected: Expected,
+  record: { db: Db; now: number; product: string },
+): Promise<LandUploadResult> {
+  if (!PRODUCT.test(record.product) || !HEX64.test(expected.sha256))
+    return { ok: false, reason: "bad_key" };
+  if (!Number.isSafeInteger(expected.size) || expected.size < 0)
+    return { ok: false, reason: "size_mismatch" };
+  const staged = "stagingKey" in source ? source.stagingKey : null;
+  if (
+    staged !== null &&
+    (!staged.startsWith(`staging/${record.product}/`) ||
+      staged
+        .split("/")
+        .some((seg) => seg === "" || seg === "." || seg === ".."))
+  )
+    return { ok: false, reason: "bad_key" };
+  const targetKey = blobKey(expected.sha256);
+
+  /** The source's body for one write, and the version it read (staged only). */
+  const open = async (
+    pin?: string,
+  ): Promise<
+    | { body: ReadableStream | Uint8Array; etag: string | null }
+    | { refusal: VerifyRefusal | "changed" }
+  > => {
+    if (staged === null) {
+      const bytes = (source as { bytes: Uint8Array }).bytes;
+      return bytes.byteLength === expected.size
+        ? { body: bytes, etag: null }
+        : { refusal: "size_mismatch" };
+    }
+    const obj = await bucket.get(
+      staged,
+      pin ? { onlyIf: { etagMatches: pin } } : undefined,
+    );
+    if (!obj || !("body" in obj))
+      return { refusal: pin ? "changed" : "missing" };
+    if (obj.size !== expected.size) {
+      await obj.body.cancel().catch(() => undefined);
+      return { refusal: "size_mismatch" };
+    }
+    return { body: obj.body, etag: obj.etag };
+  };
+  /** Do THIS upload's bytes hash to `expected`? */
+  const ownBytesMatch = async (
+    pin: string | null,
+  ): Promise<true | VerifyRefusal> => {
+    if (staged === null) {
+      const bytes = (source as { bytes: Uint8Array }).bytes;
+      if (bytes.byteLength !== expected.size) return "size_mismatch";
+      return (await bytesSha256(bytes)) === expected.sha256
+        ? true
+        : "digest_mismatch";
+    }
+    const v = await verifyStaged(bucket, staged, expected);
+    if (!v.ok) return v.reason;
+    return pin === null || v.etag === pin ? true : "missing";
+  };
+
+  const first = await open();
+  if ("refusal" in first) return { ok: false, reason: first.refusal };
+  const put = await putVerified(bucket, targetKey, first.body, expected);
+  let alreadyStored = false;
+  if (!put.ok) {
+    if (first.body instanceof ReadableStream)
+      await first.body.cancel().catch(() => undefined);
+    if (put.reason === "size_mismatch")
+      return { ok: false, reason: "size_mismatch" };
+    if (put.reason === "key_mismatch") return { ok: false, reason: "bad_key" };
+    const own = await ownBytesMatch(first.etag);
+    if (own !== true) return { ok: false, reason: own };
+    if (put.reason === "rejected") return { ok: false, reason: "rejected" };
+    // `exists`: our bytes are the expected ones; confirm the stored object is too.
+    const existing = await bucket.head(targetKey);
+    if (
+      !existing ||
+      existing.size !== expected.size ||
+      checksumHex(existing) !== expected.sha256
+    )
+      return { ok: false, reason: "conflict" };
+    alreadyStored = true;
+  }
+
+  const recorded = await recordObject(
+    record.db,
+    {
+      storageKey: targetKey,
+      sha256: expected.sha256,
+      size: expected.size,
+      kind: "blob",
+      gated: false,
+    },
+    record.now,
+  );
+  if (!recorded) return { ok: false, reason: "changed" };
+  if (alreadyStored) {
+    // `promote`'s second look: the collector may have deleted the object between the check and
+    // the record; if so, put this upload's bytes back.
+    const again = await bucket.head(targetKey);
+    if (!again) {
+      const retry = await open(first.etag ?? undefined);
+      if ("refusal" in retry) return { ok: false, reason: "changed" };
+      const restored = await putVerified(
+        bucket,
+        targetKey,
+        retry.body,
+        expected,
+      );
+      if (!restored.ok) return { ok: false, reason: "changed" };
+      alreadyStored = false;
+    } else if (
+      again.size !== expected.size ||
+      checksumHex(again) !== expected.sha256
+    )
+      return { ok: false, reason: "conflict" };
+  }
+  return { ok: true, key: targetKey, alreadyStored };
 }
 
 // ── D1 bookkeeping: blob_objects + blob_refs (migration 0026) ───────────────────────────────
@@ -572,7 +776,8 @@ export async function referencedKeys(
 export interface BlobRef {
   product: string;
   storageKey: string;
-  /** What holds the reference: `artifact` (P2-04), `pack-object` (P4-02), … */
+  /** What holds the reference: `artifact` (P2-04), `pack-object` (P4-02), `hosted-asset`
+   *  (HA-01, `core/hostedAssets.ts`), … */
   refKind: string;
   /** The holder's id within its kind. */
   refId: string;
@@ -675,6 +880,27 @@ export async function hasRef(
   return row !== null;
 }
 
+/**
+ * F-23: does `deliverableId` of `product` hold `storageKey` through an OCI push (`OCI_PUSH_REF`)?
+ * The OCI pull route serves such an object by digest from that repository only (OCI's
+ * read-after-write), under the feed's own access ladder; no other surface reads this.
+ */
+export async function heldByPush(
+  db: Db,
+  product: string,
+  storageKey: string,
+  deliverableId: string,
+): Promise<boolean> {
+  const row = await db.first<{ one: number }>(
+    "SELECT 1 AS one FROM blob_refs WHERE product = ? AND storage_key = ? AND ref_kind = ? AND ref_id = ?",
+    product,
+    storageKey,
+    OCI_PUSH_REF,
+    deliverableId,
+  );
+  return row !== null;
+}
+
 /** One holder of a key: what kind of ref and, for the kinds that name one, whose. */
 export interface RefHolder {
   storageKey: string;
@@ -734,6 +960,17 @@ export async function refHolders(
     holder: r.holder,
   }));
 }
+
+/**
+ * The `blob_refs.ref_kind` an object uploaded through OCI's native push holds (F-23; Release's
+ * `services/release/packages/ociPush.ts`, restated here because Core imports no service), with
+ * the package deliverable as its ref id. It is POSSESSION only, like `pack-upload`: it lets the
+ * product's later manifest `PUT` name the object (the ingest's ownership rule) and keeps the
+ * collector off it, and it serves nothing. Distribution's blob route ignores it as a holder
+ * (`services/distribution/blobAccess.ts`), so an untagged pushed object is never downloadable;
+ * once a tag publishes it, the release's own `artifact` refs decide.
+ */
+export const OCI_PUSH_REF = "oci-push";
 
 /** The `blob_refs.ref_kind` a generated lazy delta is held by (P4-17; Release's
  *  `LAZY_DELTA_REF_KIND`, restated here because Core imports no service). */

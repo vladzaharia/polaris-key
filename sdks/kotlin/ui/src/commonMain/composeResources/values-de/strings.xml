@@ -746,11 +746,6 @@
         <item quantity="one">%1$s von %2$d Gerät</item>
         <item quantity="other">%1$s von %2$d Geräten</item>
     </plurals>
-    <!-- Choose a license for this device (SIGN-IN.md §3.6). Account-wide licenses stay device-limited (owner, 2026-10-05). Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
-    <plurals name="signin_choice_accountWide">
-        <item quantity="one">Kontoweit · %1$s von %2$d Gerät</item>
-        <item quantity="other">Kontoweit · %1$s von %2$d Geräten</item>
-    </plurals>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_metaNew">Wird beim Fortfahren erstellt</string>
     <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). -->
@@ -759,18 +754,34 @@
     <string name="signin_term_until">Bis %1$s</string>
     <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
     <string name="signin_term_yearlyUntil">Jährlich, bis %1$s</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
-    <string name="signin_origin_store">Gekauft über %1$s</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
-    <string name="signin_origin_purchase">Gekauft bei %1$s</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). -->
-    <string name="signin_origin_key">Mit einem Schlüssel hinzugefügt</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). -->
-    <string name="signin_origin_free">Kostenlos</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
-    <string name="signin_origin_developer">Von %1$s</string>
-    <!-- Where a license came from, shown in license rows (SIGN-IN.md §3.6). -->
-    <string name="signin_origin_signin">Bei der Anmeldung erstellt</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_signIn">Über die Anmeldung</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is. Arguments: 1=last6. -->
+    <string name="signin_choice_origin_key">Schlüssel endet auf %1$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_keyAdded">Mit einem Schlüssel hinzugefügt</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is. Arguments: 1=store, 2=last6. -->
+    <string name="signin_choice_origin_storeKey">%1$s-Schlüssel endet auf %2$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store). Arguments: 1=store. -->
+    <string name="signin_choice_origin_storeKeyAdded">%1$s-Schlüssel</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). A store license with no key. Arguments: {store} = a store's name (Steam, App Store). Arguments: 1=store. -->
+    <string name="signin_choice_origin_store">Von %1$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="signin_choice_origin_developer">Von %1$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_free">Kostenlos</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_gift">Geschenk</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {org} = the organization that provides the license. Arguments: 1=org. -->
+    <string name="signin_choice_origin_org">In %1$s enthalten</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_choice_picker_signIn">%1$s · Anmeldung</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {last6} = the license key's last six characters, shown as is. Arguments: 1=tier, 2=last6. -->
+    <string name="signin_choice_picker_key">%1$s · Schlüssel …%2$s</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is. Arguments: 1=tier, 2=store, 3=last6. -->
+    <string name="signin_choice_picker_storeKey">%1$s · %2$s-Schlüssel …%3$s</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store). Arguments: 1=tier, 2=store. -->
+    <string name="signin_choice_picker_store">%1$s · %2$s</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
     <string name="signin_choice_tag_current">Auf diesem Gerät</string>
     <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
@@ -822,6 +833,10 @@
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
     <string name="signin_replace_open">Gerät ersetzen</string>
     <string name="signin_replace_open__macos">Gerät ersetzen</string>
+    <!-- Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice). Arguments: 1=thisDevice. -->
+    <string name="signin_replace_lede">Wählen Sie ein Gerät zum Abmelden. %1$s übernimmt seinen Platz.</string>
+    <!-- Replace a device in a system dialog (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_openSystem">Ersetzen…</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
     <string name="signin_replace_meta">%1$s · zuletzt verwendet %2$s</string>
     <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
@@ -860,8 +875,8 @@
     <string name="signin_consent_licenseLine">%1$s · %2$s · %3$s wird Gerät %4$s von %5$s</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
     <string name="signin_consent_replaces">%1$s · ersetzt %2$s</string>
-    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier. Arguments: 1=license. -->
-    <string name="signin_consent_licenseLineAccount">%1$s · Kontoweit</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_consent_licenseInApp">Sie wählen die Lizenz in %1$s.</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
     <string name="signin_consent_change">Ändern</string>
     <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
@@ -897,8 +912,6 @@
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">Vorerst überspringen</string>
     <string name="signin_key_skip__macos">Vorerst überspringen</string>
-    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_key_owned">Diese Lizenz für %1$s befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen.</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_ownedSignIn">Bei diesem Konto anmelden</string>
     <string name="signin_key_ownedSignIn__macos">Bei diesem Konto anmelden</string>
@@ -916,6 +929,9 @@
     <!-- Return step (SIGN-IN.md §3.10). -->
     <string name="signin_return_stay">Hier bleiben</string>
     <string name="signin_return_stay__macos">Hier bleiben</string>
+    <!-- Last step of the in-app sign-in form (SIGN-IN.md §3.10). Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="signin_done_start">Mit %1$s loslegen</string>
+    <string name="signin_done_start__macos">Mit %1$s loslegen</string>
     <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
     <string name="signin_device_title">Anmelden, um auf %1$s fortzufahren</string>
     <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
@@ -947,12 +963,15 @@
     <string name="signin_desktop_continue__macos">Im Browser fortfahren</string>
     <!-- Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {name} = the person's display name; {tier} = the tier's name (never translated). Arguments: 1=name, 2=tier. -->
     <string name="signin_desktop_toast">Angemeldet als %1$s · %2$s-Lizenz</string>
-    <!-- Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {name} = the person's display name. Arguments: 1=name. -->
-    <string name="signin_desktop_toastAccount">Angemeldet als %1$s · Kontoweite Lizenz</string>
     <!-- Desktop app after sign-in (SIGN-IN.md §3.17). -->
     <string name="signin_desktop_notifyTitle">Sie sind angemeldet</string>
     <!-- Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_desktop_notifyBody">%1$s ist bereit.</string>
+    <!-- Desktop system notification when the app needs a license choice to finish (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_desktop_notifyChoose">Lizenz auswählen · %1$s ist bereit, die Anmeldung abzuschließen.</string>
+    <!-- App menu item that opens sign-in (SIGN-IN.md §3.17). -->
+    <string name="signin_menu_signIn">Anmelden…</string>
+    <string name="signin_menu_signIn__macos">Anmelden…</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_handoff_browserBody">Wir haben Polaris Key in Ihrem Browser geöffnet. Melden Sie sich dort an, dann fährt %1$s automatisch fort.</string>
     <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
@@ -983,6 +1002,10 @@
     <string name="signin_handoff_openBrowser__macos">Browser öffnen</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_closeTab">Sie können diesen Tab schließen und zu %1$s zurückkehren.</string>
+    <!-- Return step when the license is chosen in the app (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_return_chooseInApp">Kehren Sie zu %1$s zurück, um eine Lizenz auszuwählen. Sie können diesen Tab schließen.</string>
+    <!-- Return step, short form (SIGN-IN.md §3.10). -->
+    <string name="signin_return_signedInShort">Sie sind angemeldet</string>
     <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
     <string name="signin_return_cancelled">Die Anmeldung wurde in %1$s abgebrochen. Beginnen Sie erneut in %1$s.</string>
     <!-- Return step (SIGN-IN.md §3.10). -->
@@ -1004,8 +1027,6 @@
     <string name="signin_cli_signedIn">Angemeldet als %1$s (%2$s)</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
     <string name="signin_cli_license">%1$s · %2$s · %3$s ist Gerät %4$s von %5$s</string>
-    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {license} = the license's name, usually product and tier. Arguments: 1=license. -->
-    <string name="signin_cli_licenseAccount">%1$s · Kontoweit</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
     <string name="signin_cli_closeTab">Sie können den Browser-Tab schließen.</string>
     <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -1049,6 +1070,9 @@
     <string name="signin_expired_title">Dieser Code oder Link ist abgelaufen</string>
     <!-- Expired code or link page (SIGN-IN.md §4.12). -->
     <string name="signin_expired_body">Codes und Links sind einmal und 10 Minuten lang gültig.</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). -->
+    <string name="signin_again">Erneut anmelden</string>
+    <string name="signin_again__macos">Erneut anmelden</string>
     <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
     <string name="signin_identityOff_notice">%1$s verwendet keine Anmeldung über Polaris Key. Öffnen Sie %1$s und geben Sie dort Ihren Lizenzschlüssel ein.</string>
     <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
@@ -1227,8 +1251,8 @@
     <string name="core_codes_email_not_configured_message">Die Anmeldung per E-Mail ist derzeit nicht verfügbar. Wählen Sie eine andere Anmeldemethode.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">Lizenz in einem anderen Konto</string>
-    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_license_owned_message">Diese Lizenz befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen: Melden Sie sich bei diesem Konto an oder verwenden Sie einen anderen Schlüssel.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_license_owned_message">Diese Lizenz für %1$s befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_email_mismatch_title">E-Mail-Adresse nicht bestätigt</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1242,7 +1266,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_last_link_message">Dies ist die einzige Anmeldemethode Ihres Kontos. Fügen Sie eine weitere hinzu, bevor Sie sie entfernen.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_step_up_required_title">Erneut anmelden</string>
+    <string name="core_codes_step_up_required_title">Bestätigen Sie, dass Sie es sind</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_step_up_required_message">Melden Sie sich zu Ihrer Sicherheit erneut an, um fortzufahren.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1400,7 +1424,7 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_server_error_title">Problem mit dem Dienst</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_server_error_message">Beim Dienst ist ein Problem aufgetreten. Neuer Versuch…</string>
+    <string name="core_codes_server_error_message">Beim Dienst ist ein Problem aufgetreten. Versuchen Sie es in ein paar Minuten erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_cancelled_title">Anmeldung abgebrochen</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->

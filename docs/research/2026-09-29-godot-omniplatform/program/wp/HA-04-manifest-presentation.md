@@ -71,3 +71,11 @@ HA-05 resolves `kind: repo` refs at the synced commit. HA-11 reads `presentation
 
 The role agent sets `--set HA-04 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set HA-04 done`.
+
+## Corrections recorded during implementation
+
+- The normalised listing no longer carries `iconUrl`/`headerUrl` (they normalise into `icon` and
+  `header`), so the three Worker readers of the stored listing (`feeds/render.ts`,
+  `listing/sources.ts`, `portal/media.ts`) now read art through `listingImageUrl` /
+  `listingScreenshotUrls`, which accept both the new refs and pre-HA-04 rows. They only read an
+  https ref; a repo ref yields nothing until HA-05 hosts its bytes. No fetching was added.

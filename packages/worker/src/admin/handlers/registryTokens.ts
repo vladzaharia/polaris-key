@@ -8,8 +8,10 @@
  *   GET   <base>/tokens[?license=<id>]     the owner's tokens (or one licence's), newest first,
  *                                          with the owner's feeds (for the setup snippets)
  *   POST  <base>/tokens                    {label, ecosystems?, expiresInDays?, binding,
- *                                          licenseId?, presentation?} — mint; the plaintext is
- *                                          in this answer only (`registry_token.create`)
+ *                                          licenseId?, presentation?, scopes?} — mint; the
+ *                                          plaintext is in this answer only
+ *                                          (`registry_token.create`). `scopes` `["read",
+ *                                          "publish"]` (F-23) mints an owner-bound push token
  *   POST  <base>/tokens/:tokenId/revoke    `registry_token.revoke`
  *   POST  <base>/tokens/revoke-all         {licenseId?} — `registry_token.revoke_all`
  *
@@ -32,6 +34,9 @@ import {
   REGISTRY_TOKEN_DEFAULT_DAYS,
   REGISTRY_TOKEN_MAX_DAYS,
   REGISTRY_TOKEN_MIN_DAYS,
+  REGISTRY_PUBLISH_ECOSYSTEMS,
+  REGISTRY_PUBLISH_TOKEN_DEFAULT_DAYS,
+  REGISTRY_PUBLISH_TOKEN_MAX_DAYS,
   REGISTRY_TOKEN_USERNAME,
   REGISTRY_URL_TOKEN_DEFAULT_DAYS,
   listRegistryTokens,
@@ -50,6 +55,9 @@ const BODY_KEYS = [
   "binding",
   "licenseId",
   "presentation",
+  // `["read"]` (the default) or `["publish"]` (owner-bound, named ecosystems, ≤ 30 days): F-22's
+  // native publishes and F-23's `docker push`.
+  "scopes",
 ] as const;
 
 /** The scope's owner slug, or `null` (an unknown product, or no system product yet). */
@@ -124,6 +132,12 @@ async function list(
       urlDefaultDays: REGISTRY_URL_TOKEN_DEFAULT_DAYS,
       perOwner: MAX_LIVE_TOKENS_PER_OWNER,
       perLicense: MAX_LIVE_TOKENS_PER_LICENSE,
+      // F-22: publish tokens are shorter-lived and name their ecosystems.
+      publishDefaultDays: REGISTRY_PUBLISH_TOKEN_DEFAULT_DAYS,
+      publishMaxDays: REGISTRY_PUBLISH_TOKEN_MAX_DAYS,
+      // None on the platform scope: its SDK feeds are published by the deploy pipeline only.
+      publishEcosystems:
+        owner === SYSTEM_PRODUCT_SLUG ? [] : REGISTRY_PUBLISH_ECOSYSTEMS,
     },
   });
 }
@@ -169,6 +183,14 @@ async function create(
     body.presentation !== "url"
   )
     fields.push("presentation");
+  if (
+    body.scopes !== undefined &&
+    !(
+      Array.isArray(body.scopes) &&
+      body.scopes.every((x) => typeof x === "string")
+    )
+  )
+    fields.push("scopes");
   if (fields.length)
     return err(422, "bad_request", "invalid registry token", { fields });
   const res = await mintRegistryToken(
@@ -185,6 +207,8 @@ async function create(
       licenseId: (body.licenseId as string | undefined) ?? null,
       presentation:
         (body.presentation as "header" | "url" | undefined) ?? "header",
+      // `["publish"]` mints a publish token (owner-bound header tokens only; F-22 and F-23).
+      ...(body.scopes !== undefined ? { scopes: body.scopes as string[] } : {}),
       createdBy: `admin:${session.email || session.sub}`,
     },
     now,
@@ -205,7 +229,7 @@ async function create(
     now,
     "registry_token.create",
     { kind: "registry_token", id: v.tokenId },
-    `Created registry token “${v.label}” (…${v.hint}; ${v.binding === "license" ? `licence ${v.licenseId}` : "owner"}; ${v.ecosystems ? v.ecosystems.join(", ") : "every feed"}${v.presentation === "url" ? "; Godot editor URL" : ""}; expires in ${Math.round((v.expiresAt - v.createdAt) / 86_400)} days)`,
+    `Created registry token “${v.label}” (…${v.hint}; ${v.binding === "license" ? `licence ${v.licenseId}` : "owner"}; ${v.ecosystems ? v.ecosystems.join(", ") : "every feed"}${v.presentation === "url" ? "; Godot editor URL" : ""}${v.scopes.includes("publish") ? "; publish" : ""}; expires in ${Math.round((v.expiresAt - v.createdAt) / 86_400)} days)`,
   );
   return adminJson({ ok: true, token: res.token, view: v }, 201);
 }

@@ -178,7 +178,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   license_owned: {
     title: "License in another account",
     message:
-      "This license is already in another Polaris Key account. A license never moves by its key: sign in to that account, or use a different key.",
+      "This {product} license is already in another Polaris Key account. A license never moves by its key.",
   },
   email_mismatch: {
     title: "Email not verified",
@@ -196,7 +196,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
       "This is your account's only sign-in method. Add another one before removing it.",
   },
   step_up_required: {
-    title: "Sign in again",
+    title: "Confirm it's you",
     message: "For your security, sign in again to continue.",
   },
   not_eligible: {
@@ -362,7 +362,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   },
   "server-error": {
     title: "Service problem",
-    message: "The service had a problem. Trying again…",
+    message: "The service had a problem. Try again in a few minutes.",
   },
   cancelled: { title: "Sign-in cancelled", message: "Sign-in was cancelled." },
   "sign-in-expired": {

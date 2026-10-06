@@ -143,7 +143,7 @@
     },
     "license_owned": {
       "title": "Licencia en otra cuenta",
-      "message": "Esta licencia ya está en otra cuenta de Polaris Key. Una licencia nunca se transfiere con su clave: inicia sesión en esa cuenta o usa otra clave."
+      "message": "Esta licencia de {product} ya está en otra cuenta de Polaris Key. Una licencia nunca se transfiere con su clave."
     },
     "email_mismatch": {
       "title": "Correo no verificado",
@@ -158,7 +158,7 @@
       "message": "Es el único método de inicio de sesión de tu cuenta. Añade otro antes de quitarlo."
     },
     "step_up_required": {
-      "title": "Vuelve a iniciar sesión",
+      "title": "Confirma que eres tú",
       "message": "Por tu seguridad, vuelve a iniciar sesión para continuar."
     },
     "not_eligible": {
@@ -315,7 +315,7 @@
     },
     "server-error": {
       "title": "Problema del servicio",
-      "message": "El servicio tuvo un problema. Reintentando…"
+      "message": "El servicio tuvo un problema. Inténtalo de nuevo en unos minutos."
     },
     "cancelled": {
       "title": "Inicio de sesión cancelado",

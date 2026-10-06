@@ -4,10 +4,11 @@
 //   @polaris-key/brand/react      <PolarisMark>, <PolarisLockup>, <PoweredByBadge>
 //   @polaris-key/brand/svg        the same artwork as SVG strings (no React)
 //   @polaris-key/brand/color      OKLab/OKLCH, WCAG contrast and ΔE helpers
-//   @polaris-key/brand/tokens.css, /theme.css (Tailwind v4), /fonts.css, /tokens.json
+//   @polaris-key/brand/accent     the product accent resolver (UI-KITS.md §3.3)
+//   @polaris-key/brand/tokens.css, /theme.css (Tailwind v4), /kit.css, /fonts.css, /tokens.json
 //   @polaris-key/brand/web/{key,update}/…, /games/…, /social/…, /kit/… (the launch kit files)
 //
-// The written spec is docs/design/BRAND.md.
+// The written spec is docs/design/BRAND.md; the UI kits' is docs/design/UI-KITS.md.
 
 export * from "./tokens/primitives.js";
 export * from "./tokens/scales.js";
@@ -49,3 +50,19 @@ export {
   meets,
   type Violation,
 } from "./tokens/rules.js";
+export { KIT_TOKENS, type KitTokens } from "./generated/kit.js";
+export * from "./tokens/kit.js";
+export * from "./tokens/terminal.js";
+export {
+  ACCENT_INK,
+  ACCENT_RULES,
+  ACCENT_WHITE,
+  accentFg,
+  accentLabel,
+  accentSolid,
+  accentSurfaces,
+  deriveAccent,
+  resolveAccent,
+  type AccentLabel,
+  type ResolvedProductAccent,
+} from "./accent.js";

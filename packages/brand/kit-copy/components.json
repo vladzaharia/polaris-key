@@ -126,7 +126,7 @@
       "priority": "must",
       "family": "signIn",
       "states": {
-        "default": {
+        "methods": {
           "copy": [
             "signIn.title",
             "signin.methods.ledeApp",
@@ -137,17 +137,72 @@
             "signin.link.deviceCode",
             "signin.desktop.continue",
             "signin.choice.keyInstead",
+            "signin.menu.signIn",
             "common.cancel"
           ]
         },
-        "busy": {
-          "copy": ["signIn.title", "common.working", "a11y.busy"]
+        "handoff": {
+          "copy": [
+            "signin.handoff.title",
+            "signin.handoff.browserBody",
+            "signin.handoff.waiting",
+            "signin.handoff.again",
+            "signin.handoff.useCode"
+          ]
         },
-        "method-error": {
-          "copy": ["signIn.methodError"]
+        "code": {
+          "copy": [
+            "signin.code.title",
+            "signin.code.sent",
+            "signin.code.label",
+            "signin.code.resend",
+            "signin.code.wrong"
+          ]
         },
-        "no-method": {
-          "copy": ["signIn.noMethods", "signin.choice.keyInstead"]
+        "finishing": {
+          "copy": ["signin.handoff.finishing", "a11y.busy"]
+        },
+        "choose": {
+          "copy": [
+            "signin.choice.title",
+            "signin.consent.licenseInApp",
+            "signin.desktop.notifyChoose",
+            "signin.return.chooseInApp"
+          ]
+        },
+        "replace": {
+          "copy": [
+            "signin.replace.open",
+            "signin.replace.lede",
+            "signin.replace.openSystem",
+            "signin.replace.title"
+          ]
+        },
+        "key": {
+          "copy": [
+            "signin.key.addTitle",
+            "part.keyField.label",
+            "core.codes.license_owned.title",
+            "core.codes.license_owned.message"
+          ]
+        },
+        "done": {
+          "copy": [
+            "signin.done.start",
+            "signin.return.signedInShort",
+            "signin.desktop.toast"
+          ]
+        },
+        "error": {
+          "copy": ["signIn.methodError", "signIn.noMethods"]
+        },
+        "expired": {
+          "copy": [
+            "core.codes.sign-in-expired.title",
+            "core.codes.sign-in-expired.message",
+            "signin.handoff.tooLong",
+            "signin.again"
+          ]
         }
       }
     },
@@ -161,34 +216,45 @@
         "waiting": {
           "copy": [
             "signin.handoff.title",
-            "part.code.label",
-            "a11y.code",
-            "a11y.copyCode",
             "signin.handoff.check",
-            "signin.handoff.url",
-            "a11y.copyAddress",
             "signin.handoff.expires",
             "signin.handoff.again",
             "signin.handoff.waiting",
             "signin.handoff.useCode",
+            "common.cancel"
+          ]
+        },
+        "no-browser": {
+          "copy": [
+            "signin.handoff.noBrowser",
+            "signin.handoff.noBrowserBody",
+            "signin.handoff.copyLink"
+          ]
+        },
+        "code": {
+          "copy": [
+            "signin.handoff.codeTitle",
+            "signin.handoff.codeBody",
+            "part.code.label",
+            "a11y.code",
+            "a11y.copyCode",
+            "signin.handoff.url",
+            "a11y.copyAddress",
             "signInHandoff.scan",
             "part.qr.scanInstead",
             "part.qr.enlarge",
             "a11y.qr",
-            "common.cancel"
+            "signin.handoff.openBrowser"
           ]
         },
         "link-copied": {
           "copy": ["signInHandoff.linkCopied"]
         },
-        "confirm": {
-          "copy": ["signInHandoff.confirm", "signin.handoff.finishing"]
-        },
-        "ok": {
+        "finishing": {
           "copy": [
-            "signInHandoff.ok",
-            "signin.desktop.toast",
-            "signin.desktop.toastAccount"
+            "signInHandoff.confirm",
+            "signin.handoff.finishing",
+            "signInHandoff.ok"
           ]
         },
         "denied": {
@@ -345,7 +411,20 @@
             "signin.choice.group",
             "signin.choice.meta",
             "signin.choice.devices",
-            "signin.choice.continue"
+            "signin.choice.continue",
+            "signin.choice.origin.signIn",
+            "signin.choice.origin.key",
+            "signin.choice.origin.keyAdded",
+            "signin.choice.origin.storeKey",
+            "signin.choice.origin.storeKeyAdded",
+            "signin.choice.origin.store",
+            "signin.choice.origin.developer",
+            "signin.choice.origin.free",
+            "signin.choice.origin.gift",
+            "signin.choice.origin.org",
+            "signin.term.lifetime",
+            "signin.term.until",
+            "signin.term.yearlyUntil"
           ]
         },
         "one": {
@@ -379,9 +458,6 @@
             "signin.choice.noneReplaceable"
           ]
         },
-        "account-wide": {
-          "copy": ["signin.choice.accountWide"]
-        },
         "mixed": {
           "copy": ["signin.choice.combined"]
         },
@@ -411,6 +487,9 @@
             "signin.none.get",
             "signin.none.otherAccount"
           ]
+        },
+        "grant-expired": {
+          "copy": ["signin.handoff.tooLong", "signin.again"]
         }
       }
     },

@@ -387,18 +387,24 @@ export const KIT_COPY: Readonly<
     "signin.choice.meta": "{origin} · {term}",
     "signin.choice.devices":
       "{used} of {limit, plural, one {# device} other {# devices}}",
-    "signin.choice.accountWide":
-      "Account-wide · {used} of {limit, plural, one {# device} other {# devices}}",
     "signin.choice.metaNew": "Created when you continue",
     "signin.term.lifetime": "Lifetime",
     "signin.term.until": "Until {date}",
     "signin.term.yearlyUntil": "Yearly, until {date}",
-    "signin.origin.store": "Bought on {store}",
-    "signin.origin.purchase": "Bought from {developer}",
-    "signin.origin.key": "Added with a key",
-    "signin.origin.free": "Free",
-    "signin.origin.developer": "From {developer}",
-    "signin.origin.signin": "Created when you signed in",
+    "signin.choice.origin.signIn": "From signing in",
+    "signin.choice.origin.key": "Key ending {last6}",
+    "signin.choice.origin.keyAdded": "Added with a key",
+    "signin.choice.origin.storeKey": "{store} key ending {last6}",
+    "signin.choice.origin.storeKeyAdded": "{store} key",
+    "signin.choice.origin.store": "From {store}",
+    "signin.choice.origin.developer": "From {developer}",
+    "signin.choice.origin.free": "Free",
+    "signin.choice.origin.gift": "Gift",
+    "signin.choice.origin.org": "Included with {org}",
+    "signin.choice.picker.signIn": "{tier} · Sign-in",
+    "signin.choice.picker.key": "{tier} · Key …{last6}",
+    "signin.choice.picker.storeKey": "{tier} · {store} key …{last6}",
+    "signin.choice.picker.store": "{tier} · {store}",
     "signin.choice.tag.current": "On this device",
     "signin.choice.tag.new": "New",
     "signin.choice.tag.full": "No free devices",
@@ -427,6 +433,9 @@ export const KIT_COPY: Readonly<
     "signin.none.get": "Get {product}",
     "signin.none.otherAccount": "Use another account",
     "signin.replace.open": "Replace a device",
+    "signin.replace.lede":
+      "Choose a device to sign out. {thisDevice} takes its seat.",
+    "signin.replace.openSystem": "Replace…",
     "signin.replace.meta": "{platform} · last used {when}",
     "signin.replace.leastRecent": "Least recent",
     "signin.replace.activeNow": "Active now",
@@ -448,7 +457,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device} becomes device {position} of {limit}",
     "signin.consent.replaces": "{license} · replaces {device}",
-    "signin.consent.licenseLineAccount": "{license} · Account-wide",
+    "signin.consent.licenseInApp": "You'll choose a license in {app}.",
     "signin.consent.change": "Change",
     "signin.consent.continue": "Continue to {app}",
     "signin.consent.alsoGets": "{app} will also get",
@@ -467,8 +476,6 @@ export const KIT_COPY: Readonly<
     "signin.key.noEntries":
       "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
     "signin.key.skip": "Skip for now",
-    "signin.key.owned":
-      "This {product} license is already in another Polaris Key account. A license never moves by its key.",
     "signin.key.ownedSignIn": "Sign in to that account",
     "signin.key.differentKey": "Use a different key",
     "signin.return.yours": "{product} is yours",
@@ -476,6 +483,7 @@ export const KIT_COPY: Readonly<
     "signin.return.button": "Return to {app}",
     "signin.return.timer": "Returning by itself in {s} s",
     "signin.return.stay": "Stay here",
+    "signin.done.start": "Start using {product}",
     "signin.device.title": "Sign in to finish on {device}",
     "signin.device.lede":
       "Use your phone or computer here. {device} continues by itself when you're done.",
@@ -492,9 +500,11 @@ export const KIT_COPY: Readonly<
     "signin.handoff.cancelled": "Sign-in was cancelled. Get a new code",
     "signin.desktop.continue": "Continue in browser",
     "signin.desktop.toast": "Signed in as {name} · {tier} license",
-    "signin.desktop.toastAccount": "Signed in as {name} · Account-wide license",
     "signin.desktop.notifyTitle": "You're signed in",
     "signin.desktop.notifyBody": "{app} is ready.",
+    "signin.desktop.notifyChoose":
+      "Choose a license · {app} is ready to finish signing in.",
+    "signin.menu.signIn": "Sign in…",
     "signin.handoff.browserBody":
       "We opened Polaris Key in your browser. Sign in there and {app} continues by itself.",
     "signin.handoff.waiting": "Waiting for your browser…",
@@ -511,6 +521,9 @@ export const KIT_COPY: Readonly<
       "On any phone or computer, go to {url} and enter this code.",
     "signin.handoff.openBrowser": "Open browser",
     "signin.return.closeTab": "You can close this tab and return to {app}.",
+    "signin.return.chooseInApp":
+      "Go back to {app} to choose a license. You can close this tab.",
+    "signin.return.signedInShort": "You're signed in",
     "signin.return.cancelled":
       "Sign-in was cancelled in {app}. Start again from {app}.",
     "signin.return.library": "Open your library",
@@ -523,7 +536,6 @@ export const KIT_COPY: Readonly<
     "signin.cli.signedIn": "Signed in as {name} ({email})",
     "signin.cli.license":
       "{license} · {term} · {device} is device {position} of {limit}",
-    "signin.cli.licenseAccount": "{license} · Account-wide",
     "signin.cli.closeTab": "You can close the browser tab.",
     "signin.cli.logoutConfirm": "Sign out of {product} on this device? (y/N)",
     "signin.cli.signInAgain": "Run {command} to sign in again.",
@@ -549,6 +561,7 @@ export const KIT_COPY: Readonly<
     "signin.console.notConfigured": "Admin sign-in isn't set up",
     "signin.expired.title": "That code or link has expired",
     "signin.expired.body": "Codes and links work once, for 10 minutes.",
+    "signin.again": "Sign in again",
     "signin.identityOff.notice":
       "{product} doesn't use Polaris Key sign-in. Open {product} and enter your license key there.",
     "signin.identityOff.lede": "Sign in here to see {product} in your library.",
@@ -671,7 +684,7 @@ export const KIT_COPY: Readonly<
       "Email sign-in isn't available right now. Choose another sign-in method.",
     "core.codes.license_owned.title": "License in another account",
     "core.codes.license_owned.message":
-      "This license is already in another Polaris Key account. A license never moves by its key: sign in to that account, or use a different key.",
+      "This {product} license is already in another Polaris Key account. A license never moves by its key.",
     "core.codes.email_mismatch.title": "Email not verified",
     "core.codes.email_mismatch.message":
       "This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.",
@@ -681,7 +694,7 @@ export const KIT_COPY: Readonly<
     "core.codes.last_link.title": "Can't remove",
     "core.codes.last_link.message":
       "This is your account's only sign-in method. Add another one before removing it.",
-    "core.codes.step_up_required.title": "Sign in again",
+    "core.codes.step_up_required.title": "Confirm it's you",
     "core.codes.step_up_required.message":
       "For your security, sign in again to continue.",
     "core.codes.not_eligible.title": "Offer unavailable",
@@ -794,7 +807,7 @@ export const KIT_COPY: Readonly<
       "Can't reach Polaris Key. Check your connection and try again.",
     "core.codes.server-error.title": "Service problem",
     "core.codes.server-error.message":
-      "The service had a problem. Trying again…",
+      "The service had a problem. Try again in a few minutes.",
     "core.codes.cancelled.title": "Sign-in cancelled",
     "core.codes.cancelled.message": "Sign-in was cancelled.",
     "core.codes.sign-in-expired.title": "Code expired",
@@ -1446,18 +1459,24 @@ export const KIT_COPY: Readonly<
     "signin.choice.meta": "{origin} · {term}",
     "signin.choice.devices":
       "{used} von {limit, plural, one {# Gerät} other {# Geräten}}",
-    "signin.choice.accountWide":
-      "Kontoweit · {used} von {limit, plural, one {# Gerät} other {# Geräten}}",
     "signin.choice.metaNew": "Wird beim Fortfahren erstellt",
     "signin.term.lifetime": "Unbefristet",
     "signin.term.until": "Bis {date}",
     "signin.term.yearlyUntil": "Jährlich, bis {date}",
-    "signin.origin.store": "Gekauft über {store}",
-    "signin.origin.purchase": "Gekauft bei {developer}",
-    "signin.origin.key": "Mit einem Schlüssel hinzugefügt",
-    "signin.origin.free": "Kostenlos",
-    "signin.origin.developer": "Von {developer}",
-    "signin.origin.signin": "Bei der Anmeldung erstellt",
+    "signin.choice.origin.signIn": "Über die Anmeldung",
+    "signin.choice.origin.key": "Schlüssel endet auf {last6}",
+    "signin.choice.origin.keyAdded": "Mit einem Schlüssel hinzugefügt",
+    "signin.choice.origin.storeKey": "{store}-Schlüssel endet auf {last6}",
+    "signin.choice.origin.storeKeyAdded": "{store}-Schlüssel",
+    "signin.choice.origin.store": "Von {store}",
+    "signin.choice.origin.developer": "Von {developer}",
+    "signin.choice.origin.free": "Kostenlos",
+    "signin.choice.origin.gift": "Geschenk",
+    "signin.choice.origin.org": "In {org} enthalten",
+    "signin.choice.picker.signIn": "{tier} · Anmeldung",
+    "signin.choice.picker.key": "{tier} · Schlüssel …{last6}",
+    "signin.choice.picker.storeKey": "{tier} · {store}-Schlüssel …{last6}",
+    "signin.choice.picker.store": "{tier} · {store}",
     "signin.choice.tag.current": "Auf diesem Gerät",
     "signin.choice.tag.new": "Neu",
     "signin.choice.tag.full": "Keine freien Geräte",
@@ -1489,6 +1508,9 @@ export const KIT_COPY: Readonly<
     "signin.none.get": "{product} erwerben",
     "signin.none.otherAccount": "Anderes Konto verwenden",
     "signin.replace.open": "Gerät ersetzen",
+    "signin.replace.lede":
+      "Wählen Sie ein Gerät zum Abmelden. {thisDevice} übernimmt seinen Platz.",
+    "signin.replace.openSystem": "Ersetzen…",
     "signin.replace.meta": "{platform} · zuletzt verwendet {when}",
     "signin.replace.leastRecent": "Am längsten nicht verwendet",
     "signin.replace.activeNow": "Gerade aktiv",
@@ -1512,7 +1534,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device} wird Gerät {position} von {limit}",
     "signin.consent.replaces": "{license} · ersetzt {device}",
-    "signin.consent.licenseLineAccount": "{license} · Kontoweit",
+    "signin.consent.licenseInApp": "Sie wählen die Lizenz in {app}.",
     "signin.consent.change": "Ändern",
     "signin.consent.continue": "Weiter zu {app}",
     "signin.consent.alsoGets": "{app} erhält außerdem",
@@ -1531,8 +1553,6 @@ export const KIT_COPY: Readonly<
     "signin.key.noEntries":
       "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an.",
     "signin.key.skip": "Vorerst überspringen",
-    "signin.key.owned":
-      "Diese Lizenz für {product} befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen.",
     "signin.key.ownedSignIn": "Bei diesem Konto anmelden",
     "signin.key.differentKey": "Anderen Schlüssel verwenden",
     "signin.return.yours": "{product} gehört Ihnen",
@@ -1540,6 +1560,7 @@ export const KIT_COPY: Readonly<
     "signin.return.button": "Zurück zu {app}",
     "signin.return.timer": "Automatische Rückkehr in {s} s",
     "signin.return.stay": "Hier bleiben",
+    "signin.done.start": "Mit {product} loslegen",
     "signin.device.title": "Anmelden, um auf {device} fortzufahren",
     "signin.device.lede":
       "Verwenden Sie hier Ihr Telefon oder Ihren Computer. {device} fährt automatisch fort, wenn Sie fertig sind.",
@@ -1559,9 +1580,11 @@ export const KIT_COPY: Readonly<
       "Die Anmeldung wurde abgebrochen. Fordern Sie einen neuen Code an",
     "signin.desktop.continue": "Im Browser fortfahren",
     "signin.desktop.toast": "Angemeldet als {name} · {tier}-Lizenz",
-    "signin.desktop.toastAccount": "Angemeldet als {name} · Kontoweite Lizenz",
     "signin.desktop.notifyTitle": "Sie sind angemeldet",
     "signin.desktop.notifyBody": "{app} ist bereit.",
+    "signin.desktop.notifyChoose":
+      "Lizenz auswählen · {app} ist bereit, die Anmeldung abzuschließen.",
+    "signin.menu.signIn": "Anmelden…",
     "signin.handoff.browserBody":
       "Wir haben Polaris Key in Ihrem Browser geöffnet. Melden Sie sich dort an, dann fährt {app} automatisch fort.",
     "signin.handoff.waiting": "Warten auf Ihren Browser…",
@@ -1579,6 +1602,9 @@ export const KIT_COPY: Readonly<
     "signin.handoff.openBrowser": "Browser öffnen",
     "signin.return.closeTab":
       "Sie können diesen Tab schließen und zu {app} zurückkehren.",
+    "signin.return.chooseInApp":
+      "Kehren Sie zu {app} zurück, um eine Lizenz auszuwählen. Sie können diesen Tab schließen.",
+    "signin.return.signedInShort": "Sie sind angemeldet",
     "signin.return.cancelled":
       "Die Anmeldung wurde in {app} abgebrochen. Beginnen Sie erneut in {app}.",
     "signin.return.library": "Bibliothek öffnen",
@@ -1593,7 +1619,6 @@ export const KIT_COPY: Readonly<
     "signin.cli.signedIn": "Angemeldet als {name} ({email})",
     "signin.cli.license":
       "{license} · {term} · {device} ist Gerät {position} von {limit}",
-    "signin.cli.licenseAccount": "{license} · Kontoweit",
     "signin.cli.closeTab": "Sie können den Browser-Tab schließen.",
     "signin.cli.logoutConfirm":
       "Auf diesem Gerät von {product} abmelden? (y/N)",
@@ -1624,6 +1649,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.title": "Dieser Code oder Link ist abgelaufen",
     "signin.expired.body":
       "Codes und Links sind einmal und 10 Minuten lang gültig.",
+    "signin.again": "Erneut anmelden",
     "signin.identityOff.notice":
       "{product} verwendet keine Anmeldung über Polaris Key. Öffnen Sie {product} und geben Sie dort Ihren Lizenzschlüssel ein.",
     "signin.identityOff.lede":
@@ -1752,7 +1778,7 @@ export const KIT_COPY: Readonly<
       "Die Anmeldung per E-Mail ist derzeit nicht verfügbar. Wählen Sie eine andere Anmeldemethode.",
     "core.codes.license_owned.title": "Lizenz in einem anderen Konto",
     "core.codes.license_owned.message":
-      "Diese Lizenz befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen: Melden Sie sich bei diesem Konto an oder verwenden Sie einen anderen Schlüssel.",
+      "Diese Lizenz für {product} befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen.",
     "core.codes.email_mismatch.title": "E-Mail-Adresse nicht bestätigt",
     "core.codes.email_mismatch.message":
       "Diese Lizenz gehört zu einer E-Mail-Adresse, die Ihr Konto nicht bestätigt hat. Fügen Sie diese E-Mail-Adresse hinzu, bestätigen Sie sie und versuchen Sie es dann erneut.",
@@ -1762,7 +1788,7 @@ export const KIT_COPY: Readonly<
     "core.codes.last_link.title": "Entfernen nicht möglich",
     "core.codes.last_link.message":
       "Dies ist die einzige Anmeldemethode Ihres Kontos. Fügen Sie eine weitere hinzu, bevor Sie sie entfernen.",
-    "core.codes.step_up_required.title": "Erneut anmelden",
+    "core.codes.step_up_required.title": "Bestätigen Sie, dass Sie es sind",
     "core.codes.step_up_required.message":
       "Melden Sie sich zu Ihrer Sicherheit erneut an, um fortzufahren.",
     "core.codes.not_eligible.title": "Angebot nicht verfügbar",
@@ -1884,7 +1910,7 @@ export const KIT_COPY: Readonly<
       "Polaris Key ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
     "core.codes.server-error.title": "Problem mit dem Dienst",
     "core.codes.server-error.message":
-      "Beim Dienst ist ein Problem aufgetreten. Neuer Versuch…",
+      "Beim Dienst ist ein Problem aufgetreten. Versuchen Sie es in ein paar Minuten erneut.",
     "core.codes.cancelled.title": "Anmeldung abgebrochen",
     "core.codes.cancelled.message": "Die Anmeldung wurde abgebrochen.",
     "core.codes.sign-in-expired.title": "Code abgelaufen",
@@ -2532,18 +2558,24 @@ export const KIT_COPY: Readonly<
     "signin.choice.meta": "{origin} · {term}",
     "signin.choice.devices":
       "{used} sur {limit, plural, one {# appareil} many {# d’appareils} other {# appareils}}",
-    "signin.choice.accountWide":
-      "Pour tout le compte · {used} sur {limit, plural, one {# appareil} many {# d’appareils} other {# appareils}}",
     "signin.choice.metaNew": "Créée lorsque vous continuez",
     "signin.term.lifetime": "À vie",
     "signin.term.until": "Jusqu’au {date}",
     "signin.term.yearlyUntil": "Annuelle, jusqu’au {date}",
-    "signin.origin.store": "Achetée sur {store}",
-    "signin.origin.purchase": "Achetée auprès de {developer}",
-    "signin.origin.key": "Ajoutée avec une clé",
-    "signin.origin.free": "Gratuite",
-    "signin.origin.developer": "Fournie par {developer}",
-    "signin.origin.signin": "Créée lors de votre connexion",
+    "signin.choice.origin.signIn": "Via la connexion",
+    "signin.choice.origin.key": "Clé se terminant par {last6}",
+    "signin.choice.origin.keyAdded": "Ajoutée avec une clé",
+    "signin.choice.origin.storeKey": "Clé {store} se terminant par {last6}",
+    "signin.choice.origin.storeKeyAdded": "Clé {store}",
+    "signin.choice.origin.store": "Via {store}",
+    "signin.choice.origin.developer": "Fournie par {developer}",
+    "signin.choice.origin.free": "Gratuite",
+    "signin.choice.origin.gift": "Cadeau",
+    "signin.choice.origin.org": "Incluse avec {org}",
+    "signin.choice.picker.signIn": "{tier} · Connexion",
+    "signin.choice.picker.key": "{tier} · Clé …{last6}",
+    "signin.choice.picker.storeKey": "{tier} · Clé {store} …{last6}",
+    "signin.choice.picker.store": "{tier} · {store}",
     "signin.choice.tag.current": "Sur cet appareil",
     "signin.choice.tag.new": "Nouvelle",
     "signin.choice.tag.full": "Aucun appareil libre",
@@ -2576,6 +2608,9 @@ export const KIT_COPY: Readonly<
     "signin.none.get": "Obtenir {product}",
     "signin.none.otherAccount": "Utiliser un autre compte",
     "signin.replace.open": "Remplacer un appareil",
+    "signin.replace.lede":
+      "Choisissez un appareil à déconnecter. {thisDevice} prend sa place.",
+    "signin.replace.openSystem": "Remplacer…",
     "signin.replace.meta": "{platform} · dernière utilisation {when}",
     "signin.replace.leastRecent": "Le moins récent",
     "signin.replace.activeNow": "Actif maintenant",
@@ -2599,7 +2634,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device} devient l’appareil {position} sur {limit}",
     "signin.consent.replaces": "{license} · remplace {device}",
-    "signin.consent.licenseLineAccount": "{license} · Pour tout le compte",
+    "signin.consent.licenseInApp": "Vous choisirez une licence dans {app}.",
     "signin.consent.change": "Modifier",
     "signin.consent.continue": "Continuer vers {app}",
     "signin.consent.alsoGets": "{app} recevra également",
@@ -2618,8 +2653,6 @@ export const KIT_COPY: Readonly<
     "signin.key.noEntries":
       "Cette clé n’a plus de saisies disponibles dans {product}. Ajoutez-la à votre compte et {product} vous connectera à la place.",
     "signin.key.skip": "Passer pour l’instant",
-    "signin.key.owned":
-      "Cette licence {product} est déjà associée à un autre compte Polaris Key. Une licence ne change jamais de compte par sa clé.",
     "signin.key.ownedSignIn": "Se connecter à ce compte",
     "signin.key.differentKey": "Utiliser une autre clé",
     "signin.return.yours": "{product} est à vous",
@@ -2627,6 +2660,7 @@ export const KIT_COPY: Readonly<
     "signin.return.button": "Revenir à {app}",
     "signin.return.timer": "Retour automatique dans {s} s",
     "signin.return.stay": "Rester ici",
+    "signin.done.start": "Commencer à utiliser {product}",
     "signin.device.title": "Connectez-vous pour terminer sur {device}",
     "signin.device.lede":
       "Utilisez votre téléphone ou ordinateur ici. {device} continuera tout seul une fois que vous aurez terminé.",
@@ -2645,10 +2679,11 @@ export const KIT_COPY: Readonly<
       "La connexion a été annulée. Obtenez un nouveau code",
     "signin.desktop.continue": "Continuer dans le navigateur",
     "signin.desktop.toast": "Connecté en tant que {name} · licence {tier}",
-    "signin.desktop.toastAccount":
-      "Connecté en tant que {name} · licence pour tout le compte",
     "signin.desktop.notifyTitle": "Vous êtes connecté",
     "signin.desktop.notifyBody": "{app} est prêt.",
+    "signin.desktop.notifyChoose":
+      "Choisissez une licence · {app} est prêt à terminer la connexion.",
+    "signin.menu.signIn": "Se connecter…",
     "signin.handoff.browserBody":
       "Nous avons ouvert Polaris Key dans votre navigateur. Connectez-vous-y et {app} continuera tout seul.",
     "signin.handoff.waiting": "En attente de votre navigateur…",
@@ -2666,6 +2701,9 @@ export const KIT_COPY: Readonly<
     "signin.handoff.openBrowser": "Ouvrir le navigateur",
     "signin.return.closeTab":
       "Vous pouvez fermer cet onglet et revenir à {app}.",
+    "signin.return.chooseInApp":
+      "Revenez dans {app} pour choisir une licence. Vous pouvez fermer cet onglet.",
+    "signin.return.signedInShort": "Vous êtes connecté",
     "signin.return.cancelled":
       "La connexion a été annulée dans {app}. Recommencez depuis {app}.",
     "signin.return.library": "Ouvrir votre bibliothèque",
@@ -2679,7 +2717,6 @@ export const KIT_COPY: Readonly<
     "signin.cli.signedIn": "Connecté en tant que {name} ({email})",
     "signin.cli.license":
       "{license} · {term} · {device} est l’appareil {position} sur {limit}",
-    "signin.cli.licenseAccount": "{license} · Pour tout le compte",
     "signin.cli.closeTab": "Vous pouvez fermer l’onglet du navigateur.",
     "signin.cli.logoutConfirm":
       "Se déconnecter de {product} sur cet appareil ? (y/N)",
@@ -2709,6 +2746,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.title": "Ce code ou ce lien a expiré",
     "signin.expired.body":
       "Les codes et les liens ne fonctionnent qu’une fois, pendant 10 minutes.",
+    "signin.again": "Se reconnecter",
     "signin.identityOff.notice":
       "{product} n’utilise pas la connexion Polaris Key. Ouvrez {product} et saisissez-y votre clé de licence.",
     "signin.identityOff.lede":
@@ -2834,7 +2872,7 @@ export const KIT_COPY: Readonly<
       "Email sign-in isn't available right now. Choose another sign-in method.",
     "core.codes.license_owned.title": "License in another account",
     "core.codes.license_owned.message":
-      "This license is already in another Polaris Key account. A license never moves by its key: sign in to that account, or use a different key.",
+      "This {product} license is already in another Polaris Key account. A license never moves by its key.",
     "core.codes.email_mismatch.title": "Email not verified",
     "core.codes.email_mismatch.message":
       "This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.",
@@ -2844,7 +2882,7 @@ export const KIT_COPY: Readonly<
     "core.codes.last_link.title": "Can't remove",
     "core.codes.last_link.message":
       "This is your account's only sign-in method. Add another one before removing it.",
-    "core.codes.step_up_required.title": "Sign in again",
+    "core.codes.step_up_required.title": "Confirm it's you",
     "core.codes.step_up_required.message":
       "For your security, sign in again to continue.",
     "core.codes.not_eligible.title": "Offer unavailable",
@@ -2957,7 +2995,7 @@ export const KIT_COPY: Readonly<
       "Can't reach Polaris Key. Check your connection and try again.",
     "core.codes.server-error.title": "Service problem",
     "core.codes.server-error.message":
-      "The service had a problem. Trying again…",
+      "The service had a problem. Try again in a few minutes.",
     "core.codes.cancelled.title": "Sign-in cancelled",
     "core.codes.cancelled.message": "Sign-in was cancelled.",
     "core.codes.sign-in-expired.title": "Code expired",
@@ -3594,18 +3632,24 @@ export const KIT_COPY: Readonly<
     "signin.choice.meta": "{origin} · {term}",
     "signin.choice.devices":
       "{used} de {limit, plural, one {# dispositivo} many {# de dispositivos} other {# dispositivos}}",
-    "signin.choice.accountWide":
-      "Para toda la cuenta · {used} de {limit, plural, one {# dispositivo} many {# de dispositivos} other {# dispositivos}}",
     "signin.choice.metaNew": "Se crea al continuar",
     "signin.term.lifetime": "De por vida",
     "signin.term.until": "Hasta el {date}",
     "signin.term.yearlyUntil": "Anual, hasta el {date}",
-    "signin.origin.store": "Comprada en {store}",
-    "signin.origin.purchase": "Comprada a {developer}",
-    "signin.origin.key": "Añadida con una clave",
-    "signin.origin.free": "Gratis",
-    "signin.origin.developer": "De {developer}",
-    "signin.origin.signin": "Creada al iniciar sesión",
+    "signin.choice.origin.signIn": "Al iniciar sesión",
+    "signin.choice.origin.key": "Clave terminada en {last6}",
+    "signin.choice.origin.keyAdded": "Añadida con una clave",
+    "signin.choice.origin.storeKey": "Clave de {store} terminada en {last6}",
+    "signin.choice.origin.storeKeyAdded": "Clave de {store}",
+    "signin.choice.origin.store": "De {store}",
+    "signin.choice.origin.developer": "De {developer}",
+    "signin.choice.origin.free": "Gratis",
+    "signin.choice.origin.gift": "Regalo",
+    "signin.choice.origin.org": "Incluida con {org}",
+    "signin.choice.picker.signIn": "{tier} · Inicio de sesión",
+    "signin.choice.picker.key": "{tier} · Clave …{last6}",
+    "signin.choice.picker.storeKey": "{tier} · Clave de {store} …{last6}",
+    "signin.choice.picker.store": "{tier} · {store}",
     "signin.choice.tag.current": "En este dispositivo",
     "signin.choice.tag.new": "Nueva",
     "signin.choice.tag.full": "Sin dispositivos libres",
@@ -3636,6 +3680,9 @@ export const KIT_COPY: Readonly<
     "signin.none.get": "Obtener {product}",
     "signin.none.otherAccount": "Usar otra cuenta",
     "signin.replace.open": "Reemplazar un dispositivo",
+    "signin.replace.lede":
+      "Elige un dispositivo para cerrar su sesión. {thisDevice} ocupará su plaza.",
+    "signin.replace.openSystem": "Reemplazar…",
     "signin.replace.meta": "{platform} · usado por última vez {when}",
     "signin.replace.leastRecent": "Menos reciente",
     "signin.replace.activeNow": "Activo ahora",
@@ -3657,7 +3704,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device} pasa a ser el dispositivo {position} de {limit}",
     "signin.consent.replaces": "{license} · reemplaza a {device}",
-    "signin.consent.licenseLineAccount": "{license} · Para toda la cuenta",
+    "signin.consent.licenseInApp": "Elegirás una licencia en {app}.",
     "signin.consent.change": "Cambiar",
     "signin.consent.continue": "Continuar a {app}",
     "signin.consent.alsoGets": "{app} también recibirá",
@@ -3676,8 +3723,6 @@ export const KIT_COPY: Readonly<
     "signin.key.noEntries":
       "A esta clave no le quedan usos en {product}. Añádela a tu cuenta y {product} iniciará tu sesión.",
     "signin.key.skip": "Omitir por ahora",
-    "signin.key.owned":
-      "Esta licencia de {product} ya está en otra cuenta de Polaris Key. Una licencia nunca se transfiere con su clave.",
     "signin.key.ownedSignIn": "Iniciar sesión en esa cuenta",
     "signin.key.differentKey": "Usar otra clave",
     "signin.return.yours": "{product} es tuyo",
@@ -3685,6 +3730,7 @@ export const KIT_COPY: Readonly<
     "signin.return.button": "Volver a {app}",
     "signin.return.timer": "Volviendo automáticamente en {s} s",
     "signin.return.stay": "Quedarme aquí",
+    "signin.done.start": "Empezar a usar {product}",
     "signin.device.title": "Inicia sesión para terminar en {device}",
     "signin.device.lede":
       "Usa aquí tu teléfono o computadora. {device} continuará solo cuando termines.",
@@ -3703,10 +3749,11 @@ export const KIT_COPY: Readonly<
       "Se canceló el inicio de sesión. Obtén un código nuevo",
     "signin.desktop.continue": "Continuar en el navegador",
     "signin.desktop.toast": "Sesión iniciada como {name} · Licencia {tier}",
-    "signin.desktop.toastAccount":
-      "Sesión iniciada como {name} · Licencia para toda la cuenta",
     "signin.desktop.notifyTitle": "Iniciaste sesión",
     "signin.desktop.notifyBody": "{app} está listo.",
+    "signin.desktop.notifyChoose":
+      "Elige una licencia · {app} está listo para terminar de iniciar sesión.",
+    "signin.menu.signIn": "Iniciar sesión…",
     "signin.handoff.browserBody":
       "Abrimos Polaris Key en tu navegador. Inicia sesión allí y {app} continuará solo.",
     "signin.handoff.waiting": "Esperando a tu navegador…",
@@ -3723,6 +3770,9 @@ export const KIT_COPY: Readonly<
       "En cualquier teléfono o computadora, ve a {url} y escribe este código.",
     "signin.handoff.openBrowser": "Abrir navegador",
     "signin.return.closeTab": "Puedes cerrar esta pestaña y volver a {app}.",
+    "signin.return.chooseInApp":
+      "Vuelve a {app} para elegir una licencia. Puedes cerrar esta pestaña.",
+    "signin.return.signedInShort": "Has iniciado sesión",
     "signin.return.cancelled":
       "Se canceló el inicio de sesión en {app}. Vuelve a empezar desde {app}.",
     "signin.return.library": "Abrir tu biblioteca",
@@ -3736,7 +3786,6 @@ export const KIT_COPY: Readonly<
     "signin.cli.signedIn": "Sesión iniciada como {name} ({email})",
     "signin.cli.license":
       "{license} · {term} · {device} es el dispositivo {position} de {limit}",
-    "signin.cli.licenseAccount": "{license} · Para toda la cuenta",
     "signin.cli.closeTab": "Puedes cerrar la pestaña del navegador.",
     "signin.cli.logoutConfirm":
       "¿Cerrar sesión en {product} en este dispositivo? (y/N)",
@@ -3765,6 +3814,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.title": "Ese código o enlace venció",
     "signin.expired.body":
       "Los códigos y enlaces funcionan una sola vez, durante 10 minutos.",
+    "signin.again": "Vuelve a iniciar sesión",
     "signin.identityOff.notice":
       "{product} no usa el inicio de sesión de Polaris Key. Abre {product} y escribe allí tu clave de licencia.",
     "signin.identityOff.lede":
@@ -3900,7 +3950,7 @@ export const KIT_COPY: Readonly<
       "El inicio de sesión por correo no está disponible en este momento. Elige otro método de inicio de sesión.",
     "core.codes.license_owned.title": "Licencia en otra cuenta",
     "core.codes.license_owned.message":
-      "Esta licencia ya está en otra cuenta de Polaris Key. Una licencia nunca se transfiere con su clave: inicia sesión en esa cuenta o usa otra clave.",
+      "Esta licencia de {product} ya está en otra cuenta de Polaris Key. Una licencia nunca se transfiere con su clave.",
     "core.codes.email_mismatch.title": "Correo no verificado",
     "core.codes.email_mismatch.message":
       "Esta licencia pertenece a una dirección de correo que tu cuenta no ha verificado. Añade y verifica ese correo, y vuelve a intentarlo.",
@@ -3910,7 +3960,7 @@ export const KIT_COPY: Readonly<
     "core.codes.last_link.title": "No se puede quitar",
     "core.codes.last_link.message":
       "Es el único método de inicio de sesión de tu cuenta. Añade otro antes de quitarlo.",
-    "core.codes.step_up_required.title": "Vuelve a iniciar sesión",
+    "core.codes.step_up_required.title": "Confirma que eres tú",
     "core.codes.step_up_required.message":
       "Por tu seguridad, vuelve a iniciar sesión para continuar.",
     "core.codes.not_eligible.title": "Oferta no disponible",
@@ -4030,7 +4080,7 @@ export const KIT_COPY: Readonly<
       "No se puede conectar con Polaris Key. Revisa tu conexión y vuelve a intentarlo.",
     "core.codes.server-error.title": "Problema del servicio",
     "core.codes.server-error.message":
-      "El servicio tuvo un problema. Reintentando…",
+      "El servicio tuvo un problema. Inténtalo de nuevo en unos minutos.",
     "core.codes.cancelled.title": "Inicio de sesión cancelado",
     "core.codes.cancelled.message": "Se canceló el inicio de sesión.",
     "core.codes.sign-in-expired.title": "Código vencido",
@@ -4672,18 +4722,24 @@ export const KIT_COPY: Readonly<
     "signin.choice.meta": "{origin} · {term}",
     "signin.choice.devices":
       "{used} de {limit, plural, one {# dispositivo} many {# de dispositivos} other {# dispositivos}}",
-    "signin.choice.accountWide":
-      "Para toda a conta · {used} de {limit, plural, one {# dispositivo} many {# de dispositivos} other {# dispositivos}}",
     "signin.choice.metaNew": "Criada quando você continuar",
     "signin.term.lifetime": "Vitalícia",
     "signin.term.until": "Até {date}",
     "signin.term.yearlyUntil": "Anual, até {date}",
-    "signin.origin.store": "Comprada na {store}",
-    "signin.origin.purchase": "Comprada de {developer}",
-    "signin.origin.key": "Adicionada com uma chave",
-    "signin.origin.free": "Grátis",
-    "signin.origin.developer": "De {developer}",
-    "signin.origin.signin": "Criada quando você entrou",
+    "signin.choice.origin.signIn": "Ao entrar",
+    "signin.choice.origin.key": "Chave terminada em {last6}",
+    "signin.choice.origin.keyAdded": "Adicionada com uma chave",
+    "signin.choice.origin.storeKey": "Chave {store} terminada em {last6}",
+    "signin.choice.origin.storeKeyAdded": "Chave {store}",
+    "signin.choice.origin.store": "Via {store}",
+    "signin.choice.origin.developer": "De {developer}",
+    "signin.choice.origin.free": "Grátis",
+    "signin.choice.origin.gift": "Presente",
+    "signin.choice.origin.org": "Incluída com {org}",
+    "signin.choice.picker.signIn": "{tier} · Acesso",
+    "signin.choice.picker.key": "{tier} · Chave …{last6}",
+    "signin.choice.picker.storeKey": "{tier} · Chave {store} …{last6}",
+    "signin.choice.picker.store": "{tier} · {store}",
     "signin.choice.tag.current": "Neste dispositivo",
     "signin.choice.tag.new": "Nova",
     "signin.choice.tag.full": "Sem dispositivos livres",
@@ -4714,6 +4770,9 @@ export const KIT_COPY: Readonly<
     "signin.none.get": "Obter {product}",
     "signin.none.otherAccount": "Usar outra conta",
     "signin.replace.open": "Substituir um dispositivo",
+    "signin.replace.lede":
+      "Escolha um dispositivo para desconectar. {thisDevice} fica com a vaga dele.",
+    "signin.replace.openSystem": "Substituir…",
     "signin.replace.meta": "{platform} · usado por último {when}",
     "signin.replace.leastRecent": "Menos recente",
     "signin.replace.activeNow": "Ativo agora",
@@ -4737,7 +4796,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device} será o dispositivo {position} de {limit}",
     "signin.consent.replaces": "{license} · substitui {device}",
-    "signin.consent.licenseLineAccount": "{license} · Para toda a conta",
+    "signin.consent.licenseInApp": "Você vai escolher uma licença no {app}.",
     "signin.consent.change": "Alterar",
     "signin.consent.continue": "Continuar para {app}",
     "signin.consent.alsoGets": "{app} também vai receber",
@@ -4756,8 +4815,6 @@ export const KIT_COPY: Readonly<
     "signin.key.noEntries":
       "Esta chave não tem mais usos em {product}. Adicione-a à sua conta e {product} faz seu acesso no lugar dela.",
     "signin.key.skip": "Pular por enquanto",
-    "signin.key.owned":
-      "Esta licença de {product} já está em outra conta do Polaris Key. Uma licença nunca é transferida pela chave.",
     "signin.key.ownedSignIn": "Entrar nessa conta",
     "signin.key.differentKey": "Usar outra chave",
     "signin.return.yours": "{product} é seu",
@@ -4765,6 +4822,7 @@ export const KIT_COPY: Readonly<
     "signin.return.button": "Voltar para {app}",
     "signin.return.timer": "Voltando automaticamente em {s} s",
     "signin.return.stay": "Ficar aqui",
+    "signin.done.start": "Começar a usar o {product}",
     "signin.device.title": "Entre para concluir em {device}",
     "signin.device.lede":
       "Use seu celular ou computador aqui. {device} continua sozinho quando você terminar.",
@@ -4782,10 +4840,11 @@ export const KIT_COPY: Readonly<
       "O acesso foi cancelado. Obtenha um novo código",
     "signin.desktop.continue": "Continuar no navegador",
     "signin.desktop.toast": "Conectado como {name} · Licença {tier}",
-    "signin.desktop.toastAccount":
-      "Conectado como {name} · Licença para toda a conta",
     "signin.desktop.notifyTitle": "Você entrou",
     "signin.desktop.notifyBody": "{app} está pronto.",
+    "signin.desktop.notifyChoose":
+      "Escolha uma licença · O {app} está pronto para concluir o acesso.",
+    "signin.menu.signIn": "Entrar…",
     "signin.handoff.browserBody":
       "Abrimos o Polaris Key no seu navegador. Entre por lá e {app} continua sozinho.",
     "signin.handoff.waiting": "Aguardando o navegador…",
@@ -4802,6 +4861,9 @@ export const KIT_COPY: Readonly<
       "Em qualquer celular ou computador, acesse {url} e digite este código.",
     "signin.handoff.openBrowser": "Abrir navegador",
     "signin.return.closeTab": "Você pode fechar esta aba e voltar para {app}.",
+    "signin.return.chooseInApp":
+      "Volte ao {app} para escolher uma licença. Você pode fechar esta aba.",
+    "signin.return.signedInShort": "Você entrou",
     "signin.return.cancelled":
       "O acesso foi cancelado em {app}. Comece de novo pelo {app}.",
     "signin.return.library": "Abrir sua biblioteca",
@@ -4814,7 +4876,6 @@ export const KIT_COPY: Readonly<
     "signin.cli.signedIn": "Conectado como {name} ({email})",
     "signin.cli.license":
       "{license} · {term} · {device} é o dispositivo {position} de {limit}",
-    "signin.cli.licenseAccount": "{license} · Para toda a conta",
     "signin.cli.closeTab": "Você pode fechar a aba do navegador.",
     "signin.cli.logoutConfirm": "Sair de {product} neste dispositivo? (y/N)",
     "signin.cli.signInAgain": "Execute {command} para entrar novamente.",
@@ -4840,6 +4901,7 @@ export const KIT_COPY: Readonly<
       "O acesso de administrador não está configurado",
     "signin.expired.title": "Esse código ou link expirou",
     "signin.expired.body": "Códigos e links funcionam uma vez, por 10 minutos.",
+    "signin.again": "Entre novamente",
     "signin.identityOff.notice":
       "{product} não usa o acesso do Polaris Key. Abra {product} e digite sua chave de licença nele.",
     "signin.identityOff.lede":
@@ -4969,7 +5031,7 @@ export const KIT_COPY: Readonly<
       "O acesso por e-mail não está disponível agora. Escolha outro método de acesso.",
     "core.codes.license_owned.title": "Licença em outra conta",
     "core.codes.license_owned.message":
-      "Esta licença já está em outra conta do Polaris Key. Uma licença nunca é transferida pela chave: entre nessa conta ou use outra chave.",
+      "Esta licença de {product} já está em outra conta do Polaris Key. Uma licença nunca é transferida pela chave.",
     "core.codes.email_mismatch.title": "E-mail não verificado",
     "core.codes.email_mismatch.message":
       "Esta licença pertence a um endereço de e-mail que sua conta não verificou. Adicione e verifique esse e-mail e tente novamente.",
@@ -4979,7 +5041,7 @@ export const KIT_COPY: Readonly<
     "core.codes.last_link.title": "Não é possível remover",
     "core.codes.last_link.message":
       "Este é o único método de acesso da sua conta. Adicione outro antes de removê-lo.",
-    "core.codes.step_up_required.title": "Entre novamente",
+    "core.codes.step_up_required.title": "Confirme que é você",
     "core.codes.step_up_required.message":
       "Para sua segurança, entre novamente para continuar.",
     "core.codes.not_eligible.title": "Oferta indisponível",
@@ -5097,7 +5159,7 @@ export const KIT_COPY: Readonly<
       "Não foi possível acessar o Polaris Key. Verifique sua conexão e tente novamente.",
     "core.codes.server-error.title": "Problema no serviço",
     "core.codes.server-error.message":
-      "O serviço teve um problema. Tentando novamente…",
+      "O serviço teve um problema. Tente novamente em alguns minutos.",
     "core.codes.cancelled.title": "Acesso cancelado",
     "core.codes.cancelled.message": "O acesso foi cancelado.",
     "core.codes.sign-in-expired.title": "Código expirado",
@@ -5734,18 +5796,24 @@ export const KIT_COPY: Readonly<
     "signin.choice.meta": "{origin} · {term}",
     "signin.choice.devices":
       "{used} di {limit, plural, one {# dispositivo} many {# di dispositivi} other {# dispositivi}}",
-    "signin.choice.accountWide":
-      "Per tutto l'account · {used} di {limit, plural, one {# dispositivo} many {# di dispositivi} other {# dispositivi}}",
     "signin.choice.metaNew": "Creata quando continui",
     "signin.term.lifetime": "A vita",
     "signin.term.until": "Fino al {date}",
     "signin.term.yearlyUntil": "Annuale, fino al {date}",
-    "signin.origin.store": "Acquistata su {store}",
-    "signin.origin.purchase": "Acquistata da {developer}",
-    "signin.origin.key": "Aggiunta con una chiave",
-    "signin.origin.free": "Gratuita",
-    "signin.origin.developer": "Da {developer}",
-    "signin.origin.signin": "Creata al tuo accesso",
+    "signin.choice.origin.signIn": "Dall'accesso",
+    "signin.choice.origin.key": "Chiave che termina con {last6}",
+    "signin.choice.origin.keyAdded": "Aggiunta con una chiave",
+    "signin.choice.origin.storeKey": "Chiave {store} che termina con {last6}",
+    "signin.choice.origin.storeKeyAdded": "Chiave {store}",
+    "signin.choice.origin.store": "Da {store}",
+    "signin.choice.origin.developer": "Da {developer}",
+    "signin.choice.origin.free": "Gratuita",
+    "signin.choice.origin.gift": "Regalo",
+    "signin.choice.origin.org": "Inclusa con {org}",
+    "signin.choice.picker.signIn": "{tier} · Accesso",
+    "signin.choice.picker.key": "{tier} · Chiave …{last6}",
+    "signin.choice.picker.storeKey": "{tier} · Chiave {store} …{last6}",
+    "signin.choice.picker.store": "{tier} · {store}",
     "signin.choice.tag.current": "Su questo dispositivo",
     "signin.choice.tag.new": "Nuova",
     "signin.choice.tag.full": "Nessun dispositivo libero",
@@ -5776,6 +5844,9 @@ export const KIT_COPY: Readonly<
     "signin.none.get": "Ottieni {product}",
     "signin.none.otherAccount": "Usa un altro account",
     "signin.replace.open": "Sostituisci un dispositivo",
+    "signin.replace.lede":
+      "Scegli un dispositivo da disconnettere. {thisDevice} ne prende il posto.",
+    "signin.replace.openSystem": "Sostituisci…",
     "signin.replace.meta": "{platform} · usato l'ultima volta {when}",
     "signin.replace.leastRecent": "Meno recente",
     "signin.replace.activeNow": "Attivo ora",
@@ -5799,7 +5870,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device} diventa il dispositivo {position} di {limit}",
     "signin.consent.replaces": "{license} · sostituisce {device}",
-    "signin.consent.licenseLineAccount": "{license} · Per tutto l'account",
+    "signin.consent.licenseInApp": "Sceglierai una licenza in {app}.",
     "signin.consent.change": "Cambia",
     "signin.consent.continue": "Continua su {app}",
     "signin.consent.alsoGets": "{app} riceverà anche",
@@ -5818,8 +5889,6 @@ export const KIT_COPY: Readonly<
     "signin.key.noEntries":
       "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo.",
     "signin.key.skip": "Salta per ora",
-    "signin.key.owned":
-      "Questa licenza di {product} è già in un altro account Polaris Key. Una licenza non si sposta mai tramite la sua chiave.",
     "signin.key.ownedSignIn": "Accedi a quell'account",
     "signin.key.differentKey": "Usa una chiave diversa",
     "signin.return.yours": "{product} è tuo",
@@ -5827,6 +5896,7 @@ export const KIT_COPY: Readonly<
     "signin.return.button": "Torna a {app}",
     "signin.return.timer": "Ritorno automatico tra {s} s",
     "signin.return.stay": "Resta qui",
+    "signin.done.start": "Inizia a usare {product}",
     "signin.device.title": "Accedi per completare su {device}",
     "signin.device.lede":
       "Usa qui il telefono o il computer. {device} continua da solo quando hai finito.",
@@ -5844,10 +5914,11 @@ export const KIT_COPY: Readonly<
       "L'accesso è stato annullato. Ottieni un nuovo codice",
     "signin.desktop.continue": "Continua nel browser",
     "signin.desktop.toast": "Accesso effettuato come {name} · licenza {tier}",
-    "signin.desktop.toastAccount":
-      "Accesso effettuato come {name} · licenza per tutto l'account",
     "signin.desktop.notifyTitle": "Accesso effettuato",
     "signin.desktop.notifyBody": "{app} è pronto.",
+    "signin.desktop.notifyChoose":
+      "Scegli una licenza · {app} è pronto a completare l'accesso.",
+    "signin.menu.signIn": "Accedi…",
     "signin.handoff.browserBody":
       "Abbiamo aperto Polaris Key nel browser. Accedi lì e {app} continuerà da solo.",
     "signin.handoff.waiting": "In attesa del browser…",
@@ -5864,6 +5935,9 @@ export const KIT_COPY: Readonly<
       "Su un telefono o computer qualsiasi, vai su {url} e inserisci questo codice.",
     "signin.handoff.openBrowser": "Apri browser",
     "signin.return.closeTab": "Puoi chiudere questa scheda e tornare a {app}.",
+    "signin.return.chooseInApp":
+      "Torna a {app} per scegliere una licenza. Puoi chiudere questa scheda.",
+    "signin.return.signedInShort": "Hai effettuato l'accesso",
     "signin.return.cancelled":
       "L'accesso è stato annullato in {app}. Ricomincia da {app}.",
     "signin.return.library": "Apri la tua libreria",
@@ -5877,7 +5951,6 @@ export const KIT_COPY: Readonly<
     "signin.cli.signedIn": "Accesso effettuato come {name} ({email})",
     "signin.cli.license":
       "{license} · {term} · {device} è il dispositivo {position} di {limit}",
-    "signin.cli.licenseAccount": "{license} · Per tutto l'account",
     "signin.cli.closeTab": "Puoi chiudere la scheda del browser.",
     "signin.cli.logoutConfirm":
       "Uscire da {product} su questo dispositivo? (y/N)",
@@ -5907,6 +5980,7 @@ export const KIT_COPY: Readonly<
     "signin.expired.title": "Il codice o il link è scaduto",
     "signin.expired.body":
       "Codici e link funzionano una sola volta, per 10 minuti.",
+    "signin.again": "Accedi di nuovo",
     "signin.identityOff.notice":
       "{product} non usa l'accesso Polaris Key. Apri {product} e inserisci lì la tua chiave di licenza.",
     "signin.identityOff.lede":
@@ -6040,7 +6114,7 @@ export const KIT_COPY: Readonly<
       "L'accesso via email non è disponibile al momento. Scegli un altro metodo di accesso.",
     "core.codes.license_owned.title": "Licenza in un altro account",
     "core.codes.license_owned.message":
-      "Questa licenza è già in un altro account Polaris Key. Una licenza non si sposta mai tramite la sua chiave: accedi a quell'account o usa una chiave diversa.",
+      "Questa licenza di {product} è già in un altro account Polaris Key. Una licenza non si sposta mai tramite la sua chiave.",
     "core.codes.email_mismatch.title": "Email non verificata",
     "core.codes.email_mismatch.message":
       "Questa licenza appartiene a un indirizzo email che il tuo account non ha verificato. Aggiungi e verifica quell'email, poi riprova.",
@@ -6050,7 +6124,7 @@ export const KIT_COPY: Readonly<
     "core.codes.last_link.title": "Impossibile rimuovere",
     "core.codes.last_link.message":
       "Questo è l'unico metodo di accesso del tuo account. Aggiungine un altro prima di rimuoverlo.",
-    "core.codes.step_up_required.title": "Accedi di nuovo",
+    "core.codes.step_up_required.title": "Conferma la tua identità",
     "core.codes.step_up_required.message":
       "Per la tua sicurezza, accedi di nuovo per continuare.",
     "core.codes.not_eligible.title": "Offerta non disponibile",
@@ -6169,7 +6243,7 @@ export const KIT_COPY: Readonly<
       "Impossibile raggiungere Polaris Key. Controlla la connessione e riprova.",
     "core.codes.server-error.title": "Problema del servizio",
     "core.codes.server-error.message":
-      "Il servizio ha avuto un problema. Nuovo tentativo in corso…",
+      "Il servizio ha avuto un problema. Riprova tra qualche minuto.",
     "core.codes.cancelled.title": "Accesso annullato",
     "core.codes.cancelled.message": "L'accesso è stato annullato.",
     "core.codes.sign-in-expired.title": "Codice scaduto",
@@ -6813,18 +6887,24 @@ export const KIT_COPY: Readonly<
     "signin.choice.group": "{product}のライセンス",
     "signin.choice.meta": "{origin} · {term}",
     "signin.choice.devices": "{limit, plural, other {#台のデバイス}}中{used}台",
-    "signin.choice.accountWide":
-      "アカウント全体 · {limit, plural, other {#台のデバイス}}中{used}台",
     "signin.choice.metaNew": "続行すると作成されます",
     "signin.term.lifetime": "無期限",
     "signin.term.until": "{date}まで",
     "signin.term.yearlyUntil": "年間、{date}まで",
-    "signin.origin.store": "{store}で購入",
-    "signin.origin.purchase": "{developer}から購入",
-    "signin.origin.key": "キーで追加",
-    "signin.origin.free": "無料",
-    "signin.origin.developer": "{developer}から提供",
-    "signin.origin.signin": "サインイン時に作成",
+    "signin.choice.origin.signIn": "サインインで取得",
+    "signin.choice.origin.key": "末尾が{last6}のキー",
+    "signin.choice.origin.keyAdded": "キーで追加",
+    "signin.choice.origin.storeKey": "末尾が{last6}の{store}キー",
+    "signin.choice.origin.storeKeyAdded": "{store}キー",
+    "signin.choice.origin.store": "{store}で購入",
+    "signin.choice.origin.developer": "{developer}から提供",
+    "signin.choice.origin.free": "無料",
+    "signin.choice.origin.gift": "ギフト",
+    "signin.choice.origin.org": "{org}に付属",
+    "signin.choice.picker.signIn": "{tier} · サインイン",
+    "signin.choice.picker.key": "{tier} · キー …{last6}",
+    "signin.choice.picker.storeKey": "{tier} · {store}キー …{last6}",
+    "signin.choice.picker.store": "{tier} · {store}",
     "signin.choice.tag.current": "このデバイスで使用中",
     "signin.choice.tag.new": "新規",
     "signin.choice.tag.full": "空きデバイスなし",
@@ -6855,6 +6935,9 @@ export const KIT_COPY: Readonly<
     "signin.none.get": "{product}を入手",
     "signin.none.otherAccount": "別のアカウントを使う",
     "signin.replace.open": "デバイスを置き換える",
+    "signin.replace.lede":
+      "サインアウトするデバイスを選んでください。{thisDevice}がその枠を使用します。",
+    "signin.replace.openSystem": "置き換え…",
     "signin.replace.meta": "{platform} · 最終使用：{when}",
     "signin.replace.leastRecent": "最終使用が最も古い",
     "signin.replace.activeNow": "現在使用中",
@@ -6878,7 +6961,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device}は{limit}台中{position}台目のデバイスになります",
     "signin.consent.replaces": "{license} · {device}を置き換え",
-    "signin.consent.licenseLineAccount": "{license} · アカウント全体",
+    "signin.consent.licenseInApp": "ライセンスは{app}で選択します。",
     "signin.consent.change": "変更",
     "signin.consent.continue": "{app}に進む",
     "signin.consent.alsoGets": "{app}は次の情報も取得します",
@@ -6896,8 +6979,6 @@ export const KIT_COPY: Readonly<
     "signin.key.noEntries":
       "このキーは{product}での入力回数が残っていません。アカウントに追加すると、代わりに{product}がサインインします。",
     "signin.key.skip": "今はスキップ",
-    "signin.key.owned":
-      "この{product}のライセンスは、すでに別のPolaris Keyアカウントにあります。ライセンスがキーによって移動することはありません。",
     "signin.key.ownedSignIn": "そのアカウントにサインイン",
     "signin.key.differentKey": "別のキーを使う",
     "signin.return.yours": "{product}があなたのものになりました",
@@ -6905,6 +6986,7 @@ export const KIT_COPY: Readonly<
     "signin.return.button": "{app}に戻る",
     "signin.return.timer": "{s}秒後に自動的に戻ります",
     "signin.return.stay": "このページにとどまる",
+    "signin.done.start": "{product}を使い始める",
     "signin.device.title": "{device}でのサインインを完了",
     "signin.device.lede":
       "ここでスマートフォンまたはコンピュータを使用してください。完了すると{device}が自動的に続行します。",
@@ -6924,10 +7006,11 @@ export const KIT_COPY: Readonly<
       "サインインがキャンセルされました。新しいコードを取得してください",
     "signin.desktop.continue": "ブラウザで続ける",
     "signin.desktop.toast": "{name}としてサインイン中 · {tier}ライセンス",
-    "signin.desktop.toastAccount":
-      "{name}としてサインイン中 · アカウント全体のライセンス",
     "signin.desktop.notifyTitle": "サインインしました",
     "signin.desktop.notifyBody": "{app}の準備ができました。",
+    "signin.desktop.notifyChoose":
+      "ライセンスを選択 · {app}でサインインを完了できます。",
+    "signin.menu.signIn": "サインイン…",
     "signin.handoff.browserBody":
       "ブラウザでPolaris Keyを開きました。そこでサインインすると、{app}が自動的に続行します。",
     "signin.handoff.waiting": "ブラウザを待っています…",
@@ -6944,6 +7027,9 @@ export const KIT_COPY: Readonly<
       "任意のスマートフォンまたはコンピュータで{url}にアクセスし、このコードを入力してください。",
     "signin.handoff.openBrowser": "ブラウザを開く",
     "signin.return.closeTab": "このタブを閉じて{app}に戻ってかまいません。",
+    "signin.return.chooseInApp":
+      "{app}に戻ってライセンスを選択してください。このタブは閉じてかまいません。",
+    "signin.return.signedInShort": "サインインしました",
     "signin.return.cancelled":
       "{app}でサインインがキャンセルされました。{app}からやり直してください。",
     "signin.return.library": "ライブラリを開く",
@@ -6957,7 +7043,6 @@ export const KIT_COPY: Readonly<
     "signin.cli.signedIn": "{name}（{email}）としてサインインしました",
     "signin.cli.license":
       "{license} · {term} · {device}は{limit}台中{position}台目のデバイスです",
-    "signin.cli.licenseAccount": "{license} · アカウント全体",
     "signin.cli.closeTab": "ブラウザのタブを閉じてかまいません。",
     "signin.cli.logoutConfirm":
       "このデバイスで{product}からサインアウトしますか？(y/N)",
@@ -6986,6 +7071,7 @@ export const KIT_COPY: Readonly<
     "signin.console.notConfigured": "管理者サインインが設定されていません",
     "signin.expired.title": "このコードまたはリンクの有効期限が切れています",
     "signin.expired.body": "コードとリンクは1回限り、10分間有効です。",
+    "signin.again": "もう一度サインイン",
     "signin.identityOff.notice":
       "{product}はPolaris Keyのサインインを使用しません。{product}を開いて、そこでライセンスキーを入力してください。",
     "signin.identityOff.lede":
@@ -7118,7 +7204,7 @@ export const KIT_COPY: Readonly<
       "現在、メールでのサインインを利用できません。別のサインイン方法を選択してください。",
     "core.codes.license_owned.title": "別のアカウントのライセンス",
     "core.codes.license_owned.message":
-      "このライセンスは、すでに別のPolaris Keyアカウントにあります。ライセンスがキーによって移動することはありません。そのアカウントにサインインするか、別のキーを使用してください。",
+      "この{product}のライセンスは、すでに別のPolaris Keyアカウントにあります。ライセンスがキーによって移動することはありません。",
     "core.codes.email_mismatch.title": "メールアドレスが確認されていません",
     "core.codes.email_mismatch.message":
       "このライセンスは、お使いのアカウントで確認されていないメールアドレスに紐付いています。そのメールアドレスを追加して確認してから、もう一度お試しください。",
@@ -7128,7 +7214,7 @@ export const KIT_COPY: Readonly<
     "core.codes.last_link.title": "削除できません",
     "core.codes.last_link.message":
       "これはアカウントで唯一のサインイン方法です。削除する前に別の方法を追加してください。",
-    "core.codes.step_up_required.title": "もう一度サインインしてください",
+    "core.codes.step_up_required.title": "本人確認",
     "core.codes.step_up_required.message":
       "セキュリティのため、続けるにはもう一度サインインしてください。",
     "core.codes.not_eligible.title": "オファーを利用できません",
@@ -7252,7 +7338,7 @@ export const KIT_COPY: Readonly<
       "Polaris Keyに接続できません。接続を確認して、もう一度お試しください。",
     "core.codes.server-error.title": "サービスの問題",
     "core.codes.server-error.message":
-      "サービスで問題が発生しました。再試行しています…",
+      "サービスで問題が発生しました。数分後にもう一度お試しください。",
     "core.codes.cancelled.title": "サインインがキャンセルされました",
     "core.codes.cancelled.message": "サインインはキャンセルされました。",
     "core.codes.sign-in-expired.title": "コードの有効期限切れ",
@@ -7884,18 +7970,24 @@ export const KIT_COPY: Readonly<
     "signin.choice.group": "{product} 라이선스",
     "signin.choice.meta": "{origin} · {term}",
     "signin.choice.devices": "{limit, plural, other {기기 #대}} 중 {used}대",
-    "signin.choice.accountWide":
-      "계정 전체 · {limit, plural, other {기기 #대}} 중 {used}대",
     "signin.choice.metaNew": "계속하면 생성돼요",
     "signin.term.lifetime": "평생",
     "signin.term.until": "{date}까지",
     "signin.term.yearlyUntil": "연간, {date}까지",
-    "signin.origin.store": "{store}에서 구매",
-    "signin.origin.purchase": "{developer}에서 구매",
-    "signin.origin.key": "키로 추가됨",
-    "signin.origin.free": "무료",
-    "signin.origin.developer": "{developer} 제공",
-    "signin.origin.signin": "로그인할 때 생성됨",
+    "signin.choice.origin.signIn": "로그인으로 받음",
+    "signin.choice.origin.key": "{last6}(으)로 끝나는 키",
+    "signin.choice.origin.keyAdded": "키로 추가됨",
+    "signin.choice.origin.storeKey": "{last6}(으)로 끝나는 {store} 키",
+    "signin.choice.origin.storeKeyAdded": "{store} 키",
+    "signin.choice.origin.store": "{store}에서 구매",
+    "signin.choice.origin.developer": "{developer} 제공",
+    "signin.choice.origin.free": "무료",
+    "signin.choice.origin.gift": "선물",
+    "signin.choice.origin.org": "{org}에 포함",
+    "signin.choice.picker.signIn": "{tier} · 로그인",
+    "signin.choice.picker.key": "{tier} · 키 …{last6}",
+    "signin.choice.picker.storeKey": "{tier} · {store} 키 …{last6}",
+    "signin.choice.picker.store": "{tier} · {store}",
     "signin.choice.tag.current": "이 기기에서 사용 중",
     "signin.choice.tag.new": "신규",
     "signin.choice.tag.full": "빈 기기 자리 없음",
@@ -7923,6 +8015,9 @@ export const KIT_COPY: Readonly<
     "signin.none.get": "{product} 받기",
     "signin.none.otherAccount": "다른 계정 사용",
     "signin.replace.open": "기기 교체",
+    "signin.replace.lede":
+      "로그아웃할 기기를 선택하세요. {thisDevice}이(가) 그 자리를 사용해요.",
+    "signin.replace.openSystem": "교체…",
     "signin.replace.meta": "{platform} · 마지막 사용 {when}",
     "signin.replace.leastRecent": "가장 오래전 사용",
     "signin.replace.activeNow": "지금 사용 중",
@@ -7945,7 +8040,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device}: {limit}대 중 {position}번째 기기",
     "signin.consent.replaces": "{license} · {device} 교체",
-    "signin.consent.licenseLineAccount": "{license} · 계정 전체",
+    "signin.consent.licenseInApp": "라이선스는 {app}에서 선택해요.",
     "signin.consent.change": "변경",
     "signin.consent.continue": "{app}에서 계속",
     "signin.consent.alsoGets": "{app}에서 다음 정보도 받아요",
@@ -7963,8 +8058,6 @@ export const KIT_COPY: Readonly<
     "signin.key.noEntries":
       "이 키는 {product}에서 남은 등록 횟수가 없어요. 계정에 추가하면 {product}에서 로그인으로 사용할 수 있어요.",
     "signin.key.skip": "지금은 건너뛰기",
-    "signin.key.owned":
-      "이 {product} 라이선스는 이미 다른 Polaris Key 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.",
     "signin.key.ownedSignIn": "그 계정으로 로그인",
     "signin.key.differentKey": "다른 키 사용",
     "signin.return.yours": "이제 {product}을(를) 이용할 수 있어요",
@@ -7972,6 +8065,7 @@ export const KIT_COPY: Readonly<
     "signin.return.button": "{app} 앱으로 돌아가기",
     "signin.return.timer": "{s}초 후 자동으로 돌아가요",
     "signin.return.stay": "여기 머무르기",
+    "signin.done.start": "{product} 사용 시작",
     "signin.device.title": "{device}에서 완료하려면 로그인하세요",
     "signin.device.lede":
       "여기서 휴대폰이나 컴퓨터를 사용하세요. 완료하면 {device}에서 자동으로 계속 진행돼요.",
@@ -7989,10 +8083,11 @@ export const KIT_COPY: Readonly<
     "signin.handoff.cancelled": "로그인이 취소됐어요. 새 코드 받기",
     "signin.desktop.continue": "브라우저에서 계속",
     "signin.desktop.toast": "{name} 님으로 로그인됨 · {tier} 라이선스",
-    "signin.desktop.toastAccount":
-      "{name} 님으로 로그인됨 · 계정 전체 라이선스",
     "signin.desktop.notifyTitle": "로그인했어요",
     "signin.desktop.notifyBody": "{app} 준비가 완료됐어요.",
+    "signin.desktop.notifyChoose":
+      "라이선스 선택 · {app}에서 로그인을 마칠 준비가 됐어요.",
+    "signin.menu.signIn": "로그인…",
     "signin.handoff.browserBody":
       "브라우저에서 Polaris Key를 열었어요. 거기서 로그인하면 {app}에서 자동으로 계속 진행돼요.",
     "signin.handoff.waiting": "브라우저를 기다리는 중…",
@@ -8009,6 +8104,9 @@ export const KIT_COPY: Readonly<
       "휴대폰이나 컴퓨터에서 {url}에 접속해 이 코드를 입력하세요.",
     "signin.handoff.openBrowser": "브라우저 열기",
     "signin.return.closeTab": "이 탭을 닫고 {app} 앱으로 돌아가도 돼요.",
+    "signin.return.chooseInApp":
+      "{app}(으)로 돌아가 라이선스를 선택하세요. 이 탭은 닫아도 돼요.",
+    "signin.return.signedInShort": "로그인했어요",
     "signin.return.cancelled":
       "{app}에서 로그인이 취소됐어요. {app}에서 다시 시작하세요.",
     "signin.return.library": "내 라이브러리 열기",
@@ -8022,7 +8120,6 @@ export const KIT_COPY: Readonly<
     "signin.cli.signedIn": "{name} 님으로 로그인됨 ({email})",
     "signin.cli.license":
       "{license} · {term} · {device}: {limit}대 중 {position}번째 기기",
-    "signin.cli.licenseAccount": "{license} · 계정 전체",
     "signin.cli.closeTab": "브라우저 탭을 닫아도 돼요.",
     "signin.cli.logoutConfirm": "이 기기의 {product}에서 로그아웃할까요? (y/N)",
     "signin.cli.signInAgain":
@@ -8048,6 +8145,7 @@ export const KIT_COPY: Readonly<
     "signin.console.notConfigured": "관리자 로그인이 설정되지 않았어요",
     "signin.expired.title": "코드 또는 링크가 만료됐어요",
     "signin.expired.body": "코드와 링크는 10분 동안 한 번만 사용할 수 있어요.",
+    "signin.again": "다시 로그인",
     "signin.identityOff.notice":
       "{product}에서는 Polaris Key 로그인을 사용하지 않아요. {product}을(를) 열어 라이선스 키를 입력하세요.",
     "signin.identityOff.lede":
@@ -8171,7 +8269,7 @@ export const KIT_COPY: Readonly<
       "지금은 이메일 로그인을 사용할 수 없어요. 다른 로그인 방법을 선택하세요.",
     "core.codes.license_owned.title": "다른 계정의 라이선스",
     "core.codes.license_owned.message":
-      "이 라이선스는 이미 다른 Polaris Key 계정에 있어요. 라이선스는 키로 옮겨지지 않아요. 그 계정으로 로그인하거나 다른 키를 사용하세요.",
+      "이 {product} 라이선스는 이미 다른 Polaris Key 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.",
     "core.codes.email_mismatch.title": "인증되지 않은 이메일",
     "core.codes.email_mismatch.message":
       "이 라이선스는 회원님 계정에서 인증하지 않은 이메일 주소에 속해 있어요. 해당 이메일을 추가하고 인증한 후 다시 시도하세요.",
@@ -8181,7 +8279,7 @@ export const KIT_COPY: Readonly<
     "core.codes.last_link.title": "제거할 수 없음",
     "core.codes.last_link.message":
       "계정의 유일한 로그인 방법이에요. 제거하기 전에 다른 방법을 추가하세요.",
-    "core.codes.step_up_required.title": "다시 로그인",
+    "core.codes.step_up_required.title": "본인 확인",
     "core.codes.step_up_required.message":
       "보안을 위해 계속하려면 다시 로그인하세요.",
     "core.codes.not_eligible.title": "혜택 사용 불가",
@@ -8296,7 +8394,7 @@ export const KIT_COPY: Readonly<
       "Polaris Key에 연결할 수 없어요. 연결 상태를 확인하고 다시 시도하세요.",
     "core.codes.server-error.title": "서비스 문제",
     "core.codes.server-error.message":
-      "서비스에 문제가 발생했어요. 다시 시도하는 중…",
+      "서비스에 문제가 발생했어요. 몇 분 후에 다시 시도하세요.",
     "core.codes.cancelled.title": "로그인 취소됨",
     "core.codes.cancelled.message": "로그인이 취소됐어요.",
     "core.codes.sign-in-expired.title": "코드 만료됨",
@@ -8896,18 +8994,24 @@ export const KIT_COPY: Readonly<
     "signin.choice.group": "{product}的许可证",
     "signin.choice.meta": "{origin} · {term}",
     "signin.choice.devices": "{used}/{limit, plural, other {#台设备}}",
-    "signin.choice.accountWide":
-      "全账户 · {used}/{limit, plural, other {#台设备}}",
     "signin.choice.metaNew": "继续后创建",
     "signin.term.lifetime": "永久",
     "signin.term.until": "有效期至{date}",
     "signin.term.yearlyUntil": "按年订阅，有效期至{date}",
-    "signin.origin.store": "购于{store}",
-    "signin.origin.purchase": "购自{developer}",
-    "signin.origin.key": "通过密钥添加",
-    "signin.origin.free": "免费",
-    "signin.origin.developer": "来自{developer}",
-    "signin.origin.signin": "登录时创建",
+    "signin.choice.origin.signIn": "通过登录获得",
+    "signin.choice.origin.key": "尾号为{last6}的密钥",
+    "signin.choice.origin.keyAdded": "通过密钥添加",
+    "signin.choice.origin.storeKey": "尾号为{last6}的{store}密钥",
+    "signin.choice.origin.storeKeyAdded": "{store}密钥",
+    "signin.choice.origin.store": "来自{store}",
+    "signin.choice.origin.developer": "来自{developer}",
+    "signin.choice.origin.free": "免费",
+    "signin.choice.origin.gift": "礼物",
+    "signin.choice.origin.org": "包含在{org}中",
+    "signin.choice.picker.signIn": "{tier} · 登录",
+    "signin.choice.picker.key": "{tier} · 密钥 …{last6}",
+    "signin.choice.picker.storeKey": "{tier} · {store}密钥 …{last6}",
+    "signin.choice.picker.store": "{tier} · {store}",
     "signin.choice.tag.current": "在此设备上",
     "signin.choice.tag.new": "新",
     "signin.choice.tag.full": "无空余设备",
@@ -8934,6 +9038,8 @@ export const KIT_COPY: Readonly<
     "signin.none.get": "获取{product}",
     "signin.none.otherAccount": "使用其他账户",
     "signin.replace.open": "替换设备",
+    "signin.replace.lede": "选择要退出登录的设备。{thisDevice}将占用其席位。",
+    "signin.replace.openSystem": "替换…",
     "signin.replace.meta": "{platform} · 上次使用：{when}",
     "signin.replace.leastRecent": "最久未使用",
     "signin.replace.activeNow": "当前活跃",
@@ -8955,7 +9061,7 @@ export const KIT_COPY: Readonly<
     "signin.consent.licenseLine":
       "{license} · {term} · {device}将成为第{position}台设备（共{limit}台）",
     "signin.consent.replaces": "{license} · 替换{device}",
-    "signin.consent.licenseLineAccount": "{license} · 全账户",
+    "signin.consent.licenseInApp": "你将在{app}中选择许可证。",
     "signin.consent.change": "更改",
     "signin.consent.continue": "继续使用{app}",
     "signin.consent.alsoGets": "{app}还将获得",
@@ -8973,8 +9079,6 @@ export const KIT_COPY: Readonly<
     "signin.key.noEntries":
       "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。",
     "signin.key.skip": "暂时跳过",
-    "signin.key.owned":
-      "此{product}许可证已在另一个Polaris Key账户中。许可证不会通过密钥转移。",
     "signin.key.ownedSignIn": "登录那个账户",
     "signin.key.differentKey": "使用其他密钥",
     "signin.return.yours": "{product}已归你所有",
@@ -8982,6 +9086,7 @@ export const KIT_COPY: Readonly<
     "signin.return.button": "返回{app}",
     "signin.return.timer": "{s}秒后自动返回",
     "signin.return.stay": "留在此页",
+    "signin.done.start": "开始使用{product}",
     "signin.device.title": "登录以在{device}上完成",
     "signin.device.lede":
       "在这里使用你的手机或电脑。完成后{device}会自动继续。",
@@ -8998,9 +9103,10 @@ export const KIT_COPY: Readonly<
     "signin.handoff.cancelled": "登录已取消。获取新代码",
     "signin.desktop.continue": "在浏览器中继续",
     "signin.desktop.toast": "已登录为{name} · {tier}许可证",
-    "signin.desktop.toastAccount": "已登录为{name} · 全账户许可证",
     "signin.desktop.notifyTitle": "你已登录",
     "signin.desktop.notifyBody": "{app}已就绪。",
+    "signin.desktop.notifyChoose": "选择许可证 · {app}已准备好完成登录。",
+    "signin.menu.signIn": "登录…",
     "signin.handoff.browserBody":
       "我们已在你的浏览器中打开Polaris Key。在那里登录后，{app}会自动继续。",
     "signin.handoff.waiting": "正在等待你的浏览器…",
@@ -9016,6 +9122,8 @@ export const KIT_COPY: Readonly<
     "signin.handoff.codeBody": "在任意手机或电脑上前往{url}并输入此代码。",
     "signin.handoff.openBrowser": "打开浏览器",
     "signin.return.closeTab": "你可以关闭此标签页并返回{app}。",
+    "signin.return.chooseInApp": "返回{app}选择许可证。你可以关闭此标签页。",
+    "signin.return.signedInShort": "你已登录",
     "signin.return.cancelled": "已在{app}中取消登录。请从{app}重新开始。",
     "signin.return.library": "打开你的资料库",
     "signin.choice.freed": "此许可证现在有一台空余设备。",
@@ -9027,7 +9135,6 @@ export const KIT_COPY: Readonly<
     "signin.cli.signedIn": "已登录为{name}（{email}）",
     "signin.cli.license":
       "{license} · {term} · {device}是第{position}台设备（共{limit}台）",
-    "signin.cli.licenseAccount": "{license} · 全账户",
     "signin.cli.closeTab": "你可以关闭浏览器标签页。",
     "signin.cli.logoutConfirm": "要在此设备上退出登录{product}吗？(y/N)",
     "signin.cli.signInAgain": "运行{command}以重新登录。",
@@ -9051,6 +9158,7 @@ export const KIT_COPY: Readonly<
     "signin.console.notConfigured": "管理员登录尚未设置",
     "signin.expired.title": "该验证码或链接已过期",
     "signin.expired.body": "验证码和链接仅可使用一次，10分钟内有效。",
+    "signin.again": "重新登录",
     "signin.identityOff.notice":
       "{product}不使用Polaris Key登录。请打开{product}并在其中输入你的许可证密钥。",
     "signin.identityOff.lede": "在此登录即可在你的资料库中看到{product}。",
@@ -9160,7 +9268,7 @@ export const KIT_COPY: Readonly<
       "电子邮件登录目前不可用。请选择其他登录方式。",
     "core.codes.license_owned.title": "许可证在另一个账户中",
     "core.codes.license_owned.message":
-      "此许可证已在另一个Polaris Key账户中。许可证不会通过密钥转移：请登录那个账户，或使用其他密钥。",
+      "此{product}许可证已在另一个Polaris Key账户中。许可证不会通过密钥转移。",
     "core.codes.email_mismatch.title": "电子邮件未验证",
     "core.codes.email_mismatch.message":
       "此许可证属于你的账户尚未验证的电子邮件地址。请添加并验证该电子邮件，然后重试。",
@@ -9170,7 +9278,7 @@ export const KIT_COPY: Readonly<
     "core.codes.last_link.title": "无法移除",
     "core.codes.last_link.message":
       "这是你账户唯一的登录方式。请先添加其他登录方式再移除它。",
-    "core.codes.step_up_required.title": "重新登录",
+    "core.codes.step_up_required.title": "确认是你本人",
     "core.codes.step_up_required.message": "为了你的安全，请重新登录以继续。",
     "core.codes.not_eligible.title": "优惠不可用",
     "core.codes.not_eligible.message":
@@ -9269,7 +9377,7 @@ export const KIT_COPY: Readonly<
     "core.codes.network-error.message":
       "无法连接到Polaris Key。请检查网络连接后重试。",
     "core.codes.server-error.title": "服务出现问题",
-    "core.codes.server-error.message": "服务出现问题。正在重试…",
+    "core.codes.server-error.message": "服务出现问题。请几分钟后重试。",
     "core.codes.cancelled.title": "登录已取消",
     "core.codes.cancelled.message": "登录已取消。",
     "core.codes.sign-in-expired.title": "代码已过期",
@@ -9585,15 +9693,18 @@ export const KIT_COPY_VARIANTS: Readonly<
   "signin.key.ownedSignIn": { macos: "Sign In to That Account" },
   "signin.key.differentKey": { macos: "Use a Different Key" },
   "signin.return.stay": { macos: "Stay Here" },
+  "signin.done.start": { macos: "Start Using {product}" },
   "signin.device.signOut": { macos: "Sign the TV Out" },
   "signin.handoff.again": { macos: "Open Browser Again" },
   "signin.desktop.continue": { macos: "Continue in Browser" },
+  "signin.menu.signIn": { macos: "Sign In…" },
   "signin.handoff.useCode": { macos: "Use a Code Instead" },
   "signin.handoff.useBrowser": { macos: "Use Browser Sign-In" },
   "signin.handoff.copyLink": { macos: "Copy Link" },
   "signin.handoff.openBrowser": { macos: "Open Browser" },
   "signin.return.library": { macos: "Open Your Library" },
   "signin.approve.approve": { macos: "Approve and Sign It In" },
+  "signin.again": { macos: "Sign In Again" },
   "signin.signout.waitSync": { macos: "Wait for Sync" },
   "signin.provider.manage": { macos: "Manage Sign-In Methods in Polaris Key" },
   "signin.profile.changePicture": { macos: "Change Picture" },

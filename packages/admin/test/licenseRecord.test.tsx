@@ -88,6 +88,115 @@ describe("license record: header and tabs", () => {
     );
   });
 
+  it("deletes from the danger menu after typing delete <id>, then returns to the list", async () => {
+    const log = bootLicense(REC, {
+      routes: {
+        [LIC]: {
+          ...DETAIL,
+          status: "disabled",
+          origin: "oidc",
+          deletion: { allowed: true, reasons: [] },
+        },
+        [`DELETE ${LIC}`]: { ok: true, id: "lic_1", devices: 2 },
+      },
+    });
+    await header();
+    await more("Delete license…");
+    const dialog = await screen.findByRole("alertdialog", {
+      name: /Delete Ada Lovelace\?/,
+    });
+    expect(
+      within(dialog).getByText(/2 devices stop authenticating/),
+    ).toBeTruthy();
+    expect(within(dialog).getByText(/activity history is kept/)).toBeTruthy();
+    // A disabled sign-in license: deleting it lifts the refusal.
+    expect(
+      within(dialog).getByText(
+        "If its holder signs in again, they get a new license.",
+      ),
+    ).toBeTruthy();
+    const confirm = within(dialog).getByRole("button", {
+      name: "Delete license",
+    });
+    expect(confirm.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(confirm);
+    expect(writes(log)).toEqual([]);
+    await userEvent.type(within(dialog).getByRole("textbox"), "delete lic_1");
+    // The soft-disabled button is re-rendered once the text matches: query it again.
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete license" }),
+    );
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        { path: LIC, method: "DELETE", body: { confirm: "delete lic_1" } },
+      ]),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/p/djdl/license/licenses"),
+    );
+  });
+
+  it("keeps Delete license visible but unavailable, with the Worker's reason", async () => {
+    const log = bootLicense(REC, {
+      routes: {
+        [LIC]: {
+          ...DETAIL,
+          deletion: {
+            allowed: false,
+            reasons: [
+              {
+                code: "issued_active",
+                message:
+                  "It is active and was issued by the developer. Disable it first.",
+              },
+            ],
+          },
+        },
+      },
+    });
+    await header();
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "More actions" })[0]!,
+    );
+    const item = await screen.findByRole("menuitem", {
+      name: /Delete license…/,
+    });
+    expect(item.getAttribute("aria-disabled")).toBe("true");
+    expect(within(item).getByText(/Disable it first/)).toBeTruthy();
+    await userEvent.click(item);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(writes(log)).toEqual([]);
+  });
+
+  it("shows the Worker's refusal inline when the license changed since it loaded", async () => {
+    bootLicense(REC, {
+      routes: {
+        [LIC]: { ...DETAIL, deletion: { allowed: true, reasons: [] } },
+        [`DELETE ${LIC}`]: new Response(
+          JSON.stringify({
+            error: {
+              code: "license_not_deletable",
+              message:
+                "License lic_1 can't be deleted: 1 store purchase is recorded against it.",
+            },
+          }),
+          { status: 409, headers: { "content-type": "application/json" } },
+        ),
+      },
+    });
+    await header();
+    await more("Delete license…");
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.type(within(dialog).getByRole("textbox"), "delete lic_1");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete license" }),
+    );
+    expect(
+      await within(dialog).findByText("This license can't be deleted"),
+    ).toBeTruthy();
+    expect(within(dialog).getByText(/store purchase is recorded/)).toBeTruthy();
+  });
+
   it("offers Enable as the primary action while disabled", async () => {
     const log = bootLicense(REC, {
       routes: { [LIC]: { ...DETAIL, status: "disabled" } },

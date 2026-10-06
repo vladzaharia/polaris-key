@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-import { PageHeader } from "../../src/console/components/PageHeader.js";
+import { PageHeader } from "../../src/ui/PageHeader.js";
 import { Button } from "../../src/ui/Button.js";
 
 afterEach(cleanup);

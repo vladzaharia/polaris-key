@@ -1,20 +1,28 @@
 /*
- * Rubik (SIL Open Font License 1.1; see ./OFL.txt and ./FONT-NOTICE.txt), subset to WOFF2 from the
- * launch kit's unmodified binaries by scripts/build-fonts.py. Two weights only, because the kit ships
- * two: 400 (Regular: body, the secondary "Powered by" phrase) and 700 (Bold: the wordmark, headings).
- * There is no 500/600 file; `font-synthesis: none` in tokens.css stops a browser from faking one.
+ * Rubik and JetBrains Mono (SIL Open Font License 1.1; see ./OFL.txt, ./OFL-JetBrainsMono.txt and
+ * ./FONT-NOTICE.txt), subset to WOFF2 from the unmodified variable fonts in ./ttf/ by
+ * scripts/build-fonts.py (UI-KITS.md §2.1).
  *
- * Each weight is split into the latin and latin-ext subsets with their unicode-range, so a page that
- * only uses Latin-1 text downloads one ~23 KB file per weight.
+ * Rubik is one variable face (wght 300–900); UI uses 400, 500 and 600, and 700 only for a game
+ * wordmark fallback. JetBrains Mono is the kit mono for keys, user codes and hashes (wght 400–600).
+ * `font-synthesis: none` in tokens.css stops a browser from faking a weight or a slant.
+ *
+ * Each face is split into the latin and latin-ext subsets with their unicode-range, so a page that
+ * only uses Latin-1 text downloads one file per family.
+ *
+ * "Rubik Fallback" and "JetBrains Mono Fallback" are local system faces with Rubik's and JetBrains
+ * Mono's metrics (size-adjust from the average advance of English text, ascent and descent from
+ * the fonts' hhea table), so a page does not shift when the web font arrives. --pk-font-sans and
+ * --pk-font-mono list them second.
  */
 
 /* latin-ext */
 @font-face {
   font-family: "Rubik";
   font-style: normal;
-  font-weight: 400;
+  font-weight: 300 900;
   font-display: swap;
-  src: url("./rubik-latin-ext-400.woff2") format("woff2");
+  src: url("./rubik-var-latin-ext.woff2") format("woff2");
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
     U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
@@ -25,9 +33,9 @@
 @font-face {
   font-family: "Rubik";
   font-style: normal;
-  font-weight: 400;
+  font-weight: 300 900;
   font-display: swap;
-  src: url("./rubik-latin-400.woff2") format("woff2");
+  src: url("./rubik-var-latin.woff2") format("woff2");
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
     U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
@@ -36,11 +44,11 @@
 
 /* latin-ext */
 @font-face {
-  font-family: "Rubik";
+  font-family: "JetBrains Mono";
   font-style: normal;
-  font-weight: 700;
+  font-weight: 400 600;
   font-display: swap;
-  src: url("./rubik-latin-ext-700.woff2") format("woff2");
+  src: url("./jetbrains-mono-var-latin-ext.woff2") format("woff2");
   unicode-range:
     U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
     U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB,
@@ -49,13 +57,32 @@
 
 /* latin */
 @font-face {
-  font-family: "Rubik";
+  font-family: "JetBrains Mono";
   font-style: normal;
-  font-weight: 700;
+  font-weight: 400 600;
   font-display: swap;
-  src: url("./rubik-latin-700.woff2") format("woff2");
+  src: url("./jetbrains-mono-var-latin.woff2") format("woff2");
   unicode-range:
     U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
     U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
     U+2215, U+FEFF, U+FFFD;
+}
+
+/* Metric-matched fallbacks: no layout shift when the web fonts load. */
+@font-face {
+  font-family: "Rubik Fallback";
+  src: local("Arial"), local("ArialMT"), local("Liberation Sans");
+  size-adjust: 105.73%;
+  ascent-override: 88.43%;
+  descent-override: 23.64%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: "JetBrains Mono Fallback";
+  src: local("Menlo"), local("Courier New"), local("Liberation Mono");
+  size-adjust: 99.66%;
+  ascent-override: 102.35%;
+  descent-override: 30.1%;
+  line-gap-override: 0%;
 }

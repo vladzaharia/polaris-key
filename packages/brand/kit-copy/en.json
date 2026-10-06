@@ -1591,11 +1591,6 @@
       "role": "label",
       "note": "Choose a license for this device (SIGN-IN.md §3.6). Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number."
     },
-    "signin.choice.accountWide": {
-      "value": "Account-wide · {used} of {limit, plural, one {# device} other {# devices}}",
-      "role": "label",
-      "note": "Choose a license for this device (SIGN-IN.md §3.6). Account-wide licenses stay device-limited (owner, 2026-10-05). Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number."
-    },
     "signin.choice.metaNew": {
       "value": "Created when you continue",
       "role": "label",
@@ -1616,35 +1611,75 @@
       "role": "label",
       "note": "A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform."
     },
-    "signin.origin.store": {
-      "value": "Bought on {store}",
+    "signin.choice.origin.signIn": {
+      "value": "From signing in",
       "role": "label",
-      "note": "Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {store} = a store's name (App Store, Google Play, Steam)."
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label)."
     },
-    "signin.origin.purchase": {
-      "value": "Bought from {developer}",
+    "signin.choice.origin.key": {
+      "value": "Key ending {last6}",
       "role": "label",
-      "note": "Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated)."
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is."
     },
-    "signin.origin.key": {
+    "signin.choice.origin.keyAdded": {
       "value": "Added with a key",
       "role": "label",
-      "note": "Where a license came from, shown in license rows (SIGN-IN.md §3.6)."
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label)."
     },
-    "signin.origin.free": {
-      "value": "Free",
+    "signin.choice.origin.storeKey": {
+      "value": "{store} key ending {last6}",
       "role": "label",
-      "note": "Where a license came from, shown in license rows (SIGN-IN.md §3.6)."
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is."
     },
-    "signin.origin.developer": {
+    "signin.choice.origin.storeKeyAdded": {
+      "value": "{store} key",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store)."
+    },
+    "signin.choice.origin.store": {
+      "value": "From {store}",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label). A store license with no key. Arguments: {store} = a store's name (Steam, App Store)."
+    },
+    "signin.choice.origin.developer": {
       "value": "From {developer}",
       "role": "label",
-      "note": "Where a license came from, shown in license rows (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated)."
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label). Arguments: {developer} = the developer's name (never translated)."
     },
-    "signin.origin.signin": {
-      "value": "Created when you signed in",
+    "signin.choice.origin.free": {
+      "value": "Free",
       "role": "label",
-      "note": "Where a license came from, shown in license rows (SIGN-IN.md §3.6)."
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label)."
+    },
+    "signin.choice.origin.gift": {
+      "value": "Gift",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label)."
+    },
+    "signin.choice.origin.org": {
+      "value": "Included with {org}",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label). Arguments: {org} = the organization that provides the license."
+    },
+    "signin.choice.picker.signIn": {
+      "value": "{tier} · Sign-in",
+      "role": "label",
+      "note": "The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated)."
+    },
+    "signin.choice.picker.key": {
+      "value": "{tier} · Key …{last6}",
+      "role": "label",
+      "note": "The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {last6} = the license key's last six characters, shown as is."
+    },
+    "signin.choice.picker.storeKey": {
+      "value": "{tier} · {store} key …{last6}",
+      "role": "label",
+      "note": "The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is."
+    },
+    "signin.choice.picker.store": {
+      "value": "{tier} · {store}",
+      "role": "label",
+      "note": "The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store)."
     },
     "signin.choice.tag.current": {
       "value": "On this device",
@@ -1756,6 +1791,16 @@
       "role": "button",
       "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
     },
+    "signin.replace.lede": {
+      "value": "Choose a device to sign out. {thisDevice} takes its seat.",
+      "role": "body",
+      "note": "Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice)."
+    },
+    "signin.replace.openSystem": {
+      "value": "Replace…",
+      "role": "button",
+      "note": "Replace a device in a system dialog (SIGN-IN.md §3.7)."
+    },
     "signin.replace.meta": {
       "value": "{platform} · last used {when}",
       "role": "label",
@@ -1841,10 +1886,10 @@
       "role": "body",
       "note": "Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”."
     },
-    "signin.consent.licenseLineAccount": {
-      "value": "{license} · Account-wide",
+    "signin.consent.licenseInApp": {
+      "value": "You'll choose a license in {app}.",
       "role": "body",
-      "note": "Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier."
+      "note": "Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated)."
     },
     "signin.consent.change": {
       "value": "Change",
@@ -1916,11 +1961,6 @@
       "role": "button",
       "note": "License key step (SIGN-IN.md §3.9)."
     },
-    "signin.key.owned": {
-      "value": "This {product} license is already in another Polaris Key account. A license never moves by its key.",
-      "role": "body",
-      "note": "License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
-    },
     "signin.key.ownedSignIn": {
       "value": "Sign in to that account",
       "role": "button",
@@ -1955,6 +1995,11 @@
       "value": "Stay here",
       "role": "button",
       "note": "Return step (SIGN-IN.md §3.10)."
+    },
+    "signin.done.start": {
+      "value": "Start using {product}",
+      "role": "button",
+      "note": "Last step of the in-app sign-in form (SIGN-IN.md §3.10). Arguments: {product} = the product's name (never translated)."
     },
     "signin.device.title": {
       "value": "Sign in to finish on {device}",
@@ -2026,11 +2071,6 @@
       "role": "body",
       "note": "Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {name} = the person's display name; {tier} = the tier's name (never translated)."
     },
-    "signin.desktop.toastAccount": {
-      "value": "Signed in as {name} · Account-wide license",
-      "role": "body",
-      "note": "Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {name} = the person's display name."
-    },
     "signin.desktop.notifyTitle": {
       "value": "You're signed in",
       "role": "title",
@@ -2040,6 +2080,16 @@
       "value": "{app} is ready.",
       "role": "body",
       "note": "Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.desktop.notifyChoose": {
+      "value": "Choose a license · {app} is ready to finish signing in.",
+      "role": "body",
+      "note": "Desktop system notification when the app needs a license choice to finish (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.menu.signIn": {
+      "value": "Sign in…",
+      "role": "menu",
+      "note": "App menu item that opens sign-in (SIGN-IN.md §3.17)."
     },
     "signin.handoff.browserBody": {
       "value": "We opened Polaris Key in your browser. Sign in there and {app} continues by itself.",
@@ -2106,6 +2156,16 @@
       "role": "body",
       "note": "Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated)."
     },
+    "signin.return.chooseInApp": {
+      "value": "Go back to {app} to choose a license. You can close this tab.",
+      "role": "body",
+      "note": "Return step when the license is chosen in the app (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.return.signedInShort": {
+      "value": "You're signed in",
+      "role": "title",
+      "note": "Return step, short form (SIGN-IN.md §3.10)."
+    },
     "signin.return.cancelled": {
       "value": "Sign-in was cancelled in {app}. Start again from {app}.",
       "role": "body",
@@ -2155,11 +2215,6 @@
       "value": "{license} · {term} · {device} is device {position} of {limit}",
       "role": "body",
       "note": "Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number."
-    },
-    "signin.cli.licenseAccount": {
-      "value": "{license} · Account-wide",
-      "role": "body",
-      "note": "Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {license} = the license's name, usually product and tier."
     },
     "signin.cli.closeTab": {
       "value": "You can close the browser tab.",
@@ -2264,6 +2319,11 @@
     "signin.expired.body": {
       "value": "Codes and links work once, for 10 minutes.",
       "role": "body",
+      "note": "Expired code or link page (SIGN-IN.md §4.12)."
+    },
+    "signin.again": {
+      "value": "Sign in again",
+      "role": "button",
       "note": "Expired code or link page (SIGN-IN.md §4.12)."
     },
     "signin.identityOff.notice": {

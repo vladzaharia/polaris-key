@@ -708,8 +708,8 @@ describe("an app release's content, on its record", () => {
     expect(screen.getByText("Yanked")).toBeTruthy();
     cleanup();
     mountAt(
-      `#/p/${SLUG}/release/releases/app%401.5.0`,
-      <ReleaseRecord slug={SLUG} id="app@1.5.0" tab={undefined} />,
+      `#/p/${SLUG}/release/releases/app%401.5.0/builds`,
+      <ReleaseRecord slug={SLUG} id="app@1.5.0" tab="builds" />,
     );
     const ios = await screen.findByRole("region", { name: "Build ios-arm64" });
     expect(within(ios).getByText(/Embeds/)).toBeTruthy();
