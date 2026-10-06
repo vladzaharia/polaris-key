@@ -386,6 +386,45 @@ making Home a long scroll. On phones, make rows 44 px tall (Accessibility).
 glyph-only services, empty slots on sparse products and a band that stays untinted until HA-12.
 **A** is the low-cost fallback: today's card with a logo and links, but no facts a glance can see.
 
+## Built: direction B (2026-10-06)
+
+The lead picked **B · Ledger**, and it is built in two steps on `feat/console-product-cards`.
+The real console's shots, over fixture data that mirrors the board's six products, sit beside the
+mockup's: `shots/built-home-{desktop,phone}-{dark,light}.png` and
+`shots/built-products-{desktop,phone}-{dark,light}.png` (`_src/built.mts`).
+
+**Step 1: the card, the logo and the CSP.**
+
+- `GET /manage/api/products` carries `presentation.icon`: one statement reads every product's
+  icon. It is the `presentation.icon` copy, else the `listing.icon` copy, as image-host URLs with
+  the 64 and 128 px variants (`admin/lib/presentation.ts`).
+- The console shell's CSP adds exactly `IMG_ORIGIN` to `img-src` (`cspImageOrigin`).
+- The card is `ProductCard` in `console/pages/global/Home.tsx`, and the logo is
+  `ui/ProductLogo.tsx`.
+- Home shows the six most recently changed products, with an **All products** link.
+- The Setup complete tile is gone.
+- The Products table's name cell carries the logo.
+
+**Step 2: the facts.**
+
+- `GET /manage/api/summary` runs four grouped queries for every product
+  (`admin/lib/summary.ts`).
+- The card shows each row's fact, with a skeleton while the read is in flight, and renders fully
+  without it.
+
+Decisions made while building:
+
+- **Which icon copy counts.** It is a copy the image host serves: a stored hash of a served image
+  type, with no first pull still pending. A `failed` or `stale` re-pull keeps its last good copy,
+  so the logo stays, as this README's logo rule says.
+- **Storefronts.** The count is the storefronts with a live outlet, as the Storefronts page
+  decides them. Homebrew, Scoop and Polaris Key's own page all ride the `direct` outlet, so they
+  count once: one outlet cannot say which of them is set up.
+- **Home's filter and sort.** They are gone. A six-card shelf needs neither, and the Products
+  table keeps search, the facets and the sort.
+- **The accent.** Not built yet. `ProductLogo` calls `resolveAccent` behind a null accent: the
+  HA-12 seam.
+
 ## Rebuilding
 
 ```sh
@@ -394,6 +433,8 @@ mise exec node@22 -- node_modules/.bin/tsx docs/design/console-product-card/_src
 # The "today" reference (needs the built console):
 mise exec node@22 -- pnpm --filter @polaris-key/admin build
 mise exec node@22 -- node_modules/.bin/tsx docs/design/console-product-card/_src/today.mts
+# The built card (needs the built console):
+mise exec node@22 -- node_modules/.bin/tsx docs/design/console-product-card/_src/built.mts
 ```
 
 `build.mjs` writes the six boards and `_src/accents.generated.css`, and prints the contrast table.
