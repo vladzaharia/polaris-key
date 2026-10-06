@@ -625,6 +625,17 @@ nothing is planned or pulled. The nightly maintenance sweep re-enqueues failed p
 the Images binding is bound, ladder retries for ready copies whose variants an ingest could not
 build (rebuilt from the stored copy, never re-pulled), at most 50 per run between them.
 
+Release-file mirroring (HA-08, `services/release/mirror.ts`) rides the same queue and needs no
+resource of its own: a truth-store sync, a resync or a descriptor ingest queues every app-release
+file whose bytes are only on GitHub or at an external URL, and the consumer copies it into the
+blob store, verified against GitHub's `digest` and the descriptor's `sha256`, before it appends an
+`r2` location. The nightly sweep's `releaseMirrors` step is the backfill: on the first deploy it
+starts copying every existing release, at most 100 files a night, and afterwards it retries failed
+files once their back-off elapses. An operator can queue a product's owed files at once with
+`POST /manage/api/products/<slug>/assets/mirror` (RUNBOOK, "Release-file mirroring"). The
+migration `release_mirrors` must be applied before the deploy (the job table; nothing older reads
+it).
+
 ### Lazy deltas: the queues, the consumer Worker and the R2 rules (P4-17)
 
 Lazy hot-pair deltas (notes/S-08 §6; RUNBOOK "Lazy deltas") need Workers Paid with Queues

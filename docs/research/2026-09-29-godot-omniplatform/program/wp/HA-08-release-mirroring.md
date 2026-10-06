@@ -46,6 +46,36 @@ Release bytes still cross GitHub on every download, and `external` locations are
 - A digest mismatch never promotes. It marks the job failed and keeps GitHub serving.
 - `locations` are not in the signed record, so appending is safe (`shared-protocol/src/release.ts`).
 
+## Corrections from the code (HA-08 builder, 2026-10-06)
+
+The code is the fact; these replace the Scope wording where they differ.
+
+- **The copy has two holders.** The bytes go through HA-01's `ingest` into the slot
+  `release-file:<sha256>` (HA-01 built that slot class, the `release-mirror` origin and the
+  `github-asset` source kind for this package), which writes the `hosted_assets` row and its
+  `hosted-asset` ref. The `release-artifact` ref named in Scope (`<release_id>/<artifact_id>`) then
+  holds the appended `r2` location, so the location stays an app artifact's on the blob route
+  after HA-07 makes `hosted-asset` refs non-app-side. Neither kind is dropped by the collector.
+- **The job state is a new Release table, `release_mirrors`** (migration `00XX_release_mirrors.sql`,
+  the lead numbers it; `TABLE_OWNERS.release`). A synced file with no artifact map has no recorded
+  `sha256`, so per-file back-off cannot live on the per-content `hosted_assets` row. Whether a file
+  is owed is read from `release_artifacts.locations_json`, never from the table.
+- **A synced file's `sha256` is filled** from the verified hash when the copy is appended:
+  `serveArtifact` serves an `r2` location only for an artifact with a `sha256`, and a sniffed row
+  (no artifact map) never recorded one.
+- **Release files get a longer fetch budget.** `safeFetch`'s 30 s cannot move a large file;
+  a release file's pull gets 30 s plus a second per 10 MiB, at most 10 minutes
+  (`SAFE_FETCH_FILE_TIMEOUT_MS`, `releaseFileTimeoutMs`). `ingest` also takes the expected size
+  and a redirect host rule (a GitHub asset reaches only the API and GitHub's storage hosts).
+- **The operator action is `POST /manage/api/products/<slug>/assets/mirror`** (the console API's
+  spelling of `/admin/products/:p/assets/mirror`), with an OpenAPI entry and a `routeCoverage`
+  row. The "one-shot cron batch" is the nightly sweep's `releaseMirrors` step: it backfills every
+  existing release on first deploy (at most 100 files a night) and then only retries failures.
+- **`assets.releases.mirror`** is read in one place, `services/release/mirrorSwitch.ts`; until
+  HA-10 it answers the code default (on) for every product that runs Release.
+- **Only app releases are mirrored.** A pack's objects are authorised by its gate on the blob
+  route, and a package release is r2-located already.
+
 ## Steps
 
 1. Producer hooks.

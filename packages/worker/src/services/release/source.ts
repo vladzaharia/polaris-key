@@ -330,7 +330,9 @@ async function serveLegacyDownload(
 
   // Never the repo-chosen upstream `content_type` (R6-04).
   const contentType =
-    ref.format === "dmg" ? "application/x-apple-diskimage" : ARTIFACT_CONTENT_TYPE;
+    ref.format === "dmg"
+      ? "application/x-apple-diskimage"
+      : ARTIFACT_CONTENT_TYPE;
 
   // HA-08 (S-20 §6.8): the asset's own digest names a copy this product holds: serve that.
   const mirrored = await mirroredDownload(

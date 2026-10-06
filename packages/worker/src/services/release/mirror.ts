@@ -677,7 +677,14 @@ async function appendLocation(
             SELECT ?, ?, ?, ?, ? WHERE ${guard}
             ON CONFLICT(product, storage_key, ref_kind, ref_id) DO UPDATE SET
               created_at = MAX(blob_refs.created_at, excluded.created_at)`,
-      params: [row.product, key, RELEASE_ARTIFACT_REF, refId, now, ...guardParams],
+      params: [
+        row.product,
+        key,
+        RELEASE_ARTIFACT_REF,
+        refId,
+        now,
+        ...guardParams,
+      ],
     },
     {
       sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,

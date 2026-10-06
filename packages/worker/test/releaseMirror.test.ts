@@ -259,9 +259,9 @@ describe("release-file mirroring (acceptance)", () => {
     // The sync queues one mirror per file; nothing is copied on the sync's own request.
     await sync();
     expect(q.sent).toHaveLength(4);
-    expect(q.sent.map((m) => readReleaseMirrorMessage(m)?.artifactId).sort()).toEqual(
-      ["101", "102", "201", "202"],
-    );
+    expect(
+      q.sent.map((m) => readReleaseMirrorMessage(m)?.artifactId).sort(),
+    ).toEqual(["101", "102", "201", "202"]);
     expect(r2.has(blobKey(digest))).toBe(false);
 
     // Before the copy: streamed from GitHub's storage.
@@ -352,7 +352,9 @@ describe("release-file mirroring (acceptance)", () => {
     const sent = q.sent.length;
     await sync();
     expect(q.sent).toHaveLength(sent);
-    expect(JSON.parse((await artifact("v1.1.0", "201"))!.locations_json!)).toHaveLength(2);
+    expect(
+      JSON.parse((await artifact("v1.1.0", "201"))!.locations_json!),
+    ).toHaveLength(2);
     expect(await owedCount(db, SLUG)).toBe(0);
   });
 
@@ -381,7 +383,9 @@ describe("release-file mirroring (acceptance)", () => {
     // GitHub keeps serving the real bytes.
     gh.corrupt.clear();
     gh.calls.storage.length = 0;
-    const res = await get(`${BYTES}/${SLUG}/distribution/files/v1.1.0/djdl-arm64`);
+    const res = await get(
+      `${BYTES}/${SLUG}/distribution/files/v1.1.0/djdl-arm64`,
+    );
     expect(res.status).toBe(200);
     expect(await hexOf(res)).toBe(digest);
     expect(gh.calls.storage).toHaveLength(1);
@@ -550,7 +554,9 @@ describe("release-file mirroring (rules)", () => {
   it("never overwrites a row a descriptor rewrote while the copy was being made", async () => {
     await sync();
     const digest = sha256Hex(ASSET_BYTES[201]!);
-    const rewritten = JSON.stringify([{ provider: "github", asset: "djdl-arm64" }]);
+    const rewritten = JSON.stringify([
+      { provider: "github", asset: "djdl-arm64" },
+    ]);
     const inner = gh.fetchImpl;
     gh.fetchImpl = async (input, init) => {
       const url = typeof input === "string" ? input : input.url;
@@ -665,7 +671,11 @@ describe("backfill and the operator's action", () => {
     expect(await backfillReleaseMirrors(env, db, NOW + 2)).toBe(0);
     // Messages lost in flight are queued again once the hold elapses.
     expect(
-      await backfillReleaseMirrors(env, db, NOW + 1 + PULL_BACKOFF_BASE_SECONDS),
+      await backfillReleaseMirrors(
+        env,
+        db,
+        NOW + 1 + PULL_BACKOFF_BASE_SECONDS,
+      ),
     ).toBe(4);
 
     await drain(NOW + 2 + PULL_BACKOFF_BASE_SECONDS);
@@ -680,7 +690,12 @@ describe("backfill and the operator's action", () => {
     await backfillReleaseMirrors(env, db, NOW);
     const { token, session } = await issueSession(
       env,
-      { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
+      {
+        sub: "u1",
+        name: "Ada",
+        email: "ada@x.io",
+        groups: ["platform-admins"],
+      },
       NOW,
     );
     const path = `/api/products/${SLUG}/assets/mirror`;

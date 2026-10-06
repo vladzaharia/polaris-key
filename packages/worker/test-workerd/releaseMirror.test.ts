@@ -100,7 +100,9 @@ function github(
   return (async (input: Request | string, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input.url;
     const accept = new Headers(init?.headers).get("accept") ?? "";
-    if (url === `https://api.github.com/repos/acme/app/releases/assets/${assetId}`) {
+    if (
+      url === `https://api.github.com/repos/acme/app/releases/assets/${assetId}`
+    ) {
       if (accept.includes("application/vnd.github+json"))
         return Response.json({
           id: assetId,
@@ -128,7 +130,10 @@ function github(
   }) as FetchImpl;
 }
 
-const message = (product: string, artifactId: string): ReleaseMirrorMessage => ({
+const message = (
+  product: string,
+  artifactId: string,
+): ReleaseMirrorMessage => ({
   v: 1,
   kind: "release-mirror",
   product,
