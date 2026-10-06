@@ -640,6 +640,90 @@ curl -fsS https://key.plrs.im/djdl/appcast.xml >/dev/null
 Use the Releases view to inspect GitHub sync status, changed `.pkey/` paths, manifest
 validation errors, and release health. Use manual resync there when a webhook was missed.
 
+### Settings backfill (ST-01c, owner decision D19)
+
+A one-off per product, run once the build that carries it is deployed. It moves each repository-
+linked product onto the settings claim model (notes/S-18 §4.14) by the owner's rule **"Revert all
+console values"**: every field and tier/profile row the product's `.pkey/` declares takes its
+manifest value and loses any console claim; tiers and profiles the manifest does not declare stay,
+marked as console rows, so no later resync deletes them. There is no per-value review and no
+"preserve" option. **To keep a console value, commit it to the product's `.pkey/` before the
+apply**; the dry run lists every value the apply would revert. Kept as they are: a live
+break-glass claim (it ends on its own, ST-20), the existing `*_source` markers (services, the
+compatibility window, the fingerprint and auto-issue policies, access) and the system product's
+name. Manual products have no manifest and are only reported as `unlinked`.
+
+Every run stores a report (`settings_backfill_reports`, kept for the record): each field and row
+as `equal`, `differs` or `not-declared`, what the apply does with it, the console audit rows that
+explain a difference (`evidence.verdict` `console-edit`, or `no-console-edit` for a manifest change
+or a missed webhook since the last apply), and a compare-only check of the last recorded push
+(`corroboration.matches`). An apply also writes one `setting.backfill` audit row listing every
+changed value with before and after, and the manifest snapshot (origin `backfill`).
+
+The calls are a platform admin's (the session cookie and the CSRF token, as in "Rotating
+PLATFORM_KEK"). Never run the apply on a product whose dry run you have not read. Go one product
+at a time, **`polaris-key` first, then `djdl`**:
+
+```sh
+BASE=https://key.plrs.im/manage/api
+COOKIE="cookie: __Host-pkey_admin=…"           # from a signed-in console tab
+CSRF=$(curl -fsS "$BASE/me" -H "$COOKIE" | jq -er .csrf) || echo "STOP: no CSRF token; sign in again"
+P=polaris-key                                   # then djdl
+```
+
+1. **Dry run.** It classifies the product and stores the report, and writes nothing else.
+
+   ```sh
+   curl -fsS -X POST "$BASE/products/$P/settings/backfill?dryRun=1" \
+     -H "$COOKIE" -H "X-PKey-CSRF: $CSRF" > "backfill-$P-dry.json" || echo "STOP: the dry run failed"
+   jq '{outcome, commit, changes}' "backfill-$P-dry.json"
+   jq '.report.items[] | select(.action != "none")
+         | {kind, key, class, owner, action, before, manifest, changed, note, evidence: .evidence.verdict}' \
+     "backfill-$P-dry.json"
+   ```
+
+2. **Read the dry run.** `outcome` must be `planned`. `unreadable` (`cannot read .pkey/…`: the
+   App lost access, the repository moved, the manifest no longer validates) and `refused` (the
+   manifest's catalog does not compile) write nothing: fix the cause and run the dry run again.
+   For every item with `action: "revert"`, decide whether the console value is the one you want;
+   if it is, commit it to `.pkey/`, wait for the push's resync, and start again at step 1.
+   `mark-console` rows are console-only tiers or profiles that stay. Save the dry-run file with
+   the change record.
+3. **Apply, pinned to what you read.** `expectCommit` makes the apply refuse (409
+   `commit_moved`) if the manifest moved since the dry run; a 409 `backfill_conflict` means a
+   console edit landed while it ran, and nothing was written. Either way run the dry run again.
+
+   ```sh
+   C=$(jq -er .commit "backfill-$P-dry.json")
+   curl -fsS -X POST "$BASE/products/$P/settings/backfill?dryRun=0&expectCommit=$C" \
+     -H "$COOKIE" -H "X-PKey-CSRF: $CSRF" > "backfill-$P-apply.json" || echo "STOP: the apply failed"
+   jq '{outcome, changes}' "backfill-$P-apply.json"     # applied (or unchanged)
+   ```
+
+4. **Verify.** A second apply must answer `outcome: "unchanged"` and `changes: 0`. The product's
+   Activity shows one "setting.backfill" row; both reports stay readable:
+   `GET $BASE/products/$P/settings/backfill` (newest first) and
+   `GET $BASE/products/$P/settings/backfill/<reportId>`.
+
+**`polaris-key` (the system product).** Its manifest is the root `.pkey/` as the last deploy
+applied it (its deploy-hook snapshot); the backfill never reads the monorepo's default branch for
+it and never writes its snapshot, so deploy first (`unreadable` until a deploy has run the hook).
+Expect: the admin group `null` → `admin` (the parser's default; it grants nothing) and the
+`services` marker. The bootstrap turned on the default services (License and Config) beside
+Release and Distribution, while the root `.pkey/` turns License and Config off, so the marker is
+reported `differs` and **kept** (`services_source = 'admin'`). To hand services to the manifest,
+switch License and Config off in the console (Services) and run the backfill again: with equal
+services it resets the marker to `manifest`. Its name is never written (F-03).
+
+**`djdl`.** Expect no differences, or a few with `console-edit` evidence. Commit any value to keep
+to `vladzaharia/djdl`'s `.pkey/` first, then apply.
+
+**Every other product** (none today): `POST $BASE/platform/settings/backfill?dryRun=1` runs the
+dry run for every product (20 per call; pass `after=<next>` while `next` is not null) and
+`GET $BASE/platform/settings/backfill` lists each product's newest report. Apply product by
+product as above; `dryRun=0` on the platform route applies every product without a pinned commit,
+so use it only after every dry run in the batch has been read.
+
 ### Package feeds (F-02)
 
 The feeds answer on the registry host, `pkg.plrs.im` (`pkg-staging`, `pkg-dev`), the same
