@@ -1028,12 +1028,19 @@ describe("storefront analytics (storefront_daily, storefront_seen)", () => {
       );
       expect(rows.length).toBeGreaterThan(0);
       const cells = rows.flatMap((r) => Object.values(r).map(String));
+      // The dedupe keys: never a (truncated) plain hash of an account id.
+      const keys = rows
+        .map((r) => r.account_key)
+        .filter((k): k is string => typeof k === "string");
       for (const accountId of [w.member, w.anon]) {
         const plain = await sha256Hex(accountId);
         for (const cell of cells) {
           expect(cell).not.toContain(accountId);
           expect(cell).not.toBe(plain);
-          expect(plain.startsWith(cell)).toBe(false);
+        }
+        for (const key of keys) {
+          expect(key).toMatch(/^[0-9a-f]{32}$/);
+          expect(plain.startsWith(key)).toBe(false);
         }
       }
     }
