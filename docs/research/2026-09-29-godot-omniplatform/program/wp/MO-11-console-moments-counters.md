@@ -49,6 +49,29 @@ EXPERIENCE §0.7 lists the moments; none exists (notes/S-23 §4.2). The key rota
 
 `console/pages/core/{Overview,Keys}.tsx`, `console/pages/global/Home.tsx`, `console/pages/license/CreateLicenseDialog.tsx`, tests. In flight: `wp/UX-29`, branches on `Overview.tsx`.
 
+### Corrections from the code (MO-11 build, 2026-10-06)
+
+- **The attention list lives in `console/templates/Dashboard.tsx`** (`AttentionList`), so the stagger
+  is there: an optional `stagger` prop fed by `useFirstLoad(page, pending)`. The moment model and
+  its banner are a new `console/components/Moment.tsx`. `console/pages/core/Welcome.tsx` (UX-20's
+  welcome, rendered on Overview) carries §0.7's "Product created" check. `src/motion.css`'s
+  `.pk-countdown` pattern gains a start offset and a still picture (below).
+- **No launch path on `main`** (UX-21 has not landed): "Product launched" is Overview's setup
+  checklist finishing, judged only once every list it reads has loaded.
+- **"First" must be new.** A product older than this feature already has its catalog and
+  releases, so a moment counts only when its milestone is within a week: a release's
+  `publishedAt`, or, for moments with no time of their own (catalog, store, launched), a stored
+  sighting of the product _before_ the milestone within that week. Anything older is recorded as
+  seen, silently.
+- **First load = the page's first mount in the document**, not "data pending at mount": Overview
+  gets its product at once from the products list (`placeholderData`), so a pending rule would
+  never stagger. A route change's View Transition still suppresses it.
+- **The trust window is 300 s** (`TRUST_CACHE_SECONDS`), so the ring drains over five minutes,
+  started mid-window through `--pk-countdown-elapsed` (a negative delay).
+- **Reduced motion and the ring**: S-23 §6.6 says rings "stay full"; this package follows the
+  stricter rule that reduced motion reaches the _same_ end state, instantly: the ring is a still
+  picture of the spent share (`--pk-countdown-spent`), updated with the seconds, with no animation.
+
 ## Steps
 
 1. Celebrations.
@@ -58,9 +81,9 @@ EXPERIENCE §0.7 lists the moments; none exists (notes/S-23 §4.2). The key rota
 
 ## Acceptance criteria
 
-- [ ] Each moment shows once per product (a stored key; a test).
-- [ ] The countdown text is accurate with motion off; the ring is `aria-hidden`.
-- [ ] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
+- [x] Each moment shows once per product (a stored key; a test).
+- [x] The countdown text is accurate with motion off; the ring is `aria-hidden`.
+- [x] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
 - [ ] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
 
 ## Verify
