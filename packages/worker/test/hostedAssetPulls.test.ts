@@ -9,6 +9,9 @@
  * GitHub App installation token at the pinned commit.
  */
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import type { ManifestDistribution } from "@polaris-key/manifest";
 import {
@@ -893,5 +896,26 @@ describe("GET /manage/api/products/:p/assets", () => {
   it("is read-only and has no sub-resources", async () => {
     expect((await call("POST", "assets")).status).toBe(403); // CSRF first
     expect((await call("GET", "assets/x")).status).toBe(404);
+  });
+});
+
+// ── Bindings ───────────────────────────────────────────────────────────────────────────────
+
+describe("wrangler.toml", () => {
+  it("binds pkey-assets-<env> per environment: producer and consumer here, with its DLQ", () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const main = readFileSync(join(here, "..", "wrangler.toml"), "utf8");
+    for (const env of ["prod", "staging", "dev"]) {
+      expect(main).toMatch(
+        new RegExp(
+          `\\[\\[env\\.${env}\\.queues\\.producers\\]\\]\\nbinding = "HOSTED_ASSET_QUEUE"\\nqueue = "pkey-assets-${env}"`,
+        ),
+      );
+      expect(main).toMatch(
+        new RegExp(
+          `\\[\\[env\\.${env}\\.queues\\.consumers\\]\\]\\nqueue = "pkey-assets-${env}"\\n[^[]*dead_letter_queue = "pkey-assets-dlq-${env}"`,
+        ),
+      );
+    }
   });
 });
