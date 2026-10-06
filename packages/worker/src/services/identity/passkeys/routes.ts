@@ -59,6 +59,7 @@ import {
   parseDetails,
   parseTransports,
   recordPasskeyUse,
+  type PasskeyRow,
 } from "./repo.js";
 import {
   PASSKEY_CEREMONY_TTL_SECONDS,
@@ -452,25 +453,36 @@ export async function handleAccountPasskeys(
   return cardJson({ error: "not_found" }, 404);
 }
 
+/** One passkey as the settings list shows it (also PX-W12's methods list). */
+export function passkeyView(r: PasskeyRow & { link_id: string }): PasskeyView {
+  const details = parseDetails(r.details_json);
+  return {
+    id: r.credential_id,
+    methodId: r.link_id,
+    createdAt: r.created_at,
+    lastUsedAt: r.last_used_at,
+    transports: parseTransports(r.transports_json),
+    synced:
+      details.deviceType === undefined
+        ? null
+        : details.deviceType === "multiDevice",
+    aaguid: typeof details.aaguid === "string" ? details.aaguid : null,
+    addedFrom: typeof details.addedFrom === "string" ? details.addedFrom : null,
+  };
+}
+
+/** Whether the account can add a passkey now, and why not (PX-W12's methods list reads it). */
+export async function passkeyAddable(
+  db: Db,
+  accountId: string,
+): Promise<{ canAdd: boolean; reason: AddRefusal | null }> {
+  const reason = await addRefusal(db, accountId);
+  return { canAdd: reason === null, reason };
+}
+
 async function listPasskeys(db: Db, caller: PasskeyCaller): Promise<Response> {
   const rows = await listAccountPasskeys(db, caller.accountId);
-  const passkeys: PasskeyView[] = rows.map((r) => {
-    const details = parseDetails(r.details_json);
-    return {
-      id: r.credential_id,
-      methodId: r.link_id,
-      createdAt: r.created_at,
-      lastUsedAt: r.last_used_at,
-      transports: parseTransports(r.transports_json),
-      synced:
-        details.deviceType === undefined
-          ? null
-          : details.deviceType === "multiDevice",
-      aaguid: typeof details.aaguid === "string" ? details.aaguid : null,
-      addedFrom:
-        typeof details.addedFrom === "string" ? details.addedFrom : null,
-    };
-  });
+  const passkeys: PasskeyView[] = rows.map(passkeyView);
   const reason = await addRefusal(db, caller.accountId);
   return cardJson({ passkeys, canAdd: reason === null, reason });
 }

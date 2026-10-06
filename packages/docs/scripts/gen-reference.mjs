@@ -446,6 +446,8 @@ const TABLE_OWNERS = {
     "license_relinks",
     // PX-W16: account pictures, re-encoded and content-addressed (renditions in R2 `avatars/`).
     "account_avatars",
+    // PX-W12: account joins and their 72-hour undo.
+    "account_merges",
     "portal_accounts",
     "portal_account_emails",
     "portal_account_identities",

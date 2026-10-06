@@ -78,6 +78,8 @@ import {
 } from "./accountSessions.js";
 import { avatarUrl, handleCardApi, turnstileSiteKey } from "../card/index.js";
 import { handleAccountPasskeys } from "../passkeys/routes.js";
+import { handleAccountMethods } from "./methods.js";
+import { handleAccountLink } from "./link.js";
 import { clearDeviceSubjects } from "../../../core/subjectHooks.js";
 import { libraryView, productView } from "./library.js";
 import { signInConsentView, signInRequestView } from "../passthrough/routes.js";
@@ -1374,6 +1376,21 @@ export async function handlePortalApi(
       segments.slice(2),
       now,
     );
+  }
+  // PX-W12 (G27): sign-in methods (list, connect, disconnect) and Link an existing account (join,
+  // undo). Each change checks step-up, the never-orphan guard and its own rate limit.
+  if (
+    segments[0] === "me" &&
+    (segments[1] === "methods" || segments[1] === "link")
+  ) {
+    const caller = {
+      accountId: session.accountId,
+      authenticatedAt: portalSessionAuthenticatedAt(session),
+      sessionIdHash,
+    };
+    return segments[1] === "methods"
+      ? handleAccountMethods(req, env, db, caller, segments.slice(2), now)
+      : handleAccountLink(req, env, db, caller, segments.slice(2), now);
   }
   await syncAccountLicenseLinks(db, session.accountId, now);
 

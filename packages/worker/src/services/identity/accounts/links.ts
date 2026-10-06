@@ -53,7 +53,11 @@ export function isFresh(proof: AccountProof, now: number): boolean {
   );
 }
 
-/** A sign-in method by its own name, for a notice: "Google", "A passkey", an address. */
+/**
+ * A sign-in method by its own name, for a notice: "Google", "A passkey", "An email address".
+ * An email method is named generically (PX-W12): a notice goes to every verified address on the
+ * account, and its subject line must not hand one address to the others.
+ */
 export function methodLabel(link: {
   kind: string;
   email: string | null;
@@ -61,7 +65,7 @@ export function methodLabel(link: {
 }): string {
   switch (link.kind) {
     case "email":
-      return link.email ?? link.subject;
+      return "An email address";
     case "google":
       return "Google";
     case "apple":

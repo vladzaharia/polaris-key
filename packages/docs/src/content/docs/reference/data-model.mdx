@@ -159,6 +159,7 @@ this page or fails the freshness gate.
 | `account_terms_acceptances` | 0091_account_terms_acceptances.sql | `account_id`, `product`, `version`, `url`, `accepted_at` |
 | `license_relinks` | 0082_license_relinks.sql | `product`, `id`, `license_id`, `from_account_id`, `to_account_id`, `from_subject`, `to_subject`, `reason`, `actor_sub`, `actor_name`, `notices_sent`, `created_at`, `undo_until`, `undone_at`, `undone_by`, `undo_reason` |
 | `account_avatars` | 0093_account_avatars.sql | `asset`, `account_id`, `origin`, `bytes`, `created_at` |
+| `account_merges` | 00XX_account_merges.sql | `id`, `survivor_id`, `absorbed_id`, `merged_at`, `undo_until`, `undone_at`, `snapshot_json` |
 | `portal_accounts` | 0008_portal.sql | `id`, `status`, `display_name`, `primary_email`, `created_at`, `modified_at` |
 | `portal_account_emails` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `email`, `account_id`, `verified_at`, `created_at` |
 | `portal_account_identities` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `provider`, `subject`, `account_id`, `email`, `display_name`, `created_at`, `last_seen_at` |

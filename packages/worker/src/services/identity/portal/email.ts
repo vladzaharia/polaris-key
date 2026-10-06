@@ -312,9 +312,9 @@ export async function sendNotice(
 /**
  * A security notice (PORTAL.md §6.3): one message per address, to every verified email on the
  * account plus `alsoTo` (the session's address, which a brand-new account may not have verified
- * a row for yet). Sent separately, so no recipient sees the others in the headers. (A notice
- * whose subject IS an address, such as a sign-in email added, does show that address; render
- * email methods generically when those notices are wired, PX-W12.)
+ * a row for yet). Sent separately, so no recipient sees the others in the headers. An email
+ * sign-in method is named generically in its notices ("An email address", `methodLabel`, PX-W12),
+ * so no notice hands one of the account's addresses to the others.
  *
  * A recipient that is not sent to (unavailable, suppressed, or a failed send) never fails the
  * change the notice reports (a device is already removed, an account is about to be erased); the

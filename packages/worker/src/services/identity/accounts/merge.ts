@@ -16,7 +16,12 @@
  * Every registered store of account × product data re-keys first (`runSubjectMerge`): Config's
  * overrides and Cloud Sync's saves never collide silently (S-17 §5.5 owns the conflict UI).
  *
- * The same primitive completes the login card's join offer (I-07) when both sides are accounts.
+ * The same primitive completes the login card's join offer (I-07) when both sides are accounts,
+ * and the account page's Link an existing account (PX-W12, `portal/link.ts`).
+ *
+ * PX-W12: every join is undoable for 72 hours (`mergeUndo.ts`). The batch also writes an
+ * `account_merges` row with a snapshot of what moved, and an account that absorbed another less
+ * than 72 hours ago is never itself absorbed (`merge_pending`), so that undo stays possible.
  */
 
 import type { DbStatement } from "../../../core/platform.js";
@@ -28,6 +33,12 @@ import { sendNotice, securityNoticeRecipients } from "../portal/email.js";
 import { accountsMergedNotice } from "../portal/notices.js";
 import { stmtSubjectEvent } from "./events.js";
 import { isFresh, type AccountContext, type AccountProof } from "./links.js";
+import {
+  MERGE_UNDO_SECONDS,
+  captureMergeSnapshot,
+  hasUndoableMerge,
+  stmtRecordMerge,
+} from "./mergeUndo.js";
 import { getAccountRow } from "./repo.js";
 import { stmtsMoveTermsAcceptances } from "./terms.js";
 
@@ -39,6 +50,9 @@ export type MergeResult =
         subject: string;
         alias: string | null;
       }>;
+      /** The join's undo handle (`account_merges.id`), and until when it can be undone. */
+      mergeId: string;
+      undoUntil: number;
     }
   | {
       ok: false;
@@ -46,7 +60,10 @@ export type MergeResult =
         | "step_up_required"
         | "same_account"
         | "not_found"
-        | "account_disabled";
+        | "account_disabled"
+        /** The account to absorb joined another less than 72 hours ago: absorbing it now would
+         *  make that join impossible to undo. Keep it as the survivor instead, or wait. */
+        | "merge_pending";
     };
 
 export async function mergeAccounts(
@@ -69,6 +86,9 @@ export async function mergeAccounts(
   }
   const S = survivor.id;
   const A = absorbed.id;
+  if (await hasUndoableMerge(db, A, now)) {
+    return { ok: false, reason: "merge_pending" };
+  }
 
   // Everyone on either account hears about it; read before the absorbed rows move.
   const recipients = [
@@ -89,6 +109,20 @@ export async function mergeAccounts(
         S,
       )
     ).map((r) => [r.product, r.subject]),
+  );
+
+  // PX-W12: what is about to move, so the join can be undone for 72 hours. Read before any
+  // store re-keys, so the devices list is the absorbed account's own.
+  const mergeId = randomId("amrg");
+  const snapshot = await captureMergeSnapshot(
+    db,
+    S,
+    A,
+    absorbedSubjects.map((r) => ({
+      product: r.product,
+      subject: r.subject,
+      aliasOf: survivorSubjects.get(r.product) ?? null,
+    })),
   );
 
   // Re-key account × product data BEFORE the subject rows change, while both still resolve.
@@ -255,13 +289,15 @@ export async function mergeAccounts(
         "Joined another Polaris Key account into this one",
       ],
     },
+    stmtRecordMerge(mergeId, S, A, snapshot, now),
   );
   await db.batch(stmts);
 
-  const message = accountsMergedNotice({ origin: ctx.origin });
+  const undoUntil = now + MERGE_UNDO_SECONDS;
+  const message = accountsMergedNotice({ origin: ctx.origin, undoUntil });
   for (const to of recipients) {
     // A notice that does not go out never undoes the merge (it already committed).
     await sendNotice(env, db, to, message, now).catch(() => false);
   }
-  return { ok: true, products };
+  return { ok: true, products, mergeId, undoUntil };
 }

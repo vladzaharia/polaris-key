@@ -350,12 +350,46 @@ export function accountDeletedNotice(input: { origin: string }): NoticeMessage {
 
 // ── Accounts (I-05) ──────────────────────────────────────────────────────────────────────────
 
-/** Two accounts were joined into one, after the person signed in to both (S-16 §5.1, D21). */
-export function accountsMergedNotice(input: { origin: string }): NoticeMessage {
+/** A unix time as a readable UTC instant for a notice: "2026-10-04 14:34 UTC". */
+function utcInstant(at: number): string {
+  return `${new Date(at * 1000).toISOString().slice(0, 16).replace("T", " ")} UTC`;
+}
+
+/**
+ * Two accounts were joined into one, after the person signed in to both (S-16 §5.1, D21). With
+ * `undoUntil` (PX-W12) it says until when the join can be undone, and where.
+ */
+export function accountsMergedNotice(input: {
+  origin: string;
+  undoUntil?: number;
+}): NoticeMessage {
   return buildNotice({
     subject: "Two Polaris Key accounts were joined",
     paragraphs: [
       "Two Polaris Key accounts were joined into one after someone signed in to both. Their sign-in methods and licenses are now on a single account.",
+      ...(input.undoUntil === undefined
+        ? []
+        : [
+            `You can separate them again until ${utcInstant(input.undoUntil)} from Account → Sign-in methods.`,
+          ]),
+    ],
+    action: {
+      label: "See your sign-in methods",
+      url: appLink(input.origin, "account/methods"),
+    },
+    secureUrl: appLink(input.origin, "account/methods"),
+    origin: input.origin,
+  });
+}
+
+/** A join was undone within its 72 hours (PX-W12): two accounts again. */
+export function accountsSeparatedNotice(input: {
+  origin: string;
+}): NoticeMessage {
+  return buildNotice({
+    subject: "Your Polaris Key accounts were separated",
+    paragraphs: [
+      "Two Polaris Key accounts that were joined are separate again. Each has its own sign-in methods and licenses back, as they were before the join.",
     ],
     action: {
       label: "See your sign-in methods",
