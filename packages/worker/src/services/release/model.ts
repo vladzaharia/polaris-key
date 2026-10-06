@@ -593,8 +593,8 @@ export async function setChannelPolicy(
 
 /**
  * Hand a channel's policy back to the manifest. Only the OWNER flips — the values stay as the
- * operator left them until the next resync re-applies the manifest's declaration (the
- * `revertServicesToManifest` precedent). True when a row existed.
+ * operator left them until the next resync re-applies the manifest's declaration (the precedent
+ * the `core.services` reset keeps, `core/settings/columns.ts`). True when a row existed.
  */
 export async function revertChannelPolicyToManifest(
   db: Db,

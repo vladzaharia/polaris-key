@@ -8,18 +8,21 @@
  *     the value, a legacy `*_source` marker, `discover_enabled` beside the listing state);
  *   - `product_settings` or `platform_settings` at all (the settings stores).
  *
- * Each module that does must be one of:
+ * Each write is attributed to the top-level function that holds it, and must be in one of:
  *
  *   - the write path itself: `writeSetting()` and the column adapters it calls;
  *   - A-13's platform store, which the platform-settings route writes through its own versioned,
  *     audited path (ST-05 folds that route into `writeSetting()`);
  *   - the MANIFEST writer: product creation and the `.pkey/` apply (link, resync, the system
  *     product's deploy hook), which writes manifest-owned values under the claim guards ST-01b put
- *     in its SQL and audits each field (`setting.resync`); ST-17 turns it into one plan;
- *   - a fixture writer: a function kept for tests that NO module under `src/` calls.
+ *     in its SQL and audits each field (`setting.resync`); ST-17 turns it into one plan. In the
+ *     shared `repo.ts` only the named builders count: any other function there that writes one
+ *     fails, so a new setter cannot hide beside them;
+ *   - a fixture writer: a named function kept for tests that NO module under `src/` calls.
  *
- * And the manifest writer's statement builders are never called with their console spelling
- * (`"admin"`) from `src/`: a console write of those keys is `writeSetting()`'s.
+ * And every call of the manifest writer's dual builders (`setServices`, `setFingerprintPolicy`,
+ * …, which can also spell a console claim) outside `repo.ts` passes the literal `"manifest"` as
+ * its source: a console write of those keys is `writeSetting()`'s.
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -41,14 +44,33 @@ const WRITE_PATH = [
 /** A-13's store (`writePlatformSetting`), the platform-settings route's own versioned path. */
 const A13_STORE = ["core/platformSettings.ts"] as const;
 
-/** The manifest writer, with what each module applies. */
-const MANIFEST_WRITERS: Readonly<Record<string, string>> = {
-  "repo.ts":
-    'product creation (`stmtInsertProduct`, the release_config insert) and the ingest\'s statement builders, called with `"manifest"`',
-  "services/release/resync.ts":
-    "the resync apply: claim-guarded in SQL (ST-01b), one `setting.resync` audit row per field",
-  "admin/systemProduct.ts":
-    "the deploy hook's bootstrap of the system product (S-18 §4.5 item 8)",
+/**
+ * The manifest writer: what each module applies, and, for a module shared with other code, the
+ * only functions in it that may write (`functions`; absent: the whole module is the apply path).
+ */
+const MANIFEST_WRITERS: Readonly<
+  Record<string, { why: string; functions?: readonly string[] }>
+> = {
+  "repo.ts": {
+    why: 'product creation, the release_config insert at link, and the ingest\'s statement builders, called with "manifest" (checked below)',
+    functions: [
+      "insertProduct",
+      "stmtInsertProduct",
+      "stmtInsertReleaseConfig",
+      "setFingerprintPolicy",
+      "stmtSetFingerprintPolicy",
+      "setAutoIssuePolicy",
+      "stmtSetAutoIssuePolicy",
+      "setServices",
+      "stmtSetServices",
+    ],
+  },
+  "services/release/resync.ts": {
+    why: "the resync apply: claim-guarded in SQL (ST-01b), one `setting.resync` audit row per field",
+  },
+  "admin/systemProduct.ts": {
+    why: "the deploy hook's bootstrap of the system product (S-18 §4.5 item 8)",
+  },
 };
 
 /** Writers kept for tests, by module: no module under `src/` may call them. */
@@ -58,15 +80,18 @@ const FIXTURE_WRITERS: Readonly<Record<string, readonly string[]>> = {
   "repo.ts": ["setTrustPolicy"],
 };
 
-/** The manifest writer's builders that also spell a console write (`"admin"`). */
-const DUAL_BUILDERS = [
-  "setServices",
-  "stmtSetServices",
-  "setFingerprintPolicy",
-  "stmtSetFingerprintPolicy",
-  "setAutoIssuePolicy",
-  "stmtSetAutoIssuePolicy",
-] as const;
+/**
+ * The manifest writer's builders that can also spell a console claim (`"admin"`), with the index
+ * of their `source` argument. Outside `repo.ts` every call passes the literal `"manifest"`.
+ */
+const DUAL_BUILDERS: Readonly<Record<string, number>> = {
+  setServices: 3,
+  stmtSetServices: 2,
+  setFingerprintPolicy: 3,
+  stmtSetFingerprintPolicy: 2,
+  setAutoIssuePolicy: 3,
+  stmtSetAutoIssuePolicy: 2,
+};
 
 const SETTINGS_STORES = ["product_settings", "platform_settings"] as const;
 
@@ -78,7 +103,7 @@ function walk(dir: string): string[] {
   });
 }
 
-const FILES = new Map(
+const FILES: ReadonlyMap<string, string> = new Map(
   walk(SRC).map((p) => [
     relative(SRC, p).split(sep).join("/"),
     readFileSync(p, "utf8"),
@@ -101,48 +126,135 @@ function protectedColumns(): Map<string, Set<string>> {
 
 const PROTECTED = protectedColumns();
 
-/** The registry-backed writes in one module's text, as readable strings. */
-export function settingWrites(
+interface WriteSite {
+  hit: string;
+  at: number;
+}
+
+/** The registry-backed writes in one module's text, with where each sits. */
+function writeSites(
   text: string,
   columns: ReadonlyMap<string, ReadonlySet<string>> = PROTECTED,
-): string[] {
-  const hits = new Set<string>();
+): WriteSite[] {
+  const sites: WriteSite[] = [];
   for (const m of text.matchAll(
     /UPDATE\s+(\w+)\s+SET\b([\s\S]{0,1500}?)(?:\bWHERE\b|`|$)/g,
   )) {
     const cols = columns.get(m[1]!);
     if (!cols) continue;
     // A SET list built at run time can name any column: it counts as a write of the table.
-    if (m[2]!.includes("${")) hits.add(`UPDATE ${m[1]} SET \${…}`);
+    if (m[2]!.includes("${"))
+      sites.push({ hit: `UPDATE ${m[1]} SET \${…}`, at: m.index });
     for (const c of m[2]!.matchAll(/\b(\w+)\s*=/g))
-      if (cols.has(c[1]!)) hits.add(`${m[1]}.${c[1]}`);
+      if (cols.has(c[1]!)) sites.push({ hit: `${m[1]}.${c[1]}`, at: m.index });
   }
   for (const m of text.matchAll(
     /INSERT\s+(?:OR\s+\w+\s+)?INTO\s+(\w+)\s*\(([^)]*)\)/g,
   )) {
     const cols = columns.get(m[1]!);
     if (!cols) continue;
-    if (m[2]!.includes("${")) hits.add(`INSERT INTO ${m[1]} (\${…})`);
+    if (m[2]!.includes("${"))
+      sites.push({ hit: `INSERT INTO ${m[1]} (\${…})`, at: m.index });
     for (const c of m[2]!.split(",").map((x) => x.trim()))
-      if (cols.has(c)) hits.add(`${m[1]}.${c}`);
+      if (cols.has(c)) sites.push({ hit: `${m[1]}.${c}`, at: m.index });
   }
   for (const m of text.matchAll(
     /(INSERT\s+(?:OR\s+\w+\s+)?INTO|UPDATE|DELETE\s+FROM)\s+(\w+)\b/g,
   ))
     if ((SETTINGS_STORES as readonly string[]).includes(m[2]!))
-      hits.add(`${m[1]!.split(/\s+/)[0]} ${m[2]}`);
-  return [...hits].sort();
+      sites.push({ hit: `${m[1]!.split(/\s+/)[0]} ${m[2]}`, at: m.index });
+  return sites;
 }
 
-/** Calls of `name(` in `text` that are not its own definition. */
-function callsOf(name: string, text: string): string[] {
+/** The registry-backed writes in one module's text, as readable strings. */
+export function settingWrites(
+  text: string,
+  columns: ReadonlyMap<string, ReadonlySet<string>> = PROTECTED,
+): string[] {
+  return [...new Set(writeSites(text, columns).map((s) => s.hit))].sort();
+}
+
+/** The top-level function (or const) enclosing `at`, `(module)` above the first one. */
+function enclosing(text: string, at: number): string {
+  let name = "(module)";
+  for (const m of text.matchAll(
+    /^(?:export\s+)?(?:async\s+)?(?:function\s+(\w+)|const\s+(\w+)\s*[=:])/gm,
+  )) {
+    if (m.index > at) break;
+    name = (m[1] ?? m[2])!;
+  }
+  return name;
+}
+
+/** Every write in `files` that no rule above allows, as `file fn: hit`. */
+export function offendingWrites(files: ReadonlyMap<string, string>): string[] {
+  const whole = new Set<string>([
+    ...WRITE_PATH,
+    ...A13_STORE,
+    ...Object.entries(MANIFEST_WRITERS)
+      .filter(([, w]) => !w.functions)
+      .map(([f]) => f),
+  ]);
   const out: string[] = [];
+  for (const [file, text] of files) {
+    if (whole.has(file)) continue;
+    const allowed = new Set([
+      ...(MANIFEST_WRITERS[file]?.functions ?? []),
+      ...(FIXTURE_WRITERS[file] ?? []),
+    ]);
+    for (const site of writeSites(text)) {
+      const fn = enclosing(text, site.at);
+      if (!allowed.has(fn)) out.push(`${file} ${fn}: ${site.hit}`);
+    }
+  }
+  return [...new Set(out)].sort();
+}
+
+/** Each call of `name(` in `text` that is not its own definition, as its argument list. */
+function callArgs(name: string, text: string): string[][] {
+  const out: string[][] = [];
   for (const m of text.matchAll(new RegExp(`(^|[^\\w.])${name}\\(`, "g"))) {
-    const before = text.slice(Math.max(0, m.index - 20), m.index + 1);
-    if (/function\s*$/.test(before)) continue;
-    out.push(text.slice(m.index, m.index + 400).split(";")[0]!);
+    const open = m.index + m[0].length - 1;
+    const head = text.slice(
+      Math.max(0, open - name.length - 40),
+      open - name.length,
+    );
+    if (/function\s*$/.test(head)) continue;
+    // Split the balanced argument list on its top-level commas.
+    const args: string[] = [];
+    let depth = 0;
+    let cur = "";
+    for (let i = open + 1; i < text.length; i++) {
+      const ch = text[i]!;
+      if ("([{".includes(ch)) depth++;
+      if (")]}".includes(ch)) {
+        if (depth === 0) break;
+        depth--;
+      }
+      if (ch === "," && depth === 0) {
+        args.push(cur.trim());
+        cur = "";
+      } else cur += ch;
+    }
+    if (cur.trim() !== "") args.push(cur.trim());
+    out.push(args);
   }
   return out;
+}
+
+/** Every dual-builder call outside `repo.ts` whose source is not the literal `"manifest"`. */
+export function nonManifestDualCalls(
+  files: ReadonlyMap<string, string>,
+): string[] {
+  const out: string[] = [];
+  for (const [file, text] of files) {
+    if (file === "repo.ts") continue;
+    for (const [name, index] of Object.entries(DUAL_BUILDERS))
+      for (const args of callArgs(name, text))
+        if (args[index] !== '"manifest"')
+          out.push(`${file}: ${name}(…, ${args[index] ?? "?"}, …)`);
+  }
+  return out.sort();
 }
 
 describe("settings writes go through writeSetting() (ST-04)", () => {
@@ -168,7 +280,7 @@ describe("settings writes go through writeSetting() (ST-04)", () => {
     }
   });
 
-  it("finds a handler's direct write (the scan bites)", () => {
+  it("finds a direct write, attributes it to its function, and finds a non-manifest dual call (the scan bites)", () => {
     expect(
       settingWrites("db.run(`UPDATE products SET name = ? WHERE slug = ?`)"),
     ).toEqual(["products.name"]);
@@ -187,27 +299,42 @@ describe("settings writes go through writeSetting() (ST-04)", () => {
     expect(
       settingWrites("`UPDATE products SET branding_json = ? WHERE slug = ?`"),
     ).toEqual([]);
+
+    // A new setter beside the manifest writer's builders in `repo.ts` is caught by name.
+    const repo = `${FILES.get("repo.ts")!}
+export async function revertServicesToManifest(db: Db, product: string, at: number) {
+  await db.run(\`UPDATE products SET services_source = 'manifest', modified_at = ? WHERE slug = ?\`, at, product);
+}
+`;
+    expect(offendingWrites(new Map([["repo.ts", repo]]))).toEqual([
+      "repo.ts revertServicesToManifest: products.services_source",
+    ]);
+    // A handler handing a dual builder a non-literal (or console) source is caught too.
+    expect(
+      nonManifestDualCalls(
+        new Map([
+          [
+            "admin/handlers/x.ts",
+            `await setFingerprintPolicy(db, slug, JSON.stringify(p), source, now);
+             stmtSetServices(slug, json, "admin", now);
+             stmtSetAutoIssuePolicy(slug, json, "manifest", now);`,
+          ],
+        ]),
+      ),
+    ).toEqual([
+      "admin/handlers/x.ts: setFingerprintPolicy(…, source, …)",
+      'admin/handlers/x.ts: stmtSetServices(…, "admin", …)',
+    ]);
   });
 
-  it("no module outside the write path, A-13's store, the manifest writer and fixture writers writes one", () => {
-    const allowed = new Set<string>([
-      ...WRITE_PATH,
-      ...A13_STORE,
-      ...Object.keys(MANIFEST_WRITERS),
-      ...Object.keys(FIXTURE_WRITERS),
-    ]);
-    const offenders = [...FILES]
-      .filter(([file]) => !allowed.has(file))
-      .map(([file, text]) => [file, settingWrites(text)] as const)
-      .filter(([, hits]) => hits.length > 0)
-      .map(([file, hits]) => `${file}: ${hits.join(", ")}`);
+  it("no module writes one outside the write path, A-13's store, the manifest writer and fixture writers", () => {
     expect(
-      offenders,
+      offendingWrites(FILES),
       "write these through writeSetting() (core/settings/write.ts)",
     ).toEqual([]);
   });
 
-  it("keeps the allow-list honest: every listed module still writes one", () => {
+  it("keeps the allow-list honest: every listed module and function still writes one", () => {
     for (const file of [
       ...WRITE_PATH,
       ...A13_STORE,
@@ -216,6 +343,23 @@ describe("settings writes go through writeSetting() (ST-04)", () => {
     ]) {
       expect(FILES.has(file), `${file} exists`).toBe(true);
       expect(settingWrites(FILES.get(file)!), file).not.toEqual([]);
+    }
+    for (const [file, w] of Object.entries(MANIFEST_WRITERS)) {
+      const text = FILES.get(file)!;
+      const writing = new Set(
+        writeSites(text).map((s) => enclosing(text, s.at)),
+      );
+      for (const fn of w.functions ?? []) {
+        expect(text.includes(`function ${fn}(`), `${file} defines ${fn}`).toBe(
+          true,
+        );
+        // A builder may delegate to its `stmt…` twin; one of the pair holds the SQL.
+        const twin = `stmt${fn[0]!.toUpperCase()}${fn.slice(1)}`;
+        expect(
+          writing.has(fn) || writing.has(twin),
+          `${file} ${fn} writes (itself or through ${twin})`,
+        ).toBe(true);
+      }
     }
   });
 
@@ -227,7 +371,7 @@ describe("settings writes go through writeSetting() (ST-04)", () => {
           `${owner} defines ${name}`,
         ).toBe(true);
         const callers = [...FILES]
-          .filter(([, text]) => callsOf(name, text).length > 0)
+          .filter(([, text]) => callArgs(name, text).length > 0)
           .map(([file]) => file)
           // `updateProduct` calls `stmtUpdateProduct` inside the same fixture module.
           .filter((file) => file !== owner);
@@ -235,14 +379,14 @@ describe("settings writes go through writeSetting() (ST-04)", () => {
       }
   });
 
-  it("never spells a console write through the manifest writer's builders", () => {
-    const consoleCalls = [...FILES].flatMap(([file, text]) =>
-      DUAL_BUILDERS.flatMap((name) =>
-        callsOf(name, text)
-          .filter((call) => call.includes('"admin"'))
-          .map((call) => `${file}: ${call.replace(/\s+/g, " ").slice(0, 80)}`),
-      ),
-    );
-    expect(consoleCalls).toEqual([]);
+  it('passes the literal "manifest" to every dual builder outside repo.ts', () => {
+    expect(nonManifestDualCalls(FILES)).toEqual([]);
+    // And there are such calls to check (the ingest, link and resync).
+    const calls = [...FILES]
+      .filter(([file]) => file !== "repo.ts")
+      .flatMap(([, text]) =>
+        Object.keys(DUAL_BUILDERS).flatMap((n) => callArgs(n, text)),
+      );
+    expect(calls.length).toBeGreaterThan(3);
   });
 });

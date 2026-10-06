@@ -28,10 +28,11 @@ import {
 import {
   getFingerprint,
   getProduct,
-  revertFingerprintPolicyToManifest,
   setFingerprintPolicy,
 } from "../src/repo.js";
 import { parseFingerprintPolicy } from "../src/fingerprint.js";
+import { SETTINGS } from "../src/mount.js";
+import { writeSetting } from "../src/core/settings/write.js";
 
 const PLATFORM_GROUP = "admins";
 
@@ -105,7 +106,21 @@ describe("fingerprint policy ownership", () => {
       "admin",
       NOW,
     );
-    await revertFingerprintPolicyToManifest(db, "djdl", NOW + 5);
+    // The revert is a `license.fingerprint` reset through `writeSetting()` (ST-04): it flips the
+    // owner marker back to `manifest` and leaves the value for the next resync.
+    expect(
+      await writeSetting(
+        { env: {}, db, registry: SETTINGS },
+        { key: "license.fingerprint", op: "reset" },
+        {
+          actor: { sub: "u1", name: null, email: null },
+          origin: "revert",
+          now: NOW + 5,
+          product: "djdl",
+          strict: false,
+        },
+      ),
+    ).toMatchObject({ ok: true });
     await setFingerprintPolicy(
       db,
       "djdl",

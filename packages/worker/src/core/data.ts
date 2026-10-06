@@ -62,8 +62,6 @@ export {
   listLicenseProfiles,
   moveDevices,
   replaceLicenseKeys,
-  revertAutoIssueToManifest,
-  revertFingerprintPolicyToManifest,
   seatActiveSince,
   setDeviceLabel,
   setAutoIssuePolicy,
