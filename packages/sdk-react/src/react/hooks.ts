@@ -30,7 +30,7 @@ import {
   type VersionCheck,
   type ImportBundleResult,
 } from "../core/index.js";
-import { readEntitledChannels } from "../core/adapter.js";
+import { readEntitled, readEntitledChannels } from "../core/adapter.js";
 import { PolarisContext, type PolarisContextValue } from "./context.js";
 import type { PolarisTheme } from "../components/theme.js";
 
@@ -277,8 +277,9 @@ export function useManagedConfig(): UseManagedConfig {
 export function useEntitlement(name: string): boolean {
   const { adapter } = useCtx();
   const state = useAdapterState(adapter);
-  // Read off the snapshot so the value is reactive (not just the imperative accessor).
-  return state.entitlements[name] === true;
+  // Read off the snapshot so the value is reactive (not just the imperative accessor), and
+  // false whenever the gate is not usable (S-19 G11).
+  return readEntitled(state, name);
 }
 
 /** The auth surface: profile + the sign-in/out/key actions + busy/error. */

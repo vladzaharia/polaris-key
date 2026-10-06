@@ -63,7 +63,11 @@ public fun PolarisCopy.graceBody(graceUntilSeconds: Long?, nowSeconds: Long): St
     if (graceUntilSeconds == null || graceUntilSeconds <= nowSeconds) graceBodyNoDeadline
     else format(graceBody, duration(graceUntilSeconds - nowSeconds))
 
-/** The error an activation result shows, or null for success. */
+/**
+ * The error an activation result shows, or null for success: one message per §3.1 kind
+ * (notes/SDK-PARITY-PASS.md), by code. A refusal the kit has no copy for shows a generic message
+ * naming the server's code, never the raw body.
+ */
 public fun PolarisCopy.activationMessage(result: ActivationResult): String? = when (result) {
     is ActivationResult.Ok -> null
     is ActivationResult.DeviceLimit ->
@@ -73,8 +77,34 @@ public fun PolarisCopy.activationMessage(result: ActivationResult): String? = wh
     ActivationResult.FingerprintRequired -> activationFingerprintRequired
     is ActivationResult.HardwareMismatch -> activationHardwareMismatch
     ActivationResult.EnrollDisabled -> activationEnrollDisabled
+    ActivationResult.EnrollClaimed -> activationEnrollClaimed
+    ActivationResult.LicenseDisabled -> activationLicenseDisabled
+    ActivationResult.LicenseExpired -> activationLicenseExpired
+    ActivationResult.AttestationRequired -> activationAttestationRequired
+    is ActivationResult.RateLimited ->
+        result.retryAfterSeconds?.takeIf { it > 0 }?.let { format(activationRateLimitedFor, duration(it)) } ?: activationRateLimited
+    is ActivationResult.Refused -> errorCodeMessage(result.code) ?: format(activationRefused, result.code)
     // The SDK's message is for logs; the player sees the kit's copy.
-    is ActivationResult.Error -> activationError
+    is ActivationResult.Error -> if (result.code == im.plrs.key.core.ErrorCode.network) activationNetwork else activationError
+}
+
+/**
+ * The kit's copy for a registry error code it knows (the activation refusals and the shared ones),
+ * or null. Used for refusals that arrive as a bare code (`ActivationResult.Refused`, a typed N/A).
+ */
+public fun PolarisCopy.errorCodeMessage(code: String): String? = when (code) {
+    im.plrs.key.core.ErrorCode.deviceLimit -> activationDeviceLimit
+    im.plrs.key.core.ErrorCode.unauthorized -> activationUnauthorized
+    im.plrs.key.core.ErrorCode.fingerprintRequired -> activationFingerprintRequired
+    im.plrs.key.core.ErrorCode.hardwareMismatch -> activationHardwareMismatch
+    im.plrs.key.core.ErrorCode.enrollDisabled, im.plrs.key.core.ErrorCode.registrationClosed -> activationEnrollDisabled
+    im.plrs.key.core.ErrorCode.enrollClaimed -> activationEnrollClaimed
+    im.plrs.key.core.ErrorCode.licenseDisabled -> activationLicenseDisabled
+    im.plrs.key.core.ErrorCode.licenseExpired -> activationLicenseExpired
+    im.plrs.key.core.ErrorCode.attestationRequired -> activationAttestationRequired
+    im.plrs.key.core.ErrorCode.rateLimited -> activationRateLimited
+    im.plrs.key.core.ErrorCode.network, im.plrs.key.core.ErrorCode.networkError -> activationNetwork
+    else -> null
 }
 
 /** The label under the progress indicator while the boot runs through [stage]. */

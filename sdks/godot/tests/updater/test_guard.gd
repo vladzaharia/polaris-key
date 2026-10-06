@@ -198,6 +198,21 @@ func _drops(t: PKeyTestContext) -> void:
 	menu.select_channel("stable")
 	t.check("guard: picking another channel in the dev menu drops the staged pack", picked == ["stable"] and u.slots.meta("staged") == null and u.staged_input() == null)
 	menu.queue_free()
+	# SP-G08: the pick is the SDK's persisted update channel, read by check/decide/feed.
+	t.check("channel: the dev menu's pick is persisted by the SDK", sdk.update.preferred_channel() == "stable" and sdk.update.get_channel() == "stable" and FileAccess.file_exists(PKeyUpdate.channel_path(sdk.core)))
+	var changed: Array = []
+	sdk.update.channel_changed.connect(func(c): changed.append(c))
+	var set_r: PKeyResult = sdk.update.set_channel("staging")
+	t.check("channel: an alias is stored canonically and announced", set_r.ok and sdk.update.get_channel() == "beta" and changed == ["beta"], "%s %s" % [set_r, changed])
+	t.check("channel: a malformed name is refused", sdk.update.set_channel("Not A Channel!").code == PKeyErrors.INVALID_OPTIONS and sdk.update.get_channel() == "beta")
+	var flow: Dictionary = sdk.update._flow_opts({"core": sdk.core, "fetch_feed": Callable(), "fetch_record": Callable()}, "", null, null)
+	t.check("channel: decide() without a channel asks for the chosen one", flow["channel"] == "beta", str(flow.get("channel")))
+	var cleared: PKeyResult = sdk.update.clear_channel()
+	t.check("channel: clear_channel() goes back to the build's channel", cleared.ok and sdk.update.preferred_channel() == "" and sdk.update.get_channel() == String(sdk.core.channel))
+	sdk.core.options.update_outlet = "steam"
+	var locked: PKeyResult = sdk.update.set_channel("beta")
+	t.check("channel: an outlet that owns the channel refuses the switch", not locked.ok and locked.code == PKeyErrors.UNSUPPORTED and locked.detail.get("reason") == "outlet" and sdk.update.preferred_channel() == "", str(locked))
+	sdk.core.options.update_outlet = ""
 	# The same: a decision that discards it (staged on beta, the feed is stable).
 	await u.stage_sidecar(S.sidecar_check("1.5.0", fresh, "beta"))
 	t.check("guard: a staged pack is a decision input with its channel", u.staged_input() == {"version": "1.5.0", "channel": "beta"})

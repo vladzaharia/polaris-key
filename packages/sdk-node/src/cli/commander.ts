@@ -11,16 +11,8 @@
 import { readFile } from "node:fs/promises";
 import type { Command } from "commander";
 import type { ServiceSlug } from "../discovery.js";
-import {
-  activate,
-  deactivate,
-  enroll,
-  getConfig,
-  importBundle,
-  register,
-  status,
-  type ClientFactory,
-} from "./commands.js";
+import type { ClientFactory } from "./commands.js";
+import { CLI_VERBS, type CliIO } from "./kit.js";
 
 /** How the adapter reads CLI-wide options (product/version/baseUrl/configDir) off the
  *  commander program to feed the `ClientFactory`. By default it reads them from the root
@@ -38,6 +30,10 @@ export interface CommanderAdapterOptions {
   /** Sink for printed lines + exit-code mapping (defaults to console + `process.exitCode`).*/
   print?: (line: string) => void;
   setExitCode?: (code: number) => void;
+  /** Progress sink (default: redraw one line on stderr when it is a TTY). */
+  progress?: (line: string) => void;
+  /** Stops long-running verbs (default: none; Ctrl-C ends the process). */
+  signal?: AbortSignal;
 }
 
 function rootOpts(cmd: Command): Record<string, unknown> {
@@ -50,8 +46,14 @@ function rootOpts(cmd: Command): Record<string, unknown> {
   return cur.opts();
 }
 
-/** Attach `activate`/`deactivate`/`status`/`config` to `program`, dispatching to the
- *  framework-agnostic core. `factory` builds a client from resolved flags. */
+/** Redraw one progress line on stderr; nothing when stderr is not a terminal. */
+export function ttyProgress(line: string): void {
+  if (process.stderr.isTTY) process.stderr.write(`\r\x1b[2K${line}`);
+}
+
+/** Attach every Polaris Key verb (`CLI_VERBS`) to `program`, dispatching to the
+ *  framework-agnostic core. Multi-word verbs (`devices list`) become a group command with
+ *  subcommands. `factory` builds a client from resolved flags. */
 export function registerPolarisCommands(
   program: Command,
   factory: ClientFactory,
@@ -63,6 +65,7 @@ export function registerPolarisCommands(
     ((code: number) => {
       if (code !== 0) process.exitCode = code;
     });
+  const progress = options.progress ?? ttyProgress;
 
   const buildClient = async (cmd: Command) => {
     const opts = rootOpts(cmd);
@@ -77,65 +80,49 @@ export function registerPolarisCommands(
     });
   };
 
-  const emit = (r: { ok: boolean; message: string }) => {
-    print(r.message);
-    setExitCode(r.ok ? 0 : 1);
+  // A drawn progress line is ended before the next printed line.
+  let drawn = false;
+  const say = (line: string) => {
+    if (drawn && !options.progress && process.stderr.isTTY)
+      process.stderr.write("\n");
+    drawn = false;
+    print(line);
+  };
+  const io: CliIO = {
+    print: say,
+    progress: (line) => {
+      drawn = true;
+      progress(line);
+    },
+    readFile: (path) => readFile(path, "utf8"),
+    ...(options.signal ? { signal: options.signal } : {}),
   };
 
-  program
-    .command("activate <key>")
-    .description("[license] Activate this device with a licence key")
-    .action(async function activateAction(this: Command, key: string) {
-      emit(await activate(await buildClient(this), key));
-    });
-
-  program
-    .command("deactivate")
-    .description("[license] Deauthorize this device and wipe local credentials")
-    .action(async function deactivateAction(this: Command) {
-      emit(await deactivate(await buildClient(this)));
-    });
-
-  program
-    .command("status")
-    .description("[license] Show the current licence gate status")
-    .action(async function statusAction(this: Command) {
-      const client = await buildClient(this);
-      emit(status(client, await client.storeStatus()));
-    });
-
-  program
-    .command("enroll")
-    .description(
-      "[license] Obtain a licence with no key, when the product offers one",
-    )
-    .action(async function enrollAction(this: Command) {
-      emit(await enroll(await buildClient(this)));
-    });
-
-  program
-    .command("register")
-    .description(
-      "[devices] Register this device keylessly and pull its documents",
-    )
-    .action(async function registerAction(this: Command) {
-      emit(await register(await buildClient(this)));
-    });
-
-  program
-    .command("config <key>")
-    .description("[config] Resolve the effective value of a config key")
-    .action(async function configAction(this: Command, key: string) {
-      emit(getConfig(await buildClient(this), key));
-    });
-
-  program
-    .command("import-bundle <file>")
-    .description("[core] Import an offline activation bundle")
-    .action(async function importBundleAction(this: Command, file: string) {
-      const jws = (await readFile(file, "utf8")).trim();
-      emit(await importBundle(await buildClient(this), jws));
-    });
+  const groups = new Map<string, Command>();
+  for (const verb of CLI_VERBS) {
+    let parent = program;
+    for (const word of verb.path.slice(0, -1)) {
+      let g = groups.get(word);
+      if (!g) {
+        g = program
+          .command(word)
+          .description(`[${verb.group}] ${word} commands`);
+        groups.set(word, g);
+      }
+      parent = g;
+    }
+    const name = [verb.path.at(-1)!, ...verb.args].join(" ");
+    parent
+      .command(name)
+      .description(`[${verb.group}] ${verb.describe}`)
+      .action(async function action(this: Command, ...args: unknown[]) {
+        // commander passes the positionals, then the options object and the command.
+        const positional = args.slice(0, verb.args.length);
+        const r = await verb.run(await buildClient(this), positional, io);
+        say(r.message);
+        setExitCode(r.ok ? 0 : 1);
+      });
+  }
 
   return program;
 }

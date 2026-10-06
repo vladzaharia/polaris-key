@@ -5,7 +5,7 @@
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (wire items)                                                                                                 |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                                                      |
 | Depends on  | [P1b-04](P1b-04-headers-config-corpora.md)                                                                                                                  |
-| Unblocks    | [UK-26](UK-26-visionos-kit.md), [UK-27](UK-27-tvos-kit.md), [UK-33](UK-33-watchos.md)                                                                       |
+| Unblocks    | [UK-26](UK-26-visionos-kit.md), [UK-27](UK-27-tvos-kit.md), [UK-33](UK-33-watchos.md), [MO-06](MO-06-portal-device-activation-motion.md)                    |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                       |
 | Plan mode   | yes: `pkey-wire-planner` writes `plans/SP-08.md` first; no code before a human approves it                                                                  |
 | Gates       | plan mode; corpus (`headers.json`, Swift and Godot mirrors, `gen:corpus -- --check`); all SDKs (`parity:check`, `gen:constants -- --check`); `test:workerd` |

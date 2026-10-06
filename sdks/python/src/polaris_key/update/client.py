@@ -55,6 +55,7 @@ from ..constants_generated import (
     PLATFORM_VALUES,
     ErrorCode,
     Feature,
+    UnsupportedReason,
 )
 from ..core.b64url import b64url_decode
 from ..core.check import FetchOutcome, run_update_check
@@ -375,6 +376,10 @@ def _wire_code_of(body: bytes) -> Optional[str]:
     return None
 
 
+#: The updater feeds :meth:`UpdateClient.feed_url` expands (discovery ``update.endpoints``).
+FEED_KINDS = ("appcast", "winsparkle", "velopack", "appInstaller", "zsync")
+
+
 class UpdateClient:
     def __init__(
         self,
@@ -398,6 +403,18 @@ class UpdateClient:
         )
         #: The v4 calls run one at a time: each is a read-modify-write of the cache slices.
         self._lock = threading.RLock()
+        #: The update-health journal (SDK parity pass §3.13), set by the facade: a decision
+        #: offering a newer build records ``update_offered`` once per release.
+        self.journal: Any = None
+        #: ``client.events`` (set by the facade): an offering decision emits ``updateAvailable``.
+        self.events: Any = None
+        #: The app build's boot guard (:class:`~polaris_key.update.bootguard.BootGuard`), set by
+        #: the facade.
+        self.guard: Any = None
+        #: The install driver :meth:`install` hands a decision to (``polaris_key.update.drivers``).
+        self.driver: Any = None
+        #: A weak reference to the facade, for drivers (set by the facade).
+        self._client_ref: Any = None
         #: plans/P4-29.md §2.4 step 1: the delta menu of the most recently committed feed, fresh
         #: or stale (``_UNSET`` until a check ran or the cache was read).
         self._feed_menu: Any = _UNSET
@@ -493,6 +510,109 @@ class UpdateClient:
             return None
         return appcast_url_from(manifest, channel=channel, arch=arch)
 
+    # ── Install drivers (SDK parity pass §3.16) ────────────────────────────────────────
+    def set_driver(self, driver: Any) -> None:
+        """Install the driver :meth:`install` hands decisions to
+        (``polaris_key.update.drivers``). A driver with ``rollback()`` becomes the boot guard's
+        rollback, and its ``staged()`` the guard's staged check."""
+        self.driver = driver
+        guard = self.guard
+        if guard is not None:
+            rb = getattr(driver, "rollback", None)
+            guard.rollback = rb if callable(rb) else None
+            st = getattr(driver, "staged", None)
+            guard.staged = st if callable(st) else (lambda: False)
+
+    def install(self, target: Any, *, on_progress: Optional[Callable[[int, int], None]] = None) -> Any:
+        """Hand a decision (an :class:`UpdateCheck` or its ``decision``) to the install driver
+        and return its :class:`~polaris_key.update.drivers.InstallOutcome`
+        (``restart-required``, ``handed-off``, ``store-opened`` or ``unsupported {reason}``).
+        A ``store`` decision opens its listing even without a driver; any other decision without
+        one is ``unsupported {dependency}``; ``none`` / ``blocked`` / ``packs`` are
+        ``unsupported {product}`` (nothing to install, or packs go through ``packs``)."""
+        from .drivers import StoreLinkDriver, decision_of, unsupported
+
+        decision = decision_of(target)
+        if decision is None:
+            raise _invalid("install() takes an UpdateCheck or an UpdateDecision")
+        if decision.action in ("none", "blocked", "packs"):
+            return unsupported(UnsupportedReason.PRODUCT, f"a {decision.action} decision has nothing to install")
+        driver = self.driver
+        if driver is None and decision.action == "store":
+            driver = StoreLinkDriver()
+        if driver is None:
+            return unsupported(
+                UnsupportedReason.DEPENDENCY,
+                "no install driver is set (client.update.set_driver(VelopackDriver(...)), …)",
+            )
+        client = self._client_ref() if self._client_ref is not None else None
+        return driver.install(client, decision, on_progress=on_progress)
+
+    # ── Boot guard (SDK parity pass §3.15) ─────────────────────────────────────────────
+    def mark_boot_attempt(self) -> Any:
+        """Count this launch as unconfirmed and run the guard's decision (see
+        :class:`~polaris_key.update.bootguard.BootGuard`). ``client.boot()`` calls it."""
+        if self.guard is None:
+            raise PolarisError("not-configured", "This client has no boot guard.")
+        return self.guard.mark_boot_attempt()
+
+    def confirm_boot(self) -> bool:
+        """This launch is healthy: reset the failed-boot count; the first confirmation of a new
+        build records ``update_confirmed``."""
+        if self.guard is None:
+            raise PolarisError("not-configured", "This client has no boot guard.")
+        return self.guard.confirm_boot()
+
+    def feed_url(
+        self,
+        kind: str,
+        *,
+        channel: Optional[str] = None,
+        velopack_channel: Optional[str] = None,
+        build_id: Optional[str] = None,
+        arch: Optional[str] = None,
+    ) -> Any:
+        """A native updater's feed URL (SDK parity pass §3.7), expanded from discovery's
+        ``update.endpoints`` templates: ``kind`` is ``appcast`` (Sparkle; ``arch`` adds
+        ``?arch=``), ``winsparkle``, ``velopack`` (``velopack_channel``: the channel the app was
+        packed with, e.g. ``win-x64``), ``appInstaller`` or ``zsync`` (``build_id``: an AppImage
+        build's artifact-map id). ``channel`` defaults to the client's.
+
+        Returns the URL string, or a typed :class:`~polaris_key.core.caps.Unsupported` with
+        reason ``product`` when discovery is not loaded, the product runs no Update service or
+        its document names no template for ``kind`` (an older Worker). Raises
+        ``invalid-options`` for an unknown ``kind`` or a missing placeholder value."""
+        from ..core.caps import Unsupported
+
+        if kind not in FEED_KINDS:
+            raise _invalid(f"feed kind must be one of {', '.join(FEED_KINDS)}")
+        channel = channel or self._ctx.channel
+        manifest = self._discovery()
+
+        def unsupported(why: str) -> Unsupported:
+            return Unsupported(Feature.UPDATE_DRIVER, UnsupportedReason.PRODUCT, why)
+
+        if manifest is None:
+            return unsupported("discovery has not been loaded (call client.discover())")
+        if kind == "appcast":
+            url = appcast_url_from(manifest, channel=channel, arch=arch)
+            return url if url is not None else unsupported("the product publishes no appcast")
+        from ..discovery import service_endpoint
+
+        template = service_endpoint(manifest, "update", kind)
+        if template is None:
+            return unsupported(f"the product's discovery document names no {kind} feed")
+        values = {"channel": channel}
+        if "{velopackChannel}" in template:
+            if not velopack_channel:
+                raise _invalid("a velopack feed needs velopack_channel (e.g. win-x64)")
+            values["velopackChannel"] = velopack_channel
+        if "{buildId}" in template:
+            if not build_id:
+                raise _invalid("a zsync feed needs build_id")
+            values["buildId"] = build_id
+        return _expand(template, self._ctx.base_url, values)
+
     # ── Wire v4 ─────────────────────────────────────────────────────────────────────────
 
     def decide(
@@ -571,7 +691,32 @@ class UpdateClient:
             self._feed_menu = r.content.deltas if r.content is not None else None
             if r.revocations is not None:
                 self.packs.record_revocations(r.revocations)
+            self._journal_offer(r.check)
             return r.check
+
+    def _journal_offer(self, check: UpdateCheck) -> None:
+        """``update_offered`` for a decision that offers a newer app build (``binary``,
+        ``code-ready``, ``store`` or ``platform`` with a release), once per release."""
+        journal = self.journal
+        d = check.decision
+        if d.release is None or d.action not in ("binary", "code-ready", "store", "platform"):
+            return
+        if self.events is not None:
+            self.events.emit(
+                "updateAvailable",
+                version=d.release.version,
+                action=d.action,
+                mandatory=bool(d.mandatory),
+                channel=check.channel,
+            )
+        if journal is None:
+            return
+        try:
+            journal.offered(
+                d.release.version, from_release=self._ctx.version, channel=check.channel
+            )
+        except Exception:
+            pass  # telemetry never fails a decision
 
     def feed(self, *, channel: Optional[str] = None) -> FeedCheck:
         """The verified feed ``decide()`` would decide from (§2.5 steps 1–10), without the

@@ -58,6 +58,7 @@ const json = (body: unknown, status = 200) =>
 
 function browser(fetchImpl: typeof fetch, enabled = true) {
   return browserAdapter({
+    auth: "cookie",
     productSlug: "acme",
     fetchImpl,
     now: () => NOW_SEC,

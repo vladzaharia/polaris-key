@@ -1,0 +1,374 @@
+/* S-23 portal prototype layout (Library → product → activate → free a device). */
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  height: 64px;
+  padding: 0 clamp(16px, 6vw, 96px);
+  background: var(--pk-surface-page);
+  border-bottom: 1px solid var(--pk-border-subtle);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--pk-text-strong);
+  text-decoration: none;
+}
+.brand svg {
+  fill: var(--pk-brand-violet);
+}
+.tabs {
+  display: flex;
+  gap: 8px;
+  height: 100%;
+}
+.tabs a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  color: var(--pk-text-muted);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 14px;
+}
+.tabs a[aria-current="page"] {
+  color: var(--pk-text-strong);
+}
+.tabs b {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--pk-accent);
+}
+.count {
+  padding: 0 7px;
+  border-radius: var(--pk-radius-full);
+  background: var(--pk-accent-subtle);
+  color: var(--pk-accent-fg);
+  font-size: 11px;
+}
+#activate-open {
+  margin-left: auto;
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--pk-accent-subtle);
+  color: var(--pk-accent-fg);
+  font-size: 12px;
+  font-weight: 700;
+}
+main {
+  padding: 40px clamp(16px, 6vw, 96px) 96px;
+  outline: none;
+}
+.page-title {
+  font-size: 40px;
+}
+.lede {
+  margin: 8px 0 28px;
+  color: var(--pk-text-muted);
+}
+
+/* Library */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface-raised);
+  border: 1px solid var(--pk-border-subtle);
+  box-shadow: var(--pk-elevation-1);
+  overflow: hidden;
+  cursor: pointer;
+  text-align: left;
+  padding: 0;
+}
+.tile .art-wrap {
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+}
+.tile .art {
+  width: 100%;
+  height: 100%;
+}
+.tile .meta {
+  padding: 16px 20px 20px;
+}
+.tile h3 {
+  font-size: 18px;
+  display: inline-block;
+}
+.tile p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--pk-text-muted);
+}
+.sk-tile {
+  border-radius: var(--pk-radius-lg);
+  border: 1px solid var(--pk-border-subtle);
+  overflow: hidden;
+  background: var(--pk-surface-raised);
+}
+.sk-tile .pk-skeleton.art {
+  aspect-ratio: 16 / 9;
+  border-radius: 0;
+}
+.sk-line {
+  height: 14px;
+  margin: 16px 20px 0;
+}
+.sk-line.w60 {
+  width: 60%;
+}
+.sk-line.w40 {
+  width: 40%;
+  margin-bottom: 20px;
+}
+
+/* Product art: bands and a sun, drawn in CSS (no images needed). */
+.art {
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    var(--a1) 0 25%,
+    var(--a2) 25% 50%,
+    var(--a3) 50% 75%,
+    var(--a4) 75%
+  );
+}
+.art::after {
+  content: "";
+  position: absolute;
+  right: 18%;
+  top: 14%;
+  width: 26%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--sun);
+}
+.art.nightfall {
+  --a1: #2a1c46;
+  --a2: #33235a;
+  --a3: #4a2f7d;
+  --a4: #2c1e4b;
+  --sun: #e8dcb8;
+}
+.art.tidewater {
+  --a1: #153a35;
+  --a2: #1e5d55;
+  --a3: #edcfb0;
+  --a4: #f08c6a;
+  --sun: #c46c4f;
+}
+.art.ember {
+  --a1: #2b160f;
+  --a2: #44201a;
+  --a3: #5a2617;
+  --a4: #6b2e14;
+  --sun: #ff7a2a;
+}
+
+/* Product page */
+.back {
+  display: inline-flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  color: var(--pk-text-muted);
+  text-decoration: none;
+  font-size: 14px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+.hero {
+  height: clamp(180px, 26vw, 360px);
+  border-radius: var(--pk-radius-xl);
+}
+.hero-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin: 20px 0 32px;
+  flex-wrap: wrap;
+}
+.hero-row h1 {
+  font-size: 36px;
+  /* A shared element must keep its aspect ratio across the morph, or its snapshot stretches:
+     the tile's name is as wide as its text, so the title is too. */
+  width: fit-content;
+}
+.hero-row .by {
+  color: var(--pk-text-muted);
+  margin-top: 4px;
+}
+.hero-row .btn.primary {
+  margin-left: auto;
+}
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 24px;
+}
+@media (max-width: 900px) {
+  .cols {
+    grid-template-columns: 1fr;
+  }
+}
+.card {
+  padding: 22px 24px;
+}
+.card h2 {
+  font-size: 18px;
+  margin-bottom: 4px;
+}
+.card + .card {
+  margin-top: 24px;
+}
+.platform {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 0;
+  border-top: 1px solid var(--pk-border-subtle);
+}
+.platform:first-of-type {
+  border-top: 0;
+}
+.platform .btn {
+  margin-left: auto;
+}
+.dev-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 10px;
+}
+.dev-head strong {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.meter {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.meter .pk-seg {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--pk-surface-sunken);
+}
+.meter .pk-seg[data-used] {
+  background: var(--pk-accent);
+}
+.devices {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.devices > li {
+  border-top: 1px solid var(--pk-border-subtle);
+}
+.dev {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+}
+.dev .ico {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface-sunken);
+  font-size: 16px;
+}
+.dev .name {
+  font-weight: 600;
+}
+.dev .sub {
+  font-size: 12px;
+  color: var(--pk-text-muted);
+}
+.dev .btn {
+  margin-left: auto;
+}
+.confirm {
+  margin: 0 0 12px;
+  padding: 14px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-danger-subtle);
+  border: 1px solid var(--pk-danger-border);
+}
+.confirm h3 {
+  font-size: 14px;
+  outline: none;
+}
+.confirm p {
+  margin: 4px 0 12px;
+  font-size: 13px;
+}
+.confirm .row {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* Activate success */
+.success {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin: 4px auto 16px;
+  border-radius: 50%;
+  background: var(--pk-success-subtle);
+  color: var(--pk-success);
+}
+.success svg {
+  width: 32px;
+  height: 32px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.dialog .center {
+  text-align: center;
+}
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: proto-spin 0.7s linear infinite;
+}
+@keyframes proto-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

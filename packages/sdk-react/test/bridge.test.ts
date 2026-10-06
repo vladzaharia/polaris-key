@@ -66,7 +66,7 @@ describe("BridgeState mirrors @polaris-key/node's SyncState", () => {
   });
 
   it("declares its protocol revision (the fixture bridge is a v2 host)", () => {
-    expect(BRIDGE_VERSION).toBe(3);
+    expect(BRIDGE_VERSION).toBe(4);
     expect(makeFakeBridge(emptyBridgeState()).version).toBe(2);
   });
 

@@ -1461,8 +1461,8 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "update.feeds": { status: "planned", service: "update", na: [] },
   "update.decide": { status: "implemented", service: "update", na: [] },
   "update.content": { status: "implemented", service: "update", na: [] },
-  "update.driver": { status: "planned", service: "update", na: [] },
-  "update.bootguard": { status: "planned", service: "update", na: [] },
+  "update.driver": { status: "implemented", service: "update", na: [] },
+  "update.bootguard": { status: "implemented", service: "update", na: [] },
   "outlet.detect": { status: "implemented", service: "update", na: [] },
   "crash.tags": { status: "planned", service: "sdk", na: [] },
   "packs.record": { status: "implemented", service: "release", na: [] },
@@ -1529,9 +1529,9 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [{ runtime: "node", reason: "runtime" }],
   },
   "ui.cli": { status: "planned", service: "sdk", na: [] },
-  "commerce.receipt": { status: "planned", service: "license", na: [] },
+  "commerce.receipt": { status: "implemented", service: "license", na: [] },
 };
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "9f96f43df40d0b3dc64440da7599425c61835a72bfa85ccc7ca3db9f94b2beb3";
+  "0924173fbdea88e2bb333270b3dda77eab69551dde66f38ba74a705d4e5abfdd";

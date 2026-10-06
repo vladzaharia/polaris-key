@@ -155,6 +155,7 @@ describe("parseDiscovery — document-level guards", () => {
 describe("BrowserAdapter capability resolution (D-21)", () => {
   it("discovery success installs the honest map", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(makeDoc(), {
         capabilities: services("license", "config", "update"),
@@ -180,6 +181,7 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
       });
     }) as unknown as typeof fetch;
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl,
       now: () => NOW_SEC,
@@ -213,6 +215,7 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
       });
     }) as unknown as typeof fetch;
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl,
       now: () => NOW_SEC,
@@ -229,6 +232,7 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
     const fetchImpl = (async () =>
       new Response("nope", { status: 500 })) as unknown as typeof fetch;
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl,
       now: () => NOW_SEC,
@@ -240,6 +244,7 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
 
   it("refuses the disabled services' operations instead of calling them", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null, {
         capabilities: services("license", "config"),
@@ -274,6 +279,7 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
       });
     }) as unknown as typeof fetch;
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       baseUrl: "https://example.test",
       fetchImpl,

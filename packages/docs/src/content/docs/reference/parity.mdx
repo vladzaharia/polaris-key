@@ -19,19 +19,19 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 55 | 6 | 1 | 16 |
-| React | `web`, `desktop-bridge` | 47 | 16 | 1 | 14 |
-| Python | `python` | 55 | 6 | 1 | 16 |
-| Swift | `macos`, `ios` | 56 | 6 | 1 | 15 |
+| Node | `node` | 58 | 6 | 0 | 14 |
+| React | `web`, `desktop-bridge` | 53 | 12 | 1 | 12 |
+| Python | `python` | 58 | 6 | 0 | 14 |
+| Swift | `macos`, `ios` | 60 | 6 | 0 | 12 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 63 | 2 | 0 | 13 |
-| Kotlin | `android`, `jvm` | 59 | 6 | 1 | 12 |
+| Kotlin | `android`, `jvm` | 61 | 6 | 0 | 11 |
 
 ## Core
 
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `core.verify` | JWS verify, trust manifest (pinning, rotation), clock floor | `cases.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `core.cache` | Verified cache; construct and load offline | transcripts + unit | ✓ | planned (unowned) | ✓ | ✓ | ✓ | ✓ | — |
+| `core.cache` | Verified cache; construct and load offline | transcripts + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.bundle` | Offline bundle import | `cases.json` `bundleCases` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.discover` | Discovery and capabilities, fail-closed | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.sync` | Sync, ETag/304, backoff, refresh loop, change events | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
@@ -39,7 +39,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `core.headers` | Canonical platform, arch and SDK header values | `headers.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.caps` | supports() and capability telemetry | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓; N/A (node: dependency) | N/A (web, desktop-bridge: runtime) | ✓; N/A (python: dependency) | ✓ | planned (unowned) | ✓; N/A (jvm: dependency) | web, desktop-bridge: runtime; node, python, jvm: dependency |
+| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓; N/A (node: dependency) | ✓; N/A (desktop-bridge: runtime) | ✓; N/A (python: dependency) | ✓ | planned (unowned) | ✓; N/A (jvm: dependency) | web, desktop-bridge: runtime; node, python, jvm: dependency |
 | `core.copy` | Error, gate and activation copy: copy.message(code), copy.title(code) | `pnpm gen:constants -- --check` + unit | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
 
 ## License
@@ -48,11 +48,11 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `license.gate` | Gate evaluation, every status | `gate-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.activate` | Activate with a key (+ fingerprint) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `license.enroll` | Keyless enrolment | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | ✓ | web, desktop-bridge: runtime |
+| `license.enroll` | Keyless enrolment | transcripts | ✓ | ✓; N/A (desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | ✓ | web, desktop-bridge: runtime |
 | `license.deactivate` | Remote best-effort, local wipe mandatory | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.entitlements` | Entitlements, profile, licence id | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.channels` | entitledChannels() | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `license.reregister` | Re-register on 401 for licence-less devices | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
+| `license.reregister` | Re-register on 401 for licence-less devices | transcripts | ✓ | ✓; N/A (desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
 | `license.refusals` | Typed activation results: every refusal by its body code, never a collapsed 403 | transcripts | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
 
 ## Config
@@ -63,7 +63,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `config.list` | User-visible config, enforced rows flagged | unit + `config-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.secret` | getSecret | transcripts (not recorded) | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
 | `config.schema` | Catalog fetch (/config/schema) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `config.mint` | Edge-mint of third-party tokens | transcripts | ✓ | planned (unowned) | ✓ | ✓ | ✓ | ✓ | — |
+| `config.mint` | Edge-mint of third-party tokens | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.mirror` | Typed catalog mirrors | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `config.local` | Persisted device-local overrides: config.set, config.setting, onConfigChange | unit | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
 
@@ -73,13 +73,13 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `devices.fingerprint` | Components, hashing, device id | `fingerprint.json` + `fingerprint.json` `ramBuckets` | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | ✓ | web, desktop-bridge: runtime |
 | `devices.facts` | Device facts and probes | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
-| `devices.register` | Keyless registration | transcripts | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
-| `devices.manage` | List, rename, deauthorise | transcripts (not recorded) | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
-| `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
+| `devices.register` | Keyless registration | transcripts | ✓ | ✓; N/A (desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
+| `devices.manage` | List, rename, deauthorise | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | web: runtime |
+| `devices.report` | Telemetry (allowlisted keys) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | web: runtime |
 | `telemetry.updates` | Update-health events: the journalled update events on devices/report | transcripts | planned (unowned) | planned (unowned); N/A (web: runtime) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | web: runtime |
-| `devices.attest` | Device attestation (App Attest, Play Integrity) raising the trust level | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned); N/A (macos: runtime) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (web: runtime); N/A (ios: outlet); N/A (android: outlet) | planned (unowned); N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, windows, linux, jvm, dotnet, tauri: runtime; any: outlet |
+| `devices.attest` | Device attestation (App Attest, Play Integrity) raising the trust level | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓; N/A (macos: runtime); N/A (ios: outlet) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (web: runtime); N/A (ios: outlet); N/A (android: outlet) | ✓; N/A (jvm: runtime); N/A (android: outlet) | node, python, web, desktop-bridge, macos, windows, linux, jvm, dotnet, tauri: runtime; any: outlet |
 | `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (unowned) | ✓ | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
-| `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | ✓ | ✓ | web: runtime |
+| `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | web: runtime |
 
 ## Release and update
 
@@ -95,8 +95,8 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `update.feeds` | Native updater feed URLs: appcast, WinSparkle, Velopack, App Installer, zsync | `feed-url-matrix.json` | planned (unowned) | planned (unowned); N/A (web: runtime) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | web: runtime |
 | `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.content` | The content decision: feed pack sets, floors and revocations, packs and prestage | `update-matrix.json` `contentRows` + `cases.json` `feedContentCases` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `update.driver` | Hand off to the native updater, or a store link | device tests | planned (unowned) | planned (unowned) | planned (unowned) | ✓; N/A (ios: outlet) | ✓; N/A (ios: outlet) | ✓ | ios: outlet; jvm: runtime |
-| `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | ✓ | ✓ | — |
+| `update.driver` | Hand off to the native updater, or a store link | device tests | ✓ | planned (unowned) | ✓ | ✓; N/A (ios: outlet) | ✓; N/A (ios: outlet) | ✓ | ios: outlet; jvm: runtime |
+| `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | ✓ | planned (unowned) | ✓ | ✓ | ✓ | ✓ | — |
 | `outlet.detect` | Outlet detection | `outlet-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `crash.tags` | Crash-report tags: release, build, outlet and channel for Sentry | unit | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
 
@@ -123,7 +123,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `packs.type.audio.bank` | `audio.bank` packs: the bank descriptor's middleware and version against the host's, hot reload through the host's middleware | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓ | N/A (android, jvm: runtime) | node, python, web, desktop-bridge, macos, ios, android, jvm: runtime |
 | `packs.type.ml.model` | `ml.model` packs: the model descriptor's runtime, quantisation and RAM/VRAM needs against the host's budget, a host load test before the path swaps | unit | ✓ | ✓ | ✓ | ✓ | N/A (linux, macos, windows, android, ios, web: runtime) | ✓ | linux, macos, windows, android, ios, web: runtime |
 | `packs.provides` | isAvailable(contentId) from provides | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `packs.transport.apple` | Apple Background Assets | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | planned (unowned) | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | N/A (android, jvm: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm, tauri: runtime |
+| `packs.transport.apple` | Apple Background Assets | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓ | ✓; N/A (linux: runtime); N/A (windows: runtime); N/A (android: runtime); N/A (web: runtime) | N/A (android, jvm: runtime) | node, python, web, desktop-bridge, windows, linux, android, jvm, tauri: runtime |
 | `packs.transport.play` | Play Asset Delivery | device tests | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | N/A (macos, ios: runtime) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (ios: runtime); N/A (web: runtime) | ✓; N/A (jvm: runtime) | node, python, web, desktop-bridge, macos, ios, windows, linux, jvm, tauri: runtime |
 | `packs.transport.steam` | Steam depots | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | planned (unowned); N/A (ios: runtime) | ✓; N/A (android: runtime); N/A (ios: runtime); N/A (web: runtime) | planned (unowned); N/A (android: runtime) | web, desktop-bridge, ios, android: runtime |
 | `packs.transport.msix` | MSIX optional packages | device tests | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | N/A (macos, ios: runtime) | planned (unowned); N/A (linux: runtime); N/A (macos: runtime); N/A (android: runtime); N/A (ios: runtime); N/A (web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, android, linux, jvm: runtime; any: outlet |
@@ -137,7 +137,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `ui.boot` | One-call boot: discovery, register, trust, documents and report to a stage outcome | transcripts + `stage-matrix.json` | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | planned (unowned) | — |
 | `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (unowned) | ✓ | ✓ | headless: runtime |
 | `ui.cli` | Terminal UI: status, activate, deactivate, sign-in and devices verbs | unit | planned (unowned) | N/A (web, desktop-bridge: runtime) | planned (unowned) | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
-| `commerce.receipt` | Store purchase to licence entitlement | transcripts | planned (LX-20) | planned (LX-20) | planned (LX-20) | planned (LX-20) | ✓ | planned (LX-20) | — |
+| `commerce.receipt` | Store purchase to licence entitlement | transcripts | ✓ | planned (LX-20) | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Unowned gaps
 
@@ -149,23 +149,19 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | Node | `license.refusals` | SP-N01, SDK-PARITY-PASS §5.1. |
 | Node | `config.local` | SP-N13, SDK-PARITY-PASS §5.1. |
 | Node | `telemetry.updates` | SP-N03, SDK-PARITY-PASS §5.1. |
-| Node | `identity.oidc` | No browser sign-in in the Node SDK, and no work package ports it. |
+| Node | `identity.oidc` | Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4); /identity/auth/poll is deprecated and never used. The interim is identity.signInWithBrowser(): device code opened in the system browser (SDK parity pass §3.12). |
 | Node | `release.fetch` | SP-N07, SDK-PARITY-PASS §5.1. |
 | Node | `release.distribution` | SP-N08, SDK-PARITY-PASS §5.1. |
 | Node | `update.feeds` | SP-N08, SDK-PARITY-PASS §5.1. |
-| Node | `update.driver` | Only appcastUrl() today; the Velopack, electron-updater or single-executable hand-off has no work package (P3-04 excludes it). |
-| Node | `update.bootguard` | P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02. |
 | Node | `crash.tags` | SP-N16, SDK-PARITY-PASS §5.1. |
 | Node | `packs.transport.steam` | P5-08 covers Godot only; Node desktop hosts have no Steam-depot transport owner. |
 | Node | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |
 | Node | `packs.transport.flatpak` | No work package owns the Flatpak extension transport (P5-08 Out). |
 | Node | `ui.boot` | SP-N05, SDK-PARITY-PASS §5.1. |
 | Node | `ui.cli` | SP-N14, SDK-PARITY-PASS §5.1. |
-| React | `core.cache` | The browser adapter keeps no verified licence/config cache (only the signed update slices, P3-05); on desktop the host's Node SDK holds it. No work package gives the browser one. |
 | React | `core.local` | No local-only client in React; P1b-07 leaves it unowned. |
 | React | `core.copy` | SP-R03, SDK-PARITY-PASS §5.2. |
 | React | `license.refusals` | SP-R03, SDK-PARITY-PASS §5.2. |
-| React | `config.mint` | P1b-08 ports edge-mint to Node, Python and Swift only. |
 | React | `config.local` | SP-R05, SDK-PARITY-PASS §5.2. |
 | React | `telemetry.updates` | SP-R11, SDK-PARITY-PASS §5.2. |
 | React | `release.fetch` | SP-R09, SDK-PARITY-PASS §5.2. |
@@ -179,12 +175,10 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | Python | `license.refusals` | SP-P01, SDK-PARITY-PASS §5.3. |
 | Python | `config.local` | SP-P11, SDK-PARITY-PASS §5.3. |
 | Python | `telemetry.updates` | SP-P03, SDK-PARITY-PASS §5.3. |
-| Python | `identity.oidc` | No browser sign-in in the Python SDK, and no work package ports it. |
+| Python | `identity.oidc` | Browser redirect sign-in waits on the native redirect-token route (I-15, SDK parity pass wire item W4). Until then identity.sign_in_with_browser() opens the device-code verificationUriComplete in the system browser and polls (identity.devicecode); the deprecated /identity/auth/poll is never used. |
 | Python | `release.fetch` | SP-P07, SDK-PARITY-PASS §5.3. |
 | Python | `release.distribution` | SP-P07, SDK-PARITY-PASS §5.3. |
 | Python | `update.feeds` | SP-P07, SDK-PARITY-PASS §5.3. |
-| Python | `update.driver` | Only appcast_url() today; the Velopack hand-off has no work package (P3-06 excludes it). |
-| Python | `update.bootguard` | P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02. |
 | Python | `crash.tags` | SP-P14, SDK-PARITY-PASS §5.3. |
 | Python | `packs.transport.steam` | P5-08 covers Godot only; Python desktop hosts have no Steam-depot transport owner. |
 | Python | `packs.transport.msix` | No work package owns the MSIX optional-package transport (P5-08 Out). |
@@ -195,23 +189,20 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | Swift | `license.refusals` | SP-S01, SDK-PARITY-PASS §5.4. |
 | Swift | `config.local` | SP-S14, SDK-PARITY-PASS §5.4. |
 | Swift | `telemetry.updates` | SP-S05, SDK-PARITY-PASS §5.4. |
-| Swift | `devices.attest` | P6-02 adds DCAppAttestService (generate, attest, assert) to PolarisKeyPlatform for native hosts; no work package wires attestation into the Swift SDK client. |
-| Swift | `identity.oidc` | Only through a host-supplied sign-in closure; no work package gives Swift its own browser sign-in. |
+| Swift | `identity.oidc` | No OIDC redirect flow yet: native browser sign-in waits on I-15. The interim is client.identity signInWithBrowser(), which opens the device-code verification URL in ASWebAuthenticationSession and polls identity.devicecode (never the deprecated /identity/auth/poll). |
 | Swift | `release.fetch` | SP-S10, SDK-PARITY-PASS §5.4. |
 | Swift | `release.distribution` | SP-S10, SDK-PARITY-PASS §5.4. |
 | Swift | `update.feeds` | SP-S10, SDK-PARITY-PASS §5.4. |
-| Swift | `update.bootguard` | P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02. |
 | Swift | `crash.tags` | No task yet: the lead cuts a Swift crashTags() task (plans/SP-00.md §5; SDK-PARITY-PASS §5.4). |
-| Swift | `packs.transport.apple` | P5-05's PolarisKeyPlatform target carries the AssetPackManager client (iOS / macOS 26.4, behind #if compiler(\>=6.3)) behind its C surface; P5-08 wires the transport for Godot only, and no package adopts it as a Swift SDK pack transport. |
 | Swift | `packs.transport.steam` | P5-08 covers Godot only; macOS Swift apps have no Steam-depot transport owner. |
 | Swift | `ui.boot` | SP-S09, SDK-PARITY-PASS §5.4. |
-| Swift | `ui.kit` | PolarisLoginView only; no work package builds the rest of the Swift kit. |
+| Swift | `ui.kit` | PolarisLoginView, PolarisGate, PolarisSignIn and PolarisOfflineActivation over the @Observable PolarisKeyModel; the rest of the kit (PARITY §5.9) belongs to the UI-kit program (UK-*). |
 | Godot | `core.store` | P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent). PKeyCore picks a platform store by default when its plugin is present (Keychain, then Keystore, then the file store): iOS, P5-05's Keychain store (core/store/keychain_store.gd, PKeyKeychainStore over PKeyApple: device id and token AfterFirstUnlockThisDeviceOnly with no access group); Android, P5-06's Keystore store (core/store/keystore_store.gd, PKeyKeystoreStore over PKeyAndroid: one AndroidKeyStore AES-256-GCM key per product, StrongBox where present, blobs in noBackupFilesDir, a lost key surfaced and re-enrolled). Both migrate from the file store and surface failures as keyring-error. No work package owns a desktop keyring, so the desktop runtimes keep the file store. |
 | Godot | `core.copy` | SP-G03 and SP-G13, SDK-PARITY-PASS §5.6. |
 | Godot | `license.refusals` | SP-G03, SDK-PARITY-PASS §5.6. |
 | Godot | `config.local` | SP-G05, SDK-PARITY-PASS §5.6. |
 | Godot | `telemetry.updates` | SP-G18, SDK-PARITY-PASS §5.6. The report already carries the updater's queued events in updates (P6-03, P3-10); SP-G18 tags it against telemetry-report-updates.json. |
-| Godot | `identity.oidc` | Native Godot has no completion path for the OIDC redirect; see P1-07, which ships device-code sign-in instead. |
+| Godot | `identity.oidc` | Native Godot has no completion path for the OIDC redirect: it waits on the native redirect token route (I-15). The deprecated /identity/auth/poll route is not a substitute. Until then P1-07's device-code sign-in is the path, and identity.sign_in_with_browser() opens it in the system browser. |
 | Godot | `release.fetch` | SP-G18, SDK-PARITY-PASS §5.6. core/download.gd already fetches with Range resume and checks size and SHA-256; SP-G18 tags it and teaches suite_transcripts the releaseFetch action. |
 | Godot | `release.distribution` | SP-G14, SDK-PARITY-PASS §5.6. |
 | Godot | `update.feeds` | SP-G18, SDK-PARITY-PASS §5.6. The P3-10 outlet adapters already build the Sparkle, WinSparkle, Velopack and AppImageUpdate feed URLs from update.endpoints; SP-G18 tags them against feed-url-matrix.json. |
@@ -223,7 +214,6 @@ Planned entries no work package owns yet. Each needs an owner before the gap can
 | Kotlin | `license.refusals` | SP-K01, SDK-PARITY-PASS §5.5. |
 | Kotlin | `config.local` | SP-K07, SDK-PARITY-PASS §5.5. |
 | Kotlin | `telemetry.updates` | SP-K03, SDK-PARITY-PASS §5.5. |
-| Kotlin | `devices.attest` | P6-09 brings the standard Play Integrity API into :platform for native hosts; as in Swift (App Attest in PolarisKeyPlatform), no work package wires attestation into the Kotlin SDK client. |
 | Kotlin | `identity.oidc` | Only through a host-supplied sign-in closure, as in Swift; no work package gives the Kotlin SDK its own browser sign-in (P6-07). |
 | Kotlin | `release.fetch` | SP-K13, SDK-PARITY-PASS §5.5. |
 | Kotlin | `release.distribution` | SP-K13, SDK-PARITY-PASS §5.5. |

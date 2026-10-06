@@ -32,6 +32,7 @@ import {
   SECTION_LABEL,
   seatsFor,
   showsDeviceCount,
+  storeFor,
   withSeats,
 } from "../model/product.js";
 import {
@@ -125,6 +126,8 @@ function ProductBody({
   // best licence's.
   const seatLimit = seatLimitFor(product, view.data, selected.id);
   const showCount = showsDeviceCount(product, selected);
+  // The store of an active purchase on each licence (PX-W6): the origin names it with the key.
+  const storeOf = (id: string): string | null => storeFor(view.data, id);
   const sections = presentSections(product, releasesOn, {
     packageAccess: pkg.data?.available === true,
   });
@@ -260,6 +263,7 @@ function ProductBody({
                 }
                 seatLimit={seatLimit}
                 showDeviceCount={showCount}
+                storeOf={storeOf}
               />
             </div>
             {has("devices") ? (

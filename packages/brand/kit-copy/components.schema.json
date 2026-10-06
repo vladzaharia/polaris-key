@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/brand/components.schema.json",
+  "title": "Polaris Key kit components (packages/brand/kit-copy/components.json)",
+  "description": "Each UI-KITS §4.1 component's states and the copy keys each state shows (plans/UK-02.md §3.1). packages/brand/scripts/kit-copy.ts checks the names, the families and every key against en.json and conformance/parity/copy.en.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["componentsVersion", "components"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "$comment": { "type": "string" },
+    "componentsVersion": { "const": 1 },
+    "components": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Z][A-Za-z]+$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["priority", "family", "states"],
+        "properties": {
+          "priority": { "enum": ["must", "should", "could"] },
+          "family": { "type": ["string", "null"] },
+          "states": {
+            "type": "object",
+            "minProperties": 1,
+            "propertyNames": { "pattern": "^[a-z]+(-[a-z]+)*$" },
+            "additionalProperties": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["copy"],
+              "properties": {
+                "copy": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z0-9][A-Za-z0-9_-]*)+$"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

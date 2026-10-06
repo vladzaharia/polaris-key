@@ -15,6 +15,7 @@
 //
 // Brandable through `PolarisTheme`; extensible through the `content` slot.
 
+import PolarisKey
 import PolarisKeyCore
 import PolarisKeyLicense
 import SwiftUI
@@ -28,9 +29,20 @@ public final class PolarisGateModel: ObservableObject {
     @Published public private(set) var profile: DocProfile?
     @Published public private(set) var isWorking = false
     @Published public var lastError: String?
+    /// The last activation's typed outcome, so a host (or the kit) can branch on its kind — show
+    /// "Manage devices" on `.deviceLimit`, "Sign in" on `.enrollClaimed` — rather than on copy.
+    @Published public private(set) var lastResult: ActivationResult?
+    /// The copy activation outcomes are rendered with (`PolarisCopy.activationMessage`).
+    public var copy: PolarisCopy = PolarisCopy()
 
     private let client: LicenseClient
     private let syncAction: @Sendable () async -> Void
+    /// The facade, when built with `init(client:)`: the gate then offers the built-in device-code
+    /// sign-in, and the model follows `client.events`.
+    public private(set) var facade: PolarisKeyClient?
+    /// Whether the product runs Identity (known only with `init(client:)`).
+    @Published public private(set) var identityEnabled = false
+    private var observation: Task<Void, Never>?
 
     /// - Parameter sync: a Core sync pass. Defaults to a no-op, which is correct for a
     ///   local-only build (§7.3) where "retry" cannot mean a network call.
@@ -44,10 +56,25 @@ public final class PolarisGateModel: ObservableObject {
         self.state = initialState
     }
 
+    /// The convenience init: the gate over `client`, syncing through `client.sync()` and
+    /// re-snapshotting whenever `client.events` reports a change.
+    public convenience init(client: PolarisKeyClient) {
+        self.init(license: client.license, sync: { _ = await client.sync() })
+        self.facade = client
+        let stream = client.events
+        observation = Task { [weak self] in
+            await self?.reload()
+            for await _ in stream { await self?.reload() }
+        }
+    }
+
+    deinit { observation?.cancel() }
+
     /// Pull the latest gate state from the client (no network).
     public func reload() async {
         state = await client.status()
         profile = await client.profile()
+        if let facade { identityEnabled = await facade.core.enabled(.identity) }
     }
 
     /// Run a Core sync, then re-snapshot the gate.
@@ -63,28 +90,8 @@ public final class PolarisGateModel: ObservableObject {
         isWorking = true
         defer { isWorking = false }
         let result = await client.activate(key: key)
-        switch result {
-        case .ok:
-            lastError = nil
-        case .deviceLimit:
-            lastError = "This license has reached its device limit."
-        case .unauthorized:
-            lastError = "That license key wasn't accepted."
-        case .fingerprintRequired:
-            lastError =
-                "This license tier requires a hardware fingerprint, which couldn't be read on "
-                + "this Mac."
-        case .hardwareMismatch(_, let changed):
-            let detail =
-                (changed?.isEmpty == false) ? " (\(changed!.joined(separator: ", ")))" : ""
-            lastError =
-                "This Mac's hardware changed\(detail). The previous authorization was released "
-                + "— activate again to re-bind."
-        case .enrollDisabled:
-            lastError = "This product doesn't offer keyless enrollment."
-        case .error(let message):
-            lastError = message.isEmpty ? "Activation failed." : message
-        }
+        lastResult = result
+        lastError = copy.activationMessage(result)
         await reload()
     }
 
@@ -97,7 +104,7 @@ public final class PolarisGateModel: ObservableObject {
         } catch {
             // The local wipe failing means the credential is STILL on this machine — the user
             // has to know, rather than seeing a sign-out that silently did nothing.
-            lastError = "Sign-out couldn't clear the stored license: \(error)"
+            lastError = "\(copy.signOutFailedMessage) \(error.localizedDescription)"
         }
         await reload()
     }
@@ -109,21 +116,33 @@ public final class PolarisGateModel: ObservableObject {
 public struct PolarisLoginView<Content: View>: View {
     @ObservedObject private var model: PolarisGateModel
     private let theme: PolarisTheme
-    private let onSignIn: () -> Void
+    private let onSignIn: (() -> Void)?
     private let content: () -> Content
 
     @State private var licenseKey: String = ""
 
+    /// - Parameter onSignIn: starts the product's own sign-in; nil hides the button. For the
+    ///   built-in device-code sign-in, use `PolarisGate` (or `.polarisKey(client)`) instead.
     public init(
         model: PolarisGateModel,
         theme: PolarisTheme = PolarisTheme(),
-        onSignIn: @escaping () -> Void = {},
+        onSignIn: (() -> Void)? = nil,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.model = model
         self.theme = theme
         self.onSignIn = onSignIn
         self.content = content
+    }
+
+    @State private var signingIn = false
+
+    /// The host's sign-in, else the built-in device code when the model has a client and the
+    /// product runs Identity, else none (the button is hidden rather than a no-op).
+    private var signIn: (() -> Void)? {
+        if let onSignIn { return onSignIn }
+        guard model.facade != nil, model.identityEnabled else { return nil }
+        return { signingIn = true }
     }
 
     public var body: some View {
@@ -134,12 +153,21 @@ public struct PolarisLoginView<Content: View>: View {
             lastError: model.lastError,
             licenseKey: $licenseKey,
             theme: theme,
-            onSignIn: onSignIn,
+            onSignIn: signIn,
             onActivate: { key in Task { await model.activate(key: key) } },
             onRefresh: { Task { await model.refresh() } },
             content: content
         )
         .task { await model.reload() }
+        .sheet(isPresented: $signingIn) {
+            if let client = model.facade {
+                PolarisSignIn(client: client, theme: theme) { _ in
+                    signingIn = false
+                    Task { await model.reload() }
+                }
+                .frame(minWidth: 360, minHeight: 520)
+            }
+        }
     }
 }
 
@@ -157,9 +185,16 @@ struct PolarisGateSurface<Content: View>: View {
     let lastError: String?
     @Binding var licenseKey: String
     let theme: PolarisTheme
-    let onSignIn: () -> Void
+    /// nil hides "Sign in" (the product runs no Identity).
+    let onSignIn: (() -> Void)?
     let onActivate: (String) -> Void
     let onRefresh: () -> Void
+    /// "Continue free" (keyless enrolment), shown only when given.
+    var onContinueFree: (() -> Void)? = nil
+    /// "Activate offline", shown only when given.
+    var onActivateOffline: (() -> Void)? = nil
+    /// False hides key entry (a store outlet whose rules forbid it, App Store 3.1.1).
+    var showsKeyEntry: Bool = true
     let content: () -> Content
 
     @Environment(\.colorScheme) private var colorScheme
@@ -223,46 +258,72 @@ struct PolarisGateSurface<Content: View>: View {
             }
 
             VStack(spacing: 14) {
-                Button(action: onSignIn) {
-                    Text(theme.copy.signInButton)
-                        .font(font(.body))
-                        .foregroundStyle(palette.onAccent)
-                        .frame(maxWidth: .infinity)
+                if let onSignIn {
+                    Button(action: onSignIn) {
+                        Text(theme.copy.signInButton)
+                            .font(font(.body))
+                            .foregroundStyle(palette.onAccent)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
+                    .modifier(OptionalTint(color: tint))
+                    .disabled(isWorking)
+                    .accessibilityLabel(theme.copy.signInButton)
+                    .accessibilityHint("Signs in to license \(theme.copy.productName).")
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
-                .modifier(OptionalTint(color: tint))
-                .disabled(isWorking)
-                .accessibilityLabel(theme.copy.signInButton)
-                .accessibilityHint("Opens single sign-on to license \(theme.copy.productName).")
 
-                HStack(spacing: 12) {
-                    divider
-                    Text(theme.copy.orDividerLabel)
-                        .font(font(.caption)).foregroundStyle(palette.textMuted)
-                        .layoutPriority(1)
-                    divider
+                if showsKeyEntry {
+                    if onSignIn != nil {
+                        HStack(spacing: 12) {
+                            divider
+                            Text(theme.copy.orDividerLabel)
+                                .font(font(.caption)).foregroundStyle(palette.textMuted)
+                                .layoutPriority(1)
+                            divider
+                        }
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel(theme.copy.orDividerLabel)
+                    }
+
+                    licenseKeyField
+
+                    Button {
+                        onActivate(licenseKey)
+                    } label: {
+                        Text(theme.copy.activateButton)
+                            .font(font(.body))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .modifier(ProminentWhen(prominent: onSignIn == nil))
+                    .controlSize(.large)
+                    .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
+                    .modifier(OptionalTint(color: onSignIn == nil ? tint : accentTextTint))
+                    .disabled(isWorking || licenseKey.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .accessibilityLabel(theme.copy.activateButton)
+                    .accessibilityHint("Activates the license key you entered above.")
                 }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(theme.copy.orDividerLabel)
 
-                licenseKeyField
-
-                Button {
-                    onActivate(licenseKey)
-                } label: {
-                    Text(theme.copy.activateButton)
-                        .font(font(.body))
-                        .frame(maxWidth: .infinity)
+                if let onContinueFree {
+                    Button(action: onContinueFree) {
+                        Text(theme.copy.kit.continueFreeButton)
+                            .font(font(.body))
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.large)
+                    .modifier(OptionalTint(color: accentTextTint))
+                    .disabled(isWorking)
+                    .accessibilityHint("Starts the free tier without a license key.")
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .buttonBorderShape(.roundedRectangle(radius: PolarisGateLayout.controlRadius))
-                .modifier(OptionalTint(color: accentTextTint))
-                .disabled(isWorking || licenseKey.isEmpty)
-                .accessibilityLabel(theme.copy.activateButton)
-                .accessibilityHint("Activates the license key you entered above.")
+
+                if let onActivateOffline, showsKeyEntry {
+                    Button(theme.copy.kit.activateOfflineLink, action: onActivateOffline)
+                        .buttonStyle(.borderless)
+                        .font(font(.caption))
+                        .modifier(OptionalTint(color: accentTextTint))
+                }
             }
 
             if let err = lastError {
@@ -479,6 +540,19 @@ enum PolarisGateLayout {
     static let pagePadding: CGFloat = 20
     /// The card padding scales with Dynamic Type up to this, so large text keeps its width.
     static let cardPaddingMax: CGFloat = 36
+}
+
+/// `.borderedProminent` when the button is the card's primary action, `.bordered` otherwise.
+private struct ProminentWhen: ViewModifier {
+    let prominent: Bool
+
+    func body(content: Content) -> some View {
+        if prominent {
+            content.buttonStyle(.borderedProminent)
+        } else {
+            content.buttonStyle(.bordered)
+        }
+    }
 }
 
 /// `.tint(color)` when a colour is given; otherwise the view inherits the environment's tint, so

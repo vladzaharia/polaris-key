@@ -5,10 +5,12 @@ export {
   type ActivationResult,
   type LicenseAcquiredListener,
   type LicenseClientOptions,
+  type LicenseInfo,
 } from "./client.js";
 
 export {
   activateWithKey,
+  activationRefusal,
   deauthorize,
   enroll,
   fetchLicenseDocument,

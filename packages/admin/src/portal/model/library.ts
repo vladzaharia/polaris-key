@@ -19,7 +19,7 @@ import { PLATFORM_ORDER, type PlatformKey } from "../components/Glyphs.js";
  * holds, each one's status from the licence the Worker ranks best, presentation and same-origin
  * art (G1), the seats activation counts (G5) and support links (G16). The client only words the
  * Worker's status (§6.4: codes are never copy) and adds what the Worker leaves to the page:
- * "Account-wide" for an account-bound licence. `GET /api/licenses` supplies each product's
+ * a sign-in licence's quiet origin, "From signing in". `GET /api/licenses` supplies each product's
  * licence summaries (the product page's switcher and key facts), `GET /api/products/<p>/downloads`
  * (PX-W2) the server-detected build and the live store links for the quick action, and
  * `GET /api/releases` the fallback while a downloads view hasn't answered. Steam-key states wait
@@ -45,7 +45,7 @@ export interface ProductStatus {
   tone: StatusTone;
   /** The reason line, in visible text: "Ended 4 Sep 2026", "Lifetime · 2 devices". */
   note: string;
-  /** Not "Active" or "Account-wide": counted by the Needs attention filter. */
+  /** Not "Active" or "From signing in": counted by the Needs attention filter. */
   attention: boolean;
 }
 
@@ -191,17 +191,86 @@ export function devicesText(n: number, limit?: number | null): string {
   return `${n} ${n === 1 ? "device" : "devices"}`;
 }
 
-/** The word for a licence bound to the account (signed in, no key): owner, 2026-10-05. */
-export const ACCOUNT_WIDE = "Account-wide";
+/**
+ * Every licence is account-bound, so none is labelled by type: how it came to be is a quiet
+ * origin in plain words (owner decision, 2026-10-05: no "Account-wide" label).
+ */
+export const FROM_SIGNING_IN = "From signing in";
 
 /**
- * An account-bound licence: issued by signing in (`identityProvider` "oidc") with no key. It
- * follows the account to any device the person signs in on; activation still counts its seats.
+ * A licence issued by signing in (`identityProvider` "oidc") with no key. Activation counts its
+ * seats like any other licence's.
  */
-export function isAccountWide(
+export function isSignInLicense(
   l: Pick<PortalLicenseSummary, "identityProvider" | "keyCount">,
 ): boolean {
   return l.identityProvider === "oidc" && l.keyCount === 0;
+}
+
+/** A store's name as customers know it (`purchase.store`, PX-W6); unknown ids read as given. */
+export function storeName(store: string): string {
+  return STORE_NAMES[store] ?? store;
+}
+
+const STORE_NAMES: Record<string, string> = {
+  "app-store": "App Store",
+  play: "Google Play",
+  steam: "Steam",
+  "microsoft-store": "Microsoft Store",
+  itch: "itch.io",
+  "polaris-key": "Polaris Key",
+};
+
+/** What a licence's origin is read from: the summary, its keys' known last characters (G7) and
+ * the store of an active purchase on it (`purchase.store`, PX-W6; store name only). */
+export interface OriginFacts {
+  keys?: readonly { last4?: string }[];
+  store?: string | null;
+}
+
+/**
+ * The licence's origin for a meta line, in plain words (owner, 2026-10-05): "From signing in",
+ * "Steam key ending 3WPLDA" (or "Steam key" while the key's last characters aren't kept, G7),
+ * "From Steam" for a store-bound licence with no key, "Key ending 3WPLDA" or "Added with a
+ * key", else "From the developer".
+ */
+export function licenseOrigin(
+  l: Pick<PortalLicenseSummary, "identityProvider" | "keyCount">,
+  facts: OriginFacts = {},
+): string {
+  const keys = facts.keys ?? [];
+  const store = facts.store ? storeName(facts.store) : null;
+  const hasKey = l.keyCount > 0 || keys.length > 0;
+  if (hasKey) {
+    const last = keys.find((k) => k.last4)?.last4;
+    if (store) return last ? `${store} key ending ${last}` : `${store} key`;
+    return last ? `Key ending ${last}` : "Added with a key";
+  }
+  // "From the App Store", "From Steam", "From Google Play".
+  if (store)
+    return `From ${facts.store === "app-store" ? "the App Store" : store}`;
+  if (isSignInLicense(l)) return FROM_SIGNING_IN;
+  return "From the developer";
+}
+
+/**
+ * The licence picker's short origin: "Sign-in", "Key …3WPLDA", "Steam key …3WPLDA", "Steam",
+ * "Key"; null for a keyless licence from the developer (the tier says enough).
+ */
+export function shortOrigin(
+  l: Pick<PortalLicenseSummary, "identityProvider" | "keyCount">,
+  facts: OriginFacts = {},
+): string | null {
+  const keys = facts.keys ?? [];
+  const store = facts.store ? storeName(facts.store) : null;
+  if (l.keyCount > 0 || keys.length > 0) {
+    const last = keys.find((k) => k.last4)?.last4;
+    const word = store ? `${store} key` : "Key";
+    return last ? `${word} …${last}` : word;
+  }
+  if (store) return store;
+  if (isSignInLicense(l)) return "Sign-in";
+  return null;
 }
 
 /** §5.3: one status per license, first match wins. */
@@ -253,12 +322,16 @@ export function licenseStatus(
       attention: true,
     };
   }
-  if (isAccountWide(l)) {
+  if (isSignInLicense(l)) {
     return {
       kind: "signedInApp",
-      label: ACCOUNT_WIDE,
+      label: FROM_SIGNING_IN,
       tone: "neutral",
-      note: `${tier ?? "Standard"} · ${ACCOUNT_WIDE}`,
+      note: [
+        tier ?? "Standard",
+        FROM_SIGNING_IN,
+        devicesText(seats ? seats.inUse : l.deviceCount, seats?.limit),
+      ].join(" · "),
       attention: false,
     };
   }
@@ -349,8 +422,8 @@ function summaryFromItem(item: PortalLibraryItem): PortalLicenseSummary {
 
 /**
  * The Worker's status for a product (§5.3, `GET /api/library`), in words. The precedence is the
- * Worker's; the page only phrases it, and turns an `active` account-bound licence (signed in, no
- * key) into "Account-wide". `lastCovered` is the newest version an expired licence still
+ * Worker's; the page only phrases it, and words an `active` sign-in licence (no key) by its quiet
+ * origin, "From signing in". `lastCovered` is the newest version an expired licence still
  * downloads, for "Updates ended at 1.8".
  */
 export function statusFromServer(
