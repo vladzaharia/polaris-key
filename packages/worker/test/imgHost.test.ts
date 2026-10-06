@@ -27,6 +27,7 @@ import {
   getHostedAsset,
   ingest,
   parseVariants,
+  rebuildLadder,
 } from "../src/core/hostedAssets.js";
 import {
   blobKey,
@@ -868,6 +869,106 @@ describe("image host: HA-03's ladder, end to end", () => {
       expect(new Uint8Array(await fresh.arrayBuffer())).toEqual(
         webpOf(w, next),
       );
+    }
+  });
+});
+
+describe("image host: one ladder shared by two slots, and a ladder rebuilt", () => {
+  it("the same icon in presentation.icon and listing.icon is transformed once; each slot serves the variants on its own", async () => {
+    const e = env();
+    const images = stubImages();
+    const ctx = { env: { BLOBS: asR2(r2), IMAGES: images }, db, now: NOW };
+    const upload = (slot: string, bytes: Uint8Array) =>
+      ingest(ctx, "djdl", slot, {
+        kind: "stream",
+        body: stream(bytes),
+        size: bytes.length,
+        sourceKind: "upload",
+        origin: "console",
+      });
+    const icon = pngOf(300, 4000, 41);
+    const h = sha(icon);
+    expect(await upload("presentation.icon", icon)).toMatchObject({ ok: true });
+    expect(await upload("listing.icon", icon)).toMatchObject({
+      ok: true,
+      width: 300,
+    });
+    // One transformation per width for the pair.
+    expect(images.asked).toEqual([64, 128, 256]);
+    const variants = parseVariants(
+      (await getHostedAsset(db, "djdl", "listing.icon"))?.variants_json ?? null,
+    );
+    expect(variants.map((v) => v.w)).toEqual([64, 128, 256]);
+
+    const serves = async (w: number) =>
+      (await get(imgUrl(e, "djdl", h, w)!, undefined, e)).status;
+    for (const v of variants) {
+      const res = await get(imgUrl(e, "djdl", h, v.w)!, undefined, e);
+      expect(res.status).toBe(200);
+      expect(new Uint8Array(await res.arrayBuffer())).toEqual(
+        webpOf(v.w, icon),
+      );
+    }
+
+    // presentation.icon moves on: listing.icon still serves the shared variants by its own refs.
+    const next = pngOf(300, 4100, 43);
+    expect(await upload("presentation.icon", next)).toMatchObject({ ok: true });
+    for (const w of [64, 128, 256]) expect(await serves(w), `${w}`).toBe(200);
+    expect(
+      (await get(`${IMG}/djdl/icon`, undefined, e)).headers.get("location"),
+    ).toBe(`${IMG}/djdl/a/${sha(next)}`);
+
+    // And the other way round: once listing.icon moves on too, the old variants are gone.
+    expect(await upload("listing.icon", next)).toMatchObject({ ok: true });
+    for (const w of [64, 128, 256]) expect(await serves(w), `${w}`).toBe(404);
+    expect(images.asked).toEqual([64, 128, 256, 64, 128, 256]);
+  });
+
+  it("an owed ladder's sizes answer once rebuilt from the stored copy", async () => {
+    const e = env();
+    const icon = pngOf(300, 4000, 47);
+    const h = sha(icon);
+    // Ingested while the binding is failing: the original serves alone.
+    const failing = {
+      ...stubImages(),
+      input: () => {
+        throw Object.assign(new Error("ERROR 9422"), { code: 9422 });
+      },
+    } as unknown as ImagesBinding;
+    const res = await ingest(
+      { env: { BLOBS: asR2(r2), IMAGES: failing }, db, now: NOW },
+      "djdl",
+      "presentation.icon",
+      {
+        kind: "stream",
+        body: stream(icon),
+        size: icon.length,
+        sourceKind: "upload",
+        origin: "console",
+      },
+    );
+    expect(res).toMatchObject({ ok: true, width: 300 });
+    expect((await get(imgUrl(e, "djdl", h)!, undefined, e)).status).toBe(200);
+    expect((await get(imgUrl(e, "djdl", h, 64)!, undefined, e)).status).toBe(
+      404,
+    );
+
+    const images = stubImages();
+    expect(
+      await rebuildLadder(
+        { env: { BLOBS: asR2(r2), IMAGES: images }, db, now: NOW + 900 },
+        "djdl",
+        "presentation.icon",
+        "",
+        h,
+      ),
+    ).toBe("built");
+    expect(images.asked).toEqual([64, 128, 256]);
+    for (const w of [64, 128, 256]) {
+      const v = await get(imgUrl(e, "djdl", h, w)!, undefined, e);
+      expect(v.status, `${w}`).toBe(200);
+      expect(v.headers.get("content-type")).toBe("image/webp");
+      expect(new Uint8Array(await v.arrayBuffer())).toEqual(webpOf(w, icon));
     }
   });
 });

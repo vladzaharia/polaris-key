@@ -22,6 +22,7 @@ import {
   pullBackoffSeconds,
   PULL_BACKOFF_BASE_SECONDS,
   PULL_BACKOFF_CAP_SECONDS,
+  readAssetLadderMessage,
   readAssetPullMessage,
   recheckHostedAssets,
   syncHostedAssets,
@@ -32,6 +33,7 @@ import {
 } from "../src/core/hostedAssetPulls.js";
 import {
   HOSTED_ASSET_REF,
+  parseVariants,
   type IngestContext,
 } from "../src/core/hostedAssets.js";
 import { blobKey } from "../src/core/blobs.js";
@@ -116,7 +118,7 @@ const noRepo: RepoSourceResolver = async () => null;
 let db: SqliteDb;
 let r2: R2Mock;
 let q: ReturnType<typeof fakeQueue>;
-let env: Pick<Env, "BLOBS" | "HOSTED_ASSET_QUEUE">;
+let env: Pick<Env, "BLOBS" | "HOSTED_ASSET_QUEUE" | "IMAGES">;
 
 beforeEach(async () => {
   db = makeTestDb();
@@ -539,6 +541,411 @@ describe("recheckHostedAssets", () => {
       upstream({ [URL_A]: serve(ICON_A) }),
     );
     expect(await recheckHostedAssets(env, db, NOW + 10 * 86_400)).toBe(0);
+  });
+});
+
+// ── Owed ladders (HA-03's fallback, retried) ────────────────────────────────────────────────
+
+/**
+ * A stub Images binding: `.info()` answers `width`; each transformation answers a fake WebP of the
+ * source and width, or throws error 9422 while `quota` is set. `made` records every width made.
+ */
+function images(width: number) {
+  const made: number[] = [];
+  const state = { quota: false, made };
+  const binding = {
+    info: async (s: ReadableStream<Uint8Array>) => {
+      await new Response(s).arrayBuffer();
+      return { format: "image/png", fileSize: 1, width, height: width };
+    },
+    input: (s: ReadableStream<Uint8Array>) => {
+      let w = 0;
+      const t = {
+        transform(tr: { width: number }) {
+          w = tr.width;
+          return t;
+        },
+        async output() {
+          const src = new Uint8Array(await new Response(s).arrayBuffer());
+          if (state.quota)
+            throw Object.assign(new Error("ERROR 9422"), { code: 9422 });
+          made.push(w);
+          const out = png(200 + w, w * 31 + src.length);
+          out.set([0x52, 0x49, 0x46, 0x46, 1, 2, 3, 4], 0);
+          out.set([0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x20], 8);
+          return { image: () => new Response(out).body! };
+        },
+      };
+      return t;
+    },
+  };
+  return { binding: binding as unknown as ImagesBinding, state };
+}
+
+function ladderOf(product: string, slot: string, locale = "") {
+  return db
+    .first<{
+      variants_json: string | null;
+    }>("SELECT variants_json FROM hosted_assets WHERE product = ? AND slot = ? AND locale = ?", product, slot, locale)
+    .then((r) => parseVariants(r?.variants_json ?? null));
+}
+
+/** Run `msgs` through the real consumer at `now`; every pull fetches through `up`. */
+async function consume(
+  msgs: readonly unknown[],
+  now: number,
+  up: FetchImpl,
+): Promise<{ acked: number[]; retried: number[] }> {
+  const acked: number[] = [];
+  const retried: number[] = [];
+  await handleAssetQueue(
+    {
+      queue: "pkey-assets-test",
+      messages: msgs.map((body, i) => ({
+        body,
+        ack: () => acked.push(i),
+        retry: () => retried.push(i),
+      })),
+    } as unknown as MessageBatch<unknown>,
+    env as Env,
+    db,
+    up,
+    () => now,
+  );
+  return { acked, retried };
+}
+
+describe("owed ladders", () => {
+  it("a 9422 at ingest leaves the copy owing its ladder; the re-check rebuilds only the ladder, with back-off", async () => {
+    const img = images(512);
+    env = { ...env, IMAGES: img.binding };
+    img.state.quota = true;
+    const up = upstream({ [URL_A]: serve(ICON_A) });
+    const first = await syncAndPull(iconManifest(URL_A), NOW, up);
+    expect(first.outcomes).toEqual(["ready", "ready"]);
+    expect(up.calls).toHaveLength(2);
+    // Both copies serve, with no sizes; the ingest's failure is the ladder's first attempt.
+    for (const slot of ["presentation.icon", "listing.icon"])
+      expect(await row("djdl", slot)).toMatchObject({
+        status: "ready",
+        sha256: sha(ICON_A),
+        variants_json: "[]",
+        attempts: 1,
+        next_attempt_at: NOW + PULL_BACKOFF_BASE_SECONDS,
+      });
+
+    // Inside the back-off: neither a resync nor the re-check sends anything.
+    const sent = q.sent.length;
+    expect(
+      await syncHostedAssets(env, db, {
+        product: "djdl",
+        manifest: iconManifest(URL_A),
+        commit: null,
+        now: NOW + 60,
+      }),
+    ).toEqual({ enqueued: 0, warnings: [] });
+    expect(await recheckHostedAssets(env, db, NOW + 60)).toBe(0);
+    expect(q.sent.length).toBe(sent);
+
+    // Still over quota at the next step: one ladder retry per slot, each failing again.
+    const t1 = NOW + PULL_BACKOFF_BASE_SECONDS;
+    expect(await recheckHostedAssets(env, db, t1)).toBe(2);
+    const retries = q.sent.slice(sent) as unknown[];
+    expect(retries).toEqual([
+      {
+        v: 1,
+        kind: "ladder",
+        product: "djdl",
+        slot: "listing.icon",
+        locale: "",
+        sha256: sha(ICON_A),
+        reason: "recheck",
+      },
+      expect.objectContaining({ kind: "ladder", slot: "presentation.icon" }),
+    ]);
+    expect(await consume(retries, t1, up)).toEqual({
+      acked: [0, 1],
+      retried: [],
+    });
+    expect(up.calls).toHaveLength(2); // never re-pulled
+    expect(await row("djdl", "presentation.icon")).toMatchObject({
+      variants_json: "[]",
+      attempts: 2,
+      next_attempt_at: t1 + 2 * PULL_BACKOFF_BASE_SECONDS,
+    });
+
+    // The quota is back: the next retry builds the ladder once, and the second slot reuses it.
+    img.state.quota = false;
+    const t2 = t1 + 2 * PULL_BACKOFF_BASE_SECONDS;
+    const before = q.sent.length;
+    expect(await recheckHostedAssets(env, db, t2)).toBe(2);
+    await consume(q.sent.slice(before), t2, up);
+    expect(up.calls).toHaveLength(2);
+    expect(img.state.made).toEqual([64, 128, 256, 512]);
+    const ladder = await ladderOf("djdl", "presentation.icon");
+    expect(ladder.map((v) => v.w)).toEqual([64, 128, 256, 512]);
+    expect(await ladderOf("djdl", "listing.icon")).toEqual(ladder);
+    for (const slot of ["presentation.icon", "listing.icon"])
+      expect(await row("djdl", slot)).toMatchObject({
+        sha256: sha(ICON_A),
+        attempts: 0,
+        next_attempt_at: null,
+      });
+    // Owed no more: nothing to re-check, ever.
+    expect(await recheckHostedAssets(env, db, t2 + 30 * 86_400)).toBe(0);
+  });
+
+  it("the back-off doubles per failed retry and is capped at a day", async () => {
+    const img = images(512);
+    env = { ...env, IMAGES: img.binding };
+    img.state.quota = true;
+    await syncAndPull(
+      iconManifest(URL_A),
+      NOW,
+      upstream({ [URL_A]: serve(ICON_A) }),
+    );
+    await db.run(
+      "UPDATE hosted_assets SET attempts = 9, next_attempt_at = NULL WHERE slot = 'listing.icon'",
+    );
+    const before = q.sent.length;
+    expect(await recheckHostedAssets(env, db, NOW + 5, 1)).toBe(1);
+    await consume(q.sent.slice(before), NOW + 5, upstream({}));
+    expect(await row("djdl", "listing.icon")).toMatchObject({
+      attempts: 10,
+      next_attempt_at: NOW + 5 + PULL_BACKOFF_CAP_SECONDS,
+    });
+  });
+
+  it("a resync retries an owed ladder once the back-off has elapsed, and never re-pulls", async () => {
+    const img = images(300);
+    env = { ...env, IMAGES: img.binding };
+    img.state.quota = true;
+    const up = upstream({ [URL_A]: serve(ICON_A) });
+    await syncAndPull(iconManifest(URL_A), NOW, up);
+    img.state.quota = false;
+    const before = q.sent.length;
+    const t = NOW + PULL_BACKOFF_BASE_SECONDS;
+    const res = await syncHostedAssets(env, db, {
+      product: "djdl",
+      manifest: iconManifest(URL_A),
+      commit: null,
+      now: t,
+    });
+    expect(res).toEqual({ enqueued: 2, warnings: [] });
+    const msgs = q.sent.slice(before) as unknown[];
+    expect(msgs).toEqual([
+      expect.objectContaining({
+        kind: "ladder",
+        slot: "presentation.icon",
+        reason: "sync",
+      }),
+      expect.objectContaining({
+        kind: "ladder",
+        slot: "listing.icon",
+        reason: "sync",
+      }),
+    ]);
+    // Each message holds its slot off for a back-off step: an immediate resync sends nothing.
+    expect(
+      (
+        await syncHostedAssets(env, db, {
+          product: "djdl",
+          manifest: iconManifest(URL_A),
+          commit: null,
+          now: t + 1,
+        })
+      ).enqueued,
+    ).toBe(0);
+    await consume(msgs, t + 2, up);
+    expect(up.calls).toHaveLength(2);
+    expect(img.state.made).toEqual([64, 128, 256]);
+    expect((await ladderOf("djdl", "listing.icon")).map((v) => v.w)).toEqual([
+      64, 128, 256,
+    ]);
+  });
+
+  it("a changed ref pulls instead: the pull's ingest builds the ladder", async () => {
+    const img = images(300);
+    env = { ...env, IMAGES: img.binding };
+    img.state.quota = true;
+    const up = upstream({ [URL_A]: serve(ICON_A), [URL_B]: serve(ICON_B) });
+    await syncAndPull(iconManifest(URL_A), NOW, up);
+    img.state.quota = false;
+    const res = await syncAndPull(
+      iconManifest(URL_B),
+      NOW + PULL_BACKOFF_BASE_SECONDS,
+      up,
+    );
+    expect(res.outcomes).toEqual(["ready", "ready"]);
+    expect(q.sent.some((m) => "kind" in m)).toBe(false);
+    expect(
+      (await ladderOf("djdl", "presentation.icon")).map((v) => v.w),
+    ).toEqual([64, 128, 256]);
+    expect(img.state.made).toEqual([64, 128, 256]);
+    expect(await row("djdl", "presentation.icon")).toMatchObject({
+      sha256: sha(ICON_B),
+      attempts: 0,
+      next_attempt_at: null,
+    });
+  });
+
+  it("retries nothing without the binding, for a slot without a ladder, or below the smallest rung", async () => {
+    // No binding: the copies have no width and no sizes, and nothing is ever retried.
+    const up = upstream({ [URL_A]: serve(ICON_A) });
+    await syncAndPull(iconManifest(URL_A), NOW, up);
+    expect(await row("djdl", "presentation.icon")).toMatchObject({
+      variants_json: "[]",
+      width: null,
+      attempts: 0,
+      next_attempt_at: null,
+    });
+    const sent = q.sent.length;
+    expect(await recheckHostedAssets(env, db, NOW + 30 * 86_400)).toBe(0);
+    expect(
+      (
+        await syncHostedAssets(env, db, {
+          product: "djdl",
+          manifest: iconManifest(URL_A),
+          commit: null,
+          now: NOW + 30 * 86_400,
+        })
+      ).enqueued,
+    ).toBe(0);
+    // A ladder message that arrives anyway does nothing without the binding.
+    const msg = {
+      v: 1,
+      kind: "ladder",
+      product: "djdl",
+      slot: "presentation.icon",
+      locale: "",
+      sha256: sha(ICON_A),
+      reason: "recheck",
+    };
+    expect(await consume([msg], NOW + 1, up)).toEqual({
+      acked: [0],
+      retried: [],
+    });
+    expect(await row("djdl", "presentation.icon")).toMatchObject({
+      variants_json: "[]",
+      attempts: 0,
+    });
+
+    // With the binding: a slot without a ladder family, and an icon narrower than 64 px, owe
+    // nothing. The icon whose width was never learned does.
+    env = { ...env, IMAGES: images(48).binding };
+    for (const slot of ["play:icon", "notes-image:0123456789abcdef"])
+      await db.run(
+        `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, sha256, width,
+           variants_json, status, modified_at)
+         VALUES ('djdl', ?, '', 'console', 'upload', ?, 4000, '[]', 'ready', ?)`,
+        slot,
+        sha(ICON_A),
+        NOW,
+      );
+    await db.run(
+      "UPDATE hosted_assets SET width = 48 WHERE slot = 'listing.icon'",
+    );
+    const t = NOW + 30 * 86_400;
+    expect(await recheckHostedAssets(env, db, t)).toBe(1);
+    expect(q.sent.slice(sent)).toEqual([
+      expect.objectContaining({ kind: "ladder", slot: "presentation.icon" }),
+    ]);
+    // Its retry learns the width (48 px admits no rung): recorded, and owed no more.
+    await consume(q.sent.slice(sent), t, up);
+    expect(await row("djdl", "presentation.icon")).toMatchObject({
+      width: 48,
+      variants_json: "[]",
+      attempts: 0,
+      next_attempt_at: null,
+    });
+    expect(await recheckHostedAssets(env, db, t + 30 * 86_400)).toBe(0);
+  });
+
+  it("pulls and ladders share the re-check's budget, oldest-due first", async () => {
+    const img = images(512);
+    env = { ...env, IMAGES: img.binding };
+    img.state.quota = true;
+    await syncAndPull(
+      iconManifest(URL_A),
+      NOW,
+      upstream({ [URL_A]: serve(ICON_A) }),
+    );
+    // listing.icon now owes a pull instead (a ref that failed), due earlier than the ladder.
+    await db.run(
+      `UPDATE hosted_assets SET wanted_ref = ?, status = 'failed', next_attempt_at = ?
+        WHERE slot = 'listing.icon'`,
+      wantedRefOf({ kind: "url", src: URL_B }),
+      NOW + 10,
+    );
+    const t = NOW + PULL_BACKOFF_BASE_SECONDS;
+    const before = q.sent.length;
+    expect(await recheckHostedAssets(env, db, t, 1)).toBe(1);
+    expect(await recheckHostedAssets(env, db, t, 1)).toBe(1);
+    expect(await recheckHostedAssets(env, db, t, 1)).toBe(0);
+    expect(q.sent.slice(before)).toEqual([
+      expect.objectContaining({ slot: "listing.icon", reason: "recheck" }),
+      expect.objectContaining({ slot: "presentation.icon", kind: "ladder" }),
+    ]);
+    expect("kind" in q.sent[before]!).toBe(false);
+  });
+
+  it("drops a ladder message for bytes the slot no longer holds", async () => {
+    const img = images(512);
+    env = { ...env, IMAGES: img.binding };
+    img.state.quota = true;
+    const up = upstream({ [URL_A]: serve(ICON_A), [URL_B]: serve(ICON_B) });
+    await syncAndPull(iconManifest(URL_A), NOW, up);
+    const t = NOW + PULL_BACKOFF_BASE_SECONDS;
+    const before = q.sent.length;
+    expect(await recheckHostedAssets(env, db, t)).toBe(2);
+    const stale = q.sent.slice(before);
+    // A new icon lands first (its ladder fails too).
+    await syncAndPull(iconManifest(URL_B), t + 1, up);
+    img.state.quota = false;
+    await consume(stale, t + 2, up);
+    expect(img.state.made).toEqual([]);
+    expect(await row("djdl", "presentation.icon")).toMatchObject({
+      sha256: sha(ICON_B),
+      variants_json: "[]",
+      attempts: 1,
+      next_attempt_at: t + 1 + PULL_BACKOFF_BASE_SECONDS,
+    });
+  });
+
+  it("validates ladder messages, and never reads one as a pull", () => {
+    const ok = {
+      v: 1,
+      kind: "ladder",
+      product: "djdl",
+      slot: "listing.screenshot:16",
+      locale: "de-AT",
+      sha256: "a".repeat(64),
+      reason: "recheck",
+    };
+    expect(readAssetLadderMessage(ok)).toEqual(ok);
+    expect(readAssetPullMessage(ok)).toBeNull();
+    expect(readAssetPullMessage({ ...ok, wanted: "{}" })).toBeNull();
+    for (const bad of [
+      { ...ok, kind: "pull" },
+      { ...ok, slot: "play:icon" },
+      { ...ok, slot: "listing.screenshot:17" },
+      { ...ok, locale: "../x" },
+      { ...ok, sha256: "A".repeat(64) },
+      { ...ok, reason: "operator" },
+      { ...ok, product: "../x" },
+      { ...ok, v: 2 },
+    ])
+      expect(readAssetLadderMessage(bad), JSON.stringify(bad)).toBeNull();
+    expect(
+      readAssetLadderMessage({
+        v: 1,
+        product: "djdl",
+        slot: "presentation.icon",
+        locale: "",
+        wanted: "{}",
+        reason: "sync",
+      }),
+    ).toBeNull();
   });
 });
 
