@@ -137,9 +137,29 @@
       "title": "Método de acesso indisponível",
       "message": "Esse método de acesso está desativado. Escolha outro."
     },
-    "email_not_configured": {
+    "email_unavailable": {
       "title": "Acesso por e-mail indisponível",
       "message": "O acesso por e-mail não está disponível agora. Escolha outro método de acesso."
+    },
+    "turnstile_failed": {
+      "title": "Verificação não aprovada",
+      "message": "A verificação de segurança não foi aprovada. Recarregue a página e tente de novo."
+    },
+    "signin_expired": {
+      "title": "Acesso expirado",
+      "message": "Este acesso expirou. Comece de novo."
+    },
+    "invalid_code": {
+      "title": "Código incorreto",
+      "message": "Esse código não funcionou. Confira o e-mail e digite de novo."
+    },
+    "email_in_use": {
+      "title": "E-mail já em uso",
+      "message": "Outra conta do Polaris Key já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail."
+    },
+    "terms_required": {
+      "title": "Termos não aceitos",
+      "message": "Aceite os termos para continuar."
     },
     "license_owned": {
       "title": "Licença em outra conta",

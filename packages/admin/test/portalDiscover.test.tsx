@@ -189,6 +189,12 @@ describe("Discover (PX-16)", () => {
     expect(
       within(lumen).getByText("For members of aperture-seven-customers"),
     ).toBeTruthy();
+    // No cover: the letter shows once, on the icon's tile, never also on the art.
+    expect(
+      [
+        ...(await tile("Pixel Forge SDK")).querySelectorAll("[data-art]"),
+      ].filter((el) => el.textContent === "P"),
+    ).toHaveLength(1);
     // A reason this page doesn't know yet still says something true.
     expect(
       within(await tile("Pixel Forge SDK")).getByText(

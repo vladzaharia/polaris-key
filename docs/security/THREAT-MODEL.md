@@ -5094,8 +5094,11 @@ rules and item 16's tenant-scoped lookup are enforced in the same code.
   removals cannot orphan the account). **Never by email match:** an unknown identity whose
   provider-verified email another account already uses is a join offer that writes nothing; the
   login card (I-07) joins only after the person proves the other account in the same session.
-  Residual: until I-07 the portal answers such a sign-in with a page that names nobody and asks
-  the person to sign in to the existing account first.
+  Since I-07 every provider sign-in (I-06's Google, Apple and Steam included) reaches that
+  offer only through the email gate (`card/gate.ts`): the address is proven first (by the
+  provider's verified claim or a code), the offer names nothing before that, and joining needs
+  proof of the other account in the same browser (a code to its email method or a fresh
+  session for it).
 - **Merge takeover (item 15).** `mergeAccounts` needs a live sign-in to EACH account, both fresh
   (5 minutes); one stale proof refuses the whole merge. Links, licences, sessions, grants,
   passkeys and registry tokens move in one atomic batch; the absorbed account becomes a tombstone

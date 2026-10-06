@@ -111,6 +111,12 @@ describe("Library on today's data (PX-02)", () => {
       "Version 1.4.2 · Universal · 2.1 GB",
     );
     expect(within(hero).getByText("2 devices in use")).toBeTruthy();
+    // No cover: the banner is a bare tint field; the letter shows once, on the icon's tile.
+    expect(
+      [...hero.querySelectorAll("[data-art]")].filter(
+        (el) => el.textContent === "N",
+      ),
+    ).toHaveLength(1);
     expect(
       screen.getByText(/That's everything linked to mara@fennick.studio/),
     ).toBeTruthy();

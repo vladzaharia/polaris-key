@@ -137,9 +137,29 @@
       "title": "登录方式不可用",
       "message": "该登录方式已关闭。请选择其他方式。"
     },
-    "email_not_configured": {
+    "email_unavailable": {
       "title": "电子邮件登录不可用",
       "message": "电子邮件登录目前不可用。请选择其他登录方式。"
+    },
+    "turnstile_failed": {
+      "title": "验证未通过",
+      "message": "安全验证未通过。请重新加载页面后重试。"
+    },
+    "signin_expired": {
+      "title": "登录已过期",
+      "message": "此次登录已过期。请重新开始。"
+    },
+    "invalid_code": {
+      "title": "验证码错误",
+      "message": "该验证码无效。请检查电子邮件后重新输入。"
+    },
+    "email_in_use": {
+      "title": "电子邮件已被使用",
+      "message": "另一个Polaris Key账户已在使用此电子邮件。请将此次登录合并到该账户，或使用其他电子邮件。"
+    },
+    "terms_required": {
+      "title": "未接受条款",
+      "message": "请同意条款以继续。"
     },
     "license_owned": {
       "title": "许可证在另一个账户中",
