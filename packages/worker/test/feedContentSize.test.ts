@@ -682,15 +682,29 @@ describe("the delta menu under the payload cap (plans/P4-29.md §6.2)", () => {
       floors: 8,
       revocations: 8,
     });
-    // An app part that leaves room for some, not all, of 64 entries (about 16 KB).
-    let extra = 0;
-    while (
+    // An app part that leaves room for some, not all, of 64 entries (about 16 KB): the most
+    // mirrors that keep the document within 56,000 bytes. Every mirror adds bytes and nothing is
+    // shed this far under the cap, so the size only grows with the count: a doubling search and a
+    // bisection find it (559 mirrors) in about 20 signings, where a walk one mirror at a time took 560
+    // (half a second idle, past the 20 s test timeout on a loaded machine). The two checks after
+    // the search pin the boundary the walk found.
+    const size = (mirrors: number): number =>
       bytes(
-        sign({ ...base, targets: [target("android", extra + 1)] }, "android")
-          .doc,
-      ) <= 56_000
-    )
-      extra++;
+        sign({ ...base, targets: [target("android", mirrors)] }, "android").doc,
+      );
+    let extra = 0;
+    let over = 1;
+    while (size(over) <= 56_000) {
+      extra = over;
+      over *= 2;
+    }
+    while (over - extra > 1) {
+      const mid = (extra + over) >> 1;
+      if (size(mid) <= 56_000) extra = mid;
+      else over = mid;
+    }
+    expect(size(extra)).toBeLessThanOrEqual(56_000);
+    expect(size(extra + 1)).toBeGreaterThan(56_000);
     const nearCap: ComposedFeed = {
       ...base,
       targets: [target("android", extra)],
