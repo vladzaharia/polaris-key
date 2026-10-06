@@ -5,7 +5,7 @@ import { chromium, type Browser, type Locator, type Page } from "playwright";
 import { build, preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
 import { CORE_ROUTES } from "./coreFixtures.js";
-import { startPortal, type PortalHarness } from "./portalHarness.js";
+import { h1, startPortal, type PortalHarness } from "./portalHarness.js";
 
 /**
  * The motion smoke suite (notes/S-23 §6.8, D9; MO-03): the built SPA in real Chromium under the
@@ -20,18 +20,24 @@ import { startPortal, type PortalHarness } from "./portalHarness.js";
  *   (enter animations fill `backwards`, so a page at rest has `document.getAnimations()` empty);
  * - a console and a portal route change set `html[data-vt="route"]`, animate only the main region
  *   on the tokens, and finish (the chrome is never named);
+ * - the portal's own navigations (MO-05): Library → product → Library pairs the tile's art and name
+ *   with the product hero (`pk-hero`, `pk-hero-title`) in a `forward` and a `back` transition;
+ *   every navigation lands at the top (or its deep-linked section, or the tile Back came from)
+ *   with focus on the new page's h1, once; a JumpPalette jump starts no transition over the
+ *   closing palette; section links scroll smoothly only when motion is allowed;
  * - a list mutation over a long list names at most LIST_BUDGET (30) rows;
  * - zero `securitypolicyviolation` events throughout;
  * - with `reducedMotion: "reduce"` the same interactions start no transition, run no animation
  *   with a duration, and leave `document.getAnimations()` empty.
  *
- * No route calls `viewTransition()` yet (MO-04 wires the console router, MO-05 the portal's), so
- * the route and list checks drive the layer's real source (`src/ui/motion/viewTransition.ts`,
- * bundled here by Vite) inside the page against the built `motion.css`. The bundle is evaluated over
- * the DevTools protocol, which the page's CSP does not govern (as `portalHarness.axe` does); what it
- * does in the page (data attributes, CSSOM names) is still subject to it. When MO-04 and MO-05
- * land, those tests switch to a real navigation and drop the injected layer. Area packages add
- * their own pattern here (S-23 §10).
+ * The portal router calls `viewTransition()` itself (MO-05), so the portal checks drive real
+ * navigations. The console's router does not yet (MO-04 wires it), so the console's route and list
+ * checks drive the layer's real source (`src/ui/motion/viewTransition.ts`, bundled here by Vite)
+ * inside the page against the built `motion.css`. The bundle is evaluated over the DevTools
+ * protocol, which the page's CSP does not govern (as `portalHarness.axe` does); what it does in
+ * the page (data attributes, CSSOM names) is still subject to it. When MO-04 lands, those tests
+ * switch to a real navigation and drop the injected layer. Area packages add their own pattern
+ * here (S-23 §10).
  */
 
 const here = fileURLToPath(new URL("..", import.meta.url));
@@ -39,6 +45,9 @@ const CSP = appSecurityHeaders().get("content-security-policy")!;
 const THEMES = ["dark", "light"] as const;
 type Theme = (typeof THEMES)[number];
 type Motion = "no-preference" | "reduce";
+
+/** `--pk-ease-emphasized` (MO-01), as the browser resolves it: the shared element's curve. */
+const EMPHASIZED = "cubic-bezier(0.05, 0.7, 0.1, 1)";
 
 /** A license row for the list check: enough of them that the list is over the budget. */
 const NOW = Math.floor(Date.now() / 1000);
@@ -402,6 +411,157 @@ async function runViewTransition(
   }, opts);
 }
 
+// ── Portal navigations (MO-05): the router's own View Transitions, observed ──────────────────────
+
+/** What one real portal navigation did, from the click to the page at rest. */
+interface NavRun {
+  /** Calls to document.startViewTransition (the router's, through the motion layer). */
+  started: number;
+  /** Every `::view-transition-*` animation seen while it ran, with its timing and curve. */
+  pseudo: { pseudo: string; duration: number; delay: number; easing: string }[];
+  /** Every `focusin` while it ran, as "TAG text": the page is heard once. */
+  focus: string[];
+  /** The focused element at rest, as "TAG text". */
+  active: string;
+  scrollY: number;
+  /** Elements still named through the CSSOM, and tiles still marked as a source, at rest. */
+  leftNamed: number;
+  leftMarked: number;
+}
+
+interface NavWatch {
+  started: number;
+  transitions: { finished: Promise<unknown> }[];
+  seen: Map<string, { duration: number; delay: number; easing: string }>;
+  focus: string[];
+  polling: boolean;
+  onFocus: (e: FocusEvent) => void;
+}
+
+/**
+ * Watch the next navigation: wrap document.startViewTransition (the layer reads it at each call),
+ * poll the pseudo-element animations every frame, and log focus. Over the DevTools protocol, so
+ * the page's CSP is untouched.
+ */
+async function armNavigation(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    // Evaluated in the page: helpers must be defined inside (and no eval: the CSP forbids it).
+    const describe = (el: Element | null): string =>
+      el
+        ? `${el.tagName} ${(el.textContent ?? "").trim().slice(0, 40)}`
+        : "none";
+    const w = window as unknown as { __nav?: NavWatch };
+    const doc = document as unknown as {
+      startViewTransition?: (...a: unknown[]) => { finished: Promise<unknown> };
+    };
+    const original = Document.prototype as unknown as {
+      startViewTransition?: (...a: unknown[]) => { finished: Promise<unknown> };
+    };
+    const nav: NavWatch = {
+      started: 0,
+      transitions: [],
+      seen: new Map(),
+      focus: [],
+      polling: true,
+      onFocus: (e) => nav.focus.push(describe(e.target as Element)),
+    };
+    w.__nav = nav;
+    if (original.startViewTransition)
+      doc.startViewTransition = (...a: unknown[]) => {
+        nav.started++;
+        const t = original.startViewTransition!.apply(document, a);
+        nav.transitions.push(t);
+        return t;
+      };
+    const poll = (): void => {
+      for (const a of document.getAnimations()) {
+        const effect = a.effect as KeyframeEffect | null;
+        const pseudo = effect?.pseudoElement;
+        if (!effect || !pseudo?.startsWith("::view-transition")) continue;
+        const t = effect.getTiming();
+        nav.seen.set(pseudo, {
+          duration: Number(t.duration),
+          delay: Number(t.delay ?? 0),
+          // CSS animations carry their curve on the keyframes, not the timing.
+          easing: String(effect.getKeyframes()[0]?.easing ?? t.easing),
+        });
+      }
+      if (nav.polling) requestAnimationFrame(poll);
+    };
+    requestAnimationFrame(poll);
+    document.addEventListener("focusin", nav.onFocus);
+  });
+}
+
+/** Wait until focus is on the `heading` h1 and every transition has finished, then report. */
+async function settleNavigation(page: Page, heading: string): Promise<NavRun> {
+  return page.evaluate(async (heading) => {
+    const describe = (el: Element | null): string =>
+      el
+        ? `${el.tagName} ${(el.textContent ?? "").trim().slice(0, 40)}`
+        : "none";
+    const nav = (window as unknown as { __nav: NavWatch }).__nav;
+    const landed = (): boolean => {
+      const a = document.activeElement;
+      return a?.tagName === "H1" && a.textContent?.trim() === heading;
+    };
+    for (let i = 0; i < 300 && !landed(); i++)
+      await new Promise((r) => setTimeout(r, 16));
+    for (const t of nav.transitions) await t.finished.catch(() => undefined);
+    // One more frame and task, so the router's cleanup (chained on `finished`) has run.
+    await new Promise((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+    nav.polling = false;
+    document.removeEventListener("focusin", nav.onFocus);
+    delete (document as unknown as { startViewTransition?: unknown })
+      .startViewTransition;
+    return {
+      started: nav.started,
+      pseudo: [...nav.seen].map(([pseudo, t]) => ({ pseudo, ...t })),
+      focus: nav.focus,
+      active: describe(document.activeElement),
+      scrollY: window.scrollY,
+      leftNamed: [...document.querySelectorAll<HTMLElement>("*")].filter(
+        (el) => el.style.getPropertyValue("view-transition-name") !== "",
+      ).length,
+      leftMarked: document.querySelectorAll("[data-vt-source]").length,
+    };
+  }, heading);
+}
+
+/** The run's pseudo-element animations by name. */
+const byPseudo = (
+  run: NavRun,
+): Record<string, NavRun["pseudo"][number] | undefined> =>
+  Object.fromEntries(run.pseudo.map((p) => [p.pseudo, p]));
+
+/** The `view-transition-name`s that took part (from the pseudo-elements seen). */
+const groupNames = (run: NavRun): string[] =>
+  [
+    ...new Set(run.pseudo.map((p) => p.pseudo.replace(/^.*\((.*)\)$/, "$1"))),
+  ].sort();
+
+/** Click a product section link the way a user does, and read the scroll in the same task. */
+async function clickSectionLink(
+  page: Page,
+  section: string,
+): Promise<{ before: number; sync: number; target: number }> {
+  return page.evaluate((section) => {
+    const link = document.querySelector<HTMLAnchorElement>(
+      `nav[aria-label="On this page"] a[href$="/${section}"]`,
+    )!;
+    const before = window.scrollY;
+    link.click();
+    const el = document.getElementById(`section-${section}`)!;
+    const margin = parseFloat(getComputedStyle(el).scrollMarginTop) || 0;
+    // Where the section lands: its top at the scroll margin (or the page's end).
+    const target = Math.min(
+      window.scrollY + el.getBoundingClientRect().top - margin,
+      document.documentElement.scrollHeight - window.innerHeight,
+    );
+    return { before, sync: window.scrollY, target };
+  }, section);
+}
+
 // ── Motion on ─────────────────────────────────────────────────────────────────────────────────────
 
 describe("motion on: the console under the Worker's CSP", () => {
@@ -640,29 +800,252 @@ describe("motion on: the portal under the Worker's CSP", () => {
       await o.close();
     });
 
-    it(`a portal route change sets html[data-vt="route"] and finishes (${theme})`, async () => {
+    it(`Library → product → Library: the tile's art and name fly into the hero and back; scroll and focus land (${theme})`, async () => {
+      const o = await portal.open("three", "/", {
+        theme,
+        reducedMotion: "no-preference",
+        height: 720,
+      });
+      const page = o.page;
+      await h1(page, "Your library");
+      // The tile's art has loaded (the media proxy answers the fixtures' art).
+      await page
+        .locator(
+          "article[aria-labelledby='tile-nightfall'] > [data-art='image'] img",
+        )
+        .waitFor();
+      await installProbe(page);
+      const tk = await tokens(page);
+      await atRest(page);
+      // Scrolled a little, the tile still on screen: the product must open at the top.
+      await page.evaluate(() => window.scrollTo(0, 120));
+
+      await armNavigation(page);
+      await page
+        .getByRole("article", { name: "Nightfall" })
+        .getByRole("link", { name: "Nightfall", exact: true })
+        .click();
+      const fwd = await settleNavigation(page, "Nightfall");
+      expect(fwd.started, "one View Transition").toBe(1);
+      const f = byPseudo(fwd);
+      // The UA animates a group only when it has an old and a new end: these are the pairs.
+      expect(f["::view-transition-group(pk-hero)"]).toMatchObject({
+        duration: tk.slow,
+        easing: EMPHASIZED,
+      });
+      expect(f["::view-transition-group(pk-hero-title)"]).toMatchObject({
+        duration: tk.slow,
+        easing: EMPHASIZED,
+      });
+      // The icon in front of the art's lower edge flies with it (or the art would cover it).
+      expect(f["::view-transition-group(pk-hero-icon)"]).toMatchObject({
+        duration: tk.slow,
+        easing: EMPHASIZED,
+      });
+      // The main region slides forward: out at `fast`, in at `base` after `micro`.
+      expect(f["::view-transition-old(pk-main)"]).toMatchObject({
+        duration: tk.fast,
+        delay: 0,
+      });
+      expect(f["::view-transition-new(pk-main)"]).toMatchObject({
+        duration: tk.base,
+        delay: tk.micro,
+      });
+      // The chrome is never named.
+      expect(groupNames(fwd)).toEqual([
+        "pk-hero",
+        "pk-hero-icon",
+        "pk-hero-title",
+        "pk-main",
+      ]);
+      expect(fwd.scrollY, "the product opens at the top").toBe(0);
+      expect(fwd.active).toBe("H1 Nightfall");
+      expect(
+        fwd.focus.filter((f) => f.startsWith("H1")),
+        "the heading takes focus once",
+      ).toEqual(["H1 Nightfall"]);
+      expect(fwd.leftNamed, "the one-shot names are gone").toBe(0);
+      expect(fwd.leftMarked, "the source mark is gone").toBe(0);
+      expect(await running(page)).toEqual([]);
+
+      await atRest(page);
+      await armNavigation(page);
+      await page
+        .getByRole("main")
+        .getByRole("link", { name: "Library", exact: true })
+        .click();
+      const back = await settleNavigation(page, "Your library");
+      expect(back.started).toBe(1);
+      const b = byPseudo(back);
+      expect(b["::view-transition-group(pk-hero)"]).toMatchObject({
+        duration: tk.slow,
+      });
+      expect(b["::view-transition-group(pk-hero-title)"]).toMatchObject({
+        duration: tk.slow,
+      });
+      expect(b["::view-transition-group(pk-hero-icon)"]).toMatchObject({
+        duration: tk.slow,
+      });
+      expect(b["::view-transition-new(pk-main)"]).toMatchObject({
+        duration: tk.base,
+        delay: tk.micro,
+      });
+      expect(groupNames(back)).toEqual([
+        "pk-hero",
+        "pk-hero-icon",
+        "pk-hero-title",
+        "pk-main",
+      ]);
+      expect(
+        await page.evaluate(() => (window as unknown as { __m: Probe }).__m.vt),
+      ).toEqual(["forward", null, "back", null]);
+      // Back lands where the morph lands: the tile it came from, on screen.
+      const tile = await page.evaluate(() => {
+        const r = document
+          .querySelector("article[aria-labelledby='tile-nightfall']")!
+          .getBoundingClientRect();
+        return { top: r.top, bottom: r.bottom, vh: window.innerHeight };
+      });
+      expect(tile.top).toBeGreaterThanOrEqual(0);
+      expect(tile.bottom).toBeLessThanOrEqual(tile.vh);
+      expect(back.active).toBe("H1 Your library");
+      expect(back.focus.filter((f) => f.startsWith("H1"))).toEqual([
+        "H1 Your library",
+      ]);
+      expect(back.leftNamed).toBe(0);
+      expect(back.leftMarked).toBe(0);
+      expect(await running(page)).toEqual([]);
+      expect(await o.violations()).toEqual([]);
+      await o.close();
+    });
+
+    it(`a route between top-level pages fades the main region through; a deep link lands on its section (${theme})`, async () => {
       const o = await portal.open("three", "/", {
         theme,
         reducedMotion: "no-preference",
       });
       const page = o.page;
-      await page
-        .getByRole("heading", { level: 1, name: "Your library" })
-        .waitFor();
+      await h1(page, "Your library");
       await installProbe(page);
       const tk = await tokens(page);
       await atRest(page);
-      const run = await runViewTransition(page, {
-        type: "route",
-        navigate: "#/account/appearance",
-      });
+      await page.evaluate(() => window.scrollTo(0, 200));
+
+      await armNavigation(page);
+      await page
+        .getByRole("navigation", { name: "Main" })
+        .getByRole("link", { name: /^Discover/ })
+        .click();
+      const run = await settleNavigation(page, "Discover");
       expect(run.started).toBe(1);
-      expect(run.during).toBe("route");
-      const t = Object.fromEntries(run.pseudo.map((p) => [p.pseudo, p]));
-      expect(t["::view-transition-old(pk-main)"]?.duration).toBe(tk.fast);
-      expect(t["::view-transition-new(pk-main)"]?.duration).toBe(tk.base);
-      expect(run.after).toBeNull();
+      const t = byPseudo(run);
+      expect(t["::view-transition-old(pk-main)"]).toMatchObject({
+        duration: tk.fast,
+        delay: 0,
+      });
+      expect(t["::view-transition-new(pk-main)"]).toMatchObject({
+        duration: tk.base,
+        delay: tk.micro,
+      });
+      // A sibling page: only the main region moves; nothing flies.
+      expect(groupNames(run)).toEqual(["pk-main"]);
+      expect(run.scrollY).toBe(0);
+      expect(run.active).toBe("H1 Discover");
+      expect(run.focus.filter((f) => f.startsWith("H1"))).toEqual([
+        "H1 Discover",
+      ]);
+      expect(
+        await page.evaluate(() => (window as unknown as { __m: Probe }).__m.vt),
+      ).toEqual(["route", null]);
+
+      // A deep link into a section: the page opens there, the heading still takes focus.
+      await atRest(page);
+      await armNavigation(page);
+      await page.evaluate(() => {
+        window.location.hash = "#/account/appearance";
+      });
+      const deep = await settleNavigation(page, "Account");
+      expect(deep.started).toBe(1);
+      const section = await page.evaluate(() => {
+        const r = document
+          .getElementById("section-appearance")!
+          .getBoundingClientRect();
+        return { top: r.top, vh: window.innerHeight };
+      });
+      expect(section.top).toBeGreaterThanOrEqual(0);
+      expect(section.top).toBeLessThan(section.vh);
+      expect(deep.scrollY, "scrolled to the section").toBeGreaterThan(0);
+      expect(deep.active).toBe("H1 Account");
       expect(await running(page)).toEqual([]);
+      expect(await o.violations()).toEqual([]);
+      await o.close();
+    });
+
+    it(`a jump from the JumpPalette swaps the page under the closing palette: no View Transition over its scrim (${theme})`, async () => {
+      const o = await portal.open("twelve", "/", {
+        theme,
+        reducedMotion: "no-preference",
+      });
+      const page = o.page;
+      await h1(page, "Your library");
+      await page.getByText("Glyphsmith").first().waitFor();
+      await installProbe(page);
+      const tk = await tokens(page);
+      await atRest(page);
+      await page.keyboard.press("Control+k");
+      const palette = page.getByRole("dialog", { name: "Jump to a product" });
+      await palette.waitFor();
+      await atRest(page);
+      await takeLog(page);
+      // Typing filters the results; nothing animates while typing.
+      await page.keyboard.type("glyph");
+      expect(await running(page), "typing animated the results").toEqual([]);
+      expect(
+        (await takeLog(page)).filter((e) => e.duration > 0),
+        "typing started an animation",
+      ).toEqual([]);
+
+      await armNavigation(page);
+      await page.keyboard.press("Enter");
+      const run = await settleNavigation(page, "Glyphsmith");
+      await palette.waitFor({ state: "detached" });
+      await atRest(page);
+      // The palette left through its exit, on its token, while the page swapped beneath it.
+      expect(
+        pick(await takeLog(page), "end", (e) => e.role === "dialog").map(
+          (e) => [e.name, e.duration, e.connected],
+        ),
+      ).toEqual([["pk-exit", tk.base, true]]);
+      expect(
+        run.started,
+        "no View Transition while a dialog is on screen",
+      ).toBe(0);
+      expect(run.pseudo).toEqual([]);
+      expect(run.active, "focus on the product's heading, after the exit").toBe(
+        "H1 Glyphsmith",
+      );
+      expect(run.scrollY).toBe(0);
+      expect(await running(page)).toEqual([]);
+      expect(await o.violations()).toEqual([]);
+      await o.close();
+    });
+
+    it(`a section link scrolls smoothly when motion is allowed (${theme})`, async () => {
+      const o = await portal.open("three", "/#/p/nightfall", {
+        theme,
+        reducedMotion: "no-preference",
+      });
+      const page = o.page;
+      await h1(page, "Nightfall");
+      await page.locator("#section-help").waitFor();
+      const s = await clickSectionLink(page, "help");
+      expect(s.target, "the section is below the fold").toBeGreaterThan(0);
+      expect(s.sync, "smooth: nothing has moved yet in the click's task").toBe(
+        s.before,
+      );
+      await expect
+        .poll(() => page.evaluate(() => window.scrollY))
+        .toBeGreaterThan(s.before);
       expect(await o.violations()).toEqual([]);
       await o.close();
     });
@@ -749,11 +1132,114 @@ describe("reduced motion: the same interactions are instant swaps", () => {
       expect(
         (await takeLog(page)).filter((e) => e.duration > 0 || e.delay > 0),
       ).toEqual([]);
-      const route = await runViewTransition(page, {
-        type: "route",
-        navigate: "#/account/appearance",
+      expect(await o.violations()).toEqual([]);
+      await o.close();
+    });
+
+    it(`portal: navigations are instant swaps: no transition starts, nothing animates, scroll and focus still land (${theme})`, async () => {
+      const o = await portal.open("three", "/", { theme, height: 720 });
+      const page = o.page;
+      await h1(page, "Your library");
+      await installProbe(page);
+      await takeLog(page);
+      await page.evaluate(() => window.scrollTo(0, 120));
+      const steps: Array<[string, () => Promise<void>]> = [
+        [
+          "Nightfall",
+          () =>
+            page
+              .getByRole("article", { name: "Nightfall" })
+              .getByRole("link", { name: "Nightfall", exact: true })
+              .click(),
+        ],
+        [
+          "Your library",
+          () =>
+            page
+              .getByRole("main")
+              .getByRole("link", { name: "Library", exact: true })
+              .click(),
+        ],
+        [
+          "Discover",
+          () =>
+            page
+              .getByRole("navigation", { name: "Main" })
+              .getByRole("link", { name: /^Discover/ })
+              .click(),
+        ],
+      ];
+      for (const [heading, act] of steps) {
+        await armNavigation(page);
+        await act();
+        const run = await settleNavigation(page, heading);
+        expect(run, heading).toMatchObject({
+          started: 0,
+          pseudo: [],
+          active: `H1 ${heading}`,
+          leftNamed: 0,
+          leftMarked: 0,
+        });
+        expect(
+          run.focus.filter((f) => f.startsWith("H1")),
+          heading,
+        ).toEqual([`H1 ${heading}`]);
+        expect(await running(page), heading).toEqual([]);
+      }
+      expect(
+        (await takeLog(page)).filter((e) => e.duration > 0 || e.delay > 0),
+        "an animation ran with a duration",
+      ).toEqual([]);
+      expect(
+        await page.evaluate(() => (window as unknown as { __m: Probe }).__m.vt),
+        "html[data-vt] was never set",
+      ).toEqual([]);
+      expect(await o.violations()).toEqual([]);
+      await o.close();
+    });
+
+    it(`portal: html[data-motion="reduce"] (the in-app preference) makes the same navigations instant swaps (${theme})`, async () => {
+      const o = await portal.open("three", "/", {
+        theme,
+        reducedMotion: "no-preference",
       });
-      expect(route).toMatchObject({ started: 0, during: null, pseudo: [] });
+      const page = o.page;
+      await h1(page, "Your library");
+      await page.evaluate(() => {
+        document.documentElement.dataset.motion = "reduce";
+      });
+      await installProbe(page);
+      await atRest(page);
+      await takeLog(page);
+      await armNavigation(page);
+      await page
+        .getByRole("article", { name: "Nightfall" })
+        .getByRole("link", { name: "Nightfall", exact: true })
+        .click();
+      const fwd = await settleNavigation(page, "Nightfall");
+      await armNavigation(page);
+      await page.goBack();
+      const back = await settleNavigation(page, "Your library");
+      for (const run of [fwd, back])
+        expect(run).toMatchObject({ started: 0, pseudo: [], leftNamed: 0 });
+      expect(await running(page)).toEqual([]);
+      expect(
+        (await takeLog(page)).filter((e) => e.duration > 0 || e.delay > 0),
+      ).toEqual([]);
+      expect(await o.violations()).toEqual([]);
+      await o.close();
+    });
+
+    it(`portal: a section link scrolls instantly (${theme})`, async () => {
+      const o = await portal.open("three", "/#/p/nightfall", { theme });
+      const page = o.page;
+      await h1(page, "Nightfall");
+      await page.locator("#section-help").waitFor();
+      const s = await clickSectionLink(page, "help");
+      expect(s.target).toBeGreaterThan(0);
+      expect(s.sync, "instant: already there in the click's task").toBe(
+        s.target,
+      );
       expect(await o.violations()).toEqual([]);
       await o.close();
     });
