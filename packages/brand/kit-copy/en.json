@@ -1592,9 +1592,9 @@
       "note": "Choose a license for this device (SIGN-IN.md §3.6). Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number."
     },
     "signin.choice.accountWide": {
-      "value": "Account-wide · unlimited devices",
+      "value": "Account-wide · {used} of {limit, plural, one {# device} other {# devices}}",
       "role": "label",
-      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). Account-wide licenses stay device-limited (owner, 2026-10-05). Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number."
     },
     "signin.choice.metaNew": {
       "value": "Created when you continue",

@@ -1,0 +1,685 @@
+{
+  "$schema": "./copy.schema.json",
+  "$comment": "pt-BR translation of copy.en.json, produced against packages/brand/kit-copy/glossary.json and not yet reviewed by a native speaker (reviewed: false; a release follow-up, not a merge blocker). Register: você, modern concise software Portuguese.",
+  "copyVersion": 1,
+  "locale": "pt-BR",
+  "reviewed": false,
+  "fallback": {
+    "title": "Algo deu errado",
+    "message": "Algo deu errado ({code}). Tente novamente."
+  },
+  "codes": {
+    "unauthorized": {
+      "title": "Não conectado",
+      "message": "Este dispositivo não está conectado ou a licença dele não é mais válida. Entre ou ative novamente."
+    },
+    "not_found": {
+      "title": "Não encontrado",
+      "message": "Isso não foi encontrado. Talvez tenha sido removido."
+    },
+    "bad_request": {
+      "title": "Solicitação recusada",
+      "message": "A solicitação não era válida. Atualize o app e tente novamente."
+    },
+    "forbidden": {
+      "title": "Não permitido",
+      "message": "Você não tem permissão para fazer isso."
+    },
+    "attestation_required": {
+      "title": "Verificação do dispositivo necessária",
+      "message": "Isso exige um dispositivo verificado. Permita que o app verifique este dispositivo e tente novamente."
+    },
+    "attestation_rejected": {
+      "title": "Falha na verificação do dispositivo",
+      "message": "Não foi possível verificar este dispositivo. Tente novamente."
+    },
+    "attestation_unavailable": {
+      "title": "Verificação do dispositivo indisponível",
+      "message": "A verificação de dispositivo não está disponível para este app agora. Tente novamente em alguns minutos."
+    },
+    "rate_limited": {
+      "title": "Tentativas demais",
+      "message": "Tentativas demais. Aguarde um momento e tente novamente."
+    },
+    "body_too_large": {
+      "title": "Grande demais",
+      "message": "Isso é grande demais para enviar."
+    },
+    "method_not_allowed": {
+      "title": "Solicitação recusada",
+      "message": "A solicitação não era válida. Atualize o app e tente novamente."
+    },
+    "misconfigured": {
+      "title": "Serviço não configurado",
+      "message": "Este serviço não está configurado corretamente. Contate o desenvolvedor."
+    },
+    "registration_closed": {
+      "title": "Registro fechado",
+      "message": "Novos dispositivos não podem se registrar agora. Ative com uma chave de licença ou entre."
+    },
+    "value_not_representable": {
+      "title": "Valor não aceito",
+      "message": "Não foi possível salvar um valor. Altere-o e tente novamente."
+    },
+    "document_not_representable": {
+      "title": "Problema no serviço",
+      "message": "O serviço não conseguiu preparar suas configurações. Contate o desenvolvedor."
+    },
+    "device_limit": {
+      "title": "Limite de dispositivos atingido",
+      "message": "Esta licença já está em todos os dispositivos permitidos. Substitua um dispositivo para usá-la aqui."
+    },
+    "license_disabled": {
+      "title": "Licença desativada",
+      "message": "Esta licença foi desativada. Contate o desenvolvedor."
+    },
+    "license_expired": {
+      "title": "Licença expirada",
+      "message": "Esta licença expirou. Renove-a para continuar."
+    },
+    "not_entitled": {
+      "title": "Não incluído",
+      "message": "Sua licença não inclui isso."
+    },
+    "version_blocked": {
+      "title": "Atualização necessária",
+      "message": "Esta versão não pode ser usada com sua licença. Atualize o app para continuar."
+    },
+    "channel_not_allowed": {
+      "title": "Canal não incluído",
+      "message": "Sua licença não inclui este canal de lançamento."
+    },
+    "hardware_mismatch": {
+      "title": "Dispositivo alterado",
+      "message": "O hardware deste dispositivo mudou. Ative novamente para usar sua licença aqui."
+    },
+    "fingerprint_required": {
+      "title": "Falha na verificação do dispositivo",
+      "message": "Esta licença exige uma impressão digital de hardware, que não pôde ser lida neste dispositivo."
+    },
+    "enroll_disabled": {
+      "title": "Nenhuma licença gratuita",
+      "message": "Este app não oferece licença gratuita. Digite uma chave de licença ou entre."
+    },
+    "enroll_claimed": {
+      "title": "Entre para continuar",
+      "message": "A licença gratuita deste dispositivo agora pertence a uma conta. Entre para usá-la."
+    },
+    "enroll_failed": {
+      "title": "Não foi possível obter uma licença gratuita",
+      "message": "Não foi possível emitir uma licença gratuita. Tente novamente em alguns minutos."
+    },
+    "managed_by_admin": {
+      "title": "Definido pela sua organização",
+      "message": "Esta configuração é gerenciada pela sua organização e não pode ser alterada aqui."
+    },
+    "catalog_unavailable": {
+      "title": "Configurações indisponíveis",
+      "message": "Não é possível carregar as configurações agora. Tente novamente em alguns minutos."
+    },
+    "license_unusable": {
+      "title": "Licença não é mais válida",
+      "message": "Sua licença não é mais válida, então as configurações não podem ser carregadas. Entre ou ative novamente."
+    },
+    "disabled": {
+      "title": "Acesso indisponível",
+      "message": "O acesso não está ativado para este app."
+    },
+    "oidc_error": {
+      "title": "Falha no acesso",
+      "message": "O acesso não foi concluído. Tente novamente."
+    },
+    "unavailable": {
+      "title": "Acesso indisponível",
+      "message": "O acesso não está disponível agora. Tente novamente em alguns minutos."
+    },
+    "auth_method_disabled": {
+      "title": "Método de acesso indisponível",
+      "message": "Esse método de acesso está desativado. Escolha outro."
+    },
+    "email_not_configured": {
+      "title": "Acesso por e-mail indisponível",
+      "message": "O acesso por e-mail não está disponível agora. Escolha outro método de acesso."
+    },
+    "license_owned": {
+      "title": "Licença em outra conta",
+      "message": "Esta licença já está em outra conta do Polaris Key. Uma licença nunca é transferida pela chave: entre nessa conta ou use outra chave."
+    },
+    "email_mismatch": {
+      "title": "E-mail não verificado",
+      "message": "Esta licença pertence a um endereço de e-mail que sua conta não verificou. Adicione e verifique esse e-mail e tente novamente."
+    },
+    "link_conflict": {
+      "title": "Já vinculado",
+      "message": "Esse método de acesso pertence a outra conta do Polaris Key. Entre nessa conta ou una as duas contas."
+    },
+    "last_link": {
+      "title": "Não é possível remover",
+      "message": "Este é o único método de acesso da sua conta. Adicione outro antes de removê-lo."
+    },
+    "step_up_required": {
+      "title": "Entre novamente",
+      "message": "Para sua segurança, entre novamente para continuar."
+    },
+    "not_eligible": {
+      "title": "Oferta indisponível",
+      "message": "Esta oferta não está mais disponível para sua conta. Atualize a página e tente novamente."
+    },
+    "download_auth_required": {
+      "title": "Entre para baixar",
+      "message": "Entre ou ative uma licença para baixar isto."
+    },
+    "delivery_gate_missing": {
+      "title": "Download indisponível",
+      "message": "Este download ainda não está configurado. Contate o desenvolvedor."
+    },
+    "upstream_rate_limited": {
+      "title": "Downloads sobrecarregados",
+      "message": "Os downloads estão sobrecarregados agora. Tente novamente em alguns minutos."
+    },
+    "server_misconfigured": {
+      "title": "Serviço não configurado",
+      "message": "Este serviço não está configurado corretamente. Contate o desenvolvedor."
+    },
+    "internal_error": {
+      "title": "Falha no download",
+      "message": "O servidor de download teve um problema. Tente novamente em alguns minutos."
+    },
+    "release_record_rejected": {
+      "title": "Lançamento recusado",
+      "message": "O lançamento não foi publicado porque uma verificação falhou. O log de publicação indica qual."
+    },
+    "release_tag_is_pack_release": {
+      "title": "Lançamento ignorado",
+      "message": "Um lançamento foi ignorado porque a tag dele corresponde a um lançamento de pacote de conteúdo. Renomeie a tag."
+    },
+    "feed_not_composable": {
+      "title": "Verificação de atualizações indisponível",
+      "message": "Não é possível verificar atualizações agora. Tente novamente em alguns minutos."
+    },
+    "service-unavailable": {
+      "title": "Indisponível",
+      "message": "Este app não usa este serviço."
+    },
+    "service-disabled": {
+      "title": "Indisponível",
+      "message": "Este serviço está desativado para este app."
+    },
+    "local-only": {
+      "title": "Modo offline",
+      "message": "Este app está funcionando offline, então não se conectou."
+    },
+    "insecure-base-url": {
+      "title": "Conexão insegura",
+      "message": "O app recusou uma conexão insegura. Contate o desenvolvedor."
+    },
+    "bundle-jws-rejected": {
+      "title": "Arquivo de ativação inválido",
+      "message": "A assinatura do arquivo de ativação não é válida."
+    },
+    "bundle-claims-rejected": {
+      "title": "Arquivo de ativação inválido",
+      "message": "O arquivo de ativação é de outro produto ou dispositivo, ou expirou."
+    },
+    "bundle-trust-rejected": {
+      "title": "Arquivo de ativação não confiável",
+      "message": "O arquivo de ativação foi assinado por uma chave em que este app não confia."
+    },
+    "inner-doc-rejected": {
+      "title": "Arquivo de ativação inválido",
+      "message": "A licença dentro do arquivo de ativação não é válida."
+    },
+    "bundle": {
+      "title": "Arquivo de ativação inválido",
+      "message": "Não foi possível ler o arquivo de ativação."
+    },
+    "transport": {
+      "title": "Problema de conexão",
+      "message": "Verifique sua conexão e tente novamente."
+    },
+    "network": {
+      "title": "Não é possível conectar",
+      "message": "Não foi possível acessar o Polaris Key. Verifique sua conexão e tente novamente."
+    },
+    "refresh-failed": {
+      "title": "Não foi possível atualizar",
+      "message": "Não foi possível atualizar sua licença e suas configurações. Verifique sua conexão e tente novamente."
+    },
+    "sync-failed": {
+      "title": "Não foi possível verificar sua licença",
+      "message": "Não foi possível verificar sua licença, então o app não pode iniciar. Verifique sua conexão e tente novamente."
+    },
+    "fetch-failed": {
+      "title": "Conteúdo ausente",
+      "message": "Não foi possível baixar o conteúdo necessário, então o app não pode iniciar. Verifique sua conexão e tente novamente."
+    },
+    "bridge-missing": {
+      "title": "Problema no app",
+      "message": "A ponte de licenciamento do app está ausente. Reinstale o app ou contate o desenvolvedor."
+    },
+    "unknown": {
+      "title": "Algo deu errado",
+      "message": "Algo deu errado. Tente novamente."
+    },
+    "release-refused": {
+      "title": "Não incluído",
+      "message": "Sua licença não inclui este lançamento."
+    },
+    "bundle-rejected": {
+      "title": "Arquivo de ativação inválido",
+      "message": "O arquivo de ativação foi recusado."
+    },
+    "bundle-import-unsupported": {
+      "title": "Indisponível aqui",
+      "message": "A ativação offline não está disponível aqui."
+    },
+    "report-unsupported": {
+      "title": "Indisponível aqui",
+      "message": "Os relatórios de dispositivo não estão disponíveis aqui."
+    },
+    "device-management-unsupported": {
+      "title": "Indisponível aqui",
+      "message": "Não é possível gerenciar dispositivos aqui. Gerencie-os na sua conta."
+    },
+    "device_list_failed": {
+      "title": "Não foi possível carregar os dispositivos",
+      "message": "Não foi possível carregar seus dispositivos. Verifique sua conexão e tente novamente."
+    },
+    "device_rename_failed": {
+      "title": "Não foi possível renomear",
+      "message": "Não foi possível renomear o dispositivo. Tente novamente."
+    },
+    "device_deauthorize_failed": {
+      "title": "Não foi possível remover o dispositivo",
+      "message": "Não foi possível remover o dispositivo. Tente novamente."
+    },
+    "key-entry-unsupported": {
+      "title": "Indisponível aqui",
+      "message": "Não é possível digitar chaves de licença aqui. Entre com sua conta."
+    },
+    "sign-in-failed": {
+      "title": "Falha no acesso",
+      "message": "O acesso não foi concluído. Tente novamente."
+    },
+    "sign-out-failed": {
+      "title": "Falha ao sair",
+      "message": "A saída não foi concluída. Tente novamente."
+    },
+    "bad_response": {
+      "title": "Resposta inesperada",
+      "message": "O serviço enviou uma resposta que o app não pôde usar. Tente novamente."
+    },
+    "network-error": {
+      "title": "Não é possível conectar",
+      "message": "Não foi possível acessar o Polaris Key. Verifique sua conexão e tente novamente."
+    },
+    "server-error": {
+      "title": "Problema no serviço",
+      "message": "O serviço teve um problema. Tentando novamente…"
+    },
+    "cancelled": {
+      "title": "Acesso cancelado",
+      "message": "O acesso foi cancelado."
+    },
+    "sign-in-expired": {
+      "title": "Código expirado",
+      "message": "O código expirou antes de o acesso ser concluído. Comece de novo."
+    },
+    "sign-in-denied": {
+      "title": "Acesso recusado",
+      "message": "O acesso foi recusado. Comece de novo."
+    },
+    "sign-in-unavailable": {
+      "title": "Acesso indisponível",
+      "message": "O acesso não está disponível agora. Tente novamente em alguns minutos."
+    },
+    "invalid-options": {
+      "title": "App não configurado",
+      "message": "O licenciamento do app não está configurado corretamente. Contate o desenvolvedor."
+    },
+    "not-configured": {
+      "title": "App não configurado",
+      "message": "O licenciamento do app ainda não está configurado. Contate o desenvolvedor."
+    },
+    "unsupported": {
+      "title": "Indisponível aqui",
+      "message": "Isso não está disponível aqui."
+    },
+    "timeout": {
+      "title": "Tempo esgotado",
+      "message": "O serviço demorou demais para responder. Verifique sua conexão e tente novamente."
+    },
+    "response-too-large": {
+      "title": "Resposta inesperada",
+      "message": "O serviço enviou uma resposta que o app não pôde usar. Tente novamente."
+    },
+    "too-many-redirects": {
+      "title": "Problema de conexão",
+      "message": "A conexão foi redirecionada vezes demais. Tente novamente."
+    },
+    "insecure-redirect": {
+      "title": "Conexão insegura",
+      "message": "O app recusou um redirecionamento inseguro."
+    },
+    "http-error": {
+      "title": "Problema no serviço",
+      "message": "O serviço respondeu com um erro. Tente novamente."
+    },
+    "invalid-response": {
+      "title": "Resposta inesperada",
+      "message": "O serviço enviou uma resposta que o app não pôde usar. Tente novamente."
+    },
+    "store-failed": {
+      "title": "Problema de armazenamento",
+      "message": "O app não conseguiu ler nem salvar a licença neste dispositivo. Verifique se o app pode gravar na pasta de dados dele."
+    },
+    "platform-error": {
+      "title": "Problema na plataforma",
+      "message": "A plataforma informou um erro. Tente novamente."
+    },
+    "no-token": {
+      "title": "Não ativado",
+      "message": "Este dispositivo ainda não está ativado. Ative-o ou entre."
+    },
+    "mint-unavailable": {
+      "title": "Indisponível",
+      "message": "Isso não está disponível para este app."
+    },
+    "feed-rejected": {
+      "title": "Falha na verificação de atualizações",
+      "message": "Não foi possível verificar as informações de atualização, então nada foi instalado."
+    },
+    "feed-rollback": {
+      "title": "Falha na verificação de atualizações",
+      "message": "As informações de atualização eram mais antigas do que as que este dispositivo já tem, então foram recusadas."
+    },
+    "record-rejected": {
+      "title": "Atualização não verificada",
+      "message": "Não foi possível verificar a atualização, então ela não foi instalada."
+    },
+    "record-mismatch": {
+      "title": "Atualização não verificada",
+      "message": "A atualização não corresponde ao que foi publicado, então não foi instalada."
+    },
+    "payload-mismatch": {
+      "title": "Download corrompido",
+      "message": "A atualização não foi baixada corretamente, então não foi instalada. Tente novamente."
+    },
+    "swap-refused": {
+      "title": "Não é possível atualizar aqui",
+      "message": "Esta instalação não pode se atualizar sozinha. Atualize-a da mesma forma que você a instalou."
+    },
+    "swap-failed": {
+      "title": "Atualização não concluída",
+      "message": "Não foi possível aplicar a atualização. Ela será tentada novamente na próxima inicialização."
+    },
+    "files-index-invalid": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "files-unsafe-path": {
+      "title": "Conteúdo recusado",
+      "message": "Parte do conteúdo foi recusada porque contém um caminho de arquivo inseguro."
+    },
+    "files-duplicate-path": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "files-case-collision": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "files-path-conflict": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "files-layout-mismatch": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "content-stamp-invalid": {
+      "title": "Problema na build do app",
+      "message": "As informações de conteúdo desta build não são válidas. Reinstale o app ou contate o desenvolvedor."
+    },
+    "full-corrupt": {
+      "title": "Download corrompido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "delta-artifact-mismatch": {
+      "title": "Download corrompido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "delta-base-mismatch": {
+      "title": "Conteúdo alterado",
+      "message": "O conteúdo instalado mudou neste dispositivo, então é necessário um download completo."
+    },
+    "delta-apply-failed": {
+      "title": "Atualização não aplicada",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "file-corrupt": {
+      "title": "Download corrompido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "file-source-missing": {
+      "title": "Conteúdo ausente",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "payload-hash-mismatch": {
+      "title": "Download corrompido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "chunks-ref-mismatch": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "chunks-bad-length": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "chunks-bad-magic": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "chunks-unsupported-version": {
+      "title": "Conteúdo incompatível",
+      "message": "Este conteúdo requer uma versão mais recente do app. Atualize o app."
+    },
+    "chunks-bad-record-size": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "chunks-bad-flags": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "chunks-reserved-nonzero": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "chunks-zero-length": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "chunks-bad-clen": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "chunks-bad-bundle-ref": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "chunks-bad-bundle-range": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "chunks-size-mismatch": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "chunks-payload-mismatch": {
+      "title": "Conteúdo inválido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "chunk-bundle-truncated": {
+      "title": "Download interrompido",
+      "message": "Um download foi interrompido. Verifique sua conexão e tente novamente."
+    },
+    "chunk-corrupt": {
+      "title": "Download corrompido",
+      "message": "Não foi possível instalar parte do conteúdo. Ele será baixado novamente na próxima vez."
+    },
+    "plan-transport-unsupported": {
+      "title": "Não é possível baixar aqui",
+      "message": "Este conteúdo não pode ser baixado nesta plataforma."
+    },
+    "plan-insufficient-disk": {
+      "title": "Espaço insuficiente",
+      "message": "Não há espaço livre suficiente para este conteúdo. Libere espaço e tente novamente."
+    },
+    "plan-no-strategy": {
+      "title": "Não é possível instalar o conteúdo",
+      "message": "Este conteúdo não pode ser instalado neste dispositivo."
+    },
+    "pack-no-variant": {
+      "title": "Conteúdo indisponível",
+      "message": "Este conteúdo não está disponível para este dispositivo."
+    },
+    "pack-type-unsupported": {
+      "title": "Conteúdo incompatível",
+      "message": "Este conteúdo requer uma versão mais recente do app. Atualize o app."
+    },
+    "pack-type-check-failed": {
+      "title": "Conteúdo inválido",
+      "message": "Parte do conteúdo não passou na verificação e não foi instalada."
+    },
+    "pack-not-pinned": {
+      "title": "Conteúdo indisponível",
+      "message": "Este conteúdo não faz parte desta versão do app."
+    },
+    "pack-not-entitled": {
+      "title": "Não incluído",
+      "message": "Sua licença não inclui este conteúdo."
+    },
+    "pack-state-unreadable": {
+      "title": "Problema de armazenamento",
+      "message": "Não foi possível ler o conteúdo instalado, então nada novo foi instalado. Reinicie o app."
+    },
+    "pck-directory-refused": {
+      "title": "Conteúdo recusado",
+      "message": "Parte do conteúdo foi recusada porque contém arquivos que um pacote de conteúdo não pode ter."
+    },
+    "pck-engine-mismatch": {
+      "title": "Conteúdo incompatível",
+      "message": "Este conteúdo requer outra versão do jogo. Atualize o jogo."
+    },
+    "pack-rolled-back": {
+      "title": "Conteúdo restaurado",
+      "message": "A última atualização de conteúdo não iniciou, então a versão anterior foi restaurada."
+    },
+    "pack-revoked": {
+      "title": "Conteúdo retirado",
+      "message": "Este conteúdo foi retirado pelo desenvolvedor e não pode ser usado."
+    },
+    "pack-not-data-only": {
+      "title": "Conteúdo recusado",
+      "message": "Parte do conteúdo foi recusada porque contém arquivos que um pacote de dados não pode ter."
+    },
+    "marker-rejected": {
+      "title": "Problema na build do app",
+      "message": "O conteúdo integrado desta build não é válido. Reinstale o app ou contate o desenvolvedor."
+    }
+  },
+  "gate": {
+    "ok": {
+      "title": "Licença ativa",
+      "message": "Sua licença está ativa."
+    },
+    "grace": {
+      "title": "Período offline",
+      "message": "Não é possível acessar o serviço de licenciamento. Você pode continuar usando o app até o fim do período de tolerância."
+    },
+    "expired": {
+      "title": "Licença expirada",
+      "message": "Sua licença expirou. Conecte-se à internet ou renove-a para continuar."
+    },
+    "revoked": {
+      "title": "Desconectado",
+      "message": "Este dispositivo foi desconectado. Entre ou ative novamente para continuar."
+    },
+    "needs-activation": {
+      "title": "Ativar",
+      "message": "Digite uma chave de licença ou entre para continuar."
+    },
+    "version-too-old": {
+      "title": "Atualização necessária",
+      "message": "Esta versão não é mais compatível. Atualize o app para continuar."
+    },
+    "version-too-new": {
+      "title": "Indisponível nesta licença",
+      "message": "Esta build é mais recente do que sua licença permite."
+    },
+    "channel-not-entitled": {
+      "title": "Canal não incluído",
+      "message": "Sua licença não inclui este canal de lançamento."
+    },
+    "not-applicable": {
+      "title": "Nenhuma licença necessária",
+      "message": "Este app não precisa de licença."
+    }
+  },
+  "activation": {
+    "ok": {
+      "title": "Ativado",
+      "message": "Sua licença está ativa neste dispositivo."
+    },
+    "device-limit": {
+      "title": "Limite de dispositivos atingido",
+      "message": "Esta licença já está em todos os dispositivos permitidos. Substitua um dispositivo para usá-la aqui."
+    },
+    "fingerprint-required": {
+      "title": "Falha na verificação do dispositivo",
+      "message": "Esta licença exige uma impressão digital de hardware, que não pôde ser lida neste dispositivo."
+    },
+    "hardware-mismatch": {
+      "title": "Dispositivo alterado",
+      "message": "O hardware deste dispositivo mudou. Ative novamente para usar sua licença aqui."
+    },
+    "enroll-claimed": {
+      "title": "Entre para continuar",
+      "message": "A licença gratuita deste dispositivo agora pertence a uma conta. Entre para usá-la."
+    },
+    "license-disabled": {
+      "title": "Licença desativada",
+      "message": "Esta licença foi desativada. Contate o desenvolvedor."
+    },
+    "license-expired": {
+      "title": "Licença expirada",
+      "message": "Esta licença expirou. Renove-a para continuar."
+    },
+    "attestation-required": {
+      "title": "Verificação do dispositivo necessária",
+      "message": "Esta licença exige um dispositivo verificado. Permita que o app verifique este dispositivo e tente novamente."
+    },
+    "rate-limited": {
+      "title": "Tentativas demais",
+      "message": "Tentativas demais. Aguarde um momento e tente novamente."
+    },
+    "unauthorized": {
+      "title": "Chave não aceita",
+      "message": "Essa chave de licença não foi aceita. Verifique-a e tente novamente."
+    },
+    "enroll-disabled": {
+      "title": "Nenhuma licença gratuita",
+      "message": "Este app não oferece licença gratuita. Digite uma chave de licença ou entre."
+    },
+    "refused": {
+      "title": "Ativação recusada",
+      "message": "A ativação foi recusada ({code})."
+    },
+    "error": {
+      "title": "Falha na ativação",
+      "message": "A ativação não foi concluída. Verifique sua conexão e tente novamente."
+    }
+  }
+}
