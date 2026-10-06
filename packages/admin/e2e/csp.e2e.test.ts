@@ -473,7 +473,7 @@ async function open(viewport: {
   width: number;
   height: number;
 }): Promise<Page> {
-  const ctx = await browser.newContext({ viewport });
+  const ctx = await browser.newContext({ viewport, reducedMotion: "reduce" });
   await ctx.addInitScript(() => {
     (window as unknown as { __v: string[] }).__v = [];
     document.addEventListener("securitypolicyviolation", (e) =>
