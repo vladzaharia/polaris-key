@@ -274,7 +274,7 @@ describe("Library on GET /api/library (PX-08)", () => {
       [...document.images].map((i) => new URL(i.src).pathname),
     );
     expect(srcs.every((s) => s.startsWith("/media/"))).toBe(true);
-    expect(o.requests).toContain("GET /media/nightfall/header");
+    expect(o.requests).toContain("GET /media/nightfall/header?v=1");
     await o.page
       .getByRole("navigation", { name: "Main" })
       .getByRole("link", { name: /Library/ })
@@ -505,7 +505,35 @@ describe("main flows", () => {
     await o.close();
   });
 
-  it("opens /activate?key=… as the Library with the modal prefilled", async () => {
+  it("opens /activate#key=… as the Library with the modal prefilled", async () => {
+    const o = await open(
+      "three",
+      "/activate#key=pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w",
+      { width: 390, height: 844 },
+    );
+    const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
+    await dialog.waitFor();
+    expect(
+      await dialog.getByRole("textbox", { name: "License key" }).inputValue(),
+    ).toBe("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w");
+    await dialog.getByText("Filled in from your link").waitFor();
+    expect(await o.page.evaluate(() => location.pathname)).toBe("/");
+    // The fragment is gone from the address bar.
+    await expect
+      .poll(() => o.page.evaluate(() => location.href))
+      .not.toContain("pkey_");
+    await shoot(o.page, "activate-link-mobile-dark");
+    await o.page.keyboard.press("Escape");
+    await h1(o.page, "Your library");
+    // Every request the page made, the document navigation included (a fragment is never sent),
+    // has the key in neither its URL nor its Referer.
+    expect(o.all.length).toBeGreaterThan(1);
+    expect(o.all.filter((r) => r.includes("pkey_"))).toEqual([]);
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("opens a legacy /activate?key=… the same way, and no later request carries the key", async () => {
     const o = await open(
       "three",
       "/activate?key=pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w",
@@ -518,9 +546,21 @@ describe("main flows", () => {
     ).toBe("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w");
     await dialog.getByText("Filled in from your link").waitFor();
     expect(await o.page.evaluate(() => location.pathname)).toBe("/");
-    await shoot(o.page, "activate-link-mobile-dark");
+    // The query is gone from the address bar.
+    await expect
+      .poll(() => o.page.evaluate(() => location.href))
+      .not.toContain("pkey_");
     await o.page.keyboard.press("Escape");
     await h1(o.page, "Your library");
+    // The document navigation is the legacy link itself, so it carries `?key=` by definition:
+    // it is the one request excluded, and only it. Every later request (the shell's own
+    // `/assets/*`, fonts and icons, which start before the rewrite, then the app's API calls)
+    // has the key in neither its URL nor its Referer, because the shell is served with
+    // `Referrer-Policy: no-referrer`.
+    const [navigation, ...later] = o.all;
+    expect(navigation).toMatch(/^GET \S+\/activate\?key=pkey_\S+ referer=$/);
+    expect(later.length).toBeGreaterThan(0);
+    expect(later.filter((r) => r.includes("pkey_"))).toEqual([]);
     expect(await o.violations()).toEqual([]);
     await o.close();
   });

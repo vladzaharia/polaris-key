@@ -65,6 +65,10 @@ const WAITING := "waiting"
 
 ## A stage shows the progress bar once it has run this long (S-04).
 const PROGRESS_AFTER_MSEC := 250
+## The millisecond clock the view's timings read (the progress bar's PROGRESS_AFTER_MSEC and
+## the sync deadline); empty: `Time.get_ticks_msec`. A test hook, as `now_source` is for the
+## SDK: the UI snapshots stop it so a loaded machine's slow frames cannot show the bar (P1-13).
+var clock_msec: Callable = Callable()
 
 ## The logo shown above the status line (built-in TextureRect; null shows none).
 @export var logo: Texture2D = null:
@@ -282,7 +286,7 @@ func send(event: Dictionary) -> bool:
 		if e["type"] == "stage_changed":
 			entered = true
 	if entered:
-		_stage_started = Time.get_ticks_msec()
+		_stage_started = _now_msec()
 		verify_progress = -1.0
 	refresh_view()
 	if entered:
@@ -395,7 +399,7 @@ func _enter(stage: String, _previous: String) -> void:
 			e = await host.guard()
 		"sync":
 			_sync_gen = gen
-			_sync_deadline = Time.get_ticks_msec() + int(_sync_timeout() * 1000.0)
+			_sync_deadline = _now_msec() + int(_sync_timeout() * 1000.0)
 			var force := _retried
 			_retried = false
 			e = await host.sync(force)
@@ -446,7 +450,7 @@ func _on_host_changed() -> void:
 func _process(_delta: float) -> void:
 	if not _running:
 		return
-	if state["stage"] == "sync" and _sync_gen == _gen and Time.get_ticks_msec() >= _sync_deadline:
+	if state["stage"] == "sync" and _sync_gen == _gen and _now_msec() >= _sync_deadline:
 		_sync_gen = -1
 		send({"type": "sync.timeout"})
 	if not _progress.visible and _show_progress():
@@ -460,9 +464,13 @@ func _sync_timeout() -> float:
 	return 20.0 if OS.has_feature("threads") else 45.0
 
 
+func _now_msec() -> int:
+	return int(clock_msec.call()) if clock_msec.is_valid() else Time.get_ticks_msec()
+
+
 func _show_progress() -> bool:
 	var s: String = state["stage"]
-	return s in ["shell", "guard", "sync", "gate", "decide", "fetch", "mount"] and not (s == "gate" and state["outcome"] == WAITING) and Time.get_ticks_msec() - _stage_started >= PROGRESS_AFTER_MSEC
+	return s in ["shell", "guard", "sync", "gate", "decide", "fetch", "mount"] and not (s == "gate" and state["outcome"] == WAITING) and _now_msec() - _stage_started >= PROGRESS_AFTER_MSEC
 
 
 func _stopped() -> void:

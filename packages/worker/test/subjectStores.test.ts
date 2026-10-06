@@ -57,7 +57,7 @@ const NOT_A_SUBJECT_STORE: Record<string, string> = {
   ci_tokens:
     "a CI publisher's OIDC subject (repository identity), not a person",
   license_relinks:
-    "Identity's own relink history (I-12): from_subject and to_subject record which subject a move named, for the console's history and the undo; Identity's merge re-keys and its deletion clears the account ids beside them",
+    "Identity's own relink history (I-12): the console's audit of which subject a licence moved from and to, with its undo window; not a data store",
 };
 
 /** Durable Object classes that are not named by subject. */

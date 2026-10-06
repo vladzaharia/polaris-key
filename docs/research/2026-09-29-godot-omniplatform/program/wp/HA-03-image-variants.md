@@ -44,6 +44,19 @@ Consumers need sized images. Generating them once at ingest bounds the cost, aga
 - Ladder widths are code constants per slot family.
 - Variants inherit the original's slot and are dropped with it.
 
+## Corrections from the code (HA-03, 2026-10-06)
+
+- **The binding was already declared.** HA-01 added `[env.{prod,staging,dev}.images]`
+  (`IMAGES`) to `wrangler.toml` and typed it on `Env`; `env.test` has none. Step 1 needed no
+  change beyond the `Env` comment.
+- **Slot families.** `icon` = `presentation.icon`, `listing.icon`; `header` = `listing.header`;
+  `screenshots` = `listing.screenshot:<1..16>`. A-18 listing slots (`play:icon`, …), notes images,
+  video and release files get no ladder (store-exact art stays with A-18d).
+- **Shape.** `variants_json` entries are `{w, format: "image/webp", sha256, size}`, ascending by
+  `w`. The ladder is all or nothing: any binding error (9422 included), a non-WebP output or a
+  store failure leaves `[]`. A re-ingest of the same bytes reuses its variants (no new
+  transformations), and builds them if it had none.
+
 ## Steps
 
 1. Binding.
@@ -52,9 +65,9 @@ Consumers need sized images. Generating them once at ingest bounds the cost, aga
 
 ## Acceptance criteria
 
-- [ ] A 512 px icon yields the 64, 128, 256 and 512 variants, and no 1024 (test).
-- [ ] With no binding, `variants_json` is `[]` and the ingest succeeds (test).
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] A 512 px icon yields the 64, 128, 256 and 512 variants, and no 1024 (test).
+- [x] With no binding, `variants_json` is `[]` and the ingest succeeds (test).
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 

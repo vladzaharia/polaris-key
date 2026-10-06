@@ -61,7 +61,8 @@ export interface PackageFile {
   readonly md5?: string;
 }
 
-/** One published version of a package. Never deleted: a yank changes `state`. */
+/** One published version of a package. A yank changes `state`; only feed retention deletes one
+ *  (a build of main below a stable release, Release's `packages/prune.ts`). */
 export interface PackageVersion {
   readonly version: string;
   readonly state: "live" | "yanked" | "deprecated";
@@ -280,6 +281,8 @@ async function renderPackage(
     bucket: deps.bucket,
     ...(feed !== undefined ? { feed } : {}),
   });
+  const recordKey = renderRecordKey(pkg.ecosystem, product, deliverableId);
+  const previous = await previousKeys(deps.bucket, recordKey);
   const keys: string[] = [];
   for (const obj of objects) {
     const key = registryObjectKey(pkg.ecosystem, product, obj.key);
@@ -299,15 +302,45 @@ async function renderPackage(
     });
     keys.push(key);
   }
-  await deps.bucket.put(
-    renderRecordKey(pkg.ecosystem, product, deliverableId),
-    JSON.stringify({ stamp, keys }),
-    {
-      httpMetadata: { contentType: "application/json" },
-      customMetadata: { [RENDER_STAMP_META]: stamp },
-    },
-  );
+  await deps.bucket.put(recordKey, JSON.stringify({ stamp, keys }), {
+    httpMetadata: { contentType: "application/json" },
+    customMetadata: { [RENDER_STAMP_META]: stamp },
+  });
+  // A version gone from the rows (feed retention's prune) leaves its per-version documents of
+  // the previous render behind: delete those this render no longer writes. Best effort, after
+  // the record: every read is stamp-checked, so a leftover is never served, only stored.
+  const stale = previous.filter((k) => !keys.includes(k));
+  for (let i = 0; i < stale.length; i += 1000) {
+    try {
+      await deps.bucket.delete(stale.slice(i, i + 1000));
+    } catch {
+      // A leftover is unreachable (no route reads a key the current render does not write); it
+      // only costs storage under the unlocked `registry/` prefix.
+      break;
+    }
+  }
   return { status: "rendered", stamp, keys };
+}
+
+/** The keys the stored render record of a package lists (none when it is missing or unreadable). */
+async function previousKeys(
+  bucket: R2Bucket,
+  recordKey: string,
+): Promise<string[]> {
+  try {
+    const obj = await bucket.get(recordKey);
+    if (!obj) return [];
+    const rec = JSON.parse(await obj.text()) as { keys?: unknown };
+    const prefix = recordKey.slice(0, recordKey.indexOf(".render/"));
+    return Array.isArray(rec.keys)
+      ? rec.keys.filter(
+          (k): k is string =>
+            typeof k === "string" && k.startsWith(prefix) && k !== recordKey,
+        )
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 /** Where one object lives, and the package it belongs to (for render-on-miss). */

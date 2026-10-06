@@ -24,7 +24,7 @@ import {
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
 import { getDevice, setServices, type DeviceRow } from "../src/repo.js";
-import { DEFAULT_SERVICES, serializeServices } from "../src/core/services.js";
+import { serializeServices } from "../src/core/services.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import {
   resolveSyncPrincipal,
@@ -65,12 +65,20 @@ async function world(): Promise<World> {
   env.EMAIL = { send: async () => {} } as unknown as Env["EMAIL"];
   env.PORTAL_EMAIL_FROM = "noreply@key.plrs.im";
   await seedProduct(db, SLUG);
-  // A device binding needs Identity on (PX-W17's bind guard).
+  // PX-W17: a device binding needs the product's Identity service on.
   await setServices(
     db,
     SLUG,
     serializeServices({
-      services: { ...DEFAULT_SERVICES, identity: { enabled: true } },
+      services: {
+        license: { enabled: true },
+        config: { enabled: true },
+        release: { enabled: false },
+        distribution: { enabled: false },
+        update: { enabled: false },
+        identity: { enabled: true },
+        sync: { enabled: false },
+      },
     }),
     "manifest",
     NOW,
@@ -329,13 +337,13 @@ describe("resolveSyncPrincipal: the binding only, never the licence owner", () =
       SLUG,
       serializeServices({
         services: {
-          ...DEFAULT_SERVICES,
           license: { enabled: false },
           config: { enabled: true },
           release: { enabled: false },
           distribution: { enabled: false },
           update: { enabled: false },
           identity: { enabled: true },
+          sync: { enabled: false },
         },
         registration: "open",
       }),
@@ -568,13 +576,13 @@ describe("syncAccess", () => {
       SLUG,
       serializeServices({
         services: {
-          ...DEFAULT_SERVICES,
           license: { enabled: false },
           config: { enabled: true },
           release: { enabled: false },
           distribution: { enabled: false },
           update: { enabled: false },
           identity: { enabled: true },
+          sync: { enabled: false },
         },
       }),
       "manifest",
