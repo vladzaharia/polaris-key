@@ -790,3 +790,11 @@ it from the catalog with
 `pnpm gen:mirrors -- --catalog <catalog.json> --out-dir <mirror-dir>` (and add `--check`
 in product-specific CI) — see `CONTRIBUTING.md`. `--lang` picks the targets (`ts`, `python` and
 `swift` by default, plus `gdscript` for a Godot game's `catalog_generated.gd`).
+
+:::note[Upgrade: mirrors now always carry a user-settings block]
+Since the catalog gained `user` entries and the `cloudSync` block, every generated mirror
+includes the user-settings section even when the catalog declares no user entry (TypeScript
+emits `UserSettingKey = never` and an empty `USER_SETTINGS`; Python, Swift and GDScript emit the
+equivalent empty block). A repository that commits a mirror sees a one-time diff the first time
+it regenerates after upgrading; commit it and `--check` is clean again.
+:::

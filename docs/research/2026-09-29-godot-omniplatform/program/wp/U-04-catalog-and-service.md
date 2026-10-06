@@ -40,7 +40,8 @@ taken with the recommended option, as the lead delegated.
   `mise exec node@22 -- pnpm --filter @polaris-key/tools exec vitest run gen-mirrors.test.ts` (byte-exact per
   language). Mirrors now always carry the user-settings block (`UserSettingKey = never` and an
   empty `USER_SETTINGS` when a catalog declares none), so a downstream repo that commits a mirror
-  sees a one-time diff on upgrade; the release notes for the generator must say so.
+  sees a one-time diff on upgrade. The generator has no changelog of its own, so the upgrade note
+  lives beside the `gen:mirrors` instructions in `build/manifest/authoring.md`.
 - **One implementation of the user-block rules.** Rules shape and 1–5 live once, in
   `@polaris-key/catalog` (`userSettingIssues`, `mergeMembersOverLimit`), called by the manifest
   validator, the Worker's console catalog publish (`PUT …/config/catalog`) and the console's
@@ -68,6 +69,14 @@ taken with the recommended option, as the lead delegated.
   its fetch test covers it.
 - **Kotlin** tests could not run in this environment (no Java runtime); the Kotlin mirror sample
   and tests were changed and need a JDK run.
+- **Fix round 1 (merge with feeds-2).** Main's F-23 and F-31 tests declare six-slug `ServicesMap`
+  literals; both gain `sync: { enabled: false }` (ServicesMap is total over `ServiceSlug`). The
+  publish action bundle is rebuilt, not hand-merged.
+- **Known seams left to U-05** (decided: do not widen this package). The legacy
+  `{schemaVersion, catalog:[…]}` schema form validates a top-level `cloudSync` but
+  `normalizeCatalog` drops it; the admin-API product register (`schema` body) stores `entries`
+  only; and with Config off the schema's `cloudSync` is stored unvalidated. Nothing reads the block
+  before U-05, which must revalidate it on read.
 
 ## Goal
 
