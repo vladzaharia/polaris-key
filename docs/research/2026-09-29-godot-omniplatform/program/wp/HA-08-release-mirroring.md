@@ -102,5 +102,15 @@ mise exec node@22 -- pnpm gen:transcripts -- --check
 
 HA-09 prefers the R2 copy in the portal. HA-15 runs the production backfill.
 
+Left for HA-15 (review, 2026-10-06):
+
+- **A terminal state for permanent refusals.** `digest-mismatch`, `no-digest`, `too-large` and
+  `no-source` are retried with the ordinary back-off, capped at a day, so each such file costs one
+  metadata read a day forever. A terminal `refused` status, cleared when the row's locations or
+  hash change, would end that.
+- **Reclaiming mirrored copies.** Nothing drops a `release-artifact` or `release-file:<sha256>`
+  `hosted-asset` ref yet, so a copy is held indefinitely: drop them for a deleted release and, if
+  wanted, for a product that turned `assets.releases.mirror` off (HA-10).
+
 The role agent sets `--set HA-08 in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set HA-08 done`.

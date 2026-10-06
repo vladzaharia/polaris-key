@@ -1114,7 +1114,7 @@ export async function ingest(
       maxBytes: cls.maxBytes,
       etag: current,
       ...(cls.name === "release-file"
-        ? { timeoutMs: releaseFileTimeoutMs(expectedSize) }
+        ? { releaseFile: true, timeoutMs: releaseFileTimeoutMs(expectedSize) }
         : {}),
       ...(input.allowHost ? { allowHost: input.allowHost } : {}),
       headers: {

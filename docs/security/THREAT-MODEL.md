@@ -6011,9 +6011,13 @@ proxy now fetches through the same guard.
   the front door), never `.local`, `.internal`, `.localhost` or `.home.arpa`. Redirects are
   followed by hand, at most three, and each hop is guarded again **before** it is dialled; an
   `Authorization` header reaches the first hop only, never a `Location`. One 30 s budget covers
-  every hop and the body (a release file's pull, HA-08, gets 30 s plus a second per 10 MiB of the
-  file, at most 10 minutes, `SAFE_FETCH_FILE_TIMEOUT_MS`, inside a queue consumer's 15-minute wall
-  clock); a declared `Content-Length` over the slot's cap is refused unread, and
+  every hop and the body. Only a release file's pull (HA-08) opts in to more (`releaseFile`): 30 s
+  plus a second per 10 MiB of the file, at most 10 minutes per message
+  (`SAFE_FETCH_FILE_TIMEOUT_MS`); every other caller stays clamped at 30 s. A queue batch stays
+  inside the consumer's 15-minute wall clock because `src/assetQueue.ts` runs pulls and ladder
+  retries first and starts no mirror once 4 minutes of the batch are spent
+  (`MIRROR_BATCH_BUDGET_MS`), so a batch ends within about 4 + 10 minutes; a mirror not started is
+  retried after a minute. A declared `Content-Length` over the slot's cap is refused unread, and
   the body is counted and cut at the cap whatever the header said. The Worker resolves nothing
   itself, and the edge dials neither IP literals nor RFC 1918 or loopback space from a Worker, so
   the remaining surface is "public hosts the operator named". **Who can name one:** manifest
@@ -6221,7 +6225,7 @@ to its `locations_json`, so `serveArtifact` serves our bytes first and GitHub st
   locations (`shared-protocol/src/release.ts`), and the feed pins records by hash. Byte URLs on
   `dl` and the console aliases do not change; only the bytes behind them do, and they are
   hash-identical (the R2 answer's `ETag` is the SHA-256 the record pins). `edSignature` and every
-  updater hash stay valid. `gen:corpus` and `gen:transcripts` are unchanged.
+  updater hash stay valid. `gen:corpus` and `gen:transcripts` are unchanged. Filling a synced file's missing `sha256` (from the verified hash) does change unsigned feeds: a release whose file had no recorded hash becomes eligible for the feeds that need one (Scoop, Flathub, winget, AltStore), which then list it.
 - **Verify before promote.** The expected hash is the artifact's recorded `sha256` (the
   descriptor's, or the map's) and GitHub's own `digest` from the asset's metadata; when both exist
   they must agree, or the file is refused `digest-mismatch` before a byte is read. A file with
@@ -6265,7 +6269,10 @@ to its `locations_json`, so `serveArtifact` serves our bytes first and GitHub st
   off for one back-off step; a failure backs off exponentially from 15 minutes to a day. Every
   refusal that needs no bytes (a digest or size disagreement, no digest, too large) is decided
   from metadata before any download, so a file that can never be copied costs one metadata read
-  per back-off step. A pull is time-bounded by its size (above) and capped at 4.995 GiB.
+  per back-off step. A pull is time-bounded by its size, at most 10 minutes per message, and a
+  batch starts no mirror past its 4-minute budget (above); a pull is capped at 4.995 GiB. A
+  repeated "mirror now" skips files whose message is still in flight, so it never downloads a file
+  twice.
 - **Storage cost and the switch.** Owner decision 6 turns mirroring on for every product that
   runs Release; HA-10 adds `assets.releases.mirror` and the `assets.hosting.enabled` kill switch
   (`mirrorSwitch.ts` is the one reader). Copies already made stay valid when it is off: their

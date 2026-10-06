@@ -13058,7 +13058,9 @@ paths:
       description: >
         HA-08 (notes/S-20 §6.3, §6.8). Every file of the product's app releases whose bytes live
         only on GitHub or at an external URL, and that has no `r2` location yet, is queued on
-        `pkey-assets-<env>` at once, whatever its back-off, at most 200 per request. The queue
+        `pkey-assets-<env>` at once, a failed file's back-off or not, at most 200 per request; a
+        file whose message is still in flight is skipped, so a repeated request never downloads a
+        file twice. The queue
         consumer verifies each copy against GitHub's `digest` and the descriptor's `sha256` before
         it appends an `r2` location; a refusal keeps GitHub serving. `queued` is how many were
         sent; `owed` is how many files still owe a copy (the ones just queued included, until

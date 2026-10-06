@@ -1305,14 +1305,19 @@ A truth-store sync (the GitHub `release` webhook), a resync and a descriptor ing
 files that owe a copy to `pkey-assets-<env>`; the request Worker consumes them
 (`services/release/mirror.ts`). A copy is promoted only when its bytes are GitHub's `digest` and
 the descriptor's `sha256`; then an `r2` location is appended to the file's `locations_json`. No
-signed document, feed URL or client changes, so nothing here needs a client release.
+signed document, byte URL or client changes, so nothing here needs a client release. Filling a synced file's missing `sha256` (from the verified hash) does change unsigned feeds: a release whose file had no recorded hash becomes eligible for the feeds that need one (Scoop, Flathub, winget, AltStore), which then list it.
+
+A release file's pull may take up to 10 minutes (30 s plus a second per 10 MiB). The consumer runs
+hosted-asset pulls first and starts no mirror once 4 minutes of a batch are spent, so a batch stays
+inside the 15-minute wall clock; a mirror not started is retried a minute later.
 
 - **Backfill:** the nightly maintenance sweep's `releaseMirrors` step queues at most 100 owed
   files a night, across products, oldest-due first and newest releases first. On the first deploy
   that is the backfill of every existing release (DJDL: 72 files, 2.67 GiB); afterwards it only
   retries failed files once their back-off elapses (15 minutes doubling to a day).
 - **Mirror a product now:** `POST /manage/api/products/<slug>/assets/mirror` queues every file the
-  product still owes at once, back-off or not, at most 200 per request, and answers
+  product still owes at once, a failed file's back-off or not (a file whose message is still in
+  flight is skipped, so repeating the request never downloads twice), at most 200 per request, and answers
   `{queued, owed}`. Repeat until `owed` reaches 0 (`owed` counts the files just queued until their
   messages are delivered). Audited as `assets.mirror`.
 - **What happened to a file:** `release_mirrors` (one row per queued file: `status` `queued`,

@@ -17,13 +17,24 @@ import type { SqliteDb } from "../src/db/sqlite.js";
 import type { Env } from "../src/env.js";
 import type { FetchImpl } from "../src/core/safeFetch.js";
 import { blobKey } from "../src/core/blobs.js";
-import { HOSTED_ASSET_REF } from "../src/core/hostedAssets.js";
+import {
+  HOSTED_ASSET_REF,
+  ingest,
+  releaseFileTimeoutMs,
+  SLOT_CLASSES,
+} from "../src/core/hostedAssets.js";
 import {
   readAssetLadderMessage,
   readAssetPullMessage,
   PULL_BACKOFF_BASE_SECONDS,
+  syncHostedAssets,
 } from "../src/core/hostedAssetPulls.js";
-import { handleAssetQueue } from "../src/assetQueue.js";
+import {
+  SAFE_FETCH_FILE_TIMEOUT_MS,
+  SAFE_FETCH_TIMEOUT_MS,
+  safeFetchTimeoutMs,
+} from "../src/core/safeFetch.js";
+import { handleAssetQueue, MIRROR_BATCH_BUDGET_MS } from "../src/assetQueue.js";
 import { syncReleaseStoreReport } from "../src/services/release/sync.js";
 import { stmtSetArtifactModel } from "../src/services/release/model.js";
 import {
@@ -181,23 +192,32 @@ beforeEach(async () => {
 });
 
 /** Deliver every message sent since `from` to the consumer, as the queue would. */
-async function drain(now = NOW + 10, from = 0) {
-  const bodies = q.sent.slice(from);
+async function drain(
+  now = NOW + 10,
+  from = 0,
+  bodies: unknown[] = q.sent.slice(from),
+  elapsedMs?: () => number,
+) {
   const acked: number[] = [];
-  const retried: number[] = [];
+  const retried: { i: number; delaySeconds?: number }[] = [];
   await handleAssetQueue(
     {
       queue: "pkey-assets-test",
       messages: bodies.map((body, i) => ({
         body,
         ack: () => acked.push(i),
-        retry: () => retried.push(i),
+        retry: (o?: { delaySeconds?: number }) =>
+          retried.push({
+            i,
+            ...(o?.delaySeconds ? { delaySeconds: o.delaySeconds } : {}),
+          }),
       })),
     } as unknown as MessageBatch<unknown>,
     env,
     db,
     gh.fetchImpl,
     () => now,
+    elapsedMs,
   );
   return { bodies, acked, retried };
 }
@@ -617,6 +637,102 @@ describe("release-file mirroring (rules)", () => {
   });
 });
 
+describe("release-file pulls: the redirect rule, the declared length, the budget", () => {
+  it("refuses a GitHub asset whose redirect leaves GitHub's hosts, and stores nothing", async () => {
+    await sync();
+    const inner = gh.fetchImpl;
+    const dialled: string[] = [];
+    gh.fetchImpl = async (input, init) => {
+      const url = typeof input === "string" ? input : input.url;
+      dialled.push(url);
+      const accept = new Headers(init?.headers).get("accept") ?? "";
+      if (
+        url.endsWith("/releases/assets/201") &&
+        accept === "application/octet-stream"
+      )
+        return new Response(null, {
+          status: 302,
+          headers: { location: "https://cdn.evil.example/djdl-arm64" },
+        });
+      return inner(input, init);
+    };
+    expect(await processReleaseMirror(ctx(), msg("v1.1.0", "201"))).toBe(
+      "failed",
+    );
+    expect(await job("v1.1.0", "201")).toMatchObject({
+      error: "guard:not-allowed",
+    });
+    expect(dialled).not.toContain("https://cdn.evil.example/djdl-arm64");
+    expect(r2.has(blobKey(sha256Hex(ASSET_BYTES[201]!)))).toBe(false);
+    expect((await artifact("v1.1.0", "201"))?.locations_json).toBeNull();
+  });
+
+  it("refuses a declared Content-Length other than the expected size without reading the body", async () => {
+    const bytes = ASSET_BYTES[301]!;
+    let pulled = false;
+    const res = await ingest(
+      {
+        env: { BLOBS: asR2(r2) },
+        db,
+        now: NOW,
+        fetchImpl: async () =>
+          new Response(
+            new ReadableStream<Uint8Array>(
+              {
+                pull(c) {
+                  pulled = true;
+                  c.enqueue(bytes);
+                  c.close();
+                },
+              },
+              { highWaterMark: 0 },
+            ),
+            { headers: { "content-length": String(bytes.length + 1) } },
+          ),
+      },
+      SLUG,
+      `release-file:${sha256Hex(bytes)}`,
+      {
+        kind: "pull",
+        url: "https://cdn.example.com/f.zip",
+        origin: "release-mirror",
+        sourceKind: "url",
+        expectedSha256: sha256Hex(bytes),
+        expectedSize: bytes.length,
+      },
+    );
+    expect(res).toEqual({ ok: false, reason: "size-mismatch" });
+    expect(pulled).toBe(false);
+    expect(r2.has(blobKey(sha256Hex(bytes)))).toBe(false);
+  });
+
+  it("scales a release file's budget with its size, clamped at 10 minutes, and only a release file gets past 30 s", () => {
+    const MiB = 1024 * 1024;
+    expect(releaseFileTimeoutMs(0)).toBe(SAFE_FETCH_TIMEOUT_MS);
+    expect(releaseFileTimeoutMs(100 * MiB)).toBe(
+      SAFE_FETCH_TIMEOUT_MS + 10_000,
+    );
+    // R2's 4.995 GiB single put fits under the clamp; anything larger is clamped.
+    expect(
+      releaseFileTimeoutMs(SLOT_CLASSES["release-file"].maxBytes),
+    ).toBeLessThan(SAFE_FETCH_FILE_TIMEOUT_MS);
+    expect(releaseFileTimeoutMs(8 * 1024 * MiB)).toBe(
+      SAFE_FETCH_FILE_TIMEOUT_MS,
+    );
+    expect(releaseFileTimeoutMs(null)).toBe(SAFE_FETCH_FILE_TIMEOUT_MS);
+    expect(SAFE_FETCH_FILE_TIMEOUT_MS).toBe(10 * 60_000);
+    // Every other caller stays clamped at the old maximum.
+    expect(safeFetchTimeoutMs({ timeoutMs: 20 * 60_000 })).toBe(
+      SAFE_FETCH_TIMEOUT_MS,
+    );
+    expect(
+      safeFetchTimeoutMs({ timeoutMs: 20 * 60_000, releaseFile: true }),
+    ).toBe(SAFE_FETCH_FILE_TIMEOUT_MS);
+    expect(safeFetchTimeoutMs({ timeoutMs: 5_000 })).toBe(5_000);
+    expect(safeFetchTimeoutMs({})).toBe(SAFE_FETCH_TIMEOUT_MS);
+  });
+});
+
 describe("the legacy download prefers the copy", () => {
   it("serves /dl/<version>/<binary>-<arch> from R2 once the asset's digest has a copy, keeping the route's type and cache", async () => {
     await sync();
@@ -683,11 +799,14 @@ describe("backfill and the operator's action", () => {
     expect(await backfillReleaseMirrors(env, db, NOW + 86_400)).toBe(0);
   });
 
-  it("POST …/assets/mirror queues every owed file now, back-off or not, and is audited", async () => {
-    delete env.HOSTED_ASSET_QUEUE;
+  it("POST …/assets/mirror queues every owed file now, back-off or not, never one in flight, and is audited", async () => {
     await sync();
-    env.HOSTED_ASSET_QUEUE = q.queue;
-    await backfillReleaseMirrors(env, db, NOW);
+    // Every first try fails (corrupted bytes): each file is now held off by its back-off.
+    for (const id of [101, 102, 201, 202])
+      gh.corrupt.set(id, new Uint8Array(ASSET_BYTES[id]!.length));
+    await drain(NOW + 10);
+    gh.corrupt.clear();
+    expect(await job("v1.1.0", "201")).toMatchObject({ status: "failed" });
     const { token, session } = await issueSession(
       env,
       {
@@ -711,19 +830,26 @@ describe("backfill and the operator's action", () => {
         env,
         db,
         path,
-        { now: NOW + 5 },
+        { now: NOW + 20 },
       );
+    const sent = q.sent.length;
     const res = await post();
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ queued: 4, owed: 4 });
+    expect(q.sent.length - sent).toBe(4);
     expect(
       await db.first(
         "SELECT actor_sub, action FROM audit WHERE product = ? AND action = 'assets.mirror'",
         SLUG,
       ),
     ).toEqual({ actor_sub: "u1", action: "assets.mirror" });
-    expect((await post("GET")).status).toBe(405);
 
+    // Repeated while those messages are in flight: nothing is queued (and downloaded) twice.
+    const again = await post();
+    expect(await again.json()).toEqual({ queued: 0, owed: 4 });
+    expect(q.sent.length - sent).toBe(4);
+
+    expect((await post("GET")).status).toBe(405);
     delete env.HOSTED_ASSET_QUEUE;
     expect((await post()).status).toBe(503);
   });
@@ -745,6 +871,51 @@ describe("queue messages", () => {
       { ...good, reason: "whenever" },
     ])
       expect(readReleaseMirrorMessage(bad)).toBeNull();
+  });
+
+  it("a [mirror, pull] batch processes and acks the pull first", async () => {
+    await sync();
+    const mirror = q.sent[0]!;
+    const icon = new Uint8Array(4_000);
+    icon.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+    const iconUrl = "https://cdn.example.com/icon.png";
+    gh.external.set(iconUrl, icon);
+    await syncHostedAssets(env, db, {
+      product: SLUG,
+      manifest: { presentation: { icon: { kind: "url", src: iconUrl } } },
+      commit: null,
+      now: NOW,
+    });
+    const pull = q.sent.at(-1)!;
+    expect(readAssetPullMessage(pull)).not.toBeNull();
+    const { acked, retried } = await drain(NOW + 10, 0, [mirror, pull]);
+    expect(acked).toEqual([1, 0]);
+    expect(retried).toEqual([]);
+  });
+
+  it("starts no mirror once the batch budget is spent: the rest are retried, not started", async () => {
+    await sync();
+    const [first, second] = q.sent as [unknown, unknown];
+    const firstId = readReleaseMirrorMessage(first)!;
+    const secondId = readReleaseMirrorMessage(second)!;
+    let calls = 0;
+    gh.calls.storage.length = 0;
+    const { acked, retried } = await drain(NOW + 10, 0, [first, second], () =>
+      calls++ === 0 ? 0 : MIRROR_BATCH_BUDGET_MS,
+    );
+    expect(acked).toEqual([0]);
+    expect(retried).toEqual([{ i: 1, delaySeconds: 60 }]);
+    expect(gh.calls.storage).toHaveLength(1);
+    expect(
+      (await artifact(firstId.releaseId, firstId.artifactId))?.locations_json,
+    ).not.toBeNull();
+    expect(
+      (await artifact(secondId.releaseId, secondId.artifactId))?.locations_json,
+    ).toBeNull();
+    // Its hold still covers it: the backfill queues it again once the hold elapses.
+    expect(await job(secondId.releaseId, secondId.artifactId)).toMatchObject({
+      status: "queued",
+    });
   });
 
   it("the consumer acks refusals and retries an unexpected throw", async () => {

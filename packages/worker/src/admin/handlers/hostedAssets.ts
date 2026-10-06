@@ -7,8 +7,9 @@
  *        `stale` with the reason code) and whether a newer manifest ref is still being pulled.
  *        HA-06 adds the upload, Refresh and Revert actions beside it.
  *   POST /manage/api/products/<slug>/assets/mirror   the operator's "mirror now" (HA-08): every
- *        release file that still owes a copy of ours is queued at once, back-off or not, at most
- *        `MIRROR_OPERATOR_MAX_PER_RUN` per request (`services/release/mirror.ts`). Answers how many
+ *        release file that still owes a copy of ours is queued at once, a failed file's back-off or
+ *        not (a file whose message is in flight is skipped), at most `MIRROR_OPERATOR_MAX_PER_RUN`
+ *        per request (`services/release/mirror.ts`). Answers how many
  *        were queued and how many still owe one; audited as `assets.mirror`.
  *
  * CORE, like `activity`: a product has hosted assets whether or not it runs Distribution

@@ -588,12 +588,15 @@ export function releaseAssetUrl(
 
 /** An asset's metadata is a few hundred bytes of JSON; this bounds a pathological answer. */
 const MAX_ASSET_METADATA_BYTES = 64 * 1024;
+/** The budget of one metadata read: the headers and the body. */
+export const ASSET_METADATA_TIMEOUT_MS = 30_000;
 
 /**
  * One release asset's metadata (`GET /repos/{o}/{r}/releases/assets/{id}`, JSON): its name, size
  * and GitHub's own `digest` of the bytes (HA-08 verifies a mirrored copy against it). `null` on
  * 404 (the asset was deleted), `NotFoundError` on any other refusal or an answer that is not an
- * asset, `UpstreamRateLimitedError` on quota.
+ * asset, `UpstreamRateLimitedError` on quota. Bounded by `ASSET_METADATA_TIMEOUT_MS` (a timeout
+ * throws, and the caller records it as a failed lookup).
  */
 export async function getReleaseAsset(
   token: string,
@@ -605,6 +608,7 @@ export async function getReleaseAsset(
   const res = await fetchImpl(releaseAssetUrl(owner, repo, assetId), {
     headers: apiHeaders(token, "application/vnd.github+json"),
     redirect: "manual",
+    signal: AbortSignal.timeout(ASSET_METADATA_TIMEOUT_MS),
   });
   throwIfRateLimited(res);
   if (res.status === 404) {

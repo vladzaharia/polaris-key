@@ -49,8 +49,10 @@
  * - Possession (THREAT-MODEL §3): the `release-artifact` ref is earned only in the batch that
  *   finds this product holding the key, which `ingest` has just proven by reading and hashing
  *   every byte. Whether another product stored the same bytes is never consulted.
- * - Blob GC: neither ref kind is ever dropped by the collector (`core/blobGc.ts`). The copy is
- *   held for as long as the artifact row's location names it.
+ * - Blob GC: neither ref kind is ever dropped by the collector (`core/blobGc.ts`), and nothing
+ *   else drops them yet, so a copy is held until reclaiming lands (HA-15: the refs of a deleted
+ *   release, or of a product that turned mirroring off). Holding too long costs storage; it can
+ *   never serve bytes that are not the file's, since every location is hash-pinned.
  * - Never on an end user's request (owner decision 3), and never failing the sync, resync or
  *   publish that triggered it: enqueueing is best-effort and swallows every failure.
  * - `releaseMirrorEnabled` (`mirrorSwitch.ts`) is asked first everywhere: HA-10's
@@ -168,7 +170,10 @@ interface OwedRow {
   artifact_id: string;
 }
 
-/** The owed files, oldest-due first, then the newest releases first. */
+/**
+ * The owed files, oldest-due first, then the newest releases first. `force` ignores a failed
+ * file's back-off, never the hold of a file whose message is still in flight.
+ */
 async function owedFiles(
   db: Db,
   now: number,
@@ -182,6 +187,12 @@ async function owedFiles(
   }
   if (!opts.force) {
     where += " AND (j.next_attempt_at IS NULL OR j.next_attempt_at <= ?)";
+    params.push(now);
+  } else {
+    // Back-off or not, but never a file whose message is still in flight: a second "mirror now"
+    // must not download the same file twice.
+    where +=
+      " AND NOT (COALESCE(j.status, '') = 'queued' AND COALESCE(j.next_attempt_at, 0) > ?)";
     params.push(now);
   }
   return db.all<OwedRow>(
@@ -401,8 +412,10 @@ export type MirrorNowResult =
 
 /**
  * The operator's "mirror now" (`POST /manage/api/products/<slug>/assets/mirror`): every owed copy
- * of `product`, back-off or not, at most `MIRROR_OPERATOR_MAX_PER_RUN`. `owed` is how many files
- * still owe a copy before this run's messages are delivered, so a caller can show progress.
+ * of `product`, a failed file's back-off or not, at most `MIRROR_OPERATOR_MAX_PER_RUN`. A file whose
+ * message is still in flight (queued, its hold not elapsed) is skipped, so repeating the request
+ * never downloads a file twice. `owed` is how many files still owe a copy before this run's
+ * messages are delivered, so a caller can show progress.
  */
 export async function mirrorNow(
   env: QueueEnv,
