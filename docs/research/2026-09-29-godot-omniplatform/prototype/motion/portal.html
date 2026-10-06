@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>S-23 motion prototype: customer portal</title>
+    <link
+      rel="stylesheet"
+      href="../../../../../packages/brand/fonts/fonts.css"
+    />
+    <link
+      rel="stylesheet"
+      href="../../../../../packages/brand/css/tokens.css"
+    />
+    <link rel="stylesheet" href="motion.css" />
+    <link rel="stylesheet" href="proto.css" />
+    <link rel="stylesheet" href="portal.css" />
+    <script type="module" src="portal.js"></script>
+  </head>
+  <body>
+    <header class="top">
+      <a class="brand" href="#/" data-nav="library">
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+          <path
+            d="M12 1.5l2.6 7.9L22.5 12l-7.9 2.6L12 22.5l-2.6-7.9L1.5 12l7.9-2.6z"
+          />
+        </svg>
+        Polaris Key
+      </a>
+      <nav class="tabs" aria-label="Main">
+        <a href="#/" data-nav="library" aria-current="page"
+          >Library <span class="count">3</span><b class="pk-vt-indicator"></b
+        ></a>
+        <a href="#/discover" data-nav="discover"
+          >Discover <span class="count">4</span></a
+        >
+      </nav>
+      <button class="btn pk-pressable" id="activate-open" type="button">
+        Activate license
+      </button>
+      <span class="avatar" aria-label="Mara Fennick">MF</span>
+    </header>
+
+    <main id="view" class="pk-vt-main" tabindex="-1"></main>
+
+    <div id="overlay" class="overlay pk-overlay" hidden></div>
+    <div
+      id="dialog"
+      class="dialog pk-transient pk-sheet pk-vt-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="dlg-title"
+      hidden
+    ></div>
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+
+    <div class="proto-bar" role="group" aria-label="Prototype controls">
+      <button class="btn" id="t-theme" type="button">Theme</button>
+      <button class="btn" id="t-motion" type="button" aria-pressed="false">
+        Reduce motion
+      </button>
+      <button class="btn" id="t-replay" type="button">Replay</button>
+    </div>
+  </body>
+</html>

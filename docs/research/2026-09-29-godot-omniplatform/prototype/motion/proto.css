@@ -1,0 +1,321 @@
+/* S-23 prototype chrome: just enough of the portal and console to show the motion. Colours, type,
+   radii and elevation come from the real brand tokens (packages/brand/css/tokens.css). */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--pk-surface-page);
+  color: var(--pk-text-default);
+  font-family: var(--pk-font-sans);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+button {
+  font: inherit;
+  color: inherit;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+:focus-visible {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+[hidden] {
+  display: none !important;
+}
+h1,
+h2,
+h3 {
+  color: var(--pk-text-strong);
+  margin: 0;
+  line-height: 1.15;
+}
+.muted {
+  color: var(--pk-text-muted);
+}
+.mono {
+  font-family: var(--pk-font-mono);
+  font-size: 13px;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--pk-radius-md);
+  border: 1px solid var(--pk-border-strong);
+  background: transparent;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+.btn:hover {
+  background: var(--pk-surface-overlay);
+}
+.btn.primary {
+  background: var(--pk-accent);
+  border-color: var(--pk-accent);
+  color: var(--pk-accent-on);
+}
+.btn.primary:hover {
+  background: color-mix(in oklab, var(--pk-accent) 88%, white);
+}
+.btn.danger {
+  background: var(--pk-danger);
+  border-color: var(--pk-danger);
+  color: var(--pk-danger-on);
+}
+.btn.ghost {
+  border-color: transparent;
+}
+.btn.sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+
+/* Proto toolbar (theme, motion, replay) */
+.proto-bar {
+  position: fixed;
+  z-index: 90;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface-overlay);
+  border: 1px solid var(--pk-border-subtle);
+  box-shadow: var(--pk-elevation-2);
+  font-size: 12px;
+}
+.proto-bar .btn {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+/* Pills */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--pk-radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--pk-border-subtle);
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-muted);
+  white-space: nowrap;
+}
+.pill.ok {
+  background: var(--pk-success-subtle);
+  color: var(--pk-success);
+  border-color: var(--pk-success-border);
+}
+.pill.bad {
+  background: var(--pk-danger-subtle);
+  color: var(--pk-danger);
+  border-color: var(--pk-danger-border);
+}
+.pill.warn {
+  background: var(--pk-warning-subtle);
+  color: var(--pk-warning);
+  border-color: var(--pk-warning-border);
+}
+.pill i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* Cards */
+.card {
+  background: var(--pk-surface-raised);
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-lg);
+  box-shadow: var(--pk-elevation-1);
+}
+
+/* Overlays */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgb(6 9 18 / 0.55);
+}
+.dialog {
+  position: fixed;
+  z-index: 51;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: min(30rem, calc(100vw - 32px));
+  padding: 24px;
+  background: var(--pk-surface-overlay);
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-xl);
+  box-shadow: var(--pk-elevation-3);
+}
+@media (max-width: 639px) {
+  .dialog.pk-sheet {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    translate: none;
+    width: 100%;
+    border-radius: var(--pk-radius-xl) var(--pk-radius-xl) 0 0;
+  }
+}
+.dialog h2 {
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+.dialog .actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+.field {
+  display: block;
+  width: 100%;
+  height: 44px;
+  margin-top: 14px;
+  padding: 0 12px;
+  border-radius: var(--pk-radius-md);
+  border: 1px solid var(--pk-border-strong);
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-strong);
+  font-family: var(--pk-font-mono);
+  font-size: 14px;
+}
+.drawer {
+  position: fixed;
+  z-index: 51;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(32rem, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--pk-surface-raised);
+  border-left: 1px solid var(--pk-border-subtle);
+  box-shadow: var(--pk-elevation-3);
+}
+.drawer header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--pk-border-subtle);
+}
+.drawer .body {
+  flex: 1;
+  padding: 20px 24px;
+  overflow: auto;
+}
+.drawer footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--pk-border-subtle);
+}
+.facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 24px;
+  margin: 0 0 20px;
+}
+.facts dt {
+  font-size: 12px;
+  color: var(--pk-text-muted);
+}
+.facts dd {
+  margin: 2px 0 0;
+}
+
+/* Toasts */
+.toasts {
+  position: fixed;
+  z-index: 80;
+  right: 20px;
+  bottom: 20px;
+  display: grid;
+  gap: 8px;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 280px;
+  padding: 12px 14px;
+  border-radius: var(--pk-radius-lg);
+  background: var(--pk-surface-overlay);
+  border: 1px solid var(--pk-border-subtle);
+  box-shadow: var(--pk-elevation-3);
+  font-size: 14px;
+}
+.toast .ok {
+  color: var(--pk-success);
+}
+.toast .btn {
+  margin-left: auto;
+}
+
+/* Palette */
+.palette {
+  position: fixed;
+  z-index: 51;
+  left: 50%;
+  top: 14vh;
+  translate: -50% 0;
+  width: min(36rem, calc(100vw - 32px));
+  background: var(--pk-surface-overlay);
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-xl);
+  box-shadow: var(--pk-elevation-3);
+  overflow: hidden;
+}
+.palette input {
+  width: 100%;
+  height: 52px;
+  padding: 0 18px;
+  border: 0;
+  border-bottom: 1px solid var(--pk-border-subtle);
+  background: transparent;
+  color: var(--pk-text-strong);
+  font: inherit;
+  font-size: 16px;
+}
+.palette ul {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+}
+.palette li {
+  padding: 10px 12px;
+  border-radius: var(--pk-radius-md);
+  font-size: 14px;
+}
+.palette li[aria-selected="true"] {
+  background: var(--pk-accent-subtle);
+  color: var(--pk-text-strong);
+}
