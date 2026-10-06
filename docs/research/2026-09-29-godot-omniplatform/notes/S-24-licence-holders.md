@@ -684,6 +684,8 @@ the corpus.
 
 - **Not measured:** the D1 cost of a 500-licence batch (two statements per licence plus audit) and
   of the creation-time association query; LX-28 and LX-26 test both on the emulator.
+  LX-28 (2026-10-06): a batch is four D1 statements whatever the count (the licences and the keys
+  each one `INSERT … SELECT … FROM json_each(?)`), measured at 500 on the emulator; the cap stays 500.
 - **Not built:** the console wizard's step components assume UX-50's `ui/wizard` and MO-02's layer;
   if UX-50 has not merged when LX-29 starts, LX-29 builds on the drawer and stepper the setup
   mockups use and adopts `ui/wizard` when it lands.

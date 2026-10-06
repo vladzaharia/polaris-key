@@ -62,6 +62,29 @@ key}]}` with `Cache-Control: no-store`. Every licence is floating (`name` and `e
   lower the cap and record the measured limit in the brief and the note.
 - Labels are not unique.
 
+## Corrections from the code (recorded by the builder, 2026-10-06)
+
+- **Measured: 500 holds.** The create is one D1 batch of **four** statements whatever the count
+  (the batch row; the licences and the keys each as one `INSERT … SELECT … FROM json_each(?)`;
+  the audit row), not two statements per licence, which would pass 1,000 statements at 500 and
+  meet D1's per-invocation query limit. Measured at 500 on the emulator
+  (`test-workerd/licenseBatches.test.ts`: commit, rollback on an injected failure, activation,
+  disable-unused); the cap stays 500.
+- **`batchId` on licence reads and `?batch=` on the list** are built here. S-24 §6.3 lists them
+  under LX-26, which predates the column; LX-29's **Open batch** and LX-30's Batch filter need
+  them.
+- **"Used"** is computed, with no new column: a `devices` row names the licence (any status), or
+  one of its keys has `keys_index.last_used_at` (stamped by an activation or a browser key
+  session, kept when the device later moves to another licence). A key added to an account in
+  the portal without an activation counts as unused.
+- **Answer and read shapes, additive:** the create answer also carries `batch` (the batch read)
+  and `expiresAt` (every licence's computed expiry, for the CSV); batch reads carry `unused`
+  (what Disable unused keys would disable) and `disabled` beside `used`. `name`, `email` and
+  `profiles` are refused (`422`) rather than dropped; profiles on a batch are a follow-up if
+  LX-29 needs them.
+- **Migrations** are `00XX_a_license_batches.sql`, `00XX_b_licenses_batch_id.sql` and
+  `00XX_c_licenses_batch_index.sql` (the lead numbers them); `LATEST_MIGRATION` names the `c` file.
+
 ## Steps
 
 1. Migrations and repo functions.
@@ -70,9 +93,9 @@ key}]}` with `Cache-Control: no-store`. Every licence is floating (`name` and `e
 
 ## Acceptance criteria
 
-- [ ] A 500-key batch commits atomically and every key activates once (test); 501 is refused.
-- [ ] The response is `no-store`, and no plaintext key is persisted (test reads the tables).
-- [ ] `used` counts licences that ever bound a device; disable-unused touches only the others
+- [x] A 500-key batch commits atomically and every key activates once (test); 501 is refused.
+- [x] The response is `no-store`, and no plaintext key is persisted (test reads the tables).
+- [x] `used` counts licences that ever bound a device; disable-unused touches only the others
       (tests).
 - [ ] The green gate passes (AGENTS.md), including the migration, OpenAPI and `routeCoverage`.
 
