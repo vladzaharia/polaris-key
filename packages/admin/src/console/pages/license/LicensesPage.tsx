@@ -178,10 +178,7 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           const seats = seatLimitOf(l, tiers, product?.defaultDeviceLimit);
           const limit = seats.limit;
           return (
-            <div
-              className="ml-auto w-28 text-right"
-              title={seatLimitText(seats)}
-            >
+            <div className="ml-auto w-28" title={seatLimitText(seats)}>
               {limit === null ? (
                 <span className="tabular-nums">{l.deviceCount}/—</span>
               ) : (
