@@ -1015,6 +1015,115 @@ paths:
                     error: { code: attestation_unavailable }
                     message: Play Integrity answered 500
 
+  /{product}/assets:
+    post:
+      operationId: ciPushHostedAssets
+      tags: [core]
+      summary: Host files CI pushes into presentation and listing slots (CI)
+      description: >
+        HA-06 (notes/S-20 §6.3 "Push from CI"). `pkey assets push` and the publish Action's
+        `assets` input send files that are not on the web (an icon, a header, screenshots, a
+        listing image slot) and Polaris Key hosts a copy. `{ticket?, assets: [{slot, locale?,
+        sha256, size}]}`: 1 to 32 entries, no slot twice in one locale. A slot is
+        `presentation.icon`, `listing.icon`, `listing.header`, `listing.screenshot:<1-16>` or a
+        listing-model image slot (`icon-master`, `play:feature-graphic`,
+        `<store>:screenshot:<class>:<n>`, …); never a pack, the trailer, a release file or a
+        notes image (`unknown_slot`). Each object comes from the caller's own upload `ticket`
+        (P2-02's uploads route accepts `assets:write`), staged at
+        `staging/<product>/<ticketId>/<sha256>`, or is one this product already hosts; either
+        way every byte is read, capped (icon slots 10 MiB, the rest 20 MiB), sniffed (PNG, JPEG,
+        WebP, GIF or AVIF; never SVG) and hashed against `sha256`. Precedence: a console upload
+        claims its slot, then the manifest's source, then CI, so a slot the console claimed or a
+        manifest declares is answered in `kept` and left as it is. A refused file is answered in
+        `refused` with its reason and changes nothing (`retry` is transient). A listing-model
+        slot is also written into the shared listing model with `source = import`. Audited as
+        `assets.push` (and `assets.ingest` per file). Requires a `pkeyci_` token with
+        `assets:write` (opt-in). No CORS. Errors are LEGACY FLAT with a `reason`: `bad_assets`,
+        `unknown_slot`, `object_not_in_ticket`, `staged_object_missing`,
+        `staged_object_mismatch`, `ticket_redeemed`, `bad_body` (400); `invalid_ticket`,
+        `ticket_expired` (403); `no_blob_store` (404).
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assets]
+              properties:
+                ticket:
+                  {
+                    type: string,
+                    description: "A `pkeyup_` ticket; needed when any object is not one the product already hosts.",
+                  }
+                assets:
+                  type: array
+                  minItems: 1
+                  maxItems: 32
+                  items:
+                    type: object
+                    required: [slot, sha256, size]
+                    properties:
+                      slot: { type: string }
+                      locale:
+                        {
+                          type: [string, "null"],
+                          description: "A language tag; omitted or `''` is every locale.",
+                        }
+                      sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+                      size: { type: integer, minimum: 1, maximum: 20971520 }
+      responses:
+        "200":
+          description: Every file's outcome. `ok` is false when any file was refused.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, stored, kept, refused]
+                properties:
+                  ok: { type: boolean }
+                  stored:
+                    type: array
+                    items:
+                      type: object
+                      required: [slot, locale, sha256, size, contentType]
+                      properties:
+                        slot: { type: string }
+                        locale: { type: string }
+                        sha256: { type: string }
+                        size: { type: integer }
+                        contentType: { type: string }
+                        width: { type: [integer, "null"] }
+                        height: { type: [integer, "null"] }
+                  kept:
+                    type: array
+                    items:
+                      type: object
+                      required: [slot, locale, reason]
+                      properties:
+                        slot: { type: string }
+                        locale: { type: string }
+                        reason: { type: string, enum: [console, manifest] }
+                  refused:
+                    type: array
+                    items:
+                      type: object
+                      required: [slot, locale, reason]
+                      properties:
+                        slot: { type: string }
+                        locale: { type: string }
+                        reason:
+                          {
+                            type: string,
+                            description: "`not-an-image`, `too-large`, `sha256-mismatch`, `size-mismatch`, `retry`, …",
+                          }
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+
   # ── license ───────────────────────────────────────────────────────────────────
   /{product}/license/activate:
     post:
@@ -13033,8 +13142,10 @@ paths:
         its status: `pending` (nothing served yet), `ready`, `failed` (the last pull was refused,
         `error` names why) or `stale` (the source is gone; the last good copy keeps serving).
         `wanted` is what the manifest declares for the slot now, and `pullPending` says a pull of
-        it is still owed, with `attempts` and `nextAttemptAt` for the back-off. Read-only; platform
-        admins only; admin session cookie.
+        it is still owed, with `attempts` and `nextAttemptAt` for the back-off. HA-06 adds
+        `sizesPending` (a ready copy still owes its WebP size ladder while the Images binding is
+        bound), `widths`, the image-host URLs `url` and `previewUrl`, `uploadable` and `maxBytes`;
+        the writes are `…/assets/{slot}`. Platform admins only; admin session cookie.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
       responses:
@@ -13047,6 +13158,121 @@ paths:
         "403": { $ref: "#/components/responses/AdminForbidden" }
         "404":
           description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/assets/{slot}:
+    post:
+      operationId: uploadAdminHostedAsset
+      tags: [admin]
+      summary: Upload a file into a hosted-asset slot (the console claims the slot)
+      description: >
+        HA-06 (notes/S-20 §6.3 "Upload in the console", owner decision 11). The request body is
+        the file itself, with its `Content-Length`; its `Content-Type` is ignored, because the type
+        is sniffed (PNG, JPEG, WebP, GIF or AVIF; never SVG). `slot` is URL-encoded:
+        `presentation.icon`, `listing.icon`, `listing.header`, `listing.screenshot:<1-16>` or a
+        listing-model image slot. The upload CLAIMS the slot: a resync records what the manifest
+        wants and pulls nothing, a pull in flight yields, and a CI push is answered `kept`, until
+        Revert (`DELETE`). A declared length over the slot's cap (icon slots 10 MiB, the rest
+        20 MiB) is refused before a byte is read; a refused file changes nothing on the slot. A
+        listing-model slot is also written into the shared listing model with `source = admin`.
+        Audited as `assets.ingest`. Platform admins only; admin session cookie and `X-PKey-CSRF`.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: slot, in: path, required: true, schema: { type: string } }
+        - {
+            name: locale,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "A language tag; omitted is every locale.",
+          }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "200":
+          description: The slot's row after the upload.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [asset]
+                properties:
+                  asset: { $ref: "#/components/schemas/AdminHostedAsset" }
+        "400":
+          description: "Not an uploadable slot (`bad_slot`) or locale (`bad_locale`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: "No such product, or no blob store here (`no_blob_store`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "411":
+          description: "No body, or no `Content-Length` (`length_required`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "413":
+          description: "The declared length is over the slot's cap (`too_large`, with `maxBytes`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: >
+            The file was refused (`asset_refused`, with `reason`: `not-an-image`, `too-large`,
+            `size-mismatch`, `retry`, …). The slot is unchanged.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+    delete:
+      operationId: releaseAdminHostedAsset
+      tags: [admin]
+      summary: Revert a console upload to the manifest, or delete a hosted copy
+      description: >
+        HA-06. For a slot the console claimed whose source a manifest still declares: Revert. The
+        console's copy is deleted now, the slot returns to the manifest with no copy served, and
+        the manifest's source is pulled again (`pulling` says the pull was queued). For any other
+        slot: delete-a-copy. The copy and its row are dropped, so the image host stops serving it
+        at once; a slot a manifest declares is pulled again at the next resync. A listing-model
+        slot also loses its listing row when that row holds the same bytes. Polaris Key never
+        touches the developer's source. Audited as `assets.revert` or `assets.delete`. Platform
+        admins only; admin session cookie and `X-PKey-CSRF`.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: slot, in: path, required: true, schema: { type: string } }
+        - { name: locale, in: query, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: What happened.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [outcome, pulling]
+                    properties:
+                      outcome: { type: string, const: reverted }
+                      pulling: { type: boolean }
+                  - type: object
+                    required: [outcome]
+                    properties:
+                      outcome: { type: string, const: deleted }
+        "400":
+          description: "Not an uploadable slot (`bad_slot`) or locale (`bad_locale`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product, or nothing hosted in the slot.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -15557,49 +15783,79 @@ components:
       properties:
         assets:
           type: array
-          items:
-            type: object
-            required:
-              [
-                slot,
-                locale,
-                origin,
-                sourceKind,
-                status,
-                modifiedAt,
-                pullPending,
-                attempts,
-              ]
-            properties:
-              slot: { type: string }
-              locale: { type: string, description: "`''` is every locale." }
-              origin:
-                { type: string, enum: [manifest, console, ci, release-mirror] }
-              sourceKind:
-                { type: string, enum: [url, repo, upload, ci, github-asset] }
-              sourceRef:
-                {
-                  type: [string, "null"],
-                  description: "The URL, `<path>@<commit>`, or the GitHub asset id.",
-                }
-              status: { type: string, enum: [pending, ready, failed, stale] }
-              error: { type: [string, "null"] }
-              sha256: { type: [string, "null"] }
-              size: { type: [integer, "null"] }
-              contentType: { type: [string, "null"] }
-              width: { type: [integer, "null"] }
-              height: { type: [integer, "null"] }
-              checkedAt: { type: [integer, "null"] }
-              modifiedAt: { type: integer }
-              wanted:
-                type: [object, "null"]
-                properties:
-                  kind: { type: string, enum: [url, repo] }
-                  src: { type: string }
-                  sha256: { type: string }
-              pullPending: { type: boolean }
-              attempts: { type: integer }
-              nextAttemptAt: { type: [integer, "null"] }
+          items: { $ref: "#/components/schemas/AdminHostedAsset" }
+    AdminHostedAsset:
+      type: object
+      required:
+        [
+          slot,
+          locale,
+          origin,
+          sourceKind,
+          status,
+          modifiedAt,
+          pullPending,
+          attempts,
+          sizesPending,
+          widths,
+          uploadable,
+        ]
+      properties:
+        slot: { type: string }
+        locale: { type: string, description: "`''` is every locale." }
+        origin: { type: string, enum: [manifest, console, ci, release-mirror] }
+        sourceKind:
+          { type: string, enum: [url, repo, upload, ci, github-asset] }
+        sourceRef:
+          {
+            type: [string, "null"],
+            description: "The URL, `<path>@<commit>`, or the GitHub asset id.",
+          }
+        status: { type: string, enum: [pending, ready, failed, stale] }
+        error: { type: [string, "null"] }
+        sha256: { type: [string, "null"] }
+        size: { type: [integer, "null"] }
+        contentType: { type: [string, "null"] }
+        width: { type: [integer, "null"] }
+        height: { type: [integer, "null"] }
+        checkedAt: { type: [integer, "null"] }
+        modifiedAt: { type: integer }
+        wanted:
+          type: [object, "null"]
+          properties:
+            kind: { type: string, enum: [url, repo] }
+            src: { type: string }
+            sha256: { type: string }
+        pullPending: { type: boolean }
+        attempts: { type: integer }
+        nextAttemptAt: { type: [integer, "null"] }
+        sizesPending:
+          {
+            type: boolean,
+            description: "A ready copy still owes its WebP size ladder (retried while the Images binding is bound).",
+          }
+        widths:
+          {
+            type: array,
+            items: { type: integer },
+            description: "The size ladder's widths, ascending.",
+          }
+        url:
+          {
+            type: [string, "null"],
+            description: "The original on the image host, when it serves it.",
+          }
+        previewUrl:
+          {
+            type: [string, "null"],
+            description: "A variant at least 256 px wide (else the largest, else the original).",
+          }
+        uploadable:
+          {
+            type: boolean,
+            description: "The console may upload to and delete this slot.",
+          }
+        maxBytes: { type: [integer, "null"] }
     LicenseHolder:
       description: >
         LX-26 (notes/S-24 §5.1, D1): a licence's holder, derived from whether it is in an account

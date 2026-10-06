@@ -77,6 +77,8 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   register: [["/{product}/devices/register", ["post"]]],
   attestChallenge: [["/{product}/devices/attest/challenge", ["post"]]],
   attest: [["/{product}/devices/attest", ["post"]]],
+  // HA-06: CI pushes files into hosted-asset slots (`assets:write`).
+  assetsPush: [["/{product}/assets", ["post"]]],
 };
 
 /**
@@ -151,6 +153,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products/slug-check", ["get"]],
     // HA-05: the hosted-asset status read the console's Presentation page uses.
     ["/manage/api/products/{product}/assets", ["get"]],
+    // HA-06: the Presentation page's upload (claims the slot), Revert and delete-a-copy.
+    ["/manage/api/products/{product}/assets/{slot}", ["post", "delete"]],
     // LX-26: the licence reads and writes that carry the derived holder (DELETE stays narrative).
     ["/manage/api/products/{product}/license/licenses", ["get", "post"]],
     [
@@ -651,6 +655,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/feeds/fdroid/{channel}",
   // A-18d: the listing assets register, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/listing/assets",
+  // HA-06: the hosted-asset push, authenticated by a `pkeyci_` bearer.
+  "/{product}/assets",
   // P2b-06: the download page and its alias — HTML on the bytes host, a top-level navigation.
   "/{product}/distribution/download",
   "/{product}",
@@ -698,6 +704,7 @@ function concrete(template: string): string {
     request: `rq_${"A".repeat(22)}`,
     licenseId: "lic_1",
     passkeyId: "A".repeat(43),
+    slot: encodeURIComponent("listing.screenshot:3"),
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

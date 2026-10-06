@@ -1305,9 +1305,10 @@ describe("GET /manage/api/products/:p/assets", () => {
     });
   });
 
-  it("is read-only and has no sub-resources", async () => {
+  it("is read-only as a list; a slot takes only HA-06's POST and DELETE", async () => {
     expect((await call("POST", "assets")).status).toBe(403); // CSRF first
-    expect((await call("GET", "assets/x")).status).toBe(404);
+    expect((await call("GET", "assets/x")).status).toBe(405);
+    expect((await call("GET", "assets/a/b")).status).toBe(404);
   });
 });
 
