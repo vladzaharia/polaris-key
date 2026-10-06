@@ -469,11 +469,11 @@ afterAll(async () => {
   await new Promise<void>((r) => server?.httpServer.close(() => r()));
 });
 
-async function open(viewport: {
-  width: number;
-  height: number;
-}): Promise<Page> {
-  const ctx = await browser.newContext({ viewport, reducedMotion: "reduce" });
+async function open(
+  viewport: { width: number; height: number },
+  reducedMotion: "reduce" | "no-preference" = "reduce",
+): Promise<Page> {
+  const ctx = await browser.newContext({ viewport, reducedMotion });
   await ctx.addInitScript(() => {
     (window as unknown as { __v: string[] }).__v = [];
     document.addEventListener("securitypolicyviolation", (e) =>
@@ -860,7 +860,8 @@ describe("the reduce-motion preference (MO-12) under the Worker's CSP", () => {
   }
 
   it("Reduced from the theme menu: an instant swap now and after a reload, no violations", async () => {
-    const page = await open({ width: 1440, height: 900 });
+    // Motion on at the OS level, so the in-app preference is what reduces it.
+    const page = await open({ width: 1440, height: 900 }, "no-preference");
     const before = await motionState(page);
     expect(before.attr).toBeNull();
     expect(ms(before.durations["--pk-duration-base"]!)).toBe(200);

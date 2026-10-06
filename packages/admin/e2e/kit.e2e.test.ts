@@ -503,10 +503,19 @@ describe("overlay exit animations (MO-02)", () => {
     {
       name: "tooltip",
       open: async (page) => {
-        await story(page, "button-states")
+        const trigger = story(page, "button-states")
           .locator("[aria-disabled=true]")
-          .first()
-          .focus();
+          .first();
+        // As in the CSP check above: focusing an off-screen trigger scrolls the page, and Radix
+        // closes a tooltip on scroll, so bring it on screen first.
+        await trigger.scrollIntoViewIfNeeded();
+        await page.evaluate(
+          () =>
+            new Promise((r) =>
+              requestAnimationFrame(() => requestAnimationFrame(r)),
+            ),
+        );
+        await trigger.focus();
         await page.getByRole("tooltip").waitFor();
       },
       content: { name: "pk-fade-out", duration: 120 },

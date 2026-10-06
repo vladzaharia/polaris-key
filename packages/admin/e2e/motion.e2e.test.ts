@@ -522,7 +522,8 @@ describe("motion on: the console under the Worker's CSP", () => {
         "phone navigation",
         () => page.getByRole("button", { name: "Open navigation" }).click(),
         () => page.getByRole("dialog", { name: "Navigation" }),
-        { name: "pk-exit", duration: tk.base },
+        // MO-10: the drawer slides back out to the inline start.
+        { name: "pk-nav-out", duration: tk.base },
       );
       await page.context().close();
     });
