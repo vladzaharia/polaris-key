@@ -916,15 +916,19 @@ describe("Store connections: connect, checked on paste (UX-69)", () => {
     expect(callout.closest("[data-tone]")?.getAttribute("data-tone")).toBe(
       "warning",
     );
+    // A warning saves, but never looks like a pass: "Save anyway", described by the reason.
+    const save = await within(form).findByRole("button", {
+      name: "Save anyway",
+    });
     await waitFor(() =>
-      expect(
-        (
-          within(form).getByRole("button", {
-            name: "Save key",
-          }) as HTMLButtonElement
-        ).disabled,
-      ).toBe(false),
+      expect((save as HTMLButtonElement).disabled).toBe(false),
     );
+    expect(save.getAttribute("data-variant")).toBe("outline");
+    const described = save.getAttribute("aria-describedby")!;
+    expect(document.getElementById(described)?.textContent).toContain(
+      "It may belong to another team or account.",
+    );
+    expect(within(form).queryByRole("button", { name: "Save key" })).toBeNull();
   });
 
   it("a refused field is marked on that field (Partner Center's expired secret)", async () => {
@@ -963,9 +967,13 @@ describe("Store connections: connect, checked on paste (UX-69)", () => {
     await waitFor(() =>
       expect(secret.getAttribute("aria-invalid")).toBe("true"),
     );
+    // The callout carries the reason; the field only points to it (announced once).
     expect(
-      within(form).getAllByText("This client secret has expired").length,
-    ).toBeGreaterThan(0);
+      within(form).getAllByText("This client secret has expired"),
+    ).toHaveLength(1);
+    expect(
+      within(form).getByText("Refused: see the check below."),
+    ).toBeTruthy();
   });
 
   it("a .p8 file fills the key and its Key ID from the file name", async () => {

@@ -55,6 +55,8 @@ type Fixture = {
   headers?: Record<string, string>;
   body?: unknown;
   text?: string;
+  /** No answer at all: the fetch rejects (no connection). */
+  fail?: true;
 };
 const fixtures = (name: string): Record<string, Fixture> =>
   JSON.parse(
@@ -106,6 +108,7 @@ function fakeStores(routes: Record<string, Fixture | Fixture[]>) {
     const r = routes[key];
     const f = Array.isArray(r) ? r.shift() : r;
     if (!f) return new Response("unrouted " + key, { status: 599 });
+    if (f.fail) throw new TypeError("fetch failed");
     return new Response(
       f.text ??
         (f.body === undefined || f.body === null ? "" : JSON.stringify(f.body)),
@@ -1114,6 +1117,156 @@ describe("CI secret check: Steam builder login and the route", () => {
       { groups: ["devs"] },
     );
     expect(res.status).toBe(403);
+    expect(s.sent).toEqual([]);
+  });
+});
+
+// ── security review follow-ups ───────────────────────────────────────────────────────────────
+
+/** A rate limiter that is down: every Durable Object call throws, or answers 500. */
+function brokenLimiter(w: World, mode: "throw" | "500"): void {
+  (w.env as unknown as { RL: unknown }).RL = {
+    idFromName: (n: string) => n,
+    get: () => ({
+      fetch: async () => {
+        if (mode === "throw") throw new Error("Durable Object reset");
+        return new Response("boom", { status: 500 });
+      },
+    }),
+  };
+}
+
+describe("live check: the limiter fails closed", () => {
+  for (const mode of ["throw", "500"] as const) {
+    it(`store connections (${mode}): 429, and the store hears nothing`, async () => {
+      const w = await world();
+      const s = fakeStores({ [STEAM_LIST]: STEAM.applist! });
+      brokenLimiter(w, mode);
+      const res = await storeCheck(w, s, "steam", { key: STEAM_KEY });
+      expect(res.status).toBe(429);
+      expect(s.sent).toEqual([]);
+    });
+
+    it(`CI secrets (${mode}): 429, and itch.io hears nothing`, async () => {
+      const w = await world();
+      const s = fakeStores({
+        [ITCH_PROFILE]: ITCH.profile!,
+        [ITCH_GAMES]: ITCH.games!,
+      });
+      brokenLimiter(w, mode);
+      const res = await ciCheck(w, s, "itch", "BUTLER_API_KEY", BUTLER);
+      expect(res.status).toBe(429);
+      expect(s.sent).toEqual([]);
+    });
+  }
+});
+
+describe("live check: review fixes", () => {
+  it("App Store Connect answering nothing is status 0, 'could not be reached'", async () => {
+    const w = await world();
+    const s = fakeStores({
+      [`${ASC_HOST}/v1/apps`]: { status: 0, fail: true },
+    });
+    const { check } = await checkOf(
+      await storeCheck(w, s, "app-store", ascKey()),
+    );
+    expect(check).toMatchObject({
+      verdict: "unavailable",
+      title: "App Store Connect could not be reached",
+      status: 0,
+    });
+  });
+
+  it("a store answering an error is 'not answering', with its status", async () => {
+    const w = await world();
+    const s = fakeStores({
+      [STEAM_LIST]: { status: 502, text: "bad gateway" },
+    });
+    const { check } = await checkOf(
+      await storeCheck(w, s, "steam", { key: STEAM_KEY }),
+    );
+    expect(check.title).toBe("Steam is not answering");
+  });
+
+  it("winget: the token type is its prefix; app and refresh tokens are refused", async () => {
+    const w = await world();
+    const none = fakeStores({});
+    for (const t of [
+      `ghs_${"a".repeat(36)}`,
+      `ghu_${"a".repeat(36)}`,
+      `ghr_${"a".repeat(36)}`,
+    ])
+      expect(
+        (await checkOf(await ciCheck(w, none, "winget", "PKEY_PR_TOKEN", t)))
+          .check.reason,
+      ).toBe("format");
+    expect(none.sent).toEqual([]);
+    // A classic token is judged on its scopes even when GitHub omits the header: no scopes.
+    const s = fakeStores({
+      [GH_USER]: { ...GITHUB.userClassic!, headers: {} },
+    });
+    const { check } = await checkOf(
+      await ciCheck(w, s, "winget", "PKEY_PR_TOKEN", `gho_${"a".repeat(36)}`),
+    );
+    expect(check).toMatchObject({ verdict: "invalid", reason: "permission" });
+  });
+
+  it("winget: an expiry header that does not parse is 'unknown', not 'never'", async () => {
+    const w = await world();
+    const s = fakeStores({
+      [GH_USER]: {
+        ...GITHUB.userClassic!,
+        headers: {
+          "x-oauth-scopes": "public_repo",
+          "github-authentication-token-expiration": "soon-ish",
+        },
+      },
+      [GH_FORK]: GITHUB.fork!,
+    });
+    const { check } = await checkOf(
+      await ciCheck(w, s, "winget", "PKEY_PR_TOKEN", CLASSIC),
+    );
+    expect(check.facts).toContainEqual({ label: "Expires", value: "unknown" });
+  });
+
+  it("snap: a value that is not an export-login costs no call and no budget", async () => {
+    const w = await world();
+    brokenLimiter(w, "throw"); // would 429 if the limiter were consulted
+    const s = fakeStores({});
+    const { check } = await checkOf(
+      await ciCheck(
+        w,
+        s,
+        "snap",
+        "SNAPCRAFT_STORE_CREDENTIALS",
+        "not a login at all",
+      ),
+    );
+    expect(check.reason).toBe("format");
+    expect(s.sent).toEqual([]);
+  });
+
+  it("snap: a well-formed Ubuntu One export with an unreadable discharge is unchecked", async () => {
+    const w = await world();
+    brokenLimiter(w, "throw");
+    const s = fakeStores({});
+    // A v2 binary macaroon starts with a version byte (0x02), not a v1 hex length.
+    const v2 = Buffer.from([
+      0x02, 0x01, 0x05, 0x68, 0x65, 0x6c, 0x6c, 0x6f,
+    ]).toString("base64url");
+    const { check } = await checkOf(
+      await ciCheck(
+        w,
+        s,
+        "snap",
+        "SNAPCRAFT_STORE_CREDENTIALS",
+        exportLogin({ r: macaroon("r", 1), d: v2 }),
+      ),
+    );
+    expect(check).toMatchObject({
+      verdict: "unchecked",
+      reason: "not-checkable",
+    });
     expect(s.sent).toEqual([]);
   });
 });

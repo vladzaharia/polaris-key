@@ -1875,7 +1875,10 @@ is what saving it through the console already implies; the Worker-secret route (
 secrets workflow) remains for keys that must never pass through a browser. The Snap check binds an
 Ubuntu One discharge in the Worker to make the one `whoami` call, as `snapcraft` does; the
 macaroons are not kept. A check proves a read, not a write: a key that reads apps may still lack a
-write permission a later step needs, which that step reports.
+write permission a later step needs, which that step reports. "Saved only after a pass" is the connect form's rule, not the server's: the
+store-connections `PUT` does not require a prior check, so an API caller (a platform admin) can
+still store an unchecked key, as before UX-69; the apps listing's health columns then show
+whether it works.
 
 ### Storefront adapters: the common layer (A-18a)
 

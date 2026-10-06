@@ -159,7 +159,8 @@ for (const theme of ["light", "dark"] as const) {
         );
         const form = page.locator(STEAM_FORM);
         await form.waitFor();
-        const save = form.getByRole("button", { name: "Save key" });
+        // "Save key", or "Save anyway" after a warning: the form's one submit button.
+        const save = form.locator('button[type="submit"]');
         expect(await save.isDisabled()).toBe(true);
         const field = form.getByLabel(/Publisher Web API key/);
         await field.focus();
@@ -189,6 +190,9 @@ for (const theme of ["light", "dark"] as const) {
           await expect
             .poll(async () => !(await save.isDisabled()))
             .toBe(savable);
+          expect(await save.textContent()).toContain(
+            answer.verdict === "warning" ? "Save anyway" : "Save key",
+          );
         }
         expect(sent).toEqual([{ value: { key: STEAM_KEY } }]);
         await shoot(page, STEAM_FORM, `store-check--${state}-${theme}`);

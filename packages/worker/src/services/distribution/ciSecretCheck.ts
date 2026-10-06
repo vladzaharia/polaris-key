@@ -120,7 +120,7 @@ export async function handleCiSecretCheckAdmin(
     );
   const identity = await outletIdentity(ctx, storefront);
   // Formats first: a value that cannot be the secret costs no vendor call and no budget.
-  const shape = formatCheck(storefront, value);
+  const shape = await formatCheck(storefront, value);
   if (shape) return answer(shape);
   if (run !== steamBuilderLogin) {
     if (!(await credentialCheckAllowed(ctx.env, ctx.session.sub, ctx.now)))
@@ -148,24 +148,59 @@ async function outletIdentity(
 }
 
 const BUTLER_KEY = /^[A-Za-z0-9]{20,128}$/;
-const GITHUB_TOKEN =
-  /^(?:gh[pousr]_[A-Za-z0-9]{30,251}|github_pat_[A-Za-z0-9_]{22,251}|[0-9a-f]{40})$/;
+/**
+ * The GitHub token kinds a person can mint for winget, told apart by prefix (GitHub's documented
+ * token formats): a classic personal token (`ghp_`, or the legacy 40-hex form), an OAuth app token
+ * (`gho_`, scoped like a classic token) and a fine-grained personal token (`github_pat_`). App
+ * installation, user-to-server and refresh tokens (`ghs_`, `ghu_`, `ghr_`) are not personal
+ * tokens a CI secret should hold, and are refused.
+ */
+const CLASSIC_TOKEN = /^(?:gh[po]_[A-Za-z0-9]{30,251}|[0-9a-f]{40})$/;
+const FINE_GRAINED_TOKEN = /^github_pat_[A-Za-z0-9_]{22,251}$/;
 
-function formatCheck(
+export function githubTokenType(
+  value: string,
+): "classic" | "fine-grained" | null {
+  if (CLASSIC_TOKEN.test(value)) return "classic";
+  if (FINE_GRAINED_TOKEN.test(value)) return "fine-grained";
+  return null;
+}
+
+const SNAP_FORMAT =
+  "this is not a snapcraft export-login output: run snapcraft export-login with --snaps, --acls and --expires, and paste the whole output";
+
+/** A value that cannot be the secret: caught before any vendor call and before the limiter. */
+async function formatCheck(
   storefront: string,
   value: string,
-): CredentialCheck | null {
+): Promise<CredentialCheck | null> {
   if (storefront === "itch" && !BUTLER_KEY.test(value))
     return formatFailure(
       "value",
       "an itch.io API key is letters and digits only: copy it from itch.io → Settings → API keys",
     );
-  if (storefront === "winget" && !GITHUB_TOKEN.test(value))
+  if (storefront === "winget" && githubTokenType(value) === null)
     return formatFailure(
       "value",
-      "this is not a GitHub token: it starts with github_pat_ (fine-grained) or ghp_ (classic)",
+      "this is not a personal GitHub token: it starts with github_pat_ (fine-grained) or ghp_ (classic)",
     );
+  if (storefront === "snap") {
+    const login = await snapCredential(value);
+    if (login === null) return formatFailure("value", SNAP_FORMAT);
+    if ("unsupported" in login) return snapUnsupported();
+  }
   return null;
+}
+
+/** A well-formed Ubuntu One export whose macaroons are not the v1 binary form this check reads
+ *  (a v2 discharge, say): the login may well work, so it is not called malformed. */
+function snapUnsupported(): CredentialCheck {
+  return checked(
+    "unchecked",
+    "not-checkable",
+    "This Snap Store login cannot be checked from Polaris Key",
+    "It is a complete export-login, but in a macaroon format the check does not read. The first snapcraft upload checks it: if it fails, the release workflow's log names the reason.",
+  );
 }
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────────────────────
@@ -461,6 +496,15 @@ export async function bindDischarge(
  *     raw or base64: as Ubuntu One.
  */
 export async function snapAuthorization(raw: string): Promise<string | null> {
+  const c = await snapCredential(raw);
+  return c && "header" in c ? c.header : null;
+}
+
+/** The header, `unsupported` for a well-formed Ubuntu One document whose macaroons this check
+ *  cannot read, or null for a value that is not an export-login at all. */
+export async function snapCredential(
+  raw: string,
+): Promise<{ header: string } | { unsupported: true } | null> {
   const decoded = b64decode(raw);
   const texts = [raw];
   if (decoded) texts.unshift(new TextDecoder().decode(decoded));
@@ -477,11 +521,13 @@ export async function snapAuthorization(raw: string): Promise<string | null> {
         const v = doc.v as { r?: unknown; d?: unknown };
         if (typeof v.r !== "string" || typeof v.d !== "string") return null;
         const bound = await bindDischarge(v.r, v.d);
-        return bound ? `Macaroon root=${v.r}, discharge=${bound}` : null;
+        return bound
+          ? { header: `Macaroon root=${v.r}, discharge=${bound}` }
+          : { unsupported: true };
       }
       if (doc.t === "macaroon" && typeof doc.v === "string")
         return /^[A-Za-z0-9+/_=-]{16,8192}$/.test(doc.v)
-          ? `Macaroon ${doc.v}`
+          ? { header: `Macaroon ${doc.v}` }
           : null;
       return null;
     }
@@ -490,7 +536,9 @@ export async function snapAuthorization(raw: string): Promise<string | null> {
       const unbound = /^unbound_discharge\s*=\s*(\S+)\s*$/m.exec(t)?.[1];
       if (!root || !unbound) return null;
       const bound = await bindDischarge(root, unbound);
-      return bound ? `Macaroon root=${root}, discharge=${bound}` : null;
+      return bound
+        ? { header: `Macaroon root=${root}, discharge=${bound}` }
+        : { unsupported: true };
     }
   }
   return null;
@@ -504,12 +552,11 @@ async function checkSnapcraftLogin(
   identity: OutletIdentity | null,
   now: number,
 ): Promise<CredentialCheck> {
-  const authorization = await snapAuthorization(value);
-  if (!authorization)
-    return formatFailure(
-      "value",
-      "this is not a snapcraft export-login output: run snapcraft export-login with --snaps, --acls and --expires, and paste the whole output",
-    );
+  // Parsed before the limiter too (`formatCheck`); parsed again here, where it is used.
+  const login = await snapCredential(value);
+  if (login === null) return formatFailure("value", SNAP_FORMAT);
+  if ("unsupported" in login) return snapUnsupported();
+  const authorization = login.header;
   let res: VendorAnswer;
   try {
     res = await vendorGet(SNAP_DASHBOARD_ORIGIN, "/api/v2/tokens/whoami", {
@@ -664,14 +711,20 @@ async function checkWingetToken(
   const expiresAt = exp
     ? Math.floor(Date.parse(exp.replace(" UTC", "Z").replace(" ", "T")) / 1000)
     : NaN;
-  if (Number.isFinite(expiresAt))
-    facts.push({ label: "Expires", value: dateOf(expiresAt) });
-  else facts.push({ label: "Expires", value: "never" });
+  // No header: the token never expires. A header that does not parse: unknown, not "never".
+  facts.push({
+    label: "Expires",
+    value: Number.isFinite(expiresAt)
+      ? dateOf(expiresAt)
+      : exp
+        ? "unknown"
+        : "never",
+  });
 
-  const scopes = me.headers.get("x-oauth-scopes");
-  const classic = scopes !== null;
+  // The token's type is its prefix; the header only carries a classic token's scopes.
+  const classic = githubTokenType(value) === "classic";
   if (classic) {
-    const list = scopes
+    const list = (me.headers.get("x-oauth-scopes") ?? "")
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean);

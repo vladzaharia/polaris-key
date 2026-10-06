@@ -382,8 +382,8 @@ export async function checkAscApiKey(
 
 /** App Store Connect's refusal of a key, in words. */
 function ascRefusal(e: unknown): CredentialCheck {
-  if (!(e instanceof AscError))
-    return storeUnavailable("App Store Connect", 502);
+  // Not an answer at all (no connection, DNS, a reset): App Store Connect answered nothing.
+  if (!(e instanceof AscError)) return storeUnavailable("App Store Connect", 0);
   if (e.status === 401)
     return checked(
       "invalid",

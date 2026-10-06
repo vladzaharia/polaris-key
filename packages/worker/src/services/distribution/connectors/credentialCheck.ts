@@ -121,11 +121,20 @@ export function storeUnavailable(
       [],
       { status },
     );
+  if (status === 0)
+    return checked(
+      "unavailable",
+      "store-down",
+      `${store} could not be reached`,
+      `Nothing is known about the key yet. ${store} answered nothing; check again in a few minutes.`,
+      [],
+      { status },
+    );
   return checked(
     "unavailable",
     "store-down",
-    `${store} could not be reached`,
-    `Nothing is known about the key yet. ${store} answered ${status === 0 ? "nothing" : `HTTP ${status}`}; check again in a few minutes.`,
+    `${store} is not answering`,
+    `Nothing is known about the key yet. ${store} answered HTTP ${status}; check again in a few minutes.`,
     [],
     { status },
   );

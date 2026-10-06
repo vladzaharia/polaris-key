@@ -941,6 +941,7 @@ export function ConnectForm({
   const latest = React.useRef(values);
   latest.current = values;
   const run = React.useRef(0);
+  const outcomeId = `${React.useId().replace(/:/g, "")}-check`;
   if (!shape) return null;
   const slot = c.slot;
   const vendor = STORE_VENDORS[store];
@@ -1013,8 +1014,11 @@ export function ConnectForm({
     state.phase === "done" && state.for === current ? state.check : null;
   const fieldError = (name: string) =>
     result && result.verdict === "invalid" && result.field === `value.${name}`
-      ? result.title
+      ? // Short: the callout below carries the reason and is announced; this only points to it.
+        "Refused: see the check below."
       : undefined;
+  // A warning saves, but it must not look like a pass: a caution button tied to the reason.
+  const warned = passed && result?.verdict === "warning";
 
   const save = async () => {
     if (!passed) return;
@@ -1118,11 +1122,19 @@ export function ConnectForm({
         ))}
       </div>
 
-      <CheckOutcome state={state} current={current} vendor={vendor} />
+      <div id={outcomeId}>
+        <CheckOutcome state={state} current={current} vendor={vendor} />
+      </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button type="submit" loading={saving} disabled={!passed}>
-          Save key
+        <Button
+          type="submit"
+          loading={saving}
+          disabled={!passed}
+          variant={warned ? "outline" : "primary"}
+          aria-describedby={warned ? outcomeId : undefined}
+        >
+          {warned ? "Save anyway" : "Save key"}
         </Button>
         <Button
           type="button"

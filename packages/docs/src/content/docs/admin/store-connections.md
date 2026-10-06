@@ -83,7 +83,7 @@ found:
 
 The answer is one of: **valid** ("Team 69a6de7f · 3 apps"), a **warning** you can still save
 through (the key cannot see an app a product is assigned, or it belongs to another team than the
-one connected now), **invalid** with the reason and the fix (rejected, a missing permission,
+one connected now); the button then reads **Save anyway**, **invalid** with the reason and the fix (rejected, a missing permission,
 expired, on the field it concerns), or **unavailable** when the store did not answer (nothing is
 known, so nothing is saved; check again). The In-App Purchase key is format-checked only: every
 App Store Server API call is made for one app, so it is checked at its first use.
