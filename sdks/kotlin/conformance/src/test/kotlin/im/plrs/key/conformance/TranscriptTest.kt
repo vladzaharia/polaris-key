@@ -4,6 +4,7 @@
 // @pkey-feature identity.devicecode identity.devicelabel config.mint
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
+// @pkey-feature license.refusals telemetry.updates release.fetch release.distribution
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -28,6 +29,15 @@
 // with `initial.update` and no `initial.services` runs with Release, Distribution and Update
 // expected; one that loads no discovery itself is served the Worker's standard document.
 //
+// `activate`/`enroll` also report the refusal's registry `code` (license.refusals). `report` reports
+// `updatesPending`, the journalled update events still held; `initial.updateJournal` seeds that
+// journal as an earlier run left it (`update-events.json` in the store's state directory).
+// `releaseFetch` is `client.release.fetch` of a `ReleaseTarget.Record` built from the step's target
+// (the record a host verified), into a fresh directory; `partial` seeds the interrupted download an
+// earlier call would have left (the payload's first bytes in `<to>.part` and the build route's ETag,
+// the quoted SHA-256, beside it), so the SDK resumes with Range and If-Range. `downloadModel` is
+// `client.distribution.thisPlatform(initial.platform)`.
+//
 // `chunkRange` (P4-32, plans/P4-32.md §5) is `chunkRangeFetch` over the packs facet's own object
 // fetch (`client.packs`'s private `fetchObject`, reached by reflection as the Node replayer reaches
 // its own through a cast: no public API changes), against the blobs template the last discover
@@ -41,7 +51,12 @@ import im.plrs.key.core.DiscoveryResult
 import im.plrs.key.core.DocOutcome
 import im.plrs.key.core.FingerprintSource
 import im.plrs.key.core.HardwareFingerprint
+import im.plrs.key.core.ERROR_CODE_VALUES
 import im.plrs.key.core.InMemoryStore
+import im.plrs.key.core.ReleaseRecordArtifact
+import im.plrs.key.core.ReleaseRecordBuild
+import im.plrs.key.core.ReleaseRecordDoc
+import im.plrs.key.core.Store
 import im.plrs.key.core.PolarisException
 import im.plrs.key.core.RegisterResult
 import im.plrs.key.core.ServiceSlug
@@ -58,6 +73,8 @@ import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.LicenseClientOptions
 import im.plrs.key.core.JsonText
 import im.plrs.key.release.ChangelogEntry
+import im.plrs.key.release.DownloadBuild
+import im.plrs.key.release.ReleaseTarget
 import im.plrs.key.sdk.ClaimResult
 import im.plrs.key.sdk.CommerceClient
 import im.plrs.key.sdk.PolarisKeyClient
@@ -128,16 +145,22 @@ fun packsObjectFetch(packs: PacksClient, transport: PackObjectTransport): Object
     }
 }
 
-/** The replay's memory between steps: the prompt the last `beginSignIn` returned. */
-class ReplaySession {
+/** The replay's memory between steps: the prompt the last `beginSignIn` returned, the last whole
+ *  `releaseFetch` payload, the scratch directories to remove and the device's `initial.platform`. */
+class ReplaySession(val platform: String? = null) {
     var prompt: SignInPrompt? = null
+    var payload: ByteArray? = null
+    val dirs = ArrayList<java.io.File>()
 }
+
+/** An in-memory store with a state directory, for a transcript that seeds the update journal. */
+class ReplayStore(inner: InMemoryStore, override val stateDirectory: java.io.File?) : Store by inner
 
 object KotlinReplay {
     /** THE mapping from transcript verbs and `expect` keys onto the Kotlin SDK. */
     suspend fun act(
         client: PolarisKeyClient,
-        store: InMemoryStore,
+        store: Store,
         step: JsonObject,
         session: ReplaySession,
         objects: PackObjectTransport? = null,
@@ -204,8 +227,27 @@ object KotlinReplay {
                 }
                 out["documents"] = JsonObject(docs)
             }
-            "activate" -> out["result"] = JsonPrimitive(activationKind(client.activate(args["key"].stringValue ?: "")))
-            "enroll" -> out["result"] = JsonPrimitive(activationKind(client.enroll()))
+            "activate", "enroll" -> {
+                val r = if (action == "activate") client.activate(args["key"].stringValue ?: "") else client.enroll()
+                out["result"] = JsonPrimitive(activationKind(r))
+                r.code?.let { out["code"] = JsonPrimitive(it) }
+            }
+            "releaseFetch" -> out.putAll(releaseFetch(client, args, session))
+            "downloadModel" -> {
+                val here = client.distribution.thisPlatform(session.platform)
+                out["result"] = JsonPrimitive("ok")
+                out["platforms"] = JsonArray(here.model.platforms.map { JsonPrimitive(it.platform) })
+                out["current"] = here.current?.let { c ->
+                    JsonObject(
+                        mapOf(
+                            "platform" to JsonPrimitive(c.platform), "label" to JsonPrimitive(c.label),
+                            "primary" to (c.primary?.let { JsonPrimitive(it) } ?: JsonNull),
+                            "actions" to JsonArray(c.actions.map { JsonPrimitive(it) }),
+                            "builds" to JsonArray(c.builds.map(::buildValue)),
+                        ),
+                    )
+                } ?: JsonNull
+            }
             "deactivate" -> client.deactivate()
             "register" -> out["result"] = JsonPrimitive(
                 when (client.register()) {
@@ -216,7 +258,10 @@ object KotlinReplay {
                     is RegisterResult.Error -> "error"
                 },
             )
-            "report" -> out["result"] = JsonPrimitive(client.report())
+            "report" -> {
+                out["result"] = JsonPrimitive(client.report())
+                out["updatesPending"] = JsonPrimitive(client.updateEvents.events().size)
+            }
             "fetchSchema" -> out["catalog"] = client.config.fetchSchema()?.let { JsonText.parse(it.toString(Charsets.UTF_8)) } ?: JsonNull
             "mintToken" -> try {
                 val minted = client.config.mintToken(args["recipeId"].stringValue ?: "")
@@ -334,6 +379,51 @@ object KotlinReplay {
         else -> throw AssertionError("initial.update.outlet is not an outlet")
     }
 
+    /** A download-page build in the model's JSON vocabulary (null ⇒ `null`). */
+    private fun buildValue(b: DownloadBuild): JsonElement {
+        fun str(v: String?): JsonElement = v?.let { JsonPrimitive(it) } ?: JsonNull
+        return JsonObject(
+            mapOf(
+                "releaseId" to str(b.releaseId), "version" to JsonPrimitive(b.version), "buildId" to JsonPrimitive(b.buildId),
+                "platform" to JsonPrimitive(b.platform), "arch" to JsonPrimitive(b.arch), "format" to str(b.format),
+                "name" to JsonPrimitive(b.name), "size" to (b.size?.let { jsonInt(it) } ?: JsonNull), "sha256" to str(b.sha256),
+                "minOs" to str(b.minOs), "url" to JsonPrimitive(b.url), "outletId" to JsonPrimitive(b.outletId),
+            ),
+        )
+    }
+
+    /** `releaseFetch`: the build of a record built from the step's target, into a fresh directory. */
+    private suspend fun releaseFetch(client: PolarisKeyClient, args: JsonObject, session: ReplaySession): Map<String, JsonElement> {
+        val sha = args["sha256"].stringValue!!
+        val size = args["size"].longValue!!
+        val buildId = args["build"].stringValue!!
+        val record = ReleaseRecordDoc(
+            schemaVersion = 1, aud = client.core.product, deliverable = "app", kind = "app", version = args["version"].stringValue!!,
+            seq = 1, issuedAt = 1, tag = null,
+            builds = listOf(
+                ReleaseRecordBuild(buildId, args["platform"].stringValue!!, args["arch"].stringValue!!, "tar.gz", artifacts = listOf(ReleaseRecordArtifact("payload", "payload", sha, size))),
+            ),
+            json = JsonObject(emptyMap()),
+        )
+        val dir = java.nio.file.Files.createTempDirectory("pkey-replay").toFile().also { session.dirs += it }
+        val to = java.io.File(dir, "payload")
+        val partial = args["partial"].longValue
+        if (partial != null && partial > 0) {
+            val whole = session.payload ?: throw AssertionError("a partial releaseFetch needs an earlier whole fetch")
+            java.io.File(dir, "payload.part").writeBytes(whole.copyOfRange(0, partial.toInt()))
+            java.io.File(dir, "payload.part.etag").writeText("\"$sha\"")
+        }
+        return try {
+            val got = client.release.fetch(ReleaseTarget.Record(record, buildId), to)
+            val data = got.path.readBytes()
+            session.payload = data
+            val digest = java.security.MessageDigest.getInstance("SHA-256").digest(data).joinToString("") { "%02x".format(it) }
+            mapOf("result" to JsonPrimitive("ok"), "size" to jsonInt(data.size.toLong()), "sha256" to JsonPrimitive(digest))
+        } catch (e: PolarisException) {
+            mapOf("result" to JsonPrimitive(if (e.code in ERROR_CODE_VALUES) "refused" else "error"), "code" to JsonPrimitive(e.code))
+        }
+    }
+
     /** A changelog entry in the transcript's JSON vocabulary (null ⇒ `null`). */
     private fun entryValue(e: ChangelogEntry): JsonElement = JsonObject(
         mapOf(
@@ -364,7 +454,14 @@ object KotlinReplay {
     fun replay(t: Transcript) = runBlocking {
         val server = ReplayServer(t)
         var clock = t.now
-        val store = InMemoryStore(t.product, t.initial["deviceId"].stringValue!!)
+        val memory = InMemoryStore(t.product, t.initial["deviceId"].stringValue!!)
+        val journal = t.initial["updateJournal"]?.arrayValue
+        val stateDir = journal?.let { events ->
+            java.nio.file.Files.createTempDirectory("pkey-replay-state").toFile().also { d ->
+                java.io.File(d, "update-events.json").writeText(JsonObject(mapOf("v" to jsonInt(1), "events" to JsonArray(events))).toString())
+            }
+        }
+        val store: Store = if (stateDir != null) ReplayStore(memory, stateDir) else memory
         t.initial["token"].stringValue?.let { store.setToken(it) }
         val u = t.initial["update"].objectValue
         u?.get("cache").objectValue?.let { cache ->
@@ -400,7 +497,7 @@ object KotlinReplay {
                 },
             ),
         )
-        val session = ReplaySession()
+        val session = ReplaySession(t.initial["platform"].stringValue)
         try {
             t.steps.forEachIndexed { i, _ ->
                 val step = server.beginStep(i)
@@ -416,6 +513,8 @@ object KotlinReplay {
             }
         } finally {
             client.close()
+            session.dirs.forEach { it.deleteRecursively() }
+            stateDir?.deleteRecursively()
         }
     }
 }
@@ -578,6 +677,8 @@ class TranscriptTest : ConformanceSuite() {
             "packs-chunk-range",
             // SP-K05: the commerce bridge.
             "commerce-claim",
+            // SP-K01, SP-K03, SP-K13: typed refusals, update-health events, verified download, the download model.
+            "activate-refusals", "telemetry-report-updates", "release-fetch-gated", "distribution-download-model",
         )
     }
 }

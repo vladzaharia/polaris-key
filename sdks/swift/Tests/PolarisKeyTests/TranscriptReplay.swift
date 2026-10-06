@@ -23,6 +23,11 @@ struct Transcript: Decodable, Sendable {
         var services: [String]?
         /// PX-W13: the platform's device name the SDK's default label comes from; absent = none.
         var deviceName: String?
+        /// The device's canonical platform (SP-00: `downloadModel`'s `current`, `releaseFetch`).
+        var platform: String?
+        /// The update journal the client holds before the first step (SP-00, telemetry.updates):
+        /// the queued events, oldest first, in the report's `updates` shape.
+        var updateJournal: [JSONValue]?
         /// The update client's state before the first `updateDecide` step (P3-03).
         var update: InitialUpdate?
     }

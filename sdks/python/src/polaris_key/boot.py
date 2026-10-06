@@ -201,7 +201,11 @@ def run_boot(
     send({"type": "start"})
     # shell
     if discover is None:
-        discover = client.core._expected_services is None and client._discovery_doc is None
+        # As Node's runBoot: pinned services skip discovery only once a token is held; a fresh
+        # install still discovers (and so learns the registration policy) before it syncs.
+        discover = (
+            client.core._expected_services is None or client._tokens.current is None
+        ) and client._discovery_doc is None
     if discover and not client.core.local_only:
         client.try_discover()
     send({"type": "shell.done"})

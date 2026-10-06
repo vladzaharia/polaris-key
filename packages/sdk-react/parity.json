@@ -54,9 +54,8 @@
       "note": "SP-R02: bearer mode's indexedDbStore (src/browser/bearer/store.ts) implements client-core's Store: the token in its own object store, the random device id and the cache in the offline record; status() reports backend indexeddb, degraded not-persistent unless navigator.storage.persisted(). The cookie session holds no credential, so a cookie page's supports() answers it runtime-unsupported."
     },
     "core.copy": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-R03, SDK-PARITY-PASS §5.2."
+      "status": "implemented",
+      "note": "English is src/copy.generated.ts (pnpm gen:constants, from conformance/parity/copy.en.json): copyMessage/copyTitle read the error-code, gate and activation tables, describeError reads a typed activation result from the activation table only. French is the hand-written proof locale until SP-03."
     },
     "license.gate": {
       "status": "implemented"
@@ -96,9 +95,8 @@
       "note": "SP-R02: bearer mode's single re-acquire takes devices/register for a registered (or licence-less) device, as Node's chooseReacquireRoute; register-reregister-401 replays through it."
     },
     "license.refusals": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-R03, SDK-PARITY-PASS §5.2."
+      "status": "implemented",
+      "note": "src/core/activation.ts classifyActivation maps every refusal by its body code (never a collapsed 403); bearer mode's activate/enroll return it and activate-refusals replays through BearerSession. The cookie session and the desktop bridge classify through the same table."
     },
     "config.resolve": {
       "status": "implemented"
@@ -126,7 +124,7 @@
     "config.local": {
       "status": "planned",
       "unowned": true,
-      "note": "SP-R05, SDK-PARITY-PASS §5.2."
+      "note": "Not built: React has no persisted device-local override API (config.set, config.setting, onConfigChange); ConfigPanel shows the delivered values only (SP-R05, SDK-PARITY-PASS §5.2)."
     },
     "devices.fingerprint": {
       "status": "na",
@@ -162,7 +160,7 @@
     "telemetry.updates": {
       "status": "planned",
       "unowned": true,
-      "note": "SP-R11, SDK-PARITY-PASS §5.2.",
+      "note": "Half built: bearer mode's BearerSession queues P6-03 update events and drains at most 16 per POST /<p>/devices/report (dropping them only on a 200), but nothing records them: the adapter exposes no record call and the browser update path journals no update_offered, and the desktop renderer forwards none (SP-R11, SDK-PARITY-PASS §5.2).",
       "except": [
         {
           "runtime": "web",
@@ -207,12 +205,12 @@
     "release.fetch": {
       "status": "planned",
       "unowned": true,
-      "note": "SP-R09, SDK-PARITY-PASS §5.2."
+      "note": "Not built: no verified licensed download (bearer delivery, Range resume, size and SHA-256 check) in React; the release client only builds URLs (SP-R09, SDK-PARITY-PASS §5.2)."
     },
     "release.distribution": {
       "status": "planned",
       "unowned": true,
-      "note": "SP-R09, SDK-PARITY-PASS §5.2."
+      "note": "Not built: React does not fetch GET /<p>/distribution/download.json or expose the download model (the Worker's CORS list already covers it) (SP-R09, SDK-PARITY-PASS §5.2)."
     },
     "update.check": {
       "status": "implemented"
@@ -224,7 +222,7 @@
     "update.feeds": {
       "status": "planned",
       "unowned": true,
-      "note": "SP-R08 (desktop), SDK-PARITY-PASS §5.2.",
+      "note": "Not built: no update.feedUrl() for a desktop host (feed-url-matrix.json) (SP-R08, SDK-PARITY-PASS §5.2).",
       "except": [
         {
           "runtime": "web",
@@ -258,7 +256,7 @@
     "crash.tags": {
       "status": "planned",
       "unowned": true,
-      "note": "No task yet: the lead cuts a React crashTags() task (plans/SP-00.md §5; SDK-PARITY-PASS §5.2)."
+      "note": "Not built: no crashTags() in React; no task yet (plans/SP-00.md §5; SDK-PARITY-PASS §5.2)."
     },
     "packs.record": {
       "status": "implemented",
@@ -373,7 +371,7 @@
     "ui.boot": {
       "status": "planned",
       "unowned": true,
-      "note": "SP-R06, SDK-PARITY-PASS §5.2."
+      "note": "Not built: client-core's stage functions are re-exported (ui.stages), but React has no one-call boot() over discovery, register, trust, documents and report (SP-R06, SDK-PARITY-PASS §5.2)."
     },
     "ui.kit": {
       "status": "implemented"

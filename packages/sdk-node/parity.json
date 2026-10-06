@@ -49,9 +49,8 @@
       "note": "KeyringStore by default; an Electron main process uses SafeStorageStore (@polaris-key/node/electron), whose status() reports keyring-unavailable when safeStorage cannot encrypt or falls back to basic_text, and keyring-error when the stored token no longer decrypts (SP-N11)."
     },
     "core.copy": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-N01, SDK-PARITY-PASS §5.1."
+      "status": "implemented",
+      "note": "copy.message/title/activation over src/copy.generated.ts (pnpm gen:constants, from conformance/parity/copy.en.json): the error-code, gate and activation tables, COPY_FALLBACK naming an unknown code; registerCopy adds a locale that falls back to the generated English per key."
     },
     "license.gate": {
       "status": "implemented"
@@ -75,9 +74,8 @@
       "status": "implemented"
     },
     "license.refusals": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-N01, SDK-PARITY-PASS §5.1."
+      "status": "implemented",
+      "note": "activationRefusal maps every refusal by its body code (activateWithKey, enroll, token): each kind carries the wire code, an unknown 4xx is refused{code}."
     },
     "config.resolve": {
       "status": "implemented"
@@ -99,9 +97,8 @@
       "note": "The TypeScript mirror is rendered by tools/gen-mirrors.ts."
     },
     "config.local": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-N13, SDK-PARITY-PASS §5.1."
+      "status": "implemented",
+      "note": "client.config.set/clear/setting and onConfigChange: persisted in the state directory, validated against the catalog type, refused for an admin-managed key, with per-key and wildcard change events (SP-N13)."
     },
     "devices.fingerprint": {
       "status": "implemented"
@@ -119,9 +116,8 @@
       "status": "implemented"
     },
     "telemetry.updates": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-N03, SDK-PARITY-PASS §5.1."
+      "status": "implemented",
+      "note": "The update-health journal (<stateDir>/update-events.json) rides devices/report as updates: at most 16 per report, oldest first, dropped once a 200 delivered them."
     },
     "devices.attest": {
       "status": "na",
@@ -152,14 +148,12 @@
       "note": "client.update.releaseRecord(hash) and decide() over client-core's verifyReleaseRecord: hash before signature, pinned release keys only; persisted in the releaseRecords cache slice while a committed feed pins it."
     },
     "release.fetch": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-N07, SDK-PARITY-PASS §5.1."
+      "status": "implemented",
+      "note": "client.release.fetch(target, {to}): discovery builds route, device bearer and metadata headers, <to>.part resumed with Range and If-Range on the payload SHA-256, size and SHA-256 checked against the verified record before the rename."
     },
     "release.distribution": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-N08, SDK-PARITY-PASS §5.1."
+      "status": "implemented",
+      "note": "client.distribution.downloadModel() and thisPlatform(): the public download model, no bearer."
     },
     "update.check": {
       "status": "implemented"
@@ -169,9 +163,8 @@
       "note": "client.update.feed() and decide() over client-core's verifyFeed; the feeds cache slice is keyed by the canonical channel and re-verified on load, so each seq floor survives a restart."
     },
     "update.feeds": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-N08, SDK-PARITY-PASS §5.1."
+      "status": "implemented",
+      "note": "client.update.feedUrl(kind): appcast, winsparkle, velopack (the feed directory without a Velopack channel), appInstaller and zsync from discovery update.endpoints, a channel alias rewritten first; a missing template is the typed unsupported (product)."
     },
     "update.decide": {
       "status": "implemented",
@@ -194,9 +187,8 @@
       "note": "client-core's detectOutlet over this process's signals (src/update/outlet.ts readOutletSignals: environment, executable and script path conventions, isSea, Electron's mas and windowsStore, product-named markers); the update client detects when the host names no outlet. The P1-11 build stamp (.polaris_key/build.json) is autoloaded when the host passes none; Windows SignatureKind is read on request through PowerShell's WinRT projection (readWindowsSignatureKind, SP-N15)."
     },
     "crash.tags": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-N16, SDK-PARITY-PASS §5.1."
+      "status": "implemented",
+      "note": "client.crashTags() / crashTagsFor(): release <deliverable>@<version>[+<build>], environment the channel, pkey.outlet the outlet, as the Worker Sentry hook parses them."
     },
     "packs.record": {
       "status": "implemented",
@@ -307,9 +299,8 @@
       "note": "BOOT_STAGES, bootTransition, bootGuardAction and the rest re-exported from client-core; client.boot({onStage}) drives the machine end to end and client.ensureActivated() runs its first three stages (SP-N05)."
     },
     "ui.boot": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-N05, SDK-PARITY-PASS §5.1."
+      "status": "implemented",
+      "note": "client.boot(): discovery, the keyless registration when the product is open and no token is held, the sync pass, then the client-core stage machine to its outcome (SP-N05)."
     },
     "ui.kit": {
       "status": "na",
@@ -317,9 +308,8 @@
       "reason": "runtime"
     },
     "ui.cli": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-N14, SDK-PARITY-PASS §5.1."
+      "status": "implemented",
+      "note": "@polaris-key/node/cli: status, activate, enroll, deactivate, register, sign-in, devices and the rest of CLI_VERBS for commander and yargs; one test per verb (SP-N14)."
     },
     "commerce.receipt": {
       "status": "implemented",

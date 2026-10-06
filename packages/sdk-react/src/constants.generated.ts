@@ -1423,7 +1423,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "core",
     na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
-  "core.copy": { status: "planned", service: "sdk", na: [] },
+  "core.copy": { status: "implemented", service: "sdk", na: [] },
   "license.gate": { status: "implemented", service: "license", na: [] },
   "license.activate": { status: "implemented", service: "license", na: [] },
   "license.enroll": {
@@ -1439,7 +1439,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "license",
     na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
-  "license.refusals": { status: "planned", service: "license", na: [] },
+  "license.refusals": { status: "implemented", service: "license", na: [] },
   "config.resolve": { status: "implemented", service: "config", na: [] },
   "config.list": { status: "implemented", service: "config", na: [] },
   "config.secret": {
@@ -1612,4 +1612,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "f992ee102a8dc25507c3a71ff3348dd3e8e61de067da2a45acf4fc0b7d6de990";
+  "50c12e3bbcd88e8cd9a2a8526e38d10d2c514f0a98863309b0e79389f1bb1d5e";

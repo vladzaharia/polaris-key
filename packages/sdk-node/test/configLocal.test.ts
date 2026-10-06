@@ -1,4 +1,4 @@
-// @pkey-feature config.resolve core.sync
+// @pkey-feature config.resolve core.sync config.local
 // SDK parity pass §3.11: persisted local overrides (config.set/clear/setting), per-key change
 // events, client.events, and the default refresh for long-running hosts.
 

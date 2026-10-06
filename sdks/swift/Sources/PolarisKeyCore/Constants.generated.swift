@@ -1351,7 +1351,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "license.entitlements": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.channels": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.reregister": CapabilityRow(status: "implemented", service: "license", na: []),
-    "license.refusals": CapabilityRow(status: "planned", service: "license", na: []),
+    "license.refusals": CapabilityRow(status: "implemented", service: "license", na: []),
     "config.resolve": CapabilityRow(status: "implemented", service: "config", na: []),
     "config.list": CapabilityRow(status: "implemented", service: "config", na: []),
     "config.secret": CapabilityRow(status: "implemented", service: "config", na: []),
@@ -1364,7 +1364,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "devices.register": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.manage": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.report": CapabilityRow(status: "implemented", service: "core", na: []),
-    "telemetry.updates": CapabilityRow(status: "planned", service: "core", na: []),
+    "telemetry.updates": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.attest": CapabilityRow(status: "implemented", service: "core", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "outlet")]),
     "identity.oidc": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.devicecode": CapabilityRow(status: "implemented", service: "identity", na: []),
@@ -1373,10 +1373,10 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.record": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.fetch": CapabilityRow(status: "planned", service: "distribution", na: []),
-    "release.distribution": CapabilityRow(status: "planned", service: "distribution", na: []),
+    "release.distribution": CapabilityRow(status: "implemented", service: "distribution", na: []),
     "update.check": CapabilityRow(status: "implemented", service: "update", na: []),
     "update.feed": CapabilityRow(status: "implemented", service: "update", na: []),
-    "update.feeds": CapabilityRow(status: "planned", service: "update", na: []),
+    "update.feeds": CapabilityRow(status: "implemented", service: "update", na: []),
     "update.decide": CapabilityRow(status: "implemented", service: "update", na: []),
     "update.content": CapabilityRow(status: "implemented", service: "update", na: []),
     "update.driver": CapabilityRow(status: "implemented", service: "update", na: [CapabilityNa(runtime: "ios", reason: "outlet")]),
@@ -1408,11 +1408,11 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "packs.transport.msix": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "packs.transport.flatpak": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.stages": CapabilityRow(status: "implemented", service: "sdk", na: []),
-    "ui.boot": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "ui.boot": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.kit": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "commerce.receipt": CapabilityRow(status: "implemented", service: "license", na: []),
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "2be8a7c61c11bccf907a35ac951289948d6b64b1ebc6f56a942e6c56e1b173f5"
+public let CAPABILITY_DIGEST = "b79bbba6db786375cae29b845b5944b46344a6ddb35a6c4282a11f690839c4d4"
