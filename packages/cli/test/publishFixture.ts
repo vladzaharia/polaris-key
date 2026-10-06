@@ -61,7 +61,7 @@ modules:
 
 const SCHEMA_YAML = `apiVersion: pkey.dev/v1
 schemaVersion: 1
-catalog: []
+entries: []
 `;
 
 /** Six builds, like Diceroll's exports: macOS, Windows, Linux, Android, iOS and the web. */

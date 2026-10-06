@@ -16,8 +16,7 @@ existed.
 
 ```jsonc
 {
-  "slug": "acme",
-  "name": "Acme",
+  "product": { "slug": "acme", "name": "Acme" },
   "web": {
     // Up to 16 exact origins, spelled the way a browser sends the Origin header.
     "origins": [

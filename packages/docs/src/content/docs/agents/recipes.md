@@ -22,11 +22,11 @@ Deep page: [The `.pkey/` manifest](/docs/build/manifest/) · Skill: `authoring-p
 
 | #   | Step                    | Detail                                                                                                                                                                                                                               |
 | --- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | Scaffold                | `pkey init --product <slug> --name "<Name>" --modules license,config` writes `.pkey/product.yaml` and `schema.yaml` (always written, with `catalog: []` unless `config` is selected), plus `release.yaml` when `release` is selected |
+| 1   | Scaffold                | `pkey init --product <slug> --name "<Name>" --modules license,config` writes `.pkey/product.yaml` and `schema.yaml` (always written, with `entries: []` unless `config` is selected), plus `release.yaml` when `release` is selected |
 | 2   | Get editor help         | The scaffold's `# yaml-language-server: $schema=…` header points at a **path** into `node_modules/@polaris-key/manifest/schemas/v1/` — the canonical `$id` URLs are on this gated site and cannot be fetched                         |
 | 3   | Fill in the three roles | `schema` = the config catalog · `product` = metadata, `modules`, `devices.registration`, OIDC, tiers, profiles, provisioning · `release` = provider coordinates and edge-mint recipes                                                |
 | 4   | Avoid a reserved slug   | `docs`, `manage`, `api`, `assets`, `login`, `logout`, `callback`, `magic`, `download`, `webhooks`, `well-known`, `media`, `activate`, `avatar` are refused with `reserved_slug`                                                      |
-| 5   | Validate until clean    | Fix every `error`; read the `warning` lines rather than ignoring them                                                                                                                                                                |
+| 5   | Validate until clean    | Fix every `error`; read the `warning` lines rather than ignoring them. A `deprecated_spelling` names the canonical spelling to write ([Deprecated spellings](/docs/build/manifest/authoring/#deprecated-spellings))                  |
 
 ```sh
 pkey validate      # exit 0, no error lines

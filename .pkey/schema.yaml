@@ -3,4 +3,4 @@
 # The system product has no config catalog: it ships packages, not an app.
 apiVersion: pkey.dev/v1
 schemaVersion: 1
-catalog: []
+entries: []

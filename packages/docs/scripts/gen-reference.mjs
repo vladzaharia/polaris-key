@@ -56,10 +56,11 @@ const table = (headers, rows) =>
 
 // ── 1. Manifest validation codes ───────────────────────────────────────────────
 function manifestValidationCodes() {
-  // `.pkey/distribution`'s rules (P2b-02) live in their own module of the same validator.
-  // Each module is scanned on its own: the helper regex is lazy across lines, so running it over
-  // concatenated sources lets a match start in one file and end in the next.
-  const sources = ["index.ts", "distribution.ts"].map((f) =>
+  // `.pkey/distribution`'s rules (P2b-02) and the duplicate-spelling pass (ST-19) live in their
+  // own modules of the same validator. Each module is scanned on its own: the helper regex is lazy
+  // across lines, so running it over concatenated sources lets a match start in one file and end
+  // in the next.
+  const sources = ["index.ts", "distribution.ts", "spellings.ts"].map((f) =>
     read("packages", "shared-manifest", "src", f),
   );
   const rows = [];

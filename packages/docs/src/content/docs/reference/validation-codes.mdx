@@ -8,7 +8,7 @@ description: "Every error and warning validateManifestDocuments and validateInge
 
 The `.pkey/` validator (`@polaris-key/manifest`) aggregates ALL problems instead of
 stopping at the first; `pkey validate` and the console's link/resync surfaces show these
-codes with their JSON-pointer paths. 208 distinct emit sites.
+codes with their JSON-pointer paths. 214 distinct emit sites.
 
 Interpolated segments (`${…}`) in paths/messages are per-instance values — an array index,
 the offending value, or the allowed set.
@@ -17,8 +17,14 @@ the offending value, or the allowed set.
 | --- | --- | --- | --- | --- |
 | `bare_arch_artifact_id` | warning | release | `/release/deliverables/app/artifacts/${i}/id` | artifact id $\{entry.id\} names an architecture but no platform; name the build by platform and arch (macos-$\{entry.id\}, windows-$\{entry.id\}, …), and its files likewise (app-macos-$\{entry.id\}.zip). |
 | `config_without_activation` | warning | product | `/modules/config` | Config is enabled without an activation method. |
+| `conflicting_spelling` | warning | product | `${path}` | $\{old\} and $\{write\} are both set; $\{used\} is used. Keep only $\{write\}. |
+| `conflicting_spelling` | warning | schema | `${path}` | $\{old\} and $\{write\} are both set; $\{used\} is used. Keep only $\{write\}. |
+| `conflicting_spelling` | warning | release | `${path}` | $\{old\} and $\{write\} are both set; $\{used\} is used. Keep only $\{write\}. |
 | `conflicting_versioning` | error | release | `/release/deliverables/app/versioning` | stableTagPattern and ignoreTags are declared both at the release root and under deliverables.app.versioning; keep one spelling. |
 | `content_keys_not_supported` | warning | release | `/release/contentKeys` | release.contentKeys is not used: delegate a content key with `pkey release delegate`; the signed delegation is the only grant (P4-19). |
+| `deprecated_spelling` | warning | product | `${path}` | $\{old\} is a deprecated spelling$\{ignored\}; write $\{write\}. |
+| `deprecated_spelling` | warning | schema | `${path}` | $\{old\} is a deprecated spelling$\{ignored\}; write $\{write\}. |
+| `deprecated_spelling` | warning | release | `${path}` | $\{old\} is a deprecated spelling$\{ignored\}; write $\{write\}. |
 | `distribution_requires_release` | error | product | `/modules/distribution` | The distribution service delivers release artifacts, so release must be enabled too. |
 | `duplicate_artifact_id` | error | release | `/release/deliverables/app/artifacts/${i}/id` | artifact id $\{entry.id\} is declared twice; each entry declares one build. |
 | `duplicate_profile_id` | error | product | `/licensing/profiles/${i}/id` | Profile ids must be unique. |
