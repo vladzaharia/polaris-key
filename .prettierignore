@@ -25,6 +25,9 @@ packages/cli/test/fixtures/winget-schema-1.12.0/
 # The setup-wizard mockups: written by docs/design/setup/_src/build.mjs (edit _src, then rebuild).
 docs/design/setup/[0-9]*.html
 
+# The flows mockups: written by docs/design/flows/_src/build.mjs (edit _src, then rebuild).
+docs/design/flows/[0-9]*.html
+
 # Build caches.
 packages/docs/.astro/
 

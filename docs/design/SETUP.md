@@ -38,6 +38,13 @@ S-21 Polaris Key storefront (`PS-*`), the S-20 hosted assets (`HA-*`) and the A-
 (`A-18*`) stand as decided. Where this document needs something from one of them, §8.3 names the
 brief amendment. [ADMIN.md](ADMIN.md) and EXPERIENCE.md carry pointer blocks to this file.
 
+> **Flows beyond setup are audited in [FLOWS.md](FLOWS.md) (2026-10-05).** Its rules (§2) extend
+> this document's wizard pattern to every flow in both apps, and it redesigns **New Product** as a
+> page-hosted wizard in this kit (§3). Two amendments land here: §5.1's goals and platforms
+> questions move into that wizard for console-created products (Overview keeps them as the
+> fallback), and Signing key rotation stays the inline strip UX-29 built rather than a drawer
+> (§1.1). Its packages are Wave 6, UX-72 to UX-81.
+
 **Evidence.** Three audits run on 2026-10-05 against the real console (`packages/admin`, built with
 `mise exec node@22 -- pnpm build`, driven in Chromium from the e2e fixtures), on `main` at
 74f38463a, on `wp/A-18j-add-to-storefronts` and on `integ/ux-1a-ha` at 912a8960f (UX-10, UX-20,
@@ -314,10 +321,10 @@ below. Nothing in a wizard is bespoke per service except its step content.
 
 **Two hosts, one component.** `ui/wizard/Wizard` takes `host="page" | "drawer"`.
 
-| Host   | When                                                                   | URL                                                   | Examples                                                                                                     |
-| ------ | ---------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Page   | The subject has its own page and the setup takes more than one sitting | `#/p/<slug>/<page>?step=<id>`                         | A storefront (§2.8), Connect your app (§3)                                                                   |
-| Drawer | The setup configures the page underneath it and fits in one sitting    | `?setup=<wizard>&step=<id>` on the page it opens over | Publish from CI, Licensing quick start, Customer sign-in, Signing key rotation, Package feed, Platform ready |
+| Host   | When                                                                   | URL                                                   | Examples                                                                                                                                 |
+| ------ | ---------------------------------------------------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Page   | The subject has its own page and the setup takes more than one sitting | `#/p/<slug>/<page>?step=<id>`                         | A storefront (§2.8), Connect your app (§3)                                                                                               |
+| Drawer | The setup configures the page underneath it and fits in one sitting    | `?setup=<wizard>&step=<id>` on the page it opens over | Publish from CI, Licensing quick start, Customer sign-in, Package feed, Platform ready (Signing key rotation stays inline, FLOWS.md F21) |
 
 The drawer is EXPERIENCE's routed `Drawer`: it keeps the origin's accent and route, Escape returns
 focus to the opener, and the launch path opens the same drawer over Overview (§5).
@@ -1444,6 +1451,11 @@ only what is missing.
 ## 5. The launch path links into all of it
 
 ### 5.1 The first screen of a new product (D20)
+
+> **Amended by [FLOWS.md](FLOWS.md) F5 (2026-10-05):** for a product created in the console, these
+> two questions are asked inside the New Product wizard (from scratch) or read from `.pkey/` (from a
+> repository), so the launch path is built before Overview opens. Overview shows them only for a
+> product created through the API or `pkey`, or after **I'll choose later**.
 
 UX-20's create screen lands on Overview. For a product with no goals saved, Overview shows two
 questions before the launch path, inline (not a dialog), each one click to answer:
