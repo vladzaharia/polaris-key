@@ -7,7 +7,12 @@ import {
   type OpenOptions,
   type PortalHarness,
 } from "./portalHarness.js";
-import type { PortalScenario } from "./portalFixtures.js";
+import {
+  PROFILE_STEAM,
+  profileRoutes,
+  UPLOAD_ASSET,
+  type PortalScenario,
+} from "./portalFixtures.js";
 
 /**
  * The customer site's main flows (PORTAL.md) in real Chromium under the Worker's exact CSP, driven
@@ -522,6 +527,124 @@ describe("package access (PX-11)", () => {
     );
     expect(await o.violations()).toEqual([]);
     await o.close();
+  });
+});
+
+describe("Account → Profile (PX-22, §4.30)", () => {
+  /** Every picture on the page: its source, whether it decoded, and its natural width. */
+  const pictures = (page: Page) =>
+    page.evaluate(() =>
+      [...document.querySelectorAll("img")]
+        .filter((i) => i.getAttribute("src")?.startsWith("/media/avatar/"))
+        .map((i) => ({
+          src: i.getAttribute("src"),
+          decoded: i.complete && i.naturalWidth > 0,
+        })),
+    );
+
+  it("explicit choices: a typed name and a picked picture are sent alone, stick, and reach the header chip", async () => {
+    const patches: unknown[] = [];
+    const o = await open("three", "/#/account/profile", {
+      routes: profileRoutes(PROFILE_STEAM, patches),
+    });
+    try {
+      await h1(o.page, "Account");
+      const card = o.page.getByRole("region", { name: "Profile" });
+      await card
+        .getByText("Name typed by you · picture from Steam (marafox)")
+        .waitFor();
+      await card.getByRole("button", { name: "Edit profile" }).click();
+      const field = card.getByRole("textbox", { name: "Display name" });
+      await field.fill("Mara F.");
+      await card.getByText("Your choice", { exact: true }).waitFor();
+      await card
+        // The tile (its label) takes the click; the native radio inside is visually hidden.
+        .locator('[data-tile="link:lnk_google"]')
+        .click();
+      await card.getByRole("button", { name: "Save profile" }).click();
+      await card.getByText("Name typed by you · picture from Google").waitFor();
+      expect(patches).toEqual([
+        { name: "Mara F.", picture: { from: "lnk_google" } },
+      ]);
+      const chip = o.page.getByRole("button", { name: "Account: Mara F." });
+      await chip.waitFor();
+      await o.page.waitForFunction(() =>
+        [...document.images].every((i) => i.complete),
+      );
+      const shown = await pictures(o.page);
+      // The chip's 96 px picture and the card's 256 px one, both same-origin and decoded.
+      const google = `/media/avatar/${"6a".repeat(32)}`;
+      expect(shown.map((p) => p.src)).toEqual(
+        expect.arrayContaining([`${google}-96`, google]),
+      );
+      expect(shown.every((p) => p.decoded)).toBe(true);
+      expect(await o.violations()).toEqual([]);
+    } finally {
+      await o.close();
+    }
+  });
+
+  it("upload: the bytes go up, Your upload is selected, and Save picks it", async () => {
+    const patches: unknown[] = [];
+    const o = await open("three", "/#/account/profile", {
+      routes: profileRoutes(PROFILE_STEAM, patches),
+      width: 390,
+      height: 844,
+    });
+    try {
+      await h1(o.page, "Account");
+      const card = o.page.getByRole("region", { name: "Profile" });
+      await card.getByRole("button", { name: "Edit profile" }).click();
+      const chooser = o.page.waitForEvent("filechooser");
+      await card.getByRole("button", { name: "Upload" }).click();
+      await (
+        await chooser
+      ).setFiles({
+        name: "me.png",
+        mimeType: "image/png",
+        buffer: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+          "base64",
+        ),
+      });
+      const mine = card.getByRole("radio", { name: /Your upload/ });
+      await mine.waitFor({ state: "attached" });
+      expect(await mine.isChecked()).toBe(true);
+      expect(o.requests).toContain("POST /api/me/profile/picture");
+      await card.getByRole("button", { name: "Save profile" }).click();
+      await card
+        .getByText("Name typed by you · picture uploaded by you")
+        .waitFor();
+      expect(patches).toEqual([{ picture: { upload: UPLOAD_ASSET } }]);
+      expect(
+        await o.page.evaluate(
+          () => document.documentElement.scrollWidth - window.innerWidth,
+        ),
+      ).toBeLessThanOrEqual(0);
+      expect(await o.violations()).toEqual([]);
+    } finally {
+      await o.close();
+    }
+  });
+
+  it("no picture before authentication: the login card asks for no profile and loads no picture", async () => {
+    // The profile route would answer with a picture; signed out, nothing may ask for it.
+    const o = await open("signedOut", "/", {
+      routes: {
+        "GET /api/me/profile":
+          profileRoutes(PROFILE_STEAM)["GET /api/me/profile"]!,
+      },
+    });
+    try {
+      await h1(o.page, /Sign in/);
+      expect(await pictures(o.page)).toEqual([]);
+      expect(
+        o.all.filter((r) => /\/media\/avatar\/|\/api\/me\/profile/.test(r)),
+      ).toEqual([]);
+      expect(await o.violations()).toEqual([]);
+    } finally {
+      await o.close();
+    }
   });
 });
 

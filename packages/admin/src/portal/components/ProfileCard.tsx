@@ -8,7 +8,7 @@ import { PROFILE_COPY as C } from "../copy/profile.js";
 import { useProfile } from "../data.js";
 import { badgeProvider, sourceSummary } from "../model/profile.js";
 import { Avatar } from "./Avatar.js";
-import { ProviderGlyph } from "./Glyphs.js";
+import { providerBadge } from "./Glyphs.js";
 import { ProfileEditor } from "./ProfileEditor.js";
 import { SectionCard } from "./product/Card.js";
 
@@ -90,7 +90,7 @@ export function ProfileCard({
               email={account.email}
               picture={picture}
               size={56}
-              badge={<ProviderGlyph provider={badge} />}
+              badge={providerBadge(badge)}
             />
             <div className="min-w-0 flex-1">
               <p className="font-bold text-fg-strong [overflow-wrap:anywhere]">

@@ -42,7 +42,7 @@ import {
   type ProfileDraft,
 } from "../model/profile.js";
 import { Avatar } from "./Avatar.js";
-import { ProviderGlyph } from "./Glyphs.js";
+import { ProviderGlyph, providerBadge } from "./Glyphs.js";
 
 type FieldError = { field: "name" | "picture" | "form"; text: string } | null;
 
@@ -229,7 +229,7 @@ export function ProfileEditor({
               email={account.email}
               picture={pic.picture?.url ?? null}
               size={size as 56 | 96}
-              badge={<ProviderGlyph provider={badge} />}
+              badge={providerBadge(badge)}
               className={
                 size === 56 ? "@3xl:hidden" : "hidden @3xl:inline-flex"
               }

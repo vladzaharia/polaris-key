@@ -191,3 +191,17 @@ export function ProviderGlyph({
   if (provider === "steam") return <SteamGlyph className={className} />;
   return null;
 }
+
+/**
+ * An avatar's source badge: the provider's mark, or null when none is drawn, so no empty badge
+ * is ever shown (Game Center, a removed method, an upload, Initials).
+ */
+export function providerBadge(
+  provider: string | null | undefined,
+): React.ReactElement | null {
+  return provider === "apple" ||
+    provider === "google" ||
+    provider === "steam" ? (
+    <ProviderGlyph provider={provider} />
+  ) : null;
+}

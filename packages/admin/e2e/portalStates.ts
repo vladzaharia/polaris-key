@@ -1,6 +1,10 @@
 import type { Page } from "playwright";
 import { h1, type Override } from "./portalHarness.js";
-import type { PortalScenario } from "./portalFixtures.js";
+import {
+  PROFILE_STEAM,
+  profileRoutes,
+  type PortalScenario,
+} from "./portalFixtures.js";
 
 /**
  * Every state of PORTAL.md §4, the customer site's screens (PX-20, the quality bar).
@@ -711,6 +715,38 @@ export const SHIPPED: ShippedState[] = [
         .waitFor();
     },
   },
+  // §4.30 Account → Profile (PX-22).
+  {
+    section: "4.30",
+    id: "account-profile",
+    title: "Account → Profile, a typed name and the Steam picture",
+    scenario: "three",
+    path: "/#/account",
+    routes: profileRoutes(PROFILE_STEAM),
+    ready: async (p) => {
+      await h1(p, "Account");
+      await p
+        .getByText("Name typed by you · picture from Steam (marafox)")
+        .waitFor();
+    },
+  },
+  {
+    section: "4.30",
+    id: "account-profile-edit",
+    title: "Account → Profile, editing (Google picked, Steam in use)",
+    scenario: "three",
+    path: "/#/account",
+    routes: profileRoutes(PROFILE_STEAM),
+    ready: async (p) => {
+      await h1(p, "Account");
+      await p.getByRole("button", { name: "Edit profile" }).click();
+      await p.getByRole("textbox", { name: "Display name" }).waitFor();
+      await p
+        // The tile (its label) takes the click; the native radio inside is visually hidden.
+        .locator('[data-tile="link:lnk_google"]')
+        .click();
+    },
+  },
   // §4.27 Jump to a product (PX-03).
   {
     section: "4.27",
@@ -854,5 +890,4 @@ export const PENDING: PendingState[] = [
       "Email gate in an app: Hide My Email, TV with terms, real email instead",
     wp: ["PX-21"],
   },
-  { section: "4.30", title: "Account → Profile, editing", wp: ["PX-22"] },
 ];

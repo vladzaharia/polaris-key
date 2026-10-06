@@ -265,6 +265,8 @@ describe("explicit choices (§4.30 rules 2 and 3)", () => {
         "Name typed by you · initials instead of a picture",
       ),
     ).toBeTruthy();
+    // A typed name and Initials: no provider, so no (empty) badge on the avatar.
+    expect(card.querySelector("[data-avatar]")!.children).toHaveLength(1);
   });
 
   it("choosing nothing, or retyping the saved name, saves nothing", async () => {

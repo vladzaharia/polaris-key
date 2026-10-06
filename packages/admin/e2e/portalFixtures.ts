@@ -373,8 +373,15 @@ const ART: Record<
   },
 };
 
-/** The media proxy's answer for `/media/<product>/<icon|header>`, or null (404). */
+/** The media proxy's answer for `/media/<product>/<icon|header>` and account pictures, or null (404). */
 export function portalMedia(pathname: string): Buffer | null {
+  // PX-W16/PX-22: `/media/avatar/<asset>[-96]`, the stored account pictures.
+  const a = pathname.match(/^\/media\/avatar\/([0-9a-f]{64})(-96)?$/);
+  if (a) {
+    const art = AVATAR_ART[a[1]!];
+    const size = a[2] ? 96 : 256;
+    return art ? artPng(size, size, art.bands, art.disc) : null;
+  }
   const m = pathname.match(/^\/media\/([a-z0-9-]+)\/(icon|header)$/);
   const art = m ? ART[m[1]!] : undefined;
   if (!m || !art || (m[2] === "icon" && art.icon === false)) return null;
@@ -872,6 +879,169 @@ function device(
   };
 }
 
+// ── Account → Profile (PX-W16's `GET|PATCH /api/me/profile`, upload; PX-22) ─────────────────
+
+const asset = (seed: string): string => seed.repeat(64).slice(0, 64);
+const pic = (a: string) => ({
+  asset: a,
+  url: `/media/avatar/${a}`,
+  url96: `/media/avatar/${a}-96`,
+});
+const STEAM_ASSET = asset("5e");
+const GOOGLE_ASSET = asset("6a");
+export const UPLOAD_ASSET = asset("7c");
+/** Stand-in pictures: Steam's fox orange, Google's teal, the upload's violet. */
+const AVATAR_ART: Record<string, { bands: Rgb[]; disc: Rgb }> = {
+  [STEAM_ASSET]: {
+    bands: [
+      [214, 104, 40],
+      [178, 78, 30],
+    ],
+    disc: [250, 232, 210],
+  },
+  [GOOGLE_ASSET]: {
+    bands: [
+      [96, 160, 170],
+      [62, 118, 128],
+    ],
+    disc: [232, 196, 170],
+  },
+  [UPLOAD_ASSET]: {
+    bands: [
+      [92, 64, 170],
+      [60, 40, 120],
+    ],
+    disc: [236, 226, 255],
+  },
+};
+
+const PROFILE_SOURCES = [
+  {
+    linkId: "lnk_steam",
+    provider: "steam",
+    label: "marafox",
+    name: "marafox",
+    picture: pic(STEAM_ASSET),
+  },
+  {
+    linkId: "lnk_google",
+    provider: "google",
+    label: "mara.fennick@gmail.com",
+    name: "Mara Fennick",
+    picture: pic(GOOGLE_ASSET),
+  },
+  {
+    linkId: "lnk_gc",
+    provider: "gamecenter",
+    label: "Mara F.",
+    name: "Mara F.",
+    picture: null,
+  },
+];
+
+type Profile = {
+  displayName: string | null;
+  displayNameSource: Record<string, unknown> | null;
+  explicitName: boolean;
+  picture: ReturnType<typeof pic> | null;
+  pictureSource: Record<string, unknown> | null;
+  explicitPicture: boolean;
+  locale: string | null;
+  sources: typeof PROFILE_SOURCES;
+};
+
+/** Every signed-in scenario: a typed name and Initials chosen, so the chip shows initials. */
+const PROFILE_INITIALS: Profile = {
+  displayName: ACCOUNT.name,
+  displayNameSource: { kind: "typed" },
+  explicitName: true,
+  picture: null,
+  pictureSource: { kind: "initials" },
+  explicitPicture: true,
+  locale: "en-US",
+  sources: PROFILE_SOURCES,
+};
+
+/** Frames 36 and 50: a typed name and the Steam picture, both chosen. */
+export const PROFILE_STEAM: Profile = {
+  ...PROFILE_INITIALS,
+  picture: pic(STEAM_ASSET),
+  pictureSource: { kind: "provider", linkId: "lnk_steam", provider: "steam" },
+};
+
+/**
+ * The profile routes over one profile: GET answers it, PATCH applies an explicit choice the way
+ * the Worker does (`card/profile.ts`), the upload answers a stored asset, and `GET /api/me`
+ * carries the profile's name and picture as the Worker derives them. `patches` records each body.
+ */
+export function profileRoutes(
+  start: Profile = PROFILE_INITIALS,
+  patches: unknown[] = [],
+): Record<string, Handler> {
+  let profile = start;
+  const source = (linkId: string) =>
+    profile.sources.find((o) => o.linkId === linkId)!;
+  return {
+    "/api/me": () => ({
+      body: {
+        account: {
+          ...ACCOUNT,
+          name: profile.displayName ?? ACCOUNT.name,
+          avatarUrl: profile.picture?.url ?? null,
+        },
+        csrf: "csrf",
+      },
+    }),
+    "GET /api/me/profile": () => ({ body: { profile } }),
+    "PATCH /api/me/profile": (req) => {
+      const change = req.postDataJSON() as {
+        name?: string;
+        nameFrom?: string;
+        picture?: "initials" | { from?: string; upload?: string };
+      };
+      patches.push(change);
+      const next = { ...profile };
+      if (change.name !== undefined) {
+        next.displayName = change.name;
+        next.displayNameSource = { kind: "typed" };
+        next.explicitName = true;
+      } else if (change.nameFrom) {
+        const o = source(change.nameFrom);
+        next.displayName = o.name;
+        next.displayNameSource = {
+          kind: "provider",
+          linkId: o.linkId,
+          provider: o.provider,
+        };
+        next.explicitName = true;
+      }
+      const p = change.picture;
+      if (p === "initials") {
+        next.picture = null;
+        next.pictureSource = { kind: "initials" };
+      } else if (p?.from) {
+        const o = source(p.from);
+        next.picture = o.picture;
+        next.pictureSource = {
+          kind: "provider",
+          linkId: o.linkId,
+          provider: o.provider,
+        };
+      } else if (p?.upload) {
+        next.picture = pic(p.upload);
+        next.pictureSource = { kind: "upload" };
+      }
+      if (p) next.explicitPicture = true;
+      profile = next;
+      return { body: { profile } };
+    },
+    "POST /api/me/profile/picture": () => ({
+      status: 201,
+      body: { upload: pic(UPLOAD_ASSET) },
+    }),
+  };
+}
+
 export function portalRoutes(s: PortalScenario): Record<string, Handler> {
   if (s === "signedOut") {
     return {
@@ -893,7 +1063,7 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
       ? []
       : OFFERS.filter((o) => !licenses.some((l) => l.product === o.product));
   const routes: Record<string, Handler> = {
-    "/api/me": { body: { account: ACCOUNT, csrf: "csrf" } },
+    ...profileRoutes(),
     "/api/capabilities": { body: CAPS },
     "/api/licenses": () => ({ body: { licenses } }),
     // One item per product (the first licence listed is the best), like the Worker.
