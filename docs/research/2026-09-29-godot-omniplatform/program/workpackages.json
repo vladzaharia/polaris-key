@@ -3129,7 +3129,7 @@
         "owner decision 2026-10-05 (Storytime duplicate auto-issue)"
       ],
       "brief": "wp/I-26-legacy-oidc-license-choice.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "U-01",
@@ -4884,7 +4884,7 @@
         "notes/S-15 §13 decision 7"
       ],
       "brief": "wp/A-18i-pr-plane-generators.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "A-18j",
@@ -7025,7 +7025,8 @@
       "refs": [
         "notes/SDK-PARITY-PASS §5.0 SP-00",
         "notes/SDK-PARITY-PASS owner decisions (2026-10-05)",
-        "PARITY §5"
+        "PARITY §5",
+        "plans/SP-00.md (approved 2026-10-05; decisions delegated to Claude)"
       ],
       "brief": "wp/SP-00-parity-registry-plan.md",
       "status": "todo"
@@ -7511,7 +7512,7 @@
         "docs/design/BRAND.md §4, §7.1, §12"
       ],
       "brief": "wp/UK-01-brand-kit-tokens.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "UK-02",
@@ -7530,10 +7531,11 @@
       "refs": [
         "docs/design/UI-KITS.md §4.6, §4.7, §5.2",
         "plans/SP-00.md",
-        "notes/SDK-PARITY-PASS.md §3.2"
+        "notes/SDK-PARITY-PASS.md §3.2",
+        "plans/UK-02.md (approved 2026-10-05; decisions delegated to Claude)"
       ],
       "brief": "wp/UK-02-copy-fixtures-parity-plan.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "UK-02a",
@@ -8373,7 +8375,7 @@
         "docs/design/UI-KITS.md owner decisions (2026-10-05)"
       ],
       "brief": "wp/UK-40-kotlin-jvm-desktop.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "UK-41",

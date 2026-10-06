@@ -68,6 +68,9 @@ delegated to the lead).
   visibility, not access. The route enforces the L2 typed confirmation now: widening to
   `everyone` needs `"confirm": "storefront.polarisKey.audience"`, as the platform-settings route
   asks for its key.
+- **Migration number is 0075** (`0075_storefront_listing.sql`): main took 0074 for UX-15's
+  `0074_license_refusals.sql` while this package was in review, so PS-02 takes the next free
+  number and `LATEST_MIGRATION` points at it.
 - **Dual-write as well as dual-read.** Writing `storeListed` sets `discover_enabled` to 0 exactly
   when `unlisted`; `discoverEnabled: false` alone makes the product `unlisted`, and `true` returns
   an `unlisted` product to `auto`. The two columns stay coherent for a pre-0075 Worker in the

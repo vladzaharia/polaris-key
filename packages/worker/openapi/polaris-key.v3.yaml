@@ -3175,8 +3175,14 @@ paths:
         (`pending` before the tool runs, then `done` or `failed`) and `exitCode`. The Worker
         re-checks the command against the store's allow-list and the outlet identity, then writes
         the step's `store_operations` row with `plane = ci`; a `pending` report of a step already
-        done in the same run answers `replayed: true` (CI skips the tool). Requires a `pkeyci_`
-        token with `distribution:report` (in the default CI grant). No CORS. Errors are LEGACY
+        done in the same run answers `replayed: true` (CI skips the tool). A PR-plane step (A-18i:
+        `store` `winget`, `homebrew`, `scoop` or `flathub`, `command` `pull-request` or `status`,
+        argv `<command> --repo <repo> …` for the pseudo-tool `github`) writes its row with
+        `plane = pr` and natural key `pr:<package>:<version>`; it adds `files` (each `{path,
+        sha256}`, every path one the store's PR plane allows), `pr` (`{number, url, state, merged,
+        labels}`, the URL on the argv's repository; required when done) and `existing` (the PR was
+        already open or merged), and the answer carries the verifier's `verdict`. Requires a
+        `pkeyci_` token with `distribution:report` (in the default CI grant). No CORS. Errors are LEGACY
         FLAT with a machine-readable `reason` (`unknown_outlet`, `unknown_release`,
         `unknown_build` 404; `invalid_state`, `unknown_purpose`, `invalid_fingerprint`,
         `invalid_body`, `command_not_allowed` 422; `too_many_observations` 409, past 64
@@ -3246,7 +3252,18 @@ paths:
                 store:
                   {
                     type: string,
-                    enum: [itch, snap, steam, msstore, epic],
+                    enum:
+                      [
+                        itch,
+                        snap,
+                        steam,
+                        msstore,
+                        epic,
+                        winget,
+                        homebrew,
+                        scoop,
+                        flathub,
+                      ],
                     description: "store-step only.",
                   }
                 op:
@@ -3277,6 +3294,32 @@ paths:
                   {
                     type: string,
                     description: "store-step only: the https URL of the CI run.",
+                  }
+                files:
+                  type: array
+                  maxItems: 64
+                  description: "PR-plane store-step only: the files the pull request wrote."
+                  items:
+                    type: object
+                    required: [path, sha256]
+                    properties:
+                      path: { type: string, maxLength: 512 }
+                      sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+                pr:
+                  type: object
+                  description: "PR-plane store-step only: the pull request opened, found or read."
+                  required: [number, url, state, merged, labels]
+                  properties:
+                    number: { type: integer, minimum: 1 }
+                    url: { type: string }
+                    state: { type: string, enum: [open, closed] }
+                    merged: { type: boolean }
+                    labels:
+                      { type: array, maxItems: 50, items: { type: string } }
+                existing:
+                  {
+                    type: boolean,
+                    description: "PR-plane store-step only: the PR for the package version was already open or merged.",
                   }
             examples:
               storeStep:
@@ -3352,8 +3395,20 @@ paths:
                           type: string,
                           enum: [pending, done, failed, ambiguous],
                         }
-                      plane: { type: string, const: ci }
+                      plane: { type: string, enum: [ci, pr] }
                       replayed: { type: boolean }
+                      verdict:
+                        {
+                          type: string,
+                          enum:
+                            [
+                              merged,
+                              closed,
+                              needs-author-feedback,
+                              validation-issue,
+                              in-review,
+                            ],
+                        }
                   availability:
                     type: object
                     properties:
@@ -3470,6 +3525,99 @@ paths:
                           app: { type: object }
                           locales: { type: object }
                       issues: { type: array, items: { type: object } }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /{product}/distribution/pr/{store}:
+    get:
+      operationId: ciPrInputs
+      tags: [distribution]
+      summary: A PR-plane generator's inputs (CI)
+      description: >
+        A-18i. Everything `pkey storefront <store> pr` needs to write one outlet's manifest for
+        the channel's newest release: the outlet and its identity; the release the channel serves
+        there (the storefront feeds' selection: version, date, and the builds of the store's
+        platform with their immutable HTTPS delivery URLs, SHA-256 and sizes); the listing
+        model's projection for the store's column (winget, Flathub) with the release's
+        per-locale store notes; the app-level listing fields (name, short description, website,
+        developer, copyright, `tint` and `tintDark`, content descriptors; `screenshots` holds
+        only hosted copies on the media host and is empty until that host serves them, never
+        the manifest listing's raw URLs); the public URLs a manifest points back at (`download.json`, the Scoop feed, the
+        Flathub checker feed); for Scoop, the feed's own manifest; and whether the outlet's
+        binaries update themselves. The not-found while the app's delivery access is not public
+        (a PR-plane manifest sends strangers to the bytes), and for an unknown store, channel or
+        outlet. Requires a `pkeyci_` token with `distribution:report` (in the default CI grant).
+        No CORS.
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - name: store
+          in: path
+          required: true
+          schema: { type: string, enum: [winget, homebrew, scoop, flathub] }
+        - name: channel
+          in: query
+          required: false
+          schema: { type: string, default: stable, maxLength: 64 }
+        - name: outlet
+          in: query
+          required: false
+          description: The outlet, when the product declares several of the store's kind.
+          schema: { type: string, maxLength: 64 }
+      responses:
+        "200":
+          description: The inputs.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, inputs]
+                properties:
+                  ok: { type: boolean, const: true }
+                  inputs:
+                    type: object
+                    required:
+                      [
+                        store,
+                        channel,
+                        product,
+                        outlet,
+                        release,
+                        notes,
+                        listing,
+                        app,
+                        links,
+                        selfUpdates,
+                      ]
+                    properties:
+                      store: { type: string }
+                      channel: { type: string }
+                      product: { type: object }
+                      outlet:
+                        type: object
+                        properties:
+                          id: { type: string }
+                          kind: { type: string }
+                          identity: { type: object }
+                      release:
+                        type: [object, "null"]
+                        properties:
+                          releaseId: { type: string }
+                          version: { type: string }
+                          publishedAt: { type: [integer, "null"] }
+                          builds: { type: array, items: { type: object } }
+                      notes: { type: [object, "null"] }
+                      listing: { type: [object, "null"] }
+                      app: { type: object }
+                      links:
+                        type: object
+                        properties:
+                          downloadJson: { type: string }
+                          scoopFeed: { type: string }
+                          flathubFeed: { type: string }
+                      scoop: { type: [object, "null"] }
+                      selfUpdates: { type: boolean }
         "401": { $ref: "#/components/responses/CiUnauthorized" }
         "403": { $ref: "#/components/responses/CiForbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -6343,7 +6491,10 @@ paths:
         allow-list or the request is a 400. An optional `return_to` marks this as the BROWSER
         flow (the callback will 302 back and set the cookie); omitting it marks the
         device/CLI flow (the callback renders the "you're signed in" page instead).
-        `return_to` must be same-origin. All errors are LEGACY FLAT.
+        `return_to` must be same-origin. On a `provider: platform` product the 302 also sets
+        the licence chooser's browser binder, `__Host-pk_lcb` (HttpOnly, Secure,
+        SameSite=Lax, Path=/, 600 s; I-26): only this browser may later choose a licence for
+        the flow (`authChoose`). All errors are LEGACY FLAT.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: return_to
@@ -6441,7 +6592,12 @@ paths:
         response you get depends on how the flow STARTED: a flow with `return_to` (browser)
         answers 302 to that URL with the session `Set-Cookie`; a flow without one (device/CLI)
         answers 200 with a static, script-free HTML page telling the user to close the tab —
-        the token is collected by polling, never by this response. All errors are LEGACY FLAT.
+        the token is collected by polling, never by this response. I-26: on a
+        `provider: platform` product, when the verified identity is linked to a Polaris Key
+        account that already owns a usable licence for the product, nothing is minted here:
+        a browser carrying the flow's binder (`__Host-pk_lcb`) is sent with a 303 to
+        `authChoosePage`'s page, and any other browser gets the 403 "Start again on your
+        device" page while the flow is dropped. All errors are LEGACY FLAT.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: code
@@ -6467,6 +6623,15 @@ paths:
                 signedIn:
                   summary: The page body, verbatim
                   value: '<!doctype html><meta charset=utf-8><title>Signed in</title><body style="font-family:system-ui;padding:3rem;text-align:center"><h1>You''re signed in</h1><p>You can close this tab and return to the app.</p>'
+        "303":
+          description: >
+            I-26: the licence chooser applies. Empty body; `cache-control: no-store`,
+            `referrer-policy: no-referrer`.
+          headers:
+            Location:
+              description: The chooser, `/<product>/identity/auth/choose`.
+              schema: { type: string, format: uri }
+              example: https://key.plrs.im/djdl/identity/auth/choose
         "302":
           description: >
             The BROWSER branch — the flow carried a `return_to`, so the session cookie is set
@@ -6504,8 +6669,14 @@ paths:
                       { error: unauthorized, message: license unavailable },
                   }
         "403":
-          description: The identity verified but is not entitled to this product — LEGACY FLAT.
+          description: >
+            The identity verified but is not entitled to this product — LEGACY FLAT. Or, I-26,
+            the licence chooser applies but this browser does not carry the flow's binder: the
+            branded HTML page "Start again on your device" (`text/html`), the flow dropped and
+            nothing minted.
           content:
+            text/html:
+              schema: { type: string }
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
@@ -6915,7 +7086,8 @@ paths:
         "303":
           description: >
             Confirmed. Empty body; the browser is sent to the IdP. `cache-control: no-store`,
-            `referrer-policy: no-referrer`.
+            `referrer-policy: no-referrer`. On a `provider: platform` product it also sets the
+            licence chooser's browser binder `__Host-pk_lcb` (I-26; see `authChoosePage`).
           headers:
             Location:
               description: The IdP authorize URL stored when the device flow started.
@@ -7048,7 +7220,8 @@ paths:
         "303":
           description: >
             Confirmed. Empty body; the browser is sent to the IdP. `cache-control: no-store`,
-            `referrer-policy: no-referrer`.
+            `referrer-policy: no-referrer`. On a `provider: platform` product it also sets the
+            licence chooser's browser binder `__Host-pk_lcb` (I-26; see `authChoosePage`).
           headers:
             Location:
               description: The IdP authorize URL stored when the device flow started.
@@ -7083,6 +7256,151 @@ paths:
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
         "429":
           description: 60 requests per 60 s per client IP — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                limited:
+                  { value: { error: rate_limited, message: too many requests } }
+  /{product}/identity/auth/choose:
+    parameters:
+      - { $ref: "#/components/parameters/Product" }
+    get:
+      operationId: authChoosePage
+      tags: [identity]
+      summary: The legacy sign-in's license chooser (I-26)
+      description: >
+        Where the callback sends a browser when the person's Polaris Key account already owns a
+        usable license for this `provider: platform` product (plans/I-04.md, owner decision
+        2026-10-05). Renders "Choose a license for this device": the product, the device label
+        (`deviceName`, or "This browser" for the redirect flow) and one radio row per candidate
+        license (the account's usable licenses, plus the identity's own unattached `sub`-keyed
+        license) with its tier, origin, its seat count ("1 of 3 devices", or "Account-wide · 2 of 2 devices" for a sign-in license) and expiry. The first free row in
+        rank-first order (no expiry, then the latest expiry, then the oldest) is preselected.
+        A full row is disabled ("No free devices") and offers **Replace a device** (its
+        seat-holding devices, the least recent preselected, when the account owns it and the
+        portal is on) and a **Free a device** link to the portal's focused flow. **Create a new
+        free license** appears only when the product's policy would auto-issue to this person,
+        they have no `sub`-keyed license yet, and every row is full. When a Replace is pending
+        the page is its confirmation instead ("Replace <device>?"). The page names no flow: the
+        browser binder cookie `__Host-pk_lcb` finds it, and each render carries a fresh
+        single-use `choice` token. Script-free, under the branded-page CSP, `cache-control:
+        no-store`, `referrer-policy: no-referrer`. Nothing on the device wire changes: the poll
+        answers `pending` until the choice is recorded.
+      responses:
+        "200":
+          description: "The chooser or the Replace confirmation. `text/html; charset=utf-8`."
+          content:
+            text/html:
+              schema: { type: string }
+              examples:
+                chooser:
+                  summary: Two licenses, one full (test/oidcLicenseChoice.test.ts)
+                  value: |
+                    <form method="post" action="https://key.plrs.im/djdl/identity/auth/choose">
+                      <input type="hidden" name="choice" value="Qm9sZC1jaG9pY2UtdG9rZW4">
+                      <label class="choice"><input type="radio" name="license" value="lic_std" checked> <span class="tag">Standard</span> 1 of 3 devices · From the developer · Lifetime</label>
+                      <label class="choice is-disabled"><input type="radio" name="license" value="lic_old" disabled> <span class="tag">Starter</span> Account-wide · 1 of 1 device · Lifetime · No free devices</label>
+                      <button class="button" type="submit" name="action" value="use">Use this license</button>
+                      <button class="button secondary" type="submit" name="action" value="cancel">Cancel</button>
+                    </form>
+        "403":
+          description: >
+            No binder, a binder for another flow, or a flow that expired or already finished:
+            the branded page "Start again on your device". `text/html`.
+          content:
+            text/html:
+              schema: { type: string }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: 60 requests per 60 s per client IP (fail-closed) — LEGACY FLAT.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                limited:
+                  { value: { error: rate_limited, message: too many requests } }
+    post:
+      operationId: authChoose
+      tags: [identity]
+      summary: Record a step of the license chooser, or the choice (I-26)
+      description: >
+        A same-origin form POST (Fetch Metadata, else no foreign `Origin`) from the browser that
+        holds the flow's binder, carrying the page's single-use `choice` token; a stale or
+        reused token changes nothing and is sent back to the GET. `action` is one of: `use`
+        with `license` (a free row's id, or `create` when offered), which records the choice;
+        `replace:<licenseId>` with `device:<licenseId>`, which stages a Replace and shows its
+        confirmation; `replace`, which frees that device exactly as the portal's
+        `DELETE /api/licenses/{product}/{licenseId}/devices/{deviceId}` does (ownership, the
+        shared `portalDeviceDisconnect` budget, the audit row and the security email) and then
+        records the choice; `back`; and `cancel`, which drops the flow. The server re-checks
+        every choice: the license must still be one of the account's (or the identity's own)
+        and still take this device. A recorded choice is audited
+        (`identity.signin.license_chosen`) and completes the flow: a device-code flow's poll
+        then reaches `ready` on the chosen license; a `return_to` flow gets its session and a
+        303 back; choosing the identity's own license, or a new one, runs the sign-in's
+        activation as before. Choosing never counts as a key entry and never moves a license
+        between accounts.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [choice, action]
+              properties:
+                choice:
+                  type: string
+                  description: The single-use token of the page being submitted.
+                action:
+                  type: string
+                  description: "`use`, `replace:<licenseId>`, `replace`, `back` or `cancel`."
+                license:
+                  type: string
+                  description: With `use`, a free row's license id, or `create`.
+              additionalProperties: { type: string }
+            examples:
+              use:
+                value:
+                  {
+                    choice: Qm9sZC1jaG9pY2UtdG9rZW4,
+                    action: use,
+                    license: lic_std,
+                  }
+      responses:
+        "200":
+          description: >
+            The choice was recorded on a flow with no `return_to` ("You're signed in"), or the
+            sign-in was cancelled. `text/html`; the binder is cleared.
+          content:
+            text/html:
+              schema: { type: string }
+        "303":
+          description: >
+            Back to the chooser (a step, a stale token, or a refusal with a one-line notice such
+            as "Too many device changes. Try again in 42 seconds."), or, for a `return_to` flow
+            whose choice was recorded, to that URL with the session cookie.
+          headers:
+            Location:
+              description: The chooser, or the flow's `return_to`.
+              schema: { type: string, format: uri }
+              example: https://key.plrs.im/djdl/identity/auth/choose
+        "403":
+          description: >
+            Cross-site, no binder, or no open chooser for it: the branded "Start again on your
+            device" page (`text/html`). Or the activation the identity's own license needs
+            refused — LEGACY FLAT `not entitled`.
+          content:
+            text/html:
+              schema: { type: string }
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+              examples:
+                notEntitled:
+                  { value: { error: forbidden, message: not entitled } }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: 60 requests per 60 s per client IP (fail-closed) — LEGACY FLAT.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }

@@ -24,7 +24,7 @@
         --t-bg: #101114;
         --t-frame: #26282e;
         --t-fg: #d7dae0;
-        --a: #4fd8c4; /* truecolor product accent */
+        --a: #72cabe; /* truecolor product accent (resolver fg, dark) */
         --ok: #5fd38d;
         --warn: #e5c07b;
         --err: #ef6b73;
@@ -36,7 +36,7 @@
         --t-bg: #fbfbfc;
         --t-frame: #dcdee3;
         --t-fg: #24292f;
-        --a: #0b6b62;
+        --a: #14796f;
         --ok: #1a7f37;
         --warn: #9a6700;
         --err: #cf222e;
@@ -276,6 +276,16 @@
         <div class="shot cols80" data-shot="status-error">
           <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
           <pre id="err"></pre>
+        </div>
+      </figure>
+      <figure>
+        <figcaption>
+          terminal · boot (spinner, then the result), healthy status and the
+          offline error
+        </figcaption>
+        <div class="shot cols80" data-shot="states">
+          <div class="tbar"><i></i><i></i><i></i>tidewater — 80 × 24</div>
+          <pre id="states"></pre>
         </div>
       </figure>
       <figure>
@@ -638,6 +648,60 @@
           ["m", "   use the license on your account"],
         ),
         L(["m", "└  "], ["m", "exit 3 · --json for scripts"]),
+      ]);
+
+      // 5b. Boot, healthy status, offline error
+      put("states", [
+        L(["m", "$ "], ["", "tidewater"]),
+        L(["a", "⠹"], ["", "  Checking your license"], ["m", " …"]),
+        L(
+          ["ok", "✓"],
+          ["", "  "],
+          ["s", "Tidewater Studio Pro"],
+          ["m", " · ready"],
+        ),
+        "",
+        L(["m", "$ "], ["", "tidewater status"]),
+        L(["m", "┌  "], ["chip", " Tidewater Studio "], ["m", " · status"]),
+        L(["m", "│"]),
+        R(
+          ["ok", "✓"],
+          ["", " License   "],
+          ["s", "Pro"],
+          ["m", " · Lifetime · mara@fennick.studio"],
+        ),
+        R(
+          ["ok", "✓"],
+          ["", " Devices   "],
+          ["s", "2 of 3"],
+          ["m", " · this Mac, MacBook Pro"],
+        ),
+        R(
+          ["ok", "✓"],
+          ["", " Offline   "],
+          ["s", "14 days"],
+          ["m", " before it needs to check in"],
+        ),
+        R(
+          ["ok", "✓"],
+          ["", " Version   "],
+          ["s", "2.4.1"],
+          ["m", " · up to date on stable"],
+        ),
+        L(["m", "└  "], ["m", "exit 0 · --json for scripts"]),
+        "",
+        L(["m", "$ "], ["", "tidewater update"]),
+        L(["warn", "▲"], ["", "  "], ["s", "Can’t reach Harbor Audio"]),
+        R([
+          "",
+          "Check your connection. Tidewater Studio keeps working offline",
+        ]),
+        R(["", "for "], ["warn", "3 more days"], ["", "."]),
+        L(
+          ["m", "└  "],
+          ["s", "tidewater update --retry"],
+          ["m", "   try again · exit 4"],
+        ),
       ]);
 
       // 6. Help
