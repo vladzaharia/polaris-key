@@ -83,6 +83,31 @@ The avatar copy reuses S-20's ingest core, `core/safeFetch.ts` and `core/hostedA
 outbound fetcher. The provider host allowlist stays specific to this route
 ([notes/S-20 §8](../../notes/S-20-hosted-assets.md#8-interactions-with-other-plans)).
 
+## Corrections against the code (PX-W16 builder, 2026-10-06)
+
+- **I-07 landed first** and owns the shared code: claims capture per provider (`providers/*.ts` →
+  `card/gate.ts` → `card/profile.ts`), the profile record (`accounts.display_name`, `avatar_key`,
+  `locale` with sources and explicit flags in `details_source_json`, per-link imports in
+  `account_links.profile_json`), `GET /media/avatar/…` and the deletion hook. PX-W16 narrows to
+  what was left: the fetch moved onto `core/safeFetch.ts`, re-encoding, content-addressed storage,
+  the profile routes, upload, GC, and the media route serving only re-encoded renditions.
+- **Not an `avatar` slot space in `core/hostedAssets.ts`** (S-20 note above). The hosted-asset
+  store writes the original under `blobs/sha256/`, which carries a 180-day R2 age lock
+  (`docs/DEPLOYMENT.md`), so a deleted account's picture could not be erased for six months; its
+  rows, refs and audit are product-scoped, and an avatar belongs to an account. Avatars therefore
+  keep I-07's `avatars/` prefix in `BLOBS` (no lock; the human input, settled by I-07) and reuse
+  the S-20 substrate below the store: `safeFetch` (the one outbound fetcher, with this route's
+  own `allowHost`), `core/sniff.ts`, and the Images binding HA-03 binds. No second fetcher.
+- **Re-encoding uses the `IMAGES` binding** (already bound for prod, staging and dev). WebP and
+  PNG output always discards metadata. Without the binding nothing is copied and the account shows
+  initials; an avatar is never stored as fetched.
+- **Content-addressed, peppered.** The asset id is `HMAC(KEY_HASH_PEPPER, account ‖ SHA-256 of
+  the source)`, so the same picture is stored once per account and the id is not computable from a
+  public provider picture. A migration adds `account_avatars` (one row per asset) for deletion and GC.
+- **Rule 10 for portal routes** is the OpenAPI spec (tag `portal`) plus `PORTAL_KIND_PATHS` in
+  `routeCoverage.test.ts` (PX-W1 changed this; PORTAL.md §10.1's "narrative only" sentence is
+  older), and the docs site's portal page.
+
 ## Hand-off
 
 PX-21 shows `ProfileImport`; PX-22 builds `ProfileEditor` and `Avatar`.
