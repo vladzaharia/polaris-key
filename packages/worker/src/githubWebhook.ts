@@ -6,6 +6,7 @@ import { errorResponse, json } from "./core/errors.js";
 import { pk } from "./kv.js";
 import { listProductsByGithubRepo, upsertProductSyncState } from "./repo.js";
 import { manifestIngestFor } from "./core/registry.js";
+import { systemResyncRefusal } from "./core/settingsClaims.js";
 import { SERVICES } from "./mount.js";
 import {
   getReleaseConfig,
@@ -333,10 +334,24 @@ export async function handleGithubWebhook(
     updated?: string[];
     error?: string;
     errors?: string[];
+    reason?: string;
   }> = [];
 
   const installationId = payload.installation?.id;
   for (const product of products) {
+    // ST-20 (S-18 §4.5 item 8): the system product is linked to the platform monorepo, so a push
+    // there names it, but its one writer is the deploy hook (the root `.pkey/` at the deployed
+    // commit). Refused, without a sync-state row: nothing failed to sync.
+    const systemRefusal = systemResyncRefusal(product);
+    if (systemRefusal) {
+      results.push({
+        product: product.slug,
+        ok: false,
+        error: systemRefusal,
+        reason: "system_product",
+      });
+      continue;
+    }
     // Bind the delivery to the installation that owns this product's repo (R6-05).
     if (!(await installationMatches(db, product.slug, installationId))) {
       results.push({
@@ -373,6 +388,15 @@ export async function handleGithubWebhook(
         ok: true,
         updated: result.updated,
         ...(result.packSets ? { packSets: result.packSets } : {}),
+        // ST-20: every resync summary lists the live break-glass claims.
+        ...(result.breakGlass
+          ? {
+              breakGlass: result.breakGlass.map((b) => ({
+                key: b.key,
+                expiresAt: b.expiresAt,
+              })),
+            }
+          : {}),
       });
     } else {
       await upsertProductSyncState(db, {
@@ -397,7 +421,11 @@ export async function handleGithubWebhook(
   }
 
   return json({
-    ok: results.every((result) => result.ok),
+    // ST-20: the system product's refusal is expected (the deploy hook is its writer), not a
+    // failed sync, so it is listed without turning the delivery's answer into a failure.
+    ok: results.every(
+      (result) => result.ok || result.reason === "system_product",
+    ),
     repository: `${coords.owner}/${coords.repo}`,
     commitSha: payload.after ?? null,
     changedPaths: paths,

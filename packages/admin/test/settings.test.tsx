@@ -371,18 +371,111 @@ describe("Core → Settings", () => {
     ).toBeTruthy();
   });
 
-  it("keeps the system product's settings read-only (manifest-authoritative)", async () => {
+  it("takes a system product edit only as a break-glass claim with a reason (L2, ST-20)", async () => {
+    const user = userEvent.setup();
+    fns.updateProduct.mockResolvedValue({
+      ok: true,
+      slug: "djdl",
+      claimed: ["license.defaults.deviceLimit"],
+      breakGlass: { expiresAt: 1_700_604_900 },
+    });
     fns.product.mockResolvedValue({
-      product: product({ system: true }),
+      product: product({
+        system: true,
+        manifestAuthoritative: { value: true, locked: true },
+      }),
     });
     mount();
-    const limit = await screen.findByLabelText(/Default device limit/);
+    // The name stays the system product's; the deploy hook is its only writer, so no Resync.
+    const name = await screen.findByLabelText(/Display name/);
     expect(
-      limit.hasAttribute("disabled") ||
-        limit.getAttribute("aria-disabled") === "true" ||
-        limit.hasAttribute("readonly"),
+      name.hasAttribute("disabled") ||
+        name.getAttribute("aria-disabled") === "true",
     ).toBe(true);
-    expect(screen.queryByRole("button", { name: /From manifest/ })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Resync from repo…" }),
+    ).toBeNull();
+    expect(screen.getByText("The deploy hook")).toBeTruthy();
+    expect(screen.getByText("On, locked")).toBeTruthy();
+
+    const limit = screen.getByLabelText(/Default device limit/);
+    await user.clear(limit);
+    await user.type(limit, "9");
+    await user.click(screen.getByRole("button", { name: "Save settings" }));
+    let dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText("Make a break-glass claim?")).toBeTruthy();
+    // The open dialog passes axe, its reason field included.
+    await expectNoAxeViolations(dialog);
+    expect(
+      within(dialog).getByText(/at the first deploy that changes the value/),
+    ).toBeTruthy();
+    const confirm = within(dialog).getByRole("button", {
+      name: "Make break-glass claim",
+    });
+    // A reason is required.
+    expect(confirm.hasAttribute("disabled")).toBe(true);
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(fns.updateProduct).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Save settings" }));
+    dialog = await screen.findByRole("alertdialog");
+    await user.type(within(dialog).getByLabelText("Reason"), "  incident 42  ");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Make break-glass claim" }),
+    );
+    await waitFor(() =>
+      expect(fns.updateProduct).toHaveBeenCalledWith("djdl", {
+        breakGlass: { reason: "incident 42" },
+        defaultDeviceLimit: 9,
+      }),
+    );
+  });
+
+  it("says when a break-glass claim ends, on its row (ST-20)", async () => {
+    fns.product.mockResolvedValue({
+      product: product({
+        manifestAuthoritative: { value: true, locked: false },
+        claims: [
+          {
+            key: "license.defaults.deviceLimit",
+            claimedBy: "u1",
+            claimedAt: 1_700_000_050,
+            version: 1,
+            breakGlass: { reason: "incident 42", expiresAt: 1_700_604_850 },
+          },
+        ],
+      }),
+    });
+    mount();
+    expect(
+      await screen.findByText(
+        /Break-glass claim until .*, or the first resync that changes it in .pkey\/: incident 42/,
+      ),
+    ).toBeTruthy();
+  });
+
+  it("turns manifest-authoritative mode on after an L1 confirm (ST-20)", async () => {
+    const user = userEvent.setup();
+    fns.updateProduct.mockResolvedValue({ ok: true, slug: "djdl" });
+    fns.product.mockResolvedValue({
+      product: product({
+        manifestAuthoritative: { value: false, locked: false },
+      }),
+    });
+    mount();
+    await user.click(
+      await screen.findByRole("switch", { name: "Manifest-authoritative" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText("Make .pkey/ the only writer?"),
+    ).toBeTruthy();
+    await user.click(within(dialog).getByRole("button", { name: "Turn on" }));
+    await waitFor(() =>
+      expect(fns.updateProduct).toHaveBeenCalledWith("djdl", {
+        manifestAuthoritative: true,
+      }),
+    );
   });
 
   it("lists what a resync kept as set in the console", async () => {
@@ -394,6 +487,19 @@ describe("Core → Settings", () => {
       updated: ["product"],
       claimed: ["core.name", "tier:gold"],
       conflicts: [{ path: "/tiers/silver", message: "kept the console tier" }],
+      // ST-20: every resync summary lists the live break-glass claims and the ended ones.
+      breakGlass: [
+        {
+          key: "core.name",
+          claimedBy: "u1",
+          claimedAt: 1_700_000_050,
+          reason: "incident 42",
+          expiresAt: 1_700_604_850,
+        },
+      ],
+      breakGlassEnded: [
+        { key: "license.defaults.deviceLimit", why: "changed" },
+      ],
     });
     mount();
     await user.click(
@@ -411,6 +517,16 @@ describe("Core → Settings", () => {
       ),
     ).toBeTruthy();
     expect(screen.getByText(/kept the console tier/)).toBeTruthy();
+    expect(
+      within(
+        screen.getByRole("list", { name: "Break-glass claims" }),
+      ).getByText(/Display name: break-glass claim until .* \(incident 42\)/),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Break-glass claims ended: Default device limit (the manifest changed it).",
+      ),
+    ).toBeTruthy();
   });
 
   describe("Link repository (a manual product, EXPERIENCE.md §0.4 S1)", () => {

@@ -27,7 +27,7 @@ import {
 } from "../../api.js";
 import { confirmFor } from "../../lib/actions.js";
 import { errorCopy } from "../../lib/errorCopy.js";
-import { formatCount } from "../../lib/format.js";
+import { formatCount, formatDateTime, fromSeconds } from "../../lib/format.js";
 import { Button } from "../../ui/Button.js";
 import { Callout } from "../../ui/Callout.js";
 import { ConfirmDialog } from "../../ui/ConfirmDialog.js";
@@ -385,6 +385,9 @@ export function ResyncResultPanel({
   const refused = result.refused ?? [];
   const claimed = result.claimed ?? [];
   const conflicts = result.conflicts ?? [];
+  // ST-20: every resync summary lists the live break-glass claims and the ones it ended.
+  const breakGlass = result.breakGlass ?? [];
+  const ended = result.breakGlassEnded ?? [];
   const packs = result.packSets;
   const heading = title ?? resultTitle(result, productName, repository);
 
@@ -464,6 +467,31 @@ export function ResyncResultPanel({
           {claimed.length ? (
             <p>
               Kept as set in the console: {claimed.map(claimedLabel).join(", ")}
+              .
+            </p>
+          ) : null}
+          {breakGlass.length ? (
+            <ul
+              className="list-disc space-y-1 pl-5"
+              aria-label="Break-glass claims"
+            >
+              {breakGlass.map((b) => (
+                <li key={b.key}>
+                  {CLAIM_LABELS[b.key]}: break-glass claim until{" "}
+                  {formatDateTime(fromSeconds(b.expiresAt))} ({b.reason})
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {ended.length ? (
+            <p>
+              Break-glass claims ended:{" "}
+              {ended
+                .map(
+                  (e) =>
+                    `${CLAIM_LABELS[e.key]} (${e.why === "expired" ? "its 7 days ran out" : "the manifest changed it"})`,
+                )
+                .join(", ")}
               .
             </p>
           ) : null}

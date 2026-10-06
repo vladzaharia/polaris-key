@@ -104,6 +104,32 @@ export const CORE_SLICE: readonly SettingDef[] = [
     storage: { kind: "column", table: "products", column: "web_origins_json" },
   }),
   setting({
+    key: "core.manifest.authoritative",
+    scope: "product",
+    service: "core",
+    area: "general",
+    label: "Manifest-authoritative",
+    description:
+      "The product's .pkey/ is the only writer of its display name, licence defaults, web origins and catalog: a console edit to one is refused unless it is a break-glass claim, which needs a reason and expires after 7 days or at the first resync or deploy that changes that field, whichever comes first. Other manifest-declared settings are not refused yet. Off by default; always on, and locked, for the system product.",
+    keywords: ["break-glass", "gitops", "claims", "lock", "single writer"],
+    docs: "/docs/admin/products/",
+    value: { kind: "boolean" },
+    defaultValue: false,
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { on: "L1", off: "L1" },
+    // S-18 §4.5 item 8: the system product's settings come from the monorepo's root .pkey/ with
+    // each deploy, so no row can turn this off there (the system-lock rule, `rules.ts`).
+    systemLock: { value: true },
+    readers: [
+      "core/settingsClaims.ts",
+      "admin/handlers/products.ts",
+      "services/config/admin/catalog.ts",
+    ],
+    storage: { kind: "scalar" },
+    since: "ST-20",
+  }),
+  setting({
     key: "core.services",
     scope: "product",
     service: "core",

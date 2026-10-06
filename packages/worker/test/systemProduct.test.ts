@@ -221,8 +221,8 @@ describe("the package-feeds bootstrap (F-03)", () => {
     expect((await getProduct(db, SYSTEM_PRODUCT_SLUG))?.name).toBe(
       "Polaris Key",
     );
-    // ST-01b (S-18 §4.5 item 8): every other claimable field is manifest-authoritative on the
-    // system product too, until ST-20's break-glass claims.
+    // S-18 §4.5 item 8: every other claimable field is manifest-authoritative on the system
+    // product too; ST-20 takes a console edit only as a break-glass claim with a reason.
     const limit = await admin("PATCH", `/products/${SYSTEM_PRODUCT_SLUG}`, {
       defaultDeviceLimit: 7,
     });

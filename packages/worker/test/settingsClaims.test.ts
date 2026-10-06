@@ -13,7 +13,8 @@
  *   - a refused resync writes nothing at all;
  *   - Revert drops the claim and re-applies the manifest snapshot (ST-01a) at once, or says
  *     "applies at the next resync" when there is no snapshot;
- *   - console claims on the system product are refused (until ST-20), and the admin group is
+ *   - a console claim on the system product without a break-glass reason is refused (its
+ *     break-glass claims are ST-20's, `manifestAuthoritative.test.ts`), and the admin group is
  *     manifest-only on a repo-linked product.
  *
  * Every case drives the real path: `linkRepo` registers the product from a stubbed GitHub, the
@@ -708,7 +709,7 @@ describe("Revert to manifest (ST-01b)", () => {
 // ── Refusals ─────────────────────────────────────────────────────────────────────────────
 
 describe("claims that are refused (ST-01b)", () => {
-  it("a console claim on a system = 1 product is refused", async () => {
+  it("a console claim on a system = 1 product without a break-glass reason is refused", async () => {
     const ctx = await linked();
     await ctx.db.run("UPDATE products SET system = 1 WHERE slug = ?", SLUG);
     const patch = await call(ctx, "PATCH", "", { defaultDeviceLimit: 9 });

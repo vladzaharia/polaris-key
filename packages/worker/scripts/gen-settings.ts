@@ -131,6 +131,10 @@ function notes(e: SettingDef): string {
   if (e.pending) n.push(`registered ahead of ${e.pending.wp}`);
   if (e.critical) n.push("reason required");
   if (e.securityWidening) n.push("security-widening");
+  if (e.systemLock)
+    n.push(
+      `locked to ${code(JSON.stringify(e.systemLock.value))} for the system product`,
+    );
   if (e.sensitivity === "secret") n.push("secret: presence only");
   if (e.wire?.length) n.push(`devices see it (${e.wire.join(", ")})`);
   if (e.aliases?.length)

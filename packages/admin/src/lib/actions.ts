@@ -58,6 +58,8 @@ export const ACTION_LEVELS = {
   "manifest.revert": 1,
   // ST-01b: saving a manifest-declared value claims it for the console.
   "setting.claim": 1,
+  // ST-20: turning manifest-authoritative mode on or off for a repository-linked product.
+  "setting.manifestAuthoritative": 1,
   "service.disable": 1,
   "repo.resync": 1,
   "sentry.dismiss": 1,
@@ -104,6 +106,9 @@ export const ACTION_LEVELS = {
   // Users (I-12): a detach leaves the licence floating and out of the person's library; a relink
   // moves it to another person of this product (step-up, reason, notices, 72-hour undo).
   "user.detachLicense": 2,
+  // ST-20 (S-18 §4.5 item 7): a break-glass claim overrides a manifest-authoritative product's
+  // .pkey/ for up to 7 days, with a reason.
+  "setting.breakGlass": 2,
   "user.relink": 2,
   "device.deauthorize": 2,
   "sentry.confirm": 2,

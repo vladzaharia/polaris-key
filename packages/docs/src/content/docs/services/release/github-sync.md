@@ -240,8 +240,16 @@ once. A product not applied since the manifest record existed gets it at the nex
 instead. A tier or profile becomes console-owned when it is created or edited in the console;
 setting only a managed secret's value on a profile does not claim it. A console tier or
 profile that holds the id of a tier or profile the manifest newly declares is kept, and the
-resync reports the conflict. The system product is manifest-authoritative: the console refuses
-claims on it.
+resync reports the conflict.
+
+A product can be **manifest-authoritative** instead (the switch in Settings → Repository): the
+console then refuses claims on the product name, the licence defaults, the web origins and the
+catalog except as expiring break-glass claims, and a resync ends a break-glass claim when it
+changes that field. Tiers, profiles, services and the fingerprint and auto-issue policies are not
+covered yet: a console edit still claims them. The system product is always manifest-authoritative,
+and its only writer is the deploy hook: a push webhook for the platform repository and a console
+Resync of it are refused ("the system product is applied by the deploy hook"). See
+[Manifest-authoritative mode](/docs/admin/products/#manifest-authoritative-mode).
 
 Every check runs before the first write, and the apply is one atomic batch: a refused resync
 changes nothing. Each setting, tier or profile a resync changes gets its own audit row.
