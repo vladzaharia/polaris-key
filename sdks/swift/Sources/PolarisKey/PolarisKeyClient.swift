@@ -216,8 +216,12 @@ public actor PolarisKeyClient {
             observe: {
                 await PolarisKeyClient.observe(core: core, license: licenseBox.current, config: config)
             },
-            source: { await config.configSource($0) })
+            source: { await config.configSource($0) },
+            deliver: { config.deliver($0) })
         self.publisher = publisher
+        // A local `config.set` / `clear` is observed by the same publisher, so `events` and
+        // `onConfigChange` listeners see it once each, before `set` returns.
+        config.setChangeObserver { await publisher.publish() }
         core.setEventSink { event in
             switch event {
             case .updateAvailable(let version, let action, let mandatory, let channel):

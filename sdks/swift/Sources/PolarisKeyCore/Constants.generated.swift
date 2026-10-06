@@ -1344,7 +1344,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "config.schema": CapabilityRow(status: "implemented", service: "config", na: []),
     "config.mint": CapabilityRow(status: "implemented", service: "config", na: []),
     "config.mirror": CapabilityRow(status: "implemented", service: "config", na: []),
-    "config.local": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "config.local": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "devices.fingerprint": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.facts": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.register": CapabilityRow(status: "implemented", service: "core", na: []),
@@ -1400,4 +1400,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "bc364e4dcfaa6d0d031491c87665bc57457ba0753ede31e418d001732da1941f"
+public let CAPABILITY_DIGEST = "e2ac9a300acf5e9ef6dd03617b1f3bc447ccee1c3a7f03efe1d2d2a8e3350548"

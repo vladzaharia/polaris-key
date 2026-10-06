@@ -87,9 +87,8 @@
       "note": "The Swift mirror is rendered by tools/gen-mirrors.ts."
     },
     "config.local": {
-      "status": "planned",
-      "wp": "SP-18",
-      "note": "config.set, clear and clearAll persist through a LocalConfigStore, validate against the catalog and raise client.events .config (LocalConfigTests), but config.setting(key) and onConfigChange(key, listener) (SDK-PARITY-PASS §3.11) are missing."
+      "status": "implemented",
+      "note": "config.set, clear and clearAll persist through a LocalConfigStore (UserDefaults by default), validate against the catalog and raise client.events .config; config.setting(key) returns a handle whose current() gives the effective value, its source and lock, and onConfigChange(key | \"*\", listener) returns a cancellable ConfigSubscription (configChanges(key) is the AsyncStream form), fed by the same change observation as client.events for local writes and syncs (LocalConfigTests)."
     },
     "devices.fingerprint": {
       "status": "implemented"

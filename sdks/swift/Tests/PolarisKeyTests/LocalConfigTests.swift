@@ -1,9 +1,12 @@
-// @pkey-feature config.schema config.resolve
+// @pkey-feature config.local config.schema config.resolve
 //
-// SP-S14: persisted local overrides (`config.set` / `clear`, notes/SDK-PARITY-PASS.md §3.11) and
-// the decoded catalog (`fetchCatalog()`). A kept value sits in the resolution's local layer, beats
-// a remote `default`, never an `enforced` or `hidden` entry, survives a new client over the same
-// store and raises a `config` event (key, value, previous, source) on `client.events`.
+// SP-S14 / SP-18: persisted local overrides (`config.set` / `clear` / `clearAll`,
+// notes/SDK-PARITY-PASS.md §3.11) and the decoded catalog (`fetchCatalog()`). A kept value sits in
+// the resolution's local layer, beats a remote `default`, never an `enforced` or `hidden` entry,
+// survives a new client over the same store and raises a `config` event (key, value, previous,
+// source) on `client.events`. `config.setting(key)` reads the effective value with its source and
+// lock, and `onConfigChange(key, listener)` (or `configChanges(key)`, an AsyncStream) delivers that
+// key's changes, from a local write or a sync, until cancelled.
 
 import Foundation
 import PolarisKey
@@ -31,20 +34,12 @@ final class LocalConfigTests: XCTestCase {
     private lazy var issuedAt = Int(Date().timeIntervalSince1970)
 
     private func client(
-        store local: MemoryLocalConfigStore, schema: String? = catalogBody
+        store local: MemoryLocalConfigStore, schema: String? = catalogBody, server: StubServer = StubServer()
     ) async throws -> PolarisKeyClient {
-        let server = StubServer()
         if let schema { await server.reply("/djdl/config/schema", body: schema) }
         let store = InMemoryStore(deviceId: "dev")
         await store.setToken("pkeyt_test")
-        let doc = Fixtures.config(
-            deviceId: "dev", issuedAt: issuedAt,
-            config: [
-                "run.concurrency": ManagedEntry(state: .enforced, value: .int(4), updatedAt: 1),
-                "ui.theme": ManagedEntry(state: .default, value: .string("dark"), updatedAt: 1),
-            ],
-            secrets: [:])
-        await store.writeCache(CacheRecord(docs: [.config: signer.sign(doc)]))
+        await store.writeCache(CacheRecord(docs: [.config: configJWS(theme: "dark")]))
         return try await PolarisKeyClient.create(
             options: PolarisKeyClientOptions(
                 core: CoreOptions(
@@ -52,6 +47,17 @@ final class LocalConfigTests: XCTestCase {
                     pinnedKeys: signer.trust, trustRefresh: false, store: store, transport: server.transport,
                     expectedServices: [.license, .config]),
                 config: ConfigClientOptions(local: LocalConfigOptions(store: local))))
+    }
+
+    private func configJWS(theme: String, concurrency: Int = 4, later: Int = 0) -> String {
+        signer.sign(
+            Fixtures.config(
+                deviceId: "dev", issuedAt: issuedAt + later,
+                config: [
+                    "run.concurrency": ManagedEntry(state: .enforced, value: .int(concurrency), updatedAt: 1),
+                    "ui.theme": ManagedEntry(state: .default, value: .string(theme), updatedAt: 1),
+                ],
+                secrets: [:]))
     }
 
     private func refusal(_ body: () async throws -> Void) async -> String? {
@@ -131,5 +137,112 @@ final class LocalConfigTests: XCTestCase {
         XCTAssertTrue(catalog.entry("run.concurrency")!.accepts(.double(2)))
         XCTAssertFalse(catalog.entry("run.concurrency")!.accepts(.double(2.5)))
         XCTAssertNil(ConfigCatalog.decode(Data("<html>".utf8)))
+    }
+
+    // ── config.setting(key) and onConfigChange(key, listener) (SP-18) ────────────────────────
+
+    func testSettingReadsTheEffectiveValueWithItsSourceAndLock() async throws {
+        let c = try await client(store: MemoryLocalConfigStore())
+        let theme = c.config.setting("ui.theme")
+        XCTAssertEqual(theme.key, "ui.theme")
+        let remote = await theme.current()
+        XCTAssertEqual(remote, ConfigSettingState(value: .string("dark"), source: .remoteDefault, locked: false))
+
+        try await theme.set(.string("light"))
+        let local = await theme.current()
+        XCTAssertEqual(local, ConfigSettingState(value: .string("light"), source: .local, locked: false))
+        let v = await theme.value(default: .null)
+        XCTAssertEqual(v, .string("light"))
+        let src = await theme.source()
+        XCTAssertEqual(src, .local)
+
+        let concurrency = await c.config.setting("run.concurrency").current()
+        XCTAssertEqual(concurrency, ConfigSettingState(value: .int(4), source: .enforced, locked: true))
+        let lockedRefusal = await refusal { try await c.config.setting("run.concurrency").set(.int(8)) }
+        XCTAssertEqual(lockedRefusal, ErrorCode.invalidOptions)
+
+        let none = await c.config.setting("net.timeout").current()
+        XCTAssertEqual(none, ConfigSettingState(value: nil, source: .fallback, locked: false))
+        let fallback = await c.config.setting("net.timeout").value(default: .int(30))
+        XCTAssertEqual(fallback, .int(30))
+
+        await theme.clear()
+        let back = await theme.current()
+        XCTAssertEqual(back.source, .remoteDefault)
+    }
+
+    func testOnConfigChangeDeliversPerKeyChangesUntilCancelled() async throws {
+        let c = try await client(store: MemoryLocalConfigStore())
+        let themeSeen = LockedValue<[ConfigChange]>([])
+        let allSeen = LockedValue<[ConfigChange]>([])
+        let theme = c.config.onConfigChange("ui.theme") { change in themeSeen.with { $0.append(change) } }
+        let all = c.config.onConfigChange("*") { change in allSeen.with { $0.append(change) } }
+
+        try await c.config.set("ui.theme", .string("light"))
+        try await c.config.set("net.timeout", .int(5))
+        // Delivered before `set` returns.
+        XCTAssertEqual(
+            themeSeen.current,
+            [ConfigChange(key: "ui.theme", value: .string("light"), previous: .string("dark"), source: .local)])
+        XCTAssertEqual(allSeen.current.map(\.key), ["ui.theme", "net.timeout"])
+        XCTAssertEqual(allSeen.current.last, ConfigChange(key: "net.timeout", value: .int(5), previous: nil, source: .local))
+
+        // Writing the same value again moves nothing.
+        try await c.config.set("ui.theme", .string("light"))
+        XCTAssertEqual(themeSeen.current.count, 1)
+
+        theme.cancel()
+        XCTAssertTrue(theme.isCancelled)
+        await c.config.clear("ui.theme")
+        XCTAssertEqual(themeSeen.current.count, 1, "a cancelled listener hears nothing")
+        XCTAssertEqual(
+            allSeen.current.last,
+            ConfigChange(key: "ui.theme", value: .string("dark"), previous: .string("light"), source: .remoteDefault))
+
+        await c.config.clearAll()
+        XCTAssertEqual(
+            allSeen.current.last, ConfigChange(key: "net.timeout", value: nil, previous: .int(5), source: .fallback))
+        all.cancel()
+    }
+
+    func testTheSettingStreamAndListenersFollowASync() async throws {
+        let server = StubServer()
+        let c = try await client(store: MemoryLocalConfigStore(), server: server)
+        var stream = c.config.setting("ui.theme").changes.makeAsyncIterator()
+        let jws = configJWS(theme: "light", concurrency: 6, later: 1)
+        await server.route("/djdl/config/document") { _ in
+            StubServer.Reply(status: 200, body: jws, headers: ["ETag": "c2"])
+        }
+        let enforced = LockedValue<[ConfigChange]>([])
+        c.config.setting("run.concurrency").onChange { change in enforced.with { $0.append(change) } }
+        let result = await c.sync()
+        // Guarded so a document that did not land fails here instead of waiting on the stream.
+        guard result.documents[.config] == .applied else { return XCTFail("config not applied: \(result)") }
+        let change = await stream.next()
+        XCTAssertEqual(
+            change, ConfigChange(key: "ui.theme", value: .string("light"), previous: .string("dark"), source: .remoteDefault))
+        XCTAssertEqual(
+            enforced.current, [ConfigChange(key: "run.concurrency", value: .int(6), previous: .int(4), source: .enforced)])
+    }
+
+    func testABareConfigClientDeliversItsOwnLocalChanges() async throws {
+        let store = InMemoryStore(deviceId: "dev")
+        await store.writeCache(CacheRecord(docs: [.config: configJWS(theme: "dark")]))
+        let core = try CoreContext(
+            options: CoreOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: signer.trust, trustRefresh: false, store: store, transport: StubServer().transport,
+                expectedServices: [.config]))
+        let config = ConfigClient(core: core, options: ConfigClientOptions(local: LocalConfigOptions(store: MemoryLocalConfigStore())))
+        let seen = LockedValue<[ConfigChange]>([])
+        config.onConfigChange("anything") { change in seen.with { $0.append(change) } }
+        try await config.set("anything", .bool(true))
+        await config.clear("anything")
+        XCTAssertEqual(
+            seen.current,
+            [
+                ConfigChange(key: "anything", value: .bool(true), previous: nil, source: .local),
+                ConfigChange(key: "anything", value: nil, previous: .bool(true), source: .fallback),
+            ])
     }
 }

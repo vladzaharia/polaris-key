@@ -137,7 +137,8 @@ public enum CoreEvent: Sendable, Equatable {
     case updateAvailable(version: String, action: String, mandatory: Bool, channel: String)
     /// Pack install progress: the engine's `download`, `apply`, `done` and `state-issue`.
     case packs(pack: String, phase: String, done: Int, total: Int)
-    /// A local override of `key` changed (`config.set` / `clear`).
+    /// A local override of `key` changed. `config.set` / `clear` now report through the facade's
+    /// change observer (`ConfigClient.setChangeObserver`); the case stays for other emitters.
     case config(key: String)
 }
 
