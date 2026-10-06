@@ -1001,7 +1001,9 @@ writer can push.
   test pins a ten-outlet product). Release notes are repo-writer text and the cache keeps only a
   finished answer, so the notes summary reads at most the first 8,192 characters and uses only
   linear-time patterns (no lazy body between the `pkey:summary` markers, no `\s` at a line
-  start); a test pins 20,000-character adversarial notes finishing in well under a second.
+  start); a test pins 20,000-character adversarial notes to at most 2,048 backtracking steps per
+  character read, counted by replaying every native regex run (never timed, so load cannot fail
+  it), where the earlier single pattern passes 50 million steps at 1,000 characters.
 - **Residual.** The page is rendered from what CI and the operator recorded: a CI report can make
   a store link appear (a `live` claim) or a self-hosted release disappear, as for the feeds
   above; a wrong listing is the repo writer's own text, shown escaped. A visitor reaching the
