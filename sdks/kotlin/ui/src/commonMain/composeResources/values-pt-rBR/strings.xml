@@ -1312,6 +1312,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_release_tag_is_pack_release_message">Um lançamento foi ignorado porque a tag dele corresponde a um lançamento de pacote de conteúdo. Renomeie a tag.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_asset_unreachable_title">Imagem não atualizada</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_asset_unreachable_message">Não foi possível obter uma imagem da sua origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_feed_not_composable_title">Verificação de atualizações indisponível</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_feed_not_composable_message">Não é possível verificar atualizações agora. Tente novamente em alguns minutos.</string>

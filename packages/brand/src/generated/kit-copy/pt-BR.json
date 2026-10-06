@@ -572,6 +572,8 @@
   "core.codes.release_record_rejected.message": "O lançamento não foi publicado porque uma verificação falhou. O log de publicação indica qual.",
   "core.codes.release_tag_is_pack_release.title": "Lançamento ignorado",
   "core.codes.release_tag_is_pack_release.message": "Um lançamento foi ignorado porque a tag dele corresponde a um lançamento de pacote de conteúdo. Renomeie a tag.",
+  "core.codes.asset_unreachable.title": "Imagem não atualizada",
+  "core.codes.asset_unreachable.message": "Não foi possível obter uma imagem da sua origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente.",
   "core.codes.feed_not_composable.title": "Verificação de atualizações indisponível",
   "core.codes.feed_not_composable.message": "Não é possível verificar atualizações agora. Tente novamente em alguns minutos.",
   "core.codes.service-unavailable.title": "Indisponível",

@@ -586,6 +586,8 @@ export type KitCopyKey =
   | "core.codes.release_record_rejected.message"
   | "core.codes.release_tag_is_pack_release.title"
   | "core.codes.release_tag_is_pack_release.message"
+  | "core.codes.asset_unreachable.title"
+  | "core.codes.asset_unreachable.message"
   | "core.codes.feed_not_composable.title"
   | "core.codes.feed_not_composable.message"
   | "core.codes.service-unavailable.title"

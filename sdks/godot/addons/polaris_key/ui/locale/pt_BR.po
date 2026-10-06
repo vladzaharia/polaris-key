@@ -3487,6 +3487,16 @@ msgstr "Lançamento ignorado"
 msgid "core.codes.release_tag_is_pack_release.message"
 msgstr "Um lançamento foi ignorado porque a tag dele corresponde a um lançamento de pacote de conteúdo. Renomeie a tag."
 
+#. Image not updated
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.title"
+msgstr "Imagem não atualizada"
+
+#. An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.message"
+msgstr "Não foi possível obter uma imagem da sua origem. A cópia anterior continua sendo exibida, e uma nova tentativa será feita automaticamente."
+
 #. Update check unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed_not_composable.title"

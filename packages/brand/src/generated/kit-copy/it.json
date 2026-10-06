@@ -572,6 +572,8 @@
   "core.codes.release_record_rejected.message": "La release non è stata pubblicata perché un controllo non è riuscito. Il log di pubblicazione indica quale.",
   "core.codes.release_tag_is_pack_release.title": "Release saltata",
   "core.codes.release_tag_is_pack_release.message": "Una release è stata saltata perché il suo tag corrisponde a una release di un pacchetto di contenuti. Rinomina il tag.",
+  "core.codes.asset_unreachable.title": "Immagine non aggiornata",
+  "core.codes.asset_unreachable.message": "Non è stato possibile recuperare un'immagine dalla sua origine. Viene ancora mostrata la copia precedente e il tentativo verrà ripetuto automaticamente.",
   "core.codes.feed_not_composable.title": "Controllo aggiornamenti non disponibile",
   "core.codes.feed_not_composable.message": "Al momento non è possibile controllare gli aggiornamenti. Riprova tra qualche minuto.",
   "core.codes.service-unavailable.title": "Non disponibile",

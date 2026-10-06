@@ -3477,6 +3477,16 @@ msgstr "Release übersprungen"
 msgid "core.codes.release_tag_is_pack_release.message"
 msgstr "Ein Release wurde übersprungen, weil sein Tag mit einem Content-Pack-Release übereinstimmt. Benennen Sie den Tag um."
 
+#. Image not updated
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.title"
+msgstr "Bild nicht aktualisiert"
+
+#. An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.message"
+msgstr "Ein Bild konnte nicht von seiner Quelle abgerufen werden. Die bisherige Kopie wird weiter angezeigt, und es wird automatisch erneut versucht."
+
 #. Update check unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed_not_composable.title"

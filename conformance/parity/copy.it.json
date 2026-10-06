@@ -193,6 +193,10 @@
       "title": "Release saltata",
       "message": "Una release è stata saltata perché il suo tag corrisponde a una release di un pacchetto di contenuti. Rinomina il tag."
     },
+    "asset_unreachable": {
+      "title": "Immagine non aggiornata",
+      "message": "Non è stato possibile recuperare un'immagine dalla sua origine. Viene ancora mostrata la copia precedente e il tentativo verrà ripetuto automaticamente."
+    },
     "feed_not_composable": {
       "title": "Controllo aggiornamenti non disponibile",
       "message": "Al momento non è possibile controllare gli aggiornamenti. Riprova tra qualche minuto."

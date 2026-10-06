@@ -572,6 +572,8 @@
   "core.codes.release_record_rejected.message": "The release wasn't published because a check failed. The publish log names the check.",
   "core.codes.release_tag_is_pack_release.title": "Release skipped",
   "core.codes.release_tag_is_pack_release.message": "A release was skipped because its tag matches a content pack release. Rename the tag.",
+  "core.codes.asset_unreachable.title": "Image not updated",
+  "core.codes.asset_unreachable.message": "An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.",
   "core.codes.feed_not_composable.title": "Update check unavailable",
   "core.codes.feed_not_composable.message": "Updates can't be checked right now. Try again in a few minutes.",
   "core.codes.service-unavailable.title": "Not available",

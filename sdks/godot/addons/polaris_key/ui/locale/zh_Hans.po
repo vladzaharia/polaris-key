@@ -3467,6 +3467,16 @@ msgstr "版本已跳过"
 msgid "core.codes.release_tag_is_pack_release.message"
 msgstr "由于标签与某个内容包版本相同，此版本已被跳过。请重命名该标签。"
 
+#. Image not updated
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.title"
+msgstr "图片未更新"
+
+#. An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.message"
+msgstr "无法从来源获取图片。仍显示之前的副本，并将自动重试。"
+
 #. Update check unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed_not_composable.title"

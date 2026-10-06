@@ -64,6 +64,7 @@ const COPY_CODES := {
 	"internal_error": {"title": "Download failed", "message": "The download server had a problem. Try again in a few minutes."},
 	"release_record_rejected": {"title": "Release refused", "message": "The release wasn't published because a check failed. The publish log names the check."},
 	"release_tag_is_pack_release": {"title": "Release skipped", "message": "A release was skipped because its tag matches a content pack release. Rename the tag."},
+	"asset_unreachable": {"title": "Image not updated", "message": "An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically."},
 	"feed_not_composable": {"title": "Update check unavailable", "message": "Updates can't be checked right now. Try again in a few minutes."},
 	"service-unavailable": {"title": "Not available", "message": "This app doesn't use this service."},
 	"service-disabled": {"title": "Not available", "message": "This service is turned off for this app."},

@@ -572,6 +572,8 @@
   "core.codes.release_record_rejected.message": "La versión no se publicó porque falló una comprobación. El registro de publicación indica cuál.",
   "core.codes.release_tag_is_pack_release.title": "Versión omitida",
   "core.codes.release_tag_is_pack_release.message": "Se omitió una versión porque su etiqueta coincide con una versión de un paquete de contenido. Cambia el nombre de la etiqueta.",
+  "core.codes.asset_unreachable.title": "Imagen no actualizada",
+  "core.codes.asset_unreachable.message": "No se pudo obtener una imagen de su origen. Se sigue mostrando la copia anterior y se volverá a intentar automáticamente.",
   "core.codes.feed_not_composable.title": "Búsqueda de actualizaciones no disponible",
   "core.codes.feed_not_composable.message": "Ahora mismo no se pueden buscar actualizaciones. Vuelve a intentarlo en unos minutos.",
   "core.codes.service-unavailable.title": "No disponible",

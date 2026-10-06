@@ -3487,6 +3487,16 @@ msgstr "Versión omitida"
 msgid "core.codes.release_tag_is_pack_release.message"
 msgstr "Se omitió una versión porque su etiqueta coincide con una versión de un paquete de contenido. Cambia el nombre de la etiqueta."
 
+#. Image not updated
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.title"
+msgstr "Imagen no actualizada"
+
+#. An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.message"
+msgstr "No se pudo obtener una imagen de su origen. Se sigue mostrando la copia anterior y se volverá a intentar automáticamente."
+
 #. Update check unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.feed_not_composable.title"
