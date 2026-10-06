@@ -53,12 +53,34 @@ Some art is never on the web. The listing model already anticipates `source = 'a
 3. CLI and Action.
 4. Console page.
 
+## Corrections from the code (recorded by the implementer)
+
+- **The console route is `/manage/api/products/:p/assets/:slot`**, the admin API's prefix (the
+  brief's `/admin/products/…` is the same route); `?locale=` names a locale. `DELETE` is Revert
+  for a console claim whose source the manifest still names, and delete-a-copy otherwise.
+- **The console CSP already admits the image host.** The console product card (2026-10-06) added
+  `IMG_ORIGIN` to the shell's `img-src` with its parity test; the Presentation page loads its
+  previews from there and changes no policy.
+- **Revert drops the console's copy at once** and queues one pull of the manifest's ref (`reason:
+"operator"`); the slot shows nothing until it lands. Keeping the console's bytes serving under a
+  manifest origin would let a failing source pass them off as the manifest's last good copy.
+- **Precedence needed an atomic guard in `ingest`.** A pull that was in flight when an operator
+  uploaded would have overwritten the claim, so `ingest` gained `yieldsTo` (re-checked inside the
+  batch that writes) and `recordRefusal: false` (an upload's refusal never marks the slot's copy
+  failed). HA-05's pull consumer now passes `yieldsTo: ["console"]`.
+- **The CI ticket is Release's.** P2-02's uploads route lives under `release/publish/uploads`, so a
+  CI push needs Release on for the product, as A-18d's listing register does.
+- **No migration.** `hosted_assets.origin` and `dist_listing_assets.source` already allow
+  `console`/`ci` and `admin`/`import`.
+
 ## Acceptance criteria
 
-- [ ] An uploaded icon survives a resync, and Revert restores the manifest's copy (test).
-- [ ] A CI push never overwrites a console claim (test).
-- [ ] Rule 10 and console CSP parity pass.
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] An uploaded icon survives a resync, and Revert restores the manifest's copy (test:
+      `packages/worker/test/hostedAssetUploads.test.ts`, first block).
+- [x] A CI push never overwrites a console claim (test: same file, "a CI push never overwrites a
+      console claim", including the in-batch race).
+- [x] Rule 10 and console CSP parity pass.
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 
