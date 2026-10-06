@@ -5,7 +5,7 @@
 | Phase       | MO: Motion system (notes/S-23) (wave 2: areas)                                                                        |
 | Size        | 0.4–0.6 engineer-weeks                                                                                                |
 | Depends on  | [MO-03](MO-03-e2e-motion-determinism.md), [PX-16](PX-16-discover-page.md)                                             |
-| Unblocks    | [MO-13](MO-13-motion-qa-closeout.md)                                                                                  |
+| Unblocks    | [MO-13](MO-13-motion-qa-closeout.md), [PX-24](PX-24-library-added-just-now.md)                                        |
 | Role        | `pkey-implementer`                                                                                                    |
 | Plan mode   | no                                                                                                                    |
 | Gates       | admin unit tests; portal e2e (visual baselines regenerated with reduced motion) and the smoke suite; `adminCspParity` |

@@ -48,6 +48,28 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 - **Sign-in licences** (§F.6): `licenseAccess(db, license)` in `core/anchor.ts`, the fact behind the origin "From signing in" and the mixed rule, never a displayed type (owner decision 2026-10-05: no 'Account-wide' label; origin shown as plain words, store named with the key); `access` on `shapeLicenseSummary`; the library seats keep the real limit. **Owner decision (2026-10-05): sign-in licenses stay device-limited**, so `authorizeDevice` does not change and no sign-in-licence THREAT-MODEL row is needed.
 - A Replace runs `freeAccountDevice()`'s statements and the guarded seat claim in one batch (§F.3).
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`. Each item names the package whose review raised it.
+
+- **The product's terms reach the gate through this package** ([PX-W15](PX-W15-email-gate.md)).
+  `beginProviderSignIn` (`card/gate.ts`) takes `product: { slug, tenantScopes, terms }`, but no
+  front door passes terms yet, so the gate's terms step runs only in tests. This package persists
+  `identity.requireTerms` (manifest `identity:` block → `identity_product_settings`). Give it a
+  reader that answers a `TermsRequirement` (`{ url, version }`, `accounts/terms.ts`) or `null`, and
+  pass it as `product.terms` wherever a product-context sign-in starts from this package's surfaces
+  (the `signInUrl` card). I-08 does the same for passthrough. Acceptances live in
+  `account_terms_acceptances`, never in `accounts.terms_json`.
+- **Call `onAccountEmailVerified` where an address is verified** ([LX-26](LX-26-licence-holders-worker.md)).
+  The hook (`core/licenseHolders.ts`) attaches the licences waiting on that address. On `main`,
+  every sign-in reaches it through the link sweep (`syncAccountLicenseLinks`, run by `finishSignIn`,
+  the portal OIDC callback and device login), `linkIdentity` calls it directly, and the portal API
+  also runs the sweep on every request (`handlePortalApi`, `handleMe` and `handleLicenses` in
+  `portal/api.ts`). Each verification point this package adds calls the hook directly. Once every
+  point outside a sign-in does (add-email, PX-W12; this package's and I-08's), drop the
+  per-request sweep from `portal/api.ts`; the per-sign-in sweeps stay. Whichever of I-08 and I-09
+  lands second makes the drop.
+
 ## Goal
 
 Key entry becomes a bounded on-ramp: each licence counts key entries against the product's `keyEntryLimit`; past the limit activation by key returns `key_entry_limit` with a Worker-built `manageUrl`; key entry of an owned licence on a new device returns `license_owned` with `signInUrl`; a signed-in device can attach its floating licence with `POST /<p>/identity/attach`. The limit, both key-entry refusals and device-wire attach are gated by the product's Identity toggle (owner, 2026-10-04: entry limits apply only to products with the Identity service on), and existing installs are never affected.

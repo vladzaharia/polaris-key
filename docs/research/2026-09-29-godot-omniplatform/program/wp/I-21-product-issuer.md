@@ -18,6 +18,18 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/PX-W17.md`](../plans/PX-W17.md):** append `oauth/authorize` to the navigation entries; the ID token `sub` is the pairwise subject.
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`.
+
+- **The `picture` claim** ([PX-W16](PX-W16-profile-avatars.md)). This issuer is the first to put a
+  picture in a token. The ID token's and userinfo's `picture`, when the person consented to share it
+  (PX-W13's `CONSENT_PROFILE_CLAIMS`), is `avatarUrl(accounts.avatar_key)` (`card/avatars.ts`) made
+  absolute on the console origin: the account's chosen picture as the consent view shows it,
+  re-encoded and served by `/media/avatar/<asset>` (which already allows cross-origin embedding).
+  It is absent when the account shows initials (`avatar_key` NULL), and never a provider's original
+  picture URL.
+
 ## Goal
 
 "Sign in with <Product>": a per-product OIDC issuer at `https://key.plrs.im/<p>/identity` that passes OIDF Basic OP and Config OP conformance, with a separate RS256 keyring, `sub` = the product's pairwise subject, `pkey:*` scopes and static clients.

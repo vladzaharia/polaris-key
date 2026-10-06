@@ -12,6 +12,30 @@
 | Human input | none                                                                                                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`. Each item names the package whose review raised it.
+
+- **Passkey settings rows** ([I-16](I-16-passkeys.md)). The routes exist: `GET /api/me/passkeys`
+  (one `PasskeyView` per passkey: `id`, `methodId`, `createdAt`, `lastUsedAt`, `transports`,
+  `synced`, `aaguid`, `addedFrom`; plus `canAdd` and `reason`), `POST /api/me/passkeys/options` and
+  `POST /api/me/passkeys` (verified email and step-up), and `DELETE /api/me/passkeys/<id>` (step-up;
+  never the last sign-in method, `last_link`). The rows PORTAL.md §4.26 draws (provider name, added,
+  last used and where; **Add a passkey**, disabled with its reason) are this package's. Two pieces
+  are missing on the Worker:
+  - **Rename needs a name field.** `account_passkeys` has no name column and there is no rename
+    route. **Rename** needs the column (a migration named `00XX_<name>.sql`; the lead numbers it),
+    `PATCH /api/me/passkeys/<id>` with `{name}` (OpenAPI and a `PORTAL_KIND_PATHS` row) and `name`
+    in `PasskeyView`. Check PX-W12 first, in case it lands this.
+  - **An AAGUID → provider map.** The Worker stores and returns the raw `aaguid`; nothing turns it
+    into "iCloud Keychain", "Google Password Manager" or "1Password". Add a static map, shipped with
+    the code (no runtime fetch). An unknown AAGUID falls back to `addedFrom`, then to "Passkey".
+- **Add and verify that email under `email_mismatch`** ([PX-17](PX-17-activate-confirm.md)). PX-17
+  left this PORTAL.md §4.19 action out of the Activate dialog because add-email had no target. Once
+  this package ships **Add an email** (on PX-W12's add-email), the dialog's `email_mismatch`
+  refusal (`RefusalActions` in `ActivateDialog.tsx`, today **Use a different key** only) gains
+  **Add and verify that email**, which opens that flow.
+
 ## Goal
 
 Account gains Sign-in methods (connect, disconnect with inline step-up, last-method guard, Apple Hide My Email notice), Connected products (Identity products only), sessions with sign out everywhere, and export; the product page gains the product identity card.

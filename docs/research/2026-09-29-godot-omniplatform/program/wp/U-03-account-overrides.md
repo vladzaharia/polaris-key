@@ -19,6 +19,29 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 - **[`plans/U-01.md`](../plans/U-01.md):** `override_migration_report`; the account layer applies outside `if (license)`; provisioned secrets; the LX-09 seam (§6.3).
 - **[`plans/I-24.md`](../plans/I-24.md):** Q6: a device on a named-user seat gets the seat user's own account layer, not the licence owner's. Licence overrides still apply to every device of the licence.
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`. Each item names the package whose review raised it.
+
+- **Floating comes from LX-26's helpers** ([LX-26](LX-26-licence-holders-worker.md)). "Floating
+  licences get no account layer" is decided by `isFloatingLicense` and `floatingLicenseSql`
+  (`core/accountSubjects.ts`: no account and no email, where a blank or spaces-only email counts as
+  none). The holder model, the licence list's filter and Cloud Sync's principal
+  (`resolveSyncPrincipal`) use the same predicate. `overrideAccount` (`overrideSubject` in
+  `plans/U-01.md` §6.3) calls it instead of testing `account_id` or `email` itself, and checks it
+  before the device's binding, as `resolveSyncPrincipal` does: a floating licence has no account
+  features whatever binding the device carries (S-24, owner, 2026-10-06).
+- **The D19 decision: Remove from my library** (lead decision under the owner's delegation, 2026-10-06, on
+  [S-24](../../notes/S-24-licence-holders.md) D19; [PX-23](PX-23-portal-floating-keys.md)
+  implements the core). An explicit **Remove from my library** clears the Cloud Sync principal of
+  the removing account's devices for that licence. The auto-attach block row
+  (`license_auto_attach_blocks(product, license_id, account_id)`) marks the pair. For this package:
+  `overrideAccount` reads `device.subject` first, so a device bound by that account's sign-in would
+  still get that account's layer for a licence it removed. Apply the same pair check there, so
+  Config agrees with Cloud Sync: a device whose licence carries a block for the account its binding
+  resolves to gets no account layer from that account. There is no owner fallback either, because
+  a removed licence has no `account_id`. Use the predicate PX-23 adds rather than a second one.
+
 ## Goal
 
 The licence-level config override layer is gone on every product. Operators write user-level managed config for one account on one product (`account_overrides`), Core merges it where licence overrides sat, licence-key devices on owned licences keep their values through the owner fallback, floating licences get no account layer, and one platform-wide migration moves owned licences' overrides and drops unowned ones with an operator-visible report.

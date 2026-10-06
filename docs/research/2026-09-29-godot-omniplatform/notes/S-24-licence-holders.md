@@ -229,6 +229,15 @@ after the Done step closes; PX-W8 Q1), so the person adds it there.
 A reassignment's undo restores the previous `account_id`, `name` and `email`, and deletes the
 block row it may have created.
 
+> **Amended 2026-10-06 (D19; lead decision under the owner's delegation).** An explicit **Remove
+> from my library** also clears the Cloud Sync principal of the removing account's devices for that
+> licence. The block row `(product, license_id, account_id)` marks the pair: a device whose binding
+> resolves to that account has no principal for that licence while the block stands. The devices
+> keep running and keep their seats, as the row above says. A later claim of the licence by the
+> same account (`attachLicense` with `via: key | device`) lifts the block, and the rule with it.
+> PX-23 implements the core of it; U-03's account layer applies the same pair (recorded in its
+> brief).
+
 ### 5.6 Revocation
 
 The same in both states, and unchanged: **Disable license** (L1, reversible), **Delete license**
