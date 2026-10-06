@@ -1831,6 +1831,52 @@ narrowest Play permissions, the Partner Center Manager role, a dedicated Steam p
 the operator's to configure and cannot be verified by the Worker. For App Store Connect the owner
 chose to keep the Admin team key (2026-10-04), so the write gate of A-17a (below) is the control.
 
+### The live credential check (UX-69)
+
+**What it is.** A connect form sends an UNSAVED credential once to a check route, and the Worker
+tries it against the store before anything is saved (SETUP.md D42):
+`POST /manage/api/platform/store-connections/<store>[/credentials/<slot>]/check` for the team keys
+(App Store Connect, Play, Partner Center, Steam), and
+`POST /manage/api/products/<slug>/distribution/storefronts/<id>/ci-secrets/<name>/check` for the
+CI secrets a storefront needs (itch.io's `BUTLER_API_KEY`, the snapcraft export-login, winget's
+GitHub token), which Polaris Key never keeps. Both are platform-admin only, behind the session,
+CSRF and admin rate limit like every console route.
+
+**Assets.** The pasted value itself, for the length of one request; the store's quota.
+
+**Controls.**
+
+- **Transient by type.** A store key becomes a `TransientOutletCredential`
+  (`core/outletCredentials.ts`): validated by the kind's own validator, its value in a private
+  field read only through `reveal()`, its `toJSON`, string form and `inspect` rendering the kind and
+  display metadata only. `outletCredentialReach.test.ts` keeps the maker to the store-connections
+  handler and `reveal()` and the `transient…Token` minters to Distribution and the token helpers.
+  Nothing on the path seals, caches (no token memo, no sealed KV slot), writes or audits;
+  `credentialCheck.test.ts` proves no credential row, KV key or audit row survives a check.
+- **One read, never a write.** Each check is one or two GETs (plus the OAuth token exchange's POST
+  for Google and Entra) to the store's fixed origin with `redirect: "manual"` and capped bodies:
+  App Store Connect `GET /v1/apps` through `AscClient` (so A-17a's write gate stands in front of
+  it, and no user, key, certificate or device endpoint is touched), Play Reporting `apps:search`,
+  Partner Center `GET /v1.0/my/applications`, Steam `GetPartnerAppListForWebAPIKey`, itch.io
+  `/profile` and `/profile/games`, the Snap dashboard's `tokens/whoami`, GitHub `/user` and
+  `/repos/<login>/winget-pkgs`. No retries: a 429 is answered "check again".
+- **Never a value out.** The response is a `CredentialCheck` composed by the Worker: a verdict, a
+  reason, sentences, and facts the store reported about the account (a team's issuer id, an app
+  count, a username, scopes, an expiry). Store error bodies are never copied; at most an enum-like
+  token is read (`invalid_grant`, an AADSTS number, Google's `SERVICE_DISABLED`, a Snap
+  `error_list` code) and mapped to text. Nothing is logged.
+- **Rate-limited per operator**, 20 checks in 10 minutes across every store (`credentialCheck`,
+  failing closed), counted after the format check and before any store call.
+
+**Residual risk.** The check is an oracle for whether a credential works, available to a
+platform admin, who can already store and use any credential; the limit bounds a loop, not the
+power. A pasted value transits the admin's browser and the Worker's memory for one request, which
+is what saving it through the console already implies; the Worker-secret route (the Sync Worker
+secrets workflow) remains for keys that must never pass through a browser. The Snap check binds an
+Ubuntu One discharge in the Worker to make the one `whoami` call, as `snapcraft` does; the
+macaroons are not kept. A check proves a read, not a write: a key that reads apps may still lack a
+write permission a later step needs, which that step reports.
+
 ### Storefront adapters: the common layer (A-18a)
 
 **What it is.** Every storefront is one `StorefrontAdapter` (`core/storefront/adapter.ts`), the
