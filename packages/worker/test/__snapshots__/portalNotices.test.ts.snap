@@ -54,7 +54,7 @@ exports[`notice templates: copy > full HTML of a plain notice and a security not
 <table role="presentation" class="pk-bg" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f6f8ff" style="width:100%;background-color:#f6f8ff">
 <tr><td align="center" style="padding:32px 16px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:520px">
-<tr><td style="padding:0 0 0px"><img class="pk-logo-light" src="https://key.plrs.im/assets/branding/key/key-horizontal-light-944.png" width="472" height="160" alt="Polaris Key" style="display:block;width:472px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none"><!--[if !mso]><!--><img class="pk-logo-dark" src="https://key.plrs.im/assets/branding/key/key-horizontal-dark-944.png" width="472" height="160" alt="Polaris Key" style="display:none;max-height:0;overflow:hidden;mso-hide:all;width:472px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none"><!--<![endif]--></td></tr>
+<tr><td align="center" style="padding:0 0 0px;text-align:center"><img class="pk-logo-light" src="https://key.plrs.im/assets/branding/key/key-horizontal-light-944.png" width="472" height="160" alt="Polaris Key" style="display:block;margin:0 auto;width:472px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none"><!--[if !mso]><!--><img class="pk-logo-dark" src="https://key.plrs.im/assets/branding/key/key-horizontal-dark-944.png" width="472" height="160" alt="Polaris Key" style="display:none;margin:0 auto;max-height:0;overflow:hidden;mso-hide:all;width:472px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none"><!--<![endif]--></td></tr>
 <tr><td class="pk-card" bgcolor="#ffffff" style="padding:32px;background-color:#ffffff;border:1px solid #dadee9;border-radius:10px">
 <h1 class="pk-strong" style="margin:0 0 16px;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.01em;color:#060912">Mossgarden is in your library</h1>
 <p class="pk-text" style="margin:0 0 16px;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:16px;line-height:24px;color:#262d40">Mossgarden was added to your Polaris Key account with a license key.</p>
@@ -83,7 +83,7 @@ exports[`notice templates: copy > full HTML of a plain notice and a security not
 <table role="presentation" class="pk-bg" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f6f8ff" style="width:100%;background-color:#f6f8ff">
 <tr><td align="center" style="padding:32px 16px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:520px">
-<tr><td style="padding:0 0 0px"><img class="pk-logo-light" src="https://key.plrs.im/assets/branding/key/key-horizontal-light-944.png" width="472" height="160" alt="Polaris Key" style="display:block;width:472px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none"><!--[if !mso]><!--><img class="pk-logo-dark" src="https://key.plrs.im/assets/branding/key/key-horizontal-dark-944.png" width="472" height="160" alt="Polaris Key" style="display:none;max-height:0;overflow:hidden;mso-hide:all;width:472px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none"><!--<![endif]--></td></tr>
+<tr><td align="center" style="padding:0 0 0px;text-align:center"><img class="pk-logo-light" src="https://key.plrs.im/assets/branding/key/key-horizontal-light-944.png" width="472" height="160" alt="Polaris Key" style="display:block;margin:0 auto;width:472px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none"><!--[if !mso]><!--><img class="pk-logo-dark" src="https://key.plrs.im/assets/branding/key/key-horizontal-dark-944.png" width="472" height="160" alt="Polaris Key" style="display:none;margin:0 auto;max-height:0;overflow:hidden;mso-hide:all;width:472px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none"><!--<![endif]--></td></tr>
 <tr><td class="pk-card" bgcolor="#ffffff" style="padding:32px;background-color:#ffffff;border:1px solid #dadee9;border-radius:10px">
 <h1 class="pk-strong" style="margin:0 0 16px;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.01em;color:#060912">Steam was disconnected from your Polaris Key account</h1>
 <p class="pk-text" style="margin:0 0 16px;font-family:'Rubik', 'Rubik Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;font-size:16px;line-height:24px;color:#262d40">Steam can no longer be used to sign in to your Polaris Key account.</p>
@@ -137,12 +137,10 @@ You are receiving this because of a change to your Polaris Key account. We sent 
 
 exports[`notice templates: copy > newDeviceSignIn: subject and plain text 1`] = `
 {
-  "subject": "A new device signed in to Polaris Key",
-  "text": "Mara's MacBook Pro signed in to your Polaris Key account, near Lisbon, Portugal.
+  "subject": "A new device signed in to your Polaris Key account",
+  "text": "Mara's MacBook Pro signed in from Lisbon, Portugal. If this wasn't you, sign it out in Polaris Key under Where you're signed in.
 
-If this was you, there is nothing to do.
-
-Review your sign-ins: https://key.plrs.im/#/account/sessions
+Open Polaris Key: https://key.plrs.im/#/account/sessions
 
 Wasn't you? Secure your account: https://key.plrs.im/#/account/methods
 

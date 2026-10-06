@@ -84,14 +84,21 @@ describe("discoverCountFrom", () => {
 });
 
 describe("navDiscoverCount (P6: count only what the page can show)", () => {
-  it("answers null while the Discover page cannot list offers, whatever the Worker counts", async () => {
+  it("lists offers since PX-16, so the Worker's count passes through by default", async () => {
     const actual = await vi.importActual<typeof DiscoverModel>(
       "../src/portal/model/discover.js",
     );
-    expect(actual.DISCOVER_LISTS_OFFERS).toBe(false);
+    expect(actual.DISCOVER_LISTS_OFFERS).toBe(true);
+    expect(actual.navDiscoverCount(4)).toBe(4);
+    expect(actual.navDiscoverCount(undefined)).toBeNull();
+  });
+
+  it("answers null while a page cannot list offers, whatever the Worker counts", async () => {
+    const actual = await vi.importActual<typeof DiscoverModel>(
+      "../src/portal/model/discover.js",
+    );
     for (const v of [0, 1, 4, undefined])
-      expect(actual.navDiscoverCount(v)).toBeNull();
-    expect(actual.navDiscoverCount(4, false)).toBeNull();
+      expect(actual.navDiscoverCount(v, false)).toBeNull();
   });
 
   it("passes the Worker's count through once the page lists offers", async () => {

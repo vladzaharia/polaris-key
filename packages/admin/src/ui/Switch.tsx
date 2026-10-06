@@ -50,7 +50,8 @@ export function Switch({
         onChange?.(c);
       }}
       className={cn(
-        "peer relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-border-strong transition-colors duration-(--pk-duration-fast) ease-standard",
+        // Pressable (src/motion.css): the track presses and its colours ease at `micro`.
+        "pk-pressable peer relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-border-strong",
         "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
         "disabled:cursor-not-allowed disabled:opacity-50",
         "data-[state=checked]:border-accent data-[state=checked]:bg-accent data-[state=unchecked]:bg-surface-sunken",
@@ -63,7 +64,7 @@ export function Switch({
         undefined
       }
     >
-      <SwitchPrimitive.Thumb className="pointer-events-none block size-3.5 rounded-full bg-fg-muted shadow-elevation-1 transition-transform duration-(--pk-duration-fast) ease-standard data-[state=checked]:translate-x-[1.125rem] data-[state=checked]:bg-accent-on data-[state=unchecked]:translate-x-0.5" />
+      <SwitchPrimitive.Thumb className="pointer-events-none block size-3.5 rounded-full bg-fg-muted shadow-elevation-1 [transition:translate_var(--pk-duration-slow)_var(--pk-ease-spring),background-color_var(--pk-duration-micro)_var(--pk-ease-standard)] data-[state=checked]:translate-x-[1.125rem] data-[state=checked]:bg-accent-on data-[state=unchecked]:translate-x-0.5" />
     </SwitchPrimitive.Root>
   );
   if (!label) return control;

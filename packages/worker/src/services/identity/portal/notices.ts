@@ -239,25 +239,52 @@ export function deviceRemovedNotice(input: {
   });
 }
 
-/** A new device signed in to the account. */
+/** "4 Oct 2026, 14:34 UTC": a unix time for a sentence in an email. */
+function emailDate(at: number): string {
+  const d = new Date(at * 1000);
+  const month = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ][d.getUTCMonth()]!;
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${d.getUTCDate()} ${month} ${d.getUTCFullYear()}, ${hh}:${mm} UTC`;
+}
+
+/**
+ * A new device signed in to the account (SIGN-IN.md §3.15): `signin.mail.newDevice.subject`,
+ * `signin.mail.newDevice.body` and **Open Polaris Key** (`signin.mail.open`).
+ */
 export function newDeviceSignInNotice(input: {
   deviceLabel: string | null | undefined;
   /** An approximate place, when the sign-in had one ("Lisbon, Portugal"). */
   location?: string | null;
+  /** When it signed in (unix seconds), for "signed in on {date}". */
+  at?: number;
   origin: string;
 }): NoticeMessage {
   const device = displayValue(input.deviceLabel, "A new device");
   const location = input.location ? displayValue(input.location, "") : "";
+  const when = input.at !== undefined ? ` on ${emailDate(input.at)}` : "";
+  const where = location ? ` from ${location}` : "";
   return buildNotice({
-    subject: "A new device signed in to Polaris Key",
+    subject: "A new device signed in to your Polaris Key account", // signin.mail.newDevice.subject
     paragraphs: [
-      location
-        ? `${device} signed in to your Polaris Key account, near ${location}.`
-        : `${device} signed in to your Polaris Key account.`,
-      "If this was you, there is nothing to do.",
+      // signin.mail.newDevice.body
+      `${device} signed in${when}${where}. If this wasn't you, sign it out in Polaris Key under Where you're signed in.`,
     ],
     action: {
-      label: "Review your sign-ins",
+      label: "Open Polaris Key", // signin.mail.open
       url: appLink(input.origin, "account/sessions"),
     },
     secureUrl: appLink(input.origin, "account/methods"),
@@ -354,6 +381,71 @@ export function licenseLinkSupersededNotice(input: {
       `A ${name} license was linked to more than one Polaris Key account. A license now belongs to one account, and another account holds this one, so it has left your library.`,
       "If you bought it, contact the developer: they can move it to your account.",
     ],
+    origin: input.origin,
+  });
+}
+
+// ── The developer's relink tool (I-12) ──────────────────────────────────────────────────────
+
+/** How long the developer can undo a relink, as the notices say it. */
+const RELINK_UNDO_WORDS = "72 hours";
+
+/**
+ * S-16 §5.4 item 9: the developer is moving a licence OUT of this account. Sent to every verified
+ * email on the account before the move takes effect. Says which product, never which account
+ * receives it.
+ */
+export function licenseRelinkedAwayNotice(input: {
+  productName: string | null | undefined;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "A");
+  return buildNotice({
+    subject: `The developer moved your ${name} license to another account`,
+    paragraphs: [
+      `The developer of ${name} moved one of its licenses from your Polaris Key account to another account, at the request of its support.`,
+      `If you did not expect this, contact the developer's support now: they can undo it for ${RELINK_UNDO_WORDS}.`,
+    ],
+    secureUrl: appLink(input.origin, "account/methods"),
+    origin: input.origin,
+  });
+}
+
+/** The receiving side of a relink: a licence is being added to this account by the developer. */
+export function licenseRelinkedInNotice(input: {
+  productName: string | null | undefined;
+  productSlug: string;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "A product");
+  return buildNotice({
+    subject: `${name} is being added to your library`,
+    paragraphs: [
+      `The developer of ${name} moved one of its licenses to your Polaris Key account, at the request of its support.`,
+      `If you did not ask for this, contact the developer's support: they can undo it for ${RELINK_UNDO_WORDS}.`,
+    ],
+    action: {
+      label: `Open ${name}`,
+      url: appLink(input.origin, productRoute(input.productSlug)),
+    },
+    secureUrl: appLink(input.origin, "account/methods"),
+    origin: input.origin,
+  });
+}
+
+/** A relink was undone: the licence goes back to the account it came from. */
+export function licenseRelinkUndoneNotice(input: {
+  productName: string | null | undefined;
+  origin: string;
+}): NoticeMessage {
+  const name = displayValue(input.productName, "A");
+  return buildNotice({
+    subject: `The developer undid a move of a ${name} license`,
+    paragraphs: [
+      `The developer of ${name} undid an earlier move of one of its licenses. The license goes back to the account it came from.`,
+      "If you did not expect this, contact the developer's support.",
+    ],
+    secureUrl: appLink(input.origin, "account/methods"),
     origin: input.origin,
   });
 }

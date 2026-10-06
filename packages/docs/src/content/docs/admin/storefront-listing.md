@@ -11,6 +11,22 @@ every store's listing is projected from it. It is Distribution data that you edi
 not a manifest: `.pkey/distribution` `listing` stays one import source, and a repo push never
 changes the shared listing. Nothing in it is signed or sent to devices.
 
+## In the console
+
+**Distribution → Listing** edits the model, with five tabs:
+
+- **Text**: the app's fields and each locale's (switch locale, or add one), saved together, and the
+  import with its field-by-field diff;
+- **Fit report**: every store's fit, with **Override…** on each field that does not fit;
+- **Images**: the [slot board](/docs/admin/storefronts/#the-slot-board), where every derived or
+  composed image is accepted before any store receives it;
+- **Release notes**: each release's store notes per locale, with the proposed short form;
+- **Push**: **Push listing** for each store whose adapter writes listings (see
+  [Storefronts](/docs/admin/storefronts/#listing-push)).
+
+The same fit report, import and slot board are steps of
+[Add to storefronts](/docs/admin/storefronts/).
+
 ## What it holds
 
 | Part          | Fields and the model's limits                                                                                                                                                                                                                                                |
@@ -57,7 +73,9 @@ or edit. The proposal is never stored or sent until you save it. The App Store g
 The App Store Connect Distribute flow reads these notes: given the release being distributed, an
 App Store version's What's New defaults to the release's store notes in that locale, and its
 promotional text to the listing's, each only when you do not type one. The preflight shows the
-listing's App Store fit. It is advisory until the listing itself is pushed to App Store Connect.
+listing's App Store fit. It is advisory: App Store Connect's own listing is what review sees until
+you push the listing's text and screenshots to it
+([Pushing the listing](/docs/services/distribution/app-store-connect/#pushing-the-listing)).
 
 ## Importing
 

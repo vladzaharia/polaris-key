@@ -7,7 +7,6 @@ import {
 import {
   hashKey,
   platformOidcConfig,
-  randomId,
   type Db,
   type Env,
 } from "../../../core/platform.js";
@@ -15,12 +14,10 @@ import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   artefactRef,
   consumeArtefact,
-  deleteArtefact,
   putArtefact,
   type ArtefactRef,
 } from "../../../core/singleUse.js";
 import {
-  normalizeEmail,
   portalIdentityIssuerKey,
   rekeyLegacyPortalIdentities,
   portalAuthCapabilities,
@@ -29,13 +26,20 @@ import {
   syncAccountLicenseLinks,
 } from "./repo.js";
 import { signIn, type SignInResult } from "../accounts/signIn.js";
-import { EMAIL_ISSUER, rekeyLegacyAccountLinks } from "../accounts/repo.js";
+import { rekeyLegacyAccountLinks } from "../accounts/repo.js";
+import { buildPortalClearCookie, portalSessionFromRequest } from "./session.js";
 import {
-  buildPortalClearCookie,
-  buildPortalSessionCookie,
-  issuePortalSession,
-} from "./session.js";
-import { sendMagicLink } from "./email.js";
+  revokeSessionByHash,
+  sessionIdHash,
+  startAccountSession,
+} from "./accountSessions.js";
+import {
+  handleMagicConfirm,
+  handleMagicLanding,
+  handleSigninEmailStart,
+} from "../card/emailSignIn.js";
+
+export { portalMagicKey } from "../card/emailSignIn.js";
 import { portalSecurityHeaders } from "./headers.js";
 import {
   brandedHtmlSecurityHeaders,
@@ -65,14 +69,6 @@ export async function portalFlowKey(
   return artefactRef("portal-flow", await hashKey(state, env.KEY_HASH_PEPPER));
 }
 
-/** Single-use store address of a pending magic link, by its token. See `portalFlowKey`. */
-export async function portalMagicKey(
-  env: Env,
-  token: string,
-): Promise<ArtefactRef> {
-  return artefactRef("portal-magic", await hashKey(token, env.KEY_HASH_PEPPER));
-}
-
 interface FlowRecord {
   verifier: string;
   nonce: string;
@@ -80,23 +76,28 @@ interface FlowRecord {
   returnTo?: string;
 }
 
-interface MagicRecord {
-  email: string;
-  returnTo?: string;
-}
-
-/** A portal sign-in error page: the branded, script-free shell (`core/brandHtml.ts`). Every
- *  message is a hard-coded literal, escaped anyway. A retry is offered where one can help. */
-function htmlError(status: number, message: string): Response {
-  const retry = status === 400 || status === 401 || status === 429;
+/**
+ * A sign-in error page: the branded, script-free shell (`core/brandHtml.ts`) with no surface
+ * label (SIGN-IN.md §3.13, D-32). `heading` is a hard-coded literal, escaped anyway; `body` is
+ * TRUSTED markup. **Sign in again** is offered where one can help (by default on a 400, 401 or
+ * 502).
+ */
+export function htmlError(
+  status: number,
+  heading: string,
+  opts: { body?: string; retry?: boolean } = {},
+): Response {
+  const retry =
+    opts.retry ?? (status === 400 || status === 401 || status === 502);
   return new Response(
     renderBrandPage({
-      title: "Sign-in",
-      surface: "account",
-      heading: message,
-      body: retry
-        ? `<p class="actions"><a class="button" href="${escapeHtml("/")}">Back to sign-in</a></p>`
-        : "",
+      title: "Sign in",
+      heading,
+      body:
+        (opts.body ?? "") +
+        (retry
+          ? `<p class="actions"><a class="button" href="${escapeHtml("/")}">Sign in again</a></p>` // signin.again
+          : ""),
     }),
     {
       status,
@@ -109,6 +110,42 @@ function htmlError(status: number, message: string): Response {
     },
   );
 }
+
+/**
+ * The Worker sign-in pages of SIGN-IN.md §3.13, shared by the platform-OIDC and the provider
+ * sign-ins. No "OIDC" or "portal" in UI copy.
+ */
+export const signInPage = {
+  /** Too many attempts: no button, the wait is the advice. */
+  tooMany: (): Response =>
+    htmlError(429, "Too many sign-in attempts", {
+      body: "<p>Wait a minute, then try again.</p>",
+    }),
+  /** Sign-in is off (no product context on these routes): `signin.off.any`. */
+  off: (): Response =>
+    htmlError(404, "Sign-in is unavailable. Try again later.", {
+      retry: false,
+    }),
+  /** The provider round trip's state expired or is unknown (D-31: not called a link). */
+  tookTooLong: (): Response => htmlError(400, "This sign-in took too long"),
+  /** The provider failed or is unreachable. */
+  unavailable: (provider?: string): Response =>
+    htmlError(
+      502,
+      provider
+        ? `${provider} sign-in isn't working right now`
+        : "Sign-in isn't working right now",
+      { body: "<p>Try another way to sign in.</p>" },
+    ),
+  /** The identity could not be verified. */
+  unverified: (): Response =>
+    htmlError(401, "We couldn't confirm that sign-in"),
+  /** The account is disabled. */
+  accountDisabled: (): Response =>
+    htmlError(403, "This account can't sign in", {
+      body: "<p>Contact Polaris Key support.</p>",
+    }),
+};
 
 function authJson(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -150,7 +187,10 @@ async function pkce(): Promise<{ verifier: string; challenge: string }> {
   return { verifier, challenge: b64url(new Uint8Array(digest)) };
 }
 
-function safeReturnTo(req: Request, raw: string | null): string | undefined {
+export function safeReturnTo(
+  req: Request,
+  raw: string | null,
+): string | undefined {
   if (!raw) return undefined;
   try {
     const parsed = new URL(raw);
@@ -197,21 +237,21 @@ function mapClaims(payload: Record<string, unknown>): {
 async function issueRedirectSession(
   env: Env,
   db: Db,
+  req: Request,
   account: {
     id: string;
     display_name: string | null;
     primary_email: string | null;
   },
+  amr: readonly string[],
   now: number,
   location: string,
 ): Promise<Response> {
-  const { token } = await issuePortalSession(
+  // I-07: every sign-in opens a server-side account session the cookie names (revocable).
+  const { cookie } = await startAccountSession(
     env,
-    {
-      accountId: account.id,
-      name: account.display_name,
-      email: account.primary_email,
-    },
+    db,
+    { account, req, amr },
     now,
   );
   return new Response(null, {
@@ -221,7 +261,7 @@ async function issueRedirectSession(
         portalSecurityHeaders(
           new Headers({
             location,
-            "set-cookie": buildPortalSessionCookie(token),
+            "set-cookie": cookie,
             "cache-control": "no-store",
           }),
         ),
@@ -241,13 +281,13 @@ export async function handlePortalLogin(
     { bucket: "portalLogin", id: clientIp(req), limit: 20, windowSec: 60 },
     Math.floor(Date.now() / 1000),
   );
-  if (!ok) return htmlError(429, "Too many sign-in attempts.");
+  if (!ok) return signInPage.tooMany();
   const caps = await portalAuthCapabilities(db);
   if (!caps.portalEnabled || !caps.oidcEnabled) {
-    return htmlError(404, "OIDC sign-in is disabled.");
+    return signInPage.off();
   }
   const cfg = platformOidcConfig(env);
-  if (!cfg) return htmlError(500, "Portal OIDC is not configured.");
+  if (!cfg) return signInPage.off();
 
   const url = new URL(req.url);
   const rawReturnTo = url.searchParams.get("return_to");
@@ -298,20 +338,20 @@ export async function handlePortalCallback(
   if (!code || !state) return htmlError(400, "Missing authorization code.");
   const caps = await portalAuthCapabilities(db);
   if (!caps.portalEnabled || !caps.oidcEnabled) {
-    return htmlError(404, "OIDC sign-in is disabled.");
+    return signInPage.off();
   }
   // Atomic and single-use: of two racing callbacks for one `state`, one gets the flow.
   const raw = await consumeArtefact(env, await portalFlowKey(env, state));
-  if (!raw) return htmlError(400, "This sign-in link has expired.");
+  if (!raw) return signInPage.tookTooLong();
   let flow: FlowRecord;
   try {
     flow = JSON.parse(raw) as FlowRecord;
   } catch {
-    return htmlError(400, "This sign-in link has expired.");
+    return signInPage.tookTooLong();
   }
 
   const cfg = platformOidcConfig(env);
-  if (!cfg) return htmlError(500, "Portal OIDC is not configured.");
+  if (!cfg) return signInPage.off();
   const tokenRes = await fetch(
     `${cfg.issuer.replace(/\/$/, "")}/api/oidc/token`,
     {
@@ -327,10 +367,9 @@ export async function handlePortalCallback(
       }),
     },
   );
-  if (!tokenRes.ok) return htmlError(502, "OIDC token exchange failed.");
+  if (!tokenRes.ok) return signInPage.unavailable();
   const tokens = (await tokenRes.json()) as { id_token?: string };
-  if (!tokens.id_token)
-    return htmlError(502, "OIDC token response was invalid.");
+  if (!tokens.id_token) return signInPage.unavailable();
 
   const jwks = createRemoteJWKSet(
     new URL(`${cfg.issuer.replace(/\/$/, "")}/.well-known/jwks.json`),
@@ -351,11 +390,11 @@ export async function handlePortalCallback(
       throw new Error("nonce mismatch");
     }
   } catch {
-    return htmlError(401, "Sign-in could not be verified.");
+    return signInPage.unverified();
   }
 
   const identity = mapClaims(claims);
-  if (!identity.sub) return htmlError(401, "Sign-in could not be verified.");
+  if (!identity.sub) return signInPage.unverified();
   // Keyed by issuer (S-16 G14). Re-key any pre-I-01 rows first, so the lookup finds them.
   const issuerKey = portalIdentityIssuerKey(cfg.issuer);
   await rekeyLegacyPortalIdentities(db, issuerKey);
@@ -386,7 +425,15 @@ export async function handlePortalCallback(
     summary: "Signed in with OIDC",
     now,
   });
-  return issueRedirectSession(env, db, account, now, flow.returnTo ?? "/");
+  return issueRedirectSession(
+    env,
+    db,
+    req,
+    account,
+    ["oidc"],
+    now,
+    flow.returnTo ?? "/",
+  );
 }
 
 /**
@@ -395,12 +442,12 @@ export async function handlePortalCallback(
  * offers to join once the person proves the other account; until it lands, the page says so and
  * names nobody.
  */
-function signInRefusal(result: SignInResult): Response | null {
+export function signInRefusal(result: SignInResult): Response | null {
   switch (result.status) {
     case "signed_in":
       return result.account.status === "active"
         ? null
-        : htmlError(403, "Account disabled.");
+        : signInPage.accountDisabled();
     case "join_offer":
       return htmlError(
         409,
@@ -408,127 +455,46 @@ function signInRefusal(result: SignInResult): Response | null {
       );
     case "refused":
       return result.reason === "account_disabled"
-        ? htmlError(403, "Account disabled.")
-        : htmlError(401, "Sign-in could not be verified.");
+        ? signInPage.accountDisabled()
+        : signInPage.unverified();
   }
 }
 
+/**
+ * `POST /api/magic/start`: the pre-I-07 name of the login card's email start, kept as an alias
+ * (a cached older portal bundle still calls it). Same handler, same answers: a code and a magic
+ * link bound to this browser (`card/emailSignIn.ts`).
+ */
 export async function handleMagicStart(
   req: Request,
   env: Env,
   db: Db,
+  now: number = Math.floor(Date.now() / 1000),
 ): Promise<Response> {
-  if (req.method !== "POST")
-    return authJson({ error: "method_not_allowed" }, 405);
-  const ok = await rateLimitOk(
-    env,
-    "_portal",
-    { bucket: "portalMagic", id: clientIp(req), limit: 8, windowSec: 60 },
-    Math.floor(Date.now() / 1000),
-  );
-  if (!ok) return authJson({ error: "rate_limited" }, 429);
-  const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled || !caps.magicEnabled) {
-    return authJson(
-      { error: "auth_method_disabled", message: "email sign-in is disabled" },
-      404,
-    );
-  }
-
-  let body: { email?: unknown; returnTo?: unknown };
-  try {
-    body = (await req.json()) as { email?: unknown; returnTo?: unknown };
-  } catch {
-    return authJson({ error: "bad_request", message: "invalid json" }, 400);
-  }
-  const email =
-    typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return authJson(
-      { error: "bad_request", message: "valid email required" },
-      422,
-    );
-  }
-  const returnTo =
-    typeof body.returnTo === "string"
-      ? safeReturnTo(req, body.returnTo)
-      : undefined;
-  if (typeof body.returnTo === "string" && !returnTo) {
-    return authJson(
-      { error: "bad_request", message: "invalid return URL" },
-      400,
-    );
-  }
-  const token = randomId("magic");
-  const verifyUrl = new URL("/magic/verify", new URL(req.url).origin);
-  verifyUrl.searchParams.set("token", token);
-  if (returnTo) verifyUrl.searchParams.set("return_to", returnTo);
-  const record: MagicRecord = { email, returnTo };
-  const magicKey = await portalMagicKey(env, token);
-  await putArtefact(env, magicKey, JSON.stringify(record), FLOW_TTL_SECONDS);
-  const sent = await sendMagicLink(
-    env,
-    db,
-    email,
-    verifyUrl.toString(),
-    Math.floor(Date.now() / 1000),
-  );
-  if (!sent) {
-    await deleteArtefact(env, magicKey);
-    return authJson(
-      {
-        error: "email_not_configured",
-        message: "portal email is not configured",
-      },
-      503,
-    );
-  }
-  return authJson({ ok: true });
+  return handleSigninEmailStart(req, env, db, now);
 }
 
+/**
+ * `/magic/verify`: the magic link's landing page (I-07). `GET` consumes NOTHING, so a mail
+ * scanner or link prefetcher cannot burn the link; the page's button `POST`s the token back,
+ * which completes the sign-in in the browser that asked, or confirms that browser's sign-in when
+ * opened anywhere else (`card/emailSignIn.ts`).
+ */
 export async function handleMagicVerify(
   req: Request,
   env: Env,
   db: Db,
   now: number,
 ): Promise<Response> {
-  const url = new URL(req.url);
-  const token = url.searchParams.get("token");
-  if (!token) return htmlError(400, "Missing magic-link token.");
-  const caps = await portalAuthCapabilities(db);
-  if (!caps.portalEnabled || !caps.magicEnabled) {
-    return htmlError(404, "Email sign-in is disabled.");
-  }
-  // Atomic and single-use: two clicks (or a prefetcher and a click) cannot both sign in.
-  const raw = await consumeArtefact(env, await portalMagicKey(env, token));
-  if (!raw) return htmlError(400, "This magic link has expired.");
-  let record: MagicRecord;
-  try {
-    record = JSON.parse(raw) as MagicRecord;
-  } catch {
-    return htmlError(400, "This magic link has expired.");
-  }
-  const result = await signIn(
-    db,
-    {
-      issuerKey: EMAIL_ISSUER,
-      subject: normalizeEmail(record.email),
-      kind: "email",
-    },
-    now,
-  );
-  const refused = signInRefusal(result);
-  if (refused) return refused;
-  const account = (result as Extract<SignInResult, { status: "signed_in" }>)
-    .account;
-  await syncAccountLicenseLinks(db, account.id, now);
-  await portalAudit(db, {
-    accountId: account.id,
-    action: "portal.login.magic",
-    summary: "Signed in with email magic link",
-    now,
+  if (req.method === "POST") return handleMagicConfirm(req, env, db, now);
+  if (req.method === "GET" || req.method === "HEAD")
+    return handleMagicLanding(req, env, db);
+  return new Response("Method Not Allowed", {
+    status: 405,
+    headers: portalSecurityHeaders(
+      new Headers({ allow: "GET, POST", "cache-control": "no-store" }),
+    ),
   });
-  return issueRedirectSession(env, db, account, now, record.returnTo ?? "/");
 }
 
 /**
@@ -544,7 +510,12 @@ export async function handleMagicVerify(
  * both the `<img>` and the cross-site-link shapes. It can be dropped once no stale bundles
  * are in circulation.
  */
-export function handlePortalLogout(req: Request): Response {
+export async function handlePortalLogout(
+  req: Request,
+  env?: Env,
+  db?: Db,
+  now: number = Math.floor(Date.now() / 1000),
+): Promise<Response> {
   if (req.method !== "POST" && !isSameOriginNavigation(req)) {
     return new Response("Method Not Allowed", {
       status: 405,
@@ -552,6 +523,14 @@ export function handlePortalLogout(req: Request): Response {
         new Headers({ "cache-control": "no-store" }),
       ),
     });
+  }
+  // I-07: signing out ends this browser's server-side session too, so the cookie is dead even
+  // if it was copied before the clearing `Set-Cookie` arrived.
+  if (env && db) {
+    const session = await portalSessionFromRequest(env, req, now);
+    if (session?.sid) {
+      await revokeSessionByHash(db, await sessionIdHash(env, session.sid), now);
+    }
   }
   return new Response(null, {
     status: 302,

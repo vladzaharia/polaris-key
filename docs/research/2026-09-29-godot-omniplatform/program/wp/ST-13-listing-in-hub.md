@@ -37,6 +37,18 @@ D11 chose a console editor for listings, coordinated with A-18 ([S-18 §7.3](../
 
 - The editor itself (→ A-18j).
 
+## PENDING entries to remove
+
+ST-06 left a shrinking allow-list in `packages/worker/scripts/settings-coverage.ts`. Its "PENDING owners" decision ([ST-06](ST-06-settings-docs-coverage.md#design-notes)) assigns this package the 7 entries below. Register each one in the settings registry (the note names the intended key, where there is one), then delete it from `PENDING` and lower `PENDING_CEILING` by the same count. `checkCoverage` refuses an entry that is both pending and registered, so the two edits land together.
+
+- `table:dist_listings`
+- `column:dist_listings.source`
+- `column:dist_listing_assets.source`
+- `column:dist_listing_locales.source`
+- `column:dist_listing_overrides.source`
+- `column:dist_listing_release_notes.source`
+- `manifest:distribution:listing`
+
 ## Design notes
 
 - `dist_listings.source` is mapped by its adapter (`admin → console`).
@@ -48,6 +60,7 @@ D11 chose a console editor for listings, coordinated with A-18 ([S-18 §7.3](../
 
 ## Acceptance criteria
 
+- [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 7 lower, and `settings-coverage.test.ts` passes.
 - [ ] The Listing area renders in the hub with provenance (e2e).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 

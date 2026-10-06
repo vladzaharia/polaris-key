@@ -906,6 +906,26 @@ W4's appended case.
 | G5  | Offer "own-account mode" (Stripe Managed Payments, Stripe as merchant of record) for developers who do not want to handle tax?                                  | Not at launch; keep CM-19 deferred and decide after the first developer asks. It needs the developer's restricted key stored as a product secret. |
 | G6  | Use regional store link-out programmes (US App Store external purchase links, Play external offers and alternative billing)?                                    | Not by default, ever; if wanted, CM-18 after a fresh S-07-style policy re-check and legal review, per product and per region.                     |
 
+### 10.3 Owner answers (2026-10-06)
+
+The owner approved every recommendation in §10.2 ("All recommendations for commerce are sound.
+Approved."):
+
+- **G1:** the developer is the merchant of record, through Stripe Connect direct charges on their
+  own connected account (D1 confirmed). A platform agreement and DPA addendum for connecting
+  developers, and a short legal review of the developer terms and checkout disclosure, are required
+  **before CM-05 takes a live payment**.
+- **G2:** `commerce.platform.applicationFeeBps` is **0** at launch.
+- **G3:** merchants wherever Stripe Connect and Stripe Tax support direct charges; first currencies
+  USD, EUR, GBP and CAD.
+- **G4:** ship `withdrawalWaiver: eu`; the wording comes from G1's legal review.
+- **G5:** no own-account mode at launch; CM-19 stays deferred until a developer asks.
+- **G6:** no store link-out programmes; CM-18 stays deferred (per product and region, after a fresh
+  policy re-check and legal review, if ever).
+
+These answer the go-time questions. Building the CM- packages still waits for the owner's explicit
+"commerce: go"; the legal review gates live payments either way.
+
 ## 11. Work packages (CM-, optional, deferred)
 
 ### 11.1 The packages

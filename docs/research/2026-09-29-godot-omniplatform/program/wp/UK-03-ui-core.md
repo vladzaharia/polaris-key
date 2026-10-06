@@ -1,16 +1,16 @@
 # UK-03 `@polaris-key/ui-core`: framework-neutral view models for every §4 component over `client-core`, error → copy keys, theme and `ProductIdentity` resolution with the presentation seam, the fixture runner
 
-| Field       | Value                                                                                                                                                                                                                     |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                              |
-| Size        | 2–3 engineer-weeks                                                                                                                                                                                                        |
-| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md)                                                                                                          |
-| Unblocks    | [UK-04](UK-04-web-components.md), [UK-05](UK-05-react-kit.md), [UK-06](UK-06-electron-kit.md), [UK-17](UK-17-vue-kit.md), [UK-18](UK-18-svelte-kit.md), [UK-19](UK-19-angular-kit.md), [UK-20](UK-20-react-native-kit.md) |
-| Role        | `pkey-sdk-porter`                                                                                                                                                                                                         |
-| Plan mode   | no                                                                                                                                                                                                                        |
-| Gates       | the UI fixture runner in `pnpm test`; `pnpm typecheck`                                                                                                                                                                    |
-| Human input | none                                                                                                                                                                                                                      |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                 |
+| Field       | Value                                                                                                                                                                                                                                                               |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                        |
+| Size        | 2–3 engineer-weeks                                                                                                                                                                                                                                                  |
+| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md)                                                                                                                                                    |
+| Unblocks    | [UK-04](UK-04-web-components.md), [UK-05](UK-05-react-kit.md), [UK-06](UK-06-electron-kit.md), [UK-17](UK-17-vue-kit.md), [UK-18](UK-18-svelte-kit.md), [UK-19](UK-19-angular-kit.md), [UK-20](UK-20-react-native-kit.md), [UK-42](UK-42-activation-holders-web.md) |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                   |
+| Plan mode   | no                                                                                                                                                                                                                                                                  |
+| Gates       | the UI fixture runner in `pnpm test`; `pnpm typecheck`                                                                                                                                                                                                              |
+| Human input | none                                                                                                                                                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                           |
 
 ## Owner decision (2026-10-05): licence choice at sign-in
 
@@ -78,6 +78,14 @@ Layer (c) for the JS kits; elements, React, Vue, Svelte, Angular and React Nativ
 
 - The presentation seam is the only path for presentation data in JS kits (owner decision); when HA-13 ships `client.presentation()` the SDK supplies the source and no kit changes.
 - Presentation comes only through the core's `ProductIdentity` seam from the SDK (HA-13, HA-14). This package does not depend on them: it tests the default with a fake source, and the real accessor plugs in without a kit change (UK-41 verifies it).
+
+## Presentation seam ([`plans/HA-11.md`](../plans/HA-11.md), approved 2026-10-06)
+
+- **Do not define a seam.** The kit's `ProductIdentity` resolver takes the TypeScript `PresentationSource` from `@polaris-key/client-core/presentation` (written by HA-12).
+- **Before that lands.** If the SDK type has not landed when this package starts, declare a
+  structurally identical local type, `current()`, `icon(px, scale)` and change notification, and
+  replace it with the SDK's type when it lands.
+- **Fake sources.** Tests build fake sources from that type.
 
 ## Steps
 

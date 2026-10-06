@@ -310,7 +310,9 @@ SP-19, Kotlin SP-20 and SP-21, Python SP-22, Godot SP-23 to SP-27, and the deskt
 SP-28 (Steam for Node, Python, Swift and Kotlin), SP-29 (MSIX and Flatpak for Node and Python, with
 the build generators) and SP-30 (MSIX and Flatpak for Godot). They take the next free `SP-NN` ids,
 as `plans/SP-00.md` D8 sets (the manifest `wp` pattern refuses the note's `SP-N05` form); each
-brief names the note tasks it absorbs. SP-16 takes React's `commerce.receipt` row from LX-20.
+brief names the note tasks it absorbs. SP-16 takes React's `commerce.receipt` row from LX-20. **SP-31** (filed 2026-10-06) is the host half of
+bridge v4, which no package owned: the v3 Node Electron host (the note's SP-N10) landed without a
+graph node, and SP-31 moves it to v4 after SP-12.
 `identity.oidc` rows point at I-15 and Swift `ui.kit` at UK-07.
 
 Phase UK (UI kits) follows [`docs/design/UI-KITS.md`](../../../design/UI-KITS.md) §10, approved with

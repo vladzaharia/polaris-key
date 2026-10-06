@@ -91,7 +91,7 @@ request, and an empty, wrong or reused token, all get the same `403`. The same c
 the entry form's `POST`.
 
 An unknown, expired, malformed or already-confirmed code re-renders the entry form with one
-generic line — "That code is not valid or has expired." — and status `404`. The page never says which, so a guesser learns
+generic line — "That code isn't valid or has expired. Check the code on your device." — and status `404`. The page never says which, so a guesser learns
 nothing from the difference. Every page here is script-free HTML under the static-page security
 headers, `Cache-Control: no-store` and `Referrer-Policy: no-referrer`; the confirmation page's
 `form-action` also allows the IdP's origin, because a browser applies `form-action` to the

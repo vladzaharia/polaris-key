@@ -7,6 +7,7 @@
  * NOTE: these tests assert the CURRENT (vulnerable) behaviour so they fail loudly when a
  * fix lands. Read them as "this is what an attacker can do today".
  */
+import { issuePortalSessionRow } from "../portalSessionRow.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1023,8 +1024,9 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
     db: Db,
   ): Promise<{ cookie: string; csrf: string }> {
     const account = await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
-    const { token, session } = await issuePortalSession(
+    const { token, session } = await issuePortalSessionRow(
       env,
+      db,
       {
         accountId: account.id,
         email: account.primary_email,

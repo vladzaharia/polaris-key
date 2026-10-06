@@ -42,12 +42,36 @@ It completes "zero integrator work" for every non-Godot SDK ([S-20 §6.9](../../
 - A failed or mismatched icon falls back to the letter tile silently.
 - **UI kits (owner decision, 2026-10-05).** This package is the only path by which presentation reaches a kit. Expose it as each SDK's presentation accessor and implement the kit core's `PresentationSource` seam: `@polaris-key/ui-core` (UK-03), the Swift presentation core (UK-07), Kotlin `commonMain` (UK-09) and `polaris_key.ui.core` (UK-12). Where a UK kit has not landed yet, wire today's kit theme as planned; the UK kit then reads the same accessor. No kit fetches discovery or caches the icon itself. UK-41 verifies the default end to end ([UI-KITS.md](../../../../design/UI-KITS.md) §1.2, §10).
 
+## Approved plan (2026-10-06)
+
+[`plans/HA-11.md`](../plans/HA-11.md) is approved. This package does rows 1–5 of the plan's §5.
+
+- **client-core is consumed, not written.** HA-12 writes `@polaris-key/client-core/presentation`
+  (`parsePresentation`, `pickIconSize`, `iconMatches`, `PresentationSource`). React and Node use
+  it directly.
+- **Ports.** Python, Swift and Kotlin port the parse, size-choice and verify rules and the
+  `PresentationSource` seam:
+  - Python: `polaris_key.presentation.PresentationSource`;
+  - Swift: `PresentationSource` in `PolarisKeyCore`;
+  - Kotlin: `im.plrs.key.core.PresentationSource`.
+
+  The UK kits import these seams; none defines its own.
+
+- **Matrix runners** for `presentation-matrix.json`: Node (`conformance/runners/node`), the
+  browser runner, Python, Swift and Kotlin `:conformance`. Each SDK replays
+  `discovery-presentation.json`.
+- **Fetch-rule unit tests.** No auth, cookies or `X-PKey-*` headers; no redirects; 10 s timeout;
+  10 MiB cap; cache by `sha256` outside the Core cache record; `presentation.json` persisted for
+  cold boots; at most 4 cached files.
+- **Parity.** Flip `core.presentation` to `implemented` in each manifest.
+
 ## Steps
 
 1. Per the plan, in its SDK order.
 
 ## Acceptance criteria
 
+- [ ] Every SDK in scope runs `presentation-matrix.json` (`parseCases`, `pickCases`, `verifyCases`) green and replays `discovery-presentation.json`.
 - [ ] Transcript replayers pass in every SDK.
 - [ ] UI snapshots show the product icon for a fixture with presentation, and today's output without it.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.

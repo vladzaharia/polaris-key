@@ -1,3 +1,5 @@
+import { returnUrl } from "./carriedKey.js";
+
 export interface PortalAccount {
   id: string;
   name: string;
@@ -385,7 +387,52 @@ export interface PortalKeyPreview {
   maskedEmail?: string;
 }
 
+// ── Discover (PX-W10; G24, G25) ─────────────────────────────────────────────────────────────
+
+/**
+ * Why the account can add a product (owner decision Q-6: always shown). An open set: today
+ * `free_with_account` or `group:<group>`; later policies add their own codes, which the page
+ * words generically until it knows them.
+ */
+export type PortalDiscoverReason = string;
+
+/** What adding the product would give the account, from the same policy as the claim. */
+export interface PortalDiscoverTerms {
+  tier: string | null;
+  tierLabel: string | null;
+  deviceLimit: number;
+  /** The expiry a licence minted now would carry; `null` = never expires. */
+  expiresAt: number | null;
+  /** The tier's policy length in days (`null` = lifetime). */
+  expiryDays: number | null;
+}
+
+/** One offer of `GET /api/discover`. */
+export interface PortalDiscoverOffer extends PortalPresentation {
+  product: string;
+  platforms: string[];
+  offer: PortalDiscoverTerms;
+  reason: PortalDiscoverReason;
+}
+
+/** `POST /api/discover/<p>/claim`: the licence, new (`added`) or already held. */
+export interface PortalDiscoverClaim {
+  added: boolean;
+  product: string;
+  license: {
+    id: string;
+    tier: string | null;
+    tierLabel: string | null;
+    status: string;
+    usable: boolean;
+    expiresAt: number | null;
+    deviceLimit: number;
+  };
+}
+
 export class PortalApiError extends Error {
+  /** A refusal's numeric extras the card shows (`triesLeft` on a wrong sign-in code). */
+  triesLeft?: number;
   constructor(
     public readonly status: number,
     public readonly code?: string,
@@ -401,6 +448,9 @@ let csrf = "";
 export function setPortalCsrf(token: string): void {
   csrf = token;
 }
+
+/** This tab started an email sign-in that has not finished yet (I-07). */
+let signInPending = false;
 
 async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
@@ -423,18 +473,22 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     let code: string | undefined;
     let message: string | undefined;
+    let triesLeft: number | undefined;
     try {
       const body = (await res.json()) as {
         error?: string;
         message?: string;
+        triesLeft?: unknown;
       };
       code = body.error;
       message = body.message;
+      if (typeof body.triesLeft === "number") triesLeft = body.triesLeft;
     } catch {
       // non-JSON response
     }
     const error = new PortalApiError(res.status, code);
     if (message) error.message = message;
+    if (triesLeft !== undefined) error.triesLeft = triesLeft;
     throw error;
   }
   const text = await res.text();
@@ -456,11 +510,45 @@ export const portalApi = {
   licenses: () => call<{ licenses: PortalLicenseSummary[] }>("/api/licenses"),
   license: (product: string, id: string) =>
     call<PortalLicenseDetail>(`/api/licenses/${enc(product)}/${enc(id)}`),
-  startMagic: (email: string) =>
-    call<{ ok: true }>("/api/magic/start", {
+  /**
+   * I-07's identifier-first email start: one email with a 6-digit code and a sign-in link
+   * (SIGN-IN.md §3.4). `/api/magic/start` is the older alias of the same route.
+   */
+  startEmailSignIn: async (email: string) => {
+    const out = await call<{ ok: true }>("/api/signin/email/start", {
       method: "POST",
-      body: JSON.stringify({ email, returnTo: window.location.href }),
-    }),
+      // Never the carried license key (carriedKey.ts).
+      body: JSON.stringify({ email, returnTo: returnUrl() }),
+    });
+    signInPending = true;
+    return out;
+  },
+  /** Redeems the emailed code for this browser's sign-in (the Worker sets the session cookie). */
+  verifySignInCode: async (code: string) => {
+    const out = await call<{ status: string; next?: string }>(
+      "/api/signin/email/verify",
+      { method: "POST", body: JSON.stringify({ code }) },
+    );
+    signInPending = false;
+    return out;
+  },
+  /**
+   * I-07: a sign-in link opened on another device only confirms THIS tab's sign-in; this tab
+   * finishes it here (the Worker sets the session cookie). Asked only after this tab started
+   * an email sign-in.
+   */
+  finishPendingSignIn: async (): Promise<boolean> => {
+    if (!signInPending) return false;
+    try {
+      const out = await call<{ status: string }>("/api/signin/flow", {
+        method: "POST",
+      });
+      if (out.status !== "pending") signInPending = false;
+      return out.status === "signed_in";
+    } catch {
+      return false;
+    }
+  },
   claimKey: (key: string) =>
     call<{ ok: true; license: PortalLicenseSummary | null }>(
       "/api/claim/license-key",
@@ -475,6 +563,12 @@ export const portalApi = {
       { method: "DELETE" },
     ),
   library: () => call<PortalLibrary>("/api/library"),
+  discover: () => call<{ offers: PortalDiscoverOffer[] }>("/api/discover"),
+  /** "Add to library" (G25): mints through the auto-issue path; idempotent per product. */
+  claimDiscover: (product: string) =>
+    call<PortalDiscoverClaim>(`/api/discover/${enc(product)}/claim`, {
+      method: "POST",
+    }),
   product: (product: string) =>
     call<PortalProduct>(`/api/products/${enc(product)}`),
   downloads: (product: string) =>

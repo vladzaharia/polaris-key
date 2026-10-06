@@ -31,6 +31,12 @@ You are the reviewer for one work package. You do not fix anything; you find wha
 6. For plan-mode packages, check that the implementation matches the approved plan exactly.
 7. Check that the status changed in `workpackages.json`, and that `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs` passes.
 
+## What is not a finding
+
+- **Merge cleanliness against current `main` is never a blocking finding.** Main moves every few minutes; integrating is the lead's job, not the branch's. Review the branch against its own merge base (`git diff $(git merge-base main HEAD)...HEAD`). If `git merge-tree` shows conflicts, list them as a non-blocking note for the lead and carry on.
+- A test that fails under load in code the branch did not touch, and passes on retry, is a timing flake: note it, don't block on it.
+- Do not run the green gate; the builder already ran it.
+
 ## Output
 
 Give a verdict: **pass**, or **changes required**. List findings ranked most severe first. Each finding has:

@@ -2088,6 +2088,94 @@ later is refused (deny-by-default) but goes unclassified until the docs-drift re
 Microsoft fetches a redirecting `packageUrl`, whether a Developer role suffices and the real
 `Retry-After` values are [U] for A-18k. The Partner Center deep-link shapes are undocumented.
 
+### Storefront adapter: Steam (A-18g)
+
+**What it is.** The Steam storefront adapter (`core/storefront/stores/steam.ts`, rule table
+`core/storefront/rules/steam.ts` with the deny groups in `rules/steamDenied.ts`), calling through
+its own gated client (`core/steam/client.ts`) with the product's `steam-publisher-key` or the A-16
+group key `steam.publisher-key`, opened through `openSteamPublisherKey` (`commerce/steam.ts`, the
+same pin checks as A-16's lister) under the audited use `steam:storefront`. Distribution's console
+routes (`services/distribution/storefronts/steam/`) serve the plan, the reads, a named-branch
+release, the generated asset pack (A-18d's `pack:steam`), the store-page copy card and the per-app
+checklist. Steam has no listing API, so everything about the store page is a deep link; depots go
+up from CI only (`STEAM_CI`, A-18h, attached as the adapter's `ci`).
+
+**Asset at risk.** A11c's publisher key: reads, `SetAppBuildLive` and ownership checks for every
+app of the group it is scoped to, and through the Web API also leaderboards, inventories,
+micro-transactions, game-server login tokens and player data.
+
+**Controls.**
+
+- **Three reads and one write, before the key.** The client consults the gate before the key thunk
+  and before the budget: a refused request opens no key and sends nothing. Reads pass only on
+  `GetPartnerAppListForWebAPIKey/v2`, `GetAppBuilds/v1` and `GetAppBetas/v1` (the engine's new
+  optional `reads` predicate), so a write method spelt as a `GET` cannot stand in for a write the
+  table refuses. Player, ownership, financial and login-token paths are `forbidden` for every
+  method (`personal_data`). Paths must be `/<Interface>/<Method>/v<N>/`; the host is fixed
+  (`partner.steam-api.com`).
+- **The one write is a named branch.** `SetAppBuildLive/v2` with `appid`, `buildid`, `betakey` and
+  an optional `description`, nothing else (no `steamid`). **`betakey=public` (or `default`, any
+  case) is refused whatever the confirmation** (owner decision 5): the public-branch release is a
+  deep link to App Admin until A-18k shows the group-scoped key may do it; the follow-up flips the
+  check to typed confirmation (phrase: Steam's app name), never plain. The console route refuses
+  `public` before any key or call, with the link.
+- **No machine-readable spec**, so a hand-written list of every `POST` of the 33 Web API interfaces
+  (plus the two state-changing `GET`s), pinned by date and SHA-256 (`STEAM_SPEC_PIN`; fixture
+  `test/fixtures/steam/webapi-writes.json`): each entry is allowed or denied exactly once, and
+  editing it without re-pinning fails CI. Deny groups: deletes, players, payments, credentials
+  (game-server accounts), game data, workshop and cloud content, unneeded `POST` queries.
+- **The first 403 stops everything.** Steam rate-limits the connecting IP on 403s and that IP is
+  the Worker's shared egress, so the budget meter (100,000 calls a day per key) stops every call on
+  that key's slot until the window ends at the first 403, and is consulted before every send.
+- **Natural key, ledger, audit.** A branch move is one `performStoreWrite` step: `GetAppBetas`
+  showing the build on that branch answers `existing` with nothing sent; the confirmation is a
+  re-read, never Steam's answer; one ledger row and one audit entry
+  (`distribution.steam.branch.set_live`). The builds read drops the creator's account id.
+- **Checklist ticks are operator assertions**, stored per product and app id in Distribution's
+  connector settings, shown as unverified, audited on every change. The copy card is listing data,
+  rendered escaped (control (g)). The asset pack is served through the gated blob path only when
+  the product holds a reference to it.
+- **Never.** Partner users and permissions, app credits, pricing and branch or depot deletion have
+  no Web API for partners, and no operation reaches them; every delete the Web API does have is
+  denied.
+
+**Residual risk.** The key rides in the query string of a read (Steam's design), so it reaches
+Steam's logs; no error Polaris Key raises carries a URL. The response shapes of `GetAppBuilds` and
+`GetAppBetas` are undocumented and parsed defensively; A-18k confirms them. The Steamworks
+deep-link shapes are undocumented. A 403 caused by one product stops Steam calls for every product
+on the same group key until the window ends (by design: the alternative is the IP penalty).
+
+### The console storefront flow and the slot board (A-18j)
+
+**What it is.** Distribution → Storefronts (Add to storefronts), Distribution → Listing and Store
+connections' Set up (`services/distribution/storefronts/`, `packages/admin/src/console/areas/
+storefronts/`). Admin routes under `…/distribution/storefronts`, platform admins only, behind the
+session, CSRF and rate-limit gates of `admin/api.ts`.
+
+**Controls**, each pinned by `test/storefrontFlow.test.ts` and `test/storefrontSlots.test.ts`:
+
+- **No new write path to a store.** A step either names an existing reviewed route (A-17b, A-17c,
+  A-16), checked to be under `/manage/api/` when the plan is built and again in the console client,
+  or runs a flow runtime that calls A-18e's and A-18f's functions, each a `performStoreWrite`
+  behind the store's gate. The flow adds no gate rule and no `DELETE`.
+- **Typed confirmation** for submit, release and price on every store: the route compares the typed
+  name with the store-reported name (`typedConfirmationRefusal`) before the runtime runs; a store
+  that did not report a name refuses. Microsoft compares again in A-18f's commit.
+- **`Idempotency-Key`** on every runtime step and push (428 without); a deep-linked step's state is
+  one ledger row (`plane = 'deep-link'`), flipped to done only by the store's own read or an
+  operator assertion where the declaration says `operator-assertion`; each flip is audited.
+- **Nothing pushed unseen.** A push sends only accepted listing assets: acceptance is the digest the
+  operator saw (`accepted_sha256`, migration 0072), so new bytes from CI need a new acceptance; an
+  accept for bytes that changed since the preview answers 409.
+- **The preview serves images only.** `slots/image` types the bytes by their magic number (PNG,
+  JPEG, WebP), refuses anything else with 415, and answers with `nosniff`, `inline` and a
+  `default-src 'none'; sandbox` CSP, so a stored object cannot become a page on the console origin.
+- **Imported and listing text is data**, rendered escaped (control (g) above).
+
+**Residual risk.** A platform admin's session can run every step it can see; the typed name and the
+plan's consequences are the only friction, as for A-17g. Google Play's release and rollout stay on
+P5-03's untyped controls (A-18e's proposed follow-up).
+
 ### The CI plane: storefront command allow-lists and report-back (A-18h)
 
 **What it is.** itch.io and the Snap Store take builds only through vendor CLIs whose credentials
@@ -2343,6 +2431,64 @@ check. Two concurrent requests under one Idempotency-Key can both proceed (the `
 Apple's own duplicate refusal bound the harm). The 429 response shape has not been observed
 (A-17h).
 
+### Apple listing push: the widened App Store surface (A-18m)
+
+**What changed (S-15 owner decisions 1 and 2, 2026-10-04; a `core/storefront/rules/*` review
+trigger).** `ASC_WRITE_ALLOW` gains, all with a plain confirmation: the version localization's
+`description`, `keywords`, `marketingUrl` and `supportUrl` (beside A-17d's `whatsNew` and
+`promotionalText`); `POST`/`PATCH appInfoLocalizations` with `locale`, `name`, `subtitle` and
+`privacyPolicyUrl` only (never `privacyPolicyText` or `privacyChoicesUrl`); `POST appScreenshotSets`
+of three display types (`APP_IPHONE_67`, `APP_IPAD_PRO_3GEN_129`, `APP_DESKTOP`) on a version
+localization only (never a custom product page's or an experiment's); `POST appScreenshots`
+(a file name with an image extension, a size within 32 MiB); and `PATCH appScreenshots` with
+`uploaded: true` and an MD5 `sourceFileChecksum` only. These five operations left the deny
+classification (`uploads`, `listingOutsideSurface`), whose reasons were reworded; every spec write
+is still classified exactly once. Still denied: every `DELETE` (screenshots, sets, localizations),
+and the set's membership `PATCH …/relationships/appScreenshots`, which replaces the set and so
+drops screenshots. The handlers are `connectors/asc/listingPush.ts` (`listing/text`,
+`listing/screenshots`).
+
+**New outbound action: Apple's upload operations.** A reserved screenshot's bytes are PUT to the
+presigned URLs Apple answers the reserve with. That PUT is not an App Store Connect API operation, so
+it is gated by its own rule, `ASC_SCREENSHOT_UPLOAD` on the store-agnostic upload matcher, through
+`checkAscUpload` (`rules/appStore.ts`), called by `core/asc/upload.ts` for every operation before a
+byte is read: method `PUT` only; `https` on a host under `apple.com`, the default port, no
+credentials in the URL (`isAscUploadUrl`); PNG or JPEG of at most 32 MiB, as the blob store's record
+says (the type sniffed from the stored bytes, never from a request). The operations must cover the
+file exactly, in order. The PUT carries **no `Authorization`** (the URL is its own credential), never
+forwards an `Authorization`, `Cookie`, `Host` or `Proxy-` header Apple's answer might ask for, takes
+`Content-Type` only when it names the file's own type, does not follow redirects, and never puts the
+presigned URL in an error message or a ledger row.
+
+**Controls** (`test/ascWriteGate.test.ts`, `test/ascListingPush.test.ts`,
+`test/storefront/conformance.test.ts`):
+
+- **(a) Only the listing, only from the model.** The text pushed is the shared listing model's App
+  Store projection in one locale (`projection.ts`): a value over Apple's limits refuses the push
+  before anything is sent; keywords are packed whole under 100 bytes. Listing URLs must be
+  `http(s)` without credentials (a gate value check).
+- **(b) Only listing assets, only from the blob store** (decision 2). Screenshots are the stored
+  `app-store:screenshot:<class>:<n>` rows; a binary has no rule, and `uploadBuild` stays
+  `unsupported` (conformance item 3).
+- **(c) Never a delete.** A screenshot already in the set that the listing lacks is counted and left
+  (`otherScreenshots`, with the App Store Connect deep link). The never-list check of the
+  conformance suite still passes over the widened table.
+- **(d) Pinned app, ledger, audit.** As A-17d: the version is re-read with `include=app`, the app
+  info is listed under the pinned app, every check runs before the first write, one
+  `store_operations` row and one `distribution.asc.listing.*` audit row per write; natural keys are
+  the localization in that locale and the screenshot's checksum (or its file name, which carries
+  the SHA-256) within its set.
+
+**Attack tree: stolen admin session.** It can now also rewrite the App Store listing's text and add
+screenshots for a version being prepared, which App Review still sees before anything ships. It
+cannot remove a screenshot, send bytes anywhere but an `apple.com` host, or send the ASC bearer
+token with a PUT.
+
+**Residual risk.** The upload host rule trusts every `apple.com` host Apple names: a reserve answer
+that named another Apple host would receive a screenshot (never a token). The `apple.com` host
+pattern of the upload operations is inferred from Apple's documentation and is verified live by
+A-18k.
+
 ### Store connectors: App Store Connect (P5-02)
 
 **What it is.** `services/distribution/connectors/asc/` keeps a product's App Store and TestFlight
@@ -2471,8 +2617,8 @@ signed with a distribution certificate the key cannot create or export, and App 
 every App Store version. A thief could pause or complete a phased release, release a held
 version early, open a public TestFlight link, change metadata, or upload a build signed with
 certificates they already hold. Mitigations: the key is custodied by P5-01 (sealed, platform-admin
-writes only, every open audited); the connector itself never uploads and never submits for
-review; App Store Connect's own activity log is the second record; rotate by revoking the key in
+writes only, every open audited); the connector itself never uploads a build and never submits for
+review on its own (A-18m's listing push uploads only the listing's screenshots, from the blob store); App Store Connect's own activity log is the second record; rotate by revoking the key in
 Users and Access and PUTting a new one (the version marker drops cached tokens). Least privilege
 (App Manager, not Admin; a separate Developer-role key for CI uploads) is the operator's choice,
 documented in `services/distribution/app-store-connect.md`.
@@ -4951,8 +5097,11 @@ rules and item 16's tenant-scoped lookup are enforced in the same code.
   removals cannot orphan the account). **Never by email match:** an unknown identity whose
   provider-verified email another account already uses is a join offer that writes nothing; the
   login card (I-07) joins only after the person proves the other account in the same session.
-  Residual: until I-07 the portal answers such a sign-in with a page that names nobody and asks
-  the person to sign in to the existing account first.
+  Since I-07 every provider sign-in (I-06's Google, Apple and Steam included) reaches that
+  offer only through the email gate (`card/gate.ts`): the address is proven first (by the
+  provider's verified claim or a code), the offer names nothing before that, and joining needs
+  proof of the other account in the same browser (a code to its email method or a fresh
+  session for it).
 - **Merge takeover (item 15).** `mergeAccounts` needs a live sign-in to EACH account, both fresh
   (5 minutes); one stale proof refuses the whole merge. Links, licences, sessions, grants,
   passkeys and registry tokens move in one atomic batch; the absorbed account becomes a tombstone
@@ -4994,6 +5143,165 @@ rules and item 16's tenant-scoped lookup are enforced in the same code.
   removal that leaves a licence floating first ends every account's portal link to it, settling a
   not-yet-settled loser inline, so the scheduled catch-up (which copies a portal link onto a
   floating licence) can never hand it to that loser.
+
+### Login card (I-07)
+
+The login card is the one place a Polaris Key account's credentials are entered
+(`services/identity/card/`, S-16 §5.4 items 4, 7 and 14; PORTAL.md §4.1, §4.4, §4.29, §4.30).
+
+- **Email enumeration (item 4).** The email start never looks the address up and answers the same
+  bytes for a known, an unknown, a locked-out, an over-limit and a suppressed address (a test
+  compares them byte for byte); only "mail cannot leave at all" (`503 email_unavailable`) differs,
+  and it names no one. Whose an address is becomes visible only after a code or a provider proved
+  the address (the gate's join offer), so the card cannot be used to test addresses.
+- **Code guessing and mail bombing (item 4).** I-02's limits in the platform scope: 6 digits, 10
+  minutes, 5 wrong attempts per code, a 15-minute lockout after 10 wrong attempts in an hour
+  (answered like success), 5 sends an hour and 20 a day per recipient, 10 an hour per client
+  address and 30 per network, 8 starts a minute per address. Cloudflare Turnstile guards the start
+  when the deploy sets `TURNSTILE_SECRET_KEY`, verified server-side and failing closed (Cloudflare
+  unreachable refuses). Residual: until the owner sets the Turnstile keys (RUNBOOK "Login card"),
+  the limits alone stand between the card and a scripted sender.
+- **Magic-link relay and prefetch (item 14).** A link and a code are bound to the browser that
+  asked, by a host-only `__Host-pkey_signin` cookie naming the flow; the link's token is 192 bits
+  and only its peppered hash is a store key. Opening the link (`GET`) consumes nothing, so a mail
+  scanner cannot burn it; its button `POST`s. Opened on another device it shows "Confirm sign-in,
+  requested at <time> from <place>" and confirming only lets the asking browser finish: a link
+  phished out of a victim signs in the attacker's own flow at most, never the device that opened
+  it. A code and the link complete one flow once (atomic consume).
+- **The email gate and the join offer (owner decisions, 2026-10-04).** No account row and no
+  session exist until the gate passes; its record is server-held and named by a host-only
+  `__Host-pkey_gate` cookie, so another browser cannot drive it. A provider-asserted verified
+  address (Google `email_verified: true`, Apple) is trusted as the provider's statement, which is
+  the same trust I-06 places in that provider's ID token; anything else needs our code. An address
+  another account uses stops the gate with an offer and writes nothing. Joining needs both
+  identities proven in the one session: the gate proves the provider identity, and the other
+  account is proven by a fresh (5-minute) account session in this browser or by the gate's code
+  only when the address is an active email sign-in method of that account (a code to an address
+  that is merely another account's primary email proves nothing). Linking and merging then run
+  I-05's `linkIdentity` and `mergeAccounts`, with their own freshness checks and notices. Account
+  creation is one atomic batch on the links' UNIQUE key, so a race leaves nothing behind.
+- **Sessions (item 7).** The account cookie stays signed (realm-tagged) and also names a
+  server-side `account_sessions` row by a random id whose peppered hash is the key; a revoked,
+  expired or missing row refuses the cookie, so sign-out (server-side too), ending one session
+  and "sign out everywhere" are real, and a table dump is not a set of cookies. All three account
+  cookies are host-only on key.plrs.im (`__Host-`, `Path=/`), `HttpOnly`, `Secure`,
+  `SameSite=Lax`. Because a host-only cookie still reaches every path on the host, the dispatcher
+  removes the account realm's cookies from every product route's request and drops any
+  `Set-Cookie` for them from its response (a test plants and reads through a product route), so
+  product code can neither read nor plant the account session.
+- **Profile import and avatars.** Provider names and locales are untrusted display data: names
+  lose control, bidirectional and zero-width characters and are cut to 64 characters, locales
+  must look like BCP 47, nothing is rendered as markup. Pictures are fetched server-side only from
+  the providers' https hosts (Google's `lh3`–`lh6.googleusercontent.com`, Steam's avatar hosts),
+  redirects followed by hand and re-checked, 5 s and 2 MiB budgets, and stored only when the
+  bytes are PNG, JPEG, WebP or GIF by magic number (never SVG). They are served same-origin at
+  `/media/avatar/<key>` (an opaque random key; `avatar` is a reserved product slug) with the
+  sniffed type, `nosniff` and `default-src 'none'; sandbox`, so the CSP keeps `img-src 'self'`.
+  Residual: the Worker has no image codec, so a picture is stored as fetched rather than
+  re-encoded (the strict content-type alternative the design allows, as for the product media
+  proxy).
+
+### Login-card providers: Google, Apple and Steam (I-06)
+
+The login card signs people in with Google, Apple and Steam through Polaris's own platform
+clients (S-16 §5.2): one Google OAuth client, one Apple Services ID and one Steam Web API key per
+environment, under `/login/<provider>` (`services/identity/providers/`). They are account sign-in
+methods, never behind a product's Identity toggle. S-16 §5.4 item 2 (broker confusion) is I-06's.
+
+- **Broker confusion and audience (item 2).** `verifyProviderIdToken` takes the audience as a
+  required argument and refuses an empty one, so there is no "any audience" mode: a login-card
+  token must name exactly the platform client id (Google) or the Polaris Services ID (Apple), a
+  multi-audience token must carry that client as `azp`, and a present `azp` must equal it. A token
+  Apple or Google minted for a developer's bundle id (I-13's native sign-in) is therefore refused
+  on the card, and I-13 will pass the bundle id, so a card token is refused there. A provider is
+  offered only when all of its values are set and its sealed secret opens, so a missing client id
+  never reaches audience checking. Steam (OpenID 2.0) has no audience; its equivalents are an
+  exact `openid.return_to` (our origin, our path and this flow's `state`) among the signed fields,
+  `op_endpoint` = Steam's, and Steam's own `check_authentication` verdict, never the redirect's
+  parameters alone. Every `openid.*` key (and `state`) must appear exactly once and the body sent
+  to `check_authentication` is rebuilt from those single values, so a repeated `claimed_id` placed
+  before Steam's genuine one cannot make the local checks and Steam's verdict look at two
+  different identities (an account-takeover shape found in review).
+- **Mix-up (RFC 9207).** Each provider has its own callback path and a flow records the provider
+  it was started for; a `state` is never redeemed on another provider's callback. Where the
+  provider advertises `authorization_response_iss_parameter_supported` (Google), `iss` is required
+  on the authorization response, and a present `iss` must equal the issuer in any case.
+- **Discovery is data (SSRF).** The discovery document is fetched from the provider's fixed
+  issuer, its `issuer` must match exactly, and every URL it names (authorize, token, JWKS), like
+  every other outbound provider call, passes one door (`providers/net.ts`): `https:` only, no
+  credentials, the default port, no private, loopback or link-local literal, and a per-provider
+  host allowlist. Redirects are never followed and bodies are capped at 64 KB, so a poisoned
+  document cannot aim the token POST (which carries the client secret) or the key fetch elsewhere.
+- **Login CSRF without a Lax cookie.** Apple answers with a cross-site `form_post`, on which a
+  `SameSite=Lax` cookie is not sent, so the flow is found by its `state` alone, server-side, in
+  the single-use store (peppered hash, ten minutes, consumed atomically by the first callback,
+  burned by a cancel or failure). It is still bound to the browser that started it: start sets
+  `__Host-pkey_signin` (random, `SameSite=None; Secure; HttpOnly`, ten minutes), whose hash the
+  flow holds, and a callback without the matching cookie is refused. The cookie opens nothing by
+  itself. Residual: a browser that blocks `SameSite=None` cookies on a cross-site top-level POST
+  cannot finish Apple sign-in and is told to start again.
+- **Credential custody.** The Google client secret, the Apple `.p8` and the Steam Web API key are
+  Worker secrets holding `keyvault.seal` blobs bound to `pkey:v2:_platform:signin-provider-secret:<id>`,
+  a slot no product slug can spell under a kind of its own; a copy of the Worker secret without
+  the KEK is inert. The `.p8` only ever leaves as a five-minute ES256 client secret.
+- **Upstream tokens.** ID tokens are verified once (signature against the provider JWKS, issuer,
+  audience, `azp`, `nonce`, `iat` within the ID-token age) and never stored; the access and refresh
+  tokens a token endpoint also returns are dropped unread. Apple's first-consent `user` field is
+  unsigned, so it is only a display suggestion; the email always comes from the signed token.
+- **Verified email.** `emailVerified` is true only when the provider asserted it in the signed
+  token (`email_verified` `true`, or Apple's `"true"`); Steam supplies no email. The card never
+  joins by email match (I-05); I-07's interstitial decides what an unverified or absent email needs.
+- **Apple server-to-server notifications.** `POST /login/apple/notifications` accepts only a JWT
+  signed by Apple, issued by Apple, addressed to the Services ID and at most seven days old (Apple
+  retries). Events flag the link (`account_links.provider_flag`: `consent_revoked`,
+  `account_deleted`, `email_disabled`) and are audited; they never delete it, since removing a
+  method stays the person's own step-up action with its last-method guard. A replayed event only
+  re-applies an idempotent flag. `account_deleted` is final; a fresh Apple sign-in clears
+  `consent_revoked`, and `email-enabled` clears `email_disabled`.
+- **Abuse.** Start, callback and notifications are rate limited per caller IP in their own
+  buckets (`portalProviderStart`, `portalProviderCallback`, `appleNotifications`), all failing
+  closed.
+
+### The console's Users page and the relink tool (I-12)
+
+Every product's console has a Users page (`/manage/api/products/<slug>/users…`,
+`admin/handlers/users.ts`, queries in `services/identity/accounts/productUsers.ts`). It is Core,
+not Identity: the account is platform-level, so a product with Identity off lists its licence
+owners too. S-16 §5.4 items 9 (no recovery desk: the developer's relink is the recovery path)
+and 12 (cross-tenant correlation) are the deltas.
+
+- **Cross-tenant correlation (item 12).** A row is keyed by this product's pairwise subject, and
+  every query carries the product. Every field a response carries is named in `productUsers.ts`;
+  none is the account id, a link, or another product's licence, session or datum (tests read
+  every route for product A and B of one account and find neither the account id nor B's
+  subject, licence or data). Search matches a subject prefix, an exact licence id or a buyer
+  email prefix, never the account's primary email, so the page is not an "is this person a
+  Polaris Key user" oracle. The account email is shown only with the person's consent for this
+  product (`account_product_grants.claims_json` holds `email`; D19). A subject minted only for a
+  support code stays unlisted until it holds a licence, a signed-in device or a sign-in.
+- **Relink (item 9).** The target is named only by a subject of THIS product (`target_not_found`
+  otherwise; never an email, never another product's subject). The operator needs an interactive
+  sign-in no older than 5 minutes (`session.authAt`, set from the ID token's `auth_time` when the
+  IdP sends one, else the callback time; `isSteppedUp`); `/manage/login?stepUp=1` sends
+  `prompt=login` and `max_age=0`, and the callback refuses a step-up whose `auth_time` is already
+  stale. A reason (1 to 500 characters) is mandatory. Both accounts are emailed at their verified
+  addresses BEFORE the owner pointer moves; the move is a conditional reassign (a concurrent change
+  answers `conflict` and nothing is recorded), it is audited with before and after, and the
+  `license_relinks` row (0072) keeps the reason, the actor and a 72-hour undo. The undo needs the
+  same step-up and a reason, and works only while the licence still sits on the target account (a
+  later relink, a detach or a deletion closes it). More than `RELINK_DAILY_ALERT_COUNT` (5) relinks
+  by one operator in 24 hours raises `identity.relink.alert` in the platform audit trail. An
+  account deletion clears the relink row's account ids, so an undo then leaves the licence
+  floating rather than resurrecting a deleted owner.
+- **What a developer can never do.** Disable, sign out, merge or delete an account, or touch its
+  links: no route exists. Per-subject data deletion runs the subject-store registry's deletes
+  (config overrides, Cloud Sync) and leaves the subject, its licences and the account.
+- **Residuals.** An IdP that ignores `prompt=login` AND sends no `auth_time` lets a silent SSO
+  count as a fresh sign-in (the callback time stands in); the console's IdP client (I-03) should be
+  configured to honour both. A
+  developer who already holds a buyer email can still find that buyer's row by it: the email is
+  the developer's own record. The step-up window is enforced server-side; the console's own check
+  only decides whether to offer the form or "Sign in again".
 
 ### Discover: free offers and "Add to library" (PX-W10)
 
@@ -5099,6 +5407,60 @@ is minted and a presented ticket verifies against nothing, so deleting it is the
     answers the bare URL, today's behaviour, whose second hop refuses an anonymous client.
   - **Not covered:** an `.appinstaller` `Uri` and a `.zsync` control file are fetched without a
     bearer and cached for days, too long for a ticket; they stay public-delivery features.
+
+### Signing in with another device (PX-W14)
+
+A device with no session asks to be signed in (`POST /api/device-login/start`), a signed-in device
+approves it by its 8-letter code (`POST /api/device-login/lookup`, then `…/approve`), and the new
+device's poll (`GET /api/device-login/<id>`) is answered with a portal session for the approver's
+account (docs/design/PORTAL.md §4.23, §4.24, G29). The approval is a credential handed across
+devices, so the threat is **phishing**: an attacker starts a request on their own device and talks
+the account holder into approving it ("read me the code", "scan this to claim your prize").
+
+- **Short expiry and single use.** A request and its code live 5 minutes in the atomic single-use
+  store (I-02), expired by the store itself. A decision consumes the code in one atomic step and
+  then moves the request out of `pending` with a compare-and-set, so two racing approvals cannot
+  both land; the poll that sees the decision consumes the request before minting the session, so
+  exactly one browser is signed in per approval. The `ifAbsent` code index means two live requests
+  never share a code.
+- **Never auto-approved.** Only `approve` with an explicit `decision: "approve"` approves; there is
+  no default, `lookup` reads only, and the QR code opens the approve screen with the code filled in,
+  never an approval. The design's approve screen (§4.24) carries the warning "Only approve if you
+  started this yourself, on a device in front of you".
+- **The place is shown.** The request records the asking browser and OS and its coarse place
+  (Cloudflare's edge geolocation, which the client cannot set); `lookup` shows them next to the
+  approver's own country, and the security notice names them.
+- **Step-up for a new location.** Approving a request whose country is not the approver's, or
+  where either is unknown (Tor, an unlocated address), needs a sign-in no older than 5 minutes
+  (the account-links step-up). A phisher in another country therefore also needs the victim to
+  sign in again on the spot, which is one more prompt to notice. Denying never needs it. The rule
+  is one function (`isNewLocation`) so I-15's sign-in history can replace a country comparison.
+  **Residual:** a phisher in the victim's own country (or behind a VPN exiting there) meets no
+  step-up; the warning, the shown device and the notice are the defence.
+- **An approval is not a sign-in.** The approved device's session carries the approver's sign-in
+  time as its own (`iat`, which every portal step-up reads), never the time of the approval, and
+  never later than now; a request record without it fails closed to a time past the step-up
+  window. So a same-country approval that needed no step-up yields a session that is no fresher
+  than the approver's: it cannot approve another device from a new place, add or remove a
+  sign-in method (the account-links step-up), or get a new key (G7) without signing in itself.
+  Without this rule the residual above would be a two-hop bypass: a same-country approval, then
+  the new "fresh" session approves any device anywhere or links the attacker's own sign-in
+  method.
+- **Bound to the browser that started it.** `start` sets an `HttpOnly`, `SameSite=Strict`,
+  `__Host-` binding cookie whose peppered hash the request holds; a poll without it is answered
+  exactly like an expired request, so a poll handle seen in a log or over a shoulder signs nobody
+  in. The handle itself is 32 random bytes and, like the code, is stored only as a peppered hash
+  (R12-04).
+- **Guessing codes.** A code is 20^8 (about 34.5 bits) and lives 5 minutes. Lookup and approve
+  need a session and share 10 calls a minute per account, whatever client or address they come
+  from (fail closed), so an account guesses at most 50 codes in a code's lifetime. A correct guess would sign the stranger's device
+  in to the guesser's own account, not the other way round. Starts are bounded per client network
+  (10 per 10 minutes) and polls likewise (60 a minute).
+- **Audited and emailed.** `portal.device_login.approve` / `.deny` and `portal.login.device` in
+  `portal_audit`, and an approval refused for want of a step-up leaves
+  `portal.device_login.step_up_required`, the trace of someone being talked into approving a
+  device elsewhere; an approval sends "A new device signed in" to every verified address on the
+  account, with "Wasn't you? Secure your account".
 
 ### The outbound fetcher and hosted-asset ingest (HA-01)
 
@@ -5277,6 +5639,26 @@ device id. Only the platform-admin session reads it (`GET /manage/api/products/<
   carries anything from the table.
 - **No raw identifier is copied.** The device id is stored only as a truncated hash; the licence
   holder's name and email are not stored here at all.
+
+### Licence administration: the per-licence device limit (LX-14a)
+
+`licenses.device_limit` (0084) lets an operator set one licence's seat limit, seat or
+Account-wide alike, through `PATCH /manage/api/products/<slug>/license/licenses/<id>`
+`deviceLimit`. It beats the tier's limit, any `deviceLimit` entitlement and the product default
+(`core/authz.ts` `licenseDeviceLimitInfo`, `core/entitlements.ts` `injectAdminPolicy`).
+
+- **An operator with licence write can raise one licence's seats past its tier.** That is the
+  feature (SIGN-IN.md D-53); it needs the same product-admin session as a tier change or an
+  override, and every change is audited as `license.device_limit.set` with the old and new values
+  ("inherit" for NULL). No manifest push, sign-in or device request writes the column: OIDC
+  sign-in's licence write names its columns and leaves this one alone, and a store grant or
+  profile can no longer outvote it.
+- **The value is validated twice.** The handler refuses anything but a positive integer or
+  `null` (`422`), and the column's CHECK refuses zero and negatives at the database.
+- **Lowering it never deauthorizes.** Like a tier downgrade, the new limit applies at the next
+  activation; existing devices keep their seats and the response reports `overLimit`.
+- **No wire change.** The signed licence document carries the resolved number in its existing
+  `deviceLimit` entitlement, so a client cannot tell (or forge) where the number came from.
 
 ### Licence deletion (owner request, 2026-10-05)
 
@@ -5686,7 +6068,8 @@ that merges, closes, deletes or force-pushes, a CI-plane step starts running wit
 stops re-checking the command, an adapter
 declares `api` for `uploadBuild` or empties a never-list category, a check of
 `test/storefront/conformance.test.ts` is relaxed, anything but `core/asc/client.ts` sends a request
-to App Store Connect, anything but `msstore/write.ts` sends a non-GET request to a Microsoft Store
+to App Store Connect (and anything but `core/asc/upload.ts`, gated by `checkAscUpload`, PUTs to an
+upload operation; `isAscUploadUrl` or `ASC_SCREENSHOT_UPLOAD` loosened, A-18m), anything but `msstore/write.ts` sends a non-GET request to a Microsoft Store
 API or a SAS upload, Microsoft's hand-written operation list (`test/fixtures/msstore/operations.json`)
 is edited or its `MSSTORE_SPEC_PIN` re-dated (the docs-drift review: re-read every page it names and
 re-classify every write), or a field joins a store's audit projection (A-17a, A-18a, A-18f); a platform store credential (A-16) is added, used

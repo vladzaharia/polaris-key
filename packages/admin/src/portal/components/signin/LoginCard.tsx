@@ -4,34 +4,88 @@ import { Lockup } from "../Lockup.js";
 import { ProductIcon } from "../ProductIcon.js";
 
 /**
- * The one sign-in frame (PORTAL.md §4.1, §5.2 `LoginCard`): the lockup above, the 456 px card
- * with its optional persistent `header`, the step `children` (one primary each) and the
- * passthrough `footer`, the legal line below, on the static star field (wide screens only).
- * Phones: the card goes edge to edge under a 56 px lockup row.
+ * The one sign-in frame (SIGN-IN.md §3.1, PORTAL.md §5.2 `LoginCard`): the lockup above, the
+ * 28.5 rem card (radius 22 px, elevation 3) with its optional persistent `header`, the step
+ * `children` (one primary each) and the passthrough `footer`, on the static star field (wide
+ * screens only). Phones: the card goes edge to edge under a 56 px lockup row. No
+ * "Polaris Key · key.plrs.im" line under the card.
  *
- * Focus: every step's `h1` receives focus when the step changes (`stepKey`).
+ * Steps replace each other in place (§3.18, S-23 tokens): when `stepKey` changes the body's
+ * height morphs from the old size to the new one at `moderate` (the Web Animations API, which the
+ * strict CSP allows), the new step enters `lg` (12 px) from the side of travel (`direction`) at
+ * `base`, focus moves to its h1 and the polite live region announces it once. The header and
+ * footer stay still. Under reduced motion (the OS setting or `data-motion="reduce"`) the brand's
+ * durations are 0 ms, so every step swaps instantly with no fade (S-23 D3).
  */
 export function LoginCard({
   header,
   footer,
   stepKey,
+  direction = "forward",
+  loadingKey = "loading",
   children,
 }: {
   header?: React.ReactNode;
   footer?: React.ReactNode;
   /** Changes with the step; the new step's h1 is focused. */
   stepKey: string;
+  /** Which way the flow went: Back, Change and Use a different email enter from the start. */
+  direction?: "forward" | "back";
+  /** The page-load placeholder's step key; leaving it is not a step change. */
+  loadingKey?: string;
   children: React.ReactNode;
 }): React.ReactElement {
   const bodyRef = React.useRef<HTMLDivElement>(null);
+  const lastHeight = React.useRef<number | null>(null);
   const first = React.useRef(true);
+  const [announce, setAnnounce] = React.useState("");
+  // Whether this step arrived by a step change. The first step after page load (the skeleton
+  // giving way to the methods) is not one: no slide, no focus move, no announcement.
+  const arrival = React.useRef<{ key: string; moved: boolean } | null>(null);
+  if (arrival.current === null)
+    arrival.current = { key: stepKey, moved: false };
+  else if (arrival.current.key !== stepKey)
+    arrival.current = {
+      key: stepKey,
+      moved: arrival.current.key !== loadingKey,
+    };
+  const moved = arrival.current.moved;
+
+  // Keep the body's last laid-out height, so a step change can morph from it.
   React.useEffect(() => {
+    const el = bodyRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      lastHeight.current = el.offsetHeight;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  React.useLayoutEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
     if (first.current) {
       first.current = false;
+      lastHeight.current = el.offsetHeight;
       return;
     }
-    bodyRef.current?.querySelector<HTMLElement>("h1")?.focus();
+    const from = lastHeight.current;
+    const to = el.offsetHeight;
+    lastHeight.current = to;
+    if (!moved) return;
+    const ms = motionMs("--pk-duration-moderate");
+    if (from !== null && from !== to && ms > 0 && el.animate) {
+      el.animate([{ height: `${from}px` }, { height: `${to}px` }], {
+        duration: ms,
+        easing: cssVar("--pk-ease-standard") || "ease",
+      });
+    }
+    const h1 = el.querySelector<HTMLElement>("h1");
+    h1?.focus({ preventScroll: true });
+    setAnnounce(h1?.textContent ?? "");
   }, [stepKey]);
+
   return (
     <div className="relative flex min-h-dvh flex-col bg-surface-page text-fg">
       <StarField />
@@ -40,12 +94,25 @@ export function LoginCard({
         <Lockup height={52} className="sm:hidden" />
       </div>
       <main className="relative z-10 flex flex-1 flex-col items-center sm:px-4">
-        <div className="w-full overflow-hidden bg-surface-raised sm:max-w-[28.5rem] sm:rounded-xl sm:border sm:border-border sm:shadow-elevation-2">
+        <div className="w-full overflow-hidden bg-surface-raised sm:mb-6 sm:max-w-[28.5rem] sm:rounded-[1.375rem] sm:border sm:border-border sm:shadow-pk-lg">
           {header ? (
             <div className="border-b border-border">{header}</div>
           ) : null}
-          <div ref={bodyRef} className="space-y-5 px-5 py-6 sm:px-7 sm:py-8">
-            {children}
+          <div ref={bodyRef} className="overflow-hidden">
+            <div
+              key={stepKey}
+              data-step={stepKey}
+              className={cn(
+                "space-y-5 px-5 py-6 sm:px-7 sm:py-8",
+                moved &&
+                  (direction === "back"
+                    ? "animate-pk-step-back"
+                    : "animate-pk-step-forward"),
+                "motion-reduce:animate-none",
+              )}
+            >
+              {children}
+            </div>
           </div>
           {footer ? (
             <div className="border-t border-border px-5 py-4 text-sm text-fg-muted sm:px-7">
@@ -53,15 +120,35 @@ export function LoginCard({
             </div>
           ) : null}
         </div>
-        <footer className="flex w-full max-w-[28.5rem] flex-wrap justify-between gap-2 px-5 py-6 text-sm text-fg-muted sm:px-1">
-          <span>Polaris Key · key.plrs.im</span>
-        </footer>
+        <div aria-live="polite" data-step-announcer className="sr-only">
+          {announce}
+        </div>
       </main>
     </div>
   );
 }
 
-/** The card header, data only (§5.2 `CardHeader`): today only the product-context variant. */
+function cssVar(name: string): string {
+  if (typeof window === "undefined" || !window.getComputedStyle) return "";
+  return window
+    .getComputedStyle(document.documentElement)
+    .getPropertyValue(name)
+    .trim();
+}
+
+/** A brand duration token in milliseconds (0 under reduced motion, where the tokens collapse). */
+function motionMs(name: string): number {
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return 0;
+  const raw = cssVar(name);
+  const n = parseFloat(raw);
+  if (!Number.isFinite(n)) return 0;
+  return raw.endsWith("ms") ? n : n * 1000;
+}
+
+/**
+ * The card header, data only (§3.1, §5.2 `CardHeader`): today only the product-context variant,
+ * "<Product> · <Developer>" over "Your license, downloads and devices".
+ */
 export function CardHeader({
   variant,
   slug,
@@ -81,12 +168,11 @@ export function CardHeader({
       <ProductIcon slug={slug} name={name} tint={null} size={48} />
       <div className="min-w-0">
         <p className="text-fg-strong">
-          Manage your copy of <span className="font-bold">{name}</span>
+          <span className="font-bold">{name}</span>
+          {developer ? ` · ${developer}` : null}
         </p>
         <p className="text-sm text-fg-muted">
-          {[developer, "downloads, license and devices"]
-            .filter(Boolean)
-            .join(" · ")}
+          Your license, downloads and devices
         </p>
       </div>
     </div>

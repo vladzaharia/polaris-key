@@ -153,7 +153,7 @@ the offending value, or the allowed set.
 | `invalid_secret_ref` | error | product | `/secrets/required/${i}` | Secret refs must be stable uppercase names. |
 | `invalid_secret_url_template` | error | product | `/provisioning/${i}/secretUrlTemplate` | provisioning.secretUrlTemplate $\{problem\}. |
 | `invalid_semver` | error | product | `/licensing/tiers/${i}/${bound}` | Tier $\{bound\} must be a semver string. |
-| `invalid_slug` | error | product | `/product/slug` | product.slug must match ^[a-z0-9-]\{1,64\}$. |
+| `invalid_slug` | error | product | `/product/slug` | product.slug must match ^[a-z0-9][a-z0-9-]\{0,63\}$. |
 | `invalid_stable_tag_pattern` | error | release | `/release/deliverables/app/versioning/stableTagPattern` | deliverables.app.versioning.stableTagPattern must be a compilable regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags). |
 | `invalid_stable_tag_pattern` | error | release | `/release/stableTagPattern` | release.stableTagPattern must be a compilable regular expression of at most $\{MANUAL_CHANNEL_REGEX_MAX\} characters (it is matched anchored against release tags). |
 | `invalid_tier_fingerprint_mode` | error | product | `/licensing/tiers/${i}/policyFingerprint` | Tier policyFingerprint must be one of $\{FINGERPRINT_MODE_VALUES.join(", ")\}. |

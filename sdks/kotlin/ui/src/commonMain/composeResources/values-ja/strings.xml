@@ -661,8 +661,6 @@
     <string name="signin_code_resendIn__macos">%1$s後に新しいコードを送信</string>
     <!-- Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address. Arguments: 1=email. -->
     <string name="signin_code_resent">%1$sに新しいコードとリンクを送信しました。</string>
-    <!-- Email code step (SIGN-IN.md §3.4). -->
-    <string name="signin_code_wrong">コードが正しくありません。メールを確認して、もう一度お試しください。</string>
     <!-- Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number. Arguments: 1=n. -->
     <plurals name="signin_code_triesLeft">
         <item quantity="other">残り%1$d回です。</item>
@@ -1236,9 +1234,29 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_auth_method_disabled_message">このサインイン方法は無効になっています。別の方法を選択してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_not_configured_title">メールでのサインインを利用できません</string>
+    <string name="core_codes_email_unavailable_title">メールでのサインインを利用できません</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
-    <string name="core_codes_email_not_configured_message">現在、メールでのサインインを利用できません。別のサインイン方法を選択してください。</string>
+    <string name="core_codes_email_unavailable_message">現在、メールでのサインインを利用できません。別のサインイン方法を選択してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_turnstile_failed_title">確認に失敗しました</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_turnstile_failed_message">セキュリティ確認に失敗しました。ページを再読み込みして、もう一度お試しください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signin_expired_title">サインインの期限が切れました</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signin_expired_message">このサインインは期限切れです。最初からやり直してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_code_title">コードが正しくありません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_code_message">そのコードは使用できませんでした。メールを確認して、もう一度入力してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_in_use_title">メールアドレスは使用中です</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_in_use_message">別のPolaris Keyアカウントがすでにこのメールアドレスを使用しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_terms_required_title">規約に同意していません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_terms_required_message">続行するには規約に同意してください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_owned_title">別のアカウントのライセンス</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->

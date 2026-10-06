@@ -345,8 +345,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resend": "Send a new code",
     "signin.code.resendIn": "Send a new code in {time}",
     "signin.code.resent": "We sent a new code and link to {email}.",
-    "signin.code.wrong":
-      "That code isn't right. Check the email and try again.",
     "signin.code.triesLeft":
       "{n, plural, one {# try left.} other {# tries left.}}",
     "signin.code.tooMany": "Too many tries. Send a new code.",
@@ -679,9 +677,23 @@ export const KIT_COPY: Readonly<
     "core.codes.auth_method_disabled.title": "Sign-in method unavailable",
     "core.codes.auth_method_disabled.message":
       "That sign-in method is turned off. Choose another one.",
-    "core.codes.email_not_configured.title": "Email sign-in unavailable",
-    "core.codes.email_not_configured.message":
+    "core.codes.email_unavailable.title": "Email sign-in unavailable",
+    "core.codes.email_unavailable.message":
       "Email sign-in isn't available right now. Choose another sign-in method.",
+    "core.codes.turnstile_failed.title": "Check didn't pass",
+    "core.codes.turnstile_failed.message":
+      "The security check didn't pass. Reload the page and try again.",
+    "core.codes.signin_expired.title": "Sign-in expired",
+    "core.codes.signin_expired.message":
+      "This sign-in has expired. Start again.",
+    "core.codes.invalid_code.title": "Wrong code",
+    "core.codes.invalid_code.message":
+      "That code isn't right. Check the email and try again.",
+    "core.codes.email_in_use.title": "Email already in use",
+    "core.codes.email_in_use.message":
+      "Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.",
+    "core.codes.terms_required.title": "Terms not accepted",
+    "core.codes.terms_required.message": "Agree to the terms to continue.",
     "core.codes.license_owned.title": "License in another account",
     "core.codes.license_owned.message":
       "This {product} license is already in another Polaris Key account. A license never moves by its key.",
@@ -1416,8 +1428,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resendIn": "Neuen Code senden in {time}",
     "signin.code.resent":
       "Wir haben einen neuen Code und Link an {email} gesendet.",
-    "signin.code.wrong":
-      "Dieser Code ist nicht korrekt. Prüfen Sie die E-Mail und versuchen Sie es erneut.",
     "signin.code.triesLeft":
       "{n, plural, one {Noch # Versuch.} other {Noch # Versuche.}}",
     "signin.code.tooMany":
@@ -1775,10 +1785,25 @@ export const KIT_COPY: Readonly<
     "core.codes.auth_method_disabled.title": "Anmeldemethode nicht verfügbar",
     "core.codes.auth_method_disabled.message":
       "Diese Anmeldemethode ist deaktiviert. Wählen Sie eine andere.",
-    "core.codes.email_not_configured.title":
+    "core.codes.email_unavailable.title":
       "Anmeldung per E-Mail nicht verfügbar",
-    "core.codes.email_not_configured.message":
+    "core.codes.email_unavailable.message":
       "Die Anmeldung per E-Mail ist derzeit nicht verfügbar. Wählen Sie eine andere Anmeldemethode.",
+    "core.codes.turnstile_failed.title": "Prüfung nicht bestanden",
+    "core.codes.turnstile_failed.message":
+      "Die Sicherheitsprüfung wurde nicht bestanden. Laden Sie die Seite neu und versuchen Sie es erneut.",
+    "core.codes.signin_expired.title": "Anmeldung abgelaufen",
+    "core.codes.signin_expired.message":
+      "Diese Anmeldung ist abgelaufen. Beginnen Sie erneut.",
+    "core.codes.invalid_code.title": "Falscher Code",
+    "core.codes.invalid_code.message":
+      "Dieser Code hat nicht funktioniert. Prüfen Sie die E-Mail und geben Sie ihn erneut ein.",
+    "core.codes.email_in_use.title": "E-Mail-Adresse bereits verwendet",
+    "core.codes.email_in_use.message":
+      "Ein anderes Polaris Key-Konto verwendet diese E-Mail-Adresse bereits. Verbinden Sie diese Anmeldung mit jenem Konto, oder verwenden Sie eine andere E-Mail-Adresse.",
+    "core.codes.terms_required.title": "Bedingungen nicht akzeptiert",
+    "core.codes.terms_required.message":
+      "Stimmen Sie den Bedingungen zu, um fortzufahren.",
     "core.codes.license_owned.title": "Lizenz in einem anderen Konto",
     "core.codes.license_owned.message":
       "Diese Lizenz für {product} befindet sich bereits in einem anderen Polaris Key-Konto. Eine Lizenz wird nie über ihren Schlüssel übertragen.",
@@ -2520,8 +2545,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resendIn": "Envoyer un nouveau code dans {time}",
     "signin.code.resent":
       "Nous avons envoyé un nouveau code et un nouveau lien à {email}.",
-    "signin.code.wrong":
-      "Ce code est incorrect. Vérifiez l’e-mail et réessayez.",
     "signin.code.triesLeft":
       "{n, plural, one {# essai restant.} many {# d’essais restants.} other {# essais restants.}}",
     "signin.code.tooMany": "Trop d’essais. Envoyez un nouveau code.",
@@ -2873,9 +2896,23 @@ export const KIT_COPY: Readonly<
     "core.codes.auth_method_disabled.title": "Sign-in method unavailable",
     "core.codes.auth_method_disabled.message":
       "That sign-in method is turned off. Choose another one.",
-    "core.codes.email_not_configured.title": "Email sign-in unavailable",
-    "core.codes.email_not_configured.message":
+    "core.codes.email_unavailable.title": "Email sign-in unavailable",
+    "core.codes.email_unavailable.message":
       "Email sign-in isn't available right now. Choose another sign-in method.",
+    "core.codes.turnstile_failed.title": "Check didn't pass",
+    "core.codes.turnstile_failed.message":
+      "The security check didn't pass. Reload the page and try again.",
+    "core.codes.signin_expired.title": "Sign-in expired",
+    "core.codes.signin_expired.message":
+      "This sign-in has expired. Start again.",
+    "core.codes.invalid_code.title": "Wrong code",
+    "core.codes.invalid_code.message":
+      "That code isn't right. Check the email and try again.",
+    "core.codes.email_in_use.title": "Email already in use",
+    "core.codes.email_in_use.message":
+      "Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.",
+    "core.codes.terms_required.title": "Terms not accepted",
+    "core.codes.terms_required.message": "Agree to the terms to continue.",
     "core.codes.license_owned.title": "License in another account",
     "core.codes.license_owned.message":
       "This {product} license is already in another Polaris Key account. A license never moves by its key.",
@@ -3597,8 +3634,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resend": "Enviar un código nuevo",
     "signin.code.resendIn": "Enviar un código nuevo en {time}",
     "signin.code.resent": "Enviamos un código y un enlace nuevos a {email}.",
-    "signin.code.wrong":
-      "Ese código no es correcto. Revisa el correo y vuelve a intentarlo.",
     "signin.code.triesLeft":
       "{n, plural, one {Queda # intento.} many {Quedan # de intentos.} other {Quedan # intentos.}}",
     "signin.code.tooMany": "Demasiados intentos. Envía un código nuevo.",
@@ -3953,10 +3988,25 @@ export const KIT_COPY: Readonly<
       "Método de inicio de sesión no disponible",
     "core.codes.auth_method_disabled.message":
       "Ese método de inicio de sesión está desactivado. Elige otro.",
-    "core.codes.email_not_configured.title":
+    "core.codes.email_unavailable.title":
       "Inicio de sesión por correo no disponible",
-    "core.codes.email_not_configured.message":
+    "core.codes.email_unavailable.message":
       "El inicio de sesión por correo no está disponible en este momento. Elige otro método de inicio de sesión.",
+    "core.codes.turnstile_failed.title": "La comprobación no se superó",
+    "core.codes.turnstile_failed.message":
+      "La comprobación de seguridad no se superó. Vuelve a cargar la página e inténtalo de nuevo.",
+    "core.codes.signin_expired.title": "Inicio de sesión caducado",
+    "core.codes.signin_expired.message":
+      "Este inicio de sesión ha caducado. Empieza de nuevo.",
+    "core.codes.invalid_code.title": "Código incorrecto",
+    "core.codes.invalid_code.message":
+      "Ese código no funcionó. Revisa el correo y vuelve a escribirlo.",
+    "core.codes.email_in_use.title": "Correo ya en uso",
+    "core.codes.email_in_use.message":
+      "Otra cuenta de Polaris Key ya usa este correo. Une este inicio de sesión a esa cuenta o usa otro correo.",
+    "core.codes.terms_required.title": "Condiciones no aceptadas",
+    "core.codes.terms_required.message":
+      "Acepta las condiciones para continuar.",
     "core.codes.license_owned.title": "Licencia en otra cuenta",
     "core.codes.license_owned.message":
       "Esta licencia de {product} ya está en otra cuenta de Polaris Key. Una licencia nunca se transfiere con su clave.",
@@ -4691,8 +4741,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resend": "Enviar novo código",
     "signin.code.resendIn": "Enviar novo código em {time}",
     "signin.code.resent": "Enviamos um novo código e link para {email}.",
-    "signin.code.wrong":
-      "Esse código não está correto. Verifique o e-mail e tente novamente.",
     "signin.code.triesLeft":
       "{n, plural, one {# tentativa restante.} many {# de tentativas restantes.} other {# tentativas restantes.}}",
     "signin.code.tooMany": "Tentativas demais. Envie um novo código.",
@@ -5038,9 +5086,22 @@ export const KIT_COPY: Readonly<
     "core.codes.auth_method_disabled.title": "Método de acesso indisponível",
     "core.codes.auth_method_disabled.message":
       "Esse método de acesso está desativado. Escolha outro.",
-    "core.codes.email_not_configured.title": "Acesso por e-mail indisponível",
-    "core.codes.email_not_configured.message":
+    "core.codes.email_unavailable.title": "Acesso por e-mail indisponível",
+    "core.codes.email_unavailable.message":
       "O acesso por e-mail não está disponível agora. Escolha outro método de acesso.",
+    "core.codes.turnstile_failed.title": "Verificação não aprovada",
+    "core.codes.turnstile_failed.message":
+      "A verificação de segurança não foi aprovada. Recarregue a página e tente de novo.",
+    "core.codes.signin_expired.title": "Acesso expirado",
+    "core.codes.signin_expired.message": "Este acesso expirou. Comece de novo.",
+    "core.codes.invalid_code.title": "Código incorreto",
+    "core.codes.invalid_code.message":
+      "Esse código não funcionou. Confira o e-mail e digite de novo.",
+    "core.codes.email_in_use.title": "E-mail já em uso",
+    "core.codes.email_in_use.message":
+      "Outra conta do Polaris Key já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail.",
+    "core.codes.terms_required.title": "Termos não aceitos",
+    "core.codes.terms_required.message": "Aceite os termos para continuar.",
     "core.codes.license_owned.title": "Licença em outra conta",
     "core.codes.license_owned.message":
       "Esta licença de {product} já está em outra conta do Polaris Key. Uma licença nunca é transferida pela chave.",
@@ -5767,8 +5828,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resendIn": "Invia un nuovo codice tra {time}",
     "signin.code.resent":
       "Abbiamo inviato un nuovo codice e un nuovo link a {email}.",
-    "signin.code.wrong":
-      "Il codice non è corretto. Controlla l'email e riprova.",
     "signin.code.triesLeft":
       "{n, plural, one {Ancora # tentativo.} many {Ancora # di tentativi.} other {Ancora # tentativi.}}",
     "signin.code.tooMany": "Troppi tentativi. Invia un nuovo codice.",
@@ -6123,10 +6182,24 @@ export const KIT_COPY: Readonly<
       "Metodo di accesso non disponibile",
     "core.codes.auth_method_disabled.message":
       "Questo metodo di accesso è disattivato. Scegline un altro.",
-    "core.codes.email_not_configured.title":
-      "Accesso via email non disponibile",
-    "core.codes.email_not_configured.message":
+    "core.codes.email_unavailable.title": "Accesso via email non disponibile",
+    "core.codes.email_unavailable.message":
       "L'accesso via email non è disponibile al momento. Scegli un altro metodo di accesso.",
+    "core.codes.turnstile_failed.title": "Verifica non superata",
+    "core.codes.turnstile_failed.message":
+      "La verifica di sicurezza non è stata superata. Ricarica la pagina e riprova.",
+    "core.codes.signin_expired.title": "Accesso scaduto",
+    "core.codes.signin_expired.message":
+      "Questo accesso è scaduto. Ricomincia.",
+    "core.codes.invalid_code.title": "Codice errato",
+    "core.codes.invalid_code.message":
+      "Quel codice non ha funzionato. Controlla l'email e digitalo di nuovo.",
+    "core.codes.email_in_use.title": "Email già in uso",
+    "core.codes.email_in_use.message":
+      "Un altro account Polaris Key usa già questa email. Unisci questo accesso a quell'account oppure usa un'altra email.",
+    "core.codes.terms_required.title": "Condizioni non accettate",
+    "core.codes.terms_required.message":
+      "Accetta le condizioni per continuare.",
     "core.codes.license_owned.title": "Licenza in un altro account",
     "core.codes.license_owned.message":
       "Questa licenza di {product} è già in un altro account Polaris Key. Una licenza non si sposta mai tramite la sua chiave.",
@@ -6861,8 +6934,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resend": "新しいコードを送信",
     "signin.code.resendIn": "{time}後に新しいコードを送信",
     "signin.code.resent": "{email}に新しいコードとリンクを送信しました。",
-    "signin.code.wrong":
-      "コードが正しくありません。メールを確認して、もう一度お試しください。",
     "signin.code.triesLeft": "{n, plural, other {残り#回です。}}",
     "signin.code.tooMany":
       "試行回数が多すぎます。新しいコードを送信してください。",
@@ -7216,10 +7287,24 @@ export const KIT_COPY: Readonly<
     "core.codes.auth_method_disabled.title": "サインイン方法を利用できません",
     "core.codes.auth_method_disabled.message":
       "このサインイン方法は無効になっています。別の方法を選択してください。",
-    "core.codes.email_not_configured.title":
+    "core.codes.email_unavailable.title":
       "メールでのサインインを利用できません",
-    "core.codes.email_not_configured.message":
+    "core.codes.email_unavailable.message":
       "現在、メールでのサインインを利用できません。別のサインイン方法を選択してください。",
+    "core.codes.turnstile_failed.title": "確認に失敗しました",
+    "core.codes.turnstile_failed.message":
+      "セキュリティ確認に失敗しました。ページを再読み込みして、もう一度お試しください。",
+    "core.codes.signin_expired.title": "サインインの期限が切れました",
+    "core.codes.signin_expired.message":
+      "このサインインは期限切れです。最初からやり直してください。",
+    "core.codes.invalid_code.title": "コードが正しくありません",
+    "core.codes.invalid_code.message":
+      "そのコードは使用できませんでした。メールを確認して、もう一度入力してください。",
+    "core.codes.email_in_use.title": "メールアドレスは使用中です",
+    "core.codes.email_in_use.message":
+      "別のPolaris Keyアカウントがすでにこのメールアドレスを使用しています。このサインインをそのアカウントに統合するか、別のメールアドレスを使用してください。",
+    "core.codes.terms_required.title": "規約に同意していません",
+    "core.codes.terms_required.message": "続行するには規約に同意してください。",
     "core.codes.license_owned.title": "別のアカウントのライセンス",
     "core.codes.license_owned.message":
       "この{product}のライセンスは、すでに別のPolaris Keyアカウントにあります。ライセンスがキーによって移動することはありません。",
@@ -7951,8 +8036,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resend": "새 코드 보내기",
     "signin.code.resendIn": "{time} 후 새 코드 보내기",
     "signin.code.resent": "{email} 주소로 새 코드와 링크를 보냈어요.",
-    "signin.code.wrong":
-      "코드가 올바르지 않아요. 이메일을 확인하고 다시 시도하세요.",
     "signin.code.triesLeft": "{n, plural, other {#번 더 시도할 수 있어요.}}",
     "signin.code.tooMany": "시도 횟수가 너무 많아요. 새 코드를 요청하세요.",
     "signin.code.expired": "코드가 만료됐어요. 새 코드를 요청하세요.",
@@ -8285,9 +8368,23 @@ export const KIT_COPY: Readonly<
     "core.codes.auth_method_disabled.title": "로그인 방법 사용 불가",
     "core.codes.auth_method_disabled.message":
       "해당 로그인 방법은 꺼져 있어요. 다른 방법을 선택하세요.",
-    "core.codes.email_not_configured.title": "이메일 로그인 사용 불가",
-    "core.codes.email_not_configured.message":
+    "core.codes.email_unavailable.title": "이메일 로그인 사용 불가",
+    "core.codes.email_unavailable.message":
       "지금은 이메일 로그인을 사용할 수 없어요. 다른 로그인 방법을 선택하세요.",
+    "core.codes.turnstile_failed.title": "확인 실패",
+    "core.codes.turnstile_failed.message":
+      "보안 확인을 통과하지 못했어요. 페이지를 새로고침하고 다시 시도하세요.",
+    "core.codes.signin_expired.title": "로그인 만료",
+    "core.codes.signin_expired.message":
+      "이 로그인은 만료되었어요. 다시 시작하세요.",
+    "core.codes.invalid_code.title": "잘못된 코드",
+    "core.codes.invalid_code.message":
+      "그 코드는 작동하지 않았어요. 이메일을 확인하고 다시 입력하세요.",
+    "core.codes.email_in_use.title": "이미 사용 중인 이메일",
+    "core.codes.email_in_use.message":
+      "다른 Polaris Key 계정이 이미 이 이메일을 사용하고 있어요. 이 로그인을 그 계정에 연결하거나 다른 이메일을 사용하세요.",
+    "core.codes.terms_required.title": "약관 미동의",
+    "core.codes.terms_required.message": "계속하려면 약관에 동의하세요.",
     "core.codes.license_owned.title": "다른 계정의 라이선스",
     "core.codes.license_owned.message":
       "이 {product} 라이선스는 이미 다른 Polaris Key 계정에 있어요. 라이선스는 키로 옮겨지지 않아요.",
@@ -8980,7 +9077,6 @@ export const KIT_COPY: Readonly<
     "signin.code.resend": "发送新验证码",
     "signin.code.resendIn": "{time}后可发送新验证码",
     "signin.code.resent": "我们已向{email}发送新的验证码和链接。",
-    "signin.code.wrong": "验证码不正确。请检查邮件后重试。",
     "signin.code.triesLeft": "{n, plural, other {还可尝试#次。}}",
     "signin.code.tooMany": "尝试次数过多。请发送新验证码。",
     "signin.code.expired": "验证码已过期。请发送新验证码。",
@@ -9287,9 +9383,22 @@ export const KIT_COPY: Readonly<
     "core.codes.auth_method_disabled.title": "登录方式不可用",
     "core.codes.auth_method_disabled.message":
       "该登录方式已关闭。请选择其他方式。",
-    "core.codes.email_not_configured.title": "电子邮件登录不可用",
-    "core.codes.email_not_configured.message":
+    "core.codes.email_unavailable.title": "电子邮件登录不可用",
+    "core.codes.email_unavailable.message":
       "电子邮件登录目前不可用。请选择其他登录方式。",
+    "core.codes.turnstile_failed.title": "验证未通过",
+    "core.codes.turnstile_failed.message":
+      "安全验证未通过。请重新加载页面后重试。",
+    "core.codes.signin_expired.title": "登录已过期",
+    "core.codes.signin_expired.message": "此次登录已过期。请重新开始。",
+    "core.codes.invalid_code.title": "验证码错误",
+    "core.codes.invalid_code.message":
+      "该验证码无效。请检查电子邮件后重新输入。",
+    "core.codes.email_in_use.title": "电子邮件已被使用",
+    "core.codes.email_in_use.message":
+      "另一个Polaris Key账户已在使用此电子邮件。请将此次登录合并到该账户，或使用其他电子邮件。",
+    "core.codes.terms_required.title": "未接受条款",
+    "core.codes.terms_required.message": "请同意条款以继续。",
     "core.codes.license_owned.title": "许可证在另一个账户中",
     "core.codes.license_owned.message":
       "此{product}许可证已在另一个Polaris Key账户中。许可证不会通过密钥转移。",

@@ -123,6 +123,7 @@ GITHUB_APP_PRIVATE_KEY
 GITHUB_WEBHOOK_SECRET
 REGISTRY_TOKEN_KEY           # F-21: the OCI pull-token HMAC key (32 random bytes, base64)
 DOWNLOAD_TICKET_KEY          # PX-W3: the portal's download-ticket HMAC key (32 random bytes, base64)
+SIGNIN_*                     # I-06, optional: the login card's providers ("Login-card providers")
 ```
 
 Rotate or set a Worker secret:
@@ -792,6 +793,145 @@ Polaris Key <noreply@auth.plrs.im>`. Repeat to a Hide-My-Email (`@privaterelay.a
   through `E_RECIPIENT_SUPPRESSED` on a later send; the dashboard's Analytics tab and the GraphQL
   `emailSendingAdaptive` dataset show the rest (delivery rate over 95 %, hard bounces under 2 %,
   complaints under 0.1 %).
+
+## Login card (I-07)
+
+The login card's Worker half needs two owner inputs per environment. Until they are set the card
+works without them: no Turnstile token is asked for, and copied avatars use the `BLOBS` bucket
+that already exists.
+
+1. **Turnstile.** Cloudflare dashboard → Turnstile → Add widget, one per environment, hostname
+   `key.plrs.im` (`key-staging.plrs.im`, `key-dev.plrs.im` for the others), mode Managed. Put the
+   site key in `wrangler.toml` as the `TURNSTILE_SITE_KEY` var of that environment (it is public;
+   the portal reads it from `GET /api/capabilities`), and the secret with
+   `npx wrangler secret put TURNSTILE_SECRET_KEY --env <env>`. With the secret set, the email start
+   refuses a missing or failing token (`403 turnstile_failed`), and an unreachable Cloudflare
+   refuses too. The widget itself is rendered by the card's UI, which also needs Cloudflare's
+   challenge origin in the portal's CSP (PX-12).
+
+   > **Warning: do not set `TURNSTILE_SECRET_KEY` yet.** The secret, not the site key, is what
+   > switches the check on, and the portal does not render the Turnstile widget until PX-12/PX-21
+   > ship it. With the secret set today, the portal sends no token and **every email sign-in fails
+   > with `403 turnstile_failed`**. Set the site key var if you like; put the secret only once the
+   > widget is live in the portal.
+
+   **Done (2026-10-06, by the lead through the Cloudflare API).** The three widgets exist, named
+   `Polaris Key login card (prod|staging|dev)`, mode Managed, one hostname each, and their site keys
+   are the `TURNSTILE_SITE_KEY` vars in `wrangler.toml`. No secret is set. To switch the check on
+   once PX-12/PX-21 render the widget, copy each widget's secret straight into the Worker without it
+   passing through a terminal or a file: one Cloudflare API call per environment that reads
+   `GET /accounts/{account}/challenges/widgets/{sitekey}` and writes the returned `secret` with
+   `PUT /accounts/{account}/workers/scripts/{script}/secrets` as `TURNSTILE_SECRET_KEY`
+   (`type: secret_text`), returning nothing. Then test email sign-in on staging before prod.
+
+2. **Avatars.** Copied provider pictures live in the environment's `BLOBS` bucket under the
+   `avatars/` prefix; no extra binding or bucket is needed. To use a separate bucket instead, it
+   would need a binding and a code change.
+
+**Sessions after the deploy.** Account sessions became server-side rows (`account_sessions`); a
+portal cookie signed before this deploy names no row and is refused, so every portal visitor signs
+in once afterwards. There is nothing to migrate.
+
+**A person locked out by the email limits** (10 wrong codes in an hour) gets no new code for 15
+minutes and sees nothing different; waiting is the fix. The limits are in
+`src/core/emailLimits.ts`.
+
+## Login-card providers (I-06)
+
+The login card offers Sign in with Google, Apple and Steam through Polaris's own clients, one set
+per environment (`src/services/identity/providers/`). They are account sign-in methods for every
+product; nothing is configured per product. A provider appears only once **all** of its values
+are set and its sealed secret opens; until then `/login/<provider>` answers _Sign in with … is
+not available_ and the rest of the card works as before.
+
+| Environment | Origin                        | Google redirect URI / Apple return URL / Steam return   |
+| ----------- | ----------------------------- | ------------------------------------------------------- |
+| prod        | `https://key.plrs.im`         | `https://key.plrs.im/login/<provider>/callback`         |
+| staging     | `https://key-staging.plrs.im` | `https://key-staging.plrs.im/login/<provider>/callback` |
+| dev         | `https://key-dev.plrs.im`     | `https://key-dev.plrs.im/login/<provider>/callback`     |
+
+### Owner setup (consoles and secrets; agents never touch either)
+
+1. **Google OAuth client.** Google Cloud console → a Polaris Key project → Google Auth Platform:
+   - **Branding:** app name `Polaris Key`, a support email, the logo, home page
+     `https://key.plrs.im`, privacy policy URL, and the authorised domain `plrs.im`.
+   - **Audience:** External, then **Publish app** (in testing, only listed test users can sign in).
+   - **Data access:** the scopes `openid`, `.../auth/userinfo.email` and
+     `.../auth/userinfo.profile` only (all non-sensitive; no verification review).
+   - **Clients → Create client:** type _Web application_, name `Polaris Key login card (<env>)`,
+     no JavaScript origins, **Authorised redirect URI** `https://<origin>/login/google/callback`
+     (one client per environment, or one client listing every environment's URI). Copy the
+     client id and the client secret (the secret is shown once).
+2. **Apple Services ID and key** (developer.apple.com → Certificates, Identifiers & Profiles; the
+   Account Holder or an Admin):
+   - **Team ID:** Membership details, ten characters.
+   - **Primary App ID:** Identifiers → + → App IDs → App, e.g. `im.plrs.key`, with the
+     **Sign in with Apple** capability (_Enable as a primary App ID_). In its Sign in with Apple
+     configuration set the **Server-to-Server Notification Endpoint** to
+     `https://key.plrs.im/login/apple/notifications` (Apple allows one endpoint per App ID; use
+     prod's).
+   - **Services ID:** Identifiers → + → Services IDs, e.g. `im.plrs.key.signin` (this is
+     `SIGNIN_APPLE_SERVICES_ID`, the card's `client_id`). Enable **Sign in with Apple** →
+     Configure: primary App ID as above, **Domains and Subdomains** `key.plrs.im`,
+     `key-staging.plrs.im`, `key-dev.plrs.im`, **Return URLs**
+     `https://<origin>/login/apple/callback` for each. Save, then Continue → Register.
+   - **Key:** Keys → + → name `Polaris Key Sign in with Apple`, tick **Sign in with Apple** →
+     Configure → the primary App ID → Register. Download `AuthKey_<KEYID>.p8` (Apple offers it
+     **once**) and note the Key ID (ten characters).
+   - Apple's private relay delivers sign-in email only from registered senders: that is step 4 of
+     "Sign-in email (I-18)" above.
+3. **Steam Web API key.** Signed in to the Polaris Steam account (it needs Steam Guard and a
+   purchase history), open `https://steamcommunity.com/dev/apikey`, enter the domain
+   `key.plrs.im`, agree and register. One account holds one key; the domain is informational, so
+   every environment may use the same key. Steam needs nothing else registered: the realm is the
+   origin the card runs on.
+4. **Seal the three secrets** with the TARGET environment's KEK in your shell (the same variable
+   names the Worker reads: `PLATFORM_KEK`, or `PLATFORM_KEK_KEYS` + `PLATFORM_KEK_ACTIVE`). The
+   script reads the plaintext from stdin, prints the blob, writes nothing and calls nothing:
+
+   ```sh
+   cd packages/worker
+   PLATFORM_KEK=… pnpm signin:seal -- google < google-client-secret.txt
+   PLATFORM_KEK=… pnpm signin:seal -- apple  < AuthKey_ABCDE12345.p8
+   PLATFORM_KEK=… pnpm signin:seal -- steam  < steam-web-api-key.txt
+   ```
+
+   A blob sealed under another environment's KEK, or for another provider's slot, does not open,
+   and that provider simply stays off.
+
+5. **Set each provider in one bulk call** (a JSON object of name → value, deleted afterwards):
+
+   ```json
+   {
+     "SIGNIN_GOOGLE_CLIENT_ID": "<id>.apps.googleusercontent.com",
+     "SIGNIN_GOOGLE_CLIENT_SECRET": "<sealed blob>",
+     "SIGNIN_APPLE_SERVICES_ID": "im.plrs.key.signin",
+     "SIGNIN_APPLE_TEAM_ID": "<TEAMID>",
+     "SIGNIN_APPLE_KEY_ID": "<KEYID>",
+     "SIGNIN_APPLE_PRIVATE_KEY": "<sealed blob>",
+     "SIGNIN_STEAM_WEB_API_KEY": "<sealed blob>"
+   }
+   ```
+
+   `npx wrangler secret bulk signin.json --env staging`, then sign in with each provider on
+   staging in a private window before doing the same for prod.
+
+### Operating it
+
+- **Rotating.** Google: add a second secret on the client, seal and set it, then disable the old
+  one. Apple: create a new key, seal its `.p8`, set `SIGNIN_APPLE_KEY_ID` and
+  `SIGNIN_APPLE_PRIVATE_KEY` together in one bulk call, then revoke the old key. Steam: revoke and
+  re-register at the same page, then seal and set. Rotating `PLATFORM_KEK` means re-sealing these
+  three as well as the D1 blobs.
+- **Turning one off.** `wrangler secret delete SIGNIN_<…>_CLIENT_ID` (or Steam's key); people who
+  signed in with it keep their account and use another method.
+- **Apple notifications** (`consent-revoked`, `account-delete`, `email-disabled`,
+  `email-enabled`) set or clear `account_links.provider_flag` and are audited on the account; they
+  never delete a link. A 401 from the endpoint in the logs is a JWT that was not Apple's or not
+  addressed to the Services ID.
+- **Discovery.** Google's and Apple's discovery documents and keys are cached for an hour per
+  isolate. A sign-in that answers _… sign-in is unavailable right now_ is the provider's endpoint
+  failing, or answering with a host outside the allowlist (`providers/net.ts`).
 
 ## The blob collector (P4-14)
 

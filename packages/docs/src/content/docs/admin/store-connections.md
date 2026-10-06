@@ -50,6 +50,8 @@ the state of the store's primary credential and how many apps are assigned.
   re-pinned, and the own keys left alone because their account could not be told from their
   metadata. Check those and re-pin them on the product's Keys & secrets page. An app held through
   a product's own key can only be assigned to that product.
+- **Set up** (the row menu of an assigned app, for a store with a storefront adapter) opens the
+  holding product's [Add to storefronts](/docs/admin/storefronts/) flow, scoped to this store.
 - **Release from …** (the row menu of an assigned app) asks for the same caution confirmation.
   The product's connectors that used the team credential stop with `pin_missing` until an app is
   assigned again. Keys the product holds of its own keep their pins.
@@ -226,8 +228,9 @@ and availability defaults. They also keep a checklist of the steps only the port
 
 Before an app record exists there is nothing to assign, so the App Store connection also carries
 the team-level steps of a new app: registering its bundle ID, switching on its capabilities, and
-noticing when the app record appears. The console's **New app** flow is built on these routes;
-until it ships they are the admin API under
+noticing when the app record appears. A product's
+[Add to storefronts](/docs/admin/storefronts/) flow runs the App Store's steps on these routes
+(the bundle ID, the app record found by it, then the assignment). They are the admin API under
 `/manage/api/platform/store-connections/app-store`, platform admins only. They use the team App
 Store Connect key, and every write passes the App Store Connect write gate first (see
 [App Store Connect](/docs/services/distribution/app-store-connect/)): nothing outside the approved

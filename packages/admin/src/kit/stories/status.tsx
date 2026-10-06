@@ -1,5 +1,6 @@
 import { STATUS, type StatusDomain } from "../../lib/status.js";
 import { SERVICE_TABLE } from "../../services.generated.js";
+import { CapabilityBadge, CapabilityStrip } from "../../ui/CapabilityBadge.js";
 import { ServiceBadge } from "../../ui/ServiceBadge.js";
 import { SignedBadge } from "../../ui/SignedBadge.js";
 import { SourceBadge } from "../../ui/SourceBadge.js";
@@ -10,6 +11,50 @@ const DOMAINS = Object.keys(STATUS) as StatusDomain[];
 const AT = Date.UTC(2026, 8, 28, 14, 5);
 
 export const stories: Story[] = [
+  {
+    id: "capability-badges",
+    group: "Status and badges",
+    title: "CapabilityBadge and CapabilityStrip",
+    description:
+      "How an adapter performs an operation, from its declaration: one badge for storefront tiles and package-feed pages. A label, not a status.",
+    render: () => (
+      <div className="space-y-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <CapabilityBadge support={{ mode: "api" }} />
+          <CapabilityBadge support={{ mode: "ci", tool: "butler" }} />
+          <CapabilityBadge support={{ mode: "pr", repo: "flathub/x" }} />
+          <CapabilityBadge support={{ mode: "deep-link" }} />
+          <CapabilityBadge
+            support={{ mode: "unsupported", reason: "No such operation" }}
+          />
+        </div>
+        <CapabilityStrip
+          label="Example capabilities"
+          className="max-w-md"
+          items={[
+            {
+              op: "writeListingText",
+              label: "Listing text",
+              support: { mode: "api" },
+            },
+            {
+              op: "contentRating",
+              label: "Content rating",
+              support: { mode: "deep-link" },
+            },
+            {
+              op: "uploadBuild",
+              label: "Build upload",
+              support: {
+                mode: "unsupported",
+                reason: "Builds reach the store from CI.",
+              },
+            },
+          ]}
+        />
+      </div>
+    ),
+  },
   {
     id: "status-pills",
     group: "Status and badges",

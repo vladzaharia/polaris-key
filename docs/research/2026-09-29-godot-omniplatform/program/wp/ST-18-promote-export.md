@@ -1,16 +1,16 @@
 # ST-18 Promote to repo (patch), settings export and import, `pkey settings diff` and `export`, `pkey validate --against`, CI scope `settings:read`
 
-| Field       | Value                                                           |
-| ----------- | --------------------------------------------------------------- |
-| Phase       | ST: Settings architecture (S-18) (phase 4: manifest round trip) |
-| Size        | 1–1.4 engineer-weeks                                            |
-| Depends on  | [ST-17](ST-17-resync-dry-run.md)                                |
-| Unblocks    | [ST-23](ST-23-env-promote.md)                                   |
-| Role        | `pkey-implementer`                                              |
-| Plan mode   | no                                                              |
-| Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; CLI bundle   |
-| Human input | none                                                            |
-| Repo        | `vladzaharia/polaris-key`                                       |
+| Field       | Value                                                                |
+| ----------- | -------------------------------------------------------------------- |
+| Phase       | ST: Settings architecture (S-18) (phase 4: manifest round trip)      |
+| Size        | 1–1.4 engineer-weeks                                                 |
+| Depends on  | [ST-17](ST-17-resync-dry-run.md), [ST-19](ST-19-manifest-cleanup.md) |
+| Unblocks    | [ST-23](ST-23-env-promote.md)                                        |
+| Role        | `pkey-implementer`                                                   |
+| Plan mode   | no                                                                   |
+| Gates       | rule 10 (OpenAPI + `routeCoverage`); THREAT-MODEL; CLI bundle        |
+| Human input | none                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                            |
 
 ## Goal
 
@@ -39,6 +39,9 @@ The manifest round trip closes model C ([S-18 §4.5](../../notes/S-18-settings-a
 ## Design notes
 
 - THREAT-MODEL CI-scope row.
+- "Promote to repo" and export write each field at the registry's `manifest.path`, which ST-19 makes
+  canonical (the wrapped layout: `product:`, `licensing:`, `release:`; tier `profileId`). Never emit a
+  spelling in `DEPRECATED_SPELLINGS` ([`plans/ST-19.md`](../plans/ST-19.md) owner decision Q6).
 
 ## Steps
 
@@ -50,6 +53,7 @@ The manifest round trip closes model C ([S-18 §4.5](../../notes/S-18-settings-a
 
 - [ ] The two `CI_SCOPES` lists match (test).
 - [ ] Export then import round-trips (test).
+- [ ] A generated patch validates with no `deprecated_spelling` warning (test).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

@@ -22,6 +22,7 @@ import {
   ASC_WRITE_ALLOW,
   AscWriteDenied,
   checkAscRequest,
+  checkAscUpload,
   GATE_CAPABILITY_TYPES,
   type AscGateContext,
 } from "../src/core/storefront/rules/appStore.js";
@@ -928,5 +929,249 @@ describe("Apple's error code token (A-17h)", () => {
     )) as AscError;
     expect(html.status).toBe(500);
     expect(html.code).toBeNull();
+  });
+});
+
+describe("A-18m: the listing's text and screenshots (owner decision 1)", () => {
+  const vloc = (attributes: Record<string, unknown>, id?: string) => ({
+    data: {
+      type: "appStoreVersionLocalizations",
+      ...(id ? { id } : {}),
+      attributes,
+      ...(id
+        ? {}
+        : {
+            relationships: {
+              appStoreVersion: { data: { type: "appStoreVersions", id: "V1" } },
+            },
+          }),
+    },
+  });
+
+  it("adds exactly the listed allows, all plain, none a DELETE", () => {
+    const listing = [
+      "POST /v1/appInfoLocalizations",
+      "PATCH /v1/appInfoLocalizations/{id}",
+      "POST /v1/appScreenshotSets",
+      "POST /v1/appScreenshots",
+      "PATCH /v1/appScreenshots/{id}",
+    ];
+    for (const k of listing) {
+      expect(ALLOWED).toContain(k);
+      const rule = ASC_WRITE_ALLOW.find((r) => key(r.method, r.path) === k)!;
+      expect(rule.confirm).toBe("plain");
+    }
+    // Removal and reordering stay denied: every screenshot DELETE and the set's membership PATCH.
+    for (const k of [
+      "DELETE /v1/appScreenshots/{id}",
+      "DELETE /v1/appScreenshotSets/{id}",
+      "DELETE /v1/appInfoLocalizations/{id}",
+      "DELETE /v1/appStoreVersionLocalizations/{id}",
+      "PATCH /v1/appScreenshotSets/{id}/relationships/appScreenshots",
+    ])
+      expect(DENIED).toContain(k);
+    expect(
+      denial("PATCH", "/v1/appScreenshotSets/S1/relationships/appScreenshots", {
+        data: [{ type: "appScreenshots", id: "X1" }],
+      }),
+    ).toBe("not_allowed");
+  });
+
+  it("version localizations take the listing text and http(s) URLs only", () => {
+    expect(
+      denial(
+        "POST",
+        "/v1/appStoreVersionLocalizations",
+        vloc({
+          locale: "en-US",
+          description: "A game.",
+          keywords: "a,b",
+          marketingUrl: "https://acme.example/",
+          supportUrl: "https://acme.example/help",
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      denial(
+        "PATCH",
+        "/v1/appStoreVersionLocalizations/L1",
+        vloc({ description: "x", supportUrl: null }, "L1"),
+      ),
+    ).toBeNull();
+    for (const bad of [
+      "javascript:alert(1)",
+      "ftp://acme.example/",
+      "https://user:pw@acme.example/",
+      `https://acme.example/${"a".repeat(2050)}`,
+      42,
+    ])
+      expect(
+        denial(
+          "PATCH",
+          "/v1/appStoreVersionLocalizations/L1",
+          vloc({ supportUrl: bad }, "L1"),
+        ),
+      ).toBe("value_not_allowed");
+  });
+
+  it("app info localizations: name, subtitle and privacy URL; never the privacy text or choices", () => {
+    const body = (attributes: Record<string, unknown>) => ({
+      data: {
+        type: "appInfoLocalizations",
+        attributes,
+        relationships: { appInfo: { data: { type: "appInfos", id: "I1" } } },
+      },
+    });
+    expect(
+      denial(
+        "POST",
+        "/v1/appInfoLocalizations",
+        body({
+          locale: "de-DE",
+          name: "Spiel",
+          subtitle: "Ein Spiel",
+          privacyPolicyUrl: "https://acme.example/privacy",
+        }),
+      ),
+    ).toBeNull();
+    for (const k of ["privacyPolicyText", "privacyChoicesUrl"])
+      expect(
+        denial("POST", "/v1/appInfoLocalizations", body({ [k]: "x" })),
+      ).toBe("attribute_not_allowed");
+    expect(
+      denial("PATCH", "/v1/appInfoLocalizations/L1", {
+        data: {
+          type: "appInfoLocalizations",
+          id: "L1",
+          attributes: { privacyPolicyUrl: "data:text/html,x" },
+        },
+      }),
+    ).toBe("value_not_allowed");
+  });
+
+  it("screenshot sets: a version localization's, of the three display types only", () => {
+    const set = (
+      type: unknown,
+      rel: string = "appStoreVersionLocalization",
+    ) => ({
+      data: {
+        type: "appScreenshotSets",
+        attributes: { screenshotDisplayType: type },
+        relationships: {
+          [rel]: {
+            data: {
+              type:
+                rel === "appStoreVersionLocalization"
+                  ? "appStoreVersionLocalizations"
+                  : "appCustomProductPageLocalizations",
+              id: "L1",
+            },
+          },
+        },
+      },
+    });
+    for (const t of ["APP_IPHONE_67", "APP_IPAD_PRO_3GEN_129", "APP_DESKTOP"])
+      expect(denial("POST", "/v1/appScreenshotSets", set(t))).toBeNull();
+    expect(
+      denial("POST", "/v1/appScreenshotSets", set("APP_WATCH_ULTRA")),
+    ).toBe("value_not_allowed");
+    expect(
+      denial(
+        "POST",
+        "/v1/appScreenshotSets",
+        set("APP_IPHONE_67", "appCustomProductPageLocalization"),
+      ),
+    ).toBe("relationship_not_allowed");
+    expect(
+      denial("POST", "/v1/appScreenshotSets", {
+        data: {
+          type: "appScreenshotSets",
+          attributes: { screenshotDisplayType: "APP_IPHONE_67" },
+        },
+      }),
+    ).toBe("value_not_allowed");
+  });
+
+  it("screenshots: a reserve of an image file within the cap, then only the commit", () => {
+    const reserve = (attributes: Record<string, unknown>) => ({
+      data: {
+        type: "appScreenshots",
+        attributes,
+        relationships: {
+          appScreenshotSet: { data: { type: "appScreenshotSets", id: "S1" } },
+        },
+      },
+    });
+    expect(
+      denial(
+        "POST",
+        "/v1/appScreenshots",
+        reserve({ fileName: "ab12.png", fileSize: 1000 }),
+      ),
+    ).toBeNull();
+    for (const a of [
+      { fileName: "a.ipa", fileSize: 1000 },
+      { fileName: "../a.png", fileSize: 1000 },
+      { fileName: "a.png", fileSize: 0 },
+      { fileName: "a.png", fileSize: 33 * 1024 * 1024 },
+      { fileName: "a.png", fileSize: 1.5 },
+    ])
+      expect(denial("POST", "/v1/appScreenshots", reserve(a))).toBe(
+        "value_not_allowed",
+      );
+    const commit = (attributes: Record<string, unknown>) => ({
+      data: { type: "appScreenshots", id: "X1", attributes },
+    });
+    expect(
+      denial(
+        "PATCH",
+        "/v1/appScreenshots/X1",
+        commit({ uploaded: true, sourceFileChecksum: "0".repeat(32) }),
+      ),
+    ).toBeNull();
+    expect(
+      denial("PATCH", "/v1/appScreenshots/X1", commit({ uploaded: false })),
+    ).toBe("value_not_allowed");
+    expect(
+      denial(
+        "PATCH",
+        "/v1/appScreenshots/X1",
+        commit({ uploaded: true, sourceFileChecksum: "nope" }),
+      ),
+    ).toBe("value_not_allowed");
+  });
+
+  it("the upload operation: PUT only, https on apple.com only, an image within the cap", () => {
+    const png = { contentType: "image/png", size: 1000 };
+    const ok = "https://store-032.blobstore.apple.com/itms/a?sig=1";
+    expect(() => checkAscUpload("PUT", ok, png)).not.toThrow();
+    const reason = (m: string, u: string, d: typeof png) => {
+      try {
+        checkAscUpload(m, u, d);
+        return null;
+      } catch (e) {
+        expect(e).toBeInstanceOf(AscWriteDenied);
+        // The presigned URL never reaches a message.
+        expect((e as Error).message).not.toContain("sig=1");
+        return (e as AscWriteDenied).reason;
+      }
+    };
+    expect(reason("POST", ok, png)).toBe("not_allowed");
+    expect(reason("DELETE", ok, png)).toBe("not_allowed");
+    for (const u of [
+      "http://store-032.blobstore.apple.com/a?sig=1",
+      "https://apple.com.evil.example/a?sig=1",
+      "https://evilapple.com/a?sig=1",
+      "https://u:p@store.apple.com/a?sig=1",
+      "https://store.apple.com:8443/a?sig=1",
+      "https://169.254.169.254/a?sig=1",
+    ])
+      expect(reason("PUT", u, png), u).toBe("invalid_path");
+    expect(
+      reason("PUT", ok, { contentType: "application/octet-stream", size: 1 }),
+    ).toBe("content_type_not_allowed");
+    expect(
+      reason("PUT", ok, { contentType: "image/png", size: 33 * 1024 * 1024 }),
+    ).toBe("too_large");
   });
 });

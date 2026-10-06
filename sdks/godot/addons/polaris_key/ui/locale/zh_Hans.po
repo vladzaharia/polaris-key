@@ -1812,11 +1812,6 @@ msgstr "{time}后可发送新验证码"
 msgid "signin.code.resent"
 msgstr "我们已向{email}发送新的验证码和链接。"
 
-#. That code isn't right. Check the email and try again.
-#. Email code step (SIGN-IN.md §3.4).
-msgid "signin.code.wrong"
-msgstr "验证码不正确。请检查邮件后重试。"
-
 #. {n, plural, one {# try left.} other {# tries left.}}
 #. Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number.
 #. Plural on {n}.
@@ -3329,13 +3324,63 @@ msgstr "该登录方式已关闭。请选择其他方式。"
 
 #. Email sign-in unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
-msgid "core.codes.email_not_configured.title"
+msgid "core.codes.email_unavailable.title"
 msgstr "电子邮件登录不可用"
 
 #. Email sign-in isn't available right now. Choose another sign-in method.
 #. Core copy (conformance/parity/copy.en.json, codes).
-msgid "core.codes.email_not_configured.message"
+msgid "core.codes.email_unavailable.message"
 msgstr "电子邮件登录目前不可用。请选择其他登录方式。"
+
+#. Check didn't pass
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.turnstile_failed.title"
+msgstr "验证未通过"
+
+#. The security check didn't pass. Reload the page and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.turnstile_failed.message"
+msgstr "安全验证未通过。请重新加载页面后重试。"
+
+#. Sign-in expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.signin_expired.title"
+msgstr "登录已过期"
+
+#. This sign-in has expired. Start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.signin_expired.message"
+msgstr "此次登录已过期。请重新开始。"
+
+#. Wrong code
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_code.title"
+msgstr "验证码错误"
+
+#. That code isn't right. Check the email and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_code.message"
+msgstr "该验证码无效。请检查电子邮件后重新输入。"
+
+#. Email already in use
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.email_in_use.title"
+msgstr "电子邮件已被使用"
+
+#. Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.email_in_use.message"
+msgstr "另一个Polaris Key账户已在使用此电子邮件。请将此次登录合并到该账户，或使用其他电子邮件。"
+
+#. Terms not accepted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.terms_required.title"
+msgstr "未接受条款"
+
+#. Agree to the terms to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.terms_required.message"
+msgstr "请同意条款以继续。"
 
 #. License in another account
 #. Core copy (conformance/parity/copy.en.json, codes).

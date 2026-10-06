@@ -1,16 +1,16 @@
 # UK-07 SwiftUI kit for iOS and iPadOS 26: `PolarisKeyUI` rebuilt on a pure-Swift presentation core, `.polarisKeyGate`, Liquid Glass on 26 with a designed iOS 18 fallback, floors raised to iOS 18 / macOS 15
 
-| Field       | Value                                                                                                                                                                                                                                                                      |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                               |
-| Size        | 4–6 engineer-weeks                                                                                                                                                                                                                                                         |
-| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md)                                                                                  |
-| Unblocks    | [UK-08](UK-08-swiftui-macos.md), [UK-23](UK-23-uikit-kit.md), [UK-25](UK-25-storekit-paywall.md), [UK-26](UK-26-visionos-kit.md), [UK-27](UK-27-tvos-kit.md), [UK-33](UK-33-watchos.md), [UK-34](UK-34-widgetkit-live-activities.md), [UK-41](UK-41-must-tier-closeout.md) |
-| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                          |
-| Plan mode   | no                                                                                                                                                                                                                                                                         |
-| Gates       | swift-snapshot-testing baselines on iOS 26 and iOS 18 simulators; `performAccessibilityAudit`; the SwiftUI lint equivalents; `swift build && swift test`                                                                                                                   |
-| Human input | none                                                                                                                                                                                                                                                                       |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                  |
+| Field       | Value                                                                                                                                                                                                                                                                                                                   |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                                                                                                                                                            |
+| Size        | 4–6 engineer-weeks                                                                                                                                                                                                                                                                                                      |
+| Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md)                                                                                                                               |
+| Unblocks    | [UK-08](UK-08-swiftui-macos.md), [UK-23](UK-23-uikit-kit.md), [UK-25](UK-25-storekit-paywall.md), [UK-26](UK-26-visionos-kit.md), [UK-27](UK-27-tvos-kit.md), [UK-33](UK-33-watchos.md), [UK-34](UK-34-widgetkit-live-activities.md), [UK-41](UK-41-must-tier-closeout.md), [UK-43](UK-43-activation-holders-native.md) |
+| Role        | `pkey-sdk-porter`                                                                                                                                                                                                                                                                                                       |
+| Plan mode   | no                                                                                                                                                                                                                                                                                                                      |
+| Gates       | swift-snapshot-testing baselines on iOS 26 and iOS 18 simulators; `performAccessibilityAudit`; the SwiftUI lint equivalents; `swift build && swift test`                                                                                                                                                                |
+| Human input | none                                                                                                                                                                                                                                                                                                                    |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                               |
 
 ## Sign-in alignment (2026-10-05): SIGN-IN.md
 
@@ -75,6 +75,14 @@ Today's Swift kit is one iOS 17-era screen with about 10 % of the catalogue (§0
 - Rubik scaled with `UIFontMetrics` (§11 Q6).
 - Presentation comes only through the core's `ProductIdentity` seam from the SDK (HA-13, HA-14). This package does not depend on them: it tests the default with a fake source, and the real accessor plugs in without a kit change (UK-41 verifies it).
 - Launch locales are English plus `de`, `fr`, `es`, `pt-BR`, `it`, `ja`, `ko`, `zh-Hans`; there is no RTL locale, so no RTL baselines, but layouts stay RTL-safe.
+
+## Presentation seam ([`plans/HA-11.md`](../plans/HA-11.md), approved 2026-10-06)
+
+- **Do not define a seam.** The kit's `ProductIdentity` resolver takes the Swift `PresentationSource` in `PolarisKeyCore` (HA-13).
+- **Before that lands.** If the SDK type has not landed when this package starts, declare a
+  structurally identical local type, `current()`, `icon(px, scale)` and change notification, and
+  replace it with the SDK's type when it lands.
+- **Fake sources.** Tests build fake sources from that type.
 
 ## Steps
 

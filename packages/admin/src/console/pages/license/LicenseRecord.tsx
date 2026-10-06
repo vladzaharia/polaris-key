@@ -30,7 +30,8 @@ import { IdChip } from "../../../ui/IdChip.js";
 import { PageSkeleton } from "../../../ui/Skeleton.js";
 import { toast } from "../../../ui/toast.js";
 import { LicenseConfig } from "./LicenseConfig.js";
-import { LicenseDevices, seatLimitOf } from "./LicenseDevices.js";
+import { LicenseDevices } from "./LicenseDevices.js";
+import { DeviceLimitSheet } from "./LicenseDeviceLimit.js";
 import { EditHolderDialog, OfflineBundleDialog } from "./LicenseDialogs.js";
 import { DeleteLicenseDialog, deletionBlockedReason } from "./LicenseDelete.js";
 import { LicenseKeys, MintKeyDialog } from "./LicenseKeys.js";
@@ -40,6 +41,8 @@ import {
   daysUntil,
   expiryText,
   LicenseStatus,
+  seatLimitOf,
+  seatLimitText,
   useTiers,
 } from "./shared.js";
 
@@ -138,7 +141,14 @@ function LicenseRecordBody({
   const tiers = useTiers(slug).data?.tiers ?? [];
   const [termsDirty, setTermsDirty] = React.useState(false);
   const [dialog, setDialog] = React.useState<
-    "holder" | "bundle" | "mint" | "disable" | "enable" | "delete" | null
+    | "holder"
+    | "bundle"
+    | "mint"
+    | "deviceLimit"
+    | "disable"
+    | "enable"
+    | "delete"
+    | null
   >(null);
   // Config overrides keep their draft across tab switches once opened (the editor owns it).
   const [configOpened, setConfigOpened] = React.useState(tab === "config");
@@ -148,7 +158,9 @@ function LicenseRecordBody({
 
   const id = license.id;
   const active = license.status === "active";
-  const limit = seatLimitOf(license, tiers, product?.defaultDeviceLimit);
+  // LX-14a: the limit the Worker enforces and where it comes from.
+  const seats = seatLimitOf(license, tiers, product?.defaultDeviceLimit);
+  const limit = seats.limit;
   const activeKeys = license.keys.filter((k) => k.status === "active").length;
   const configOn = product?.services?.config?.enabled ?? true;
 
@@ -192,6 +204,9 @@ function LicenseRecordBody({
           <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {license.email ? <span>{license.email}</span> : null}
             <IdChip value={id} noun="license id" />
+            <span data-testid="record-device-limit">
+              Device limit {seatLimitText(seats)}
+            </span>
             <span>
               {SIGN_IN_LABELS[license.identityProvider] ??
                 license.identityProvider}
@@ -224,6 +239,7 @@ function LicenseRecordBody({
             label: "Mint offline bundle…",
             onSelect: () => setDialog("bundle"),
           },
+          { label: "Device limit…", onSelect: () => setDialog("deviceLimit") },
           {
             label: "View in activity",
             onSelect: () => navigate(r.activity(slug, { q: id })),
@@ -301,7 +317,7 @@ function LicenseRecordBody({
         </div>
       ) : null}
       {tab === "devices" ? (
-        <LicenseDevices slug={slug} license={license} limit={limit} />
+        <LicenseDevices slug={slug} license={license} seats={seats} />
       ) : null}
       {configOpened ? (
         <div hidden={tab !== "config"}>
@@ -314,6 +330,14 @@ function LicenseRecordBody({
         license={license}
         open={dialog === "holder"}
         onOpenChange={(o) => setDialog(o ? "holder" : null)}
+      />
+      <DeviceLimitSheet
+        slug={slug}
+        license={license}
+        tiers={tiers}
+        productLimit={product?.defaultDeviceLimit}
+        open={dialog === "deviceLimit"}
+        onOpenChange={(o) => setDialog(o ? "deviceLimit" : null)}
       />
       <OfflineBundleDialog
         slug={slug}

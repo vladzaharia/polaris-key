@@ -29,6 +29,7 @@ import { FreeDevicePage } from "./pages/FreeDevicePage.js";
 import { LibraryPage } from "./pages/LibraryPage.js";
 import { ProductPage } from "./pages/ProductPage.js";
 import { SignInPage } from "./pages/SignInPage.js";
+import { restoreCarriedKey } from "./carriedKey.js";
 import {
   rewriteActivatePath,
   setParams,
@@ -47,6 +48,7 @@ import {
 export function PortalApp(): React.ReactElement {
   const [client] = React.useState(() => {
     rewriteActivatePath();
+    restoreCarriedKey();
     return createPortalQueryClient();
   });
   return (
@@ -87,6 +89,7 @@ function Boot(): React.ReactElement {
       "downloads",
       "product",
       "registryTokens",
+      "discover",
     ])
       qc.removeQueries({ queryKey: ["portal", key] });
   }, [signedOut, qc]);
@@ -221,7 +224,7 @@ function Page({
     case "library":
       return <LibraryPage account={account} params={route.params} />;
     case "discover":
-      return <DiscoverPage />;
+      return <DiscoverPage params={route.params} />;
     case "product":
       return (
         <ProductPage

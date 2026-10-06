@@ -40,6 +40,8 @@ export function LibraryHero({
         tint={pres.tint}
         src={pres.headerUrl}
         variant="banner"
+        // No cover: a bare tint field; the icon beside the name already shows the letter.
+        letter={false}
         className="aspect-video desk:aspect-auto desk:min-h-[26rem]"
       />
       <div className="flex flex-col gap-5 p-6 desk:p-9">

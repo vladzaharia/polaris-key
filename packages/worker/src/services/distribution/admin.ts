@@ -70,6 +70,15 @@
  *                                                              store notes, the fit report and
  *                                                              the manifest import
  *                                                              (`listing/admin.ts`)
+ *     GET|POST …/distribution/storefronts[/…]                  the storefront flow (A-18j): every
+ *                                                              store's plan, a deep-linked step's
+ *                                                              check, a runtime's step and listing
+ *                                                              push (`storefronts/admin.ts`)
+ *     GET|POST|PUT …/distribution/storefronts/steam[/…]        the Steam storefront adapter
+ *                                                              (A-18g): the plan, app list,
+ *                                                              builds and branches, a named-branch
+ *                                                              release, the asset pack and the
+ *                                                              checklist (`storefronts/steam/admin.ts`)
  *
  * Narrative-only (the console's API is not in the wire spec). Every write is audited with the
  * session's subject. The session, CSRF, rate-limit and platform-admin gates run in
@@ -162,6 +171,8 @@ import {
 } from "./readiness.js";
 import { listAssetPacks } from "./assetPacks.js";
 import { handleListingAdmin } from "./listing/admin.js";
+import { handleSteamStorefrontAdmin } from "./storefronts/steam/admin.js";
+import { handleStorefrontsAdmin } from "./storefronts/admin.js";
 import { handleCiSecretCheckAdmin } from "./ciSecretCheck.js";
 
 /** The console's view of one outlet. */
@@ -222,7 +233,16 @@ export async function handleDistributionAdmin(
   if (rest[0] === "commerce") return handleCommerceAdmin(ctx);
   if (rest[0] === "package-feeds") return handlePackageFeedsAdmin(ctx);
   if (rest[0] === "listing") return handleListingAdmin(ctx);
-  if (rest[0] === "storefronts") return handleCiSecretCheckAdmin(ctx);
+  if (rest[0] === "storefronts") {
+    // UX-69's CI-secret check (storefronts/<store>/ci-secrets/<name>/check), A-18g's Steam routes
+    // (apps, builds, pack, checklist, branches) and A-18j's flow (the plan, steps, push-listing,
+    // slots) do not overlap; each answers null for the paths it does not own.
+    return (
+      (await handleCiSecretCheckAdmin(ctx)) ??
+      (await handleSteamStorefrontAdmin(ctx)) ??
+      handleStorefrontsAdmin(ctx)
+    );
+  }
   if (rest[0] !== "outlets") return null;
 
   if (rest.length === 1) {

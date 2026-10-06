@@ -50,6 +50,7 @@ import { MICROSOFT_STORE_ADAPTER } from "./stores/microsoftStore.js";
 import { ITCH_ADAPTER } from "./stores/itch.js";
 import { SCOOP_ADAPTER } from "./stores/scoop.js";
 import { SNAP_ADAPTER } from "./stores/snap.js";
+import { STEAM_ADAPTER } from "./stores/steam.js";
 import { WINGET_ADAPTER } from "./stores/winget.js";
 
 export type { ListingProfile } from "./listing.js";
@@ -61,6 +62,7 @@ export type StorefrontId =
   | "microsoft-store"
   | "itch"
   | "snap"
+  | "steam"
   | "winget"
   | "homebrew"
   | "scoop"
@@ -178,6 +180,7 @@ export const STOREFRONT_ADAPTERS: readonly StorefrontAdapter[] = [
   MICROSOFT_STORE_ADAPTER,
   ITCH_ADAPTER,
   SNAP_ADAPTER,
+  STEAM_ADAPTER,
   WINGET_ADAPTER,
   HOMEBREW_ADAPTER,
   SCOOP_ADAPTER,

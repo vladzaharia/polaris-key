@@ -1822,11 +1822,6 @@ msgstr "Enviar novo código em {time}"
 msgid "signin.code.resent"
 msgstr "Enviamos um novo código e link para {email}."
 
-#. That code isn't right. Check the email and try again.
-#. Email code step (SIGN-IN.md §3.4).
-msgid "signin.code.wrong"
-msgstr "Esse código não está correto. Verifique o e-mail e tente novamente."
-
 #. {n, plural, one {# try left.} other {# tries left.}}
 #. Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number.
 #. Plural on {n}.
@@ -3349,13 +3344,63 @@ msgstr "Esse método de acesso está desativado. Escolha outro."
 
 #. Email sign-in unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
-msgid "core.codes.email_not_configured.title"
+msgid "core.codes.email_unavailable.title"
 msgstr "Acesso por e-mail indisponível"
 
 #. Email sign-in isn't available right now. Choose another sign-in method.
 #. Core copy (conformance/parity/copy.en.json, codes).
-msgid "core.codes.email_not_configured.message"
+msgid "core.codes.email_unavailable.message"
 msgstr "O acesso por e-mail não está disponível agora. Escolha outro método de acesso."
+
+#. Check didn't pass
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.turnstile_failed.title"
+msgstr "Verificação não aprovada"
+
+#. The security check didn't pass. Reload the page and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.turnstile_failed.message"
+msgstr "A verificação de segurança não foi aprovada. Recarregue a página e tente de novo."
+
+#. Sign-in expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.signin_expired.title"
+msgstr "Acesso expirado"
+
+#. This sign-in has expired. Start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.signin_expired.message"
+msgstr "Este acesso expirou. Comece de novo."
+
+#. Wrong code
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_code.title"
+msgstr "Código incorreto"
+
+#. That code isn't right. Check the email and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_code.message"
+msgstr "Esse código não funcionou. Confira o e-mail e digite de novo."
+
+#. Email already in use
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.email_in_use.title"
+msgstr "E-mail já em uso"
+
+#. Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.email_in_use.message"
+msgstr "Outra conta do Polaris Key já usa este e-mail. Junte este acesso a essa conta ou use outro e-mail."
+
+#. Terms not accepted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.terms_required.title"
+msgstr "Termos não aceitos"
+
+#. Agree to the terms to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.terms_required.message"
+msgstr "Aceite os termos para continuar."
 
 #. License in another account
 #. Core copy (conformance/parity/copy.en.json, codes).

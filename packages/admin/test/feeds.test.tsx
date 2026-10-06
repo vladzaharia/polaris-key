@@ -357,6 +357,22 @@ describe("registry auth (F-21)", () => {
   });
 });
 
+describe("capabilities through the shared badge (A-18j)", () => {
+  it("the yank policy's version states render with the storefront tiles' CapabilityBadge", async () => {
+    boot("#/p/djdl/distribution/feeds/npm/settings", {
+      extra: { ...feedRoutes(), ...product(true) },
+    });
+    const form = await within(await mainReady()).findByRole("form", {
+      name: "Yank policy",
+    });
+    const strip = within(form).getByRole("list", { name: "Version states" });
+    const badges = strip.querySelectorAll("[data-capability]");
+    expect(badges.length).toBe(2);
+    expect(strip.textContent).toContain("Yank");
+    expect(strip.textContent).toContain("Deprecate");
+  });
+});
+
 describe("the Feeds overview", () => {
   it("platform scope: every feed with status, counts, access and registry URL, the owners, no caveats", async () => {
     boot("#/platform/feeds", { extra: feedRoutes() });

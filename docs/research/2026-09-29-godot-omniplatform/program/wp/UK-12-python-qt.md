@@ -5,7 +5,7 @@
 | Phase       | UK: UI kits: one design system for every SDK (docs/design/UI-KITS.md) (must)                                                                                                              |
 | Size        | 4–5 engineer-weeks                                                                                                                                                                        |
 | Depends on  | [UK-01](UK-01-brand-kit-tokens.md), [UK-02a](UK-02a-kit-copy-catalog.md), [UK-02b](UK-02b-ui-fixtures-parity.md), [UK-15](UK-15-visual-qa-harness.md), [UK-16](UK-16-ui-docs-scaffold.md) |
-| Unblocks    | [UK-38](UK-38-python-wx-kivy.md), [UK-39](UK-39-python-web-uis.md), [UK-41](UK-41-must-tier-closeout.md)                                                                                  |
+| Unblocks    | [UK-38](UK-38-python-wx-kivy.md), [UK-39](UK-39-python-web-uis.md), [UK-41](UK-41-must-tier-closeout.md), [UK-43](UK-43-activation-holders-native.md)                                     |
 | Role        | `pkey-sdk-porter`                                                                                                                                                                         |
 | Plan mode   | no                                                                                                                                                                                        |
 | Gates       | pytest-qt `grab()` baselines (offscreen); the Qt lint equivalent; Python `pytest -q`                                                                                                      |
@@ -69,6 +69,14 @@ Python has no UI kit today and its `ui.kit` row hid the gap (GA). The owner fixe
 
 - Presentation comes only through the core's `ProductIdentity` seam from the SDK (HA-13, HA-14). This package does not depend on them: it tests the default with a fake source, and the real accessor plugs in without a kit change (UK-41 verifies it).
 - Launch locales are English plus `de`, `fr`, `es`, `pt-BR`, `it`, `ja`, `ko`, `zh-Hans`; there is no RTL locale, so no RTL baselines, but layouts stay RTL-safe.
+
+## Presentation seam ([`plans/HA-11.md`](../plans/HA-11.md), approved 2026-10-06)
+
+- **Do not define a seam.** The kit's `ProductIdentity` resolver takes the Python `polaris_key.presentation.PresentationSource` (HA-13).
+- **Before that lands.** If the SDK type has not landed when this package starts, declare a
+  structurally identical local type, `current()`, `icon(px, scale)` and change notification, and
+  replace it with the SDK's type when it lands.
+- **Fake sources.** Tests build fake sources from that type.
 
 ## Steps
 

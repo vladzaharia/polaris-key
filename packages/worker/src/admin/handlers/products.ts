@@ -29,10 +29,7 @@
  */
 
 import { Catalog } from "@polaris-key/catalog";
-import {
-  RESERVED_PRODUCT_SLUGS,
-  SYSTEM_PRODUCT_SLUG,
-} from "@polaris-key/manifest";
+import { PRODUCT_SLUG_RE, isReservedProductSlug } from "@polaris-key/manifest";
 import { parse as parseYaml } from "yaml";
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
@@ -64,11 +61,7 @@ import {
   type Sealed,
 } from "../../keyvault.js";
 import { linkRepo, MAX_MANIFEST_BYTES } from "../../services/release/sync.js";
-import {
-  checkSlug,
-  PRODUCT_ROUTE_ACTIONS,
-  prepareCreate,
-} from "../../services/release/linkRepo.js";
+import { checkSlug, prepareCreate } from "../../services/release/linkRepo.js";
 import { manifestIngestFor } from "../../core/registry.js";
 import { SERVICES } from "../../mount.js";
 import {
@@ -166,7 +159,9 @@ export async function handleProducts(
     return forbidden("platform admin required");
 
   // /api/products/kek — the platform KEK keyring. Like `link-repo` below, this is a reserved
-  // one-segment ACTION, not a product slug, and is matched before the slug lookup.
+  // one-segment ACTION, not a product slug, and is matched before the slug lookup. A new action
+  // here adds its segment to `PRODUCT_ROUTE_ACTIONS` in `@polaris-key/manifest` (P0-14), which
+  // reserves it in the manifest validator, the schema, the slug check and manual create at once.
   if (segments.length === 1 && segments[0] === "kek")
     return handleKekKeyring(req, env, db, session, now);
 
@@ -408,24 +403,19 @@ async function manualCreate(
 ): Promise<Response> {
   const body = await readBody(req);
   const slug = String(body.slug ?? "").trim();
-  if (!/^[a-z0-9-]+$/.test(slug))
-    return err(422, ErrorCode.BadRequest, "invalid slug", { fields: ["slug"] });
-  // Same list `validateManifestDocuments` enforces (reserved_slug): these are root paths the
-  // router matches before `/<product>/…`, so a product created under one would be permanently
-  // shadowed — every one of its routes unreachable. The link-repo path gets this for free via
-  // manifest validation; manual create must check explicitly. The admin API's own one-segment
-  // actions (`kek`, `link-repo`, `slug-check`) would shadow the product's console record the
-  // same way (UX-72: the slug check calls them reserved, and both create paths refuse them).
-  if (
-    RESERVED_PRODUCT_SLUGS.includes(slug) ||
-    PRODUCT_ROUTE_ACTIONS.includes(slug)
-  )
-    return err(422, ErrorCode.BadRequest, "reserved slug", {
+  // P0-14: the one product slug rule, the same `@polaris-key/manifest` helpers the manifest
+  // validator, link-repo and the slug check apply. The shape (`invalid_slug`) bounds the length
+  // and refuses a leading hyphen. The reservations (`reserved_slug`) are the root paths the
+  // router matches before `/<product>/…` (a product created under one would be permanently
+  // shadowed), the admin API's one-segment actions (`kek`, `link-repo`, `slug-check`, which
+  // would shadow its console record), and the system product, which only the package-feeds
+  // bootstrap (`ensureSystemProduct`) creates (F-03).
+  if (!PRODUCT_SLUG_RE.test(slug))
+    return err(422, ErrorCode.BadRequest, "invalid slug", {
       fields: ["slug"],
+      reason: "invalid_slug",
     });
-  // F-03: the system product is created only by the package-feeds bootstrap
-  // (`ensureSystemProduct`), never by hand.
-  if (slug === SYSTEM_PRODUCT_SLUG)
+  if (isReservedProductSlug(slug))
     return err(422, ErrorCode.BadRequest, "reserved slug", {
       fields: ["slug"],
       reason: "reserved_slug",

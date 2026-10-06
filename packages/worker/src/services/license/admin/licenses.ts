@@ -52,6 +52,11 @@ import {
   WriteChecks,
 } from "../../../core/adminApi.js";
 import { tierExpiresAt } from "../authz.js";
+import {
+  licenseDeviceLimit,
+  licenseDeviceLimitInfo,
+} from "../../../core/authz.js";
+import type { LicenseRow } from "../../../core/data.js";
 import type { LicenseAdminContext } from "./index.js";
 import { handleKeys } from "./keys.js";
 import { handleAdminDevices } from "./devices.js";
@@ -86,7 +91,51 @@ function licenseWriteChecks(body: Record<string, unknown>): Response | null {
     .semver("minVersion", body.minVersion)
     .semver("maxVersion", body.maxVersion)
     .offlineDays("maxOfflineDays", body.maxOfflineDays)
+    .wireInteger("deviceLimit", body.deviceLimit)
     .response();
+}
+
+/**
+ * LX-14a: a licence's own `deviceLimit` is a positive integer, or `null` to inherit; absent keeps
+ * it. Anything else (zero, a fraction, a string) is refused rather than silently ignored, the
+ * same rule `invalidDeviceLimit` applies to a tier and 0084's CHECK applies at the database.
+ */
+function invalidLicenseDeviceLimit(body: Record<string, unknown>): boolean {
+  if (!("deviceLimit" in body) || body.deviceLimit === null) return false;
+  const v = body.deviceLimit;
+  return typeof v !== "number" || !Number.isInteger(v) || v <= 0;
+}
+
+/** The device-limit fields every licence read carries (LX-14a): the stored value, the limit
+ *  `authorizeDevice` enforces and where it comes from, and the inherited value the console's
+ *  **Device limit…** sheet offers as its placeholder. */
+async function deviceLimitView(
+  ctx: LicenseAdminContext,
+  license: LicenseRow,
+): Promise<Record<string, unknown>> {
+  const info = await licenseDeviceLimitInfo(
+    ctx.db,
+    ctx.product,
+    license,
+    ctx.now,
+  );
+  return {
+    deviceLimit: license.device_limit ?? null,
+    effectiveDeviceLimit: info.limit,
+    deviceLimitSource: info.source,
+    inheritedDeviceLimit: info.inherited.limit,
+    inheritedDeviceLimitSource: info.inherited.source,
+  };
+}
+
+async function summarize(
+  ctx: LicenseAdminContext,
+  license: LicenseRow,
+): Promise<Record<string, unknown>> {
+  return {
+    ...(await licenseSummary(ctx.db, ctx.product.slug, license)),
+    ...(await deviceLimitView(ctx, license)),
+  };
 }
 
 async function validateRefs(
@@ -123,7 +172,7 @@ export async function handleLicenses(
       const verdicts = await deletionVerdicts(ctx, rows);
       const licenses = await Promise.all(
         rows.map(async (r) => ({
-          ...(await licenseSummary(db, slug, r)),
+          ...(await summarize(ctx, r)),
           deletion: verdicts.get(r.id),
         })),
       );
@@ -133,6 +182,15 @@ export async function handleLicenses(
       const body = await readBody(req);
       const refused = licenseWriteChecks(body);
       if (refused) return refused;
+      // LX-14a: a new licence inherits its device limit; its own is set afterwards with PATCH
+      // (audited as `license.device_limit.set`). Refused rather than silently dropped.
+      if ("deviceLimit" in body)
+        return err(
+          422,
+          ErrorCode.BadRequest,
+          "deviceLimit cannot be set when creating a license; create it, then PATCH deviceLimit",
+          { fields: ["deviceLimit"] },
+        );
       const licenseId = randomId("lic");
       const profiles = parseProfiles(body);
       const badRefs = await validateRefs(db, slug, {
@@ -211,7 +269,7 @@ export async function handleLicenses(
         {
           licenseId,
           key,
-          license: row ? await licenseSummary(db, slug, row) : null,
+          license: row ? await summarize(ctx, row) : null,
         },
         201,
       );
@@ -231,12 +289,20 @@ export async function handleLicenses(
       const profiles = await listLicenseProfiles(db, slug, id);
       const overrides = parsePayload(license.overrides_json);
       return adminJson({
-        ...(await licenseSummary(db, slug, license)),
+        ...(await summarize(ctx, license)),
         deletion: (await deletionVerdicts(ctx, [license])).get(id),
         // R11-06: guarded reads — a corrupt column degrades to empty/undefined, never a 500.
         groups: parseJsonList(license.groups_json),
         profiles: profiles.map((p) => p.profile_id),
         maxOfflineDays: license.max_offline_days,
+        // LX-14a: the seat-holding devices with the dormancy cutoff `authorizeDevice` and the
+        // PATCH's `overLimit` apply, so the console's Device limit… warning predicts the same.
+        seatDeviceCount: await countActiveDevices(
+          db,
+          slug,
+          id,
+          seatActiveSince(now),
+        ),
         overrides: redactPayload(overrides, catalog),
         keys: keys.map((k) => ({
           hash: k.key_hash,
@@ -272,6 +338,13 @@ export async function handleLicenses(
       const body = await readBody(req);
       const refused = licenseWriteChecks(body);
       if (refused) return refused;
+      if (invalidLicenseDeviceLimit(body))
+        return err(
+          422,
+          ErrorCode.BadRequest,
+          "deviceLimit must be a positive integer or null",
+          { fields: ["deviceLimit"] },
+        );
       const profiles = parseProfiles(body);
       const badRefs = await validateRefs(db, slug, {
         tier: body.tier,
@@ -286,6 +359,14 @@ export async function handleLicenses(
       // recording old → new rather than being buried in a generic "Updated license".
       const changedTier =
         "tier" in body && (body.tier ?? null) !== license.tier_id;
+      // LX-14a: the licence's own device limit, audited old → new like a tier change.
+      const nextDeviceLimit =
+        "deviceLimit" in body
+          ? ((body.deviceLimit as number | null) ?? null)
+          : undefined;
+      const changedDeviceLimit =
+        nextDeviceLimit !== undefined &&
+        nextDeviceLimit !== (license.device_limit ?? null);
 
       // R3-06: re-derive the expiry from the NEW tier whenever the tier moves and the operator
       // did not state an expiry explicitly. Without this, trial→paid kept the trial's
@@ -341,6 +422,7 @@ export async function handleLicenses(
               : typeof body.maxVersion === "string"
                 ? body.maxVersion
                 : undefined,
+          device_limit: nextDeviceLimit,
         },
         session.sub,
         now,
@@ -361,6 +443,19 @@ export async function handleLicenses(
           }`,
         );
       }
+      if (changedDeviceLimit) {
+        await audit(
+          db,
+          slug,
+          session,
+          now,
+          "license.device_limit.set",
+          { kind: "license", id },
+          `Set device limit for ${id}: ${license.device_limit ?? "inherit"} → ${
+            nextDeviceLimit ?? "inherit"
+          }`,
+        );
+      }
       await audit(
         db,
         slug,
@@ -371,20 +466,19 @@ export async function handleLicenses(
         `Updated license ${id}`,
       );
 
-      // Downgrading below the active device count doesn't evict anyone: authorizeDevice only
-      // checks the limit on a NEW authorization, so existing devices are grandfathered and
+      // Lowering the limit below the active device count doesn't evict anyone: authorizeDevice
+      // only checks the limit on a NEW authorization, so existing devices are grandfathered and
       // new ones are refused until the count drops. Report both numbers so the UI can say so
-      // rather than leaving the operator to discover it.
+      // rather than leaving the operator to discover it. Whatever moved (the tier or the
+      // licence's own limit), the number compared is the EFFECTIVE limit the next activation
+      // will meet (LX-14a), not just the tier's.
       let overLimit: { deviceCount: number; deviceLimit: number } | undefined;
-      if (changedTier) {
-        const nextTierId = (body.tier as string | null) ?? null;
-        const nextTier = nextTierId
-          ? await listTiers(db, slug).then((ts) =>
-              ts.find((t) => t.id === nextTierId),
-            )
-          : undefined;
-        const limit = nextTier?.policy_device_limit;
-        if (typeof limit === "number" && limit > 0) {
+      if (changedTier || changedDeviceLimit) {
+        const updated = await getLicense(db, slug, id);
+        const limit = updated
+          ? await licenseDeviceLimit(db, product, updated, now)
+          : 0;
+        if (limit > 0) {
           // Counted with the SAME dormancy cutoff `authorizeDevice` applies: this warning
           // exists to predict activation outcomes, and a seat the check would reclaim is
           // not one the operator needs warning about.

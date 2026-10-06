@@ -240,6 +240,22 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     },
   },
   {
+    thing:
+      "The login card's platform sign-in clients (Google client id, Apple Services ID, team and key id) and the Turnstile site key",
+    reason:
+      "Deploy-time platform identity configuration (I-06, I-07): each pairs with a sealed secret set from the RUNBOOK, and the site key is public by design.",
+    shows: "Platform → Settings (the read-only inventory)",
+    covers: {
+      ids: [
+        "env:SIGNIN_GOOGLE_CLIENT_ID",
+        "env:SIGNIN_APPLE_SERVICES_ID",
+        "env:SIGNIN_APPLE_TEAM_ID",
+        "env:SIGNIN_APPLE_KEY_ID",
+        "env:TURNSTILE_SITE_KEY",
+      ],
+    },
+  },
+  {
     thing: "Key-encryption key identity (active key id and flag)",
     reason:
       "Key material (the AT-2 deny-list); rotated by the keyring runbook.",

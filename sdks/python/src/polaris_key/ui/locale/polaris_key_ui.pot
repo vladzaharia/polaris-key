@@ -1816,11 +1816,6 @@ msgstr ""
 msgid "signin.code.resent"
 msgstr ""
 
-#. That code isn't right. Check the email and try again.
-#. Email code step (SIGN-IN.md §3.4).
-msgid "signin.code.wrong"
-msgstr ""
-
 #. {n, plural, one {# try left.} other {# tries left.}}
 #. Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number.
 #. Plural on {n}.
@@ -3338,12 +3333,62 @@ msgstr ""
 
 #. Email sign-in unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
-msgid "core.codes.email_not_configured.title"
+msgid "core.codes.email_unavailable.title"
 msgstr ""
 
 #. Email sign-in isn't available right now. Choose another sign-in method.
 #. Core copy (conformance/parity/copy.en.json, codes).
-msgid "core.codes.email_not_configured.message"
+msgid "core.codes.email_unavailable.message"
+msgstr ""
+
+#. Check didn't pass
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.turnstile_failed.title"
+msgstr ""
+
+#. The security check didn't pass. Reload the page and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.turnstile_failed.message"
+msgstr ""
+
+#. Sign-in expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.signin_expired.title"
+msgstr ""
+
+#. This sign-in has expired. Start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.signin_expired.message"
+msgstr ""
+
+#. Wrong code
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_code.title"
+msgstr ""
+
+#. That code isn't right. Check the email and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_code.message"
+msgstr ""
+
+#. Email already in use
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.email_in_use.title"
+msgstr ""
+
+#. Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.email_in_use.message"
+msgstr ""
+
+#. Terms not accepted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.terms_required.title"
+msgstr ""
+
+#. Agree to the terms to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.terms_required.message"
 msgstr ""
 
 #. License in another account

@@ -39,6 +39,7 @@ import {
   Fingerprint,
   FlaskConical,
   Gauge,
+  Globe,
   Grid3x3,
   HeartPulse,
   House,
@@ -64,11 +65,13 @@ import {
   Settings,
   ShieldCheck,
   ShoppingBag,
+  SquarePen,
   SlidersHorizontal,
   Stamp,
   Store,
   TrendingUp,
   UserRound,
+  UsersRound,
   Waypoints,
   type LucideIcon,
 } from "lucide-react";
@@ -103,6 +106,7 @@ export type ProductPageId =
   | "overview"
   | "services"
   | "devices"
+  | "users"
   | "keys"
   | "activity"
   | "settings"
@@ -126,6 +130,8 @@ export type ProductPageId =
   | "matrix"
   | "rollouts"
   | "outlets"
+  | "storefronts"
+  | "listing"
   | "app-store"
   | "commerce"
   | "access"
@@ -258,6 +264,23 @@ export const SECTIONS: NavSection[] = [
         ready: true,
         // The routed device drawer (`devices/:deviceId`).
         record: { noun: "Device", ready: true },
+      },
+      {
+        // I-12: every product has users (its licence owners), whatever its Identity toggle.
+        page: "users",
+        label: "Users",
+        path: "users",
+        icon: UsersRound,
+        docs: "/docs/admin/users/",
+        inNav: true,
+        ready: true,
+        // `users/:subject[/:tab]`. `data` is reserved for the Cloud Sync Data tab (U-11a): the
+        // record shows it only while Cloud Sync is on, and answers a deep link with Overview.
+        record: {
+          noun: "User",
+          tabs: ["overview", "licenses", "devices", "activity", "data"],
+          ready: true,
+        },
       },
       {
         page: "keys",
@@ -496,6 +519,28 @@ export const SECTIONS: NavSection[] = [
         path: "distribution/outlets",
         icon: Store,
         docs: "/docs/services/distribution/feeds/",
+        inNav: true,
+        ready: true,
+      },
+      {
+        // A-18j: every storefront's tile, and "Add to storefronts" (T6, resumable from the
+        // ledger) that provisions the product onto them.
+        page: "storefronts",
+        label: "Storefronts",
+        path: "distribution/storefronts",
+        icon: Globe,
+        docs: "/docs/admin/storefronts/",
+        inNav: true,
+        ready: true,
+      },
+      {
+        // A-18j: the shared listing model (T3): locales, fit report, slot board, release notes,
+        // and "Push listing" per store.
+        page: "listing",
+        label: "Listing",
+        path: "distribution/listing",
+        icon: SquarePen,
+        docs: "/docs/admin/storefront-listing/",
         inNav: true,
         ready: true,
       },

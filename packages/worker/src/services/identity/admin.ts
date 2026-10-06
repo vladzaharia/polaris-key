@@ -21,7 +21,14 @@
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
 import type { AdminSession } from "../../core/adminApi.js";
-import { adminJson, audit, err, readBody } from "../../core/adminApi.js";
+import {
+  adminJson,
+  adminNotFound,
+  audit,
+  err,
+  readBody,
+} from "../../core/adminApi.js";
+import { patchSignInSettings, signInSettingsView } from "./signInSettings.js";
 import {
   getPortalProductSettings,
   portalProductSettingsView,
@@ -32,8 +39,59 @@ export async function handleIdentityAdmin(
   ctx: ServiceContext & { session: AdminSession },
 ): Promise<Response | null> {
   const { rest } = ctx;
-  if (rest.length !== 1 || rest[0] !== "portal") return null;
-  return handlePortalSettings(ctx);
+  if (rest.length !== 1) return null;
+  if (rest[0] === "portal") return handlePortalSettings(ctx);
+  if (rest[0] === "sign-in-settings") return handleSignInSettings(ctx);
+  return null;
+}
+
+/** What the console says when a sign-in setting is refused. */
+const SIGN_IN_REFUSAL_COPY: Record<string, string> = {
+  type: "That value has the wrong type.",
+  empty: "Enter a name, or clear it to use the product's name.",
+  too_long: "Use 40 characters or fewer.",
+  forbidden_character: "Remove control characters, quotes and angle brackets.",
+  reserved: "That name is reserved. Choose your app's own name.",
+};
+
+/**
+ * `GET|PATCH …/identity/sign-in-settings` (I-12): the settings of sign-in THROUGH this product,
+ * which exist only while its Identity toggle is on (S-16 §5.2). With Identity off the route is
+ * absent (404), like every other product-scoped identity surface; the platform-level Users page
+ * stays reachable either way.
+ */
+async function handleSignInSettings(
+  ctx: ServiceContext & { session: AdminSession },
+): Promise<Response> {
+  const { req, db, product, session, now } = ctx;
+  if (product.services.identity?.enabled !== true) return adminNotFound();
+  const ref = { slug: product.slug, name: product.name };
+  if (req.method === "GET") {
+    return adminJson({ settings: await signInSettingsView(db, ref) });
+  }
+  if (req.method !== "PATCH")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const body = await readBody(req);
+  const result = await patchSignInSettings(db, ref, body, now);
+  if (!result.ok) {
+    const first = result.fields[0]!;
+    return err(422, ErrorCode.BadRequest, SIGN_IN_REFUSAL_COPY[first.reason], {
+      fields: result.fields.map((f) => f.field),
+      reasons: Object.fromEntries(
+        result.fields.map((f) => [f.field, f.reason]),
+      ),
+    });
+  }
+  await audit(
+    db,
+    product.slug,
+    session,
+    now,
+    "identity.signin.settings.update",
+    { kind: "product", id: product.slug },
+    `Updated sign-in settings for ${product.slug}`,
+  );
+  return adminJson({ ok: true, settings: result.view });
 }
 
 async function handlePortalSettings(

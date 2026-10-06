@@ -27,6 +27,17 @@
 >   rotation is needed (PX-W17 Q3). Cloud Sync requires Identity (PX-W17 Q4, I-04 §0, S-17).
 >   Subjects exist for every product, and product users only for Identity products (PX-W17 Q5).
 
+> **Floating keys and licence origins (S-24, 2026-10-06).** [notes/S-24](../research/2026-09-29-godot-omniplatform/notes/S-24-licence-holders.md) §10 amends §4.17 to §4.20 and
+> §4.26: adding a **floating** key (a licence in no account) that is already on devices says so on
+> Confirm ("It's on 2 devices already. They keep working and come with it.") and on Done ("Its 2
+> devices came with it. Sign in on them to turn on Cloud Sync.", the second sentence only with Cloud
+> Sync); the licence card's origin reads "Key ending 3WPLDA" for a key the person added, "<Store> key
+> ending 3WPLDA" for a store key and **"From <Developer>"** for a licence a developer assigned (even
+> though it has a key); **Remove from my library** adds "It becomes a floating license: anyone with
+> the key can add it, and it won't come back to this account by itself." Package PX-23; frames
+> [licenses/80](licenses/shots/80-portal-add-floating-desktop-dark.png) and
+> [81](licenses/shots/81-portal-license-card-desktop-dark.png).
+
 > **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** It is the single source of
 > truth for every sign-in step: the login card's steps, license choice and **Replace a device**, the
 > key on-ramp, device approval, the Worker pages, the emails and the kits. It **supersedes this
@@ -449,7 +460,7 @@ that returns to the full method list for this context.
   itself." **True by construction**: the page re-checks `GET /api/me` on `focus` and
   `visibilitychange`, and every 5 s for 10 minutes while visible (ADMIN.md POR-1), and listens on a
   `BroadcastChannel` that the link-verify page posts to.
-- **States:** wrong code ("That code didn't work. 3 tries left."); expired; too many tries;
+- **States:** wrong code ("That code isn't right. Check the email and try again." with "2 tries left." once two or fewer remain, SIGN-IN.md §3.4); expired; too many tries;
   resend countdown, then **Resend**.
 
 ### 4.5 Use a license key
@@ -722,7 +733,8 @@ page.
 2. **Confirm:** the product's key art across the top of the modal, the icon overlapping it, "Key
    recognised · Mossgarden · Little Fern", `h2` **Add Mossgarden to your account?**, the tier tag,
    the terms ("Lifetime · up to 5 devices") and platforms, the key echoed with **Change key**, and
-   **Back** / **Add Mossgarden**.
+   **Back** / **Add Mossgarden**. A floating key already on devices adds "It's on {n} devices
+   already. They keep working and come with it." (S-24 §10).
 3. **Done:** the art with **In your library**, "Mossgarden is in your library · Download it, see
    your license and manage devices on its page. You won't need the key again.", **Activate another**
    and **Open Mossgarden** (the product page; focus lands on its `h1`).
@@ -1408,6 +1420,12 @@ Notes:
   identity card and Cloud Sync (which requires Identity, S-17 owner's final answers, 1) depend on it.
 - **Rule 6.** Identity (where the portal lives) may not import Distribution, Update or License
   internals. G2, G4, G8, G24 and G25 go through descriptor hooks in `src/core/hooks.ts`.
+- **G29 as built (PX-W14).** Four routes, not three: `POST /api/device-login/lookup {code}` shows
+  the approver what is asking before deciding, and `approve` takes an explicit
+  `decision: approve|deny`. Codes are RFC 8628 consonants (`WDJB-MJHT`), 5 minutes, single use;
+  the poll answers `410 expired` unless it carries the starting browser's binding cookie; step-up is
+  a sign-in no older than 5 minutes, required when the asking device's country differs from the
+  approver's or either is unknown.
 - **G2 and G4 as built (PX-W2).** `GET /api/products/:p/downloads[?channel=]` reads Distribution's
   `customerDownloads` hook (account-free: files per platform and release, recommended picks, store
   links) and Core's `detectPlatform` (moved from `page/detect.ts` to `core/platformDetect.ts`), then

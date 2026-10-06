@@ -13,6 +13,7 @@
  *      endpoints, `deliveryUrl`, the portal's bytes-origin redirect, and the 0038 backfill.
  */
 
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -407,8 +408,9 @@ describe("an operator's `entitled` in dist_access gates every surface the same w
       NOW,
     );
     await linkLicense(w.db, account.id, SLUG, licenseId, "license-key", NOW);
-    const { token, session } = await issuePortalSession(
+    const { token, session } = await issuePortalSessionRow(
       w.env,
+      w.db,
       {
         accountId: account.id,
         email: account.primary_email,
@@ -965,8 +967,9 @@ describe("dist_access", () => {
       "SELECT artifact_id FROM release_artifacts WHERE product = ? AND release_id = 'v1.1.0' AND name = 'djdl-arm64'",
       SLUG,
     ))!.artifact_id;
-    const { token, session } = await issuePortalSession(
+    const { token, session } = await issuePortalSessionRow(
       w.env,
+      w.db,
       {
         accountId: account.id,
         email: account.primary_email,

@@ -182,6 +182,15 @@ export async function mergeAccounts(
       sql: "UPDATE registry_tokens SET portal_account_id = ? WHERE portal_account_id = ?",
       params: [S, A],
     },
+    // I-12: a relink's undo moves the licence back to the account it came from, which is now S.
+    {
+      sql: "UPDATE license_relinks SET from_account_id = ? WHERE from_account_id = ?",
+      params: [S, A],
+    },
+    {
+      sql: "UPDATE license_relinks SET to_account_id = ? WHERE to_account_id = ?",
+      params: [S, A],
+    },
     // Personal details fill in where the survivor has none.
     {
       sql: `UPDATE accounts SET

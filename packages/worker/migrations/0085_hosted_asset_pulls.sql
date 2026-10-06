@@ -1,4 +1,4 @@
--- HA-05 (notes/S-20 §6.3, §6.4): pull on register and resync. The lead assigns the number at merge.
+-- HA-05 (notes/S-20 §6.3, §6.4): pull on register and resync.
 --
 -- Five columns on `hosted_assets` (0078) that let a manifest pull run off the request path, on
 -- the queue `pkey-assets-<env>` (`core/hostedAssetPulls.ts`):

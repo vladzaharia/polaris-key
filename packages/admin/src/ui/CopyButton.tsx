@@ -91,7 +91,8 @@ export function CopyButton({
     onCopy?.(ok);
   };
 
-  const icon = state === "copied" ? <Check /> : <Copy />;
+  // The swap to "Copied" pops (src/motion.css `.pk-pop-in`): the check mounts fresh each time.
+  const icon = state === "copied" ? <Check className="pk-pop-in" /> : <Copy />;
   return (
     <span className={cn("inline-flex items-center gap-2", className)}>
       {showLabel ? (
@@ -102,7 +103,11 @@ export function CopyButton({
           aria-label={label}
           onClick={() => void run()}
         >
-          {state === "copied" ? "Copied" : "Copy"}
+          {state === "copied" ? (
+            <span className="pk-pop-in inline-block">Copied</span>
+          ) : (
+            "Copy"
+          )}
         </Button>
       ) : (
         <IconButton

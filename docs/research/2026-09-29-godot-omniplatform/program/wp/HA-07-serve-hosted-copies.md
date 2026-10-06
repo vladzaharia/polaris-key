@@ -4,7 +4,7 @@
 | ----------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 3: serve)                                         |
 | Size        | 1–1.5 engineer-weeks                                                                                                      |
-| Depends on  | [HA-02](HA-02-media-host.md), [HA-03](HA-03-image-variants.md), [HA-05](HA-05-pull-on-sync.md)                            |
+| Depends on  | [HA-02](HA-02-img-host.md), [HA-03](HA-03-image-variants.md), [HA-05](HA-05-pull-on-sync.md)                              |
 | Unblocks    | [HA-12](HA-12-presentation-discovery.md), [HA-15](HA-15-hosted-assets-closeout.md), [HA-16](HA-16-release-note-images.md) |
 | Role        | `pkey-implementer`                                                                                                        |
 | Plan mode   | no                                                                                                                        |
@@ -14,7 +14,7 @@
 
 ## Goal
 
-No Polaris Key surface fetches or hands out a developer's URL any more. The portal, the Discover tiles, the AltStore and SideStore sources and the download page all use media-host URLs for hosted slots. The old portal proxy route 302s. Manifest art reaches the store pushers as `source = 'manifest'` listing rows. Listing and hosted art is no longer reachable through the app-side `blobs` route.
+No Polaris Key surface fetches or hands out a developer's URL any more. The portal, the Discover tiles, the AltStore and SideStore sources and the download page all use image-host URLs for hosted slots. The old portal proxy route 302s. Manifest art reaches the store pushers as `source = 'manifest'` listing rows. Listing and hosted art is no longer reachable through the app-side `blobs` route.
 
 ## Why
 
@@ -31,7 +31,7 @@ It turns the stored copies into the owner's outcome, and makes the THREAT-MODEL 
 
 **In:**
 
-- `presentationFor` returns media-host URLs, with a variant chosen per surface. SPA `mediaUrl` accepts the media origin. `APP_CSP` `img-src` adds `MEDIA_ORIGIN`. Update the portal e2e test.
+- `presentationFor` returns image-host URLs, with a variant chosen per surface. SPA `mediaUrl` accepts the media origin. `APP_CSP` `img-src` adds `IMG_ORIGIN`. Update the portal e2e test.
 - `/media/<p>/{icon,header}` 302 to the stable alias. The GitHub-only fetch is removed.
 - AltStore and SideStore `iconURL`, `headerURL` and `screenshots` use hosted copies when `ready`, else the manifest URL (today's behaviour). Update the feed goldens.
 - Download page shows the icon. `inertDocumentPolicy` `img-src` adds the media origin.

@@ -97,11 +97,28 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/license/document` | license | The signed license document (pkey-license+jws) |
 | POST | `/{product}/license/enroll` | license | Keyless enrollment (auto-issue policy) |
 | POST | `/{product}/license/token` | license | Rotate/re-acquire the device token |
+| GET | `/api/device-login/{requestId}` | portal | Wait for the other device to approve this one |
+| POST | `/api/device-login/approve` | portal | Approve or deny a device asking to sign in |
+| POST | `/api/device-login/lookup` | portal | See what is asking to sign in, before deciding |
+| POST | `/api/device-login/start` | portal | Ask to sign in on this device by approving it from another one |
 | POST | `/api/discover/{product}/claim` | portal | Add a Discover product to the library |
 | GET | `/api/discover` | portal | The products the signed-in account could add for free |
 | GET | `/api/library` | portal | The signed-in account's library |
 | GET | `/api/products/{product}` | portal | One product in the signed-in account's library |
+| DELETE | `/api/sessions/{sessionId}` | portal | End one of the account's sessions |
+| POST | `/api/sessions/sign-out-everywhere` | portal | End every session of the account, this one included |
+| GET | `/api/sessions` | portal | The account's live sessions |
+| POST | `/api/signin/confirm-email/cancel` | portal | Abandon the sign-in |
+| POST | `/api/signin/confirm-email/join` | portal | Take the join offer, with proof of both identities |
+| GET | `/api/signin/confirm-email/picture` | portal | The provider's picture, proxied for the gate |
+| POST | `/api/signin/confirm-email/verify` | portal | The code for a typed or unverified address |
+| GET | `/api/signin/confirm-email` | portal | The email gate's state (the required first-provider-sign-in interstitial) |
+| POST | `/api/signin/confirm-email` | portal | Confirm the provider's email or a typed one (and accept terms) |
+| POST | `/api/signin/email/start` | portal | Identifier-first email start (a code and a magic link) |
+| POST | `/api/signin/email/verify` | portal | Redeem the emailed code in the browser that asked |
+| POST | `/api/signin/flow` | portal | The asking browser's poll after the link was confirmed elsewhere |
 | GET | `/media/{product}/{asset}` | portal | A product's listing art, served same-origin |
+| GET | `/media/avatar/{key}` | portal | A copied provider picture, served same-origin |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |
 | GET | `https://pkg.plrs.im/cargo/{owner}/{prefix1}/{prefix2}/{name}` | registry | Cargo sparse-index file, a longer name under `<characters 1-2>/<characters 3-4>/` (registry host only) |

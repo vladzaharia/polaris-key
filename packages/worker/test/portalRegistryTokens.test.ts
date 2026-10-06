@@ -4,6 +4,7 @@
  * feed that is not public, and the tokens die with the portal account.
  */
 
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { beforeEach, describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -102,8 +103,9 @@ beforeEach(async () => {
   ({ licenseId } = await seedLicenseWithKey(db, SLUG));
   const account = await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
   await linkLicense(db, account.id, SLUG, licenseId, "admin", NOW);
-  const { token, session } = await issuePortalSession(
+  const { token, session } = await issuePortalSessionRow(
     env,
+    db,
     {
       accountId: account.id,
       email: account.primary_email,

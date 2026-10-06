@@ -157,8 +157,12 @@ describe("useTableUrlState with a DataTable", () => {
     );
     const rows = screen.getAllByRole("row").slice(1);
     expect(rows[0]!.textContent).toContain("Booth A");
-    expect(
-      (screen.getByPlaceholderText("Search holders") as HTMLInputElement).value,
-    ).toBe("booth");
+    // The search box syncs from the hash in its own render; wait for it rather than racing it.
+    await waitFor(() =>
+      expect(
+        (screen.getByPlaceholderText("Search holders") as HTMLInputElement)
+          .value,
+      ).toBe("booth"),
+    );
   });
 });

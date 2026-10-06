@@ -119,6 +119,7 @@ import {
   formatFailure,
   type CredentialCheck,
 } from "../../services/distribution/connectors/credentialCheck.js";
+import { storefrontAdapter } from "../../core/storefront/adapter.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
 import {
@@ -292,6 +293,9 @@ async function storeView(env: Env, db: Db, store: PlatformStore) {
     credentials,
     settings: await platformStoreSettingsView(env, db, store),
     appsListing: LISTERS[store] !== undefined,
+    // A-18j: Store connections' "Set up" opens the product's storefront flow for this store; only
+    // a store with a registered storefront adapter has one.
+    storefront: storefrontAdapter(store) !== null,
     assignments: [...assignments.entries()]
       .sort(([x], [y]) => x.localeCompare(y))
       .map(([product, pins]) => ({ product, pins })),

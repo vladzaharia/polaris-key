@@ -4,7 +4,7 @@
 | ----------- | --------------------------------------------------------------------------------------------- |
 | Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 2: ingest)            |
 | Size        | 1–1.5 engineer-weeks                                                                          |
-| Depends on  | [HA-02](HA-02-media-host.md), [HA-05](HA-05-pull-on-sync.md)                                  |
+| Depends on  | [HA-02](HA-02-img-host.md), [HA-05](HA-05-pull-on-sync.md)                                    |
 | Unblocks    | [HA-17](HA-17-store-video-slots.md)                                                           |
 | Role        | `pkey-implementer`                                                                            |
 | Plan mode   | no                                                                                            |

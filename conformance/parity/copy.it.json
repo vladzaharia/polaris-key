@@ -137,9 +137,29 @@
       "title": "Metodo di accesso non disponibile",
       "message": "Questo metodo di accesso è disattivato. Scegline un altro."
     },
-    "email_not_configured": {
+    "email_unavailable": {
       "title": "Accesso via email non disponibile",
       "message": "L'accesso via email non è disponibile al momento. Scegli un altro metodo di accesso."
+    },
+    "turnstile_failed": {
+      "title": "Verifica non superata",
+      "message": "La verifica di sicurezza non è stata superata. Ricarica la pagina e riprova."
+    },
+    "signin_expired": {
+      "title": "Accesso scaduto",
+      "message": "Questo accesso è scaduto. Ricomincia."
+    },
+    "invalid_code": {
+      "title": "Codice errato",
+      "message": "Quel codice non ha funzionato. Controlla l'email e digitalo di nuovo."
+    },
+    "email_in_use": {
+      "title": "Email già in uso",
+      "message": "Un altro account Polaris Key usa già questa email. Unisci questo accesso a quell'account oppure usa un'altra email."
+    },
+    "terms_required": {
+      "title": "Condizioni non accettate",
+      "message": "Accetta le condizioni per continuare."
     },
     "license_owned": {
       "title": "Licenza in un altro account",

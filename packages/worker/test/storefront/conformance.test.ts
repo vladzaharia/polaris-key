@@ -95,6 +95,7 @@ import {
 import { fitListing } from "../../src/core/storefront/listing.js";
 import {
   budgetAllows,
+  type BudgetMeter,
   pollBudget,
   readRate,
   storeMeter,
@@ -131,6 +132,7 @@ import {
   poll as playPoll,
   SLUG as PLAY_SLUG,
 } from "../playWorld.js";
+import { SteamClient } from "../../src/core/steam/client.js";
 import {
   FEED_ADAPTERS,
   feedCapabilityView,
@@ -168,6 +170,13 @@ const SPEC_FIXTURES: Partial<Record<StorefrontId, SpecFixture>> = {
   "microsoft-store": JSON.parse(
     readFileSync(
       join(HERE, "..", "fixtures", "msstore", "operations.json"),
+      "utf8",
+    ),
+  ) as SpecFixture,
+  // A-18g: the hand-written Steamworks Web API write list (no machine-readable spec exists).
+  steam: JSON.parse(
+    readFileSync(
+      join(HERE, "..", "fixtures", "steam", "webapi-writes.json"),
       "utf8",
     ),
   ) as SpecFixture,
@@ -251,6 +260,71 @@ const CLIENTS: Partial<Record<StorefrontId, () => CountingClient>> = {
     });
     return c;
   },
+  steam: () => {
+    const c: CountingClient = {
+      tokens: 0,
+      sends: 0,
+      request: (method, path, body) =>
+        client.request(
+          method as "POST",
+          path,
+          (body ?? {}) as Record<string, string>,
+        ),
+    };
+    const client = new SteamClient({
+      key: async () => {
+        c.tokens++;
+        return "k";
+      },
+      fetchImpl: async () => {
+        c.sends++;
+        return new Response("{}", { status: 200 });
+      },
+    });
+    return c;
+  },
+};
+
+/**
+ * A client per adapter whose rate declares `stopOn403`, wired to a real meter and to a vendor that
+ * answers every send with 403 (conformance item 8: the first 403 stops every later call).
+ */
+const STOP_ON_403_CLIENTS: Partial<
+  Record<StorefrontId, (meter: BudgetMeter) => CountingClient>
+> = {
+  steam: (meter) => {
+    const c: CountingClient = {
+      tokens: 0,
+      sends: 0,
+      request: (method, path, body) =>
+        client.request(
+          method as "GET",
+          path,
+          (body ?? {}) as Record<string, string>,
+        ),
+    };
+    const client = new SteamClient({
+      key: async () => {
+        c.tokens++;
+        return "k";
+      },
+      budget: {
+        stopped: async () => (await meter.read(NOW))?.stopped === true,
+        spend: () => meter.spend(NOW),
+        stop: () => meter.stop(NOW),
+      },
+      fetchImpl: async () => {
+        c.sends++;
+        return new Response("{}", { status: 403 });
+      },
+    });
+    return c;
+  },
+};
+
+/** One read each `stopOn403` adapter's gate admits (the 403 probe). */
+const STOP_ON_403_READ: Partial<Record<StorefrontId, string>> = {
+  steam: "/ISteamApps/GetPartnerAppListForWebAPIKey/v2/",
 };
 
 /** A typed write per op, with whatever else the rule needs asserted (never the confirmation). */
@@ -987,6 +1061,31 @@ for (const a of STOREFRONT_ADAPTERS) {
         const stopped = await readRate(env, a.id, "", k, NOW + 1);
         expect(budgetAllows(stopped, "operator")).toBe(false);
         expect(await readRate(env, a.id, "", k, NOW + 31)).toBeNull();
+      });
+
+      it("a store that rate-limits on 403 stops every later call at the first one, before a key is opened", async () => {
+        if (!a.capabilities.rate.stopOn403) return;
+        const make = STOP_ON_403_CLIENTS[a.id];
+        const read = STOP_ON_403_READ[a.id];
+        expect(make, `add ${a.id} to STOP_ON_403_CLIENTS`).toBeDefined();
+        expect(read, `add ${a.id} to STOP_ON_403_READ`).toBeDefined();
+        const env = makeEnv(new KvMock(), []);
+        const meter = storeMeter(env, a.id, "", { source: "platform" });
+        const first = make!(meter);
+        await expect(
+          first.request("GET", read!, undefined),
+        ).rejects.toMatchObject({
+          status: 403,
+        });
+        expect(first.sends).toBe(1);
+        expect((await meter.read(NOW))?.stopped).toBe(true);
+        // Another caller, another client: nothing opened, nothing sent while the stop holds.
+        const next = make!(meter);
+        await expect(
+          next.request("GET", read!, undefined),
+        ).rejects.toBeDefined();
+        expect(next.tokens).toBe(0);
+        expect(next.sends).toBe(0);
       });
     });
 
