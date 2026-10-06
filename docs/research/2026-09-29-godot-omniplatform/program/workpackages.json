@@ -2858,7 +2858,7 @@
         "notes/S-16 §8 I-16"
       ],
       "brief": "wp/I-16-passkeys.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "I-17",
@@ -5249,7 +5249,7 @@
         "design/PORTAL §11.2 PX-W4"
       ],
       "brief": "wp/PX-W4-email-code.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-W5",
@@ -5495,7 +5495,7 @@
         "design/PORTAL §11.2 PX-W15"
       ],
       "brief": "wp/PX-W15-email-gate.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-W16",
@@ -5526,7 +5526,7 @@
         "design/PORTAL §11.2 PX-W16"
       ],
       "brief": "wp/PX-W16-profile-avatars.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-W17",
@@ -5770,7 +5770,7 @@
         "plans/I-04.md, Owner decision (2026-10-05): licence choice at sign-in"
       ],
       "brief": "wp/PX-17-activate-confirm.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-18",
@@ -9026,7 +9026,7 @@
         "prototype/motion/console.html"
       ],
       "brief": "wp/MO-04-console-navigation-motion.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "MO-05",
@@ -9048,7 +9048,7 @@
         "prototype/motion/portal.html"
       ],
       "brief": "wp/MO-05-portal-navigation-motion.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "MO-06",
@@ -9093,7 +9093,7 @@
         "prototype/motion/portal.html"
       ],
       "brief": "wp/MO-07-portal-library-motion.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "MO-08",
@@ -9133,7 +9133,7 @@
         "notes/S-23 §3.5"
       ],
       "brief": "wp/MO-09-console-data-motion.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "MO-10",
@@ -9277,7 +9277,7 @@
         "notes/S-21 §9 PS-03"
       ],
       "brief": "wp/PS-03-obtain-path-engine.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PS-04",
@@ -9910,7 +9910,7 @@
         "notes/S-16 §5.1 (claim rules)"
       ],
       "brief": "wp/LX-26-licence-holders-worker.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LX-27",
