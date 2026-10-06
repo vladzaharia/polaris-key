@@ -34,7 +34,42 @@ export {
   type DownloadUrlOptions,
   type ImportBundleResult,
   type UpdateDecideOptions,
+  type FeedKind,
+  type FeedUrl,
+  type FeedUrlOptions,
 } from "./types.js";
+export {
+  runBoot,
+  reacquire,
+  bootDecisionOf,
+  type BootDriver,
+  type BootPacks,
+  type BootResult,
+  type BootRunOptions,
+  type BootStep,
+  type ReacquireResult,
+} from "./boot.js";
+// ui.stages: client-core's boot stage machine, which `boot()` drives.
+export {
+  BOOT_CONFIRMATIONS,
+  BOOT_OK_SECONDS,
+  BOOT_OUTCOMES,
+  BOOT_STAGES,
+  bootConfirmation,
+  bootTransition,
+  initialBootState,
+  type BootDecision,
+  type BootEmit,
+  type BootEvent,
+  type BootOptions,
+  type BootState,
+  type BootStage,
+} from "@polaris-key/client-core";
+export {
+  crashTagsFor,
+  type CrashTags,
+  type CrashTagsOptions,
+} from "./crash.js";
 export type {
   StagedUpdate,
   UpdateCheck,

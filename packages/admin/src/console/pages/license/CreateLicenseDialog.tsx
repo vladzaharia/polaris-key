@@ -4,8 +4,11 @@
  * - Terms holds every policy field, including **profiles** as an ordered list whose order is the
  *   precedence (LIC-3), and an "Effective policy" aside naming each value's source (LIC-4).
  * - A failed tier, profile or channel lookup is said inline, never as "none defined" (LIC-6).
- * - Validation runs on Next / Create, so every message can actually show (LIC-10).
+ * - Validation runs on Continue / Create, so every message can actually show (LIC-10).
  * - The key is shown once, in a `OneTimeSecretPanel` that will not close uncopied (LIC-2).
+ * - Flow conformance (FLOWS.md C-17, §2 C3, C5, C13, C18): "Step n of 2 for you" with a step
+ *   heading that takes focus on every step change, each step and the result announced once,
+ *   primaries that name their action, and a draft that Escape cannot drop without asking.
  */
 
 import * as React from "react";
@@ -23,13 +26,13 @@ import { ChannelPicker } from "../../../ui/ChannelPicker.js";
 import { Combobox } from "../../../ui/Combobox.js";
 import { DateInput } from "../../../ui/DateInput.js";
 import { Dialog, DialogBody, DialogFooter } from "../../../ui/Dialog.js";
+import { announce } from "../../../ui/LiveRegion.js";
 import { FormField } from "../../../ui/form.js";
 import { Input } from "../../../ui/Input.js";
 import { NumberInput } from "../../../ui/NumberInput.js";
 import { OneTimeSecretPanel } from "../../../ui/OneTimeSecretPanel.js";
 import { OrderedMultiSelect } from "../../../ui/OrderedMultiSelect.js";
 import { Select } from "../../../ui/Select.js";
-import { Stepper } from "../../../ui/Stepper.js";
 import { VersionInput } from "../../../ui/VersionInput.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import {
@@ -45,6 +48,12 @@ import {
 } from "./shared.js";
 
 type Step = "holder" | "terms" | "result";
+
+/** The person's steps (the key is Polaris Key's result, not a step), titled by what they do. */
+const STEPS: { id: Exclude<Step, "result">; title: string }[] = [
+  { id: "holder", title: "Who it's for" },
+  { id: "terms", title: "Set the terms" },
+];
 type ExpiryMode = "tier" | "none" | "date";
 
 interface Draft {
@@ -154,6 +163,28 @@ export function CreateLicenseDialog({
   } | null>(null);
   const [acknowledged, setAcknowledged] = React.useState(false);
   const [asking, setAsking] = React.useState(false);
+  const stepHeadingRef = React.useRef<HTMLHeadingElement>(null);
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
+  // Set by a step change; the effect below moves focus once the new step has rendered.
+  const movedTo = React.useRef<Step | null>(null);
+
+  const go = (to: Step): void => {
+    movedTo.current = to;
+    setStep(to);
+  };
+  React.useEffect(() => {
+    const to = movedTo.current;
+    if (!to || to !== step) return;
+    movedTo.current = null;
+    if (to === "result") {
+      titleRef.current?.focus({ preventScroll: true });
+      announce(`License created for ${draft.name.trim()}.`);
+      return;
+    }
+    stepHeadingRef.current?.focus({ preventScroll: true });
+    const i = STEPS.findIndex((x) => x.id === to);
+    announce(`Step ${i + 1} of ${STEPS.length} for you: ${STEPS[i]!.title}`);
+  }, [step, draft.name]);
 
   const reset = (): void => {
     setStep("holder");
@@ -197,7 +228,7 @@ export function CreateLicenseDialog({
     const errs = validateHolder(draft);
     setErrors(errs);
     if (Object.keys(errs).length) return focusFirst(errs);
-    setStep("terms");
+    go("terms");
   };
 
   const submit = async (): Promise<void> => {
@@ -209,7 +240,7 @@ export function CreateLicenseDialog({
     try {
       const res = await mutate("createLicense", slug, createBody(draft));
       setCreated({ id: res.licenseId, key: res.key });
-      setStep("result");
+      go("result");
     } catch (err) {
       setSubmitError(err);
     } finally {
@@ -218,6 +249,9 @@ export function CreateLicenseDialog({
   };
 
   const close = (): void => onOpenChange(false);
+  const dirty =
+    step !== "result" && JSON.stringify(draft) !== JSON.stringify(EMPTY);
+  const stepIndex = STEPS.findIndex((x) => x.id === step);
 
   const policy = effectivePolicy(
     {
@@ -254,10 +288,10 @@ export function CreateLicenseDialog({
       open={open}
       size="lg"
       title={step === "result" ? "License created" : "Create license"}
+      titleRef={titleRef}
+      unsaved={dirty}
       description={
-        step === "result" ? (
-          "Copy the key now. It is shown only once."
-        ) : (
+        step === "result" ? undefined : (
           <>
             <a
               className="underline underline-offset-2 hover:text-fg-strong"
@@ -277,18 +311,18 @@ export function CreateLicenseDialog({
         close();
       }}
     >
-      {step !== "result" ? (
-        <div className="px-6 pt-2">
-          <Stepper
-            label="Create license steps"
-            steps={[
-              { id: "holder", label: "Holder" },
-              { id: "terms", label: "Terms" },
-              { id: "result", label: "Key" },
-            ]}
-            current={step}
-            onStep={(id) => id === "holder" && setStep("holder")}
-          />
+      {stepIndex !== -1 ? (
+        <div className="flex items-baseline justify-between gap-4 px-6 pt-2">
+          <h3
+            ref={stepHeadingRef}
+            tabIndex={-1}
+            className="text-base font-bold text-fg-strong outline-hidden"
+          >
+            {STEPS[stepIndex]!.title}
+          </h3>
+          <p className="shrink-0 text-sm text-fg-muted">
+            Step {stepIndex + 1} of {STEPS.length} for you
+          </p>
         </div>
       ) : null}
 
@@ -335,7 +369,7 @@ export function CreateLicenseDialog({
             <Button variant="ghost" onClick={close}>
               Cancel
             </Button>
-            <Button type="submit">Next</Button>
+            <Button type="submit">Continue to terms</Button>
           </DialogFooter>
         </form>
       ) : null}
@@ -555,7 +589,7 @@ export function CreateLicenseDialog({
             <Button
               variant="ghost"
               disabled={submitting}
-              onClick={() => setStep("holder")}
+              onClick={() => go("holder")}
             >
               Back
             </Button>
@@ -586,7 +620,10 @@ export function CreateLicenseDialog({
                 disabledReason={
                   acknowledged ? undefined : "Copy the license key first"
                 }
-                onClick={reset}
+                onClick={() => {
+                  reset();
+                  movedTo.current = "holder";
+                }}
               >
                 Create another
               </Button>

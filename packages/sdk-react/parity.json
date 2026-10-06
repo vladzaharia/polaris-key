@@ -193,14 +193,12 @@
       "note": "client-core verifyReleaseRecord (hash before signature, pinned release keys only); the browser adapter fetches by hash and persists releaseRecords in IndexedDB, desktop through the host's decide()."
     },
     "release.fetch": {
-      "status": "planned",
-      "wp": "SP-12",
-      "note": "Not built: no verified licensed download (bearer delivery, Range resume, size and SHA-256 check) in React; the release client only builds URLs (SP-R09, SDK-PARITY-PASS §5.2)."
+      "status": "implemented",
+      "note": "adapter.releaseFetch(target): discovery builds route, the bearer session's device bearer and X-PKey-* headers, held bytes resumed with Range and If-Range on the payload SHA-256, size and SHA-256 checked against the verified record before a Blob is returned; a refusal is release-refused with the server code; on desktop-bridge the host's client.release.fetch() over bridge v4 (SP-12)."
     },
     "release.distribution": {
-      "status": "planned",
-      "wp": "SP-12",
-      "note": "Not built: React does not fetch GET /<p>/distribution/download.json or expose the download model (the Worker's CORS list already covers it) (SP-R09, SDK-PARITY-PASS §5.2)."
+      "status": "implemented",
+      "note": "adapter.downloadModel() and thisPlatform(): the public GET /<p>/distribution/download.json with no credential, the visitor's platform from the user agent; on desktop-bridge the host's client.distribution over bridge v4 (SP-12)."
     },
     "update.check": {
       "status": "implemented"
@@ -210,9 +208,8 @@
       "note": "client-core verifyFeed with floors keyed by the canonical channel; the browser adapter fetches, verifies and persists the feeds slice in IndexedDB; desktop through invoke(\"update\", \"decide\")."
     },
     "update.feeds": {
-      "status": "planned",
-      "wp": "SP-12",
-      "note": "Not built: no update.feedUrl() for a desktop host (feed-url-matrix.json) (SP-R08, SDK-PARITY-PASS §5.2).",
+      "status": "implemented",
+      "note": "adapter.feedUrl(kind) on desktop-bridge: the host's client.update.feedUrl() over bridge v4, the typed version N/A on an older host; the web adapter answers the runtime N/A (SP-12).",
       "except": [
         {
           "runtime": "web",
@@ -244,9 +241,8 @@
       "note": "client-core's detectOutlet, re-exported; the browser adapter reads the page's display mode (readOutletSignals) and detects over the synthesised web stamp when the host names no outlet. The desktop adapter defers to the host (Node's detection)."
     },
     "crash.tags": {
-      "status": "planned",
-      "wp": "SP-12",
-      "note": "Not built: no crashTags() in React; no task yet (plans/SP-00.md §5; SDK-PARITY-PASS §5.2)."
+      "status": "implemented",
+      "note": "adapter.crashTags() / crashTagsFor(): release <deliverable>@<version>[+<build>], environment the channel, pkey.outlet the resolved outlet, as the Worker Sentry hook parses them; on desktop-bridge the host's client.crashTags() over bridge v4 (SP-12)."
     },
     "packs.record": {
       "status": "implemented",
@@ -359,9 +355,8 @@
       "status": "implemented"
     },
     "ui.boot": {
-      "status": "planned",
-      "wp": "SP-12",
-      "note": "Not built: client-core's stage functions are re-exported (ui.stages), but React has no one-call boot() over discovery, register, trust, documents and report (SP-R06, SDK-PARITY-PASS §5.2)."
+      "status": "implemented",
+      "note": "adapter.boot() and useBoot(): client-core's stage machine over discovery, the keyless registration of a fresh install on an open product, the sync (trust, documents, report), the reacquire per core.registration, the gate, the update decision and the page's packs; on desktop-bridge the host's client.boot() over bridge v4 (SP-12)."
     },
     "ui.kit": {
       "status": "implemented"

@@ -37,9 +37,8 @@
       "note": "P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent). PKeyCore picks a platform store by default when its plugin is present (Keychain, then Keystore, then the file store): iOS, P5-05's Keychain store (core/store/keychain_store.gd, PKeyKeychainStore over PKeyApple: device id and token AfterFirstUnlockThisDeviceOnly with no access group); Android, P5-06's Keystore store (core/store/keystore_store.gd, PKeyKeystoreStore over PKeyAndroid: one AndroidKeyStore AES-256-GCM key per product, StrongBox where present, blobs in noBackupFilesDir, a lost key surfaced and re-enrolled). Both migrate from the file store and surface failures as keyring-error. No work package owns a desktop keyring, so the desktop runtimes keep the file store."
     },
     "core.copy": {
-      "status": "planned",
-      "wp": "SP-23",
-      "note": "core/copy_generated.gd (PKeyCoreCopy) is generated from copy.en.json, but no API reads it: there is no copy.message(code)/copy.title(code) and the kit's PKeyUiCopy keeps its own table (SP-G03). Needs that API over the generated table, a unit test of its fallback and placeholders, and SP-G13's .po generation."
+      "status": "implemented",
+      "note": "PKeyCopy (core/copy.gd, PolarisKey.core.copy, shared by every core) reads the generated PKeyCoreCopy with React's rule: message(code)/title(code) look up the error-code table, then the gate table, then the activation table; activation_message(kind)/activation_title(kind) read the activation table only; an unknown code reads COPY_FALLBACK naming it; {name} placeholders fill from params ({code} defaults to the code, an unfilled one is dropped); set_overrides() is the host layer. The kit's PKeyUiCopy reads it for every error_<code> key, its own overrides and translated kit lines first. tests/core/test_copy.gd covers every table, the fallback, placeholders, overrides and the activation-versus-code split. The .po generation from the catalogs is SP-G13."
     },
     "license.gate": {
       "status": "implemented"

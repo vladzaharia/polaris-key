@@ -7178,7 +7178,7 @@
         "packages/sdk-react/parity.json: ui.boot, release.fetch, release.distribution, update.feeds, crash.tags"
       ],
       "brief": "wp/SP-12-react-boot-download.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-13",
@@ -7283,7 +7283,7 @@
         "sdks/swift/parity.json: core.copy, crash.tags"
       ],
       "brief": "wp/SP-17-swift-copy-crash-tags.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-18",
@@ -7346,7 +7346,7 @@
         "sdks/kotlin/parity.json: ui.boot"
       ],
       "brief": "wp/SP-20-kotlin-boot-sdk.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-21",
@@ -7388,7 +7388,7 @@
         "sdks/python/parity.json: core.copy"
       ],
       "brief": "wp/SP-22-python-copy.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-23",
@@ -7409,7 +7409,7 @@
         "sdks/godot/parity.json: core.copy"
       ],
       "brief": "wp/SP-23-godot-copy.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-24",
@@ -8899,7 +8899,7 @@
         "prototype/motion/motion.js"
       ],
       "brief": "wp/MO-02-motion-layer.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "MO-03",

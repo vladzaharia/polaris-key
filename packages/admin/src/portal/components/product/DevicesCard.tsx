@@ -118,6 +118,15 @@ export function DevicesCard({
   );
 }
 
+/** The page's `h1` (the product header's, focusable with `tabIndex={-1}`), from inside it. */
+function pageHeading(from: HTMLElement | null): HTMLElement | null {
+  const h1 = (from?.closest("main") ?? document).querySelector<HTMLElement>(
+    "h1",
+  );
+  if (h1 && !h1.hasAttribute("tabindex")) h1.setAttribute("tabindex", "-1");
+  return h1;
+}
+
 function deviceName(d: PortalDevice): string {
   return d.label?.trim() || "Unnamed device";
 }
@@ -158,6 +167,7 @@ export function DeviceRow({
   const [confirming, setConfirming] = React.useState(false);
   const headingRef = React.useRef<HTMLHeadingElement>(null);
   const removeRef = React.useRef<HTMLButtonElement>(null);
+  const rowRef = React.useRef<HTMLLIElement>(null);
   const remove = useRemoveDevice(detail.product, detail.id);
   const name = deviceName(device);
   React.useEffect(() => {
@@ -174,7 +184,7 @@ export function DeviceRow({
   const panelId = `remove-${device.deviceId}`;
 
   return (
-    <li className="py-3">
+    <li ref={rowRef} className="py-3">
       <div className="flex items-center gap-3">
         <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
           <DeviceGlyph platform={device.platform} />
@@ -242,16 +252,23 @@ export function DeviceRow({
             <Button
               variant="danger"
               loading={remove.isPending}
-              onClick={() =>
+              onClick={() => {
+                // The row leaves with the removal; find the page's heading while it is here.
+                const heading = pageHeading(rowRef.current);
                 remove.mutate(device.deviceId, {
                   onSuccess: () => {
                     toast.success(`${name} was removed`, {
                       description: `${productName} has a free seat now.`,
                     });
                     announce(`${name} was removed`);
+                    // Focus never falls to `body` (FLOWS.md P-7): it goes to the product's `h1`
+                    // once the list has re-rendered without the row.
+                    requestAnimationFrame(() => {
+                      if (heading?.isConnected) heading.focus();
+                    });
                   },
-                })
-              }
+                });
+              }}
             >
               Remove {name}
             </Button>

@@ -1496,16 +1496,16 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
-  "release.fetch": { status: "planned", service: "distribution", na: [] },
+  "release.fetch": { status: "implemented", service: "distribution", na: [] },
   "release.distribution": {
-    status: "planned",
+    status: "implemented",
     service: "distribution",
     na: [],
   },
   "update.check": { status: "implemented", service: "update", na: [] },
   "update.feed": { status: "implemented", service: "update", na: [] },
   "update.feeds": {
-    status: "planned",
+    status: "implemented",
     service: "update",
     na: [{ runtime: "web", reason: "runtime" }],
   },
@@ -1514,7 +1514,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "update.driver": { status: "planned", service: "update", na: [] },
   "update.bootguard": { status: "planned", service: "update", na: [] },
   "outlet.detect": { status: "implemented", service: "update", na: [] },
-  "crash.tags": { status: "planned", service: "sdk", na: [] },
+  "crash.tags": { status: "implemented", service: "sdk", na: [] },
   "packs.record": { status: "implemented", service: "release", na: [] },
   "packs.revoke": { status: "implemented", service: "release", na: [] },
   "packs.delegation": { status: "implemented", service: "release", na: [] },
@@ -1593,7 +1593,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     ],
   },
   "ui.stages": { status: "implemented", service: "sdk", na: [] },
-  "ui.boot": { status: "planned", service: "sdk", na: [] },
+  "ui.boot": { status: "implemented", service: "sdk", na: [] },
   "ui.kit": { status: "implemented", service: "sdk", na: [] },
   "ui.cli": {
     status: "na",
@@ -1608,4 +1608,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "af8de3ccbc3ada99e7bdcc93108fabea14501c0f54aa8cac4fb68c433f3cfaf3";
+  "cb5b71698d74a889518d3b584f9991b87898cba0bdd40537d571711bd8d82266";

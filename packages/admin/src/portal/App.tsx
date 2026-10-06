@@ -52,7 +52,7 @@ export function PortalApp(): React.ReactElement {
   return (
     <ThemeProvider>
       <QueryClientProvider client={client}>
-        <AppToaster />
+        <AppToaster phoneBottom />
         <Announcer />
         <Boot />
       </QueryClientProvider>

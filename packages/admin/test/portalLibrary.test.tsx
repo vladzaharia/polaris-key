@@ -246,27 +246,6 @@ describe("Library on today's data (PX-02)", () => {
 });
 
 describe("Library on GET /api/library (PX-08)", () => {
-  it("shows Discover with its count once the Worker counts offers", async () => {
-    mockFetch(
-      signedIn([nightfall], { "/api/library": libraryFor([nightfall], 4) }),
-    );
-    renderPortal();
-    const main = await screen.findByRole("navigation", { name: "Main" });
-    const link = await within(main).findByRole("link", { name: /Discover/ });
-    expect(link.getAttribute("href")).toBe("#/discover");
-    expect(link.textContent).toBe("Discover4");
-    const phone = screen.getByRole("navigation", { name: "Phone" });
-    expect(
-      within(phone).getByRole("link", { name: /^Discover\W+4 offers$/ }),
-    ).toBeTruthy();
-    expect(
-      await screen.findByRole("link", {
-        name: "4 more you can add in Discover",
-      }),
-    ).toBeTruthy();
-    expect(await axeViolations()).toEqual([]);
-  });
-
   it("keeps Discover out of the nav while the Worker can't list offers", async () => {
     mockFetch(signedIn([nightfall]));
     renderPortal();

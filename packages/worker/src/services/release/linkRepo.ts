@@ -18,7 +18,11 @@
  */
 
 import { Catalog } from "@polaris-key/catalog";
-import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
+import {
+  RESERVED_PRODUCT_SLUGS,
+  SYSTEM_PRODUCT_SLUG,
+  type ManifestDocumentName,
+} from "@polaris-key/manifest";
 import {
   generateEd25519,
   seal,
@@ -47,7 +51,7 @@ import {
   type FetchImpl,
   getInstallationToken,
 } from "./githubApp.js";
-import { getRepoIdentity } from "./github.js";
+import { fetchRepoFile, getRepoIdentity } from "./github.js";
 import { isSafeBinaryName } from "./install.js";
 import { fetchPinnedManifestFiles } from "./manifestFetch.js";
 import { syncReleaseStore } from "./sync.js";
@@ -59,6 +63,7 @@ import { serializeWebOrigins } from "../../core/cors.js";
 import { stmtUpsertManifestPublisher } from "../../core/publisher.js";
 import { manifestSnapshotStatement } from "../../core/manifestSnapshot.js";
 import { reservedNamesMode } from "../../core/reservedNames.js";
+import type { LinkCheck } from "./linkExisting.js";
 
 export type LinkRepoResult =
   | {
@@ -73,7 +78,13 @@ export type LinkRepoResult =
       /** NAMES of the sealed secrets the manifest references but didn't ship — never values. */
       remainingSecrets: string[];
     }
-  | { ok: false; error: string; errors?: string[] };
+  | {
+      ok: false;
+      error: string;
+      errors?: string[];
+      /** 409 when the `.pkey/` read is not the one the dry run checked (`manifestDigest`). */
+      status?: 409;
+    };
 
 /** Pull `{owner, repo}` from a GitHub URL or a bare `owner/repo`. Returns null on garbage. */
 export function parseRepoUrl(
@@ -141,25 +152,368 @@ export function manifestIssuerRefusal(env: Env, issuer: string): string | null {
   );
 }
 
+// ── create probes (UX-72: FLOWS.md §3.11 W23, W24) ─────────────────────────────────────────
+
 /**
- * Link a GitHub repo as a new Polaris Key product. Returns a structured result rather than
- * throwing on the expected failure modes (bad URL, app not installed, manifest errors) so the
- * admin handler can surface a clean 4xx.
+ * The slug shape both create paths and the console accept: the manifest's `^[a-z0-9-]{1,64}$`
+ * narrowed to start with a letter or digit, as the console's `slugError` already asks. A slug
+ * the check calls `available` is one every create path will take.
  */
-export async function linkRepo(
-  env: Env,
+const SLUG_SHAPE = /^[a-z0-9][a-z0-9-]{0,63}$/;
+const SLUG_MAX = 64;
+
+/**
+ * One-segment admin actions under `/manage/api/products/`, matched before the segment is read as
+ * a product slug (`admin/handlers/products.ts`): a product slugged like one would have its
+ * console record shadowed, so the slug check and both create paths treat them as reserved.
+ */
+export const PRODUCT_ROUTE_ACTIONS: readonly string[] = [
+  "kek",
+  "link-repo",
+  "slug-check",
+];
+
+/** True for a slug no product may take: router paths, admin actions, the system product. */
+export function isReservedSlug(slug: string): boolean {
+  return (
+    slug === SYSTEM_PRODUCT_SLUG ||
+    RESERVED_PRODUCT_SLUGS.includes(slug) ||
+    PRODUCT_ROUTE_ACTIONS.includes(slug)
+  );
+}
+
+/**
+ * The slug a name derives, as the console's `slugFromName` does: lowercase ASCII letters and
+ * digits, every other run one hyphen, none at either end, at most 64 characters.
+ */
+export function slugFromName(name: string): string {
+  return name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, SLUG_MAX)
+    .replace(/-+$/, "");
+}
+
+/** W24's answer. `suggestion` is a free slug (checked against the registry), or null. */
+export type SlugCheck =
+  | { slug: string; status: "available" }
+  | {
+      slug: string;
+      status: "taken" | "reserved" | "invalid";
+      message: string;
+      suggestion: string | null;
+    };
+
+/** The first free variant of `base`: `-app`, then `-2`, `-3`… (the console's `suggestSlug`). */
+async function freeVariant(db: Db, base: string): Promise<string | null> {
+  if (!base) return null;
+  const rows = await db.all<{ slug: string }>(
+    // Slugs carry no LIKE metacharacters (`%`, `_`), so the prefix needs no escaping.
+    "SELECT slug FROM products WHERE slug = ? OR slug LIKE ?",
+    base,
+    `${base}-%`,
+  );
+  const taken = new Set(rows.map((r) => r.slug));
+  const free = (s: string) =>
+    SLUG_SHAPE.test(s) && !taken.has(s) && !isReservedSlug(s);
+  if (free(base)) return base;
+  const fit = (suffix: string) =>
+    `${base.slice(0, SLUG_MAX - suffix.length).replace(/-+$/, "")}${suffix}`;
+  if (free(fit("-app"))) return fit("-app");
+  for (let i = 2; i < 1000; i++) if (free(fit(`-${i}`))) return fit(`-${i}`);
+  return null;
+}
+
+/**
+ * Is `slug` free for a new product (W24)? Reads one prefix of the registry, never the whole of
+ * it. `available`, or why not with a free suggestion: `invalid` (the shape), `reserved` (a router
+ * path, an admin action or the system product), `taken` (a product has it).
+ */
+export async function checkSlug(db: Db, slug: string): Promise<SlugCheck> {
+  if (!SLUG_SHAPE.test(slug)) {
+    const derived = slugFromName(slug);
+    return {
+      slug,
+      status: "invalid",
+      message:
+        slug.length > SLUG_MAX
+          ? `A slug has at most ${SLUG_MAX} characters.`
+          : "Use lowercase letters, digits and hyphens, starting with a letter or digit.",
+      suggestion: derived ? await freeVariant(db, derived) : null,
+    };
+  }
+  if (isReservedSlug(slug))
+    return {
+      slug,
+      status: "reserved",
+      message:
+        slug === SYSTEM_PRODUCT_SLUG
+          ? `${slug} is the platform's own product.`
+          : `${slug} is reserved for a platform route.`,
+      suggestion: await freeVariant(db, `${slug}-app`),
+    };
+  if (await getProduct(db, slug))
+    return {
+      slug,
+      status: "taken",
+      message: `${slug} is taken.`,
+      suggestion: await freeVariant(db, slug),
+    };
+  return { slug, status: "available" };
+}
+
+/** The registered product whose repository is `owner/repo` (GitHub names are case-blind). */
+export async function productForRepository(
   db: Db,
+  owner: string,
+  repo: string,
+): Promise<string | null> {
+  const row = await db.first<{ product: string }>(
+    `SELECT rc.product AS product
+       FROM release_config rc
+       JOIN products p ON p.slug = rc.product
+      WHERE p.release_source = 'github'
+        AND lower(rc.gh_owner) = lower(?) AND lower(rc.gh_repo) = lower(?)
+      ORDER BY rc.product
+      LIMIT 1`,
+    owner,
+    repo,
+  );
+  return row?.product ?? null;
+}
+
+/** Every linked repository → its product, keyed `owner/repo` lower-cased (W22's marks). */
+export async function productsByRepository(
+  db: Db,
+): Promise<Map<string, string>> {
+  const rows = await db.all<{
+    product: string;
+    gh_owner: string;
+    gh_repo: string;
+  }>(
+    `SELECT rc.product, rc.gh_owner, rc.gh_repo
+       FROM release_config rc
+       JOIN products p ON p.slug = rc.product
+      WHERE p.release_source = 'github'
+        AND rc.gh_owner IS NOT NULL AND rc.gh_repo IS NOT NULL
+      ORDER BY rc.product`,
+  );
+  const out = new Map<string, string>();
+  for (const r of rows) {
+    const key = `${r.gh_owner}/${r.gh_repo}`.toLowerCase();
+    if (!out.has(key)) out.set(key, r.product);
+  }
+  return out;
+}
+
+/**
+ * sha-256 over the `.pkey/` files read, in name order: what the operator checked. A push that
+ * leaves `.pkey/` alone moves the commit but not the digest, so it does not refuse the create or
+ * the link. Shared by both link paths (`linkExisting.ts` pins its Link with it too).
+ */
+export async function digestManifestFiles(
+  files: Record<string, string>,
+): Promise<string> {
+  const canonical = JSON.stringify(
+    Object.keys(files)
+      .sort()
+      .map((name) => [name, files[name]]),
+  );
+  const bytes = new Uint8Array(
+    await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(canonical) as BufferSource,
+    ),
+  );
+  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** One thing that blocks a create, placed on its `.pkey/` document and JSON path when it has one. */
+export interface ManifestProblem {
+  check: LinkCheck;
+  /** The `.pkey/` document (`product`, `schema`, `release`, `distribution`), or null. */
+  file: ManifestDocumentName | null;
+  /** A JSON pointer into that document, or null for the document as a whole. */
+  path: string | null;
+  message: string;
+  /** A free slug, when the problem is the slug. */
+  suggestion?: string;
+}
+
+const PROBLEM_LINE =
+  /^(schema|product|release|distribution)(\/[^:]*)?: ([\s\S]+)$/;
+
+/** `parseManifest`'s `<file><path>: <message>` lines as problems with their file and path. */
+export function manifestProblems(errors: readonly string[]): ManifestProblem[] {
+  return errors.map((line) => {
+    const m = line.match(PROBLEM_LINE);
+    return m
+      ? {
+          check: "manifest" as const,
+          file: m[1] as ManifestDocumentName,
+          path: m[2] ?? "/",
+          message: m[3]!,
+        }
+      : { check: "manifest" as const, file: null, path: null, message: line };
+  });
+}
+
+/**
+ * The pure refusals `registerFromManifest` applies before it writes (an unsafe binary name, an
+ * issuer outside the allowlist, a catalog the validator refuses), in the order it applies them.
+ * The dry run lists every one; the create refuses with the first.
+ */
+function createPolicyProblems(
+  env: Env,
+  manifest: ParsedManifest,
+  repo: string,
+): ManifestProblem[] {
+  const problems: ManifestProblem[] = [];
+  // Defence in depth for R6-01: the manifest boundary already enforces this class, but the
+  // repo-name fallback does not go through it — and this value is interpolated into the
+  // `curl | sh` installer served to every user of the product.
+  const binaryName = manifest.release?.binaryName || repo;
+  if (!isSafeBinaryName(binaryName))
+    problems.push({
+      check: "policy",
+      file: "release",
+      path: "/release/binaryName",
+      message: `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`,
+    });
+  // R9-01, at ingest and fail-closed (see `manifestIssuerRefusal`). A first write has no
+  // already-working `oidc_config` row to protect, so an unset allowlist refuses it outright.
+  // A product that does not name a custom issuer never reaches this branch: `djdl` ships
+  // `provider: "platform"` and no issuer at all, so linking it is unaffected.
+  if (manifest.oidc?.provider === "custom") {
+    const refusal = manifestIssuerRefusal(env, manifest.oidc.issuer);
+    if (refusal)
+      problems.push({
+        check: "policy",
+        file: "product",
+        path: "/oidc/issuer",
+        message: refusal,
+      });
+  }
+  // The admin API screens every catalog it accepts (`admin/handlers/schema.ts`,
+  // `admin/handlers/products.ts` both `compileAll()` before writing). The repo-sync path did
+  // not, so a manifest from GitHub could install a catalog the admin API would have rejected
+  // — unsupported keywords, or a `pattern` the validator cannot compile. Screen it here too,
+  // so there is no route into `product_schema` that skips the check.
+  try {
+    new Catalog(manifest.catalog as never).compileAll();
+  } catch (e) {
+    problems.push({
+      check: "policy",
+      file: "schema",
+      path: "/",
+      message: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
+    });
+  }
+  return problems;
+}
+
+/**
+ * Whether `slug` (the manifest's) may be registered for `owner/repo`: the repository is not a
+ * product already (F15), and the slug is free. The refusal wording is the one link-repo has
+ * always answered, which the console's `errorCopy` reads (`reserved slug`, `product already
+ * exists`).
+ */
+async function createSlugProblems(
+  db: Db,
+  slug: string,
+  owner: string,
+  repo: string,
+): Promise<{
+  registeredAs: string | null;
+  /** The slug check's verdict, or null when the repository is a product already (not run). */
+  verdict: SlugCheck | null;
+  problems: ManifestProblem[];
+}> {
+  const registeredAs = await productForRepository(db, owner, repo);
+  if (registeredAs)
+    return {
+      registeredAs,
+      verdict: null,
+      problems: [
+        {
+          check: "repository",
+          file: null,
+          path: null,
+          message:
+            registeredAs === slug
+              ? `product already exists: ${slug}`
+              : `${owner}/${repo} is already product ${registeredAs}; resync it instead`,
+        },
+      ],
+    };
+  const verdict = await checkSlug(db, slug);
+  if (verdict.status === "available")
+    return { registeredAs, verdict, problems: [] };
+  const message =
+    // F-03: the system product is created only by the platform bootstrap (`ensureSystemProduct`,
+    // `POST /manage/api/platform/feeds/bootstrap`), never by registering a repository.
+    slug === SYSTEM_PRODUCT_SLUG
+      ? `reserved slug: ${SYSTEM_PRODUCT_SLUG} is the platform's own product, created by the package-feeds bootstrap`
+      : verdict.status === "reserved"
+        ? `reserved slug: ${slug} is a platform route`
+        : verdict.status === "taken"
+          ? `product already exists: ${slug}`
+          : `invalid slug: ${verdict.message}`;
+  return {
+    registeredAs,
+    verdict,
+    problems: [
+      {
+        check: "slug",
+        file: "product",
+        path: "/product/slug",
+        message,
+        ...(verdict.suggestion ? { suggestion: verdict.suggestion } : {}),
+      },
+    ],
+  };
+}
+
+/** A refusal before the manifest could be read: the URL, the App, the fetch. */
+export interface CreateRefusal {
+  ok: false;
+  status: 422;
+  check: Extract<LinkCheck, "repository" | "app" | "manifest">;
+  error: string;
+}
+
+/** What `.pkey/` read at one commit, through the App, for a product that does not exist yet. */
+interface RepoRead {
+  ok: true;
+  owner: string;
+  repo: string;
+  installId: number;
+  token: string;
+  commit: string;
+  files: Record<string, string>;
+  manifestDigest: string;
+}
+
+/** The URL, the App installation and the pinned `.pkey/` read link-repo and its dry run share. */
+async function readRepoForCreate(
+  env: Env,
   repoUrl: string,
   now: number,
-  fetchImpl: FetchImpl = fetch,
-  ingest?: ManifestIngest,
-): Promise<LinkRepoResult> {
+  fetchImpl: FetchImpl,
+): Promise<RepoRead | CreateRefusal> {
+  const refuse = (
+    check: CreateRefusal["check"],
+    error: string,
+  ): CreateRefusal => ({ ok: false, status: 422, check, error });
   const parsed = parseRepoUrl(repoUrl);
   if (!parsed)
-    return {
-      ok: false,
-      error: "could not parse a github owner/repo from the URL",
-    };
+    return refuse(
+      "repository",
+      "could not parse a github owner/repo from the URL",
+    );
   const { owner, repo } = parsed;
 
   // Discover the installation + mint a token. These throw on App-config / install problems;
@@ -178,19 +532,19 @@ export async function linkRepo(
       fetchImpl,
     );
   } catch (err) {
-    return {
-      ok: false,
-      error: err instanceof Error ? err.message : "github access failed",
-    };
+    return refuse(
+      "app",
+      err instanceof Error ? err.message : "github access failed",
+    );
   }
 
   // Read the manifest files (schema + product required, release optional). Missing required
-  // files surface as parseManifest errors below. ST-01a: every document at ONE commit, the
-  // default branch's head as GitHub resolves it (`fetchPinnedManifestFiles`).
+  // files surface as parseManifest errors. ST-01a: every document at ONE commit, the default
+  // branch's head as GitHub resolves it (`fetchPinnedManifestFiles`).
   let files: Record<string, string>;
-  let appliedSha: string;
+  let commit: string;
   try {
-    ({ files, sha: appliedSha } = await fetchPinnedManifestFiles(
+    ({ files, sha: commit } = await fetchPinnedManifestFiles(
       token,
       owner,
       repo,
@@ -200,12 +554,206 @@ export async function linkRepo(
     // `fetchRepoFile` throws on a non-404 upstream status and on an over-cap body. Surfacing
     // that as a structured error (as `resync.ts` already did) keeps an oversized or hostile
     // `.pkey/` file a clean 4xx for the operator instead of an unhandled 500.
+    return refuse(
+      "manifest",
+      err instanceof Error ? err.message : "github manifest fetch failed",
+    );
+  }
+  return {
+    ok: true,
+    owner,
+    repo,
+    installId,
+    token,
+    commit,
+    files,
+    manifestDigest: await digestManifestFiles(files),
+  };
+}
+
+/** The workflow F9 trusts at create when it exists (SETUP D19, D48). */
+export const RELEASE_WORKFLOW_PATH = ".github/workflows/release.yml";
+
+/** W23: the product as it will be, or why it cannot be created yet. Writes nothing. */
+export interface CreateDryRun {
+  ok: true;
+  /** `owner/repo` as parsed from what the operator gave. */
+  repository: string;
+  installationId: number;
+  /** The default-branch commit every document was read at. */
+  commit: string;
+  /** Hand back to link-repo: a `.pkey/` that changed since refuses the create (409). */
+  manifestDigest: string;
+  /** True when nothing blocks the create. */
+  ready: boolean;
+  /** Name, slug and presentation from `.pkey/product`; null when the manifest does not parse. */
+  product: {
+    slug: string;
+    name: string;
+    presentation: ParsedManifest["presentation"] | null;
+  } | null;
+  /** W24's answer for the manifest's slug; null when the manifest does not parse. */
+  slug: SlugCheck | null;
+  /** The product registered from this repository already (F15: open it instead), or null. */
+  registeredAs: string | null;
+  /** Enabled services, in the manifest's order. */
+  services: string[];
+  /** The catalog `.pkey/schema` becomes as version 1. */
+  catalog: { entries: number } | null;
+  /**
+   * The platforms the product ships and where they were read. `artifact-map` is `.pkey/release`'s
+   * `deliverables.app.artifacts`; `none` when nothing declares them (SETUP W21's project-file
+   * detection adds a `project-files` source when it lands).
+   */
+  platforms: { values: string[]; source: "artifact-map" | "none" };
+  /** Secret NAMES the manifest references, set after create (never values). */
+  secrets: string[];
+  /** Whether `.github/workflows/release.yml` exists at the commit; null when GitHub would not say. */
+  releaseWorkflow: boolean | null;
+  /** Every blocking problem, with its file and path. Empty when `ready`. */
+  problems: ManifestProblem[];
+}
+
+/**
+ * The create dry run (W23): `linkRepo`'s checks, every one, for a product that does not exist
+ * yet, and the product as it will be. Writes nothing. A refusal before the manifest is read (the
+ * URL, the App, the fetch) is a `CreateRefusal`; everything after it is a problem in the answer,
+ * so the console can list them all at once.
+ */
+export async function prepareCreate(
+  env: Env,
+  db: Db,
+  repoUrl: string,
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<CreateDryRun | CreateRefusal> {
+  const read = await readRepoForCreate(env, repoUrl, now, fetchImpl);
+  if (!read.ok) return read;
+  const { owner, repo, token, commit, files } = read;
+
+  let releaseWorkflow: boolean | null;
+  try {
+    releaseWorkflow =
+      (await fetchRepoFile(
+        token,
+        owner,
+        repo,
+        RELEASE_WORKFLOW_PATH,
+        fetchImpl,
+        commit,
+      )) !== null;
+  } catch {
+    releaseWorkflow = null;
+  }
+
+  const base = {
+    ok: true as const,
+    repository: `${owner}/${repo}`,
+    installationId: read.installId,
+    commit,
+    manifestDigest: read.manifestDigest,
+    releaseWorkflow,
+  };
+
+  const result = parseManifest(files, {
+    reservedNames: await reservedNamesMode(env, db),
+  });
+  if (!result.ok) {
     return {
-      ok: false,
-      error:
-        err instanceof Error ? err.message : "github manifest fetch failed",
+      ...base,
+      ready: false,
+      product: null,
+      slug: null,
+      registeredAs: await productForRepository(db, owner, repo),
+      services: [],
+      catalog: null,
+      platforms: { values: [], source: "none" },
+      secrets: [],
+      problems: manifestProblems(result.errors),
     };
   }
+  const manifest = result.manifest;
+  const slug = manifest.product.slug;
+
+  const { registeredAs, verdict, problems } = await createSlugProblems(
+    db,
+    slug,
+    owner,
+    repo,
+  );
+  problems.push(...createPolicyProblems(env, manifest, repo));
+
+  // P2-02: the trusted publisher's numeric ids are resolved at create; a lookup that fails here
+  // would refuse the create, so it is a problem now rather than a surprise then.
+  if (manifest.release?.trustedPublisher) {
+    try {
+      await getRepoIdentity(token, owner, repo, fetchImpl);
+    } catch (err) {
+      problems.push({
+        check: "policy",
+        file: "release",
+        path: "/release/publishing/trustedPublisher",
+        message: `could not resolve the repository's ids for publishing.trustedPublisher: ${err instanceof Error ? err.message : "github lookup failed"}`,
+      });
+    }
+  }
+
+  const artifacts = manifest.release?.app?.artifacts ?? [];
+  const platforms = [...new Set(artifacts.map((a) => String(a.platform)))];
+  const entries = (manifest.catalog as { entries?: unknown }).entries;
+
+  return {
+    ...base,
+    ready: problems.length === 0,
+    product: {
+      slug,
+      name: manifest.product.name,
+      presentation: manifest.presentation ?? null,
+    },
+    slug: verdict ?? (await checkSlug(db, slug)),
+    registeredAs,
+    services: Object.entries(manifest.services)
+      .filter(([, v]) => v.enabled)
+      .map(([k]) => k),
+    catalog: { entries: Array.isArray(entries) ? entries.length : 0 },
+    platforms: {
+      values: platforms,
+      source: platforms.length ? "artifact-map" : "none",
+    },
+    secrets: collectSecretNames(manifest),
+    problems,
+  };
+}
+
+/**
+ * Link a GitHub repo as a new Polaris Key product. Returns a structured result rather than
+ * throwing on the expected failure modes (bad URL, app not installed, manifest errors) so the
+ * admin handler can surface a clean 4xx.
+ *
+ * `opts.manifestDigest` is the dry run's (W23): when given, a `.pkey/` that changed since the
+ * check refuses with 409 ("check again") instead of registering a manifest nobody looked at.
+ */
+export async function linkRepo(
+  env: Env,
+  db: Db,
+  repoUrl: string,
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+  ingest?: ManifestIngest,
+  opts: { manifestDigest?: string } = {},
+): Promise<LinkRepoResult> {
+  const read = await readRepoForCreate(env, repoUrl, now, fetchImpl);
+  if (!read.ok) return { ok: false, error: read.error };
+  const { owner, repo, installId, token, commit, files } = read;
+  if (
+    opts.manifestDigest !== undefined &&
+    opts.manifestDigest !== read.manifestDigest
+  )
+    return {
+      ok: false,
+      status: 409,
+      error: "the repository's .pkey/ changed since the check; check again",
+    };
 
   const result = parseManifest(files, {
     reservedNames: await reservedNamesMode(env, db),
@@ -218,27 +766,20 @@ export async function linkRepo(
     };
   const manifest = result.manifest;
 
-  // F-03: the system product is created only by the platform bootstrap (`ensureSystemProduct`,
-  // `POST /manage/api/platform/feeds/bootstrap`), never by registering a repository.
-  if (manifest.product.slug === SYSTEM_PRODUCT_SLUG)
-    return {
-      ok: false,
-      error: `reserved slug: ${SYSTEM_PRODUCT_SLUG} is the platform's own product, created by the package-feeds bootstrap`,
-    };
-
-  if (await getProduct(db, manifest.product.slug)) {
-    return {
-      ok: false,
-      error: `product already exists: ${manifest.product.slug}`,
-    };
-  }
+  const { problems } = await createSlugProblems(
+    db,
+    manifest.product.slug,
+    owner,
+    repo,
+  );
+  if (problems[0]) return { ok: false, error: problems[0].message };
 
   return registerFromManifest(
     env,
     db,
     manifest,
     { owner, repo, installId, token },
-    { sha: appliedSha, files },
+    { sha: commit, files },
     now,
     fetchImpl,
     ingest,
@@ -280,38 +821,10 @@ async function registerFromManifest(
   const binaryName = rel?.binaryName || gh.repo;
   const summaryMarker = rel?.summaryMarker || "pkey:summary";
 
-  // Defence in depth for R6-01: the manifest boundary already enforces this class, but the
-  // repo-name fallback does not go through it — and this value is interpolated into the
-  // `curl | sh` installer served to every user of the product.
-  if (!isSafeBinaryName(binaryName)) {
-    return {
-      ok: false,
-      error: `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`,
-    };
-  }
-
-  // R9-01, at ingest and fail-closed (see `manifestIssuerRefusal`). A first write has no
-  // already-working `oidc_config` row to protect, so an unset allowlist refuses it outright.
-  // A product that does not name a custom issuer never reaches this branch: `djdl` ships
-  // `provider: "platform"` and no issuer at all, so linking it is unaffected.
-  if (manifest.oidc?.provider === "custom") {
-    const refusal = manifestIssuerRefusal(env, manifest.oidc.issuer);
-    if (refusal) return { ok: false, error: refusal };
-  }
-
-  // The admin API screens every catalog it accepts (`admin/handlers/schema.ts`,
-  // `admin/handlers/products.ts` both `compileAll()` before writing). The repo-sync path did
-  // not, so a manifest from GitHub could install a catalog the admin API would have rejected
-  // — unsupported keywords, or a `pattern` the validator cannot compile. Screen it here too,
-  // so there is no route into `product_schema` that skips the check.
-  try {
-    new Catalog(manifest.catalog as never).compileAll();
-  } catch (e) {
-    return {
-      ok: false,
-      error: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
-    };
-  }
+  // The pure refusals (R6-01's binary name, R9-01's issuer, the catalog screen), shared with
+  // the dry run so it lists exactly what this would refuse (`createPolicyProblems`).
+  const refused = createPolicyProblems(env, manifest, gh.repo)[0];
+  if (refused) return { ok: false, error: refused.message };
 
   // P2-02: a declared trusted publisher pins the repository's NUMERIC ids, resolved here from
   // GitHub with the installation token — never taken from the manifest (a repo must not be able

@@ -153,6 +153,31 @@ describe("scale features from 8 products (PX-03)", () => {
     expect(
       screen.queryByRole("dialog", { name: "Jump to a product" }),
     ).toBeNull();
+    // Focus lands on the product's h1, not body (FLOWS.md P-14).
+    const h1 = await screen.findByRole("heading", {
+      level: 1,
+      name: "Glyphsmith",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(h1));
+  });
+
+  it("jumping to the product already showing still focuses its h1 (UX-79)", async () => {
+    window.history.replaceState(null, "", "/#/p/glyphsmith");
+    mockFetch(signedIn(TWELVE));
+    renderPortal();
+    const h1 = await screen.findByRole("heading", {
+      level: 1,
+      name: "Glyphsmith",
+    });
+    await userEvent.keyboard("{Control>}k{/Control}");
+    await screen.findByRole("dialog", { name: "Jump to a product" });
+    await userEvent.keyboard("glyph{Enter}");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Jump to a product" }),
+      ).toBeNull(),
+    );
+    await waitFor(() => expect(document.activeElement).toBe(h1));
   });
 
   it("moves through the palette with the arrow keys and opens Activate from it", async () => {

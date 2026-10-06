@@ -13,6 +13,7 @@ import type {
   EdgeMintRecipesResponse,
   PortalProductSettings,
   ProductDetail,
+  ResyncPlanResult,
   ResyncResult,
   SignInSettings,
   UpdatePortalSettingsBody,
@@ -32,6 +33,7 @@ const updatePortalSettings =
   >();
 const product = vi.fn<(slug: string) => Promise<{ product: ProductDetail }>>();
 const resyncProduct = vi.fn<(slug: string) => Promise<ResyncResult>>();
+const planResync = vi.fn<(slug: string) => Promise<ResyncPlanResult>>();
 const edgeMintRecipes =
   vi.fn<(slug: string) => Promise<EdgeMintRecipesResponse>>();
 const signInSettings =
@@ -55,6 +57,7 @@ vi.mock("../src/api.js", async () => {
         updatePortalSettings(slug, body),
       product: (slug: string) => product(slug),
       resyncProduct: (slug: string) => resyncProduct(slug),
+      planResync: (slug: string) => planResync(slug),
       edgeMintRecipes: (slug: string) => edgeMintRecipes(slug),
       signInSettings: (slug: string) => signInSettings(slug),
       updateSignInSettings: (
@@ -182,6 +185,25 @@ beforeEach(() => {
   updatePortalSettings.mockReset();
   product.mockReset();
   resyncProduct.mockReset();
+  planResync.mockReset();
+  planResync.mockResolvedValue({
+    ok: true,
+    dryRun: true,
+    slug: "djdl",
+    repository: "acme/djdl",
+    commit: "abcdef0123456789",
+    plan: {
+      apply: [
+        {
+          area: "oidc",
+          summary: "Sign-in provider and group map from .pkey/product",
+        },
+      ],
+      skipClaimed: [],
+      delete: [],
+      conflicts: [],
+    },
+  });
   edgeMintRecipes.mockReset();
   portalSettings.mockResolvedValue({ settings: PORTAL });
   updatePortalSettings.mockResolvedValue({ ok: true, settings: PORTAL });
@@ -648,8 +670,12 @@ describe("Identity → Sign-in", () => {
     expect(await screen.findByText("Custom")).toBeTruthy();
   });
 
-  it("confirms a resync (L1, caution) with its consequences before running it (IDN-1)", async () => {
-    resyncProduct.mockResolvedValue({ ok: true, slug: "djdl" });
+  it("confirms a resync (L1, caution) with the plan before running it (IDN-1, UX-78)", async () => {
+    resyncProduct.mockResolvedValue({
+      ok: true,
+      slug: "djdl",
+      updated: ["oidc"],
+    });
     renderSignIn();
     await screen.findByText("Custom");
 
@@ -659,10 +685,12 @@ describe("Identity → Sign-in", () => {
     await userEvent.click(trigger());
     const dialog = await screen.findByRole("alertdialog");
     expect(
-      within(dialog).getByText("Resync from the linked repo?"),
+      within(dialog).getByText("Resync DJDL from its repository?"),
     ).toBeTruthy();
     expect(
-      within(dialog).getByText(/The OIDC provider, group map and provisioning/),
+      await within(dialog).findByText(
+        "Sign-in provider and group map from .pkey/product",
+      ),
     ).toBeTruthy();
     expect(resyncProduct).not.toHaveBeenCalled();
 
@@ -674,13 +702,19 @@ describe("Identity → Sign-in", () => {
     expect(resyncProduct).not.toHaveBeenCalled();
 
     await userEvent.click(trigger());
+    const again = await screen.findByRole("alertdialog");
+    await within(again).findByText(
+      "Sign-in provider and group map from .pkey/product",
+    );
     await userEvent.click(
-      within(await screen.findByRole("alertdialog")).getByRole("button", {
-        name: "Resync",
-      }),
+      within(again).getByRole("button", { name: "Resync from repo" }),
     );
     await waitFor(() => expect(resyncProduct).toHaveBeenCalledWith("djdl"));
-    expect(await screen.findByText("Resynced from repo")).toBeTruthy();
+    const panel = await screen.findByTestId("resync-result");
+    expect(
+      within(panel).getByText("Resynced DJDL from acme/djdl"),
+    ).toBeTruthy();
+    expect(within(panel).getByText("Updated: sign-in.")).toBeTruthy();
     // The invalidation table: resync → everything under the product (the mint read included).
     await waitFor(() => expect(edgeMintRecipes).toHaveBeenCalledTimes(2));
   });

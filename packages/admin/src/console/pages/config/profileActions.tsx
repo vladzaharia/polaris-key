@@ -3,6 +3,7 @@ import { ApiError } from "../../../api.js";
 import { confirmFor } from "../../../lib/actions.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import { Button } from "../../../ui/Button.js";
+import { Callout } from "../../../ui/Callout.js";
 import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../ui/Drawer.js";
 import { FormField } from "../../../ui/form.js";
@@ -44,6 +45,11 @@ export function createProfileError(err: unknown): string {
   return copy.description || copy.title;
 }
 
+/** Whether a create refusal belongs on the Id field (a taken id) rather than to the form. */
+export function isIdError(err: unknown): boolean {
+  return err instanceof ApiError && err.reason === "profile_exists";
+}
+
 /**
  * "New profile" (T2's create drawer): identity only. A profile's payload is the product's whole
  * catalog, so it is edited on the profile's own page, where the caller navigates next.
@@ -66,6 +72,7 @@ export function CreateProfileDrawer({
   const [description, setDescription] = React.useState("");
   const [saving, setSaving] = React.useState(false);
   const [serverError, setServerError] = React.useState<string | null>(null);
+  const [formError, setFormError] = React.useState<string | null>(null);
   const [touched, setTouched] = React.useState(false);
 
   React.useEffect(() => {
@@ -74,9 +81,12 @@ export function CreateProfileDrawer({
       setName("");
       setDescription("");
       setServerError(null);
+      setFormError(null);
       setTouched(false);
     }
   }, [open]);
+  const unsaved =
+    !saving && (id.trim() !== "" || name.trim() !== "" || description !== "");
 
   const trimmed = id.trim();
   const idError =
@@ -95,6 +105,7 @@ export function CreateProfileDrawer({
     if (trimmed === "" || idError) return;
     setSaving(true);
     setServerError(null);
+    setFormError(null);
     try {
       const body: { id: string; name?: string; description?: string } = {
         id: trimmed,
@@ -108,7 +119,9 @@ export function CreateProfileDrawer({
       onOpenChange(false);
       onCreated(created?.id ?? trimmed);
     } catch (err) {
-      setServerError(createProfileError(err));
+      // Only a taken id is the Id field's problem; anything else belongs to the form (C-33).
+      if (isIdError(err)) setServerError(createProfileError(err));
+      else setFormError(createProfileError(err));
     } finally {
       setSaving(false);
     }
@@ -119,6 +132,7 @@ export function CreateProfileDrawer({
       open={open}
       onOpenChange={onOpenChange}
       dismissible={!saving}
+      unsaved={unsaved}
       title="New profile"
       description="Its values are set on its own page next."
     >
@@ -186,6 +200,11 @@ export function CreateProfileDrawer({
                 />
               )}
             </FormField>
+            {formError ? (
+              <Callout tone="danger" title="The profile wasn't created" live>
+                {formError}
+              </Callout>
+            ) : null}
           </div>
         </DrawerBody>
         <DrawerFooter>
@@ -263,6 +282,7 @@ export function EditProfileDrawer({
       open={open}
       onOpenChange={onOpenChange}
       dismissible={!saving}
+      unsaved={changed && !saving}
       title="Edit details"
       description={
         <>

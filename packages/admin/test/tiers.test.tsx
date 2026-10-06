@@ -6,7 +6,13 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { cleanup, screen, waitFor, within } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { resetConsole } from "./consoleHarness.js";
 import {
@@ -147,6 +153,26 @@ describe("Tiers", () => {
         },
       ]),
     );
+  });
+
+  it("asks before Escape drops a typed tier (C-29)", async () => {
+    bootLicense("#/p/djdl/license/tiers");
+    await table();
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "New tier" })[0]!,
+    );
+    const drawer = await screen.findByRole("dialog", { name: "New tier" });
+    await userEvent.type(within(drawer).getByLabelText(/^Id/), "team");
+    fireEvent.keyDown(drawer, { key: "Escape" });
+    expect((await within(drawer).findByRole("alert")).textContent).toContain(
+      "Discard your changes?",
+    );
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Keep editing" }),
+    );
+    expect(
+      (within(drawer).getByLabelText(/^Id/) as HTMLInputElement).value,
+    ).toBe("team");
   });
 
   it("refuses a taken or malformed id, and a zero device limit, before sending", async () => {

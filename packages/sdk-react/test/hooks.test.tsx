@@ -12,6 +12,7 @@ import {
   usePolarisKey,
   usePolarisTheme,
 } from "../src/react/hooks.js";
+import { useBoot } from "../src/react/useBoot.js";
 import { desktopAdapter } from "../src/desktop/desktopAdapter.js";
 import type { BridgeState } from "../src/desktop/bridge.js";
 import type { PolarisAdapter } from "../src/core/index.js";
@@ -294,5 +295,53 @@ describe("hooks outside a provider", () => {
     } finally {
       console.error = spy;
     }
+  });
+});
+
+// @pkey-feature ui.boot
+describe("useBoot", () => {
+  it("boots once from an effect and reports the outcome", async () => {
+    const calls: string[] = [];
+    const bridge = {
+      ...makeFakeBridge(okBridge()),
+      version: 4,
+      invoke: async (service: string, method: string) => {
+        calls.push(`${service}.${method}`);
+        return {
+          outcome: "ready",
+          state: { stage: "ready", outcome: "ready" },
+          license: { status: "ok" },
+          decision: null,
+          emits: [{ type: "boot_ready" }],
+        };
+      },
+    };
+    const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+    const { result } = renderHook(() => useBoot(), {
+      wrapper: wrapperFor(adapter),
+    });
+    await waitFor(() => expect(result.current.result?.outcome).toBe("ready"));
+    expect(result.current.running).toBe(false);
+    expect(result.current.emits).toEqual([{ type: "boot_ready" }]);
+    expect(result.current.state?.stage).toBe("ready");
+    expect(calls).toEqual(["core.boot"]);
+    adapter.dispose();
+  });
+
+  it("auto: false waits for boot(), and a v3 host's refusal lands in error", async () => {
+    const adapter = desktopAdapter({
+      bridge: { ...makeFakeBridge(okBridge()), version: 3 },
+      now: () => NOW_SEC,
+    });
+    const { result } = renderHook(() => useBoot({ auto: false }), {
+      wrapper: wrapperFor(adapter),
+    });
+    expect(result.current.running).toBe(false);
+    expect(result.current.result).toBeNull();
+    await result.current.boot();
+    await waitFor(() =>
+      expect(result.current.error).toMatchObject({ reason: "version" }),
+    );
+    adapter.dispose();
   });
 });

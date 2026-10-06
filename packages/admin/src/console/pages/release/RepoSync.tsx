@@ -7,28 +7,28 @@ import type {
   ReleaseHealthCheck,
   ResyncResult,
 } from "../../../api.js";
-import { confirmFor } from "../../../lib/actions.js";
-import { errorCopy } from "../../../lib/errorCopy.js";
 import { fromSeconds } from "../../../lib/format.js";
 import type { Tone } from "../../../lib/status.js";
 import { Button } from "../../../ui/Button.js";
 import { Callout } from "../../../ui/Callout.js";
-import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { DescriptionList } from "../../../ui/DescriptionList.js";
 import { Drawer, DrawerBody, DrawerFooter } from "../../../ui/Drawer.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
-import { toast } from "../../../ui/toast.js";
-import { mutate } from "../../data/mutations.js";
+import { useProduct } from "../../data/hooks.js";
+import {
+  ResyncDialog,
+  ResyncResultPanel,
+} from "../../components/ResyncDialog.js";
 import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 
 /**
  * The repo sync surface (ADMIN.md §6.3.1, REL-1 to REL-3, REL-8, REL-9, RSY-1 to RSY-3): health
  * checks, the last sync attempt and its lists (never truncated), and Resync from repo with a
- * result panel. It used to be three cards and a note stacked under the releases table.
+ * result panel, both the console's one resync flow (`components/ResyncDialog.tsx`, UX-78). It used to be three cards and a note stacked under the releases table.
  */
 
 const HEALTH: Record<string, { label: string; tone: Tone }> = {
@@ -94,7 +94,11 @@ export function SyncSummary({
   );
 }
 
-/** Resync from repo (L1 caution), then a result panel listing what changed (RSY-3). */
+/**
+ * Resync from repo: the console's one resync confirm (`components/ResyncDialog.tsx`, UX-78),
+ * which shows the dry run's plan first. The result goes to `onResult`; the page opens the Repo
+ * sync drawer, whose panel lists what changed (RSY-3).
+ */
 export function ResyncButton({
   slug,
   linked,
@@ -107,7 +111,7 @@ export function ResyncButton({
   variant?: "outline" | "primary";
 }): React.ReactElement {
   const [open, setOpen] = React.useState(false);
-  const policy = confirmFor("repo.resync");
+  const name = useProduct(slug).data?.name ?? slug;
   return (
     <>
       <Button
@@ -118,82 +122,13 @@ export function ResyncButton({
       >
         Resync from repo
       </Button>
-      <ConfirmDialog
+      <ResyncDialog
+        target={{ slug, name }}
         open={open}
         onOpenChange={setOpen}
-        intent={policy.intent === "none" ? "neutral" : policy.intent}
-        title="Resync from repo"
-        description="Polaris Key reads .pkey/ from the repository's default branch and applies it now."
-        consequences={[
-          "Release config, the catalog, services, tiers, profiles, update settings and delivery access are re-applied from the manifest.",
-          "Values set in the console stay as they are until you revert them to the manifest.",
-          "A part the manifest gets wrong is refused and listed; the rest still applies.",
-        ]}
-        confirmLabel="Resync from repo"
-        describeError={(e) => errorCopy(e)}
-        onConfirm={async () => {
-          const result = await mutate("resyncProduct", slug);
-          toast.success("Resynced from repo", {
-            description: result.updated?.length
-              ? `Updated: ${result.updated.join(", ")}.`
-              : "Nothing in the manifest had changed.",
-          });
-          onResult?.(result);
-        }}
+        onResult={(o) => onResult?.(o.result)}
       />
     </>
-  );
-}
-
-/** What the last resync did: updated sections, refused parts, pack sets. */
-export function ResyncResultPanel({
-  result,
-  onDismiss,
-}: {
-  result: ResyncResult;
-  onDismiss: () => void;
-}): React.ReactElement {
-  const updated = result.updated ?? [];
-  const refused = result.refused ?? [];
-  return (
-    <Callout
-      tone={refused.length ? "warning" : "success"}
-      title={
-        refused.length
-          ? `Resynced, with ${refused.length} ${refused.length === 1 ? "part" : "parts"} refused`
-          : "Resynced from repo"
-      }
-      action={
-        <Button variant="ghost" size="sm" onClick={onDismiss}>
-          Dismiss
-        </Button>
-      }
-      live
-    >
-      <div className="space-y-2">
-        <p>
-          {updated.length
-            ? `Updated: ${updated.join(", ")}.`
-            : "Nothing in the manifest had changed."}
-        </p>
-        {refused.length ? (
-          <ul className="list-disc space-y-1 pl-5" aria-label="Refused">
-            {refused.map((x) => (
-              <li key={`${x.code}:${x.path}`}>
-                <span className="font-mono text-xs">{x.path}</span>: {x.message}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {result.packSets ? (
-          <p>
-            {result.packSets.ok
-              ? `Pack sets re-resolved: ${result.packSets.sets}.`
-              : `Pack sets were not re-resolved: ${result.packSets.message}`}
-          </p>
-        ) : null}
-      </div>
-    </Callout>
   );
 }
 
@@ -327,7 +262,11 @@ export function RepoSyncDrawer({
     >
       <DrawerBody className="space-y-6">
         {result ? (
-          <ResyncResultPanel result={result} onDismiss={() => onResult(null)} />
+          <ResyncResultPanel
+            result={result}
+            productName={product?.name}
+            onDismiss={() => onResult(null)}
+          />
         ) : null}
         <section className="space-y-3" aria-labelledby="repo-sync-health">
           <div className="flex items-center justify-between gap-2">

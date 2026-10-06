@@ -27,7 +27,9 @@ const OS_FAMILIES: [RegExp, string][] = [
   [/linux/i, "linux"],
 ];
 
-function osFamily(env: BrowserFactsEnvironment): string {
+/** The coarse OS family the page reports (`windows`, `android`, `ios`, `macos`, `chromeos`,
+ *  `linux`), or `unknown`. */
+export function osFamily(env: BrowserFactsEnvironment): string {
   const hint =
     env.navigator?.userAgentData?.platform ?? env.navigator?.userAgent ?? "";
   for (const [re, name] of OS_FAMILIES) if (re.test(hint)) return name;
@@ -55,7 +57,7 @@ export function browserFacts(
   return out;
 }
 
-function pageEnvironment(): BrowserFactsEnvironment {
+export function pageEnvironment(): BrowserFactsEnvironment {
   const g = globalThis as { navigator?: BrowserFactsEnvironment["navigator"] };
   let timeZone: string | undefined;
   try {

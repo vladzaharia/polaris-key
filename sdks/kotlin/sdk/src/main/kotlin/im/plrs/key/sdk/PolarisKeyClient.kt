@@ -180,6 +180,9 @@ public data class DeviceInfo(
 public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     public val product: String = options.core.productSlug
 
+    /** True when the build pinned what the product runs (`CoreOptions.expectedServices`): `boot()` then skips discovery once a token is held. */
+    public val servicesPinned: Boolean = options.core.expectedServices != null
+
     /** Throws `insecure-base-url` before anything else happens. */
     public val core: CoreContext = CoreContext(options.core)
 
@@ -368,7 +371,8 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     /** The licence state after every sync whose documents actually changed (the ETags moved). */
     public val licenseChanges: SharedFlow<LicenseState> = changes.asSharedFlow()
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    /** The client's own scope: event fan-out, the refresh loop and `boot()`'s launch confirmation. */
+    internal val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     private val eventFlow = MutableSharedFlow<PolarisEvent>(extraBufferCapacity = 64)
 

@@ -1160,6 +1160,20 @@ export interface LinkCheckResult {
   remainingSecrets: string[];
 }
 
+/** `POST …/release/resync?dryRun=1` (UX-78): what a resync would do now. Writes nothing. A
+ *  refusal is an `ApiError` whose `reason` names the failed check (`product`, `app`,
+ *  `manifest`, `slug`); a policy refusal is a `plan.conflicts` item instead. */
+export interface ResyncPlanResult {
+  ok: true;
+  dryRun: true;
+  slug: string;
+  /** `owner/repo`. */
+  repository: string;
+  /** The default-branch commit the manifest was read at. */
+  commit: string;
+  plan: ManifestPlan;
+}
+
 /** `POST …/release/link`: linked and applied. */
 export interface LinkExistingResult extends Omit<ResyncResult, "updated"> {
   repository: string;
@@ -3691,6 +3705,11 @@ const rawApi = {
     }),
   resyncProduct: (slug: string) =>
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
+  /** The resync's dry run: reads the manifest and plans. Writes nothing. */
+  planResync: (slug: string) =>
+    call<ResyncPlanResult>(`${p(slug)}/release/resync?dryRun=1`, {
+      method: "POST",
+    }),
   /** Link repository, step 1: check `repoUrl` and plan the hand-over. Writes nothing. */
   checkRepoLink: (slug: string, repoUrl: string) =>
     call<LinkCheckResult>(`${p(slug)}/release/link?dryRun=1`, {

@@ -1,7 +1,8 @@
 import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
-import { X } from "lucide-react";
+import { TriangleAlert, X } from "lucide-react";
 import { cn } from "../lib/cn.js";
+import { Button } from "./Button.js";
 
 /**
  * Dialogs (components.md §4.1).
@@ -12,8 +13,13 @@ import { cn } from "../lib/cn.js";
  * - `dismissible={false}` blocks Escape and outside click and removes the close button, for a
  *   dialog that is busy (fixes UI-10).
  * - One footer component, `DialogFooter`.
- * - **Focus** goes to the first focusable element (Radix), or to `initialFocusRef` (the least
- *   destructive button in a confirm); on close it returns to the invoker.
+ * - **Focus** (FLOWS.md §2 C13, C18) goes to `initialFocusRef` (the least destructive button in a
+ *   confirm), else to the first field, else to the title; never to the close button. It stays in
+ *   the dialog when the focused control is disabled under it (a submit while it loads) and goes
+ *   back to that control once it is enabled again. On close it returns to the opener; when the
+ *   opener was a menu item, to the menu's trigger.
+ * - **Unsaved input** (`unsaved`, or `useDismissGuard` from inside): Escape, an outside click and
+ *   the close button ask "Discard your changes?" in the dialog instead of closing.
  */
 
 export type DialogSize = "sm" | "md" | "lg" | "xl";
@@ -24,6 +30,275 @@ const SIZE: Record<DialogSize, string> = {
   lg: "sm:max-w-[44rem]",
   xl: "sm:max-w-[60rem]",
 };
+
+// ── Focus and dismissal, shared with `Drawer` ─────────────────────────────────────────────────
+
+/** Fields first focus may land on; buttons and links never get first focus by default. */
+const FIELD_SELECTOR = [
+  'input:not([type="hidden"]):not([disabled]):not([readonly])',
+  "select:not([disabled])",
+  "textarea:not([disabled]):not([readonly])",
+  '[role="combobox"]:not([disabled])',
+  '[role="radio"]:not([disabled])',
+  '[role="checkbox"]:not([disabled])',
+  '[role="switch"]:not([disabled])',
+  '[contenteditable="true"]',
+].join(",");
+
+/** The first field in `root` outside its header, or `null`. */
+export function firstField(root: HTMLElement | null): HTMLElement | null {
+  if (!root) return null;
+  for (const el of root.querySelectorAll<HTMLElement>(FIELD_SELECTOR)) {
+    if (el.closest("[data-pk-overlay-header]")) continue;
+    if (el.closest('[hidden],[inert],[aria-hidden="true"]')) continue;
+    if (el.getAttribute("aria-disabled") === "true") continue;
+    return el;
+  }
+  return null;
+}
+
+/** Where focus goes back to: the opener, or, for a menu item, the menu's trigger. */
+function returnTarget(opener: HTMLElement | null): HTMLElement | null {
+  if (!opener) return null;
+  const menu = opener.closest<HTMLElement>('[role="menu"]');
+  if (menu) {
+    const trigger = menu.getAttribute("aria-labelledby");
+    const el = trigger ? document.getElementById(trigger) : null;
+    if (el) return el;
+  }
+  return opener.isConnected ? opener : null;
+}
+
+function focusable(el: HTMLElement | null): el is HTMLElement {
+  return (
+    !!el &&
+    el.isConnected &&
+    !(el as HTMLButtonElement).disabled &&
+    !el.closest("[inert]")
+  );
+}
+
+/**
+ * The open/close focus contract for an overlay: records the opener, picks first focus, keeps
+ * focus inside when the focused control is disabled under it, and returns focus on close.
+ */
+export function useOverlayFocus(
+  open: boolean,
+  contentRef: React.RefObject<HTMLElement | null>,
+  titleRef: React.RefObject<HTMLElement | null>,
+  initialFocusRef?: React.RefObject<HTMLElement | null>,
+): {
+  onOpenAutoFocus: (e: Event) => void;
+  onCloseAutoFocus: (e: Event) => void;
+} {
+  const opener = React.useRef<HTMLElement | null>(null);
+  const wasOpen = React.useRef(false);
+  // Read during render, before Radix moves focus in.
+  if (open && !wasOpen.current && typeof document !== "undefined") {
+    const active = document.activeElement;
+    opener.current =
+      active instanceof HTMLElement && active !== document.body ? active : null;
+  }
+  wasOpen.current = open;
+
+  // A control disabled under focus (a loading submit) drops focus to <body>: hold it on the
+  // title, then give it back to the control when it is enabled again.
+  React.useEffect(() => {
+    const root = contentRef.current;
+    if (!open || !root) return;
+    let lost: HTMLElement | null = null;
+    const onFocusOut = (e: FocusEvent): void => {
+      if (e.relatedTarget !== null) return;
+      const from = e.target as HTMLElement | null;
+      requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (active && active !== document.body) return;
+        if (!root.isConnected) return;
+        lost = from && root.contains(from) ? from : null;
+        titleRef.current?.focus({ preventScroll: true });
+      });
+    };
+    const observer =
+      typeof MutationObserver === "undefined"
+        ? null
+        : new MutationObserver(() => {
+            const el: HTMLElement | null = lost;
+            if (!el) return;
+            if (
+              document.activeElement !== titleRef.current ||
+              !el.isConnected
+            ) {
+              lost = null;
+              return;
+            }
+            if (focusable(el)) {
+              lost = null;
+              el.focus({ preventScroll: true });
+            }
+          });
+    root.addEventListener("focusout", onFocusOut);
+    observer?.observe(root, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["disabled", "aria-busy"],
+    });
+    return () => {
+      root.removeEventListener("focusout", onFocusOut);
+      observer?.disconnect();
+    };
+  }, [open, contentRef, titleRef]);
+
+  return {
+    onOpenAutoFocus: (e) => {
+      e.preventDefault();
+      const target =
+        initialFocusRef?.current ??
+        firstField(contentRef.current) ??
+        titleRef.current;
+      target?.focus({ preventScroll: true });
+    },
+    onCloseAutoFocus: (e) => {
+      const target = returnTarget(opener.current);
+      opener.current = null;
+      if (!target) return;
+      e.preventDefault();
+      // The opener may still be disabled for a frame (a switch while its confirm was pending).
+      let tries = 0;
+      const attempt = (): void => {
+        if (focusable(target)) {
+          target.focus({ preventScroll: true });
+          if (document.activeElement === target) return;
+        }
+        if (++tries < 10) requestAnimationFrame(attempt);
+      };
+      attempt();
+    },
+  };
+}
+
+type RegisterDirty = (id: string, dirty: boolean) => void;
+/** Provided by `Dialog` and `Drawer`; read through `useDismissGuard`. */
+export const DismissGuardContext = React.createContext<RegisterDirty | null>(
+  null,
+);
+
+/**
+ * Mark the surrounding `Dialog` or `Drawer` as holding unsaved input while `dirty`: dismissing it
+ * then asks first. A no-op outside one.
+ */
+export function useDismissGuard(dirty: boolean): void {
+  const register = React.useContext(DismissGuardContext);
+  const id = React.useId();
+  React.useEffect(() => {
+    register?.(id, dirty);
+    return () => register?.(id, false);
+  }, [register, id, dirty]);
+}
+
+/** The dismissal state machine shared by `Dialog` and `Drawer`. */
+export function useGuardedDismissal({
+  open,
+  onOpenChange,
+  dismissible,
+  unsaved,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  dismissible: boolean;
+  unsaved: boolean;
+}): {
+  /** Escape, outside click, Close and Back go through this. */
+  requestClose: () => void;
+  asking: boolean;
+  keepEditing: () => void;
+  discard: () => void;
+  /** The `DismissGuardContext` value for the overlay's children. */
+  register: RegisterDirty;
+} {
+  const [dirtyIds, setDirtyIds] = React.useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [asking, setAsking] = React.useState(false);
+  React.useEffect(() => {
+    if (!open) setAsking(false);
+  }, [open]);
+  const register = React.useCallback<RegisterDirty>((id, dirty) => {
+    setDirtyIds((prev) => {
+      if (prev.has(id) === dirty) return prev;
+      const next = new Set(prev);
+      if (dirty) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+  const guarded = unsaved || dirtyIds.size > 0;
+  // Where focus was when the question opened; "Keep editing" puts it back.
+  const before = React.useRef<HTMLElement | null>(null);
+  const keepEditing = (): void => {
+    const el = before.current;
+    before.current = null;
+    // Focus first, while the question's buttons still hold it, so it never drops to <body>.
+    if (el?.isConnected) el.focus({ preventScroll: true });
+    setAsking(false);
+  };
+
+  React.useEffect(() => {
+    if (!guarded) setAsking(false);
+  }, [guarded]);
+  return {
+    requestClose: () => {
+      if (!dismissible) return;
+      if (asking) return keepEditing();
+      if (guarded) {
+        const active = document.activeElement;
+        before.current = active instanceof HTMLElement ? active : null;
+        return setAsking(true);
+      }
+      onOpenChange(false);
+    },
+    asking,
+    keepEditing,
+    discard: () => {
+      setAsking(false);
+      onOpenChange(false);
+    },
+    register,
+  };
+}
+
+/** "Discard your changes?", asked in place when an overlay with unsaved input is dismissed. */
+export function DiscardStrip({
+  onKeep,
+  onDiscard,
+  className,
+}: {
+  onKeep: () => void;
+  onDiscard: () => void;
+  className?: string;
+}): React.ReactElement {
+  return (
+    <div
+      role="alert"
+      className={cn(
+        "flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-warning-border bg-warning-subtle px-6 py-3 text-sm",
+        className,
+      )}
+    >
+      <p className="flex min-w-0 flex-1 items-center gap-2 font-bold text-fg-strong">
+        <TriangleAlert aria-hidden className="size-4 shrink-0 text-warning" />
+        Discard your changes? Nothing has been saved.
+      </p>
+      <div className="flex gap-2">
+        <Button size="sm" variant="outline" autoFocus onClick={onKeep}>
+          Keep editing
+        </Button>
+        <Button size="sm" variant="danger" onClick={onDiscard}>
+          Discard
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export function DialogOverlay({
   className,
@@ -58,6 +333,10 @@ export interface DialogProps {
   initialFocusRef?: React.RefObject<HTMLElement | null>;
   /** `alertdialog` for confirmations. */
   role?: "dialog" | "alertdialog";
+  /** The draft holds unsaved input: dismissing asks first. See also `useDismissGuard`. */
+  unsaved?: boolean;
+  /** The title element, for a flow that moves focus to it (a result step). */
+  titleRef?: React.Ref<HTMLHeadingElement>;
   className?: string;
 }
 
@@ -72,27 +351,45 @@ export function Dialog({
   onEscapeKeyDown,
   initialFocusRef,
   role,
+  unsaved = false,
+  titleRef: titleRefProp,
   className,
 }: DialogProps): React.ReactElement {
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
+  const focus = useOverlayFocus(open, contentRef, titleRef, initialFocusRef);
+  const dismissal = useGuardedDismissal({
+    open,
+    onOpenChange,
+    dismissible,
+    unsaved,
+  });
+  const setTitle = React.useCallback(
+    (el: HTMLHeadingElement | null) => {
+      titleRef.current = el;
+      if (typeof titleRefProp === "function") titleRefProp(el);
+      else if (titleRefProp)
+        (titleRefProp as React.RefObject<HTMLHeadingElement | null>).current =
+          el;
+    },
+    [titleRefProp],
+  );
   return (
     <DialogPrimitive.Root
       open={open}
       onOpenChange={(next) => {
-        if (!next && !dismissible) return;
-        onOpenChange(next);
+        if (next) return onOpenChange(true);
+        dismissal.requestClose();
       }}
     >
       <DialogPrimitive.Portal>
         <DialogOverlay />
         <DialogPrimitive.Content
+          ref={contentRef}
           {...(role ? { role } : {})}
           {...(description ? {} : { "aria-describedby": undefined })}
-          onOpenAutoFocus={(e) => {
-            if (initialFocusRef?.current) {
-              e.preventDefault();
-              initialFocusRef.current.focus();
-            }
-          }}
+          onOpenAutoFocus={focus.onOpenAutoFocus}
+          onCloseAutoFocus={focus.onCloseAutoFocus}
           onEscapeKeyDown={(e) => {
             if (!dismissible) e.preventDefault();
             onEscapeKeyDown?.(e);
@@ -117,9 +414,16 @@ export function Dialog({
             aria-hidden
             className="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border-strong sm:hidden"
           />
-          <div className="flex shrink-0 items-start gap-4 px-6 pb-2 pt-4 sm:pt-6">
+          <div
+            data-pk-overlay-header=""
+            className="flex shrink-0 items-start gap-4 px-6 pb-2 pt-4 sm:pt-6"
+          >
             <div className="min-w-0 flex-1 space-y-1">
-              <DialogPrimitive.Title className="text-lg font-bold leading-tight text-fg-strong">
+              <DialogPrimitive.Title
+                ref={setTitle}
+                tabIndex={-1}
+                className="text-lg font-bold leading-tight text-fg-strong outline-hidden"
+              >
                 {title}
               </DialogPrimitive.Title>
               {description ? (
@@ -137,7 +441,16 @@ export function Dialog({
               </DialogPrimitive.Close>
             ) : null}
           </div>
-          {children}
+          {dismissal.asking ? (
+            <DiscardStrip
+              className="mt-2 border-t"
+              onKeep={dismissal.keepEditing}
+              onDiscard={dismissal.discard}
+            />
+          ) : null}
+          <DismissGuardContext.Provider value={dismissal.register}>
+            {children}
+          </DismissGuardContext.Provider>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

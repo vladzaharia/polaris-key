@@ -27,6 +27,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import im.plrs.key.core.BootOptions
 import im.plrs.key.core.LicenseState
+import im.plrs.key.sdk.bootHost
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow

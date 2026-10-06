@@ -43,6 +43,7 @@ export type WriteMethod =
   | "deleteProduct"
   | "resyncProduct"
   | "checkRepoLink"
+  | "planResync"
   | "linkProductRepo"
   | "updateReleaseChannel"
   | "revertReleaseChannel"
@@ -273,6 +274,11 @@ export const MUTATIONS: MutationTable = {
     // A resync re-applies channels, catalog, services, tiers, profiles, update settings and
     // delivery access: everything under the product.
     invalidates: (slug) => [exact(qk.products()), prefix(qk.product(slug))],
+  },
+  planResync: {
+    label: "resync plan (dry run)",
+    invalidates: () => [],
+    why: "A dry run: it reads the repository and writes nothing.",
   },
   checkRepoLink: {
     label: "link repository check (dry run)",

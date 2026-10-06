@@ -469,6 +469,26 @@ describe("Profile record", () => {
     );
   });
 
+  it("keeps the payload draft across its own tabs without asking (C-33)", async () => {
+    bootConfig("#/p/djdl/config/profiles/base-pro", recordRoutes());
+    await screen.findByText("ui.theme");
+    await userEvent.click(screen.getByRole("radio", { name: "Hidden" }));
+    await screen.findByText(/1 unsaved change/);
+    const tabs = screen.getByRole("navigation", { name: "Profile" });
+    await userEvent.click(within(tabs).getByRole("link", { name: /Used by/ }));
+    await waitFor(() =>
+      expect(window.location.hash).toBe(
+        "#/p/djdl/config/profiles/base-pro/used-by",
+      ),
+    );
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    await userEvent.click(within(tabs).getByRole("link", { name: /Payload/ }));
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/p/djdl/config/profiles/base-pro"),
+    );
+    expect(screen.getByText(/1 unsaved change/)).toBeTruthy();
+  });
+
   it("asks for a catalog when the product has none (PRF-7)", async () => {
     bootConfig(
       "#/p/djdl/config/profiles/base-pro",
