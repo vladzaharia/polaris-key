@@ -702,7 +702,7 @@ describe("R11-05 product scoping", () => {
       // account serves every product pinned to it; A-16's lister is team-wide), and the row holds
       // no tenant data: a caller kind, an actor id and two timestamps.
       "store_edit_leases",
-      // 00XX (U-03) — the licence-override migration's one state row: the run is ONE
+      // 0103 (U-03) — the licence-override migration's one state row: the run is ONE
       // platform-wide run (notes/S-17 §5.12), so its notice, run and inventory belong to no
       // product. The per-product data (`account_overrides`, `override_migration_report`) IS
       // product-first (this loop).

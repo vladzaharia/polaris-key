@@ -122,8 +122,8 @@ Where the brief and the code disagreed, the code won:
 - **"Byte for byte, apart from timestamps"**: a catalog default's `updatedAt` is the request time
   (`catalogDefaultPayload`), so test 1 compares documents minted at the same instant; their ETags
   match too.
-- **The migration file is `00XX_account_overrides.sql`** (the lead assigns the number);
-  `LATEST_MIGRATION` names the placeholder.
+- **The migration is `0103_account_overrides.sql`**, the number the lead assigned (built as
+  `00XX_account_overrides.sql`); `LATEST_MIGRATION` names it.
 - **Test 8** (the signed corpus is unchanged) is the gate's `pnpm gen:corpus -- --check`: no signed
   shape, claim or fixture changes.
 
@@ -140,10 +140,9 @@ Where the brief and the code disagreed, the code won:
 - [x] Dry run on a production-shaped copy produces the inventory and report; secret values never appear (test).
 - [x] `gen:corpus -- --check` unchanged.
 - [x] The migration notice cannot be started before I-07 and I-11 are flagged live (test or guard).
-- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header. Every step
-      is green except `test/recordDeploy.test.ts` (2 tests), which refuses the unnumbered
-      `00XX_account_overrides.sql` by design until the lead assigns the number; with a number it
-      passes (checked locally, then reverted).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header. At
+      hand-off every step was green except `test/recordDeploy.test.ts`, which refuses an
+      unnumbered `00XX_` migration by design; with the lead's number (0103) it passes.
 
 ## Verify
 
