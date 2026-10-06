@@ -4935,12 +4935,17 @@ paths:
         from every feed: their release rows and files go, their blob refs are dropped (the blob
         collector reclaims an object only once no ref from any product holds it), a tombstone
         keeps each version unique forever, and the package re-renders. Stable and beta versions,
-        prereleases of newer versions, and a version a channel points at are never touched. The
-        same prune runs automatically right after a stable publish unless the product turned
-        `release.packages.prunePrereleases` off. A DRY RUN unless `apply` is `true`: the report
-        lists what would go, with counts and bytes (`freedBytes`: the part no remaining ref
-        holds). Requires a `pkeyci_` token with `release:yank` (operator-granted). Every
-        deletion is audited as `package.version.prune` under `ci:<subject>`. Idempotent. No CORS.
+        prereleases of newer versions, and a version a channel points at are never touched, and
+        a yanked or deprecated stable is never the ceiling. The same prune runs automatically
+        right after a stable publish once the product turned
+        `release.packages.prunePrereleases` on (off by default for a tenant product; always on
+        for the platform's own). A DRY RUN unless `apply` is `true`: the report lists what would
+        go, with counts and bytes (`freedBytes`: the part no remaining ref holds; with `apply`,
+        only what this request's own deletions left unreferenced). A version that became held
+        between the plan and its deletion is kept and listed in its package's `skipped`.
+        Requires a `pkeyci_` token of this product with `release:yank` (operator-granted). Every
+        deletion is audited as `package.version.prune` under `ci:<subject>`, its parent the
+        stable release that set the ceiling. Idempotent. No CORS.
       security: [{ ciToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -4979,7 +4984,14 @@ paths:
                         deliverableId: { type: string }
                         ecosystem: { type: string }
                         name: { type: string }
-                        stable: { type: string }
+                        stable:
+                          type: string
+                          description: The newest live stable release, the ceiling.
+                        stableReleaseId:
+                          type: string
+                          description: >
+                            That release's id (`<deliverable>@<stable>`), the audit rows'
+                            `parent_id`.
                         prune:
                           type: array
                           items:
@@ -5008,6 +5020,18 @@ paths:
                             properties:
                               version: { type: string }
                               error: { type: string }
+                        skipped:
+                          type: array
+                          description: >
+                            With `apply`: planned versions a channel pointer or another row
+                            took hold of before their deletion, so they were kept.
+                          items:
+                            type: object
+                            properties:
+                              releaseId: { type: string }
+                              version: { type: string }
+                              reason:
+                                { type: string, enum: [pinned, referenced] }
                   skipped:
                     type: array
                     items:
@@ -5022,6 +5046,9 @@ paths:
                       bytes: { type: integer }
                       freedBytes: { type: integer }
                       failed: { type: integer }
+                      skipped:
+                        type: integer
+                        description: Versions skipped because they became held (with `apply`).
                   more:
                     type: boolean
                     description: >
@@ -5041,6 +5068,7 @@ paths:
                         ecosystem: npm
                         name: "@acme/sdk"
                         stable: 1.1.0
+                        stableReleaseId: npm.sdk@1.1.0
                         prune:
                           - {
                               releaseId: npm.sdk@1.1.0-main.1,
@@ -5054,7 +5082,13 @@ paths:
                         freedBytes: 1200
                     skipped: []
                     totals:
-                      { versions: 1, bytes: 1200, freedBytes: 1200, failed: 0 }
+                      {
+                        versions: 1,
+                        bytes: 1200,
+                        freedBytes: 1200,
+                        failed: 0,
+                        skipped: 0,
+                      }
         "400": { $ref: "#/components/responses/CiRefusal" }
         "401": { $ref: "#/components/responses/CiUnauthorized" }
         "403": { $ref: "#/components/responses/CiForbidden" }

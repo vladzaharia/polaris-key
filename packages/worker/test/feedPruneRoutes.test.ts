@@ -1,8 +1,10 @@
 /**
  * Feed retention through the real dispatcher: the submit route's stable publish prunes the
- * package's builds of main below it (a beta publish does not), a pruned version is never
- * republished, the CI backfill route (`release:yank`, dry run by default) and the admin Feeds
- * routes (the retention setting and the backfill).
+ * package's builds of main below it once the product opted in (a beta publish does not; a tenant
+ * product is off by default), a pruned version is never republished, the CI backfill route
+ * (`release:yank`, dry run by default, this product's tokens only) and the admin Feeds routes
+ * (the retention setting and the backfill, platform admins only, and the platform scope before
+ * and after the bootstrap).
  */
 
 import { createHash } from "node:crypto";
@@ -10,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { parseManifest } from "@polaris-key/manifest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
-import { NOW } from "./seed.js";
+import { NOW, TEST_KEK, seedProduct } from "./seed.js";
 import { asR2, installDigestStream, R2Mock } from "./r2Mock.js";
 import {
   call,
@@ -24,6 +26,7 @@ import type { Env } from "../src/env.js";
 import type { FetchImpl } from "../src/services/release/githubApp.js";
 import { issueStaticCiToken } from "../src/core/publisher.js";
 import { manifestDeliverableStatements } from "../src/services/release/deliverables.js";
+import { SYSTEM_PRODUCT_SLUG } from "@polaris-key/manifest";
 import { handleAdmin } from "../src/admin/index.js";
 import {
   ADMIN_COOKIE,
@@ -178,10 +181,15 @@ const versions = async () =>
     )
   ).map((r) => r.version);
 
-async function admin(method: string, path: string, body?: unknown) {
+async function admin(
+  method: string,
+  path: string,
+  body?: unknown,
+  groups = ["platform-admins"],
+) {
   const { token: t, session } = await issueSession(
     env,
-    { sub: "u1", name: "Ada", email: "ada@x.io", groups: ["platform-admins"] },
+    { sub: "u1", name: "Ada", email: "ada@x.io", groups },
     NOW,
   );
   const full = `/api${path}`;
@@ -202,8 +210,19 @@ async function admin(method: string, path: string, body?: unknown) {
   );
 }
 
+const retention = `/products/${SLUG}/distribution/feeds/retention`;
+
 describe("a stable publish prunes the builds of main (feed retention)", () => {
-  it("beta prunes nothing; stable prunes the builds of main at or below it; newer ones stay; a pruned version is never republished", async () => {
+  it("once opted in: beta prunes nothing; stable prunes the builds of main at or below it; newer ones stay; a pruned version is never republished", async () => {
+    const on = await admin("PUT", retention, {
+      expectedVersion: 0,
+      prunePrereleases: true,
+    });
+    expect(on.status, await on.clone().text()).toBe(200);
+    expect(await on.json()).toMatchObject({
+      prunePrereleases: true,
+      version: 1,
+    });
     for (const [v, c] of [
       ["1.0.0", "stable"],
       ["1.1.0-main.1", "main"],
@@ -226,17 +245,19 @@ describe("a stable publish prunes the builds of main (feed retention)", () => {
     ]);
     expect(
       await db.all(
-        "SELECT actor_sub, target_id FROM audit WHERE product = ? AND action = 'package.version.prune' ORDER BY target_id",
+        "SELECT actor_sub, target_id, parent_id FROM audit WHERE product = ? AND action = 'package.version.prune' ORDER BY target_id",
         SLUG,
       ),
     ).toEqual([
       {
         actor_sub: "system:feed-retention",
         target_id: "npm:@acme/sdk@1.1.0-main.1",
+        parent_id: "npm.sdk@1.1.0",
       },
       {
         actor_sub: "system:feed-retention",
         target_id: "npm:@acme/sdk@1.1.0-main.2",
+        parent_id: "npm.sdk@1.1.0",
       },
     ]);
 
@@ -247,35 +268,26 @@ describe("a stable publish prunes the builds of main (feed retention)", () => {
     expect(again.body.message).toContain("pruned");
   });
 
-  it("a product that turned retention off keeps its builds of main", async () => {
-    const put = await admin(
-      "PUT",
-      `/products/${SLUG}/distribution/feeds/retention`,
-      { expectedVersion: 0, prunePrereleases: false },
-    );
-    expect(put.status, await put.clone().text()).toBe(200);
-    expect(await put.json()).toMatchObject({
+  it("is off by default for a tenant product, which keeps its builds of main until it opts in", async () => {
+    const get = await admin("GET", retention);
+    expect(get.status).toBe(200);
+    expect(await get.json()).toEqual({
+      product: SLUG,
       prunePrereleases: false,
-      version: 1,
       locked: false,
+      version: 0,
+      updatedAt: null,
+      updatedBy: null,
     });
-    expect(
-      (
-        await admin("PUT", `/products/${SLUG}/distribution/feeds/retention`, {
-          expectedVersion: 0,
-          prunePrereleases: true,
-        })
-      ).status,
-    ).toBe(409);
     expect((await publish("1.1.0-main.1", "main")).res.status).toBe(200);
     expect((await publish("1.1.0", "stable")).res.status).toBe(200);
     expect(await versions()).toEqual(["1.1.0", "1.1.0-main.1"]);
     expect(
       await db.first(
-        "SELECT summary FROM audit WHERE product = ? AND action = 'feed.retention.update'",
+        "SELECT COUNT(*) AS n FROM audit WHERE product = ? AND action = 'package.version.prune'",
         SLUG,
       ),
-    ).toBeTruthy();
+    ).toEqual({ n: 0 });
 
     // The backfill is an explicit act: it runs whatever the setting says.
     const dry = await admin(
@@ -302,20 +314,45 @@ describe("a stable publish prunes the builds of main (feed retention)", () => {
     expect(await versions()).toEqual(["1.1.0"]);
     expect(
       await db.first(
-        "SELECT actor_sub FROM audit WHERE product = ? AND action = 'package.version.prune'",
+        "SELECT actor_sub, parent_id FROM audit WHERE product = ? AND action = 'package.version.prune'",
         SLUG,
       ),
-    ).toEqual({ actor_sub: "admin:u1" });
+    ).toEqual({ actor_sub: "admin:u1", parent_id: "npm.sdk@1.1.0" });
+
+    // Opting in, then a stale write refused.
+    const put = await admin("PUT", retention, {
+      expectedVersion: 0,
+      prunePrereleases: true,
+    });
+    expect(put.status, await put.clone().text()).toBe(200);
+    expect(await put.json()).toMatchObject({
+      prunePrereleases: true,
+      version: 1,
+      locked: false,
+    });
+    expect(
+      (
+        await admin("PUT", retention, {
+          expectedVersion: 0,
+          prunePrereleases: false,
+        })
+      ).status,
+    ).toBe(409);
+    expect(
+      await db.first(
+        "SELECT summary FROM audit WHERE product = ? AND action = 'feed.retention.update'",
+        SLUG,
+      ),
+    ).toEqual({
+      summary:
+        "Turned on pruning of the builds of main once a version is released",
+    });
   });
 });
 
 describe("POST /<p>/release/packages/prune (CI backfill)", () => {
   beforeEach(async () => {
-    await db.run(
-      "INSERT INTO release_package_retention (product, prune_prereleases, version, updated_at) VALUES (?, 0, 1, ?)",
-      SLUG,
-      NOW,
-    );
+    // Retention is off by default, so the stable publish leaves the build of main listed.
     expect((await publish("1.0.0", "stable")).res.status).toBe(200);
     expect((await publish("1.1.0-main.1", "main")).res.status).toBe(200);
     expect((await publish("1.1.0", "stable")).res.status).toBe(200);
@@ -324,6 +361,23 @@ describe("POST /<p>/release/packages/prune (CI backfill)", () => {
   it("needs release:yank", async () => {
     const res = await post("packages/prune", {}, publishToken);
     expect(res.status).toBe(403);
+  });
+
+  it("refuses another product's release:yank token (401) and prunes nothing", async () => {
+    await seedProduct(db, "other");
+    const foreign = (
+      await issueStaticCiToken(env, db, {
+        product: "other",
+        scopes: ["release:yank"],
+        expiresAt: NOW + 3600,
+        label: null,
+        createdBy: "u1",
+        now: NOW,
+      })
+    ).token;
+    for (const body of [{}, { apply: true }])
+      expect((await post("packages/prune", body, foreign)).status).toBe(401);
+    expect(await versions()).toHaveLength(3);
   });
 
   it("dry-runs by default, applies with apply: true, and refuses a bad body", async () => {
@@ -363,5 +417,69 @@ describe("POST /<p>/release/packages/prune (CI backfill)", () => {
       SLUG,
     );
     expect(audit?.actor_sub).toMatch(/^ci:/);
+  });
+});
+
+describe("the admin feed retention routes", () => {
+  it("refuse a session that is not platform admin (403) on both prune routes and PUT /retention", async () => {
+    expect((await publish("1.1.0-main.1", "main")).res.status).toBe(200);
+    expect((await publish("1.1.0", "stable")).res.status).toBe(200);
+    const staff = ["staff"];
+    for (const [method, path, body] of [
+      ["POST", `/products/${SLUG}/distribution/feeds/prune`, { apply: true }],
+      ["POST", "/platform/feeds/prune", { apply: true }],
+      ["PUT", retention, { expectedVersion: 0, prunePrereleases: true }],
+      [
+        "PUT",
+        "/platform/feeds/retention",
+        { expectedVersion: 0, prunePrereleases: false },
+      ],
+    ] as const)
+      expect((await admin(method, path, body, staff)).status, path).toBe(403);
+    expect(await versions()).toEqual(["1.1.0", "1.1.0-main.1"]);
+    expect(
+      await db.first(
+        "SELECT COUNT(*) AS n FROM release_package_retention WHERE product = ?",
+        SLUG,
+      ),
+    ).toEqual({ n: 0 });
+  });
+
+  it("POST /platform/feeds/prune: 404 before the bootstrap, a dry run after it, 422 for a non-boolean apply", async () => {
+    env.PLATFORM_KEK = TEST_KEK;
+    env.PKG_ORIGIN = "https://pkg.plrs.im";
+    expect((await admin("POST", "/platform/feeds/prune", {})).status).toBe(404);
+    expect((await admin("GET", "/platform/feeds/retention")).status).toBe(404);
+
+    const boot = await admin("POST", "/platform/feeds/bootstrap");
+    expect(boot.status, await boot.clone().text()).toBe(200);
+    const dry = await admin("POST", "/platform/feeds/prune", {});
+    expect(dry.status, await dry.clone().text()).toBe(200);
+    expect(await dry.json()).toMatchObject({
+      product: SYSTEM_PRODUCT_SLUG,
+      dryRun: true,
+      // The system product's retention is on and locked.
+      prunePrereleases: true,
+      totals: { versions: 0, failed: 0, skipped: 0 },
+    });
+    const bad = await admin("POST", "/platform/feeds/prune", { apply: "true" });
+    expect(bad.status).toBe(422);
+    expect(await bad.json()).toMatchObject({ fields: ["apply"] });
+
+    // The system product's default: on, locked, and a write is refused.
+    expect(
+      await (await admin("GET", "/platform/feeds/retention")).json(),
+    ).toMatchObject({
+      product: SYSTEM_PRODUCT_SLUG,
+      prunePrereleases: true,
+      locked: true,
+      version: 0,
+    });
+    const off = await admin("PUT", "/platform/feeds/retention", {
+      expectedVersion: 0,
+      prunePrereleases: false,
+    });
+    expect(off.status).toBe(403);
+    expect(await off.json()).toMatchObject({ reason: "retention_locked" });
   });
 });
