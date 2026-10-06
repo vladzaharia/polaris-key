@@ -97,6 +97,7 @@ async function setProductServices(
         distribution: { enabled: services.release?.enabled === true },
         update: { enabled: false },
         identity: { enabled: false },
+        sync: { enabled: false },
         ...services,
       },
     }),

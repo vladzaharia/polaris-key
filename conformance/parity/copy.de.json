@@ -133,6 +133,10 @@
       "title": "Anmeldung nicht verfügbar",
       "message": "Die Anmeldung ist derzeit nicht verfügbar. Versuchen Sie es in einigen Minuten erneut."
     },
+    "identity_disabled": {
+      "title": "Anmeldung nicht verfügbar",
+      "message": "Die Anmeldung über diese App ist deaktiviert. Ihre Installationen und Lizenzen funktionieren weiterhin."
+    },
     "auth_method_disabled": {
       "title": "Anmeldemethode nicht verfügbar",
       "message": "Diese Anmeldemethode ist deaktiviert. Wählen Sie eine andere."

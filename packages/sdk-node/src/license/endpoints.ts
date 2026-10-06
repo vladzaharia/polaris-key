@@ -9,6 +9,7 @@
 // `CoreContext.headers()` / `.deadline()`, so a new endpoint cannot ship without them (R4-08).
 
 import type { HardwareFingerprint } from "@polaris-key/protocol/core";
+import { readManageUrl } from "@polaris-key/client-core";
 import type { CoreContext, DocumentResult } from "../core/context.js";
 
 /**
@@ -23,11 +24,15 @@ import type { CoreContext, DocumentResult } from "../core/context.js";
  */
 export type ActivationResult =
   | { kind: "ok"; token: string; schemaVersion: number }
+  /** Every seat is taken. `manageUrl` (PX-W8) is the customer-portal link that frees one,
+   *  present while the product's portal is on; add the app's return with `withManageReturn`
+   *  and, on an `/activate` link, the key with `withManageKey`. Never an auth failure. */
   | {
       kind: "device-limit";
       code: string;
       limit?: number;
       deviceCount?: number;
+      manageUrl?: string;
     }
   /** 401: the key or token is missing, invalid or revoked. */
   | { kind: "unauthorized"; code: string }
@@ -141,11 +146,13 @@ export function activationRefusal(
     case "device-limit": {
       const limit = num(body.limit) ?? num(nested?.limit);
       const deviceCount = num(body.deviceCount) ?? num(nested?.deviceCount);
+      const manageUrl = readManageUrl(body);
       return {
         kind,
         code: wire!,
         ...(limit !== undefined ? { limit } : {}),
         ...(deviceCount !== undefined ? { deviceCount } : {}),
+        ...(manageUrl !== undefined ? { manageUrl } : {}),
       };
     }
     case "hardware-mismatch": {

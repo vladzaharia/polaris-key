@@ -84,6 +84,7 @@ async function setIdentity(db: Db, slug: string, on: boolean): Promise<void> {
         distribution: { enabled: false },
         update: { enabled: false },
         identity: { enabled: on },
+        sync: { enabled: false },
       },
     }),
     "admin",

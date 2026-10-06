@@ -8,7 +8,10 @@
       "defaultEnabled": true,
       "requires": [],
       "legacyModules": ["licensing"],
-      "console": { "accent": "license", "icon": "KeyRound" },
+      "console": {
+        "accent": "license",
+        "icon": "KeyRound"
+      },
       "docs": "/docs/services/license/"
     },
     {
@@ -18,7 +21,10 @@
       "defaultEnabled": true,
       "requires": [],
       "legacyModules": ["edgeMint"],
-      "console": { "accent": "config", "icon": "Settings2" },
+      "console": {
+        "accent": "config",
+        "icon": "Settings2"
+      },
       "docs": "/docs/services/config/"
     },
     {
@@ -28,7 +34,10 @@
       "defaultEnabled": false,
       "requires": [],
       "legacyModules": ["releases"],
-      "console": { "accent": "release", "icon": "Package" },
+      "console": {
+        "accent": "release",
+        "icon": "Package"
+      },
       "docs": "/docs/services/release/"
     },
     {
@@ -38,7 +47,10 @@
       "defaultEnabled": false,
       "requires": ["release"],
       "legacyModules": ["releases"],
-      "console": { "accent": "distribution", "icon": "Truck" },
+      "console": {
+        "accent": "distribution",
+        "icon": "Truck"
+      },
       "docs": "/docs/services/distribution/"
     },
     {
@@ -48,7 +60,10 @@
       "defaultEnabled": false,
       "requires": ["distribution"],
       "legacyModules": ["releases"],
-      "console": { "accent": "update", "icon": "CircleArrowUp" },
+      "console": {
+        "accent": "update",
+        "icon": "CircleArrowUp"
+      },
       "docs": "/docs/services/update/"
     },
     {
@@ -58,8 +73,24 @@
       "defaultEnabled": false,
       "requires": [],
       "legacyModules": ["oidc"],
-      "console": { "accent": "identity", "icon": "UserRound" },
+      "console": {
+        "accent": "identity",
+        "icon": "UserRound"
+      },
       "docs": "/docs/services/identity/"
+    },
+    {
+      "slug": "sync",
+      "label": "Cloud Sync",
+      "summary": "A signed-in person's settings, collections and saves, synced across devices.",
+      "defaultEnabled": false,
+      "requires": ["config", "identity"],
+      "legacyModules": [],
+      "console": {
+        "accent": "sync",
+        "icon": "Cloud"
+      },
+      "docs": "/docs/services/sync/"
     }
   ]
 }

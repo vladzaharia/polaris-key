@@ -3322,6 +3322,16 @@ msgstr "Anmeldung nicht verfügbar"
 msgid "core.codes.unavailable.message"
 msgstr "Die Anmeldung ist derzeit nicht verfügbar. Versuchen Sie es in einigen Minuten erneut."
 
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.identity_disabled.title"
+msgstr "Anmeldung nicht verfügbar"
+
+#. Sign-in through this app is turned off. Your installs and licenses keep working.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.identity_disabled.message"
+msgstr "Die Anmeldung über diese App ist deaktiviert. Ihre Installationen und Lizenzen funktionieren weiterhin."
+
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.title"

@@ -18,6 +18,7 @@ const LOADERS: Record<SectionKey, Loader> = {
   distribution: () => import("./distribution.js"),
   update: () => import("./update.js"),
   identity: () => import("./identity.js"),
+  sync: () => import("./sync.js"),
 };
 
 const LAZY = Object.fromEntries(

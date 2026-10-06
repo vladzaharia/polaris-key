@@ -53,6 +53,18 @@ def test_returns_the_catalog_without_a_credential() -> None:
     c.close()
 
 
+def test_a_catalog_with_cloud_sync_members_still_parses() -> None:
+    # U-04: the catalog's `user` and `cloudSync` members are additive content.
+    synced = {
+        **CATALOG,
+        "entries": [{**CATALOG["entries"][0], "user": {"sync": "user", "listed": False}}],
+        "cloudSync": {"collections": [{"name": "progress", "access": "owner"}]},
+    }
+    c = make_client(lambda r: httpx.Response(200, json=synced))
+    assert c.config.fetch_schema() == synced
+    c.close()
+
+
 def test_a_refusal_is_none() -> None:
     c = make_client(lambda r: httpx.Response(404, json={"error": "not_found"}))
     assert c.config.fetch_schema() is None

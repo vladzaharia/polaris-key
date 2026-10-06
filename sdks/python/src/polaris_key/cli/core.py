@@ -278,7 +278,11 @@ def _describe_activation_failure(
         detail = ""
         if r.limit is not None:
             detail = f" ({r.deviceCount}/{r.limit} devices in use)"
-        return CommandResult(1, [f"{verb} failed: device limit reached{detail}."])
+        lines = [f"{verb} failed: device limit reached{detail}."]
+        # PX-W8: the portal link that frees a seat, printed without the key (scrollback is a log).
+        if r.manage_url:
+            lines.append(f"Free a device: {r.manage_url}")
+        return CommandResult(1, lines)
     if isinstance(r, ActivationUnauthorized):
         return CommandResult(1, [f"{verb} failed: invalid or revoked credential."])
     if isinstance(r, ActivationFingerprintRequired):

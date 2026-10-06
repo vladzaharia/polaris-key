@@ -19,12 +19,12 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
-| Node | `node` | 68 | 6 | 4 | 0 |
-| React | `web`, `desktop-bridge` | 60 | 12 | 6 | 0 |
-| Python | `python` | 68 | 6 | 4 | 0 |
-| Swift | `macos`, `ios` | 67 | 6 | 5 | 0 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 69 | 2 | 7 | 0 |
-| Kotlin | `android`, `jvm` | 69 | 6 | 3 | 0 |
+| Node | `node` | 69 | 7 | 5 | 0 |
+| React | `web`, `desktop-bridge` | 62 | 12 | 7 | 0 |
+| Python | `python` | 69 | 7 | 5 | 0 |
+| Swift | `macos`, `ios` | 69 | 6 | 6 | 0 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 71 | 2 | 8 | 0 |
+| Kotlin | `android`, `jvm` | 71 | 6 | 4 | 0 |
 
 ## Core
 
@@ -50,6 +50,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `license.activate` | Activate with a key (+ fingerprint) | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.enroll` | Keyless enrolment | transcripts | ✓ | ✓; N/A (desktop-bridge: runtime) | ✓ | ✓ | ✓; N/A (web: runtime) | ✓ | web, desktop-bridge: runtime |
 | `license.deactivate` | Remote best-effort, local wipe mandatory | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
+| `license.manage` | Refusal link: manageUrl on device-limit, withManageReturn, withManageKey | transcripts + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.entitlements` | Entitlements, profile, licence id | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.channels` | entitledChannels() | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `license.reregister` | Re-register on 401 for licence-less devices | transcripts | ✓ | ✓; N/A (desktop-bridge: runtime) | ✓ | ✓ | ✓ | ✓ | web, desktop-bridge: runtime |
@@ -80,6 +81,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `devices.attest` | Device attestation (App Attest, Play Integrity) raising the trust level | unit | N/A (node: runtime) | N/A (web, desktop-bridge: runtime) | N/A (python: runtime) | ✓; N/A (macos: runtime); N/A (ios: outlet) | ✓; N/A (linux: runtime); N/A (macos: runtime); N/A (windows: runtime); N/A (web: runtime); N/A (ios: outlet); N/A (android: outlet) | ✓; N/A (jvm: runtime); N/A (android: outlet) | node, python, web, desktop-bridge, macos, windows, linux, jvm, dotnet, tauri: runtime; any: outlet |
 | `identity.oidc` | Browser sign-in | transcripts (not recorded) | planned (I-15) | ✓ | planned (I-15) | planned (I-15) | planned (I-15) | planned (I-15) | — |
 | `identity.devicecode` | Device-code sign-in (RFC 8628) with QR | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | web: runtime |
+| `identity.toggle` | Identity off for a product: every sign-in entry fails fast, licences keep working | transcripts | planned (I-10a) | planned (I-10a) | planned (I-10a) | planned (I-10b) | planned (I-10b) | planned (I-10b) | — |
 
 ## Release and update
 
@@ -136,6 +138,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `ui.boot` | One-call boot: discovery, register, trust, documents and report to a stage outcome | transcripts + `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (UK-07) | ✓ | ✓ | headless: runtime |
+| `ui.kit.manage` | Device-limit screen: Replace a device (button, or a QR on TV and console) and Try again | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | ✓ | ✓ | ✓ | headless: runtime |
 | `ui.cli` | Terminal UI: status, activate, deactivate, sign-in and devices verbs | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
 | `commerce.receipt` | Store purchase to licence entitlement | transcripts | ✓ | planned (SP-16) | ✓ | ✓ | ✓ | ✓ | — |
 

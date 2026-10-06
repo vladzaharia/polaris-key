@@ -175,6 +175,8 @@ const FR: CopyBundle = {
       "Le fournisseur de connexion n'a pas répondu correctement. Réessayez.",
     unavailable:
       "La connexion est saturée pour le moment. Réessayez dans un instant.",
+    identity_disabled:
+      "La connexion via cette application est désactivée. Vos installations et licences continuent de fonctionner.",
     auth_method_disabled: "Cette méthode de connexion est désactivée.",
     email_unavailable:
       "La connexion par e-mail n'est pas disponible pour le moment.",

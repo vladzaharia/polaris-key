@@ -68,6 +68,7 @@ import {
 import { ActivityTarget, actorName, useActivityFeed } from "./Activity.js";
 import { verbFor } from "./activityVerbs.js";
 import { fetchDeviceSummary } from "./Devices.js";
+import { noCatalog, userSettings } from "../sync/data.js";
 import { fetchSigningKeys } from "./Keys.js";
 import {
   SDK_OPTIONS,
@@ -88,6 +89,7 @@ const SERVICE_ORDER: ServiceSlug[] = [
   "distribution",
   "update",
   "identity",
+  "sync",
 ];
 
 /** The licenses query, made once by the page and shared with the License tile. */
@@ -623,6 +625,8 @@ function ServiceTile({
       return <UpdateTile slug={slug} />;
     case "identity":
       return <IdentityTile slug={slug} />;
+    case "sync":
+      return <SyncTile slug={slug} />;
   }
 }
 
@@ -876,6 +880,45 @@ function IdentityTile({ slug }: { slug: string }): React.ReactElement {
           <Big>Portal {s.portalEnabled ? "on" : "off"}</Big>
           <Line>
             {methods ? `Sign-in by ${methods}` : "No sign-in method on"}
+          </Line>
+        </>
+      ) : null}
+    </TileFrame>
+  );
+}
+
+function SyncTile({ slug }: { slug: string }): React.ReactElement {
+  const catalog = useQuery(
+    {
+      queryKey: qk.catalog(slug),
+      queryFn: () => api.schema(slug),
+      retry: false,
+    },
+    queryClient,
+  );
+  const empty = noCatalog(catalog.error);
+  const data = empty ? null : catalog.data;
+  const settings = userSettings(data ?? null).length;
+  const collections = data?.cloudSync?.collections?.length ?? 0;
+  return (
+    <TileFrame
+      service="sync"
+      href={r.syncData(slug)}
+      linkLabel="Data"
+      loading={catalog.isPending}
+      error={catalog.isError && !empty ? catalog.error : undefined}
+      onRetry={() => void catalog.refetch()}
+    >
+      {data !== undefined ? (
+        <>
+          <Big>
+            {formatCount(settings)} user{" "}
+            {settings === 1 ? "setting" : "settings"}
+          </Big>
+          <Line>
+            {formatCount(collections)}{" "}
+            {collections === 1 ? "collection" : "collections"} · saves{" "}
+            {data?.cloudSync?.saves ? "declared" : "not declared"}
           </Line>
         </>
       ) : null}

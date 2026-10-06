@@ -202,6 +202,7 @@ async function open(theme: "dark" | "light", hash: string): Promise<Page> {
   const ctx = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
     colorScheme: theme,
+    reducedMotion: "reduce",
   });
   await ctx.addInitScript((t) => {
     window.localStorage.setItem("pk-admin-theme", t);

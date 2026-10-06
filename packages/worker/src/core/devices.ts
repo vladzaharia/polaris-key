@@ -102,6 +102,7 @@ import {
   updateScope,
 } from "./updateHealth.js";
 import type { ServiceHooks } from "./hooks.js";
+import { assertIdentityBindable } from "./identityGate.js";
 import { boundedPackInstalls, recordPackInstalls } from "./deltaDemand.js";
 
 /**
@@ -400,6 +401,8 @@ export async function bindDevice(
 ): Promise<{ token: string; device: DeviceRow }> {
   const { existing, presented, hwid, mode, drift } = opts;
   const meta = opts.metadata ?? {};
+  // PX-W17: the bind guard, before any write — a binding on an Identity-off product throws.
+  if (opts.subject) await assertIdentityBindable(db, product.slug);
 
   const token = mintDeviceToken();
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
@@ -540,6 +543,8 @@ export async function registerDeviceBinding(
   },
 ): Promise<{ token: string; device: DeviceRow }> {
   const { existing, presented, metadata: meta } = opts;
+  // PX-W17: the bind guard, before any write — a binding on an Identity-off product throws.
+  if (opts.subject) await assertIdentityBindable(db, product.slug);
 
   const token = mintDeviceToken();
   const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);

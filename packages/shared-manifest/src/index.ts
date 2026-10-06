@@ -31,6 +31,7 @@ import {
   type VariantAxis,
 } from "@polaris-key/protocol/packs";
 import { parse as parseYaml } from "yaml";
+import { validateCloudSync } from "./cloudSync.js";
 import {
   MAX_RELEASE_KEYS,
   RELEASE_KEY_KID_PATTERN,
@@ -100,6 +101,29 @@ export {
   type ProductModule,
   type ServiceSlug,
 } from "./services.generated.js";
+
+/**
+ * Cloud Sync's catalog-side checks (the `user` blocks and the catalog `cloudSync` block, rules
+ * shape and 1–11 as they apply to `.pkey/schema`) for a catalog published outside a manifest:
+ * the console's catalog editor through the admin API. The same code the manifest validator runs.
+ */
+export function validateCatalogCloudSync(input: {
+  entries: readonly unknown[];
+  cloudSync: unknown;
+  tierIds: ReadonlySet<string>;
+}): ValidationMessage[] {
+  const errors: ValidationMessage[] = [];
+  validateCloudSync(errors, [], {
+    entries: input.entries,
+    catalogCloudSync: input.cloudSync,
+    productCloudSync: undefined,
+    catalogChecked: true,
+    tierIds: input.tierIds,
+    // Warnings are not reported here; the service toggle is the Services page's concern.
+    syncEnabled: true,
+  });
+  return errors;
+}
 
 /** The enablement set a manifest declares, in the shape `products.services_json` stores. */
 export type ManifestServices = Record<ServiceSlug, { enabled: boolean }>;
@@ -2420,6 +2444,24 @@ function validateDocuments(
     );
   }
 
+  // Cloud Sync (S-17 §5.3; plans/U-01.md §3): the catalog's `user` and `cloudSync` blocks (the
+  // data shape, judged like the rest of the catalog's content only while Config is on) and
+  // `.pkey/product`'s `cloudSync` block (limits and access policy).
+  {
+    const catalog =
+      manifest.schema === undefined ? null : normalizeCatalog(manifest.schema);
+    validateCloudSync(errors, warnings, {
+      entries: catalog ? (catalog.entries as unknown[]) : null,
+      catalogCloudSync: isRecord(manifest.schema)
+        ? manifest.schema.cloudSync
+        : undefined,
+      productCloudSync: productRoot.cloudSync,
+      catalogChecked: catalog !== null && modules.includes("config"),
+      tierIds,
+      syncEnabled: modules.includes("sync"),
+    });
+  }
+
   // Declared secret names are looked up in the product's sealed-secret store.
   for (const [i, item] of (arrayAt(secrets, "required") ?? []).entries()) {
     const name = isRecord(item) ? item.name : item;
@@ -2478,6 +2520,26 @@ function validateDocuments(
       "/modules/update",
       "update_requires_distribution",
       "The update service serves a feed over distribution's delivery state, so distribution must be enabled too.",
+    );
+  }
+  // Cloud Sync (plans/U-01.md §0): user settings are catalog `config` keys, and the Cloud Sync
+  // principal is the account signed in through the product's Identity service.
+  if (modules.includes("sync") && !modules.includes("config")) {
+    add(
+      errors,
+      "product",
+      "/modules/sync",
+      "sync_requires_config",
+      "Cloud Sync syncs catalog config keys, so config must be enabled too.",
+    );
+  }
+  if (modules.includes("sync") && !modules.includes("identity")) {
+    add(
+      errors,
+      "product",
+      "/modules/sync",
+      "sync_requires_identity",
+      "Cloud Sync needs a signed-in person, so identity must be enabled too.",
     );
   }
 
@@ -4997,6 +5059,11 @@ function normalizeCatalog(parsed: unknown): ProductCatalog | null {
     return {
       schemaVersion: Number(parsed.schemaVersion ?? 1),
       entries: parsed.catalog,
+      // The legacy form's top-level `cloudSync` is validated with the rest of the schema
+      // (validateCloudSync reads manifest.schema.cloudSync), so it is kept, not dropped.
+      ...(parsed.cloudSync === undefined
+        ? {}
+        : { cloudSync: parsed.cloudSync }),
     } as unknown as ProductCatalog;
   }
   return null;

@@ -11,10 +11,12 @@ import { describe, expect, it } from "vitest";
  *   2. arbitrary `duration-[…]`, `ease-[…]` and `delay-[…]` (use the token utilities,
  *      `duration-(--pk-duration-*)`, `ease-standard`…);
  *   3. a raw millisecond value inside a class token (`[transition-duration:150ms]`, `delay-150ms`…);
+ *   3a. Tailwind's numbered timing utilities (`duration-300`, `delay-150`), which bypass the
+ *      tokens and so never collapse under reduced motion;
  *   4. a JSX `style` that sets `transition*`, `animation*` or `transform` (D8: motion lives in
  *      the stylesheet; dynamic values go through the CSSOM in the motion layer);
- *   5. `animate-pulse`, beyond today's sites (D6: blocks do not pulse; MO-09 and MO-10 retire the
- *      allowlisted ones and shrink the list);
+ *   5. `animate-pulse` anywhere (D6: blocks do not pulse; a loading block is a shaped
+ *      `.pk-skeleton`). MO-10 retired the last sites and emptied the allowlist;
  *   6. a hover or press state that changes a filter (`hover:brightness-110`): filters are not
  *      transitioned and never animate per frame (S-23 §6.2), so the change snaps; mix the token
  *      colour instead (MO-08).
@@ -25,21 +27,15 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const SRC = join(here, "..", "src");
 
-/** Today's `animate-pulse` sites, by file and count (S-23 §4.3). The list may only shrink. */
-const PULSE_ALLOWLIST: Record<string, number> = {
-  "ui/charts/StatTile.tsx": 2, // MO-09
-  "console/pages/platform.tsx": 4, // MO-10
-  "console/pages/platformOperations.tsx": 1, // MO-10
-  "console/pages/platformSettings.tsx": 2, // MO-10
-  "console/pages/platformStores.tsx": 2, // MO-10
-  "console/pages/global/Home.tsx": 1, // MO-10
-};
+/** `animate-pulse` sites still allowed (S-23 §4.3). MO-10 retired the last ones; it stays empty. */
+const PULSE_ALLOWLIST: Record<string, number> = {};
 
 export interface MotionFinding {
   rule:
     | "transition-all"
     | "arbitrary-timing"
     | "raw-ms-class"
+    | "numbered-timing"
     | "style-motion"
     | "animate-pulse"
     | "hover-filter";
@@ -51,6 +47,9 @@ export interface MotionFinding {
 const TRANSITION_ALL = new RegExp(`(^|[\\s"'\`:])${"transition"}-${"all"}\\b`);
 const ARBITRARY_TIMING = new RegExp(
   `(^|[\\s"'\`:])(${["duration", "ease", "delay"].join("|")})-\\[`,
+);
+const NUMBERED_TIMING = new RegExp(
+  `(^|[\\s"'\`:])(${["duration", "delay"].join("|")})-\\d+(?![\\w.-])`,
 );
 const PULSE = new RegExp(`\\b${"animate"}-${"pulse"}\\b`);
 const STATE_FILTER =
@@ -144,6 +143,12 @@ export function lintMotion(source: string): MotionFinding[] {
         line: k + 1,
         text: text.trim(),
       });
+    if (NUMBERED_TIMING.test(text))
+      findings.push({
+        rule: "numbered-timing",
+        line: k + 1,
+        text: text.trim(),
+      });
     if (PULSE.test(text))
       findings.push({ rule: "animate-pulse", line: k + 1, text: text.trim() });
   });
@@ -185,7 +190,7 @@ describe("the motion lint", () => {
     );
   });
 
-  it("finds no transition-all, arbitrary timing, raw ms classes, hover filters or motion in JSX style", () => {
+  it("finds no transition-all, arbitrary or numbered timing, raw ms classes, hover filters or motion in JSX style", () => {
     const bad = files.flatMap((f) =>
       f.findings
         .filter((x) => x.rule !== "animate-pulse")
@@ -194,7 +199,8 @@ describe("the motion lint", () => {
     expect(bad).toEqual([]);
   });
 
-  it("allows animate-pulse only at today's sites, and the allowlist only shrinks", () => {
+  it("finds no animate-pulse (the allowlist is empty and stays so)", () => {
+    expect(PULSE_ALLOWLIST).toEqual({});
     const counts: Record<string, number> = {};
     for (const f of files) {
       const n = f.findings.filter((x) => x.rule === "animate-pulse").length;
@@ -228,6 +234,8 @@ describe("the motion lint's fixture", () => {
     `export const H = () => <div className="h-4 animate-${"pulse"}" />;`,
     `export const I = () => <div className={cn("${de}-[80ms]", a)} />;`,
     `export const J = () => <b className="hover:not-disabled:brightness-110" />;`,
+    `export const K = () => <div className="transition-opacity ${du}-300" />;`,
+    `export const L = () => <div className={cn("hover:${de}-150", a)} />;`,
   ].join("\n");
 
   it("fails on each banned pattern", () => {
@@ -244,6 +252,8 @@ describe("the motion lint's fixture", () => {
     expect(byLine(8)).toEqual(["animate-pulse"]);
     expect(byLine(9)).toContain("arbitrary-timing");
     expect(byLine(10)).toEqual(["hover-filter"]);
+    expect(byLine(11)).toEqual(["numbered-timing"]);
+    expect(byLine(12)).toEqual(["numbered-timing"]);
   });
 
   it("passes the token forms, geometry styles, comments and prose", () => {
@@ -256,6 +266,8 @@ describe("the motion lint's fixture", () => {
       `const d = "Retry in 500ms";`,
       `el.style.setProperty("--pk-countdown", \`\${ms}ms\`);`,
       `const e = <b className="brightness-90 hover:bg-[color-mix(in_oklab,var(--pk-accent),white_10%)]" />;`,
+      `const f = <i className="delay-(--pk-delay-skeleton) duration-(--pk-duration-base)" />;`,
+      `const g = "Waits 300 ms"; // duration-300 in a comment, and the-duration-300 is not a utility`,
     ].join("\n");
     expect(lintMotion(ok)).toEqual([]);
   });

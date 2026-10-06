@@ -5,6 +5,7 @@
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
+// @pkey-feature license.manage
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read
 // from the generator-owned mirror in Resources/transcripts/): drive `PolarisKeyClient` through every
@@ -310,6 +311,10 @@ enum SwiftReplay {
         out["result"] = .string(r.kind)
         if case .ok = r { return }
         out["code"] = .string(r.code)
+        // PX-W8: the refusal link, exactly as served; null when the result carries none.
+        if case .deviceLimit(_, _, let manageURL) = r {
+            out["manageUrl"] = manageURL.map(JSONValue.string) ?? .null
+        }
     }
 
     /// A download model's platform group in the transcript's JSON vocabulary (nil ⇒ `null`).

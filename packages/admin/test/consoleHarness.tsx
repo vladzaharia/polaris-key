@@ -19,6 +19,7 @@ export const ALL_ON: Enablement = {
   distribution: { enabled: true },
   update: { enabled: true },
   identity: { enabled: true },
+  sync: { enabled: true },
 };
 
 export const NONE: Enablement = Object.fromEntries(

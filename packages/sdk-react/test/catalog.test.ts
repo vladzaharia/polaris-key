@@ -76,6 +76,16 @@ describe("browser fetchSchema()", () => {
     expect(calls).toEqual(["https://key.plrs.im/acme/config/schema"]);
   });
 
+  it("a catalog carrying Cloud Sync's user and cloudSync members still parses (U-04)", async () => {
+    const synced = {
+      ...CATALOG,
+      entries: [{ ...CATALOG.entries[0]!, user: { sync: "device" } }],
+      cloudSync: { collections: [{ name: "progress", access: "owner" }] },
+    };
+    const { fetchImpl } = fetchWith(() => json(synced));
+    await expect(browser(fetchImpl).fetchSchema()).resolves.toEqual(synced);
+  });
+
   it("a refusal, a dropped connection and a non-catalog body are all null", async () => {
     for (const respond of [
       () => json({ error: "not_found" }, 404),

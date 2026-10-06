@@ -47,6 +47,56 @@ Today the only control is the Discover opt-out `discover_enabled` (0071). The ow
 - `discover_enabled` stays read (dual-read: `discover_enabled = 0` forces `unlisted`) until PS-11.
 - `audience: everyone` is confirm level L2.
 
+### Corrections from the code (PS-02 implementation, 2026-10-05)
+
+Recorded under step 1; the code is the fact. Each was decided on the recommended option (decisions
+delegated to the lead).
+
+- **`storefront.polarisKey.enabled` is in the platform slice, not the core slice.** `rules.ts`
+  lets only the platform slice hold platform-scope entries. It is registered `pending: PS-03`:
+  nothing reads it yet (PS-03's candidate query is the first reader), and no route can write a
+  non-A-13 platform scalar until ST-05.
+- **The core slice owns a second namespace, `storefront`** (`registry.ts`), so the four product
+  entries pass the namespace rule while staying Core's (every product can list, Distribution on
+  or off).
+- **`groupLabels` is `operator`, not `claimable`, for now.** A claimable entry needs a
+  `manifest.path` that the product schema has (`settings-registry.test.ts`), and `.pkey/product`
+  has no `storefront.groupLabels` yet (S-21 §6.2 puts that field out of scope). The package that
+  adds the manifest field flips the entry to `claimable`.
+- **`audience` confirms as an ordered enum**, `{ up: L2, down: L0 }`, with `widensWhen: higher`
+  and `critical: true` (a reason on every ST-05 write). It is not `securityWidening`: it widens
+  visibility, not access. The route enforces the L2 typed confirmation now: widening to
+  `everyone` needs `"confirm": "storefront.polarisKey.audience"`, as the platform-settings route
+  asks for its key.
+- **Migration number is 0085** (`0085_storefront_listing.sql`): main took 0074 for UX-15's
+  `0074_license_refusals.sql`, 0075-0077 for feeds-2 (F-22, F-30, F-31) and 0078 for hosted
+  assets while this package was in review; at integration (integ/ps-1) the lead assigned 0085,
+  since integ/identity-store-1 claims 0079-0083 and LX-14a 0084. `LATEST_MIGRATION` points at
+  it.
+- **Dual-write as well as dual-read.** Writing `storeListed` sets `discover_enabled` to 0 exactly
+  when `unlisted`; `discoverEnabled: false` alone makes the product `unlisted`, and `true` returns
+  an `unlisted` product to `auto`. The two columns stay coherent for a pre-0085 Worker in the
+  deploy window.
+- **The settings view derives `discoverEnabled` from the resolved state** (`listed !== 'unlisted'`)
+  rather than echoing the raw column, so a deploy-window row (a pre-0085 Worker writing
+  `discover_enabled = 1` over `store_listed = 'unlisted'`) reads hidden in both fields.
+- **An unknown `store_listed` value resolves to `unlisted`** (fail closed); only a missing column
+  reads the `auto` default. The CHECK constraint makes the first case unreachable in practice.
+- **Discover's candidate query also skips `store_listed = 'unlisted'`** (one predicate in
+  `listDiscoverCandidates`), so either column hides a product. `auto` and `listed` keep today's
+  offers exactly; PS-03 still owns evaluation.
+- **Route field names** are flat, beside the existing ones: `storeListed`, `storeAudience`,
+  `storeOfferPaths` (`null` = every kind), `storeGroupLabels`. A change writes a second audit row,
+  `storefront.polarisKey.update`, naming what changed (the console's activity verbs and the
+  activity docs list it).
+- **Value sets live in one Core module**, `core/storefront/polarisKeyListing.ts`, so the registry
+  names them without importing a service. The database reader `storefrontListing(db, product)` is
+  Identity's (`services/identity/portal/storefrontListing.ts`), because `portal_product_settings`
+  is Identity's table. A stored value that no longer parses fails closed: no paths, no labels.
+- **Docs coverage.** ST-06's generated coverage page does not exist yet. The entries point at the
+  new "Polaris Key listing" section of `/docs/services/identity/portal/`, which the registry test
+  checks exists.
+
 ## Steps
 
 1. Re-read the S-21 sections above; verify this brief against the code and record any correction here.
@@ -56,10 +106,10 @@ Today the only control is the Discover opt-out `discover_enabled` (0071). The ow
 
 ## Acceptance criteria
 
-- [ ] The registry test passes with the five new entries; docs coverage lists them.
-- [ ] Migration test: a product with `discover_enabled = 0` reads `unlisted`; others read `auto`.
-- [ ] A pre-migration Worker reads and writes the table unaffected (expand-only).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] The registry test passes with the five new entries; docs coverage lists them.
+- [x] Migration test: a product with `discover_enabled = 0` reads `unlisted`; others read `auto`.
+- [x] A pre-migration Worker reads and writes the table unaffected (expand-only).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 

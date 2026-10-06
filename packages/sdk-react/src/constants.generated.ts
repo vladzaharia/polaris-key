@@ -38,6 +38,7 @@ export const ErrorCode = {
   disabled: "disabled",
   oidcError: "oidc_error",
   unavailable: "unavailable",
+  identityDisabled: "identity_disabled",
   authMethodDisabled: "auth_method_disabled",
   emailUnavailable: "email_unavailable",
   turnstileFailed: "turnstile_failed",
@@ -193,6 +194,7 @@ export const ERROR_CODE_VALUES: readonly ErrorCode[] = [
   "disabled",
   "oidc_error",
   "unavailable",
+  "identity_disabled",
   "auth_method_disabled",
   "email_unavailable",
   "turnstile_failed",
@@ -350,6 +352,7 @@ export const ERROR_CODE_KINDS: Readonly<Record<ErrorCode, ErrorCodeKind>> = {
   disabled: "wire",
   oidc_error: "wire",
   unavailable: "wire",
+  identity_disabled: "wire",
   auth_method_disabled: "wire",
   email_unavailable: "wire",
   turnstile_failed: "wire",
@@ -488,6 +491,7 @@ export const Feature = {
   licenseActivate: "license.activate",
   licenseEnroll: "license.enroll",
   licenseDeactivate: "license.deactivate",
+  licenseManage: "license.manage",
   licenseEntitlements: "license.entitlements",
   licenseChannels: "license.channels",
   licenseReregister: "license.reregister",
@@ -508,6 +512,7 @@ export const Feature = {
   devicesAttest: "devices.attest",
   identityOidc: "identity.oidc",
   identityDevicecode: "identity.devicecode",
+  identityToggle: "identity.toggle",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
   releaseRecord: "release.record",
@@ -549,6 +554,7 @@ export const Feature = {
   uiStages: "ui.stages",
   uiBoot: "ui.boot",
   uiKit: "ui.kit",
+  uiKitManage: "ui.kit.manage",
   uiCli: "ui.cli",
   commerceReceipt: "commerce.receipt",
 } as const;
@@ -571,6 +577,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "license.activate",
   "license.enroll",
   "license.deactivate",
+  "license.manage",
   "license.entitlements",
   "license.channels",
   "license.reregister",
@@ -591,6 +598,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "devices.attest",
   "identity.oidc",
   "identity.devicecode",
+  "identity.toggle",
   "release.changelog",
   "release.download",
   "release.record",
@@ -632,6 +640,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "ui.stages",
   "ui.boot",
   "ui.kit",
+  "ui.kit.manage",
   "ui.cli",
   "commerce.receipt",
 ];
@@ -1209,6 +1218,7 @@ export const ServiceSlug = {
   distribution: "distribution",
   update: "update",
   identity: "identity",
+  sync: "sync",
 } as const;
 export type ServiceSlug = (typeof ServiceSlug)[keyof typeof ServiceSlug];
 
@@ -1220,6 +1230,7 @@ export const SERVICE_SLUG_VALUES: readonly ServiceSlug[] = [
   "distribution",
   "update",
   "identity",
+  "sync",
 ];
 
 /** The wire contract version (`@polaris-key/protocol/core`). */
@@ -1245,6 +1256,9 @@ export const OUTLET_MATRIX_VERSION = 1;
 
 /** `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json. */
 export const PLAN_MATRIX_VERSION = 2;
+
+/** `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json. */
+export const SYNC_SCENARIOS_VERSION = 1;
 
 /** `contentCorpusVersion` of conformance/corpus/v2/content/cases.json. */
 export const CONTENT_CORPUS_VERSION = 2;
@@ -1433,6 +1447,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [{ runtime: "desktop-bridge", reason: "runtime" }],
   },
   "license.deactivate": { status: "implemented", service: "license", na: [] },
+  "license.manage": { status: "implemented", service: "license", na: [] },
   "license.entitlements": { status: "implemented", service: "license", na: [] },
   "license.channels": { status: "implemented", service: "license", na: [] },
   "license.reregister": {
@@ -1493,6 +1508,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   },
   "identity.oidc": { status: "implemented", service: "identity", na: [] },
   "identity.devicecode": { status: "implemented", service: "identity", na: [] },
+  "identity.toggle": { status: "planned", service: "identity", na: [] },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
@@ -1595,6 +1611,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
   "ui.stages": { status: "implemented", service: "sdk", na: [] },
   "ui.boot": { status: "implemented", service: "sdk", na: [] },
   "ui.kit": { status: "implemented", service: "sdk", na: [] },
+  "ui.kit.manage": { status: "implemented", service: "sdk", na: [] },
   "ui.cli": {
     status: "na",
     service: "sdk",
@@ -1608,4 +1625,4 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "cb5b71698d74a889518d3b584f9991b87898cba0bdd40537d571711bd8d82266";
+  "41f36fa375166b4e5e5a82b1b8d72c6cfb1b715f41beb624e8b498552faa50ea";

@@ -42,6 +42,10 @@ public struct PolarisCopy: Sendable {
     public var signOutFailedMessage: String
     /// Copy for every other kit component (sign-in, settings, devices, …).
     public var kit = PolarisKitCopy()
+    /// PX-W8: the action that opens the refusal's `manageUrl` (SIGN-IN.md D-49).
+    public var freeDeviceButton: String
+    /// Shown under the QR code on a TV, where the link is scanned on a phone.
+    public var freeDeviceScanCaption: String
 
     public init(
         productName: String = "this app",
@@ -65,7 +69,10 @@ public struct PolarisCopy: Sendable {
             LicenseStatus.channelNotEntitled.rawValue),
         versionBlockSubtitle: String = "Your current version isn't permitted to run.",
         activationMessages: [String: String] = [:],
-        signOutFailedMessage: String = "Sign-out couldn't clear the stored license."
+        signOutFailedMessage: String = "Sign-out couldn't clear the stored license.",
+        freeDeviceButton: String = "Replace a device",
+        freeDeviceScanCaption: String =
+            "Scan with your phone to free a device, then try again."
     ) {
         self.productName = productName
         self.welcomeTitle = welcomeTitle ?? "Welcome to \(productName)"
@@ -86,6 +93,8 @@ public struct PolarisCopy: Sendable {
         self.versionTooNewTitle = versionTooNewTitle
         self.channelNotEntitledTitle = channelNotEntitledTitle
         self.versionBlockSubtitle = versionBlockSubtitle
+        self.freeDeviceButton = freeDeviceButton
+        self.freeDeviceScanCaption = freeDeviceScanCaption
         self.activationMessages = activationMessages
         self.signOutFailedMessage = signOutFailedMessage
     }

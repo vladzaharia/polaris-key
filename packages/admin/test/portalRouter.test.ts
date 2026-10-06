@@ -141,6 +141,21 @@ describe("the /activate path handler", () => {
     expect(carried()?.get("product")).toBe("mossgarden");
   });
 
+  it("reads the link the SDKs build (client-core `withManageKey`, PX-W8)", () => {
+    // `manageUrl` from the Worker, plus `return=` in the query and the key as `#key=`, encoded
+    // the way client-core's `manageFormEncode` writes it.
+    window.history.replaceState(
+      null,
+      "",
+      `/activate?product=mossgarden&next=free-device&for=Web&return=myapp%3A%2F%2Fback#key=${KEY}`,
+    );
+    expect(rewriteActivatePath()).toBe(true);
+    expect(window.location.pathname).toBe("/");
+    expect(window.location.search).toBe("");
+    expect(carried()?.get("activate")).toBe(KEY);
+    expect(carried()?.get("product")).toBe("mossgarden");
+  });
+
   it("prefers the fragment when a link carries both", () => {
     window.history.replaceState(
       null,

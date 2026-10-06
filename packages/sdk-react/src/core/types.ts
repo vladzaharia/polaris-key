@@ -162,6 +162,9 @@ export class PolarisError extends Error {
   /** The refused step, for `feed-rejected` (`jws`, `claims`, `channel`, `selector`,
    *  `freshness`): the `detail` of WIRE-CONTRACT-V4 §2.5's error map. */
   readonly detail?: string;
+  /** On a device-limit refusal (PX-W8): the customer-portal link that frees a seat, already
+   *  validated (`readManageUrl`). Show it behind a user action; it is not an auth failure. */
+  readonly manageUrl?: string;
   /** An activation or enrolment refusal, classified (SDK-PARITY-PASS §3.1): the kind, the
    *  server's code, and `limit`/`deviceCount`/`retryAfterSeconds` where the server sent them.
    *  Present on the `sign-in-failed` a key submission throws. */
@@ -173,7 +176,11 @@ export class PolarisError extends Error {
     message?: string,
     wireCode?: string,
     detail?: string,
-    extra: { activation?: ActivationOutcome; status?: number } = {},
+    extra: {
+      activation?: ActivationOutcome;
+      status?: number;
+      manageUrl?: string;
+    } = {},
   ) {
     super(message ?? code);
     this.name = "PolarisError";
@@ -182,6 +189,8 @@ export class PolarisError extends Error {
     if (detail !== undefined) this.detail = detail;
     if (extra.activation !== undefined) this.activation = extra.activation;
     if (extra.status !== undefined) this.status = extra.status;
+    const manageUrl = extra.manageUrl ?? extra.activation?.manageUrl;
+    if (manageUrl !== undefined) this.manageUrl = manageUrl;
   }
 }
 

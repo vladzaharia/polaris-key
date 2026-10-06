@@ -15,7 +15,7 @@ The [Distribution service](/docs/services/distribution/) reads it; nothing else 
 | **distribution** | `distribution.{json,yaml,yml}` | never         | `dist_outlets` + `dist_transports` |
 
 **No file is fine.** With Distribution enabled and no document, the product has one implicit
-outlet, `direct`, served by `pkey-cdn` — so a product that only ships its own downloads needs
+outlet, the Polaris Key outlet (`direct`), served by `pkey-cdn` — so a product that only ships its own downloads needs
 nothing here. A document with no `outlets` block means the same; `outlets: {}` declares none.
 
 The document is validated whenever it is present (even with Distribution off), by `pkey

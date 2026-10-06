@@ -5,6 +5,7 @@
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
+// @pkey-feature license.manage
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -233,6 +234,8 @@ object KotlinReplay {
                 val r = if (action == "activate") client.activate(args["key"].stringValue ?: "") else client.enroll()
                 out["result"] = JsonPrimitive(activationKind(r))
                 r.code?.let { out["code"] = JsonPrimitive(it) }
+                // PX-W8: the refusal link, exactly as served; null when the result carries none.
+                if (r is ActivationResult.DeviceLimit) out["manageUrl"] = r.manageUrl?.let { JsonPrimitive(it) } ?: JsonNull
             }
             "releaseFetch" -> out.putAll(releaseFetch(client, args, session))
             "downloadModel" -> {

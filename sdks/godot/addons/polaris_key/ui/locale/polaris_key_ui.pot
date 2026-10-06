@@ -3321,6 +3321,16 @@ msgstr ""
 msgid "core.codes.unavailable.message"
 msgstr ""
 
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.identity_disabled.title"
+msgstr ""
+
+#. Sign-in through this app is turned off. Your installs and licenses keep working.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.identity_disabled.message"
+msgstr ""
+
 #. Sign-in method unavailable
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.auth_method_disabled.title"

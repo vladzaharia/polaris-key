@@ -38,7 +38,7 @@ export default defineConfig({
     starlight({
       title: "Polaris Key",
       description:
-        "Licensing, managed config, releases, distribution, updates, and identity for multi-product apps — one worker, six services, six SDKs.",
+        "Licensing, managed config, releases, distribution, updates, and identity for multi-product apps — one worker, seven services, six SDKs.",
       // The brand (docs/design/BRAND.md §2): tokens and Rubik from @polaris-key/brand, then the
       // Starlight mapping in global.css. All three are bundled stylesheets (no inline style).
       customCss: [
@@ -135,6 +135,11 @@ export default defineConfig({
             {
               label: "Identity",
               items: [{ autogenerate: { directory: "services/identity" } }],
+              collapsed: true,
+            },
+            {
+              label: "Cloud Sync",
+              items: [{ autogenerate: { directory: "services/sync" } }],
               collapsed: true,
             },
           ],

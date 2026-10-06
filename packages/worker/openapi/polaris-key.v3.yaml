@@ -125,8 +125,8 @@ paths:
         `version` is the DISCOVERY document's own version (still `2`) and `protocolVersion`
         is the wire version (`4`) — they are deliberately different numbers. `schemaVersion`
         is the product's catalog version, a third orthogonal counter. `services` always
-        carries all six slugs in the canonical order license, config, release, distribution,
-        update, identity, so a client can iterate it rather than probe. `core.endpoints.register`
+        carries all seven slugs in the canonical order license, config, release, distribution,
+        update, identity, sync, so a client can iterate it rather than probe. `core.endpoints.register`
         is OMITTED when the product's registration policy is `requires-license`.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       responses:
@@ -240,8 +240,14 @@ paths:
                           authDeviceEntry: https://key.plrs.im/djdl/identity/auth/device
                           authDeviceVerify: https://key.plrs.im/djdl/identity/auth/device/verify
                           authDevicePoll: https://key.plrs.im/djdl/identity/auth/device/poll
+                      sync:
+                        enabled: true
+                        settings: false
+                        collections: false
+                        saves: false
+                        endpoints: { pull: null, push: null, saves: null }
                 configOnly:
-                  summary: A config-only product — the other five are bare `enabled:false`
+                  summary: A config-only product — the other six are bare `enabled:false`
                   value:
                     services:
                       license: { enabled: false }
@@ -260,6 +266,7 @@ paths:
                       distribution: { enabled: false }
                       update: { enabled: false }
                       identity: { enabled: false }
+                      sync: { enabled: false }
         "404": { $ref: "#/components/responses/LegacyNotFound" }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
     options:
@@ -1101,19 +1108,21 @@ paths:
         "403":
           description: >
             Seat pool exhausted, or a `strict`-mode tier with no fingerprint — LEGACY FLAT.
-            `device_limit` carries `limit` and `deviceCount` at the top level.
+            `device_limit` carries `limit` and `deviceCount` at the top level, plus
+            `manageUrl` (PX-W8) while the product's customer portal is on.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
               examples:
                 deviceLimit:
-                  summary: test/licensing.test.ts
+                  summary: test/manageUrl.test.ts
                   value:
                     {
                       error: device_limit,
                       message: device limit reached,
                       limit: 1,
                       deviceCount: 1,
+                      manageUrl: "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64",
                     }
                 fingerprintRequired:
                   summary: test/fingerprintActivation.test.ts
@@ -1264,7 +1273,9 @@ paths:
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
           description: >
-            No fingerprint, no anchor, or an already-claimed machine license — LEGACY FLAT.
+            No fingerprint, no anchor, an already-claimed machine license, or the free tier's
+            seat pool is exhausted — LEGACY FLAT. `device_limit` carries `limit`,
+            `deviceCount` and, while the product's customer portal is on, `manageUrl`.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -1295,6 +1306,16 @@ paths:
                     {
                       error: license_disabled,
                       message: "this machine's free license has been disabled",
+                    }
+                deviceLimit:
+                  summary: test/enroll.test.ts
+                  value:
+                    {
+                      error: device_limit,
+                      message: device limit reached,
+                      limit: 2,
+                      deviceCount: 2,
+                      manageUrl: "https://key.plrs.im/activate?product=djdl&next=free-device&for=Linux%20x86_64",
                     }
         "404":
           description: >
@@ -6431,8 +6452,9 @@ paths:
         `key` or, if that is absent, as `Authorization: Bearer`. Success is 201, not 200, and
         the body is only `{"ok": true}` — the payload is the `Set-Cookie`. Seat accounting
         applies: a browser session takes a seat like any other device, so an exhausted pool
-        is a 403 `device_limit` carrying `limit` and `deviceCount` at the top level. All
-        errors are LEGACY FLAT.
+        is a 403 `device_limit` carrying `limit` and `deviceCount` at the top level, plus
+        `manageUrl` (PX-W8) while the product's customer portal is on. All errors are LEGACY
+        FLAT.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       requestBody:
         required: false
@@ -6464,7 +6486,9 @@ paths:
                   { value: { error: bad_request, message: invalid body } }
         "401": { $ref: "#/components/responses/LegacyUnauthorized" }
         "403":
-          description: The license's seat pool is exhausted — LEGACY FLAT.
+          description: >
+            The license's seat pool is exhausted — LEGACY FLAT, with `manageUrl` while the
+            product's customer portal is on.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -6477,6 +6501,7 @@ paths:
                         message: device limit reached,
                         limit: 5,
                         deviceCount: 5,
+                        manageUrl: "https://key.plrs.im/#/p/djdl/free-device?license=lic_djdl_1",
                       },
                   }
         "405": { $ref: "#/components/responses/MethodNotAllowed" }
@@ -6523,6 +6548,7 @@ paths:
             selects the browser flow over the device flow.
           schema: { type: string, format: uri }
       responses:
+        "303": { $ref: "#/components/responses/IdentityDisabledRedirect" }
         "302":
           description: Redirect to the IdP authorize endpoint.
           headers:
@@ -7017,6 +7043,7 @@ paths:
           schema: { type: string }
           example: WDJB-MJHT
       responses:
+        "303": { $ref: "#/components/responses/IdentityDisabledRedirect" }
         "200":
           description: "The entry form, or the confirmation page. `text/html; charset=utf-8`, `cache-control: no-store`."
           content:
@@ -7167,6 +7194,7 @@ paths:
         methods. Served under the strict script-free static-HTML CSP with `no-store` and
         `referrer-policy: no-referrer`, so the device code never leaks in a Referer.
       responses:
+        "303": { $ref: "#/components/responses/IdentityDisabledRedirect" }
         "200":
           description: "HTML confirmation page. `text/html; charset=utf-8`, `cache-control: no-store`."
           content:
@@ -13477,6 +13505,23 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/AdminError" }
+    IdentityDisabledRedirect:
+      description: >
+        PX-W17 (WIRE-CONTRACT-V4 §12.7): the product's Identity service is off and the request is
+        a person's browser NAVIGATION (`GET`/`HEAD` with `Sec-Fetch-Mode: navigate`, or an
+        `Accept` header that lists `text/html`). The person is sent to the root portal's friendly
+        card; nothing is rendered here. Every other caller — every SDK, a JSON `Accept`, a
+        `fetch` — gets the registry's nested `404 not_found` instead, so the JSON API never
+        tells "Identity is off" from "no such route". Discloses nothing discovery does not
+        already publish (`identity: {enabled:false}`); an unknown product keeps its 404. The
+        same refusal covers `/{product}/identity/authorize`, reserved ahead of its route.
+      headers:
+        Location:
+          description: "`<origin>/signin?product=<slug>&error=identity_disabled`."
+          schema: { type: string, format: uri }
+          example: https://key.plrs.im/signin?product=djdl&error=identity_disabled
+        Cache-Control:
+          schema: { type: string, const: no-store }
     OciError:
       description: >
         OCI's error JSON (distribution-spec "Error Codes"): `NAME_UNKNOWN`, `MANIFEST_UNKNOWN`,
@@ -14710,6 +14755,18 @@ components:
         deviceCount:
           type: integer
           description: On `device_limit` — how many seats are already taken.
+        manageUrl:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: >
+            On `device_limit` (PX-W8, WIRE-CONTRACT-V4 §5.3) — the customer-portal link that
+            frees a seat: `<portal>/#/p/<product>/free-device?license=<id>[&for=<label>]` for a
+            licence attached to an account, else
+            `<portal>/activate?product=<product>&next=free-device[&for=<label>]`. Present only
+            while the product's portal is on. Never carries the key, an account id or a device
+            id; a client may add `return=` and, on an `/activate` link, the fragment `#key=`.
+            Not an auth failure.
         drift:
           type: integer
           description: On `hardware_mismatch` — how many fingerprint components changed.
@@ -14902,9 +14959,11 @@ components:
             below; test/serviceTable.test.ts pins it to tools/services.json). Core knows the
             shape of no service: an enabled one contributes its own fragment verbatim, a
             disabled one is exactly `{"enabled": false}` and nothing else.
-          required: [license, config, release, distribution, update, identity]
+          required:
+            [license, config, release, distribution, update, identity, sync]
           properties:
             distribution: { $ref: "#/components/schemas/DistributionFragment" }
+            sync: { $ref: "#/components/schemas/SyncFragment" }
           additionalProperties: { $ref: "#/components/schemas/ServiceFragment" }
     ServiceFragment:
       type: object
@@ -14967,6 +15026,41 @@ components:
             install: https://key.plrs.im/acme/distribution/install.sh
             builds: https://key.plrs.im/acme/distribution/builds/{selector}/{buildId}
             blobs: https://key.plrs.im/acme/distribution/blobs/sha256/{sha256}
+    SyncFragment:
+      description: >
+        Cloud Sync's fragment (U-04; plans/U-01.md §2.5). `{"enabled": false}` when off. When on,
+        `settings`, `collections` and `saves` say which kinds of Cloud Sync data the product
+        serves, and each endpoint is a URL or `null`: an SDK uses an endpoint only when it is
+        present. Each capability turns true, and its endpoint appears, when the package serving
+        it ships (settings and pull/push with U-05, which also adds `limits`).
+      oneOf:
+        - type: object
+          required: [enabled]
+          additionalProperties: false
+          properties:
+            enabled: { type: boolean, const: false }
+        - type: object
+          required: [enabled, settings, collections, saves, endpoints]
+          additionalProperties: true
+          properties:
+            enabled: { type: boolean, const: true }
+            settings: { type: boolean }
+            collections: { type: boolean }
+            saves: { type: boolean }
+            endpoints:
+              type: object
+              required: [pull, push, saves]
+              properties:
+                pull: { type: [string, "null"] }
+                push: { type: [string, "null"] }
+                saves: { type: [string, "null"] }
+      examples:
+        - { enabled: false }
+        - enabled: true
+          settings: false
+          collections: false
+          saves: false
+          endpoints: { pull: null, push: null, saves: null }
     Jwks:
       type: object
       description: >
@@ -15578,6 +15672,42 @@ components:
         entries:
           type: array
           items: { $ref: "#/components/schemas/ConfigEntry" }
+        cloudSync:
+          type: object
+          description: >
+            The data shape of the product's Cloud Sync data (U-04): `collections`, `open`,
+            `saves` and `migrations`. Limits and access policy are product settings, never here.
+            A console publish that omits it keeps the active version's block.
+          properties:
+            collections:
+              type: array
+              items:
+                type: object
+                required: [name, access]
+                properties:
+                  name: { type: string }
+                  access: { type: string, enum: [owner, ownerRead, server] }
+                  conflict:
+                    { type: string, enum: [revision, lastWrite, merge, union] }
+                  schema: { type: object, additionalProperties: true }
+                  onAttach:
+                    {
+                      type: string,
+                      enum: [keepCloud, keepLocal, merge, prompt],
+                    }
+            open: { type: boolean }
+            saves: { type: object, additionalProperties: true }
+            migrations:
+              type: array
+              items:
+                type: object
+                required: [toSchemaVersion]
+                properties:
+                  toSchemaVersion: { type: integer }
+                  rename:
+                    { type: object, additionalProperties: { type: string } }
+                  mapValues: { type: object, additionalProperties: true }
+                  drop: { type: array, items: { type: string } }
     ConfigEntry:
       type: object
       description: >
@@ -15618,7 +15748,7 @@ components:
             scopes:
               {
                 type: array,
-                items: { type: string, enum: [profile, license, device] },
+                items: { type: string, enum: [profile, license, device, user] },
               }
             advanced: { type: boolean }
             unit: { type: string }
@@ -15639,6 +15769,18 @@ components:
           }
         deprecated: { type: boolean }
         since: { type: string }
+        user:
+          type: object
+          description: >
+            CONFIG entries only: makes the key a user setting (U-04). `sync` says where its value
+            roams; `conflict` how concurrent writes resolve (default `lastWrite`); `listed`
+            whether settings panels show it (default true).
+          required: [sync]
+          additionalProperties: false
+          properties:
+            sync: { type: string, enum: [user, platform, device, local] }
+            conflict: { type: string, enum: [lastWrite, max, min, merge] }
+            listed: { type: boolean }
     MintedToken:
       type: object
       description: >

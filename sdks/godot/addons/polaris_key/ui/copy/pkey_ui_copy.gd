@@ -92,6 +92,8 @@ const DEFAULTS := {
 	"activation_attestation_required": "This game needs to confirm it was installed from an official store before it can be activated here.",
 	"activation_manage_devices": "Manage devices",
 	"activation_error": "Activation failed. Check your connection and try again.",
+	"free_device": "Replace a device",
+	"free_device_scan": "Scan with your phone to free a device, then try again.",
 	# ── PKeySignInDialog ────────────────────────────────────────────────────────────────────
 	"sign_in_title": "Sign in",
 	"sign_in_starting": "Starting sign-in…",

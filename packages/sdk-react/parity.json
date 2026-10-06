@@ -77,6 +77,10 @@
     "license.deactivate": {
       "status": "implemented"
     },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": {
       "status": "implemented"
     },
@@ -181,6 +185,10 @@
     "identity.devicecode": {
       "status": "implemented",
       "note": "Desktop through the bridge (beginSignIn/pollSignIn, v4 adds the expiry, interval and identity). Web in bearer mode (SP-R02): POST /<p>/identity/auth/device/{start,poll} through adapter.beginSignIn(); devicecode-happy and devicecode-expired replay through it. A cookie-session page signs in by the OIDC redirect (identity.oidc)."
+    },
+    "identity.toggle": {
+      "status": "planned",
+      "wp": "I-10a"
     },
     "release.changelog": {
       "status": "implemented"
@@ -360,6 +368,10 @@
     },
     "ui.kit": {
       "status": "implemented"
+    },
+    "ui.kit.manage": {
+      "status": "implemented",
+      "note": "PX-W8: LicenseGate and PolarisLogin show Replace a device on device-limit."
     },
     "ui.cli": {
       "status": "na",

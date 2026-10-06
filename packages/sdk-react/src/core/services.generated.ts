@@ -11,7 +11,8 @@ export type ServiceSlug =
   | "release"
   | "distribution"
   | "update"
-  | "identity";
+  | "identity"
+  | "sync";
 
 /** Canonical order. Iterate this rather than `Object.keys` so output is stable. */
 export const SERVICE_SLUGS: readonly ServiceSlug[] = [
@@ -21,6 +22,7 @@ export const SERVICE_SLUGS: readonly ServiceSlug[] = [
   "distribution",
   "update",
   "identity",
+  "sync",
 ];
 
 /**

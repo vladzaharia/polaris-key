@@ -121,6 +121,7 @@ async function setProductServices(
         distribution: { enabled: false },
         update: { enabled: false },
         identity: { enabled: false },
+        sync: { enabled: false },
         ...services,
       },
     }),

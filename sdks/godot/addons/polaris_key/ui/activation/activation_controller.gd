@@ -10,6 +10,9 @@ extends RefCounted
 ##                      never on web (a browser has no machine anchor)
 ##   Offline activation only when License is enabled (a bundle carries a licence), and not on a
 ##                      store build either
+##   Replace a device   only after a device-limit result that carries `manage_url` (PX-W8): a
+##                      button that opens the portal, or a QR code where the player has no
+##                      browser at hand (manage_presentation)
 
 
 ## The outlet kinds whose store rules forbid unlocking with an externally bought key (App Store
@@ -17,6 +20,9 @@ extends RefCounted
 ## automatically. `PKeyActivationPanel.allow_key_entry_on_store` overrides it (a game sold only
 ## outside the store, a B2B build).
 const STORE_OUTLETS := ["app-store", "testflight", "play", "play-testing"]
+
+## Runtimes whose players have a browser on the same device.
+const _BROWSER_OS := ["Windows", "macOS", "Linux", "FreeBSD", "NetBSD", "OpenBSD", "BSD", "Web", "Android", "iOS"]
 
 
 ## True when this build's outlet is a store whose rules hide key entry.
@@ -78,3 +84,29 @@ static func message_for(r: PKeyActivationResult) -> Array:
 		PKeyActivationResult.KIND_REFUSED:
 			return PKeyUiCopy.code_key(r.code)
 	return ["activation_error", null]
+
+
+## The link "Replace a device" opens for a result, or "" when it offers none: the served
+## `manage_url` with the key as a fragment (on an `/activate` link only) and the game's return URL
+## added (PX-W8, WIRE-CONTRACT-V4 §5.3). A QR link (`for_qr`) never carries the key: a code on a
+## shared screen can be scanned by anyone in the room, so the phone's page asks for the key.
+static func manage_link(r: PKeyActivationResult, key := "", return_url := "", for_qr := false) -> String:
+	if r == null or r.kind != PKeyActivationResult.KIND_DEVICE_LIMIT or not PKeyManage.is_valid(r.manage_url):
+		return ""
+	var url: String = r.manage_url if for_qr else PKeyManage.with_key(r.manage_url, key)
+	return PKeyManage.with_return(url, return_url)
+
+
+## "button" where the player can open a browser on this device; "qr" where a joypad is the only
+## input (a console, or a TV: a phone-class OS with no touchscreen and a joypad connected).
+static func manage_presentation(os_name: String, touchscreen: bool, joypads: int) -> String:
+	if not os_name in _BROWSER_OS:
+		return "qr"
+	if (os_name == "Android" or os_name == "iOS") and not touchscreen and joypads > 0:
+		return "qr"
+	return "button"
+
+
+## manage_presentation for the running device.
+static func manage_presentation_here() -> String:
+	return manage_presentation(OS.get_name(), DisplayServer.is_touchscreen_available(), Input.get_connected_joypads().size())

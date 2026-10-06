@@ -85,6 +85,7 @@ static func map_response(r: PKeyResult, is_enroll := false) -> Array:
 					res = _wire(PKeyActivationResult.KIND_DEVICE_LIMIT, wire, PKeyErrors.DEVICE_LIMIT, r.message, status)
 					res.limit = _int_or_null(_field(top, nested, "limit"))
 					res.device_count = _int_or_null(_field(top, nested, "deviceCount"))
+					res.manage_url = PKeyManage.read(top)
 				_:
 					# An unknown or missing 403 code is never device-limit (SDK parity §3.1).
 					res = _wire(PKeyActivationResult.KIND_REFUSED, wire, PKeyErrors.FORBIDDEN, r.message, status)

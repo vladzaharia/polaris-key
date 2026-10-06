@@ -35,7 +35,7 @@ For outlet O and channel C, a feed lists the releases that pass all five checks:
    (`artifact: ipa-sideload`), otherwise a build for the feed's platform: iOS, Android, Windows or
    Linux.
 3. **They are live on O.** A self-hosted outlet (`altstore`, `obtainium`, `fdroid-repo`,
-   `direct`) is live by derivation as soon as its bytes are stored. A store outlet (`altstore-pal`)
+   the Polaris Key outlet `direct`) is live by derivation as soon as its bytes are stored. A store outlet (`altstore-pal`)
    is live only once it has been reported live — see
    [Availability](/docs/services/distribution/availability/). Flathub is the exception: its checker
    tells Flathub where Polaris Key's bytes are, so the test there is that the bytes are served.
@@ -154,8 +154,8 @@ key forces every user to add the repository again.
 
 ## Scoop
 
-`scoop/<channel>.json` is a Scoop app manifest for the newest Windows release on the `direct`
-outlet. It contains:
+`scoop/<channel>.json` is a Scoop app manifest for the newest Windows release on the Polaris
+Key outlet (`direct`). It contains:
 
 - `architecture.64bit` and `architecture.arm64`, each with an immutable `url` and a SHA-256
   `hash`;
