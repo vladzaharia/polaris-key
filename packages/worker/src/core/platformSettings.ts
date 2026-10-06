@@ -555,14 +555,18 @@ async function applyGuarded(
 
 /**
  * Turn an `INSERT ... VALUES (...)` audit statement into one that only inserts when the statement
- * just before it in the batch changed a row (`changes()`).
+ * just before it in the batch changed a row (`changes()`). Throws when the statement does not end
+ * in a flat `VALUES (...)` list: returning it unchanged would leave the audit unguarded, so a write
+ * that changed nothing would still record a row.
  */
 export function onlyAfterAChange(stmt: DbStatement): DbStatement {
+  const values = /VALUES\s*\(([^)]*)\)\s*$/;
+  if (!values.test(stmt.sql))
+    throw new Error(
+      "onlyAfterAChange: the statement does not end in a flat VALUES (...) list",
+    );
   return {
-    sql: stmt.sql.replace(
-      /VALUES\s*\(([^)]*)\)\s*$/,
-      "SELECT $1 WHERE changes() > 0",
-    ),
+    sql: stmt.sql.replace(values, "SELECT $1 WHERE changes() > 0"),
     params: stmt.params,
   };
 }
