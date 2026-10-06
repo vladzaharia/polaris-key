@@ -1,0 +1,29 @@
+{
+  "_source": "Snap Store dashboard GET /api/v2/tokens/whoami answers, in the shape snapcraft whoami reads (dashboard.snapcraft.io/docs/reference/v2/en/tokens.html). Account and snaps are fictional.",
+  "whoami": {
+    "status": 200,
+    "body": {
+      "account": {
+        "email": "release@acme.example",
+        "id": "AcmeAccountId0000000000000000000",
+        "name": "Acme Games",
+        "username": "acme"
+      },
+      "channels": ["stable", "beta"],
+      "expires": "2027-01-01T00:00:00.000",
+      "packages": [{ "name": "tonebox", "series": "16" }],
+      "permissions": ["package_access", "package_push", "package_release"]
+    }
+  },
+  "expired": {
+    "status": 401,
+    "body": {
+      "error_list": [
+        {
+          "code": "macaroon-needs-refresh",
+          "message": "Expired macaroon (needs refresh)."
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "_source": "itch.io server-side API answers for GET /profile and GET /profile/games (itch.io/docs/api/serverside); a bad key is answered 200 with an errors list. Users and games are fictional.",
+  "profile": {
+    "status": 200,
+    "body": {
+      "user": {
+        "id": 1001,
+        "username": "acme",
+        "display_name": "Acme Games",
+        "url": "https://acme.itch.io",
+        "developer": true,
+        "gamer": false,
+        "press_user": false,
+        "cover_url": null
+      }
+    }
+  },
+  "invalidKey": { "status": 200, "body": { "errors": ["invalid key"] } },
+  "games": {
+    "status": 200,
+    "body": {
+      "games": [
+        {
+          "id": 1001,
+          "title": "Tonebox",
+          "url": "https://acme.itch.io/tonebox",
+          "classification": "game",
+          "type": "default",
+          "published": true
+        }
+      ]
+    }
+  }
+}

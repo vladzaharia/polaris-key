@@ -45,6 +45,11 @@ var started := false
 var last_store_error: Dictionary = {}
 ## Callables `(core: PKeyCore, result: PKeySyncResult)`, awaited after each sync's write.
 var post_sync_hooks: Array[Callable] = []
+## Attest and retry (SDK parity §3.10): a coroutine `() -> PKeyResult` that runs
+## PolarisKey.devices.attest(). Installed by the autoload; `with_attestation()` and every
+## authenticated request() call it once on a 403 `attestation_required`, then retry once.
+var attest_hook: Callable = Callable()
+var _attesting := false
 ## The update-event queue (PKeyUpdater): pending_events() goes into the device report's `updates`
 ## key (P6-03) and mark_reported(ids) runs once the Worker accepted it. Null: none.
 var update_events: Object = null
@@ -261,6 +266,36 @@ func url(path: String) -> String:
 ## server's error code (either spelling) or `http-error`, and `detail` always carries
 ## {status, headers, body, error?}. Transport failures keep the transport's code. A coroutine.
 func request(method: String, path: String, body: Variant = null, auth := false, extra_headers: Dictionary = {}) -> PKeyResult:
+	if not auth:
+		return await _request_once(method, path, body, auth, extra_headers)
+	return await with_attestation(func() -> PKeyResult: return await _request_once(method, path, body, auth, extra_headers))
+
+
+## Run `call` (a coroutine `() -> PKeyResult`); when it answers 403 `attestation_required` and
+## this runtime can attest (PKeyOptions.auto_attest on, the hook installed, not already
+## attesting), attest once and retry once (SDK parity §3.10: edge-mint, gated delivery and the
+## commerce claim). A failed attestation leaves the original refusal, with
+## detail.attestation = the attest result's code. A coroutine.
+func with_attestation(call: Callable) -> PKeyResult:
+	var r: PKeyResult = await call.call()
+	if r.ok or String(r.code) != PKeyConstants.ErrorCode.ATTESTATION_REQUIRED:
+		return r
+	if _attesting or not attest_hook.is_valid() or options == null or not options.auto_attest:
+		return r
+	_attesting = true
+	var a: PKeyResult = await attest_hook.call()
+	_attesting = false
+	if not a.ok:
+		if r.detail is Dictionary:
+			r.detail["attestation"] = String(a.code)
+		return r
+	var again: PKeyResult = await call.call()
+	if again.detail is Dictionary:
+		again.detail["attested_retry"] = true
+	return again
+
+
+func _request_once(method: String, path: String, body: Variant, auth: bool, extra_headers: Dictionary) -> PKeyResult:
 	var h := headers(extra_headers)
 	if auth:
 		if not tokens.has_token():

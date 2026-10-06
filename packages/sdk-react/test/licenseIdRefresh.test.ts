@@ -50,6 +50,7 @@ describe("LX-17: a licenseId change on a plain refresh (browser adapter)", () =>
 
     const adapter = browserAdapter({
       productSlug: "acme",
+      auth: "cookie",
       fetchImpl,
       now: () => NOW_SEC,
     });

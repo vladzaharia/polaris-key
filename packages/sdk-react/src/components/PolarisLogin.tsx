@@ -31,6 +31,7 @@ import {
 } from "./primitives/card.js";
 import { TextField } from "./primitives/input.js";
 import { screenLogo, themePoweredBy } from "./brand.js";
+import { describeError } from "../core/copy.js";
 
 export interface PolarisLoginProps {
   /** Hide the typed-key card. */
@@ -48,28 +49,15 @@ export interface PolarisLoginProps {
   bare?: boolean;
 }
 
-/** Map a `PolarisError` to a clearer, user-facing message when the adapter handed us a
- *  recognizable code/message; otherwise fall back to the raw message. The desktop adapter
- *  already humanizes device-limit / unauthorized into `sign-in-failed` errors, so we key
- *  off the message text it produced AND the code, surfacing remediation guidance. */
-function describeAuthError(err: { code?: string; message: string }): string {
-  const msg = err.message ?? "";
-  if (/device limit/i.test(msg) || err.code === "device-limit") {
-    return "This license has reached its device limit. Sign out on another device, or contact your administrator.";
-  }
-  if (/not accepted/i.test(msg) || err.code === "unauthorized") {
-    return "That key was not accepted. Check it for typos and try again.";
-  }
-  if (err.code === "key-entry-unsupported") {
-    return "Key entry isn't available here — use the sign-in button instead.";
-  }
-  if (err.code === "service-disabled") {
-    return msg || "That sign-in method isn't enabled for this product.";
-  }
-  if (err.code === "network") {
-    return "We couldn't reach the licensing service. Check your connection and try again.";
-  }
-  return msg || "Sign-in failed. Please try again.";
+/** The user-facing sentence for a sign-in failure: the copy catalog's, chosen by the typed
+ *  activation kind, then the server's code, then the SDK's code (SP-R03). Never the error's
+ *  message text, which is diagnostic and unlocalized. */
+function describeAuthError(err: unknown): string {
+  return describeError(
+    err && typeof err === "object"
+      ? (err as Parameters<typeof describeError>[0])
+      : null,
+  );
 }
 
 /** The sign-in card: narrow, so the form reads as one centred column. */
@@ -119,7 +107,7 @@ export function PolarisLogin(props: PolarisLoginProps): JSX.Element {
     try {
       await auth.submitKey(key.trim());
     } catch (err) {
-      setKeyError(describeAuthError(err as { code?: string; message: string }));
+      setKeyError(describeAuthError(err));
     }
   }
 

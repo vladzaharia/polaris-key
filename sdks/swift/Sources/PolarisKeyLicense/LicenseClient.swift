@@ -37,6 +37,41 @@ public struct LicenseClientOptions: Sendable {
 
 /// Raised after a credential is minted, so the facade can sync without every activation path
 /// having to remember to.
+/// `licenseInfo()`: the verified licence, summarised (notes/SDK-PARITY-PASS.md §3.3).
+public struct LicenseInfo: Sendable, Equatable {
+    static let tierKey = "license.tier"
+    static let tierLabelKey = "license.tierLabel"
+    static let deviceLimitKey = "deviceLimit"
+
+    public let licenseId: String
+    /// The tier id (`license.tier`), when the licence document carries one.
+    public let tier: String?
+    /// The tier's display name (`license.tierLabel`).
+    public let tierLabel: String?
+    /// The seat limit (`deviceLimit`).
+    public let deviceLimit: Int?
+    /// The document's own expiry and grace end, epoch seconds. (A licence-level expiry arrives
+    /// with licence document v2, LX-17.)
+    public let expiresAt: Int
+    public let graceUntil: Int
+    public let profile: DocProfile?
+    public let entitledChannels: [String]
+
+    public init(
+        licenseId: String, tier: String?, tierLabel: String?, deviceLimit: Int?, expiresAt: Int,
+        graceUntil: Int, profile: DocProfile?, entitledChannels: [String]
+    ) {
+        self.licenseId = licenseId
+        self.tier = tier
+        self.tierLabel = tierLabel
+        self.deviceLimit = deviceLimit
+        self.expiresAt = expiresAt
+        self.graceUntil = graceUntil
+        self.profile = profile
+        self.entitledChannels = entitledChannels
+    }
+}
+
 public typealias LicenseAcquiredListener = @Sendable (ActivationSource) async -> Void
 
 public actor LicenseClient {
@@ -88,9 +123,36 @@ public actor LicenseClient {
         await core.cache().license?.doc
     }
 
-    /// True iff the named entitlement is present and `value == true`.
-    public func isEntitled(_ name: String) async -> Bool {
-        await doc()?.entitlements[name]?.value.boolValue == true
+    /// True iff the gate is usable AND the named entitlement is present with `value == true`.
+    ///
+    /// S-19 G11: a revoked, expired, blocked or never-activated install answers false even while a
+    /// cached document still lists the flag. (Before this it read the cached document alone, so a
+    /// revoked licence kept unlocking its features until the cache was cleared.)
+    public func isEntitled(_ name: String, now: Int? = nil) async -> Bool {
+        guard isUsable(await status(now: now)) else { return false }
+        return await doc()?.entitlements[name]?.value.boolValue == true
+    }
+
+    /// The raw value of an entitlement (a tier string, a seat count, a channel list), or nil
+    /// when absent. Gated like `isEntitled`: nil while the gate is not usable.
+    public func entitlementValue(_ name: String, now: Int? = nil) async -> JSONValue? {
+        guard isUsable(await status(now: now)) else { return nil }
+        return await doc()?.entitlements[name]?.value
+    }
+
+    /// A summary of the verified licence for an account or settings screen, or nil when no
+    /// licence document is held. Read from the enforced entitlements the Worker signs
+    /// (`license.tier`, `license.tierLabel`, `deviceLimit`, `channels`).
+    public func licenseInfo() async -> LicenseInfo? {
+        guard let doc = await doc() else { return nil }
+        let e = doc.entitlements
+        return LicenseInfo(
+            licenseId: doc.licenseId,
+            tier: e[LicenseInfo.tierKey]?.value.stringValue,
+            tierLabel: e[LicenseInfo.tierLabelKey]?.value.stringValue,
+            deviceLimit: e[LicenseInfo.deviceLimitKey]?.value.intValue,
+            expiresAt: doc.expiresAt, graceUntil: doc.graceUntil, profile: doc.profile,
+            entitledChannels: await entitledChannels())
     }
 
     public func entitlements() async -> [String: JSONValue] {
@@ -153,7 +215,7 @@ public actor LicenseClient {
         do {
             try await core.setToken(token, source: source)
         } catch {
-            return .error(message: "could not persist the device token: \(error)")
+            return .error(code: ErrorCode.storeFailed, message: "could not persist the device token: \(error)")
         }
         await onAcquired?(.token)
         return result

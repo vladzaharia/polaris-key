@@ -35,6 +35,7 @@ const corpus = JSON.parse(
 async function capturedSessionHeaders(): Promise<Record<string, string>> {
   const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
   const adapter = browserAdapter({
+    auth: "cookie",
     productSlug: "acme",
     fetchImpl: fetchImpl as unknown as typeof fetch,
     now: () => NOW_SEC,

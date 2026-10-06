@@ -291,7 +291,11 @@ export async function newTestKey(kid: string): Promise<TestKey> {
 export async function signCompact(
   payload: unknown,
   key: TestKey,
-  typ: "pkey-feed+jws" | "pkey-release+jws" | "pkey-config+jws",
+  typ:
+    | "pkey-feed+jws"
+    | "pkey-release+jws"
+    | "pkey-config+jws"
+    | "pkey-license+jws",
 ): Promise<string> {
   const enc = new TextEncoder();
   const input =

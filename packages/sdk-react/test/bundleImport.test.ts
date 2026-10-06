@@ -95,6 +95,7 @@ function browserFor(
     return fixture(input, init);
   }) as typeof fetch;
   return browserAdapter({
+    auth: "cookie",
     productSlug: c.expectedAud,
     fetchImpl,
     now: () => c.now,
@@ -216,6 +217,7 @@ describe("browser bundle import prerequisites", () => {
   it("mints and keeps a random 32-character device id", async () => {
     const store = indexedDbOfflineStore(new IDBFactory())!;
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "djdl",
       fetchImpl: makeFakeFetch(null, { product: "djdl" }),
       offlineStore: store,
@@ -230,6 +232,7 @@ describe("browser bundle import prerequisites", () => {
 
   it("without pinned keys, or without IndexedDB, import is unsupported — not a silent no-op", async () => {
     const noTrust = browserAdapter({
+      auth: "cookie",
       productSlug: "djdl",
       fetchImpl: makeFakeFetch(null, { product: "djdl" }),
       offlineStore: indexedDbOfflineStore(new IDBFactory()),
@@ -238,6 +241,7 @@ describe("browser bundle import prerequisites", () => {
       code: "bundle-import-unsupported",
     });
     const noStore = browserAdapter({
+      auth: "cookie",
       productSlug: "djdl",
       fetchImpl: makeFakeFetch(null, { product: "djdl" }),
       offlineStore: null,

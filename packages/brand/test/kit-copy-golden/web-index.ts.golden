@@ -1,0 +1,64 @@
+// GENERATED FILE — do not edit by hand.
+//
+// Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/kit-copy.ts) from
+// packages/brand/kit-copy/ (en.json and the eight locale packs) and the core copy in
+// conformance/parity/copy.<locale>.json. `pnpm gen:brand -- --check` fails the green gate on any
+// difference. To change a string, edit its source and regenerate.
+/**
+ * The Polaris Key kit copy (plans/UK-02.md): one flat table per launch locale holding every kit
+ * string and every core copy string (under `core.*`), as ICU MessageFormat-subset text. Kits look
+ * a key up per locale with a per-key fallback to English and format it with the ui-core formatter.
+ */
+import en from "./en.json" with { type: "json" };
+
+/** Every key a kit table holds. */
+export type KitCopyKey =
+  | "common.signInTo"
+  | "common.restart"
+  | "part.devices"
+  | "part.thisDevice"
+  | "common.quote"
+  | "core.fallback.title"
+  | "core.fallback.message"
+  | "core.codes.not-found.title"
+  | "core.codes.not-found.message";
+
+/** One locale's table. */
+export type KitCopyTable = Readonly<Record<KitCopyKey, string>>;
+
+/** The launch locales, English first. */
+export const KIT_COPY_LOCALES = ["en","de","fr","es","pt-BR","it","ja","ko","zh-Hans"] as const;
+export type KitCopyLocale = (typeof KIT_COPY_LOCALES)[number];
+
+/** The English table, always bundled: every lookup falls back to it key by key. */
+export const KIT_COPY_EN: KitCopyTable = en as KitCopyTable;
+
+/** English platform variants (D13 title case on macOS and documented verbs); other locales have none. */
+export const KIT_COPY_VARIANTS: Readonly<Record<string, Readonly<Record<string, string>>>> = {"common.signInTo":{"macos":"Sign In to {product}"},"common.restart":{"macos":"Install and Relaunch"}};
+
+/** Locales whose core.* strings are English until their core pack lands. */
+export const KIT_COPY_CORE_FALLBACK: readonly string[] = ["fr","es","pt-BR","it","ja","ko","zh-Hans"];
+
+/** Load one locale's table (code-split per locale). */
+export async function loadKitCopy(locale: KitCopyLocale): Promise<KitCopyTable> {
+  switch (locale) {
+    case "en":
+      return (await import("./en.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "de":
+      return (await import("./de.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "fr":
+      return (await import("./fr.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "es":
+      return (await import("./es.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "pt-BR":
+      return (await import("./pt-BR.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "it":
+      return (await import("./it.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "ja":
+      return (await import("./ja.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "ko":
+      return (await import("./ko.json", { with: { type: "json" } })).default as KitCopyTable;
+    case "zh-Hans":
+      return (await import("./zh-Hans.json", { with: { type: "json" } })).default as KitCopyTable;
+  }
+}

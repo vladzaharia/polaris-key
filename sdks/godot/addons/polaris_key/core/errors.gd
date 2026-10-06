@@ -21,6 +21,9 @@ const FINGERPRINT_REQUIRED := &"fingerprint_required"
 const ENROLL_DISABLED := &"enroll_disabled"
 const REGISTRATION_CLOSED := &"registration_closed"
 const ENROLL_CLAIMED := &"enroll_claimed"
+const ATTESTATION_REQUIRED := &"attestation_required"
+const MANAGED_BY_ADMIN := &"managed_by_admin"
+const NOT_ENTITLED := &"not_entitled"
 
 # ── Client codes ───────────────────────────────────────────────────────────────────────────
 const INSECURE_BASE_URL := &"insecure-base-url"

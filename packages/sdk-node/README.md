@@ -59,20 +59,120 @@ const hasVpn = client.license.isEntitled("polarisVpn");
 await client.sync();
 ```
 
+## One call to a working app
+
+`version` may be omitted: the client reads Electron's `app.getVersion()` or the nearest
+`package.json`, and warns when it finds neither. `boot()` then does the whole start-up in order
+and reports each stage of client-core's stage machine (`BOOT_STAGES`, re-exported):
+
+```ts
+const client = await PolarisKeyClient.create({
+  productSlug: "djdl",
+  trust: { pinnedKeys },
+});
+const { outcome, license, decision } = await client.boot({
+  onStage: (step) => render(step.state), // discovery → guard → sync → register/enrol → gate → decide → packs → mount
+});
+if (outcome === "waiting") showActivation(); // the gate needs the player; boot never prompts
+client.startRefresh(); // long-running hosts: hourly sync, at once after a wake, backoff offline
+```
+
+`ensureActivated()` runs only the first stages (sync, then `devices/register` or
+`license/enroll` where the product allows it). `client.events` is one typed EventEmitter for
+what changed: `license`, `config`, `updateAvailable`, `packs` and `store`.
+
+| Need                   | Call                                                                                                                                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Activation refusals    | `activateWithKey` / `enroll` answer a typed `ActivationResult`; every kind carries the server's `code`, an unknown 4xx is `refused{code}` and never `device-limit`. `copy.message(code)` (`core.copy`) is the sentence to show. |
+| Entitlements           | `license.isEntitled(name)` is false whenever the gate is not usable (revoked, expired past grace); `entitlementValue(name)`, `licenseInfo()`.                                                                                   |
+| Local settings         | `config.set(key, value)` / `config.clear(key)` persist an override in the state directory (refused for operator-locked keys); `config.setting(key)` is one key's handle; `onConfigChange(key \| "*")`.                          |
+| Sign-in                | `identity.signInWithBrowser()` opens the device-code page in the system browser; `waitForSignIn(prompt, { confirm })` sends the attach opt-in; `identity.current()`, `identity.signOut()`; `qr.terminal()` / `qr.svg()`.        |
+| Store purchases        | `client.commerce`: `binding()`, `claim(store, payload)`, `claimSteam(ticketHex, dlcAppId)`, `claimAppStore(jws)`, `claimPlay(productId, token)`. The host passes what its store gave it.                                        |
+| Verified download      | `release.fetch(target, { to, onProgress, signal })`: bearer, `Range` resume, size and SHA-256 checked against the signed record; never leaves a partial file at `to`.                                                           |
+| Updater feeds          | `update.feedUrl("appcast" \| "winsparkle" \| "velopack" \| "appInstaller" \| "zsync")` from discovery (typed `Unsupported` when unpublished); `client.distribution.downloadModel()`.                                            |
+| Install an update      | `update.install(decision)` through a driver (below), answering `restartRequired`, `handedOff`, `storeOpened` or `unsupported{reason}`.                                                                                          |
+| Boot guard             | `update.markBootAttempt()` at start-up, `update.confirmBoot()` once healthy; after `MAX_FAILED_BOOTS` the driver's rollback runs, else `boot_rolled_back` is reported and the version is skipped.                               |
+| Update health          | decide, packs, downloads, drivers and the guard journal P6-03 events in the state directory; each device report carries at most 16 and marks them sent.                                                                         |
+| Server-side check      | `verifyLicenseDocument(jws, { trust, product, deviceId })` from `@polaris-key/node/server` for a backend a client presents its licence to.                                                                                      |
+| Crash reporting        | `client.crashTags()` → `{ release, environment, "pkey.outlet" }` for a Sentry init (`release`, `environment`, and a tag).                                                                                                       |
+| Build stamp and outlet | `.polaris_key/build.json` (P1-11) is autoloaded; `readWindowsSignatureKind()` feeds the attested Windows signal.                                                                                                                |
+
+Products whose device-trust policy requires platform attestation refuse a Node client
+(`attestation-required`): Node has no attestation service (`devices.attest` is a declared N/A).
+
+## Install drivers
+
+`client.update.install(decision)` hands a signed `binary` or `store` decision to the driver set
+with `update: { driver }` or `client.update.useDriver(driver)`. None of them installs its
+updater; pass the object you already depend on. Each keeps the verified decision as the
+authority (the updater must offer exactly the decided version) and records `update_downloaded`
+and `update_applied`.
+
+| Driver                  | Subpath                                             | Notes                                                                                                                                           |
+| ----------------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `electronUpdaterDriver` | `@polaris-key/node/update/drivers/electron-updater` | `{ autoUpdater }` from electron-updater; the downloaded file must hash to an artifact of the signed record. `restart()` calls `quitAndInstall`. |
+| `velopackDriver`        | `@polaris-key/node/update/drivers/velopack`         | `{ velopackChannel, createManager: (url, ch) => new UpdateManager(url, { ExplicitChannel: ch }) }`, pointed at discovery's Velopack feed.       |
+| `seaSelfReplaceDriver`  | `@polaris-key/node/update/drivers/sea`              | A single-executable build replaces itself with `release.fetch`-verified bytes and keeps `<exe>.previous` as the boot guard's rollback.          |
+| `storeLinkDriver`       | `@polaris-key/node/update/drivers/store-link`       | Opens the store listing, or `{ downloadPage }` for a direct build.                                                                              |
+
+Without a driver a `store` decision opens its listing and a `binary` one answers
+`unsupported{reason: "dependency"}`; a `packs` decision is `update.packs.ensure()`'s.
+
+## Electron
+
+One line on each side, and `@polaris-key/react`'s `DesktopAdapter` works unchanged in the
+renderer (PolarisBridge v3: state, refresh, sign-in, key entry, sign-out, `invoke`, schema,
+offline bundles, pushed `stateChanged`):
+
+```ts
+// main
+import { app, ipcMain, safeStorage } from "electron";
+import { PolarisKeyClient } from "@polaris-key/node";
+import {
+  exposePolarisBridge,
+  SafeStorageStore,
+} from "@polaris-key/node/electron";
+
+await app.whenReady();
+const client = await PolarisKeyClient.create({
+  productSlug: "djdl",
+  trust: { pinnedKeys },
+  store: new SafeStorageStore("djdl", app.getPath("userData"), { safeStorage }),
+});
+exposePolarisBridge(client, {
+  ipcMain,
+  allowSender: (e) => e.senderFrame?.url.startsWith("app://") === true,
+});
+
+// preload (bundled: sandboxed preloads load no ES modules from node_modules)
+import "@polaris-key/node/electron/preload";
+```
+
+The device code of a sign-in never leaves the main process, and `invoke` answers only the verbs
+the React adapter uses (devices, update check/decide, release links, report) unless the host adds
+more with `invoke: { extra }`. `SafeStorageStore` encrypts the token with Electron's
+`safeStorage`; `status()` reports `keyring-unavailable` before `app.whenReady()`, without a
+secret store or on Linux's `basic_text`, and `keyring-error` when the stored token no longer
+decrypts.
+
 ## Shape
 
-| Surface           | Subpath                      | What it owns                                                                                                                |
-| ----------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `client.core`     | `@polaris-key/node/core`     | Device id, `pkeyt_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import                   |
-| `client.license`  | `@polaris-key/node/license`  | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile / `entitledChannels`                        |
-| `client.config`   | `@polaris-key/node/config`   | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret` / `fetchSchema` (the catalog) / `mintToken` (edge-mint)    |
-| `client.devices`  | `@polaris-key/node/devices`  | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas         |
-| `client.identity` | `@polaris-key/node/identity` | `beginSignIn` / `pollSignIn` / `waitForSignIn` — device-code sign-in (RFC 8628)                                             |
-| `client.release`  | `@polaris-key/node/release`  | `changelog` / `installUrl` / `downloadUrl`                                                                                  |
-| `client.update`   | `@polaris-key/node/update`   | `decide` / `feed` / `releaseRecord` (wire v4) / `buildUrl` / `check` (version) / `appcastUrl` (from discovery)              |
-| `…update.packs`   | `@polaris-key/node/packs`    | `ensure` / `state` / `path` / `registerHandler` / `on` / `packSetId` / `confirm` / `rollback` / `bootFetch`; the zstd probe |
-| —                 | `@polaris-key/node/local`    | The transportless profile: every network-requiring call refuses                                                             |
-| —                 | `@polaris-key/node/cli`      | Framework-agnostic commands + commander/yargs adapters                                                                      |
+| Surface               | Subpath                          | What it owns                                                                                                                |
+| --------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `client.core`         | `@polaris-key/node/core`         | Device id, `pkeyt_` token, trust set, cache v3, monotonic clock floor, `sync()`, telemetry, bundle import                   |
+| `client.license`      | `@polaris-key/node/license`      | `activateWithKey` / `enroll` / `deactivate` / `status` / entitlements / profile / `entitledChannels`                        |
+| `client.config`       | `@polaris-key/node/config`       | `getConfig` / `getConfigSource` / `listUserConfig` / `getSecret` / `fetchSchema` (the catalog) / `mintToken` (edge-mint)    |
+| `client.devices`      | `@polaris-key/node/devices`      | `register` (keyless mint) / `list` / `rename` / `deauthorize` / `report`, plus the fingerprint + device-id formulas         |
+| `client.identity`     | `@polaris-key/node/identity`     | `beginSignIn` / `pollSignIn` / `waitForSignIn` — device-code sign-in (RFC 8628)                                             |
+| `client.release`      | `@polaris-key/node/release`      | `changelog` / `installUrl` / `downloadUrl`                                                                                  |
+| `client.update`       | `@polaris-key/node/update`       | `decide` / `feed` / `releaseRecord` (wire v4) / `buildUrl` / `check` (version) / `appcastUrl` (from discovery)              |
+| `…update.packs`       | `@polaris-key/node/packs`        | `ensure` / `state` / `path` / `registerHandler` / `on` / `packSetId` / `confirm` / `rollback` / `bootFetch`; the zstd probe |
+| —                     | `@polaris-key/node/local`        | The transportless profile: every network-requiring call refuses                                                             |
+| —                     | `@polaris-key/node/cli`          | Framework-agnostic commands + commander/yargs adapters                                                                      |
+| `client.commerce`     | `@polaris-key/node/commerce`     | `binding` / `claim` / `claimSteam` / `claimAppStore` / `claimPlay`                                                          |
+| `client.distribution` | `@polaris-key/node/distribution` | `downloadModel` / `thisPlatform`                                                                                            |
+| —                     | `@polaris-key/node/electron`     | `exposePolarisBridge`, `SafeStorageStore`; `/electron/preload` for the renderer side                                        |
+| —                     | `@polaris-key/node/server`       | `verifyLicenseDocument` for a backend                                                                                       |
 
 `client.license.entitledChannels()` returns the `channels` entitlement's string grants in order,
 or `["stable"]` when the licence carries none — the Worker's own answer, and every SDK's for the
@@ -518,10 +618,19 @@ const dir = await client.update.packs.path("diceroll.l10n"); // the running tree
 
 ## CLI hooks
 
-`@polaris-key/node/cli` exposes a framework-agnostic command core plus thin **commander** and **yargs**
-adapters over the same core, so the two front ends never diverge. Verbs are grouped by owning
-service — `activate` / `enroll` / `deactivate` / `status` (license), `register` (devices),
-`config <key>` (config), `import-bundle <file>` (core):
+`@polaris-key/node/cli` exposes a framework-agnostic command core plus thin **commander** and
+**yargs** adapters built from one verb table (`CLI_VERBS`), so the two front ends never diverge.
+Verbs are grouped by owning service:
+
+| Group    | Verbs                                                                                                                |
+| -------- | -------------------------------------------------------------------------------------------------------------------- |
+| license  | `activate <key>`, `enroll`, `deactivate`, `status`, `offline-request`                                                |
+| identity | `sign-in` (code and terminal QR), `sign-out`                                                                         |
+| devices  | `register`, `devices list`, `devices rename <id> [label]`, `devices deauthorize <id>`                                |
+| config   | `config get <key>`, `config list`, `config set <key> <value>`, `config reset <key>`, `secret <key>`, `mint <recipe>` |
+| update   | `update check`, `update apply` (progress bar), `changelog`                                                           |
+| packs    | `packs status`, `packs ensure <ids...>` (progress bar)                                                               |
+| core     | `import-bundle <file>`, `doctor` (store, discovery, unsupported features)                                            |
 
 ```ts
 import { Command } from "commander";
@@ -536,6 +645,22 @@ registerPolarisCommands(program, (opts) => PolarisKeyClient.create(opts), {
 });
 program.parseAsync(process.argv);
 ```
+
+Each verb is also a plain function (`signIn(client, io)`, `devicesList(client)`, …) returning
+`{ ok, message, data }`; refusals are described through the copy catalog with their code.
+
+## Samples and recipes
+
+Runnable samples live in the repository's `examples/` directory:
+`node-express` (verify a client's licence on a backend), `node-cli` (a commander CLI with the full
+kit and sign-in) and `node-electron` (main, preload and the React kit over the bridge).
+
+- **Device limit reached.** `activateWithKey` answers `device-limit` with `limit` and
+  `deviceCount`. The new device holds no credential, so a seat is freed from the account portal
+  or from a device that holds one (`client.deauthorizeDevice(id)`, `devices deauthorize <id>`),
+  then the key is entered again.
+- **Attestation-gated products.** A product whose device-trust policy requires platform
+  attestation refuses Node clients with `attestation-required`; Node has no attestation service.
 
 ## The frozen wire contract
 
