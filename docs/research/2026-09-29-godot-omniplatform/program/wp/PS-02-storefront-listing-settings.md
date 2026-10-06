@@ -96,10 +96,10 @@ delegated to the lead).
 
 ## Acceptance criteria
 
-- [ ] The registry test passes with the five new entries; docs coverage lists them.
-- [ ] Migration test: a product with `discover_enabled = 0` reads `unlisted`; others read `auto`.
-- [ ] A pre-migration Worker reads and writes the table unaffected (expand-only).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] The registry test passes with the five new entries; docs coverage lists them.
+- [x] Migration test: a product with `discover_enabled = 0` reads `unlisted`; others read `auto`.
+- [x] A pre-migration Worker reads and writes the table unaffected (expand-only).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
