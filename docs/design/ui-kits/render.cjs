@@ -10,7 +10,8 @@
 //
 // The script fails if any page logs a console error or a font fails to load.
 //
-// Boards: web, ios, android, desktop (macOS), windows, linux, godot, terminal.
+// Boards: web, ios, apple (iPad, visionOS, tvOS, watchOS), android, desktop (macOS), windows,
+// linux, qt, godot, terminal.
 const path = require("node:path");
 const { chromium } = require("playwright");
 
@@ -28,10 +29,12 @@ const boards = named.length
   : [
       "web",
       "ios",
+      "apple",
       "android",
       "desktop",
       "windows",
       "linux",
+      "qt",
       "godot",
       "terminal",
     ];

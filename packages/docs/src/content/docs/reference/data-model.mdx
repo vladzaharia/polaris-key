@@ -20,6 +20,7 @@ this page or fails the freshness gate.
 | `product_secrets` | 0003_keyvault.sql | `product`, `name`, `enc_value_json`, `created_at`, `modified_at`, `usage (0025)` |
 | `outlet_credentials` | 0034_outlet_credentials.sql | `product`, `credential_id`, `kind`, `outlet_id`, `enc_value_json`, `meta_json`, `status`, `created_at`, `created_by`, `rotated_at`, `expires_at`, `last_used_at`, `last_ok_at`, `last_error` |
 | `devices` | 0001_init.sql | `product`, `device_id`, `customer_id`, `license_id`, `status`, `first_seen`, `last_seen`, `ua`, `label`, `platform`, `arch`, `app_version`, `sdk_name`, `sdk_version`, `overrides_json`, `reported_json`, `token_hash`, `seat_no (0014)`, `trust_level (0053)`, `attested_at (0053)`, `attestation_json (0053)`, `subject (0068)`, `bound_by (0068)` |
+| `license_refusals` | 0074_license_refusals.sql | `product`, `id`, `license_id`, `at`, `reason`, `device_label`, `device_hash` |
 | `device_fingerprints` | 0010_fingerprint.sql | `product`, `device_id`, `hwid`, `components_json`, `anchor_hash`, `status`, `first_seen`, `last_seen`, `last_drift_at`, `last_drift_count` |
 | `device_facts` | 0010_fingerprint.sql | `product`, `device_id`, `os_name`, `os_version`, `os_build`, `kernel`, `cpu_model`, `cpu_cores`, `ram_mb`, `machine_model`, `locale`, `timezone`, `runtime_name`, `runtime_version`, `probes_json`, `updated_at` |
 | `audit` | 0001_init.sql | `product`, `id`, `at`, `actor_sub`, `actor_name`, `actor_email`, `action`, `target_kind`, `target_id`, `parent_id`, `summary` |

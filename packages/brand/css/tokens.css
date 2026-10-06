@@ -59,12 +59,14 @@
   --pk-radius-xl: 1.125rem;
   --pk-radius-full: 9999px;
   --pk-font-sans:
-    "Rubik", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+    "Rubik", "Rubik Fallback", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --pk-font-mono:
-    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
-    monospace;
+    "JetBrains Mono", "JetBrains Mono Fallback", ui-monospace, SFMono-Regular,
+    "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   --pk-font-weight-regular: 400;
+  --pk-font-weight-medium: 500;
+  --pk-font-weight-semibold: 600;
   --pk-font-weight-bold: 700;
   --pk-font-size-xs: 0.75rem;
   --pk-line-height-xs: 1rem;
@@ -420,7 +422,7 @@
   }
 }
 
-/* Rubik ships two weights; never let the browser fake a third. */
+/* Every weight and style in use ships in the variable fonts; never let a browser fake one. */
 :root {
   font-synthesis: none;
 }

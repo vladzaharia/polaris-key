@@ -7,16 +7,16 @@ import { cn } from "../../../lib/cn.js";
 import { ProductArt } from "../ProductArt.js";
 import { ProductIcon } from "../ProductIcon.js";
 import { ProductMenu } from "../ProductMenu.js";
-import { ProductStatusPill } from "../ProductStatus.js";
+import { isIssueStatus, ProductStatusPill } from "../ProductStatus.js";
 import { QuickActionButton } from "../QuickAction.js";
 
 /**
  * The product header (§4.20): back to Library, the banner (16:9 full-bleed on phones, a centred
- * 3:1 band capped at 416 px on desktop),
- * the 112 px icon (80 on phones) in front of its lower edge, like an app store's product header;
- * without a cover the icon stands alone beside the name, and without an icon its letter tile
- * stands in. The name as the page's `h1` (focus lands here after adding a
- * product), "by <developer>", status and tier, and the one lead action with the overflow menu.
+ * 3:1 band capped at 416 px on desktop), the 112 px icon (80 on phones) in front of its lower
+ * edge, like an app store's product header; without a cover the icon stands alone beside the
+ * name, and without an icon its letter tile stands in. The name as the page's `h1` (focus lands
+ * here after adding a product), "by <developer> · <tier>" as text, the status only as a
+ * right-aligned issue pill (healthy is silence), and the one lead action with the overflow menu.
  */
 export function ProductHeader({
   product,
@@ -88,7 +88,7 @@ export function ProductHeader({
           >
             {product.name}
           </h1>
-          <div className="flex flex-wrap items-center gap-2 text-fg-muted">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-fg-muted">
             {pres.developer ? (
               <span>
                 by{" "}
@@ -97,12 +97,26 @@ export function ProductHeader({
                 </span>
               </span>
             ) : null}
-            <ProductStatusPill status={product.status} />
             {tier ? (
-              <span className="inline-flex h-6 items-center rounded-md border border-border-strong px-2 text-xs text-fg-strong">
+              <span>
+                {pres.developer ? (
+                  <span aria-hidden className="mr-2">
+                    ·
+                  </span>
+                ) : null}
                 {tier}
               </span>
             ) : null}
+            {/* A quiet non-issue status ("Account-wide") reads as text after a dot, like the tier. */}
+            {!isIssueStatus(product.status) &&
+            product.status.tone !== "success" &&
+            (pres.developer || tier) ? (
+              <span aria-hidden>·</span>
+            ) : null}
+            <ProductStatusPill
+              status={product.status}
+              className={isIssueStatus(product.status) ? "ml-auto" : undefined}
+            />
           </div>
         </div>
         <div className="flex gap-2 max-desk:w-full desk:pb-1">

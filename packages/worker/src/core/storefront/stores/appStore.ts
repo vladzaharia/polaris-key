@@ -217,6 +217,7 @@ export const APP_STORE_ADAPTER: StorefrontAdapter = {
     ciTokens: ["delete", "users", "invite", "certificates", "refund"],
   },
   ci: null,
+  pr: null,
   // Apple's column of the shared listing model (A-18b; `../listingProfiles.ts`): the limits A-17d
   // and A-18m write to, the same numbers the fit report grades.
   listing: adapterListingProfile(STORE_LISTING_COLUMNS["app-store"]),

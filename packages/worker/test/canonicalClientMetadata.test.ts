@@ -3,7 +3,7 @@
  * converges on what the Worker's normaliser stores today (WIRE-CONTRACT-V3 §5.2 rule 3), every
  * stored empty value becomes NULL, and replaying the migration changes nothing.
  *
- * SP-08 — `0074_apple_platform_values.sql` extends the convergence to the spellings that gained a
+ * SP-08 — `0075_apple_platform_values.sql` extends the convergence to the spellings that gained a
  * canonical value later (`tvOS`, `visionOS`, `watchOS`). "Today" is therefore the two migrations
  * applied in order (`CONVERGENCE`): 0040 alone leaves those spellings as sent, as it did when it
  * shipped.
@@ -32,7 +32,7 @@ const FILES = readdirSync(MIGRATIONS_DIR)
   .filter((f) => f.endsWith(".sql"))
   .sort();
 const MIGRATION = "0040_canonical_client_metadata.sql";
-const APPLE_MIGRATION = "0074_apple_platform_values.sql";
+const APPLE_MIGRATION = "0075_apple_platform_values.sql";
 const BEFORE = FILES.filter((f) => f < MIGRATION);
 /** The platform convergence migrations, in order. */
 const CONVERGENCE = [MIGRATION, APPLE_MIGRATION];
@@ -198,7 +198,7 @@ describe(MIGRATION, () => {
     expect(rows(raw)).toEqual(once);
   });
 
-  it("leaves the later Apple spellings as sent (0074 converges them)", async () => {
+  it("leaves the later Apple spellings as sent (0075 converges them)", async () => {
     const raw = await seeded();
     raw.exec(sql(MIGRATION));
     const got = rows(raw);

@@ -54,6 +54,7 @@ import {
   settleOwnershipConflicts,
 } from "./services/identity/accounts/legacy.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
+import { REFUSAL_RETENTION_SECONDS, pruneRefusals } from "./core/refusals.js";
 import { lazyDeltaProducts } from "./core/deltaDemand.js";
 import { refreshPlatformSettings } from "./core/platformSettings.js";
 import { sweepLazyDeltas } from "./services/release/packs/deltas/sweep.js";
@@ -351,6 +352,12 @@ export async function runScheduledMaintenance(
     // would otherwise be kept forever.
     await step(report, `connectorEvents:${product}`, () =>
       drain((limit) => pruneConnectorEvents(db, product, now, limit)),
+    );
+    // UX-15: the refusal log past `REFUSAL_RETENTION_SECONDS` (30 days, `core/refusals.ts`).
+    await step(report, `refusals:${product}`, () =>
+      drain((limit) =>
+        pruneRefusals(db, product, now - REFUSAL_RETENTION_SECONDS, limit),
+      ),
     );
   }
 

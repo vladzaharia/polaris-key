@@ -34,6 +34,7 @@ import {
   deviceOsName,
   presentationFrom,
 } from "../model/library.js";
+import { deviceSeats } from "../model/product.js";
 import { allowedReturn } from "../model/returnUrl.js";
 import { href, useDocumentTitle } from "../router.js";
 import { NotFoundProduct } from "./NotFoundProduct.js";
@@ -44,21 +45,20 @@ export function forLabel(raw: string | null): string | null {
   return v ? v.slice(0, 64) : null;
 }
 
-/** Where "back" goes: the app when its return URL is declared, else the product page. */
+/**
+ * Where "back" goes: the app when its return URL is declared, else the product page. Only an app
+ * that sent the person (`return=` present and declared) is named "Back to <product>" (§0.6 P4,
+ * §11.2); without one, the way back is the product's page here, and says so.
+ */
 export function flowBack(
   product: string,
   name: string,
   returnUrl: string | null,
 ): { label: string; href: string; external: boolean; tail?: string } {
   return returnUrl
-    ? {
-        label: `Back to ${name}`,
-        tail: "without changes",
-        href: returnUrl,
-        external: true,
-      }
+    ? { label: `Back to ${name}`, href: returnUrl, external: true }
     : {
-        label: `Back to ${name}`,
+        label: `See ${name} in your library`,
         href: href.product(product),
         external: false,
       };
@@ -68,7 +68,9 @@ export function flowBack(
  * Device limit, the focused flow (PORTAL.md §4.25, PX-10): `#/p/<product>/free-device?for=&return=`,
  * the target of an app's `device_limit` (G15 `manageUrl`, PX-W8). The licence's devices that use
  * a seat as radio cards, the least recently seen preselected; the consequences; one primary that
- * removes it; then the way back to the app ("press Try again"), only to a declared return URL.
+ * removes it; then the way back to the app ("Back to <product>", "press Try again"), only to a
+ * declared return URL. Without one, nothing mentions going back to an app. The seats come from
+ * `deviceSeats`, the same source the product page's Devices card reads (§0.6 P4).
  */
 export function FreeDevicePage({
   account,
@@ -164,9 +166,8 @@ function FreeDevice({
   const pres = presentationFrom(product);
   const license =
     product.licenses.find((l) => l.id === licenseId) ?? product.licenses[0]!;
-  const holders = license.devices
-    .filter((d) => !d.dormant)
-    .sort((a, b) => a.lastSeen - b.lastSeen);
+  const seats = deviceSeats(license);
+  const holders = seats.holders;
   const leastRecent = holders[0]?.deviceId ?? null;
   const [picked, setPicked] = React.useState<string | null>(leastRecent);
   const [removed, setRemoved] = React.useState<string | null>(null);
@@ -177,9 +178,9 @@ function FreeDevice({
   }, [removed]);
 
   const name = product.name;
-  const limit = license.deviceLimit;
-  const inUse = license.activeSeatCount;
-  const full = limit > 0 && inUse >= limit;
+  const limit = seats.limit ?? 0;
+  const inUse = seats.inUse;
+  const full = seats.full;
   const target = forDevice ?? "another device";
   const pickedDevice = holders.find((d) => d.deviceId === picked) ?? null;
   const support =
@@ -187,13 +188,21 @@ function FreeDevice({
     (pres.supportEmail ? `mailto:${pres.supportEmail}` : null);
   const goBack = returnUrl ? (
     <Button asChild size="lg" className="h-12 w-full font-bold sm:w-auto">
-      <a href={returnUrl}>Return to {name}</a>
+      <a href={returnUrl}>Back to {name}</a>
     </Button>
   ) : (
     <Button asChild size="lg" className="h-12 w-full font-bold sm:w-auto">
-      <a href={href.product(product.product, "devices")}>Open {name}</a>
+      <a href={href.product(product.product, "devices")}>See your devices</a>
     </Button>
   );
+  // "press Try again" only makes sense when an app sent the person here.
+  const tryAgain = returnUrl ? (
+    <>
+      {" "}
+      Go back to {name} and press{" "}
+      <strong className="text-fg-strong">Try again</strong>.
+    </>
+  ) : null;
   const card = (children: React.ReactNode) => (
     <FlowCard
       slug={product.product}
@@ -219,8 +228,8 @@ function FreeDevice({
           {removed} was removed
         </h1>
         <p className="text-fg">
-          {name} now has a free device. Go back to {name} and press{" "}
-          <strong className="text-fg-strong">Try again</strong>.
+          {name} now has a free device.
+          {tryAgain}
         </p>
         {goBack}
       </div>,
@@ -236,10 +245,9 @@ function FreeDevice({
         {limit > 0 ? <SeatMeter inUse={inUse} limit={limit} /> : null}
         <p className="text-fg">
           {limit > 0
-            ? `${inUse} of ${limit} ${limit === 1 ? "device is" : "devices are"} in use, so ${target} can be added. `
-            : `${target[0]!.toUpperCase()}${target.slice(1)} can be added. `}
-          Go back to {name} and press{" "}
-          <strong className="text-fg-strong">Try again</strong>.
+            ? `${inUse} of ${limit} ${limit === 1 ? "device is" : "devices are"} in use, so ${target} can be added.`
+            : `${target[0]!.toUpperCase()}${target.slice(1)} can be added.`}
+          {tryAgain}
         </p>
         {goBack}
       </div>,
@@ -334,24 +342,19 @@ function FreeDevice({
             : "Remove a device and continue"}
         </Button>
       </div>
-      <p className="text-sm text-fg-muted">
-        Then go back to {name} and press{" "}
-        <strong className="text-fg-strong">Try again</strong>.
-        {support ? (
-          <>
-            {" "}
-            Need more devices?{" "}
-            <a
-              href={support}
-              target="_blank"
-              rel="noreferrer"
-              className="font-bold text-accent-fg hover:underline"
-            >
-              Ask {pres.developer ?? "the developer"}
-            </a>
-          </>
-        ) : null}
-      </p>
+      {support ? (
+        <p className="text-sm text-fg-muted">
+          Need more devices?{" "}
+          <a
+            href={support}
+            target="_blank"
+            rel="noreferrer"
+            className="font-bold text-accent-fg hover:underline"
+          >
+            Ask {pres.developer ?? "the developer"}
+          </a>
+        </p>
+      ) : null}
     </div>,
   );
 }

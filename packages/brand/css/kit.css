@@ -1,0 +1,486 @@
+/*
+ * GENERATED FILE — do not edit by hand.
+ *
+ * Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/gen.ts) from
+ * packages/brand/src/tokens/ and the launch kit copy in packages/brand/kit/.
+ * `pnpm gen:brand -- --check` fails the green gate on any difference. To change a value, edit
+ * its source and regenerate.
+ */
+
+/*
+ * Polaris Key UI-kit tokens (docs/design/UI-KITS.md §2.1): the component measures, the type scale,
+ * the highlight edge, the danger solid and the scrim, as --pk-kit-* custom properties. Import
+ * after tokens.css; every web kit (React, elements, Vue, Svelte, Angular, Electron, Tauri) reads
+ * these and never a literal.
+ *
+ * The web variant is the default. data-pk-platform="ios|macos|android|windows|gnome|godot" on a
+ * kit root renders that platform's variant inside a webview (UI-KITS §3.1 `platform`).
+ * data-pk-density="compact" takes the compact control height and radius; a coarse pointer takes
+ * the coarse height. The theme follows tokens.css: dark first, data-theme or the OS preference.
+ *
+ * The selectors are zero-specificity (:where) on the kit root, so a host's own rule always wins,
+ * and nothing is set on :root unless the host puts the kit there.
+ */
+
+:where(:root, :host, [data-pk-kit]) {
+  --pk-kit-control-height: 44px;
+  --pk-kit-control-height-coarse: 48px;
+  --pk-kit-control-height-compact: 36px;
+  --pk-kit-radius-control: 12px;
+  --pk-kit-radius-control-compact: 10px;
+  --pk-kit-radius-card: 22px;
+  --pk-kit-radius-group: 16px;
+  --pk-kit-card-pad: 32px;
+  --pk-kit-card-pad-full-bleed: 20px;
+  --pk-kit-focus-width: 2px;
+  --pk-kit-focus-offset: 2px;
+  --pk-kit-focus-inner: 0;
+  --pk-kit-focus-glow: 0;
+  --pk-kit-type-display-size: clamp(1.75rem, 1.1rem + 2.6cqi, 2.25rem);
+  --pk-kit-type-display-line-height: 1.12;
+  --pk-kit-type-display-weight: 600;
+  --pk-kit-type-display-tracking: -0.02em;
+  --pk-kit-type-display-family: var(--pk-font-sans);
+  --pk-kit-type-title-size: clamp(1.625rem, 1rem + 2.4cqi, 2.125rem);
+  --pk-kit-type-title-line-height: 1.15;
+  --pk-kit-type-title-weight: 600;
+  --pk-kit-type-title-tracking: 0;
+  --pk-kit-type-title-family: var(--pk-font-sans);
+  --pk-kit-type-body-size: 15px;
+  --pk-kit-type-body-line-height: 22px;
+  --pk-kit-type-body-weight: 400;
+  --pk-kit-type-body-tracking: 0;
+  --pk-kit-type-body-family: var(--pk-font-sans);
+  --pk-kit-type-label-size: 14px;
+  --pk-kit-type-label-line-height: 20px;
+  --pk-kit-type-label-weight: 500;
+  --pk-kit-type-label-tracking: 0;
+  --pk-kit-type-label-family: var(--pk-font-sans);
+  --pk-kit-type-button-size: 15px;
+  --pk-kit-type-button-line-height: 20px;
+  --pk-kit-type-button-weight: 500;
+  --pk-kit-type-button-tracking: 0;
+  --pk-kit-type-button-family: var(--pk-font-sans);
+  --pk-kit-type-meta-size: 13px;
+  --pk-kit-type-meta-line-height: 18px;
+  --pk-kit-type-meta-weight: 400;
+  --pk-kit-type-meta-tracking: 0;
+  --pk-kit-type-meta-family: var(--pk-font-sans);
+  --pk-kit-type-footnote-size: 13px;
+  --pk-kit-type-footnote-line-height: 18px;
+  --pk-kit-type-footnote-weight: 400;
+  --pk-kit-type-footnote-tracking: 0;
+  --pk-kit-type-footnote-family: var(--pk-font-sans);
+  --pk-kit-type-code-size: 40px;
+  --pk-kit-type-code-line-height: 48px;
+  --pk-kit-type-code-weight: 500;
+  --pk-kit-type-code-tracking: 0.12em;
+  --pk-kit-type-code-family: var(--pk-font-mono);
+  --pk-kit-press-scale: 0.98;
+  --pk-kit-sheet-scale: 0.98;
+  --pk-kit-step-slide: 8px;
+  --pk-kit-concentric-min: 8px;
+}
+
+:where(:root, :host, [data-pk-kit]),
+:where([data-theme="dark"]) {
+  --pk-kit-highlight: rgb(255 255 255 / 0.05);
+  --pk-kit-danger-solid: #db3a2b;
+  --pk-kit-danger-on: #ffffff;
+  --pk-kit-scrim: rgb(2 4 8 / 0.5);
+  --pk-kit-scrim-blur: 16px;
+}
+
+@media (prefers-color-scheme: light) {
+  :where(
+    :root:not([data-theme="dark"]),
+    :host,
+    [data-pk-kit]:not([data-theme="dark"] *)
+  ) {
+    --pk-kit-highlight: rgb(255 255 255 / 0.9);
+    --pk-kit-danger-solid: #be2323;
+    --pk-kit-danger-on: #ffffff;
+    --pk-kit-scrim: rgb(6 9 18 / 0.14);
+    --pk-kit-scrim-blur: 12px;
+  }
+}
+
+:where([data-theme="light"]) {
+  --pk-kit-highlight: rgb(255 255 255 / 0.9);
+  --pk-kit-danger-solid: #be2323;
+  --pk-kit-danger-on: #ffffff;
+  --pk-kit-scrim: rgb(6 9 18 / 0.14);
+  --pk-kit-scrim-blur: 12px;
+}
+
+@media (pointer: coarse) {
+  :where(:root, :host, [data-pk-kit]) {
+    --pk-kit-control-height: var(--pk-kit-control-height-coarse);
+  }
+}
+
+:where([data-pk-density="compact"]) {
+  --pk-kit-control-height: var(--pk-kit-control-height-compact);
+  --pk-kit-radius-control: var(--pk-kit-radius-control-compact);
+}
+
+[data-pk-platform="ios"] {
+  --pk-kit-control-height: 52px;
+  --pk-kit-radius-control: 9999px;
+  --pk-kit-radius-sheet: 40px;
+  --pk-kit-radius-floating: 40px;
+  --pk-kit-radius-floating-large: 48px;
+  --pk-kit-card-pad: 20px;
+  --pk-kit-focus-width: 0;
+  --pk-kit-focus-offset: 0;
+  --pk-kit-focus-inner: 0;
+  --pk-kit-focus-glow: 0;
+  --pk-kit-type-display-size: 34px;
+  --pk-kit-type-display-line-height: 40px;
+  --pk-kit-type-display-weight: 600;
+  --pk-kit-type-display-tracking: 0;
+  --pk-kit-type-display-family: var(--pk-font-sans);
+  --pk-kit-type-title-size: 28px;
+  --pk-kit-type-title-line-height: 34px;
+  --pk-kit-type-title-weight: 600;
+  --pk-kit-type-title-tracking: 0;
+  --pk-kit-type-title-family: var(--pk-font-sans);
+  --pk-kit-type-body-size: 17px;
+  --pk-kit-type-body-line-height: 22px;
+  --pk-kit-type-body-weight: 400;
+  --pk-kit-type-body-tracking: 0;
+  --pk-kit-type-body-family: var(--pk-font-sans);
+  --pk-kit-type-label-size: 17px;
+  --pk-kit-type-label-line-height: 22px;
+  --pk-kit-type-label-weight: 500;
+  --pk-kit-type-label-tracking: 0;
+  --pk-kit-type-label-family: var(--pk-font-sans);
+  --pk-kit-type-button-size: 17px;
+  --pk-kit-type-button-line-height: 22px;
+  --pk-kit-type-button-weight: 500;
+  --pk-kit-type-button-tracking: 0;
+  --pk-kit-type-button-family: var(--pk-font-sans);
+  --pk-kit-type-meta-size: 15px;
+  --pk-kit-type-meta-line-height: 20px;
+  --pk-kit-type-meta-weight: 400;
+  --pk-kit-type-meta-tracking: 0;
+  --pk-kit-type-meta-family: var(--pk-font-sans);
+  --pk-kit-type-footnote-size: 13px;
+  --pk-kit-type-footnote-line-height: 18px;
+  --pk-kit-type-footnote-weight: 400;
+  --pk-kit-type-footnote-tracking: 0;
+  --pk-kit-type-footnote-family: var(--pk-font-sans);
+  --pk-kit-type-code-size: 28px;
+  --pk-kit-type-code-line-height: 34px;
+  --pk-kit-type-code-weight: 500;
+  --pk-kit-type-code-tracking: 0;
+  --pk-kit-type-code-family: var(--pk-font-mono);
+  --pk-kit-scrim: rgb(2 4 8 / 0.32);
+  --pk-kit-scrim-blur: 0;
+}
+
+[data-theme="light"] [data-pk-platform="ios"],
+[data-theme="light"][data-pk-platform="ios"] {
+  --pk-kit-scrim: rgb(6 9 18 / 0.18);
+  --pk-kit-scrim-blur: 0;
+}
+
+[data-pk-platform="macos"] {
+  --pk-kit-control-height: 28px;
+  --pk-kit-control-height-hero: 36px;
+  --pk-kit-radius-control: 9999px;
+  --pk-kit-radius-form: 10px;
+  --pk-kit-radius-sheet: 18px;
+  --pk-kit-card-pad: 24px;
+  --pk-kit-card-pad-compact: 22px;
+  --pk-kit-focus-width: 0;
+  --pk-kit-focus-offset: 0;
+  --pk-kit-focus-inner: 0;
+  --pk-kit-focus-glow: 0;
+  --pk-kit-type-display-size: 26px;
+  --pk-kit-type-display-line-height: 32px;
+  --pk-kit-type-display-weight: 600;
+  --pk-kit-type-display-tracking: 0;
+  --pk-kit-type-display-family: var(--pk-font-sans);
+  --pk-kit-type-title-size: 22px;
+  --pk-kit-type-title-line-height: 28px;
+  --pk-kit-type-title-weight: 600;
+  --pk-kit-type-title-tracking: 0;
+  --pk-kit-type-title-family: var(--pk-font-sans);
+  --pk-kit-type-body-size: 13px;
+  --pk-kit-type-body-line-height: 16px;
+  --pk-kit-type-body-weight: 400;
+  --pk-kit-type-body-tracking: 0;
+  --pk-kit-type-body-family: var(--pk-font-sans);
+  --pk-kit-type-label-size: 13px;
+  --pk-kit-type-label-line-height: 16px;
+  --pk-kit-type-label-weight: 500;
+  --pk-kit-type-label-tracking: 0;
+  --pk-kit-type-label-family: var(--pk-font-sans);
+  --pk-kit-type-button-size: 13px;
+  --pk-kit-type-button-line-height: 16px;
+  --pk-kit-type-button-weight: 500;
+  --pk-kit-type-button-tracking: 0;
+  --pk-kit-type-button-family: var(--pk-font-sans);
+  --pk-kit-type-meta-size: 12px;
+  --pk-kit-type-meta-line-height: 15px;
+  --pk-kit-type-meta-weight: 400;
+  --pk-kit-type-meta-tracking: 0;
+  --pk-kit-type-meta-family: var(--pk-font-sans);
+  --pk-kit-type-footnote-size: 12px;
+  --pk-kit-type-footnote-line-height: 15px;
+  --pk-kit-type-footnote-weight: 400;
+  --pk-kit-type-footnote-tracking: 0;
+  --pk-kit-type-footnote-family: var(--pk-font-sans);
+  --pk-kit-type-code-size: 28px;
+  --pk-kit-type-code-line-height: 34px;
+  --pk-kit-type-code-weight: 600;
+  --pk-kit-type-code-tracking: 0.06em;
+  --pk-kit-type-code-family: var(--pk-font-mono);
+  --pk-kit-scrim: transparent;
+  --pk-kit-scrim-blur: 0;
+}
+
+[data-theme="light"] [data-pk-platform="macos"],
+[data-theme="light"][data-pk-platform="macos"] {
+  --pk-kit-scrim: transparent;
+  --pk-kit-scrim-blur: 0;
+}
+
+[data-pk-platform="android"] {
+  --pk-kit-control-height: 56px;
+  --pk-kit-radius-control: 9999px;
+  --pk-kit-radius-sheet: 28px;
+  --pk-kit-radius-list-outer: 24px;
+  --pk-kit-radius-list-inner: 6px;
+  --pk-kit-card-pad: 24px;
+  --pk-kit-focus-width: 2px;
+  --pk-kit-focus-offset: 0;
+  --pk-kit-focus-inner: 0;
+  --pk-kit-focus-glow: 0;
+  --pk-kit-type-display-size: 36px;
+  --pk-kit-type-display-line-height: 44px;
+  --pk-kit-type-display-weight: 600;
+  --pk-kit-type-display-tracking: 0;
+  --pk-kit-type-display-family: var(--pk-font-sans);
+  --pk-kit-type-title-size: 28px;
+  --pk-kit-type-title-line-height: 36px;
+  --pk-kit-type-title-weight: 600;
+  --pk-kit-type-title-tracking: 0;
+  --pk-kit-type-title-family: var(--pk-font-sans);
+  --pk-kit-type-body-size: 16px;
+  --pk-kit-type-body-line-height: 24px;
+  --pk-kit-type-body-weight: 400;
+  --pk-kit-type-body-tracking: 0;
+  --pk-kit-type-body-family: var(--pk-font-sans);
+  --pk-kit-type-label-size: 14px;
+  --pk-kit-type-label-line-height: 20px;
+  --pk-kit-type-label-weight: 500;
+  --pk-kit-type-label-tracking: 0;
+  --pk-kit-type-label-family: var(--pk-font-sans);
+  --pk-kit-type-button-size: 16px;
+  --pk-kit-type-button-line-height: 24px;
+  --pk-kit-type-button-weight: 500;
+  --pk-kit-type-button-tracking: 0;
+  --pk-kit-type-button-family: var(--pk-font-sans);
+  --pk-kit-type-meta-size: 14px;
+  --pk-kit-type-meta-line-height: 20px;
+  --pk-kit-type-meta-weight: 400;
+  --pk-kit-type-meta-tracking: 0;
+  --pk-kit-type-meta-family: var(--pk-font-sans);
+  --pk-kit-type-footnote-size: 14px;
+  --pk-kit-type-footnote-line-height: 20px;
+  --pk-kit-type-footnote-weight: 400;
+  --pk-kit-type-footnote-tracking: 0;
+  --pk-kit-type-footnote-family: var(--pk-font-sans);
+  --pk-kit-type-code-size: 32px;
+  --pk-kit-type-code-line-height: 40px;
+  --pk-kit-type-code-weight: 500;
+  --pk-kit-type-code-tracking: 0.06em;
+  --pk-kit-type-code-family: var(--pk-font-mono);
+  --pk-kit-scrim: rgb(2 4 8 / 0.6);
+  --pk-kit-scrim-blur: 0;
+}
+
+[data-theme="light"] [data-pk-platform="android"],
+[data-theme="light"][data-pk-platform="android"] {
+  --pk-kit-scrim: rgb(6 9 18 / 0.32);
+  --pk-kit-scrim-blur: 0;
+}
+
+[data-pk-platform="windows"] {
+  --pk-kit-control-height: 32px;
+  --pk-kit-radius-control: 4px;
+  --pk-kit-radius-overlay: 8px;
+  --pk-kit-card-pad: 24px;
+  --pk-kit-focus-width: 2px;
+  --pk-kit-focus-offset: 0;
+  --pk-kit-focus-inner: 1px;
+  --pk-kit-focus-glow: 0;
+  --pk-kit-type-display-size: 40px;
+  --pk-kit-type-display-line-height: 52px;
+  --pk-kit-type-display-weight: 600;
+  --pk-kit-type-display-tracking: 0;
+  --pk-kit-type-display-family: var(--pk-font-sans);
+  --pk-kit-type-title-size: 28px;
+  --pk-kit-type-title-line-height: 36px;
+  --pk-kit-type-title-weight: 600;
+  --pk-kit-type-title-tracking: 0;
+  --pk-kit-type-title-family: var(--pk-font-sans);
+  --pk-kit-type-body-size: 14px;
+  --pk-kit-type-body-line-height: 20px;
+  --pk-kit-type-body-weight: 400;
+  --pk-kit-type-body-tracking: 0;
+  --pk-kit-type-body-family: var(--pk-font-sans);
+  --pk-kit-type-label-size: 14px;
+  --pk-kit-type-label-line-height: 20px;
+  --pk-kit-type-label-weight: 500;
+  --pk-kit-type-label-tracking: 0;
+  --pk-kit-type-label-family: var(--pk-font-sans);
+  --pk-kit-type-button-size: 14px;
+  --pk-kit-type-button-line-height: 20px;
+  --pk-kit-type-button-weight: 500;
+  --pk-kit-type-button-tracking: 0;
+  --pk-kit-type-button-family: var(--pk-font-sans);
+  --pk-kit-type-meta-size: 12px;
+  --pk-kit-type-meta-line-height: 16px;
+  --pk-kit-type-meta-weight: 400;
+  --pk-kit-type-meta-tracking: 0;
+  --pk-kit-type-meta-family: var(--pk-font-sans);
+  --pk-kit-type-footnote-size: 12px;
+  --pk-kit-type-footnote-line-height: 16px;
+  --pk-kit-type-footnote-weight: 400;
+  --pk-kit-type-footnote-tracking: 0;
+  --pk-kit-type-footnote-family: var(--pk-font-sans);
+  --pk-kit-type-code-size: 28px;
+  --pk-kit-type-code-line-height: 36px;
+  --pk-kit-type-code-weight: 500;
+  --pk-kit-type-code-tracking: 0.06em;
+  --pk-kit-type-code-family: var(--pk-font-mono);
+  --pk-kit-scrim: rgb(2 4 8 / 0.3);
+  --pk-kit-scrim-blur: 0;
+}
+
+[data-theme="light"] [data-pk-platform="windows"],
+[data-theme="light"][data-pk-platform="windows"] {
+  --pk-kit-scrim: rgb(6 9 18 / 0.3);
+  --pk-kit-scrim-blur: 0;
+}
+
+[data-pk-platform="gnome"] {
+  --pk-kit-control-height: 34px;
+  --pk-kit-radius-control: 8px;
+  --pk-kit-radius-dialog: 14px;
+  --pk-kit-card-pad: 24px;
+  --pk-kit-focus-width: 2px;
+  --pk-kit-focus-offset: -2px;
+  --pk-kit-focus-inner: 0;
+  --pk-kit-focus-glow: 0;
+  --pk-kit-type-display-size: 28px;
+  --pk-kit-type-display-line-height: 34px;
+  --pk-kit-type-display-weight: 600;
+  --pk-kit-type-display-tracking: 0;
+  --pk-kit-type-display-family: var(--pk-font-sans);
+  --pk-kit-type-title-size: 22px;
+  --pk-kit-type-title-line-height: 28px;
+  --pk-kit-type-title-weight: 600;
+  --pk-kit-type-title-tracking: 0;
+  --pk-kit-type-title-family: var(--pk-font-sans);
+  --pk-kit-type-body-size: 15px;
+  --pk-kit-type-body-line-height: 21px;
+  --pk-kit-type-body-weight: 400;
+  --pk-kit-type-body-tracking: 0;
+  --pk-kit-type-body-family: var(--pk-font-sans);
+  --pk-kit-type-label-size: 15px;
+  --pk-kit-type-label-line-height: 21px;
+  --pk-kit-type-label-weight: 500;
+  --pk-kit-type-label-tracking: 0;
+  --pk-kit-type-label-family: var(--pk-font-sans);
+  --pk-kit-type-button-size: 15px;
+  --pk-kit-type-button-line-height: 21px;
+  --pk-kit-type-button-weight: 500;
+  --pk-kit-type-button-tracking: 0;
+  --pk-kit-type-button-family: var(--pk-font-sans);
+  --pk-kit-type-meta-size: 13px;
+  --pk-kit-type-meta-line-height: 18px;
+  --pk-kit-type-meta-weight: 400;
+  --pk-kit-type-meta-tracking: 0;
+  --pk-kit-type-meta-family: var(--pk-font-sans);
+  --pk-kit-type-footnote-size: 13px;
+  --pk-kit-type-footnote-line-height: 18px;
+  --pk-kit-type-footnote-weight: 400;
+  --pk-kit-type-footnote-tracking: 0;
+  --pk-kit-type-footnote-family: var(--pk-font-sans);
+  --pk-kit-type-code-size: 28px;
+  --pk-kit-type-code-line-height: 34px;
+  --pk-kit-type-code-weight: 500;
+  --pk-kit-type-code-tracking: 0.06em;
+  --pk-kit-type-code-family: var(--pk-font-mono);
+  --pk-kit-scrim: rgb(2 4 8 / 0.35);
+  --pk-kit-scrim-blur: 0;
+}
+
+[data-theme="light"] [data-pk-platform="gnome"],
+[data-theme="light"][data-pk-platform="gnome"] {
+  --pk-kit-scrim: rgb(6 9 18 / 0.12);
+  --pk-kit-scrim-blur: 0;
+}
+
+[data-pk-platform="godot"] {
+  --pk-kit-control-height: 60px;
+  --pk-kit-radius-control: 16px;
+  --pk-kit-radius-panel: 28px;
+  --pk-kit-card-pad: 44px;
+  --pk-kit-focus-width: 3px;
+  --pk-kit-focus-offset: 2px;
+  --pk-kit-focus-inner: 0;
+  --pk-kit-focus-glow: 8px;
+  --pk-kit-type-display-size: 36px;
+  --pk-kit-type-display-line-height: 44px;
+  --pk-kit-type-display-weight: 600;
+  --pk-kit-type-display-tracking: 0;
+  --pk-kit-type-display-family: var(--pk-font-sans);
+  --pk-kit-type-title-size: 32px;
+  --pk-kit-type-title-line-height: 40px;
+  --pk-kit-type-title-weight: 600;
+  --pk-kit-type-title-tracking: 0;
+  --pk-kit-type-title-family: var(--pk-font-sans);
+  --pk-kit-type-body-size: 18px;
+  --pk-kit-type-body-line-height: 26px;
+  --pk-kit-type-body-weight: 400;
+  --pk-kit-type-body-tracking: 0;
+  --pk-kit-type-body-family: var(--pk-font-sans);
+  --pk-kit-type-label-size: 19px;
+  --pk-kit-type-label-line-height: 26px;
+  --pk-kit-type-label-weight: 500;
+  --pk-kit-type-label-tracking: 0;
+  --pk-kit-type-label-family: var(--pk-font-sans);
+  --pk-kit-type-button-size: 19px;
+  --pk-kit-type-button-line-height: 26px;
+  --pk-kit-type-button-weight: 500;
+  --pk-kit-type-button-tracking: 0;
+  --pk-kit-type-button-family: var(--pk-font-sans);
+  --pk-kit-type-meta-size: 16px;
+  --pk-kit-type-meta-line-height: 22px;
+  --pk-kit-type-meta-weight: 400;
+  --pk-kit-type-meta-tracking: 0;
+  --pk-kit-type-meta-family: var(--pk-font-sans);
+  --pk-kit-type-footnote-size: 16px;
+  --pk-kit-type-footnote-line-height: 22px;
+  --pk-kit-type-footnote-weight: 400;
+  --pk-kit-type-footnote-tracking: 0;
+  --pk-kit-type-footnote-family: var(--pk-font-sans);
+  --pk-kit-type-code-size: 52px;
+  --pk-kit-type-code-line-height: 60px;
+  --pk-kit-type-code-weight: 600;
+  --pk-kit-type-code-tracking: 0.06em;
+  --pk-kit-type-code-family: var(--pk-font-mono);
+  --pk-kit-scrim: rgb(2 4 8 / 0.42);
+  --pk-kit-scrim-blur: 0;
+}
+
+[data-theme="light"] [data-pk-platform="godot"],
+[data-theme="light"][data-pk-platform="godot"] {
+  --pk-kit-scrim: rgb(6 9 18 / 0.2);
+  --pk-kit-scrim-blur: 0;
+}
