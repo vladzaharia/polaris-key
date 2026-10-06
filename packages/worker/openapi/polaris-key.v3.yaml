@@ -11177,10 +11177,14 @@ paths:
       summary: The signed-in account's library
       description: >
         One entry per product the portal account holds a licence for (portal-enabled products
-        only): the product's presentation from its `.pkey/distribution` root `listing`, the
-        status of its best licence, that licence's summary with seats, and the support links.
-        Art is only ever a same-origin `/media/…` URL, and only when the media proxy would serve
-        it. Session-authenticated by the portal cookie; `cache-control: no-store`.
+        only, `kind: license`): the product's presentation from its `.pkey/distribution` root
+        `listing`, the status of its best licence, that licence's summary with seats, and the
+        support links. Then, PS-04, one per library entry (`kind: entry`): an open product the
+        account added from the storefront with no licence behind it (`license: null`,
+        `licenseCount: 0`, status always `active`), shown until the account holds any licence
+        for the product. Art is only ever a same-origin `/media/…` URL, and only when the media
+        proxy would serve it. Session-authenticated by the portal cookie; `cache-control:
+        no-store`.
       responses:
         "200":
           description: The library.
@@ -11223,6 +11227,41 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+  /api/library/{product}:
+    delete:
+      operationId: removePortalLibraryEntry
+      tags: [portal]
+      summary: Remove a library entry
+      description: >
+        PS-04 (notes/S-21 §6.4). Removes the account's library ENTRY for the product (an open
+        product added from the storefront), audited in the account's history; the product is
+        offered again. Entries only: a licence leaves the library only by the existing detach,
+        so a product with no entry answers `404`, whatever licences the account holds for it.
+        Needs the `X-PKey-Portal-CSRF` header.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: Removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, product]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  product: { type: string }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /api/products/{product}:
     get:
       operationId: getPortalProduct
@@ -11234,8 +11273,10 @@ paths:
         first (status precedence, then the later expiry), each with its seats, its entitlements
         and its authorized devices; a device past the dormancy window is `dormant` and holds no
         seat. Each licence also carries its `purchase` (G8): a store purchase, the developer, a
-        sign-in or a free auto-issue, with its store grants. `404` when the account holds no licence for the product, or the developer has the
-        portal off for it. Session-authenticated by the portal cookie; `cache-control: no-store`.
+        sign-in or a free auto-issue, with its store grants. A product the library holds as an
+        entry only (PS-04, `kind: entry`) answers with no licences. `404` when the account holds
+        neither a licence nor an entry for the product, or the developer has the portal off for
+        it. Session-authenticated by the portal cookie; `cache-control: no-store`.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       responses:
         "200":
@@ -11424,16 +11465,21 @@ paths:
       tags: [portal]
       summary: The products the signed-in account could add for free
       description: >
-        PX-W10 (docs/design/PORTAL.md §4.16, G24). Every product whose licence policy would
-        auto-issue to this account on the product's first sign-in, evaluated by the same policy
-        function in dry-run mode: nothing is written. A product qualifies through its
-        `oidcDefault` auto-issue rule (`reason: free_with_account`) or a `groupRoleMap` group the
-        account holds at the platform IdP (`reason: group:<group>`). Only products that run
-        License, authenticate against the platform issuer with auto-linking on, and have the
-        portal and Discover (`discoverEnabled`) on are considered; purchase-only and
-        operator-issued products, and products the account already holds, never appear. An
-        account with no platform identity is offered nothing. Every offer carries its reason.
-        Session-authenticated by the portal cookie; `cache-control: no-store`.
+        PX-W10 (docs/design/PORTAL.md §4.16, G24), PS-04 (notes/S-21 §6.3, §6.7). Every product
+        the Polaris Key storefront's obtain-path engine shows this account, evaluated in dry-run
+        mode. Each offer lists every way to add it (`paths`, first path first) and its action
+        (`cta`): `add`, or `link` for an audience-`everyone` listing with nothing to add, which
+        carries its live store pages (`stores`) and its `website`. `reason` and `offer` are the
+        first path's reason and terms, as before PS-04. Paths: `group` (a platform-IdP group
+        mapped in the product's `groupRoleMap`, `reason: group:<group>`, with the operator's
+        `label`), `auto_issue` (the `oidcDefault` auto-issue rule, `reason: free_with_account`),
+        and `open` (License off and every download open, `reason: open`, no terms). In `auto`
+        listing mode (the default) only `group` and `auto_issue` count; `open` and links need
+        `listed`; `unlisted` hides a product. Products the account already holds (a licence or a
+        library entry), and products with the portal off, never appear. The only writes are the
+        storefront's daily impression counts (one per product, account and day, keyed by a daily
+        HMAC, no account id). Session-authenticated by the portal cookie; `cache-control:
+        no-store`.
       responses:
         "200":
           description: The offers, in product-name order (possibly none).
@@ -11461,8 +11507,56 @@ paths:
                           expiresAt: null
                           expiryDays: null
                         reason: free_with_account
+                        cta: add
+                        shortDescription: A garden that grows while you work
+                        paths:
+                          - kind: auto_issue
+                            detail: null
+                            label: null
+                            terms:
+                              tier: free
+                              tierLabel: Free
+                              deviceLimit: 5
+                              expiresAt: null
+                              expiryDays: null
+                            action: add
+                            reason: free_with_account
+                        stores: []
         "401":
           description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/discover/{product}:
+    get:
+      operationId: getPortalStorefrontPage
+      tags: [portal]
+      summary: The storefront product page
+      description: >
+        PS-04 (notes/S-21 §6.5). One product the storefront shows this account: the offer's
+        fields as in `GET /api/discover`, plus the listing's `description`, its `screenshots`
+        (same-origin `/media/<product>/screenshot-<n>` URLs, only those the media proxy would
+        serve) and every live store page (`stores`). Unknown, unlisted, ineligible and held
+        products, a product with the portal off, and every product while the storefront is off
+        all answer the same `404 not_found`. Counts one impression per account and day.
+        Rate-limited per account (60 a minute), charged before any lookup.
+        Session-authenticated by the portal cookie; `cache-control: no-store`.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: The product page.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalStorefrontPage" }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: "`rate_limited`."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -11472,15 +11566,31 @@ paths:
       tags: [portal]
       summary: Add a Discover product to the library
       description: >
-        PX-W10 (G25). Re-evaluates the offer server-side and mints the licence through the
-        auto-issue path itself (the product sign-in's), so it carries exactly the tier, limits
-        and entitlements a first sign-in would give; the licence is linked to the account and
-        audited with `source: discover`. Idempotent per account and product: a repeat, or a
-        racing double submit, answers the same licence with `added: false` and mints nothing.
-        `409 not_eligible` when the product is not (or no longer) offered to this account,
-        including an unknown product. Needs the `X-PKey-Portal-CSRF` header. Rate-limited on the
-        account-wide bucket the activate preview and the key claim share (10 a minute).
+        PX-W10 (G25), PS-04 (notes/S-21 §6.4). Re-evaluates the product server-side and issues
+        through the chosen path (`path`, else the first offered path): `group` and `auto_issue`
+        mint the licence through the auto-issue path itself (the product sign-in's), so it
+        carries exactly the tier, limits and entitlements a first sign-in would give, linked to
+        the account and audited with `source: discover; path: <kind>` (`kind: license`); `open`
+        writes a library entry and no licence (`kind: entry`). Never binds a device. Idempotent
+        per account and product: a repeat, a racing double submit, or a claim for a product the
+        account already holds by any route answers what it holds with `added: false` and
+        creates nothing (never a second licence). `409 not_eligible`, identically, when the
+        product is unknown, unlisted, ineligible or a link, or `path` names a kind not offered.
+        Needs the `X-PKey-Portal-CSRF` header. Rate-limited on the account-wide bucket the
+        activate preview and the key claim share (10 a minute), charged before any lookup.
       parameters: [{ $ref: "#/components/parameters/Product" }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: [string, "null"]
+                  description: >
+                    The obtain-path kind to add by (`group`, `auto_issue`, `open`, …); the
+                    first offered path when absent or null. A kind not offered is `409`.
       responses:
         "200":
           description: "The licence, new (`added: true`) or already held (`added: false`)."
@@ -11493,6 +11603,7 @@ paths:
                   value:
                     added: true
                     product: mossgarden
+                    kind: license
                     license:
                       id: lic_3c9d
                       tier: free
@@ -11501,6 +11612,13 @@ paths:
                       usable: true
                       expiresAt: null
                       deviceLimit: 5
+                entry:
+                  summary: An open product, added as a library entry
+                  value:
+                    added: true
+                    product: openutil
+                    kind: entry
+                    entry: { via: open, addedAt: 1790000000 }
         "401":
           description: No portal session.
           content:
@@ -11768,8 +11886,10 @@ paths:
       summary: A product's listing art, served same-origin
       description: >
         The customer portal's media proxy: the product's listing `icon` (`asset` = `icon`, at
-        most 1 MiB) or `header` (`header`, at most 5 MiB) when it is an https URL (or the
-        deprecated `iconUrl` / `headerUrl` it was written as), fetched by the Worker
+        most 1 MiB), `header` (`header`, at most 5 MiB) or the n-th of its https screenshots
+        (`screenshot-<n>`, n below 16, at most 5 MiB each; PS-04, the storefront product page)
+        when it is an https URL (or the deprecated `iconUrl` / `headerUrl` it was written as),
+        fetched by the Worker
         and served from this origin, because the portal's CSP is `img-src 'self' data:`. Public
         (listing art is public store-page metadata). The source must be an https URL on a
         GitHub-hosted name (`github.com`, `*.githubusercontent.com`); redirects are followed by
@@ -11784,8 +11904,12 @@ paths:
             name: asset,
             in: path,
             required: true,
-            schema: { type: string, enum: [icon, header] },
-            description: "Which listing slot: `icon` or `header` (formerly `iconUrl` / `headerUrl`).",
+            schema:
+              {
+                type: string,
+                pattern: "^(icon|header|screenshot-(0|[1-9][0-9]?))$",
+              },
+            description: "Which listing slot: `icon` or `header` (formerly `iconUrl` / `headerUrl`), or `screenshot-<n>` (0 to 15), the n-th https screenshot.",
           }
         - {
             name: v,
@@ -16058,15 +16182,30 @@ components:
             allOf:
               - $ref: "#/components/schemas/PortalPresentation"
               - type: object
-                required: [product, status, license, licenseCount, addedAt]
+                required:
+                  [product, kind, status, license, licenseCount, addedAt]
                 properties:
                   product: { type: string, description: The product slug. }
+                  kind:
+                    type: string
+                    enum: [license, entry]
+                    description: >
+                      `license`: the account holds a licence for the product. `entry` (PS-04): an
+                      open product added from the storefront, no licence behind it.
+                  via:
+                    type: string
+                    enum: [open]
+                    description: "`entry` only: why the entry exists."
                   status: { $ref: "#/components/schemas/PortalStatus" }
-                  license: { $ref: "#/components/schemas/PortalLicenseSeats" }
-                  licenseCount: { type: integer, minimum: 1 }
+                  license:
+                    oneOf:
+                      - $ref: "#/components/schemas/PortalLicenseSeats"
+                      - type: "null"
+                    description: The best licence's summary; `null` for an entry.
+                  licenseCount: { type: integer, minimum: 0 }
                   addedAt:
                     type: [integer, "null"]
-                    description: When the account's first licence for the product was linked.
+                    description: When the account's first licence for the product was linked, or the entry was added.
     PortalPurchase:
       type: object
       description: >
@@ -16194,26 +16333,111 @@ components:
       properties:
         offers:
           type: array
-          items:
-            allOf:
-              - $ref: "#/components/schemas/PortalPresentation"
-              - type: object
-                required: [product, platforms, offer, reason]
-                properties:
-                  product: { type: string, description: The product slug. }
-                  platforms:
-                    type: array
-                    description: The platforms of the newest app release's builds.
-                    items: { type: string }
-                  offer: { $ref: "#/components/schemas/PortalDiscoverTerms" }
-                  reason:
-                    type: string
-                    pattern: "^(free_with_account|group:.+)$"
-                    description: >
-                      Why the account can add the product, always present (owner decision Q-6):
-                      `free_with_account` (the `oidcDefault` auto-issue rule) or `group:<group>`
-                      (a platform-IdP group mapped in the product's `groupRoleMap`). An open set:
-                      clients show an unknown reason generically.
+          items: { $ref: "#/components/schemas/PortalDiscoverOffer" }
+    PortalDiscoverOffer:
+      allOf:
+        - $ref: "#/components/schemas/PortalPresentation"
+        - type: object
+          required:
+            [
+              product,
+              platforms,
+              offer,
+              reason,
+              cta,
+              paths,
+              shortDescription,
+              stores,
+            ]
+          properties:
+            product: { type: string, description: The product slug. }
+            platforms:
+              type: array
+              description: The platforms of the newest app release's builds.
+              items: { type: string }
+            offer:
+              oneOf:
+                - $ref: "#/components/schemas/PortalDiscoverTerms"
+                - type: "null"
+              description: >
+                The first path's terms; `null` for a link and for a path that issues no
+                licence (`open`).
+            reason:
+              type: [string, "null"]
+              description: >
+                The first path's reason, always present on an `add` offer (owner decision
+                Q-6): `free_with_account` (the `oidcDefault` auto-issue rule),
+                `group:<group>` (a platform-IdP group mapped in the product's
+                `groupRoleMap`) or `open`; `null` for a link. An open set: clients show an
+                unknown reason generically.
+            cta:
+              type: string
+              enum: [add, link]
+              description: >
+                `add`: at least one path. `link`: audience `everyone` with nothing to add;
+                the action is the `website` or a `stores` page, never Add.
+            paths:
+              type: array
+              description: Every way to add the product, in evaluation order; empty for a link.
+              items: { $ref: "#/components/schemas/PortalObtainPath" }
+            shortDescription:
+              type: [string, "null"]
+              description: The listing's `subtitle`.
+            stores:
+              type: array
+              description: A link's live store pages; empty on an `add` offer.
+              items: { $ref: "#/components/schemas/PortalStoreLink" }
+    PortalObtainPath:
+      type: object
+      description: >
+        One reason the account could add the product now (PS-03, notes/S-21 §6.3). Never names
+        an account.
+      required: [kind, detail, label, terms, action, reason]
+      properties:
+        kind:
+          type: string
+          description: "`store_owned`, `group`, `product_idp`, `email_domain`, `auto_issue` or `open` (an open set)."
+        detail:
+          type: [string, "null"]
+          description: The group, store, IdP label or domain; `null` when there is none.
+        label:
+          type: [string, "null"]
+          description: "`group` only: the operator's label for the group (`storefront.polarisKey.groupLabels`)."
+        terms:
+          oneOf:
+            - $ref: "#/components/schemas/PortalDiscoverTerms"
+            - type: "null"
+          description: What adding gives; `null` for a path that issues no licence (`open`).
+        action:
+          type: string
+          description: "`add` (S-22 adds `buy` and `upgrade`)."
+        reason: { type: string, description: The reason code. }
+    PortalStoreLink:
+      type: object
+      description: A store outlet where a release of the stable channel is reported live, with its https page.
+      required: [id, kind, label, url]
+      properties:
+        id: { type: string, description: "`<kind>:<outletId>`." }
+        kind: { type: string }
+        label:
+          {
+            type: string,
+            description: 'A fixed Worker string ("Steam", "App Store", …).',
+          }
+        url: { type: string }
+    PortalStorefrontPage:
+      allOf:
+        - $ref: "#/components/schemas/PortalDiscoverOffer"
+        - type: object
+          required: [description, screenshots]
+          properties:
+            description:
+              type: [string, "null"]
+              description: The listing's `description` (plain text, newlines kept; render it escaped).
+            screenshots:
+              type: array
+              description: Same-origin `/media/<product>/screenshot-<n>?v=…` URLs, in listing order.
+              items: { type: string }
     PortalDiscoverTerms:
       type: object
       description: What adding the product would give, from the same policy that would mint it.
@@ -16284,12 +16508,22 @@ components:
         stepUpRequired: { type: boolean }
     PortalDiscoverClaim:
       type: object
-      required: [added, product, license]
+      required: [added, product, kind]
       properties:
         added:
           type: boolean
-          description: "True when this call minted the licence; false when it was already held."
+          description: "True when this call created the licence or entry; false when it was already held."
         product: { type: string }
+        kind:
+          type: string
+          enum: [license, entry]
+          description: "`license` carries `license`; `entry` (an open product) carries `entry`."
+        entry:
+          type: object
+          required: [via, addedAt]
+          properties:
+            via: { type: string, enum: [open] }
+            addedAt: { type: integer }
         license:
           type: object
           required:
@@ -16306,9 +16540,17 @@ components:
       allOf:
         - $ref: "#/components/schemas/PortalPresentation"
         - type: object
-          required: [product, services, status, addedAt, licenses]
+          required: [product, kind, services, status, addedAt, licenses]
           properties:
             product: { type: string }
+            kind:
+              type: string
+              enum: [license, entry]
+              description: "`entry` (PS-04): the library holds the product as an entry; `licenses` is empty."
+            via:
+              type: string
+              enum: [open]
+              description: "`entry` only."
             services:
               type: object
               description: Each service slug and whether it is on for the product.

@@ -97,6 +97,9 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // PX-W10 (G24, G25): Discover's offers and "Add to library".
     ["/api/discover", ["get"]],
     ["/api/discover/{product}/claim", ["post"]],
+    // PS-04: the storefront product page, and removing a library entry.
+    ["/api/discover/{product}", ["get"]],
+    ["/api/library/{product}", ["delete"]],
     // I-07: the login card's pre-authentication routes and the account sessions.
     ["/api/signin/email/start", ["post"]],
     ["/api/signin/email/verify", ["post"]],
