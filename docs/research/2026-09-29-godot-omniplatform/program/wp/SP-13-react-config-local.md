@@ -43,6 +43,7 @@ React shows only delivered values (`ConfigPanel`); Node, Python and Swift persis
 
 ## Design notes
 
+- **Bridge host.** A new `invoke` verb this package adds to the React desktop adapter needs its host handler too. If [SP-31](SP-31-node-bridge-v4.md) (the Node host on bridge v4) has landed, add the handler in `packages/sdk-node/src/electron/main.ts` and `DEFAULT_INVOKE_VERBS` with a round-trip test, and add the verb to `bridge.ts`'s "WHAT v4 ADDS", in the same PR. If SP-31 has not landed, SP-31 picks the verb up from `main`.
 - No wire change: every route, transcript and corpus file this package needs already exists. If one
   turns out to be missing, stop and report; it becomes a plan-mode package.
 - Device-local only. The unit proof persists, clears, validates against the catalog type and emits change events (registry note).

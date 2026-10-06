@@ -40,6 +40,7 @@ This is the server half of decision 10 ([S-20 §6.9](../../notes/S-20-hosted-ass
 ## Design notes
 
 - Follow the plan. Any deviation goes back to the planner.
+- **The settings-registry entry is provisional.** ST-06 registered `core.presentation` in `CORE_SLICE` (`packages/worker/src/core/settings/core.ts`) so the coverage test has a home for `.pkey/product` `presentation`: manifest-owned, `json` value (`ManifestPresentation`), carried in discovery, with `pending: { wp: "HA-12" }` and a provisional `scalar` storage in `product_settings` ([ST-06](ST-06-settings-docs-coverage.md#design-notes), fix round 1). When discovery serves it, remove the `pending` marker and set the entry's storage to the store HA-11's plan picks; regenerate the settings page and ⌘K index (`pnpm gen:settings`).
 
 ## Steps
 
@@ -49,6 +50,7 @@ This is the server half of decision 10 ([S-20 §6.9](../../notes/S-20-hosted-ass
 
 - [ ] `pnpm gen:transcripts -- --check` and `pnpm gen:corpus -- --check` are green after regeneration.
 - [ ] Discovery for a product with no presentation omits the member (test).
+- [ ] The `core.presentation` registry entry has no `pending` marker and its storage is the store HA-11's plan names; `pnpm gen:settings -- --check` is green.
 - [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
@@ -57,6 +59,7 @@ This is the server half of decision 10 ([S-20 §6.9](../../notes/S-20-hosted-ass
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
 mise exec node@22 -- pnpm gen:transcripts -- --check
 mise exec node@22 -- pnpm gen:corpus -- --check
+mise exec node@22 -- pnpm gen:settings -- --check
 ```
 
 ## Hand-off
