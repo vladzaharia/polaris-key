@@ -47,6 +47,20 @@ final class SecureStoreTests: XCTestCase {
         XCTAssertEqual(store.delete(account: "token")["ok"], false)
     }
 
+    func testLoginKeychainAttributes() {
+        let kc = FakeKeychain()
+        let store = SecureStore(product: "diceroll", backend: kc, keychain: .login)
+        XCTAssertEqual(store.set(account: "device-token", value: "pkeyt_1"), ["ok": true, "op": "add"])
+        guard let added = kc.added.first else { return XCTFail("nothing added") }
+        XCTAssertEqual(added[kSecAttrService as String] as? String, "pkey:diceroll")
+        XCTAssertEqual(added[kSecAttrAccount as String] as? String, "device-token")
+        XCTAssertNil(added[kSecUseDataProtectionKeychain as String], "the login keychain, not the data-protection one")
+        XCTAssertNil(added[kSecAttrAccessible as String], "the login keychain has no accessibility class")
+        XCTAssertEqual(added[kSecAttrSynchronizable as String] as? Bool, false)
+        for q in kc.queries { XCTAssertNil(q[kSecUseDataProtectionKeychain as String]) }
+        XCTAssertEqual(store.get(account: "device-token"), ["ok": true, "value": "pkeyt_1"])
+    }
+
     func testNamesAreValidated() {
         let store = SecureStore(product: "Dice Roll", backend: FakeKeychain())
         XCTAssertEqual(store.get(account: "token")["error"], "invalid_name")

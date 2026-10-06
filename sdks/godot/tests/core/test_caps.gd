@@ -46,8 +46,10 @@ func _engine(t: PKeyTestContext) -> void:
 	t.check("caps: license.enroll off the web is supported", linux.supports(F.LICENSE_ENROLL).ok)
 	t.check("caps: devices.fingerprint on web -> runtime", _is(web.supports(F.DEVICES_FINGERPRINT), R.RUNTIME))
 	t.check("caps: supports_on asks as another runtime", _is(linux.supports_on(F.LICENSE_ENROLL, "web"), R.RUNTIME))
-	for planned in [F.CORE_STORE, F.IDENTITY_OIDC]:
+	for planned in [F.RELEASE_FETCH, F.IDENTITY_OIDC]:
 		t.check("caps: planned %s -> version" % planned, _is(linux.supports(planned), R.VERSION), str(linux.supports(planned)))
+	# SP-27 implemented core.store (the desktop keyring store; it was this check's first planned feature).
+	t.check("caps: core.store is supported (SP-27)", linux.supports(F.CORE_STORE).ok, str(linux.supports(F.CORE_STORE)))
 	# P6-01 implemented commerce.receipt (it was this check's third planned feature).
 	t.check("caps: commerce.receipt is supported (P6-01)", linux.supports(F.COMMERCE_RECEIPT).ok, str(linux.supports(F.COMMERCE_RECEIPT)))
 	var unknown := linux.supports("future.feature")
@@ -58,7 +60,7 @@ func _engine(t: PKeyTestContext) -> void:
 	for feature in PKeyConstants.capabilities():
 		if linux.supports(feature).ok:
 			want.append(feature)
-	t.check("caps: caps() is the supported set in registry order", linux.caps() == want and want.has(F.CORE_VERIFY) and not want.has(F.CORE_STORE), str(linux.caps()))
+	t.check("caps: caps() is the supported set in registry order", linux.caps() == want and want.has(F.CORE_VERIFY) and not want.has(F.RELEASE_FETCH), str(linux.caps()))
 
 
 func _discovery(t: PKeyTestContext) -> void:

@@ -297,7 +297,15 @@ public final class PlatformHost: Sendable {
         guard let product = q["product"]?.stringValue, let account = q["account"]?.stringValue else {
             return ["ok": false, "error": "missing_product_or_account"]
         }
-        let store = SecureStore(product: product, backend: backend)
+        // `keychain: "login"` asks for the macOS login keychain (the Godot desktop store, SP-27).
+        var flavor = SecureStore.Keychain.dataProtection
+        if let raw = q["keychain"] {
+            guard let name = raw.stringValue, let k = SecureStore.Keychain(rawValue: name) else {
+                return ["ok": false, "error": "invalid_keychain"]
+            }
+            flavor = k
+        }
+        let store = SecureStore(product: product, backend: backend, keychain: flavor)
         switch op {
         case "kc_get": return store.get(account: account)
         case "kc_set":

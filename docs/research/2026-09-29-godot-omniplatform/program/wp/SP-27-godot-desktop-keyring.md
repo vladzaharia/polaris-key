@@ -55,11 +55,11 @@ iOS (P5-05) and Android (P5-06) have platform stores; the desktop runtimes keep 
 
 ## Acceptance criteria
 
-- [ ] `@pkey-feature core.store` tests pass on macOS, Windows and Linux CI against the real keyring (Linux may skip with a recorded N/A when no Secret Service is reachable).
-- [ ] A migration test moves a file-store token into the keyring.
-- [ ] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
-- [ ] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
-- [ ] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
+- [ ] `@pkey-feature core.store` tests pass on macOS, Windows and Linux CI against the real keyring (Linux may skip with a recorded N/A when no Secret Service is reachable). _`tests/suite_keyring.gd` passed locally against the real macOS login keychain (`PKEY_KEYRING_TESTS=1`, the dylib from `native/macos/build_apple.sh`: 76 checks). The new `keyring` job in `native-desktop.yml` runs it on macOS, Windows (pkey_win.dll built in CI) and Linux (gnome-keyring in a dbus-run-session). Its first run is after the lead pushes, so this box is left for the lead to tick._
+- [x] A migration test moves a file-store token into the keyring. _`suite_keyring.gd`: `migration:` over the fake backend and `real: … migration` against the real keyring._
+- [x] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
+- [x] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
+- [x] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches. _`gate.sh` (scope: changed) green, the Swift suite and the Godot editor run (27 suites, 8949 checks) included._
 
 ## Verify
 

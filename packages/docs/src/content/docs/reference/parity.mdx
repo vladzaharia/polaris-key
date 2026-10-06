@@ -23,7 +23,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | React | `web`, `desktop-bridge` | 66 | 12 | 4 | 0 |
 | Python | `python` | 70 | 7 | 5 | 0 |
 | Swift | `macos`, `ios` | 72 | 6 | 4 | 0 |
-| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 75 | 2 | 5 | 0 |
+| Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 76 | 2 | 4 | 0 |
 | Kotlin | `android`, `jvm` | 73 | 6 | 3 | 0 |
 
 ## Core
@@ -39,7 +39,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `core.headers` | Canonical platform, arch and SDK header values | `headers.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.caps` | supports() and capability telemetry | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓; N/A (node: dependency) | ✓; N/A (desktop-bridge: runtime) | ✓; N/A (python: dependency) | ✓ | planned (SP-27) | ✓; N/A (jvm: dependency) | web, desktop-bridge: runtime; node, python, jvm: dependency |
+| `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓; N/A (node: dependency) | ✓; N/A (desktop-bridge: runtime) | ✓; N/A (python: dependency) | ✓ | ✓ | ✓; N/A (jvm: dependency) | web, desktop-bridge: runtime; node, python, jvm: dependency |
 | `core.copy` | Error, gate and activation copy: copy.message(code), copy.title(code) | `pnpm gen:constants -- --check` + unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 
 ## License

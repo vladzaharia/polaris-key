@@ -118,6 +118,9 @@ final class HostTests: XCTestCase {
         XCTAssertEqual(call(h, #"{"op":"kc_delete","product":"diceroll","account":"device"}"#), ["ok": true])
         XCTAssertEqual(call(h, #"{"op":"kc_get","product":"diceroll"}"#)["error"], "missing_product_or_account")
         XCTAssertEqual(call(h, #"{"op":"kc_set","product":"diceroll","account":"device"}"#)["error"], "missing_value")
+        XCTAssertEqual(call(h, #"{"op":"kc_set","product":"diceroll","account":"device-token","value":"t","keychain":"login"}"#)["ok"], true)
+        XCTAssertEqual(call(h, #"{"op":"kc_get","product":"diceroll","account":"device-token","keychain":"login"}"#), ["ok": true, "value": "t"])
+        XCTAssertEqual(call(h, #"{"op":"kc_get","product":"diceroll","account":"device","keychain":"icloud"}"#)["error"], "invalid_keychain")
         let (none, _) = host(fakeServices(keychain: nil))
         XCTAssertEqual(call(none, #"{"op":"kc_get","product":"diceroll","account":"device"}"#)["reason"], "runtime")
     }

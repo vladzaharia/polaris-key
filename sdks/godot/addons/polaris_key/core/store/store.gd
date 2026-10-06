@@ -9,8 +9,8 @@ extends RefCounted
 ## which Core forwards as `PolarisKey.store_error`. `status()` reports P1b-09's StoreStatus
 ## shape: {backend, degraded?: {reason, detail?}}.
 ##
-## The file store (PKeyFileStore) is the default; the Keychain and Keystore stores (P5-05,
-## P5-06) subclass this.
+## The file store (PKeyFileStore) is the default on the web; the Keychain and Keystore stores
+## (P5-05, P5-06) and the desktop keyring store (PKeyKeyringStore, SP-27) subclass this.
 
 ## {op, path, error: int (Godot Error), message}.
 signal failed(err: Dictionary)

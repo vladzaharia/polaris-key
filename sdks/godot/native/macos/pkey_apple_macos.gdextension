@@ -1,0 +1,16 @@
+; PolarisKeyApple on macOS (SP-27): the desktop build of the Apple platform plugin, used by the
+; desktop keyring store (PKeyKeyringStore over PKeyMacKeychainBackend) for the login-keychain
+; calls only. build_apple.sh --install copies this file and the universal libpkey_apple.dylib into
+; res://addons/polaris_key/native/bin/, which is never committed (.gitignore): a project without
+; them runs everywhere and keeps the token in the 0600 file (status() says keyring-unavailable).
+;
+; Same glue as iOS (sdks/godot/native/ios/pkey_apple.m) and the same class, PolarisKeyApple; only
+; macos.* entries here, so the iOS file and this one never both load in one process.
+[configuration]
+entry_symbol = "pkey_apple_library_init"
+compatibility_minimum = "4.4"
+reloadable = false
+
+[libraries]
+macos.debug = "res://addons/polaris_key/native/bin/libpkey_apple.dylib"
+macos.release = "res://addons/polaris_key/native/bin/libpkey_apple.dylib"

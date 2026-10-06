@@ -1410,6 +1410,35 @@ r = await android.apk_install(path, sha256, version_code)    # direct: verified,
   tests (`sdks/kotlin`, the `android` CI job); `native/android/export_check.sh` exports the probe
   through the Gradle build and, with `DEVICE=`, runs it on an emulator.
 
+## Desktop keyring (`PKeyKeyringStore`, SP-27)
+
+On macOS, Windows and Linux, `PKeyCore` keeps the token in the OS keyring by default, under
+service `pkey:<product>` and account `device-token`, the names the Python and Kotlin desktop SDKs
+use. The device id and the verified cache stay in the 0600 files under `user://pkey/<product>/`.
+
+| OS      | Keyring            | Native piece                                                           |
+| ------- | ------------------ | ---------------------------------------------------------------------- |
+| macOS   | the login keychain | `libpkey_apple.dylib` (`sdks/godot/native/macos/build_apple.sh`)       |
+| Windows | Credential Manager | `pkey_win.dll` (`PKeyWinCredentialNative`, `native/windows/build.ps1`) |
+| Linux   | the Secret Service | `secret-tool` on PATH (`libsecret-tools`) and a D-Bus session          |
+
+Every token write is verified by reading it back. A write that cannot be verified keeps the token
+in the 0600 token file. That fallback is surfaced: the store emits `failed`, which reaches you as
+`PolarisKey.store_error`, and `store_status()` reports `keyring-error`. Reads check the file
+first, so a stale keyring entry never shadows a newer file token. A token that an earlier build
+left in the file store moves into the keyring on the first read that can verify the move.
+
+Without the native piece, or with `PKEY_DESKTOP_KEYRING=0` in the environment, the token stays in
+the 0600 file and `store_status()` returns `{backend: file, degraded: {reason:
+keyring-unavailable, detail}}`, with the detail saying what is missing. Pass `PKeyOptions.store`
+to choose a store yourself.
+
+```sh
+GODOT_BIN=godot sdks/godot/native/macos/build_apple.sh --install <game project>   # macOS 14+
+pwsh sdks/godot/native/windows/build.ps1 -SkipShim -Install <game project>         # Windows
+sudo apt-get install libsecret-tools                                               # Linux
+```
+
 ## Device attestation (`PolarisKey.devices.attest()`, P6-02)
 
 A store install proves it is genuine and the Worker records the device at trust level
