@@ -273,7 +273,13 @@ export const OPEN_SOURCE: PathSource = {
     const delivery = ctx.delivery(product);
     if (!delivery || !(await delivery.openAccess())) return [];
     return [
-      { kind: "open", detail: null, terms: null, action: "add", reason: "open" },
+      {
+        kind: "open",
+        detail: null,
+        terms: null,
+        action: "add",
+        reason: "open",
+      },
     ];
   },
 };
@@ -474,7 +480,9 @@ function couldShow(
     return true;
   if (sources.some((s) => s.kinds.some((k) => pathCounts(listing, k))))
     return true;
-  return links && listing.listed === "listed" && listing.audience === "everyone";
+  return (
+    links && listing.listed === "listed" && listing.audience === "everyone"
+  );
 }
 
 async function evaluateCandidate(
