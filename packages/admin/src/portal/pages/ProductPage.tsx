@@ -36,7 +36,9 @@ import {
   withSeats,
 } from "../model/product.js";
 import {
+  focusPageHeading,
   href,
+  scrollBehavior,
   setParams,
   useDocumentTitle,
   type ProductSection,
@@ -136,11 +138,11 @@ function ProductBody({
   );
   const headingRef = React.useRef<HTMLHeadingElement>(null);
 
-  // After adding this product, focus its heading (§9.4).
+  // After adding this product, focus its heading (§9.4): once the dialog has left (through its
+  // exit) and handed focus back to its opener, and without scrolling away from a deep link.
   React.useEffect(() => {
-    // After the dialog has closed and handed focus back to its opener.
     if (consumeHeadingFocus(product.slug))
-      requestAnimationFrame(() => headingRef.current?.focus());
+      focusPageHeading(() => headingRef.current);
   }, [product.slug]);
 
   // A section deep link scrolls there once.
@@ -188,9 +190,10 @@ function ProductBody({
 
   const pick = (s: ProductSection): void => {
     setCurrent(s);
+    // Smooth only when motion is allowed: instant under reduced motion (notes/S-23 §6.6).
     document
       .getElementById(`section-${s}`)
-      ?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      ?.scrollIntoView?.({ behavior: scrollBehavior(), block: "start" });
     window.history.replaceState(
       null,
       "",
@@ -222,7 +225,12 @@ function ProductBody({
   const retry = () => void detail.refetch();
 
   return (
-    <div className="space-y-6 desk:space-y-8">
+    // data-first-section: a link to the first section keeps the page at its top, as the deep
+    // link above does (the router reads it, MO-05).
+    <div
+      className="space-y-6 desk:space-y-8"
+      data-first-section={sections[0] ?? undefined}
+    >
       <ProductHeader
         product={product}
         action={action}
