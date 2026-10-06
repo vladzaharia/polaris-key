@@ -12683,6 +12683,65 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+  # ── Remove from my library (PX-23, notes/S-24 D19, PORTAL.md §4.20). Session-authenticated by
+  # the portal cookie; needs the `X-PKey-Portal-CSRF` header. `GET` on the same path (the licence
+  # detail) stays narrative, documented on the docs site.
+  /api/licenses/{product}/{licenseId}:
+    delete:
+      operationId: removePortalLicense
+      tags: [portal]
+      summary: Remove a licence from the library
+      description: >
+        The holder removes one of their licences from their library. The licence leaves the
+        account; it keeps its email, so it waits for an account that verifies that address (with
+        no email it is floating again: anyone with the key can add it). An auto-attach block keeps
+        it out of THIS account: no later request, sign-in or email verification adds it back, only
+        adding its key again. The account's package tokens for it are revoked. Its devices keep
+        running and keep their seats; the ones this account signed in on lose Cloud Sync for it.
+        The detach and the block are audited in the account's history. `404` for a licence that
+        is not in this account (including one already removed) and on a product whose portal is
+        off. Rate-limited to 10 a minute per account and product, charged after ownership is
+        proven.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - {
+            name: licenseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The licence id, as `GET /api/licenses` lists it.",
+          }
+      responses:
+        "200":
+          description: Removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, product, licenseId]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  product: { type: string }
+                  licenseId: { type: string }
+              examples:
+                removed:
+                  value: { ok: true, product: tidewater, licenseId: lic_3c9d }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429":
+          description: "`rate_limited`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /media/avatar/{asset}:
     get:
       operationId: getAccountAvatar
