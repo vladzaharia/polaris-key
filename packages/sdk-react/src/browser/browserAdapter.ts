@@ -53,6 +53,7 @@ import type {
 } from "@polaris-key/protocol/license";
 import {
   CACHE_VERSION,
+  channelForVersion,
   compareSemver,
   detectOutlet,
   detectionStamp,
@@ -96,6 +97,7 @@ import {
   capsIn,
   initialState,
   refuse,
+  requireSupported,
   supportsIn,
   type ConfigSource,
   type Support,
@@ -135,6 +137,35 @@ import {
   type BrowserStore,
 } from "./bearer/store.js";
 import { browserFacts } from "./bearer/facts.js";
+import { bearerBootDriver } from "./boot.js";
+import {
+  fetchReleaseBuild,
+  fetchVerifiedRecord,
+  type FetchTarget,
+  type PartStore,
+  type ReleaseFetchOptions,
+  type ReleaseFetchResult,
+} from "./releaseFetch.js";
+import {
+  browserPlatform,
+  fetchDownloadModel,
+  pickPlatform,
+  type DownloadModel,
+  type ThisPlatform,
+} from "./distribution.js";
+import {
+  bootDecisionOf,
+  runBoot,
+  type BootDriver,
+  type BootResult,
+  type BootRunOptions,
+} from "../core/boot.js";
+import {
+  crashTagsFor,
+  type CrashTags,
+  type CrashTagsOptions,
+} from "../core/crash.js";
+import type { FeedKind, FeedUrl, FeedUrlOptions } from "../core/types.js";
 import { classifyActivation } from "../core/activation.js";
 import { activationError } from "../core/activationError.js";
 import type { HardwareFingerprint } from "@polaris-key/protocol/core";
@@ -405,6 +436,10 @@ export class BrowserAdapter implements PolarisAdapter {
   private readonly bearerStore: BrowserStore | null = null;
   private readonly autoRegister: boolean;
   private started = false;
+  /** The first load, once `start()` (or `boot()`) began it. */
+  private loading: Promise<void> | null = null;
+  /** Bytes of interrupted `releaseFetch` downloads, by payload SHA-256 (page-lived). */
+  private readonly parts: PartStore = new Map();
   /** A configuration the adapter cannot run with that must not throw from the constructor
    *  ("auto" resolved to bearer without pinned keys). Every load and verb reports it. */
   private readonly configError: PolarisError | null = null;
@@ -524,7 +559,7 @@ export class BrowserAdapter implements PolarisAdapter {
   start(): void {
     if (this.started) return;
     this.started = true;
-    void this.load();
+    this.loading = this.load();
   }
 
   /**
@@ -1659,6 +1694,210 @@ export class BrowserAdapter implements PolarisAdapter {
 
   isEntitled(name: string): boolean {
     return readEntitled(this.store.get(), name);
+  }
+
+  // ── SP-12: boot, the verified download, the download model, feed URLs, crash tags ──────
+
+  /** Discovery, once: the in-flight load's, or a fetch of its own before `start()`. */
+  private async ensureDiscovery(): Promise<void> {
+    if (this.discovery_) return;
+    if (this.started) await this.discovered;
+    if (!this.discovery_) await this.loadCapabilities();
+  }
+
+  /** The decision a boot makes, when the page configured update decisions. */
+  private bootDecide(): BootDriver["decide"] | undefined {
+    const u = this.updateConfig;
+    if (!u || Object.keys(u.pinnedReleaseKeys ?? {}).length === 0)
+      return undefined;
+    return async () => {
+      const check = await this.decideUpdate();
+      return { decision: bootDecisionOf(check), check };
+    };
+  }
+
+  /** One-call boot (ui.boot). See `PolarisAdapter.boot` and core/boot.ts. */
+  async boot(opts: BootRunOptions = {}): Promise<BootResult> {
+    if (this.configError) throw this.fail("identity", this.configError);
+    // A Provider may already have started the first load: let it land, then boot over it.
+    if (this.started) await this.loading?.catch(() => undefined);
+    const fresh = !this.started;
+    this.started = true;
+    const decide = this.bootDecide();
+    const driver: BootDriver = this.bearer
+      ? bearerBootDriver({
+          session: this.bearer,
+          discover: () => this.ensureDiscovery(),
+          registrationPolicy: () => this.registrationPolicy(),
+          licenseEnabled: () => this.capabilities.license.enabled,
+          status: () => {
+            this.applyBearer();
+            return this.store.get().status;
+          },
+          changed: () => this.applyBearer(),
+          ...(decide ? { decide } : {}),
+        })
+      : this.cookieBootDriver(fresh, decide);
+    const run = runBoot(driver, opts);
+    if (fresh) this.loading = run.then(() => undefined);
+    const result = await run;
+    if (this.bearer) this.applyBearer();
+    return result;
+  }
+
+  /** The cookie page's driver: the first load (discovery, the session, an imported bundle), then
+   *  a session refresh for each later pass. No keyless registration: a cookie page is signed in
+   *  by redirect, and holds no device token. */
+  private cookieBootDriver(
+    fresh: boolean,
+    decide: BootDriver["decide"] | undefined,
+  ): BootDriver {
+    let loaded = !fresh;
+    return {
+      discover: async () => {
+        if (!loaded) {
+          await this.load();
+          loaded = true;
+          // The first pass is this load's; report it as the sync below.
+          return;
+        }
+        await this.ensureDiscovery();
+      },
+      hasToken: () => this.hadSession,
+      registrationPolicy: () => this.registrationPolicy(),
+      licenseEnabled: () => this.capabilities.license.enabled,
+      enroll: async () => {
+        await this.enroll();
+        return true;
+      },
+      sync: (() => {
+        let first = fresh;
+        return async () => {
+          if (first) {
+            first = false;
+            const err = this.store.get().error.identity;
+            return err && err.code === "network" ? "offline" : "ok";
+          }
+          try {
+            await this.refresh();
+            return "ok";
+          } catch (e) {
+            return (e as PolarisError).code === "refresh-failed" ||
+              (e as PolarisError).code === "network"
+              ? "offline"
+              : "error";
+          }
+        };
+      })(),
+      status: () => this.store.get().status,
+      ...(decide ? { decide } : {}),
+    };
+  }
+
+  /** The verified download (release.fetch): bearer delivery, Range resume, size and SHA-256
+   *  checked against the verified record. Resolves to the payload as a `Blob`. */
+  async releaseFetch(
+    target: FetchTarget,
+    opts: ReleaseFetchOptions = {},
+  ): Promise<ReleaseFetchResult> {
+    await this.ensureDiscovery();
+    requireSupported(this.capabilityCtx, Feature.releaseFetch);
+    // Before `start()` (or a boot) the session has not read its stored token yet.
+    await this.bearer?.init();
+    const record =
+      "record" in target ? target.record : await this.verifiedRecord(target);
+    const buildId = "action" in target ? target.build : target.buildId;
+    try {
+      return await fetchReleaseBuild({
+        baseUrl: this.base,
+        product: this.product,
+        fetchImpl: this.fetchImpl,
+        discovery: this.discovery_,
+        headers: this.bearer ? this.bearer.headers() : this.metadataHeaders(),
+        bearer: this.bearer?.bearer ?? null,
+        record,
+        ...(buildId ? { buildId } : {}),
+        parts: this.parts,
+        ...(opts.onProgress ? { onProgress: opts.onProgress } : {}),
+        ...(opts.signal ? { signal: opts.signal } : {}),
+      });
+    } catch (e) {
+      throw e instanceof PolarisError ? this.fail("release", e) : e;
+    }
+  }
+
+  /** The release record a hash (or a `binary` decision) names, verified against the pinned
+   *  release keys only. */
+  private async verifiedRecord(
+    target: Exclude<FetchTarget, { record: unknown }>,
+  ) {
+    const sha256 = "action" in target ? target.release.sha256 : target.sha256;
+    const releaseKeys = this.updateConfig?.pinnedReleaseKeys ?? {};
+    if (!sha256)
+      throw new PolarisError(
+        "invalid-options",
+        "This decision names no release record hash.",
+      );
+    if (!this.pinned || Object.keys(releaseKeys).length === 0)
+      throw new PolarisError(
+        "not-configured",
+        "Fetching a release record by hash needs update.pinnedReleaseKeys and trust.pinnedKeys; pass the verified record instead.",
+      );
+    return fetchVerifiedRecord({
+      baseUrl: this.base,
+      product: this.product,
+      fetchImpl: this.fetchImpl,
+      discovery: this.discovery_,
+      headers: this.metadataHeaders(),
+      sha256,
+      releaseKeys,
+      productTrust: this.pinned,
+    });
+  }
+
+  /** The public download model (release.distribution). No credential goes with it. */
+  async downloadModel(opts: { channel?: string } = {}): Promise<DownloadModel> {
+    await this.ensureDiscovery();
+    requireSupported(this.capabilityCtx, Feature.releaseDistribution);
+    return fetchDownloadModel({
+      baseUrl: this.base,
+      product: this.product,
+      fetchImpl: this.fetchImpl,
+      ...(opts.channel ? { channel: opts.channel } : {}),
+    });
+  }
+
+  /** The visitor's platform's group of the download model (or `platform`'s). */
+  async thisPlatform(
+    opts: { channel?: string; platform?: string } = {},
+  ): Promise<ThisPlatform> {
+    const model = await this.downloadModel(
+      opts.channel ? { channel: opts.channel } : {},
+    );
+    return pickPlatform(model, opts.platform ?? browserPlatform());
+  }
+
+  /** A page has no native updater: the registry's runtime N/A, as a result. */
+  async feedUrl(kind: FeedKind, opts: FeedUrlOptions = {}): Promise<FeedUrl> {
+    void kind;
+    void opts;
+    const s = supportsIn(this.capabilityCtx, Feature.updateFeeds);
+    if (!s.supported) return s;
+    throw new Error(
+      "update.feeds: the capability table says it is supported on web, but a page has no native updater feed",
+    );
+  }
+
+  /** The crash-reporter tags (crash.tags): the page's version, its channel and the outlet update
+   *  decisions resolved (`unknown` without update options). */
+  async crashTags(opts: CrashTagsOptions = {}): Promise<CrashTags> {
+    const version = this.version ?? "0.0.0";
+    return crashTagsFor({
+      version,
+      channel: channelForVersion(version),
+      outlet: this.updateOutlet?.id ?? null,
+      ...opts,
+    });
   }
 
   dispose(): void {

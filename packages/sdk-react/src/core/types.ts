@@ -18,6 +18,7 @@ import type {
   ConfigSource,
   LicenseState,
   Support,
+  Unsupported,
 } from "@polaris-key/client-core";
 import type { StagedUpdate, UpdateCheck } from "@polaris-key/protocol/update";
 import type { ProductCatalog } from "@polaris-key/catalog";
@@ -25,6 +26,14 @@ import type { ProductCatalog } from "@polaris-key/catalog";
 // erased, so this value import creates no runtime cycle.
 import { noBusy, noErrors } from "./services.js";
 import type { ActivationOutcome } from "./activation.js";
+import type { BootResult, BootRunOptions } from "./boot.js";
+import type { CrashTags, CrashTagsOptions } from "./crash.js";
+import type {
+  FetchTarget,
+  ReleaseFetchOptions,
+  ReleaseFetchResult,
+} from "../browser/releaseFetch.js";
+import type { DownloadModel, ThisPlatform } from "../browser/distribution.js";
 import type { ErrorCode } from "../constants.generated.js";
 import type {
   ServiceBusyMap,
@@ -322,6 +331,26 @@ export type CommercePayload =
   | { productId: string; purchaseToken: string }
   | { ticket: string; dlcAppId: string | number };
 
+/** The native updater feeds `feedUrl()` names (SDK-PARITY-PASS §3.7). */
+export type FeedKind =
+  | "appcast"
+  | "winsparkle"
+  | "velopack"
+  | "appInstaller"
+  | "zsync";
+
+/** `feedUrl()`'s options: the channel (aliases rewrite to their canonical channel first), the
+ *  Velopack channel (without one the answer is the feed directory) and the AppImage build id. */
+export interface FeedUrlOptions {
+  channel?: string;
+  velopackChannel?: string;
+  buildId?: string;
+  arch?: string;
+}
+
+/** `feedUrl()`'s answer: the URL, or the typed reason there is none (PARITY §2.2). */
+export type FeedUrl = { supported: true; url: string } | Unsupported;
+
 /** How a browser adapter authenticates (SDK-PARITY-PASS §3.17). */
 export type BrowserAuthMode = "cookie" | "bearer";
 
@@ -447,6 +476,47 @@ export interface PolarisAdapter {
   /** Where the device credential lives, and why if that is weaker than this platform's best
    *  (core.store). Null where the transport holds no credential (the cookie session). */
   storeStatus(): Promise<import("@polaris-key/client-core").StoreStatus | null>;
+  // ── SP-12: boot, the verified download, the download model, feed URLs, crash tags ──
+  /**
+   * One-call boot (ui.boot, SDK-PARITY-PASS §3.4): discovery, the keyless registration of a
+   * fresh install on an `open` product, the sync (trust, documents, report), the reacquire per
+   * `core.registration`, the gate, the update decision and the required packs, through
+   * client-core's stage machine to its outcome. Never prompts: a gate that needs the player
+   * ends `waiting`. Browser: in-page (the bearer engine, or the cookie session). Desktop: the
+   * host's `client.boot()` over bridge v4 (`invoke("core", "boot")`), refused typed (`version`)
+   * on an older host.
+   */
+  boot(opts?: BootRunOptions): Promise<BootResult>;
+  /**
+   * The verified download (release.fetch, §3.6): one build's payload with the device bearer,
+   * resumed with `Range`/`If-Range` after an interruption, its size and SHA-256 checked against
+   * the verified release record before it is returned. Browser: a `Blob`, in bearer mode (a
+   * cookie page holds no device bearer; a build that needs none still downloads). Desktop: the
+   * host's `client.release.fetch(target, {to})` over bridge v4, which writes the file in the
+   * privileged process and answers its `path` (no `blob`).
+   */
+  releaseFetch(
+    target: FetchTarget,
+    opts?: ReleaseFetchOptions & { to?: string },
+  ): Promise<ReleaseFetchResult>;
+  /** The public download model (release.distribution, §3.8): `GET /<p>/distribution/
+   *  download.json`. Desktop: the host's `client.distribution.downloadModel()` over bridge v4. */
+  downloadModel(opts?: { channel?: string }): Promise<DownloadModel>;
+  /** This platform's group of the download model, the primary action first (the visitor's OS on
+   *  a page; the host's platform on desktop), unless `platform` is given. */
+  thisPlatform(opts?: {
+    channel?: string;
+    platform?: string;
+  }): Promise<ThisPlatform>;
+  /** A native updater feed URL (update.feeds, §3.7). Desktop: the host's
+   *  `client.update.feedUrl(kind, opts)` over bridge v4. Browser: the typed runtime N/A (a page
+   *  has no native updater; its service worker is update.driver). Never throws for a missing
+   *  feed: the answer is the typed `Unsupported`. */
+  feedUrl(kind: FeedKind, opts?: FeedUrlOptions): Promise<FeedUrl>;
+  /** The crash-reporter tags (crash.tags, §3.14): `release` `<deliverable>@<version>[+<build>]`,
+   *  `environment` the channel, `pkey.outlet` the outlet, as the Worker's Sentry hook parses
+   *  them. Desktop: the host's `client.crashTags()` over bridge v4. */
+  crashTags(opts?: CrashTagsOptions): Promise<CrashTags>;
   /** Dispose any listeners/timers the adapter owns. */
   dispose(): void;
 }
