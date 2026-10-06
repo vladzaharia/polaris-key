@@ -1573,8 +1573,10 @@ function KeyringSection({
         </ul>
       </SettingsRow>
       {kek.isPending ? (
-        <div className="px-5 py-4" aria-hidden>
-          <div className="h-24 animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none" />
+        <div className="pk-skeleton-group space-y-3 px-5 py-4" aria-hidden>
+          <div className="pk-skeleton h-5 w-48 rounded-md" />
+          <div className="pk-skeleton h-4 w-full rounded-md" />
+          <div className="pk-skeleton h-4 w-2/3 rounded-md" />
         </div>
       ) : !k ? (
         <div className="px-5 py-4">
@@ -1870,10 +1872,14 @@ function HistorySection({
     <SettingsSection id="platform-history" title="History">
       <div className="px-5 py-4">
         {history.isPending ? (
-          <div
-            aria-hidden
-            className="h-24 animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none"
-          />
+          <div aria-hidden className="pk-skeleton-group space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <div className="pk-skeleton h-4 w-24 rounded-md" />
+                <div className="pk-skeleton h-4 flex-1 rounded-md" />
+              </div>
+            ))}
+          </div>
         ) : history.isError && !first ? (
           <ErrorState
             compact
