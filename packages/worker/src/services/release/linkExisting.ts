@@ -50,7 +50,11 @@ import {
   getInstallationToken,
 } from "./githubApp.js";
 import { isSafeBinaryName } from "./install.js";
-import { manifestIssuerRefusal, parseRepoUrl } from "./linkRepo.js";
+import {
+  digestManifestFiles,
+  manifestIssuerRefusal,
+  parseRepoUrl,
+} from "./linkRepo.js";
 import { fetchPinnedManifestFiles } from "./manifestFetch.js";
 import { resyncRepo, type ResyncResult } from "./resync.js";
 import type { ManifestIngest } from "../../core/registry.js";
@@ -152,22 +156,6 @@ const refuse = (
   error,
   ...(errors ? { errors } : {}),
 });
-
-/** The digest the check hands the console and the link compares: files in name order. */
-async function digestFiles(files: Record<string, string>): Promise<string> {
-  const canonical = JSON.stringify(
-    Object.keys(files)
-      .sort()
-      .map((name) => [name, files[name]]),
-  );
-  const bytes = new Uint8Array(
-    await crypto.subtle.digest(
-      "SHA-256",
-      new TextEncoder().encode(canonical) as BufferSource,
-    ),
-  );
-  return [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
 
 /**
  * Check that `repoUrl`'s `.pkey/` can take over `slug`, and plan what it would change. Writes
@@ -311,7 +299,7 @@ export async function prepareLink(
     repo,
     installId,
     commit,
-    manifestDigest: await digestFiles(files),
+    manifestDigest: await digestManifestFiles(files),
     manifest,
     plan,
     remainingSecrets,

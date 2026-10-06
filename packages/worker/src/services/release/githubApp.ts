@@ -21,6 +21,7 @@ import {
   type SealContext,
 } from "../../core/platform.js";
 import { signJwtRs256 } from "../../core/jwt.js";
+import { MANIFEST_FILES } from "./manifestFiles.js";
 
 const GITHUB_API = "https://api.github.com";
 const USER_AGENT = "polaris-key-release";
@@ -337,4 +338,319 @@ export async function getInstallationToken(
     // No KEK configured (or a KEK that will not import): serve the token, cache nothing.
   }
   return body.token;
+}
+
+// ── what the App can read (UX-72: FLOWS.md §3.11 W22) ─────────────────────────────────────────
+
+/** Cap on one GitHub listing page (100 repositories is ~0.5 MB of JSON; allow headroom). */
+const MAX_LISTING_BYTES = 4 * 1024 * 1024;
+/** Pages read per listing: 100 installations or 1,000 repositories per installation at most. */
+const MAX_INSTALLATION_PAGES = 1;
+const MAX_REPOSITORY_PAGES = 10;
+const PER_PAGE = 100;
+
+/** Read a JSON body of at most `maxBytes`, cancelling the stream once the cap is passed. */
+async function readJsonCapped<T>(res: Response, maxBytes: number): Promise<T> {
+  const declared = Number(res.headers.get("Content-Length") ?? "");
+  if (Number.isFinite(declared) && declared > maxBytes)
+    throw new Error("github listing: response too large");
+  if (!res.body) return JSON.parse(await res.text()) as T;
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > maxBytes) {
+      await reader.cancel();
+      throw new Error("github listing: response too large");
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let at = 0;
+  for (const c of chunks) {
+    bytes.set(c, at);
+    at += c.byteLength;
+  }
+  return JSON.parse(new TextDecoder().decode(bytes)) as T;
+}
+
+/** GET with one polite retry on a rate-limit signal; throws on anything but 2xx. */
+async function getListing<T>(
+  url: string,
+  auth: string,
+  fetchImpl: FetchImpl,
+): Promise<T> {
+  let res = await fetchImpl(url, { headers: githubHeaders(auth) });
+  if (isRateLimited(res)) {
+    await sleep(backoffMillis(res));
+    res = await fetchImpl(url, { headers: githubHeaders(auth) });
+  }
+  if (!res.ok) throw new Error(`github listing failed: ${res.status}`);
+  return readJsonCapped<T>(res, MAX_LISTING_BYTES);
+}
+
+/** The App itself: its slug and the page an account installs it from. */
+export interface GithubAppInfo {
+  slug: string;
+  /** `https://github.com/apps/<slug>/installations/new`: Install on GitHub. */
+  installUrl: string;
+}
+
+/** `GET /app` as the App. Throws when the App is not configured or GitHub refuses. */
+export async function getAppInfo(
+  env: Env,
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<GithubAppInfo> {
+  const jwt = await appJwt(env, now);
+  const body = await getListing<{ slug?: unknown; html_url?: unknown }>(
+    `${GITHUB_API}/app`,
+    `Bearer ${jwt}`,
+    fetchImpl,
+  );
+  if (typeof body.slug !== "string" || typeof body.html_url !== "string")
+    throw new Error("github app: unexpected shape");
+  const page = new URL(body.html_url);
+  if (page.protocol !== "https:" || page.hostname !== "github.com")
+    throw new Error("github app: unexpected page");
+  return {
+    slug: body.slug,
+    installUrl: `${page.origin}${page.pathname.replace(/\/+$/, "")}/installations/new`,
+  };
+}
+
+/** One installation of the App: the account it is on and what it may do there. */
+export interface GithubInstallation {
+  id: number;
+  account: string;
+  accountType: string;
+  /** `all` or `selected`: whether the account gave the App every repository or a list. */
+  repositorySelection: string;
+  /** GitHub's permission grant, `{ contents: "read", … }`. */
+  permissions: Record<string, string>;
+}
+
+/**
+ * Every active installation of the App (`GET /app/installations`, as the App). Suspended
+ * installations are left out: GitHub refuses them a token, so they can list nothing.
+ */
+export async function listInstallations(
+  env: Env,
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<GithubInstallation[]> {
+  const jwt = await appJwt(env, now);
+  const out: GithubInstallation[] = [];
+  for (let page = 1; page <= MAX_INSTALLATION_PAGES; page++) {
+    const rows = await getListing<unknown[]>(
+      `${GITHUB_API}/app/installations?per_page=${PER_PAGE}&page=${page}`,
+      `Bearer ${jwt}`,
+      fetchImpl,
+    );
+    if (!Array.isArray(rows))
+      throw new Error("github installations: unexpected shape");
+    for (const r of rows) {
+      const row = r as {
+        id?: unknown;
+        account?: { login?: unknown; type?: unknown } | null;
+        repository_selection?: unknown;
+        permissions?: unknown;
+        suspended_at?: unknown;
+      };
+      if (typeof row.id !== "number" || typeof row.account?.login !== "string")
+        continue;
+      // A suspended installation cannot mint a token (GitHub answers 403); it reads nothing.
+      if (row.suspended_at != null) continue;
+      const permissions: Record<string, string> = {};
+      if (row.permissions && typeof row.permissions === "object")
+        for (const [k, v] of Object.entries(row.permissions))
+          if (typeof v === "string") permissions[k] = v;
+      out.push({
+        id: row.id,
+        account: row.account.login,
+        accountType:
+          typeof row.account.type === "string" ? row.account.type : "User",
+        repositorySelection:
+          typeof row.repository_selection === "string"
+            ? row.repository_selection
+            : "selected",
+        permissions,
+      });
+    }
+    if (rows.length < PER_PAGE) break;
+  }
+  return out;
+}
+
+/** A repository an installation can read, as the picker lists it. */
+export interface GithubRepository {
+  installationId: number;
+  owner: string;
+  name: string;
+  /** `owner/name` as GitHub spells it. */
+  fullName: string;
+  language: string | null;
+  /** Unix seconds of the last push, or null for an empty repository. */
+  pushedAt: number | null;
+  private: boolean;
+  defaultBranch: string | null;
+}
+
+/**
+ * Mint a token for an installation outside the release read path, uncached: `metadata: read`
+ * across the installation (what listing its repositories needs, and nothing that reads
+ * content), or `contents: read` narrowed to the named repositories (the `.pkey/` probe).
+ */
+async function mintListingToken(
+  env: Env,
+  installId: number,
+  now: number,
+  fetchImpl: FetchImpl,
+  repositories?: string[],
+): Promise<string> {
+  const jwt = await appJwt(env, now);
+  const body = repositories
+    ? { repositories, permissions: BASE_PERMISSIONS }
+    : { permissions: { metadata: "read" } };
+  const res = await fetchImpl(
+    `${GITHUB_API}/app/installations/${installId}/access_tokens`,
+    {
+      method: "POST",
+      headers: {
+        ...githubHeaders(`Bearer ${jwt}`),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    },
+  );
+  if (!res.ok) throw new Error(`installation token failed: ${res.status}`);
+  const out = (await res.json()) as { token?: unknown };
+  if (typeof out.token !== "string")
+    throw new Error("installation token: unexpected shape");
+  return out.token;
+}
+
+/** Every repository one installation can read (`GET /installation/repositories`). */
+export async function listInstallationRepositories(
+  env: Env,
+  installId: number,
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<GithubRepository[]> {
+  const token = await mintListingToken(env, installId, now, fetchImpl);
+  const out: GithubRepository[] = [];
+  for (let page = 1; page <= MAX_REPOSITORY_PAGES; page++) {
+    const body = await getListing<{ repositories?: unknown }>(
+      `${GITHUB_API}/installation/repositories?per_page=${PER_PAGE}&page=${page}`,
+      `token ${token}`,
+      fetchImpl,
+    );
+    const rows = Array.isArray(body.repositories) ? body.repositories : null;
+    if (!rows) throw new Error("github repositories: unexpected shape");
+    for (const r of rows) {
+      const row = r as {
+        name?: unknown;
+        full_name?: unknown;
+        owner?: { login?: unknown } | null;
+        language?: unknown;
+        pushed_at?: unknown;
+        private?: unknown;
+        default_branch?: unknown;
+      };
+      if (
+        typeof row.name !== "string" ||
+        typeof row.full_name !== "string" ||
+        typeof row.owner?.login !== "string"
+      )
+        continue;
+      const pushed =
+        typeof row.pushed_at === "string" ? Date.parse(row.pushed_at) : NaN;
+      out.push({
+        installationId: installId,
+        owner: row.owner.login,
+        name: row.name,
+        fullName: row.full_name,
+        language: typeof row.language === "string" ? row.language : null,
+        pushedAt: Number.isFinite(pushed) ? Math.floor(pushed / 1000) : null,
+        private: row.private === true,
+        defaultBranch:
+          typeof row.default_branch === "string" ? row.default_branch : null,
+      });
+    }
+    if (rows.length < PER_PAGE) break;
+  }
+  return out;
+}
+
+/** The names `.pkey/product` may have (`manifestFiles.ts`'s product variants). */
+const PRODUCT_MANIFEST_NAMES = new Set(
+  MANIFEST_FILES.product.map((p) => p.slice(p.lastIndexOf("/") + 1)),
+);
+const isProductManifestName = (name: string): boolean =>
+  PRODUCT_MANIFEST_NAMES.has(name);
+
+/**
+ * Does each repository have a `.pkey/product` on its default branch? One `contents/.pkey`
+ * directory read per repository, with one token narrowed to these repositories and
+ * `contents: read`. `true`/`false`, or `null` when GitHub would not say (a rate limit, an
+ * error): the picker then shows no mark rather than a wrong one.
+ */
+export async function probeManifests(
+  env: Env,
+  installId: number,
+  repos: readonly { owner: string; name: string }[],
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<Map<string, boolean | null>> {
+  const out = new Map<string, boolean | null>();
+  if (repos.length === 0) return out;
+  let token: string;
+  try {
+    token = await mintListingToken(
+      env,
+      installId,
+      now,
+      fetchImpl,
+      repos.map((r) => r.name),
+    );
+  } catch {
+    for (const r of repos) out.set(`${r.owner}/${r.name}`, null);
+    return out;
+  }
+  await Promise.all(
+    repos.map(async (r) => {
+      const key = `${r.owner}/${r.name}`;
+      try {
+        const res = await fetchImpl(
+          `${GITHUB_API}/repos/${encodeURIComponent(r.owner)}/${encodeURIComponent(r.name)}/contents/.pkey`,
+          { headers: githubHeaders(`token ${token}`) },
+        );
+        if (res.status === 404) {
+          out.set(key, false);
+          return;
+        }
+        if (!res.ok) {
+          out.set(key, null);
+          return;
+        }
+        const entries = await readJsonCapped<unknown>(res, MAX_LISTING_BYTES);
+        out.set(
+          key,
+          Array.isArray(entries) &&
+            entries.some(
+              (e) =>
+                typeof (e as { name?: unknown }).name === "string" &&
+                (e as { type?: unknown }).type === "file" &&
+                isProductManifestName((e as { name: string }).name),
+            ),
+        );
+      } catch {
+        out.set(key, null);
+      }
+    }),
+  );
+  return out;
 }
