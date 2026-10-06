@@ -49,7 +49,7 @@ describe("every Radix overlay animates out", () => {
   // The overlay components: each keeps today's utility classes, which motion.css keys on.
   const overlays: Record<string, string[]> = {
     "ui/Dialog.tsx": ["animate-pk-in", "animate-pk-overlay-in"],
-    "ui/Drawer.tsx": ["animate-pk-in"],
+    "ui/Drawer.tsx": ["pk-drawer"], // slides from its edge (MO-08)
     "ui/Popover.tsx": ["animate-pk-in"],
     "ui/Tooltip.tsx": ["animate-pk-in"],
     "ui/DropdownMenu.tsx": ["animate-pk-in"],
