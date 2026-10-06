@@ -5116,15 +5116,17 @@ wrote (docs/design/PORTAL.md G1, G5, G16).
   the portal renders them as text. A developer can misname their own product, not another one: a
   listing is stored per product and shown only on that product's tile.
 - **The media proxy is not a URL fetcher (Portal media proxy).** The request names a product and
-  one of two fixed listing fields (`icon`, `header`); there is no URL, host or path in it. The
+  one fixed listing slot (`icon`, `header`, or since PS-04 `screenshot-<n>`, the n-th https
+  screenshot of the stored listing, n below 16); there is no URL, host or path in it. The
   source must be `https`, on the default port, with no credentials, on a GitHub-hosted name
   (`isAllowedStorageHost`: `github.com`, `*.githubusercontent.com`, the predicate the release
   fetch and the portal download redirect already use). IP literals, `localhost`, a custom domain
   and this deployment's own hosts never match, so a repository cannot point the Worker at itself,
   at another zone on the account, or at an internal address. Redirects are followed by hand, at
   most three, and every hop is checked again. A 5 s budget; a `Content-Length` over the cap
-  (1 MiB icon, 5 MiB header) is refused before the body is read, and the stream is counted and cut
-  at the cap whatever the header said.
+  (1 MiB icon, 5 MiB header and each screenshot) is refused before the body is read, and the
+  stream is counted and cut at the cap whatever the header said. Screenshots add at most 16
+  fetchable sources per product, all under the same allowlist, cap and `portalMedia` budget.
 - **Strict type instead of re-encoding.** The Worker has no image codec, so it does not re-encode.
   Instead the bytes must be a PNG, JPEG, WebP or GIF by magic number; the upstream `Content-Type`
   is ignored; the answer carries the sniffed type, `nosniff`, `default-src 'none'; sandbox` and
@@ -5819,16 +5821,17 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   `export`; no claimed table has an `account_id` column. A store added without its hooks fails the
   gate instead of leaving data behind after a merge or a deletion.
 
-### Discover: free offers and "Add to library" (PX-W10, PS-03)
+### Discover: free offers and "Add to library" (PX-W10, PS-03, PS-04)
 
-`GET /api/discover` lists the products whose licence policy would auto-issue to the signed-in
-account and `POST /api/discover/<p>/claim` mints one (docs/design/PORTAL.md §10.2 G24, G25). Both
-sit behind the portal session; the claim also needs the CSRF header. Since PS-03 both run on the
-Polaris Key storefront's obtain-path engine (`services/identity/portal/store/obtain.ts`, notes/S-21
-§6.3): one dry-run evaluation answers whether, and by which paths, an account can add a product.
-Discover serves the engine's identity paths (`group`, `auto_issue`); the `open` path and
-audience-`everyone` link-only listings are evaluated but not served until PS-04 (PS-11 adds the
-storefront's full threat set, notes/S-21 §6.9 S1-S11).
+`GET /api/discover` lists the products the signed-in account could add, `GET /api/discover/<p>` is
+one product's storefront page, `POST /api/discover/<p>/claim` adds one, and `DELETE
+/api/library/<p>` removes a library entry (docs/design/PORTAL.md §10.2 G24, G25; notes/S-21 §6.4,
+§6.5, §6.7). All sit behind the portal session; the mutations also need the CSRF header. All run
+on the Polaris Key storefront's obtain-path engine (`services/identity/portal/store/obtain.ts`,
+notes/S-21 §6.3): one dry-run evaluation answers whether, and by which paths, an account can add a
+product. Since PS-04 Discover serves every path the engine finds (`group`, `auto_issue`, `open`)
+and audience-`everyone` links, and the claim issues through one function, `issueFromPath` (PS-11
+adds the storefront's full threat set, notes/S-21 §6.9 S1-S11).
 
 - **Discover grants nothing a sign-in would not.** The listing and the claim run the product
   sign-in's own policy function (`identityTier`) and the claim mints through its own path
@@ -5841,7 +5844,18 @@ storefront's full threat set, notes/S-21 §6.9 S1-S11).
 - **`open` grants no licence.** The engine's `open` path needs License off for the product and
   Distribution's `delivery().openAccess()` true: every deliverable `public` or `authenticated` with
   no entitlement gate, fail-closed (no `app` row, an unknown mode or a gated pack is not open). It
-  never runs the licence policy and nothing it leads to mints a licence.
+  never runs the licence policy, and its claim writes one `library_entries` row (account, product)
+  and nothing else: no licence, no device, no pairwise subject, no row in the product's `audit`.
+  The entry unlocks nothing: downloads, the registry and every device route still decide by
+  licence and delivery access exactly as before, so an entry is a bookmark the person can remove
+  (`DELETE /api/library/<p>`, entries only; a licence leaves the library only by the existing
+  detach, with its auto-attach block). Account deletion deletes entries, a merge moves them, and
+  product deletion clears them.
+- **No device binding and never a second licence.** No path binds a device: devices bind at
+  their next sign-in or activation, where seat limits apply. A claim for a product the account
+  already holds by any route (a licence, a library entry, a licence its platform subject holds)
+  answers what it holds with `added: false` and issues nothing (the I-26 rule); the held licence
+  is answered only when it is this account's own (I-05).
 - **Group membership is the platform IdP's assertion, as of the last portal sign-in.** The portal
   now keeps the `groups` claim (`account_links.groups_json`, on the link it signed in through). Residual: a group removed
   at the IdP still yields offers until the account signs in to the portal again (the product
@@ -5853,18 +5867,61 @@ storefront's full threat set, notes/S-21 §6.9 S1-S11).
 - **No enumeration.** Unknown, unlisted, ineligible and held products all get the engine's one
   hidden verdict, and only visible products are listed or counted. The claim is not a product
   oracle and not a minting loop: an unknown slug, a product that is not a candidate, a withdrawn
-  offer and a link-only listing all answer the same `409 not_eligible`. The claim is idempotent per
-  account and product (the `idx_licenses_sub` unique index decides a racing double submit; the
-  loser answers the winner's licence), it spends the one per-account bucket the activate preview
-  and the key claim share (`portalClaimKey`, charged before any lookup), and it is audited twice:
-  `portal.discover.claim` in `portal_audit` and `license.create` in the product's `audit`, both
-  with `source: discover`.
+  offer, a link-only listing and a `path` the product does not offer all answer the same `409
+not_eligible`. The storefront page answers the same `404 not_found` for every product the
+  listing would not show, and spends its own per-account budget (`portalStorefrontPage`, 60 a
+  minute) before any lookup. **Residual:** the page and the claim take measurably different time
+  for a product that is a candidate (listed, portal on) and one that is not, which can tell
+  "unlisted" from "listed but not for you"; product slugs are already public (each product's
+  discovery document), the budgets bound the probing, and neither answer names a path, a tier or
+  a person. The claim is idempotent per account and product (`idx_licenses_sub` decides a racing
+  identity double submit, the `library_entries` primary key an `open` one; the loser answers the
+  winner's licence or entry), it spends the one per-account bucket the activate preview and the
+  key claim share (`portalClaimKey`, charged before any lookup), and it is audited:
+  `portal.discover.claim` in `portal_audit` for every path and `license.create` in the product's
+  `audit` for a licence, both with `source: discover; path: <kind>`.
+- **Listing text is the developer's, rendered as text.** The page adds the listing's `subtitle`
+  and `description` (the manifest validator bounds them: one line of at most 200 characters, and
+  4000 characters of prose without control characters but tab and newline) and screenshots,
+  which reach the page only as same-origin `/media/<p>/screenshot-<n>` URLs under the media proxy's
+  rules (the page CSP did not widen). Group labels are the operator's (`storefront.polarisKey.
+groupLabels`, at most 40 characters), read as own properties only. PS-05 renders all of them
+  escaped (A-18 control g).
 - **Operators withhold or narrow without changing the policy.** `storefront.polarisKey.listed`
   `unlisted` (or `discover_enabled = 0` until PS-11) hides a product, `offerPaths` drops path kinds
   (the claim follows it), and the deployment switch `storefront.polarisKey.enabled` off hides every
   listing. The switch reads fail-safe: any stored value other than `on` (a cleared value is the
   default, on), or an unreadable store, is off. Audience `everyone` is the one deliberate exception to "only what you can obtain"
-  (level-2 confirmation, PS-02), and it shows a `listed` product as a link only, never an Add.
+  (level-2 confirmation, PS-02), and it shows a `listed` product as a link only, never an Add:
+  its website and the store pages where a release is reported live, which are public already.
+
+### Storefront analytics (PS-04)
+
+The storefront counts impressions, adds and first activations per product, UTC day and path kind
+(notes/S-21 §6.6, owner decision 12) in `storefront_daily`, for PS-06's console card.
+
+- **Aggregates, no account id.** `storefront_daily` holds counters and nothing else. Impressions
+  are deduplicated per account per day through `storefront_seen(product, day, account_key)`, where
+  `account_key` is HMAC-SHA-256 of the account id under the day's salt, truncated to 128 bits; the
+  salt is HMAC-SHA-256 of a fixed label and the day under `KEY_HASH_PEPPER`, so it is derived, never
+  stored, and a key cannot be recomputed from the database alone. Keys of two days never match,
+  so they do not link one person across days, and the nightly sweep deletes every row older than
+  yesterday. **Residual:** within those two days, whoever holds both the database and the pepper
+  can test whether a known account saw a known product that day. On a deployment without
+  `KEY_HASH_PEPPER` the salt is a plain SHA-256 of a public string, and the database alone answers
+  that test for the same two days; the pepper is a documented production secret.
+- **Only what was shown is counted.** An impression is written after the engine's dry run decided
+  the product is visible to the account, so the counters never name a product the account could
+  not see, and the evaluation itself still writes nothing. A count that fails to write is dropped:
+  counting never fails a listing, a page, a claim or an activation.
+- **Activations without a new per-person record.** A first activation is counted when Core's
+  `authorizeDevice` reports a new authorization (`core/authorizationListeners.ts`, after the bind,
+  total, off the response path with `waitUntil`) on a licence whose `portal.discover.claim` row
+  exists and is at most seven days old. The licence is counted once, by a marker row beside the
+  claim in the same account's own `portal_audit` history, which account deletion erases with it.
+  A listener can neither refuse nor change an activation.
+- **Who reads it.** Nothing in PS-04 serves the counters; PS-06's console card shows them to the
+  product's operators as daily totals per path kind.
 
 ### Licensed portal downloads (PX-W3)
 
