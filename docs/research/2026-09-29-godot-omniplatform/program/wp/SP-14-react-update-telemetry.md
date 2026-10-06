@@ -53,10 +53,10 @@ The row is half built: the queue and the drain exist, but nothing records an eve
 
 ## Acceptance criteria
 
-- [ ] `@pkey-feature telemetry.updates` tests replay `telemetry-report-updates.json` (17 events drain as 16 then 1) through a recorded event, not a hand-filled queue.
-- [ ] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
-- [ ] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
-- [ ] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
+- [x] `@pkey-feature telemetry.updates` tests replay `telemetry-report-updates.json` (17 events drain as 16 then 1) through a recorded event, not a hand-filled queue.
+- [x] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
+- [x] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
+- [x] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
 
 ## Verify
 
