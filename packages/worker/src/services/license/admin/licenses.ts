@@ -182,6 +182,15 @@ export async function handleLicenses(
       const body = await readBody(req);
       const refused = licenseWriteChecks(body);
       if (refused) return refused;
+      // LX-14a: a new licence inherits its device limit; its own is set afterwards with PATCH
+      // (audited as `license.device_limit.set`). Refused rather than silently dropped.
+      if ("deviceLimit" in body)
+        return err(
+          422,
+          ErrorCode.BadRequest,
+          "deviceLimit cannot be set when creating a license; create it, then PATCH deviceLimit",
+          { fields: ["deviceLimit"] },
+        );
       const licenseId = randomId("lic");
       const profiles = parseProfiles(body);
       const badRefs = await validateRefs(db, slug, {
@@ -286,6 +295,14 @@ export async function handleLicenses(
         groups: parseJsonList(license.groups_json),
         profiles: profiles.map((p) => p.profile_id),
         maxOfflineDays: license.max_offline_days,
+        // LX-14a: the seat-holding devices with the dormancy cutoff `authorizeDevice` and the
+        // PATCH's `overLimit` apply, so the console's Device limit… warning predicts the same.
+        seatDeviceCount: await countActiveDevices(
+          db,
+          slug,
+          id,
+          seatActiveSince(now),
+        ),
         overrides: redactPayload(overrides, catalog),
         keys: keys.map((k) => ({
           hash: k.key_hash,

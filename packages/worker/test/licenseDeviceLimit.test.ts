@@ -37,7 +37,12 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/admin/session.js";
-import { claimEnrolledLicense, getLicense, listAudit } from "../src/repo.js";
+import {
+  claimEnrolledLicense,
+  getLicense,
+  listAudit,
+  SEAT_DORMANCY_SECONDS,
+} from "../src/repo.js";
 
 const TRUST = { [TEST_KID]: TEST_PUB };
 const PLATFORM_GROUP = "admins";
@@ -292,6 +297,28 @@ describe("per-licence device limit (LX-14a)", () => {
       target_id: licenseId,
       actor_sub: "u1",
     });
+  });
+
+  it("refuses deviceLimit on create; a new licence inherits", async () => {
+    const res = await admin("POST", "", { name: "New", deviceLimit: 2 });
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ fields: ["deviceLimit"] });
+    const created = await admin("POST", "", { name: "New" });
+    expect(created.status).toBe(201);
+    expect(
+      ((await created.json()) as { license: Record<string, unknown> }).license,
+    ).toMatchObject({ deviceLimit: null, deviceLimitSource: "product" });
+  });
+
+  it("the detail read counts seats with the dormancy cutoff", async () => {
+    await activate("device-two");
+    await db.run(
+      "UPDATE devices SET last_seen = ? WHERE product = ? AND device_id = ?",
+      NOW - SEAT_DORMANCY_SECONDS - 10,
+      "djdl",
+      DEVICE,
+    );
+    expect(await read()).toMatchObject({ deviceCount: 2, seatDeviceCount: 1 });
   });
 
   it("refuses anything but a positive integer or null", async () => {

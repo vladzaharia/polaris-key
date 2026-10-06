@@ -54,6 +54,7 @@ describe("remote re-licensing", () => {
     await seedTier(db, "djdl", "free", { deviceLimit: 5 });
     await seedTier(db, "djdl", "pro", { deviceLimit: 10 });
     await seedTier(db, "djdl", "solo", { deviceLimit: 1 });
+    await seedTier(db, "djdl", "open"); // no device limit: the product default (5) applies
 
     const seeded = await seedLicenseWithKey(db, "djdl", { tierId: "free" });
     licenseId = seeded.licenseId;
@@ -195,6 +196,30 @@ describe("remote re-licensing", () => {
       licenseId,
     );
     expect(rows[0]?.n).toBe(2);
+  });
+
+  it("reports overLimit against the product default when the new tier sets no limit (LX-14a)", async () => {
+    // Six devices under "pro" (10), then a move to "open", which inherits the product's 5.
+    expect((await adminPatch({ tier: "pro" })).status).toBe(200);
+    for (let i = 2; i <= 6; i++) {
+      const k = await seedKeyForLicense(db, "djdl", licenseId);
+      const res = await handleActivate(
+        mkReq("POST", {
+          authorization: `Bearer ${k}`,
+          "x-pkey-device": `device-${i}`,
+        }),
+        env,
+        db,
+        product,
+        NOW,
+      );
+      expect(res.status).toBe(200);
+    }
+    const res = await adminPatch({ tier: "open" });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      overLimit: { deviceCount: 6, deviceLimit: 5 },
+    });
   });
 
   it("overLimit ignores dormant seats, exactly as the seat check will", async () => {

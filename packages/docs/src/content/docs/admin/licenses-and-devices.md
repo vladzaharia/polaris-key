@@ -156,7 +156,10 @@ The API is the same `PATCH /manage/api/products/<slug>/license/licenses/<id>` wi
 `deviceLimit`: a positive integer, or `null` to inherit; anything else is a `422`. Every license
 read answers `deviceLimit` (the stored value), `effectiveDeviceLimit` (`0`: no limit),
 `deviceLimitSource` (`license`, `tier`, `entitlement` or `product`) and the inherited pair
-`inheritedDeviceLimit` / `inheritedDeviceLimitSource`.
+`inheritedDeviceLimit` / `inheritedDeviceLimitSource`. The detail read also answers `seatDeviceCount`, the devices
+still holding a seat (dormant ones excluded, as at activation), which the sheet's warning uses.
+Creating a license with `deviceLimit` is a `422`: a new license inherits, and its own limit is set
+afterwards.
 
 ### Enable and disable
 

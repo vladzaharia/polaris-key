@@ -152,7 +152,12 @@ function DeviceLimitForm({
 
   const draft = form.rhf.watch("deviceLimit") as number | null | undefined;
   const target = draft ?? inherited.limit;
-  const warning = overLimitText(license.deviceCount, target);
+  // The server's seat count (dormant devices excluded, as at activation and in `overLimit`),
+  // else the authorized count from an older Worker.
+  const warning = overLimitText(
+    license.seatDeviceCount ?? license.deviceCount,
+    target,
+  );
   const busy = form.isSubmitting || clearing;
 
   const inherit = async (): Promise<void> => {

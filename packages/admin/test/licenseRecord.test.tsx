@@ -863,6 +863,18 @@ describe("license record: device limit (LX-14a)", () => {
     expect(results.violations.map((v) => v.id)).toEqual([]);
   });
 
+  it("warns from the server's dormancy-aware seat count", async () => {
+    bootLicense(REC, { routes: { [LIC]: { ...OWN, seatDeviceCount: 1 } } });
+    await header();
+    await more("Device limit…");
+    const sheet = await screen.findByRole("dialog", { name: "Device limit" });
+    const field = within(sheet).getByRole("textbox", { name: /Devices/ });
+    await userEvent.clear(field);
+    await userEvent.type(field, "1");
+    // DETAIL has 2 authorized devices, but only 1 still holds a seat: no warning at 1.
+    expect(within(sheet).queryByText(/None is signed out/)).toBeNull();
+  });
+
   it("Use inherited limit clears it with null", async () => {
     const log = bootLicense(REC, { routes: { [LIC]: OWN } });
     await header();

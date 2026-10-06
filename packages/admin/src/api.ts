@@ -2503,6 +2503,9 @@ export interface FingerprintPolicyResponse {
 export interface LicenseDetail extends LicenseSummary {
   groups?: string[];
   maxOfflineDays?: number | null;
+  /** LX-14a: the devices holding a seat, with the dormancy cutoff the seat check and the
+   *  PATCH's `overLimit` apply (a dormant device's seat is reclaimed at the next activation). */
+  seatDeviceCount?: number;
   overrides: RedactedPayload;
   keys: KeyDto[];
   devices: DeviceDto[];
