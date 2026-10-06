@@ -622,8 +622,9 @@ describe("HTTP transcripts: @polaris-key/react", () => {
       (t) => t.id,
     );
     // Planned here, so its transcript does not apply: identity.toggle (PX-W17's identity-disabled
-    // transcript; React's port is I-10a). commerce.receipt is SP-16's, telemetry.updates SP-14's.
-    const plannedHere = ["identity.toggle"];
+    // transcript; React's port is I-10a) and identity.keyentry (PX-W9's three keyentry-*
+    // transcripts; React's port is PX-W9b). commerce.receipt is SP-16's, telemetry.updates SP-14's.
+    const plannedHere = ["identity.toggle", "identity.keyentry"];
     const expected = TRANSCRIPTS.filter(
       (t) => !t.features.some((f) => plannedHere.includes(f)),
     ).map((t) => t.id);
