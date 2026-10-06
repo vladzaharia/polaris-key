@@ -1409,7 +1409,7 @@ OCI push shares is never lost. The byte routes serve only keys the product still
 
 **Audit.** Every deletion is one audit row in the same batch (`package.version.prune`: package,
 version, actor, file count, bytes, bytes no longer referenced) plus its tombstone row. A failure
-of the automatic prune is logged and audited (`package.prune.failed`), never thrown at the
+of the automatic prune is audited (`package.prune.failed`, the Worker has no console log), never thrown at the
 publish.
 
 **Residual.** The immutable byte URLs of a pruned version can still be answered by a data centre

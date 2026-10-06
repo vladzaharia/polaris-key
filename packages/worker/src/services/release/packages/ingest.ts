@@ -629,7 +629,7 @@ export async function ingestPackageDescriptor(
       retryable: true,
     };
   // Feed retention: a final release on `stable` prunes this package's builds of main below it,
-  // now that it is committed. It never throws: a failure is logged and audited, and the next
+  // now that it is committed. It never throws: a failure is audited, and the next
   // stable publish retries it (`prune.ts`).
   await pruneAfterStablePublish(
     db,

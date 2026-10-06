@@ -35,7 +35,7 @@
  *   WHEN   Automatically, right after a stable publish is committed (`pruneAfterStablePublish`,
  *          called by the ingest), for that package only, unless the product turned retention off
  *          (`release.packages.prunePrereleases`; the system product always prunes). A failure
- *          never fails the publish: it is logged and audited (`package.prune.failed`), and the
+ *          never fails the publish: it is audited (`package.prune.failed`), and the
  *          next stable publish retries it, as does the backfill (`prunePackages`, the admin and CI
  *          routes and `pkey feeds prune`), which dry-runs by default.
  *   IDEMPOTENT  Every statement is idempotent, a pruned version is no longer a candidate, and a
@@ -606,7 +606,7 @@ export async function applyPackagePrune(
   return out;
 }
 
-/** Log and audit a prune that failed (never thrown back at the publish). */
+/** Audit a prune that failed (never thrown back at the publish). */
 async function recordFailure(
   db: Db,
   product: string,
@@ -615,15 +615,6 @@ async function recordFailure(
   detail: string,
   now: number,
 ): Promise<void> {
-  console.error(
-    JSON.stringify({
-      event: "package.prune.failed",
-      product,
-      package: target,
-      stable,
-      error: detail,
-    }),
-  );
   try {
     await appendAudit(db, {
       product,
@@ -643,7 +634,8 @@ async function recordFailure(
         ),
     });
   } catch {
-    // The log line above is the record of last resort.
+    // Nothing else to write to: the Worker never logs to the console (R12), and the next
+    // stable publish or the backfill retries the prune whether or not this row landed.
   }
 }
 
@@ -656,7 +648,7 @@ export type AutoPruneOutcome =
 /**
  * The automatic prune, after a package version was published and committed: when it is a final
  * release on `stable` and the product keeps retention on, prune that package's builds of main
- * below it. NEVER throws: a failure is logged and audited, and the next stable publish (or the
+ * below it. NEVER throws: a failure is audited, and the next stable publish (or the
  * backfill) retries it.
  */
 export async function pruneAfterStablePublish(

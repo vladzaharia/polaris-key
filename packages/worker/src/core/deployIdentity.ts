@@ -16,7 +16,8 @@ import { RELEASE_TAG } from "./platformOps.js";
  * `*_index_assertion.sql`), so adding a migration without bumping this fails the suite. Compared
  * with `d1_migrations` to say whether the database has caught up with the code.
  */
-export const LATEST_MIGRATION = "0078_hosted_assets.sql";
+// Placeholder number until the lead assigns one: rename the file and this together.
+export const LATEST_MIGRATION = "00XX_release_package_prune.sql";
 
 const GIT_SHA = /^[0-9a-f]{40}$/;
 

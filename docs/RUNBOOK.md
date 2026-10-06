@@ -657,8 +657,9 @@ Owner request 2026-10-06. These decisions were made by the lead under delegated 
   points at (a promote or pin) is kept. So is any candidate another row names (a revocation, a
   pack pin or hold, a download token). Both show as `kept` in the report.
 - **When.** The prune runs automatically in the Worker, right after the stable version is
-  committed, for that package only. A failure never fails the publish. It is logged
-  (`package.prune.failed` on the Worker's log) and audited under the same action. The next stable
+  committed, for that package only. A failure never fails the publish. It is recorded
+  in the product's audit as `package.prune.failed`, with the error. The Worker never logs to the
+  console (R12), so the audit is the log. The next stable
   publish retries it, because each run prunes every remaining candidate. The backfill below also
   retries it. Every statement is idempotent, so running it twice is harmless.
 - **The setting.** `release.packages.prunePrereleases` (settings registry; table

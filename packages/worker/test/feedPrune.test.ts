@@ -321,7 +321,6 @@ async function rendered(eco: PackageEcosystem): Promise<string> {
 }
 
 beforeEach(async () => {
-  vi.spyOn(console, "error").mockImplementation(() => undefined);
   db = makeTestDb();
   env = makeEnv(new KvMock(), [P]);
   seq = 0;
@@ -742,7 +741,7 @@ describe("the automatic prune", () => {
     ).toBe(true);
   });
 
-  it("never throws: a failing prune is logged and audited, and the next run retries it", async () => {
+  it("never throws: a failing prune is audited, and the next run retries it", async () => {
     await publishRow("npm", "1.1.0", "stable");
     const failing: Db = new Proxy(db, {
       get(target, prop, receiver) {
@@ -777,7 +776,6 @@ describe("the automatic prune", () => {
       "npm:@acme/sdk@1.1.0-main.1",
       "npm:@acme/sdk@1.1.0-main.2",
     ]);
-    expect(console.error).toHaveBeenCalled();
 
     // A read that throws fails the whole plan: still no throw, still audited.
     const broken: Db = new Proxy(db, {
