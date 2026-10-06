@@ -112,7 +112,10 @@ export function WelcomeHeader({
         <p className="text-sm text-fg-muted">
           {welcome.repo
             ? `Registered from ${welcome.repo}. Its signing key was made just now.`
-            : "Its signing key was made just now."}
+            : "Its signing key was made just now."}{" "}
+          {/* UX-59: the key is for the app's trust pins, not for release tooling. */}
+          Pin this key in your app. Releases are signed by a separate CI release
+          key.
         </p>
         <p className="flex min-w-0 items-center gap-1">
           <SignedBadge kid={welcome.kid} by="product signing key" />
