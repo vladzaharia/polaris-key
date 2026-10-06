@@ -151,6 +151,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products/slug-check", ["get"]],
     // HA-05: the hosted-asset status read the console's Presentation page uses.
     ["/manage/api/products/{product}/assets", ["get"]],
+    // HA-08: the operator's "mirror now" for release files.
+    ["/manage/api/products/{product}/assets/mirror", ["post"]],
     // LX-26: the licence reads and writes that carry the derived holder (DELETE stays narrative).
     ["/manage/api/products/{product}/license/licenses", ["get", "post"]],
     [

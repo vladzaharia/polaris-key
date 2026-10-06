@@ -63,6 +63,7 @@ import { refreshPlatformSettings } from "./core/platformSettings.js";
 import { sweepLazyDeltas } from "./services/release/packs/deltas/sweep.js";
 import { buildHooks } from "./core/hooks.js";
 import { recheckHostedAssets } from "./core/hostedAssetPulls.js";
+import { backfillReleaseMirrors } from "./services/release/mirror.js";
 import {
   JOB_RUN_RETENTION_SECONDS,
   pruneHeartbeats,
@@ -416,6 +417,15 @@ export async function runScheduledMaintenance(
   // collector, which never touches a ref a row still holds.
   if (env)
     await step(report, "hostedAssets", () => recheckHostedAssets(env, db, now));
+
+  // HA-08: release files still owing a copy of ours (S-20 §6.8): on first deploy the backfill of
+  // every existing release, afterwards the retry of failed ones once their back-off elapsed, at
+  // most `MIRROR_BACKFILL_MAX_PER_RUN` per night, to `pkey-assets-<env>`. Before the collector,
+  // which never drops either ref a copy is held by.
+  if (env)
+    await step(report, "releaseMirrors", () =>
+      backfillReleaseMirrors(env, db, now),
+    );
 
   // PX-W16: account pictures nothing has used for a day (a disconnected provider's copy, an
   // upload never saved, a merged account's leftovers, a write that died half way).

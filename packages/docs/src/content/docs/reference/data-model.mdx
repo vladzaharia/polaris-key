@@ -101,6 +101,7 @@ this page or fails the freshness gate.
 | `release_native_uploads` | 0075_release_native_uploads.sql | `product`, `ecosystem`, `name_norm`, `version`, `deliverable_id`, `name`, `session_id`, `principal_id`, `principal_json`, `client`, `files_json`, `metadata_json`, `channel`, `state`, `error`, `release_id`, `touch_seq`, `created_at`, `updated_at` |
 | `release_package_prunes` | 0090_release_package_prune.sql | `product`, `ecosystem`, `name_norm`, `version`, `deliverable_id`, `release_id`, `stable`, `files`, `bytes`, `freed_bytes`, `pruned_at`, `pruned_by` |
 | `release_package_retention` | 0090_release_package_prune.sql | `product`, `prune_prereleases`, `version`, `updated_at`, `updated_by` |
+| `release_mirrors` | 00XX_release_mirrors.sql | `product`, `release_id`, `artifact_id`, `status`, `source`, `sha256`, `error`, `attempts`, `next_attempt_at`, `tried_at`, `modified_at` |
 
 ## distribution
 

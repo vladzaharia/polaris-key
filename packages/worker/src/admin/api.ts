@@ -287,10 +287,12 @@ async function handleProductScoped(
   }
 
   // HA-05: the product's hosted assets (`core/hostedAssetPulls.ts`). CORE, like `activity`: a
-  // product hosts its presentation icon whether or not it runs Distribution.
-  //   GET /products/<slug>/assets
+  // product hosts its presentation icon whether or not it runs Distribution. HA-08: the
+  // operator's "mirror now" for release files (`services/release/mirror.ts`).
+  //   GET  /products/<slug>/assets
+  //   POST /products/<slug>/assets/mirror
   if (resource === "assets") {
-    return handleHostedAssets(req, db, slug, rest.slice(1));
+    return handleHostedAssets(req, env, db, session, slug, rest.slice(1), now);
   }
 
   // Every device of the product, licensed or not. CORE: a product that issues no licenses (open

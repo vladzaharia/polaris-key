@@ -5,13 +5,16 @@
  * ingest (`core/hostedAssetPulls.ts`) to Release's GitHub App installation token
  * (`services/release/assetSource.ts`), and only the composition root may import both.
  *
- * Each message is one slot's pull, or one slot's ladder retry (a ready copy whose variants an
- * ingest could not build, rebuilt from the stored original). A refused pull (a guard, a 404, a
- * non-image) or a failed ladder is recorded on the slot's row with back-off and ACKNOWLEDGED:
- * retrying it through the queue would only hammer the source or the Images binding. A transient
- * store race is retried after a minute; an unexpected throw (D1 unavailable) is retried by the
- * queue and, past `max_retries`, lands in `pkey-assets-dlq-<env>`. Messages are processed one
- * after another: a batch is at most ten, each I/O-bound.
+ * Each message is one slot's pull, one slot's ladder retry (a ready copy whose variants an
+ * ingest could not build, rebuilt from the stored original), or one release file's mirror
+ * (HA-08, `services/release/mirror.ts`: a GitHub or external release file copied into the blob
+ * store and given an `r2` location). A refused pull (a guard, a 404, a non-image), a failed
+ * ladder or a refused mirror (a digest or size mismatch, corrupted bytes) is recorded on its row
+ * with back-off and ACKNOWLEDGED: retrying it through the queue would only hammer the source, the
+ * Images binding or GitHub. A transient store race is retried after a minute; an unexpected throw
+ * (D1 unavailable) is retried by the queue and, past `max_retries`, lands in
+ * `pkey-assets-dlq-<env>`. Messages are processed one after another: a batch is at most ten, each
+ * I/O-bound.
  */
 
 import type { Env } from "./env.js";
@@ -24,6 +27,10 @@ import {
 } from "./core/hostedAssetPulls.js";
 import type { FetchImpl } from "./core/safeFetch.js";
 import { resolveRepoAssetSource } from "./services/release/assetSource.js";
+import {
+  processReleaseMirror,
+  readReleaseMirrorMessage,
+} from "./services/release/mirror.js";
 
 /** The queue this consumer serves (`pkey-assets-<env>`); anything else is not ours. */
 export const ASSET_QUEUE_PREFIX = "pkey-assets-";
@@ -37,6 +44,21 @@ export async function handleAssetQueue(
   clock: () => number = () => Math.floor(Date.now() / 1000),
 ): Promise<void> {
   for (const message of batch.messages) {
+    const mirror = readReleaseMirrorMessage(message.body);
+    if (mirror && batch.queue.startsWith(ASSET_QUEUE_PREFIX)) {
+      const now = clock();
+      try {
+        const outcome = await processReleaseMirror(
+          { env, db, now, ...(fetchImpl ? { fetchImpl } : {}) },
+          mirror,
+        );
+        if (outcome === "retry") message.retry({ delaySeconds: 60 });
+        else message.ack();
+      } catch {
+        message.retry();
+      }
+      continue;
+    }
     const msg =
       readAssetPullMessage(message.body) ??
       readAssetLadderMessage(message.body);

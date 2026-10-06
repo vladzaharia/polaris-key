@@ -16,7 +16,10 @@
  *     bearer credential). This is P2-05's `serveArtifact` GitHub branch, unchanged.
  *   - `dl`: the legacy `/dl/<selector>/<binary>-<arch>[.dmg]` route, which resolves the selector
  *     LIVE against GitHub (`resolveSelector`, with the channel policy applied) and matches the
- *     asset by name; `?checksum=sha256` serves the published `.sha256` sidecar.
+ *     asset by name; `?checksum=sha256` serves the published `.sha256` sidecar. When the matched
+ *     asset's GitHub `digest` names a copy this product holds (HA-08's mirror, `mirror.ts`), that
+ *     copy is served from R2 instead of streaming the asset from GitHub: the same bytes, hash for
+ *     hash, under the route's own type and cache policy (`mirroredDownload`).
  *
  * Release maps its own upstream failures here, so no Release error type crosses the hook: a
  * withdrawn release or asset is "not at this location" (`null`, or a 404 for `dl`) and an
@@ -29,7 +32,12 @@ import type { Db, Env } from "../../core/platform.js";
 import type { ProductPublic } from "../../core/products.js";
 import type { CatalogLocation, CatalogSourceRef } from "../../core/hooks.js";
 import { notFound } from "../../core/errors.js";
-import { BYTES_HOST_TYPES } from "../../core/blobs.js";
+import {
+  blobKey,
+  blobResponse,
+  BYTES_HOST_TYPES,
+  hasRef,
+} from "../../core/blobs.js";
 import { isBytesHost } from "../../core/bytesHost.js";
 import { getReleaseConfig, isResolved, type ResolvedConfig } from "./config.js";
 import {
@@ -42,12 +50,15 @@ import {
 } from "./gateway.js";
 import type { FetchImpl } from "./githubApp.js";
 import {
+  assetSha256,
   fetchTextAsset,
   NotFoundError,
   streamAsset,
   UpstreamRateLimitedError,
   type Release,
+  type ReleaseAsset,
 } from "./github.js";
+import { releaseMirrorEnabled } from "./mirrorSwitch.js";
 import {
   dropCachedSignedUrl,
   getCachedSignedUrl,
@@ -104,7 +115,7 @@ export function parseLocations(
 
 /** The GitHub asset id a github location names: its `asset` (an id, or a file name in the
  *  release), else the row's own id (the sync keys artifacts by GitHub asset id). */
-async function githubAssetId(
+export async function githubAssetId(
   db: Db,
   a: ReleaseArtifactRow,
   asset: number | string | undefined,
@@ -317,6 +328,22 @@ async function serveLegacyDownload(
     return checksumSidecar(tok, cfg, release, asset.name, sel, fetchImpl);
   }
 
+  // Never the repo-chosen upstream `content_type` (R6-04).
+  const contentType =
+    ref.format === "dmg" ? "application/x-apple-diskimage" : ARTIFACT_CONTENT_TYPE;
+
+  // HA-08 (S-20 §6.8): the asset's own digest names a copy this product holds: serve that.
+  const mirrored = await mirroredDownload(
+    env,
+    db,
+    product.slug,
+    asset,
+    req,
+    contentType,
+    cacheHeader(sel),
+  );
+  if (mirrored) return mirrored;
+
   // The token is minted lazily and the signed storage URL is cached (P2-05, `ghCache.ts`), so
   // a `Range` chunk after the first request costs no GitHub API call.
   const repo = `${cfg.gh_owner}/${cfg.gh_repo}`;
@@ -326,14 +353,7 @@ async function serveLegacyDownload(
     cfg.gh_repo,
     asset.id,
     req,
-    {
-      filename: asset.name,
-      // Never the repo-chosen upstream `content_type` (R6-04).
-      contentType:
-        ref.format === "dmg"
-          ? "application/x-apple-diskimage"
-          : ARTIFACT_CONTENT_TYPE,
-    },
+    { filename: asset.name, contentType },
     fetchImpl,
     {
       get: () => getCachedSignedUrl(env, product.slug, repo, asset.id, now),
@@ -345,6 +365,47 @@ async function serveLegacyDownload(
   const headers = new Headers(res.headers);
   if (!headers.has("cache-control"))
     headers.set("cache-control", cacheHeader(sel));
+  return new Response(res.body, { status: res.status, headers });
+}
+
+/**
+ * The legacy download from Polaris Key's own copy (HA-08): when the matched asset carries a
+ * GitHub `digest` and this product holds a ref to `blobs/sha256/<digest>` (a mirrored copy, or
+ * the same bytes published to R2), the copy is served through `blobResponse`, which checks R2's
+ * stored checksum against the digest and answers Range, If-Range and If-None-Match. The route
+ * keeps its own type and cache policy (a moving selector is not immutable). `null` when there is
+ * no such copy, mirroring is off, or the object is missing: the caller streams from GitHub, as
+ * before. The digest is GitHub's own hash of the bytes, so the copy is the asset, byte for byte.
+ */
+async function mirroredDownload(
+  env: Env,
+  db: Db,
+  product: string,
+  asset: ReleaseAsset,
+  req: Request,
+  contentType: string,
+  cache: string,
+): Promise<Response | null> {
+  const digest = assetSha256(asset);
+  if (!digest || !env.BLOBS) return null;
+  const key = blobKey(digest);
+  if (!(await hasRef(db, product, key))) return null;
+  if (!(await releaseMirrorEnabled(env, db, product))) return null;
+  const res = await blobResponse(req, env.BLOBS, key, {
+    sha256: digest,
+    gated: false,
+    env,
+    filename: asset.name,
+  });
+  if (res.status === 404) {
+    await res.body?.cancel().catch(() => undefined);
+    return null;
+  }
+  // 416 keeps `no-store` and carries no type.
+  if (res.status === 416) return res;
+  const headers = new Headers(res.headers);
+  headers.set("cache-control", cache);
+  if (headers.has("content-type")) headers.set("content-type", contentType);
   return new Response(res.body, { status: res.status, headers });
 }
 

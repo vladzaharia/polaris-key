@@ -23,6 +23,7 @@
 --                    doubling to a 24-hour cap, as HA-05's pulls)
 --   next_attempt_at  when the file may be queued again (epoch seconds); NULL means now. Set when
 --                    a message is sent too, so two syncs in quick succession queue it once.
+--   tried_at         when the consumer last settled the file (ready or failed)
 --
 -- Whether a file is OWED is read from `release_artifacts` (a github or external location and no
 -- r2 one), never from this table: a descriptor that rewrites `locations_json` makes the file owed
@@ -42,10 +43,9 @@ CREATE TABLE IF NOT EXISTS release_mirrors (
   error            TEXT,
   attempts         INTEGER NOT NULL DEFAULT 0,
   next_attempt_at  INTEGER,
-  checked_at       INTEGER,
+  tried_at         INTEGER,
   modified_at      INTEGER NOT NULL,
   PRIMARY KEY (product, release_id, artifact_id),
-  FOREIGN KEY (product, release_id, artifact_id)
-    REFERENCES release_artifacts(product, release_id, artifact_id) ON DELETE CASCADE,
+  FOREIGN KEY (product, release_id, artifact_id) REFERENCES release_artifacts ON DELETE CASCADE,
   CHECK (status IN ('queued', 'ready', 'failed'))
 );
