@@ -451,18 +451,28 @@ describe("GET /api/discover (G24)", () => {
     ]);
   });
 
-  it("writes nothing: the whole database is identical before and after the listing", async () => {
+  it("writes nothing but its impression counts: every other table is identical before and after the listing", async () => {
     const env = portalEnv();
     const db = makeTestDb();
     await freeProduct(db, "mossgarden");
     await groupProduct(db, "aperture", "aperture-beta");
     const who = await platformAccount(env, db, ["aperture-beta"]);
 
+    // PS-04 (notes/S-21 §6.6): the route counts what it showed, in the two analytics tables
+    // alone; the evaluation itself stays a dry run (the refusing-database test above).
+    const ANALYTICS = ["storefront_daily", "storefront_seen"];
+    const without = (d: Record<string, unknown[]>) =>
+      Object.fromEntries(
+        Object.entries(d).filter(([t]) => !ANALYTICS.includes(t)),
+      );
     const before = await dump(db);
     const { status, body } = await list(env, db, who);
     expect(status).toBe(200);
     expect(body.offers).toHaveLength(2);
-    expect(await dump(db)).toEqual(before);
+    const after = await dump(db);
+    expect(without(after)).toEqual(without(before));
+    expect(after.storefront_daily).toHaveLength(2);
+    expect(after.storefront_seen).toHaveLength(2);
     expect(await getLicenseBySub(db, "mossgarden", SUB)).toBeNull();
   });
 
