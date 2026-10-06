@@ -93,23 +93,28 @@ func run(t: PKeyTestContext) -> void:
 	fractions.fill("1.5")
 	var long_text := "{\"config\":{\"k\":{\"value\":{\"" + long_name + "\":[" + ",".join(fractions) + "]}}}}"
 	var mem_before := OS.get_static_memory_usage()
+	var work_before := PKeyJson.path_bytes
 	var started := Time.get_ticks_msec()
 	var long_scan := PKeyJson.walk(long_text)
 	var elapsed := Time.get_ticks_msec() - started
+	var long_work := PKeyJson.path_bytes - work_before
 	var grown := OS.get_static_memory_usage() - mem_before
-	# The same bytes and numbers, but the long name is a sibling string, off every number's path:
-	# a linear walk costs about the same on both; one pointer string per number costs the name's
-	# length 8 000 times over on the first. Interleaved runs compared, so load cancels out.
+	# The same bytes and numbers, but the long name is a sibling string, off every number's path.
+	# Counted work (PKeyJson.path_bytes), not time, so load cannot move it: a linear walk resolves
+	# the long name once, so the long path costs exactly the pad's work plus the name's length
+	# once (31 999 more characters); one pointer string per number would cost it 8 000 times over.
 	var short_name := "b".repeat(long_name.length())
 	var pad_text := "{\"" + short_name + "\":\"\",\"config\":{\"k\":{\"value\":{\"x\":[" + ",".join(fractions) + "]}}}}"
-	var ratio_ms := PKeyTestFixtures.fastest_ms([func(): PKeyJson.walk(long_text), func(): PKeyJson.walk(pad_text)])
-	t.info("json pointer set: fastest of 3 — long path %.1f ms, same bytes off the path %.1f ms" % [ratio_ms[0], ratio_ms[1]])
+	work_before = PKeyJson.path_bytes
+	PKeyJson.walk(pad_text)
+	var pad_work := PKeyJson.path_bytes - work_before
+	t.info("json pointer set: long path walked in %d ms; path work %d characters, same bytes off the path %d" % [elapsed, long_work, pad_work])
 	var long_set: PKeyJson.PointerSet = long_scan["non_wire_integers"]
 	t.check("json pointer set stays linear: accepted", long_text.length() < 65536 and long_scan["error"] == "", str(long_scan["error"]))
 	t.check("json pointer set stays linear: 8000 numbers", long_set.size() == 8000)
 	t.check("json pointer set stays linear: lookup", long_set.has("/config/k/value/" + long_name + "/7999") and not long_set.has("/config/k/value/" + long_name + "/8000"))
 	t.check("json pointer set stays linear: memory", grown < 64 * 1024 * 1024, "grew %d bytes" % grown)
-	t.check("json pointer set stays linear: a long path costs at most 3× the same bytes off the path", ratio_ms[0] <= 3.0 * ratio_ms[1] + 25.0, "%.1f ms vs %.1f ms" % [ratio_ms[0], ratio_ms[1]])
+	t.check("json pointer set stays linear: a long path costs the same bytes off the path plus the name once (counted work)", pad_work > 0 and long_work <= pad_work + long_name.length(), "%d vs %d + %d characters" % [long_work, pad_work, long_name.length()])
 	t.check("json pointer set stays linear: no hang (guard 120 s)", elapsed < 120000, "%d ms" % elapsed)
 
 	# WIRE-CONTRACT-V3 §10: a real \u0000 escape becomes U+FFFD; an escaped backslash stays text.

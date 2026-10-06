@@ -81,6 +81,13 @@ describe("browser sessions", () => {
     const sessionBody = (await session.json()) as {
       csrfToken: string;
     };
+    // U-02: an account signed in on the browser device; logging out clears the binding.
+    await db.run(
+      "UPDATE devices SET subject = ? WHERE product = ? AND device_id = ?",
+      "ps_AAAAAAAAAAAAAAAAAAAAAA",
+      "djdl",
+      deviceId,
+    );
     const logout = await handleBrowserLogout(
       req("POST", "/djdl/auth/logout", {
         cookie: secondCookie!,
@@ -94,6 +101,7 @@ describe("browser sessions", () => {
     const after = await getDevice(db, "djdl", deviceId);
     expect(after?.status).toBe("deauthorized");
     expect(await env.HOT.get(`p:djdl:token:${device!.token_hash}`)).toBeNull();
+    expect(after?.subject ?? null).toBeNull();
   });
 
   // FIXED: `GET /<p>/session` used to swallow a catalog-construction failure and then skip

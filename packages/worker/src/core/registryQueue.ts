@@ -40,7 +40,8 @@ export type RenderReason =
   | "channel"
   | "settings"
   | "package-feeds"
-  | "rebuild";
+  | "rebuild"
+  | "prune";
 
 /**
  * The statement that enqueues (or re-enqueues) a render of one package deliverable of `product`
