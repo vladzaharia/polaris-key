@@ -69,6 +69,10 @@
       "title": "已达到设备上限",
       "message": "此许可证已用满所有设备。请替换一台设备以在此使用。"
     },
+    "key_entry_limit": {
+      "title": "密钥已无剩余输入次数",
+      "message": "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。"
+    },
     "license_disabled": {
       "title": "许可证已停用",
       "message": "此许可证已被停用。请联系开发者。"
@@ -700,6 +704,10 @@
     "enroll-disabled": {
       "title": "无免费许可证",
       "message": "此应用不提供免费许可证。请输入许可证密钥或登录。"
+    },
+    "key-entry-limit": {
+      "title": "密钥已无剩余输入次数",
+      "message": "此密钥在{product}中已没有剩余的输入次数。将它添加到你的账户后，{product}会改为让你登录。"
     },
     "refused": {
       "title": "激活被拒绝",

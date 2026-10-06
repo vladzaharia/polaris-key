@@ -42,16 +42,16 @@ func _tables(t: PKeyTestContext, copy: PKeyCopy) -> void:
 		if copy.activation_message(result, "x") != PKeyCopy.fill(e["message"], "x") or copy.activation_title(result) != e["title"]:
 			bad.append(result)
 	t.check("copy: every activation result reads its generated entry", bad.is_empty(), str(bad))
-	t.check("copy: table sizes", PKeyCoreCopy.COPY_CODES.size() >= 100 and PKeyCoreCopy.COPY_GATE.size() == 9 and PKeyCoreCopy.COPY_ACTIVATION.size() == 13, "%d/%d/%d" % [PKeyCoreCopy.COPY_CODES.size(), PKeyCoreCopy.COPY_GATE.size(), PKeyCoreCopy.COPY_ACTIVATION.size()])
+	t.check("copy: table sizes", PKeyCoreCopy.COPY_CODES.size() >= 100 and PKeyCoreCopy.COPY_GATE.size() == 9 and PKeyCoreCopy.COPY_ACTIVATION.size() == 14, "%d/%d/%d" % [PKeyCoreCopy.COPY_CODES.size(), PKeyCoreCopy.COPY_GATE.size(), PKeyCoreCopy.COPY_ACTIVATION.size()])
 	t.check("copy: PolarisKey core exposes the shared copy", PKeyCore.new().copy == PKeyCopy.shared())
 
 
 ## A code with no entry reads COPY_FALLBACK naming the code, never a raw body.
 func _fallback(t: PKeyTestContext, copy: PKeyCopy) -> void:
-	var m := copy.message("key_entry_limit")
-	t.check("copy: an unknown code reads the fallback naming it", m == "Something went wrong (key_entry_limit). Try again.", m)
-	t.check("copy: an unknown code reads the fallback title", copy.title("key_entry_limit") == PKeyCoreCopy.COPY_FALLBACK["title"])
-	t.check("copy: an unknown code has no copy", not copy.has("key_entry_limit") and not copy.has(null) and not copy.has(""))
+	var m := copy.message("brand_new_code")
+	t.check("copy: an unknown code reads the fallback naming it", m == "Something went wrong (brand_new_code). Try again.", m)
+	t.check("copy: an unknown code reads the fallback title", copy.title("brand_new_code") == PKeyCoreCopy.COPY_FALLBACK["title"])
+	t.check("copy: an unknown code has no copy", not copy.has("brand_new_code") and not copy.has(null) and not copy.has(""))
 	t.check("copy: a null code reads the fallback", copy.message(null) == "Something went wrong (). Try again.")
 	t.check("copy: detail is appended in parentheses", copy.message("forbidden", {}, "bound_elsewhere") == "You don't have permission to do that. (bound_elsewhere)")
 	t.check("copy: an unknown activation kind reads message()", copy.activation_message("unsupported") == copy.message("unsupported"))
@@ -121,7 +121,7 @@ func _kit(t: PKeyTestContext) -> void:
 	var core := PKeyCopy.shared()
 	t.check("kit: an error code reads the core copy", ui.for_code("device_limit") == PKeyCoreCopy.COPY_CODES["device_limit"]["message"], ui.for_code("device_limit"))
 	t.check("kit: a code only the core knows reads it", PKeyUiCopy.code_key("feed-rollback")[0] == "error_feed-rollback" and ui.for_code("feed-rollback") == PKeyCoreCopy.COPY_CODES["feed-rollback"]["message"])
-	t.check("kit: an unknown code keeps the generic line", ui.for_code("key_entry_limit") == ui.text("error_generic", "key_entry_limit"))
+	t.check("kit: an unknown code keeps the generic line", ui.for_code("brand_new_code") == ui.text("error_generic", "brand_new_code"))
 	t.check("kit: a commerce reason still wins", ui.for_code("forbidden", "bound_elsewhere") == PKeyUiCopy.DEFAULTS["reason_bound_elsewhere"])
 	t.check("kit: core placeholders are filled, never shown raw", not ui.for_code("license_owned").contains("{"))
 	core.set_overrides({"forbidden": "Core says no."})

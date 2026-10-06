@@ -69,6 +69,10 @@
       "title": "Límite de dispositivos alcanzado",
       "message": "Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí."
     },
+    "key_entry_limit": {
+      "title": "No quedan usos de la clave",
+      "message": "A esta clave no le quedan usos en {product}. Añádela a tu cuenta y {product} iniciará tu sesión."
+    },
     "license_disabled": {
       "title": "Licencia desactivada",
       "message": "Esta licencia se desactivó. Contacta con el desarrollador."
@@ -700,6 +704,10 @@
     "enroll-disabled": {
       "title": "Sin licencia gratuita",
       "message": "Esta app no ofrece una licencia gratuita. Escribe una clave de licencia o inicia sesión."
+    },
+    "key-entry-limit": {
+      "title": "No quedan usos de la clave",
+      "message": "A esta clave no le quedan usos en {product}. Añádela a tu cuenta y {product} iniciará tu sesión."
     },
     "refused": {
       "title": "Activación rechazada",

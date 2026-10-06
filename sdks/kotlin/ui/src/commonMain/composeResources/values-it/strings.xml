@@ -914,8 +914,6 @@
         <item quantity="many">%1$d di inserimenti della chiave rimasti</item>
         <item quantity="other">%1$d inserimenti della chiave rimasti</item>
     </plurals>
-    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_key_noEntries">Questa chiave non ha più inserimenti disponibili in %1$s. Aggiungila al tuo account e %1$s ti farà accedere in quel modo.</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">Salta per ora</string>
     <string name="signin_key_skip__macos">Salta per ora</string>
@@ -1185,6 +1183,10 @@
     <string name="core_codes_device_limit_title">Limite di dispositivi raggiunto</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">Questa licenza è già in uso su tutti i dispositivi consentiti. Sostituisci un dispositivo per usarla qui.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_limit_title">Nessun inserimento rimasto</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_key_entry_limit_message">Questa chiave non ha più inserimenti disponibili in %1$s. Aggiungila al tuo account e %1$s ti farà accedere in quel modo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_title">Licenza disattivata</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1813,6 +1815,10 @@
     <string name="core_activation_enroll_disabled_title">Nessuna licenza gratuita</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_enroll_disabled_message">Questa app non offre una licenza gratuita. Inserisci una chiave di licenza o accedi.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_key_entry_limit_title">Nessun inserimento rimasto</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=product. -->
+    <string name="core_activation_key_entry_limit_message">Questa chiave non ha più inserimenti disponibili in %1$s. Aggiungila al tuo account e %1$s ti farà accedere in quel modo.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">Attivazione rifiutata</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

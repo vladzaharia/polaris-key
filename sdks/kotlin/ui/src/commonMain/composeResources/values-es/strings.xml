@@ -914,8 +914,6 @@
         <item quantity="many">Quedan %1$d de usos de la clave</item>
         <item quantity="other">Quedan %1$d usos de la clave</item>
     </plurals>
-    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_key_noEntries">A esta clave no le quedan usos en %1$s. Añádela a tu cuenta y %1$s iniciará tu sesión.</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">Omitir por ahora</string>
     <string name="signin_key_skip__macos">Omitir por ahora</string>
@@ -1185,6 +1183,10 @@
     <string name="core_codes_device_limit_title">Límite de dispositivos alcanzado</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">Esta licencia ya está en todos sus dispositivos. Reemplaza un dispositivo para usarla aquí.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_limit_title">No quedan usos de la clave</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_key_entry_limit_message">A esta clave no le quedan usos en %1$s. Añádela a tu cuenta y %1$s iniciará tu sesión.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_title">Licencia desactivada</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1813,6 +1815,10 @@
     <string name="core_activation_enroll_disabled_title">Sin licencia gratuita</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_enroll_disabled_message">Esta app no ofrece una licencia gratuita. Escribe una clave de licencia o inicia sesión.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_key_entry_limit_title">No quedan usos de la clave</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=product. -->
+    <string name="core_activation_key_entry_limit_message">A esta clave no le quedan usos en %1$s. Añádela a tu cuenta y %1$s iniciará tu sesión.</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">Activación rechazada</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

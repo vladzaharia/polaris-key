@@ -1946,11 +1946,6 @@
       "role": "body",
       "note": "License key step (SIGN-IN.md §3.9). Arguments: {left} = how many are left, as a number."
     },
-    "signin.key.noEntries": {
-      "value": "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
-      "role": "body",
-      "note": "License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
-    },
     "signin.key.skip": {
       "value": "Skip for now",
       "role": "button",

@@ -2453,11 +2453,6 @@ msgstr[0] "{left} inserimento della chiave rimasto"
 msgstr[1] "{left} di inserimenti della chiave rimasti"
 msgstr[2] "{left} inserimenti della chiave rimasti"
 
-#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
-#. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
-msgid "signin.key.noEntries"
-msgstr "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo."
-
 #. Skip for now
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"
@@ -3171,6 +3166,16 @@ msgstr "Limite di dispositivi raggiunto"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_limit.message"
 msgstr "Questa licenza è già in uso su tutti i dispositivi consentiti. Sostituisci un dispositivo per usarla qui."
+
+#. No key entries left
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.key_entry_limit.title"
+msgstr "Nessun inserimento rimasto"
+
+#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.key_entry_limit.message"
+msgstr "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo."
 
 #. License disabled
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4741,6 +4746,16 @@ msgstr "Nessuna licenza gratuita"
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.enroll-disabled.message"
 msgstr "Questa app non offre una licenza gratuita. Inserisci una chiave di licenza o accedi."
+
+#. No key entries left
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.key-entry-limit.title"
+msgstr "Nessun inserimento rimasto"
+
+#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.key-entry-limit.message"
+msgstr "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo."
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

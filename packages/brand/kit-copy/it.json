@@ -392,7 +392,6 @@
     "signin.key.keep": "Conserva {product} in un account",
     "signin.key.entries": "{left} di {limit} inserimenti della chiave rimasti · Questo sarà l'inserimento {n}",
     "signin.key.entriesLeftShort": "{left, plural, one {# inserimento della chiave rimasto} many {# di inserimenti della chiave rimasti} other {# inserimenti della chiave rimasti}}",
-    "signin.key.noEntries": "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo.",
     "signin.key.skip": "Salta per ora",
     "signin.key.ownedSignIn": "Accedi a quell'account",
     "signin.key.differentKey": "Usa una chiave diversa",

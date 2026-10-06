@@ -95,8 +95,8 @@ final class ErrorCopyTests: XCTestCase {
             code: ErrorCode.licenseOwned, status: 403, message: "{\"error\":\"license_owned\"}")
         XCTAssertEqual(owned.message, ErrorCopy.message(ErrorCode.licenseOwned))
         XCTAssertEqual(owned.title, COPY_CODES["license_owned"]!.title)
-        let novel = ActivationResult.refused(code: "key_entry_limit", status: 403, message: "raw")
-        XCTAssertEqual(novel.message, "Activation was refused (key_entry_limit).")
+        let novel = ActivationResult.refused(code: "brand_new_code", status: 403, message: "raw")
+        XCTAssertEqual(novel.message, "Activation was refused (brand_new_code).")
         XCTAssertEqual(novel.title, "Activation refused")
         XCTAssertNil(ActivationResult.ok(token: "t", schemaVersion: 1).message)
     }

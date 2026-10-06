@@ -2443,11 +2443,6 @@ msgid_plural "signin.key.entriesLeftShort"
 msgstr[0] ""
 msgstr[1] ""
 
-#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
-#. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
-msgid "signin.key.noEntries"
-msgstr ""
-
 #. Skip for now
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"
@@ -3159,6 +3154,16 @@ msgstr ""
 #. This license is already on all its devices. Replace a device to use it here.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_limit.message"
+msgstr ""
+
+#. No key entries left
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.key_entry_limit.title"
+msgstr ""
+
+#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.key_entry_limit.message"
 msgstr ""
 
 #. License disabled
@@ -4729,6 +4734,16 @@ msgstr ""
 #. This app doesn't offer a free license. Enter a license key or sign in.
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.enroll-disabled.message"
+msgstr ""
+
+#. No key entries left
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.key-entry-limit.title"
+msgstr ""
+
+#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.key-entry-limit.message"
 msgstr ""
 
 #. Activation refused

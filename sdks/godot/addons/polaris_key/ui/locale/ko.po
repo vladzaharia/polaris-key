@@ -2435,11 +2435,6 @@ msgid "signin.key.entriesLeftShort"
 msgid_plural "signin.key.entriesLeftShort"
 msgstr[0] "키 등록 {left}회 남음"
 
-#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
-#. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
-msgid "signin.key.noEntries"
-msgstr "이 키는 {product}에서 남은 등록 횟수가 없어요. 계정에 추가하면 {product}에서 로그인으로 사용할 수 있어요."
-
 #. Skip for now
 #. License key step (SIGN-IN.md §3.9).
 msgid "signin.key.skip"
@@ -3151,6 +3146,16 @@ msgstr "기기 한도 도달"
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.device_limit.message"
 msgstr "이 라이선스는 이미 모든 기기에서 사용 중이에요. 여기에서 사용하려면 기기를 교체하세요."
+
+#. No key entries left
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.key_entry_limit.title"
+msgstr "남은 키 등록 횟수 없음"
+
+#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.key_entry_limit.message"
+msgstr "이 키는 {product}에서 남은 등록 횟수가 없어요. 계정에 추가하면 {product}에서 로그인으로 사용할 수 있어요."
 
 #. License disabled
 #. Core copy (conformance/parity/copy.en.json, codes).
@@ -4721,6 +4726,16 @@ msgstr "무료 라이선스 없음"
 #. Core copy (conformance/parity/copy.en.json, activation).
 msgid "core.activation.enroll-disabled.message"
 msgstr "이 앱은 무료 라이선스를 제공하지 않아요. 라이선스 키를 입력하거나 로그인하세요."
+
+#. No key entries left
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.key-entry-limit.title"
+msgstr "남은 키 등록 횟수 없음"
+
+#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.key-entry-limit.message"
+msgstr "이 키는 {product}에서 남은 등록 횟수가 없어요. 계정에 추가하면 {product}에서 로그인으로 사용할 수 있어요."
 
 #. Activation refused
 #. Core copy (conformance/parity/copy.en.json, activation).

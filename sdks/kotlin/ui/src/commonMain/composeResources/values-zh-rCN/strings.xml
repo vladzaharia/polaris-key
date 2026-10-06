@@ -896,8 +896,6 @@
     <plurals name="signin_key_entriesLeftShort">
         <item quantity="other">还剩%1$d次密钥输入机会</item>
     </plurals>
-    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
-    <string name="signin_key_noEntries">此密钥在%1$s中已没有剩余的输入次数。将它添加到你的账户后，%1$s会改为让你登录。</string>
     <!-- License key step (SIGN-IN.md §3.9). -->
     <string name="signin_key_skip">暂时跳过</string>
     <string name="signin_key_skip__macos">暂时跳过</string>
@@ -1165,6 +1163,10 @@
     <string name="core_codes_device_limit_title">已达到设备上限</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_device_limit_message">此许可证已用满所有设备。请替换一台设备以在此使用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_limit_title">密钥已无剩余输入次数</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_key_entry_limit_message">此密钥在%1$s中已没有剩余的输入次数。将它添加到你的账户后，%1$s会改为让你登录。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_license_disabled_title">许可证已停用</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
@@ -1793,6 +1795,10 @@
     <string name="core_activation_enroll_disabled_title">无免费许可证</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_enroll_disabled_message">此应用不提供免费许可证。请输入许可证密钥或登录。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_key_entry_limit_title">密钥已无剩余输入次数</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=product. -->
+    <string name="core_activation_key_entry_limit_message">此密钥在%1$s中已没有剩余的输入次数。将它添加到你的账户后，%1$s会改为让你登录。</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). -->
     <string name="core_activation_refused_title">激活被拒绝</string>
     <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->

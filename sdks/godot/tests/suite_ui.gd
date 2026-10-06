@@ -454,8 +454,8 @@ func _activation_copy(t: PKeyTestContext) -> void:
 	var c := PKeyUiCopy.new()
 	var refused := PKeyActivationController.message_for(PKeyActivationResult.of(PKeyActivationResult.KIND_REFUSED, &"registration_closed", "raw body", 403))
 	t.check("copy: refused registration_closed reads its own copy", refused[0] == "error_registration_closed")
-	var unknown := PKeyActivationController.message_for(PKeyActivationResult.of(PKeyActivationResult.KIND_REFUSED, &"key_entry_limit", "raw body", 403))
-	t.check("copy: an unknown code falls back to the generic line with the code", unknown == ["error_generic", "key_entry_limit"] and c.text(unknown[0], unknown[1]).contains("key_entry_limit") and not c.text(unknown[0], unknown[1]).contains("raw body"))
+	var unknown := PKeyActivationController.message_for(PKeyActivationResult.of(PKeyActivationResult.KIND_REFUSED, &"brand_new_code", "raw body", 403))
+	t.check("copy: an unknown code falls back to the generic line with the code", unknown == ["error_generic", "brand_new_code"] and c.text(unknown[0], unknown[1]).contains("brand_new_code") and not c.text(unknown[0], unknown[1]).contains("raw body"))
 	for code in ["registration_closed", "attestation_required", "attestation_rejected", "attestation_unavailable", "managed_by_admin", "not_entitled", "license_expired", "catalog_unavailable", "value_not_representable", "document_not_representable", "mint-unavailable", "unavailable", "pack-not-entitled", "pack-not-pinned", "pack-revoked", "pack-type-unsupported", "pack-no-variant", "plan-insufficient-disk", "network-error", "timeout", "no-token"]:
 		t.check("copy: %s has its own message" % code, PKeyUiCopy.code_key(code)[0] == "error_" + code)
 	for code in PKeyConstants.ERROR_CODE_VALUES:

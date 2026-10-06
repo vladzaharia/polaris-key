@@ -392,7 +392,6 @@
     "signin.key.keep": "Guardar {product} en una cuenta",
     "signin.key.entries": "Quedan {left} de {limit} usos de la clave · Este será el uso {n}",
     "signin.key.entriesLeftShort": "{left, plural, one {Queda # uso de la clave} many {Quedan # de usos de la clave} other {Quedan # usos de la clave}}",
-    "signin.key.noEntries": "A esta clave no le quedan usos en {product}. Añádela a tu cuenta y {product} iniciará tu sesión.",
     "signin.key.skip": "Omitir por ahora",
     "signin.key.ownedSignIn": "Iniciar sesión en esa cuenta",
     "signin.key.differentKey": "Usar otra clave",

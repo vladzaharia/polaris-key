@@ -26,6 +26,7 @@ public enum ErrorCode {
     public static let valueNotRepresentable = "value_not_representable"
     public static let documentNotRepresentable = "document_not_representable"
     public static let deviceLimit = "device_limit"
+    public static let keyEntryLimit = "key_entry_limit"
     public static let licenseDisabled = "license_disabled"
     public static let licenseExpired = "license_expired"
     public static let notEntitled = "not_entitled"
@@ -182,6 +183,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "value_not_representable",
     "document_not_representable",
     "device_limit",
+    "key_entry_limit",
     "license_disabled",
     "license_expired",
     "not_entitled",
@@ -338,6 +340,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "value_not_representable": "wire",
     "document_not_representable": "wire",
     "device_limit": "wire",
+    "key_entry_limit": "wire",
     "license_disabled": "wire",
     "license_expired": "wire",
     "not_entitled": "wire",
@@ -1129,6 +1132,7 @@ public let ACTIVATION_RESULT_VALUES: [String] = [
     "rate-limited",
     "unauthorized",
     "enroll-disabled",
+    "key-entry-limit",
     "refused",
     "error",
 ]

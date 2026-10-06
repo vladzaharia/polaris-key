@@ -153,6 +153,7 @@ class ErrorCode:
     VALUE_NOT_REPRESENTABLE: Final = "value_not_representable"
     DOCUMENT_NOT_REPRESENTABLE: Final = "document_not_representable"
     DEVICE_LIMIT: Final = "device_limit"
+    KEY_ENTRY_LIMIT: Final = "key_entry_limit"
     LICENSE_DISABLED: Final = "license_disabled"
     LICENSE_EXPIRED: Final = "license_expired"
     NOT_ENTITLED: Final = "not_entitled"
@@ -309,6 +310,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "value_not_representable",
     "document_not_representable",
     "device_limit",
+    "key_entry_limit",
     "license_disabled",
     "license_expired",
     "not_entitled",
@@ -467,6 +469,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "value_not_representable": "wire",
         "document_not_representable": "wire",
         "device_limit": "wire",
+        "key_entry_limit": "wire",
         "license_disabled": "wire",
         "license_expired": "wire",
         "not_entitled": "wire",
@@ -1353,6 +1356,7 @@ ACTIVATION_RESULT_VALUES: Tuple[str, ...] = (
     "rate-limited",
     "unauthorized",
     "enroll-disabled",
+    "key-entry-limit",
     "refused",
     "error",
 )

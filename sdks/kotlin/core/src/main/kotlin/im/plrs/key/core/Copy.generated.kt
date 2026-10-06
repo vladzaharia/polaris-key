@@ -39,6 +39,7 @@ public val COPY_CODES: Map<String, CopyEntry> = mapOf(
     "value_not_representable" to CopyEntry("Value not accepted", "A value couldn't be saved. Change it and try again."),
     "document_not_representable" to CopyEntry("Service problem", "The service couldn't prepare your settings. Contact the developer."),
     "device_limit" to CopyEntry("Device limit reached", "This license is already on all its devices. Replace a device to use it here."),
+    "key_entry_limit" to CopyEntry("No key entries left", "This key has no entries left in {product}. Add it to your account and {product} signs you in instead."),
     "license_disabled" to CopyEntry("License disabled", "This license has been disabled. Contact the developer."),
     "license_expired" to CopyEntry("License expired", "This license has expired. Renew it to continue."),
     "not_entitled" to CopyEntry("Not included", "Your license doesn't include this."),
@@ -204,6 +205,7 @@ public val COPY_ACTIVATION: Map<String, CopyEntry> = mapOf(
     "rate-limited" to CopyEntry("Too many attempts", "Too many attempts. Wait a moment and try again."),
     "unauthorized" to CopyEntry("Key not accepted", "That license key wasn't accepted. Check it and try again."),
     "enroll-disabled" to CopyEntry("No free license", "This app doesn't offer a free license. Enter a license key or sign in."),
+    "key-entry-limit" to CopyEntry("No key entries left", "This key has no entries left in {product}. Add it to your account and {product} signs you in instead."),
     "refused" to CopyEntry("Activation refused", "Activation was refused ({code})."),
     "error" to CopyEntry("Activation failed", "Activation didn't finish. Check your connection and try again."),
 )

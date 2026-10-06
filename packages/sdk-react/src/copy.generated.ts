@@ -95,6 +95,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "This license is already on all its devices. Replace a device to use it here.",
   },
+  key_entry_limit: {
+    title: "No key entries left",
+    message:
+      "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
+  },
   license_disabled: {
     title: "License disabled",
     message: "This license has been disabled. Contact the developer.",
@@ -797,6 +802,11 @@ export const COPY_ACTIVATION: Readonly<Record<string, CopyEntry>> = {
     title: "No free license",
     message:
       "This app doesn't offer a free license. Enter a license key or sign in.",
+  },
+  "key-entry-limit": {
+    title: "No key entries left",
+    message:
+      "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
   },
   refused: {
     title: "Activation refused",

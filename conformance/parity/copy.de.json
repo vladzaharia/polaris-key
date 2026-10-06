@@ -69,6 +69,10 @@
       "title": "Gerätelimit erreicht",
       "message": "Diese Lizenz ist bereits auf allen zulässigen Geräten in Gebrauch. Ersetzen Sie ein Gerät, um sie hier zu verwenden."
     },
+    "key_entry_limit": {
+      "title": "Keine Schlüsseleingaben mehr",
+      "message": "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an."
+    },
     "license_disabled": {
       "title": "Lizenz deaktiviert",
       "message": "Diese Lizenz wurde deaktiviert. Wenden Sie sich an den Entwickler."
@@ -700,6 +704,10 @@
     "enroll-disabled": {
       "title": "Keine kostenlose Lizenz",
       "message": "Diese App bietet keine kostenlose Lizenz an. Geben Sie einen Lizenzschlüssel ein oder melden Sie sich an."
+    },
+    "key-entry-limit": {
+      "title": "Keine Schlüsseleingaben mehr",
+      "message": "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an."
     },
     "refused": {
       "title": "Aktivierung abgelehnt",

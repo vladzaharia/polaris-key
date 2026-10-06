@@ -392,7 +392,6 @@
     "signin.key.keep": "{product} in einem Konto aufbewahren",
     "signin.key.entries": "Noch {left} von {limit} Schlüsseleingaben · Dies wird Eingabe {n}",
     "signin.key.entriesLeftShort": "{left, plural, one {Noch # Schlüsseleingabe} other {Noch # Schlüsseleingaben}}",
-    "signin.key.noEntries": "Für diesen Schlüssel sind in {product} keine Eingaben mehr übrig. Fügen Sie ihn Ihrem Konto hinzu, dann meldet {product} Sie stattdessen an.",
     "signin.key.skip": "Vorerst überspringen",
     "signin.key.ownedSignIn": "Bei diesem Konto anmelden",
     "signin.key.differentKey": "Anderen Schlüssel verwenden",
