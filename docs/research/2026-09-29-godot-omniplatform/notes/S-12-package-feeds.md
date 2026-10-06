@@ -497,6 +497,11 @@ Yank semantics follow each protocol [V]:
 
 There is no delete in tier 1.
 
+> Amended 2026-10-06 (lead decision): feed retention prunes builds of main; see THREAT-MODEL
+> "Feed retention". When a version is published on `stable`, a product that opted in (the
+> platform's own feeds always do) deletes that package's `main`-channel prereleases below it,
+> leaving a tombstone so the version number is still never reused. No other version is deleted.
+
 ### 8.3 Dependency confusion
 
 1. **Tenants cannot shadow each other.** Every URL carries the owner segment, and a product's token
@@ -546,6 +551,11 @@ There is no delete in tier 1.
 Storage is dominated by OCI layers. The `retention` setting exists for untagged OCI manifests; no
 published version is ever removed by retention. Edge caching of public immutable bytes keeps
 Class B reads to the cache-miss rate.
+
+> Amended 2026-10-06 (lead decision): feed retention prunes builds of main; see THREAT-MODEL
+> "Feed retention". The OCI `retention` setting above still removes nothing, but the builds of
+> main below a stable release are deleted and their bytes reclaimed by the blob collector once
+> nothing else references them, which bounds the storage the `main` channel's builds hold.
 
 ## 9. Open-source reuse
 

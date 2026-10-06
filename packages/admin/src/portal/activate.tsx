@@ -4,12 +4,12 @@ import { ActivateDialog } from "./components/ActivateDialog.js";
 /**
  * The Activate license modal is mounted once, in the shell (PORTAL.md §5.2 `ActivateDialog`),
  * and opened from anywhere: the header action, the phone bar's pill, ⌘K, the empty library,
- * the not-found page and `/activate?key=…`.
+ * the not-found page and `/activate#key=…`.
  */
 export interface ActivateRequest {
   /** A key to fill in (the deep link). */
   key?: string;
-  /** The product slug an app sent along (`/activate?key=…&product=…`). */
+  /** The product slug an app sent along (`/activate?product=…#key=…`). */
   product?: string;
 }
 

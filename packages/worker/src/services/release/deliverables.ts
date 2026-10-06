@@ -72,10 +72,12 @@ export function manifestDeliverableStatements(
 /**
  * The package rows (F-03): upsert each declared package unless an operator owns its row or the
  * id is held by another kind, then drop the manifest-owned rows of packages no longer declared —
- * except one with any release. A package version is unique forever (`release_packages` is never
- * deleted), so its deliverable row stays for the feeds to keep serving its history; and a
- * package's ecosystem and name never change under its released versions (`release_exists` is
- * the ingest's answer to a re-declared name, which publishes under the old one).
+ * except one with any release. A package version is unique forever, so its deliverable row stays
+ * for the feeds to keep serving its history; and a package's ecosystem and name never change
+ * under its released versions (`release_exists` is the ingest's answer to a re-declared name,
+ * which publishes under the old one). Feed retention (`packages/prune.ts`) deletes the
+ * `release_packages` rows of builds of main, but only below a live stable release, which is
+ * never pruned: a package that had any prune keeps a release row, so this lock still holds.
  */
 function packageDeliverableStatements(
   product: string,

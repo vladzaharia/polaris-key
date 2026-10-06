@@ -22,7 +22,8 @@
  *                                          feed that requires one (the default; always for the
  *                                          system product)
  *   release_exists      package-version-taken  the version exists, in any state: unique forever,
- *                                          so a yanked or deprecated version is a tombstone
+ *                                          so a yanked or deprecated version is a tombstone, and
+ *                                          so is a pruned build of main (`prune.ts`)
  *   (and the app path's seq, r2 and race rules, unchanged)
  *
  * The Worker never unzips (the P2b-05 rule): the metadata is the CLI's extract, checked for shape
@@ -58,6 +59,7 @@ import { guardStatement, RELEASE_DESCRIBED_BY_SQL } from "../guard.js";
 import { readAppDeliverable } from "../descriptor.js";
 import { readPackDeliverableIds } from "../packs/deliverables.js";
 import { packageFileDigests, type FileDigests } from "./digests.js";
+import { prunedVersion, pruneAfterStablePublish } from "./prune.js";
 
 /** Why a package ingest was refused (the response's `reason`). */
 export type PackageRefusalReason =
@@ -363,6 +365,21 @@ export async function ingestPackageDescriptor(
       { status: 409 },
     );
   }
+  // Feed retention (`prune.ts`): a pruned build of main is gone from every table but its
+  // tombstone, and stays unique forever.
+  const pruned = await prunedVersion(
+    db,
+    product,
+    pkg.ecosystem,
+    nameNorm,
+    d.version,
+  );
+  if (pruned)
+    return refuse(
+      "package-version-taken",
+      `${pkg.name} ${d.version} was pruned when ${pruned.stable} was released; a package version is unique forever, so publish a new version.`,
+      { status: 409 },
+    );
   const existing = await db.first<{ release_id: string }>(
     `SELECT release_id FROM release_metadata
       WHERE product = ? AND (release_id = ? OR (deliverable_id = ? AND version = ?))`,
@@ -611,6 +628,22 @@ export async function ingestPackageDescriptor(
       ),
       retryable: true,
     };
+  // Feed retention: a final release on `stable` prunes this package's builds of main below it,
+  // now that it is committed. It never throws: a failure is audited, and the next
+  // stable publish retries it (`prune.ts`).
+  await pruneAfterStablePublish(
+    db,
+    env,
+    product,
+    {
+      deliverableId: d.deliverable,
+      ecosystem: pkg.ecosystem,
+      name: pkg.name,
+      version: d.version,
+      channel: d.channel ?? null,
+    },
+    now,
+  );
   return {
     ok: true,
     releaseId,
