@@ -10,7 +10,8 @@
 //                     (never the legacy `release/dl` alias), streamed with the device bearer and
 //                     the `X-PKey-*` headers, checked against the size and SHA-256 the verified
 //                     release record states BEFORE the file appears at `to` (no partial file is
-//                     ever left there). Journals `update_downloaded`.
+//                     ever left there). Streams through the client's transport into `<to>.part`
+//                     and resumes it with `Range` + `If-Range`. Journals `update_downloaded`.
 //   feedUrl(_:...)    the updater feeds from discovery's `update.endpoints` templates: appcast,
 //                     winsparkle, velopack, appInstaller, zsync. A product that publishes no such
 //                     template answers the typed N/A (`product`).
@@ -229,73 +230,187 @@ extension UpdateClient {
         }
     }
 
-    /// A verified download of one build (§3.6). `size` and `sha256` come from the verified
-    /// release record. Throws `PolarisError`: `not-configured` (no `builds` template),
-    /// `payload-mismatch` (size or hash), `network`, or the server's code.
+    /// A verified download of one build (§3.6, `release.fetch`). `size` and `sha256` come from
+    /// the verified release record. The bytes stream through the client's transport into
+    /// `<to>.part`; a later call resumes it with `Range: bytes=<have>-` and `If-Range` naming the
+    /// payload's strong ETag (its quoted SHA-256). A 206 appends (what is already there is
+    /// re-hashed, never trusted), a 200 means the representation changed and starts over, and a
+    /// 416 means the part is already whole. Size and SHA-256 are checked BEFORE the part becomes
+    /// `to`, so a partial or unverified file is never left there.
+    ///
+    /// Throws `PolarisError`: `not-configured` (no `builds` template), `payload-mismatch` (size
+    /// or hash; the part is deleted), `network` (the transfer stopped; the part is kept for the
+    /// next call), or a refusal's registered wire code from its body (`download_auth_required`),
+    /// else `unauthorized` / `forbidden` / `http-error` by status.
     @discardableResult
     public func fetch(
         version: String, buildId: String, size: Int?, sha256: String, to destination: URL,
-        session: URLSession = .shared, onProgress: (@Sendable (Int, Int?) -> Void)? = nil
-    ) async throws -> URL {
+        onProgress: (@Sendable (Int, Int?) -> Void)? = nil
+    ) async throws -> ReleaseFetchResult {
         guard let url = await buildURL(version: version, buildId: buildId) else {
             throw PolarisError(
                 code: ErrorCode.notConfigured,
                 message: "Discovery names no builds template; run discover() first.")
         }
-        var request = URLRequest(url: url)
-        for (k, v) in await core.headers(await core.token.map { ["authorization": "Bearer \($0)"] } ?? [:]) { request.setValue(v, forHTTPHeaderField: k) }
-        let (bytes, response) = try await session.bytes(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw PolarisError(code: ErrorCode.network, message: "no HTTP response")
+        let expected = sha256.lowercased()
+        let fm = FileManager.default
+        let part = destination.deletingLastPathComponent()
+            .appendingPathComponent(destination.lastPathComponent + ".part")
+        try? fm.createDirectory(
+            at: destination.deletingLastPathComponent(), withIntermediateDirectories: true)
+        var have = (try? fm.attributesOfItem(atPath: part.path)[.size] as? Int) ?? 0
+        if let size, have > size {
+            try? fm.removeItem(at: part)
+            have = 0
         }
-        guard (200..<300).contains(http.statusCode) else {
-            throw PolarisError(
-                code: http.statusCode == 401 ? ErrorCode.downloadAuthRequired : ErrorCode.httpError,
-                message: "download failed with status \(http.statusCode).")
-        }
-        let partial = destination.deletingLastPathComponent()
-            .appendingPathComponent(".\(destination.lastPathComponent).partial")
-        FileManager.default.createFile(atPath: partial.path, contents: nil)
-        let handle = try FileHandle(forWritingTo: partial)
-        var hasher = SHA256()
-        var count = 0
-        var buffer = Data()
-        buffer.reserveCapacity(1 << 16)
-        do {
-            for try await byte in bytes {
-                buffer.append(byte)
-                if buffer.count >= 1 << 16 {
-                    hasher.update(data: buffer)
-                    try handle.write(contentsOf: buffer)
-                    count += buffer.count
-                    buffer.removeAll(keepingCapacity: true)
-                    onProgress?(count, size)
+
+        if have == 0 || size == nil || have < size! {
+            var extra = ["accept-encoding": "identity"]
+            // The bearer goes only to the control plane's own origin.
+            if let token = await core.token, sameOrigin(url, core.endpoints.baseUrl) {
+                extra["authorization"] = "Bearer \(token)"
+            }
+            if have > 0 {
+                extra["range"] = "bytes=\(have)-"
+                extra["if-range"] = "\"\(expected)\""
+            }
+            let response: PolarisStreamResponse
+            do {
+                response = try await core.stream(url, headers: extra)
+            } catch let e as PolarisError {
+                throw e
+            } catch {
+                throw PolarisError(code: ErrorCode.network, message: "\(error)")
+            }
+            switch response.status {
+            case 416 where have > 0:
+                break  // The part is already whole; verified below.
+            case 200, 206:
+                if response.status == 206 {
+                    guard have > 0, rangeStart(response.header("content-range")) == have else {
+                        try? fm.removeItem(at: part)
+                        throw PolarisError(
+                            code: ErrorCode.network,
+                            message: "the server answered another range; call again to restart.")
+                    }
+                } else {
+                    have = 0
                 }
+                try await write(response.body, to: part, append: have > 0, from: have, size: size, onProgress)
+            default:
+                let body = (try? await response.collect()) ?? Data()
+                throw PolarisError(
+                    code: refusalCode(status: response.status, body: body),
+                    message: "the build download was refused (status \(response.status)).")
             }
-            if !buffer.isEmpty {
-                hasher.update(data: buffer)
-                try handle.write(contentsOf: buffer)
-                count += buffer.count
-                onProgress?(count, size)
-            }
-            try handle.close()
-        } catch {
-            try? handle.close()
-            try? FileManager.default.removeItem(at: partial)
-            throw PolarisError(code: ErrorCode.network, message: "\(error)")
         }
-        let digest = hasher.finalize().map { String(format: "%02x", $0) }.joined()
-        guard digest == sha256.lowercased(), size == nil || size == count else {
-            try? FileManager.default.removeItem(at: partial)
+
+        // Verify against the record, then move into place.
+        let (count, digest) = try hashFile(part)
+        guard digest == expected, size == nil || size == count else {
+            if let size, count < size {
+                throw PolarisError(
+                    code: ErrorCode.network,
+                    message: "the download stopped at \(count) of \(size) bytes; call again to resume.")
+            }
+            try? fm.removeItem(at: part)
             throw PolarisError(
                 code: ErrorCode.payloadMismatch,
                 message: "the download does not match the release record (size \(count), sha256 \(digest)).")
         }
-        try? FileManager.default.removeItem(at: destination)
-        try FileManager.default.moveItem(at: partial, to: destination)
+        try? fm.removeItem(at: destination)
+        try fm.moveItem(at: part, to: destination)
         await core.journal.record(
             UpdateEvent.updateDownloaded, release: version, fromRelease: core.version,
             channel: core.channel)
-        return destination
+        return ReleaseFetchResult(
+            url: destination, size: count, sha256: digest, version: version, buildId: buildId)
     }
+}
+
+/// What `fetch` verified and where the file is.
+public struct ReleaseFetchResult: Sendable, Equatable {
+    public let url: URL
+    public let size: Int
+    public let sha256: String
+    public let version: String
+    public let buildId: String
+}
+
+/// True when `url` is on `baseUrl`'s origin (scheme, host and port).
+private func sameOrigin(_ url: URL, _ baseUrl: String) -> Bool {
+    guard let base = URL(string: baseUrl) else { return false }
+    return url.scheme?.lowercased() == base.scheme?.lowercased()
+        && url.host?.lowercased() == base.host?.lowercased() && url.port == base.port
+}
+
+/// The first byte of a `Content-Range: bytes <first>-<last>/<total>`, or nil.
+private func rangeStart(_ header: String?) -> Int? {
+    guard let header, header.lowercased().hasPrefix("bytes ") else { return nil }
+    let spec = header.dropFirst("bytes ".count)
+    guard let dash = spec.firstIndex(of: "-") else { return nil }
+    return Int(spec[..<dash].trimmingCharacters(in: .whitespaces))
+}
+
+/// A refusal's code: the body's (flat `error` or nested `error.code`) when the error registry
+/// (conformance/errors.json, `ERROR_CODE_KINDS`) knows it as a wire code, else by status.
+func refusalCode(status: Int, body: Data) -> String {
+    var code: String?
+    if let json = try? JSONSerialization.jsonObject(with: body) as? [String: Any] {
+        if let flat = json["error"] as? String {
+            code = flat
+        } else if let nested = json["error"] as? [String: Any] {
+            code = nested["code"] as? String
+        }
+    }
+    if let code, ERROR_CODE_KINDS[code] == "wire" { return code }
+    switch status {
+    case 401: return ErrorCode.unauthorized
+    case 403: return ErrorCode.forbidden
+    default: return ErrorCode.httpError
+    }
+}
+
+/// Stream `body` into `part` (appending at `from`, or from scratch), stopping past `size`.
+/// A transfer that fails keeps what was written, for the next resume.
+private func write(
+    _ body: AsyncThrowingStream<Data, Error>, to part: URL, append: Bool, from: Int, size: Int?,
+    _ onProgress: (@Sendable (Int, Int?) -> Void)?
+) async throws {
+    let fm = FileManager.default
+    if !append || !fm.fileExists(atPath: part.path) {
+        fm.createFile(atPath: part.path, contents: nil, attributes: [.posixPermissions: 0o600])
+    }
+    let handle = try FileHandle(forWritingTo: part)
+    defer { try? handle.close() }
+    if append { try handle.seekToEnd() } else { try handle.truncate(atOffset: 0) }
+    var done = from
+    onProgress?(done, size)
+    do {
+        for try await chunk in body {
+            var slice = chunk
+            if let size, done + slice.count > size { slice = slice.prefix(size - done) }
+            if !slice.isEmpty {
+                try handle.write(contentsOf: slice)
+                done += slice.count
+                onProgress?(done, size)
+            }
+            if let size, done >= size, slice.count < chunk.count { break }
+        }
+    } catch {
+        throw PolarisError(code: ErrorCode.network, message: "\(error)")
+    }
+}
+
+/// The byte count and lowercase hex SHA-256 of a file, read in chunks.
+private func hashFile(_ url: URL) throws -> (Int, String) {
+    let handle = try FileHandle(forReadingFrom: url)
+    defer { try? handle.close() }
+    var hasher = SHA256()
+    var count = 0
+    while let chunk = try handle.read(upToCount: 1 << 16), !chunk.isEmpty {
+        hasher.update(data: chunk)
+        count += chunk.count
+    }
+    return (count, hasher.finalize().map { String(format: "%02x", $0) }.joined())
 }

@@ -114,6 +114,60 @@ public protocol PolarisTransport: Sendable {
     /// Perform one request. Throws on transport failure (including the local-only refusal); a
     /// non-2xx response is a normal return, because the status ladder is the caller's business.
     func send(_ request: PolarisRequest) async throws -> PolarisResponse
+    /// Perform one request and hand the body over as it arrives (a verified download, §3.6),
+    /// so a large payload is never buffered whole. Like `send`, a non-2xx response is a normal
+    /// return. The default buffers through `send` and yields the body as one chunk, so every
+    /// transport (a test double, the local-only refusal) streams correctly without writing it.
+    func stream(_ request: PolarisRequest) async throws -> PolarisStreamResponse
+}
+
+/// A streamed response: the status and headers, and the body as chunks.
+public struct PolarisStreamResponse: Sendable {
+    public let status: Int
+    public let headers: [String: String]
+    public let body: AsyncThrowingStream<Data, Error>
+
+    public init(status: Int, headers: [String: String] = [:], body: AsyncThrowingStream<Data, Error>) {
+        self.status = status
+        self.headers = headers
+        self.body = body
+    }
+
+    /// Case-insensitive header read, as `PolarisResponse.header(_:)`.
+    public func header(_ name: String) -> String? {
+        let wanted = name.lowercased()
+        for (key, value) in headers where key.lowercased() == wanted { return value }
+        return nil
+    }
+
+    /// The whole body (for a refusal's JSON), bounded by `limit` bytes.
+    public func collect(limit: Int = 1 << 16) async throws -> Data {
+        var out = Data()
+        for try await chunk in body {
+            out.append(chunk.prefix(limit - out.count))
+            if out.count >= limit { break }
+        }
+        return out
+    }
+}
+
+extension PolarisTransport {
+    public func stream(_ request: PolarisRequest) async throws -> PolarisStreamResponse {
+        try await send(request).streamed
+    }
+}
+
+extension PolarisResponse {
+    /// This buffered response as a stream of one chunk.
+    public var streamed: PolarisStreamResponse {
+        let body = self.body
+        return PolarisStreamResponse(
+            status: status, headers: headers,
+            body: AsyncThrowingStream { c in
+                if !body.isEmpty { c.yield(body) }
+                c.finish()
+            })
+    }
 }
 
 /// The production transport.
@@ -146,6 +200,51 @@ public struct URLSessionTransport: PolarisTransport {
             if let key = key as? String, let value = value as? String { headers[key] = value }
         }
         return PolarisResponse(status: http.statusCode, body: data, headers: headers)
+    }
+
+    public func stream(_ request: PolarisRequest) async throws -> PolarisStreamResponse {
+        #if canImport(FoundationNetworking)
+        return try await send(request).streamed
+        #else
+        var req = URLRequest(url: request.url)
+        req.httpMethod = request.method
+        if request.timeoutSeconds > 0 { req.timeoutInterval = request.timeoutSeconds }
+        for (key, value) in request.headers { req.setValue(value, forHTTPHeaderField: key) }
+        req.httpBody = request.body
+        let (bytes, response) = try await session.bytes(for: req)
+        guard let http = response as? HTTPURLResponse else {
+            bytes.task.cancel()
+            throw PolarisError(code: "transport", message: "non-http response")
+        }
+        var headers: [String: String] = [:]
+        for (key, value) in http.allHeaderFields {
+            if let key = key as? String, let value = value as? String { headers[key] = value }
+        }
+        let body = AsyncThrowingStream<Data, Error> { c in
+            let task = Task {
+                var buffer = Data()
+                buffer.reserveCapacity(1 << 16)
+                do {
+                    for try await byte in bytes {
+                        buffer.append(byte)
+                        if buffer.count >= 1 << 16 {
+                            c.yield(buffer)
+                            buffer.removeAll(keepingCapacity: true)
+                        }
+                    }
+                    if !buffer.isEmpty { c.yield(buffer) }
+                    c.finish()
+                } catch {
+                    c.finish(throwing: error)
+                }
+            }
+            c.onTermination = { _ in
+                task.cancel()
+                bytes.task.cancel()
+            }
+        }
+        return PolarisStreamResponse(status: http.statusCode, headers: headers, body: body)
+        #endif
     }
 
     /// Stream the body and stop at `limit` bytes, so a body larger than the caller can use is
