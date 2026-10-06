@@ -664,6 +664,11 @@
 :root:is([data-vt="forward"], [data-vt="back"]) .pk-vt-hero-title {
   view-transition-name: pk-hero-title;
 }
+/* The product icon flies with the hero's art and name (MO-05): it sits in front of the art's lower
+   edge, which would otherwise paint over it mid-flight and let it pop back at the end. */
+:root:is([data-vt="forward"], [data-vt="back"]) .pk-vt-hero-icon {
+  view-transition-name: pk-hero-icon;
+}
 :root:is([data-vt="forward"], [data-vt="back"]) .pk-vt-key {
   view-transition-name: pk-key;
 }
@@ -724,6 +729,10 @@
   animation-duration: var(--pk-duration-slow);
   animation-timing-function: var(--pk-ease-emphasized);
 }
+::view-transition-group(pk-hero-icon) {
+  animation-duration: var(--pk-duration-slow);
+  animation-timing-function: var(--pk-ease-emphasized);
+}
 /* morph: a card or dialog changes size between steps (SIGN-IN §3.18's pk-card is the same). */
 ::view-transition-group(pk-dialog),
 ::view-transition-group(pk-card) {
@@ -743,6 +752,21 @@
 }
 ::view-transition-new(pk-hero) {
   animation: none;
+}
+/* An unpaired end (MO-05): a product opened from somewhere other than its tile (a toast's Open),
+   or Back to a Library whose filter hides the tile. It fades through with the main region
+   instead of vanishing or popping in. */
+::view-transition-old(pk-hero):only-child,
+::view-transition-old(pk-hero-icon):only-child,
+::view-transition-old(pk-hero-title):only-child {
+  opacity: 1;
+  animation: pk-fade-out var(--pk-duration-fast) var(--pk-ease-exit) both;
+}
+::view-transition-new(pk-hero):only-child,
+::view-transition-new(pk-hero-icon):only-child,
+::view-transition-new(pk-hero-title):only-child {
+  animation: pk-fade-in var(--pk-duration-base) var(--pk-ease-enter) both;
+  animation-delay: var(--pk-duration-micro);
 }
 /* dialog steps: the old content leaves fast, then the new one fades in while the panel morphs. */
 ::view-transition-old(pk-dialog),

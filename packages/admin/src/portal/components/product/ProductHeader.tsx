@@ -51,8 +51,10 @@ export function ProductHeader({
           variant="banner"
           onError={() => setCoverFailed(true)}
           // The listing's 16:9 header (PORTAL.md Q-2): all of it on phones, full-bleed; on desktop
-          // a centred 3:1 band, capped at 26 rem so it never fills the first screen.
-          className="-mx-4 aspect-video desk:mx-0 desk:aspect-[3/1] desk:max-h-[26rem] desk:rounded-xl"
+          // a centred 3:1 band, capped at 26 rem so it never fills the first screen. pk-vt-hero:
+          // the Library tile's art flies into it and back (motion.css; named only during a
+          // forward or back transition, MO-05).
+          className="pk-vt-hero -mx-4 aspect-video desk:mx-0 desk:aspect-[3/1] desk:max-h-[26rem] desk:rounded-xl"
         />
       ) : null}
       <div
@@ -74,17 +76,20 @@ export function ProductHeader({
           tileClassName="border-4 border-surface-page max-desk:text-3xl"
           className={cn(
             // In front of the cover: the banner is positioned, so the icon needs its own
-            // stacking position to paint over the banner's lower edge (§4.20).
-            "relative z-10 max-desk:size-20",
+            // stacking position to paint over the banner's lower edge (§4.20). pk-vt-hero-icon:
+            // the tile's icon flies into it with the art and the name (MO-05).
+            "pk-vt-hero-icon relative z-10 max-desk:size-20",
             // Half the tile over the cover: pinned to the row's top, not its end, on desktop.
             hasCover && "-mt-10 desk:-mt-16 desk:self-start",
           )}
         />
         <div className="min-w-0 flex-1 space-y-2 desk:pb-1">
+          {/* pk-vt-hero-title: the tile's name flies into it and back (MO-05). As wide as its
+              text, like the tile's name, or the shared snapshot stretches (S-23 §3.4 item 4). */}
           <h1
             ref={headingRef}
             tabIndex={-1}
-            className="text-[1.75rem] font-bold leading-tight text-fg-strong outline-none desk:text-4xl"
+            className="pk-vt-hero-title w-fit text-[1.75rem] font-bold leading-tight text-fg-strong outline-none desk:text-4xl"
           >
             {product.name}
           </h1>
