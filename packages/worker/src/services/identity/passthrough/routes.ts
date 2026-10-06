@@ -26,6 +26,7 @@ import { hashKey, type Db, type Env } from "../../../core/platform.js";
 import { loadProductPublic } from "../../../core/products.js";
 import type { PortalHooksFor } from "../portal/api.js";
 import { getPortalAccount } from "../portal/repo.js";
+import { avatarUrl } from "../card/avatars.js";
 import { licenseConsentItem } from "./anchor.js";
 import { clientRecordFor, cloudSyncOn } from "./client.js";
 import { readSignInRequest } from "./request.js";
@@ -129,8 +130,9 @@ export async function signInConsentView(
     person: {
       displayName: account.display_name,
       email: account.primary_email,
-      // The account's avatar is served once profile import lands; until then there is none.
-      avatarUrl: null,
+      // PX-W16 (G32): the picture in use, the same record Account → Profile edits; null shows
+      // initials.
+      avatarUrl: avatarUrl(account.avatar_key ?? null),
     },
     items,
     scopeHash,
