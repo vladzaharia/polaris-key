@@ -5133,7 +5133,7 @@ no longer accepted.
 - **The portal drops it before the app's first request.** `rewriteActivatePath`
   (`packages/admin/src/portal/router.ts`) runs before the first render and before the app's first
   request: it reads `#key=`, or a legacy `?key=` (the fragment wins), and `history.replaceState`s
-  the address to `/#/?activate=<key>[&product=]`, so neither `?key=` nor `#key=` stays in the
+  the address to `/#/?activate=<key>[&product=…]`, so neither `?key=` nor `#key=` stays in the
   address bar or the history entry. The shell's own subresource requests (`/assets/*`, fonts,
   icons) come first, issued by the document before any script runs. Their URLs never carry the
   key, and a fragment is never in a `Referer`; for the legacy form their `Referer` would carry
@@ -5147,6 +5147,21 @@ no longer accepted.
   the Worker's CSP and Referrer-Policy on the shell, and checks every request the page makes
   (the document, `/assets/*`, fonts, icons and the API) for the key in its URL or `Referer`; the
   only request excluded is a legacy link's own navigation, which carries `?key=` by definition.
+- **What else the link carries, and where it may send the person (PX-17).** The rewrite keeps the
+  app's `product=` (a product slug), `next=free-device` (no other value), `for=` (64 characters,
+  control characters stripped) and `return=`, and drops every other parameter
+  (`activateLinkParams`). The key goes into `activate=` and nowhere else: a `for=` or `return=`
+  holding a key shape is dropped, because the rest of the hash rides in every sign-in's return URL.
+  That return URL keeps an empty `activate=` so a keyless link reopens the modal after sign-in.
+  `return=` is followed only after the add and only to the login card on this origin
+  (`/signin?…`; a crafted link must not send someone to a download, a sign-out or any other page
+  of the origin by itself) or to an origin or app scheme the product declares (PX-10's
+  `allowedReturn`). `cardReturn` and `allowedReturn` (`model/returnUrl.ts`) both refuse a value
+  that carries a key. `next=free-device` hands over the license id, `for=` and the unvalidated
+  `return=`, which the free-device flow checks itself. `test/portalRouter.test.ts`,
+  `test/portalReturnUrl.test.ts` and `test/portalActivateLink.test.tsx` pin this, and
+  `e2e/portal.e2e.test.ts` drives both hand-offs in Chromium with the key in no request line or
+  `Referer`.
 - **A legacy `GET /activate?key=…` (a link already out) still works, and the Worker adds nothing
   to it.** It answers with the same SPA shell: `Cache-Control: no-store`,
   `Referrer-Policy: no-referrer`, the key in no response byte or header, and the shell fetched

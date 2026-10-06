@@ -422,6 +422,18 @@ The page reads the key, then removes the fragment from the address bar and the h
 `history.replaceState` before it does anything else. Signed out, the login card runs first and the
 modal opens after sign-in; the key stays in the tab and is left out of every sign-in's return URL.
 
+A refusal's `manageUrl` and the SDK helpers may add more to the query. The portal keeps these and
+drops anything else:
+
+| Parameter          | What it does                                                                                                                                                                                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `product=<slug>`   | Names the app that sent the person, with why: by default its key-entry refusal ("This key has no entries left in Mossgarden…").                                                                               |
+| `next=free-device` | After the key is added (or if it is already in the library), opens the free-device flow for that license. The Worker sends it on `device_limit` for a floating license.                                       |
+| `for=<label>`      | The device the free-device flow makes room for (at most 64 characters).                                                                                                                                       |
+| `return=<url>`     | Where to go after the add: the login card on this origin (`/signin?request=…`), or an origin or app scheme the product declares (Done then offers **Back to Mossgarden**). Any other value is never followed. |
+
+None of these may carry the key: a `for=` or `return=` that holds one is dropped.
+
 **Links already sent.** The first version of the link was `/activate?key=…`. The portal still
 reads it, and drops the query the same way. The Worker answers that request with the ordinary,
 uncached portal page (`Referrer-Policy: no-referrer`); it does not redirect, which could not unlog

@@ -787,6 +787,24 @@ deep links"). With `product=` from an app, a notice names it:
 game signs you in instead." The help line reads "Filled in from your link. Check it matches the key
 you have." Signed out, the login card (with product context) runs first and returns here.
 
+**As built (PX-17).** The notice is a `warning` with the product's icon and names the product
+(`signin.key.noEntries`: "Mossgarden sent you here. This key has no entries left in Mossgarden. Add
+it to your account and Mossgarden signs you in instead."). What the link carries changes it and
+what follows the add:
+
+- `next=free-device` (a floating license at its device limit, PX-W8): "This license is on every
+  device it allows. Add it to your account, then free one up for <for>."; after the add, or for a
+  key already in the library, the free-device flow (§4.25) for that license opens straight away
+  with `for=` and `return=`.
+- `return=/signin?request=…` (the login card's "You don't have <Product> yet", plans/I-04.md): an
+  `info` notice, "Signing in to Mossgarden. Add your key here, then you go back to signing in.";
+  after the add the person goes back to the card.
+- `return=` to an origin or app scheme the product declares: Done offers **Back to Mossgarden**
+  (primary) and **See it in your library**. Any other `return=` is dropped.
+
+The key stays in `#/?activate=` only; no return URL carries one (THREAT-MODEL.md, "Key-bearing
+deep links").
+
 ### 4.19 Activate license: errors
 
 ![Error states](portal/29-activate-errors-desktop-dark.png)
