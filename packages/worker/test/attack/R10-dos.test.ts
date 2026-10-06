@@ -14,6 +14,7 @@
 
 import { describe, expect, it } from "vitest";
 import { makeTestDb, NO_HOOKS, NO_INGEST } from "../helpers.js";
+import { recordRegexRuns, replaySteps } from "../regexReplay.js";
 import { singleUseMock } from "../singleUseMock.js";
 import { KvMock } from "../kvMock.js";
 import {
@@ -342,6 +343,14 @@ describe("R10-01 knock-on: catalog `pattern` cannot be turned into a CPU bomb", 
       ],
     }) as never;
 
+  // Counted, never timed (load cannot fail these): every native regex run is recorded
+  // (test/regexReplay.ts), and the checks below assert the pattern never reaches one, which is
+  // the only engine that can backtrack. The matcher that does run is linear by construction, and
+  // `packages/shared-catalog/src/regex.test.ts` counts its steps for these same patterns and
+  // lengths (10x the input, at most 11x the steps; no step at all past the input cap).
+  const backtrackingRuns = (pattern: string, fn: () => unknown): number =>
+    recordRegexRuns(fn).runs.filter((r) => r.source.includes(pattern)).length;
+
   // The exact pattern R10-09 measured at 57 s against a 34-character input, and only
   // 8 characters long — proving `channels.ts`'s 80-char MAX_REGEX_SOURCE is not a guard.
   // The catalog is not rejected (the pattern is legitimate JSON Schema); it is defused,
@@ -350,32 +359,28 @@ describe("R10-01 knock-on: catalog `pattern` cannot be turned into a CPU bomb", 
     const catalog = new Catalog(evilCatalog("(x+x+)+y"));
     expect(() => catalog.compileAll()).not.toThrow();
 
-    const t0 = Date.now();
-    const res = catalog.validateKeyValue("evil", "x".repeat(34));
-    const ms = Date.now() - t0;
+    let res: { ok: boolean } = { ok: true };
+    const runs = backtrackingRuns("x+x+", () => {
+      res = catalog.validateKeyValue("evil", "x".repeat(34));
+    });
     expect(res.ok).toBe(false); // no `y`, so genuinely no match
-    expect(ms).toBeLessThan(250); // was ~57_000ms with a backtracking engine
-  }, 20_000);
+    expect(runs).toBe(0); // was ~57_000ms with a backtracking engine
+  });
 
   it("its cost grows linearly, not exponentially, with the input length", () => {
     const catalog = new Catalog(evilCatalog("(x+x+)+y"));
-    // Upper-bound timings fail only when a sample is INFLATED (GC, a scheduler stall), so take the
-    // fastest of three: a real regression to backtracking costs seconds-to-minutes on every run,
-    // so the minimum still catches it, while a one-off stall no longer fails the suite.
-    const time = (n: number): number => {
-      let best = Number.POSITIVE_INFINITY;
-      for (let i = 0; i < 3; i++) {
-        const t0 = Date.now();
-        catalog.validateKeyValue("evil", "x".repeat(n));
-        best = Math.min(best, Date.now() - t0);
-      }
-      return best;
-    };
-    // Under Ajv each extra character doubled the runtime. 28 -> 40 is 4096x there.
-    expect(time(28)).toBeLessThan(250);
-    expect(time(40)).toBeLessThan(250);
-    expect(time(4000)).toBeLessThan(250);
-  }, 20_000);
+    // Under Ajv each extra character doubled the runtime; 28 -> 40 is 4096x there. None of these
+    // lengths reaches a backtracking engine at all.
+    for (const n of [28, 40, 4000]) {
+      let ok = true;
+      expect(
+        backtrackingRuns("x+x+", () => {
+          ok = catalog.validateKeyValue("evil", "x".repeat(n)).ok;
+        }),
+      ).toBe(0);
+      expect(ok).toBe(false);
+    }
+  });
 
   it("constructs that cannot be matched linearly are refused at publish time", () => {
     // Backreferences and lookaround force backtracking, so they are rejected outright
@@ -393,24 +398,28 @@ describe("R10-01 knock-on: catalog `pattern` cannot be turned into a CPU bomb", 
 
   it("a benign pattern stays linear as the input grows (no exponential blowup)", () => {
     const catalog = new Catalog(evilCatalog("^(a|a)*b$"));
-    const time = (n: number): number => {
-      const t0 = Date.now();
-      catalog.validateKeyValue("evil", "a".repeat(n));
-      return Date.now() - t0;
-    };
     // `(a|a)*` is the classic ambiguous-alternation bomb; +12 characters must not
-    // multiply the cost by 4096.
-    expect(time(30)).toBeLessThan(250);
-    expect(time(42)).toBeLessThan(250);
-  }, 20_000);
+    // multiply the cost by 4096, and no backtracking engine ever sees it.
+    for (const n of [30, 42]) {
+      let ok = true;
+      expect(
+        backtrackingRuns("(a|a)", () => {
+          ok = catalog.validateKeyValue("evil", "a".repeat(n)).ok;
+        }),
+      ).toBe(0);
+      expect(ok).toBe(false);
+    }
+  });
 
   it("the matched input is capped, so an unbounded value cannot be walked forever", () => {
     const catalog = new Catalog(evilCatalog("^[a-z]*$"));
-    const t0 = Date.now();
-    const res = catalog.validateKeyValue("evil", "a".repeat(200_000));
+    let res: { ok: boolean } = { ok: true };
+    const runs = backtrackingRuns("[a-z]*", () => {
+      res = catalog.validateKeyValue("evil", "a".repeat(200_000));
+    });
     expect(res.ok).toBe(false); // over MAX_PATTERN_INPUT ⇒ fail closed
-    expect(Date.now() - t0).toBeLessThan(250);
-  }, 20_000);
+    expect(runs).toBe(0);
+  });
 
   it("the real djdl semver patterns still validate correctly", () => {
     const catalog = new Catalog(DJDL_CATALOG as never);
@@ -1021,8 +1030,10 @@ describe("R10-06 unauthenticated whole-body buffering on /webhooks/github", () =
 describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 is not a guard)", () => {
   const EVIL = "(x+x+)+y"; // 8 chars, far below the 80-char cap
 
-  /** Time `resolveChannel` against `count` releases whose tag is `len` x's. */
-  function timeMatch(len: number, count: number): number {
+  /** Backtracking steps `resolveChannel` costs against `count` releases whose tag is `len` x's:
+   *  every native regex run it makes, replayed on the step-counting engine (test/regexReplay.ts).
+   *  Counted, not timed, so the ratios below are exact on a machine of any speed or load. */
+  function stepsMatch(len: number, count: number): number {
     const sel: ChannelSelector = {
       kind: "manual",
       raw: "nightly",
@@ -1033,55 +1044,45 @@ describe("R10-07 manual-channel regex ReDoS (MAX_REGEX_SOURCE = 80 is not a guar
       r.tag_name = "x".repeat(len); // a perfectly legal git tag name
       return r;
     });
-    // performance.now(): sub-millisecond, so a fast machine's short sample is not floored.
-    const t0 = performance.now();
-    resolveChannel(sel, releases);
-    return performance.now() - t0;
+    const { runs } = recordRegexRuns(() => resolveChannel(sel, releases));
+    // The manual regex really runs natively, on the tag, which is what makes this a finding.
+    expect(
+      runs.some(
+        (r) => r.source.includes(EVIL) && r.input === releases[0]!.tag_name,
+      ),
+    ).toBe(true);
+    return replaySteps(runs);
   }
 
-  /**
-   * The ratio tests below fail only when their DENOMINATOR is inflated (JIT warm-up, GC or a
-   * scheduler stall); noise in the larger sample only helps them. So warm the pattern up once and
-   * take the minimum of `runs` samples for the denominator: the minimum is the best estimate of
-   * the true cost, and it is cheap because the denominator is the short input.
-   */
-  function minTime(len: number, count: number, runs = 3): number {
-    timeMatch(len, count);
-    let best = Number.POSITIVE_INFINITY;
-    for (let i = 0; i < runs; i++) best = Math.min(best, timeMatch(len, count));
-    return Math.max(best, 0.01);
-  }
-
-  // The inputs are kept short so each test takes well under a second here and a few seconds on
-  // a slow CI runner (about 25x slower than a developer Mac): the cost doubles per character, so
-  // an absolute bound on a long tag measures the machine, not the pattern. Ratios do not.
+  /** A Worker request's CPU limit (30 s) at a generous billion backtracking steps a second. */
+  const STEPS_PAST_CPU_LIMIT = 30 * 1e9;
 
   it("an 8-character pattern under the cap backtracks catastrophically", () => {
     expect(EVIL.length).toBeLessThanOrEqual(80);
     // Six more characters multiply the cost by ~64; linear matching would add a third.
-    const short = minTime(18, 1);
-    const longer = timeMatch(24, 1);
+    const short = stepsMatch(10, 1);
+    const longer = stepsMatch(16, 1);
     expect(longer).toBeGreaterThan(short * 16);
-    // At the measured growth per character, one 40-character tag (a legal git tag, the pattern
-    // still under the cap) costs more CPU than a Worker request's 30 s limit: half an hour or
-    // more on a developer Mac.
+    // At the counted growth per character, one 40-character tag (a legal git tag, the pattern
+    // still under the cap) costs more steps than a Worker request's CPU limit allows.
     const perChar = Math.pow(longer / short, 1 / 6);
-    expect(longer * Math.pow(perChar, 40 - 24)).toBeGreaterThan(30_000);
-  }, 20_000);
+    expect(longer * Math.pow(perChar, 40 - 16)).toBeGreaterThan(
+      STEPS_PAST_CPU_LIMIT,
+    );
+  });
 
   it("runtime doubles per extra input character (exponential, not linear)", () => {
-    const short = minTime(18, 1);
-    const longer = timeMatch(23, 1); // +5 chars ⇒ ~32x
+    const short = stepsMatch(10, 1);
+    const longer = stepsMatch(15, 1); // +5 chars ⇒ ~32x
     expect(longer).toBeGreaterThan(short * 8);
-  }, 20_000);
+  });
 
   it("cost is multiplied by the release list length (up to 3 pages of 100 per request since P0-02)", () => {
-    const single = minTime(20, 1);
-    const batch = timeMatch(20, 10);
-    // Ten releases cost ~10x one. A 3x bar still proves the multiplication while leaving room for a
-    // loaded machine that slows every `single` sample and then frees up for `batch`.
-    expect(batch).toBeGreaterThan(single * 3);
-  }, 20_000);
+    const single = stepsMatch(14, 1);
+    const batch = stepsMatch(14, 10);
+    // Ten releases cost ten times one: every tag is matched on its own.
+    expect(batch).toBeGreaterThanOrEqual(single * 9);
+  });
 });
 
 // ═════════════════════════════════════════════════════════════════════════════

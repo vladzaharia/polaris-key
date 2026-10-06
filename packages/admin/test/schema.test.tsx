@@ -7,6 +7,7 @@ import {
   waitFor,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Catalog } from "@polaris-key/catalog";
 import {
   ManagedField,
   SchemaField,
@@ -150,16 +151,40 @@ describe("validate — the catalog's own Draft-07 interpreter", () => {
   });
 });
 
+/** The sources of the native (backtracking) regex runs `fn` makes: `test`, `replace`, `split`
+ *  and `match` all reach `RegExp.prototype.exec` once it is wrapped. */
+function nativeRegexSources(fn: () => void): string[] {
+  const exec = RegExp.prototype.exec;
+  const seen: string[] = [];
+  RegExp.prototype.exec = function (this: RegExp, input: string) {
+    seen.push(this.source);
+    return exec.call(this, input);
+  };
+  try {
+    fn();
+  } finally {
+    RegExp.prototype.exec = exec;
+  }
+  return seen;
+}
+
 describe("validate — `pattern` is matched in linear time (R10 residual 4)", () => {
   // `schema.pattern` is operator-supplied and can arrive from a linked repo via a
   // webhook-triggered resync with no review. Under `new RegExp` this exact input took ~54 s
   // and froze the operator's tab; the linear matcher must answer immediately.
   it("answers the catastrophic-backtracking case immediately", () => {
-    const started = Date.now();
-    expect(
-      validate({ type: "string", pattern: "(x+x+)+y" }, "x".repeat(41)),
-    ).toMatch(/must match pattern/);
-    expect(Date.now() - started).toBeLessThan(250);
+    // Counted, not timed (load cannot fail it): the pattern never reaches the host's
+    // backtracking RegExp, the only engine that could take ~54 s here. The linear matcher's own
+    // steps are counted in packages/shared-catalog/src/regex.test.ts.
+    let message: string | null = null;
+    const native = nativeRegexSources(() => {
+      message = validate(
+        { type: "string", pattern: "(x+x+)+y" },
+        "x".repeat(41),
+      );
+    });
+    expect(message).toMatch(/must match pattern/);
+    expect(native.filter((source) => source.includes("x+x+"))).toEqual([]);
   });
 
   it("still agrees with the host RegExp on ordinary patterns", () => {
@@ -206,10 +231,17 @@ describe("validate — `pattern` is matched in linear time (R10 residual 4)", ()
   });
 
   it("is memoised: repeated validation of one fragment prepares it once", () => {
+    // Counted, not timed: one Catalog serves all 2,000 calls, and a Catalog prepares each entry
+    // once (counted by shared-catalog's "prepares each entry's schema once" test).
     const schema = { type: "string", pattern: "^[a-z]{1,40}$" };
-    const started = Date.now();
-    for (let i = 0; i < 2000; i++) validate(schema, "abcdef");
-    expect(Date.now() - started).toBeLessThan(1000);
+    const spy = vi.spyOn(Catalog.prototype, "validateEntryValue");
+    try {
+      for (let i = 0; i < 2000; i++) validate(schema, "abcdef");
+      expect(spy).toHaveBeenCalledTimes(2000);
+      expect(new Set(spy.mock.contexts).size).toBe(1);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
 
