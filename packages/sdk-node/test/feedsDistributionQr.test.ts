@@ -94,7 +94,7 @@ const MODEL: DownloadModel = {
   keys: [],
 };
 
-async function client() {
+async function client(discovery: unknown = DISCOVERY) {
   return PolarisKeyClient.create({
     productSlug: "djdl",
     baseUrl: BASE,
@@ -106,7 +106,7 @@ async function client() {
     fetchImpl: (async (input: string | URL | Request) => {
       const path = new URL(String(input)).pathname;
       if (path.endsWith("/polaris.json"))
-        return new Response(JSON.stringify(DISCOVERY));
+        return new Response(JSON.stringify(discovery));
       if (path.endsWith("/distribution/download.json"))
         return new Response(JSON.stringify(MODEL));
       return new Response("", { status: 404 });
@@ -151,6 +151,30 @@ describe("update.feedUrl (§3.7)", () => {
 
   it("a missing input or template is the typed Unsupported (product)", async () => {
     const c = await client();
+    expect(await c.update.feedUrl("zsync")).toMatchObject({
+      supported: false,
+      reason: "product",
+    });
+    // Velopack without its channel is the feed directory (feed-url-matrix.json).
+    expect(await c.update.feedUrl("velopack")).toEqual({
+      supported: true,
+      url: `${P}/update/beta/velopack/`,
+    });
+  });
+
+  it("a velopack template with no releases. file to cut is Unsupported, not a truncated URL", async () => {
+    const c = await client({
+      ...DISCOVERY,
+      services: {
+        ...DISCOVERY.services,
+        update: {
+          enabled: true,
+          endpoints: {
+            velopack: `${P}/update/{channel}/velopack/{velopackChannel}.json`,
+          },
+        },
+      },
+    });
     expect(await c.update.feedUrl("velopack")).toMatchObject({
       supported: false,
       reason: "product",

@@ -1,3 +1,4 @@
+# @pkey-feature ui.boot
 # @pkey-feature ui.stages packs.state
 """Cross-SDK boot stage machine conformance.
 

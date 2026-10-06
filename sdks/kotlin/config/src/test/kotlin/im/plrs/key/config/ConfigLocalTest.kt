@@ -1,4 +1,4 @@
-// @pkey-feature config.resolve config.list config.schema
+// @pkey-feature config.resolve config.list config.schema config.local
 //
 // Persisted local overrides (notes/SDK-PARITY-PASS.md §3.11, `config.local`): set() beats a remote
 // default and never an enforced or hidden entry, is checked against the catalog (or the document's

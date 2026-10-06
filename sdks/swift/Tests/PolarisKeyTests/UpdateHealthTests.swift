@@ -121,7 +121,7 @@ final class UpdateHealthTests: XCTestCase {
     func testFeedUrlsAndTheDownloadModel() async throws {
         await server.reply(
             "/djdl/.well-known/polaris.json",
-            body: #"{"product":"djdl","services":{"license":{"enabled":true},"update":{"enabled":true,"endpoints":{"channelAppcast":"https://key.example/djdl/update/{channel}/appcast.xml","velopack":"https://key.example/djdl/update/{channel}/velopack/releases.{velopackChannel}.json"}},"release":{"enabled":true},"distribution":{"enabled":true}}}"#)
+            body: #"{"product":"djdl","services":{"license":{"enabled":true},"update":{"enabled":true,"endpoints":{"appcast":"https://key.example/djdl/update/appcast.xml","channelAppcast":"https://key.example/djdl/update/{channel}/appcast.xml","velopack":"https://key.example/djdl/update/{channel}/velopack/releases.{velopackChannel}.json"}},"release":{"enabled":true},"distribution":{"enabled":true}}}"#)
         await server.reply(
             "/djdl/distribution/download.json",
             body: #"{"schemaVersion":1,"product":{"slug":"djdl","name":"DJDL"},"channel":"stable","pageUrl":null,"listing":{"name":"DJDL"},"release":{"releaseId":"v2","version":"2.0.0","title":null,"publishedAt":null,"summary":null},"platforms":[{"platform":"macos","label":"macOS","primary":"download:direct:macos","actions":["download:direct:macos"],"builds":[]}],"actions":[{"id":"download:direct:macos","kind":"download","outletId":"direct","platforms":["macos"],"label":"Download","url":"https://dl.example/x.dmg","deepLink":null,"qr":null,"command":null,"fingerprint":null,"version":"2.0.0","build":null}],"keys":[]}"#)

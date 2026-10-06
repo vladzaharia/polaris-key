@@ -78,8 +78,11 @@ export function describeFailure(
   verb: string,
   platform: NodeJS.Platform = process.platform,
 ): CommandResult {
-  const key = r.kind === "refused" || r.kind === "error" ? r.code : r.kind;
-  let message = copy.message(key, refusalDetail(r));
+  // A typed refusal reads the activation table; `refused` and `error` read the server's code.
+  let message =
+    r.kind === "refused" || r.kind === "error"
+      ? copy.message(r.code, refusalDetail(r))
+      : copy.activation(r.kind, { code: r.code, detail: refusalDetail(r) });
   // Keyless enrolment needs a machine anchor, which Linux reads only from the machine-id
   // files (WIRE-CONTRACT-V3 §6.1 rule 2); most container images ship none.
   if (

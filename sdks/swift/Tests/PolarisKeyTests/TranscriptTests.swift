@@ -4,6 +4,7 @@
 // @pkey-feature identity.devicecode config.mint
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
+// @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read
 // from the generator-owned mirror in Resources/transcripts/): drive `PolarisKeyClient` through every
@@ -23,6 +24,12 @@
 // `installed.version` as `CoreOptions.version` — and its `cache` seeds the store's record. A
 // transcript with `initial.update` and no `initial.services` runs with Release, Distribution and
 // Update expected; one that loads no discovery itself is served the Worker's standard document.
+//
+// The SP-00 verbs: `activate` / `enroll` also report a refusal's wire `code`
+// (`ActivationResult.code`); `boot` is `client.boot()` to its `bootOutcome`; `downloadModel` is
+// `client.distribution.downloadModel()` with `current` chosen by `initial.platform`; `report`
+// also reports `updatesPending`, the journal's length afterwards, with `initial.updateJournal`
+// seeded into the store's `update-events` record before the client starts.
 //
 // `chunkRange` (P4-32, plans/P4-32.md §5) is `chunkRangeFetch` over `PacksClient.fetchObject`
 // (internal, reached through `@testable import PolarisKeyPacks`) with the client's own
@@ -60,6 +67,8 @@ private let registerFingerprint = HardwareFingerprint(
 /// The replay's memory between steps: the prompt the last `beginSignIn` returned.
 final class ReplaySession: @unchecked Sendable {
     var prompt: SignInPrompt?
+    /// `initial.platform`: the device's canonical platform.
+    var platform: String?
 }
 
 enum SwiftReplay {
@@ -210,10 +219,17 @@ enum SwiftReplay {
             }
             out["documents"] = .object(docs)
         case "activate":
-            out["result"] = .string(
-                activationKind(await client.activate(key: step.args["key"]?.stringValue ?? "")))
+            activation(await client.activate(key: step.args["key"]?.stringValue ?? ""), into: &out)
         case "enroll":
-            out["result"] = .string(activationKind(await client.enroll()))
+            activation(await client.enroll(), into: &out)
+        case "boot":
+            let run = await client.boot(confirmAfterReady: false)
+            out["bootOutcome"] = .string(run.outcome.rawValue)
+        case "downloadModel":
+            let model = try await client.distribution.downloadModel()
+            out["result"] = .string("ok")
+            out["platforms"] = .array(model.platforms.map { .string($0.platform) })
+            out["current"] = session.platform.flatMap(model.group(for:)).map(groupValue) ?? .null
         case "register":
             switch await client.core.registerDevice(fingerprint: registerFingerprint) {
             case .ok: out["result"] = .string("ok")
@@ -226,6 +242,7 @@ enum SwiftReplay {
             try await client.deactivate()
         case "report":
             out["result"] = .bool(await client.report())
+            out["updatesPending"] = .int(await client.core.journal.all().count)
         case "fetchSchema":
             if let data = await client.config.fetchSchema() {
                 out["catalog"] = try JSONDecoder().decode(JSONValue.self, from: data)
@@ -287,7 +304,32 @@ enum SwiftReplay {
         ])
     }
 
-    static func activationKind(_ r: ActivationResult) -> String { r.kind }
+    /// An activation or enrolment result: its `activationResult` kind and, on a refusal, the
+    /// wire code the body carried.
+    static func activation(_ r: ActivationResult, into out: inout [String: JSONValue]) {
+        out["result"] = .string(r.kind)
+        if case .ok = r { return }
+        out["code"] = .string(r.code)
+    }
+
+    /// A download model's platform group in the transcript's JSON vocabulary (nil ⇒ `null`).
+    static func groupValue(_ g: DistributionPlatform) -> JSONValue {
+        func opt(_ s: String?) -> JSONValue { s.map(JSONValue.string) ?? .null }
+        return .object([
+            "platform": .string(g.platform), "label": .string(g.label), "primary": opt(g.primary),
+            "actions": .array(g.actions.map(JSONValue.string)),
+            "builds": .array(
+                g.builds.map { b in
+                    .object([
+                        "releaseId": .string(b.releaseId), "version": .string(b.version),
+                        "buildId": .string(b.buildId), "platform": .string(b.platform),
+                        "arch": .string(b.arch), "format": opt(b.format), "name": .string(b.name),
+                        "size": b.size.map(JSONValue.int) ?? .null, "sha256": opt(b.sha256),
+                        "minOs": opt(b.minOs), "url": .string(b.url), "outletId": .string(b.outletId),
+                    ])
+                }),
+        ])
+    }
 
     /// Replay `t` step by step; throws on the first step whose traffic or outcome disagrees.
     static func replay(_ t: Transcript) async throws {
@@ -295,6 +337,9 @@ enum SwiftReplay {
         let clock = ReplayClock(t.now)
         let store = InMemoryStore(productSlug: t.product, deviceId: t.initial.deviceId)
         if let token = t.initial.token { await store.setToken(token) }
+        if let journal = t.initial.updateJournal {
+            await store.writeRecord(UpdateJournal.recordName, try JSONEncoder().encode(journal))
+        }
         let u = t.initial.update
         if let cache = u?.cache {
             await store.writeCache(
@@ -321,6 +366,7 @@ enum SwiftReplay {
                     platform: u.platform, arch: u.arch))
         }
         let session = ReplaySession()
+        session.platform = t.initial.platform
         for i in t.steps.indices {
             let step = await server.beginStep(i)
             clock.now = step.now ?? t.now
