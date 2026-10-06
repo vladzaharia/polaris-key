@@ -108,10 +108,13 @@ export function bridgeActivation(r: ActivationResult): Record<string, unknown> {
     case "unauthorized":
       return { kind: "unauthorized" };
     default: {
-      const key = r.kind === "refused" || r.kind === "error" ? r.code : r.kind;
+      const text =
+        r.kind === "refused" || r.kind === "error"
+          ? copy.message(r.code)
+          : copy.activation(r.kind, { code: r.code });
       return {
         kind: "error",
-        message: `${copy.message(key)} [${r.code}]`,
+        message: `${text} [${r.code}]`,
         code: r.code,
       };
     }

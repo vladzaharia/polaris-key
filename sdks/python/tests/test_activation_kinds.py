@@ -1,3 +1,4 @@
+# @pkey-feature license.refusals
 # @pkey-feature license.activate
 # @pkey-feature license.enroll
 """Typed activation results (SDK parity pass §3.1, SP-P01).

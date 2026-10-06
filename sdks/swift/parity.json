@@ -40,8 +40,8 @@
     },
     "core.copy": {
       "status": "planned",
-      "unowned": true,
-      "note": "SP-S01 and SP-S13, SDK-PARITY-PASS §5.4."
+      "wp": "SP-17",
+      "note": "SP-S13 has not landed: the generated Copy.generated.swift (COPY_CODES, COPY_GATE, COPY_ACTIVATION, COPY_FALLBACK) is read by nothing; ErrorCopy is still a hand-written table that differs from copy.en.json, with no placeholder filling."
     },
     "license.gate": {
       "status": "implemented"
@@ -65,9 +65,7 @@
       "status": "implemented"
     },
     "license.refusals": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-S01, SDK-PARITY-PASS §5.4."
+      "status": "implemented"
     },
     "config.resolve": {
       "status": "implemented",
@@ -91,8 +89,8 @@
     },
     "config.local": {
       "status": "planned",
-      "unowned": true,
-      "note": "SP-S14, SDK-PARITY-PASS §5.4."
+      "wp": "SP-18",
+      "note": "config.set, clear and clearAll persist through a LocalConfigStore, validate against the catalog and raise client.events .config (LocalConfigTests), but config.setting(key) and onConfigChange(key, listener) (SDK-PARITY-PASS §3.11) are missing."
     },
     "devices.fingerprint": {
       "status": "implemented"
@@ -110,9 +108,7 @@
       "status": "implemented"
     },
     "telemetry.updates": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-S05, SDK-PARITY-PASS §5.4."
+      "status": "implemented"
     },
     "devices.attest": {
       "status": "implemented",
@@ -130,7 +126,7 @@
     },
     "identity.oidc": {
       "status": "planned",
-      "unowned": true,
+      "wp": "I-15",
       "note": "No OIDC redirect flow yet: native browser sign-in waits on I-15. The interim is client.identity signInWithBrowser(), which opens the device-code verification URL in ASWebAuthenticationSession and polls identity.devicecode (never the deprecated /identity/auth/poll)."
     },
     "identity.devicecode": {
@@ -147,13 +143,12 @@
     },
     "release.fetch": {
       "status": "planned",
-      "unowned": true,
-      "note": "SP-S10, SDK-PARITY-PASS §5.4."
+      "wp": "SP-19",
+      "note": "client.update.fetch(version:buildId:size:sha256:to:) streams and checks size and SHA-256, but has no Range/If-Range resume (release-fetch-gated.json's 206 step) and reads a 401 as download_auth_required without the body's code; it streams through URLSession directly rather than the client's transport."
     },
     "release.distribution": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-S10, SDK-PARITY-PASS §5.4."
+      "status": "implemented",
+      "note": "client.distribution.downloadModel() (PolarisKey/DistributionClient.swift)."
     },
     "update.check": {
       "status": "implemented"
@@ -162,9 +157,8 @@
       "status": "implemented"
     },
     "update.feeds": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-S10, SDK-PARITY-PASS §5.4."
+      "status": "implemented",
+      "note": "client.update.feedUrl(_:channel:velopackChannel:buildId:) over updateFeedURL (PolarisKeyUpdate/Install.swift); FeedUrlMatrixTests drives every feed-url-matrix.json row."
     },
     "update.decide": {
       "status": "implemented"
@@ -193,8 +187,8 @@
     },
     "crash.tags": {
       "status": "planned",
-      "unowned": true,
-      "note": "No task yet: the lead cuts a Swift crashTags() task (plans/SP-00.md §5; SDK-PARITY-PASS §5.4)."
+      "wp": "SP-17",
+      "note": "No Swift crashTags() exists yet (plans/SP-00.md §5: the lead cuts a Swift task)."
     },
     "packs.record": {
       "status": "implemented",
@@ -286,7 +280,7 @@
     },
     "packs.transport.steam": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-28",
       "except": [
         {
           "runtime": "ios",
@@ -310,13 +304,12 @@
       "note": "bootTransition and the stage-matrix replay (StageMatrixTests); client.boot() drives it end to end (discover, guard, sync, keyless reacquire under an open policy, gate, decide and fetch hooks installed by PolarisKeyUpdate, mount)."
     },
     "ui.boot": {
-      "status": "planned",
-      "unowned": true,
-      "note": "SP-S09, SDK-PARITY-PASS §5.4."
+      "status": "implemented",
+      "note": "client.boot() (PolarisKey/Boot.swift): with no token under an open registration policy it registers keylessly before the sync pass; boot-cold-register.json replays through it."
     },
     "ui.kit": {
       "status": "planned",
-      "unowned": true,
+      "wp": "UK-07",
       "note": "PolarisLoginView, PolarisGate, PolarisSignIn and PolarisOfflineActivation over the @Observable PolarisKeyModel; the rest of the kit (PARITY §5.9) belongs to the UI-kit program (UK-*)."
     },
     "ui.cli": {

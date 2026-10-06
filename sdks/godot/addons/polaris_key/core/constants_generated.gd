@@ -987,7 +987,7 @@ static func capabilities() -> Dictionary:
 		"license.entitlements": {"status": "implemented", "service": "license", "na": []},
 		"license.channels": {"status": "implemented", "service": "license", "na": []},
 		"license.reregister": {"status": "implemented", "service": "license", "na": []},
-		"license.refusals": {"status": "planned", "service": "license", "na": []},
+		"license.refusals": {"status": "implemented", "service": "license", "na": []},
 		"config.resolve": {"status": "implemented", "service": "config", "na": []},
 		"config.list": {"status": "implemented", "service": "config", "na": []},
 		"config.secret": {"status": "implemented", "service": "config", "na": []},
@@ -1000,7 +1000,7 @@ static func capabilities() -> Dictionary:
 		"devices.register": {"status": "implemented", "service": "core", "na": []},
 		"devices.manage": {"status": "implemented", "service": "core", "na": []},
 		"devices.report": {"status": "implemented", "service": "core", "na": []},
-		"telemetry.updates": {"status": "planned", "service": "core", "na": []},
+		"telemetry.updates": {"status": "implemented", "service": "core", "na": []},
 		"devices.attest": {"status": "implemented", "service": "core", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}, {"runtime": "ios", "reason": "outlet"}, {"runtime": "android", "reason": "outlet"}]},
 		"identity.oidc": {"status": "planned", "service": "identity", "na": []},
 		"identity.devicecode": {"status": "implemented", "service": "identity", "na": []},
@@ -1008,7 +1008,7 @@ static func capabilities() -> Dictionary:
 		"release.download": {"status": "implemented", "service": "release", "na": []},
 		"release.record": {"status": "implemented", "service": "release", "na": []},
 		"release.fetch": {"status": "planned", "service": "distribution", "na": []},
-		"release.distribution": {"status": "planned", "service": "distribution", "na": []},
+		"release.distribution": {"status": "implemented", "service": "distribution", "na": []},
 		"update.check": {"status": "implemented", "service": "update", "na": []},
 		"update.feed": {"status": "implemented", "service": "update", "na": []},
 		"update.feeds": {"status": "planned", "service": "update", "na": []},
@@ -1017,7 +1017,7 @@ static func capabilities() -> Dictionary:
 		"update.driver": {"status": "implemented", "service": "update", "na": [{"runtime": "ios", "reason": "outlet"}]},
 		"update.bootguard": {"status": "implemented", "service": "update", "na": []},
 		"outlet.detect": {"status": "implemented", "service": "update", "na": []},
-		"crash.tags": {"status": "planned", "service": "sdk", "na": []},
+		"crash.tags": {"status": "implemented", "service": "sdk", "na": []},
 		"packs.record": {"status": "implemented", "service": "release", "na": []},
 		"packs.revoke": {"status": "implemented", "service": "release", "na": []},
 		"packs.delegation": {"status": "implemented", "service": "release", "na": []},
@@ -1043,11 +1043,11 @@ static func capabilities() -> Dictionary:
 		"packs.transport.msix": {"status": "planned", "service": "distribution", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"packs.transport.flatpak": {"status": "planned", "service": "distribution", "na": [{"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"ui.stages": {"status": "implemented", "service": "sdk", "na": []},
-		"ui.boot": {"status": "planned", "service": "sdk", "na": []},
+		"ui.boot": {"status": "implemented", "service": "sdk", "na": []},
 		"ui.kit": {"status": "implemented", "service": "sdk", "na": []},
 		"ui.cli": {"status": "na", "service": "sdk", "na": [{"runtime": "linux", "reason": "runtime"}, {"runtime": "macos", "reason": "runtime"}, {"runtime": "windows", "reason": "runtime"}, {"runtime": "android", "reason": "runtime"}, {"runtime": "ios", "reason": "runtime"}, {"runtime": "web", "reason": "runtime"}]},
 		"commerce.receipt": {"status": "implemented", "service": "license", "na": []},
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "4ecc5de0a6063c46b2d864a83822ec98d3d345d6e1e614ab20547841513a3e0a"
+const CAPABILITY_DIGEST := "0ad81baeb9432877a4bd9f59a75dbbe4514df2886207bec25bbe13dcfb40b73e"

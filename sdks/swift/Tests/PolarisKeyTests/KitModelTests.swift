@@ -61,18 +61,52 @@ final class KitModelTests: XCTestCase {
         XCTAssertEqual(model.lastActivation, .enrollDisabled)
     }
 
+    /// A client holding a cached, signed licence and no token: activating it moves the gate to
+    /// `ok`, so the client emits a `license` event the model has to follow. (A token alone, with
+    /// no verifiable document, leaves the status at `needsActivation`; the client then emits
+    /// nothing, and a model that showed the token would only be winning a race with its own
+    /// first snapshot.)
+    private func unactivatedLicensedClient() async throws -> PolarisKeyClient {
+        let signer = TestSigner(kid: "kit-key")
+        let t = Int(Date().timeIntervalSince1970)
+        let store = InMemoryStore(deviceId: "dev")
+        await store.writeCache(
+            CacheRecord(docs: [
+                .license: signer.sign(
+                    Fixtures.license(
+                        licenseId: "lic_kit", issuedAt: t,
+                        entitlements: ["pro": Fixtures.entry(.bool(true), .enforced)]))
+            ]))
+        return try await PolarisKeyClient.create(
+            options: PolarisKeyClientOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: signer.trust, trustRefresh: false, store: store,
+                transport: server.transport, expectedServices: [.license], fingerprint: false))
+    }
+
+    /// Yield to the model's observation task until `done` holds (or a second passes).
+    private func settle(_ done: () -> Bool) async throws {
+        for _ in 0..<50 where !done() {
+            try await Task.sleep(nanoseconds: 20_000_000)
+        }
+    }
+
     func testTheModelFollowsClientChanges() async throws {
         await server.reply(
             "/djdl/license/activate", body: #"{"token":"pkeyt_new","schemaVersion":1}"#)
-        let c = try await client(services: [.license])
+        let c = try await unactivatedLicensedClient()
         let model = PolarisKeyModel(client: c)
         model.start()
         XCTAssertFalse(model.identityEnabled)
         _ = await c.activate(key: "PKEY-1")
-        for _ in 0..<50 where model.activation == nil {
-            try await Task.sleep(nanoseconds: 20_000_000)
-        }
+        try await settle { model.activation == .token && model.state.status == .ok }
         XCTAssertEqual(model.activation, .token)
+        XCTAssertEqual(model.state.status, .ok)
+        // Only the `license` event can carry this one back: the first snapshot is long done.
+        try await c.deactivate()
+        try await settle { model.activation == nil && model.state.status == .needsActivation }
+        XCTAssertNil(model.activation)
+        XCTAssertEqual(model.state.status, .needsActivation)
         model.stop()
     }
 

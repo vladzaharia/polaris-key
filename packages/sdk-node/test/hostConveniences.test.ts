@@ -1,4 +1,4 @@
-// @pkey-feature outlet.detect license.entitlements
+// @pkey-feature outlet.detect license.entitlements crash.tags
 // SDK parity pass SP-N15 (build stamp, Windows SignatureKind), SP-N16 (verifyLicenseDocument,
 // crashTags) and SP-N17 (version autoload).
 
@@ -6,7 +6,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { resolveAppVersion } from "../src/core/appVersion.js";
-import { verifyLicenseDocument } from "../src/server.js";
+import { crashTagsFor, verifyLicenseDocument } from "../src/server.js";
 import {
   loadBuildStamp,
   readWindowsSignatureKind,
@@ -201,6 +201,39 @@ describe("verifyLicenseDocument and crashTags (SP-N16)", () => {
       environment: "stable",
       "pkey.outlet": "unknown",
     });
+  });
+
+  it("crashTagsFor writes the release the Worker's Sentry hook parses back", () => {
+    // The vectors of packages/worker/test/sentry.test.ts (parseSentryRelease): a release is
+    // `<deliverable>@<version>[+<build>]`, the channel is `environment`, the outlet `pkey.outlet`.
+    expect(
+      crashTagsFor({
+        version: "1.4.0",
+        build: "12",
+        channel: "stable",
+        outlet: "itch",
+      }),
+    ).toEqual({
+      release: "app@1.4.0+12",
+      environment: "stable",
+      "pkey.outlet": "itch",
+    });
+    expect(
+      crashTagsFor({
+        version: "2.0.0",
+        deliverable: "levels.a",
+        channel: "beta",
+        outlet: "steam",
+      }),
+    ).toEqual({
+      release: "levels.a@2.0.0",
+      environment: "beta",
+      "pkey.outlet": "steam",
+    });
+    // An empty build is no `+` (the hook reads `app@1.0.0+` as build null anyway).
+    expect(
+      crashTagsFor({ version: "1.0.0", build: "", channel: "stable" }).release,
+    ).toBe("app@1.0.0");
   });
 });
 
