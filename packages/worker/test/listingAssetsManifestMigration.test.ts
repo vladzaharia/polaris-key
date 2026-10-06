@@ -1,6 +1,6 @@
 /**
- * HA-07's `dist_listing_assets` rebuild (`00XX_dist_listing_assets_manifest.sql`; the lead numbers
- * the file at merge), replayed on a POPULATED fixture: every row and every column (0083's
+ * HA-07's `dist_listing_assets` rebuild (`0099_dist_listing_assets_manifest.sql`), replayed on a
+ * POPULATED fixture: every row and every column (0083's
  * acceptance columns included) survives, the widened CHECK admits `manifest` and still refuses
  * anything else, and the file converges from the window between its DROP and its RENAME (the
  * 0017 / 0058_b discipline: D1 may run it statement by statement).
@@ -14,9 +14,7 @@ import { describe, expect, it } from "vitest";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DIR = join(HERE, "..", "migrations");
-const FILE = readdirSync(DIR).find((f) =>
-  /^[0-9X]{4}_dist_listing_assets_manifest\.sql$/.test(f),
-)!;
+const FILE = "0099_dist_listing_assets_manifest.sql";
 const FILES = readdirSync(DIR)
   .filter((f) => f.endsWith(".sql"))
   .sort();
@@ -88,8 +86,8 @@ function insertSource(raw: Database.Database, source: string): void {
 }
 
 describe(`${FILE}: source gains 'manifest'`, () => {
-  it("exists (named `00XX_…` until the lead numbers it)", () => {
-    expect(FILE).toBeDefined();
+  it("exists", () => {
+    expect(FILES).toContain(FILE);
   });
 
   it("keeps every row and column; the CHECK admits manifest and nothing new besides", () => {

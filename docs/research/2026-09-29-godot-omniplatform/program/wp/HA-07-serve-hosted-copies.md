@@ -80,9 +80,8 @@ Where the brief and the code disagreed, the code won. As built:
 - **The PR plane's screenshots.** `prInputs.ts` said "HA-07's hosted copies fill this". They now
   do: image-host originals only, for A-18i's Flathub MetaInfo.
 - **The blob-route fix ignores the kill switch.** It is a fix, not a serving choice.
-- **Migration** `00XX_dist_listing_assets_manifest.sql` (table rebuild). The lead numbers it.
-  After numbering, rerun `pnpm --filter @polaris-key/docs gen`, because `reference/data-model.mdx`
-  names the file.
+- **Migration** `0099_dist_listing_assets_manifest.sql` (table rebuild; the lead's number).
+  `LATEST_MIGRATION` and `reference/data-model.mdx` name it.
 
 ## Steps
 
@@ -100,10 +99,9 @@ Where the brief and the code disagreed, the code won. As built:
       (`test/fixtures/feeds/altstore-stable-hosted.json`; the existing goldens are unchanged).
 - [x] `GET /<p>/distribution/blobs/sha256/<listing-asset hash>` is a 404 (test:
       `test/distributionDelivery.test.ts`, on both hosts, for `hosted-asset` too).
-- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header. The one
-      exception is the placeholder migration name. `recordDeploy` (2 tests) and
-      `checkRepresentable` refuse `00XX`: wrangler's ordering reads it as 0. Both are green with
-      the file numbered (verified as `0095`), as with HA-08.
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header. Before
+      the lead numbered the migration, `recordDeploy` and `checkRepresentable` refused the `00XX`
+      placeholder; they pass with `0099`.
 
 ## Verify
 
