@@ -90,9 +90,8 @@
       "status": "implemented"
     },
     "config.local": {
-      "status": "planned",
-      "wp": "SP-24",
-      "note": "SP-G05 persists overrides by default (PKeyConfigFileStore at user://pkey_settings.cfg) and a store write emits config_changed (tests/config/test_store.gd), but there is no config.set/config.setting API with S-17's names and nothing validates a written value against the catalog type."
+      "status": "implemented",
+      "note": "PKeyConfig.set_value/clear/clear_all/setting (S-17 §5.11's Godot names; set is Object's) write through the persisted PKeyConfigFileStore, check the value against the catalog entry's schema (type by value, not Variant: 40.0 is a valid integer), else the document value's JSON type, refuse an enforced or hidden key managed_by_admin, and emit config_changed once per write; setting(key) is a PKeyConfigSetting handle with changed(value, source) (tests/config/test_local.gd)."
     },
     "devices.fingerprint": {
       "status": "implemented",
