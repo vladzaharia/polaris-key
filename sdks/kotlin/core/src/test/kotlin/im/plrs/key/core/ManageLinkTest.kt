@@ -28,6 +28,9 @@ class ManageLinkTest {
             Triple("plain http", listOf("http://key.plrs.im/activate", null), null),
             Triple("userinfo", listOf("https://user:pw@key.plrs.im/activate", null), null),
             Triple("relative", listOf("/activate?product=djdl", null), null),
+            Triple("no //", listOf("https:key.plrs.im/activate", null), null),
+            Triple("a backslash in the authority", listOf("https://key.plrs.im\\@evil.example/activate", null), null),
+            Triple("a backslash as a separator", listOf("https://key.plrs.im\\evil/activate", null), null),
             Triple("whitespace", listOf("https://key.plrs.im/a b", null), null),
             Triple("absent", listOf(null, null), null),
         )

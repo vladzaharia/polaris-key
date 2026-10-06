@@ -4,7 +4,7 @@
 //
 // Pure functions: no I/O, no signing, no change to any error type. The link is never an auth
 // failure, so nothing here wipes state or asks for a retry; a host opens it only behind a user
-// action ("Free up a device").
+// action ("Replace a device").
 
 import { MANAGE_URL_MAX_LENGTH } from "@polaris-key/protocol/license";
 
@@ -17,6 +17,12 @@ function parseManage(raw: string): URL | null {
   // No whitespace or control characters: a link is shown and opened as served, never repaired.
   // eslint-disable-next-line no-control-regex
   if (/[\s\u0000-\u001f\u007f]/.test(raw)) return null;
+  // The shared rule every SDK applies without a URL parser: `<scheme>://` and an authority with
+  // no `@` or `\`. `new URL` alone is laxer (`https:host`, `https://host\@x`), so check first.
+  const sep = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//.exec(raw);
+  if (!sep) return null;
+  const authority = raw.slice(sep[0].length).split(/[/?#]/, 1)[0]!;
+  if (authority.includes("@") || authority.includes("\\")) return null;
   let url: URL;
   try {
     url = new URL(raw);

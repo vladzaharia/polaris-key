@@ -4,7 +4,7 @@
 //
 // Pure functions: no I/O, no signing, no change to any error type. The link is never an auth
 // failure, so nothing here wipes state or asks for a retry; a host opens it only behind a user
-// action ("Free up a device"). Every SDK pins the same table of cases (client-core
+// action ("Replace a device"). Every SDK pins the same table of cases (client-core
 // `test/manage.test.ts`), so the links each one builds are byte-identical.
 
 import Foundation
@@ -20,6 +20,11 @@ public enum ManageLink {
         if raw.unicodeScalars.contains(where: {
             $0.properties.isWhitespace || $0.value < 0x20 || $0.value == 0x7F
         }) { return nil }
+        // The shared rule (client-core `parseManage`): `<scheme>://` and no `@` or `\` in the
+        // authority, checked before `URLComponents`, which is laxer on some inputs.
+        guard let sep = raw.range(of: "://"), sep.lowerBound > raw.startIndex else { return nil }
+        let authority = raw[sep.upperBound...].prefix(while: { $0 != "/" && $0 != "?" && $0 != "#" })
+        if authority.contains("@") || authority.contains("\\") { return nil }
         guard let c = URLComponents(string: raw), let host = c.host, !host.isEmpty else {
             return nil
         }

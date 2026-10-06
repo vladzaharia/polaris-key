@@ -12,6 +12,7 @@ links each one builds are byte-identical.
 
 from __future__ import annotations
 
+import re
 from typing import Any, Optional, Tuple
 from urllib.parse import urlsplit
 
@@ -35,6 +36,14 @@ def _parse(raw: str) -> Optional[Any]:
     if not raw or len(raw) > MANAGE_URL_MAX_LENGTH:
         return None
     if any(c.isspace() or ord(c) < 0x20 or ord(c) == 0x7F for c in raw):
+        return None
+    # The shared rule (client-core ``parseManage``): ``<scheme>://`` and no ``@`` or ``\\`` in
+    # the authority.
+    sep = raw.find("://")
+    if sep <= 0:
+        return None
+    authority = re.split(r"[/?#]", raw[sep + 3 :], maxsplit=1)[0]
+    if "@" in authority or "\\" in authority:
         return None
     try:
         parts = urlsplit(raw)

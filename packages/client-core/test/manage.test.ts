@@ -33,6 +33,17 @@ describe("readManageUrl", () => {
       undefined,
     ],
     ["relative", { manageUrl: "/activate?product=djdl" }, undefined],
+    ["no //", { manageUrl: "https:key.plrs.im/activate" }, undefined],
+    [
+      "a backslash in the authority",
+      { manageUrl: "https://key.plrs.im\\@evil.example/activate" },
+      undefined,
+    ],
+    [
+      "a backslash as a separator",
+      { manageUrl: "https://key.plrs.im\\evil/activate" },
+      undefined,
+    ],
     ["whitespace", { manageUrl: "https://key.plrs.im/a b" }, undefined],
     ["a number", { manageUrl: 7 }, undefined],
     ["absent", { error: "device_limit", limit: 1, deviceCount: 1 }, undefined],

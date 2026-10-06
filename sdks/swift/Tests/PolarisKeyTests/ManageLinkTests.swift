@@ -25,6 +25,9 @@ final class ManageLinkTests: XCTestCase {
             ("plain http", "http://key.plrs.im/activate", nil, nil),
             ("userinfo", "https://user:pw@key.plrs.im/activate", nil, nil),
             ("relative", "/activate?product=djdl", nil, nil),
+            ("no //", "https:key.plrs.im/activate", nil, nil),
+            ("a backslash in the authority", "https://key.plrs.im\\@evil.example/activate", nil, nil),
+            ("a backslash as a separator", "https://key.plrs.im\\evil/activate", nil, nil),
             ("whitespace", "https://key.plrs.im/a b", nil, nil),
             ("absent", nil, nil, nil),
         ]
