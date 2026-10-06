@@ -61,6 +61,9 @@ var discovery_manifest = null
 var _expected_services = null
 var _discovered_services = null
 var _caps: PKeyCaps = null
+## The copy API (core.copy): copy.message(code), copy.title(code), copy.activation_message(kind)
+## over the generated English with the host override layer. Shared by every core and the UI kit.
+var copy: PKeyCopy = PKeyCopy.shared()
 
 
 ## Validate `opts` and build a Core. ok with detail = the PKeyCore, or a failure:
