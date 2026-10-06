@@ -78,12 +78,12 @@ As built: also `ui/charts/FillRect.tsx` (new), `ui/motion/changed.ts` (new), `ui
 
 ## Acceptance criteria
 
-- [ ] A filter on a 60-row table names at most 30 rows and moves (not re-enters) surviving rows (smoke suite).
-- [ ] No `animate-pulse` remains under `src/ui/`.
-- [ ] Chart fills animate by transform only (motion lint + test).
-- [ ] Layout lint stays at zero.
-- [ ] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
-- [ ] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
+- [x] A filter on a 60-row table names at most 30 rows and moves (not re-enters) surviving rows (smoke suite: `e2e/dataMotion.e2e.test.ts`, both themes; Clear filters back to 60 rows names at most 30 too).
+- [x] No `animate-pulse` remains under `src/ui/` (MO-10 had already removed the last site; the motion lint's allowlist is empty).
+- [x] Chart fills animate by transform only (motion lint + test: `test/ui/dataMotion.test.tsx` scans `ui/charts/` for computed SVG widths and checks every fill is a full-width `pk-meter-fill`; the smoke suite measures a seat meter's fill at a fifth of its track).
+- [x] Layout lint stays at zero (`e2e/layout.e2e.test.ts` green in the full `test:e2e` run).
+- [x] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test): both variants in `e2e/dataMotion.e2e.test.ts`, plus unit tests.
+- [x] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
 
 ## Verify
 
