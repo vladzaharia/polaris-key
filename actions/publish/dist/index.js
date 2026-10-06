@@ -35910,6 +35910,100 @@ ${FEEDS_SETUP_USAGE}`);
 ` : formatFeedSetup(snippets);
 }
 
+// src/feedPrune.ts
+init_define_PKEY_EMBEDDED_SCHEMAS();
+var MAX_ROUNDS = 50;
+var FEEDS_PRUNE_USAGE = "Usage: pkey feeds prune --product <slug> [--deliverable id] [--apply] [--json] [--base-url url]";
+function formatBytes(n) {
+  if (n < 1e3) return `${n} B`;
+  const units = ["kB", "MB", "GB", "TB"];
+  let v = n;
+  let u = -1;
+  while (v >= 1e3 && u < units.length - 1) {
+    v /= 1e3;
+    u++;
+  }
+  return `${v.toFixed(1)} ${units[u]}`;
+}
+function renderPruneReport(r) {
+  const lines3 = [];
+  const verb = r.dryRun ? "Would prune" : "Pruned";
+  lines3.push(
+    `${r.dryRun ? "Dry run: nothing was deleted." : "Applied."} Product ${r.product} (automatic retention ${r.prunePrereleases ? "on" : "off"}).`
+  );
+  for (const p of r.packages) {
+    lines3.push(
+      `${p.ecosystem} ${p.name}: newest stable ${p.stable}; ${verb.toLowerCase()} ${p.prune.length} build${p.prune.length === 1 ? "" : "s"} of main, ${formatBytes(p.bytes)} (${formatBytes(p.freedBytes)} freed)`
+    );
+    for (const v of p.prune)
+      lines3.push(
+        `  - ${v.version}  ${v.files} file${v.files === 1 ? "" : "s"}, ${formatBytes(v.bytes)} (${formatBytes(v.freedBytes)} freed)`
+      );
+    for (const k of p.kept) lines3.push(`  = ${k.version}  kept (${k.reason})`);
+    for (const f of p.failed ?? [])
+      lines3.push(`  ! ${f.version}  failed: ${f.error}`);
+  }
+  for (const s of r.skipped)
+    lines3.push(`${s.deliverableId}: skipped (no stable release yet)`);
+  lines3.push(
+    `Total: ${verb.toLowerCase()} ${r.totals.versions} version${r.totals.versions === 1 ? "" : "s"}, ${formatBytes(r.totals.bytes)}, of which ${formatBytes(r.totals.freedBytes)} is referenced by nothing else.${r.totals.failed ? ` ${r.totals.failed} failed: run it again.` : ""}`
+  );
+  if (r.dryRun && r.totals.versions > 0)
+    lines3.push("Run again with --apply to delete them.");
+  return `${lines3.join("\n")}
+`;
+}
+async function feedsPrune(opts) {
+  if (!opts.product)
+    throw new Error(`--product is required.
+${FEEDS_PRUNE_USAGE}`);
+  const token = await resolveCiToken({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    env: opts.env,
+    out: opts.stdout,
+    log: opts.stderr,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep
+  });
+  const client = ciClient({
+    baseUrl: opts.baseUrl,
+    product: opts.product,
+    token,
+    fetchImpl: opts.fetchImpl,
+    sleep: opts.sleep,
+    log: opts.stderr
+  });
+  const ask = () => client.postJson("release/packages/prune", {
+    what: opts.apply ? "Pruning builds of main" : "Planning the prune",
+    body: {
+      apply: opts.apply,
+      ...opts.deliverable ? { deliverable: opts.deliverable } : {}
+    }
+  });
+  let report = await ask();
+  for (let round = 1; opts.apply && report.more && round < MAX_ROUNDS; round++) {
+    const next = await ask();
+    report = {
+      ...next,
+      packages: [...report.packages, ...next.packages].filter(
+        (p) => p.prune.length || p.kept.length || p.failed?.length
+      ),
+      totals: {
+        versions: report.totals.versions + next.totals.versions,
+        bytes: report.totals.bytes + next.totals.bytes,
+        freedBytes: report.totals.freedBytes + next.totals.freedBytes,
+        failed: report.totals.failed + next.totals.failed
+      }
+    };
+  }
+  opts.stdout.write(
+    opts.json ? `${JSON.stringify(report, null, 2)}
+` : renderPruneReport(report)
+  );
+  return report;
+}
+
 // src/listing.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
 
@@ -38887,12 +38981,32 @@ async function cmdFeeds(parsed, cwd, stdout, stderr, ci) {
     );
     return 0;
   }
+  if (parsed.positional[0] === "prune") {
+    const prunedProduct = flagString(parsed, "product");
+    if (!prunedProduct) throw new Error(FEEDS_PRUNE_USAGE);
+    await feedsPrune({
+      product: prunedProduct,
+      deliverable: flagString(parsed, "deliverable"),
+      apply: flagBool(parsed, "apply"),
+      json: flagBool(parsed, "json"),
+      baseUrl: flagString(parsed, "base-url"),
+      env: ci.env,
+      stdout,
+      stderr,
+      fetchImpl: ci.fetchImpl,
+      sleep: ci.sleep
+    });
+    return 0;
+  }
   const product = flagString(parsed, "product");
   const channel = flagString(parsed, "channel");
   const out = flagString(parsed, "out");
   if (parsed.positional[0] !== "fdroid" || !product || !channel || !out)
-    throw new Error(`${FEEDS_USAGE}
-${FEEDS_SETUP_USAGE}`);
+    throw new Error(
+      `${FEEDS_USAGE}
+${FEEDS_SETUP_USAGE}
+${FEEDS_PRUNE_USAGE}`
+    );
   await buildFdroidFeed({
     cwd,
     product,
@@ -39166,6 +39280,7 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
   pkey feeds setup --ecosystem npm|pypi|swift|maven|oci|godot --owner slug
               [--namespace key=value ...] [--package name [--version v]] [--origin url]
               [--token-env NAME] [--json]
+  pkey feeds prune --product slug [--deliverable id] [--apply] [--json] [--base-url url]
   pkey listing assets --out dir [--icon png] [--key-art png] [--key-art-portrait png]
               [--wordmark png] [--screenshots dir] [--focal x,y] [--focal-portrait x,y]
               [--background #rrggbb] [--accept store/class/name ...] [--pad store/class/name ...]
@@ -39254,6 +39369,11 @@ pkey feeds fdroid builds the channel's F-Droid repository (index-v2.json, entry.
 from Polaris Key's releases, signs entry.jar with apksigner and the CI-held repo key (the
 password in $PKEY_FDROID_KS_PASS), uploads it and registers it; the token needs
 distribution:feeds. Without --keystore it writes the unsigned files and stops.
+
+pkey feeds prune deletes each package's builds of main (X-main.N, PyPI X.devN) below its newest
+stable release, the backfill of the Worker's automatic feed retention. It is a dry run unless
+--apply: it prints what would go, per package, with counts and bytes. The token needs
+release:yank, which an operator grants.
 
 pkey feeds setup prints the copy-paste setup for one package feed on the registry host (default
 https://pkg.plrs.im), the same snippets the console's Setup tab shows: strict routing only (the
