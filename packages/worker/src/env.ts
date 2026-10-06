@@ -68,8 +68,9 @@ export interface Env {
   BLOBS?: R2Bucket;
   /**
    * The Cloudflare Images binding (S-20 §6.3 step 6, §6.6). OPTIONAL: `core/hostedAssets.ts` reads
-   * an ingested image's dimensions with `.info()` when it is bound, and records none otherwise.
-   * HA-03 binds it in `wrangler.toml` and builds the variant ladder with it.
+   * an ingested image's dimensions with `.info()` and builds the WebP variant ladder with it at
+   * ingest (HA-03). Unbound (env.test), or out of transformations (9422): no dimensions, no
+   * variants, and the ingest still succeeds. Bound in `wrangler.toml` for prod, staging and dev.
    * @inventory binding delivery
    */
   IMAGES?: ImagesBinding;

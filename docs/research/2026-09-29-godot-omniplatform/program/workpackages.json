@@ -7721,7 +7721,7 @@
       "optional": false,
       "refs": ["notes/S-20 §6.6", "notes/S-20 owner decision 4"],
       "brief": "wp/HA-03-image-variants.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "HA-04",
