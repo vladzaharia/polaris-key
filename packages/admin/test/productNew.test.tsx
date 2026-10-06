@@ -241,6 +241,10 @@ describe("New product", () => {
     ).toBeTruthy();
     expect(within(welcome).getByText("tonebox-2026")).toBeTruthy();
     expect(within(welcome).getByText(/Signed/)).toBeTruthy();
+    // The key is for the app's trust pins; releases use the separate CI release key (UX-59).
+    expect(welcome.textContent).toContain(
+      "Pin this key in your app. Releases are signed by a separate CI release key.",
+    );
     expect(
       within(welcome).getByRole("button", {
         name: /Copy the signing public key/,

@@ -49,6 +49,24 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 - PX-10 accepts `license=` and the same-origin return `/signin?request=rq_…` (I-04 decision 14); `for=` stays the device label.
 - Accessibility per SIGN-IN.md §3.14: full and blocked rows are not radios, Replace stays in Tab order, focus moves to each step's h1.
 
+## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
+
+The owner decided on 2026-10-05 that every in-app sign-in step happens in **one form whose body
+morphs in place** (no stacked sheets), that the license is chosen **inside the app** when it can
+show it, that the presentation is configurable with native controls kept, that there are **two
+equal ways to integrate** (the hosted card, and the kit form with headless primitives), and that
+the web flow is one continuous, animated card. The wire is
+[`plans/I-04.md`](../plans/I-04.md) §G (a pending sign-in grant, `licenseChoice: "app" | "card"`);
+the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) §2.4, §3.17, §3.18, §4.16 and
+D-78–D-93. Where this brief differs, they win. **No device-wire version change**
+(`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2; no corpus file). New UI copy uses
+the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
+every row, no "Account-wide"). For this package:
+
+- **The card in app mode** (I-04 §G.3): skip LicenseChoiceStep; Consent keeps its place with `signin.consent.licenseInApp` ("You'll choose a license in {app}.") and no **Change**; the desktop ReturnStep variant `signin.return.chooseInApp` (frame 26).
+- **The integrated web flow** (SIGN-IN.md §4.16, D-87): one card at one address; the key entry (KeyStep), the choice, **Replace a device** (a step that replaces the list, D-81), Consent and the return are steps of it, each a history entry restored from the server flow record; **Free a device** only where Replace is not offered.
+- **Motion** (SIGN-IN.md §3.18): morph, shared-element, enter and exit by direction of travel, stagger-list, expand, success and skeleton, with the `--pk-*` tokens; View Transitions with the Web Animations fallback; instant swaps under reduced motion; CSP-safe (no inline styles or scripts). The prototype in `docs/design/sign-in/prototype/` is the reference.
+
 ## Goal
 
 App sign-ins show "<App> wants you to sign in" in the card header (app and device variants) through every step, the `AppConsent` confirm step on first sign-in and whenever what the app gets changes, and a return screen, across the broker, native redirect, web redirect and device code; products with Identity off get the `identity_disabled` error card.

@@ -71,3 +71,8 @@ packages/worker/assets/
 
 # Test fixtures that a global *.jar ignore would otherwise drop.
 !packages/cli/test/fixtures/**/*.jar
+
+# PX-20: the portal's visual baselines. Only the linux set is committed (what CI renders); other
+# platforms record their own locally, and mismatches write actual/diff images to .out/.
+packages/admin/e2e/__baselines__/portal/*
+!packages/admin/e2e/__baselines__/portal/linux/

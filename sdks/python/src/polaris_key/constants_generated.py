@@ -68,6 +68,8 @@ __all__ = [
     "DELEGABLE_PACK_TYPE_VALUES",
     "DataOnlyExtension",
     "DATA_ONLY_EXTENSION_VALUES",
+    "LICENSE_STATUS_VALUES",
+    "ACTIVATION_RESULT_VALUES",
     "HeaderName",
     "HEADER_NAME_VALUES",
     "ServiceSlug",
@@ -593,6 +595,7 @@ class Feature:
     CORE_ERRORS: Final = "core.errors"
     CORE_CAPS: Final = "core.caps"
     CORE_STORE: Final = "core.store"
+    CORE_COPY: Final = "core.copy"
     LICENSE_GATE: Final = "license.gate"
     LICENSE_ACTIVATE: Final = "license.activate"
     LICENSE_ENROLL: Final = "license.enroll"
@@ -600,30 +603,37 @@ class Feature:
     LICENSE_ENTITLEMENTS: Final = "license.entitlements"
     LICENSE_CHANNELS: Final = "license.channels"
     LICENSE_REREGISTER: Final = "license.reregister"
+    LICENSE_REFUSALS: Final = "license.refusals"
     CONFIG_RESOLVE: Final = "config.resolve"
     CONFIG_LIST: Final = "config.list"
     CONFIG_SECRET: Final = "config.secret"
     CONFIG_SCHEMA: Final = "config.schema"
     CONFIG_MINT: Final = "config.mint"
     CONFIG_MIRROR: Final = "config.mirror"
+    CONFIG_LOCAL: Final = "config.local"
     DEVICES_FINGERPRINT: Final = "devices.fingerprint"
     DEVICES_FACTS: Final = "devices.facts"
     DEVICES_REGISTER: Final = "devices.register"
     DEVICES_MANAGE: Final = "devices.manage"
     DEVICES_REPORT: Final = "devices.report"
+    TELEMETRY_UPDATES: Final = "telemetry.updates"
     DEVICES_ATTEST: Final = "devices.attest"
     IDENTITY_OIDC: Final = "identity.oidc"
     IDENTITY_DEVICECODE: Final = "identity.devicecode"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
     RELEASE_RECORD: Final = "release.record"
+    RELEASE_FETCH: Final = "release.fetch"
+    RELEASE_DISTRIBUTION: Final = "release.distribution"
     UPDATE_CHECK: Final = "update.check"
     UPDATE_FEED: Final = "update.feed"
+    UPDATE_FEEDS: Final = "update.feeds"
     UPDATE_DECIDE: Final = "update.decide"
     UPDATE_CONTENT: Final = "update.content"
     UPDATE_DRIVER: Final = "update.driver"
     UPDATE_BOOTGUARD: Final = "update.bootguard"
     OUTLET_DETECT: Final = "outlet.detect"
+    CRASH_TAGS: Final = "crash.tags"
     PACKS_RECORD: Final = "packs.record"
     PACKS_REVOKE: Final = "packs.revoke"
     PACKS_DELEGATION: Final = "packs.delegation"
@@ -649,7 +659,9 @@ class Feature:
     PACKS_TRANSPORT_MSIX: Final = "packs.transport.msix"
     PACKS_TRANSPORT_FLATPAK: Final = "packs.transport.flatpak"
     UI_STAGES: Final = "ui.stages"
+    UI_BOOT: Final = "ui.boot"
     UI_KIT: Final = "ui.kit"
+    UI_CLI: Final = "ui.cli"
     COMMERCE_RECEIPT: Final = "commerce.receipt"
 
 
@@ -665,6 +677,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "core.errors",
     "core.caps",
     "core.store",
+    "core.copy",
     "license.gate",
     "license.activate",
     "license.enroll",
@@ -672,30 +685,37 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "license.entitlements",
     "license.channels",
     "license.reregister",
+    "license.refusals",
     "config.resolve",
     "config.list",
     "config.secret",
     "config.schema",
     "config.mint",
     "config.mirror",
+    "config.local",
     "devices.fingerprint",
     "devices.facts",
     "devices.register",
     "devices.manage",
     "devices.report",
+    "telemetry.updates",
     "devices.attest",
     "identity.oidc",
     "identity.devicecode",
     "release.changelog",
     "release.download",
     "release.record",
+    "release.fetch",
+    "release.distribution",
     "update.check",
     "update.feed",
+    "update.feeds",
     "update.decide",
     "update.content",
     "update.driver",
     "update.bootguard",
     "outlet.detect",
+    "crash.tags",
     "packs.record",
     "packs.revoke",
     "packs.delegation",
@@ -721,7 +741,9 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "packs.transport.msix",
     "packs.transport.flatpak",
     "ui.stages",
+    "ui.boot",
     "ui.kit",
+    "ui.cli",
     "commerce.receipt",
 )
 
@@ -1270,6 +1292,38 @@ DATA_ONLY_EXTENSION_VALUES: Tuple[str, ...] = (
 )
 
 
+#: Every gate status a licence evaluates to (`LicenseStatus` in `@polaris-key/protocol/license`, `client-core`'s gate). A tools/gen-sdk-constants.test.ts case keeps them equal; `copy.en.json`'s `gate` keys equal it (plans/SP-00.md §4). Every value, in source order.
+LICENSE_STATUS_VALUES: Tuple[str, ...] = (
+    "ok",
+    "grace",
+    "expired",
+    "revoked",
+    "needs-activation",
+    "version-too-old",
+    "version-too-new",
+    "channel-not-entitled",
+    "not-applicable",
+)
+
+
+#: The typed activation results of `license.activate` and `license.enroll` (SDK-PARITY-PASS §3.1), in the transcript (kebab) form; each SDK spells its own kinds in its casing. `copy.en.json`'s `activation` keys equal it (plans/SP-00.md §4). Every value, in source order.
+ACTIVATION_RESULT_VALUES: Tuple[str, ...] = (
+    "ok",
+    "device-limit",
+    "fingerprint-required",
+    "hardware-mismatch",
+    "enroll-claimed",
+    "license-disabled",
+    "license-expired",
+    "attestation-required",
+    "rate-limited",
+    "unauthorized",
+    "enroll-disabled",
+    "refused",
+    "error",
+)
+
+
 class HeaderName:
     """The `X-PKey-*` request header names (wire contract v3 §5)."""
 
@@ -1574,6 +1628,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "core.errors": CapabilityRow("implemented", "core", ()),
         "core.caps": CapabilityRow("implemented", "core", ()),
         "core.store": CapabilityRow("implemented", "core", (CapabilityNa("python", "dependency"),)),
+        "core.copy": CapabilityRow("planned", "sdk", ()),
         "license.gate": CapabilityRow("implemented", "license", ()),
         "license.activate": CapabilityRow("implemented", "license", ()),
         "license.enroll": CapabilityRow("implemented", "license", ()),
@@ -1581,30 +1636,37 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "license.entitlements": CapabilityRow("implemented", "license", ()),
         "license.channels": CapabilityRow("implemented", "license", ()),
         "license.reregister": CapabilityRow("implemented", "license", ()),
+        "license.refusals": CapabilityRow("planned", "license", ()),
         "config.resolve": CapabilityRow("implemented", "config", ()),
         "config.list": CapabilityRow("implemented", "config", ()),
         "config.secret": CapabilityRow("implemented", "config", ()),
         "config.schema": CapabilityRow("implemented", "config", ()),
         "config.mint": CapabilityRow("implemented", "config", ()),
         "config.mirror": CapabilityRow("implemented", "config", ()),
+        "config.local": CapabilityRow("planned", "sdk", ()),
         "devices.fingerprint": CapabilityRow("implemented", "core", ()),
         "devices.facts": CapabilityRow("implemented", "core", ()),
         "devices.register": CapabilityRow("implemented", "core", ()),
         "devices.manage": CapabilityRow("implemented", "core", ()),
         "devices.report": CapabilityRow("implemented", "core", ()),
+        "telemetry.updates": CapabilityRow("planned", "core", ()),
         "devices.attest": CapabilityRow("na", "core", (CapabilityNa("python", "runtime"),)),
         "identity.oidc": CapabilityRow("planned", "identity", ()),
         "identity.devicecode": CapabilityRow("implemented", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
         "release.record": CapabilityRow("implemented", "release", ()),
+        "release.fetch": CapabilityRow("planned", "distribution", ()),
+        "release.distribution": CapabilityRow("planned", "distribution", ()),
         "update.check": CapabilityRow("implemented", "update", ()),
         "update.feed": CapabilityRow("implemented", "update", ()),
+        "update.feeds": CapabilityRow("planned", "update", ()),
         "update.decide": CapabilityRow("implemented", "update", ()),
         "update.content": CapabilityRow("implemented", "update", ()),
         "update.driver": CapabilityRow("planned", "update", ()),
         "update.bootguard": CapabilityRow("planned", "update", ()),
         "outlet.detect": CapabilityRow("implemented", "update", ()),
+        "crash.tags": CapabilityRow("planned", "sdk", ()),
         "packs.record": CapabilityRow("implemented", "release", ()),
         "packs.revoke": CapabilityRow("implemented", "release", ()),
         "packs.delegation": CapabilityRow("implemented", "release", ()),
@@ -1630,10 +1692,12 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "packs.transport.msix": CapabilityRow("planned", "distribution", ()),
         "packs.transport.flatpak": CapabilityRow("planned", "distribution", ()),
         "ui.stages": CapabilityRow("implemented", "sdk", ()),
+        "ui.boot": CapabilityRow("planned", "sdk", ()),
         "ui.kit": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
+        "ui.cli": CapabilityRow("planned", "sdk", ()),
         "commerce.receipt": CapabilityRow("planned", "license", ()),
     }
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "7f1bbda8fe6c6afc09c067a88532900ef065f17ca29d6037dcef95da98799056"
+CAPABILITY_DIGEST: Final[str] = "fcfa1931ec1dae22002aaef91ed56be857f1faf57eb4b9f67d2a0f18fcc35b76"

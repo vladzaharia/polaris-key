@@ -31,6 +31,7 @@ const VERBS: Record<string, string> = {
   "license.overrides": "changed config overrides of license",
   "license.enable": "enabled license",
   "license.disable": "disabled license",
+  "license.delete": "deleted license",
   "license.enroll": "enrolled a keyless license",
   "device.deauthorize": "deauthorized device",
   "device.fingerprint.reset": "reset the hardware binding of device",

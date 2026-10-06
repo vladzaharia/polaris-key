@@ -19,7 +19,13 @@ export type PortalScenario =
 type Reply = { status?: number; body: unknown };
 export type Handler = Reply | ((req: Request) => Reply);
 
-const NOW = Math.floor(Date.now() / 1000);
+/**
+ * The fixtures' clock, fixed so the visual baselines (PX-20) are reproducible: the harness pins the
+ * page's `Date` to the same instant (portalHarness.ts), so "2 hours ago" and every printed date read
+ * the same on every run.
+ */
+export const FIXTURE_NOW = Date.UTC(2026, 9, 1, 12, 0, 0) / 1000;
+const NOW = FIXTURE_NOW;
 const DAY = 86_400;
 const ACCOUNT = {
   id: "acct_1",
