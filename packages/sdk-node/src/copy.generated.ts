@@ -230,6 +230,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     message:
       "This offer isn't available to your account anymore. Refresh and try again.",
   },
+  not_removable: {
+    title: "Can't remove",
+    message:
+      "This license can't be added back with a key, so it stays in your library.",
+  },
   download_auth_required: {
     title: "Sign in to download",
     message: "Sign in or activate a license to download this.",

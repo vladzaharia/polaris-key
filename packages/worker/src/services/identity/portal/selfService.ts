@@ -55,10 +55,12 @@ import {
   getPortalLicense,
   getPortalProductSettings,
   licenseLinkedElsewhere,
+  listVisibleKeys,
   normalizeEmail,
   portalAudit,
   type PortalLicenseRow,
 } from "./repo.js";
+import { notRemovableReason } from "./origin.js";
 import { portalSessionAuthenticatedAt, type PortalSession } from "./session.js";
 import { sendNotice } from "./email.js";
 import { attachLicense, detachLicense } from "../accounts/claim.js";
@@ -480,8 +482,10 @@ export const LICENSE_REMOVE_LIMIT_PER_MINUTE = 10;
  * the ones this account signed in on lose Cloud Sync for it (`resolveSyncPrincipal` reads the
  * block; lead decision, 2026-10-06).
  *
- * 404, the same as for a licence that is not yours, on a product whose portal is off. Charged
- * after ownership is proven, in the product's own shard.
+ * 404, the same as for a licence that is not yours, on a product whose portal is off. A licence
+ * that could never be added back (no active key, or the product turned key claims off; the list
+ * says `removable: false`) is refused with `409 not_removable` and its `reason`, before anything
+ * is charged or written. Charged after ownership is proven, in the product's own shard.
  */
 export async function handleLicenseRemove(
   req: Request,
@@ -501,6 +505,23 @@ export async function handleLicenseRemove(
     licenseId,
   );
   if (!license) return notFound();
+  // Only a licence its key can bring back may leave (lead decision, 2026-10-06): refused before
+  // anything is charged or written.
+  const keys = await listVisibleKeys(db, product, licenseId);
+  const reason = notRemovableReason(
+    keys.filter((k) => k.status === "active").length,
+    settings.license_key_claim_enabled === 1,
+  );
+  if (reason) {
+    return portalJson(
+      {
+        error: "not_removable",
+        message: "this license could not be added back, so it stays",
+        reason,
+      },
+      409,
+    );
+  }
   const limited = await requireActionRateLimit(
     req,
     env,

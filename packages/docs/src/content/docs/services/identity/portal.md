@@ -298,6 +298,8 @@ url96}}`; it does not change the profile until a `PATCH` puts it to use. An unus
   `store` (a store purchase and no key, "From Steam"), `developer` (a license the developer
   assigned to an email, even though it has a key, "From Little Fern"), or `signin` (issued by
   signing in, "From signing in"). `originStore` names the store for the two store origins.
+  `removable` says whether **Remove from my library** is offered: only for a license its key can
+  bring back (an active license key, on a product that lets a key add a license here).
 - **`DELETE /api/licenses/<product>/<licenseId>`** — **Remove from my library**. The license
   leaves the account: it keeps its email, so it waits for an account that verifies that address
   (with no email it floats again, and anyone with the key can add it). An auto-attach block keeps
@@ -305,6 +307,9 @@ url96}}`; it does not change the profile until a `PATCH` puts it to use. An unus
   key again does, and that lifts the block. The account's package tokens for it are revoked; its
   devices keep running and keep their seats, and the ones this account signed in on lose Cloud
   Sync for it. Audited (`account.license.detach`, `account.license.auto_attach_block`).
+  Only a `removable` license: any other (a sign-in license, a Discover claim, a keyless store or
+  developer license, or any license while the product turns key claims off) answers `409
+not_removable` with `reason` `no_active_key` or `key_claim_off`, and nothing is written.
   Ownership first, then 10 per minute in that product's shard; `404` for a license that is not in
   the account and on a product whose portal is off.
 - **`GET /api/library`** — the account's library: one entry per product it holds a license for

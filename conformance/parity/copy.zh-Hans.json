@@ -189,6 +189,10 @@
       "title": "优惠不可用",
       "message": "此优惠已不再适用于你的账户。请刷新后重试。"
     },
+    "not_removable": {
+      "title": "无法移除",
+      "message": "此许可证无法通过许可证密钥重新添加，因此会保留在你的库中。"
+    },
     "download_auth_required": {
       "title": "登录以下载",
       "message": "请登录或激活许可证以下载此内容。"

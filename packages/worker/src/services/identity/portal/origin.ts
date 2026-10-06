@@ -97,3 +97,26 @@ export async function licenseStores(
 export function storeKey(product: string, licenseId: string): string {
   return `${product}\u0000${licenseId}`;
 }
+
+// ── Removable (PX-23 review, lead decision 2026-10-06) ───────────────────────────────────────
+
+/** Why a licence cannot be removed from a library, when it cannot. */
+export type NotRemovableReason = "no_active_key" | "key_claim_off";
+
+/**
+ * Can the person remove this licence from their library? Only when they could add it back, and
+ * after a removal the one way back is its key (LX-26's block refuses every automatic attach, and
+ * Discover counts a held product as held): so the licence needs an active key AND the product
+ * must let a key add a licence in the portal (`license_key_claim_enabled`). A sign-in licence, a
+ * Discover claim and a keyless store or developer licence are never removable. The licence list
+ * and detail report it (`removable`), and `DELETE /api/licenses/<p>/<id>` refuses the rest with
+ * `409 not_removable`, writing nothing.
+ */
+export function notRemovableReason(
+  activeKeyCount: number,
+  keyClaimEnabled: boolean,
+): NotRemovableReason | null {
+  if (activeKeyCount < 1) return "no_active_key";
+  if (!keyClaimEnabled) return "key_claim_off";
+  return null;
+}

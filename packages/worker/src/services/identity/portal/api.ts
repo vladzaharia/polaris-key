@@ -88,7 +88,12 @@ import {
   handleKeyReissue,
   handleLicenseRemove,
 } from "./selfService.js";
-import { licenseStores, portalLicenseOrigin, storeKey } from "./origin.js";
+import {
+  licenseStores,
+  notRemovableReason,
+  portalLicenseOrigin,
+  storeKey,
+} from "./origin.js";
 import {
   portalEmailConfigured,
   sendNotice,
@@ -206,6 +211,8 @@ export async function shapeLicenseSummary(
   // `channels`, `minVersion`, `maxVersion` and `entitlements` come from the licence document's
   // own resolution, not the licence row's columns (LX-04, S-19 G14; see `entitlements.ts`).
   const grants = await licenseGrants(db, row, now);
+  const activeKeyCount = keys.filter((k) => k.status === "active").length;
+  const settings = await getPortalProductSettings(db, row.product);
   return {
     ...licenseBase(row),
     ...portalLicenseOrigin({
@@ -220,9 +227,15 @@ export async function shapeLicenseSummary(
     maxVersion: grants.maxVersion,
     usable: licenseUsable(row, now),
     keyCount: keys.length,
-    activeKeyCount: keys.filter((k) => k.status === "active").length,
+    activeKeyCount,
     deviceCount: devices.filter((d) => d.status === "authorized").length,
     entitlements: grants.entitlements,
+    // PX-23: Remove from my library is offered only for a licence its key can bring back.
+    removable:
+      notRemovableReason(
+        activeKeyCount,
+        settings.license_key_claim_enabled === 1,
+      ) === null,
   };
 }
 

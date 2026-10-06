@@ -1296,6 +1296,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_eligible_message">Dieses Angebot ist für Ihr Konto nicht mehr verfügbar. Aktualisieren Sie die Ansicht und versuchen Sie es erneut.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_removable_title">Entfernen nicht möglich</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_removable_message">Diese Lizenz kann nicht mit einem Lizenzschlüssel wieder hinzugefügt werden, deshalb bleibt sie in Ihrer Bibliothek.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_download_auth_required_title">Zum Herunterladen anmelden</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_download_auth_required_message">Melden Sie sich an oder aktivieren Sie eine Lizenz, um dies herunterzuladen.</string>

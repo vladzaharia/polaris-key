@@ -569,6 +569,8 @@
   "core.codes.step_up_required.message": "Para sua segurança, entre novamente para continuar.",
   "core.codes.not_eligible.title": "Oferta indisponível",
   "core.codes.not_eligible.message": "Esta oferta não está mais disponível para sua conta. Atualize a página e tente novamente.",
+  "core.codes.not_removable.title": "Não é possível remover",
+  "core.codes.not_removable.message": "Esta licença não pode ser adicionada de novo com uma chave de licença, então ela continua na sua biblioteca.",
   "core.codes.download_auth_required.title": "Entre para baixar",
   "core.codes.download_auth_required.message": "Entre ou ative uma licença para baixar isto.",
   "core.codes.delivery_gate_missing.title": "Download indisponível",

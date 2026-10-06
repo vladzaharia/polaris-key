@@ -532,6 +532,122 @@ describe("DELETE /api/licenses/:product/:licenseId: Remove from my library (S-24
     expect(await licenceIds(env, db, ada)).toEqual([licenseId]);
   });
 
+  it("only a licence its key can bring back is removable; the rest are refused with 409 not_removable and nothing written", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    await seedProduct(db, SLUG);
+    // A key licence the developer assigned to Ada: removable.
+    await seedLicenseWithKey(db, SLUG, { id: "lic_key" });
+    // A sign-in licence: issued by signing in, no key.
+    await seedLicenseWithKey(db, SLUG, { id: "lic_signin" });
+    await db.run(
+      "UPDATE licenses SET origin = 'oidc', sub = 'oidc-ada' WHERE product = ? AND id = 'lic_signin'",
+      SLUG,
+    );
+    await db.run(
+      "DELETE FROM keys_index WHERE product = ? AND license_id = 'lic_signin'",
+      SLUG,
+    );
+    // Its only key was revoked: nothing can bring it back either.
+    await seedLicenseWithKey(db, SLUG, { id: "lic_revoked" });
+    await db.run(
+      "UPDATE keys_index SET status = 'revoked' WHERE product = ? AND license_id = 'lic_revoked'",
+      SLUG,
+    );
+    const s = await session(env, db, ADA);
+    const list = await json<{
+      licenses: Array<{ id: string; removable: boolean }>;
+    }>(await call(env, db, "GET", "/api/licenses", s));
+    expect(
+      Object.fromEntries(list.licenses.map((l) => [l.id, l.removable])),
+    ).toEqual({ lic_key: true, lic_signin: false, lic_revoked: false });
+    expect(
+      (
+        await json(
+          await call(env, db, "GET", `/api/licenses/${SLUG}/lic_signin`, s),
+        )
+      ).removable,
+    ).toBe(false);
+
+    for (const id of ["lic_signin", "lic_revoked"]) {
+      const refused = await call(
+        env,
+        db,
+        "DELETE",
+        `/api/licenses/${SLUG}/${id}`,
+        s,
+      );
+      expect(refused.status).toBe(409);
+      expect(await json(refused)).toMatchObject({
+        error: "not_removable",
+        reason: "no_active_key",
+      });
+    }
+    // Nothing was written: both still in the account, no block, no audit row.
+    expect((await licenceIds(env, db, s)).sort()).toEqual([
+      "lic_key",
+      "lic_revoked",
+      "lic_signin",
+    ]);
+    expect(
+      await db.all(
+        "SELECT * FROM license_auto_attach_blocks WHERE product = ?",
+        SLUG,
+      ),
+    ).toEqual([]);
+    expect(
+      await db.all(
+        "SELECT action FROM portal_audit WHERE account_id = ? AND action LIKE 'account.license.%' AND action != 'account.license.attach'",
+        s.accountId,
+      ),
+    ).toEqual([]);
+  });
+
+  it("a key licence is not removable while the product turns key claims off", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    await seedProduct(db, SLUG);
+    const { licenseId } = await seedLicenseWithKey(db, SLUG);
+    const s = await session(env, db, ADA);
+    await upsertPortalProductSettings(
+      db,
+      SLUG,
+      { licenseKeyClaimEnabled: false },
+      NOW,
+    );
+    const detail = await json(
+      await call(env, db, "GET", `/api/licenses/${SLUG}/${licenseId}`, s),
+    );
+    expect(detail).toMatchObject({ id: licenseId, removable: false });
+    const refused = await call(
+      env,
+      db,
+      "DELETE",
+      `/api/licenses/${SLUG}/${licenseId}`,
+      s,
+    );
+    expect(refused.status).toBe(409);
+    expect(await json(refused)).toMatchObject({
+      error: "not_removable",
+      reason: "key_claim_off",
+    });
+    expect(await licenceIds(env, db, s)).toEqual([licenseId]);
+    // Turned back on, it is removable again.
+    await upsertPortalProductSettings(
+      db,
+      SLUG,
+      { licenseKeyClaimEnabled: true },
+      NOW,
+    );
+    expect(
+      (
+        await json(
+          await call(env, db, "GET", `/api/licenses/${SLUG}/${licenseId}`, s),
+        )
+      ).removable,
+    ).toBe(true);
+  });
+
   it(`is rate limited to ${LICENSE_REMOVE_LIMIT_PER_MINUTE} a minute per account and product`, async () => {
     const db = makeTestDb();
     const env = portalEnv();

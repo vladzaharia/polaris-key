@@ -3462,6 +3462,16 @@ msgstr "Angebot nicht verfügbar"
 msgid "core.codes.not_eligible.message"
 msgstr "Dieses Angebot ist für Ihr Konto nicht mehr verfügbar. Aktualisieren Sie die Ansicht und versuchen Sie es erneut."
 
+#. Can't remove
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_removable.title"
+msgstr "Entfernen nicht möglich"
+
+#. This license can't be added back with a key, so it stays in your library.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_removable.message"
+msgstr "Diese Lizenz kann nicht mit einem Lizenzschlüssel wieder hinzugefügt werden, deshalb bleibt sie in Ihrer Bibliothek."
+
 #. Sign in to download
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.download_auth_required.title"

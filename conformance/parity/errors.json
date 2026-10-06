@@ -274,6 +274,12 @@
       "description": "409 from the customer portal's POST /api/discover/<p>/claim: the product's auto-issue policy no longer offers it to this account (the offer was withdrawn or changed since it was listed), or it was never a Discover offer. Nothing was minted; refresh GET /api/discover."
     },
     {
+      "code": "not_removable",
+      "kind": "wire",
+      "service": "identity",
+      "description": "409 from the customer portal's DELETE /api/licenses/<p>/<id> (Remove from my library, PX-23): the licence could never be added back, so it is not removed. `reason` is `no_active_key` (no active licence key: a sign-in licence, a Discover claim, a keyless store or developer licence) or `key_claim_off` (the product turned off adding a licence by its key). Nothing was written; the licence list and detail say `removable: false` for it."
+    },
+    {
       "code": "download_auth_required",
       "kind": "wire",
       "service": "release",

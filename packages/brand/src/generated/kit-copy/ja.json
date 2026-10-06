@@ -569,6 +569,8 @@
   "core.codes.step_up_required.message": "セキュリティのため、続けるにはもう一度サインインしてください。",
   "core.codes.not_eligible.title": "オファーを利用できません",
   "core.codes.not_eligible.message": "このオファーはお使いのアカウントでは利用できなくなりました。更新して、もう一度お試しください。",
+  "core.codes.not_removable.title": "削除できません",
+  "core.codes.not_removable.message": "このライセンスはライセンスキーで追加し直せないため、ライブラリに残ります。",
   "core.codes.download_auth_required.title": "サインインしてダウンロード",
   "core.codes.download_auth_required.message": "これをダウンロードするには、サインインするかライセンスをアクティベートしてください。",
   "core.codes.delivery_gate_missing.title": "ダウンロードを利用できません",

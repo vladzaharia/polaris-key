@@ -569,6 +569,8 @@
   "core.codes.step_up_required.message": "为了你的安全，请重新登录以继续。",
   "core.codes.not_eligible.title": "优惠不可用",
   "core.codes.not_eligible.message": "此优惠已不再适用于你的账户。请刷新后重试。",
+  "core.codes.not_removable.title": "无法移除",
+  "core.codes.not_removable.message": "此许可证无法通过许可证密钥重新添加，因此会保留在你的库中。",
   "core.codes.download_auth_required.title": "登录以下载",
   "core.codes.download_auth_required.message": "请登录或激活许可证以下载此内容。",
   "core.codes.delivery_gate_missing.title": "下载不可用",

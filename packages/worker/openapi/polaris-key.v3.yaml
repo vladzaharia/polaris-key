@@ -12698,10 +12698,16 @@ paths:
         it out of THIS account: no later request, sign-in or email verification adds it back, only
         adding its key again. The account's package tokens for it are revoked. Its devices keep
         running and keep their seats; the ones this account signed in on lose Cloud Sync for it.
-        The detach and the block are audited in the account's history. `404` for a licence that
-        is not in this account (including one already removed) and on a product whose portal is
-        off. Rate-limited to 10 a minute per account and product, charged after ownership is
-        proven.
+        The detach and the block are audited in the account's history. Only a licence its key can
+        bring back is removable: it needs an active licence key, and the product must let a key
+        add a licence in the portal. `GET /api/licenses` and `GET /api/licenses/{product}/{licenseId}`
+        say so per licence as `removable` (boolean), and the portal offers Remove only when it is
+        `true`; any other licence (a sign-in licence, a Discover claim, a keyless store or
+        developer licence, or any licence while the product turns key claims off) answers `409
+        not_removable` with its `reason`, and nothing is written. `404` for a licence that is not
+        in this account (including one already removed) and on a product whose portal is off.
+        Rate-limited to 10 a minute per account and product, charged after ownership is proven
+        and the licence is found removable.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - {
@@ -12737,6 +12743,29 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: >
+            `not_removable`: the licence could never be added back, so it stays. `reason` is
+            `no_active_key` (it has no active licence key) or `key_claim_off` (the product turned
+            off adding a licence by its key). Nothing was written.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: "#/components/schemas/FlatError" }
+                  - type: object
+                    properties:
+                      reason:
+                        type: string
+                        enum: [no_active_key, key_claim_off]
+              examples:
+                signInLicense:
+                  value:
+                    {
+                      error: not_removable,
+                      message: "this license could not be added back, so it stays",
+                      reason: no_active_key,
+                    }
         "429":
           description: "`rate_limited`."
           content:
