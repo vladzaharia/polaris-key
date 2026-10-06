@@ -18,6 +18,35 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/LX-01.md`](../plans/LX-01.md):** the §3.2 keys; a derived default for `entitlementModel` (`legacy` for products created before a constant committed here, else `combined`; Q2); no `oidc_config` column; `refundGraceHours` kept, capped at 168 hours, and S-18's A.4 row reworded to say it only delays the revocation (Q3).
 
+## Corrections from the code (LX-06, 2026-10-06)
+
+Where this brief and the plan met the code, the code won:
+
+- **Admin API.** `plans/LX-01.md` §6 says the settings "use ST-05's generic API, so they add no
+  route", but ST-05 is not built and this brief's header carries rule 10. LX-06 therefore builds
+  the first slice of S-18 §4.7's generic API at its final paths, for row-backed claimable keys only:
+  `GET /manage/api/products/{p}/settings/effective[?area=]`, `PATCH` and `DELETE
+…/settings/{key}`. ST-05 widens the same routes to every key; nothing needs an alias.
+- **Storage.** The row-backed store is a new Core module, `core/rowSettings.ts`, beside ST-01b's
+  column-backed `settingsClaims.ts`. ST-04's resolver replaces `readRowSettings` and its
+  `writeSetting()` replaces `writeRowSetting`/`revertRowSetting`.
+- **Manifest side.** License and Identity apply their rows from `manifestIngestAlways`, with the
+  claim guard in SQL. A setting the manifest stops declaring loses its manifest row (omit-clears),
+  so `.pkey/` keeps describing what is in force; a claim is never touched.
+- **Derived default.** Expressed as registry data (`SettingDef.legacyDefault`,
+  `createdBefore` = 2026-10-06T00:00:00Z) so ST-04's resolver applies it without a License hook.
+- **Key and area.** `identity.syncTierOnSignIn` (ST-03's seed) is renamed
+  `identity.oidc.syncTierOnSignIn` per the plan; its name makes it security-widening under the
+  registry's rule 2. The licensing keys keep ST-03's area `license.licensing` (not the plan's
+  `license.policy`, which is the Enrollment/defaults area), because License → Settings renders
+  exactly that area.
+- **`reanchor: onRefresh` and `dunningGraceDays`.** `onRefresh` is left out of the shared
+  vocabulary until LX-21 (the validator, schema and registry refuse it). `dunningGraceDays` is
+  validated and stored from the manifest but stays `pending` (LX-23): the console hides it and the
+  API refuses writes.
+- **Console.** Sign-in's `syncTierOnSignIn` row is on Identity → Sign-in (S-19 §7.13's table);
+  the licensing keys are on the new License → Settings page.
+
 ## Goal
 
 S-19's per-product licensing settings (`licensing.entitlementModel`, `entitlementHolder`, `clampGraceToExpiry`, `anchorPolicy`, `reanchor`, `refundGraceHours`, `dunningGraceDays`) are claimable `product_settings` rows in S-18's registry, declarable in the manifest as `licensing.*` (plus `oidc.syncTierOnSignIn`), editable in License → Settings, and served by an admin API.

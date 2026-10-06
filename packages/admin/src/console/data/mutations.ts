@@ -104,6 +104,8 @@ export type WriteMethod =
   | "mintBundle"
   | "updateFingerprintPolicy"
   | "revertFingerprintPolicy"
+  | "updateProductSetting"
+  | "revertProductSetting"
   | "createProfile"
   | "patchProfile"
   | "putProfilePayload"
@@ -605,6 +607,21 @@ export const MUTATIONS: MutationTable = {
   revertFingerprintPolicy: {
     label: "fingerprint policy revert",
     invalidates: (slug) => [prefix(qk.fingerprintPolicy(slug))],
+  },
+  updateProductSetting: {
+    label: "product setting update",
+    // Every area's settings (one store), and the activity log the audit row lands in.
+    invalidates: (slug) => [
+      prefix(qk.productSettingsAll(slug)),
+      prefix(qk.activity(slug)),
+    ],
+  },
+  revertProductSetting: {
+    label: "product setting revert",
+    invalidates: (slug) => [
+      prefix(qk.productSettingsAll(slug)),
+      prefix(qk.activity(slug)),
+    ],
   },
   createProfile: {
     label: "profile create",

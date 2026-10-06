@@ -21,6 +21,9 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | PATCH | `/manage/api/products/{product}/license/licenses/{licenseId}` | admin | Change a licence's terms or holder |
 | GET | `/manage/api/products/{product}/license/licenses` | admin | The product's licences, each with its derived holder, optionally filtered by holder |
 | POST | `/manage/api/products/{product}/license/licenses` | admin | Create a licence and mint its first key (shown once) |
+| PATCH | `/manage/api/products/{product}/settings/{key}` | admin | Set a product setting in the console, claiming it from the manifest |
+| DELETE | `/manage/api/products/{product}/settings/{key}` | admin | Revert a console setting to the manifest (or to its default) |
+| GET | `/manage/api/products/{product}/settings/effective` | admin | The product's row-backed settings, with the value in force and where it came from |
 | POST | `/manage/api/products/link-repo` | admin | Create a product from a repository's `.pkey/`, or dry-run it |
 | GET | `/manage/api/products/slug-check` | admin | Is a slug free for a new product |
 | GET | `/manage/api/products` | admin | Every registered product, as the console's registry, Home and switcher read it |

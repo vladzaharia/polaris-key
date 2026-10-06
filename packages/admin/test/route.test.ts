@@ -508,6 +508,7 @@ describe("the nav model (nav.ts)", () => {
       "licenses",
       "tiers",
       "enrollment",
+      "license-settings",
       "catalog",
       "catalog-edit",
       "profiles",

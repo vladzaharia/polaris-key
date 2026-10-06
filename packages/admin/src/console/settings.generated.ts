@@ -1081,7 +1081,7 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
   {
     thing: "Refund, void and chargeback handling",
     reason:
-      "Always revokes that one grant (S-19 decision 5); a keep-access-after-refund switch would override a store's revocation.",
+      "Always revokes that one grant (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation.",
     shows: "Distribution → Commerce",
   },
   {

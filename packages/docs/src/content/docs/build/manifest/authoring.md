@@ -421,6 +421,45 @@ A tier can tighten fingerprint enforcement for itself:
 
 See [Privacy](/docs/users/privacy/) for exactly what a fingerprint contains and how long it is kept.
 
+## Licensing settings: `licensing.*`
+
+How licences, grants and entitlements combine for the product. Each is optional, declared under
+`licensing:` in `.pkey/product`, and applied on link and resync. Each can also be changed in the
+console (**License → Settings**): a console change claims that one setting, so later resyncs
+leave it alone until **Revert to manifest** hands it back and applies the manifest's value at
+once. Dropping a setting from the manifest returns it to its default.
+
+```jsonc
+{
+  "licensing": {
+    // legacy: a device sees its own licence's entitlements (today's model).
+    // combined: a device sees the combined entitlements of every licence and grant its holder
+    // has. Undeclared: legacy for products registered before 2026-10-06, combined after.
+    "entitlementModel": "combined",
+    // device (default): the account signed in on the device. owner: the licence owner's whole
+    // set, so anyone with a shared key reaches everything the owner holds.
+    "entitlementHolder": "device",
+    // End offline grace no later than the licence's expiry (default true).
+    "clampGraceToExpiry": true,
+    // Which of a holder's licences a device runs on: rank-first (default), most-free-seats, oldest.
+    "anchorPolicy": "rank-first",
+    // When a device may move to a better licence: never, or onActivation (default).
+    "reanchor": "onActivation",
+    // Hours a refunded grant keeps working before it is revoked, 0 to 168 (default 0).
+    "refundGraceHours": 0,
+    // Days a subscription grant keeps working while the store retries a renewal, 0 to 30
+    // (default 0). Stored, not yet shown in the console.
+    "dunningGraceDays": 0,
+  },
+}
+```
+
+Each setting is checked by its own validation code (`invalid_licensing_<field>`, see
+[Manifest validation codes](/docs/reference/validation-codes/)). The behaviour behind each
+setting arrives in stages; until it does, a saved value changes nothing devices see. The
+[settings reference](/docs/reference/settings/) lists every setting with its default and the
+confirmation a console change needs.
+
 ## Release deliverables: `deliverables.app` and the artifact map
 
 A `.pkey/release` document may declare the product's **app deliverable** and an **artifact
@@ -848,6 +887,11 @@ manual create is for early experiments; seed SQL is a fixture tool only.
 SDK discovery only reports whether OIDC is enabled and which generic auth URLs to call. It
 does not expose whether a product uses platform or custom OIDC.
 
+`oidc.syncTierOnSignIn` decides whether a sign-in may move a licence to the tier its
+`groupRoleMap` groups map to: `off` (the default) or `upgradeOnly`, which never lowers a tier. It
+is a claimable setting like the [licensing settings](#licensing-settings-licensing): a change on
+**Identity → Sign-in** claims it until you revert it.
+
 ### Admin override vs re-sync
 
 Admins set **management state + values** (per license/device) and operational runtime
@@ -856,7 +900,9 @@ re-sync updates the manifest baseline from `.pkey/`: product metadata, service e
 registration policy, fingerprint and auto-issue policy, catalog shape, OIDC baseline, release
 baseline, profiles, tiers, provisioning, and edge-mint recipes. The three operator-claimable
 blocks (`services_source`, `fingerprint_policy_source`, `auto_issue_source`) are skipped while an
-admin owns them, and so is the trusted-publisher policy once claimed.
+admin owns them, and so is the trusted-publisher policy once claimed. The licensing settings and
+`oidc.syncTierOnSignIn` are claimed one setting at a time, and the resync result lists each
+claimed one it left alone.
 
 Profiles are the manifest's, with one exception: **secret values**. A manifest can't carry a
 secret value, so you set a profile's secrets (a `secret` entry, or a `config` entry flagged

@@ -134,7 +134,7 @@ Things that look configurable but are not settings, and why. The coverage test (
 
 | Thing | Why it is not a setting | Where it shows |
 | --- | --- | --- |
-| Refund, void and chargeback handling | Always revokes that one grant (S-19 decision 5); a keep-access-after-refund switch would override a store's revocation. | Distribution → Commerce |
+| Refund, void and chargeback handling | Always revokes that one grant (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation. | Distribution → Commerce |
 | Relink undo window (72 hours) | Owner decision (S-16); it bounds a security-sensitive support action. | Docs |
 | Rate-limit buckets, admin session (8 hours), audit retention (180 days), blob lock age, CI and registry token lifetimes, body caps | The S-13 §8.2 deny-list: deploy-time forever. | Docs |
 | Wire constants (document expiry, size and count maximums), discovery cache (300 s) | Changing one is a wire event (AGENTS.md rule 2), not a setting. | Docs: the reference section |

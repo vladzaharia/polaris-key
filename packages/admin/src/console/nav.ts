@@ -116,6 +116,7 @@ export type ProductPageId =
   | "licenses"
   | "tiers"
   | "enrollment"
+  | "license-settings"
   // config
   | "catalog"
   | "catalog-edit"
@@ -356,6 +357,16 @@ export const SECTIONS: NavSection[] = [
         path: "license/enrollment",
         icon: Fingerprint,
         docs: "/docs/services/license/enrollment/",
+        inNav: true,
+        ready: true,
+      },
+      // LX-06: S-19's licensing settings (`licensing.*`, the settings area `license.licensing`).
+      {
+        page: "license-settings",
+        label: "Settings",
+        path: "license/settings",
+        icon: SlidersHorizontal,
+        docs: "/docs/services/license/model/",
         inNav: true,
         ready: true,
       },
