@@ -1048,7 +1048,7 @@ type Bucket = (typeof BUCKET_OF_KIND)[keyof typeof BUCKET_OF_KIND];
  * Carried values are copied verbatim, never opened or re-sealed, so the stored ciphertext and its
  * `updatedAt` are unchanged.
  */
-function withStoredSecrets(
+export function withStoredSecrets(
   manifestPayload: Record<string, unknown>,
   storedJson: string | undefined,
   catalog: Catalog,

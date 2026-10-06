@@ -14,7 +14,7 @@
  *
  * Per-product resources are grouped by the SERVICE that owns them (plan §R1, spec §4.2). What is
  * left at the top level here is core/platform — the things a product has whether or not it runs
- * any service: `secrets/*`, `outlet-credentials/*`, `claims/*`, `ci-publisher`, `ci-tokens/*`, `keys/rotate`,
+ * any service: `secrets/*`, `outlet-credentials/*`, `claims/*`, `settings/backfill`, `ci-publisher`, `ci-tokens/*`, `keys/rotate`,
  * `activity`, `refusals`, `assets`, `services[/revert]`, `bundles`, `blob-gc[/bundles]`, `devices/*`, `users/*`. Everything
  * else is dispatched into a `ServiceDescriptor.adminHandle` with the full remaining path:
  *
@@ -82,6 +82,7 @@ import { handleProductUsers } from "./handlers/users.js";
 import { handleRefusals } from "./handlers/refusals.js";
 import { handleHostedAssets } from "./handlers/hostedAssets.js";
 import { handleTrustPolicy } from "./handlers/trustPolicy.js";
+import { handleProductSettingsBackfill } from "./handlers/settingsBackfill.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
 import { handleBundleMint } from "../core/bundles.js";
 import { handleBlobGcAdmin } from "../core/blobGc.js";
@@ -230,6 +231,21 @@ async function handleProductScoped(
       now,
     );
   }
+
+  // The settings backfill (ST-01c, S-18 §4.14, owner decision D19). CORE, like `claims`: it
+  // moves the product onto ST-01b's claim model once and keeps its reports.
+  //   POST /products/<slug>/settings/backfill?dryRun=1|0
+  //   GET  /products/<slug>/settings/backfill[/<reportId>]
+  if (resource === "settings" && rest[1] === "backfill")
+    return handleProductSettingsBackfill(
+      req,
+      env,
+      db,
+      session,
+      slug,
+      rest.slice(2),
+      now,
+    );
 
   // Trusted publishing (P2-02): the publisher policy and static CI tokens. CORE, like the
   // secrets: the credential store serves Release now and Distribution (P2b-03) later.
