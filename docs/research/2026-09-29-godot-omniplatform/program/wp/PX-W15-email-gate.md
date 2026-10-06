@@ -75,6 +75,44 @@ The first provider sign-in must not ship without the gate ([PORTAL.md §11.4](..
 mise exec node@22 -- pnpm --filter @polaris-key/worker test -- portal
 ```
 
+## Corrections from the code (implementer, 2026-10-06)
+
+- **I-07 shipped the gate.** The gate record (I-02's single-use store, `__Host-pkey_gate`), the
+  verified-provider fast path, the code path (`issueEmailCode`/`verifyEmailCode` bound to the
+  gate's record), the `email_in_use` join offer and its proof rules, cancel and the picture proxy
+  are all in `services/identity/card/gate.ts`, with their routes already in OpenAPI and
+  `routeCoverage`. PX-W15 adds no route and builds only what that branch did not ship.
+- **PX-W4 is not a prerequisite.** The gate's code path already runs on I-02's primitives; nothing
+  here waits for PX-W4's account email code.
+- **Terms acceptances per version.** I-07 kept only the latest version per product in
+  `accounts.terms_json` (`plans/I-04.md` §6.1), so a new version overwrote the record of the old
+  one. PX-W15 moves them to `account_terms_acceptances` (one row per account, product and version,
+  written once; migration `00XX_account_terms_acceptances.sql`, the lead numbers it; `TABLE_OWNERS`
+  identity), read and written through `accounts/terms.ts`. A merge moves the absorbed account's
+  rows to the survivor, account deletion and product deletion erase them. `terms_json` stays but
+  is neither read nor written; there is no backfill because no deployed Worker ever wrote it (no
+  front door passes a product's terms before I-08 and I-09).
+- **Per-account `emailConfirmedAt` (G31) is `accounts.primary_email_verified_at`** (I-05), which
+  the card sees as the gate view's `emailRequired`. It is not added to `/api/me` here: the account
+  views belong to I-11 and PX-W16.
+- **"No token before the gate passes."** Account-bound app tokens arrive with I-08. Today the
+  gate is the only response that sets the account session and the only one that hands back the
+  passthrough `request` (PX-W13), and every session-gated route refuses the gate cookie; the
+  tests pin both at every step before the pass.
+- **Product terms reach the gate only through I-08 and I-09** (`identity.requireTerms`); I-06's
+  callbacks pass no product context yet, so the terms path is exercised through
+  `beginProviderSignIn` in the tests.
+- **Left as is:** the platform-OIDC (`/callback`) `join_offer` page (SIGN-IN.md D-34). Routing it
+  into the gate before PX-21 renders the step would land people on a screen the portal cannot
+  show yet; it moves with PX-21 or I-17.
+- **The non-Gmail `email_verified` residual** is recorded in THREAT-MODEL ("The email gate: G31's
+  checks and terms acceptances"); closing it (a code for a Google address outside `gmail.com`
+  without `hd`) is an owner decision.
+- **Migration name.** Until the lead numbers it, `00XX_…` fails `record-deploy`'s name pattern
+  (two tests in `test/recordDeploy.test.ts`); with a number they pass.
+- The tests are `test/portalEmailGate.test.ts` (matched by the Verify filter) beside I-07's
+  `test/identityCardGate.test.ts`.
+
 ## Hand-off
 
 PX-21 builds `EmailGate`.
