@@ -52,6 +52,11 @@
  *
  *   artifact, feed, anything else   never: an app release's artifacts are served as long as its
  *                                   row exists, and the F-Droid relay replaces its own `feed` refs
+ *   hosted-asset (ref id =          never: a hosted asset's refs live exactly as long as its
+ *     `<slot>@<locale>`)            `hosted_assets` slot holds that copy. `core/hostedAssets.ts`
+ *                                   drops a replaced copy's refs in the batch that writes the new
+ *                                   one (HA-01), and the sweep then reclaims the bytes like any
+ *                                   other unreferenced object
  *   pack-object (ref id = release)  when the release is a known pack release that is not live,
  *                                   the key is named by no live release (an index may list a file
  *                                   held only by a dead release's ref), and the WHOLE live set was

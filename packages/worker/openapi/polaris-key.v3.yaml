@@ -11182,8 +11182,9 @@ paths:
       tags: [portal]
       summary: A product's listing art, served same-origin
       description: >
-        The customer portal's media proxy: the product's `listing.iconUrl` (`asset` = `icon`,
-        at most 1 MiB) or `listing.headerUrl` (`header`, at most 5 MiB), fetched by the Worker
+        The customer portal's media proxy: the product's listing `icon` (`asset` = `icon`, at
+        most 1 MiB) or `header` (`header`, at most 5 MiB) when it is an https URL (or the
+        deprecated `iconUrl` / `headerUrl` it was written as), fetched by the Worker
         and served from this origin, because the portal's CSP is `img-src 'self' data:`. Public
         (listing art is public store-page metadata). The source must be an https URL on a
         GitHub-hosted name (`github.com`, `*.githubusercontent.com`); redirects are followed by
@@ -11199,7 +11200,7 @@ paths:
             in: path,
             required: true,
             schema: { type: string, enum: [icon, header] },
-            description: "Which listing field: `icon` (iconUrl) or `header` (headerUrl).",
+            description: "Which listing slot: `icon` or `header` (formerly `iconUrl` / `headerUrl`).",
           }
         - {
             name: v,

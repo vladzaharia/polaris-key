@@ -65,7 +65,10 @@ import { refreshReadiness } from "./readiness.js";
 import { pollConnectors } from "./connectors/index.js";
 import { runAutoHalt, type AutoHaltOutcome } from "./autoHalt.js";
 import { runCommerceTick, type CommerceTick } from "./commerce/recheck.js";
-import { commerceMergeStatements } from "./commerce/state.js";
+import {
+  commerceDeleteContribution,
+  commerceMergeStatements,
+} from "./commerce/state.js";
 import {
   getOutlet,
   manifestIngestStatements as outletIngestStatements,
@@ -238,6 +241,12 @@ export const distributionService: ServiceDescriptor = {
    * enablement — a purchase left on the retired licence would be stranded when it is turned on.
    */
   licenseMerge: commerceMergeStatements,
+  /**
+   * Licence deletion (`core/licenseDelete.ts`): a licence with recorded store purchases is never
+   * deleted; otherwise its purchase binding and the aliases resolving to it go, whatever
+   * Distribution's enablement.
+   */
+  licenseDelete: commerceDeleteContribution,
   /** `/manage/api/products/<slug>/distribution/…` (`admin.ts`). */
   adminHandle: handleDistributionAdmin,
   /** The store-connector poll, on the connector cron (`connectors/`). */

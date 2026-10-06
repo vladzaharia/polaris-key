@@ -50,6 +50,11 @@ The quality bar is rolling ([PORTAL.md §11.3](../../../../design/PORTAL.md#113-
 ## Design notes
 
 - **Rolling:** start once PX-01 lands; each PX front-end package adds its states here. Mark it done only after every other PX front-end package is done.
+- **How the suite grows (as built):** `packages/admin/e2e/portalStates.ts` lists every §4 state as `SHIPPED` (opened by `portalQuality.e2e.test.ts`) or `PENDING` (a todo naming its owning package). A PX front-end package that builds a state moves it to `SHIPPED`, adds any fixtures to `portalFixtures.ts`, and records its linux baselines with `pnpm --filter @polaris-key/admin e2e:baselines` (Docker, Playwright's image). PX-20 is complete when `PENDING` is empty.
+- **Corrections (verified against the code):**
+  - CI ran `test:e2e` in the `browser` job on the bare ubuntu runner. Visual baselines need one rendering environment, so the console and portal e2e moved to their own `console` job in `mcr.microsoft.com/playwright:v1.63.0-noble`, the same image the baselines are recorded in; a failure uploads the actual and diff images.
+  - axe's `region` rule failed on every signed-in screen: the portal shell's skip link pointed at `#/`, which axe does not treat as a skip link (it excludes hash-router fragments). It now points at `#content` (the `main`), still handled in `onClick` so the router never sees it.
+  - The login card's provider row is links (`<a>`), not buttons.
 
 ## Steps
 
@@ -60,12 +65,12 @@ The quality bar is rolling ([PORTAL.md §11.3](../../../../design/PORTAL.md#113-
 
 ## Acceptance criteria
 
-- [ ] The suite runs in CI and covers every §4 state that has shipped, in both themes at both widths.
-- [ ] Zero CSP violations and zero axe violations.
-- [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
-- [ ] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
-- [ ] No horizontal page scroll at 360 px on every screen this package touches (§8).
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] The suite runs in CI and covers every §4 state that has shipped, in both themes at both widths.
+- [x] Zero CSP violations and zero axe violations.
+- [x] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
+- [x] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
+- [x] No horizontal page scroll at 360 px on every screen this package touches (§8).
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 

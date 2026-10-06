@@ -14,9 +14,6 @@ import { cn } from "../lib/cn.js";
  * - One footer component, `DialogFooter`.
  * - **Focus** goes to the first focusable element (Radix), or to `initialFocusRef` (the least
  *   destructive button in a confirm); on close it returns to the invoker.
- *
- * The Radix building blocks are exported under `Dialog*Primitive`/`DialogRoot` names for the
- * legacy views (`components/ui/Dialog.tsx` re-exports them under their old names).
  */
 
 export type DialogSize = "sm" | "md" | "lg" | "xl";
@@ -27,11 +24,6 @@ const SIZE: Record<DialogSize, string> = {
   lg: "sm:max-w-[44rem]",
   xl: "sm:max-w-[60rem]",
 };
-
-export const DialogRoot = DialogPrimitive.Root;
-export const DialogTrigger = DialogPrimitive.Trigger;
-export const DialogClose = DialogPrimitive.Close;
-export const DialogPortal = DialogPrimitive.Portal;
 
 export function DialogOverlay({
   className,
@@ -179,136 +171,6 @@ export function DialogFooter({
         "mt-2 flex shrink-0 flex-col-reverse gap-2 border-t border-border px-6 py-4 sm:flex-row sm:justify-end [&>:not(.sr-only)]:w-full sm:[&>:not(.sr-only)]:w-auto",
         className,
       )}
-      {...props}
-    />
-  );
-}
-
-// ── Legacy building blocks (re-exported by components/ui/Dialog.tsx until chunk 11) ──────────
-
-export function DialogContentPrimitive({
-  className,
-  children,
-  hideClose,
-  ref,
-  ...props
-}: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
-  hideClose?: boolean;
-  ref?: React.Ref<React.ComponentRef<typeof DialogPrimitive.Content>>;
-}): React.ReactElement {
-  return (
-    <DialogPrimitive.Portal>
-      <DialogOverlay />
-      <DialogPrimitive.Content
-        ref={ref}
-        className={cn(
-          "fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100vh-2rem)] w-[calc(100vw-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 flex-col gap-4 overflow-hidden",
-          "rounded-lg border border-border bg-surface-overlay p-6 text-fg shadow-elevation-3 animate-pk-in",
-          className,
-        )}
-        {...props}
-      >
-        {children}
-        {hideClose ? null : (
-          <DialogPrimitive.Close
-            className="absolute right-4 top-4 rounded-sm text-fg-muted opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page"
-            aria-label="Close"
-          >
-            <X aria-hidden className="size-4" />
-          </DialogPrimitive.Close>
-        )}
-      </DialogPrimitive.Content>
-    </DialogPrimitive.Portal>
-  );
-}
-
-export function DialogHeaderPrimitive({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>): React.ReactElement {
-  return (
-    <div
-      className={cn("flex flex-col gap-1.5 text-left", className)}
-      {...props}
-    />
-  );
-}
-
-export function DialogFooterPrimitive({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>): React.ReactElement {
-  return (
-    <div
-      className={cn(
-        "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
-export function DialogBodyPrimitive({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>): React.ReactElement {
-  return (
-    <div
-      className={cn(
-        "pk-scroll -mx-1 min-h-0 flex-1 overflow-y-auto px-1",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
-export function DialogActionBarPrimitive({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>): React.ReactElement {
-  return (
-    <div
-      className={cn(
-        "-mx-6 -mb-6 mt-1 flex shrink-0 flex-col-reverse gap-2 border-t border-border bg-surface-overlay px-6 py-4 sm:flex-row sm:justify-end",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
-export function DialogTitlePrimitive({
-  className,
-  ref,
-  ...props
-}: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title> & {
-  ref?: React.Ref<React.ComponentRef<typeof DialogPrimitive.Title>>;
-}): React.ReactElement {
-  return (
-    <DialogPrimitive.Title
-      ref={ref}
-      className={cn(
-        "text-lg font-bold leading-none tracking-tight text-fg-strong",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
-export function DialogDescriptionPrimitive({
-  className,
-  ref,
-  ...props
-}: React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description> & {
-  ref?: React.Ref<React.ComponentRef<typeof DialogPrimitive.Description>>;
-}): React.ReactElement {
-  return (
-    <DialogPrimitive.Description
-      ref={ref}
-      className={cn("text-sm text-fg-muted", className)}
       {...props}
     />
   );

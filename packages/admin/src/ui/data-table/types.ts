@@ -78,6 +78,8 @@ export interface BulkAction<T> {
   label: string;
   tone?: "danger";
   onSelect: (rows: T[], ctx: { allMatching: boolean }) => void;
+  /** Why the action is unavailable for this selection; the button stays visible, with the reason. */
+  disabledReason?: (rows: T[]) => string | undefined;
 }
 
 export interface RowAction {
