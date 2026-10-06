@@ -138,11 +138,7 @@ export function ImportPanel({ slug }: { slug: string }): React.ReactElement {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {changes.map((c) => (
-                    <tr
-                      key={c.field}
-                      data-action={c.action}
-                      className="h-11 align-top"
-                    >
+                    <tr key={c.field} data-action={c.action} className="h-11">
                       <td className="px-3 py-2">
                         <span className="block font-mono text-xs text-fg-strong">
                           {c.field}
