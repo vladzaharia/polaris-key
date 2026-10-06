@@ -35,8 +35,7 @@ import {
   pruneAfterStablePublish,
   prunePackages,
   pruneRetentionOf,
-  PRUNE_SETTING_KEY,
-  retentionLocked,
+  setPruneRetention,
   SYSTEM_PRUNE_ACTOR,
   triggersPrune,
 } from "../src/services/release/packages/prune.js";
@@ -53,7 +52,6 @@ import {
 import { stmtSetChannelPolicy } from "../src/services/release/model.js";
 import { markUnreferenced } from "../src/core/blobGc.js";
 import { SETTINGS } from "../src/mount.js";
-import { writeSetting } from "../src/core/settings/write.js";
 
 const P = "acme";
 const hex = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -329,32 +327,27 @@ async function rendered(eco: PackageEcosystem): Promise<string> {
 }
 
 /**
- * The retention switch through `writeSetting()` (ST-04), answering as the route does: `locked` for
- * the system product, `stale` for a version that is not the one read, else `written`.
+ * The retention switch as the route sets it (`setPruneRetention`, through `writeSetting()`,
+ * ST-04): `locked` for the system product, `stale` for a version that is not the one read, else
+ * `written`. `by` is the operator's plain subject; the stored author gains the `admin:` prefix.
  */
 async function setRetention(
   product: string,
   enabled: boolean,
   expectedVersion: number,
-  by = "admin:u1",
+  by = "u1",
 ): Promise<string> {
-  if (retentionLocked(product)) return "locked";
-  const res = await writeSetting(
+  const res = await setPruneRetention(
     { env: {}, db, registry: SETTINGS },
-    { key: PRUNE_SETTING_KEY, value: enabled, expectedVersion },
     {
+      product: { slug: product },
+      enabled,
+      expectedVersion,
       actor: { sub: by, name: null, email: null },
-      origin: "console",
       now: NOW,
-      product,
-      strict: false,
     },
   );
-  return res.ok
-    ? "written"
-    : res.reason === "version_conflict"
-      ? "stale"
-      : res.reason;
+  return typeof res === "string" ? res : res.reason;
 }
 
 /** Feed retention is off by default for a tenant product: opt `product` in. */

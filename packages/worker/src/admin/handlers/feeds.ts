@@ -71,7 +71,6 @@ import {
   settingRefused,
 } from "../lib/respond.js";
 import { SETTINGS } from "../../mount.js";
-import { writeSetting } from "../../core/settings/write.js";
 import { audit, platformAudit } from "../audit.js";
 import { getProduct, type ProductRow } from "../../repo.js";
 import { parseServices } from "../../core/services.js";
@@ -87,8 +86,7 @@ import { packageCatalog } from "../../services/release/packages/catalog.js";
 import {
   pruneRetentionOf,
   prunePackages,
-  PRUNE_SETTING_KEY,
-  retentionLocked,
+  setPruneRetention,
 } from "../../services/release/packages/prune.js";
 import {
   setPackageDeprecation,
@@ -1193,51 +1191,36 @@ async function putRetention(
     fields.push("prunePrereleases");
   if (fields.length)
     return err(422, "bad_request", "invalid retention setting", { fields });
-  const enabled = body.prunePrereleases as boolean;
-  if (retentionLocked(owner.slug))
+  // ST-04: the registry setting `release.packages.prunePrereleases`, through `writeSetting()`.
+  const outcome = await setPruneRetention(
+    { env, db, registry: SETTINGS },
+    {
+      product: owner.row,
+      enabled: body.prunePrereleases as boolean,
+      expectedVersion: body.expectedVersion as number,
+      actor: {
+        sub: session.sub,
+        name: session.name ?? null,
+        email: session.email ?? null,
+      },
+      now,
+    },
+  );
+  if (outcome === "locked")
     return err(
       403,
       "forbidden",
       "the platform's own feeds always prune the builds of main once a version is released",
       { reason: "retention_locked" },
     );
-  // ST-04: the registry setting `release.packages.prunePrereleases`, through `writeSetting()`
-  // (strict on the version: this route's contract always carried `expectedVersion`).
-  const written = await writeSetting(
-    { env, db, registry: SETTINGS },
-    {
-      key: PRUNE_SETTING_KEY,
-      value: enabled,
-      expectedVersion: body.expectedVersion as number,
-      audit: {
-        action: "feed.retention.update",
-        target: { kind: "feed", id: "retention" },
-        summary: enabled
-          ? "Turned on pruning of the builds of main once a version is released"
-          : "Turned off pruning of the builds of main once a version is released",
-      },
-    },
-    {
-      actor: {
-        sub: session.sub,
-        name: session.name ?? null,
-        email: session.email ?? null,
-      },
-      origin: "console",
-      now,
-      product: owner.row,
-      strict: false,
-    },
-  );
-  if (!written.ok)
-    return written.reason === "version_conflict"
-      ? err(
-          409,
-          "bad_request",
-          "the retention setting changed since you read it",
-          { reason: "version_conflict" },
-        )
-      : settingRefused(written);
+  if (outcome === "stale")
+    return err(
+      409,
+      "bad_request",
+      "the retention setting changed since you read it",
+      { reason: "version_conflict" },
+    );
+  if (outcome !== "written") return settingRefused(outcome);
   return adminJson({
     product: owner.slug,
     ...(await pruneRetentionOf(db, owner.slug)),

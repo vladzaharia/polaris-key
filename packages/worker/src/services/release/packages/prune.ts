@@ -68,6 +68,12 @@ import {
 } from "../../../core/blobs.js";
 import { stmtEnqueuePackageRender } from "../../../core/registryQueue.js";
 import { bumpReleaseGeneration } from "../ghCache.js";
+import {
+  writeSetting,
+  type AuditActor,
+  type SettingsWriteContext,
+  type WriteRefusal,
+} from "../../../core/settings/write.js";
 
 /** The actor the automatic prune records (`pruned_by`, the audit's `actor_sub`). */
 export const PRUNE_ACTOR = "system:feed-retention";
@@ -198,6 +204,51 @@ export const PRUNE_SETTING_KEY = "release.packages.prunePrereleases";
 /** The system product always prunes: its switch is locked on and a write is refused. */
 export function retentionLocked(product: string): boolean {
   return product === SYSTEM_PRODUCT_SLUG;
+}
+
+/**
+ * Set `product`'s retention switch through `writeSetting()` (ST-04), only while the setting's
+ * version is still `expectedVersion` (0: never written). The system product's is refused
+ * (`locked`). The stored author keeps the table's `admin:<sub>` spelling; the audit row
+ * (`feed.retention.update`) names the operator as every audit row does.
+ */
+export async function setPruneRetention(
+  ctx: SettingsWriteContext,
+  w: {
+    product: { slug: string; system?: number | null; release_source?: string | null };
+    enabled: boolean;
+    expectedVersion: number;
+    actor: AuditActor;
+    now: number;
+  },
+): Promise<"written" | "stale" | "locked" | WriteRefusal> {
+  if (retentionLocked(w.product.slug)) return "locked";
+  const res = await writeSetting(
+    ctx,
+    {
+      key: PRUNE_SETTING_KEY,
+      value: w.enabled,
+      expectedVersion: w.expectedVersion,
+      audit: {
+        action: "feed.retention.update",
+        target: { kind: "feed", id: "retention" },
+        summary: w.enabled
+          ? "Turned on pruning of the builds of main once a version is released"
+          : "Turned off pruning of the builds of main once a version is released",
+      },
+    },
+    {
+      actor: w.actor,
+      author: `admin:${w.actor.sub ?? "system"}`,
+      origin: "console",
+      now: w.now,
+      product: w.product,
+      // The route's contract always carried `expectedVersion`; its confirmation is the console's.
+      strict: false,
+    },
+  );
+  if (res.ok) return "written";
+  return res.reason === "version_conflict" ? "stale" : res;
 }
 
 // ── The plan ─────────────────────────────────────────────────────────────────────────────────

@@ -112,6 +112,17 @@ export interface WriteOptions {
   confirm?: string;
   /** Caller statements committed in the same batch, each ANDing `guard` into its `WHERE`. */
   extra?: (guard: SqlGuard) => DbStatement[];
+  /**
+   * The author the stored rows record (`updated_by`); default the actor's subject. A route whose
+   * table always spelled its author another way keeps that spelling (feed retention's
+   * `admin:<sub>`). The audit row always names the actor.
+   */
+  author?: string;
+}
+
+/** The `updated_by` a write records. */
+function authorOf(opts: WriteOptions): string {
+  return opts.author ?? opts.actor.sub ?? "system";
 }
 
 export interface SettingsWriteContext {
@@ -674,7 +685,7 @@ async function writeProduct(
   const args = {
     product: slug,
     at: opts.now,
-    by: opts.actor.sub ?? "system",
+    by: authorOf(opts),
     guard,
   };
   for (const p of plans) {
@@ -713,7 +724,7 @@ async function writeProduct(
           p.def.storage.kind === "scalar" ? JSON.stringify(p.w.value) : null,
           source,
           opts.now,
-          opts.actor.sub ?? "system",
+          authorOf(opts),
           p.w.reason ?? null,
           ...guard.params,
         ],
@@ -843,7 +854,7 @@ async function writePlatform(
     sql: "EXISTS (SELECT 1 FROM platform_audit WHERE id = ?)",
     params: [ids[0]!],
   };
-  const by = opts.actor.sub ?? "system";
+  const by = authorOf(opts);
   const stmts: DbStatement[] = plans.map((p, i) => ({
     sql: `INSERT INTO platform_audit
             (id, at, actor_sub, actor_name, actor_email, action, target_kind, target_id, summary,
