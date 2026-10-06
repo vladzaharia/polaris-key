@@ -373,7 +373,9 @@ export function catalogMoment(
 /** The first release: the product's app releases that stand (yanked ones do not), and when. */
 export function releaseMoment(
   enabled: boolean,
-  releases: Pick<ReleaseDto, "deliverable" | "publishedAt" | "yank">[] | undefined,
+  releases:
+    | Pick<ReleaseDto, "deliverable" | "publishedAt" | "yank">[]
+    | undefined,
 ): MomentObservation {
   if (!enabled || !releases) return UNKNOWN;
   const live = releases.filter((x) => x.deliverable === "app" && !x.yank);

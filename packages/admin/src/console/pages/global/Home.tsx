@@ -258,7 +258,9 @@ export function Home(): React.ReactElement {
       header={header}
       // Mounted with the data, so the first load's stagger starts with it (MO-11).
       attention={
-        loading ? undefined : <AttentionList items={items} stagger={firstLoad} />
+        loading ? undefined : (
+          <AttentionList items={items} stagger={firstLoad} />
+        )
       }
       tiles={
         <>

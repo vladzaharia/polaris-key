@@ -635,8 +635,8 @@ export function CreateLicenseDialog({
                 title={`${product?.name ?? slug}'s first license`}
                 className="rounded-md border border-border bg-surface-raised p-3"
               >
-                Try it in your app: the SDK quick start on Overview installs
-                the SDK and pins your signing key.
+                Try it in your app: the SDK quick start on Overview installs the
+                SDK and pins your signing key.
               </MomentLine>
             ) : undefined
           }
