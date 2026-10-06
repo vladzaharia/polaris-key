@@ -5037,15 +5037,80 @@ CSRF header like every other portal mutation.
   control or format characters (no bidirectional overrides that make one name render as another);
   owner-only, rate limited in the product's shard, audited. They are rendered as text everywhere.
 
-### Key-bearing deep links: `/activate?key=` (PX-01)
+### Key-bearing deep links: `/activate#key=` (PX-01, fix/keys-out-of-logs)
 
-`/activate?key=<license key>` (an app at its entry limit, an email, a printed card) puts a whole
-key in a server-visible query string: it reaches edge and Worker request logs, and when the visitor
-is signed out it rides along in the OIDC `return_to` and the magic link's return URL. Accepted by
-the design (PORTAL.md §4.18); mitigated by `Referrer-Policy: no-referrer` on every page (the key
-never leaves in a `Referer`), by the SPA moving it into the hash (`#/?activate=`) on load, and by a
-key alone only ever adding a licence through the claim rules (no ownership move, verified-email
-gate, one rate bucket with the preview). Revisit when PX-17 or PX-W8 adds `manageUrl`.
+The Activate license deep link (an app at its entry limit, an email, a printed card) opens the
+Library with the modal filled in. Asset: the licence key, a bearer credential (A7; whoever holds it
+activates seats and adds the licence through the claim rules). As first built (PX-01) it carried
+the key as a query, `/activate?key=<license key>`, so the key was in every record of the request
+URL: Workers Logs (`[observability.logs] invocation_logs = true` records each invocation's URL),
+Cloudflare's edge logs, any proxy or analytics that reads URLs, and the browser's history. That is
+no longer accepted.
+
+- **The key rides in the fragment.** The link is `/activate[?product=<slug>]#key=<key>`. A
+  fragment is never sent in a request, a `Referer` or a redirect, so the key reaches no server,
+  edge log or Worker log. The Worker builds no link with a key in it (`manageUrl` carries none,
+  PX-W8); the UI kits add `#key=` only to an `/activate` link (PX-W8).
+- **The portal drops it before anything else runs.** `rewriteActivatePath`
+  (`packages/admin/src/portal/router.ts`) runs before the first render and the first request: it
+  reads `#key=`, or a legacy `?key=` (the fragment wins), and `history.replaceState`s the address
+  to `/#/?activate=<key>[&product=]`, so neither `?key=` nor `#key=` stays in the address bar or
+  the history entry. Signed in, the shell consumes `#/?activate=` as the modal opens (the address
+  becomes `/#/`). Signed out, the key waits in this tab's fragment through sign-in; every sign-in's
+  return URL leaves it out and a sign-in that navigates away keeps it in this tab's
+  `sessionStorage` (`carriedKey.ts`, SIGN-IN.md §3.9). `test/portalRouter.test.ts` and
+  `test/portalActivate.test.tsx` pin both link forms, and that no request URL carries the key.
+- **A legacy `GET /activate?key=…` (emails already sent) still works, and the Worker adds nothing
+  to it.** It answers with the same SPA shell: `Cache-Control: no-store`,
+  `Referrer-Policy: no-referrer`, the key in no response byte or header, and the shell fetched
+  from `ASSETS` without the query, so the key reaches no subrequest. It is deliberately **not** a
+  redirect. The request that brought the key is already in the invocation log, the edge log and
+  any proxy's, and no answer can take it back. A `302` to `/activate#key=…` would echo the key in
+  a `Location` header (one more place to capture it) for a round trip's cost, and one that drops
+  the key would break the link. The SPA's in-place rewrite gives the address bar and the history
+  entry what a redirect would. `packages/worker/test/keysOutOfLogs.test.ts` pins this.
+- **Nothing in the Worker writes a URL down.** `src/` has no `console.*` (R12's static guard;
+  `keysOutOfLogs.test.ts` also proves no console call on the deep link and on an accepted and a
+  refused activation), no error reporter, and no `audit`, `portal_audit` or `license_refusals`
+  row records a request URL, path or query; the release gateway's edge-cache keys are built from
+  chosen fields, never `req.url`. So no redaction helper is needed. The one record of a legacy
+  link's key is the platform's: that request's invocation log and Cloudflare's own request logs.
+
+Residuals:
+
+- **A legacy link's key stays in Workers Logs for the retention period.** An operator who wants
+  even that gone can set `invocation_logs = false` (losing every invocation record), or add a zone
+  URL-rewrite rule that drops the query of `/activate` before the Worker runs: the browser keeps
+  its address, so the SPA still reads the key. Neither is done here (an operator decision).
+- **A fragment is still kept by the browser.** The opened address, key included, can be written
+  to the browser's history (and history sync) at navigation, before any script runs, and restored
+  by session restore. Accepted: it is the person's own browser holding the person's own key.
+  Signed out, the key also sits in the current entry's `#/?activate=` until sign-in completes.
+- **A key alone adds only through the claim rules:** no ownership move, the verified-email gate,
+  and one rate bucket with the preview (PX-W5, I-05).
+
+Other secrets audited in URLs with this change, and left as they are:
+
+- **Device tokens and licence keys on the device wire** travel only in `Authorization: Bearer`
+  headers or JSON bodies, in every SDK; no SDK route puts either in a query or a path.
+- **`/magic/verify?token=`** (I-02): the sign-in link's token, in the email by design. The `GET`
+  is a landing page that consumes nothing, the token is single-use and lives 10 minutes, and
+  anywhere but the browser that asked it only confirms that browser's sign-in (I-07), so a token
+  read from a log cannot sign its reader in. A fragment form would need script on a script-free
+  page.
+- **`/download/<token>` and the bytes host's `?ticket=`** (PX-W3; the Velopack package route
+  too): a single-use redemption token and a two-minute, one-file ticket that a browser or an
+  updater download has to carry in its URL (a `302` cannot add a header). Both are useless once
+  spent or expired.
+- **Godot registry URL tokens** (`/godot/<owner>/t/<token>/…`): accepted above under "Godot URL
+  tokens" (the editor sends no `Authorization`; the token is read-only, Godot-only and 30 days
+  by default).
+- **`/<p>/identity/auth/device/verify?device_code=`**: a legacy route kept for flows started
+  before `/device`; `/device/start` no longer hands the URL out. Removing it is a route change
+  (AGENTS.md rule 10), proposed as a follow-up.
+- **Steam's key-activation page** (`activateUrl`, `services/distribution/page/customer.ts`) takes
+  a Steam key as `?key=` on Steam's own site. That is Steam's interface and Steam's logs; the
+  portal must never put the Steam key in its own address when it builds that link.
 
 ### Portal emails: security notices and "Email me the download" (PX-W7)
 

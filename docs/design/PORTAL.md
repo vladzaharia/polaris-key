@@ -300,7 +300,7 @@ Hash routing stays for the signed-in SPA (ADMIN.md lead decision Q2). Product id
 | -------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `#/`                                               | **Library** (default)                                       | `?view=grid\|list`, `?q=`, `?filter=attention\|games\|apps`, `?sort=recent\|name`                                                                                             |
 | `#/discover`                                       | Discover                                                    | `?added=<product>` shows the just-added state after a reload                                                                                                                  |
-| `/activate?product=…` (`#key=…`) → `#/?activate=…` | **Library with the Activate license modal open**            | The key fills only from a `#key=` fragment an app adds, or a printed `?key=`; the Worker never puts a key in a URL. Signed out → login card, then here. Never a separate page |
+| `/activate?product=…` (`#key=…`) → `#/?activate=…` | **Library with the Activate license modal open**            | Key from a `#key=` fragment (or a legacy `?key=`), dropped from the URL on load; the Worker never puts a key in any URL. Signed out → login card, then here. No separate page |
 | `#/p/:product`                                     | Product page                                                | `?license=<id>` picks a license when there are several                                                                                                                        |
 | `#/p/:product/:section`                            | Product page scrolled to a section                          | `get`, `sync` (only when the product has Cloud Sync), `new`, `license`, `devices`, `package`, `help`                                                                          |
 | `#/p/:product/free-device`                         | Focused flow: device limit                                  | `?for=<label>&return=<url>`; target of G15 `manageUrl`                                                                                                                        |
@@ -723,7 +723,7 @@ are entitled to sits unclaimed.
 ![Done](portal/28-activate-done-desktop-dark.png)
 
 Opened by the header action, the phone bar pill, ⌘K, the empty library, the not-found page, and
-`/activate?key=`. **Always a modal over the Library** (a bottom sheet on phones); there is no redeem
+`/activate#key=`. **Always a modal over the Library** (a bottom sheet on phones); there is no redeem
 page.
 
 1. **Enter:** "Activate a license", one line ("Paste a key from a store, a developer or an email.
@@ -779,8 +779,10 @@ The `KeyField`:
 ![Deep link](portal/30-activate-link-desktop-dark.png)
 
 `/activate?product=…` (from an app at its entry limit, an email) opens **Library** with the modal
-open; the key is filled in and checked only from a `#key=` fragment the app added or a printed
-`?key=` card, never from a Worker-built URL. With `product=` from an app, a notice names it:
+open; the key is filled in and checked only from a `#key=` fragment (an app, an email, a printed
+link; a legacy `?key=` still works), never from a Worker-built URL. The portal drops the fragment,
+or the query, from the address bar before it does anything else (THREAT-MODEL.md, "Key-bearing
+deep links"). With `product=` from an app, a notice names it:
 "Mossgarden sent you here. This key has no entries left in the game. Add it to your account and the
 game signs you in instead." The help line reads "Filled in from your link. Check it matches the key
 you have." Signed out, the login card (with product context) runs first and returns here.
