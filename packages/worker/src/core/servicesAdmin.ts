@@ -36,10 +36,17 @@
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import type { AdminSession } from "../admin/session.js";
-import { audit } from "../admin/audit.js";
-import { adminJson, err, notFound, readBody } from "../admin/lib/respond.js";
+import {
+  adminJson,
+  err,
+  notFound,
+  readBody,
+  settingRefused,
+} from "../admin/lib/respond.js";
 import { ErrorCode } from "./errors.js";
-import { getProduct, revertServicesToManifest, setServices } from "../repo.js";
+import { getProduct } from "../repo.js";
+import type { SettingsRegistry } from "./settings/registry.js";
+import { writeSetting, type WriteOptions } from "./settings/write.js";
 import { invalidateWidenedEdgeMintApprovals } from "./edgeMintApproval.js";
 import {
   parseServices,
@@ -73,9 +80,25 @@ export async function handleServicesAdmin(
   slug: string,
   action: string | undefined,
   now: number,
+  settings: SettingsRegistry,
 ): Promise<Response> {
   const row = await getProduct(db, slug);
   if (!row) return notFound();
+  // ST-04: `core.services` is a registry setting, written through the one write path (its legacy
+  // `services_source` marker is claimed and released by its column adapter). A bespoke route:
+  // no version in its contract (ST-05 makes it an alias of the generic API).
+  const ctx = { env, db, registry: settings };
+  const opts = (origin: "console" | "revert"): WriteOptions => ({
+    actor: {
+      sub: session.sub,
+      name: session.name ?? null,
+      email: session.email ?? null,
+    },
+    origin,
+    now,
+    product: row,
+    strict: false,
+  });
 
   if (action === "revert") {
     if (req.method !== "POST")
@@ -87,7 +110,20 @@ export async function handleServicesAdmin(
       now,
       "found widened before a console edit",
     );
-    await revertServicesToManifest(db, slug, now);
+    const reverted = await writeSetting(
+      ctx,
+      {
+        key: "core.services",
+        op: "reset",
+        audit: {
+          action: "product.services.revert",
+          target: { kind: "product", id: slug },
+          summary: `Returned service enablement for ${slug} to manifest control; the manifest re-applies on the next resync`,
+        },
+      },
+      opts("revert"),
+    );
+    if (!reverted.ok) return settingRefused(reverted);
     // PX-W17: the values did not change, but the transition hook is idempotent and heals any
     // binding left on an Identity-off product.
     await applyServiceTransitions(
@@ -97,15 +133,6 @@ export async function handleServicesAdmin(
       parseServices(row.services_json).services,
       session,
       now,
-    );
-    await audit(
-      db,
-      slug,
-      session,
-      now,
-      "product.services.revert",
-      { kind: "product", id: slug },
-      `Returned service enablement for ${slug} to manifest control; the manifest re-applies on the next resync`,
     );
     return adminJson(serviceStateOf(await getProduct(db, slug)));
   }
@@ -213,19 +240,24 @@ export async function handleServicesAdmin(
     now,
     "found widened before a console edit",
   );
-  await setServices(db, slug, serializeServices(next), "admin", now);
-  await applyServiceTransitions(env, db, slug, services, session, now);
-
   const enabled = SERVICE_SLUGS.filter((s) => services[s].enabled);
-  await audit(
-    db,
-    slug,
-    session,
-    now,
-    "product.services.update",
-    { kind: "product", id: slug },
-    `Set services for ${slug}: ${enabled.length ? enabled.join(", ") : "none"}; ` +
-      `registration ${registration ?? `derived (${resolveRegistration(services)})`}`,
+  const written = await writeSetting(
+    ctx,
+    {
+      key: "core.services",
+      // The stored shape (`serializeServices`), so the value round-trips through the parser.
+      value: JSON.parse(serializeServices(next)) as unknown,
+      audit: {
+        action: "product.services.update",
+        target: { kind: "product", id: slug },
+        summary:
+          `Set services for ${slug}: ${enabled.length ? enabled.join(", ") : "none"}; ` +
+          `registration ${registration ?? `derived (${resolveRegistration(services)})`}`,
+      },
+    },
+    opts("console"),
   );
+  if (!written.ok) return settingRefused(written);
+  await applyServiceTransitions(env, db, slug, services, session, now);
   return adminJson(serviceStateOf(await getProduct(db, slug)));
 }

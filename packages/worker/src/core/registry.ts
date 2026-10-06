@@ -41,6 +41,10 @@ import type {
   LicenseDeleteContributor,
 } from "./licenseDelete.js";
 import type { ServiceSettingsSlice } from "./settings/types.js";
+import {
+  settingsRegistryFor,
+  type SettingsRegistry,
+} from "./settings/registry.js";
 import type {
   StoreGrantChange,
   StoreGrantContext,
@@ -117,13 +121,20 @@ export interface ServiceContext {
    * than strand another owner's rows.
    */
   licenseDelete?: LicenseDelete;
+  /**
+   * ST-04: the settings registry for this service table (`core/settings/registry.ts`
+   * `settingsRegistryFor`), so a service handler writes a setting through `writeSetting()` (the
+   * one write path) without importing the composition root. Built by both dispatchers; absent on
+   * a context built by hand, where a settings write refuses rather than bypass the registry.
+   */
+  settings?: SettingsRegistry;
 }
 
 /** A `ServiceContext` as a caller hands it to Core — everything but the Core-built `hooks`,
- *  `ingest`, `storeGrants`, `licenseMerge` and `licenseDelete`. */
+ *  `ingest`, `storeGrants`, `licenseMerge`, `licenseDelete` and `settings`. */
 export type ServiceRequest = Omit<
   ServiceContext,
-  "hooks" | "ingest" | "storeGrants" | "licenseMerge" | "licenseDelete"
+  "hooks" | "ingest" | "storeGrants" | "licenseMerge" | "licenseDelete" | "settings"
 >;
 
 /**
@@ -377,6 +388,7 @@ export async function dispatchService(
       now: ctx.now,
     }),
     licenseMerge: licenseMergeFor(registry),
+    settings: settingsRegistryFor(registry),
   });
   return res ?? serviceNotFound();
 }

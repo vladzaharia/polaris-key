@@ -24,14 +24,8 @@
 
 import { ErrorCode } from "../../../core/errors.js";
 import type { ProductRow } from "../../../core/data.js";
-import {
-  getProduct,
-  getTier,
-  revertAutoIssueToManifest,
-  revertFingerprintPolicyToManifest,
-  setAutoIssuePolicy,
-  setFingerprintPolicy,
-} from "../../../core/data.js";
+import { getProduct, getTier } from "../../../core/data.js";
+import { writeSettings } from "../../../core/settings/write.js";
 import {
   isAutoIssueMode,
   isFingerprintMode,
@@ -41,9 +35,9 @@ import {
 import {
   adminJson,
   adminNotFound,
-  audit,
   err,
   readBody,
+  settingRefused,
 } from "../../../core/adminApi.js";
 import { invalidateWidenedEdgeMintApprovals } from "../../../core/edgeMintApproval.js";
 import type { LicenseAdminContext } from "./index.js";
@@ -67,17 +61,25 @@ export async function handleFingerprintPolicy(
       now,
       "found widened before a console edit",
     );
-    await revertFingerprintPolicyToManifest(db, slug, now);
-    await revertAutoIssueToManifest(db, slug, now);
-    await audit(
-      db,
-      slug,
-      session,
-      now,
-      "product.fingerprint.revert",
-      { kind: "product", id: slug },
-      `Returned the fingerprint policy for ${slug} to manifest control`,
+    // ST-04: both halves through the one write path; each flips its legacy owner marker back
+    // to `manifest` (the value stays until the next resync re-applies the declaration).
+    const reverted_ = await writeSettings(
+      settingsCtx(ctx),
+      (["license.fingerprint", "license.autoIssue"] as const).map((key) => ({
+        key,
+        op: "reset" as const,
+        audit: {
+          action: "product.fingerprint.revert",
+          target: { kind: "product", id: slug },
+          summary:
+            key === "license.fingerprint"
+              ? `Returned the fingerprint policy for ${slug} to manifest control`
+              : `Returned the auto-issue policy for ${slug} to manifest control`,
+        },
+      })),
+      writeOpts(ctx, row, "revert"),
     );
+    if (!reverted_.ok) return settingRefused(reverted_);
     const reverted = await getProduct(db, slug);
     return adminJson(policyView(reverted));
   }
@@ -165,7 +167,6 @@ export async function handleFingerprintPolicy(
     return err(422, ErrorCode.BadRequest, "invalid policy", { fields });
 
   const policy = { enabled, defaultMode, probes };
-  await setFingerprintPolicy(db, slug, JSON.stringify(policy), "admin", now);
   if (body.autoIssue !== undefined) {
     // P0-12: the auto-issue policy decides whether the edge mint is public, so drop every
     // approval the product has ALREADY widened before writing it — otherwise turning anonymous
@@ -178,19 +179,66 @@ export async function handleFingerprintPolicy(
       now,
       "found widened before a console edit",
     );
-    await setAutoIssuePolicy(db, slug, JSON.stringify(auto), "admin", now);
   }
-  await audit(
-    db,
-    slug,
-    session,
-    now,
-    "product.policy.update",
-    { kind: "product", id: slug },
-    `Set the device policy for ${slug}: fingerprint ${enabled ? defaultMode : "disabled"}, ` +
-      `auto-issue ${auto.enabled ? `${auto.mode} → ${auto.tierId}` : "disabled"}`,
+  // ST-04: one write, one audit row per policy; each claims its policy for the operator (the
+  // legacy `*_source = 'admin'` marker), so the next resync leaves it alone until a revert.
+  const target = { kind: "product", id: slug };
+  const written = await writeSettings(
+    settingsCtx(ctx),
+    [
+      {
+        key: "license.fingerprint",
+        value: policy,
+        audit: {
+          action: "product.policy.update",
+          target,
+          summary: `Set the device policy for ${slug}: fingerprint ${enabled ? defaultMode : "disabled"}`,
+        },
+      },
+      ...(body.autoIssue !== undefined
+        ? [
+            {
+              key: "license.autoIssue",
+              value: auto,
+              audit: {
+                action: "product.policy.update",
+                target,
+                summary: `Set the device policy for ${slug}: auto-issue ${auto.enabled ? `${auto.mode} → ${auto.tierId}` : "disabled"}`,
+              },
+            },
+          ]
+        : []),
+    ],
+    writeOpts(ctx, row, "console"),
   );
+  if (!written.ok) return settingRefused(written);
   return adminJson(await policyView(await getProduct(db, slug)));
+}
+
+/** The settings registry the dispatcher handed this request (`ServiceContext.settings`). */
+function settingsCtx(ctx: LicenseAdminContext) {
+  if (!ctx.settings)
+    throw new Error("the license policy route needs ServiceContext.settings");
+  return { env: ctx.env, db: ctx.db, registry: ctx.settings };
+}
+
+/** A bespoke console route (ST-05 makes it an alias): no version in its contract. */
+function writeOpts(
+  ctx: LicenseAdminContext,
+  product: ProductRow,
+  origin: "console" | "revert",
+) {
+  return {
+    actor: {
+      sub: ctx.session.sub,
+      name: ctx.session.name ?? null,
+      email: ctx.session.email ?? null,
+    },
+    origin,
+    now: ctx.now,
+    product,
+    strict: false,
+  };
 }
 
 /** One projection for both GET and the post-write echo, so they can't drift. */

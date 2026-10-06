@@ -532,13 +532,16 @@ async function writeProduct(
         `${def.key} is set by the product's .pkey/ (${def.manifest?.path ?? "manifest"})`,
         def.key,
       );
-    if (def.ownership === "claimable" && system)
-      return refuse(409, "manifest_authoritative", MANIFEST_AUTHORITATIVE_MESSAGE, def.key);
-
     const adapter =
       def.storage.kind === "column"
         ? ctx.registry.columnAdapter(def.key)
         : undefined;
+    // The system product is manifest-authoritative (S-18 §4.5 item 8; ST-20 adds break-glass).
+    // A key claimed through a legacy marker (`services_source`, `access_source`, …) keeps its
+    // pre-ST-04 behaviour there: the deploy hook honours the marker itself, and ST-01c lists those
+    // bootstrap-owned claims for the operator, so refusing them here would be a new restriction.
+    if (def.ownership === "claimable" && system && !adapter?.marker)
+      return refuse(409, "manifest_authoritative", MANIFEST_AUTHORITATIVE_MESSAGE, def.key);
     if (def.storage.kind === "column" && !adapter)
       return refuse(409, "no_writer", `${def.key} has no column adapter`, def.key);
     if (op === "set" && def.storage.kind === "column" && !adapter!.set)

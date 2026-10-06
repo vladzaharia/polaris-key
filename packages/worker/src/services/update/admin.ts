@@ -56,23 +56,29 @@
 import { ErrorCode } from "../../core/errors.js";
 import type { ServiceContext } from "../../core/registry.js";
 import type { AdminSession } from "../../core/adminApi.js";
-import { adminJson, audit, err, readBody } from "../../core/adminApi.js";
 import {
-  getCompatWindow,
-  revertCompatWindowToManifest,
-  setCompatWindow,
-} from "../../core/products.js";
+  adminJson,
+  audit,
+  auditStatementFor,
+  err,
+  readBody,
+  settingRefused,
+} from "../../core/adminApi.js";
+import { getCompatWindow } from "../../core/products.js";
+import {
+  writeSettings,
+  type SettingWrite,
+  type WriteOptions,
+} from "../../core/settings/write.js";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
   accessSourceOf,
   getReleaseConfig,
   isReleaseAccess,
+  mergeOperatorPolicy,
   MINIMUM_SYSTEM_VERSION_RE,
   operatorPolicy,
   readAccessMode,
-  revertReleaseAccessToManifest,
-  setOperatorPolicy,
-  setReleaseAccess,
 } from "../release/config.js";
 import {
   parseSimulateQuery,
@@ -80,6 +86,31 @@ import {
   SimulateInputError,
   SimulateNotFound,
 } from "./simulate.js";
+
+/** The settings registry the dispatcher handed this request (`ServiceContext.settings`). */
+function settingsCtx(ctx: ServiceContext) {
+  if (!ctx.settings)
+    throw new Error("the update settings route needs ServiceContext.settings");
+  return { env: ctx.env, db: ctx.db, registry: ctx.settings };
+}
+
+/** A bespoke console route (ST-05 makes it an alias): no version in its contract. */
+function writeOpts(
+  ctx: ServiceContext & { session: AdminSession },
+  origin: "console" | "revert",
+): WriteOptions {
+  return {
+    actor: {
+      sub: ctx.session.sub,
+      name: ctx.session.name ?? null,
+      email: ctx.session.email ?? null,
+    },
+    origin,
+    now: ctx.now,
+    product: ctx.product.slug,
+    strict: false,
+  };
+}
 
 /** A semver bound the window may name. Same shape the manifest validator accepts. */
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-.]+)?$/;
@@ -271,28 +302,41 @@ async function handleSettings(
     );
   }
 
-  if (touchesAccess) {
-    await setReleaseAccess(db, slug, { metadata });
-  }
-  if (compatMin !== undefined || compatMax !== undefined) {
-    await setCompatWindow(
-      db,
-      slug,
-      {
-        ...(compatMin !== undefined ? { min: compatMin } : {}),
-        ...(compatMax !== undefined ? { max: compatMax } : {}),
+  // ST-04: the three are registry settings (`update.metadataAccess`, `release.compatWindow`,
+  // `update.operatorPolicy`), written through `writeSetting()` in ONE batch with one audit row
+  // each. Saving the metadata mode or the window claims it for the operator (`access_source` /
+  // `compat_source`, through their column adapters), so resync skips it until a revert. A bespoke
+  // route with no version in its contract: compatibility mode (ST-05 makes it an alias).
+  const target = { kind: "product", id: slug };
+  const writes: SettingWrite[] = [];
+  if (touchesAccess)
+    writes.push({
+      key: "update.metadataAccess",
+      value: metadata,
+      audit: {
+        action: "update.settings.update",
+        target,
+        summary: `Updated update settings for ${slug}: metadata access ${metadata}`,
       },
-      now,
-    );
+    });
+  if (compatMin !== undefined || compatMax !== undefined) {
+    const current = await getCompatWindow(db, slug);
+    const window = {
+      min: compatMin ?? current?.min ?? product.compatMin,
+      max: compatMax ?? current?.max ?? product.compatMax,
+    };
+    writes.push({
+      key: "release.compatWindow",
+      value: window,
+      audit: {
+        action: "update.settings.update",
+        target,
+        summary: `Updated update settings for ${slug}: compatibility window ${window.min} – ${window.max}`,
+      },
+    });
   }
   if (touchesPolicy && cfg) {
     const before = operatorPolicy(cfg);
-    await setOperatorPolicy(db, slug, {
-      ...(requireSparkleSignature !== undefined
-        ? { requireSparkleSignature }
-        : {}),
-      ...(minimumSystemVersion !== undefined ? { minimumSystemVersion } : {}),
-    });
     const changes: string[] = [];
     if (
       requireSparkleSignature !== undefined &&
@@ -314,28 +358,62 @@ async function handleSettings(
       );
     // Its own event, not folded into `update.settings.update`: the signature requirement is a
     // security control, and switching it off must be findable in the audit log by action alone.
+    writes.push({
+      key: "update.operatorPolicy",
+      value: mergeOperatorPolicy(cfg.operator_policy_json, {
+        ...(requireSparkleSignature !== undefined
+          ? { requireSparkleSignature }
+          : {}),
+        ...(minimumSystemVersion !== undefined ? { minimumSystemVersion } : {}),
+      }),
+      audit: {
+        action: "release.policy.update",
+        target,
+        summary:
+          changes.length > 0
+            ? `Artifact policy for ${slug}: ${changes.join("; ")}`
+            : `Artifact policy for ${slug} saved unchanged`,
+      },
+    });
+  }
+  // The request's own `update.settings.update` row when no setting row carries that action (a
+  // PATCH of the artifact policy alone, or of nothing), committed with the write.
+  const envelope = !writes.some((w) => w.audit?.action === "update.settings.update");
+  if (writes.length === 0)
     await audit(
       db,
       slug,
       session,
       now,
-      "release.policy.update",
-      { kind: "product", id: slug },
-      changes.length > 0
-        ? `Artifact policy for ${slug}: ${changes.join("; ")}`
-        : `Artifact policy for ${slug} saved unchanged`,
+      "update.settings.update",
+      target,
+      `Updated update settings for ${slug}`,
     );
+  else {
+    const written = await writeSettings(
+      settingsCtx(ctx),
+      writes,
+      {
+        ...writeOpts(ctx, "console"),
+        ...(envelope
+          ? {
+              extra: (guard) => [
+                auditStatementFor(
+                  slug,
+                  session,
+                  now,
+                  "update.settings.update",
+                  target,
+                  `Updated update settings for ${slug}`,
+                  guard,
+                ),
+              ],
+            }
+          : {}),
+      },
+    );
+    if (!written.ok) return settingRefused(written);
   }
-
-  await audit(
-    db,
-    slug,
-    session,
-    now,
-    "update.settings.update",
-    { kind: "product", id: slug },
-    `Updated update settings for ${slug}`,
-  );
 
   return adminJson(await settingsView(ctx));
 }
@@ -384,19 +462,26 @@ async function handleRevert(
     );
   }
 
-  if (blocks.has("access")) await revertReleaseAccessToManifest(db, slug);
-  if (blocks.has("compat")) await revertCompatWindowToManifest(db, slug, now);
-
-  const names = [...blocks].sort();
-  await audit(
-    db,
-    slug,
-    session,
-    now,
-    "update.settings.revert",
-    { kind: "product", id: slug },
-    `Returned ${names.join(" and ")} settings for ${slug} to manifest control`,
+  // ST-04: each block is a setting reset through `writeSetting()`, which flips its marker back
+  // to `manifest` (the values stay until the next resync re-applies the manifest).
+  const KEY_OF: Record<Revertible, string> = {
+    access: "update.metadataAccess",
+    compat: "release.compatWindow",
+  };
+  const reverted = await writeSettings(
+    settingsCtx(ctx),
+    [...blocks].sort().map((block) => ({
+      key: KEY_OF[block],
+      op: "reset" as const,
+      audit: {
+        action: "update.settings.revert",
+        target: { kind: "product", id: slug },
+        summary: `Returned ${block} settings for ${slug} to manifest control`,
+      },
+    })),
+    writeOpts(ctx, "revert"),
   );
+  if (!reverted.ok) return settingRefused(reverted);
 
   return adminJson(await settingsView(ctx));
 }
