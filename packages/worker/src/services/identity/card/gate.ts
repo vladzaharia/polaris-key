@@ -19,12 +19,16 @@
  *   - It runs once per account: an account with a confirmed email never sees it again, whichever
  *     method it later uses (Terms aside: a product's new terms version asks again).
  *   - The email is prefilled from the provider, an Apple private-relay address included, and can
- *     be switched to a typed one. A PROVIDER-VERIFIED address (Google `email_verified: true`,
- *     Apple always) is accepted without a code (owner, 2026-10-04); a typed address, or a provider
- *     address that is not verified, gets a 6-digit code on I-02's store, bound to this gate. Steam
- *     and other providers with no email start with an empty field.
+ *     be switched to a typed one. A PROVIDER-VERIFIED address is accepted without a code (owner,
+ *     2026-10-04): Apple's always (relay included), and Google's only when `email_verified` is
+ *     true AND the address is `@gmail.com`/`@googlemail.com` or the token's `hd` claim equals the
+ *     address's domain (Workspace; lead decision 2026-10-06, `providerVouchesForEmail`). A typed
+ *     address, or a provider address that is not vouched for, gets a 6-digit code on I-02's
+ *     store, bound to this gate. Steam and other providers with no email start with an empty
+ *     field.
  *   - Terms: when the product requires them, the gate does not pass until this version is ticked;
- *     acceptances are stored per account, product and version (`accounts.terms_json`).
+ *     acceptances are stored per account, product and version (`account_terms_acceptances`,
+ *     `accounts/terms.ts`, PX-W15), and a new version asks again.
  *   - The confirmed email becomes the account's primary email and an email sign-in method.
  *   - If the confirmed email already belongs to another account (known only AFTER it was proven,
  *     so nothing is enumerated), the gate stops with `email_in_use` and OFFERS to join. It never
@@ -95,7 +99,13 @@ import {
   type AccountRow,
 } from "../accounts/repo.js";
 import { isFresh, linkIdentity } from "../accounts/links.js";
+import {
+  recordTermsAcceptance,
+  termsAccepted,
+  type TermsRequirement,
+} from "../accounts/terms.js";
 import { mergeAccounts } from "../accounts/merge.js";
+import { providerVouchesForEmail } from "../providers/vouch.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   CODE_VERIFY_PER_IP_MINUTE,
@@ -126,11 +136,8 @@ export const GATE_TTL_SECONDS = 15 * 60;
 /** Where a front door sends the browser once a gate is open: the card renders the step. */
 export const EMAIL_GATE_LANDING = "/?signin=confirm-email";
 
-/** A product's terms, when it requires acceptance (`identity.requireTerms`, I-09's manifest). */
-export interface TermsRequirement {
-  url: string;
-  version: string;
-}
+export type { TermsRequirement };
+export { providerVouchesForEmail };
 
 /** What a provider front door hands the gate. */
 export interface ProviderSignIn {
@@ -141,6 +148,8 @@ export interface ProviderSignIn {
     tenantScopes?: readonly string[];
     terms?: TermsRequirement | null;
   } | null;
+  /** Google only: the signed `hd` claim (the Workspace domain), for `providerVouchesForEmail`. */
+  hostedDomain?: string | null;
   /** Where to go afterwards: a same-origin path the front door already checked. */
   returnTo?: string | null;
   /** I-08's passthrough request handle, opaque here and handed back when the gate passes. */
@@ -250,57 +259,16 @@ function accountDisabledPage(): Response {
   });
 }
 
-/** `terms_json` → whether this product's `version` was accepted. */
-export function termsAccepted(
-  termsJson: string | null,
-  product: string,
-  version: string,
-): boolean {
-  if (!termsJson) return false;
-  try {
-    const all = JSON.parse(termsJson) as Record<string, { version?: unknown }>;
-    return all?.[product]?.version === version;
-  } catch {
-    return false;
-  }
-}
-
-/** Store an acceptance of a product's terms version (re-asked when the version changes). */
-export async function recordTermsAcceptance(
+/** Whether the account still has to accept `terms` (no row for this version yet). */
+async function needsTerms(
   db: Db,
-  accountId: string,
-  product: string,
-  terms: TermsRequirement,
-  now: number,
-): Promise<void> {
-  const row = await db.first<{ terms_json: string | null }>(
-    "SELECT terms_json FROM accounts WHERE id = ?",
-    accountId,
-  );
-  let all: Record<string, unknown> = {};
-  try {
-    all = row?.terms_json
-      ? (JSON.parse(row.terms_json) as Record<string, unknown>)
-      : {};
-  } catch {
-    all = {};
-  }
-  all[product] = { version: terms.version, url: terms.url, acceptedAt: now };
-  await db.run(
-    "UPDATE accounts SET terms_json = ?, modified_at = ? WHERE id = ?",
-    JSON.stringify(all),
-    now,
-    accountId,
-  );
-}
-
-function needsTerms(
   account: AccountRow | null,
   product: string | null,
   terms: TermsRequirement | null,
-): boolean {
+): Promise<boolean> {
   if (!terms || !product) return false;
-  return !termsAccepted(account?.terms_json ?? null, product, terms.version);
+  if (!account) return true;
+  return !(await termsAccepted(db, account.id, product, terms.version));
 }
 
 /**
@@ -315,7 +283,15 @@ export async function beginProviderSignIn(
   input: ProviderSignIn,
   now: number,
 ): Promise<Response> {
-  const id = normalizeIdentity(input.identity);
+  // The provider's assertion counts only where it vouches for the address today: everything
+  // downstream (the gate's fast path, the link's stored `email_verified`, which feeds the licence
+  // claim rules) sees an address Google does not vouch for as unverified. The Google module
+  // already narrowed it; this re-check is a no-op there and covers every other front door.
+  const identity: VerifiedIdentity = {
+    ...input.identity,
+    emailVerified: providerVouchesForEmail(input.identity, input.hostedDomain),
+  };
+  const id = normalizeIdentity(identity);
   if (!id || id.kind === "email") {
     return unverifiedPage();
   }
@@ -338,8 +314,8 @@ export async function beginProviderSignIn(
       return accountDisabledPage();
     }
     const emailConfirmed = account.primary_email_verified_at !== null;
-    if (emailConfirmed && !needsTerms(account, product, terms)) {
-      const result = await signIn(db, input.identity, now, {
+    if (emailConfirmed && !(await needsTerms(db, account, product, terms))) {
+      const result = await signIn(db, identity, now, {
         product: product ? { slug: product, tenantScopes: scopes } : undefined,
       });
       if (result.status !== "signed_in") {

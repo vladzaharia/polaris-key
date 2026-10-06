@@ -4,8 +4,9 @@
  * Link-existing-account needs a live sign-in to EACH account in one flow, both fresh (no older
  * than 5 minutes). Never by email match. Then, in one atomic batch:
  *
- *   - links, licences, sessions, product grants, passkeys and registry tokens move to the
- *     survivor; personal details fill in where the survivor has none (I-11 lets the person choose);
+ *   - links, licences, sessions, product grants, terms acceptances, passkeys and registry tokens
+ *     move to the survivor; personal details fill in where the survivor has none (I-11 lets the
+ *     person choose);
  *   - per product both accounts touched, the SURVIVOR's pairwise subject wins and the absorbed
  *     one becomes an alias, so a developer's records still resolve; devices bound to the absorbed
  *     subject are re-keyed; the developer gets `subject.merged` (D21);
@@ -27,6 +28,7 @@ import { accountsMergedNotice } from "../portal/notices.js";
 import { stmtSubjectEvent } from "./events.js";
 import { isFresh, type AccountContext, type AccountProof } from "./links.js";
 import { getAccountRow } from "./repo.js";
+import { stmtsMoveTermsAcceptances } from "./terms.js";
 
 export type MergeResult =
   | {
@@ -171,6 +173,9 @@ export async function mergeAccounts(
       sql: "DELETE FROM account_product_grants WHERE account_id = ?",
       params: [A],
     },
+    // PX-W15: terms the absorbed account accepted stay accepted; the survivor's row wins for a
+    // version both accepted.
+    ...stmtsMoveTermsAcceptances(S, A),
     {
       sql: "UPDATE account_sessions SET account_id = ? WHERE account_id = ?",
       params: [S, A],

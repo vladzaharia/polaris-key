@@ -111,6 +111,11 @@ export async function deleteProduct(
       sql: "DELETE FROM account_product_grants WHERE product = ?",
       params: [slug],
     },
+    // PX-W15: and every account's acceptance of its terms (a re-created slug asks again).
+    {
+      sql: "DELETE FROM account_terms_acceptances WHERE product = ?",
+      params: [slug],
+    },
     {
       sql: "UPDATE devices SET status = 'deauthorized', subject = NULL WHERE product = ?",
       params: [slug],

@@ -5492,8 +5492,9 @@ The login card is the one place a Polaris Key account's credentials are entered
 - **The email gate and the join offer (owner decisions, 2026-10-04).** No account row and no
   session exist until the gate passes; its record is server-held and named by a host-only
   `__Host-pkey_gate` cookie, so another browser cannot drive it. A provider-asserted verified
-  address (Google `email_verified: true`, Apple) is trusted as the provider's statement, which is
-  the same trust I-06 places in that provider's ID token; anything else needs our code. An address
+  address (Apple's; Google's only for a Gmail address or a matching Workspace `hd`, PX-W15 below)
+  is trusted as the provider's statement, which is the same trust I-06 places in that provider's
+  ID token; anything else needs our code. An address
   another account uses stops the gate with an offer and writes nothing. Joining needs both
   identities proven in the one session: the gate proves the provider identity, and the other
   account is proven by a fresh (5-minute) account session in this browser or by the gate's code
@@ -5582,6 +5583,54 @@ methods, never behind a product's Identity toggle. S-16 §5.4 item 2 (broker con
 - **Abuse.** Start, callback and notifications are rate limited per caller IP in their own
   buckets (`portalProviderStart`, `portalProviderCallback`, `appleNotifications`), all failing
   closed.
+
+### The email gate: G31's checks and terms acceptances (PX-W15)
+
+PORTAL.md §10.2 G31 on top of I-07's gate (`services/identity/card/gate.ts`, the "Login card"
+section above): the provider rule checked end to end through I-06's callbacks, nothing issued
+before the gate passes, and terms acceptances kept per account, product and version
+(`account_terms_acceptances`, `accounts/terms.ts`).
+
+- **Unverified provider emails.** Only a provider's signed assertion skips our code, and only
+  where it vouches for the address today (`providerVouchesForEmail`): Apple's (always sent, a
+  private-relay address included), and Google's `email_verified: true` only for `@gmail.com` /
+  `@googlemail.com` or when the signed `hd` claim equals the address's domain (a Workspace
+  account, whose addresses the domain's admin controls). A Google address with
+  `email_verified: false` or outside that rule, every typed address and every Steam sign-in (no
+  email at all) get a 6-digit code on I-02's store, bound to this gate's record (`flowId`), so a
+  code sent for one gate cannot pass another. The rule is applied to the identity as it enters the
+  gate, so the provider link stores such an address as unverified too: an address our code proved
+  is verified on the email method only (tests).
+- **Apple relay addresses.** A `…@privaterelay.appleid.com` address is accepted as Apple verified
+  it and can be the account's primary email. It reaches the person only through Apple's relay,
+  which accepts mail only from registered senders (`EMAIL_APPLE_RELAY`, I-02 above), and it does
+  not match a purchase made with the person's real address; the step marks it (`relay: true`) and
+  offers "Use my real email", which then needs a code (test).
+- **Takeover through a claimed email.** The confirmed address becomes a verified account email,
+  and verified emails attach unclaimed email-bound licences (`syncAccountLicenseLinks`). The gate
+  therefore never accepts an address on anyone's word but the provider's signed token or our code,
+  never creates a second account for an address another account uses, and answers `email_in_use`
+  only after the address was proven, so the gate cannot be used to test addresses. Joining needs
+  proof of the other account in the same browser (I-07). Closed (lead decision under the owner's
+  delegation, 2026-10-06): Google's `email_verified` for an address outside Google's own domains
+  says only that Google verified it once, not that the person still controls it (a former
+  employee's company address). Such an address now needs our code unless the token's `hd` claim
+  names its domain, and the Google link never stores it as verified, so it cannot claim licences
+  bought with it (tests: Gmail and matching `hd` pass without a code; no `hd` and a mismatched
+  `hd` get one).
+- **Nothing before the pass.** The gate cookie (`__Host-pkey_gate`) authenticates nothing: until
+  the pass no session cookie is set, no `account_sessions` row exists, no account row exists for
+  a new identity, and every session-gated route (the account, its sessions, app consent for a
+  passthrough request, device approval) answers 401 to that browser, at every step: opened, terms
+  refused, code out, wrong code, join offer and refused join, and a terms-only gate on an existing
+  account (tests). The pass is the one response that sets the session cookie and hands back the
+  passthrough `request`, so no app token can be minted against an account whose gate is open.
+- **Terms acceptances.** One row per (account, product, version), written once: a repeat
+  acceptance keeps the first time and URL, and a new version adds a row beside the earlier ones,
+  so the record of what the person agreed to survives the next version. The gate asks again while
+  the current version has no row, and an old version never passes a gate opened for a new one.
+  A merge moves the absorbed account's rows to the survivor (the survivor's own row stands for a
+  version both accepted); account deletion and product deletion erase them (tests).
 
 ### The console's Users page and the relink tool (I-12)
 

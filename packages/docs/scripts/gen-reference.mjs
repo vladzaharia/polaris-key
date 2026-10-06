@@ -439,6 +439,8 @@ const TABLE_OWNERS = {
     "account_sessions",
     "account_product_grants",
     "account_passkeys",
+    // PX-W15: terms accepted at the email gate, per account, product and terms version.
+    "account_terms_acceptances",
     // I-12: the developer relink tool's history and 72-hour undo.
     "license_relinks",
     "portal_accounts",

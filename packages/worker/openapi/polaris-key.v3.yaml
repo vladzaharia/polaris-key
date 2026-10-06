@@ -11984,10 +11984,10 @@ paths:
         (or while its account has no confirmed email, or a product's terms version is not yet
         accepted) and redirects here with a 15-minute `__Host-pkey_gate` cookie. No account row and
         no session exist until the gate passes. The view carries the provider's email (an Apple
-        private-relay address included) and whether the provider verified it, the imported profile
-        for adjustment (the picture through `/api/signin/confirm-email/picture`), the product's
-        terms when it requires them, and at the `join_offer` stage the address another account
-        uses. It never carries an account id.
+        private-relay address included) and whether the provider vouches for it (SIGN-IN.md
+        §3.5), the imported profile for adjustment (the picture through
+        `/api/signin/confirm-email/picture`), the product's terms when it requires them, and at
+        the `join_offer` stage the address another account uses. It never carries an account id.
       responses:
         "200":
           description: The gate.
@@ -12000,13 +12000,18 @@ paths:
       tags: [portal]
       summary: Confirm the provider's email or a typed one (and accept terms)
       description: >
-        `choice: provider` with an address the provider asserted as verified (Google
-        `email_verified: true`, Apple) passes without a code (owner decision, 2026-10-04); a
-        typed address, or a provider address that is not verified, gets a 6-digit code
+        `choice: provider` with an address the provider vouches for passes without a code (owner
+        decision, 2026-10-04): Apple's verified address (a private-relay one included), or a
+        Google address with `email_verified: true` that is `@gmail.com`/`@googlemail.com` or
+        whose domain the token's `hd` claim names (lead decision, 2026-10-06). A typed address,
+        or a provider address outside that rule, gets a 6-digit code
         (`code_sent`, the same limits as the email start, enumeration-safe). `termsVersion` must
-        name the product's current version when it requires terms. `name` is an explicit choice
-        that later sign-ins never overwrite. A proven address that another account uses answers
-        `409 email_in_use` with the join offer; nothing is created or joined.
+        name the product's current version when it requires terms (`400 terms_required`
+        otherwise, an earlier version included); the acceptance is recorded when the gate passes,
+        one record per account, product and version, and a new version asks again. `name` is an
+        explicit choice that later sign-ins never overwrite. A proven address that another account
+        uses answers `409 email_in_use` with the join offer; nothing is created or joined. No
+        session cookie is set and no app sign-in request is handed back before the gate passes.
       requestBody:
         required: true
         content:

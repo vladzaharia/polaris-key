@@ -31,6 +31,7 @@ import {
   resolveSignInClient,
 } from "../src/services/identity/providers/config.js";
 import { matchRoute } from "../src/router.js";
+import { completeGoogleSignIn } from "../src/services/identity/providers/google.js";
 import {
   insertAccount,
   insertLink,
@@ -139,7 +140,10 @@ describe("Sign in with Google", () => {
 
   it("signs in against the recorded provider and yields a verified identity", async () => {
     const h = await makeProviderHarness();
-    const res = await googleCallback(h, (n) => googleClaims(n));
+    // A Workspace account (`hd` = the address's domain): Google vouches for the address (PX-W15).
+    const res = await googleCallback(h, (n) =>
+      googleClaims(n, { hd: "example.com" }),
+    );
     expect(res.status).toBe(302);
     // A first sign-in goes to I-07's email gate; Google's verified address passes it without a
     // code, and only then do the account and its session exist.
@@ -199,6 +203,49 @@ describe("Sign in with Google", () => {
     expect(await h.db.first("SELECT id FROM accounts")).toBeNull();
   });
 
+  it("narrows email_verified itself: only a Gmail address or one whose domain hd names (PX-W15)", async () => {
+    const h = await makeProviderHarness();
+    const discovered = await discoverProvider("google");
+    const client = {
+      kind: "google" as const,
+      clientId: GOOGLE_CLIENT_ID,
+      clientSecret: "google-secret",
+    };
+    // Any caller of completeGoogleSignIn (the card, a later connect flow) gets the narrowed value.
+    const complete = async (over: Record<string, unknown>) => {
+      h.idToken.google = await h.signGoogle(googleClaims("nonce-1", over));
+      return completeGoogleSignIn(client, discovered, {
+        code: "4/0AQSTgQ-code",
+        iss: "https://accounts.google.com",
+        redirectUri: "https://key.plrs.im/login/google/callback",
+        codeVerifier: "v".repeat(43),
+        nonce: "nonce-1",
+      });
+    };
+    const noHd = await complete({ email: "ada@lumen.example" });
+    expect(noHd.identity).toMatchObject({
+      email: "ada@lumen.example",
+      emailVerified: false,
+    });
+    expect(noHd.hostedDomain).toBeNull();
+    const workspace = await complete({
+      email: "ada@lumen.example",
+      hd: "lumen.example",
+    });
+    expect(workspace.identity.emailVerified).toBe(true);
+    expect(workspace.hostedDomain).toBe("lumen.example");
+    const mismatch = await complete({
+      email: "ada@lumen.example",
+      hd: "other.example",
+    });
+    expect(mismatch.identity.emailVerified).toBe(false);
+    const gmail = await complete({ email: "Ada@Gmail.com" });
+    expect(gmail.identity).toMatchObject({
+      email: "ada@gmail.com",
+      emailVerified: true,
+    });
+  });
+
   it("never joins by email match: a verified email another account uses writes nothing", async () => {
     const h = await makeProviderHarness();
     const other = await insertAccount(
@@ -225,7 +272,10 @@ describe("Sign in with Google", () => {
       },
       1,
     );
-    const res = await googleCallback(h, (n) => googleClaims(n));
+    // A Workspace address Google vouches for (PX-W15), so the gate confirms it without a code.
+    const res = await googleCallback(h, (n) =>
+      googleClaims(n, { hd: "example.com" }),
+    );
     // Confirming the address at the gate stops with the join offer; nothing joins silently.
     const confirmed = await passGate(h, res);
     expect(confirmed.status).toBe(409);
@@ -400,7 +450,9 @@ describe("Sign in with Google", () => {
         "google",
         "https://key.plrs.im/#/library",
       );
-      h.idToken.google = await h.signGoogle(googleClaims(nonceOf(location)));
+      h.idToken.google = await h.signGoogle(
+        googleClaims(nonceOf(location), { hd: "example.com" }),
+      );
       const res = await h.request(
         `/login/google/callback?code=c&state=${state}&iss=${encodeURIComponent("https://accounts.google.com")}`,
         { cookie },
