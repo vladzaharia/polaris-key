@@ -464,7 +464,8 @@ describe("writeSetting: a product write", () => {
       written: [{ op: "reset", version: 0 }],
     });
     expect(await rows(db)).toEqual([]);
-    const last = (await audits(db)).at(-1)!;
+    // Both rows share one `at`; the reset is the row its origin names.
+    const last = (await audits(db)).find((a) => a.origin === "revert")!;
     expect(last).toMatchObject({
       action: "setting.revert",
       origin: "revert",
