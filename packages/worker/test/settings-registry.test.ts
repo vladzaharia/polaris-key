@@ -34,6 +34,7 @@ import {
   platformSettingDef,
 } from "../src/core/platformSettings.js";
 import { MAX_OFFLINE_DAYS } from "../src/admin/lib/writeChecks.js";
+import { DEPRECATED_SPELLINGS, spellingPath } from "@polaris-key/manifest";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SRC = join(HERE, "..", "src");
@@ -113,8 +114,11 @@ function issuesWith(
   );
 }
 
-/** Follow a manifest path (`product:web.origins`) through a JSON Schema's properties and refs. */
-function schemaHasPath(path: string): boolean {
+/**
+ * Follow a manifest path (`product:web.origins`) through a JSON Schema's properties and refs.
+ * `"deprecated"` when a step of it is a property the schema marks deprecated (ST-19).
+ */
+function schemaHasPath(path: string): boolean | "deprecated" {
   const [doc, dotted] = path.split(":") as [string, string];
   const root = JSON.parse(
     readFileSync(join(SCHEMAS, `${doc}.schema.json`), "utf8"),
@@ -135,6 +139,7 @@ function schemaHasPath(path: string): boolean {
     return out;
   };
   let nodes = deref(root);
+  let deprecated = false;
   for (const seg of dotted.split(".")) {
     const next: Record<string, unknown>[] = [];
     for (const n of nodes) {
@@ -142,9 +147,10 @@ function schemaHasPath(path: string): boolean {
       if (props && seg in props) next.push(...deref(props[seg]));
     }
     if (next.length === 0) return false;
+    if (next.some((n) => n.deprecated === true)) deprecated = true;
     nodes = next;
   }
-  return true;
+  return deprecated ? "deprecated" : true;
 }
 
 function docsPageExists(link: string): boolean {
@@ -268,6 +274,27 @@ describe("the settings registry (ST-03)", () => {
     for (const e of SETTINGS.entries) expect("accountMerge" in e).toBe(false);
   });
 
+  it("names only canonical manifest spellings (ST-19 registry ↔ manifest parity)", () => {
+    const deprecated = new Set(DEPRECATED_SPELLINGS.map(spellingPath));
+    for (const e of SETTINGS.entries) {
+      if (!e.manifest) continue;
+      expect(
+        deprecated.has(e.manifest.path),
+        `${e.key} ${e.manifest.path}`,
+      ).toBe(false);
+      // No step of the path is an old spelling either (a pending entry's path may not exist in
+      // the schema yet, but it must not run through a deprecated property).
+      expect(
+        schemaHasPath(e.manifest.path),
+        `${e.key} ${e.manifest.path}`,
+      ).not.toBe("deprecated");
+    }
+    // The check has teeth: an old spelling is caught.
+    expect(schemaHasPath("product:tiers")).toBe("deprecated");
+    expect(schemaHasPath("release:release.ghOwner")).toBe("deprecated");
+    expect(deprecated.has("product:tiers")).toBe(true);
+  });
+
   it("names readers that exist, docs pages that exist and manifest paths the schema has", () => {
     for (const e of SETTINGS.entries) {
       for (const r of e.readers)
@@ -276,7 +303,7 @@ describe("the settings registry (ST-03)", () => {
       if (e.manifest && !e.pending)
         expect(
           schemaHasPath(e.manifest.path),
-          `${e.key} ${e.manifest.path}`,
+          `${e.key} ${e.manifest.path} (a canonical spelling, ST-19)`,
         ).toBe(true);
     }
     expect(OFFLINE_DAYS_MAX).toBe(MAX_OFFLINE_DAYS);

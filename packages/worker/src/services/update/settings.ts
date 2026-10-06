@@ -28,7 +28,7 @@ export const UPDATE_SETTINGS_SLICE: ServiceSettingsSlice = {
       defaultValue: "public",
       merge: "cascade",
       ownership: "claimable",
-      manifest: { path: "release:access.metadata" },
+      manifest: { path: "release:release.access.metadata" },
       securityWidening: true,
       widensWhen: "any",
       critical: true,

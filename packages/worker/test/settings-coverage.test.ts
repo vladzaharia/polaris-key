@@ -13,8 +13,13 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { SETTINGS } from "../src/mount.js";
 import { PLATFORM_INVENTORY } from "../src/platformInventory.generated.js";
+import { DEPRECATED_SPELLINGS } from "@polaris-key/manifest";
 import {
   checkCoverage,
+  declaredByRegistry,
+  deprecatedSpellingTargets,
+  MANIFEST_WRAPPERS,
+  manifestTargetId,
   NOT_A_SETTING,
   PENDING,
   PENDING_CEILING,
@@ -66,14 +71,59 @@ function migratedSchema(): Map<string, string[]> {
 /** The four `.pkey/` documents a product's settings come from (not the per-release descriptor). */
 const DOCUMENTS = ["product", "schema", "release", "distribution"] as const;
 
-/** Top-level fields a document may carry (a property declared `false` cannot appear). */
-function manifestFields(doc: string): string[] {
-  const schema = JSON.parse(
+type SchemaNode = {
+  properties?: Record<string, unknown>;
+  $ref?: string;
+  deprecated?: boolean;
+};
+
+function readSchema(doc: string): SchemaNode {
+  return JSON.parse(
     readFileSync(join(SCHEMAS, `${doc}.schema.json`), "utf8"),
-  ) as { properties?: Record<string, unknown> };
-  return Object.entries(schema.properties ?? {})
-    .filter(([, v]) => v !== false)
-    .map(([k]) => k);
+  ) as SchemaNode;
+}
+
+/** A property's schema with a local `$ref` followed. */
+function deref(root: SchemaNode, node: unknown): SchemaNode {
+  const n = (node ?? {}) as SchemaNode;
+  if (!n.$ref?.startsWith("#/")) return n;
+  let t: unknown = root;
+  for (const seg of n.$ref.slice(2).split("/"))
+    t = (t as Record<string, unknown>)[seg];
+  return t as SchemaNode;
+}
+
+/**
+ * The fields a document may carry (a property declared `false` cannot appear): the top level,
+ * with each canonical wrapper (`MANIFEST_WRAPPERS`, ST-19) replaced by its own fields
+ * (`licensing.tiers`, `release.provider`).
+ */
+function manifestFields(doc: string): string[] {
+  const schema = readSchema(doc);
+  const out: string[] = [];
+  for (const [k, v] of Object.entries(schema.properties ?? {})) {
+    if (v === false) continue;
+    if (!(MANIFEST_WRAPPERS[doc] ?? []).includes(k)) {
+      out.push(k);
+      continue;
+    }
+    for (const [inner, iv] of Object.entries(deref(schema, v).properties ?? {}))
+      if (iv !== false) out.push(`${k}.${inner}`);
+  }
+  return out;
+}
+
+/** The fields `manifestFields` lists whose schema property is marked `deprecated`. */
+function deprecatedFields(doc: string): string[] {
+  const schema = readSchema(doc);
+  return manifestFields(doc).filter((f) => {
+    const [head, inner] = f.split(".") as [string, string | undefined];
+    const top = (schema.properties ?? {})[head] as SchemaNode;
+    const node = inner
+      ? ((deref(schema, top).properties ?? {})[inner] as SchemaNode)
+      : top;
+    return node?.deprecated === true;
+  });
 }
 
 function collectTargets(schema: Map<string, string[]>): CoverageTarget[] {
@@ -150,6 +200,69 @@ describe("settings coverage (ST-06)", () => {
 
   it("keeps PENDING_CEILING equal to PENDING's length", () => {
     expect(PENDING.length).toBe(PENDING_CEILING);
+  });
+
+  it("descends into the canonical wrappers (ST-19)", () => {
+    const ids = new Set(TARGETS.map((t) => t.id));
+    for (const id of [
+      "manifest:product:product.name",
+      "manifest:product:licensing.tiers",
+      "manifest:release:release.provider",
+    ])
+      expect(ids.has(id), id).toBe(true);
+    for (const id of [
+      "manifest:product:product",
+      "manifest:product:licensing",
+      "manifest:release:release",
+    ])
+      expect(ids.has(id), id).toBe(false);
+    expect(manifestTargetId("product:licensing.tiers[].profileId")).toBe(
+      "manifest:product:licensing.tiers",
+    );
+    expect(manifestTargetId("product:web.origins")).toBe(
+      "manifest:product:web",
+    );
+  });
+
+  it("covers the deprecated spellings with one generated row, and gives each canonical spelling a home of its own (ST-19)", () => {
+    const rows = NOT_A_SETTING.filter((n) =>
+      n.thing.startsWith("Deprecated manifest spellings"),
+    );
+    expect(rows).toHaveLength(1);
+    const covered = new Set(rows[0]!.covers?.ids ?? []);
+    expect([...covered].sort()).toEqual(deprecatedSpellingTargets());
+    // The row is exactly the schema properties marked `deprecated` that coverage reaches.
+    const marked = DOCUMENTS.flatMap((doc) =>
+      deprecatedFields(doc).map((f) => `manifest:${doc}:${f}`),
+    ).sort();
+    expect(marked).toEqual(deprecatedSpellingTargets());
+    // Each spelling's canonical target is registered, pending or explained by another row.
+    const registered = declaredByRegistry(SETTINGS.entries);
+    const pending = new Set(PENDING.map((p) => p.target));
+    const explained = new Set(
+      NOT_A_SETTING.filter((n) => n !== rows[0]).flatMap(
+        (n) => n.covers?.ids ?? [],
+      ),
+    );
+    const hasHome = (id: string) =>
+      registered(id) || pending.has(id) || explained.has(id);
+    for (const s of DEPRECATED_SPELLINGS) {
+      const target = manifestTargetId(s.canonical);
+      // A whole wrapper (row 11's `release:release`) is at home when its canonical fields are.
+      const homes = TARGETS.map((t) => t.id).filter(
+        (id) =>
+          id === target || (id.startsWith(`${target}.`) && !covered.has(id)),
+      );
+      expect(
+        homes.length,
+        `${s.canonical} is a coverage target`,
+      ).toBeGreaterThan(0);
+      for (const id of homes)
+        expect(
+          hasHome(id) && !covered.has(id),
+          `${s.canonical} (${id}) has a home of its own`,
+        ).toBe(true);
+    }
   });
 });
 
