@@ -1342,9 +1342,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
   ],
   "$defs": {
     "slug": {
-      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known, media, activate, avatar).",
+      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, starting with a letter or digit, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known, media, activate, avatar) or admin route action (kek, link-repo, slug-check). Mirrors PRODUCT_SLUG_PATTERN, RESERVED_PRODUCT_SLUGS and PRODUCT_ROUTE_ACTIONS in @polaris-key/manifest.",
       "type": "string",
-      "pattern": "^[a-z0-9-]{1,64}$",
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$",
       "not": {
         "enum": [
           "docs",
@@ -1360,7 +1360,10 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "well-known",
           "media",
           "activate",
-          "avatar"
+          "avatar",
+          "kek",
+          "link-repo",
+          "slug-check"
         ]
       }
     },
@@ -1708,7 +1711,7 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
     },
     "product": {
       "type": "string",
-      "pattern": "^[a-z0-9-]{1,64}$"
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
     },
     "deliverable": {
       "type": "string",
@@ -12473,6 +12476,33 @@ function maxPackageFiles(ecosystem) {
 }
 var MAX_PACKAGE_METADATA_BYTES = 16 * 1024;
 var PACKAGE_METADATA_KEYS = perEcosystem((r) => r.metadataKeys);
+var PRODUCT_SLUG_PATTERN = "^[a-z0-9][a-z0-9-]{0,63}$";
+var PRODUCT_SLUG_RE = new RegExp(PRODUCT_SLUG_PATTERN);
+var RESERVED_PRODUCT_SLUGS = [
+  "docs",
+  "manage",
+  "api",
+  "assets",
+  "login",
+  "logout",
+  "callback",
+  "magic",
+  "download",
+  "webhooks",
+  "well-known",
+  // PX-W1: the customer portal's same-origin media proxy, `/media/<product>/<asset>`.
+  "media",
+  // PX-01: the portal's `/activate?key=` deep link.
+  "activate",
+  // PX-W16 (G33): avatars will be served at `/media/avatar/<asset>`, which the media proxy's
+  // `/media/<product>/<asset>` would read as a product slugged `avatar`; reserved now.
+  "avatar"
+];
+var PRODUCT_ROUTE_ACTIONS = [
+  "kek",
+  "link-repo",
+  "slug-check"
+];
 var SERVICE_SLUGS = [
   "license",
   "config",
@@ -13485,7 +13515,7 @@ function descriptorToRecord(d, fields) {
   });
   return record;
 }
-var SLUG_RE = /^[a-z0-9-]{1,64}$/;
+var SLUG_RE = PRODUCT_SLUG_RE;
 var DELIVERABLE_RE = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
 var VERSION_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 var SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
@@ -15260,7 +15290,6 @@ var REGISTRATION_POLICIES = [
 ];
 var MODULES = Object.keys(MODULE_SERVICES);
 var DEFAULT_ENABLED = DEFAULT_ENABLED_SERVICES;
-var SLUG_RE2 = /^[a-z0-9-]{1,64}$/;
 var ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
 var SECRET_RE = /^[A-Z0-9][A-Z0-9_:-]{1,127}$/;
 var SEMVER_RE2 = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
@@ -15546,26 +15575,6 @@ var RELEASE_ACCESS_VALUES = ["public", "authenticated", "licensed"];
 var OIDC_PROVIDER_VALUES = ["platform", "custom"];
 var FINGERPRINT_MODE_VALUES = ["off", "lenient", "normal", "strict"];
 var AUTO_ISSUE_MODE_VALUES = ["anonymous", "oidcDefault", "both"];
-var RESERVED_PRODUCT_SLUGS = [
-  "docs",
-  "manage",
-  "api",
-  "assets",
-  "login",
-  "logout",
-  "callback",
-  "magic",
-  "download",
-  "webhooks",
-  "well-known",
-  // PX-W1: the customer portal's same-origin media proxy, `/media/<product>/<asset>`.
-  "media",
-  // PX-01: the portal's `/activate?key=` deep link.
-  "activate",
-  // PX-W16 (G33): avatars will be served at `/media/avatar/<asset>`, which the media proxy's
-  // `/media/<product>/<asset>` would read as a product slugged `avatar`; reserved now.
-  "avatar"
-];
 var SECRET_DELIVERY_VALUES = [
   "serverOnly",
   "clientScoped",
@@ -15649,15 +15658,15 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     );
   }
   const productSlug = typeof productNode.slug === "string" ? productNode.slug : "";
-  if (!productSlug || !SLUG_RE2.test(productSlug)) {
+  if (!productSlug || !PRODUCT_SLUG_RE.test(productSlug)) {
     add2(
       errors,
       "product",
       "/product/slug",
       "invalid_slug",
-      "product.slug must match ^[a-z0-9-]{1,64}$."
+      "product.slug must match ^[a-z0-9][a-z0-9-]{0,63}$."
     );
-  } else if (RESERVED_PRODUCT_SLUGS.includes(productSlug)) {
+  } else if (RESERVED_PRODUCT_SLUGS.includes(productSlug) || PRODUCT_ROUTE_ACTIONS.includes(productSlug)) {
     add2(
       errors,
       "product",
@@ -19266,7 +19275,7 @@ function normalizeBaseUrl(baseUrl) {
 function ciClient(opts) {
   const baseUrl = normalizeBaseUrl(opts.baseUrl);
   const product = opts.product.trim();
-  if (!/^[a-z0-9-]{1,64}$/.test(product))
+  if (!PRODUCT_SLUG_RE.test(product))
     throw new Error(
       `--product must be a product slug (got ${JSON.stringify(opts.product)}).`
     );
