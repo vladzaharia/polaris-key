@@ -63,8 +63,17 @@ Main moves every few minutes. Chasing it is what made waves run for hours, so:
 - Migration numbers are assigned by the lead at merge time. Builders name new files
   `00XX_<name>.sql` and say so in their report.
 - The lead runs `/Users/vlad/Repos/pk-wt/_lead/stall-watch.sh` in the background whenever agents are
-  running. It reports any agent quiet for 30 minutes and any workflow running past 90; each report is
-  acted on (resume, stop or re-scope), never ignored.
+  running. It reports any agent quiet for 30 minutes, any workflow running past 90, and any agent
+  that has handed back but was never closed; each report is acted on (resume, stop or re-scope),
+  never ignored.
+- **Every agent finishes clean.** Before your final report, wait for or kill every background job
+  you started (`run_in_background` shells, servers, Docker runs, watchers). Never hand back with
+  your own background work still running: an agent with live background work never closes and sits
+  on its last status line.
+- **The lead closes every agent it has finished with.** On each hand-back, once the report is
+  handled (merged, re-dispatched or filed), the lead stops the agent with TaskStop and removes it
+  from `/Users/vlad/Repos/pk-wt/_lead/active`, unless it is sending that agent more work. After
+  any batch of hand-backs the lead runs ListAgents and stops every entry shown as `completed`.
 
 ## Plan mode
 
