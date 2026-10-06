@@ -69,9 +69,15 @@ export function auditStatementFor(
     summary,
   });
   if (!when) return stmt;
+  const VALUES = /VALUES \(([^)]*)\)\s*$/;
+  // A silent no-match would drop the guard and write the row unconditionally: refuse instead.
+  if (!VALUES.test(stmt.sql))
+    throw new Error(
+      "auditStatementFor: the audit INSERT no longer ends in VALUES (…)",
+    );
   return {
     sql: stmt.sql.replace(
-      /VALUES \(([^)]*)\)\s*$/,
+      VALUES,
       (_m, marks: string) => `SELECT ${marks} WHERE ${when.sql}`,
     ),
     params: [...stmt.params, ...when.params],

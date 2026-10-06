@@ -26,8 +26,8 @@
  *
  * Core's own rows go through {@link coreLicenseDeleteStatements}: the devices (their facts,
  * fingerprints, delta-demand rows and any download token naming them, ahead of the devices
- * themselves because `release_download_tokens` holds a foreign key onto `devices`) and the
- * licence's registry tokens. The devices' bearer tokens live in KV and are purged by the caller
+ * themselves because `release_download_tokens` holds a foreign key onto `devices`), the
+ * licence's registry tokens and its refused-activation log (`license_refusals`). The devices' bearer tokens live in KV and are purged by the caller
  * after the batch commits.
  *
  * Every table holding a `license_id` column is accounted for here, in a contributor, or by a
@@ -171,7 +171,8 @@ function guardOf(
 /** The licence's devices, as a sub-select (the batch cannot read). */
 const LICENSE_DEVICES = `SELECT device_id FROM devices WHERE product = ? AND license_id = ?`;
 
-/** Core's rows for one licence: its devices and what hangs off them, and its registry tokens. */
+/** Core's rows for one licence: its devices and what hangs off them, its registry tokens and its
+ *  refused activations. */
 export function coreLicenseDeleteStatements(
   target: LicenseDeleteTarget,
 ): DbStatement[] {
@@ -192,6 +193,11 @@ export function coreLicenseDeleteStatements(
     },
     {
       sql: "DELETE FROM registry_tokens WHERE product = ? AND license_id = ?",
+      params: [product, licenseId],
+    },
+    // Main's 0074: the refused activations the licence's Status card shows.
+    {
+      sql: "DELETE FROM license_refusals WHERE product = ? AND license_id = ?",
       params: [product, licenseId],
     },
   ];

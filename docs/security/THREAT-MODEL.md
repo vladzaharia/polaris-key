@@ -4927,6 +4927,39 @@ device id. Only the platform-admin session reads it (`GET /manage/api/products/<
 - **No raw identifier is copied.** The device id is stored only as a truncated hash; the licence
   holder's name and email are not stored here at all.
 
+### Licence deletion (owner request, 2026-10-05)
+
+A platform admin can delete a licence outright (`DELETE /manage/api/products/<slug>/license/licenses/<id>`,
+bulk `POST …/license/deletions`, the cleanup list `GET …/license/deletions/candidates`;
+`services/license/admin/deletion.ts`, `core/licenseDelete.ts`). Before this a licence could only
+be disabled.
+
+- **Only behind the platform-admin session, CSRF and a typed confirmation.** The routes sit on
+  the admin API, so the session, the CSRF header and the product-admin gate run first (a test
+  pins the 403s). The Worker compares the typed string itself (`delete <id>`, or
+  `delete <n> licenses` for at most 100 at once), so a forged or replayed console request without
+  it changes nothing.
+- **Commerce history is never deleted.** A licence with store grants or recorded store purchases,
+  in any state, is refused. The owners' refusals are also sub-selects guarding every statement of
+  the batch and its audit row, so a purchase recorded between the check and the batch leaves the
+  licence untouched. `dist_purchases` and `license_store_grants` are never deleted.
+- **Refusals the operator chose are not lifted in bulk.** An active developer-issued licence must
+  be disabled first. A disabled auto-issued licence still bound to its machine (`enroll_hwid`) is
+  refused (`enroll_guard`): deleting it would let that machine enroll for another free licence.
+  Residual: deleting a disabled **sign-in** licence lets its holder sign in for a new one. The
+  cleanup list does not list disabled licences on their own (only sign-in duplicates of an
+  account that keeps a usable licence), and the console warns about the reissue on the record's
+  and the bulk confirmation.
+- **The cascade is complete and atomic.** One batch per licence removes every row keyed by it
+  (a test walks `sqlite_master` and fails on an unclaimed `license_id` table), and the devices'
+  bearer tokens are purged from KV after the batch commits, so the devices stop authenticating
+  at once. Residual: a licence-bound registry token can keep resolving on another isolate for up
+  to the resolution cache's 30 seconds, as with a revocation.
+- **History stays, identity does not leak.** The licence's audit rows are kept; the deletion
+  writes one `license.delete` row (written only while the licence still exists, so a racing
+  double delete audits once) naming tier, origin, the account's pairwise subject (never the
+  global account id) and the device count.
+
 ### Boundaries that are weaker than they look
 
 - **The SDK cache is inside the attacker's trust domain, but the SDK treats it as trusted.** The

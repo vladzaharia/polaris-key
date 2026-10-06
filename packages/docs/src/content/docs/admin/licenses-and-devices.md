@@ -38,17 +38,14 @@ deleted.
 
 ### Clean up duplicates
 
-**Clean up duplicates…** (beside **Create license**) lists the sign-in licenses that are safe to
-remove:
+**Clean up duplicates…** (beside **Create license**) lists the sign-in licenses whose account also
+holds another usable license for the product. The account keeps one usable license: one that
+didn't come from a sign-in if it has one, otherwise its oldest. A license is never listed only
+because it is disabled; deleting a disabled license is a decision for its own record.
 
-- **Duplicate**: a license a sign-in created whose account also holds another usable license for
-  the product. The account keeps one usable license: one that didn't come from a sign-in if it
-  has one, otherwise its oldest.
-- **Dormant**: a disabled sign-in license that no device has used in the last 30 days.
-
-Each row says why it's listed. Candidates that can't be deleted (for example, because a store
-purchase is recorded on them) are listed separately with the reason. One confirm, stating the
-count, deletes the rest.
+Each row names the license the account keeps. Candidates that can't be deleted (for example,
+because a store purchase is recorded on them) are listed separately with the reason. Deleting the
+rest asks you to type `delete <n> licenses`.
 
 ## Creating a license
 
@@ -147,8 +144,13 @@ authenticating right away, not at the next check-in. Keys, devices and terms are
 **Delete license…** (in **More actions**) removes the license for good. You can delete a license
 that is **disabled**, or one that a **sign-in** or an **auto-issue** created. An active license
 you issued yourself must be disabled first. A license with **store purchases** (a store grant or
-a recorded purchase, whatever its state) can never be deleted: disable it instead. When a license
-can't be deleted, the menu item stays visible with the reason.
+a recorded purchase, whatever its state) can never be deleted: disable it instead. Nor can a
+disabled auto-issued license still bound to its machine: it is what stops that machine enrolling
+for another free license. When a license can't be deleted, the menu item stays visible with the
+reason.
+
+Deleting a **disabled sign-in license** lifts the refusal that disabling it expressed: if its
+holder signs in again, they get a new license. The confirmation says so.
 
 The confirmation asks you to type `delete <license id>`. Deleting removes, in one step, the
 license, its keys, its devices (their bearer tokens are purged at once, so they stop
@@ -160,7 +162,8 @@ subject and the device count.
 The API is `DELETE /manage/api/products/<slug>/license/licenses/<id>` with
 `{ "confirm": "delete <id>" }`; a refusal is `409 license_not_deletable` with every reason and
 `"suggestion": "disable"`. Bulk deletion is `POST …/license/deletions` with
-`{ "ids": [...], "confirm": "delete <n> licenses" }` (at most 100), and the cleanup list is
+`{ "ids": [...], "confirm": "delete <n> licenses" }` (at most 100 per request; the console sends
+a larger selection in chunks), and the cleanup list is
 `GET …/license/deletions/candidates`.
 
 ## Keys

@@ -49,6 +49,7 @@ const LICENSE_KEYED = [
   "dist_purchases",
   "keys_index",
   "license_profiles",
+  "license_refusals",
   "license_store_grants",
   "portal_license_links",
   "registry_tokens",
@@ -445,6 +446,117 @@ describe("DELETE …/license/licenses/<id>", () => {
     ).toBe(false);
   });
 
+  it("refuses a disabled auto-issued licence still bound to its machine (enroll guard)", async () => {
+    await seedLicense("lic_free", { origin: "enroll", status: "disabled" });
+    await db.run(
+      "UPDATE licenses SET enroll_hwid = 'hw_1' WHERE product = ? AND id = 'lic_free'",
+      SLUG,
+    );
+    const res = await call("DELETE", "/license/licenses/lic_free", {
+      confirm: "delete lic_free",
+    });
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { reasons: { code: string }[] };
+    expect(body.reasons.map((r) => r.code)).toEqual(["enroll_guard"]);
+    expect(await rowsFor("keys_index", "lic_free")).toBe(1);
+  });
+
+  it("audits a licence once when two deletions race", async () => {
+    await seedLicense("lic_twice", { status: "disabled" });
+    const [a, b] = await Promise.all([
+      call("DELETE", "/license/licenses/lic_twice", {
+        confirm: "delete lic_twice",
+      }),
+      call("DELETE", "/license/licenses/lic_twice", {
+        confirm: "delete lic_twice",
+      }),
+    ]);
+    expect([a.status, b.status].sort()).toContain(200);
+    const deletes = (await listAudit(db, SLUG, { limit: 50 })).filter(
+      (x) => x.action === "license.delete",
+    );
+    expect(deletes).toHaveLength(1);
+  });
+
+  it("refuses a session that is not a platform admin, and a write without the CSRF token", async () => {
+    await seedLicense("lic_y", { status: "disabled" });
+    const { token: outsider } = await issueSession(
+      env,
+      { sub: "u2", name: "Eve", email: "eve@x.io", groups: ["someone-else"] },
+      NOW,
+    );
+    const { token } = await issueSession(
+      env,
+      { sub: "u1", name: "Ada", email: "ada@x.io", groups: [PLATFORM_GROUP] },
+      NOW,
+    );
+    const send = (
+      method: string,
+      path: string,
+      headers: Record<string, string>,
+      body: unknown,
+    ) =>
+      handleAdmin(
+        new Request(`https://key.plrs.im/manage/api/products/${SLUG}${path}`, {
+          method,
+          headers: { "content-type": "application/json", ...headers },
+          body: JSON.stringify(body),
+        }) as unknown as Request,
+        env,
+        db,
+        `/api/products/${SLUG}${path}`,
+        { now: NOW },
+      );
+    const cases: [string, string, unknown][] = [
+      ["DELETE", "/license/licenses/lic_y", { confirm: "delete lic_y" }],
+      [
+        "POST",
+        "/license/deletions",
+        { ids: ["lic_y"], confirm: "delete 1 license" },
+      ],
+    ];
+    for (const [method, path, body] of cases) {
+      const csrfOf = (
+        await issueSession(
+          env,
+          {
+            sub: "u2",
+            name: "Eve",
+            email: "eve@x.io",
+            groups: ["someone-else"],
+          },
+          NOW,
+        )
+      ).session.csrf;
+      const denied = await send(
+        method,
+        path,
+        { cookie: `${ADMIN_COOKIE}=${outsider}`, [CSRF_HEADER]: csrfOf },
+        body,
+      );
+      expect(denied.status, `${method} ${path} outsider`).toBe(403);
+      const noCsrf = await send(
+        method,
+        path,
+        { cookie: `${ADMIN_COOKIE}=${token}` },
+        body,
+      );
+      expect(noCsrf.status, `${method} ${path} no CSRF`).toBe(403);
+    }
+    const outsiderRead = await handleAdmin(
+      new Request(
+        `https://key.plrs.im/manage/api/products/${SLUG}/license/deletions/candidates`,
+        { headers: { cookie: `${ADMIN_COOKIE}=${outsider}` } },
+      ) as unknown as Request,
+      env,
+      db,
+      `/api/products/${SLUG}/license/deletions/candidates`,
+      { now: NOW },
+    );
+    expect(outsiderRead.status).toBe(403);
+    expect(await rowsFor("keys_index", "lic_y")).toBe(1);
+  });
+
   it("answers 404 for an unknown licence", async () => {
     const res = await call("DELETE", "/license/licenses/lic_nope", {
       confirm: "delete lic_nope",
@@ -539,14 +651,18 @@ describe("POST …/license/deletions", () => {
 });
 
 describe("GET …/license/deletions/candidates", () => {
-  it("lists sign-in duplicates of a usable licence and dormant disabled sign-in licences", async () => {
+  it("lists sign-in duplicates of a usable licence, never a licence only because it is disabled", async () => {
     // acct_1 bought a licence and the old in-app sign-in minted a duplicate.
     await seedAccount("acct_1", SUBJECT);
     await seedLicense("lic_paid", {
       account: "acct_1",
       activatedAt: NOW - 10 * DAY,
     });
-    await seedLicense("lic_dup", { origin: "oidc", account: "acct_1" });
+    const dupKey = await seedLicense("lic_dup", {
+      origin: "oidc",
+      account: "acct_1",
+    });
+    await activate(dupKey, "device-dup");
     // acct_2 holds two sign-in licences: the older stays, the newer is the duplicate.
     await seedAccount("acct_2", null);
     await seedLicense("lic_first", {
@@ -555,7 +671,8 @@ describe("GET …/license/deletions/candidates", () => {
       activatedAt: NOW - 5 * DAY,
     });
     await seedLicense("lic_second", { origin: "oidc", account: "acct_2" });
-    // A disabled sign-in licence nobody used for 60 days, and one used yesterday.
+    // Disabled sign-in licences without another licence on their account are NOT listed: deleting
+    // one would let its holder sign in for a new one, so that is a decision for its record.
     const oldKey = await seedLicense("lic_dormant", { origin: "oidc" });
     await activate(oldKey, "device-dormant");
     await db.run(
@@ -592,7 +709,6 @@ describe("GET …/license/deletions/candidates", () => {
     const res = await call("GET", "/license/deletions/candidates");
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      recentDays: number;
       candidates: {
         id: string;
         reason: string;
@@ -602,14 +718,14 @@ describe("GET …/license/deletions/candidates", () => {
         deletion: { allowed: boolean; reasons: { code: string }[] };
       }[];
     };
-    expect(body.recentDays).toBe(30);
     const byId = new Map(body.candidates.map((c) => [c.id, c]));
     expect([...byId.keys()].sort()).toEqual(
-      ["lic_dormant", "lic_dup", "lic_dup3", "lic_second"].sort(),
+      ["lic_dup", "lic_dup3", "lic_second"].sort(),
     );
     expect(byId.get("lic_dup")).toMatchObject({
       reason: "duplicate",
       keeps: "lic_paid",
+      deviceCount: 1,
       accountSubject: SUBJECT,
       deletion: { allowed: true },
     });
@@ -618,19 +734,13 @@ describe("GET …/license/deletions/candidates", () => {
       keeps: "lic_first",
       accountSubject: null,
     });
-    expect(byId.get("lic_dormant")).toMatchObject({
-      reason: "dormant",
-      keeps: null,
-      deviceCount: 1,
-      deletion: { allowed: true },
-    });
     expect(byId.get("lic_dup3")!.deletion.allowed).toBe(false);
     expect(byId.get("lic_dup3")!.deletion.reasons.map((r) => r.code)).toEqual([
       "store_purchases",
     ]);
     expect(JSON.stringify(body)).not.toMatch(/acct_/);
 
-    // The helper's one-click delete: the allowed candidates, one confirmation with the count.
+    // The helper's delete: the allowed candidates, one typed confirmation with the count.
     const allowed = body.candidates
       .filter((c) => c.deletion.allowed)
       .map((c) => c.id);
@@ -639,7 +749,7 @@ describe("GET …/license/deletions/candidates", () => {
       confirm: `delete ${allowed.length} licenses`,
     });
     expect(((await del.json()) as { deleted: unknown[] }).deleted).toHaveLength(
-      3,
+      2,
     );
     const after = (await (
       await call("GET", "/license/deletions/candidates")

@@ -94,6 +94,7 @@ describe("license record: header and tabs", () => {
         [LIC]: {
           ...DETAIL,
           status: "disabled",
+          origin: "oidc",
           deletion: { allowed: true, reasons: [] },
         },
         [`DELETE ${LIC}`]: { ok: true, id: "lic_1", devices: 2 },
@@ -108,6 +109,12 @@ describe("license record: header and tabs", () => {
       within(dialog).getByText(/2 devices stop authenticating/),
     ).toBeTruthy();
     expect(within(dialog).getByText(/activity history is kept/)).toBeTruthy();
+    // A disabled sign-in license: deleting it lifts the refusal.
+    expect(
+      within(dialog).getByText(
+        "If its holder signs in again, they get a new license.",
+      ),
+    ).toBeTruthy();
     const confirm = within(dialog).getByRole("button", {
       name: "Delete license",
     });

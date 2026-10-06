@@ -8,8 +8,9 @@
  * disables the action with the reason instead of letting the operator find out at the confirm.
  *
  * Confirmation is L3 (`confirmFor("license.delete")`): one license types `delete <id>`, a bulk
- * deletion `delete <n> licenses`; the Worker compares the same strings. The cleanup helper is the
- * one exception the owner asked for: one confirm that states the count.
+ * deletion `delete <n> licenses`; the Worker compares the same strings. The cleanup helper types
+ * the count the same way. A selection larger than the Worker's per-request limit is sent in
+ * chunks of {@link MAX_BULK_DELETE}, each with its own count, and the results are summed.
  */
 
 import * as React from "react";
@@ -17,6 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   api,
   ApiError,
+  type LicenseBulkDeleteResult,
   type LicenseCleanupCandidate,
   type LicenseDeletion,
   type LicenseDetail,
@@ -56,6 +58,58 @@ export function deletionBlockedReason(
   return (
     deletion.reasons.map((r) => r.message).join(" ") ||
     "This license can't be deleted."
+  );
+}
+
+/** The Worker's per-request limit (`MAX_BULK_DELETE` in `services/license/admin/deletion.ts`). */
+export const MAX_BULK_DELETE = 100;
+
+/** A disabled sign-in license: deleting it lifts the refusal, since signing in mints a new one. */
+export function reissuedOnSignIn(
+  l: Pick<LicenseSummary, "status" | "origin">,
+): boolean {
+  return l.status === "disabled" && l.origin === "oidc";
+}
+
+export const REISSUE_WARNING =
+  "If its holder signs in again, they get a new license.";
+
+/** Delete `ids` in chunks the Worker accepts, summing the results. */
+export async function deleteInChunks(
+  slug: string,
+  ids: readonly string[],
+): Promise<LicenseBulkDeleteResult> {
+  const total: LicenseBulkDeleteResult = {
+    ok: true,
+    deleted: [],
+    refused: [],
+    notFound: [],
+  };
+  for (let i = 0; i < ids.length; i += MAX_BULK_DELETE) {
+    const chunk = ids.slice(i, i + MAX_BULK_DELETE);
+    const res = await mutate(
+      "deleteLicenses",
+      slug,
+      chunk,
+      bulkDeleteConfirmation(chunk.length),
+    );
+    total.deleted.push(...res.deleted);
+    total.refused.push(...res.refused);
+    total.notFound.push(...res.notFound);
+    total.ok &&= res.ok;
+  }
+  return total;
+}
+
+/** Throws the partial-result error when anything was refused or missing. */
+function assertAllDeleted(res: LicenseBulkDeleteResult, n: number): void {
+  if (!res.refused.length && !res.notFound.length) return;
+  throw new Error(
+    `${res.deleted.length} of ${n} deleted. ` +
+      res.refused
+        .map((f) => `${f.id}: ${f.reasons.map((x) => x.message).join(" ")}`)
+        .concat(res.notFound.map((id) => `${id}: not found.`))
+        .join(" "),
   );
 }
 
@@ -102,6 +156,7 @@ export function DeleteLicenseDialog({
             ? "Its device stops authenticating right away and is removed."
             : `Its ${devices} devices stop authenticating right away and are removed.`,
         `${keys === 1 ? "Its key" : keys ? `Its ${keys} keys` : "Its keys"}, registry tokens, purchase binding and portal links are removed.`,
+        ...(reissuedOnSignIn(license) ? [REISSUE_WARNING] : []),
         "Its activity history is kept, with a “license deleted” entry.",
         "This can't be undone. To keep the record, disable the license instead.",
       ]}
@@ -141,6 +196,7 @@ export function BulkDeleteDialog({
   const refused = (rows ?? []).filter((l) => !deletable(l));
   const n = allowed.length;
   const confirm = bulkDeleteConfirmation(n);
+  const reissued = allowed.filter(reissuedOnSignIn).length;
   return (
     <ConfirmDialog
       open={rows !== null}
@@ -149,6 +205,11 @@ export function BulkDeleteDialog({
       title={`Delete ${plural(n, "license")}?`}
       consequences={[
         "Their devices stop authenticating right away and are removed, with their keys, registry tokens, purchase bindings and portal links.",
+        ...(reissued
+          ? [
+              `${plural(reissued, "of them is a disabled sign-in license", "of them are disabled sign-in licenses")}: if a holder signs in again, they get a new license.`,
+            ]
+          : []),
         "Their activity history is kept.",
         "This can't be undone.",
       ]}
@@ -161,25 +222,12 @@ export function BulkDeleteDialog({
       confirmDisabled={n === 0}
       describeError={describeDelete}
       onConfirm={async () => {
-        const res = await mutate(
-          "deleteLicenses",
+        const res = await deleteInChunks(
           slug,
           allowed.map((l) => l.id),
-          confirm,
         );
         const done = res.deleted.length;
-        if (res.refused.length || res.notFound.length) {
-          throw new Error(
-            `${done} of ${n} deleted. ` +
-              res.refused
-                .map(
-                  (f) =>
-                    `${f.id}: ${f.reasons.map((x) => x.message).join(" ")}`,
-                )
-                .concat(res.notFound.map((id) => `${id}: not found.`))
-                .join(" "),
-          );
-        }
+        assertAllDeleted(res, n);
         toast.success(`${plural(done, "license")} deleted`);
       }}
     >
@@ -209,19 +257,6 @@ export function BulkDeleteDialog({
 
 // ── the cleanup helper ───────────────────────────────────────────────────────────────────────
 
-const REASON_LABEL: Record<LicenseCleanupCandidate["reason"], string> = {
-  duplicate: "Duplicate",
-  dormant: "Dormant",
-};
-
-function candidateWhy(c: LicenseCleanupCandidate, recentDays: number): string {
-  if (c.reason === "duplicate")
-    return `Sign-in license; the account also holds ${c.keeps ?? "another license"}.`;
-  return c.lastSeen
-    ? `Disabled; last used ${formatRelative(fromSeconds(c.lastSeen))}.`
-    : `Disabled; no device in the last ${recentDays} days.`;
-}
-
 export function useLicenseCleanup(slug: string, enabled: boolean) {
   return useQuery(
     {
@@ -234,9 +269,10 @@ export function useLicenseCleanup(slug: string, enabled: boolean) {
 }
 
 /**
- * "Clean up duplicates": sign-in licenses whose account also holds another usable license, and
- * disabled sign-in licenses no device has used recently. One confirm deletes every candidate the
- * Worker allows; the rest are listed with their reason.
+ * "Clean up duplicates": sign-in licenses whose account also holds another usable license. It
+ * never lists a license only because it is disabled: that is often a deliberate refusal, decided
+ * on the license's own record. One typed confirm (`delete <n> licenses`) deletes every candidate
+ * the Worker allows; the rest are listed with their reason.
  */
 export function CleanupDialog({
   slug,
@@ -247,34 +283,36 @@ export function CleanupDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }): React.ReactElement {
+  const policy = confirmFor("license.delete");
   const q = useLicenseCleanup(slug, open);
   const candidates = q.data?.candidates ?? [];
-  const recentDays = q.data?.recentDays ?? 30;
   const allowed = candidates.filter((c) => c.deletion.allowed);
   const skipped = candidates.filter((c) => !c.deletion.allowed);
   const n = allowed.length;
+  // Every candidate is a sign-in license, so a disabled one is reissued on its next sign-in.
+  const reissued = allowed.filter((c) => c.status === "disabled").length;
   return (
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
-      intent="danger"
+      intent={policy.intent as "danger"}
       title="Clean up duplicate licenses"
-      description={`Sign-in licenses whose account also holds another usable license, and disabled sign-in licenses no device has used in ${recentDays} days.`}
+      description="Sign-in licenses whose account also holds another usable license for this product. The account keeps that license."
+      typedConfirmation={
+        policy.typedConfirmation && n > 0
+          ? { value: bulkDeleteConfirmation(n), label: "Type" }
+          : undefined
+      }
       confirmLabel={n ? `Delete ${plural(n, "license")}` : "Delete"}
       confirmDisabled={q.isPending || n === 0}
       describeError={describeDelete}
       onConfirm={async () => {
-        const res = await mutate(
-          "deleteLicenses",
+        const res = await deleteInChunks(
           slug,
           allowed.map((c) => c.id),
-          bulkDeleteConfirmation(n),
         );
         const done = res.deleted.length;
-        if (res.refused.length || res.notFound.length)
-          throw new Error(
-            `${done} of ${n} deleted; the rest changed since the list loaded. Reopen it to see why.`,
-          );
+        assertAllDeleted(res, n);
         toast.success(`${plural(done, "license")} deleted`);
       }}
     >
@@ -290,16 +328,14 @@ export function CleanupDialog({
         <div className="space-y-3">
           {n ? (
             <CandidateList
-              heading={`${plural(n, "license")} will be deleted, with their devices and keys. Their activity history is kept; this can't be undone.`}
+              heading={`${plural(n, "license")} will be deleted, with their devices and keys. Their activity history is kept; this can't be undone.${reissued ? ` ${REISSUE_WARNING.replace("its holder", "a disabled one's holder")}` : ""}`}
               items={allowed}
-              recentDays={recentDays}
             />
           ) : null}
           {skipped.length ? (
             <CandidateList
               heading={`${plural(skipped.length, "license")} can't be deleted:`}
               items={skipped}
-              recentDays={recentDays}
               skipped
             />
           ) : null}
@@ -312,12 +348,10 @@ export function CleanupDialog({
 function CandidateList({
   heading,
   items,
-  recentDays,
   skipped = false,
 }: {
   heading: string;
   items: LicenseCleanupCandidate[];
-  recentDays: number;
   skipped?: boolean;
 }): React.ReactElement {
   return (
@@ -331,7 +365,7 @@ function CandidateList({
               icon={false}
               size="sm"
             >
-              {REASON_LABEL[c.reason]}
+              Duplicate
             </StatusPill>
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="truncate font-bold text-fg-strong">
@@ -343,7 +377,7 @@ function CandidateList({
               <span className="text-fg-muted">
                 {skipped
                   ? deletionBlockedReason(c.deletion)
-                  : `${candidateWhy(c, recentDays)} ${plural(c.deviceCount, "device")}.`}
+                  : `Sign-in license; the account keeps ${c.keeps}. ${plural(c.deviceCount, "device")}${c.lastSeen ? `, last used ${formatRelative(fromSeconds(c.lastSeen))}` : ""}.`}
               </span>
             </span>
           </li>

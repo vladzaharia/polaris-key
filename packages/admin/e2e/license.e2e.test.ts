@@ -120,7 +120,6 @@ const ROUTES: Record<string, unknown> = {
   [`${API}/config/profiles`]: { profiles: [] },
   [`${API}/release/releases`]: { releases: [], channels: [] },
   [`${API}/license/deletions/candidates`]: {
-    recentDays: 30,
     candidates: [
       {
         id: DUP,
@@ -136,16 +135,16 @@ const ROUTES: Record<string, unknown> = {
         deletion: OK,
       },
       {
-        id: "lic_old_signin",
-        name: "",
-        email: "old@example.com",
-        status: "disabled",
+        id: "lic_second_signin",
+        name: "Club (sign-in)",
+        email: "club@example.com",
+        status: "active",
         tier: null,
         accountSubject: null,
         deviceCount: 0,
         lastSeen: null,
-        reason: "dormant",
-        keeps: null,
+        reason: "duplicate",
+        keeps: "lic_club",
         deletion: OK,
       },
       {
@@ -299,7 +298,8 @@ describe("License deletion dialogs under the Worker's CSP", () => {
       }
       const dialog = page.getByRole("alertdialog");
       await dialog.waitFor();
-      await dialog.getByText(/also holds lic_paid/).waitFor();
+      await dialog.getByText(/account keeps lic_paid/).waitFor();
+      await dialog.getByRole("textbox").fill("delete 2 licenses");
       await shot(page, `license-cleanup-${theme}`);
       expect(await violations(page)).toEqual([]);
       await page.keyboard.press("Escape");

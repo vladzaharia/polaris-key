@@ -184,6 +184,7 @@ describe("Licenses list", () => {
     [`${API}/license/licenses`]: {
       licenses: LICENSES.map((l) => ({
         ...l,
+        ...(l.status === "disabled" ? { origin: "oidc" as const } : {}),
         deletion: l.status === "disabled" || l.id === "lic_2" ? OK : BLOCKED,
       })),
     },
@@ -215,6 +216,11 @@ describe("Licenses list", () => {
       within(dialog).getByText(/1 selected license is skipped/),
     ).toBeTruthy();
     expect(within(dialog).getByText(/Disable it first/)).toBeTruthy();
+    expect(
+      within(dialog).getByText(
+        /disabled sign-in license: if a holder signs in again/,
+      ),
+    ).toBeTruthy();
     await userEvent.type(
       within(dialog).getByRole("textbox"),
       "delete 1 license",
@@ -245,72 +251,23 @@ describe("Licenses list", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
-  it("cleans up duplicates: lists the candidates and deletes the allowed ones with one confirm", async () => {
-    const log = bootLicense("#/p/djdl/license/licenses", {
-      routes: {
-        [`${API}/license/deletions/candidates`]: {
-          recentDays: 30,
-          candidates: [
-            {
-              id: "lic_dup",
-              name: "Storytime sign-in",
-              email: "",
-              status: "disabled",
-              tier: "standard",
-              accountSubject: "ps_aaaaaaaaaaaaaaaaaaaaaa",
-              deviceCount: 1,
-              lastSeen: null,
-              reason: "duplicate",
-              keeps: "lic_paid",
-              deletion: OK,
-            },
-            {
-              id: "lic_old",
-              name: "",
-              email: "old@x.io",
-              status: "disabled",
-              tier: null,
-              accountSubject: null,
-              deviceCount: 0,
-              lastSeen: null,
-              reason: "dormant",
-              keeps: null,
-              deletion: OK,
-            },
-            {
-              id: "lic_steam",
-              name: "Bought on Steam",
-              email: "",
-              status: "active",
-              tier: null,
-              accountSubject: null,
-              deviceCount: 1,
-              lastSeen: null,
-              reason: "duplicate",
-              keeps: "lic_x",
-              deletion: {
-                allowed: false,
-                reasons: [
-                  {
-                    code: "store_purchases",
-                    message: "1 store purchase is recorded against it.",
-                  },
-                ],
-              },
-            },
-          ],
-        },
-        [`POST ${API}/license/deletions`]: {
-          ok: true,
-          deleted: [
-            { id: "lic_dup", devices: 1 },
-            { id: "lic_old", devices: 0 },
-          ],
-          refused: [],
-          notFound: [],
-        },
-      },
-    });
+  const candidate = (id: string, over: Record<string, unknown> = {}) => ({
+    id,
+    name: id,
+    email: "",
+    status: "active",
+    tier: "standard",
+    accountSubject: null,
+    deviceCount: 1,
+    lastSeen: null,
+    reason: "duplicate",
+    keeps: "lic_paid",
+    deletion: OK,
+    ...over,
+  });
+  const NONE_FAILED = { ok: true, deleted: [], refused: [], notFound: [] };
+
+  async function openCleanup() {
     await table();
     const trigger = screen.queryByRole("button", {
       name: "Clean up duplicates…",
@@ -324,12 +281,64 @@ describe("Licenses list", () => {
         await screen.findByRole("menuitem", { name: "Clean up duplicates…" }),
       );
     }
-    const dialog = await screen.findByRole("alertdialog", {
+    return screen.findByRole("alertdialog", {
       name: "Clean up duplicate licenses",
     });
-    expect(await within(dialog).findByText(/also holds lic_paid/)).toBeTruthy();
+  }
+
+  it("cleans up duplicates: lists them, warns about reissue, and deletes the allowed ones after typing the count", async () => {
+    const log = bootLicense("#/p/djdl/license/licenses", {
+      routes: {
+        [`${API}/license/deletions/candidates`]: {
+          candidates: [
+            candidate("lic_dup", {
+              name: "Storytime sign-in",
+              status: "disabled",
+              accountSubject: "ps_aaaaaaaaaaaaaaaaaaaaaa",
+            }),
+            candidate("lic_dup2"),
+            candidate("lic_steam", {
+              name: "Bought on Steam",
+              keeps: "lic_x",
+              deletion: {
+                allowed: false,
+                reasons: [
+                  {
+                    code: "store_purchases",
+                    message: "1 store purchase is recorded against it.",
+                  },
+                ],
+              },
+            }),
+          ],
+        },
+        [`POST ${API}/license/deletions`]: {
+          ...NONE_FAILED,
+          deleted: [
+            { id: "lic_dup", devices: 1 },
+            { id: "lic_dup2", devices: 1 },
+          ],
+        },
+      },
+    });
+    const dialog = await openCleanup();
+    expect(
+      await within(dialog).findAllByText(/account keeps lic_paid/),
+    ).toHaveLength(2);
     expect(within(dialog).getByText(/1 license can't be deleted/)).toBeTruthy();
     expect(within(dialog).getByText(/store purchase is recorded/)).toBeTruthy();
+    expect(
+      within(dialog).getByText(/signs in again, they get a new license/),
+    ).toBeTruthy();
+    // L3: nothing is sent until the count is typed.
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete 2 licenses" }),
+    );
+    expect(writes(log)).toEqual([]);
+    await userEvent.type(
+      within(dialog).getByRole("textbox"),
+      "delete 2 licenses",
+    );
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Delete 2 licenses" }),
     );
@@ -338,10 +347,39 @@ describe("Licenses list", () => {
         {
           path: `${API}/license/deletions`,
           method: "POST",
-          body: { ids: ["lic_dup", "lic_old"], confirm: "delete 2 licenses" },
+          body: { ids: ["lic_dup", "lic_dup2"], confirm: "delete 2 licenses" },
         },
       ]),
     );
+  });
+
+  it("sends more than 100 deletions in chunks the Worker accepts, each with its own count", async () => {
+    const ids = Array.from({ length: 101 }, (_, i) => `lic_c${i}`);
+    const log = bootLicense("#/p/djdl/license/licenses", {
+      routes: {
+        [`${API}/license/deletions/candidates`]: {
+          candidates: ids.map((id) => candidate(id)),
+        },
+        [`POST ${API}/license/deletions`]: NONE_FAILED,
+      },
+    });
+    const dialog = await openCleanup();
+    await within(dialog).findAllByText(/account keeps lic_paid/);
+    fireEvent.change(within(dialog).getByRole("textbox"), {
+      target: { value: "delete 101 licenses" },
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete 101 licenses" }),
+    );
+    await waitFor(() => expect(writes(log)).toHaveLength(2));
+    const bodies = writes(log).map(
+      (w) => w.body as { ids: string[]; confirm: string },
+    );
+    expect(bodies.map((b) => b.confirm)).toEqual([
+      "delete 100 licenses",
+      "delete 1 license",
+    ]);
+    expect(bodies.flatMap((b) => b.ids)).toEqual(ids);
   });
 
   it("passes axe", async () => {

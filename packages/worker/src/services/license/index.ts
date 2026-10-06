@@ -46,8 +46,8 @@ export const licenseService: ServiceDescriptor = {
   applyStoreGrant,
   /** LX-03: a retired licence's store grants move to the survivor (`core/licenseMerge.ts`). */
   licenseMerge: storeGrantMergeStatements,
-  /** Licence deletion (`core/licenseDelete.ts`): store grants block it; the licence row, its keys,
-   *  profile stack and grants go (`deletion.ts`). */
+  /** Licence deletion (`core/licenseDelete.ts`): store grants refuse it (and are never deleted);
+   *  otherwise the licence row, its keys and its profile stack go (`deletion.ts`). */
   licenseDelete: licenseDeleteContribution,
   /** PX-W6 (G8): where each licence came from — store grants and origin (`provenance.ts`). */
   licenseProvenance,

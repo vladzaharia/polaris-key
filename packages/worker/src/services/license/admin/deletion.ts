@@ -17,8 +17,15 @@
  * are purged from KV once the batch has committed, so a deleted licence's devices stop
  * authenticating at once. The licence's audit history stays.
  *
+ * Also refused: a disabled auto-issued licence still bound to its machine (`enroll_guard`) —
+ * it is what stops that machine enrolling again.
+ *
  * CONFIRMATION. Typed, and checked here as well as in the console (the platform-settings
- * pattern): a single deletion types `delete <id>`, a bulk one `delete <n> licenses`.
+ * pattern): a single deletion types `delete <id>`, a bulk one `delete <n> licenses` (the console
+ * sends at most {@link MAX_BULK_DELETE} per request).
+ *
+ * The cleanup list names sign-in duplicates only (an account that also holds a usable licence);
+ * it never lists a licence just because it is disabled.
  */
 
 import { ErrorCode } from "../../../core/errors.js";
@@ -29,11 +36,15 @@ import {
   type LicenseRow,
 } from "../../../core/data.js";
 import { licenseUsable } from "../../../core/devices.js";
-import { existingSubjectFor } from "../../../core/accountSubjects.js";
+import {
+  existingSubjectFor,
+  existingSubjectsFor,
+} from "../../../core/accountSubjects.js";
 import { forgetRegistryTokens } from "../../../core/registryTokens.js";
-import type {
-  LicenseDelete,
-  LicenseDeleteBlocker,
+import {
+  idChunks,
+  type LicenseDelete,
+  type LicenseDeleteBlocker,
 } from "../../../core/licenseDelete.js";
 import {
   adminJson,
@@ -46,9 +57,6 @@ import type { LicenseAdminContext } from "./index.js";
 
 /** Origins a licence may be deleted from while still active: minted by a flow, not by a person. */
 const FLOW_ORIGINS = new Set(["oidc", "enroll"]);
-
-/** "No recent device use" for the cleanup helper. */
-export const CLEANUP_RECENT_SECONDS = 30 * 86_400;
 
 /** Most licences one bulk request deletes. */
 export const MAX_BULK_DELETE = 100;
@@ -95,6 +103,15 @@ export async function deletionVerdicts(
         message:
           "It is active and was issued by the developer. Disable it first.",
       });
+    // A disabled auto-issued licence still bound to its machine is what stops that machine from
+    // enrolling for another free licence (`idx_licenses_enroll_hwid`): deleting it would lift
+    // the refusal the operator chose.
+    if (row.status === "disabled" && row.origin === "enroll" && row.enroll_hwid)
+      reasons.push({
+        code: "enroll_guard",
+        message:
+          "It is the machine's free-license record; deleting it would let the machine enroll again.",
+      });
     reasons.push(...(blockers?.get(row.id) ?? []));
     out.set(row.id, { allowed: reasons.length === 0, reasons });
   }
@@ -132,8 +149,10 @@ async function deleteOne(
     `Deleted license ${row.id} (tier ${row.tier_id ?? "none"}, origin ${row.origin ?? "admin"}, ` +
     `account ${account}, ${devices.length} ${devices.length === 1 ? "device" : "devices"}` +
     `${devices.length ? `, ${authorized} authorized` : ""})`;
+  const guard = collector.guard(target);
   await db.batch([
-    ...collector.statements(target),
+    // The audit row FIRST, while the licence still exists: guarded by the owners' checks and by
+    // the row's existence, so a concurrent second deletion of the same licence audits nothing.
     auditStatementFor(
       slug,
       session,
@@ -141,8 +160,12 @@ async function deleteOne(
       "license.delete",
       { kind: "license", id: row.id },
       summary,
-      collector.guard(target),
+      {
+        sql: `${guard.sql} AND EXISTS (SELECT 1 FROM licenses WHERE product = ? AND id = ?)`,
+        params: [...guard.params, slug, row.id],
+      },
     ),
+    ...collector.statements(target),
   ]);
   if (await getLicense(db, slug, row.id)) return null;
   for (const d of devices)
@@ -282,92 +305,101 @@ interface Candidate {
   accountSubject: string | null;
   deviceCount: number;
   lastSeen: number | null;
-  /** `duplicate`: the account holds another usable licence. `dormant`: disabled, no recent use. */
-  reason: "duplicate" | "dormant";
-  /** For a duplicate: the account's usable licence that stays. */
-  keeps: string | null;
+  /** Always `duplicate`: the account holds another usable licence (`keeps`). */
+  reason: "duplicate";
+  /** The account's usable licence that stays. */
+  keeps: string;
   deletion: DeletionVerdict;
 }
 
 /**
  * The "Clean up duplicates" list: sign-in (`oidc`) licences whose account also holds another
- * usable licence of the product, and disabled sign-in licences no device has used in
- * {@link CLEANUP_RECENT_SECONDS}. Each carries its verdict; the console deletes only the allowed.
+ * usable licence of the product. Each carries its verdict; the console deletes only the allowed.
+ *
+ * Disabled licences on their own are NOT listed: a disabled licence is often a deliberate
+ * refusal (a sign-in licence whose holder would simply get a new one by signing in again once
+ * it is gone), so deleting it is a decision made on its record, never in bulk.
+ *
+ * A constant number of queries whatever the product's size: every licence held by an account
+ * that holds a sign-in licence (one query), the devices aggregated per licence (one per id
+ * chunk), and the pairwise subjects (one per account chunk).
  */
 async function cleanupCandidates(
   ctx: LicenseAdminContext,
-): Promise<{ candidates: Candidate[]; recentDays: number }> {
+): Promise<{ candidates: Candidate[] }> {
   const { db, product, now } = ctx;
   const slug = product.slug;
-  const oidc = await db.all<LicenseRow>(
-    "SELECT * FROM licenses WHERE product = ? AND origin = 'oidc' ORDER BY activated_at DESC, id DESC",
+  const held = await db.all<LicenseRow>(
+    `SELECT * FROM licenses
+      WHERE product = ? AND account_id IN (
+        SELECT account_id FROM licenses
+         WHERE product = ? AND origin = 'oidc' AND account_id IS NOT NULL)
+      ORDER BY activated_at ASC, id ASC`,
+    slug,
     slug,
   );
-  const accounts = [
-    ...new Set(oidc.map((r) => r.account_id).filter((a): a is string => !!a)),
-  ];
+  const byAccount = new Map<string, LicenseRow[]>();
+  for (const row of held) {
+    const list = byAccount.get(row.account_id!) ?? [];
+    list.push(row);
+    byAccount.set(row.account_id!, list);
+  }
   // Per account, the usable licence that STAYS: one it did not get from a sign-in first (a
   // developer-issued or purchased licence is the one the duplicate shadowed), then the oldest.
   // Picking one keeper is what stops two sign-in duplicates from each listing the other.
-  const keeper = new Map<string, LicenseRow>();
-  for (const account of accounts) {
-    const usable = (
-      await db.all<LicenseRow>(
-        "SELECT * FROM licenses WHERE product = ? AND account_id = ? ORDER BY activated_at ASC, id ASC",
-        slug,
-        account,
-      )
-    ).filter((o) => licenseUsable(o, now));
-    const pick = usable.find((o) => o.origin !== "oidc") ?? usable[0];
-    if (pick) keeper.set(account, pick);
+  const picked: { row: LicenseRow; keeps: string }[] = [];
+  for (const rows of byAccount.values()) {
+    const usable = rows.filter((o) => licenseUsable(o, now));
+    const keeper = usable.find((o) => o.origin !== "oidc") ?? usable[0];
+    if (!keeper) continue;
+    for (const row of rows)
+      if (row.origin === "oidc" && row.id !== keeper.id)
+        picked.push({ row, keeps: keeper.id });
   }
-  const picked: {
-    row: LicenseRow;
-    reason: Candidate["reason"];
-    keeps: string | null;
-  }[] = [];
+  // Newest first, as the licence list reads.
+  picked.sort(
+    (a, b) =>
+      b.row.activated_at - a.row.activated_at || (a.row.id < b.row.id ? 1 : -1),
+  );
+
   const usage = new Map<string, { n: number; lastSeen: number | null }>();
-  for (const row of oidc) {
-    const devices = await listDevicesByLicense(db, slug, row.id);
-    const lastSeen = devices.reduce<number | null>(
-      (m, d) => (m === null || d.last_seen > m ? d.last_seen : m),
-      null,
-    );
-    usage.set(row.id, { n: devices.length, lastSeen });
-    const kept = row.account_id ? keeper.get(row.account_id) : undefined;
-    const other = kept && kept.id !== row.id ? kept : undefined;
-    if (other) {
-      picked.push({ row, reason: "duplicate", keeps: other.id });
-      continue;
-    }
-    if (
-      row.status === "disabled" &&
-      (lastSeen === null || lastSeen < now - CLEANUP_RECENT_SECONDS)
-    )
-      picked.push({ row, reason: "dormant", keeps: null });
+  for (const batch of idChunks(picked.map((p) => p.row.id))) {
+    const marks = batch.map(() => "?").join(", ");
+    for (const r of await db.all<{
+      license_id: string;
+      n: number;
+      last_seen: number | null;
+    }>(
+      `SELECT license_id, COUNT(*) AS n, MAX(last_seen) AS last_seen FROM devices
+        WHERE product = ? AND license_id IN (${marks})
+        GROUP BY license_id`,
+      slug,
+      ...batch,
+    ))
+      usage.set(r.license_id, { n: r.n, lastSeen: r.last_seen });
   }
+  const subjects = await existingSubjectsFor(
+    db,
+    picked.map((p) => p.row.account_id!),
+    slug,
+  );
   const verdicts = await deletionVerdicts(
     ctx,
     picked.map((p) => p.row),
   );
-  const candidates: Candidate[] = [];
-  for (const { row, reason, keeps } of picked) {
-    const use = usage.get(row.id)!;
-    candidates.push({
+  return {
+    candidates: picked.map(({ row, keeps }) => ({
       id: row.id,
       name: row.name ?? "",
       email: row.email ?? "",
       status: row.status,
       tier: row.tier_id,
-      accountSubject: row.account_id
-        ? await existingSubjectFor(db, row.account_id, slug)
-        : null,
-      deviceCount: use.n,
-      lastSeen: use.lastSeen,
-      reason,
+      accountSubject: subjects.get(row.account_id!) ?? null,
+      deviceCount: usage.get(row.id)?.n ?? 0,
+      lastSeen: usage.get(row.id)?.lastSeen ?? null,
+      reason: "duplicate" as const,
       keeps,
       deletion: verdicts.get(row.id)!,
-    });
-  }
-  return { candidates, recentDays: CLEANUP_RECENT_SECONDS / 86_400 };
+    })),
+  };
 }

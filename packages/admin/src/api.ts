@@ -2272,10 +2272,9 @@ export interface LicenseCleanupCandidate {
   accountSubject: string | null;
   deviceCount: number;
   lastSeen: number | null;
-  /** `duplicate`: the account holds another usable licence (`keeps`). `dormant`: disabled and
-   *  unused for `recentDays`. */
-  reason: "duplicate" | "dormant";
-  keeps: string | null;
+  /** Always `duplicate`: the account holds another usable licence (`keeps`), which stays. */
+  reason: "duplicate";
+  keeps: string;
   deletion: LicenseDeletion;
 }
 
@@ -3656,7 +3655,7 @@ const rawApi = {
       body: JSON.stringify({ ids, confirm }),
     }),
   licenseCleanupCandidates: (slug: string) =>
-    call<{ candidates: LicenseCleanupCandidate[]; recentDays: number }>(
+    call<{ candidates: LicenseCleanupCandidate[] }>(
       `${p(slug)}/license/deletions/candidates`,
     ),
   putLicenseOverrides: (slug: string, id: string, updates: OverrideUpdate[]) =>
