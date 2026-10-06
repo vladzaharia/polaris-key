@@ -12,6 +12,7 @@ import json
 import httpx
 import pytest
 
+from polaris_key import copy
 from polaris_key.cli import core, verbs
 from polaris_key.cli.argparse_cli import register_argparse
 
@@ -81,7 +82,7 @@ def test_config_list_set_reset_and_shorthand(capsys, tmp_path) -> None:
     code, out = _argparse(["config", "--product", PRODUCT, "set", "ui.theme", '"dark"'], _factory(), capsys)
     assert code == 0 and 'ui.theme = "dark"' in out
     code, out = _argparse(["config", "--product", PRODUCT, "set", "run.concurrency", "9"], _factory(), capsys)
-    assert code == 1 and "managed by your administrator" in out
+    assert code == 1 and copy.message("managed_by_admin") in out
     code, out = _argparse(["config", "--product", PRODUCT, "run.concurrency"], _factory(), capsys)
     assert code == 0 and "run.concurrency = 4" in out
 

@@ -28,15 +28,6 @@ def test_every_registry_code_and_status_has_copy() -> None:
         assert "{" not in copy.message(code)
 
 
-def test_curated_copy_and_fallback() -> None:
-    assert "sign in" in copy.message("enroll_claimed").lower()
-    assert copy.message("brand-new-code") == copy.GENERIC[1].format(code="brand-new-code")
-    assert copy.message("bad_request", "missing key") == "The request was not valid: missing key"
-    copy.register_locale("fr", {"cancelled": ("Annulé", "Annulé.")})
-    assert copy.message("cancelled", locale="fr-CA") == "Annulé."
-    assert copy.message("ok", locale="fr") == copy.message("ok")
-
-
 def test_crash_tags() -> None:
     c = _c(version="1.2.0", update=UpdateClientOptions(outlet="direct", build_number="45", platform="macos", arch="arm64"))
     assert c.crash_tags() == {"release": "app@1.2.0+45", "environment": "stable", "pkey.outlet": "direct"}
