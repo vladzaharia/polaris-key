@@ -1,10 +1,20 @@
 /**
- * The product's hosted assets in the console (HA-05, HA-06; notes/S-20 §6.3, §6.4, owner
- * decision 11). The console's Presentation page reads and writes them here:
+ * The product's hosted assets in the console (HA-05, HA-06, HA-08; notes/S-20 §6.3, §6.4, §6.8,
+ * owner decision 11). The console's Presentation page reads and writes them here:
  *
  *   GET    /manage/api/products/<slug>/assets                    every slot's copy: source,
  *                                                                status, size, the pull it owes,
  *                                                                "sizes pending", image-host URLs
+ *   POST   /manage/api/products/<slug>/assets/mirror             the operator's "mirror now"
+ *                                                                (HA-08): every release file that
+ *                                                                still owes a copy of ours is
+ *                                                                queued at once, a failed file's
+ *                                                                back-off or not (a file whose
+ *                                                                message is in flight is skipped),
+ *                                                                at most `MIRROR_OPERATOR_MAX_PER_RUN`
+ *                                                                per request (`services/release/
+ *                                                                mirror.ts`); answers how many were
+ *                                                                queued and how many still owe one
  *   POST   /manage/api/products/<slug>/assets/<slot>[?locale=]   upload: the body is the file; the
  *                                                                upload CLAIMS the slot
  *   DELETE /manage/api/products/<slug>/assets/<slot>[?locale=]   Revert to the manifest (a claim
@@ -16,17 +26,18 @@
  * whatever the header said. The type is sniffed, never the request's `Content-Type`. A refused
  * file changes nothing on the slot (`recordRefusal: false`). A listing-model slot (A-18) is also
  * written into `dist_listing_assets` as an `admin` row (`services/distribution/listing/
- * hostedMirror.ts`).
+ * hostedMirror.ts`). A release file's copy (`release-file:<sha256>`, HA-08) is not an upload slot:
+ * the console can neither upload into nor delete it here.
  *
  * CORE, like `activity`: a product has hosted assets whether or not it runs Distribution
- * (`presentation.icon` is `.pkey/product`'s). Platform-admin gated and CSRF-checked by the
- * dispatcher; every write is audited with the session's actor (`assets.ingest`, `assets.revert`,
- * `assets.delete`).
+ * (`presentation.icon` is `.pkey/product`'s). The mirror action is composed here, in the admin
+ * layer, because the files and their GitHub access are Release's. Platform-admin gated and
+ * CSRF-checked by the dispatcher; every write is audited with the session's actor
+ * (`assets.ingest`, `assets.revert`, `assets.delete`, `assets.mirror`).
  */
 
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
-import type { AdminSession } from "../session.js";
 import { ErrorCode } from "../../core/errors.js";
 import {
   listHostedAssetViews,
@@ -42,7 +53,10 @@ import {
 import { IMG_HOST_TYPES } from "../../core/imgHost.js";
 import { imgUrl } from "../../core/imgHostname.js";
 import { listingSlotMirror } from "../../services/distribution/listing/hostedMirror.js";
+import { mirrorNow } from "../../services/release/mirror.js";
+import { audit } from "../audit.js";
 import { adminJson, err } from "../lib/respond.js";
+import type { AdminSession } from "../session.js";
 
 /** The variant the Presentation page previews: the smallest rung at least this wide. */
 export const PREVIEW_WIDTH = 256;
@@ -111,6 +125,33 @@ export async function handleHostedAssets(
   rest: string[],
   now: number,
 ): Promise<Response> {
+  if (rest.length === 1 && rest[0] === "mirror") {
+    if (req.method !== "POST")
+      return err(405, "method_not_allowed", "POST to queue the mirrors");
+    const result = await mirrorNow(env, db, slug, now);
+    if (!result.ok)
+      return result.reason === "disabled"
+        ? err(
+            409,
+            "mirror_disabled",
+            "release-file mirroring is off for this product (Release is off)",
+          )
+        : err(
+            503,
+            "unavailable",
+            "no blob store or asset queue is bound on this deployment",
+          );
+    await audit(
+      db,
+      slug,
+      session,
+      now,
+      "assets.mirror",
+      { kind: "product", id: slug },
+      `Queued ${result.queued} release file${result.queued === 1 ? "" : "s"} for a copy of Polaris Key's own (${result.owed} still owe one)`,
+    );
+    return adminJson({ queued: result.queued, owed: result.owed });
+  }
   if (rest.length === 0) {
     if (req.method !== "GET" && req.method !== "HEAD")
       return err(405, "method_not_allowed", "use GET on the list");

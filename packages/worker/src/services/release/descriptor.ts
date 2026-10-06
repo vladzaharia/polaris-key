@@ -92,6 +92,7 @@ import {
 } from "./packs/sets.js";
 import type { CheckCache } from "./packs/checks.js";
 import { RELEASE_RECORD_REJECTED } from "./records.js";
+import { enqueueReleaseMirrors } from "./mirror.js";
 import {
   artifactContentType,
   artifactKind,
@@ -1080,6 +1081,9 @@ export async function ingestReleaseDescriptor(
     // resolved (or re-resolve, when a concurrent trigger moved the generation).
     if (plan.descriptor.content !== undefined)
       await resolveAndStore(db, product, opts.now, plan.packResolved);
+    // HA-08 (S-20 §6.3): a file the descriptor places only on GitHub or at an external URL gets
+    // a copy of ours, queued after the batch. Best-effort: it never fails the ingest.
+    await enqueueReleaseMirrors(env, db, product, opts.now);
   }
   return {
     ok: true,

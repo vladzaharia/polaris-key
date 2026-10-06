@@ -158,6 +158,8 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products/{product}/assets", ["get"]],
     // HA-06: the Presentation page's upload (claims the slot), Revert and delete-a-copy.
     ["/manage/api/products/{product}/assets/{slot}", ["post", "delete"]],
+    // HA-08: the operator's "mirror now" for release files.
+    ["/manage/api/products/{product}/assets/mirror", ["post"]],
     // LX-26: the licence reads and writes that carry the derived holder (DELETE stays narrative).
     ["/manage/api/products/{product}/license/licenses", ["get", "post"]],
     [

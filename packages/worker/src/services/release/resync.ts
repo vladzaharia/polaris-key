@@ -78,6 +78,7 @@ import { releaseStoreSync } from "./sync.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
 import { resolveAndStore, type StoreOutcome } from "./packs/sets.js";
+import { enqueueReleaseMirrors } from "./mirror.js";
 import { releaseKeysForSync } from "./records.js";
 import { parseServices, serializeServices } from "../../core/services.js";
 import type { ManifestIngest } from "../../core/registry.js";
@@ -941,6 +942,9 @@ async function applyRepoManifest(
   // ...and may change a pack's binding or channels, or the store's app releases (P4-12). A
   // failed resolution clears the sets and is answered; it never fails the resync.
   if (rel) packSets = await resolveAndStore(db, slug, now);
+  // HA-08 (S-20 §6.3): the release files the store's rows left without a copy of ours, queued
+  // after the batch and best-effort (`enqueueReleaseMirrors` never throws).
+  if (rel) await enqueueReleaseMirrors(env, db, slug, now);
 
   // HA-05 (notes/S-20 §6.4): the hosted-asset pulls this manifest owes, enqueued AFTER the batch
   // (a new slot's row references the product) and best-effort (`syncHostedAssets` never throws).

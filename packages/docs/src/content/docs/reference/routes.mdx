@@ -18,6 +18,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/manage/api/github/repositories` | admin | The repositories the Polaris Key GitHub App can read |
 | POST | `/manage/api/products/{product}/assets/{slot}` | admin | Upload a file into a hosted-asset slot (the console claims the slot) |
 | DELETE | `/manage/api/products/{product}/assets/{slot}` | admin | Revert a console upload to the manifest, or delete a hosted copy |
+| POST | `/manage/api/products/{product}/assets/mirror` | admin | Queue a copy of every release file that still owes one (release-file mirroring) |
 | GET | `/manage/api/products/{product}/assets` | admin | The product's hosted assets, their sources and pull status |
 | POST | `/manage/api/products/{product}/license/batches/{batchId}/disable-unused` | admin | Disable every licence of a batch that no device was ever bound to |
 | GET | `/manage/api/products/{product}/license/batches/{batchId}` | admin | One licence batch with its used counts |

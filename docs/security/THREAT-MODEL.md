@@ -6096,7 +6096,13 @@ proxy now fetches through the same guard.
   the front door), never `.local`, `.internal`, `.localhost` or `.home.arpa`. Redirects are
   followed by hand, at most three, and each hop is guarded again **before** it is dialled; an
   `Authorization` header reaches the first hop only, never a `Location`. One 30 s budget covers
-  every hop and the body; a declared `Content-Length` over the slot's cap is refused unread, and
+  every hop and the body. Only a release file's pull (HA-08) opts in to more (`releaseFile`): 30 s
+  plus a second per 10 MiB of the file, at most 10 minutes per message
+  (`SAFE_FETCH_FILE_TIMEOUT_MS`); every other caller stays clamped at 30 s. A queue batch stays
+  inside the consumer's 15-minute wall clock because `src/assetQueue.ts` runs pulls and ladder
+  retries first and starts no mirror once 4 minutes of the batch are spent
+  (`MIRROR_BATCH_BUDGET_MS`), so a batch ends within about 4 + 10 minutes; a mirror not started is
+  retried after a minute. A declared `Content-Length` over the slot's cap is refused unread, and
   the body is counted and cut at the cap whatever the header said. The Worker resolves nothing
   itself, and the edge dials neither IP literals nor RFC 1918 or loopback space from a Worker, so
   the remaining surface is "public hosts the operator named". **Who can name one:** manifest
@@ -6355,6 +6361,76 @@ admin`, which the A-18d register and a CI push never replace.
 - **Residual.** An `assets:write` token can replace any CI-pushed copy of its product's unclaimed,
   undeclared slots with any image whose bytes it holds; it cannot touch an operator's upload or a
   manifest's slot, and the art it hosts is public by design.
+
+### Release-file mirroring (HA-08)
+
+Every file of an app release whose bytes live only on GitHub (a `github` location, or a legacy row
+with none) or at an `external` URL now gets a copy in the blob store and an `r2` location appended
+to its `locations_json`, so `serveArtifact` serves our bytes first and GitHub stays the fallback
+(notes/S-20 §4.3, §6.3, §6.8, owner decision 6). Code: `services/release/mirror.ts`,
+`services/release/mirrorSwitch.ts`, the legacy download in `services/release/source.ts`,
+`src/assetQueue.ts`, `admin/handlers/hostedAssets.ts`, migration `release_mirrors`; tests:
+`test/releaseMirror.test.ts`, `test-workerd/releaseMirror.test.ts`.
+
+- **No wire change.** The signed release record carries names, roles, hashes and sizes, never
+  locations (`shared-protocol/src/release.ts`), and the feed pins records by hash. Byte URLs on
+  `dl` and the console aliases do not change; only the bytes behind them do, and they are
+  hash-identical (the R2 answer's `ETag` is the SHA-256 the record pins). `edSignature` and every
+  updater hash stay valid. `gen:corpus` and `gen:transcripts` are unchanged. Filling a synced file's missing `sha256` (from the verified hash) does change unsigned feeds: a release whose file had no recorded hash becomes eligible for the feeds that need one (Scoop, Flathub, winget, AltStore), which then list it.
+- **Verify before promote.** The expected hash is the artifact's recorded `sha256` (the
+  descriptor's, or the map's) and GitHub's own `digest` from the asset's metadata; when both exist
+  they must agree, or the file is refused `digest-mismatch` before a byte is read. A file with
+  neither is refused `no-digest`; one whose GitHub size disagrees with the row, or that exceeds
+  R2's 4.995 GiB single put, is refused before the download. The bytes then go through HA-01's
+  `ingest` (streamed, R2 handed the expected SHA-256, so R2 itself refuses anything else): a
+  mismatch stores nothing under the hash's name, writes no ref and no location, records the
+  reason with back-off, and GitHub keeps serving.
+- **Who names a source, unchanged.** The GitHub asset comes from the product's own repository in
+  `release_config` (installation token, `contents: read`) through
+  `GET /repos/{o}/{r}/releases/assets/{id}` with `Accept: application/octet-stream`; the token goes
+  to the API hop only, and the redirect may reach only `api.github.com` and GitHub's storage hosts
+  (`allowHost`), on top of the HA-01 guard. An external URL is the one a release descriptor named,
+  which only CI holding the product's publishing credential or a push to the repository can
+  submit; it goes through the same guard (no `plrs.im`, no private names, at most three re-guarded
+  hops). Mirroring runs on a sync, a resync, a descriptor ingest, the nightly backfill or an
+  operator's request, never on an end user's.
+- **The queue message names a file and nothing else.** It carries the product, the release id
+  and the artifact id; on delivery the consumer re-reads the artifact row, its locations, the
+  release configuration and the asset's metadata. A malformed message is acknowledged and dropped.
+- **Only app releases.** A pack's objects are authorised by the pack's own gate on the blob route,
+  and a package release is r2-located; an app-side copy of either would change who may fetch it,
+  so neither is ever mirrored (the owed query and the consumer both refuse a non-app release).
+  The copy is stored under `blobs/sha256/<hex>`, never `gated/`, and served under the
+  deliverable's own `dist_access` mode exactly as the GitHub-streamed bytes were.
+- **Possession and GC (§3, "The blob store").** The copy is held by its `hosted_assets` row
+  (`release-file:<sha256>`, a `hosted-asset` ref), which `ingest` earns only after reading and
+  hashing every byte; the location is held by a `release-artifact` ref
+  (`<release_id>/<artifact_id>`), written only in the batch that finds this product holding the
+  key. Neither kind is dropped by the collector. The append is one batch guarded on the artifact
+  row being what the consumer read: a descriptor that rewrote `locations_json` meanwhile wins, and
+  the file is queued again by its own ingest. The image host serves neither: a `release-file`
+  slot is not an image slot.
+- **The legacy download** (`/<p>/release/dl/…`, `/<p>/distribution/dl/…`, console host only)
+  serves the copy when the matched asset's GitHub `digest` names a key this product holds a ref
+  to, through `blobResponse` (which checks R2's stored checksum against the digest), with the
+  route's own type and cache policy; otherwise it streams from GitHub as before. The access
+  decision ahead of it is unchanged.
+- **Amplification is bounded.** One sync, resync or ingest queues at most 100 files, the nightly
+  backfill at most 100 across products, an operator request at most 200. Each queued file is held
+  off for one back-off step; a failure backs off exponentially from 15 minutes to a day. Every
+  refusal that needs no bytes (a digest or size disagreement, no digest, too large) is decided
+  from metadata before any download, so a file that can never be copied costs one metadata read
+  per back-off step. A pull is time-bounded by its size, at most 10 minutes per message, and a
+  batch starts no mirror past its 4-minute budget (above); a pull is capped at 4.995 GiB. A
+  repeated "mirror now" skips files whose message is still in flight, so it never downloads a file
+  twice.
+- **Storage cost and the switch.** Owner decision 6 turns mirroring on for every product that
+  runs Release; HA-10 adds `assets.releases.mirror` and the `assets.hosting.enabled` kill switch
+  (`mirrorSwitch.ts` is the one reader). Copies already made stay valid when it is off: their
+  locations are hash-pinned. Quotas (`assets.quota.releaseBytes`) are HA-10's.
+- **The operator action** (`POST /manage/api/products/<slug>/assets/mirror`) is product-admin
+  gated and CSRF-checked by the dispatcher like every mutation, queues work only (no byte moves on
+  the request), and writes an `assets.mirror` audit row.
 
 ### Linking an existing product to a repository (UX-23)
 
@@ -7151,7 +7227,7 @@ control, calls a host other than its store's API, writes from a store object wit
 routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to
-`BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a path shape is added to the image host (`matchImgPath`), a type to `IMG_HOST_TYPES`, the image host serves a ref kind other than `hosted-asset`, a non-image slot or anything gated, reads a cookie or a credential, or caches its tenancy check (HA-02); a type is added to
+`BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a path shape is added to the image host (`matchImgPath`), a type to `IMG_HOST_TYPES`, the image host serves a ref kind other than `hosted-asset`, a non-image slot or anything gated, reads a cookie or a credential, or caches its tenancy check (HA-02); release-file mirroring copies a file of anything but an app release, promotes a copy whose bytes were not checked against the recorded `sha256` and GitHub's `digest` (when both exist, both), lets a GitHub asset's pull reach a host other than the API and GitHub's storage, appends a location in any batch but the guarded one, or starts on an end user's request (HA-08); a type is added to
 `REGISTRY_HOST_TYPES`, the PyPI HTML fallback is admitted anywhere but its one flagged route or
 under a looser policy, a registry route answers CORS or a method other than GET, HEAD,
 Swift's `POST …/login`, F-22's four publish writes and F-23's OCI push methods, or

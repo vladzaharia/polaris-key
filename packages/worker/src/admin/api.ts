@@ -288,8 +288,10 @@ async function handleProductScoped(
 
   // HA-05, HA-06: the product's hosted assets (`core/hostedAssetPulls.ts`,
   // `core/hostedAssetUploads.ts`). CORE, like `activity`: a product hosts its presentation icon
-  // whether or not it runs Distribution.
-  //   GET /products/<slug>/assets
+  // whether or not it runs Distribution. HA-08: the operator's "mirror now" for release files
+  // (`services/release/mirror.ts`).
+  //   GET  /products/<slug>/assets
+  //   POST /products/<slug>/assets/mirror
   //   POST|DELETE /products/<slug>/assets/<slot>[?locale=]
   if (resource === "assets") {
     return handleHostedAssets(req, env, db, session, slug, rest.slice(1), now);

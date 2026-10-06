@@ -13331,6 +13331,52 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/assets/mirror:
+    post:
+      operationId: mirrorAdminReleaseFiles
+      tags: [admin]
+      summary: Queue a copy of every release file that still owes one (release-file mirroring)
+      description: >
+        HA-08 (notes/S-20 §6.3, §6.8). Every file of the product's app releases whose bytes live
+        only on GitHub or at an external URL, and that has no `r2` location yet, is queued on
+        `pkey-assets-<env>` at once, a failed file's back-off or not, at most 200 per request; a
+        file whose message is still in flight is skipped, so a repeated request never downloads a
+        file twice. The queue
+        consumer verifies each copy against GitHub's `digest` and the descriptor's `sha256` before
+        it appends an `r2` location; a refusal keeps GitHub serving. `queued` is how many were
+        sent; `owed` is how many files still owe a copy (the ones just queued included, until
+        their messages are delivered). Audited as `assets.mirror`. The nightly maintenance sweep
+        runs the same backfill, bounded per night. Admin session cookie and `X-PKey-CSRF`.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The files were queued.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [queued, owed]
+                properties:
+                  queued: { type: integer, minimum: 0 }
+                  owed: { type: integer, minimum: 0 }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "`mirror_disabled`: mirroring is off for the product (Release is off)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "503":
+          description: "`unavailable`: no blob store or asset queue is bound on this deployment."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   # ── Licences (LX-26: the derived holder; the rest of `…/license/*` is narrative) ──
   /manage/api/products/{product}/license/licenses:
     get:

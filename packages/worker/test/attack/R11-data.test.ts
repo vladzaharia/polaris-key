@@ -129,6 +129,9 @@ describe("R11-01 missing foreign keys / no ON DELETE anywhere", () => {
       // PX-W15: terms acceptances are the account's too (an orphan would say what a deleted
       // person agreed to).
       "account_terms_acceptances",
+      // HA-08: a release file's mirror job is meaningless without the file; a new table, so it
+      // declares the cascade from the start (no rebuild, no triggers to reconstruct).
+      "release_mirrors",
     ];
     for (const table of cascading) {
       const fks = await db.all<{ on_delete: string; table: string }>(
