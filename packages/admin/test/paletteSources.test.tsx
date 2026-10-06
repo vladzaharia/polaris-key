@@ -11,6 +11,7 @@ import { navigationSource } from "../src/console/shell/CommandPalette.js";
 import {
   createActions,
   missingChain,
+  sdkActions,
   turnOnActions,
 } from "../src/console/shell/palette/actions.js";
 import { rankPalette } from "../src/console/shell/palette/rank.js";
@@ -135,6 +136,34 @@ describe("create actions", () => {
   });
 });
 
+describe("SDK actions (UX-59)", () => {
+  it("offers the quick start, the install and the trust pins on a product, on a match only", () => {
+    const items = sdkActions("djdl");
+    expect(items.map((i) => i.label)).toEqual([
+      "SDK quick start",
+      "Install the SDK",
+      "Trust pins",
+    ]);
+    expect(items.every((i) => i.matchOnly)).toBe(true);
+    expect(items.find((i) => i.label === "Trust pins")?.href).toBe(
+      "#/p/djdl/keys",
+    );
+    expect(sdkActions(null)).toEqual([]);
+  });
+
+  it("is found by the words a developer types", () => {
+    const items = sdkActions("djdl");
+    const find = (q: string) =>
+      rankPalette(items, [], q, PALETTE_GROUPS)
+        .flatMap((g) => g.items)
+        .map((i) => i.label);
+    expect(find("sdk")).toContain("SDK quick start");
+    expect(find("install")[0]).toBe("Install the SDK");
+    expect(find("pins")[0]).toBe("Trust pins");
+    expect(find("godot")).toContain("SDK quick start");
+  });
+});
+
 describe("ranking", () => {
   const nav = navigationSource("djdl", "DJDL", ALL_ON);
 
@@ -254,6 +283,21 @@ describe("the palette in the console", () => {
     await waitFor(() => expect(window.location.hash).toBe("#/p/djdl/services"));
     await waitFor(() =>
       expect(document.activeElement?.id).toBe("service-release"),
+    );
+  });
+
+  it("“sdk” finds the SDK quick start, which opens Overview on the SDK chooser (UX-59)", async () => {
+    boot("#/p/djdl/activity", { services: ALL_ON });
+    await screen.findByRole("navigation", { name: "Console" });
+    const dialog = await openPalette();
+    await userEvent.type(input(dialog), "sdk quick");
+    await waitFor(() =>
+      expect(groupLabels(dialog, "Actions")[0]).toMatch(/^SDK quick start/),
+    );
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(window.location.hash).toBe("#/p/djdl"));
+    await waitFor(() =>
+      expect(document.activeElement?.id).toBe("sdk-quick-start"),
     );
   });
 

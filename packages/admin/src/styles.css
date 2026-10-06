@@ -101,6 +101,10 @@
      product page starts at 1180 px. */
   --breakpoint-desk: 47.5625rem;
   --breakpoint-wide: 73.75rem;
+  /* The type scale's display step (EXPERIENCE.md §3): 40 px, for the portal's Library and
+     Product titles only (`PageHeader size="display"`; 30 px, text-3xl, on phones). */
+  --text-display: 2.5rem;
+  --text-display--line-height: 1.1;
   --animate-pk-in: pk-in var(--pk-duration-fast) var(--pk-ease-enter);
   --animate-pk-overlay-in: pk-overlay-in var(--pk-duration-fast)
     var(--pk-ease-standard);

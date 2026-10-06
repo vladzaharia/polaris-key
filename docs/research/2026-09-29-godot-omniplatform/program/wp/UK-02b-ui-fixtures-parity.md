@@ -21,6 +21,22 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 
 - `LicenseChoice` UI fixtures: loading, many, one, current, keep, new, create, all-full, account-wide, mixed, replace-open, raced, none-keys, none-no-keys, none-replaceable (SIGN-IN.md §6.2).
 
+## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
+
+The owner decided on 2026-10-05 that every in-app sign-in step happens in **one form whose body
+morphs in place** (no stacked sheets), that the license is chosen **inside the app** when it can
+show it, that the presentation is configurable with native controls kept, that there are **two
+equal ways to integrate** (the hosted card, and the kit form with headless primitives), and that
+the web flow is one continuous, animated card. The wire is
+[`plans/I-04.md`](../plans/I-04.md) §G (a pending sign-in grant, `licenseChoice: "app" | "card"`);
+the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) §2.4, §3.17, §3.18, §4.16 and
+D-78–D-93. Where this brief differs, they win. **No device-wire version change**
+(`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2; no corpus file). New UI copy uses
+the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
+every row, no "Account-wide"). For this package:
+
+- Add the `signin-form` fixtures: every step and state of the one form (methods, handoff, no browser, code, finishing, choose and its §6.2 states, replace, replace confirm, key, done, grant expired, cancelled) in the `inline` and `sheet` presentations, and the parity row `ui.kit.signin` (`allowedNa` `headless` for Node).
+
 ## Goal
 
 The presentation state machines are specified once as fixtures that every core can run, and the parity registry tracks the UI kit features in every SDK.

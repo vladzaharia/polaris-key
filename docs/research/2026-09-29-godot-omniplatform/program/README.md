@@ -313,6 +313,16 @@ and UK-16 (docs scaffold), then UK-03 (ui-core) and the kits. Kits read the prod
 only through HA-13/HA-14 via a seam, so they do not wait for them; UK-41 verifies it at the end of
 the must tier. UK-30 (Tk) is dropped.
 
+Phase MO (motion) follows [`notes/S-23-motion-system.md`](../notes/S-23-motion-system.md) §10, with
+the owner decisions delegated to the lead on 2026-10-05 (D1–D10 in the note). It adds motion to
+the existing portal and console through one system shared with the kits and the sign-in card.
+MO-01 (brand tokens) comes first, then MO-02 (the layer in `packages/admin`) and MO-03 (e2e
+determinism and the motion smoke suite), then the area packages in parallel. Several area packages
+share files with in-flight branches that are not graph nodes (`wp/UX-10`, `wp/UX-29`, the
+`Overview.tsx` branches, `feat/license-delete`); each brief's "Files it touches" names the branch
+to wait for or rebase on. MO-06 and MO-07 depend on SP-08 and PX-16 for the same reason. MO-13
+is the closeout and is marked done last.
+
 ---
 
 ## 9. Known gaps without a work package

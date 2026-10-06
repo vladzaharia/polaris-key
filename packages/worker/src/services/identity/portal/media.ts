@@ -49,21 +49,32 @@
  * exception: a rate-limited cache miss is `429 rate_limited`, so a client can back off.
  */
 
+import { listingImageUrl } from "@polaris-key/manifest";
 import {
   isAllowedStorageHost,
   type Db,
   type Env,
 } from "../../../core/platform.js";
 import { loadProductPublic } from "../../../core/products.js";
+import {
+  SAFE_FETCH_MAX_REDIRECTS,
+  safeFetch,
+  type FetchImpl,
+} from "../../../core/safeFetch.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import { getPortalProductSettings } from "./repo.js";
 import { portalSecurityHeaders } from "./headers.js";
 import type { PortalHooksFor } from "./api.js";
 
-/** The two proxied listing fields, their path names and byte caps. */
+/**
+ * The two proxied listing slots, their path names and byte caps. Each slot's source is read with
+ * `listingImageUrl` (HA-04): the normalised `icon` / `header` ref when it is an https URL, or the
+ * legacy `iconUrl` / `headerUrl` of a listing row stored before HA-04. A repo-path ref has no
+ * URL to proxy; HA-05 hosts it and HA-07 moves the portal to the media host.
+ */
 export const MEDIA_ASSETS = {
-  icon: { field: "iconUrl", maxBytes: 1024 * 1024 },
-  header: { field: "headerUrl", maxBytes: 5 * 1024 * 1024 },
+  icon: { maxBytes: 1024 * 1024 },
+  header: { maxBytes: 5 * 1024 * 1024 },
 } as const;
 
 export type MediaAsset = keyof typeof MEDIA_ASSETS;
@@ -72,8 +83,8 @@ export function isMediaAsset(v: string): v is MediaAsset {
   return Object.prototype.hasOwnProperty.call(MEDIA_ASSETS, v);
 }
 
-/** Redirect hops followed (each re-checked against the allowlist). */
-export const MEDIA_MAX_REDIRECTS = 3;
+/** Redirect hops followed (each re-checked against the allowlist): Core's guarded fetcher's. */
+export const MEDIA_MAX_REDIRECTS = SAFE_FETCH_MAX_REDIRECTS;
 /** The upstream fetch's budget, headers and body together. */
 export const MEDIA_FETCH_TIMEOUT_MS = 5000;
 /** `Cache-Control` of an answer whose `v` is current: a new source URL is a new `v`. */
@@ -122,7 +133,7 @@ export async function mediaUrlFor(
   asset: MediaAsset,
   listing: Record<string, unknown> | null,
 ): Promise<string | null> {
-  const source = mediaSourceUrl(listing?.[MEDIA_ASSETS[asset].field]);
+  const source = mediaSourceUrl(listingImageUrl(listing, asset));
   if (!source) return null;
   const v = await mediaVersion(source.toString());
   return `/media/${encodeURIComponent(product)}/${asset}?v=${v}`;
@@ -162,78 +173,48 @@ function refused(status = 404): Response {
   });
 }
 
-type FetchImpl = (
-  input: Request | string,
-  init?: RequestInit,
-) => Promise<Response>;
-
 /**
  * Fetch `source` under rules 2–5: allowlisted hops only, bounded, and sniffed. `null` for any
- * refusal or failure.
+ * refusal or failure. The fetch itself is Core's guarded fetcher (`core/safeFetch.ts`, HA-01),
+ * narrowed to rule 2's GitHub-hosted names on every hop (`allowHost`) until HA-07 serves hosted
+ * copies instead; the cap, the redirect rule and the 5 s budget are unchanged.
  */
 export async function fetchMedia(
   source: URL,
   maxBytes: number,
   fetchImpl: FetchImpl = fetch,
 ): Promise<{ bytes: Uint8Array; type: string } | null> {
-  const signal = AbortSignal.timeout(MEDIA_FETCH_TIMEOUT_MS);
-  let url = source;
-  let res: Response | null = null;
+  const res = await safeFetch(source.toString(), {
+    maxBytes,
+    timeoutMs: MEDIA_FETCH_TIMEOUT_MS,
+    headers: { accept: "image/png, image/jpeg, image/webp, image/gif" },
+    allowHost: isAllowedStorageHost,
+    fetchImpl,
+  });
+  if (!res.ok || res.status !== 200) return null;
+  const reader = res.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
   try {
-    for (let hop = 0; ; hop++) {
-      res = await fetchImpl(url.toString(), {
-        method: "GET",
-        redirect: "manual",
-        headers: { accept: "image/png, image/jpeg, image/webp, image/gif" },
-        signal,
-      });
-      if (res.status < 300 || res.status >= 400) break;
-      await res.body?.cancel();
-      const location = res.headers.get("location");
-      if (!location || hop >= MEDIA_MAX_REDIRECTS) return null;
-      let next: URL;
-      try {
-        next = new URL(location, url);
-      } catch {
-        return null;
-      }
-      const checked = mediaSourceUrl(next.toString());
-      if (!checked) return null;
-      url = checked;
-    }
-    if (res.status !== 200 || !res.body) {
-      await res.body?.cancel();
-      return null;
-    }
-    const declared = Number(res.headers.get("content-length"));
-    if (Number.isFinite(declared) && declared > maxBytes) {
-      await res.body.cancel();
-      return null;
-    }
-    const reader = res.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let total = 0;
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
       total += value.byteLength;
-      if (total > maxBytes) {
-        await reader.cancel();
-        return null;
-      }
       chunks.push(value);
     }
-    const bytes = new Uint8Array(total);
-    let offset = 0;
-    for (const c of chunks) {
-      bytes.set(c, offset);
-      offset += c.byteLength;
-    }
-    const type = sniffImageType(bytes);
-    return type ? { bytes, type } : null;
   } catch {
+    // Past the cap, the timeout, or a broken stream: all one refusal.
+    await reader.cancel().catch(() => undefined);
     return null;
   }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const c of chunks) {
+    bytes.set(c, offset);
+    offset += c.byteLength;
+  }
+  const type = sniffImageType(bytes);
+  return type ? { bytes, type } : null;
 }
 
 function cacheStore(): Cache | null {
@@ -280,9 +261,7 @@ export async function handlePortalMedia(
   const delivery = hooksFor(loaded, now).delivery();
   const listing = delivery ? await delivery.listing() : null;
   const spec = MEDIA_ASSETS[asset];
-  const source = mediaSourceUrl(
-    (listing as Record<string, unknown> | null)?.[spec.field],
-  );
+  const source = mediaSourceUrl(listingImageUrl(listing, asset));
   if (!source) return refused();
 
   const version = await mediaVersion(source.toString());

@@ -1,11 +1,11 @@
 import * as React from "react";
-import { AlertTriangle } from "lucide-react";
-import { Button, EmptyState } from "../../components/ui/index.js";
+import { ErrorState } from "../../ui/ErrorState.js";
 
 /**
  * A page that throws while rendering takes only itself down, never the shell: the sidebar, the
  * switcher and the palette stay usable, so the operator can go somewhere that works. Keyed on the
- * route by its parent, so navigating away resets it.
+ * route by its parent, so navigating away resets it. The failure is the shared `ErrorState`
+ * (EXPERIENCE.md §9): what happened, Retry, and Copy details for a bug report.
  */
 export class PageErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -27,17 +27,9 @@ export class PageErrorBoundary extends React.Component<
         >
           This page failed to load
         </h1>
-        <EmptyState
-          icon={<AlertTriangle aria-hidden />}
-          title="Something on this page broke while it was drawing."
-          description={
-            this.state.error.message || "An unexpected error occurred."
-          }
-          action={
-            <Button onClick={() => this.setState({ error: null })}>
-              Try again
-            </Button>
-          }
+        <ErrorState
+          error={this.state.error}
+          onRetry={() => this.setState({ error: null })}
         />
       </section>
     );
