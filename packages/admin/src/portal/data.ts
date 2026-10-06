@@ -399,6 +399,23 @@ export function useRemoveDevice(product: string, licenseId: string) {
   });
 }
 
+/** PX-23: Remove from my library. Every view that lists the licence refreshes. */
+export function useRemoveLicense(product: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (licenseId: string) =>
+      portalApi.removeLicense(product, licenseId),
+    onSuccess: (_res, licenseId) => {
+      qc.removeQueries({ queryKey: portalKeys.license(product, licenseId) });
+      void qc.invalidateQueries({ queryKey: portalKeys.licenses });
+      void qc.invalidateQueries({ queryKey: portalKeys.library });
+      void qc.invalidateQueries({ queryKey: portalKeys.product(product) });
+      void qc.invalidateQueries({ queryKey: portalKeys.releases });
+      void qc.invalidateQueries({ queryKey: portalKeys.discover });
+    },
+  });
+}
+
 export function useDeleteAccount() {
   return useMutation({ mutationFn: () => portalApi.deleteMe() });
 }

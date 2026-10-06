@@ -14,7 +14,12 @@ export type PortalScenario =
   | "three"
   | "twelve"
   /** Sign-in licences: Quill alone, and Drift Kart held by a Steam key and by signing in. */
-  | "signIn";
+  | "signIn"
+  /**
+   * PX-23's origins (S-24 D21): Tidewater Studio held twice, by a key Mara added to a licence
+   * nobody was named for, and by one Harbor Audio assigned to her ("From Harbor Audio").
+   */
+  | "origins";
 
 type Reply = { status?: number; body: unknown };
 export type Handler = Reply | ((req: Request) => Reply);
@@ -133,6 +138,22 @@ const DRIFT_SIGNIN = lic("drift-kart", "Drift Kart", {
   activeKeyCount: 0,
   deviceCount: 1,
   activatedAt: NOW - 3 * DAY,
+});
+/** PX-23: Tidewater's key licence as the Worker now reports it: a key Mara added. */
+const TIDEWATER_KEY = {
+  ...TIDEWATER,
+  email: "",
+  origin: "key",
+  originStore: null,
+};
+/** PX-23: a second Tidewater licence, which Harbor Audio assigned to Mara's email. */
+const TIDEWATER_FREE = lic("tidewater", "Tidewater Studio", {
+  id: "lic_tidewater-free",
+  tier: "free",
+  deviceCount: 1,
+  activatedAt: NOW - 20 * DAY,
+  origin: "developer",
+  originStore: null,
 });
 const SIGN_IN_DEVICE: Record<string, [string, string, string]> = {
   lic_quill: ["quill-tv", "Living room PC", "windows"],
@@ -826,6 +847,8 @@ function licensesFor(s: PortalScenario) {
       return [NIGHTFALL, TIDEWATER, EMBER, MOSSGARDEN, ...MORE];
     case "signIn":
       return [NIGHTFALL, QUILL_SIGNIN, DRIFT_KEY, DRIFT_SIGNIN];
+    case "origins":
+      return [TIDEWATER_KEY, TIDEWATER_FREE];
     default:
       return [];
   }
@@ -966,59 +989,79 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
     ...MORE.filter((l) => l.product !== "quill"),
     QUILL_SIGNIN,
     DRIFT_SIGNIN,
+    TIDEWATER_FREE,
   ];
   // Quill is keyless in every scenario that lists it; only "signIn" gives it a device.
   const quill =
     s === "signIn" ? QUILL_SIGNIN : MORE.find((l) => l.product === "quill")!;
-  for (const l of ALL.map((x) => (x.product === "quill" ? quill : x))) {
-    const own = SIGN_IN_DEVICE[l.id];
-    routes[`/api/licenses/${l.product}/${l.id}`] = () => ({
-      body: {
-        ...l,
-        keys: l.keyCount
-          ? [
-              {
-                hash: "h",
-                status: "active",
-                label: null,
-                createdAt: l.activatedAt,
-                lastUsedAt: null,
-              },
-            ]
-          : [],
-        devices:
-          l.product === "nightfall"
-            ? [
-                device("d1", "Mara's MacBook Pro", "macos", NOW - 2 * 3600),
-                device("d2", "Studio PC", "windows", NOW - DAY),
-                device(
-                  "d3",
-                  "Old laptop",
-                  "windows",
-                  NOW - 200 * DAY,
-                  "deauthorized",
-                ),
-              ].filter((d) => !removed.has(d.deviceId))
-            : own && l.deviceCount
-              ? [device(own[0], own[1], own[2], NOW - 3 * 3600)].filter(
-                  (d) => !removed.has(d.deviceId),
-                )
-              : l.deviceCount
-                ? [
-                    device(
-                      `${l.product}-1`,
-                      "Mara's MacBook Pro",
-                      "macos",
-                      NOW - 3 * 3600,
-                    ),
-                  ]
-                : [],
-      },
-    });
-    routes[`POST /api/releases/${l.product}/rel_142/artifacts/n-mac/token`] = {
-      status: 201,
-      body: { url: "/download/tok" },
+  for (const base of ALL.map((x) => (x.product === "quill" ? quill : x))) {
+    const own = SIGN_IN_DEVICE[base.id];
+    // The scenario's own copy of the licence when it holds one (PX-23's origins), else the base.
+    const current = (): Lic =>
+      licenses.find((x) => x.product === base.product && x.id === base.id) ??
+      base;
+    // PX-23: Remove from my library; it stays out of every later answer (LX-26's block).
+    routes[`DELETE /api/licenses/${base.product}/${base.id}`] = () => {
+      if (!licenses.some((x) => x.product === base.product && x.id === base.id))
+        return { status: 404, body: { error: "not_found" } };
+      licenses = licenses.filter(
+        (x) => !(x.product === base.product && x.id === base.id),
+      );
+      return {
+        body: { ok: true, product: base.product, licenseId: base.id },
+      };
     };
+    routes[`/api/licenses/${base.product}/${base.id}`] = () => {
+      const l = current();
+      return {
+        body: {
+          ...l,
+          keys: l.keyCount
+            ? [
+                {
+                  hash: "h",
+                  status: "active",
+                  label: null,
+                  createdAt: l.activatedAt,
+                  lastUsedAt: null,
+                },
+              ]
+            : [],
+          devices:
+            l.product === "nightfall"
+              ? [
+                  device("d1", "Mara's MacBook Pro", "macos", NOW - 2 * 3600),
+                  device("d2", "Studio PC", "windows", NOW - DAY),
+                  device(
+                    "d3",
+                    "Old laptop",
+                    "windows",
+                    NOW - 200 * DAY,
+                    "deauthorized",
+                  ),
+                ].filter((d) => !removed.has(d.deviceId))
+              : own && l.deviceCount
+                ? [device(own[0], own[1], own[2], NOW - 3 * 3600)].filter(
+                    (d) => !removed.has(d.deviceId),
+                  )
+                : l.deviceCount
+                  ? [
+                      device(
+                        `${l.product}-1`,
+                        "Mara's MacBook Pro",
+                        "macos",
+                        NOW - 3 * 3600,
+                      ),
+                    ]
+                  : [],
+        },
+      };
+    };
+    routes[`POST /api/releases/${base.product}/rel_142/artifacts/n-mac/token`] =
+      {
+        status: 201,
+        body: { url: "/download/tok" },
+      };
   }
   // PX-W6: where each licence came from; Drift Kart's key licence was bought on Steam (store
   // name only, never an order id), so its origin reads "Steam key".

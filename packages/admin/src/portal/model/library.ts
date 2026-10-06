@@ -3,6 +3,7 @@ import type {
   PortalDownloadFile,
   PortalDownloads,
   PortalLibraryItem,
+  PortalLicenseOrigin,
   PortalLicenseSummary,
   PortalPresentation,
   PortalRelease,
@@ -221,56 +222,102 @@ const STORE_NAMES: Record<string, string> = {
   "polaris-key": "Polaris Key",
 };
 
-/** What a licence's origin is read from: the summary, its keys' known last characters (G7) and
- * the store of an active purchase on it (`purchase.store`, PX-W6; store name only). */
+/** What a licence's origin is read from: the summary, its keys' known last characters (G7),
+ * the store of an active purchase on it (`purchase.store`, PX-W6; store name only) and the
+ * developer's name (G1), for "From <Developer>". */
 export interface OriginFacts {
   keys?: readonly { last4?: string }[];
   store?: string | null;
+  developer?: string | null;
+}
+
+type OriginSummary = Pick<
+  PortalLicenseSummary,
+  "identityProvider" | "keyCount" | "origin" | "originStore"
+>;
+
+const ORIGIN_KINDS: readonly PortalLicenseOrigin[] = [
+  "key",
+  "store-key",
+  "store",
+  "developer",
+  "signin",
+];
+
+/**
+ * How the licence reached the person: the Worker's `origin` (PX-23, S-24 D21) when it sent one
+ * this build knows, else inferred from the older facts (a key, a store purchase, a sign-in) as
+ * before; an older Worker never says "developer" for a licence with a key.
+ */
+function originOf(
+  l: OriginSummary,
+  facts: OriginFacts,
+): { kind: PortalLicenseOrigin; store: string | null } {
+  const store = l.originStore ?? facts.store ?? null;
+  if (l.origin && (ORIGIN_KINDS as readonly string[]).includes(l.origin))
+    return { kind: l.origin as PortalLicenseOrigin, store };
+  const hasKey = l.keyCount > 0 || (facts.keys ?? []).length > 0;
+  if (store) return { kind: hasKey ? "store-key" : "store", store };
+  if (hasKey) return { kind: "key", store: null };
+  if (isSignInLicense(l)) return { kind: "signin", store: null };
+  return { kind: "developer", store: null };
 }
 
 /**
- * The licence's origin for a meta line, in plain words (owner, 2026-10-05): "From signing in",
- * "Steam key ending 3WPLDA" (or "Steam key" while the key's last characters aren't kept, G7),
- * "From Steam" for a store-bound licence with no key, "Key ending 3WPLDA" or "Added with a
- * key", else "From the developer".
+ * The licence's origin in plain words (owner, 2026-10-05; S-24 D21): "Key ending 3WPLDA" (or
+ * "Added with a key" while the key's last characters aren't kept, G7) for a key the person
+ * added, "Steam key ending 3WPLDA" (or "Steam key") for a store key, "From Steam" for a
+ * store-bound licence with no key, "From Tidewater Labs" for a licence the developer assigned
+ * (even though it has a key; "From the developer" without a name), "From signing in".
  */
 export function licenseOrigin(
-  l: Pick<PortalLicenseSummary, "identityProvider" | "keyCount">,
+  l: OriginSummary,
   facts: OriginFacts = {},
 ): string {
-  const keys = facts.keys ?? [];
-  const store = facts.store ? storeName(facts.store) : null;
-  const hasKey = l.keyCount > 0 || keys.length > 0;
-  if (hasKey) {
-    const last = keys.find((k) => k.last4)?.last4;
-    if (store) return last ? `${store} key ending ${last}` : `${store} key`;
-    return last ? `Key ending ${last}` : "Added with a key";
+  const { kind, store } = originOf(l, facts);
+  const last = (facts.keys ?? []).find((k) => k.last4)?.last4;
+  switch (kind) {
+    case "store-key": {
+      const name = storeName(store ?? "");
+      return last ? `${name} key ending ${last}` : `${name} key`;
+    }
+    case "store":
+      // "From the App Store", "From Steam", "From Google Play".
+      return `From ${store === "app-store" ? "the App Store" : storeName(store ?? "")}`;
+    case "key":
+      return last ? `Key ending ${last}` : "Added with a key";
+    case "signin":
+      return FROM_SIGNING_IN;
+    case "developer":
+      return `From ${facts.developer?.trim() || "the developer"}`;
   }
-  // "From the App Store", "From Steam", "From Google Play".
-  if (store)
-    return `From ${facts.store === "app-store" ? "the App Store" : store}`;
-  if (isSignInLicense(l)) return FROM_SIGNING_IN;
-  return "From the developer";
 }
 
 /**
  * The licence picker's short origin: "Sign-in", "Key …3WPLDA", "Steam key …3WPLDA", "Steam",
- * "Key"; null for a keyless licence from the developer (the tier says enough).
+ * "Key", "From Tidewater Labs" for a licence the developer assigned; null for one from a
+ * developer with no name (the tier says enough).
  */
 export function shortOrigin(
-  l: Pick<PortalLicenseSummary, "identityProvider" | "keyCount">,
+  l: OriginSummary,
   facts: OriginFacts = {},
 ): string | null {
-  const keys = facts.keys ?? [];
-  const store = facts.store ? storeName(facts.store) : null;
-  if (l.keyCount > 0 || keys.length > 0) {
-    const last = keys.find((k) => k.last4)?.last4;
-    const word = store ? `${store} key` : "Key";
-    return last ? `${word} …${last}` : word;
+  const { kind, store } = originOf(l, facts);
+  const last = (facts.keys ?? []).find((k) => k.last4)?.last4;
+  switch (kind) {
+    case "store-key": {
+      const word = `${storeName(store ?? "")} key`;
+      return last ? `${word} …${last}` : word;
+    }
+    case "store":
+      return storeName(store ?? "");
+    case "key":
+      return last ? `Key …${last}` : "Key";
+    case "signin":
+      return "Sign-in";
+    case "developer":
+      return facts.developer?.trim() ? `From ${facts.developer.trim()}` : null;
   }
-  if (store) return store;
-  if (isSignInLicense(l)) return "Sign-in";
-  return null;
 }
 
 /** §5.3: one status per license, first match wins. */
