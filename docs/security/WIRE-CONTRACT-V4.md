@@ -1102,8 +1102,8 @@ a new device and point the person at an account instead (PORTAL §4.6).
    1. The rate limit, the key and the licence, unchanged.
    2. An enrolled device is answered as before: never refused, never counted.
    3. Reserved for I-09 (`license_owned`).
-   4. When `identity.keyEntryRefusals` is on, the licence is in no account (rule 6) and
-      `used ≥ limit`: the flat
+   4. When `identity.keyEntryRefusals` is on, the licence is usable (an unusable one keeps its
+      `401` from step 5) and in no account (rule 6), and `used ≥ limit`: the flat
       `403 {"error":"key_entry_limit","message":…,"manageUrl":…,"keyEntries":{…}}`. `manageUrl`
       is the §5.3 link, omitted while the product's customer portal is off. Nothing is written
       but the refusal log.
@@ -1143,8 +1143,9 @@ a new device and point the person at an account instead (PORTAL §4.6).
      `{product, verdict, license, keyEntries, upgrade}`. `verdict` is `addable`,
      `license_owned` (the key's licence is in an account, never whose) or `portal_off`.
      `license` is `{tierName, term}` (`term`: `perpetual`, or the licence's end in epoch seconds)
-     or `null`. `upgrade` is `forced` only when the verdict is `addable`, refusals are on and
-     `used ≥ limit`, else `skippable`. It never answers an email, a masked email, a licence id,
+     or `null`. `upgrade` is `forced` exactly when step 4 would refuse a new device (the verdict
+     is `addable`, the licence is usable, refusals are on and `used ≥ limit`), else
+     `skippable`. It never answers an email, a masked email, a licence id,
      devices or an account. A string that is not a licence key answers `422`, an unknown key
      `401`, and the per-network budget (10 a minute) `429`.
 9. **Identity off.** Nothing is counted, nothing is refused and no member is sent. Entries

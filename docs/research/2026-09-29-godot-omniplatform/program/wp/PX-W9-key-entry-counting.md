@@ -49,6 +49,40 @@ accepted. It wins over revision 1 and over the text below where they differ.
   - The table owner is `core`.
   - `keyentry-refusals-off.json` moves here from I-09.
 
+## Corrections found while implementing (2026-10-06)
+
+The code is the fact; these are where it disagreed with the plan, and what was done.
+
+- **The switch's store name is `KEYENTRY_REFUSALS`**, not `IDENTITY_KEY_ENTRY_REFUSALS`. The AT-2
+  deny-list refuses a platform setting whose name holds a `KEY` token (`core/settings/rules.ts`)
+  or a `_KEY` (`test/platformSettings.test.ts`). The registry key stays
+  `identity.keyEntryRefusals`.
+- **The entry guard reads the row before the claim.** The plan's guard ("the device row now holds
+  the claimed seat") counts twice when two calls from one device race: both compute the same
+  ordinal, the second seat upsert is a no-op, and its guard still sees the seat. The entry
+  `INSERT` therefore runs first in `claimDeviceSeat`'s batch (the new `withClaim` option),
+  guarded on "not yet enrolled on this licence". A lost ordinal race still rolls both back. A
+  mutation check confirmed the race test fails without the guard.
+- **Step 4 refuses only a usable licence.** A disabled or expired licence keeps its `401` from
+  `authorizeDevice`, so `key_entry_limit` never invites someone to add a dead licence to an
+  account. The signed-out preview's `upgrade` is `forced` exactly when step 4 would refuse.
+- **The kit catalog's `signin.key.noEntries` is removed.** `pnpm gen:brand` refuses a kit string
+  that duplicates core copy, and the new core copy is that sentence. Kits read
+  `core.codes.key_entry_limit` instead. French keeps it only in English until a `copy.fr.json`
+  exists.
+- **SDK test fixtures changed, no SDK source except one table.** Tests in React, Swift, Godot and
+  Node used `key_entry_limit` as their example of an unknown code. They now use a code no catalog
+  has, and assert that `key_entry_limit` reads its own sentence. Godot's activation-table size pin
+  moved from 13 to 14. React's hand-written French table gained `key_entry_limit`, because its
+  test requires French copy for every registered wire code.
+- **`ui.kit.keyentry` is N/A `headless` in Node and Python**, the state PX-W9b keeps. It is
+  `planned` (`wp: "PX-W9b"`) in the four kits, and `identity.keyentry` is `planned` in all six.
+- **`keyentry-limit.json` presupposes `license.deactivate`** (`requires`): "this device removed"
+  is the client's own deactivation, so the refused step holds no token.
+- **The claim answers `keyEntries` on `already_yours` too** (no entry is recorded).
+- **`test/recordDeploy.test.ts` refuses the placeholder name** `00XX_license_key_entries.sql` until
+  the lead numbers the migration, by design (as with I-16 and PX-W12).
+
 ## Goal
 
 On a product with Identity on, every licence counts its key entries:
@@ -159,19 +193,19 @@ Key entries turn anonymous keys into accounts ([PORTAL.md §4.6](../../../../des
 
 ## Acceptance criteria
 
-- [ ] **Concurrency test.**
+- [x] **Concurrency test.**
   - N parallel activations of new devices write exactly as many rows as there are successes.
   - N parallel activations from one device write one row.
   - A refused or failed attempt, or an enrolled re-entry, writes none.
-- [ ] Installs are unaffected. Every existing transcript is byte-identical, there are regression
+- [x] Installs are unaffected. Every existing transcript is byte-identical, there are regression
       tests on refresh and offline grace, and document bytes are unchanged with counting on.
-- [ ] The three `keyentry-*` transcripts and their mirrors are recorded, and `gen:transcripts -- --check` is green.
-- [ ] Identity off: no `keyEntries` and no refusal. Switch off: counted past the limit, never refused.
-- [ ] The signed-out preview never counts, and never returns an email, licence id or device.
-- [ ] The migration and the `TABLE_OWNERS` entry land together.
-- [ ] `gen:constants`, `gen:settings`, `gen:platform-inventory` and `parity:check` are green, and the
+- [x] The three `keyentry-*` transcripts and their mirrors are recorded, and `gen:transcripts -- --check` is green.
+- [x] Identity off: no `keyEntries` and no refusal. Switch off: counted past the limit, never refused.
+- [x] The signed-out preview never counts, and never returns an email, licence id or device.
+- [x] The migration and the `TABLE_OWNERS` entry land together.
+- [x] `gen:constants`, `gen:settings`, `gen:platform-inventory` and `parity:check` are green, and the
       `routeCoverage` and `boundaries` tests pass.
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass.
 - [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify

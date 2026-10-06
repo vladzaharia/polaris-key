@@ -239,7 +239,15 @@ product's Identity toggle says. The Identity **service** gates only signing in _
 - **Library** — the licenses attached to an account, across products (the portal's default page).
 - **floating license** — a license attached to no account. It works on devices exactly as an
   attached one does, and the portal offers to add it to a Library.
-- **key entry** — one activation by typing or pasting a license key, in the portal or an app.
+- **key entry** — someone typing or pasting a license key to use it, counted per license while the
+  product's Identity service is on. It counts only when it enrols a new device (an app activation
+  or a browser key session) or when it adds the key to an account in the portal. Entering the key
+  again on a device already using it, signing in, enrolling and refreshing a token never count.
+- **key-entry limit** — how many key entries a product allows per license that is in no account
+  (`identity.keyEntry.limit`: 1 to 100, default 10, never unlimited while Identity is on). Past it,
+  and only while the platform's key-entry refusals are on, a new device is refused with
+  `key_entry_limit` and a link to add the key to an account; devices already using the key keep
+  working. "Key entries", never "activations".
 - **pairwise subject** — the opaque id (`ps_…`) one product sees for one account: random, stored,
   different for every product, never the account id. After an account merge the absorbed
   account's subject stays valid as an alias of the survivor's.
