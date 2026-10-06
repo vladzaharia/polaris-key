@@ -133,7 +133,7 @@
         gap: 28px;
       }
       .center {
-        left: 50%;
+        inset-inline-start: 50%;
         top: 50%;
         transform: translate(-50%, -50%);
       }
@@ -191,7 +191,7 @@
       /* Input hints: monochrome filled glyphs, switching with the last input device. */
       .hints {
         position: absolute;
-        right: 32px;
+        inset-inline-end: 32px;
         bottom: 28px;
         display: flex;
         gap: 22px;
@@ -299,7 +299,7 @@
         background: var(--pk-text-muted);
       }
       .seats span {
-        margin-left: 10px;
+        margin-inline-start: 10px;
         font-size: 16px;
         color: var(--pk-text-muted);
       }
@@ -318,7 +318,7 @@
       .hud {
         position: absolute;
         top: 36px;
-        left: 64px;
+        inset-inline-start: 64px;
         font: 700 28px/1 var(--pk-font-sans);
         color: #fff;
         text-shadow: 0 2px 6px rgb(0 0 0 / 0.5);
@@ -332,7 +332,7 @@
       }
       .toast {
         position: absolute;
-        left: 50%;
+        inset-inline-start: 50%;
         bottom: 96px;
         translate: -50% 0;
         width: 520px;
@@ -403,7 +403,7 @@
       .gsw::after {
         content: "";
         position: absolute;
-        right: 4px;
+        inset-inline-end: 4px;
         top: 4px;
         width: 26px;
         height: 26px;
@@ -679,7 +679,7 @@
           <div
             class="glass panel"
             style="
-              left: 72px;
+              inset-inline-start: 72px;
               top: 50%;
               transform: translateY(-50%);
               width: 520px;
@@ -1042,8 +1042,8 @@
           <div
             class="glass panel"
             style="
-              left: 64px;
-              right: 64px;
+              inset-inline-start: 64px;
+              inset-inline-end: 64px;
               top: 28px;
               bottom: 96px;
               padding: 20px 40px 32px;
@@ -1130,7 +1130,7 @@
           <div
             class="glass panel"
             style="
-              left: 72px;
+              inset-inline-start: 72px;
               top: 50%;
               transform: translateY(-50%);
               width: 520px;
@@ -1178,8 +1178,8 @@
           <div
             style="
               position: absolute;
-              left: 0;
-              right: 0;
+              inset-inline-start: 0;
+              inset-inline-end: 0;
               bottom: 64px;
               display: grid;
               justify-items: center;

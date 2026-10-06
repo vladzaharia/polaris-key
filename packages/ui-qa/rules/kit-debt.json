@@ -1,0 +1,77 @@
+{
+  "$comment": "Per-kit source-lint debt (bin/kit-lint.mjs): hits per rule and file that existed when the lint landed (UK-15), owned by each kit's modernisation work package (swiftui UK-07, compose UK-09, godot UK-11, qt UK-12). The lint fails on any hit beyond these counts and on a count above today's. Shrink it with: node packages/ui-qa/bin/kit-lint.mjs --record.",
+  "debt": [
+    {
+      "kit": "compose",
+      "rule": "compose-legacy-icons",
+      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisBoot.kt",
+      "count": 4
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-legacy-icons",
+      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisDevices.kt",
+      "count": 2
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-legacy-icons",
+      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisGate.kt",
+      "count": 2
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-legacy-icons",
+      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisScreen.kt",
+      "count": 8
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-legacy-icons",
+      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisSettings.kt",
+      "count": 2
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-legacy-icons",
+      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisUpdate.kt",
+      "count": 6
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-outlined-field",
+      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisDevices.kt",
+      "count": 2
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-outlined-field",
+      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisGate.kt",
+      "count": 2
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-stock-spinner",
+      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisScreen.kt",
+      "count": 1
+    },
+    {
+      "kit": "compose",
+      "rule": "compose-system-alert",
+      "file": "sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/PolarisDevices.kt",
+      "count": 2
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-border-shape",
+      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisKitChrome.swift",
+      "count": 2
+    },
+    {
+      "kit": "swiftui",
+      "rule": "swiftui-border-shape",
+      "file": "sdks/swift/Sources/PolarisKeyUI/PolarisLoginView.swift",
+      "count": 4
+    }
+  ]
+}

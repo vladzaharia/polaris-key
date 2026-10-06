@@ -93,8 +93,8 @@
       .ipad .bar {
         position: absolute;
         top: 0;
-        left: 0;
-        right: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
         height: 32px;
         display: flex;
         justify-content: space-between;
@@ -130,7 +130,7 @@
       }
       .formsheet {
         position: absolute;
-        left: 50%;
+        inset-inline-start: 50%;
         top: 92px;
         translate: -50% 0;
         width: 580px;
@@ -142,6 +142,11 @@
         box-shadow:
           inset 0 1px 0.5px rgb(255 255 255 / 0.22),
           0 30px 70px rgb(0 0 0 / 0.45);
+      }
+      /* A control on a blurred sheet is a flat fill, never a second backdrop-filter (§7.3). */
+      .formsheet .glass {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
       }
       [data-theme="light"] .formsheet {
         background: rgb(249 249 251 / 0.97);
@@ -211,7 +216,7 @@
       }
       .room .window-light {
         position: absolute;
-        left: 6%;
+        inset-inline-start: 6%;
         top: 8%;
         width: 26%;
         height: 58%;
@@ -222,7 +227,7 @@
       }
       .vwin {
         position: absolute;
-        left: 50%;
+        inset-inline-start: 50%;
         top: 92px;
         translate: -50% 0;
         width: 860px;
@@ -292,7 +297,7 @@
       }
       .grabber {
         position: absolute;
-        left: 50%;
+        inset-inline-start: 50%;
         top: 668px;
         translate: -50% 0;
         width: 120px;
@@ -305,7 +310,7 @@
       }
       .ornament {
         position: absolute;
-        left: 50%;
+        inset-inline-start: 50%;
         top: 612px;
         translate: -50% 0;
         height: 56px;
@@ -442,7 +447,7 @@
       .wscreen .time {
         position: absolute;
         top: 10px;
-        right: 22px;
+        inset-inline-end: 22px;
         font:
           600 15px/1 -apple-system,
           system-ui;

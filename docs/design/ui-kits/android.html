@@ -86,8 +86,8 @@
       .status {
         position: absolute;
         top: 0;
-        left: 0;
-        right: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
         height: 44px;
         display: flex;
         align-items: center;
@@ -103,10 +103,10 @@
       .cam {
         position: absolute;
         top: 14px;
-        left: 50%;
+        inset-inline-start: 50%;
         width: 22px;
         height: 22px;
-        margin-left: -11px;
+        margin-inline-start: -11px;
         border-radius: 50%;
         background: #000;
         z-index: 41;
@@ -114,17 +114,17 @@
       .navh {
         position: absolute;
         bottom: 10px;
-        left: 50%;
+        inset-inline-start: 50%;
         width: 108px;
         height: 4px;
-        margin-left: -54px;
+        margin-inline-start: -54px;
         border-radius: 2px;
         background: color-mix(in oklab, var(--pk-text-strong) 40%, transparent);
         z-index: 50;
       }
       .ambient {
         position: absolute;
-        left: 50%;
+        inset-inline-start: 50%;
         top: 250px;
         width: 560px;
         height: 560px;
@@ -197,8 +197,8 @@
       .appbar {
         position: absolute;
         top: 44px;
-        left: 0;
-        right: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
         height: 64px;
         display: flex;
         align-items: center;
@@ -257,8 +257,8 @@
       .field.focus::after {
         content: "";
         position: absolute;
-        left: 0;
-        right: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
         bottom: 0;
         height: 2px;
         background: var(--kit-focus);
@@ -331,7 +331,7 @@
         border-radius: 50%;
         box-shadow: inset 0 0 0 2px var(--pk-text-muted);
         flex: none;
-        margin-right: 2px;
+        margin-inline-end: 2px;
       }
       .radio.on {
         box-shadow: inset 0 0 0 2px var(--kit-accent-fg);
@@ -362,7 +362,7 @@
         text-align: center;
         color: var(--kit-accent);
         position: absolute;
-        right: 4px;
+        inset-inline-end: 4px;
         top: 4px;
         width: 24px;
         height: 24px;
@@ -375,8 +375,8 @@
       }
       .sw.off::after {
         content: "";
-        left: 8px;
-        right: auto;
+        inset-inline-start: 8px;
+        inset-inline-end: auto;
         top: 8px;
         width: 16px;
         height: 16px;
@@ -395,8 +395,8 @@
       }
       .sheet {
         position: absolute;
-        left: 0;
-        right: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
         bottom: 0;
         z-index: 10;
         border-radius: 28px 28px 0 0;
@@ -460,8 +460,8 @@
       /* IME (Gboard, 2026) */
       .ime {
         position: absolute;
-        left: 0;
-        right: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
         bottom: 0;
         height: 300px;
         background: #1b1e24;
@@ -511,8 +511,8 @@
       .ime .strip {
         position: absolute;
         top: 8px;
-        left: 12px;
-        right: 12px;
+        inset-inline-start: 12px;
+        inset-inline-end: 12px;
         height: 30px;
         display: flex;
         align-items: center;
@@ -525,8 +525,8 @@
       .hostlist {
         position: absolute;
         top: 180px;
-        left: 0;
-        right: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
         font-family: system-ui, sans-serif;
       }
       .hrow {
@@ -617,7 +617,7 @@
         position: absolute;
         top: 32px;
         bottom: 0;
-        left: 24px;
+        inset-inline-start: 24px;
         width: 412px;
         padding-top: 24px;
       }
@@ -625,8 +625,8 @@
         position: absolute;
         top: 56px;
         bottom: 24px;
-        left: 460px;
-        right: 24px;
+        inset-inline-start: 460px;
+        inset-inline-end: 24px;
         border-radius: 28px;
         background: var(--a-low);
         padding: 32px 36px;
@@ -664,7 +664,7 @@
       }
       .vscroll {
         position: absolute;
-        right: 3px;
+        inset-inline-end: 3px;
         top: 140px;
         width: 4px;
         height: 200px;
@@ -700,7 +700,7 @@
       }
       .pb-arrow {
         position: absolute;
-        left: 8px;
+        inset-inline-start: 8px;
         top: 50%;
         margin-top: -24px;
         width: 48px;
@@ -765,8 +765,8 @@
         position: absolute;
         top: 44px;
         bottom: 220px;
-        left: 28px;
-        right: 28px;
+        inset-inline-start: 28px;
+        inset-inline-end: 28px;
         display: grid;
         align-content: center;
         justify-items: center;
@@ -806,8 +806,8 @@
           position: absolute;
           top: 44px;
           bottom: 300px;
-          left: 28px;
-          right: 28px;
+          inset-inline-start: 28px;
+          inset-inline-end: 28px;
           display: grid;
           align-content: center;
           justify-items: center;
@@ -829,8 +829,8 @@
       <div
         style="
           position: absolute;
-          left: 24px;
-          right: 24px;
+          inset-inline-start: 24px;
+          inset-inline-end: 24px;
           bottom: 40px;
           display: grid;
           gap: 12px;
@@ -864,7 +864,7 @@
         style="
           position: absolute;
           top: 116px;
-          left: 20px;
+          inset-inline-start: 20px;
           margin: 0;
           font:
             400 32px/40px system-ui,
@@ -900,8 +900,8 @@
               style="
                 position: absolute;
                 top: 116px;
-                left: 24px;
-                right: 24px;
+                inset-inline-start: 24px;
+                inset-inline-end: 24px;
                 display: grid;
                 grid-template-columns: minmax(0, 1fr);
                 gap: 20px;
@@ -959,7 +959,7 @@
               </div>
             </div>
             <div
-              style="position: absolute; left: 24px; right: 24px; bottom: 316px"
+              style="position: absolute; inset-inline-start: 24px; inset-inline-end: 24px; bottom: 316px"
             >
               <div class="btn filled">Activate</div>
             </div>
@@ -1055,8 +1055,8 @@
               style="
                 position: absolute;
                 top: 96px;
-                left: 24px;
-                right: 24px;
+                inset-inline-start: 24px;
+                inset-inline-end: 24px;
                 display: grid;
                 gap: 24px;
               "
@@ -1104,8 +1104,8 @@
             <div
               style="
                 position: absolute;
-                left: 24px;
-                right: 24px;
+                inset-inline-start: 24px;
+                inset-inline-end: 24px;
                 bottom: 40px;
                 display: grid;
                 gap: 8px;
@@ -1127,7 +1127,7 @@
         <figcaption>android · device limit</figcaption>
         <div class="shot" data-shot="device-limit">
           <div class="screen">
-            <div style="position: absolute; top: 88px; left: 16px; right: 16px">
+            <div style="position: absolute; top: 88px; inset-inline-start: 16px; inset-inline-end: 16px">
               <div class="phead" style="margin: 0 8px 18px">
                 <span class="picon" data-art="tidewater" data-size="32"></span
                 ><span style="white-space: nowrap"
@@ -1187,8 +1187,8 @@
             <div
               style="
                 position: absolute;
-                left: 24px;
-                right: 24px;
+                inset-inline-start: 24px;
+                inset-inline-end: 24px;
                 bottom: 40px;
                 display: grid;
                 gap: 8px;
@@ -1289,7 +1289,7 @@
               <span class="ib"><span class="ms">arrow_back</span></span>
             </div>
             <div
-              style="position: absolute; top: 104px; left: 16px; right: 16px"
+              style="position: absolute; top: 104px; inset-inline-start: 16px; inset-inline-end: 16px"
             >
               <h1
                 class="display"
@@ -1478,8 +1478,8 @@
               style="
                 position: absolute;
                 top: 76px;
-                left: 24px;
-                right: 24px;
+                inset-inline-start: 24px;
+                inset-inline-end: 24px;
                 display: grid;
                 justify-items: center;
                 text-align: center;
@@ -1518,8 +1518,8 @@
                 style="
                   position: absolute;
                   top: 116px;
-                  left: 24px;
-                  right: 24px;
+                  inset-inline-start: 24px;
+                  inset-inline-end: 24px;
                   display: grid;
                   gap: 20px;
                 "
@@ -1544,8 +1544,8 @@
               <div
                 style="
                   position: absolute;
-                  left: 24px;
-                  right: 24px;
+                  inset-inline-start: 24px;
+                  inset-inline-end: 24px;
                   bottom: 40px;
                 "
               >
@@ -1612,8 +1612,8 @@
                 <div
                   style="
                     position: absolute;
-                    left: 24px;
-                    right: 24px;
+                    inset-inline-start: 24px;
+                    inset-inline-end: 24px;
                     bottom: 40px;
                     display: grid;
                     gap: 12px;
@@ -1642,8 +1642,8 @@
                 <div
                   style="
                     position: absolute;
-                    left: 24px;
-                    right: 24px;
+                    inset-inline-start: 24px;
+                    inset-inline-end: 24px;
                     bottom: 40px;
                     display: grid;
                     gap: 12px;

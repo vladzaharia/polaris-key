@@ -53,8 +53,8 @@
       .status {
         position: absolute;
         top: 0;
-        left: 0;
-        right: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
         height: 54px;
         display: flex;
         align-items: center;
@@ -70,7 +70,7 @@
       .island {
         position: absolute;
         top: 11px;
-        left: 50%;
+        inset-inline-start: 50%;
         transform: translateX(-50%);
         width: 124px;
         height: 36px;
@@ -86,7 +86,7 @@
       .home {
         position: absolute;
         bottom: 8px;
-        left: 50%;
+        inset-inline-start: 50%;
         transform: translateX(-50%);
         width: 140px;
         height: 5px;
@@ -220,13 +220,13 @@
         content: "";
         position: absolute;
         top: 0;
-        right: 0;
-        left: 18px;
+        inset-inline-end: 0;
+        inset-inline-start: 18px;
         height: 0.5px;
         background: var(--ios-sep);
       }
       .cell.ind + .cell::before {
-        left: 66px;
+        inset-inline-start: 66px;
       }
       .cell .t {
         flex: 1;
@@ -268,7 +268,7 @@
       .tog::after {
         content: "";
         position: absolute;
-        right: 2px;
+        inset-inline-end: 2px;
         top: 2px;
         width: 38px;
         height: 24px;
@@ -308,8 +308,8 @@
       }
       .sheet {
         position: absolute;
-        left: 0;
-        right: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
         bottom: 0;
         z-index: 10;
         border-radius: 40px 40px 0 0;
@@ -320,8 +320,8 @@
         background: #f7f7fa;
       }
       .sheet.float {
-        left: 8px;
-        right: 8px;
+        inset-inline-start: 8px;
+        inset-inline-end: 8px;
         bottom: 8px;
         border-radius: 40px 40px 48px 48px;
         background: rgb(28 30 36 / 0.74);
@@ -393,7 +393,7 @@
         background: var(--kit-accent-fg);
         border-radius: 1px;
         vertical-align: -4px;
-        margin-left: 1px;
+        margin-inline-start: 1px;
       }
       .paste {
         height: 36px;
@@ -414,8 +414,8 @@
       /* Keyboard: iOS 26 (larger rounded keys on a glass plate) */
       .kb {
         position: absolute;
-        left: 0;
-        right: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
         bottom: 0;
         height: 318px;
         padding: 12px 6px 0;
@@ -477,8 +477,8 @@
       .navbar {
         position: absolute;
         top: 58px;
-        left: 0;
-        right: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
         padding: 0 16px;
         display: flex;
         justify-content: space-between;
@@ -488,13 +488,13 @@
       .hosttitle {
         position: absolute;
         top: 112px;
-        left: 20px;
+        inset-inline-start: 20px;
       }
       .sessions {
         position: absolute;
         top: 170px;
-        left: 16px;
-        right: 16px;
+        inset-inline-start: 16px;
+        inset-inline-end: 16px;
         display: grid;
         gap: 12px;
       }
@@ -534,8 +534,8 @@
       .banner {
         position: absolute;
         bottom: 30px;
-        left: 10px;
-        right: 10px;
+        inset-inline-start: 10px;
+        inset-inline-end: 10px;
         z-index: 30;
         border-radius: 30px;
         padding: 12px 12px 12px 14px;
@@ -547,6 +547,11 @@
         box-shadow:
           inset 0 1px 0.5px rgb(255 255 255 / 0.22),
           0 12px 30px rgb(0 0 0 / 0.3);
+      }
+      /* A control on a blurred sheet is a flat fill, never a second backdrop-filter (§7.3). */
+      .banner .glass {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
       }
       [data-theme="light"] .banner {
         background: rgb(255 255 255 / 0.72);
@@ -566,7 +571,7 @@
         background: color-mix(in oklab, var(--pk-text-strong) 80%, transparent);
       }
       .seat span {
-        margin-left: 8px;
+        margin-inline-start: 8px;
         font-size: 15px;
         color: var(--pk-text-muted);
         font-variant-numeric: tabular-nums;
@@ -671,7 +676,7 @@
       }
       .scrollbar {
         position: absolute;
-        right: 4px;
+        inset-inline-end: 4px;
         top: 120px;
         width: 4px;
         height: 220px;
@@ -717,7 +722,7 @@
       .plan .p {
         font: 600 17px/22px var(--pk-font-sans);
         font-variant-numeric: tabular-nums;
-        text-align: right;
+        text-align: end;
       }
       .plan .p small {
         display: block;
@@ -754,8 +759,8 @@
       .lock-time {
         position: absolute;
         top: 120px;
-        left: 0;
-        right: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
         text-align: center;
         font:
           600 96px/1 -apple-system,
@@ -766,8 +771,8 @@
       .lock-date {
         position: absolute;
         top: 92px;
-        left: 0;
-        right: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
         text-align: center;
         font:
           600 20px/1 -apple-system,
@@ -780,8 +785,8 @@
       }
       .activity {
         position: absolute;
-        left: 12px;
-        right: 12px;
+        inset-inline-start: 12px;
+        inset-inline-end: 12px;
         bottom: 120px;
         border-radius: 28px;
         padding: 16px 18px;
@@ -925,8 +930,8 @@
         style="
           position: absolute;
           top: 176px;
-          left: 28px;
-          right: 28px;
+          inset-inline-start: 28px;
+          inset-inline-end: 28px;
           display: grid;
           justify-items: center;
           text-align: center;
@@ -953,8 +958,8 @@
         class="gate-actions"
         style="
           position: absolute;
-          left: 24px;
-          right: 24px;
+          inset-inline-start: 24px;
+          inset-inline-end: 24px;
           bottom: 34px;
           display: grid;
           gap: 12px;
@@ -1124,7 +1129,7 @@
               ></span>
             </div>
             <div
-              style="position: absolute; top: 120px; left: 16px; right: 16px"
+              style="position: absolute; top: 120px; inset-inline-start: 16px; inset-inline-end: 16px"
             >
               <div
                 style="
@@ -1194,7 +1199,7 @@
               <p class="sec-f">Tidewater Studio signs out on Work laptop.</p>
             </div>
             <div
-              style="position: absolute; left: 24px; right: 24px; bottom: 34px"
+              style="position: absolute; inset-inline-start: 24px; inset-inline-end: 24px; bottom: 34px"
             >
               <div class="glass prominent cap">
                 Remove Work laptop and continue
@@ -1328,7 +1333,7 @@
               ></span>
             </div>
             <div
-              style="position: absolute; top: 112px; left: 16px; right: 16px"
+              style="position: absolute; top: 112px; inset-inline-start: 16px; inset-inline-end: 16px"
             >
               <h1 class="title-xl" style="margin: 0 4px 18px">Account</h1>
               <div class="list">
@@ -1481,8 +1486,8 @@
               style="
                 position: absolute;
                 top: 78px;
-                left: 24px;
-                right: 24px;
+                inset-inline-start: 24px;
+                inset-inline-end: 24px;
                 display: grid;
                 justify-items: center;
                 text-align: center;
@@ -1524,8 +1529,8 @@
               style="
                 position: absolute;
                 top: 64px;
-                left: 16px;
-                right: 16px;
+                inset-inline-start: 16px;
+                inset-inline-end: 16px;
                 display: flex;
                 justify-content: flex-end;
               "
@@ -1541,8 +1546,8 @@
               style="
                 position: absolute;
                 top: 112px;
-                left: 24px;
-                right: 24px;
+                inset-inline-start: 24px;
+                inset-inline-end: 24px;
                 display: grid;
                 gap: 20px;
               "
@@ -1600,8 +1605,8 @@
             <div
               style="
                 position: absolute;
-                left: 24px;
-                right: 24px;
+                inset-inline-start: 24px;
+                inset-inline-end: 24px;
                 bottom: 34px;
                 display: grid;
                 gap: 10px;
@@ -1721,8 +1726,8 @@
                 <div
                   style="
                     position: absolute;
-                    left: 24px;
-                    right: 24px;
+                    inset-inline-start: 24px;
+                    inset-inline-end: 24px;
                     bottom: 34px;
                     display: grid;
                     gap: 12px;
@@ -1753,8 +1758,8 @@
                 <div
                   style="
                     position: absolute;
-                    left: 24px;
-                    right: 24px;
+                    inset-inline-start: 24px;
+                    inset-inline-end: 24px;
                     bottom: 34px;
                     display: grid;
                     gap: 12px;

@@ -29,7 +29,9 @@
     "conformance": "turbo run test --filter=@polaris-key/conformance-node",
     "format": "prettier --check \"**/*.{ts,tsx,md,json}\"",
     "format:fix": "prettier --write \"**/*.{ts,tsx,md,json}\"",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "clean": "turbo run clean && rm -rf node_modules",
+    "ui:lint": "tsx packages/ui-qa/src/cli/lint.ts",
+    "ui:report": "tsx packages/ui-qa/src/cli/report.ts"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
