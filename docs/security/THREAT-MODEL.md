@@ -1210,7 +1210,11 @@ symbol); review catches the rest.
   manifest), cannot touch another product (the slug must be the system product's, checked before
   anything is written), cannot re-enable a service, `packageFeeds` or a feed an operator switched
   off (the bootstrap only creates), and cannot overwrite an operator-claimed publisher or claimed
-  access modes. A per-IP limit (fail closed) bounds unverified calls. Residual: the trust is the
+  access modes. Since ST-20 it is the system product's only manifest writer (a webhook or console
+  resync of it is refused), it ends a break-glass claim whose field the deployed `.pkey/` changes
+  or whose 7 days ran out, writing the manifest's value for that field only, and its answer lists
+  the live break-glass claims by key and expiry (§3 "Manifest-authoritative mode"). A per-IP limit
+  (fail closed) bounds unverified calls. Residual: the trust is the
   deploy job's, which already holds `CLOUDFLARE_API_TOKEN`; a token captured from that job could
   be replayed with a different body within its lifetime only if it was never used, and the job
   uses it at once.
@@ -6662,9 +6666,39 @@ from the keyring endpoint.
   console row; a console row holding a new manifest id is kept and reported as a conflict.
   **Residual:** claims make the console the stronger writer for those keys, so a stolen admin
   session (T7) can now pin a value that the repo cannot override until someone reverts it; the
-  claim, its author and the revert are all audited, and the system product refuses console claims
-  outright (manifest-authoritative, S-18 §4.5 item 8) until ST-20's expiring, reason-bearing
-  break-glass claims. Existing rows default to `manifest` until ST-01c's backfill runs.
+  claim, its author and the revert are all audited, and a manifest-authoritative product (below)
+  takes only expiring, reason-bearing break-glass claims. Existing rows default to `manifest`
+  until ST-01c's backfill runs.
+- **Manifest-authoritative mode and break-glass claims (ST-20, notes/S-18 §4.5 items 7–8).** A
+  product setting, `core.manifest.authoritative`, makes `.pkey/` the only writer of its claimable
+  settings: the products PATCH and the catalog publish refuse a console write to them (409
+  `manifest_authoritative`) unless it carries `breakGlass: { reason }` (1–500 characters; L2 in the
+  console), and that claim's `product_settings.expires_at` is at most 7 days out. An apply ends it
+  sooner, in the apply's own batch, when the manifest it applies declares a different value for the
+  field than the last applied snapshot did (`claimsForApply`), so committing the fix to `.pkey/`
+  takes the field back; an apply that leaves the field alone keeps the claim, so an unrelated push or
+  deploy cannot undo an incident fix. An expired claim stops counting at once (every claim guard
+  reads `expires_at > now`, no job needed) and its row is removed, audited, at the next apply. The
+  ending is guarded twice: the row is deleted only at the version read (a re-claim made since
+  survives), and the value write and the `setting.breakGlass.end` audit row run only while no live
+  claim remains. Off by default for a customer product (an operator writes it, audited; only a
+  repo-linked product may turn it on). **The system product** is manifest-authoritative by a
+  registry rule, not a row: `systemLock` on the entry, which the registry test requires for every
+  key `SYSTEM_LOCKED_KEYS` names, so no console write or deleted row turns it off (409 `locked`).
+  Its single writer is the deploy hook (§3 "The deploy hook"): a GitHub webhook push to the monorepo,
+  the console's Resync and its dry run are refused ("the system product is applied by the deploy
+  hook", reason `system_product`) before any GitHub read and without a sync-state row, so the
+  manifest applied to it is always the deployed tag's, never the default branch's head. Every resync
+  answer, the console's result panel, `product_sync_state`'s message, the deploy hook's answer and its
+  platform activity row list the live break-glass claims. **Residual:** a stolen admin session (T7)
+  can still make a break-glass claim, but it needs a reason that is audited, it ends within 7 days
+  or at the next apply that changes the field, and every deploy names it in the job log (as a
+  warning). The deploy job's log may be readable beyond the operators, so the hook's answer carries
+  each claim's key and expiry only; the reason and the claimant stay in the console and the
+  platform activity row. The mode governs the five `product_settings` claim keys; the settings
+  still claimed through their older markers (`services_source`, `compat_source`, `access_source`,
+  the fingerprint and auto-issue policies, tier and profile rows, the trusted publisher) are not
+  yet refused by it, and move to the one write path with ST-04/ST-05.
 - **The IdP is trusted for `groups`, and `groups` is the entire admin authorization decision.**
 
 ## 4. Adversaries

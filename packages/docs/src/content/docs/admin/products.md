@@ -131,7 +131,9 @@ second run creates nothing and leaves an operator's later feed settings alone. I
 `slug_taken`).
 
 The system product cannot be deleted or renamed (409, `system_product`), and the console keeps it
-out of the product switcher and the Products list.
+out of the product switcher and the Products list. It is always
+[manifest-authoritative](#manifest-authoritative-mode): every production deploy applies the root
+`.pkey/` at the deployed commit, and nothing else writes it.
 
 ### The `adminGroup` field is metadata, not a grant
 
@@ -200,8 +202,37 @@ claims it for the console: you confirm first, the row's source badge then reads 
 console**, and resyncs leave it alone. **Revert…** in that badge restores the value from the
 last applied manifest at once, or at the next resync for a product not applied since claims
 arrived. Publishing the catalog claims it the same way, with Revert in the catalog's source
-badge. The admin group is read-only there: change it in `.pkey/product`. The system product
-follows the monorepo's `.pkey/` and refuses console claims.
+badge. The admin group is read-only there: change it in `.pkey/product`.
+
+### Manifest-authoritative mode
+
+A repository-linked product can make its `.pkey/` the only writer of the settings it declares:
+turn on **Manifest-authoritative** in Settings → Repository (you confirm first). Off is the
+default. While it is on, saving the display name, a licence default or the catalog in the console
+is refused unless it is a **break-glass claim**, for an incident that cannot wait for a commit:
+
+- You give a reason (up to 500 characters, kept in the audit log) and confirm a level-2 dialog.
+  The API takes the same write with `breakGlass: { reason }`; without it the answer is 409
+  `manifest_authoritative`.
+- The claim ends after **7 days**, or at the **first resync that changes that field** in
+  `.pkey/`, whichever comes first. The manifest's value then applies. A resync that leaves the
+  field alone keeps the claim, so an unrelated push cannot undo the fix.
+- The setting's row says when its claim ends, and every resync's result lists the live
+  break-glass claims and the ones it ended. Revert to manifest ends one early.
+
+To keep a break-glass value, commit it to `.pkey/`. Settings claimed before you turned the mode on
+stay claimed until you revert them.
+
+**The system product** is manifest-authoritative always; the switch shows it locked, and the
+settings registry, not a stored value, fixes it (`core.manifest.authoritative`). Its manifest is the
+monorepo's root `.pkey/`, and the deploy hook (`POST /webhooks/deploy`, called by `deploy.yml`, see
+[Releasing](/docs/contribute/releasing/)) applies it with every production deploy at the deployed
+commit, so two environments deployed from the same commit have
+the same settings. That makes the deploy hook its only writer: a push webhook for the platform
+repository and a console Resync of it are refused with "the system product is applied by the
+deploy hook", and Settings offers no Resync for it. Its break-glass claims end after 7 days or at
+the first deploy that changes the field, and each deploy's log names the live ones as warnings.
+Its display name and admin group stay the manifest's.
 
 ### Linking a repository to an existing product
 
