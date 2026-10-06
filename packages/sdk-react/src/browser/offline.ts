@@ -67,13 +67,46 @@ export interface OfflineState {
 
 const DB_NAME = "polaris-key";
 const STORE_NAME = "offline";
+/** The device token (bearer mode, `./bearer/store.ts`). A separate object store, so importing a
+ *  bundle — which REPLACES the offline record (§7 step 5) — never drops the token, as in Node. */
+export const TOKEN_STORE_NAME = "tokens";
+/** Version 2 added `tokens`; the upgrade creates whichever store is missing. */
+const DB_VERSION = 2;
 
-function request<T>(req: IDBRequest<T>): Promise<T> {
+export function request<T>(req: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     req.onsuccess = () => resolve(req.result);
     req.onerror = () =>
       reject(req.error ?? new Error("IndexedDB request failed"));
   });
+}
+
+const openers = new WeakMap<IDBFactory, () => Promise<IDBDatabase>>();
+
+/** The one `polaris-key` database for a factory, opened once and shared by the offline and
+ *  token stores. A failed open is forgotten, so it does not poison every later call. */
+export function openPolarisDb(factory: IDBFactory): Promise<IDBDatabase> {
+  let open = openers.get(factory);
+  if (!open) {
+    let db: Promise<IDBDatabase> | null = null;
+    open = () => {
+      if (!db) {
+        const req = factory.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = () => {
+          for (const name of [STORE_NAME, TOKEN_STORE_NAME])
+            if (!req.result.objectStoreNames.contains(name))
+              req.result.createObjectStore(name);
+        };
+        db = request(req);
+        db.catch(() => {
+          db = null;
+        });
+      }
+      return db;
+    };
+    openers.set(factory, open);
+  }
+  return open();
 }
 
 /**
@@ -87,30 +120,20 @@ export function indexedDbOfflineStore(
     : indexedDB,
 ): OfflineStore | null {
   if (!factory) return null;
-  let db: Promise<IDBDatabase> | null = null;
-  const open = (): Promise<IDBDatabase> => {
-    if (!db) {
-      const req = factory.open(DB_NAME, 1);
-      req.onupgradeneeded = () => {
-        if (!req.result.objectStoreNames.contains(STORE_NAME))
-          req.result.createObjectStore(STORE_NAME);
-      };
-      db = request(req);
-      // A failed open must not poison every later call.
-      db.catch(() => {
-        db = null;
-      });
-    }
-    return db;
-  };
   return {
     async read(product) {
-      const tx = (await open()).transaction(STORE_NAME, "readonly");
+      const tx = (await openPolarisDb(factory)).transaction(
+        STORE_NAME,
+        "readonly",
+      );
       const value = await request(tx.objectStore(STORE_NAME).get(product));
       return isRecord(value) ? value : null;
     },
     async write(product, record) {
-      const tx = (await open()).transaction(STORE_NAME, "readwrite");
+      const tx = (await openPolarisDb(factory)).transaction(
+        STORE_NAME,
+        "readwrite",
+      );
       await request(tx.objectStore(STORE_NAME).put(record, product));
     },
   };

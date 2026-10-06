@@ -100,6 +100,23 @@ class DesktopInstallDriverTest {
     }
 
     @Test
+    fun updateClientJournalsTheHandOff() = runBlocking {
+        // §3.13: the driver journals nothing itself; UpdateClient.install records update_applied
+        // for a Started hand-off, naming the release by its version (no tag on this record).
+        val c = core("https://key.plrs.im", token = null, local = true)
+        val u = UpdateClient(c, UpdateClientOptions(pinnedReleaseKeys = TestSigner("pkey-test-release").trust, installDriver = driver(tempDir(), Opened())))
+        assertEquals(InstallResult.Started, u.install(binary()))
+        val applied = c.updateEvents.events().single()
+        assertEquals(im.plrs.key.core.UpdateEvent.updateApplied, applied.event)
+        assertEquals("1.4.0", applied.release)
+        assertEquals("1.2.0", applied.fromRelease)
+        // A failed hand-off journals nothing.
+        val failed = UpdateClient(c, UpdateClientOptions(pinnedReleaseKeys = TestSigner("pkey-test-release").trust, installDriver = driver(tempDir(), Opened(), payload = bytes + byteArrayOf(1))))
+        assertTrue(failed.install(binary()) is InstallResult.Failed)
+        assertEquals(1, c.updateEvents.events().size)
+    }
+
+    @Test
     fun aDigestMismatchOpensNothing() = runBlocking {
         val dir = tempDir()
         val opened = Opened()

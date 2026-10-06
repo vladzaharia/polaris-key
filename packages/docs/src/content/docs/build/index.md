@@ -23,6 +23,8 @@ those documents and gates the app on them. Everything below is one of those thre
 | [The .pkey/ manifest](/docs/build/manifest/)                          | The three files, the `ConfigEntry` catalog shape, editor tooling, and how a resync reconciles the manifest with admin overrides    |
 | [Onboarding a product](/docs/build/onboarding/)                       | The end-to-end walkthrough — stand up the platform, declare services, register, integrate, ship — using djdl as the worked example |
 | [Registering a product](/docs/build/registering/)                     | How a product becomes a row: repo-link vs. manual create, and the `modules`/`devices.registration` switches                        |
+| [Integrate in 5 minutes](/docs/build/quickstart/)                     | One page per SDK: `pkey sdk --lang <x> --write`, then create the client, gate and read config                                      |
+| [Recipes](/docs/build/recipes/)                                       | Device-limit recovery, server-side licence checks, crash tags, attestation-gated products, store outlets                           |
 | [SDKs](/docs/build/sdks/)                                             | One wire contract, seven surfaces — Node, React, Python, Swift, Godot, Kotlin and the CLI                                          |
 | [Installing the SDKs from the feeds](/docs/build/install-from-feeds/) | Each SDK on its package feed at `pkg.plrs.im`, and the snippet every client needs                                                  |
 | [The wire contract](/docs/build/wire/)                                | The frozen JWS envelope your client verifies, for debugging a rejection or porting a sixth SDK                                     |

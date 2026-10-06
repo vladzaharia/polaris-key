@@ -18,6 +18,7 @@
 import type { DeviceFacts, JSONValue } from "@polaris-key/protocol/core";
 import type { PackInstallReport } from "@polaris-key/client-core/packs";
 import { collectFacts, type ProbeDeclaration } from "../devices/facts.js";
+import type { UpdateEventEntry } from "../update/journal.js";
 import type { CacheManager } from "./cache.js";
 import type { CoreContext } from "./context.js";
 
@@ -33,7 +34,20 @@ export type ReportSnapshot = {
   /** Recent pack installs (P4-17): the pairs a lazy delta could serve. Bounded by the engine
    *  (8) and again by the Worker. */
   packInstalls?: PackInstallReport[];
+  /** The gate's status (SDK parity pass §3.13), as Godot reports it. */
+  gate?: { status: string };
+  /** The outlet id this install reports under (allowlisted, ≤ 64 chars). */
+  outlet?: string;
+  /** P6-03 update-health events, at most 16, oldest first. */
+  updates?: UpdateEventEntry[];
 } & Partial<DeviceFacts>;
+
+/** What the facade knows beyond the cache: the gate, the outlet and the pending events. */
+export interface SnapshotExtras {
+  gate?: string | null;
+  outlet?: string | null;
+  updates?: UpdateEventEntry[];
+}
 
 /** Assemble the report body from re-verified content plus this host's software facts. */
 export function buildSnapshot(
@@ -42,6 +56,7 @@ export function buildSnapshot(
   caps?: string[],
   packSetId: string | null = null,
   packInstalls: PackInstallReport[] = [],
+  extras: SnapshotExtras = {},
 ): ReportSnapshot {
   const config: Record<string, JSONValue> = {};
   const entitlements: Record<string, JSONValue> = {};
@@ -67,6 +82,11 @@ export function buildSnapshot(
     ...(caps ? { caps } : {}),
     ...(packSetId !== null ? { content: { packSetId } } : {}),
     ...(packInstalls.length > 0 ? { packInstalls } : {}),
+    ...(extras.gate ? { gate: { status: extras.gate } } : {}),
+    ...(extras.outlet ? { outlet: extras.outlet.slice(0, 64) } : {}),
+    ...(extras.updates && extras.updates.length > 0
+      ? { updates: extras.updates }
+      : {}),
   };
 }
 

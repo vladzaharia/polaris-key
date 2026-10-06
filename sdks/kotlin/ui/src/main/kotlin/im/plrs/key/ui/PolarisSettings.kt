@@ -1,6 +1,10 @@
 // The settings screen: the licence (an entitlement badge, who it is licensed to, the entitlements
 // it grants) and the product's user-facing configuration values with where each comes from.
-// Read-only: the kit renders what the SDK resolved; changing a value is the product's own UI.
+//
+// The headless half is editable (`settingsActions(editable = true)`, notes/SDK-PARITY-PASS.md §3.11):
+// each row the catalog types carries a PolarisSettingEditor, PolarisSettingsState.set/reset persist a
+// local override (`config.set` / `config.clear`), and an enforced row has no editor. The screen still
+// renders the read-only summary: drawing the inputs is the UI-kit program's (docs/design/UI-KITS.md).
 
 package im.plrs.key.ui
 
@@ -35,6 +39,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import im.plrs.key.config.CatalogEntry
 import im.plrs.key.config.ConfigSource
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.LicenseStatus
@@ -61,6 +66,18 @@ public data class PolarisLicenseSummary(
     val entitlements: List<String> = emptyList(),
 )
 
+/** How an editable row takes a new value, typed from the catalog entry's schema. */
+public sealed interface PolarisSettingEditor {
+    public data class Toggle(val checked: Boolean) : PolarisSettingEditor
+
+    /** One of [options] (label to value); [selected] is the current value's index, or -1. */
+    public data class Choice(val options: List<Pair<String, JsonElement>>, val selected: Int) : PolarisSettingEditor
+
+    public data class Number(val value: String, val integer: Boolean, val min: Double? = null, val max: Double? = null) : PolarisSettingEditor
+
+    public data class Text(val value: String, val maxLength: Int? = null) : PolarisSettingEditor
+}
+
 /** One configuration value. */
 public data class PolarisSettingEntry(
     val key: String,
@@ -69,18 +86,51 @@ public data class PolarisSettingEntry(
     /** The value as text. */
     val value: String,
     val source: ConfigSource? = null,
+    /** The input an editable screen renders; null keeps the row read-only. */
+    val editor: PolarisSettingEditor? = null,
+    /** The catalog's description, shown under an editable row. */
+    val description: String? = null,
 )
 
 public data class PolarisSettingsUi(
     val loading: Boolean = true,
     val license: PolarisLicenseSummary? = null,
     val entries: List<PolarisSettingEntry> = emptyList(),
+    /** The copy of the last refused change (a value the catalog refuses, an enforced key), or null. */
+    val error: String? = null,
 )
 
-/** The SDK reads the settings screen makes. [PolarisKeyClient.settingsActions] adapts the umbrella client. */
+/** The SDK calls the settings screen makes. [PolarisKeyClient.settingsActions] adapts the umbrella client. */
 public interface PolarisSettingsActions {
     public suspend fun license(): PolarisLicenseSummary?
     public suspend fun entries(): List<PolarisSettingEntry>
+
+    /** Persist [value] for [key] (a local override). Throws the SDK's refusal. */
+    public suspend fun set(key: String, value: JsonElement) {}
+
+    /** Clear the local override for [key]. */
+    public suspend fun reset(key: String) {}
+}
+
+/** The editor the catalog [entry] implies for [value], or null when the kit has no input for it. */
+public fun settingEditor(entry: CatalogEntry?, value: JsonElement): PolarisSettingEditor? {
+    val type = entry?.type ?: when {
+        value is JsonPrimitive && value.isString -> "string"
+        value is JsonPrimitive && value.booleanOrNull != null -> "boolean"
+        value is JsonPrimitive && value.content.toBigDecimalOrNull() != null -> if (value.content.toBigDecimal().stripTrailingZeros().scale() <= 0) "integer" else "number"
+        else -> null
+    }
+    entry?.enumValues?.let { options ->
+        val labelled = options.map { settingText(it) to it }
+        return PolarisSettingEditor.Choice(labelled, options.indexOf(value))
+    }
+    fun num(name: String) = (entry?.schema?.get(name) as? JsonPrimitive)?.takeIf { !it.isString }?.content?.toDoubleOrNull()
+    return when (type) {
+        "boolean" -> PolarisSettingEditor.Toggle((value as? JsonPrimitive)?.booleanOrNull == true)
+        "integer", "number" -> PolarisSettingEditor.Number(settingText(value).takeIf { value !is JsonNull } ?: "", type == "integer", num("minimum"), num("maximum"))
+        "string" -> PolarisSettingEditor.Text((value as? JsonPrimitive)?.takeIf { it.isString }?.content ?: "", num("maxLength")?.toInt())
+        else -> null
+    }
 }
 
 /** A JSON config value as the text a settings row shows. */
@@ -91,10 +141,23 @@ public fun settingText(value: JsonElement): String = when {
     else -> value.toString()
 }
 
-/** The umbrella client as settings reads: the licence summary and the user-facing config values. */
-public fun PolarisKeyClient.settingsActions(labels: Map<String, String> = emptyMap()): PolarisSettingsActions {
+/**
+ * The umbrella client as settings reads: the licence summary and the user-facing config values.
+ * With [editable], each row the catalog (`config.fetchCatalog()`) types gets an input, and changes
+ * persist as local overrides (`config.set` / `config.clear`); catalog labels and descriptions win
+ * over [labels] unless [labels] names the key.
+ */
+public fun PolarisKeyClient.settingsActions(labels: Map<String, String> = emptyMap(), editable: Boolean = false): PolarisSettingsActions {
     val client = this
     return object : PolarisSettingsActions {
+        override suspend fun set(key: String, value: JsonElement) {
+            client.config.set(key, value)
+        }
+
+        override suspend fun reset(key: String) {
+            client.config.clear(key)
+        }
+
         override suspend fun license(): PolarisLicenseSummary {
             val state: LicenseState = client.status()
             val profile = client.license.profile()
@@ -102,15 +165,21 @@ public fun PolarisKeyClient.settingsActions(labels: Map<String, String> = emptyM
             return PolarisLicenseSummary(state.status, profile?.name?.takeIf { it.isNotBlank() }, granted)
         }
 
-        override suspend fun entries(): List<PolarisSettingEntry> =
-            client.config.listUserConfig().map { entry ->
+        override suspend fun entries(): List<PolarisSettingEntry> {
+            val catalog = if (editable) client.config.catalog ?: client.config.fetchCatalog() else client.config.catalog
+            return client.config.listUserConfig().map { entry ->
+                val item = catalog?.entry(entry.key)
+                val source = if (entry.enforced) ConfigSource.enforced else client.config.configSource(entry.key)
                 PolarisSettingEntry(
                     key = entry.key,
-                    label = labels[entry.key] ?: entry.key,
+                    label = labels[entry.key] ?: item?.label ?: entry.key,
                     value = settingText(entry.value),
-                    source = if (entry.enforced) ConfigSource.enforced else client.config.configSource(entry.key),
+                    source = source,
+                    editor = if (editable && !entry.enforced && item?.kind != "secret") settingEditor(item, entry.value) else null,
+                    description = if (editable) item?.description else null,
                 )
             }
+        }
     }
 }
 
@@ -126,6 +195,36 @@ public class PolarisSettingsState(private val actions: PolarisSettingsActions, p
             val entries = guarded { actions.entries() } ?: emptyList()
             _ui.value = PolarisSettingsUi(loading = false, license = license, entries = entries)
         }
+    }
+
+    /** Change [key] to [value] (an editable row's input), then re-read the rows. */
+    public fun set(key: String, value: JsonElement) {
+        scope.launch { change { actions.set(key, value) } }
+    }
+
+    /** Clear [key]'s local override (the row's Reset), then re-read the rows. */
+    public fun reset(key: String) {
+        scope.launch { change { actions.reset(key) } }
+    }
+
+    /** Dismiss the last refusal. */
+    public fun dismissError() {
+        _ui.value = _ui.value.copy(error = null)
+    }
+
+    private suspend fun change(block: suspend () -> Unit) {
+        val error = try {
+            block()
+            null
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: im.plrs.key.core.PolarisException) {
+            if (e.code == im.plrs.key.core.ErrorCode.managedByAdmin) PolarisCopy().settingsLocked else e.message ?: e.code
+        } catch (e: Exception) {
+            e.message ?: "error"
+        }
+        val entries = guarded { actions.entries() } ?: _ui.value.entries
+        _ui.value = _ui.value.copy(entries = entries, error = error)
     }
 
     private suspend fun <T> guarded(block: suspend () -> T): T? = try {

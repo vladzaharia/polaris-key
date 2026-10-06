@@ -1,0 +1,69 @@
+{
+  "_source": "App Store Connect API v1 answers for GET /v1/apps (fields name,bundleId) and its 401/403 error documents, in Apple's published shapes (developer.apple.com/documentation/appstoreconnectapi). Ids, names and bundle ids are fictional.",
+  "apps": {
+    "status": 200,
+    "body": {
+      "data": [
+        {
+          "type": "apps",
+          "id": "1234567890",
+          "attributes": { "name": "Tonebox", "bundleId": "gg.acme.tonebox" },
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/apps/1234567890"
+          }
+        },
+        {
+          "type": "apps",
+          "id": "2222222222",
+          "attributes": { "name": "Dice", "bundleId": "gg.acme.dice" },
+          "links": {
+            "self": "https://api.appstoreconnect.apple.com/v1/apps/2222222222"
+          }
+        }
+      ],
+      "links": {
+        "self": "https://api.appstoreconnect.apple.com/v1/apps?limit=200"
+      },
+      "meta": { "paging": { "total": 2, "limit": 200 } }
+    }
+  },
+  "notAuthorized": {
+    "status": 401,
+    "body": {
+      "errors": [
+        {
+          "status": "401",
+          "code": "NOT_AUTHORIZED",
+          "title": "Authentication credentials are missing or invalid.",
+          "detail": "Provide a properly configured and signed bearer token, and make sure that it has not expired. Learn more about Generating Tokens for API Requests https://developer.apple.com/go/?id=api-generating-tokens"
+        }
+      ]
+    }
+  },
+  "forbidden": {
+    "status": 403,
+    "body": {
+      "errors": [
+        {
+          "status": "403",
+          "code": "FORBIDDEN_ERROR",
+          "title": "This request is forbidden for security reasons",
+          "detail": "The API key in use does not allow this request"
+        }
+      ]
+    }
+  },
+  "rateLimited": {
+    "status": 429,
+    "body": {
+      "errors": [
+        {
+          "status": "429",
+          "code": "RATE_LIMIT_EXCEEDED",
+          "title": "The request rate limit has been reached.",
+          "detail": "We've received too many requests for this API. Please wait and try again or slow down your request rate."
+        }
+      ]
+    }
+  }
+}

@@ -82,6 +82,11 @@ taken with the recommended option, as the lead delegated.
   on lists Cloud Sync in the L1 confirm and sends only the two flipped flags. SP-00's new HTTP
   transcripts are regenerated (they now carry `sync`). The action bundle and validation-codes page
   are regenerated, not hand-merged.
+  A third merge (main at 8939bfebc) brought SP-02, which moved the mirror renderers into
+  `@polaris-key/cli/mirrors` (`packages/cli/src/mirrors.ts`) with `tools/gen-mirrors.ts` as a thin
+  front end: the user-settings rendering (`userPolicies` and the typed `UserSettingKey` /
+  `USER_SETTINGS` in every language) moves into the CLI module, so `pkey mirror` emits it too, and
+  `tools/gen-mirrors.ts` re-exports `userPolicies` for its test.
 - **Known seams left to U-05** (decided: do not widen this package). The legacy
   `{schemaVersion, catalog:[…]}` schema form validates a top-level `cloudSync` but
   `normalizeCatalog` drops it; the admin-API product register (`schema` body) stores `entries`

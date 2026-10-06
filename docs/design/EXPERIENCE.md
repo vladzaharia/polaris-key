@@ -21,6 +21,13 @@ bit more help."
 > supersedes §0.4 S5 and the UX-32 package, and adds Wave 5 (UX-50 to UX-71) to §13.3. Where the
 > two disagree on setup, SETUP.md wins.
 
+> **Every flow is audited in [FLOWS.md](FLOWS.md) (2026-10-05).** It inventories every multi-step
+> flow, wizard, dialog flow and guided path in the console, the portal and the Worker's pages (77
+> flows: 13 current, 48 to update, 16 to redesign), sets the rules every flow follows (extending
+> SETUP.md §1 beyond setup), and redesigns **New Product** as a wizard in the shared kit, finishing
+> on Overview with "Tonebox is ready" and the launch path. It supersedes §0.4 S1's one-screen shape
+> (its substance stands) and adds Wave 6 (UX-72 to UX-81) to §13.3.
+
 **What this document is.** The single experience spec for both apps: the console
 (`packages/admin/src/console`) and the customer portal (`packages/admin/src/portal`), plus the pages
 the Worker renders (`packages/worker/src/core/brandHtml.ts`) and the emails. It leads with
@@ -90,7 +97,7 @@ AS 2.2 or PJ B4.
 - [5. Navigation chrome](#5-navigation-chrome)
 - [6. Tables, lists, forms and settings rows](#6-tables-lists-forms-and-settings-rows)
 - [7. Confirmations, status, pills and toasts](#7-confirmations-status-pills-and-toasts) (and
-  [7.1 Accessibility](#71-accessibility-rules-for-the-journeys))
+  [7.1 Accessibility](#71-accessibility-rules-for-the-journeys), [7.2 Motion](#72-motion))
 - [8. The shared sign-in](#8-the-shared-sign-in)
 - [9. Empty, loading and error states](#9-empty-loading-and-error-states)
 - [10. Consolidation list](#10-consolidation-list)
@@ -287,6 +294,12 @@ audit fixtures.
 
 #### S1 · Create a product (AS J1)
 
+> **Superseded in shape by [FLOWS.md §3](FLOWS.md#3-new-product-redesigned) (2026-10-05):** New
+> Product is a wizard in the SETUP.md kit, two steps from a repository and three from scratch, with
+> the repository read before anything is created and the goals and platforms asked inside it. What
+> follows (name first, slug derived and checked, no catalog textarea, no result page, refusals on
+> their field) still holds.
+
 | Before (8 clicks, 6 screens, 1 required field)                                                      | After (3 actions, 1 screen)                                                                                     |
 | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Source → Basics (slug before name) → Catalog (raw JSON) → Defaults → Review → Result → Open product | **One screen:** Name → Slug (derived, checked live) → Start from: Nothing / A GitHub repository → Create <Name> |
@@ -454,7 +467,7 @@ Mockup: storyboard frame 5 (A-18j's Prerequisites step with the inline app picke
    optional expiry ("1 seat for 30 days"), through LX-13's grants API and LX-14's comp action. The
    Effective policy row reads "Device limit 4 · 3 from Pro + 1 comp until 4 Nov". **Device limit…**
    sets or clears a license-held limit, raising or lowering it for good; it beats the tier
-   (owner, 2026-10-05: account-wide licenses stay device-limited and operators change the numbers;
+   (owner, 2026-10-05: sign-in licenses stay device-limited and operators change the numbers;
    SIGN-IN.md D-53, LX-14a). On a product still in `legacy` entitlement mode Add seats… is absent;
    Device limit…, Free a seat and Change tier remain.
 6. **A device opens as a drawer over the license** (`…/licenses/lic_1/devices/dev_9`) and closing it
@@ -604,10 +617,11 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
 4. **LicenseChoiceStep**, "Choose a license for this device" (owner, 2026-10-05; SIGN-IN.md §3.6):
    shown on every sign-in that binds this installation, even with one license (a one-tap confirm).
    - Each row reads "Tidewater Studio", then the tier as a neutral pill ("Pro") with "2 of 3
-     devices", or "Account-wide · 2 of 3 devices" for an Account-wide license, then "Bought on
-     the App Store · Lifetime" (SIGN-IN.md O-11). Account-wide licenses stay device-limited
-     (owner, 2026-10-05; SIGN-IN.md D-53). Seat licenses hide the counter when the account also
-     holds an Account-wide license (D-54). Rank-first only orders and preselects; the device's
+     devices" for every license, then its origin and term in plain words: "App Store key ending
+     7Q2MXA · Lifetime", "From the App Store · Lifetime", "From signing in · Lifetime" (SIGN-IN.md
+     O-11; owner decision, 2026-10-05: no "Account-wide" label). Sign-in licenses stay
+     device-limited (owner, 2026-10-05; SIGN-IN.md D-53). Key and seat licenses hide the counter
+     when the account also holds a sign-in license (D-54). Rank-first only orders and preselects; the device's
      current license stays preselected.
    - A full license shows "No free devices", no radio, **Replace a device** (inline, SIGN-IN.md
      §3.7: "Replace Work laptop?" with **Replace and continue** and **Back**) and **Free a device**.
@@ -631,7 +645,7 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
      no entries left in Tidewater Studio. Add it to your account and the app signs you in
      instead.") and keeps **Add** enabled (Q-5: a warning, not a block);
    - "I bought it with another email" leads to the account-linking path (PORTAL.md §4.11).
-6. **ReturnStep**, "It's yours": one celebration (a star burst under
+6. **ReturnStep**, "It's yours": one celebration (a burst of sparks under
    `prefers-reduced-motion: no-preference`, a static check otherwise), the product row with "In
    your library", **Return to Tidewater Studio**, and "Returning by itself in 3 s · **Stay here**".
    Stay here stops the timer (WCAG 2.2.1); the timer also pauses while focus is inside the card
@@ -710,9 +724,10 @@ Done step.
 ### 0.7 Moments of delight
 
 Each appears **once per product (console) or per account (portal)**, respects
-`prefers-reduced-motion`, and stays quiet afterwards. Motion uses `--pk-duration-slow` and
-`--pk-ease-enter`; the burst is the stationary star scattered, in the section accent, never gold.
-None of them is a pill.
+`prefers-reduced-motion`, and stays quiet afterwards. It is the **success** pattern of §7.2: the
+check draws at `--pk-duration-moderate` and six plain sparks burst in the section accent within
+`--pk-duration-deliberate`, never gold and **never the Polaris mark** (BRAND §7.5: the star never
+moves; S-23 D5). Under reduced motion it is a static check. None of them is a pill.
 
 | Moment                      | App     | What happens                                                                               |
 | --------------------------- | ------- | ------------------------------------------------------------------------------------------ |
@@ -887,7 +902,7 @@ legacy `src/components/ui/*` kit is deleted (SH 0.4, §2). "Density" is a prop o
 | `SignedBadge`                                                                           | `ui/SignedBadge` (existing)                                                                            | Both apps                                                                             | **A gold seal glyph plus the word "Signed" in muted text; never a plated pill** (gold still means signed, BRAND §4.5)                                             |
 | `PersonDrawer`                                                                          | new in `console/components/`                                                                           | Console (from any holder email)                                                       | Every license and device for one email; links I-04's Users page when the email is an account                                                                      |
 | `HealthLine`                                                                            | new in `ui/` (a callout with one fix action)                                                           | License and release Status tabs, Platform Status                                      | Warning or danger callout when there is an issue; **renders nothing when healthy** (Platform Status may show one muted "All checks passed" line, no box, no icon) |
-| `Celebration`                                                                           | new in `ui/` (star burst + one-shot persistence key)                                                   | §0.7 moments                                                                          | Reduced motion renders a static check                                                                                                                             |
+| `Celebration`                                                                           | `ui/motion` (MO-02: check + sparks, one-shot key)                                                      | §0.7 moments                                                                          | Reduced motion renders a static check                                                                                                                             |
 
 Type scale, defined once in `ui` tokens (SH 1.14): `display` 40/30 px (portal Library and Product
 titles only), `title` 24 px (every other h1, both apps), `section` 16–18 px (panel headers), `row` 14
@@ -1034,6 +1049,35 @@ These hold in both apps and are acceptance criteria for the packages that build 
 
 ![Toast](experience/12-console-toast-desktop-dark.png)
 
+### 7.2 Motion
+
+Both apps, the sign-in card and the UI kits use **one motion system**, specified in
+[notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) and built by phase MO. The tokens live in `packages/brand`
+(`--pk-duration-{instant, micro, fast, base, moderate, slow, deliberate}`, `--pk-ease-{standard,
+enter, exit, emphasized, spring}`, `--pk-motion-distance-*`, `--pk-stagger-step`); the patterns live
+in `packages/admin/src/motion.css` and `src/ui/motion/`. This section says where each pattern is
+used; the note owns the numbers.
+
+| Pattern        | Where in these journeys                                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| enter / exit   | every dialog, drawer, popover, menu, tooltip, toast and the palettes (J-1); the drawer slides from its edge, phone sheets rise |
+| morph          | console route changes (fade-through), drill-downs (forward and Back), record tabs, dialog and card steps, the theme switch     |
+| shared-element | Library tile → product hero (P1 step 8), licence row key → licence record (O1)                                                 |
+| stagger-list   | first load of the Library, Overview tiles, the attention list (J-2)                                                            |
+| list           | free a device (P4), deauthorize, create or delete a row, filters and facet chips (O1, O8)                                      |
+| expand         | Remove and Replace inline confirms (`ConfirmPanel`, §7), disclosures, inline notices                                           |
+| success        | the moments of §0.7, once each                                                                                                 |
+| skeleton       | every load (§9); never "Loading…" text                                                                                         |
+| press          | every button, tile and chip; tiles lift under the pointer                                                                      |
+
+**Rules that bind the journeys.** Motion never hides state: the new state is in the DOM first and
+every status is a word. Focus moves when the new state is in place, not when the animation ends.
+The chrome never moves. Typing never animates results. A transition that blocks input lasts at
+most `slow` plus `micro`, because the page takes no input during a View Transition. Under
+`prefers-reduced-motion` (or the Reduce motion preference, MO-12) **every change is an instant
+swap**: no slide, no burst, no shimmer. The CSP stays as it is: motion is stylesheet keyframes and
+`::view-transition-*` rules plus CSSOM properties set by the layer, never `style=""`.
+
 ## 8. The shared sign-in
 
 > **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05)**, the single source of truth for
@@ -1049,15 +1093,15 @@ edge on phones.
 
 **The steps** (each one a component inside the card; the header and footer persist across them):
 
-| Step                | When                                                                                                                                                                                                                                                    | Owner                                                    |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `MethodsStep`       | First: identifier-first email, then the variant's methods                                                                                                                                                                                               | UX-40                                                    |
-| `CodeStep`          | After an email: one email with a 6-digit code and a magic link                                                                                                                                                                                          | I-07 (Worker), UX-40 (card)                              |
-| `EmailGateStep`     | First sign-in through a provider; `ProfileImport`; no skip path                                                                                                                                                                                         | PX-21 (built inside the card UX-40 promotes)             |
-| `LicenseChoiceStep` | After authentication, every sign-in that binds an installation: "Choose a license for this device"; tier pill with the counter or "Account-wide · {n} of {limit} devices"; full licenses without a radio; `ReplaceDevice` inline (SIGN-IN.md §3.6–§3.7) | UX-41, PX-14 (card), I-08 (routes), I-09 (ranking), I-26 |
-| `ConsentStep`       | First sign-in to an app or a scope change; after LicenseChoiceStep, showing the chosen license with **Change** (SIGN-IN.md §3.8)                                                                                                                        | PX-14, UX-41                                             |
-| `KeyStep`           | "Have a license key?", "Use a license key instead", or no license without auto-issue; PX-17's confirm, which is itself the choice; I-09's verdicts                                                                                                      | UX-41, PX-17, UX-05                                      |
-| `ReturnStep`        | Passthrough done: "It's yours", Return to <App>, timer with Stay here                                                                                                                                                                                   | UX-41                                                    |
+| Step                | When                                                                                                                                                                                                                                                                                                                 | Owner                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `MethodsStep`       | First: identifier-first email, then the variant's methods                                                                                                                                                                                                                                                            | UX-40                                                    |
+| `CodeStep`          | After an email: one email with a 6-digit code and a magic link                                                                                                                                                                                                                                                       | I-07 (Worker), UX-40 (card)                              |
+| `EmailGateStep`     | First sign-in through a provider; `ProfileImport`; no skip path                                                                                                                                                                                                                                                      | PX-21 (built inside the card UX-40 promotes)             |
+| `LicenseChoiceStep` | After authentication, every sign-in that binds an installation: "Choose a license for this device"; tier pill with "{n} of {limit} devices" for every license, then "{origin} · {term}" ("From signing in", "Steam key ending 3WPLDA"); full licenses without a radio; `ReplaceDevice` inline (SIGN-IN.md §3.6–§3.7) | UX-41, PX-14 (card), I-08 (routes), I-09 (ranking), I-26 |
+| `ConsentStep`       | First sign-in to an app or a scope change; after LicenseChoiceStep, showing the chosen license with **Change** (SIGN-IN.md §3.8)                                                                                                                                                                                     | PX-14, UX-41                                             |
+| `KeyStep`           | "Have a license key?", "Use a license key instead", or no license without auto-issue; PX-17's confirm, which is itself the choice; I-09's verdicts                                                                                                                                                                   | UX-41, PX-17, UX-05                                      |
+| `ReturnStep`        | Passthrough done: "It's yours", Return to <App>, timer with Stay here                                                                                                                                                                                                                                                | UX-41                                                    |
 
 **`LicenseChoiceStep`, `ReplaceDevice` and `ConsentStep` are specified in SIGN-IN.md §3.6–§3.8**
 (owner decisions 2026-10-05; contract in `plans/I-04.md`, "Owner decision (2026-10-05): licence
@@ -1118,7 +1162,7 @@ sign-in email carries the code first and the link second; the copy is §11.1's.
 | Not found             | `EmptyState kind="not-found"`        | One shared description; the suggestion as the primary ("Open DJDL"); product chrome kept                                      |
 | Service off           | `EmptyState kind="service-off"`      | "Turn on <Service> in Settings" with the switch one click away                                                                |
 | Portal library, first | `EmptyState kind="first-run" hero`   | The deliberate hero moment, with Discover offers inline when PX-16 ships                                                      |
-| Loading               | `Skeleton` shaped like the content   | No "Loading…" text beyond the boot screen                                                                                     |
+| Loading               | `Skeleton` shaped like the content   | No "Loading…" text beyond the boot screen; the skeleton pattern of §7.2 (150 ms grace, sheen, none under reduced motion)      |
 | Error                 | `ErrorState` + `errorCopy(err, ctx)` | What happened, the fix, **Try again**, a reference id, Copy details                                                           |
 | Boot                  | `BootScreen`                         | Lockup and spinner; an error becomes the AuthCard state (§8)                                                                  |
 
@@ -1424,14 +1468,14 @@ any file it edits (checked against §13.1), not merely that its dependencies are
 
 **Wave 2: shared sign-in**
 
-| Id    | Package                                                                                                                                                                                                                                                                                                                                             | Size | Deps                                           |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------- |
-| UX-40 | **`AuthCard` in `ui/auth/`**: promote `LoginCard`, `ProviderRow`, `Glyphs`, `KeyField`; the step slots (§8); passkey and "Have a license key?" in `MethodsStep`                                                                                                                                                                                     | M    | PX-20 (`PortalShell`), I-07 (`SignInPage.tsx`) |
-| UX-41 | **Passthrough steps** (SIGN-IN.md §3.6–§3.10): persistent app header, `LicenseChoiceStep` (every row state, Account-wide vocabulary) with inline `ReplaceDevice` (2026-10-05), `ConsentStep` with Change, `KeyStep` with PX-17's confirm ("Add and use on this device") and I-09's verdicts, `ReturnStep` variants with Stay here, the library ring | L    | UX-40, PX-17, I-08 and PX-W13 (broker), I-09   |
-| PX-21 | (approved, existing) **EmailGateStep** with `ProfileImport` inside the promoted card                                                                                                                                                                                                                                                                | M    | UX-40, PX-12, PX-W15, PX-W16                   |
-| UX-42 | **Console sign-in**: identifier-first card at `/manage/login`, Continue starts PKCE or a passkey, 403 and not-configured states                                                                                                                                                                                                                     | M    | UX-40, UX-02, r2 (`admin/auth.ts`)             |
-| UX-43 | **Worker twin**: `renderAuthCard()` in `brandHtml.ts`; expired code or link with Send a new code; device pages with the product header; measures test                                                                                                                                                                                               | M    | UX-40, I-07, r2 (`brandHtml.ts`)               |
-| UX-44 | **Email**: no-bit centred lockup, card radius, the code-and-link copy on I-07's template                                                                                                                                                                                                                                                            | S    | I-07                                           |
+| Id    | Package                                                                                                                                                                                                                                                                                                                                                              | Size | Deps                                           |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------- |
+| UX-40 | **`AuthCard` in `ui/auth/`**: promote `LoginCard`, `ProviderRow`, `Glyphs`, `KeyField`; the step slots (§8); passkey and "Have a license key?" in `MethodsStep`                                                                                                                                                                                                      | M    | PX-20 (`PortalShell`), I-07 (`SignInPage.tsx`) |
+| UX-41 | **Passthrough steps** (SIGN-IN.md §3.6–§3.10): persistent app header, `LicenseChoiceStep` (every row state, origin vocabulary: no license type label) with inline `ReplaceDevice` (2026-10-05), `ConsentStep` with Change, `KeyStep` with PX-17's confirm ("Add and use on this device") and I-09's verdicts, `ReturnStep` variants with Stay here, the library ring | L    | UX-40, PX-17, I-08 and PX-W13 (broker), I-09   |
+| PX-21 | (approved, existing) **EmailGateStep** with `ProfileImport` inside the promoted card                                                                                                                                                                                                                                                                                 | M    | UX-40, PX-12, PX-W15, PX-W16                   |
+| UX-42 | **Console sign-in**: identifier-first card at `/manage/login`, Continue starts PKCE or a passkey, 403 and not-configured states                                                                                                                                                                                                                                      | M    | UX-40, UX-02, r2 (`admin/auth.ts`)             |
+| UX-43 | **Worker twin**: `renderAuthCard()` in `brandHtml.ts`; expired code or link with Send a new code; device pages with the product header; measures test                                                                                                                                                                                                                | M    | UX-40, I-07, r2 (`brandHtml.ts`)               |
+| UX-44 | **Email**: no-bit centred lockup, card radius, the code-and-link copy on I-07's template                                                                                                                                                                                                                                                                             | S    | I-07                                           |
 
 **Wave 3: console journeys on the shared layer**
 
@@ -1487,8 +1531,34 @@ per-storefront pages scoped to the builds, channels merged into storefronts and 
 SETUP.md §8.3 lists the amendments this wave makes to UX-21, UX-23, UX-33, UX-09, PS-06, HA-06,
 ST-08, ST-12, SP-02 and UI-KITS.md §4.2, and §8.5 its sequencing.
 
+**Wave 6: flows** ([FLOWS.md](FLOWS.md) §4, 2026-10-05; the owner request to make New Product as
+friendly as the new flows and to bring every flow up to date)
+
+| Id    | Package                                                                                                                                          | Size | Deps                                |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---- | ----------------------------------- |
+| UX-72 | **Create probes**: repositories the app can read, the create dry run with its digest pin, the slug check; `link-repo` returns the product        | M    | none                                |
+| UX-73 | **Create with defaults**: services, planned platforms, accent, the starter Free tier and the release-workflow trust in create's one batch        | M    | UX-72                               |
+| UX-74 | **New Product wizard**: Where it starts (picker), Check, Name it, What it's for, Creating; a shared `ManifestProblems`                           | L    | UX-50, UX-72, UX-73; UX-70 optional |
+| UX-75 | **Ready moment**: the Overview hero with verified facts and the two next actions, the shared-element tile, the one-shot check and burst          | M    | UX-74, UX-51; UX-21, UX-80          |
+| UX-76 | **Presentation in create**: the derived accent, swatches, the icon from HA-05                                                                    | S    | UX-74, UX-73; HA-05                 |
+| UX-77 | **Console flow conformance**: first focus, focus return, step focus and announcements, action-named primaries, unsaved guards, one "Shown once." | M    | UX-10                               |
+| UX-78 | **One resync flow**: one dialog and one result for five entry points                                                                             | M    | none; ST-17 adopts it               |
+| UX-79 | **Portal flow conformance**: the Discover count fix, focus after steps, refusals, removals and ⌘K                                                | M    | PX-20; PX-16                        |
+| UX-80 | **Flow motion**: S-23's step travel, morph, check draw and burst in the wizard kit, dialogs and the portal                                       | M    | S-23 MO-01, MO-02; UX-50, UX-35     |
+| UX-81 | **Flow lint**: an e2e probe that checks §2's checkable rules on every fixture flow                                                               | M    | UX-77, UX-79, UX-50                 |
+
+FLOWS.md §4.3 lists the amendments this wave makes to §0.4 S1, §0.7, SETUP.md §1.1 and §5.1, UX-21,
+UX-50, UX-51, UX-53, UX-63, UX-35, UX-11, UX-43, SIGN-IN.md §3.18 and S-23, and §4.4 its
+sequencing.
+
 **Dropped or merged** (§0.8): UX-32 (superseded by Wave 5, SETUP.md §2.14), UX-24 (into LX-14 as Add seats…), UX-28 (into ST-07 and ST-16), the
 old UX-09 editor (into ST-12). UX-26 and UX-30 shrank to what S-18 does not cover.
+
+**Motion (phase MO, [notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) §10)** runs beside these waves, not inside them:
+MO-01 (brand tokens) and MO-02 (the layer) touch no file these packages edit; MO-10 waits for UX-10,
+MO-11 for UX-29 and the `Overview.tsx` packages, MO-12 for UX-10's menus. A UX package that builds a
+pattern of §7.2 (UX-29's countdown, UX-12's attention list, UX-07's routed drawer) uses the MO-02
+layer once it has landed and otherwise leaves the motion to its MO package.
 
 ### 13.4 Sequencing (nothing collides)
 
@@ -1546,6 +1616,8 @@ flowchart LR
   PX22[PX-22 Avatar] --> UX48 & UX13
 ```
 
+- **Wave 6** (flows) is sequenced in [FLOWS.md §4.4](FLOWS.md#44-sequencing): UX-72, UX-77,
+  UX-78 and UX-79's Discover fix start now; New Product follows UX-50; the flow lint lands last.
 - **Wave 5** (setup wizards) is sequenced in [SETUP.md §8.5](SETUP.md#85-sequencing): UX-59, UX-51
   and UX-60 start now; the storefront packages follow A-18j; the console packages follow UX-50.
 - **Start today, in parallel:** UX-01, UX-03, UX-04, UX-05, UX-06a, UX-08 and UX-15. Each edits

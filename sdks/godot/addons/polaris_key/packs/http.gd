@@ -22,7 +22,8 @@ extends RefCounted
 ##
 ##   var r := await PKeyPackHttp.fetch(transport, url, headers, offset, if_range, on_response,
 ##       on_chunk, 600.0)
-##   # r: {status, content_range, error: "" | "timeout" | "aborted" | code, message}
+##   # r: {status, content_range, error: "" | "timeout" | "aborted" | code, message, code?: the
+##   #     server's error code on a 4xx/5xx}
 ##   var o := await PKeyPackHttp.open_range(transport, url, headers, offset, length, if_range, 600.0)
 ##   # o: the same plus etag and body (pulled with `await o.body.take(n)`, then `o.body.close()`)
 
@@ -53,12 +54,21 @@ static func fetch(transport: PKeyTransport, url: String, headers: Dictionary, of
 	var tree: SceneTree = head["tree"]
 	var status: int = head["status"]
 	var content_range := String(head["headers"].get("content-range", ""))
+	# A refusal's small body carries the server's code (`attestation_required` for a gated
+	# object, `not_entitled`, …): read it before the head goes to the caller, returned as `code`.
+	var code := ""
+	if status >= 400:
+		code = PKeyErrors.read_body(await PKeyDownload._small_body(client, tree, deadline, PKeyDownload.ERROR_BODY_LIMIT))["code"]
 	if on_response.is_valid() and not on_response.call(status, content_range):
 		client.close()
-		return _done(status, content_range, "aborted")
+		var aborted := _done(status, content_range, "aborted")
+		aborted["code"] = code
+		return aborted
 	if status != 200 and status != 206:
 		client.close()
-		return _done(status, content_range, "")
+		var refused := _done(status, content_range, "")
+		refused["code"] = code
+		return refused
 	var err := ""
 	while client.get_status() == HTTPClient.STATUS_BODY:
 		var frame_start := Time.get_ticks_msec()

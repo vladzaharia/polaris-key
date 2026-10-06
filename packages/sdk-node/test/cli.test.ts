@@ -139,7 +139,14 @@ function stubFetch(opts: StubOptions = {}): {
   const mint = (statusCode: number, token: string): Response => {
     if (statusCode === 200) return jsonResponse({ token, schemaVersion: 3 });
     if (statusCode === 403)
-      return jsonResponse({ limit: 3, deviceCount: 3 }, 403);
+      return jsonResponse(
+        { error: "device_limit", limit: 3, deviceCount: 3 },
+        403,
+      );
+    // The Worker's own bodies (`errorResponse`): the code is what the SDK maps on.
+    if (statusCode === 404)
+      return jsonResponse({ error: "enroll_disabled" }, 404);
+    if (statusCode === 401) return jsonResponse({ error: "unauthorized" }, 401);
     return new Response("", { status: statusCode });
   };
 
@@ -218,15 +225,16 @@ describe("cli/commands — license verbs", () => {
       "k",
     );
     expect(limited.ok).toBe(false);
-    expect(limited.message).toContain("device limit reached");
+    expect(limited.message).toContain("maximum number of devices");
     expect(limited.message).toContain("3/3");
+    expect(limited.message).toContain("[device_limit]");
 
     const revoked = await activate(
       await makeClient(stubFetch({ activate: 401 }).impl),
       "k",
     );
     expect(revoked.ok).toBe(false);
-    expect(revoked.message).toContain("invalid or revoked");
+    expect(revoked.message).toContain("not valid, or it was revoked");
   });
 
   it("enroll mints keylessly and reports the gate", async () => {
@@ -240,7 +248,8 @@ describe("cli/commands — license verbs", () => {
   it("enroll on a product that never opted in says so (404 → enroll-disabled)", async () => {
     const r = await enroll(await makeClient(stubFetch({ enroll: 404 }).impl));
     expect(r.ok).toBe(false);
-    expect(r.message).toContain("does not offer keyless enrollment");
+    expect(r.message).toContain("does not offer a free licence without a key");
+    expect(r.message).toContain("[enroll_disabled]");
   });
 
   it("status reflects the gate (needs-activation before, ok after activation)", async () => {

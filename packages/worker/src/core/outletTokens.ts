@@ -43,6 +43,7 @@ import {
   GOOGLE_TOKEN_URI,
   openOutletCredential,
   outletCredentialVersion,
+  type TransientOutletCredential,
 } from "./outletCredentials.js";
 import {
   openPlatformCredential,
@@ -154,6 +155,57 @@ export async function writeSealedToken(
     );
   } catch {
     /* serve uncached */
+  }
+}
+
+// ── token exchange errors ───────────────────────────────────────────────────────────────────
+
+/**
+ * A refused OAuth token exchange (Google's JWT-bearer grant, Microsoft Entra's client
+ * credentials). The message is the status line it always was; `code` is the endpoint's `error`
+ * token (`invalid_grant`, `invalid_client`, `unauthorized_client`, …) and `subCode` Entra's first
+ * `error_codes` number (`7000222`: the client secret expired), both read from the error body so
+ * the live credential check (UX-69) can say WHY. Never the `error_description` free text, never
+ * anything from the credential.
+ */
+export class TokenExchangeError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code: { error: string | null; subCode: number | null } | null,
+  ) {
+    super(message);
+    this.name = "TokenExchangeError";
+  }
+}
+
+const OAUTH_ERROR = /^[a-z][a-z0-9_]{0,63}$/;
+
+/** The `error` token and Entra's first `error_codes` entry of an OAuth error body, or null.
+ *  Reads at most 64 KiB; never throws; never keeps the body. */
+export async function oauthErrorCode(
+  res: Response,
+): Promise<{ error: string | null; subCode: number | null } | null> {
+  try {
+    const parsed = JSON.parse(
+      await readCappedText(res, 64 * 1024, () => new Error("too large")),
+    ) as { error?: unknown; error_codes?: unknown };
+    if (!parsed || typeof parsed !== "object") return null;
+    const error =
+      typeof parsed.error === "string" && OAUTH_ERROR.test(parsed.error)
+        ? parsed.error
+        : null;
+    const first = Array.isArray(parsed.error_codes)
+      ? parsed.error_codes[0]
+      : null;
+    const subCode =
+      typeof first === "number" && Number.isInteger(first) && first > 0
+        ? first
+        : null;
+    return error === null && subCode === null ? null : { error, subCode };
+  } catch {
+    await res.body?.cancel().catch(() => undefined);
+    return null;
   }
 }
 
@@ -380,8 +432,13 @@ async function googleTokenExchange(
     }).toString(),
   });
   if (!res.ok || isRedirect(res)) {
-    await res.body?.cancel().catch(() => undefined);
-    throw new Error(`google token exchange failed: ${res.status}`);
+    const code = isRedirect(res) ? null : await oauthErrorCode(res);
+    if (isRedirect(res)) await res.body?.cancel().catch(() => undefined);
+    throw new TokenExchangeError(
+      `google token exchange failed: ${res.status}`,
+      res.status,
+      code,
+    );
   }
   let body: { access_token?: unknown; expires_in?: unknown };
   try {
@@ -577,4 +634,45 @@ export async function googleAccessTokenFor(
         now,
         fetchImpl,
       );
+}
+
+// ── transient credentials (UX-69, SETUP.md D42) ─────────────────────────────────────────────
+
+/**
+ * The App Store Connect API token for an UNSAVED key (`TransientOutletCredential`), for the live
+ * check a connect form runs before anything is stored. Minted at `now` with Apple's 20-minute
+ * lifetime and NEVER memoised: the key is not stored, so neither is anything derived from it.
+ */
+export async function transientAscToken(
+  cred: TransientOutletCredential<"asc-api-key">,
+  now: number,
+): Promise<string> {
+  const { keyId, issuerId, p8 } = cred.reveal();
+  return signJwtEs256(
+    {
+      iss: issuerId,
+      iat: now,
+      exp: now + ASC_TOKEN_LIFETIME,
+      aud: ASC_AUDIENCE,
+    },
+    p8,
+    keyId,
+  );
+}
+
+/**
+ * A Google access token for an UNSAVED service-account key at `scopes`: the same JWT-bearer
+ * exchange as a stored key (one host, `redirect: "manual"`, capped body), never cached. THROWS a
+ * `TokenExchangeError` when Google refuses (status and `error` token only).
+ */
+export async function transientGoogleAccessToken(
+  cred: TransientOutletCredential<"google-service-account">,
+  scopes: readonly string[],
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<string> {
+  const scope = [...new Set(scopes)].sort().join(" ");
+  if (scope.length === 0) throw new Error("google token: no scopes requested");
+  return (await googleTokenExchange(cred.reveal(), scope, now, fetchImpl))
+    .token;
 }

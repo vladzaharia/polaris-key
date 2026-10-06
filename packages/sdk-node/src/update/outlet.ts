@@ -28,8 +28,10 @@
 //                             and whether the script path is inside node_modules/<packageName>/
 //
 // `steam_appid.txt` is not read: S-06 refuted it as a dev-mode signal, and it names nothing.
-// Windows' SignatureKind, App Installer URI and external location need WinRT: they are absent
-// here, so a packaged Windows install keeps its stamp (a Windows native reader is later work).
+//   windows.signatureKind     the host's `windowsSignatureKind` (`readWindowsSignatureKind()`, async,
+//                             through PowerShell's WinRT projection; update/stamp.ts)
+// The App Installer URI and external location need a native reader: absent here, so such an
+// install keeps its stamp.
 
 import * as nodeFs from "node:fs";
 import { dirname, join } from "node:path";
@@ -65,6 +67,8 @@ export interface OutletReaderEnvironment {
   packageName?: string | null;
   /** The product's outlet identities (the stamp's `outletIds`): which launcher files to read. */
   outletIds?: OutletIds | null;
+  /** `Package.Current.SignatureKind` on a packaged Windows app (`readWindowsSignatureKind()`). */
+  windowsSignatureKind?: string | null;
 }
 
 const realFs: OutletFs = {
@@ -247,6 +251,8 @@ export function readOutletSignals(
       const family = windowsAppsFamily(execPath);
       if (family !== null) signals["windows.packageIdentity"] = family;
     }
+    if (opts.windowsSignatureKind)
+      signals["windows.signatureKind"] = opts.windowsSignatureKind;
     const p = slashed(appPath).toLowerCase();
     if (p.includes("/microsoft/winget/packages/"))
       signals["windows.pathConvention"] = "winget";

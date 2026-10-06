@@ -33,6 +33,13 @@ public struct PolarisCopy: Sendable {
     public var versionTooNewTitle: String
     public var channelNotEntitledTitle: String
     public var versionBlockSubtitle: String
+    /// Activation outcomes (§3.1), defaulting to the shared `ErrorCopy` base. A product overrides
+    /// one by code: `copy.activationMessages[ErrorCode.deviceLimit] = "…"`.
+    public var activationMessages: [String: String]
+    /// Shown when a sign-out could not clear the stored licence.
+    public var signOutFailedMessage: String
+    /// Copy for every other kit component (sign-in, settings, devices, …).
+    public var kit = PolarisKitCopy()
 
     public init(
         productName: String = "this app",
@@ -54,7 +61,9 @@ public struct PolarisCopy: Sendable {
         versionTooOldTitle: String = "Update required",
         versionTooNewTitle: String = "Version not yet allowed",
         channelNotEntitledTitle: String = "Channel not entitled",
-        versionBlockSubtitle: String = "Your current version isn't permitted to run."
+        versionBlockSubtitle: String = "Your current version isn't permitted to run.",
+        activationMessages: [String: String] = [:],
+        signOutFailedMessage: String = "Sign-out couldn't clear the stored license."
     ) {
         self.productName = productName
         self.welcomeTitle = welcomeTitle ?? "Welcome to \(productName)"
@@ -75,6 +84,16 @@ public struct PolarisCopy: Sendable {
         self.versionTooNewTitle = versionTooNewTitle
         self.channelNotEntitledTitle = channelNotEntitledTitle
         self.versionBlockSubtitle = versionBlockSubtitle
+        self.activationMessages = activationMessages
+        self.signOutFailedMessage = signOutFailedMessage
+    }
+
+    /// The sentence for an activation outcome: the product's override for its code, else the
+    /// shared copy (`ActivationResult.message`); nil for `.ok`. Never the raw server body.
+    public func activationMessage(_ result: ActivationResult) -> String? {
+        if result.isOK { return nil }
+        if let custom = activationMessages[result.code] { return custom }
+        return result.message
     }
 }
 
