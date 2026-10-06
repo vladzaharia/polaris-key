@@ -620,8 +620,9 @@ npx wrangler queues create pkey-assets-dlq-<env>
 `wrangler.toml` binds `pkey-assets-<env>` as a producer (`HOSTED_ASSET_QUEUE`) and declares the
 consumer (batch 10, concurrency 4, 3 retries, then `pkey-assets-dlq-<env>`), so a deploy fails
 while either queue is missing. Unbound (a local `wrangler dev`, the registry-client harness),
-nothing is planned or pulled. The nightly maintenance sweep re-enqueues failed pulls, at most 50
-per run.
+nothing is planned or pulled. The nightly maintenance sweep re-enqueues failed pulls and, while
+the Images binding is bound, ladder retries for ready copies whose variants an ingest could not
+build (rebuilt from the stored copy, never re-pulled), at most 50 per run between them.
 
 ### Lazy deltas: the queues, the consumer Worker and the R2 rules (P4-17)
 

@@ -5869,15 +5869,21 @@ proxy now fetches through the same guard.
 - **The portal media proxy** keeps its GitHub-only host rule on every hop (`allowHost`) on top of
   this guard until HA-07 serves hosted copies; its cap, 5 s budget and sniff are unchanged.
 - **Image variants (HA-03, S-20 §6.6).** The Images binding decodes developer-supplied images
-  only at ingest, never on a request, so no viewer can make it transform anything and the
-  transformation bill is bounded at one per ladder width per new original (a re-ingest of the
-  same bytes reuses its variants). The ladders and widths are code constants, a width above the
-  original's is never requested (`fit: "scale-down"`), and each output is capped at the slot's
-  byte cap and must sniff as WebP or the whole ladder is dropped. Variants are content-addressed
-  objects of Polaris Key's own making, held by the slot's `hosted-asset` refs beside the original
-  and dropped with it in the same batch. Without the binding, on error 9422 (quota) or on any
-  binding error the ladder is empty and the ingest still succeeds: a degraded binding costs sizes,
-  never a copy.
+  only at ingest (or at HA-05's ladder retry, below), never on a request, so no viewer can make it
+  transform anything and the transformation bill is bounded at one per ladder width per new
+  original and ladder family within a product: a re-ingest of the same bytes, and the same bytes
+  in another slot of the family (`presentation.icon` and `listing.icon`), reuse the variants
+  already built, and the dimensions too. The reuse never crosses products, so a product never
+  learns, from a missing transformation or a shared ladder, that another product holds the same
+  bytes. The ladders and widths are code constants, a width above the original's is never
+  requested (`fit: "scale-down"`), and each output is capped at the slot's byte cap and must sniff
+  as WebP or the whole ladder is dropped. Variants are content-addressed objects of Polaris Key's
+  own making, held by each slot's own `hosted-asset` refs (`<slot>@<locale>`) beside the original
+  and dropped with it in the same batch; a slot reusing another's ladder gets refs of its own, so
+  either slot can be replaced or removed without the other losing its sizes. Without the binding,
+  on error 9422 (quota) or on any binding error the ladder is empty and the ingest still succeeds:
+  a degraded binding costs sizes, never a copy, and while the binding is bound the empty ladder is
+  retried from the stored copy (HA-05, "Owed ladders").
 
 ### The image host (HA-02)
 
@@ -5950,7 +5956,7 @@ which the main script consumes (notes/S-20 §6.3, §6.4). Code: `core/hostedAsse
   console-claimed. The URL is re-derived from the stored ref and re-validated (https and length;
   a repo path with no `.` or `..` segment). For a repo path the repository coordinates and the
   installation come from `release_config`, never from the message or the manifest. A malformed
-  message is acknowledged and dropped.
+  message is acknowledged and dropped. A ladder retry message is held to the same rule (below).
 - **One more read with the installation token.** The consumer reads a repo path at a commit
   through the Contents API with the raw media type, and the planner lists the path's directory to
   read its git blob SHA. Both read the product's own repository with the R5-03 release token
@@ -5963,9 +5969,31 @@ which the main script consumes (notes/S-20 §6.3, §6.4). Code: `core/hostedAsse
   one directory listing per directory, and a pull only when its blob changed. Each enqueue holds
   the slot off for one back-off step, so repeated resyncs do not stack pulls. A failed pull backs
   off exponentially per slot, from 15 minutes up to a 24-hour cap. The nightly re-check enqueues
-  at most 50 pulls per run. A refused pull is recorded and acknowledged, never retried by the
-  queue. Only a throw (D1 unavailable) is retried, three times, and then goes to
-  `pkey-assets-dlq-<env>`.
+  at most 50 pulls and ladder retries per run between them. A refused pull is recorded and
+  acknowledged, never retried by the queue. Only a throw (D1 unavailable) is retried, three times,
+  and then goes to `pkey-assets-dlq-<env>`.
+- **Owed ladders are retried from the stored copy, never re-pulled.** A ready copy in a ladder
+  slot whose `variants_json` is `[]` although its width admits a rung (or is unknown) owes its
+  ladder (`ladderOwedSql`): the ingest's ladder failed (9422, a binding or store error) or ran
+  without the binding. Only while the Images binding is bound, and only when no pull is owed (a
+  pull's ingest builds the ladder itself), the planner and the nightly re-check send a ladder
+  message carrying the product, the slot, the locale and the original's SHA-256. The consumer
+  re-validates it, re-reads the row and drops it unless the row still holds that hash with an
+  empty ladder; `rebuildLadder` then reuses the product's own ladder for the same bytes and family
+  if one exists, or reads the original back from `blobs/sha256/<hex>`, checks R2's stored checksum
+  and a fresh SHA-256 of the bytes against the name, and transforms it as an ingest would. It
+  grants no new original ref and touches no source: its only writes are the slot's own variant
+  refs, the row's `variants_json` and dimensions, and an `assets.variants` audit row, in one batch
+  guarded on that same condition (a width learned by `.info()` is recorded even when the build then
+  fails, on the same condition, so no retry asks again). Each retry costs one R2 read of at most
+  the slot's cap, one `.info()` call when the copy's width is still unknown, and at most one
+  transformation per rung; a width already known to admit no rung costs nothing and settles the
+  copy. A new copy installed in the slot by any ingest (a pull, a console upload, a CI push)
+  starts with a clean back-off. The back-off is the pulls' (the ingest's failure counts as
+  the first attempt; 15 minutes doubling to 24 hours), and the 50-per-night budget is shared, so
+  a month's exhausted transformations cost one failed attempt per owed slot per back-off step.
+  Without the binding, for slots without a ladder family, and for a copy narrower than its
+  family's smallest rung, nothing is retried: the original serves alone.
 - **It never blocks a register.** Planning and enqueueing are best-effort and swallow every
   failure. A failing source is reported to the resync as the warning `asset_unreachable`, never as
   an error, and the last good copy keeps serving (`stale` after a 404 or 410, `failed` otherwise).

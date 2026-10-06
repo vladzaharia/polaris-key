@@ -16,6 +16,7 @@ import {
   getHostedAsset,
   ingest,
   parseVariants,
+  rebuildLadder,
   type IngestContext,
 } from "../src/core/hostedAssets.js";
 import type { FetchImpl } from "../src/core/safeFetch.js";
@@ -234,5 +235,100 @@ describe("hosted-asset ingest on R2 and D1", LANE, () => {
       [h, ...variants.map((v) => v.sha256)].map((x) => blobKey(x)).sort(),
     );
     expect(refs.every((r) => r.ref_id === "presentation.icon@")).toBe(true);
+  });
+  it("rebuilds an owed ladder from the stored original, and a second slot of the family reuses it", async () => {
+    const ctx = await context("ha-rebuild");
+    const png = bytesWith(PNG_SIG, 40_000);
+    const h = await hex(png);
+    const webpSig = [...new TextEncoder().encode("RIFF"), 1, 2, 3, 4];
+    const webp = (w: number) =>
+      bytesWith([...webpSig, ...new TextEncoder().encode("WEBPVP8 ")], 400 + w);
+    let quota = true;
+    const made: number[] = [];
+    const images = {
+      info: async () => ({
+        format: "image/png",
+        fileSize: png.length,
+        width: 130,
+        height: 130,
+      }),
+      input: (s: ReadableStream<Uint8Array>) => {
+        let w = 0;
+        const t = {
+          transform: (tr: { width: number }) => ((w = tr.width), t),
+          output: async () => {
+            // The original reached the binding byte for byte, read back from R2.
+            expect(
+              await hex(new Uint8Array(await new Response(s).arrayBuffer())),
+            ).toBe(h);
+            if (quota)
+              throw Object.assign(new Error("ERROR 9422"), { code: 9422 });
+            made.push(w);
+            const b = webp(w);
+            return {
+              image: () => streamOf(b),
+              contentType: () => "image/webp",
+            };
+          },
+        };
+        return t;
+      },
+    } as unknown as ImagesBinding;
+    ctx.env = { BLOBS: bucket(), IMAGES: images };
+    const upload = (slot: string) =>
+      ingest(ctx, "ha-rebuild", slot, {
+        kind: "stream",
+        body: streamOf(png),
+        size: png.length,
+        sourceKind: "upload",
+        origin: "console",
+      });
+    expect(await upload("presentation.icon")).toMatchObject({
+      ok: true,
+      width: 130,
+    });
+    expect(
+      (await getHostedAsset(ctx.db, "ha-rebuild", "presentation.icon"))
+        ?.variants_json,
+    ).toBe("[]");
+
+    quota = false;
+    expect(
+      await rebuildLadder(ctx, "ha-rebuild", "presentation.icon", "", h),
+    ).toBe("built");
+    expect(made).toEqual([64, 128]);
+    const variants = parseVariants(
+      (await getHostedAsset(ctx.db, "ha-rebuild", "presentation.icon"))
+        ?.variants_json ?? null,
+    );
+    expect(variants.map((v) => v.w)).toEqual([64, 128]);
+    // A second rebuild finds nothing owed: the guarded batch applies once.
+    expect(
+      await rebuildLadder(ctx, "ha-rebuild", "presentation.icon", "", h),
+    ).toBe("superseded");
+
+    // The same bytes in listing.icon: no transformation, its own refs to the same variants.
+    expect(await upload("listing.icon")).toMatchObject({
+      ok: true,
+      width: 130,
+    });
+    expect(made).toEqual([64, 128]);
+    const refs = await ctx.db.all<{ storage_key: string; ref_id: string }>(
+      "SELECT storage_key, ref_id FROM blob_refs WHERE product = 'ha-rebuild' ORDER BY ref_id, storage_key",
+    );
+    const keys = [h, ...variants.map((v) => v.sha256)]
+      .map((x) => blobKey(x))
+      .sort();
+    expect(refs).toEqual(
+      ["listing.icon@", "presentation.icon@"].flatMap((ref_id) =>
+        keys.map((storage_key) => ({ storage_key, ref_id })),
+      ),
+    );
+    const audit = await ctx.db.all<{ summary: string }>(
+      "SELECT summary FROM audit WHERE product = 'ha-rebuild' AND action = 'assets.variants'",
+    );
+    expect(audit).toEqual([
+      { summary: "presentation.icon: sizes 64, 128 from the stored copy" },
+    ]);
   });
 });

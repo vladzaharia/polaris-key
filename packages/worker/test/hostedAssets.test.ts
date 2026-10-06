@@ -9,12 +9,15 @@ import {
   HOSTED_ASSET_REF,
   HostedAssetError,
   IMAGES_QUOTA_ERROR,
+  PULL_BACKOFF_BASE_SECONDS,
   SLOT_CLASSES,
   VARIANT_LADDERS,
   getHostedAsset,
   ingest,
+  ladderOwedSql,
   ladderWidths,
   parseVariants,
+  rebuildLadder,
   slotClass,
   variantFamily,
   type IngestContext,
@@ -619,12 +622,17 @@ interface StubOptions {
   notWebp?: boolean;
 }
 
-/** A stub Images binding: `.info()` answers `width`, and each transform answers a fake WebP. */
-function stubImages(opts: StubOptions): ImagesBinding & { widths: number[] } {
+/** A stub Images binding: `.info()` answers `width`, and each transform answers a fake WebP.
+ *  `widths` records every transformation made, `infos` every `.info()` call. */
+function stubImages(
+  opts: StubOptions,
+): ImagesBinding & { widths: number[]; infos: number } {
   const widths: number[] = [];
   const binding = {
     widths,
+    infos: 0,
     info: async (s: ReadableStream<Uint8Array>) => {
+      binding.infos++;
       const bytes = new Uint8Array(await new Response(s).arrayBuffer());
       if (opts.width === null)
         throw Object.assign(new Error("not an image"), { code: 9412 });
@@ -664,7 +672,10 @@ function stubImages(opts: StubOptions): ImagesBinding & { widths: number[] } {
       return t;
     },
   };
-  return binding as unknown as ImagesBinding & { widths: number[] };
+  return binding as unknown as ImagesBinding & {
+    widths: number[];
+    infos: number;
+  };
 }
 
 async function variantsOf(slot: string) {
@@ -864,6 +875,442 @@ describe("variant ladder", () => {
     expect(
       parseVariants('[{"w":64,"format":"image/png","sha256":"x","size":1}]'),
     ).toEqual([]);
+  });
+});
+
+// ── One ladder per (product, original, family) ──────────────────────────────────────────────
+
+/** The storage keys each `ref_id` of `product` holds. */
+async function heldBy(product = "djdl") {
+  const out = new Map<string, string[]>();
+  for (const r of await refs(product))
+    out.set(r.ref_id, [...(out.get(r.ref_id) ?? []), r.storage_key].sort());
+  return out;
+}
+
+const keysOf = (original: Uint8Array, variants: { sha256: string }[]) =>
+  [sha(original), ...variants.map((v) => v.sha256)]
+    .map((h) => blobKey(h))
+    .sort();
+
+describe("one ladder per original and family", () => {
+  it("the same icon in presentation.icon and listing.icon is transformed once, each slot holding its own refs", async () => {
+    const images = stubImages({ width: 1000 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    await ingest(ctx, "djdl", "listing.icon", upload(PNG));
+    // One Images call per (sha256, family): the ladder once, and one .info() for the bytes.
+    expect(images.widths).toEqual([64, 128, 256, 512]);
+    expect(images.infos).toBe(1);
+    const a = await variantsOf("presentation.icon");
+    expect(a.map((v) => v.w)).toEqual([64, 128, 256, 512]);
+    expect(await variantsOf("listing.icon")).toEqual(a);
+    expect(await getHostedAsset(db, "djdl", "listing.icon")).toMatchObject({
+      width: 1000,
+      height: 1000,
+      status: "ready",
+    });
+    // The variant ref is per <slot>@<locale>: the second slot holds every variant itself.
+    const held = await heldBy();
+    expect(held.get("presentation.icon@")).toEqual(keysOf(PNG, a));
+    expect(held.get("listing.icon@")).toEqual(keysOf(PNG, a));
+    expect((await audits()).at(-1)?.summary).toBe(
+      `listing.icon: hosted from upload (image/png, ${PNG.length} bytes; sizes 64, 128, 256, 512)`,
+    );
+
+    // A re-ingest of either slot, and a localised copy, transform nothing more.
+    await ingest(ctx, "djdl", "listing.icon", upload(PNG));
+    await ingest(ctx, "djdl", "presentation.icon", {
+      ...upload(PNG),
+      locale: "de",
+    });
+    expect(images.widths).toEqual([64, 128, 256, 512]);
+    expect(images.infos).toBe(1);
+    expect((await heldBy()).get("presentation.icon@de")).toEqual(
+      keysOf(PNG, a),
+    );
+
+    // Another family is its own ladder (the dimensions are still reused).
+    await ingest(ctx, "djdl", "listing.screenshot:1", upload(PNG));
+    expect(images.widths).toEqual([64, 128, 256, 512, 480, 960]);
+    expect(images.infos).toBe(1);
+
+    // Replacing one slot's copy leaves the other slot's variants held.
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG2));
+    const after = await heldBy();
+    expect(after.get("listing.icon@")).toEqual(keysOf(PNG, a));
+    expect(after.get("presentation.icon@")).not.toContain(blobKey(sha(PNG)));
+  });
+
+  it("never reuses another product's ladder (nor learns that it holds the same bytes)", async () => {
+    const images = stubImages({ width: 512 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    await ingest(ctx, "other", "presentation.icon", upload(PNG));
+    expect(images.widths).toEqual([64, 128, 256, 512, 64, 128, 256, 512]);
+    expect(images.infos).toBe(2);
+    const theirs = parseVariants(
+      (await getHostedAsset(db, "other", "presentation.icon"))?.variants_json ??
+        null,
+    );
+    expect((await heldBy("other")).get("presentation.icon@")).toEqual(
+      keysOf(PNG, theirs),
+    );
+  });
+
+  it("builds afresh when the other slot no longer holds its variants", async () => {
+    const images = stubImages({ width: 512 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    const a = await variantsOf("presentation.icon");
+    await db.run(
+      "DELETE FROM blob_refs WHERE product = 'djdl' AND storage_key = ?",
+      blobKey(a[0]!.sha256),
+    );
+    await ingest(ctx, "djdl", "listing.icon", upload(PNG));
+    expect(images.widths).toEqual([64, 128, 256, 512, 64, 128, 256, 512]);
+    expect((await heldBy()).get("listing.icon@")).toEqual(keysOf(PNG, a));
+  });
+});
+
+// ── An owed ladder, rebuilt from the stored copy ─────────────────────────────────────────────
+
+describe("rebuildLadder", () => {
+  /** Ingest PNG into `slot` with the binding failing (9422) at the first transformation. */
+  async function owing(slot: string, width = 512) {
+    ctx.env = {
+      BLOBS: asR2(r2),
+      IMAGES: stubImages({
+        width,
+        failAt: { n: 0, code: IMAGES_QUOTA_ERROR },
+      }),
+    };
+    expect(await ingest(ctx, "djdl", slot, upload(PNG))).toMatchObject({
+      ok: true,
+      status: "ready",
+    });
+    expect(await getHostedAsset(db, "djdl", slot)).toMatchObject({
+      variants_json: "[]",
+      width,
+    });
+  }
+
+  it("builds only the ladder from the stored original, in one guarded batch", async () => {
+    await owing("presentation.icon");
+    const images = stubImages({ width: 512 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    ctx.now = NOW + 60;
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("built");
+    expect(images.widths).toEqual([64, 128, 256, 512]);
+    // The width was already known: no .info() call.
+    expect(images.infos).toBe(0);
+    const variants = await variantsOf("presentation.icon");
+    expect(variants.map((v) => v.w)).toEqual([64, 128, 256, 512]);
+    // Built from the original's own bytes, as at ingest.
+    expect(variants[0]!.sha256).toBe(sha(fakeWebp(64, PNG.length)));
+    expect(await getHostedAsset(db, "djdl", "presentation.icon")).toMatchObject(
+      {
+        status: "ready",
+        sha256: sha(PNG),
+        modified_at: NOW + 60,
+      },
+    );
+    expect((await heldBy()).get("presentation.icon@")).toEqual(
+      keysOf(PNG, variants),
+    );
+    expect(
+      await db.all(
+        "SELECT action, target_id, summary FROM audit WHERE product = 'djdl' AND action = 'assets.variants'",
+      ),
+    ).toEqual([
+      {
+        action: "assets.variants",
+        target_id: "presentation.icon@",
+        summary:
+          "presentation.icon: sizes 64, 128, 256, 512 from the stored copy",
+      },
+    ]);
+    // Owed no more.
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("superseded");
+    expect(images.widths).toHaveLength(4);
+  });
+
+  it("reuses the ladder another slot of the family built since", async () => {
+    await owing("presentation.icon");
+    const images = stubImages({ width: 512 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    await ingest(ctx, "djdl", "listing.icon", upload(PNG));
+    expect(images.widths).toEqual([64, 128, 256, 512]);
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("built");
+    expect(images.widths).toHaveLength(4);
+    const a = await variantsOf("listing.icon");
+    expect(await variantsOf("presentation.icon")).toEqual(a);
+    expect((await heldBy()).get("presentation.icon@")).toEqual(keysOf(PNG, a));
+  });
+
+  it("fails again, writing nothing, while the binding keeps failing", async () => {
+    await owing("listing.header", 1920);
+    const before = await getHostedAsset(db, "djdl", "listing.header");
+    ctx.env = {
+      BLOBS: asR2(r2),
+      IMAGES: stubImages({
+        width: 1920,
+        failAt: { n: 2, code: IMAGES_QUOTA_ERROR },
+      }),
+    };
+    expect(
+      await rebuildLadder(ctx, "djdl", "listing.header", "", sha(PNG)),
+    ).toBe("failed");
+    expect(await getHostedAsset(db, "djdl", "listing.header")).toEqual(before);
+    expect((await heldBy()).get("listing.header@")).toEqual([
+      blobKey(sha(PNG)),
+    ]);
+  });
+
+  it("fails when the stored original is gone or is not the bytes its name says", async () => {
+    await owing("presentation.icon");
+    ctx.env = { BLOBS: asR2(r2), IMAGES: stubImages({ width: 512 }) };
+    const key = blobKey(sha(PNG));
+    await asR2(r2).delete(key);
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("failed");
+    // An object at the name whose bytes are other bytes (no stored checksum) is refused too.
+    await asR2(r2).put(key, PNG2);
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("failed");
+    expect(await variantsOf("presentation.icon")).toEqual([]);
+  });
+
+  it("records a width learned late; a copy narrower than every rung owes nothing", async () => {
+    // Ingested without the binding: no width, no ladder.
+    ctx.env = { BLOBS: asR2(r2) };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    expect(await getHostedAsset(db, "djdl", "presentation.icon")).toMatchObject(
+      { width: null, variants_json: "[]" },
+    );
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("unavailable");
+    const images = stubImages({ width: 48 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("none");
+    expect(images.widths).toEqual([]);
+    expect(await getHostedAsset(db, "djdl", "presentation.icon")).toMatchObject(
+      { width: 48, height: 48, variants_json: "[]" },
+    );
+    expect(
+      await db.all(`SELECT slot FROM hosted_assets WHERE ${ladderOwedSql()}`),
+    ).toEqual([]);
+  });
+
+  it("drops a rebuild for bytes the slot no longer holds, and refuses what no caller should pass", async () => {
+    await owing("presentation.icon");
+    ctx.env = { BLOBS: asR2(r2), IMAGES: stubImages({ width: 512 }) };
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG2)),
+    ).toBe("superseded");
+    expect(await rebuildLadder(ctx, "djdl", "listing.icon", "", sha(PNG))).toBe(
+      "superseded",
+    );
+    for (const [slot, locale, h] of [
+      ["play:icon", "", sha(PNG)],
+      ["release-file", "", sha(PNG)],
+      ["presentation.icon", "../x", sha(PNG)],
+      ["presentation.icon", "", "nope"],
+    ] as const)
+      await expect(
+        rebuildLadder(ctx, "djdl", slot, locale, h),
+      ).rejects.toBeInstanceOf(HostedAssetError);
+  });
+  it("a width the same bytes already show to admit no rung needs no read and no call: none at once", async () => {
+    ctx.env = { BLOBS: asR2(r2) };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    // listing.icon learns the width (48 px) from the binding; presentation.icon still has none.
+    ctx.env = { BLOBS: asR2(r2), IMAGES: stubImages({ width: 48 }) };
+    await ingest(ctx, "djdl", "listing.icon", upload(PNG));
+    expect(await getHostedAsset(db, "djdl", "listing.icon")).toMatchObject({
+      width: 48,
+    });
+    // Were the original read, its absence would fail the retry.
+    await asR2(r2).delete(blobKey(sha(PNG)));
+    const images = stubImages({ width: 999 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("none");
+    expect(images.infos).toBe(0);
+    expect(images.widths).toEqual([]);
+    expect(await getHostedAsset(db, "djdl", "presentation.icon")).toMatchObject(
+      { width: 48, height: 48, variants_json: "[]" },
+    );
+    expect(
+      await db.all(`SELECT slot FROM hosted_assets WHERE ${ladderOwedSql()}`),
+    ).toEqual([]);
+  });
+
+  it("keeps a width learned by .info() when the build then fails; the next retry does not ask again", async () => {
+    ctx.env = { BLOBS: asR2(r2) };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    const failing = stubImages({
+      width: 512,
+      failAt: { n: 0, code: IMAGES_QUOTA_ERROR },
+    });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: failing };
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("failed");
+    expect(failing.infos).toBe(1);
+    expect(await getHostedAsset(db, "djdl", "presentation.icon")).toMatchObject(
+      { width: 512, height: 512, variants_json: "[]" },
+    );
+    const images = stubImages({ width: 512 });
+    ctx.env = { BLOBS: asR2(r2), IMAGES: images };
+    expect(
+      await rebuildLadder(ctx, "djdl", "presentation.icon", "", sha(PNG)),
+    ).toBe("built");
+    expect(images.infos).toBe(0);
+    expect(images.widths).toEqual([64, 128, 256, 512]);
+  });
+});
+
+describe("the back-off of a new copy", () => {
+  async function backoff(slot = "presentation.icon") {
+    return db.first<{ attempts: number; next_attempt_at: number | null }>(
+      "SELECT attempts, next_attempt_at FROM hosted_assets WHERE product = 'djdl' AND slot = ? AND locale = ''",
+      slot,
+    );
+  }
+  const aged = () =>
+    db.run(
+      "UPDATE hosted_assets SET attempts = 6, next_attempt_at = ? WHERE product = 'djdl'",
+      NOW + 86_400,
+    );
+  const quota = () =>
+    stubImages({ width: 512, failAt: { n: 0, code: IMAGES_QUOTA_ERROR } });
+
+  it("any way in that installs new bytes resets it; the same bytes keep the row's", async () => {
+    // A console upload whose ladder fails: that failure is the ladder's first attempt.
+    ctx.env = { BLOBS: asR2(r2), IMAGES: quota() };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    expect(await backoff()).toEqual({
+      attempts: 1,
+      next_attempt_at: NOW + PULL_BACKOFF_BASE_SECONDS,
+    });
+
+    // The same bytes again (still failing): the copy is not new, so its back-off stands.
+    await aged();
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG));
+    expect(await backoff()).toEqual({
+      attempts: 6,
+      next_attempt_at: NOW + 86_400,
+    });
+
+    // New bytes by console upload, still owing a ladder: a clean back-off, one step out.
+    ctx.now = NOW + 1_000;
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG2));
+    expect(await backoff()).toEqual({
+      attempts: 1,
+      next_attempt_at: NOW + 1_000 + PULL_BACKOFF_BASE_SECONDS,
+    });
+
+    // New bytes by a CI push whose ladder is built: nothing owed, nothing held off.
+    await aged();
+    ctx.env = { BLOBS: asR2(r2), IMAGES: stubImages({ width: 512 }) };
+    await ingest(ctx, "djdl", "presentation.icon", {
+      ...upload(PNG),
+      origin: "ci",
+      sourceKind: "ci",
+    });
+    expect(await variantsOf("presentation.icon")).toHaveLength(4);
+    expect(await backoff()).toEqual({ attempts: 0, next_attempt_at: null });
+
+    // New bytes without the binding: a ladder is never owed, so nothing is held off either.
+    await aged();
+    ctx.env = { BLOBS: asR2(r2) };
+    await ingest(ctx, "djdl", "presentation.icon", upload(PNG2));
+    expect(await backoff()).toEqual({ attempts: 0, next_attempt_at: null });
+
+    // A slot without a ladder family never owes one, binding or not.
+    ctx.env = { BLOBS: asR2(r2), IMAGES: quota() };
+    await ingest(ctx, "djdl", "notes-image:0123456789abcdef", upload(PNG));
+    expect(await backoff("notes-image:0123456789abcdef")).toEqual({
+      attempts: 0,
+      next_attempt_at: null,
+    });
+  });
+});
+
+describe("ladderOwedSql", () => {
+  it("agrees with variantFamily and ladderWidths for every slot and width", async () => {
+    const slots = [
+      "presentation.icon",
+      "listing.icon",
+      "listing.header",
+      "listing.screenshot:1",
+      "listing.screenshot:16",
+      "play:icon",
+      "play:feature-graphic",
+      "notes-image:0123456789abcdef",
+      "trailer-master",
+      "release-file",
+    ];
+    const widths = [null, 1, 63, 64, 479, 480, 639, 640, 4000];
+    // One row per (slot, width): the width's index is the row's locale.
+    for (const slot of slots)
+      for (const [i, width] of widths.entries())
+        await db.run(
+          `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, sha256, width,
+             variants_json, status, modified_at)
+           VALUES ('djdl', ?, ?, 'console', 'upload', ?, ?, '[]', 'ready', ?)`,
+          slot,
+          `l${i}`,
+          "a".repeat(64),
+          width,
+          NOW,
+        );
+    const owed = await db.all<{ slot: string; width: number | null }>(
+      `SELECT slot, width FROM hosted_assets WHERE ${ladderOwedSql()}`,
+    );
+    const expected = slots.flatMap((slot) =>
+      widths
+        .filter((w) =>
+          w === null
+            ? variantFamily(slot) !== null
+            : ladderWidths(slot, w).length > 0,
+        )
+        .map((width) => ({ slot, width })),
+    );
+    const key = (r: { slot: string; width: number | null }) =>
+      `${r.slot}|${r.width}`;
+    expect(owed.map(key).sort()).toEqual(expected.map(key).sort());
+    expect(expected.length).toBeGreaterThan(0);
+    // A built ladder, a failed copy or a missing hash owes nothing.
+    await db.run(
+      "UPDATE hosted_assets SET variants_json = '[{\"w\":64}]' WHERE slot = 'listing.icon'",
+    );
+    await db.run(
+      "UPDATE hosted_assets SET status = 'failed' WHERE slot = 'listing.header'",
+    );
+    await db.run(
+      "UPDATE hosted_assets SET sha256 = NULL WHERE slot = 'listing.screenshot:1'",
+    );
+    const left = await db.all<{ slot: string }>(
+      `SELECT DISTINCT slot FROM hosted_assets WHERE ${ladderOwedSql()} ORDER BY slot`,
+    );
+    expect(left.map((r) => r.slot)).toEqual([
+      "listing.screenshot:16",
+      "presentation.icon",
+    ]);
   });
 });
 

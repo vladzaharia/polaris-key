@@ -503,12 +503,15 @@ today.
 - **Billing.** Binding calls are billed per _unique_ transformation per calendar month, with
   5,000 a month free on the Free plan [V]. Generating at ingest means one charge per asset per
   width, once. A product with an icon, a header and 10 screenshots costs at most 5 + 3 + 30 = 38
-  transformations at each change.
+  transformations at each change. The same bytes in two slots of one family (the listing icon
+  falling back to `presentation.icon`) share one ladder within the product (2026-10-06 follow-up).
 - **Why not on the fly.** Transforming on the fly through `/cdn-cgi/image` would multiply the
   unique transformations by every requested size, and would put Images on the request path.
 - **Fallback.** Without the binding (the test environment, or the account's free allowance used
   up, which returns error 9422 [V]), `variants_json` stays empty and every consumer uses the
-  original. HA-03's tests run without the binding and with a stub.
+  original. HA-03's tests run without the binding and with a stub. While the binding is bound,
+  HA-05 retries an empty ladder from the stored original with the pulls' back-off (2026-10-06
+  follow-up); it never pulls the source again.
 - **Store-exact art.** The CLI's sharp-based derivation (A-18d) stays the tool for store-exact
   art (store sizes, composition, crop proposals). The Worker ladder is for display only.
 
