@@ -12,7 +12,7 @@
 --
 --   status           queued (a message is on `pkey-assets-<env>`) | ready (the r2 location is
 --                    appended) | failed (the last try was refused; `error` says why)
---   source           what the last try read: `github:<asset id>` or the external https URL
+--   source_ref       what the last try read: `github:<asset id>` or the external https URL
 --   sha256           the verified copy's SHA-256 once ready (GitHub's `digest` and the
 --                    descriptor's `sha256`, which must agree)
 --   error            the last failure's reason code: an ingest reason (`sha256-mismatch`,
@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS release_mirrors (
   release_id       TEXT NOT NULL,
   artifact_id      TEXT NOT NULL,
   status           TEXT NOT NULL,
-  source           TEXT,
+  source_ref       TEXT,
   sha256           TEXT,
   error            TEXT,
   attempts         INTEGER NOT NULL DEFAULT 0,

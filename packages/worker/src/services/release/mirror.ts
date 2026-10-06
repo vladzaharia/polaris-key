@@ -260,11 +260,11 @@ async function recordFailure(
   source: string | null,
 ): Promise<void> {
   await db.run(
-    `INSERT INTO release_mirrors (product, release_id, artifact_id, status, source, error,
+    `INSERT INTO release_mirrors (product, release_id, artifact_id, status, source_ref, error,
        attempts, next_attempt_at, tried_at, modified_at)
      SELECT ?, ?, ?, 'failed', ?, ?, 1, ? + ${pullBackoffSeconds(1)}, ?, ? WHERE ${ARTIFACT_EXISTS}
      ON CONFLICT(product, release_id, artifact_id) DO UPDATE SET
-       status = 'failed', source = COALESCE(excluded.source, release_mirrors.source),
+       status = 'failed', source_ref = COALESCE(excluded.source_ref, release_mirrors.source_ref),
        error = excluded.error, attempts = release_mirrors.attempts + 1,
        next_attempt_at = ? + ${backoffAfterFailureSql("release_mirrors.attempts")},
        tried_at = excluded.tried_at, modified_at = excluded.modified_at`,
@@ -702,11 +702,11 @@ async function appendLocation(
       ],
     },
     {
-      sql: `INSERT INTO release_mirrors (product, release_id, artifact_id, status, source, sha256,
+      sql: `INSERT INTO release_mirrors (product, release_id, artifact_id, status, source_ref, sha256,
               error, attempts, next_attempt_at, tried_at, modified_at)
             SELECT ?, ?, ?, 'ready', ?, ?, NULL, 0, NULL, ?, ? WHERE ${guard}
             ON CONFLICT(product, release_id, artifact_id) DO UPDATE SET
-              status = 'ready', source = excluded.source, sha256 = excluded.sha256,
+              status = 'ready', source_ref = excluded.source_ref, sha256 = excluded.sha256,
               error = NULL, attempts = 0, next_attempt_at = NULL,
               tried_at = excluded.tried_at, modified_at = excluded.modified_at`,
       params: [...ids, info.label, sha256, now, now, ...guardParams],

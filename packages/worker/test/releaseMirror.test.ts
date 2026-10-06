@@ -285,7 +285,7 @@ describe("release-file mirroring (acceptance)", () => {
     ]);
     expect(await job("v1.1.0", "201")).toMatchObject({
       status: "ready",
-      source: "github:201",
+      source_ref: "github:201",
       sha256: digest,
       error: null,
       attempts: 0,
@@ -490,7 +490,7 @@ describe("release-file mirroring (rules)", () => {
     ]);
     expect(await job("v1.1.0", "file:djdl-extra.zip")).toMatchObject({
       status: "ready",
-      source: extUrl,
+      source_ref: extUrl,
     });
 
     // The served file is our copy now: no 302 to the external host.
