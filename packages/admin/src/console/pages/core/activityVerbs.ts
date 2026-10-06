@@ -7,6 +7,8 @@
 const VERBS: Record<string, string> = {
   "product.create": "created the product",
   "product.link": "linked the product to a repository",
+  "product.link.refused":
+    "had a repository link refused while applying (put back to manual)",
   "product.update": "updated product settings",
   "product.delete": "deleted the product",
   "product.services.update": "changed enabled services",
