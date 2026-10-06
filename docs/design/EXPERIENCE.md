@@ -21,6 +21,13 @@ bit more help."
 > supersedes §0.4 S5 and the UX-32 package, and adds Wave 5 (UX-50 to UX-71) to §13.3. Where the
 > two disagree on setup, SETUP.md wins.
 
+> **Every flow is audited in [FLOWS.md](FLOWS.md) (2026-10-05).** It inventories every multi-step
+> flow, wizard, dialog flow and guided path in the console, the portal and the Worker's pages (77
+> flows: 13 current, 48 to update, 16 to redesign), sets the rules every flow follows (extending
+> SETUP.md §1 beyond setup), and redesigns **New Product** as a wizard in the shared kit, finishing
+> on Overview with "Tonebox is ready" and the launch path. It supersedes §0.4 S1's one-screen shape
+> (its substance stands) and adds Wave 6 (UX-72 to UX-81) to §13.3.
+
 **What this document is.** The single experience spec for both apps: the console
 (`packages/admin/src/console`) and the customer portal (`packages/admin/src/portal`), plus the pages
 the Worker renders (`packages/worker/src/core/brandHtml.ts`) and the emails. It leads with
@@ -286,6 +293,12 @@ automated or defaulted, and the feedback and delight moments. Click counts are m
 audit fixtures.
 
 #### S1 · Create a product (AS J1)
+
+> **Superseded in shape by [FLOWS.md §3](FLOWS.md#3-new-product-redesigned) (2026-10-05):** New
+> Product is a wizard in the SETUP.md kit, two steps from a repository and three from scratch, with
+> the repository read before anything is created and the goals and platforms asked inside it. What
+> follows (name first, slug derived and checked, no catalog textarea, no result page, refusals on
+> their field) still holds.
 
 | Before (8 clicks, 6 screens, 1 required field)                                                      | After (3 actions, 1 screen)                                                                                     |
 | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
@@ -1488,6 +1501,26 @@ per-storefront pages scoped to the builds, channels merged into storefronts and 
 SETUP.md §8.3 lists the amendments this wave makes to UX-21, UX-23, UX-33, UX-09, PS-06, HA-06,
 ST-08, ST-12, SP-02 and UI-KITS.md §4.2, and §8.5 its sequencing.
 
+**Wave 6: flows** ([FLOWS.md](FLOWS.md) §4, 2026-10-05; the owner request to make New Product as
+friendly as the new flows and to bring every flow up to date)
+
+| Id    | Package                                                                                                                                          | Size | Deps                                |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---- | ----------------------------------- |
+| UX-72 | **Create probes**: repositories the app can read, the create dry run with its digest pin, the slug check; `link-repo` returns the product        | M    | none                                |
+| UX-73 | **Create with defaults**: services, planned platforms, accent, the starter Free tier and the release-workflow trust in create's one batch        | M    | UX-72                               |
+| UX-74 | **New Product wizard**: Where it starts (picker), Check, Name it, What it's for, Creating; a shared `ManifestProblems`                           | L    | UX-50, UX-72, UX-73; UX-70 optional |
+| UX-75 | **Ready moment**: the Overview hero with verified facts and the two next actions, the shared-element tile, the one-shot check and burst          | M    | UX-74, UX-51; UX-21, UX-80          |
+| UX-76 | **Presentation in create**: the derived accent, swatches, the icon from HA-05                                                                    | S    | UX-74, UX-73; HA-05                 |
+| UX-77 | **Console flow conformance**: first focus, focus return, step focus and announcements, action-named primaries, unsaved guards, one "Shown once." | M    | UX-10                               |
+| UX-78 | **One resync flow**: one dialog and one result for five entry points                                                                             | M    | none; ST-17 adopts it               |
+| UX-79 | **Portal flow conformance**: the Discover count fix, focus after steps, refusals, removals and ⌘K                                                | M    | PX-20; PX-16                        |
+| UX-80 | **Flow motion**: S-23's step travel, morph, check draw and burst in the wizard kit, dialogs and the portal                                       | M    | S-23 MO-01, MO-02; UX-50, UX-35     |
+| UX-81 | **Flow lint**: an e2e probe that checks §2's checkable rules on every fixture flow                                                               | M    | UX-77, UX-79, UX-50                 |
+
+FLOWS.md §4.3 lists the amendments this wave makes to §0.4 S1, §0.7, SETUP.md §1.1 and §5.1, UX-21,
+UX-50, UX-51, UX-53, UX-63, UX-35, UX-11, UX-43, SIGN-IN.md §3.18 and S-23, and §4.4 its
+sequencing.
+
 **Dropped or merged** (§0.8): UX-32 (superseded by Wave 5, SETUP.md §2.14), UX-24 (into LX-14 as Add seats…), UX-28 (into ST-07 and ST-16), the
 old UX-09 editor (into ST-12). UX-26 and UX-30 shrank to what S-18 does not cover.
 
@@ -1547,6 +1580,8 @@ flowchart LR
   PX22[PX-22 Avatar] --> UX48 & UX13
 ```
 
+- **Wave 6** (flows) is sequenced in [FLOWS.md §4.4](FLOWS.md#44-sequencing): UX-72, UX-77,
+  UX-78 and UX-79's Discover fix start now; New Product follows UX-50; the flow lint lands last.
 - **Wave 5** (setup wizards) is sequenced in [SETUP.md §8.5](SETUP.md#85-sequencing): UX-59, UX-51
   and UX-60 start now; the storefront packages follow A-18j; the console packages follow UX-50.
 - **Start today, in parallel:** UX-01, UX-03, UX-04, UX-05, UX-06a, UX-08 and UX-15. Each edits

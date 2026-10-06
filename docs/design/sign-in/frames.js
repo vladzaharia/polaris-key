@@ -138,12 +138,10 @@
   const meter = (used, limit) =>
     `<div class="meter" role="img" aria-label="${used} of ${limit} devices in use">${Array.from({ length: limit }, (_, i) => `<i class="${i < used ? "on" : ""}"></i>`).join("")}</div>`;
   // Full and blocked rows are not radios (SIGN-IN §3.14, D-45): a glyph sits where the radio would.
-  // Row anatomy (SIGN-IN.md §3.6, O-11): title + tag; the tier as a neutral pill with the device
-  // counter "{used} of {limit} devices" for every license; then "{origin} · {term}" in plain words
-  // ("From signing in", "Steam key ending 3WPLDA", "From the App Store"); then the seat meter. No
-  // license is labelled by type: every license is account-bound (owner decision, 2026-10-05).
-  // `hideCount` is the mixed rule (D-54): key and seat rows drop the counter and meter when the
-  // account also holds a sign-in license for the product.
+  // Row anatomy (SIGN-IN.md §3.6, O-17): title + tag; the tier as a neutral pill with
+  // "{used} of {limit} devices" on every license (no "Account-wide"); then "{origin} · {term}" with
+  // the origin in plain words ("From signing in", "Key ending 3WPLDA"); a meter. `hideCount` is the
+  // mixed rule: a key license drops its counter and meter when a sign-in license is also held.
   const lic = ({
     name,
     tier,
@@ -171,7 +169,8 @@
     const showMeter = limit && !hideCount && !noMeter;
     return `<div class="lic ${sel ? "sel" : ""} ${full ? "full" : ""} ${blocked ? "blocked" : ""}">${full || blocked ? `<div class="nosel" aria-hidden="true">${I.ban}</div>` : `<div class="radio"></div>`}<div class="ln">${name}</div>${tag ? `<span class="tag ${tagKind || ""}">${tag}</span>` : "<span></span>"}${line2}${meta ? `<div class="lm">${meta}</div>` : ""}${showMeter ? meter(used, limit) : ""}${act ? `<div class="act">${act}</div>` : ""}${extra || ""}</div>`;
   };
-  const fullAct = `<div class="btn secondary inline">Replace a device</div><span class="link">Free a device</span>`;
+  // D-87: Free a device shows only where Replace is not offered; a full row offers Replace in the card.
+  const fullAct = `<div class="btn secondary inline">Replace a device</div>`;
   const FULL = {
     full: true,
     tag: "No free devices",
@@ -183,6 +182,17 @@
   const quiet = (key) =>
     `<div class="links">${key ? `<span>${I.key} Use a license key instead</span>` : ""}<span>Cancel</span></div>`;
   const below = `<div class="below">Help · Privacy · Terms</div>`;
+  // ReplaceDevice as a step (SIGN-IN.md §3.7, D-81): the license list morphs into the device list;
+  // the confirm expands under it. `thisDevice` is the computer taking the seat.
+  const licSum = (name, tier, count, meta) =>
+    `<div class="licsum"><div class="ln">${name}</div><div class="tl"><span class="pill">${tier}</span><span>${count}</span></div><div class="lm">${meta}</div></div>`;
+  const devRows = () =>
+    `<div class="devs" role="radiogroup" aria-label="Devices on Tidewater Studio Edu">
+      <div class="dev sel"><div class="radio"></div>${I.laptop.replace("<svg", '<svg class="g"')}<div><div class="dn">Work laptop</div><div class="dm">Windows · last used 23 days ago</div></div><span class="tag">Least recent</span></div>
+      <div class="dev"><div class="radio"></div>${I.desktop.replace("<svg", '<svg class="g"')}<div><div class="dn">Studio iMac</div><div class="dm">macOS · last used 4 minutes ago</div></div><span class="tag active">Active now</span></div>
+    </div>`;
+  const consequence = (thisDevice) =>
+    `Work laptop signs out of Tidewater Studio and ${thisDevice} takes its seat. Work laptop can sign in again later if a seat is free. We'll email you about it.`;
 
   // ---------- frames ----------
   // Each frame: { id, surface?, head?, body, foot?, kit? }
@@ -292,7 +302,7 @@
     foot: footer("Tidewater Studio", "Harbor Audio"),
   });
 
-  // 06 Replace a device, expanded on the full license: one confirm that names both devices
+  // 06 Replace a device as a step: the list became Edu's devices; the confirm expanded under it
   F({
     id: "06-choice-replace",
     head: appHeader({
@@ -303,30 +313,14 @@
       whereIcon: "laptop",
     }),
     body: `${person()}
-      <h1>Choose a license for this device</h1>
-      <div role="radiogroup" aria-label="Licenses for Tidewater Studio" style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Tidewater Studio", tier: "Pro", meta: "From Harbor Audio · Lifetime", used: 2, limit: 3 })}
-      ${lic({
-        name: "Tidewater Studio",
-        tier: "Edu",
-        meta: "Key ending 3WPLDA · Until 12 Jun 2027",
-        used: 2,
-        limit: 2,
-        full: true,
-        tag: "No free devices",
-        tagKind: "warn",
-        extra: `<div class="replace"><h2>Replace a device</h2>
-          <div class="devs" role="radiogroup" aria-label="Devices on Tidewater Studio Edu">
-            <div class="dev sel"><div class="radio"></div>${I.laptop.replace("<svg", '<svg class="g"')}<div><div class="dn">Work laptop</div><div class="dm">Windows · last used 23 days ago</div></div><span class="tag">Least recent</span></div>
-            <div class="dev"><div class="radio"></div>${I.desktop.replace("<svg", '<svg class="g"')}<div><div class="dn">Studio iMac</div><div class="dm">macOS · last used 4 minutes ago</div></div><span class="tag active">Active now</span></div>
-          </div>
-          <div class="confirm"><h3>Replace Work laptop?</h3>
-            <p>Work laptop signs out of Tidewater Studio and Mara's MacBook Pro takes its seat. Work laptop can sign in again later if a seat is free. We'll email you about it.</p>
-            ${btn("primary", "Replace and continue")}
-            ${btn("ghost", "Back")}
-          </div>
-        </div>`,
-      })}
+      <h1>Replace a device</h1>
+      ${licSum("Tidewater Studio", "Edu", "2 of 2 devices", "Key ending 3WPLDA · Until 12 Jun 2027")}
+      <p class="lede">Choose a device to sign out. Mara's MacBook Pro takes its seat.</p>
+      ${devRows()}
+      <div class="confirm"><h3>Replace Work laptop?</h3>
+        <p>${consequence("Mara's MacBook Pro")}</p>
+        ${btn("primary", "Replace and continue")}
+        ${btn("ghost", "Back")}
       </div>`,
     foot: footer("Tidewater Studio", "Harbor Audio"),
   });
@@ -541,6 +535,7 @@
   F({
     id: "18-kit-choice",
     kit: true,
+    kitInline: true,
     desk: () => kitChoiceMac,
     body: `<div class="phead hero"><div class="icon">${art.saltwind}</div>Saltwind</div>
       <div class="who">Signed in as Mara Fennick · <span class="link">Not you?</span></div>
@@ -548,7 +543,8 @@
       <p class="lede">Saltwind will use it on Mara's iPhone.</p>
       ${lic({ name: "Saltwind", tier: "Pro", meta: "From the App Store · Yearly, until 2 Feb 2027", used: 1, limit: 3, sel: true })}
       ${lic({ name: "Saltwind", tier: "Free", meta: "From signing in · Lifetime", used: 2, limit: 2, full: true, tag: "No free devices", tagKind: "warn", act: `<div class="btn secondary inline">Replace a device</div>` })}
-      <div style="flex:1"></div>
+      <p class="small center"><span class="link">Use a license key instead</span> · <span class="link">Cancel</span></p>
+      <div class="grow"></div>
       ${btn("primary", "Use this license and continue")}
       <p class="small center">Polaris Key signs you in for Saltwind. Tern Works never sees your codes or passkeys.</p>`,
   });
@@ -574,7 +570,7 @@
       <h1>Choose a license for this device</h1>
       <div class="notice warn">${I.warn}<span>Your licenses are on all their devices. Replace a device, or create a new free license.</span></div>
       <div role="radiogroup" aria-label="Licenses for Saltwind" style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Saltwind", tier: "Free", meta: "From signing in · Lifetime", used: 2, limit: 2, ...FULL })}
+      ${lic({ name: "Saltwind", tier: "Free", meta: "From signing in", used: 2, limit: 2, ...FULL })}
       ${lic({ name: "Create a new free license", tier: "Free", used: 1, limit: 2, noMeter: true, meta: "A separate license · created when you continue", tag: "New", tagKind: "new" })}
       </div>
       ${btn("primary disabled", "Use this license and continue")}
@@ -618,16 +614,17 @@
       <p class="lede">Drift Kart will use it on Living room TV.</p>
       <div role="radiogroup" aria-label="Licenses for Drift Kart" style="display:flex;flex-direction:column;gap:10px">
       ${lic({ name: "Keep the license this device uses", meta: "Drift Kart keeps running as it does now.", sel: true })}
-      ${lic({ name: "Drift Kart", tier: "Season Pass", meta: "Steam key ending 3WPLDA · Until 1 Mar 2027", used: 1, limit: 3 })}
+      ${lic({ name: "Drift Kart", tier: "Season Pass", meta: "From Steam · Until 1 Mar 2027", used: 1, limit: 3 })}
       </div>
       ${btn("primary", "Use this license and continue")}
       ${quiet(false)}`,
     foot: footer("Drift Kart", "Pitlane Games"),
   });
 
-  // 22 A key license and a sign-in license for one product (O-11): the key license hides its
-  // counter and meter (D-54); the sign-in row reads "2 of 3 devices", "From signing in · Lifetime".
-  // No license type label (owner decision, 2026-10-05).
+  // 22 A key license and a sign-in license for one product (O-17): the key license hides its
+  // counter and meter (D-54); the sign-in license keeps its device limit (D-53) and shows "2 of 3
+  // devices" like every license. No "Account-wide" label. The key came from an App Store purchase,
+  // so its origin names the store with the key (owner, 2026-10-05).
   F({
     id: "22-choice-sign-in",
     deskHead: appHeader({
@@ -648,9 +645,9 @@
     body: `${person()}
       <h1>Choose a license for this device</h1>
       <p class="lede">Storytime will use it on Mara's iPad.</p>
-      <div role="radiogroup" aria-label="Licenses for Storytime" style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Storytime", tier: "Standard", meta: "App Store key ending 7Q2MXA · Lifetime", used: 1, limit: 5, hideCount: true, sel: true })}
-      ${lic({ name: "Storytime", tier: "Standard", used: 2, limit: 3, meta: "From signing in · Lifetime" })}
+      <div role="radiogroup" aria-label="Licenses for Storytime" class="rows">
+      ${lic({ name: "Storytime", tier: "Standard", meta: "App Store key ending 7Q2M4X · Lifetime", used: 1, limit: 5, hideCount: true, sel: true })}
+      ${lic({ name: "Storytime", tier: "Standard", meta: "From signing in · Lifetime", used: 2, limit: 3 })}
       </div>
       ${btn("primary", "Use this license and continue")}
       ${quiet(false)}`,
@@ -704,40 +701,6 @@
     `<span class="db ${kind}">${label}${icon ? icon : ""}</span>`;
   const dkProviders = (list) =>
     `<div class="dk-prov" role="group" aria-label="Or continue with">${list.map((p) => `<span aria-label="Continue with ${p}">${I[p.toLowerCase()]}</span>`).join("")}</div>`;
-  // The waiting sheet (SignInHandoff, browser mode): Cancel, Open browser again, Use a code instead.
-  const waiting = (os, icon, app) => {
-    const T = os === "mac";
-    const body = `${dkHead(icon, app)}
-      <h2>Finish in your browser</h2>
-      <p>We opened Polaris Key in your browser. Sign in there and ${app} continues by itself.</p>
-      <div class="wait"><span class="spinner"></span>Waiting for your browser…</div>`;
-    const useCode = `<span class="link">${T ? "Use a Code Instead" : "Use a code instead"}</span>`;
-    if (os === "w11")
-      return `<div class="cb">${body}${useCode}</div><div class="cf">${db("primary", "Open browser again")}${db("secondary", "Cancel")}</div>`;
-    return `${body}<div class="dk-foot">${useCode}<span class="sp"></span>${db("secondary", "Cancel")}${db("primary", T ? "Open Browser Again" : "Open browser again")}</div>`;
-  };
-  // A signed-out Welcome window with the desktop chooser (D-69).
-  const welcomeMac = (artName, icon, app) =>
-    `<div class="split"><div class="art">${bigArt[artName]()}</div><div class="pane">
-      <div class="hero-icon">${art[icon]}</div>
-      <h2 class="big">Sign in to ${app}</h2>
-      <p>Use the email you bought ${app} with.</p>
-      ${db("primary xl", "Continue in Browser", upRight)}
-      <div class="or">or</div>
-      ${dkProviders(["Apple", "Google", "Steam"])}
-      <div class="dk-links"><span>${I.key} Have a License Key?</span></div>
-      <p class="fine">${I.lock} Polaris Key signs you in for ${app}. Harbor Audio never sees your codes or passkeys.</p>
-    </div></div>`;
-  const welcomeFlat = (artName, icon, app) =>
-    `<div class="split"><div class="art">${bigArt[artName]()}</div><div class="pane">
-      <div class="hero-icon">${art[icon]}</div>
-      <h2 class="big">Sign in to ${app}</h2>
-      <p>Use the email you bought ${app} with.</p>
-      ${db("primary xl", "Continue in browser", upRight)}
-      <div class="or">or</div>
-      ${dkProviders(["Google", "Steam"])}
-      <div class="dk-links"><span>${I.key} Have a license key?</span></div>
-    </div></div>`;
   // A signed-in Tidewater main window (sidebar + canvas), for completion, sign-out and expiry.
   const tideMain = (extraTop = "") =>
     `<div class="appmain">${extraTop}<div class="cols"><div class="side"><div class="sh">Presets</div>${["Harbor at dusk", "Low tide", "Fog bell", "Gull room", "Night swell"].map((n, i) => `<div class="si ${i === 1 ? "on" : ""}">${n}</div>`).join("")}</div><div class="canvas"><div class="ct">Low tide</div><svg viewBox="0 0 600 160" preserveAspectRatio="none" class="wave">${Array.from(
@@ -751,31 +714,134 @@
       "",
     )}</svg><div class="knobs">${["Depth", "Drift", "Spray", "Room"].map((k) => `<div class="knob"><i></i><span>${k}</span></div>`).join("")}</div></div></div></div>`;
 
-  // 18 desktop render: the macOS kit's native LicenseChoice sheet after native Sign in with Apple
-  // (I-13 `choose`, D-70). Replace a Device… opens manageUrl in the browser until I-13 carries the
-  // device list; the row then re-reads on app focus.
+  // ---------- the one sign-in form (SIGN-IN.md §3.17, O-13, O-14) ----------
+  // Every in-app step is the same form. Inline (the default) it lives in the Welcome window's pane
+  // or the game's panel; with presentation "sheet" it lives in one platform modal over a running
+  // app (macOS sheet, Windows ContentDialog, GNOME AdwDialog). The body morphs; nothing stacks on
+  // it except the system confirmation for a destructive Replace (D-80).
+  const T = (os, mac, other) => (os === "mac" ? mac : other);
+  const splitWith = (artName, pane, cls = "") =>
+    `<div class="split"><div class="art">${bigArt[artName]()}</div><div class="pane ${cls}">${pane}</div></div>`;
+  const heroIcon = (icon, badge) =>
+    `<div class="hero-icon ${badge ? "badged" : ""}">${art[icon]}${badge ? `<span class="badge">${I.check}</span>` : ""}</div>`;
+  // Step 1: Sign in (the desktop chooser, D-69)
+  const paneSignIn = (os, icon, app, provs) => `${heroIcon(icon)}
+      <h2 class="big">Sign in to ${app}</h2>
+      <p>Use the email you bought ${app} with.</p>
+      ${db("primary xl", T(os, "Continue in Browser", "Continue in browser"), upRight)}
+      <div class="or">or</div>
+      ${dkProviders(provs)}
+      <div class="dk-links"><span>${I.key} ${T(os, "Have a License Key?", "Have a license key?")}</span></div>
+      ${os === "mac" ? `<p class="fine">${I.lock} Polaris Key signs you in for ${app}. Harbor Audio never sees your codes or passkeys.</p>` : ""}`;
+  // Step 2: Finish in your browser, in place of step 1's body (D-78)
+  const waitRow = (text = "Waiting for your browser…") =>
+    `<div class="wait" role="status"><span class="breath" aria-hidden="true"></span>${text}</div>`;
+  const paneWait = (os, icon, app) => {
+    const useCode = `<span class="link">${T(os, "Use a Code Instead", "Use a code instead")}</span>`;
+    const again = db(
+      os === "gnome" ? "primary pill" : "primary",
+      T(os, "Open Browser Again", "Open browser again"),
+    );
+    const cancel = db("secondary", "Cancel");
+    const foot =
+      os === "w11"
+        ? `<div class="dk-foot">${again}${cancel}<span class="sp"></span>${useCode}</div>`
+        : `<div class="dk-foot">${useCode}<span class="sp"></span>${cancel}${again}</div>`;
+    return `${heroIcon(icon)}
+      <h2 class="big">Finish in your browser</h2>
+      <p>We opened Polaris Key in your browser. Sign in there and ${app} continues by itself.</p>
+      ${waitRow()}
+      ${foot}`;
+  };
+  // The code view, in place (D-67: no QR on desktop)
+  const paneCode = (os, icon) => `${heroIcon(icon)}
+      <h2 class="big">Sign in with a code</h2>
+      <p>On any phone or computer, go to <b>key.plrs.im/device</b> and enter this code.</p>
+      <div class="dcode"><code>WDJB-MJHT</code><span class="db secondary sm">${copyI}Copy</span></div>
+      <div class="wait"><span class="ring"></span>Waiting · code expires in 4:12</div>
+      <p class="fine">Check the code there matches this one.</p>
+      <div class="dk-foot"><span class="link">${T(os, "Use Browser Sign-In", "Use browser sign-in")}</span><span class="sp"></span>${db("secondary", "Cancel")}${db(os === "gnome" ? "primary pill" : "primary", T(os, "Open Browser", "Open browser"))}</div>`;
+  // Step 3: Choose a license (path B, the grant; I-04 §G)
+  const choiceRows = (os, thisDevice) =>
+    `<div role="radiogroup" aria-label="Licenses for Tidewater Studio" class="dk-rows">
+      ${lic({ name: "Tidewater Studio", tier: "Pro", meta: "From Harbor Audio · Lifetime", used: 2, limit: 3, sel: true })}
+      ${lic({ name: "Tidewater Studio", tier: "Edu", meta: "Key ending 3WPLDA · Until 12 Jun 2027", used: 2, limit: 2, full: true, tag: "No free devices", tagKind: "warn", act: db("secondary sm", T(os, "Replace a Device…", "Replace a device…")) })}
+    </div>`;
+  const paneChoice = (os, icon, who, thisDevice) => `${heroIcon(icon)}
+      <div class="who">${who} · <span class="link">${T(os, "Not You?", "Not you?")}</span></div>
+      <h2 class="big">Choose a license for this device</h2>
+      <p>Tidewater Studio will use it on ${thisDevice}.</p>
+      ${choiceRows(os, thisDevice)}
+      <div class="dk-foot"><span class="link">${I.key} ${T(os, "Use a License Key Instead", "Use a license key instead")}</span></div>
+      <div class="dk-foot"><span class="sp"></span>${db("secondary", "Cancel")}${db(os === "gnome" ? "primary pill" : "primary", T(os, "Use This License and Continue", "Use this license and continue"))}</div>`;
+  // Step 3b: Replace a device, in place of the list (D-81)
+  const replaceBody = (os, thisDevice, inlineConfirm) => `
+      <h2>${T(os, "Replace a Device", "Replace a device")}</h2>
+      ${licSum("Tidewater Studio", "Edu", "2 of 2 devices", "Key ending 3WPLDA · Until 12 Jun 2027")}
+      <p>Choose a device to sign out. ${thisDevice} takes its seat.</p>
+      ${devRows()}
+      ${inlineConfirm ? `<div class="confirm"><h3>Replace Work laptop?</h3><p>${consequence(thisDevice)}</p></div>` : ""}`;
+  // Step 4: Done, only when a license was added or issued now (D-84)
+  const paneDone = (os, icon) => `${heroIcon(icon, true)}
+      <h2 class="big">Tidewater Studio is yours</h2>
+      <p>Pro · Lifetime · in your library. This Mac is device 3 of 3.</p>
+      <div class="person dk-person"><div class="avatar">MF</div><div><div class="n">Mara Fennick</div><div class="e">mara@fennick.studio</div></div></div>
+      ${db("primary xl", T(os, "Start Using Tidewater Studio", "Start using Tidewater Studio"))}`;
+  // The sheet presentation's body (the same steps, desktop density, smaller header)
+  const sheetWait = (os, icon, app) => {
+    const useCode = `<span class="link">${T(os, "Use a Code Instead", "Use a code instead")}</span>`;
+    const body = `${dkHead(icon, app)}
+      <h2>Finish in your browser</h2>
+      <p>We opened Polaris Key in your browser. Sign in there and ${app} continues by itself.</p>
+      ${waitRow()}`;
+    if (os === "w11")
+      return `<div class="cb">${body}${useCode}</div><div class="cf">${db("primary", "Open browser again")}${db("secondary", "Cancel")}</div>`;
+    return `${body}<div class="dk-foot">${useCode}<span class="sp"></span>${db("secondary", "Cancel")}${db(os === "gnome" ? "primary pill" : "primary", T(os, "Open Browser Again", "Open browser again"))}</div>`;
+  };
+  const sheetChoice = (
+    os,
+    icon,
+    who,
+    thisDevice,
+  ) => `${dkHead(icon, "Tidewater Studio")}
+      <div class="who">${who} · <span class="link">${T(os, "Not You?", "Not you?")}</span></div>
+      <h2>Choose a license for this device</h2>
+      <p>Tidewater Studio will use it on ${thisDevice}.</p>
+      ${choiceRows(os, thisDevice)}
+      <div class="dk-foot"><span class="link">${I.key} ${T(os, "Use a License Key Instead", "Use a license key instead")}</span></div>
+      <div class="dk-foot"><span class="sp"></span>${db("secondary", "Cancel")}${db(os === "gnome" ? "primary pill" : "primary", T(os, "Use This License and Continue", "Use this license and continue"))}</div>`;
+  // The Godot kit panel keeps the old waiting helper's shape
+  const waiting = (os, icon, app) => sheetWait(os, icon, app);
+  // Kept for frame 25's window behind the browser and frame 23
+  const welcomeMac = (artName, icon, app) =>
+    splitWith(
+      artName,
+      paneSignIn("mac", icon, app, ["Apple", "Google", "Steam"]),
+    );
+  const welcomeFlat = (artName, icon, app) =>
+    splitWith(artName, paneSignIn("w11", icon, app, ["Google", "Steam"]));
+
+  // 18 desktop render: the sheet presentation (an app that opens sign-in from its menu). After
+  // native Sign in with Apple the one sheet shows step 3; Replace a Device… morphs in place.
   const kitChoiceMac = scene(
     "mac",
     macWin({
       x: 200,
-      y: 70,
+      y: 60,
       w: 1040,
-      h: 760,
-      body: `<div class="split dimmed"><div class="art">${bigArt.saltwind()}</div><div class="pane"></div></div>`,
-      sheet: `${dkHead("saltwind", "Saltwind")}
-        <div class="who">Signed in with Apple as Mara Fennick · <span class="link">Not You?</span></div>
-        <h2>Choose a license for this device</h2>
-        <p>Saltwind will use it on Mara's MacBook Pro.</p>
-        <div role="radiogroup" aria-label="Licenses for Saltwind" class="dk-rows">
-        ${lic({ name: "Saltwind", tier: "Pro", meta: "From the App Store · Yearly, until 2 Feb 2027", used: 1, limit: 3, sel: true })}
-        ${lic({ name: "Saltwind", tier: "Free", meta: "From signing in · Lifetime", used: 2, limit: 2, full: true, tag: "No free devices", tagKind: "warn", act: `${db("secondary", "Replace a Device…", upRight)}<span class="hint">Opens Polaris Key in your browser</span>` })}
-        </div>
-        <div class="dk-foot"><span class="link">${I.key} Use a License Key Instead</span></div>
-        <div class="dk-foot"><span class="sp"></span>${db("secondary", "Cancel")}${db("primary", "Use This License and Continue")}</div>`,
+      h: 780,
+      title: "Tidewater Studio",
+      body: tideMain(),
+      sheet: sheetChoice(
+        "mac",
+        "tidewater",
+        "Signed in with Apple as Mara Fennick",
+        "Mara's MacBook Pro",
+      ),
     }),
   );
 
-  // 23 macOS (SwiftUI / AppKit): the signed-out Welcome window with the desktop chooser
+  // 23 macOS inline, step 1: Sign in, in the Welcome window's pane
   F({
     id: "23-desk-mac-signin",
     only: "desktop",
@@ -791,7 +857,7 @@
     ),
   });
 
-  // 24 macOS: the waiting sheet while the browser is open (no dimming, the macOS 26 sheet shape)
+  // 24 macOS inline, step 2: Finish in your browser replaces step 1's body (no sheet)
   F({
     id: "24-desk-mac-waiting",
     only: "desktop",
@@ -802,31 +868,37 @@
         y: 90,
         w: 1040,
         h: 720,
-        body: welcomeMac("tidewater", "tidewater", "Tidewater Studio"),
-        sheet: waiting("mac", "tidewater", "Tidewater Studio"),
+        body: splitWith(
+          "tidewater",
+          paneWait("mac", "tidewater", "Tidewater Studio"),
+        ),
       }),
     ),
   });
 
-  // 25 The default browser in front of the app: the same AuthCard, "on Mara's MacBook Pro"
+  // 25 The default browser in front of the app: the same AuthCard, "on Mara's MacBook Pro"; the
+  // app behind waits in its own pane
   F({
     id: "25-desk-browser-methods",
     only: "desktop",
     desk: scene(
       "mac",
       macWin({
-        x: 40,
-        y: 180,
-        w: 720,
-        h: 560,
+        x: 820,
+        y: 210,
+        w: 600,
+        h: 520,
         cls: "behind",
-        body: welcomeMac("tidewater", "tidewater", "Tidewater Studio"),
-        sheet: waiting("mac", "tidewater", "Tidewater Studio"),
+        body: splitWith(
+          "tidewater",
+          paneWait("mac", "tidewater", "Tidewater Studio"),
+          "small",
+        ),
       }) +
         browserWin({
-          x: 330,
+          x: 24,
           y: 24,
-          w: 1080,
+          w: 960,
           h: 852,
           tab: "Sign in · Polaris Key",
           url: "/signin?request=rq_8F2K…QW",
@@ -841,8 +913,7 @@
     ),
   });
 
-  // 26 The desktop ReturnStep in the browser tab (D-63, D-64): the loopback answered with a 303 to
-  // the hosted page; no timer; the app has already come to the front behind it.
+  // 26 The desktop ReturnStep, path B (D-85): the card skipped the choice; the app chooses
   F({
     id: "26-desk-browser-return",
     only: "desktop",
@@ -857,16 +928,16 @@
         url: "/signin/return?request=rq_8F2K…QW",
         content: `${lockup()}<div class="card">${appHeader({ icon: "tidewater", app: "Tidewater Studio", dev: "Harbor Audio", where: "on Mara's MacBook Pro", whereIcon: "laptop" })}<div class="body">
           <div class="success-mark">${I.check}</div>
-          <h1 class="center">You're signed in to Tidewater Studio</h1>
-          <p class="lede center" style="margin:0">You can close this tab and return to Tidewater Studio.</p>
-          <div class="person"><div class="avatar">MF</div><div><div class="n">Mara Fennick</div><div class="e">Tidewater Studio Pro · Lifetime · device 3 of 3</div></div></div>
+          <h1 class="center">You're signed in</h1>
+          <p class="lede center">Go back to Tidewater Studio to choose a license. You can close this tab.</p>
+          <div class="person"><div class="avatar">MF</div><div><div class="n">Mara Fennick</div><div class="e">mara@fennick.studio</div></div></div>
           ${btn("primary", "Return to Tidewater Studio")}
           <p class="small center"><span class="link">Open your library</span></p></div>${footer("Tidewater Studio", "Harbor Audio")}</div>`,
       }),
     ),
   });
 
-  // 27 macOS: the app comes to the front signed in, with the confirmation toast (D-65)
+  // 27 macOS: after step 3 the form closes and the app opens with the toast (D-65, D-84)
   F({
     id: "27-desk-mac-done",
     only: "desktop",
@@ -880,7 +951,7 @@
         cls: "behind",
         tab: "Signed in · Polaris Key",
         url: "/signin/return?request=rq_8F2K…QW",
-        content: `${lockup()}<div class="card" style="transform:scale(.8);transform-origin:top center"><div class="body"><div class="success-mark">${I.check}</div><h1 class="center">You're signed in to Tidewater Studio</h1><p class="lede center" style="margin:0">You can close this tab and return to Tidewater Studio.</p></div></div>`,
+        content: `${lockup()}<div class="card scaled"><div class="body"><div class="success-mark">${I.check}</div><h1 class="center">You're signed in</h1><p class="lede center">Go back to Tidewater Studio to choose a license. You can close this tab.</p></div></div>`,
       }) +
         macWin({
           x: 90,
@@ -895,8 +966,8 @@
     ),
   });
 
-  // 28 Windows 11 (Compose Desktop, Electron / Tauri with the web kit's windows variant, Qt Quick):
-  // the waiting step as a ContentDialog on a smoke layer
+  // 28 Windows 11 inline (Compose Desktop, Electron / Tauri windows variant, Qt Quick): step 2 in
+  // the Welcome pane, Fluent button order (primary first)
   F({
     id: "28-desk-win-waiting",
     only: "desktop",
@@ -909,13 +980,15 @@
         h: 720,
         title: "Tidewater Studio",
         icon: "tidewater",
-        body: welcomeFlat("tidewater", "tidewater", "Tidewater Studio"),
-        dialog: waiting("w11", "tidewater", "Tidewater Studio"),
+        body: splitWith(
+          "tidewater",
+          paneWait("w11", "tidewater", "Tidewater Studio"),
+        ),
       }),
     ),
   });
 
-  // 29 GNOME (Qt Quick or Compose Desktop, linux variant): Use a code instead, no QR (D-67)
+  // 29 GNOME inline (Qt Quick or Compose Desktop, linux variant): the code view in place, no QR
   F({
     id: "29-desk-linux-code",
     only: "desktop",
@@ -927,20 +1000,13 @@
         w: 1040,
         h: 720,
         title: "Tidewater Studio",
-        body: welcomeFlat("tidewater", "tidewater", "Tidewater Studio"),
-        dialog: `${dkHead("tidewater", "Tidewater Studio")}
-          <h2>Sign in with a code</h2>
-          <p>On any phone or computer, go to <b>key.plrs.im/device</b> and enter this code.</p>
-          <div class="dcode"><code>WDJB-MJHT</code><span class="db secondary sm">${copyI}Copy</span></div>
-          <div class="wait"><span class="ring"></span>Waiting · code expires in 4:12</div>
-          <p class="fine">Check the code there matches this one.</p>
-          <div class="dk-foot"><span class="link">Use browser sign-in</span><span class="sp"></span>${db("secondary", "Cancel")}${db("primary pill", "Open browser")}</div>`,
+        body: splitWith("tidewater", paneCode("gnome", "tidewater")),
       }),
     ),
   });
 
-  // 30 Windows: in-app Replace a device inline (once I-13 carries the device list; the same layout
-  // is the kit DeviceLimit on the key path). The confirm's buttons take the dialog footer.
+  // 30 Windows sheet presentation: one ContentDialog over the running app; Replace a device has
+  // replaced the list inside it; the confirm is inline because a dialog never stacks on a dialog
   F({
     id: "30-desk-win-replace",
     only: "desktop",
@@ -953,34 +1019,16 @@
         h: 820,
         title: "Tidewater Studio",
         icon: "tidewater",
-        body: welcomeFlat("tidewater", "tidewater", "Tidewater Studio"),
+        body: tideMain(),
         dialog: `<div class="cb">${dkHead("tidewater", "Tidewater Studio")}
-          <div class="who">Signed in with Steam as marafox · <span class="link">Not you?</span></div>
-          <h2>Choose a license for this device</h2>
-          ${lic({
-            name: "Tidewater Studio",
-            tier: "Edu",
-            meta: "Key ending 3WPLDA · Until 12 Jun 2027",
-            used: 2,
-            limit: 2,
-            full: true,
-            tag: "No free devices",
-            tagKind: "warn",
-            extra: `<div class="replace"><h2>Replace a device</h2>
-              <div class="devs" role="radiogroup" aria-label="Devices on Tidewater Studio Edu">
-                <div class="dev sel"><div class="radio"></div>${I.laptop.replace("<svg", '<svg class="g"')}<div><div class="dn">Work laptop</div><div class="dm">Windows · last used 23 days ago</div></div><span class="tag">Least recent</span></div>
-                <div class="dev"><div class="radio"></div>${I.desktop.replace("<svg", '<svg class="g"')}<div><div class="dn">Studio iMac</div><div class="dm">macOS · last used 4 minutes ago</div></div><span class="tag active">Active now</span></div>
-              </div>
-              <div class="confirm"><h3>Replace Work laptop?</h3>
-                <p>Work laptop signs out of Tidewater Studio and Mara's PC takes its seat. Work laptop can sign in again later if a seat is free. We'll email you about it.</p></div>
-            </div>`,
-          })}</div><div class="cf">${db("primary", "Replace and continue")}${db("secondary", "Back")}</div>`,
+          <div class="who">Signed in as Mara Fennick · <span class="link">Not you?</span></div>
+          ${replaceBody("w11", "Mara's PC", true)}</div><div class="cf">${db("primary", "Replace and continue")}${db("secondary", "Back")}</div>`,
       }),
     ),
   });
 
-  // 31 Godot desktop export (Windows here): the in-game waiting panel; loopback via TCPServer and
-  // OS.shell_open (I-15). Steam builds use the Steam ticket first and never open a browser (I-14).
+  // 31 Godot desktop export (Windows here), inline: step 2 in the in-game form; loopback via
+  // TCPServer and OS.shell_open (I-15). Steam builds use the ticket first (I-14, frame 39).
   F({
     id: "31-desk-godot-waiting",
     only: "desktop",
@@ -1099,6 +1147,157 @@
     ),
   });
 
+  // 35 macOS inline: Use a Code Instead morphs step 2 into the code view
+  F({
+    id: "35-desk-mac-code",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      macWin({
+        x: 200,
+        y: 90,
+        w: 1040,
+        h: 720,
+        body: splitWith("tidewater", paneCode("mac", "tidewater")),
+      }),
+    ),
+  });
+
+  // 36 macOS inline, step 3: the app came forward; the pane morphed from "Finishing sign-in…" into
+  // the license choice (path B, the grant)
+  F({
+    id: "36-desk-mac-choice",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      macWin({
+        x: 200,
+        y: 70,
+        w: 1040,
+        h: 760,
+        body: splitWith(
+          "tidewater",
+          paneChoice(
+            "mac",
+            "tidewater",
+            "Signed in as Mara Fennick",
+            "Mara's MacBook Pro",
+          ),
+          "tight",
+        ),
+      }),
+    ),
+  });
+
+  // 37 macOS inline, step 3b: Replace a Device replaced the list; Replace… opened the system
+  // confirmation (confirmationDialog), the one thing allowed over the form (D-80)
+  F({
+    id: "37-desk-mac-replace",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      macWin({
+        x: 200,
+        y: 70,
+        w: 1040,
+        h: 760,
+        body:
+          splitWith(
+            "tidewater",
+            `${heroIcon("tidewater")}<div class="who">Signed in as Mara Fennick · <span class="link">Not You?</span></div>${replaceBody("mac", "Mara's MacBook Pro", false)}<div class="dk-foot"><span class="sp"></span>${db("secondary", "Back")}${db("primary", "Replace…")}</div>`,
+            "tight",
+          ) +
+          `<div class="malert" role="alertdialog" aria-label="Replace Work laptop?"><div class="icon">${art.tidewater}</div><h3>Replace “Work laptop”?</h3><p>${consequence("Mara's MacBook Pro")}</p>${db("primary destructive", "Replace and Continue")}${db("secondary", "Cancel")}</div>`,
+      }),
+    ),
+  });
+
+  // 38 macOS sheet presentation: Account → Sign In… opened one sheet over the running app; step 2
+  // morphs inside it (frame 18 shows step 3 in the same sheet)
+  F({
+    id: "38-desk-mac-sheet-waiting",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      macWin({
+        x: 200,
+        y: 90,
+        w: 1040,
+        h: 720,
+        title: "Tidewater Studio",
+        body: tideMain(),
+        sheet: sheetWait("mac", "tidewater", "Tidewater Studio"),
+      }),
+    ),
+  });
+
+  // 39 Godot inline: the Steam ticket signed in without a browser (I-14); step 3 in the game's form
+  F({
+    id: "39-desk-godot-choice",
+    only: "desktop",
+    desk: scene(
+      "w11",
+      winWin({
+        x: 120,
+        y: 40,
+        w: 1200,
+        h: 820,
+        title: "Nightfall",
+        icon: "nightfall",
+        cls: "game",
+        body: `<div class="gamebg">${bigArt.nightfall()}<div class="gtitle">NIGHTFALL</div></div><div class="gpanel wide">${dkHead("nightfall", "Nightfall")}
+          <div class="who">Signed in with Steam as marafox · <span class="link">Not you?</span></div>
+          <h2>Choose a license for this device</h2>
+          <p>Nightfall will use it on Mara's PC.</p>
+          <div role="radiogroup" aria-label="Licenses for Nightfall" class="dk-rows">
+            ${lic({ name: "Nightfall", tier: "Standard", meta: "From Steam · Lifetime", used: 1, limit: 3, sel: true })}
+            ${lic({ name: "Nightfall", tier: "Deluxe", meta: "Key ending 7Q2M4X · Lifetime", used: 2, limit: 2, full: true, tag: "No free devices", tagKind: "warn", act: db("secondary sm", "Replace a device") })}
+          </div>
+          <div class="dk-foot"><span class="link">${I.key} Use a license key instead</span></div>
+          <div class="dk-foot"><span class="sp"></span>${db("secondary", "Cancel")}${db("primary", "Use this license and continue")}</div></div>`,
+      }),
+    ),
+  });
+
+  // 40 GNOME sheet presentation: one AdwDialog over the running app holds step 3
+  F({
+    id: "40-desk-linux-sheet-choice",
+    only: "desktop",
+    desk: scene(
+      "gnome",
+      gnomeWin({
+        x: 200,
+        y: 50,
+        w: 1040,
+        h: 800,
+        title: "Tidewater Studio",
+        body: tideMain(),
+        dialog: sheetChoice(
+          "gnome",
+          "tidewater",
+          "Signed in as Mara Fennick",
+          "Mara's Framework",
+        ),
+      }),
+    ),
+  });
+
+  // 41 macOS inline, step 4: a license was added now, so the form shows the success moment
+  F({
+    id: "41-desk-mac-done-yours",
+    only: "desktop",
+    desk: scene(
+      "mac",
+      macWin({
+        x: 200,
+        y: 90,
+        w: 1040,
+        h: 720,
+        body: splitWith("tidewater", paneDone("mac", "tidewater")),
+      }),
+    ),
+  });
+
   // ---------- render ----------
   const board = document.getElementById("board");
   for (const f of frames) {
@@ -1121,7 +1320,7 @@
       if (desk) {
         el.innerHTML = typeof f.desk === "function" ? f.desk() : f.desk;
       } else if (f.kit) {
-        el.innerHTML = `<div class="statusbar"><span>9:41</span><span>●●● ▮</span></div><div class="sheet"><div class="grab"></div>${body}</div>`;
+        el.innerHTML = `<div class="statusbar"><span>9:41</span><span>●●● ▮</span></div><div class="sheet ${f.kitInline ? "inline" : ""}">${f.kitInline ? "" : '<div class="grab"></div>'}${body}</div>`;
       } else {
         el.innerHTML = `${size === "desktop" ? stars(1440, 1100) : ""}${lockup(f.surface)}<div class="card">${head || ""}<div class="body">${body}</div>${f.foot || ""}</div>${below}`;
       }

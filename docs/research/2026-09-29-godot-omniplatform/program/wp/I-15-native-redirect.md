@@ -29,6 +29,25 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 - Native redirect uses the same card: LicenseChoiceStep, then Consent when due; the redirect code carries the choice; ReturnStep per SIGN-IN.md §3.10 ("is yours" only when a license was added or issued now; timer with **Stay here** on mobile).
 - **Desktop (SIGN-IN.md §3.17, §6.4, D-60–D-77):** desktop SDKs open the **default browser** (never an embedded web view) with a loopback redirect `http://127.0.0.1:<any port>/pkey/callback` (IP literal, port not compared, one request, matching `state`, PKCE S256), or a registered scheme when the app cannot listen; claimed HTTPS stays mobile. The listener answers `303` to a new browser-facing page `GET /signin/return?request=<handle>[&cancelled=1]` (the desktop ReturnStep: no timer, "You can close this tab and return to <App>", **Return to <App>** only with a registered scheme), which this package's plan adds (OpenAPI, `routeCoverage`). For loopback and scheme redirects the choice, any Replace and the grant apply at `redirect/token`, so an app-side Cancel changes nothing. Device code is the fallback ("Use a code instead", headless terminals), with no QR on desktop. Godot desktop uses `OS.shell_open` plus a `TCPServer` loopback.
 
+## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
+
+The owner decided on 2026-10-05 that every in-app sign-in step happens in **one form whose body
+morphs in place** (no stacked sheets), that the license is chosen **inside the app** when it can
+show it, that the presentation is configurable with native controls kept, that there are **two
+equal ways to integrate** (the hosted card, and the kit form with headless primitives), and that
+the web flow is one continuous, animated card. The wire is
+[`plans/I-04.md`](../plans/I-04.md) §G (a pending sign-in grant, `licenseChoice: "app" | "card"`);
+the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) §2.4, §3.17, §3.18, §4.16 and
+D-78–D-93. Where this brief differs, they win. **No device-wire version change**
+(`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2; no corpus file). New UI copy uses
+the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
+every row, no "Account-wide"). For this package:
+
+- **Channels with `licenseChoice`.** Loopback, scheme and claimed HTTPS start through the pushed request with `licenseChoice` (`"app"` from a kit's inline or sheet form, `"card"` from the browser presentation and the terminals); `redirect/token` answers `choose` with a grant in app mode (I-04 §G.4). `signIn.start({channel, licenseChoice})`, `session.wait()`, `session.reopen()` and `session.cancel()` in all six SDKs.
+- **The desktop ReturnStep** (`/signin/return`) gains the path B variant: "You're signed in · Go back to <App> to choose a license. You can close this tab." (`signin.return.chooseInApp`, frame 26).
+- **Transcript:** `redirect-native-choose-app.json`.
+- Mobile: `ASWebAuthenticationSession` and Custom Tabs stay the platform's own sheet; the kit's form morphs to step 3 when it closes (SIGN-IN.md D-92).
+
 ## Goal
 
 Desktop and mobile apps sign in by a native redirect: loopback, claimed-HTTPS and registered-scheme redirect URIs on I-08's code-exchange route, `signIn({redirect})` in all six SDKs with the system browser only, and `/auth/poll` retired.

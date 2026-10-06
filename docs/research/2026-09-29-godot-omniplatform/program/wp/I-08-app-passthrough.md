@@ -70,6 +70,26 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 - **Transcripts:** add `devicecode-sign-in.json` (I-04 §F.6) to §C's list; `gen:transcripts` writes the Swift and Godot mirrors.
 - **THREAT-MODEL:** the ReplaceDevice row (fresh-session step-up, shared `portalDeviceDisconnect` budget, the confirm naming both devices, the notice). Retire I-26's page when the card ships, keeping its rule.
 
+## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
+
+The owner decided on 2026-10-05 that every in-app sign-in step happens in **one form whose body
+morphs in place** (no stacked sheets), that the license is chosen **inside the app** when it can
+show it, that the presentation is configurable with native controls kept, that there are **two
+equal ways to integrate** (the hosted card, and the kit form with headless primitives), and that
+the web flow is one continuous, animated card. The wire is
+[`plans/I-04.md`](../plans/I-04.md) §G (a pending sign-in grant, `licenseChoice: "app" | "card"`);
+the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) §2.4, §3.17, §3.18, §4.16 and
+D-78–D-93. Where this brief differs, they win. **No device-wire version change**
+(`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2; no corpus file). New UI copy uses
+the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
+every row, no "Account-wide"). For this package:
+
+- **Worker side of §G.** `license_choice=app` on `GET /<p>/identity/authorize`, recorded on the request and code record; the `licenseChoice` member on PX-W13's `POST /<p>/identity/request` with its echo; the `choose` answer of `redirect/token` (`{status, grant, expiresIn, choices}`); the four grant routes `POST /<p>/identity/choice/{licenses,devices,complete,cancel}`; `LicenseChoiceInput` `{kind: "key", key}`; discovery endpoints `choiceLicenses`, `choiceDevices`, `choiceComplete`, `choiceCancel`.
+- **Security (§G.6):** grant of 32 random bytes, hashed in the KV flow record, 300 s, bound to product, account, subject, the redeeming `X-PKey-Device` and the PKCE verifier, one per flow, consumed by `complete` or `cancel`; one `404 not_found` for every licence outside the view or not replaceable; 30 reads per grant; Replace through `freeAccountDevice()` with the shared `portalDeviceDisconnect` budget, audit "to sign in <label> in <App>" and the email. **Device code never issues a grant.** THREAT-MODEL row.
+- **No new error code** (`invalid_grant`, `license_choice_required`, `not_found`, `device_limit`, `rate_limited`). OpenAPI and `routeCoverage` for the four routes (rule 10); WIRE-CONTRACT-V4 §12.4–§12.5.
+- **Transcripts:** `redirect-web-choose-app.json`, `choice-replace-app.json`, `choice-key-app.json`, `choice-grant-errors.json`, and `discovery-capabilities.json` re-recorded; parity row `identity.choice` (planned, I-10a/I-10b).
+- **Acceptance (additions):** device code never issues a grant; a grant from another device id answers `invalid_grant`; `choice/devices` answers one `404` for unknown, foreign and non-replaceable licences; a Replace through a grant shares the portal's budget and audit row.
+
 ## Goal
 
 An app can send a person to the login card and get them back signed in: the card carries a persistent "<App> wants you to sign in" header and ends with "Continue to <App>"; device code lands on the card with callback binding and an explicit Continue; a person can approve a sign-in on another device by QR; and a product web app gets a browser device token through a PKCE web redirect, never through a token in a URL.
