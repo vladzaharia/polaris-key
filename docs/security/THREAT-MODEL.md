@@ -4658,6 +4658,57 @@ driver installs new code, so its trust anchor is the point of this section.
   (the host may activate again) and `status()` reports `keyring-error`, as in Python. The device
   id and the verified cache stay in their 0600 files; neither is a secret.
 
+### Godot desktop keyring store (SP-27)
+
+The Godot SDK's desktop builds (macOS, Windows, Linux) move the `pkeyt_` token out of the 0600
+token file into the OS keyring (`PKeyKeyringStore`,
+`sdks/godot/addons/polaris_key/core/store/keyring_store.gd`). It ports UK-40's `KeyringStore`
+rule for rule (service `pkey:<product>`, account `device-token`, verified writes, file-first
+reads, migration from the file store), so the shared rules are UK-40's **Token store fallback**
+bullet above. What is new are the per-OS protection choices.
+
+- **macOS: the login keychain, not the data-protection keychain.** The token is a
+  generic-password item in the file-based login keychain (`Keychain.login` in
+  `sdks/swift/Sources/PolarisKeyPlatform/SecureStore.swift`), never synchronizable. The
+  data-protection keychain the Apple store (P5-05) uses needs a `keychain-access-groups`
+  entitlement, and so a provisioning profile, which an unsigned, ad hoc or plain Developer ID
+  build does not have (-34018). The cost: the item carries no accessibility class (the login
+  keychain has none), so it is readable whenever the login keychain is unlocked, and it can
+  travel with a copied or migrated login keychain. Its ACL trusts the app that created it; another
+  app reading it gets the OS prompt, which the user can approve. An unsigned or ad hoc build's
+  identity is weak, so a rebuilt binary may prompt, and the ACL is no stronger than the user's
+  answer.
+- **Windows: `CRED_PERSIST_LOCAL_MACHINE`.** The credential is a generic credential laid out as
+  python-keyring's `WinVaultKeyring` writes it (`native/windows/credman/pkey_credman.cpp`), but
+  persisted LOCAL_MACHINE where python-keyring uses ENTERPRISE: it never roams to other machines
+  with a roaming profile, which a device-bound token should not do. It is DPAPI-protected under
+  the user's logon and readable by any process running as that user, as python-keyring's is. The
+  plaintext copy is zeroed after `CredWriteW`.
+- **Linux: `secret-tool` on PATH.** The Secret Service is reached by running `secret-tool`
+  (libsecret-tools), found by searching `PATH` (`keyring_linux.gd`), not through a GDExtension.
+  The secret goes to `store` on stdin, never on the command line, so it does not show in the
+  process list; `lookup` returns it on stdout. Each call has a 10 s deadline, after which the
+  process is killed and the call fails, so a locked collection waiting on its unlock prompt
+  cannot hang the game. Residual: whoever controls the user's `PATH` can substitute
+  `secret-tool` and read the token, but that attacker already runs code as the user and could read the Secret Service directly. Any process of the same user on the
+  session bus can read the item, as with every Secret Service client.
+- **One keyring entry per product across SDKs.** Python's, Kotlin's and Godot's desktop builds
+  of one product name the same item (service `pkey:<product>`, account `device-token`), while each
+  build keeps its own device id in its own 0600 file. So a token written by one build can be read
+  by another that has a different device id. That widens nothing beyond the same OS user (who can
+  already read every entry), but it means one build's activation overwrites another's token, and
+  a build that reads a token issued for another device id gets it refused by the server and
+  activates again. It is a nuisance, not an escalation; the token never leaves the user's keyring
+  to do it.
+- **Fallback to the 0600 file, surfaced.** When the keyring piece is missing (no
+  `libpkey_apple.dylib` or `pkey_win.dll`, no `secret-tool` or session bus, or
+  `PKEY_DESKTOP_KEYRING=0`) or a write cannot be verified, the token stays in the 0600 token file,
+  the same protection the file store gave before. It is never silent: `status()` reports
+  `backend: file` with `keyring-unavailable` or `keyring-error`, and every keyring failure emits
+  `failed`, which `PKeyCore` forwards as `store_error`. As in UK-40, this departs on purpose from
+  the Apple and Android stores, which never write the token to a file. The device id and the
+  verified cache stay in their 0600 files; neither is a secret.
+
 ### Platform pack transports (P5-08)
 
 Apple-hosted Background Assets, Play Asset Delivery and Steam depots move pack bytes that Polaris
