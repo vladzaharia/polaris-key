@@ -23,6 +23,7 @@ export const ECOSYSTEM_LABEL: Record<string, string> = {
   swift: "Swift",
   maven: "Maven / Gradle",
   godot: "Godot",
+  cargo: "Cargo",
 };
 
 export function ecosystemLabel(eco: string): string {

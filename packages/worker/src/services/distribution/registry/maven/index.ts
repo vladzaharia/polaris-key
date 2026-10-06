@@ -55,7 +55,10 @@ export const MAVEN_ADAPTER: FeedAdapter<"maven"> = defineFeedAdapter({
       "mavenFile",
     ],
   ],
-  harness: { clients: ["gradle8", "gradle9", "maven"] },
+  harness: {
+    // F-22: maven-publish and gradle-publish deploy natively (Release's route), then resolve.
+    clients: ["gradle8", "gradle9", "maven", "maven-publish", "gradle-publish"],
+  },
 });
 
 /** The materialiser's view of the adapter. */

@@ -597,17 +597,26 @@ describe("OCI pull through the registry host (F-08)", () => {
     expect(await ociCode(res)).toBe("NAME_UNKNOWN");
   });
 
-  it("push is refused: every method but GET and HEAD is 405 UNSUPPORTED", async () => {
+  it("delete is never answered (405 UNSUPPORTED); a push without a push token is 401 (F-23, test/registryPush.test.ts)", async () => {
     for (const [method, path] of [
-      ["PUT", `/v2/${NAME}/manifests/latest`],
-      ["POST", `/v2/${NAME}/blobs/uploads/`],
       ["DELETE", `/v2/${NAME}/manifests/latest`],
-      ["PATCH", `/v2/${NAME}/blobs/uploads/x`],
+      ["DELETE", `/v2/${NAME}/blobs/sha256:${"a".repeat(64)}`],
+      ["POST", `/v2/${NAME}/manifests/latest`],
     ] as const) {
       const res = await get(path, { method });
       hardened(res, `${method} ${path}`);
       expect(res.status).toBe(405);
       expect(await ociCode(res)).toBe("UNSUPPORTED");
+    }
+    for (const [method, path] of [
+      ["PUT", `/v2/${NAME}/manifests/latest`],
+      ["POST", `/v2/${NAME}/blobs/uploads/`],
+      ["PATCH", `/v2/${NAME}/blobs/uploads/x`],
+    ] as const) {
+      const res = await get(path, { method });
+      hardened(res, `${method} ${path}`);
+      expect(res.status).toBe(401);
+      expect(await ociCode(res)).toBe("UNAUTHORIZED");
     }
   });
 
