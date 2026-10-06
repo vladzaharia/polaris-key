@@ -1038,7 +1038,7 @@ static func capabilities() -> Dictionary:
 		"release.changelog": {"status": "implemented", "service": "release", "na": []},
 		"release.download": {"status": "implemented", "service": "release", "na": []},
 		"release.record": {"status": "implemented", "service": "release", "na": []},
-		"release.fetch": {"status": "planned", "service": "distribution", "na": []},
+		"release.fetch": {"status": "implemented", "service": "distribution", "na": []},
 		"release.distribution": {"status": "implemented", "service": "distribution", "na": []},
 		"update.check": {"status": "implemented", "service": "update", "na": []},
 		"update.feed": {"status": "implemented", "service": "update", "na": []},
@@ -1082,4 +1082,4 @@ static func capabilities() -> Dictionary:
 	}
 
 ## SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-const CAPABILITY_DIGEST := "3c45f3221a1b5232ac52b4dd864fda67957dca55f7e135b3868980d014aa9200"
+const CAPABILITY_DIGEST := "17cfacc1870cac645621339f0a6c11b7ddd9f3ba06ac24660b46d09d575fa4df"

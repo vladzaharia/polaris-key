@@ -143,20 +143,24 @@ static func stage(updater: PKeyUpdater, check: PKeyUpdateCheck) -> PKeyApplyResu
 	var dest := tmp.path_join(PKeySlots.PAYLOAD)
 	if not updater.space_ok(tmp, int(art["size"])):
 		return PKeyApplyResult.failed(PKeyErrors.STORE_FAILED, "Not enough free space to download the %d-byte pack." % int(art["size"]), {"reason": "no-space"})
-	var opts := {
-		"expected_size": int(art["size"]),
+	# The shared verified download (PolarisKey.release.fetch's path): Range + If-Range resume,
+	# size and SHA-256 against the record, then the rename into the slot.
+	var r := await PKeyRelease.download_artifact({
+		"transport": updater.transport(),
+		"url": url,
+		"headers": updater.download_headers(),
+		"artifact": art,
+		"to": dest,
 		"timeout": updater.download_timeout,
 		"progress": func(got: int, total: int) -> void: updater.download_progress.emit(got, total),
-	}
-	var r: PKeyResult = await updater.with_attestation(func() -> PKeyResult: return await PKeyDownload.fetch(updater.transport(), url, dest, updater.download_headers(), opts))
+		"with_attestation": updater.with_attestation,
+	})
+	if not r.ok and r.code == PKeyErrors.PAYLOAD_MISMATCH:
+		return PKeyApplyResult.failed(PKeyErrors.PAYLOAD_MISMATCH, "The downloaded pack does not match the record's size and SHA-256; nothing was staged.")
+	if not r.ok and r.code == PKeyErrors.STORE_FAILED and r.detail is Dictionary and r.detail.get("reason") == "rename":
+		return PKeyApplyResult.failed(PKeyErrors.STORE_FAILED, "The verified pack could not be moved into the staged slot.")
 	if not r.ok:
 		return PKeyApplyResult.failed(r.code, r.message, r.detail)
-	var part: String = r.detail["path"]
-	if not await PKeySlots.verify_file(part, int(art["size"]), String(art["sha256"])):
-		DirAccess.remove_absolute(part)
-		return PKeyApplyResult.failed(PKeyErrors.PAYLOAD_MISMATCH, "The downloaded pack does not match the record's size and SHA-256; nothing was staged.")
-	if DirAccess.rename_absolute(part, dest) != OK:
-		return PKeyApplyResult.failed(PKeyErrors.STORE_FAILED, "The verified pack could not be moved into the staged slot.")
 	var build: Dictionary = build_of(check.record_doc, String(d["build"]))
 	var req: Dictionary = build["requires"] if build.get("requires") is Dictionary else {}
 	slots.write_meta("staged.tmp", {

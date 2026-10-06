@@ -33,6 +33,19 @@ func run(t: PKeyTestContext) -> void:
 	req = sup.requests("/f/")[0] if not sup.requests("/f/").is_empty() else {}
 	t.check("download: a partial file resumes with Range: bytes=100000-", req.get("headers", {}).get("range") == "bytes=100000-", str(req.get("headers")))
 	t.check("download: the 206 is appended and the file is whole", r.ok and r.detail["status"] == 206 and r.detail["resumed"] and S.read(dest + ".part") == body, str(r))
+	t.check("download: no If-Range unless a validator is given", not req.get("headers", {}).has("if-range"), str(req.get("headers")))
+
+	# SP-25: with `if_range` the resume names the payload's strong ETag, so different bytes restart.
+	server.requests.clear()
+	S.write(dest + ".part", body.slice(0, 100000))
+	r = await PKeyDownload.fetch(tr, server.base_url() + "/f/a", dest, auth, {"expected_size": body.size(), "if_range": "\"abc\""})
+	req = sup.requests("/f/")[0] if not sup.requests("/f/").is_empty() else {}
+	t.check("download: a resume with if_range sends Range and If-Range", req.get("headers", {}).get("range") == "bytes=100000-" and req.get("headers", {}).get("if-range") == "\"abc\"" and r.ok and S.read(dest + ".part") == body, str(req.get("headers")))
+	server.requests.clear()
+	DirAccess.remove_absolute(dest + ".part")
+	r = await PKeyDownload.fetch(tr, server.base_url() + "/f/a", dest, auth, {"expected_size": body.size(), "if_range": "\"abc\""})
+	req = sup.requests("/f/")[0] if not sup.requests("/f/").is_empty() else {}
+	t.check("download: a fresh download sends no If-Range", not req.get("headers", {}).has("if-range") and r.ok, str(req.get("headers")))
 
 	# A server that ignores Range: the 200 starts the file over.
 	server.requests.clear()

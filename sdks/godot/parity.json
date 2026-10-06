@@ -180,9 +180,8 @@
       "status": "implemented"
     },
     "release.fetch": {
-      "status": "planned",
-      "wp": "SP-25",
-      "note": "core/download.gd streams with Range resume and the updater checks size and SHA-256, but there is no public fetch call (only the updater's internal sidecar and APK paths) and a resume sends no If-Range, which release-fetch-gated.json records. Needs a release fetch API over PKeyDownload before suite_transcripts can map releaseFetch."
+      "status": "implemented",
+      "note": "PolarisKey.release.fetch(target, to) (services/release.gd): a binary decision, a record or a record hash resolves to the verified record's payload artifact; the URL is discovery's distribution builds template; the bearer goes only to the control plane's origin and PKeyDownload drops it on a cross-origin redirect; a resume sends Range and If-Range with the payload's strong ETag; size and SHA-256 are checked before the part is renamed; a refusal surfaces the body's code. The updater's sidecar and APK paths share PKeyRelease.download_artifact. suite_transcripts maps releaseFetch and replays release-fetch-gated.json."
     },
     "release.distribution": {
       "status": "implemented"
