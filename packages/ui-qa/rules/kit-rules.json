@@ -1,0 +1,159 @@
+{
+  "$comment": "The per-kit equivalents of the modernity lint (UI-KITS.md §7.3), as source rules over each native kit. Read by bin/kit-lint.mjs (zero dependencies, so every kit's CI lane can run it with plain Node) and by `pnpm ui:lint`. A file whose first 400 bytes say GENERATED is skipped (the brand generator owns it). A line containing `ui-lint: allow <rule-id>` and a reason is exempt from that rule. Debt that existed when this landed is in kit-debt.json; the lint fails on anything new and on debt that is gone.",
+  "kits": {
+    "swiftui": {
+      "roots": ["sdks/swift/Sources/PolarisKeyUI"],
+      "extensions": [".swift"]
+    },
+    "compose": {
+      "roots": ["sdks/kotlin/ui/src/main/kotlin"],
+      "extensions": [".kt"]
+    },
+    "godot": {
+      "roots": ["sdks/godot/addons/polaris_key/ui"],
+      "extensions": [".gd", ".tscn", ".tres"]
+    },
+    "qt": {
+      "roots": ["sdks/python/src/polaris_key/ui/qt"],
+      "extensions": [".py", ".qml", ".qss"]
+    }
+  },
+  "rules": [
+    {
+      "id": "swiftui-border-shape",
+      "kit": "swiftui",
+      "pattern": "\\.buttonBorderShape\\(\\s*\\.roundedRectangle",
+      "spec": "§7.3 per-kit, §1.4",
+      "says": "No .buttonBorderShape(.roundedRectangle) override: iOS 26 buttons keep the system capsule shape."
+    },
+    {
+      "id": "swiftui-rtl",
+      "kit": "swiftui",
+      "pattern": "\\.padding\\(\\s*\\[?\\s*\\.(left|right)\\b|textAlignment\\s*=\\s*\\.(left|right)\\b|Edge\\.Set\\.(left|right)\\b",
+      "spec": "§4.7, §7.3",
+      "says": "RTL-safe layout: .leading/.trailing, never .left/.right."
+    },
+    {
+      "id": "swiftui-system-alert",
+      "kit": "swiftui",
+      "pattern": "\\bNSAlert\\(|\\bUIAlertController\\(",
+      "spec": "§1.5 rule 3",
+      "says": "No default system alerts for anything the kit owns; use the kit's sheet or inline confirm (a destructive Replace may use .confirmationDialog, SIGN-IN.md D-80)."
+    },
+    {
+      "id": "swiftui-uppercase",
+      "kit": "swiftui",
+      "pattern": "\\.textCase\\(\\s*\\.uppercase\\s*\\)",
+      "spec": "§1.5 rule 6",
+      "says": "No all-caps labels."
+    },
+    {
+      "id": "swiftui-colour-literal",
+      "kit": "swiftui",
+      "pattern": "\\bColor\\(\\s*(red|\\.sRGB|\\.displayP3|white|hex)\\b|\\bUIColor\\(\\s*(red|white|hex)\\b|\\bNSColor\\(\\s*(red|calibratedRed|srgbRed|white)\\b",
+      "spec": "§2.1, §7.3",
+      "says": "No colour literal outside the generated tokens (KitTokens, BrandTokens).",
+      "exclude": ["PolarisAccent\\.swift$"]
+    },
+    {
+      "id": "compose-outlined-field",
+      "kit": "compose",
+      "pattern": "\\bOutlinedTextField\\b",
+      "spec": "§1.5 rule 1, §7.3 per-kit",
+      "says": "Android uses the M3 filled field, never the outlined or notched one."
+    },
+    {
+      "id": "compose-legacy-icons",
+      "kit": "compose",
+      "pattern": "\\bIcons\\.Filled\\.|androidx\\.compose\\.material\\.icons\\.filled",
+      "spec": "§7.3 per-kit",
+      "says": "No Icons.Filled from the legacy set; use the Material Symbols subset the kit ships."
+    },
+    {
+      "id": "compose-rtl",
+      "kit": "compose",
+      "pattern": "\\bAlignment\\.(Top|Center|Bottom)?(Left|Right)\\b|\\babsolutePadding\\(|\\babsoluteOffset\\(|\\bTextAlign\\.(Left|Right)\\b|\\bArrangement\\.Absolute\\b",
+      "spec": "§4.7, §7.3 per-kit",
+      "says": "RTL-safe layout: Start/End, never Left/Right or the absolute variants."
+    },
+    {
+      "id": "compose-stock-spinner",
+      "kit": "compose",
+      "pattern": "\\bCircularProgressIndicator\\(\\s*\\)|\\bCircularProgressIndicator\\(\\s*modifier",
+      "spec": "§1.5 rule 4",
+      "says": "No stock indeterminate spinner: the M3 Expressive LoadingIndicator inline, the countdown ring or a skeleton."
+    },
+    {
+      "id": "compose-system-alert",
+      "kit": "compose",
+      "pattern": "\\bAlertDialog\\(",
+      "spec": "§1.5 rule 3",
+      "says": "No AlertDialog with stock buttons for anything the kit owns."
+    },
+    {
+      "id": "godot-system-dialog",
+      "kit": "godot",
+      "pattern": "\\b(AcceptDialog|ConfirmationDialog)\\b|\\bOS\\.alert\\(",
+      "spec": "§1.5 rule 3",
+      "says": "No engine AcceptDialog / ConfirmationDialog / OS.alert for anything the kit owns."
+    },
+    {
+      "id": "godot-checkbox",
+      "kit": "godot",
+      "pattern": "\\bCheckBox\\b",
+      "spec": "§1.5 rule 6",
+      "says": "No CheckBox where a switch is meant: the kit's one switch (CheckButton themed by the brand).",
+      "exclude": ["/ui/theme/"]
+    },
+    {
+      "id": "godot-rtl",
+      "kit": "godot",
+      "pattern": "\\bHORIZONTAL_ALIGNMENT_(LEFT|RIGHT)\\b|horizontal_alignment\\s*=\\s*[02]\\b",
+      "spec": "§4.7, §7.3",
+      "says": "RTL-safe layout: let layout_direction mirror the controls; no hard-coded left or right alignment."
+    },
+    {
+      "id": "godot-uppercase",
+      "kit": "godot",
+      "pattern": "\\buppercase\\s*=\\s*true\\b|\\.to_upper\\(\\)",
+      "spec": "§1.5 rule 6",
+      "says": "No all-caps labels."
+    },
+    {
+      "id": "godot-colour-literal",
+      "kit": "godot",
+      "pattern": "\\bColor\\(\\s*[0-9.]|\\bColor\\(\\s*\"#|\\bColor\\.html\\(|\\bColor8\\(",
+      "spec": "§2.1, §7.3",
+      "says": "No colour literal outside the generated tokens and the brand theme.",
+      "exclude": ["/ui/theme/"]
+    },
+    {
+      "id": "qt-system-dialog",
+      "kit": "qt",
+      "pattern": "\\bQMessageBox\\b|\\bQProgressDialog\\b|\\bQInputDialog\\b|\\bMessageDialog\\s*\\{",
+      "spec": "§1.5 rule 3",
+      "says": "No default system dialogs for anything the kit owns."
+    },
+    {
+      "id": "qt-checkbox",
+      "kit": "qt",
+      "pattern": "\\bQCheckBox\\b|\\bCheckBox\\s*\\{",
+      "spec": "§1.5 rule 6",
+      "says": "No check box where a switch is meant: the kit's one switch."
+    },
+    {
+      "id": "qt-rtl",
+      "kit": "qt",
+      "pattern": "\\b(margin|padding)-(left|right)\\s*:|\\btext-align\\s*:\\s*(left|right)\\b|\\bAlignAbsolute\\b",
+      "spec": "§4.7, §7.3",
+      "says": "RTL-safe layout: Qt mirrors AlignLeft/AlignRight in RTL, but not QSS physical margins or AlignAbsolute."
+    },
+    {
+      "id": "qt-colour-literal",
+      "kit": "qt",
+      "pattern": "#[0-9A-Fa-f]{6}\\b|\\bQColor\\(\\s*[0-9\"]|\\brgba?\\(",
+      "spec": "§2.1, §7.3",
+      "says": "No colour literal outside the generated theme (Theme.qml, the .qss files)."
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "$comment": "Strings the string lint (pnpm ui:lint) accepts that are not catalog messages: the mockup fixtures (UI-KITS.md §8: Tidewater Studio by Harbor Audio, Drift Kart by Lanternworks, Fennick Studio's devices and people), the product's own content the kit only displays (release notes, store prices), glyphs, and values a kit formats rather than translates (keys, codes, versions). Every entry needs a reason. Copy belongs in packages/brand/kit-copy/en.json, never here; a board string that should be copy and is not in the catalog is recorded in strings.debt.json instead.",
+  "allow": [
+    {
+      "pattern": "[^\\p{L}\\p{N}]+",
+      "reason": "Glyphs only: separators, status marks, progress bars and spinner frames carry no copy."
+    },
+    {
+      "pattern": "[A-Z]|L1|R1|ABXY",
+      "reason": "Controller and keyboard glyphs (A, B, X, L1, R1): the kits draw them as icon textures."
+    },
+    {
+      "pattern": "(Tidewater Studio|Drift Kart)( (Pro|Deluxe))?( \\d+(\\.\\d+)+)?( · (Pro|Lifetime|Yearly))?",
+      "reason": "Fixture product names with tier and version (ProductIdentity values, §4.7)."
+    },
+    {
+      "pattern": "(· )?(Pro|Lifetime|Yearly|Deluxe)( · (Pro|Lifetime|Yearly))?",
+      "reason": "Fixture tier and term names (license data, not copy)."
+    },
+    {
+      "pattern": "Harbor Audio|Lanternworks|Fennick Studio|Mara Lindqvist|Tidewater|Harbor Cloud",
+      "reason": "Fixture developer, organisation and person names."
+    },
+    {
+      "pattern": "Work laptop|Mara’s iPad|Mara’s studio iPad|MacBook Pro|Studio Mac mini|Living room PC|build-server-02",
+      "reason": "Fixture device names (device records, not copy)."
+    },
+    {
+      "pattern": "[\\w.+-]+@[\\w.-]+|m•••@fennick\\.studio|(Lifetime · )?mara@fennick\\.studio( · passkey)?",
+      "reason": "Fixture account emails (masked or not)."
+    },
+    {
+      "pattern": "pkey_[a-z]+_[A-Z0-9•…]*|pkey_…|pkey_tide…PLDA|[A-Z0-9]{4}-[A-Z0-9]{4}|[A-Z0-9]{5,6}",
+      "reason": "License keys, key fragments and sign-in codes are values the kit formats (§1.5 rule 12)."
+    },
+    {
+      "pattern": "\\$\\d+(\\.\\d\\d)?(/mo)?|\\d+%|\\d+ of \\d+|\\d+(\\.\\d+)+|9:41",
+      "reason": "Store prices, percentages, counts, versions and the status-bar time: formatted values."
+    },
+    {
+      "pattern": "key\\.plrs\\.im/activate|tidewater\\.app/(link|releases/2\\.5)|driftkart\\.gg/tv",
+      "reason": "Device-code and release-notes URLs (theme value product.deviceCodeUrl, release data)."
+    },
+    {
+      "pattern": "Stem export in one (click|tap), with loudness matching|Stem export in one tap, and fixes|Track freeze (now )?works with every plug-in|Fixes a crash when unplugging an (audio )?interface|Night Circuit: four new tracks after dark|Split-screen for up to four players",
+      "reason": "Fixture release notes: the product's own release content, shown by the kit, not translated by it."
+    },
+    {
+      "pattern": "Vocals|Guitar|Drums|Keys|Bass|Room mics",
+      "reason": "Fixture session tracks in the host app around the kit."
+    }
+  ]
+}

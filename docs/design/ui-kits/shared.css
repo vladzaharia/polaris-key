@@ -52,6 +52,20 @@
   ); /* white-first: #db3a2b, 4.5:1 */
   --kit-scrim: rgb(2 4 8 / 0.5);
   --kit-scrim-blur: 16px;
+  /* Fixed colours the hard rules name (§1.5): the white switch knob and QR plate, the button and
+     icon highlights, and the shadow ink. Colours reach kit CSS only through variables (the
+     modernity lint's colour-literal rule, §7.3). */
+  --kit-white: #fff;
+  --kit-ink: #000;
+  --kit-knob: #fff;
+  --kit-knob-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+  --kit-qr-plate: #fff;
+  --kit-btn-highlight: inset 0 1px 0 rgb(255 255 255 / 0.14);
+  --kit-icon-shadow: 0 8px 24px -8px rgb(0 0 0 / 0.5);
+  --kit-icon-rim:
+    inset 0 0 0 0.5px rgb(255 255 255 / 0.18),
+    inset 0 1px 0 rgb(255 255 255 / 0.22);
+  --kit-seg-on: var(--pk-surface-overlay);
 }
 [data-theme="light"] {
   --kit-accent: #26847a;
@@ -68,6 +82,13 @@
   --kit-danger-solid: var(--pk-kit-danger-solid);
   --kit-scrim: rgb(6 9 18 / 0.14);
   --kit-scrim-blur: 12px;
+  --kit-icon-shadow:
+    0 0 0 0.5px rgb(6 9 18 / 0.08), 0 8px 20px -8px rgb(6 9 18 / 0.3);
+  --kit-card-shadow-light:
+    0 0 0 1px rgb(6 9 18 / 0.05), 0 1px 2px rgb(6 9 18 / 0.04),
+    0 24px 48px -16px rgb(6 9 18 / 0.14);
+  --kit-group-shadow-light: 0 0 0 1px rgb(6 9 18 / 0.05), 0 1px 2px rgb(6 9 18 / 0.04);
+  --kit-seg-on: #fff;
 }
 
 * {
@@ -168,10 +189,7 @@ body {
     var(--pk-elevation-3);
 }
 [data-theme="light"] .k-card {
-  box-shadow:
-    0 0 0 1px rgb(6 9 18 / 0.05),
-    0 1px 2px rgb(6 9 18 / 0.04),
-    0 24px 48px -16px rgb(6 9 18 / 0.14);
+  box-shadow: var(--kit-card-shadow-light);
 }
 
 /* Product header on focused steps (§1.2): the product is the strongest line in the header. */
@@ -212,11 +230,11 @@ body {
 .k-btn.primary {
   background: var(--kit-accent);
   color: var(--kit-accent-on);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14);
+  box-shadow: var(--kit-btn-highlight);
 }
 .k-btn.primary:hover,
 .k-btn.primary.hover {
-  background: color-mix(in oklab, var(--kit-accent) 90%, white);
+  background: color-mix(in oklab, var(--kit-accent) 90%, var(--kit-white));
 }
 .k-btn.secondary {
   background: var(--kit-tonal);
@@ -236,7 +254,11 @@ body {
 }
 .k-btn.danger {
   background: var(--kit-danger-solid);
-  color: #fff;
+  color: var(--pk-kit-danger-on);
+}
+.k-btn.danger:hover,
+.k-btn.danger.hover {
+  background: color-mix(in oklab, var(--kit-danger-solid) 90%, var(--kit-white));
 }
 .k-btn.block {
   width: 100%;
@@ -248,10 +270,12 @@ body {
   padding: 0 12px;
   border-radius: 10px;
 }
+.k-btn:disabled,
 .k-btn[aria-disabled="true"] {
   opacity: 0.42;
   cursor: not-allowed;
 }
+.k-btn:focus-visible,
 .k-btn.focus-visible {
   outline: 2px solid var(--kit-focus);
   outline-offset: 2px;
@@ -380,7 +404,7 @@ body {
   height: max-content;
   line-height: 0;
   position: relative;
-  box-shadow: 0 8px 24px -8px rgb(0 0 0 / 0.5);
+  box-shadow: var(--kit-icon-shadow);
 }
 .k-appicon::after {
   /* 2026 icon rim: a hairline specular edge, not a stroke */
@@ -388,18 +412,11 @@ body {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow:
-    inset 0 0 0 0.5px rgb(255 255 255 / 0.18),
-    inset 0 1px 0 rgb(255 255 255 / 0.22);
+  box-shadow: var(--kit-icon-rim);
   pointer-events: none;
 }
 .k-appicon svg {
   display: block;
-}
-[data-theme="light"] .k-appicon {
-  box-shadow:
-    0 0 0 0.5px rgb(6 9 18 / 0.08),
-    0 8px 20px -8px rgb(6 9 18 / 0.3);
 }
 .k-monogram {
   display: grid;
@@ -454,7 +471,7 @@ body {
   background: var(--pk-warning);
 }
 .k-meter span {
-  margin-left: 8px;
+  margin-inline-start: 8px;
   font-size: 13px;
   color: var(--pk-text-muted);
   font-variant-numeric: tabular-nums;
@@ -485,13 +502,35 @@ body {
   content: "";
   position: absolute;
   top: 0;
-  right: 0;
-  left: 54px;
+  inset-inline-end: 0;
+  inset-inline-start: 54px;
   height: 1px;
   background: var(--kit-hairline);
 }
 .k-item.sel {
   background: var(--kit-accent-subtle);
+}
+/* A selectable row (role="radio" in the device list): the press and focus states of §1.5 rule 7. */
+.k-item[role="radio"] {
+  cursor: pointer;
+  transition: background-color var(--pk-duration-fast) var(--pk-ease-standard);
+}
+.k-item[role="radio"]:hover {
+  background: var(--kit-tonal);
+}
+.k-item[role="radio"].sel:hover {
+  background: color-mix(in oklab, var(--kit-accent-subtle) 88%, var(--pk-text-strong));
+}
+.k-item[role="radio"]:active {
+  background: var(--kit-tonal-hover);
+}
+.k-item[role="radio"][aria-disabled="true"] {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.k-item[role="radio"]:focus-visible {
+  outline: 2px solid var(--kit-focus);
+  outline-offset: -2px;
 }
 .k-item.sel + .k-item::before,
 .k-item.sel::before {
@@ -518,7 +557,7 @@ body {
 /* An inline confirm is an inset rounded tile inside the list, never a square band to the edge. */
 .k-item.confirm {
   margin: 2px 6px 6px;
-  padding-left: 12px;
+  padding-inline-start: 12px;
   border-radius: calc(var(--kit-radius-group) - 6px);
   background: var(--pk-danger-subtle);
 }
@@ -555,7 +594,7 @@ body {
   position: absolute;
   inset: 0;
   width: 40%;
-  left: 30%;
+  inset-inline-start: 30%;
   background: linear-gradient(
     90deg,
     transparent,
@@ -605,9 +644,7 @@ body {
   overflow: hidden;
 }
 [data-theme="light"] .k-group {
-  box-shadow:
-    0 0 0 1px rgb(6 9 18 / 0.05),
-    0 1px 2px rgb(6 9 18 / 0.04);
+  box-shadow: var(--kit-group-shadow-light);
 }
 .k-row {
   display: flex;
@@ -624,8 +661,8 @@ body {
   content: "";
   position: absolute;
   top: 0;
-  left: 16px;
-  right: 0;
+  inset-inline-start: 16px;
+  inset-inline-end: 0;
   height: 1px;
   background: var(--kit-hairline);
 }
@@ -664,18 +701,18 @@ body {
   content: "";
   position: absolute;
   top: 3px;
-  left: 3px;
+  inset-inline-start: 3px;
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+  background: var(--kit-knob);
+  box-shadow: var(--kit-knob-shadow);
 }
 .k-switch.on {
   background: var(--kit-accent);
 }
 .k-switch.on::after {
-  left: 19px;
+  inset-inline-start: 19px;
 }
 .k-locked {
   display: inline-flex;
@@ -697,13 +734,10 @@ body {
   color: var(--pk-text-muted);
 }
 .k-seg span.on {
-  background: var(--pk-surface-overlay);
+  background: var(--kit-seg-on);
   color: var(--pk-text-strong);
   font-weight: 500;
   box-shadow: var(--pk-elevation-1);
-}
-[data-theme="light"] .k-seg span.on {
-  background: #fff;
 }
 
 .k-powered {

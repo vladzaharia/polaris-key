@@ -37,7 +37,7 @@
       }
       .ambient > div {
         position: absolute;
-        left: 50%;
+        inset-inline-start: 50%;
         top: 42%;
         translate: -50% -50%;
         filter: blur(110px) saturate(1.4);
@@ -58,6 +58,11 @@
           height: 420px;
         }
       }
+      .ambient {
+        /* The icon's teal and sand, for the light ambient (§1.2). */
+        --amb-a: #9fe3d6;
+        --amb-b: rgb(245 211 138 / 0.4);
+      }
       [data-theme="light"] .ambient > div {
         display: none;
       }
@@ -65,12 +70,12 @@
         background:
           radial-gradient(
             circle 560px at 50% 40%,
-            color-mix(in oklab, var(--kit-accent-subtle), #9fe3d6 30%),
+            color-mix(in oklab, var(--kit-accent-subtle), var(--amb-a) 30%),
             transparent 72%
           ),
           radial-gradient(
             circle 300px at 62% 28%,
-            rgb(245 211 138 / 0.4),
+            var(--amb-b),
             transparent 70%
           );
       }
@@ -79,12 +84,12 @@
           background:
             radial-gradient(
               circle 280px at 50% 22%,
-              color-mix(in oklab, var(--kit-accent-subtle), #9fe3d6 30%),
+              color-mix(in oklab, var(--kit-accent-subtle), var(--amb-a) 30%),
               transparent 72%
             ),
             radial-gradient(
               circle 160px at 64% 16%,
-              rgb(245 211 138 / 0.4),
+              var(--amb-b),
               transparent 70%
             );
         }
@@ -198,6 +203,12 @@
         .pagefoot {
           display: none;
         }
+        /* Touch targets ≥ 44 px on phones (§1.5 rule 5): a row's button grows to the target. */
+        .k-row .k-btn.sm {
+          height: 44px;
+          padding: 0 16px;
+          border-radius: var(--kit-radius-control);
+        }
       }
 
       /* Hand-off: the code reads as output, not as an input. */
@@ -215,7 +226,7 @@
         font-weight: 500;
         letter-spacing: 0.12em;
         color: var(--pk-text-strong);
-        margin-right: -0.12em;
+        margin-inline-end: -0.12em;
       }
       .code .k-iconbtn {
         position: absolute;
@@ -256,7 +267,7 @@
       }
       .qrtile .q {
         padding: 8px;
-        background: #fff;
+        background: var(--kit-qr-plate);
         border-radius: 14px;
         line-height: 0;
       }
@@ -288,15 +299,17 @@
           -apple-system,
           "Segoe UI",
           sans-serif;
-        background: #111214;
-        color: #d4d4d8;
+        --h-bg: #111214;
+        --h-fg: #d4d4d8;
+        background: var(--h-bg);
+        color: var(--h-fg);
         --h-line: #222327;
         --h-mute: #8b8b93;
         --h-on: #1c1d21;
       }
       [data-theme="light"] .host {
-        background: #fafafa;
-        color: #27272a;
+        --h-bg: #fafafa;
+        --h-fg: #27272a;
         --h-line: #e7e7ea;
         --h-mute: #71717a;
         --h-on: #efeff1;
@@ -312,7 +325,7 @@
         font-size: 14px;
       }
       .host .side {
-        border-right: 1px solid var(--h-line);
+        border-inline-end: 1px solid var(--h-line);
         padding: 12px 10px;
         display: grid;
         align-content: start;
@@ -635,6 +648,8 @@
         color: var(--pk-warning);
       }
       .toast {
+        --toast-shadow-light:
+          0 0 0 1px rgb(6 9 18 / 0.06), 0 16px 32px -12px rgb(6 9 18 / 0.18);
         position: relative;
         display: grid;
         gap: 10px;
@@ -647,9 +662,7 @@
         overflow: hidden;
       }
       [data-theme="light"] .toast {
-        box-shadow:
-          0 0 0 1px rgb(6 9 18 / 0.06),
-          0 16px 32px -12px rgb(6 9 18 / 0.18);
+        box-shadow: var(--toast-shadow-light);
       }
       .toast .timer {
         position: absolute;
@@ -786,21 +799,24 @@
         display: grid;
         place-items: center;
       }
+      .motion {
+        --motion-ink: #060912;
+      }
       .frame.dim1 {
-        background: color-mix(in oklab, var(--kit-fill) 85%, black);
+        background: color-mix(in oklab, var(--kit-fill) 85%, var(--kit-ink));
       }
       .frame.dim2 {
-        background: color-mix(in oklab, var(--kit-fill) 75%, black);
+        background: color-mix(in oklab, var(--kit-fill) 75%, var(--kit-ink));
       }
       [data-theme="light"] .frame.dim1 {
-        background: color-mix(in oklab, var(--kit-fill) 94%, #060912);
+        background: color-mix(in oklab, var(--kit-fill) 94%, var(--motion-ink));
       }
       [data-theme="light"] .frame.dim2 {
-        background: color-mix(in oklab, var(--kit-fill) 88%, #060912);
+        background: color-mix(in oklab, var(--kit-fill) 88%, var(--motion-ink));
       }
       .frame .t {
         position: absolute;
-        left: 10px;
+        inset-inline-start: 10px;
         bottom: 8px;
         font: 400 11px var(--kit-mono);
         color: var(--pk-text-subtle);
@@ -910,7 +926,7 @@
       }
       .fc .fc-note {
         position: absolute;
-        right: 24px;
+        inset-inline-end: 24px;
         bottom: 20px;
         font: 400 13px/18px var(--pk-font-sans);
         color: var(--fc-gray);
@@ -1080,7 +1096,7 @@
                   class="k-iconbtn tonal"
                   data-icon="arrowLeft"
                   data-size="18"
-                  style="margin-right: 4px"
+                  style="margin-inline-end: 4px"
                 ></span>
                 <div
                   class="k-appicon"
@@ -1774,7 +1790,7 @@
                   <div style="flex: 1">
                     <div
                       class="k-field focus"
-                      style="min-height: 36px; padding-left: 10px"
+                      style="min-height: 36px; padding-inline-start: 10px"
                     >
                       <span style="flex: 1; color: var(--pk-text-strong)"
                         >Mara’s studio iPad</span
@@ -1811,7 +1827,7 @@
                 <div class="k-list">
                   <div
                     class="k-item sel"
-                    style="min-height: 56px; padding-left: 16px"
+                    style="min-height: 56px; padding-inline-start: 16px"
                   >
                     <div class="t">
                       <span>Pro · Lifetime</span
@@ -1822,12 +1838,12 @@
                   </div>
                   <div
                     class="k-item"
-                    style="min-height: 56px; padding-left: 16px"
+                    style="min-height: 56px; padding-inline-start: 16px"
                   >
                     <div class="t">
                       <span>Pro · Yearly</span><small>3 devices</small>
                     </div>
-                    <b class="tnum" style="font-weight: 500; margin-right: 36px"
+                    <b class="tnum" style="font-weight: 500; margin-inline-end: 36px"
                       >$59</b
                     >
                   </div>
@@ -2096,7 +2112,7 @@ pk-activate::part(primary) { border-radius: 999px; }</pre>
                   class="k-iconbtn tonal"
                   data-icon="arrowLeft"
                   data-size="18"
-                  style="margin-right: 4px"
+                  style="margin-inline-end: 4px"
                 ></span>
                 <div
                   class="k-appicon"

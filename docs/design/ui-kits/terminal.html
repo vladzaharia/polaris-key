@@ -68,7 +68,7 @@
       }
       .tbar i:nth-child(3) {
         background: #28c840;
-        margin-right: 10px;
+        margin-inline-end: 10px;
       }
       pre {
         margin: 0;
@@ -132,32 +132,32 @@
         background: currentColor;
       }
       .bx.v::before {
-        left: 3.7px;
+        inset-inline-start: 3.7px;
         width: 1px;
         top: 0;
         bottom: 0;
       }
       .bx.tl::before {
-        left: 3.7px;
+        inset-inline-start: 3.7px;
         width: 1px;
         top: 8.4px;
         bottom: 0;
       }
       .bx.tl::after {
-        left: 3.7px;
-        right: 0;
+        inset-inline-start: 3.7px;
+        inset-inline-end: 0;
         height: 1px;
         top: 8.4px;
       }
       .bx.bl::before {
-        left: 3.7px;
+        inset-inline-start: 3.7px;
         width: 1px;
         top: 0;
         height: 8.9px;
       }
       .bx.bl::after {
-        left: 3.7px;
-        right: 0;
+        inset-inline-start: 3.7px;
+        inset-inline-end: 0;
         height: 1px;
         top: 8.4px;
       }
@@ -176,7 +176,7 @@
         border-top: 1px solid var(--t-frame);
       }
       .strip > div:nth-child(odd) {
-        border-right: 1px solid var(--t-frame);
+        border-inline-end: 1px solid var(--t-frame);
       }
       .strip .lbl {
         font: 500 11px/1 var(--pk-font-sans);
@@ -214,7 +214,7 @@
         background: color-mix(in oklab, var(--t-fg) 8%, var(--t-bg));
       }
       .tx .side {
-        border-right: 1px solid
+        border-inline-end: 1px solid
           color-mix(in oklab, var(--t-fg) 18%, transparent);
         padding: 16.8px 0;
       }

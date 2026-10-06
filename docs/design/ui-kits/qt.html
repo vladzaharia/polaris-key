@@ -78,11 +78,11 @@
         display: flex;
         align-items: center;
         gap: 10px;
-        padding-left: 12px;
+        padding-inline-start: 12px;
         font-size: 12px;
       }
       .tb-win .caps {
-        margin-left: auto;
+        margin-inline-start: auto;
         display: flex;
         height: 100%;
       }
@@ -103,11 +103,11 @@
       }
       .tb-kde .ico {
         position: absolute;
-        left: 8px;
+        inset-inline-start: 8px;
       }
       .tb-kde .btns {
         position: absolute;
-        right: 6px;
+        inset-inline-end: 6px;
         display: flex;
         gap: 6px;
       }
@@ -312,7 +312,8 @@
         background: var(--kit-accent-subtle);
       }
       .w-list small {
-        margin-left: auto;
+        margin-inline-start: auto;
+        font-size: 12px;
         color: var(--q-mute);
       }
       .trio {

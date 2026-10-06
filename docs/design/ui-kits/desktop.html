@@ -80,8 +80,8 @@
       }
       .titlebar .name {
         position: absolute;
-        left: 0;
-        right: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
         text-align: center;
         font: 600 13px/1 var(--pk-font-sans);
         color: var(--m-text);
@@ -170,7 +170,7 @@
       }
       .mfield .mono {
         flex: 1;
-        font-size: 12.5px;
+        font-size: 13px;
         line-height: 16px;
         overflow-wrap: anywhere;
         color: var(--m-text);
@@ -227,8 +227,8 @@
         content: "";
         position: absolute;
         top: 0;
-        left: 12px;
-        right: 12px;
+        inset-inline-start: 12px;
+        inset-inline-end: 12px;
         height: 0.5px;
         background: var(--m-sep);
       }
@@ -287,7 +287,7 @@
       .msw::after {
         content: "";
         position: absolute;
-        right: 1.5px;
+        inset-inline-end: 1.5px;
         top: 1.5px;
         width: 24px;
         height: 15px;
@@ -312,7 +312,7 @@
       .sheet {
         position: absolute;
         top: 52px;
-        left: 50%;
+        inset-inline-start: 50%;
         translate: -50% 0;
         width: 440px;
         border-radius: 24px;
@@ -429,7 +429,7 @@
       .swin .lights {
         position: absolute;
         top: 18px;
-        left: 18px;
+        inset-inline-start: 18px;
       }
       .sglyph {
         width: 48px;
@@ -451,7 +451,7 @@
           <div class="win gatewin">
             <div class="art" id="art1"></div>
             <div class="form-col">
-              <div style="position: absolute; top: 20px; left: 20px">
+              <div style="position: absolute; top: 20px; inset-inline-start: 20px">
                 <div class="lights"><i></i><i></i><i></i></div>
               </div>
               <div
@@ -505,7 +505,7 @@
           <div class="win gatewin" style="grid-template-columns: 360px 1fr">
             <div class="art" id="art2"></div>
             <div class="form-col">
-              <div style="position: absolute; top: 20px; left: 20px">
+              <div style="position: absolute; top: 20px; inset-inline-start: 20px">
                 <div class="lights"><i></i><i></i><i></i></div>
               </div>
             </div>
@@ -586,7 +586,7 @@
           <div class="win gatewin">
             <div class="art" id="art3"></div>
             <div class="form-col">
-              <div style="position: absolute; top: 20px; left: 20px">
+              <div style="position: absolute; top: 20px; inset-inline-start: 20px">
                 <div class="lights"><i></i><i></i><i></i></div>
               </div>
             </div>
@@ -665,7 +665,7 @@
                     display: grid;
                     justify-items: center;
                     gap: 6px;
-                    font-size: 11px;
+                    font-size: 12px;
                     color: var(--m-mute);
                   "
                 >
@@ -836,7 +836,7 @@
                     display: flex;
                     justify-content: space-between;
                     margin-top: 6px;
-                    font-size: 11px;
+                    font-size: 12px;
                     color: var(--m-mute);
                   "
                   class="tnum"
@@ -878,7 +878,7 @@
                     flex: 1;
                     text-align: center;
                     font: 600 13px var(--pk-font-sans);
-                    margin-right: 57px;
+                    margin-inline-end: 57px;
                   "
                   >Account</span
                 >
@@ -888,7 +888,7 @@
                   display: flex;
                   justify-content: center;
                   gap: 4px;
-                  font-size: 11px;
+                  font-size: 12px;
                 "
               >
                 <span
@@ -1041,7 +1041,7 @@
           <div class="win gatewin">
             <div class="art" id="art4"></div>
             <div class="form-col">
-              <div style="position: absolute; top: 20px; left: 20px">
+              <div style="position: absolute; top: 20px; inset-inline-start: 20px">
                 <div class="lights"><i></i><i></i><i></i></div>
               </div>
               <div

@@ -1,0 +1,27 @@
+{
+  "name": "@polaris-key/ui-qa",
+  "version": "0.0.0",
+  "description": "Visual QA for the Polaris Key UI kits (UI-KITS.md §7): the modernity lint (pnpm ui:lint), the string lint, the orphan check, the per-kit source lints, the side-by-side report (pnpm ui:report) and the cross-renderer pixel diff.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "lint": "prettier --check \"src/**/*.{ts,js}\" \"test/**/*.ts\" \"e2e/**/*.ts\" \"bin/**/*.mjs\" \"rules/**/*.json\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/pngjs": "^6.0.5",
+    "playwright": "1.63.0",
+    "pngjs": "7.0.0",
+    "prettier": "^3.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0",
+    "vitest": "^4.1.11"
+  }
+}
