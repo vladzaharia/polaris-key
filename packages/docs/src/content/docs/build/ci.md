@@ -470,6 +470,45 @@ listed as not uploaded, as are `human` and `missing` slots and pending proposals
 anything to a store, and it never replaces an image an operator uploaded in the console. Rerunning with the same `--out` replaces only the files
 the last run wrote.
 
+## Hosted assets
+
+Some art is not on the web: an icon made for the store, screenshots CI captures. `pkey assets push`
+and the Action's `assets` input send such files to Polaris Key, which hosts a copy and serves it
+from its image host, exactly like the files a manifest names (`.pkey/product`
+`presentation.icon`, the `.pkey/distribution` listing's `icon`, `header` and `screenshots`).
+
+```yaml
+- uses: vladzaharia/polaris-key/actions/publish@<sha>
+  with:
+    product: diceroll
+    assets: |
+      art/icon.png: presentation.icon
+      # numbered 1, 2, 3, … in path order
+      art/screens/*.png: listing.screenshot
+      art/play-feature.png: play:feature-graphic@de-DE
+```
+
+Each line is `<glob>: <slot>[@<locale>]`. A slot is `presentation.icon`, `listing.icon`,
+`listing.header`, `listing.screenshot:<1-16>` or a store slot of the
+[shared listing](/docs/admin/storefront-listing/) (`icon-master`, `play:feature-graphic`, …).
+Every glob must match exactly one file, except for the unnumbered `listing.screenshot`, whose
+matches become screenshots 1 to n. Globs resolve against `dir` when it is set, else the workspace.
+From a shell, one file at a time:
+
+```sh
+pkey assets push art/icon.png --slot presentation.icon --product diceroll
+```
+
+- **Files.** PNG, JPEG, WebP, GIF or AVIF, decided from the file's first bytes (never SVG); up to
+  10 MiB for icon slots and 20 MiB for the rest. A refused file fails the step and changes
+  nothing.
+- **Who wins a slot.** An upload in the console, then the manifest, then CI. A slot an operator
+  uploaded, or one the manifest names, is reported as kept and left as it is; that is not a
+  failure. See [Presentation](/docs/admin/presentation/).
+- **Credentials.** The token needs `assets:write`, which an operator adds deliberately (it is not
+  a default scope). The files go up through the same upload ticket as a release, so Release must
+  be on for the product.
+
 ## Storefront steps (itch.io and Snap)
 
 itch.io and the Snap Store take builds only through their own CLIs, `butler` and `snapcraft`,

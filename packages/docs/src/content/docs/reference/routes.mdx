@@ -16,6 +16,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | Method | Path | Service | Summary |
 | --- | --- | --- | --- |
 | GET | `/manage/api/github/repositories` | admin | The repositories the Polaris Key GitHub App can read |
+| POST | `/manage/api/products/{product}/assets/{slot}` | admin | Upload a file into a hosted-asset slot (the console claims the slot) |
+| DELETE | `/manage/api/products/{product}/assets/{slot}` | admin | Revert a console upload to the manifest, or delete a hosted copy |
 | GET | `/manage/api/products/{product}/assets` | admin | The product's hosted assets, their sources and pull status |
 | GET | `/manage/api/products/{product}/license/licenses/{licenseId}` | admin | One licence, with its holder, keys, devices and overrides |
 | PATCH | `/manage/api/products/{product}/license/licenses/{licenseId}` | admin | Change a licence's terms or holder |
@@ -43,6 +45,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/.well-known/jwks.json` | core | Product signing keys (JWKS) |
 | GET | `/{product}/.well-known/polaris-trust.jws` | core | Signed trust manifest (pkey-trust+jws) |
 | GET | `/{product}/.well-known/polaris.json` | core | Product discovery document |
+| POST | `/{product}/assets` | core | Host files CI pushes into presentation and listing slots (CI) |
 | GET | `/{product}/devices/{deviceId}` | core | Read one device (self-service scope) |
 | PATCH | `/{product}/devices/{deviceId}` | core | Rename a device |
 | DELETE | `/{product}/devices/{deviceId}` | core | Deauthorize a device |

@@ -89,6 +89,12 @@ const VERBS: Record<string, string> = {
   "package.version.prune": "pruned package version",
   "package.prune.failed": "failed to prune the builds of main of",
   "feed.retention.update": "changed the retention of package feeds",
+  // HA-05, HA-06: hosted assets (the target is the slot, `<slot>@<locale>`).
+  "assets.ingest": "hosted a copy of",
+  "assets.revert": "returned to the manifest the slot",
+  "assets.delete": "deleted the hosted copy of",
+  "assets.push": "pushed hosted assets from CI",
+  "assets.variants": "built image sizes for",
 };
 
 export function verbFor(action: string): string {
@@ -118,6 +124,7 @@ export const ACTION_GROUPS: { value: string; label: string }[] = [
   { value: "access.", label: "Access" },
   { value: "feed.", label: "Package feeds" },
   { value: "package.", label: "Package versions" },
+  { value: "assets.", label: "Hosted assets" },
 ];
 
 /** The target kinds the filter offers (the audit's own `target_kind` values). */

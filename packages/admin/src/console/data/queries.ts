@@ -111,6 +111,8 @@ export const qk = {
   ciPublisher: (slug: string) => product(slug, "core", "ci", "publisher"),
   ciTokens: (slug: string) => product(slug, "core", "ci", "tokens"),
   blobGc: (slug: string) => product(slug, "core", "blob-gc"),
+  /** HA-06: the product's hosted-asset slots (the Presentation page). */
+  hostedAssets: (slug: string) => product(slug, "core", "assets"),
 
   // license
   licenses: (slug: string) => product(slug, "license", "licenses"),

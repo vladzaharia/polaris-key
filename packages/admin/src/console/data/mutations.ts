@@ -132,7 +132,9 @@ export type WriteMethod =
   | "putListing"
   | "putListingOverride"
   | "listingImport"
-  | "putListingReleaseNotes";
+  | "putListingReleaseNotes"
+  | "uploadHostedAsset"
+  | "deleteHostedAsset";
 
 export interface MutationSpec<A extends unknown[]> {
   /** What the write does, for the table's readers (and the test's failure messages). */
@@ -233,6 +235,23 @@ const feeds = (scope: FeedScope, owner?: string): Target[] => {
     targets.push(prefix(qk.pkgFeeds({ kind: "product", slug: ownerSlug })));
   return targets;
 };
+
+/**
+ * HA-06: a hosted-asset write (an upload, Revert, delete-a-copy). The slots themselves; the
+ * registry row and the product detail, which carry `presentation.icon` for the product card and
+ * the Products table (worker `admin/lib/presentation.ts`); Home's summary; the activity trail;
+ * and, because a store slot (A-18) is also written into the listing model, the slot board and
+ * the listing.
+ */
+const hostedAssets = (slug: string): Target[] => [
+  prefix(qk.hostedAssets(slug)),
+  exact(qk.products()),
+  exact(qk.product(slug)),
+  summary(),
+  prefix(qk.activity(slug)),
+  prefix(qk.storefronts(slug)),
+  prefix(qk.listing(slug)),
+];
 
 export const MUTATIONS: MutationTable = {
   logout: {
@@ -773,6 +792,14 @@ export const MUTATIONS: MutationTable = {
   putListingReleaseNotes: {
     label: "listing release notes save",
     invalidates: (slug) => listingWrite(slug),
+  },
+  uploadHostedAsset: {
+    label: "hosted asset upload",
+    invalidates: (slug) => hostedAssets(slug),
+  },
+  deleteHostedAsset: {
+    label: "hosted asset revert or delete",
+    invalidates: (slug) => hostedAssets(slug),
   },
   savePackageFeeds: {
     label: "package feeds switch",

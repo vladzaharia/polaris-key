@@ -502,6 +502,8 @@ describe("the nav model (nav.ts)", () => {
       "services",
       "devices",
       "users",
+      // HA-06: the images Polaris Key hosts for the product.
+      "presentation",
       "keys",
       "activity",
       "settings",

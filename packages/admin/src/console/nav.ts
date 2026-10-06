@@ -43,6 +43,7 @@ import {
   Gauge,
   Globe,
   Grid3x3,
+  Image,
   HeartPulse,
   House,
   KeyRound,
@@ -109,6 +110,7 @@ export type ProductPageId =
   | "services"
   | "devices"
   | "users"
+  | "presentation"
   | "keys"
   | "activity"
   | "settings"
@@ -285,6 +287,16 @@ export const SECTIONS: NavSection[] = [
           tabs: ["overview", "licenses", "devices", "activity", "data"],
           ready: true,
         },
+      },
+      {
+        // HA-06: the images Polaris Key hosts for the product (icon, listing art, store slots).
+        page: "presentation",
+        label: "Presentation",
+        path: "presentation",
+        icon: Image,
+        docs: "/docs/admin/presentation/",
+        inNav: true,
+        ready: true,
       },
       {
         page: "keys",
