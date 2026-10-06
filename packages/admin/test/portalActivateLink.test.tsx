@@ -633,6 +633,117 @@ describe("§4.18 the deep link from an app (PX-17)", () => {
   });
 });
 
+describe("a #/?activate= hash written by hand (review fix)", () => {
+  const ENCODED = KEY.replaceAll("_", "%5F");
+
+  it("goes through the link's sanitiser: a key-bearing for= or return= is dropped, the rest kept", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/#/?activate=${KEY}&product=mossgarden&next=free-device&for=${encodeURIComponent(ENCODED)}&return=${encodeURIComponent(`mossgarden://x?k=${KEY}`)}`,
+    );
+    mockFetch(routes());
+    renderPortal();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Activate a license",
+    });
+    expect(dialog.textContent).toContain(
+      "Add it to your account, then free one up.",
+    );
+    expect(dialog.textContent).not.toContain("%5F");
+    await userEvent.click(continueButton(dialog));
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", {
+          name: "Add Mossgarden to your account?",
+        }),
+      ).getByRole("button", { name: "Add Mossgarden" }),
+    );
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Your license is on 2 of 2 devices",
+    });
+    expect(window.location.hash).toBe(
+      "#/p/mossgarden/free-device?license=lic_mossgarden",
+    );
+    expectKeyNowhere();
+  });
+
+  it("signed out, every sign-in's return URL drops a key however the hash carries it", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/?x=${ENCODED}#/?activate=${KEY}&product=mossgarden&for=${encodeURIComponent(ENCODED)}&return=${encodeURIComponent(`/signin?k=${KEY}`)}&q=fern`,
+    );
+    mockFetch({
+      ...routes(),
+      "/api/me": { status: 401 },
+      "/api/capabilities": CAPS_ALL,
+      "POST /api/signin/email/start": { ok: true },
+    });
+    renderPortal();
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "Email" }),
+      ACCOUNT.email,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    await screen.findByRole("heading", { name: "Check your email" });
+    const call = vi
+      .mocked(fetch)
+      .mock.calls.find(([u]) => String(u).includes("/api/signin/email/start"))!;
+    const { returnTo } = JSON.parse(String(call[1]!.body)) as {
+      returnTo: string;
+    };
+    let decoded = returnTo;
+    for (let i = 0; i < 3; i++) decoded = decodeURIComponent(decoded);
+    expect(decoded).not.toContain("pkey_");
+    const back = new URLSearchParams(new URL(returnTo).hash.split("?")[1]);
+    expect(back.get("activate")).toBe("");
+    expect(back.get("product")).toBe("mossgarden");
+    expect(back.get("q")).toBe("fern");
+    expect(back.has("for")).toBe(false);
+    expect(back.has("return")).toBe(false);
+    expect(new URL(returnTo).search).toBe("");
+  });
+});
+
+describe("the link notice is part of the dialog's description (review fix)", () => {
+  it("a screen reader hears '<Product> sent you here.' with the dialog, and long words wrap", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/activate?product=mossgarden&next=free-device&for=${"W".repeat(64)}#key=${KEY}`,
+    );
+    mockFetch(routes());
+    renderPortal();
+    const dialog = await screen.findByRole("dialog", {
+      name: "Activate a license",
+    });
+    const ids = (dialog.getAttribute("aria-describedby") ?? "").split(" ");
+    expect(ids).toHaveLength(2);
+    const described = ids.map((id) => document.getElementById(id)?.textContent);
+    expect(described[0]).toBe(
+      "The product stays in your library even if you lose the key.",
+    );
+    expect(described[1]).toMatch(/^Mossgarden sent you here\. /);
+    expect(document.getElementById(ids[1]!)!.className).toContain(
+      "[overflow-wrap:anywhere]",
+    );
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("without a notice, the dialog keeps its one description", async () => {
+    mockFetch(routes());
+    renderPortal();
+    const dialog = await openFromHeader();
+    const ids = (dialog.getAttribute("aria-describedby") ?? "").split(" ");
+    expect(ids).toHaveLength(1);
+    expect(document.getElementById(ids[0]!)?.textContent).toBe(
+      "The product stays in your library even if you lose the key.",
+    );
+  });
+});
+
 describe("the key across a navigating sign-in (carriedKey.ts)", () => {
   it("the return URL keeps an empty activate= and the link's context; the stashed key goes back into it", async () => {
     const { returnUrl, stashCarriedKey, restoreCarriedKey } =

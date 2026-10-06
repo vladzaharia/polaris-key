@@ -5215,20 +5215,27 @@ no longer accepted.
   (the document, `/assets/*`, fonts, icons and the API) for the key in its URL or `Referer`; the
   only request excluded is a legacy link's own navigation, which carries `?key=` by definition.
 - **What else the link carries, and where it may send the person (PX-17).** The rewrite keeps the
-  app's `product=` (a product slug), `next=free-device` (no other value), `for=` (64 characters,
-  control characters stripped) and `return=`, and drops every other parameter
-  (`activateLinkParams`). The key goes into `activate=` and nowhere else: a `for=` or `return=`
-  holding a key shape is dropped, because the rest of the hash rides in every sign-in's return URL.
-  That return URL keeps an empty `activate=` so a keyless link reopens the modal after sign-in.
-  `return=` is followed only after the add and only to the login card on this origin
-  (`/signin?…`; a crafted link must not send someone to a download, a sign-out or any other page
-  of the origin by itself) or to an origin or app scheme the product declares (PX-10's
-  `allowedReturn`). `cardReturn` and `allowedReturn` (`model/returnUrl.ts`) both refuse a value
-  that carries a key. `next=free-device` hands over the license id, `for=` and the unvalidated
-  `return=`, which the free-device flow checks itself. `test/portalRouter.test.ts`,
-  `test/portalReturnUrl.test.ts` and `test/portalActivateLink.test.tsx` pin this, and
-  `e2e/portal.e2e.test.ts` drives both hand-offs in Chromium with the key in no request line or
-  `Referer`.
+  app's `product=` (a product slug), `next=free-device` (no other value), `for=` (control
+  characters stripped, then cut to 64 characters) and `return=`, and drops every other parameter
+  (`activateLinkParams`). A `#/?activate=` hash written by hand goes through the same rule
+  (`activateContext`) before the signed-in shell uses it. The key goes into `activate=` and
+  nowhere else. A `for=` or `return=` that carries a key is dropped, and `for=` is checked before
+  the cut, so a key the cut would split is still found. "Carries a key" (`carriesKey`,
+  `model/returnUrl.ts`) means the key shape as written or after percent-decoding, repeated for a
+  value encoded more than once; a value that will not decode counts as carrying one.
+  Every sign-in's return URL (`returnUrl()`, `carriedKey.ts`) empties `activate=` and drops any
+  other parameter, in the hash or the query, whose name or value carries a key, however it got
+  there; a path that carries one is replaced by `/`. The emptied `activate=` reopens the modal
+  after sign-in for a link without a key. `return=` is followed only after the add, and only to
+  the login card on this origin (`/signin?…`) or to an origin or app scheme the product declares
+  (PX-10's `allowedReturn`). A crafted link must not send someone to a download, a sign-out or any
+  other page of the origin by itself. `cardReturn` and `allowedReturn` both refuse a value that
+  carries a key. `next=free-device` hands over the license id, `for=` and the key-free `return=`;
+  the free-device flow checks that `return=` against the declared targets itself.
+  `test/portalRouter.test.ts`, `test/portalReturnUrl.test.ts` and
+  `test/portalActivateLink.test.tsx` pin this, including encoded keys, a key past the `for=` cut,
+  hand-written hashes and the sign-in return URL. `e2e/portal.e2e.test.ts` drives both hand-offs
+  in Chromium with the key in no request line or `Referer`.
 - **A legacy `GET /activate?key=…` (a link already out) still works, and the Worker adds nothing
   to it.** It answers with the same SPA shell: `Cache-Control: no-store`,
   `Referrer-Policy: no-referrer`, the key in no response byte or header, and the shell fetched

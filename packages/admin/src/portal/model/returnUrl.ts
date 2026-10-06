@@ -42,10 +42,28 @@ function originOf(value: string): string | null {
 
 /** A license key (`pkey_<slug>_<22 base64url>`, PORTAL.md §4.17) anywhere in `value`. */
 const KEY_ANYWHERE = /pkey_[a-z0-9-]+_[A-Za-z0-9_-]{22}/;
+/** Percent-decoding rounds tried (`%255F` is `_` encoded twice) before a value is refused. */
+const DECODE_ROUNDS = 4;
 
-/** Whether `value` holds a license key. Such a value is never carried into a URL. */
+/**
+ * Whether `value` holds a license key, as written or percent-decoded (`pkey%5Fslug%5F…`), again
+ * for a value encoded more than once. A malformed encoding, or one still changing after a few
+ * rounds, counts as holding one: a value that cannot be read is never carried into a URL either.
+ */
 export function carriesKey(value: string): boolean {
-  return KEY_ANYWHERE.test(value);
+  let current = value;
+  for (let round = 0; round < DECODE_ROUNDS; round++) {
+    if (KEY_ANYWHERE.test(current)) return true;
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(current);
+    } catch {
+      return true;
+    }
+    if (decoded === current) return false;
+    current = decoded;
+  }
+  return true;
 }
 
 /** The return URL to follow, normalised, or `null` when it isn't one the product declares. */

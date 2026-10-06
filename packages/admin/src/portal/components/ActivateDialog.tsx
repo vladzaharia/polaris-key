@@ -116,6 +116,7 @@ export function ActivateDialog({
   const preview = usePreviewKey();
   const licenses = useLicenses(open);
   const fieldId = React.useId();
+  const noticeId = React.useId();
   /** Set while the page leaves for the login card, so the busy state holds until it unloads. */
   const [leaving, setLeaving] = React.useState(false);
   const toCard = cardReturn(returnTo, window.location.origin);
@@ -314,6 +315,9 @@ export function ActivateDialog({
           ? undefined
           : "The product stays in your library even if you lose the key."
       }
+      describedBy={
+        !done && !confirm && fromProduct && linkContext ? noticeId : undefined
+      }
       size="md"
     >
       <span ref={anchorRef} hidden />
@@ -340,6 +344,7 @@ export function ActivateDialog({
           <DialogBody className="space-y-4">
             {fromProduct && linkContext ? (
               <LinkNotice
+                id={noticeId}
                 slug={fromProduct}
                 name={nameFor(fromProduct)}
                 context={linkContext}
@@ -471,11 +476,14 @@ function RefusalActions({
  * the login card (`return=/signin?…`) says the person goes back to it.
  */
 function LinkNotice({
+  id,
   slug,
   name,
   context,
   forDevice,
 }: {
+  /** Named by the dialog's `aria-describedby`, so a screen reader hears it on open. */
+  id: string;
   slug: string;
   name: string;
   context: LinkContext;
@@ -505,7 +513,7 @@ function LinkNotice({
         size={24}
         className="mt-0.5 shrink-0"
       />
-      <p>
+      <p id={id} className="min-w-0 [overflow-wrap:anywhere]">
         <strong className="font-bold text-fg-strong">{lead}</strong> {body}
       </p>
     </div>

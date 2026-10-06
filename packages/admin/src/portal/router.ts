@@ -222,30 +222,50 @@ export type ActivateNext = (typeof ACTIVATE_NEXT)[number];
  * - `return`: where to go after the add, followed only once validated (`model/returnUrl.ts`:
  *   the login card on this origin, or a target the product declares).
  *
- * Every other parameter is dropped, and so is a `for` or `return` that carries a license key:
- * the hash travels with every sign-in's return URL (`carriedKey.ts`), minus `activate`. Pure.
+ * Every other parameter is dropped, and so is a `for` or `return` that carries a license key
+ * (`carriesKey`: as written or percent-decoded): the hash travels with every sign-in's return URL
+ * (`carriedKey.ts`), minus `activate`. Pure.
  */
 export function activateLinkParams(
   loc: Pick<Location, "search" | "hash">,
 ): Record<string, string> {
   const search = new URLSearchParams(loc.search);
-  const params: Record<string, string> = {
+  return {
     activate: activateLinkKey(loc.hash) ?? search.get("key") ?? "",
+    ...activateContext(search),
   };
-  const product = search.get("product");
-  if (product && PRODUCT_SLUG_RE.test(product)) params.product = product;
-  const next = search.get("next");
+}
+
+/** What an activate request may carry besides the key, sanitised (`activateContext`). */
+export interface ActivateContext {
+  product?: string;
+  next?: ActivateNext;
+  for?: string;
+  return?: string;
+}
+
+/**
+ * `product`, `next`, `for` and `return` from `params`, kept only as `activateLinkParams`
+ * describes. The one rule for an `/activate` link's query and for a `#/?activate=…` hash written
+ * by hand, which the signed-in shell reads. `for` is checked for a key before it is cut to 64
+ * characters, so a key past the cut is never half-kept. Pure.
+ */
+export function activateContext(params: URLSearchParams): ActivateContext {
+  const out: ActivateContext = {};
+  const product = params.get("product");
+  if (product && PRODUCT_SLUG_RE.test(product)) out.product = product;
+  const next = params.get("next");
   if (next && (ACTIVATE_NEXT as readonly string[]).includes(next))
-    params.next = next;
-  const forLabel = (search.get("for") ?? "")
+    out.next = next as ActivateNext;
+  const forRaw = (params.get("for") ?? "")
     .replace(/[\u0000-\u001f\u007f]/g, "")
-    .trim()
-    .slice(0, MANAGE_FOR_MAX_LENGTH);
-  if (forLabel && !carriesKey(forLabel)) params.for = forLabel;
-  const back = search.get("return");
+    .trim();
+  if (forRaw && !carriesKey(forRaw))
+    out.for = forRaw.slice(0, MANAGE_FOR_MAX_LENGTH);
+  const back = params.get("return");
   if (back && back.length <= MAX_RETURN_LENGTH && !carriesKey(back))
-    params.return = back;
-  return params;
+    out.return = back;
+  return out;
 }
 
 /**

@@ -93,6 +93,26 @@ describe("a return URL never carries a license key (PX-17)", () => {
     expect(carriesKey("/signin?request=rq_0123456789abcdef")).toBe(false);
   });
 
+  it("spots a key percent-encoded, once or twice, and refuses what cannot be decoded", () => {
+    const once = KEY.replaceAll("_", "%5F");
+    expect(carriesKey(once)).toBe(true);
+    expect(carriesKey(`tidewater://back?k=${once}`)).toBe(true);
+    expect(
+      carriesKey(`tidewater://back?k=${KEY.replaceAll("_", "%255F")}`),
+    ).toBe(true);
+    expect(carriesKey("pkey%5fmossgarden%5fQ7xZr2Lk9vT3mN8pB1cY4w")).toBe(true);
+    expect(carriesKey("https://app.example/%E0%A4%A")).toBe(true);
+    expect(carriesKey("tidewater://back?q=caf%C3%A9&x=%2Fy")).toBe(false);
+  });
+
+  it("refuses an encoded key in a declared target and in the card's return", () => {
+    const once = KEY.replaceAll("_", "%5F");
+    expect(allowedReturn(`tidewater://back?k=${once}`, DECLARED)).toBeNull();
+    expect(
+      cardReturn(`/signin?request=rq_1&k=${once}`, "https://key.plrs.im"),
+    ).toBeNull();
+  });
+
   it("refuses a declared target that carries one", () => {
     expect(allowedReturn(`tidewater://back?k=${KEY}`, DECLARED)).toBeNull();
     expect(

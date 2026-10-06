@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  activateContext,
   activateLinkKey,
   activateLinkParams,
   href,
@@ -197,6 +198,37 @@ describe("the /activate path handler", () => {
         hash: "",
       }),
     ).toEqual({ activate: "" });
+    // A key past the 64-character cut is found before the cut, never half-kept.
+    expect(
+      activateLinkParams({ search: `?for=${"a".repeat(27)}${KEY}`, hash: "" }),
+    ).toEqual({ activate: "" });
+    // A key percent-encoded (once in the value, so twice in the link) is still a key.
+    const encoded = KEY.replaceAll("_", "%5F");
+    expect(
+      activateLinkParams({
+        search: `?for=${encodeURIComponent(encoded)}&return=${encodeURIComponent(`myapp://x?k=${encoded}`)}`,
+        hash: "",
+      }),
+    ).toEqual({ activate: "" });
+  });
+
+  it("reads a hand-written #/?activate= hash through the same rule (activateContext)", () => {
+    const hand = new URLSearchParams(
+      `activate=&product=mossgarden&next=account&for=${encodeURIComponent(`${"a".repeat(27)}${KEY}`)}&return=${encodeURIComponent(`/signin?k=${KEY.replaceAll("_", "%5F")}`)}`,
+    );
+    expect(activateContext(hand)).toEqual({ product: "mossgarden" });
+    expect(
+      activateContext(
+        new URLSearchParams(
+          "product=mossgarden&next=free-device&for=macOS+arm64&return=%2Fsignin%3Frequest%3Drq_1",
+        ),
+      ),
+    ).toEqual({
+      product: "mossgarden",
+      next: "free-device",
+      for: "macOS arm64",
+      return: "/signin?request=rq_1",
+    });
   });
 
   it("prefers the fragment when a link carries both", () => {

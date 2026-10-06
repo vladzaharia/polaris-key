@@ -31,10 +31,10 @@ import { ProductPage } from "./pages/ProductPage.js";
 import { SignInPage } from "./pages/SignInPage.js";
 import { restoreCarriedKey } from "./carriedKey.js";
 import {
-  ACTIVATE_NEXT,
+  activateContext,
   rewriteActivatePath,
   setParams,
-  type ActivateNext,
+  type ActivateContext,
   useDocumentTitle,
   useRoute,
   type PortalRoute,
@@ -158,22 +158,22 @@ function SignedInShell({
   const activate = useActivate();
 
   // `#/?activate=<key>` (and `/activate#key=…`, rewritten to it) opens the modal over the
-  // Library with the key filled in, with what the link carried (`activateLinkParams`); the
-  // parameters are consumed so a reload doesn't re-open it.
+  // Library with the key filled in, with what the link carried. A hash written by hand goes
+  // through the same sanitiser as the link (`activateContext`). The parameters are consumed so a
+  // reload doesn't re-open it.
   const linkParams = route.kind === "library" ? route.params : null;
   const activateParam = linkParams?.get("activate") ?? null;
-  const productParam = linkParams?.get("product") ?? null;
-  const nextParam = linkParams?.get("next") ?? null;
-  const forParam = linkParams?.get("for") ?? null;
-  const returnParam = linkParams?.get("return") ?? null;
+  const ctx: ActivateContext = linkParams ? activateContext(linkParams) : {};
+  const productParam = ctx.product ?? null;
+  const nextParam = ctx.next ?? null;
+  const forParam = ctx.for ?? null;
+  const returnParam = ctx.return ?? null;
   React.useEffect(() => {
     if (activateParam === null) return;
     activate.open({
       key: activateParam || undefined,
       product: productParam ?? undefined,
-      next: (ACTIVATE_NEXT as readonly string[]).includes(nextParam ?? "")
-        ? (nextParam as ActivateNext)
-        : undefined,
+      next: nextParam ?? undefined,
       forDevice: forParam ?? undefined,
       returnTo: returnParam ?? undefined,
     });
