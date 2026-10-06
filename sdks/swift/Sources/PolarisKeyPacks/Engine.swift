@@ -372,6 +372,9 @@ public struct PackEngineOptions: Sendable {
     /// container variant's payload joins the record's deltas as one more candidate; at most one
     /// feed-offered delta is tried per install. Nil (the default): only the record's deltas.
     public var feedDeltas: (@Sendable () -> FeedDeltas?)?
+    /// P5-08: the store transport (Apple Background Assets, …) that carries some packs, or nil.
+    /// A carried pack is planned only through it (`platform`), never through the CDN.
+    public var platform: (any PackPlatformTransport)?
 
     public init(
         product: String, releaseKeys: TrustSet, productTrust: @escaping @Sendable () async -> TrustSet,
@@ -386,8 +389,10 @@ public struct PackEngineOptions: Sendable {
             UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
         },
         handlers: [any PackHandler] = [], checkpointBytes: Int = 8 << 20, oneShotBudget: Int? = nil,
-        holds: [ContentHold] = [], feedDeltas: (@Sendable () -> FeedDeltas?)? = nil
+        holds: [ContentHold] = [], feedDeltas: (@Sendable () -> FeedDeltas?)? = nil,
+        platform: (any PackPlatformTransport)? = nil
     ) {
+        self.platform = platform
         self.feedDeltas = feedDeltas
         self.holds = holds
         self.product = product
@@ -526,6 +531,12 @@ private struct Planned {
     var feedIds: Set<String> = []
 }
 
+/// A refused platform copy: the marker step, and the release it holds when the refusal is the pin.
+private struct PlatformRefusal: Error {
+    var step: String
+    var mismatch: (sha256: String, version: String)? = nil
+}
+
 /// One chunk seed and where it came from (P4-11).
 private struct SeedEntry: Sendable {
     var location: String
@@ -546,6 +557,9 @@ public actor PackEngine {
     private nonisolated let handlerTable: Locked<[String: any PackHandler]>
     private nonisolated let listeners: Locked<[UUID: @Sendable (PackProgress) -> Void]>
     private var embedded: [String: PackInstall] = [:]
+    /// P5-08: the packs whose `embedded` entry is the platform transport's copy (never committed
+    /// to the state: its path is the platform's and is re-read at every boot).
+    private var platformCopies = Set<String>()
     private var running: [String: PackInstall] = [:]
     /// Locations whose payload could not be read at load: kept out of use and out of GC.
     private var unverifiable = Set<String>()
@@ -635,6 +649,25 @@ public actor PackEngine {
             switch await verifyEmbedded(e) {
             case .success(let install): embedded[install.packId] = install
             case .failure(let r): refused.append((e.location, r.step))
+            }
+        }
+        // P5-08: every carried pack the platform holds now, read fresh, under the platform pin
+        // rule. Its copy stands in for a bundled baseline of the same pack.
+        if let p = opts.platform, p.unavailable() == nil {
+            for packId in Set((opts.stamp?.pins.map(\.pack) ?? []) + (opts.stamp?.expects.map(\.pack) ?? []))
+                .sorted() where p.carries(packId)
+            {
+                guard let dir = (try? await p.locate(packId, contentApi: opts.stamp?.contentApi ?? -1)) ?? nil else { continue }
+                switch readPlatformBaseline(dir) {
+                case .refused(let location, let step): refused.append((location, step))
+                case .baseline(let b):
+                    switch await verifyPlatform(b, packId: packId, exact: nil) {
+                    case .success(let install):
+                        embedded[packId] = install
+                        platformCopies.insert(packId)
+                    case .failure(let r): refused.append((b.location, r.step))
+                    }
+                }
             }
         }
         // The state. `read` is nil only for "no document"; anything else it throws means the
@@ -1285,6 +1318,135 @@ public actor PackEngine {
         }
     }
 
+    /// P5-08: a platform copy of `packId`, verified like an embedded baseline, then held to the
+    /// platform pin rule: `exact` (a decision's target) takes only that release; otherwise the
+    /// stamp's pin, or, where the transport floats, a later unrevoked `seq` of the same pack.
+    private func verifyPlatform(
+        _ e: EmbeddedBaseline, packId: String, exact: String?
+    ) async -> Result<PackInstall, PlatformRefusal> {
+        let m = verifyMarker(
+            e.marker, releaseKeys: opts.releaseKeys, productTrust: await opts.productTrust(),
+            expectedAud: opts.product)
+        guard case .ok(let markedId, let version, let release, let record, let recordSha256) = m else {
+            if case .rejected(let step) = m { return .failure(PlatformRefusal(step: step)) }
+            return .failure(PlatformRefusal(step: "format"))
+        }
+        if !sameBytes(markedId, packId) { return .failure(PlatformRefusal(step: "cross-check")) }
+        let k: Int
+        switch matchEmbedded(packId: markedId, record: record, recordSha256: recordSha256, payload: e.payload, stamp: nil) {
+        case .failure(let r): return .failure(PlatformRefusal(step: r.step))
+        case .success(let i): k = i
+        }
+        let mismatch = PlatformRefusal(step: "pin", mismatch: (recordSha256, version))
+        if let exact {
+            if recordSha256 != exact { return .failure(mismatch) }
+        } else if let pin = opts.stamp?.pins.first(where: { $0.pack == packId }), pin.sha256 != recordSha256 {
+            let floats = opts.platform?.floats ?? false
+            if !floats || record.seq <= pin.seq || isRevoked(recordSha256) { return .failure(mismatch) }
+        }
+        let v = record.variants[k]
+        return .success(
+            PackInstall(
+                packId: markedId, record: release, recordSha256: recordSha256, version: version,
+                seq: record.seq, type: record.type, variant: variantKey(v.variant),
+                layout: v.files.layout, payloadSha256: v.payload.sha256, payloadSize: v.payload.size,
+                activation: activationOf(record, handler(record.type)), location: e.location,
+                embedded: true, installedAt: record.issuedAt))
+    }
+
+    /// P5-08 step 4 for a pack the platform transport carries: the target is bound to the
+    /// platform's transport, which the planner may use only while the platform is available here.
+    /// No index, seed or object is fetched through the CDN transport.
+    private func platformPreflight(
+        _ p: any PackPlatformTransport, _ packId: String, _ pinSha: String, _ body: String,
+        _ record: PackRecordDoc, _ variant: PackVariant, _ delegated: String?
+    ) throws -> Preflight {
+        var installs: [PackInstall] = []
+        for i in try installsOf(packId) where ((try? opts.storage.installed(i)) ?? nil) != nil {
+            installs.append(i)
+        }
+        var target = planTarget(variant, recordSha256: pinSha, filesIndex: nil)
+        target.platform = p.id
+        var listed = opts.transports
+        if p.unavailable() == nil, !listed.contains(p.id) { listed.append(p.id) }
+        let caps = PlanCaps(
+            strategies: opts.strategies, patchMethods: [], transports: listed, memBudget: opts.memBudget,
+            freeDisk: (try? opts.storage.freeDisk()) ?? 0)
+        let planned = plan(
+            target: target,
+            installed: installs.map {
+                PlanInstalled(release: $0.recordSha256, payloadSha256: $0.payloadSha256, chunks: nil, files: nil)
+            }, caps: caps)
+        if case .error(let e) = planned {
+            let why = p.unavailable().map { " (\($0.reason): \($0.detail))" } ?? ""
+            throw PackError(
+                e, "No way to install \(packId): it is bound to \(p.id), which is not available here\(why).",
+                packId: packId)
+        }
+        return .plan(
+            Planned(
+                body: body, recordSha256: pinSha, record: record, variant: variant, installs: installs,
+                seeds: [:], planId: "", index: nil, plan: planned, delegation: delegated, chunk: nil))
+    }
+
+    /// P5-08: the `platform` strategy. The transport delivers the pack, its copy is read again and
+    /// accepted under the platform pin rule, registered as this pack's baseline and activated (hot
+    /// now; a restart pack mounts at the next boot). Nothing is committed to the state document.
+    private func ensurePlatform(_ packId: String, _ recordSha256: String, isPin: Bool) async throws -> PackInstall {
+        guard let p = opts.platform else {
+            throw PackError(ErrorCode.planTransportUnsupported, "\(packId) is platform-bound.", packId: packId)
+        }
+        if let u = p.unavailable() {
+            throw PackError(ErrorCode.unsupported, u.description, detail: u.reason, packId: packId)
+        }
+        emit(PackProgress(packId: packId, phase: "download", done: 0, total: 0))
+        do {
+            try await p.ensure(packId, contentApi: opts.stamp?.contentApi ?? -1) { [weak self] done, total in
+                self?.emit(PackProgress(packId: packId, phase: "download", done: done, total: total))
+            }
+        } catch let e as PackError {
+            throw e
+        } catch {
+            throw PackError(
+                ErrorCode.platformError, "\(p.id) could not make \(packId) available: \(error).", packId: packId)
+        }
+        guard let dir = try await p.locate(packId, contentApi: opts.stamp?.contentApi ?? -1) else {
+            throw PackError(
+                ErrorCode.platformError, "\(p.id) reports \(packId) ready but holds no copy of it.", packId: packId)
+        }
+        let b: EmbeddedBaseline
+        switch readPlatformBaseline(dir) {
+        case .refused(_, let step):
+            throw PackError(
+                ErrorCode.markerRejected, "\(packId)'s copy from \(p.id) cannot be read as a pack.",
+                detail: step, packId: packId)
+        case .baseline(let x): b = x
+        }
+        let install: PackInstall
+        switch await verifyPlatform(b, packId: packId, exact: isPin ? nil : recordSha256) {
+        case .failure(let r):
+            if let (sha, version) = r.mismatch {
+                throw PackError(
+                    ErrorCode.recordMismatch, "\(p.id) holds \(packId)@\(version) (\(sha)), not the target release.",
+                    packId: packId)
+            }
+            throw PackError(
+                ErrorCode.markerRejected, "\(packId)'s copy from \(p.id) was refused at \(r.step).",
+                detail: r.step, packId: packId)
+        case .success(let i): install = i
+        }
+        embedded[packId] = install
+        platformCopies.insert(packId)
+        if install.activation == "hot" {
+            if let before = running[packId], before.location != install.location, let h = handler(before.type) {
+                try await h.deactivate(before)
+            }
+            try await activate(install)
+        }
+        emit(PackProgress(packId: packId, phase: "done", done: 0, total: 0))
+        return install
+    }
+
     /// The installs of a pack the planner can reuse: active, previous and the embedded copy.
     private func installsOf(_ packId: String) throws -> [PackInstall] {
         let doc = try requireLoaded()
@@ -1392,6 +1554,12 @@ public actor PackEngine {
         if let emb = embedded[packId], emb.recordSha256 == pin.sha256, current == nil, !embeddedRefused(emb) {
             return .current(emb)
         }
+        // P5-08: the stamp's pin, with the platform holding a later release it may float to.
+        if want == nil, current == nil, platformCopies.contains(packId), let emb = embedded[packId],
+            opts.platform?.floats == true, emb.seq > pin.seq, !embeddedRefused(emb)
+        {
+            return .current(emb)
+        }
 
         // 2. The pinned record, by hash, against the pinned release keys.
         let (body, record, delegated) = try await fetchVerified(
@@ -1419,6 +1587,10 @@ public actor PackEngine {
             throw PackError(
                 ErrorCode.packTypeUnsupported,
                 "\(packId)'s variant is a \(variant.files.layout), not a \(h.layout).", packId: packId)
+        }
+
+        if let p = opts.platform, p.carries(packId) {
+            return try platformPreflight(p, packId, pin.sha256, body, record, variant, delegated)
         }
 
         // 4. The index (a tree, or any installed release), the target, the plan. Only installs
@@ -1784,6 +1956,11 @@ public actor PackEngine {
         case .chosen(let c, _, let fallbacks):
             if c.strategy == "noop" {
                 let same = pre.installs.first { $0.payloadSha256 == variant.payload.sha256 }!
+                // P5-08: a platform copy is never committed to the state; it stands as the install.
+                if platformCopies.contains(packId), let emb = embedded[packId], emb.location == same.location {
+                    if running[packId] == nil, emb.activation == "hot" { try await activate(emb) }
+                    return emb
+                }
                 // plans/P4-19.md Amendment A1: a delegated release that reuses an install holding
                 // the same payload re-sniffs that install's files, so the data-only rule holds
                 // whatever admitted the bytes first.
@@ -1809,7 +1986,7 @@ public actor PackEngine {
             }
             candidates = [c] + fallbacks
         case .platform:
-            throw PackError(ErrorCode.planTransportUnsupported, "\(packId) is platform-bound.", packId: packId)
+            return try await ensurePlatform(packId, pre.recordSha256, isPin: target == nil)
         case .error(let e):
             throw PackError(e, "No way to install \(packId): \(e).", packId: packId)
         }

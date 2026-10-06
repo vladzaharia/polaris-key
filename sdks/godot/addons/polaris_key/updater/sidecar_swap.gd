@@ -143,11 +143,12 @@ static func stage(updater: PKeyUpdater, check: PKeyUpdateCheck) -> PKeyApplyResu
 	var dest := tmp.path_join(PKeySlots.PAYLOAD)
 	if not updater.space_ok(tmp, int(art["size"])):
 		return PKeyApplyResult.failed(PKeyErrors.STORE_FAILED, "Not enough free space to download the %d-byte pack." % int(art["size"]), {"reason": "no-space"})
-	var r := await PKeyDownload.fetch(updater.transport(), url, dest, updater.download_headers(), {
+	var opts := {
 		"expected_size": int(art["size"]),
 		"timeout": updater.download_timeout,
 		"progress": func(got: int, total: int) -> void: updater.download_progress.emit(got, total),
-	})
+	}
+	var r: PKeyResult = await updater.with_attestation(func() -> PKeyResult: return await PKeyDownload.fetch(updater.transport(), url, dest, updater.download_headers(), opts))
 	if not r.ok:
 		return PKeyApplyResult.failed(r.code, r.message, r.detail)
 	var part: String = r.detail["path"]

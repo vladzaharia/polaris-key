@@ -30,6 +30,7 @@ async function ready(adapter: PolarisAdapter): Promise<void> {
 
 function browser(capabilities = services("license", "config", "update")) {
   return browserAdapter({
+    auth: "cookie",
     productSlug: "acme",
     fetchImpl: makeFakeFetch(makeDoc(), { capabilities }),
     now: () => NOW_SEC,

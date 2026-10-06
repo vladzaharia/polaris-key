@@ -72,6 +72,7 @@ describe("entitledChannels() over the shared fixtures", () => {
         now: () => NOW_SEC,
       });
       const browser = browserAdapter({
+        auth: "cookie",
         productSlug: "acme",
         fetchImpl: makeFakeFetch(docWith(value)),
         now: () => NOW_SEC,
@@ -88,6 +89,7 @@ describe("entitledChannels() over the shared fixtures", () => {
 
   it("with no licence document, the floor: stable", async () => {
     const browser = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null),
       now: () => NOW_SEC,

@@ -33,6 +33,10 @@ extends RefCounted
 ##   restart_to_update()           code-ready: swap the staged pack in and restart. A coroutine
 ##   confirm_boot()                confirm this launch while the boot outcome is `ready`
 ##   drop_staged()                 forget the staged update (a channel switch)
+##   set_channel(channel)          the player's update channel, persisted beside the update
+##                                 slots and read by check(""), decide(""), feed("") and the dev
+##                                 menu; refused while the outlet owns the channel
+##                                 (channelSwitch false). get_channel(), clear_channel()
 ##   adapter()                     the PKeyOutletAdapter for this install's outlet
 ##   plan(result)                  what the prompt offers for an answer (adapter.describe)
 ##   updater                       the PKeyUpdater: slots, the boot guard, the native bridges
@@ -96,6 +100,8 @@ var last_available: PKeyResult = null
 signal update_staged(version: String)
 ## Download progress of a sidecar pack.
 signal download_progress(received: int, total: int)
+## set_channel() / clear_channel() changed the update channel (the effective one now).
+signal channel_changed(channel: String)
 
 ## Acting on decisions: the slots, the boot guard, the native bridges (P3-10).
 var updater := PKeyUpdater.new()
@@ -128,6 +134,103 @@ func _core() -> PKeyCore:
 	return _core_ref.get_ref() as PKeyCore if _core_ref != null else null
 
 
+# ── The player's update channel (SDK parity SP-G08) ──────────────────────────────────────
+
+const CHANNEL_FILE := "channel.json"
+
+
+## Where the channel preference lives: `<store_root>/<product>/updates/channel.json`.
+static func channel_path(core: PKeyCore) -> String:
+	return PKeyUpdater.root_for(core).path_join(CHANNEL_FILE)
+
+
+## The persisted channel preference (canonical), or "" when the player chose none.
+func preferred_channel() -> String:
+	var core := _core()
+	if core == null:
+		return ""
+	var path := channel_path(core)
+	if not FileAccess.file_exists(path):
+		return ""
+	var parsed := PKeyJson.parse(FileAccess.get_file_as_string(path))
+	var v = parsed["value"] if parsed["ok"] else null
+	if not (v is Dictionary) or not (v.get("channel") is String):
+		return ""
+	var canonical = canonical_channel(v["channel"], core.version)
+	return canonical if canonical is String else ""
+
+
+## The channel the update calls use when given none: the player's choice (set_channel), else this
+## build's channel. "" before configure().
+func get_channel() -> String:
+	var core := _core()
+	if core == null:
+		return ""
+	var pref := preferred_channel()
+	return pref if pref != "" else String(core.channel)
+
+
+## Whether this build's outlet lets the player switch channels (the outlet's `channelSwitch`):
+## "" when it does, else the outlet kind that owns the channel.
+func channel_lock() -> String:
+	var core := _core()
+	if core == null:
+		return ""
+	var o := core.update_outlet()
+	var kind := String(o.get("kind", ""))
+	if kind == "" or kind == PKeyDecision.OUTLET_UNKNOWN:
+		return ""
+	var caps := PKeyDecision.effective_capabilities(kind, {"platform": core.update_platform(), "subkind": o.get("subkind"), "server": null})
+	return "" if caps.get("channelSwitch") == true else kind
+
+
+## Choose the update channel (persisted; the next check(""), decide("") and feed("") use it). An
+## alias is stored canonically; a malformed name is `invalid-options`; an outlet that owns the
+## channel (Steam branches, the App Store, …) answers unsupported with reason `outlet`. Staged code
+## from another channel is dropped (notes/A4 P11). The server still decides entitlement: a channel
+## the licence does not grant answers `channel_not_allowed` at the next check. The licence gate's
+## X-PKey-Channel stays this build's channel.
+func set_channel(channel: String) -> PKeyResult:
+	var core := _core()
+	if core == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
+	var canonical = canonical_channel(channel, core.version)
+	if not (canonical is String):
+		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "channel must be a channel name (stable, beta, pr-<n>, dev or a manual channel matching %s), got '%s'." % [PKeyConstants.CHANNEL_NAME_PATTERN, channel])
+	var lock := channel_lock()
+	if lock != "":
+		return PKeyResult.unsupported(PKeyConstants.Feature.UPDATE_DECIDE, PKeyConstants.UnsupportedReason.OUTLET, "This build's channel is set by its outlet (%s)." % lock)
+	var before := get_channel()
+	var path := channel_path(core)
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The channel preference could not be written (%d)." % FileAccess.get_open_error())
+	f.store_string(JSON.stringify({"channel": canonical}))
+	f.close()
+	var staged = updater.staged_input() if updater.active() else null
+	if staged is Dictionary and staged.get("channel") != canonical:
+		drop_staged()
+	if before != canonical:
+		channel_changed.emit(canonical)
+	return PKeyResult.success({"channel": canonical})
+
+
+## Forget the player's channel choice: the build's own channel applies again.
+func clear_channel() -> PKeyResult:
+	var core := _core()
+	if core == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() first.")
+	var before := get_channel()
+	var path := channel_path(core)
+	if FileAccess.file_exists(path) and DirAccess.remove_absolute(path) != OK:
+		return PKeyResult.failure(PKeyErrors.STORE_FAILED, "The channel preference could not be removed.")
+	if before != get_channel():
+		drop_staged()
+		channel_changed.emit(get_channel())
+	return PKeyResult.success({"channel": get_channel()})
+
+
 ## The outlet decide() uses (PKeyCore.update_outlet()): {id, kind, subkind}, `unknown` before
 ## configure().
 func outlet() -> Dictionary:
@@ -155,6 +258,8 @@ func check(channel := "") -> PKeyVersionCheck:
 		refused.detail = off.detail
 		return refused
 	var path := "update/version"
+	if channel == "":
+		channel = preferred_channel()
 	if channel != "":
 		var canonical = canonical_channel(channel, core.version)
 		if canonical == null:
@@ -428,7 +533,7 @@ func _flow_opts(ready: Dictionary, channel: String, staged: Variant, skip_versio
 	if binary != "":
 		installed["binaryVersion"] = binary
 	return {
-		"channel": channel if channel != "" else core.channel,
+		"channel": channel if channel != "" else get_channel(),
 		"expected_aud": core.product,
 		"trust": core.trust.effective(),
 		"release_keys": core.options.pinned_release_keys,

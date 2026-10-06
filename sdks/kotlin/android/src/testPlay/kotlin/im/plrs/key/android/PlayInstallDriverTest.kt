@@ -11,6 +11,8 @@ import im.plrs.key.core.UpdateCheck
 import im.plrs.key.core.UpdateDecision
 import im.plrs.key.platform.play.InAppUpdates
 import im.plrs.key.update.InstallResult
+import im.plrs.key.update.InstallStage
+import org.robolectric.shadows.ShadowLooper
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -99,6 +101,43 @@ class PlayInstallDriverTest {
         fake.downloadCompletes()
         assertEquals(InstallResult.Started, install(d, store()))
         assertTrue("complete() shows Play's install splash", fake.isInstallSplashScreenVisible)
+    }
+
+    /** SP-K08: a flexible flow reports its download, then "restart to finish", which finish() runs. */
+    @Test
+    fun aFlexibleFlowReportsProgressAndFinishes() {
+        fake.setUpdateAvailable(15)
+        val d = driver()
+        assertEquals(InstallStage.Idle, d.progress.value)
+        assertEquals(InstallResult.Started, install(d, store()))
+        fake.userAcceptsUpdate()
+        fake.setTotalBytesToDownload(1_000)
+        fake.downloadStarts()
+        fake.setBytesDownloaded(250)
+        ShadowLooper.idleMainLooper()
+        val downloading = d.progress.value
+        assertTrue("$downloading", downloading is InstallStage.Downloading)
+        fake.downloadCompletes()
+        ShadowLooper.idleMainLooper()
+        assertEquals(InstallStage.ReadyToRestart, d.progress.value)
+        assertEquals(InstallResult.Started, pumped { d.finish() })
+        assertTrue(fake.isInstallSplashScreenVisible)
+    }
+
+    @Test
+    fun aResumeFindsADownloadedUpdateAndAResultIsFolded() {
+        fake.setUpdateAvailable(15)
+        assertEquals(InstallResult.Started, install(driver(), store()))
+        fake.userAcceptsUpdate()
+        fake.downloadStarts()
+        fake.downloadCompletes()
+        val d = driver()
+        pumped { d.resume() }
+        assertEquals(InstallStage.ReadyToRestart, d.progress.value)
+        assertFalse("another request code is not ours", d.activityResult(1, Activity.RESULT_CANCELED))
+        val fresh = driver()
+        assertTrue(fresh.activityResult(InAppUpdates.REQUEST_CODE, 1))
+        assertTrue(fresh.progress.value is InstallStage.Failed)
     }
 
     @Test

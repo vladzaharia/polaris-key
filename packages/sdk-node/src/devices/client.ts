@@ -16,7 +16,11 @@ import type { PackInstallReport } from "@polaris-key/client-core/packs";
 import type { CoreContext } from "../core/context.js";
 import type { CacheManager } from "../core/cache.js";
 import type { TokenManager } from "../core/token.js";
-import { buildSnapshot, reportSnapshot } from "../core/telemetry.js";
+import {
+  buildSnapshot,
+  reportSnapshot,
+  type SnapshotExtras,
+} from "../core/telemetry.js";
 import { collectFingerprint } from "./fingerprint.js";
 import type { ProbeDeclaration } from "./facts.js";
 
@@ -75,6 +79,11 @@ export class DevicesClient {
   packSetId: () => Promise<string | null> = async () => null;
   /** Recent pack installs (P4-17); wired by the client like `packSetId`. */
   packInstalls: () => PackInstallReport[] = () => [];
+  /** The gate, outlet and pending update events (§3.13); wired by the client. */
+  reportExtras: () => Promise<SnapshotExtras> = async () => ({});
+  /** Called after the server accepted a report, with the extras it carried. */
+  reportAccepted: (extras: SnapshotExtras) => Promise<void> = async () =>
+    undefined;
 
   constructor(
     private readonly ctx: CoreContext,
@@ -207,7 +216,8 @@ export class DevicesClient {
     const token = this.tokens.current;
     if (!token) return false;
     const packSetId = await this.packSetId().catch(() => null);
-    return reportSnapshot(
+    const extras = await this.reportExtras().catch(() => ({}));
+    const accepted = await reportSnapshot(
       this.ctx,
       token,
       buildSnapshot(
@@ -216,8 +226,11 @@ export class DevicesClient {
         this.caps?.(),
         packSetId,
         this.packInstalls(),
+        extras,
       ),
     );
+    if (accepted) await this.reportAccepted(extras).catch(() => undefined);
+    return accepted;
   }
 
   private requireToken(): string {

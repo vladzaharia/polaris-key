@@ -46,6 +46,7 @@ val checkModuleBoundaries by tasks.registering {
     val serviceProjects = serviceModules.map { project(it) }
     val platformProject = findProject(":platform")
     val uiProject = findProject(":ui")
+    val billingProject = findProject(":billing")
     val androidProject = findProject(":android")
     val everyProject = rootProject.subprojects.toList()
     doLast {
@@ -93,11 +94,13 @@ val checkModuleBoundaries by tasks.registering {
         }
         // :ui (P6-11) renders SDK state: it sees :sdk (and through it :core, :update, :packs), never
         // the Android platform backend or its glue.
-        if (uiProject != null) {
+        // :ui (P6-11) and :billing (SP-K05) render or drive SDK state: they see :sdk, never the
+        // Android platform backend or its glue.
+        for (p in listOfNotNull(uiProject, billingProject)) {
             val forbidden = setOf("platform", "android", "godot", "boundary", "conformance")
-            for (config in uiProject.configurations) {
+            for (config in p.configurations) {
                 for (dep in config.dependencies.withType(ProjectDependency::class.java)) {
-                    if (dep.name in forbidden) problems += ":ui ${config.name} depends on project :${dep.name}"
+                    if (dep.name in forbidden) problems += "${p.path} ${config.name} depends on project :${dep.name}"
                 }
             }
         }

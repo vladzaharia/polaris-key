@@ -211,6 +211,7 @@ describe("v3 pack types in @polaris-key/react (web)", () => {
 
   it("answers supports() per type: godot.zip and audio.bank are web N/As", async () => {
     const a = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(makeDoc(), {
         capabilities: services("release", "distribution", "update"),

@@ -36,6 +36,7 @@ function renderLogin(
 describe("PolarisLogin — OIDC button", () => {
   it("renders the OIDC button when supported", async () => {
     const browser = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null),
       now: () => 2000,
@@ -97,6 +98,7 @@ describe("PolarisLogin — key card visibility", () => {
 
   it("browser shows the typed-key card", async () => {
     const browser = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null),
       now: () => 2000,
@@ -180,6 +182,42 @@ describe("PolarisLogin — key submission", () => {
     });
     adapter.dispose();
   });
+
+  it.each([
+    [
+      { kind: "refused", code: "license_disabled", message: "device limit" },
+      /license was disabled/i,
+    ],
+    [
+      { kind: "device-limit", limit: 2, deviceCount: 2 },
+      /reached its device limit/i,
+    ],
+  ] as const)(
+    "the alert is the copy catalog's sentence for the typed outcome, never the message text (%j)",
+    async (outcome, expected) => {
+      const bridge = makeFakeBridge(emptyBridgeState());
+      bridge.submitKey = vi.fn(async () => outcome as never);
+      const adapter = desktopAdapter({
+        bridge,
+        now: () => 2000,
+        expectServices: services(),
+      });
+      const { container } = renderLogin(adapter);
+      const input = (await waitFor(() =>
+        container.querySelector("[data-polaris-key-input]"),
+      )) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: "PK-1" } });
+      fireEvent.submit(container.querySelector("form") as HTMLFormElement);
+      await waitFor(() => {
+        const alert = within(container).getByRole("alert");
+        expect(alert.textContent).toMatch(expected);
+        // A refusal whose diagnostic message says "device limit" is not the device limit.
+        if (outcome.kind === "refused")
+          expect(alert.textContent).not.toMatch(/device limit/i);
+      });
+      adapter.dispose();
+    },
+  );
 
   it("the submit button is disabled while the key field is empty", async () => {
     const adapter = desktopAdapter({

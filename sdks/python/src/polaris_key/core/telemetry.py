@@ -36,6 +36,11 @@ def build_snapshot(
     probes: Optional[List["ProbeDeclaration"]] = None,
     caps: Optional[Callable[[], List[str]]] = None,
     pack_set_id: Optional[Callable[[], Optional[str]]] = None,
+    *,
+    gate: Optional[Callable[[], Optional[str]]] = None,
+    outlet: Optional[Callable[[], Optional[str]]] = None,
+    updates: Optional[Callable[[], List[Dict[str, Any]]]] = None,
+    pack_installs: Optional[Callable[[], List[Dict[str, Any]]]] = None,
 ) -> Dict[str, Any]:
     """Assemble the report body from re-verified content plus this host's software facts.
 
@@ -43,7 +48,14 @@ def build_snapshot(
     §2.2). It rides EVERY report: the Worker overwrites the stored report each time, so a
     list sent only when it changed would vanish from the next one. ``pack_set_id`` gives the
     active pack set's id (plans/P4-01.md §2.11), sent as ``content: {packSetId}`` when the host
-    has packs."""
+    has packs.
+
+    The SDK parity pass (§3.13) adds the rest of the Worker's allowlist (``core/devices.ts``
+    ``REPORT_KEYS``) the SDK knows: ``gate`` (``{status}``, the gate verdict right now),
+    ``outlet`` (the outlet id this install resolved, at most 64 characters), ``updates`` (the
+    update-health journal's pending events, at most 16) and ``packInstalls`` (the pack
+    engine's recent installs, at most 8). Each is best-effort and omitted when unknown or
+    empty."""
     config: Dict[str, Any] = {}
     entitlements: Dict[str, Any] = {}
     config_doc = cache.config_doc()
@@ -80,7 +92,29 @@ def build_snapshot(
             set_id = None
         if set_id is not None:
             out["content"] = {"packSetId": set_id}
+    status = _quiet(gate)
+    if isinstance(status, str) and status:
+        out["gate"] = {"status": status}
+    outlet_id = _quiet(outlet)
+    if isinstance(outlet_id, str) and outlet_id:
+        out["outlet"] = outlet_id[:64]
+    events = _quiet(updates)
+    if isinstance(events, list) and events:
+        out["updates"] = events[:16]
+    installs = _quiet(pack_installs)
+    if isinstance(installs, list) and installs:
+        out["packInstalls"] = installs[-8:]
     return out
+
+
+def _quiet(fn: Optional[Callable[[], Any]]) -> Any:
+    """``fn()``, or ``None`` when it is absent or raises: telemetry never fails a sync."""
+    if fn is None:
+        return None
+    try:
+        return fn()
+    except Exception:
+        return None
 
 
 def report_snapshot(ctx: "CoreContext", token: str, snapshot: Any) -> bool:
