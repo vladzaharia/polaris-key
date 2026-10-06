@@ -7,7 +7,7 @@ description: "Every platform, product and service setting in the settings regist
     Source of truth: the settings registry (packages/worker/src/core/settings/ and each service's
     settings.ts), emitted by packages/worker/scripts/gen-settings.ts. */}
 
-The settings registry describes every setting Polaris Key has: 56 entries (12 platform, 44 product, 0 entity), 23 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
+The settings registry describes every setting Polaris Key has: 56 entries (12 platform, 44 product, 0 entity), 22 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
 
 How to read the columns:
 
@@ -31,7 +31,7 @@ One value per deployment, edited under **Platform → Settings**. A deploy var, 
 | `identity.reservedDisplayTerms` | [Extra reserved display terms](/docs/admin/platform-settings/): Platform or store names, beyond the built-in list, that a product or developer name may not use. | list of up to 64: text, at most 64 characters | `[]` | cascade | — | L1 on change | registered ahead of ST-04 |
 | `identity.keyEntryRefusals` | [Key-entry refusals](/docs/services/identity/): Lets Identity products refuse key entry past the per-licence limit and on owned licences. Counting runs either way; turn it on once the SDKs that show the refusals are released. | on or off | `"off"` | policy, bound: lock, deploy: runtime | — | L1 | registered ahead of I-09; devices see it (refusal) |
 | `identity.keyEntry.limit` | [Key-entry limit ceiling](/docs/services/identity/): The most key entries any product may allow per floating licence. A product may set a lower limit, never a higher one; there is no unlimited value while Identity is on. | integer 1–100 | `100` | policy, bound: max | — | L1 up, L2 down | registered ahead of ST-16 |
-| `storefront.polarisKey.enabled` | [Polaris Key storefront](/docs/services/identity/portal/): Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licences, sign-in and auto-issue keep working. | on or off | `"on"` | cascade | — | L2 | registered ahead of PS-03 |
+| `storefront.polarisKey.enabled` | [Polaris Key storefront](/docs/services/identity/portal/): Lets products be listed in the Polaris Key library (Discover and the storefront page). Off hides every listing on this deployment; licences, sign-in and auto-issue keep working. | on or off | `"on"` | cascade | — | L2 | — |
 | `license.defaults.deviceLimit` | [Default device limit](/docs/services/license/policy/): The device limit a product starts from when it sets none of its own. A change reaches every product that inherits it. | integer 1–1000000 | `5` | cascade | — | L2 | registered ahead of ST-16 |
 | `license.defaults.maxOfflineDays` | [Default offline window](/docs/services/license/policy/): How many days a device may run offline when its product sets no window of its own. A change reaches every product that inherits it. | integer 0–365 days | `30` | cascade | — | L2 | registered ahead of ST-16; devices see it (document) |
 
