@@ -70,7 +70,7 @@ The phone nav and bottom sheet reuse the 4 px rise, `PageLoading` is a spinner w
 - [x] The phone sheet and nav slide in and out (smoke suite at 390 px).
 - [x] A lazy route shows a skeleton, never "Loading…" text.
 - [x] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
-- [ ] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
+- [x] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
 
 ## Verify
 
