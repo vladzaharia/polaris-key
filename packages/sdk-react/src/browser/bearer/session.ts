@@ -25,6 +25,11 @@
 // A browser has no hardware fingerprint (`devices.fingerprint` is a web N/A): `fingerprint`
 // answers null by default and the register request then carries no body, as Godot's web export
 // sends. The seam exists for the transcript replayer, which records a host that has one.
+//
+// The device label (WIRE-CONTRACT-V4 §12.7.1, PX-W13) follows the same rule: a browser has no
+// platform device name, so none is sent unless the host names one (`deviceName`, or a per-call
+// name on `beginSignIn`). It goes on registration, activation and sign-in (never enroll or the
+// token rotation), through client-core's `normalizeDeviceLabel`, as Node sends it.
 
 import {
   CACHE_VERSION,
@@ -32,6 +37,7 @@ import {
   channelForVersion,
   effectiveNow,
   mergeTrust,
+  normalizeDeviceLabel,
   verifyConfigDoc,
   verifyLicenseDoc,
   verifyTrustManifest,
@@ -137,6 +143,9 @@ export interface SignInPrompt {
   interval: number;
   /** `beginSignIn`'s clock plus `expiresIn`, epoch seconds. */
   expiresAt: number;
+  /** The label the sign-in page shows (§12.7.1): the Worker's echo, else (an older Worker) the
+   *  label sent; null when there is none. */
+  deviceName: string | null;
 }
 
 export type SignInPoll =
@@ -282,6 +291,9 @@ export interface BearerSessionOptions {
   enabled: (slug: ServiceSlug) => boolean;
   /** A hashed hardware fingerprint. A browser has none; the default answers null. */
   fingerprint?: () => HardwareFingerprint | null;
+  /** This device's label (§12.7.1). A browser has no platform name: when omitted, or `""`, none
+   *  is sent. */
+  deviceName?: string;
   /** The software facts a report carries (`./facts.ts`). */
   facts?: () => Record<string, JSONValue>;
   /** The `caps` list every report carries (P1b-10). */
@@ -548,18 +560,38 @@ export class BearerSession {
 
   // ── Registration and activation ──────────────────────────────────────────────────────────
 
+  /** The label to send (§12.7.1): `override`, else the `deviceName` option; no platform default. */
+  private deviceLabel(override?: string): string | null {
+    return normalizeDeviceLabel(override ?? this.opts.deviceName ?? null);
+  }
+
+  /** The fingerprint and label body, or none when it would hold neither (as Node omits it). */
+  private static deviceBody(
+    fingerprint: HardwareFingerprint | null,
+    deviceName: string | null,
+  ): string | null {
+    if (!fingerprint && !deviceName) return null;
+    return JSON.stringify({
+      ...(fingerprint ? { fingerprint } : {}),
+      ...(deviceName ? { deviceName } : {}),
+    });
+  }
+
   /** `POST /<p>/devices/register` without storing the token (the re-register path stores it). */
   private async requestRegistration(): Promise<RegisterResult> {
-    const fingerprint = this.opts.fingerprint?.() ?? null;
+    const body = BearerSession.deviceBody(
+      this.opts.fingerprint?.() ?? null,
+      this.deviceLabel(),
+    );
     let res: Response;
     try {
       res = await this.send(
         "devices/register",
-        fingerprint
+        body
           ? {
               method: "POST",
               headers: this.headers({ "content-type": "application/json" }),
-              body: JSON.stringify({ fingerprint }),
+              body,
             }
           : { method: "POST", headers: this.headers() },
       );
@@ -597,20 +629,23 @@ export class BearerSession {
     path: string,
     headers: Record<string, string>,
     withFingerprint = true,
+    withLabel = false,
   ): Promise<ActivationOutcome & { token?: string }> {
-    // The rotate (`license/token`) carries no fingerprint, as in Node.
-    const fingerprint = withFingerprint
-      ? (this.opts.fingerprint?.() ?? null)
-      : null;
+    // The rotate (`license/token`) carries no fingerprint, and only activation carries the
+    // label (PX-W13 §8 Q2), as in Node.
+    const request = BearerSession.deviceBody(
+      withFingerprint ? (this.opts.fingerprint?.() ?? null) : null,
+      withLabel ? this.deviceLabel() : null,
+    );
     let res: Response;
     try {
       res = await this.send(
         path,
-        fingerprint
+        request
           ? {
               method: "POST",
               headers: { ...headers, "content-type": "application/json" },
-              body: JSON.stringify({ fingerprint }),
+              body: request,
             }
           : { method: "POST", headers },
       );
@@ -634,6 +669,8 @@ export class BearerSession {
     const r = await this.activationLike(
       "license/activate",
       this.headers({ authorization: `Bearer ${key}` }),
+      true,
+      true,
     );
     if (r.kind === "ok" && r.token) await this.setToken(r.token, "activate");
     const { token: _t, ...outcome } = r;
@@ -1190,8 +1227,8 @@ export class BearerSession {
   async beginSignIn(opts: { deviceName?: string } = {}): Promise<SignInPrompt> {
     await this.init();
     const body: Record<string, string> = { deviceId: this.deviceIdValue };
-    const name = opts.deviceName?.trim();
-    if (name) body.deviceName = name;
+    const label = this.deviceLabel(opts.deviceName);
+    if (label) body.deviceName = label;
     const res = await this.postJson("identity/auth/device/start", body);
     if (res.status !== 200) throw await refusal(res, "sign-in-unavailable");
     const b = (await res.json().catch(() => ({}))) as Record<string, unknown>;
@@ -1216,6 +1253,13 @@ export class BearerSession {
       expiresIn,
       interval: Math.ceil(b.interval),
       expiresAt: this.now() + expiresIn,
+      // The echo is what the page shows; an older Worker sends none, so show what was sent.
+      deviceName:
+        "deviceName" in b
+          ? isString(b.deviceName)
+            ? b.deviceName
+            : null
+          : label,
     };
   }
 

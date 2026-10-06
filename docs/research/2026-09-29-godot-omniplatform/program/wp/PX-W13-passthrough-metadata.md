@@ -56,7 +56,10 @@ recorded here.
   avatars. Cloud Sync reads the service slot `sync`, which U-05 adds.
 - **React parity.** The plan says "N/A only", but React also runs as the desktop bridge, so the
   parity gate needs it covered: `identity.devicelabel` is `implemented` with a `web` exception
-  (like `identity.devicecode`); the main process's Node SDK sends the label.
+  (like `identity.devicecode`); the main process's Node SDK sends the label. Since SP-R02's
+  browser bearer engine (`BearerSession`) registers and activates from the page, it sends a label
+  only when the host names one (`browserAdapter({ deviceName })` or per call): a browser has no
+  platform name, so the default is none.
 - **Swift UI kit.** `PolarisKeyUI` has no device-code sign-in view (`ui.kit` is planned and
   unowned), so there is nowhere to show the label line; the prompt carries `deviceName` for hosts.
 - **Godot opt-out.** An exported `String` cannot be null, so Godot's opt-out is

@@ -191,6 +191,8 @@ async function replay(t: Transcript): Promise<void> {
     store,
     enabled: (slug) => belief[slug].enabled,
     fingerprint: () => FINGERPRINT,
+    // PX-W13: `initial.deviceName` stands in for the label a host names; absent = none.
+    deviceName: t.initial.deviceName ?? "",
   });
   await session.init();
   let prompt: SignInPrompt | null = null;
@@ -241,6 +243,7 @@ async function replay(t: Transcript): Promise<void> {
           verificationUriComplete: prompt.verificationUriComplete,
           expiresIn: prompt.expiresIn,
           interval: prompt.interval,
+          deviceName: prompt.deviceName,
         };
         break;
       }

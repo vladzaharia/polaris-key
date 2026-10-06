@@ -192,7 +192,7 @@
           "reason": "runtime"
         }
       ],
-      "note": "PX-W13: a browser reports no device label (the card shows the registered origin). Through the desktop bridge the main process's Node SDK sends it; the corpus runs through client-core's normalizeDeviceLabel."
+      "note": "PX-W13: a browser has no platform device name, so by default it reports none (the card shows the registered origin); in bearer mode a host may name one (browserAdapter deviceName, or per call on beginSignIn), sent on registration, activation and sign-in. Through the desktop bridge the main process's Node SDK sends it; the corpus runs through client-core's normalizeDeviceLabel."
     },
     "release.changelog": {
       "status": "implemented"
