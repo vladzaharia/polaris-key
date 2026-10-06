@@ -13,9 +13,12 @@ import type {
   PortalLicenseSummary,
 } from "../src/portal/api.js";
 import {
+  ADDED_PARAM_MAX,
+  addedParam,
   offerPlatforms,
   reasonCopy,
   termsLine,
+  withAdded,
 } from "../src/portal/model/discover.js";
 import {
   axeViolations,
@@ -111,6 +114,13 @@ const MOSS_LICENSE: PortalLicenseSummary = license({
   product: "mossgarden",
   productName: "Mossgarden",
   tier: "lifetime",
+  identityProvider: "oidc",
+  deviceCount: 0,
+});
+const QUILL_LICENSE: PortalLicenseSummary = license({
+  product: "quill",
+  productName: "Quill",
+  tier: "personal",
   identityProvider: "oidc",
   deviceCount: 0,
 });
@@ -352,6 +362,27 @@ describe("Discover (PX-16)", () => {
     ).toBeTruthy();
   });
 
+  it("keeps an earlier just-added tile after a reload when another product is added", async () => {
+    window.history.replaceState(null, "", "/#/discover?added=quill");
+    mockFetch(discoverWorker([QUILL, MOSSGARDEN], { held: [QUILL_LICENSE] }));
+    renderPortal();
+    await discoverPage();
+    expect((await tile("Quill")).getAttribute("data-state")).toBe("added");
+    const moss = await tile("Mossgarden");
+    fireEvent.click(
+      within(moss).getByRole("button", { name: "Add to library: Mossgarden" }),
+    );
+    await within(moss).findByRole("link", { name: "Open Mossgarden" });
+    // Both stay named for the next reload, and Quill's tile keeps its state now.
+    expect(window.location.hash).toBe(
+      "#/discover?added=quill&added=mossgarden",
+    );
+    const quill = await tile("Quill");
+    expect(quill.getAttribute("data-state")).toBe("added");
+    expect(within(quill).getByText("In your library")).toBeTruthy();
+    expect(moss.getAttribute("data-state")).toBe("added");
+  });
+
   it("ignores ?added= for a product the library doesn't hold", async () => {
     window.history.replaceState(null, "", "/#/discover?added=mossgarden");
     mockFetch(discoverWorker([MOSSGARDEN]));
@@ -462,6 +493,29 @@ describe("the empty Library's Discover teaser (PX-16, §4.12)", () => {
     });
     expect(screen.queryByRole("region", { name: /Ready to add/ })).toBeNull();
     expect(fetchedRequests()).not.toContain("GET /api/discover");
+  });
+});
+
+describe("?added= (model/discover.ts)", () => {
+  it("names each just-added product once, the most recent last, and only the latest few", () => {
+    const q = (s: string) => new URLSearchParams(s);
+    expect(addedParam(q(""))).toEqual([]);
+    expect(addedParam(q("added=a&added=&added=b&added=a"))).toEqual(["b", "a"]);
+    expect(
+      addedParam(
+        q(`added=a&added=Bad%20Slug&added=${"x".repeat(65)}&added=-x`),
+      ),
+    ).toEqual(["a"]);
+    expect(withAdded(["a", "b"], "c")).toEqual(["a", "b", "c"]);
+    expect(withAdded(["a", "b"], "a")).toEqual(["b", "a"]);
+    const many = Array.from({ length: ADDED_PARAM_MAX + 3 }, (_, i) => `p${i}`);
+    expect(addedParam(q(many.map((p) => `added=${p}`).join("&")))).toEqual(
+      many.slice(-ADDED_PARAM_MAX),
+    );
+    expect(withAdded(many.slice(0, ADDED_PARAM_MAX), "new")).toEqual([
+      ...many.slice(1, ADDED_PARAM_MAX),
+      "new",
+    ]);
   });
 });
 

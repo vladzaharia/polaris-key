@@ -83,8 +83,6 @@ const FAIL_MODE: Record<string, FailMode> = {
   authDeviceEntry: "closed",
   authCallback: "closed",
   authCallbackState: "closed",
-  authPoll: "closed",
-  authPollState: "closed",
   authDevicePoll: "closed",
   authDevicePollCode: "closed",
   // I-26: the legacy sign-in's licence chooser, a step of the sign-in that binds a licence.

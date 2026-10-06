@@ -148,7 +148,6 @@ export const CORS_SERVICE_PATHS: readonly string[] = [
   "update/{channel}/appcast.xml",
   "update/{channel}/feed.jws",
   "update/version",
-  "identity/auth/poll",
   "identity/auth/device/start",
   "identity/auth/device/poll",
 ];

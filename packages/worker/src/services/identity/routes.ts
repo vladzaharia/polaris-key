@@ -7,7 +7,6 @@
  *     /identity/session/license             POST  licence key → session cookie
  *     /identity/auth/start                  GET   begin PKCE, 302 to the IdP
  *     /identity/auth/callback               GET   exchange the code, mint/locate the licence
- *     /identity/auth/poll                   GET   loopback poll for a device token
  *     /identity/auth/logout                 POST  drop the session + deauthorize its device
  *     /identity/auth/device                 GET   the RFC 8628 user-code page (entry form, or the
  *                                                 confirmation page for `?user_code=`)
@@ -29,6 +28,9 @@
  * binary (see `oidc.ts`'s `beginAuthFlow`).
  *
  * `/auth/login` is gone with them: it was a second spelling of `/auth/start` and §R1 removes it.
+ * So is `/auth/poll`, which put both halves of a `state` + device-id poll in a query string and
+ * had nothing left to redeem (no flow it could complete is started any more); a device polls
+ * `/auth/device/poll` with its device code.
  *
  * Returning `null` for an unmatched segment is the registry contract (`core/registry.ts`): only
  * Core decides what "no route here" means, which is what makes a disabled service, an
@@ -43,7 +45,6 @@ import {
   handleAuthDevicePoll,
   handleAuthDeviceStart,
   handleAuthDeviceVerify,
-  handleAuthPoll,
   handleAuthStart,
 } from "./oidc.js";
 import {
@@ -72,8 +73,6 @@ export async function handleIdentityRoutes(
         return handleAuthStart(req, env, db, product);
       case "callback":
         return handleAuthCallback(req, env, db, product, now);
-      case "poll":
-        return handleAuthPoll(req, env, db, product, now);
       case "logout":
         return handleBrowserLogout(req, env, db, product);
       case "device":

@@ -268,7 +268,6 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/identity/session/license", ["post"]],
   ["/{product}/identity/auth/start", ["get"]],
   ["/{product}/identity/auth/callback", ["get"]],
-  ["/{product}/identity/auth/poll", ["get"]],
   ["/{product}/identity/auth/logout", ["post"]],
   ["/{product}/identity/auth/device", ["get", "post"]],
   ["/{product}/identity/auth/device/start", ["post"]],

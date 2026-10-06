@@ -894,6 +894,44 @@ describe("owed ladders", () => {
     expect("kind" in q.sent[before]!).toBe(false);
   });
 
+  it("rows the re-check cannot act on take none of its budget, however early they are due", async () => {
+    const img = images(512);
+    env = { ...env, IMAGES: img.binding };
+    img.state.quota = true;
+    await syncAndPull(
+      iconManifest(URL_A),
+      NOW,
+      upstream({ [URL_A]: serve(ICON_A) }),
+    );
+    // Due before the ladder retries, and unusable: an unreadable ref, and a repo ref with no
+    // applied commit to read it at (djdl has no manifest snapshot).
+    await db.run(
+      `UPDATE hosted_assets SET wanted_ref = 'not a ref', status = 'failed', next_attempt_at = ?
+        WHERE slot = 'listing.icon'`,
+      NOW + 10,
+    );
+    await db.run(
+      `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, source_ref,
+         status, modified_at, wanted_ref, attempts, next_attempt_at)
+       VALUES ('djdl', 'listing.header', '', 'manifest', 'repo', 'art/h.png@-', 'pending', ?, ?, 0, NULL)`,
+      NOW,
+      wantedRefOf({ kind: "repo", src: "art/h.png" }),
+    );
+    const t = NOW + PULL_BACKOFF_BASE_SECONDS;
+    const before = q.sent.length;
+    // A budget of one still reaches the ladder retry behind them.
+    expect(await recheckHostedAssets(env, db, t, 1)).toBe(1);
+    expect(q.sent.slice(before)).toEqual([
+      expect.objectContaining({ slot: "presentation.icon", kind: "ladder" }),
+    ]);
+    // Read past, never held off: nothing on the skipped rows changed.
+    expect((await row("djdl", "listing.icon"))?.next_attempt_at).toBe(NOW + 10);
+    expect((await row("djdl", "listing.header"))?.next_attempt_at).toBeNull();
+    expect((await row("djdl", "listing.header"))?.attempts).toBe(0);
+    // With nothing left to send, the run ends: the skipped rows stay due and unsent.
+    expect(await recheckHostedAssets(env, db, t, 1)).toBe(0);
+  });
+
   it("drops a ladder message for bytes the slot no longer holds", async () => {
     const img = images(512);
     env = { ...env, IMAGES: img.binding };

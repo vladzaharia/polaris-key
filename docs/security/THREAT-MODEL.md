@@ -3238,7 +3238,9 @@ Four controls make that true. The first and the fourth are the ones that matter:
    A flow `/device/start` began is therefore marked (`viaDeviceCode`) and `/identity/auth/poll`
    answers it with the generic `error`; it completes only on `/identity/auth/device/poll`, with
    the device code. (Found in P1-06 review: without this, a user code was enough to race the
-   real device for its token — an R8-01-class theft.)
+   real device for its token — an R8-01-class theft.) Since 2026-10-06 the `state`-keyed
+   `/identity/auth/poll` is retired altogether (Core's generic 404), so `/device/poll` is the
+   only poll; `viaDeviceCode` stays for the callback and the chooser.
 2. **The page never shows the device id.** It shows `deviceName`, or "Unnamed device".
 3. **Confirmation retires the user code.** The index is deleted, and a flow already confirmed
    does not resolve even if a KV read still sees it: nobody can re-render, re-mint the CSRF token
@@ -5298,12 +5300,15 @@ Other secrets audited in URLs with this change, and left as they are:
   by default).
 - **`/<p>/identity/auth/device/verify?device_code=`**: a legacy route kept for flows started
   before `/device`; `/device/start` no longer hands the URL out. Removing it is a route change
-  (AGENTS.md rule 10), proposed as a follow-up.
-- **The deprecated `/<p>/identity/auth/poll?state=&device=`** (`handleAuthPoll`, `oidc.ts`) puts
-  both halves of the poll pair in one URL. Nothing starts a device-bound flow it can redeem any
-  more: `/auth/start` binds no device, and `/auth/poll` refuses a `/device/start` flow
-  (`viaDeviceCode`), so it never returns a token. Retiring it is a route change (rule 10),
-  proposed as a follow-up.
+  (AGENTS.md rule 10) and also drops `endpoints.authDeviceVerify` from the discovery document, a
+  wire shape (plan mode), so it is proposed as a follow-up of its own.
+- **The retired `/<p>/identity/auth/poll?state=&device=`** put both halves of the poll pair in
+  one URL. It could never return a token (`/auth/start` binds no device, and it refused a
+  `/device/start` flow), and nothing called it: no SDK at any release tag, no transcript, no
+  corpus case. It was removed on 2026-10-06 (fix/followups-sweep-1006) with its rate-limit
+  buckets, its CORS row, its OpenAPI path and its `routeCoverage` row; the path now answers
+  Core's generic 404, and a device polls `/identity/auth/device/poll` with the device code in a
+  JSON body.
 - **`/<p>/identity/auth/device?user_code=`**, the RFC 8628 `verification_uri_complete`: a short
   code a person types or scans, not a bearer. It only opens the confirmation page. Confirming is
   a CSRF-checked `POST` and then a sign-in, so whoever confirms signs the device in as

@@ -209,10 +209,16 @@ export async function mergeAccounts(
     // Personal details fill in where the survivor has none. So does the WebAuthn user handle
     // (I-16): a survivor without one takes the absorbed account's, so the passkeys that moved
     // over and the next one added share one "Polaris Key" entry in an authenticator.
+    // A picture the survivor chose explicitly is never filled in: Initials (PX-W16) is a null
+    // `avatar_key` with an explicit `picture` in `details_source_json`, and it stays Initials.
     {
       sql: `UPDATE accounts SET
               display_name = COALESCE(display_name, (SELECT display_name FROM accounts WHERE id = ?)),
-              avatar_key = COALESCE(avatar_key, (SELECT avatar_key FROM accounts WHERE id = ?)),
+              avatar_key = CASE
+                WHEN (CASE WHEN json_valid(details_source_json)
+                        THEN json_extract(details_source_json, '$.picture.explicit') END) = 1
+                  THEN avatar_key
+                ELSE COALESCE(avatar_key, (SELECT avatar_key FROM accounts WHERE id = ?)) END,
               locale = COALESCE(locale, (SELECT locale FROM accounts WHERE id = ?)),
               primary_email_verified_at = CASE WHEN primary_email IS NULL
                 THEN (SELECT primary_email_verified_at FROM accounts WHERE id = ?)

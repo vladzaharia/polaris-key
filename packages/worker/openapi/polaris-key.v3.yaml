@@ -7069,85 +7069,6 @@ paths:
                   }
                 noIdToken:
                   { value: { error: oidc_error, message: no id_token } }
-  /{product}/identity/auth/poll:
-    get:
-      operationId: authPoll
-      tags: [identity]
-      summary: Poll a browser sign-in flow
-      description: >
-        Polls a sign-in flow by `state` for the device token. Both query parameters are
-        required. Only a flow bound to a device id can complete, and a flow begun by
-        `authDeviceStart` never completes here: it answers `error` and redeems only on
-        `authDevicePoll`, with the secret device code, because `state` rides on the authorize
-        URL the user-code confirmation page hands to anyone holding the public user code.
-        Four terminal-or-not states, all at HTTP 200: `pending` (nothing confirmed yet),
-        `ready` (with the minted `pkeyt_` token), `timeout` (the flow record is gone —
-        including immediately after a `ready`, which deletes it), and `error`. `error`
-        deliberately carries NO reason: an unauthenticated poller learns that it failed, not
-        why.
-      parameters:
-        - { $ref: "#/components/parameters/Product" }
-        - name: state
-          in: query
-          required: true
-          description: The flow id returned by `authStart`.
-          schema: { type: string }
-        - name: device
-          in: query
-          required: true
-          description: The device id the flow was started for. A mismatch answers `error`.
-          schema: { type: string }
-      responses:
-        "200":
-          description: Flow state.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AuthFlowState" }
-              examples:
-                pending: { value: { status: pending } }
-                ready:
-                  summary: test/oidcEdge.test.ts
-                  value:
-                    status: ready
-                    token: pkeyt_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
-                    schemaVersion: 1
-                timeout:
-                  summary: The very next poll after a `ready`
-                  value: { status: timeout }
-                error:
-                  summary: No `reason` field, deliberately (D8)
-                  value: { status: error }
-        "400":
-          description: Missing `state` or `device` — LEGACY FLAT.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-              examples:
-                missing:
-                  {
-                    value:
-                      { error: bad_request, message: missing state/device },
-                  }
-        "429":
-          description: 120 polls per 60 s per client IP AND 40 per 60 s per `state` — LEGACY FLAT.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-              examples:
-                limited:
-                  { value: { error: rate_limited, message: too many requests } }
-    options:
-      operationId: preflightAuthPoll
-      tags: [identity]
-      summary: CORS preflight
-      description: >
-        Browser preflight for a page on one of the product's `web.origins`. Answered
-        before service dispatch, so the result never depends on whether the service
-        behind this path is enabled. See `CorsPreflight`.
-      parameters:
-        - { $ref: "#/components/parameters/Product" }
-      responses:
-        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/identity/auth/logout:
     post:
       operationId: authLogout
@@ -7772,9 +7693,11 @@ paths:
       tags: [identity]
       summary: Poll the device-code flow
       description: >
-        The same four flow states as `authPoll`, requested with a body instead of a query
-        string: `deviceCode` (the spelling `state` is accepted for the same value) and
-        `deviceId`. RFC 8628's error codes are NOT used — `pending` stands in for
+        Four flow states, all at HTTP 200 unless noted: `pending` (nothing confirmed yet),
+        `ready` (with the minted `pkeyt_` token), `timeout` (the flow record is gone,
+        including immediately after a `ready`, which deletes it) and `error`, which
+        deliberately carries no reason. The body names `deviceCode` (the spelling `state` is
+        accepted for the same value) and `deviceId`. RFC 8628's error codes are NOT used — `pending` stands in for
         `authorization_pending`, `timeout` for `expired_token`, `error` for `access_denied`.
 
 

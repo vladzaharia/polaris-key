@@ -101,7 +101,6 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/identity/auth/device` | identity | The RFC 8628 user-code page (entry form, or confirmation for `?user_code=`) |
 | POST | `/{product}/identity/auth/device` | identity | Look a typed code up, or confirm it (CSRF from the confirmation page) |
 | POST | `/{product}/identity/auth/logout` | identity | End the browser session |
-| GET | `/{product}/identity/auth/poll` | identity | Poll a browser sign-in flow |
 | GET | `/{product}/identity/auth/start` | identity | Begin browser OIDC (PKCE) — 302 to the IdP |
 | POST | `/{product}/identity/session/license` | identity | Mint a browser session from a license key |
 | GET | `/{product}/identity/session` | identity | The browser session's fused document |

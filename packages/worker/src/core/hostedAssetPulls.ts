@@ -74,6 +74,11 @@ export { PULL_BACKOFF_BASE_SECONDS } from "./hostedAssets.js";
 export const PULL_BACKOFF_CAP_SECONDS = 24 * 60 * 60;
 /** How many owed pulls and ladder retries one nightly run enqueues, at most (one budget). */
 export const RECHECK_MAX_PER_RUN = 50;
+/**
+ * How many budget-sized pages of due rows one nightly run reads, at most. Rows the re-check
+ * cannot act on are read past rather than counted, so this bounds the reading, not the budget.
+ */
+export const RECHECK_MAX_PAGES = 20;
 /** Queues' `sendBatch` limit. */
 const SEND_BATCH_MAX = 100;
 
@@ -829,6 +834,12 @@ export async function processLadderRetry(
  * retries. Oldest-due first across both, at most `limit` per run. A repo ref is read at the
  * product's last applied commit (the manifest snapshot). Returns how many were enqueued; nothing
  * without a queue binding.
+ *
+ * A due row the re-check cannot act on (an unreadable `wanted_ref`, a repo ref with no applied
+ * commit to read it at) is read past, never counted: the budget is what is enqueued, so a few such
+ * rows, always the oldest due, cannot crowd every ladder retry out of a run. They are not held
+ * off either: a resync that brings the commit pulls at once (the planner waits out the back-off of
+ * an unchanged ref). Reading is bounded by `RECHECK_MAX_PAGES` pages of `limit` rows.
  */
 export async function recheckHostedAssets(
   env: Pick<Env, "HOSTED_ASSET_QUEUE" | "IMAGES">,
@@ -836,55 +847,61 @@ export async function recheckHostedAssets(
   now: number,
   limit = RECHECK_MAX_PER_RUN,
 ): Promise<number> {
-  if (!env.HOSTED_ASSET_QUEUE) return 0;
-  const due = await db.all<{
-    product: string;
-    slot: string;
-    locale: string;
-    wanted_ref: string | null;
-    sha256: string | null;
-    applied_sha: string | null;
-    pull: number;
-  }>(
-    `SELECT h.product, h.slot, h.locale, h.wanted_ref, h.sha256, s.applied_sha,
-            ${pullOwedSql("h.")} AS pull
-       FROM hosted_assets h
-       JOIN products p ON p.slug = h.product
-       LEFT JOIN product_manifest_snapshot s ON s.product = h.product
-      WHERE p.deleted_at IS NULL
-        AND (${pullOwedSql("h.")} OR ${ladderRetrySql(!!env.IMAGES, "h.")})
-        AND (h.next_attempt_at IS NULL OR h.next_attempt_at <= ?)
-      ORDER BY COALESCE(h.next_attempt_at, 0), h.product, h.slot, h.locale
-      LIMIT ?`,
-    now,
-    limit,
-  );
+  if (!env.HOSTED_ASSET_QUEUE || limit <= 0) return 0;
   const messages: AssetQueueMessage[] = [];
   const statements: DbStatement[] = [];
-  for (const r of due) {
-    if (!r.pull) {
-      if (!r.sha256 || variantFamily(r.slot) === null) continue;
-      messages.push(
-        ladderMessage(r.product, r.slot, r.locale, r.sha256, "recheck"),
-      );
-      statements.push(stmtHold(r.product, r.slot, r.locale, now));
-      continue;
+  // Nothing is written until every page is read, so OFFSET pages over a stable result.
+  for (let page = 0; page < RECHECK_MAX_PAGES; page++) {
+    const due = await db.all<{
+      product: string;
+      slot: string;
+      locale: string;
+      wanted_ref: string | null;
+      sha256: string | null;
+      applied_sha: string | null;
+      pull: number;
+    }>(
+      `SELECT h.product, h.slot, h.locale, h.wanted_ref, h.sha256, s.applied_sha,
+              ${pullOwedSql("h.")} AS pull
+         FROM hosted_assets h
+         JOIN products p ON p.slug = h.product
+         LEFT JOIN product_manifest_snapshot s ON s.product = h.product
+        WHERE p.deleted_at IS NULL
+          AND (${pullOwedSql("h.")} OR ${ladderRetrySql(!!env.IMAGES, "h.")})
+          AND (h.next_attempt_at IS NULL OR h.next_attempt_at <= ?)
+        ORDER BY COALESCE(h.next_attempt_at, 0), h.product, h.slot, h.locale
+        LIMIT ? OFFSET ?`,
+      now,
+      limit,
+      page * limit,
+    );
+    for (const r of due) {
+      if (messages.length >= limit) break;
+      if (!r.pull) {
+        if (!r.sha256 || variantFamily(r.slot) === null) continue;
+        messages.push(
+          ladderMessage(r.product, r.slot, r.locale, r.sha256, "recheck"),
+        );
+        statements.push(stmtHold(r.product, r.slot, r.locale, now));
+        continue;
+      }
+      if (r.wanted_ref === null) continue;
+      const ref = parseWantedRef(r.wanted_ref);
+      if (!ref || !isManifestAssetSlot(r.slot)) continue;
+      const commit = gitShaOrNull(r.applied_sha);
+      if (ref.kind === "repo" && !commit) continue;
+      messages.push({
+        v: 1,
+        product: r.product,
+        slot: r.slot,
+        locale: "",
+        wanted: r.wanted_ref,
+        ...(ref.kind === "repo" ? { commit: commit! } : {}),
+        reason: "recheck",
+      });
+      statements.push(stmtHold(r.product, r.slot, "", now));
     }
-    if (r.wanted_ref === null) continue;
-    const ref = parseWantedRef(r.wanted_ref);
-    if (!ref || !isManifestAssetSlot(r.slot)) continue;
-    const commit = gitShaOrNull(r.applied_sha);
-    if (ref.kind === "repo" && !commit) continue;
-    messages.push({
-      v: 1,
-      product: r.product,
-      slot: r.slot,
-      locale: "",
-      wanted: r.wanted_ref,
-      ...(ref.kind === "repo" ? { commit: commit! } : {}),
-      reason: "recheck",
-    });
-    statements.push(stmtHold(r.product, r.slot, "", now));
+    if (messages.length >= limit || due.length < limit) break;
   }
   if (messages.length === 0) return 0;
   await enqueueAssetPulls(env, messages);
