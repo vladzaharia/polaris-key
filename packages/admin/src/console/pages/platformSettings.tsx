@@ -8,7 +8,8 @@
  *   Every write carries `expectedVersion`; a 409 shows a reload-and-retry flow. Confirm levels
  *   come from the registry (`confirm`), per direction of change (ADMIN.md §5.2).
  * - **Identity & access**: the reserved display-name severity (`IDENTITY_RESERVED_DISPLAY_NAMES`,
- *   PX-W13) as an editable row, then the deploy-time identity values.
+ *   PX-W13) and the key-entry refusal switch (`KEYENTRY_REFUSALS`, PX-W9) as editable
+ *   rows, then the deploy-time identity values.
  * - **Licensing**: the reserved entitlement-name severity (`LICENSING_RESERVED_NAMES`, S-19 §7.4,
  *   LX-05) and, read-only, every registered product whose catalog declares a reserved name and
  *   whether the declaration is compatible (`GET /platform/reserved-names`).
@@ -221,6 +222,17 @@ function consequencesOf(
             reach,
           ]
         : ["Reserved display names are accepted again, with a warning.", reach];
+    case "KEYENTRY_REFUSALS":
+      return after === "on"
+        ? [
+            "On products with Identity on, a new device is refused a key whose licence is in no account and has used every key entry. The app shows a link to add the key to an account.",
+            "Devices already using a key are never refused. Turn this on only once the SDKs that show the refusal are released.",
+            reach,
+          ]
+        : [
+            "Every key entry is admitted again. Key entries are still counted.",
+            reach,
+          ];
     case "LAZY_DELTA_MAX_BYTES":
       return [
         `The delta consumer encodes payloads up to ${next} on either side of a pair (was ${before}).`,

@@ -77,6 +77,7 @@ import {
   tighterMin,
 } from "./entitlements.js";
 import { logRefusal, type RefusalReason, type WaitUntil } from "./refusals.js";
+import { stmtRecordDeviceKeyEntry } from "./keyEntries.js";
 
 export type AuthzError =
   | { error: "unauthorized" }
@@ -333,6 +334,14 @@ export async function authorizeDevice(
     /** UX-15: the request's `waitUntil`, so the refusal log is written after the answer. Absent,
      *  the (total, never-throwing) write runs inline before the refusal is returned. */
     waitUntil?: WaitUntil;
+    /**
+     * PX-W9 (WIRE-CONTRACT-V4 §12.2 step 5): this authorisation is a key entry on an Identity
+     * product. A NEW authorisation that takes a seat records exactly one entry, in the seat
+     * claim's own batch (`core/keyEntries.ts`). Passed only by `license/activate` (`app`) and
+     * `identity/session/license` (`browser`), and only while Identity is on; enrolment, sign-in
+     * and store binding never pass it.
+     */
+    keyEntry?: { surface: "app" | "browser" };
   } = {},
 ): Promise<{ token: string; device: DeviceRow } | AuthzError> {
   // UX-15: every refusal below is logged (`core/refusals.ts`) for the console's licence Status
@@ -420,6 +429,7 @@ export async function authorizeDevice(
         deviceCount: count,
       });
     }
+    const keyEntry = opts.keyEntry;
     if (
       !(await claimDeviceSeat(
         db,
@@ -428,6 +438,18 @@ export async function authorizeDevice(
         deviceId,
         limit,
         now,
+        keyEntry
+          ? {
+              withClaim: () =>
+                stmtRecordDeviceKeyEntry(
+                  product.slug,
+                  license.id,
+                  deviceId,
+                  keyEntry.surface,
+                  now,
+                ),
+            }
+          : {},
       ))
     ) {
       return refuse("device_limit", {

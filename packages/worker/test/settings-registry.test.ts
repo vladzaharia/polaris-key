@@ -195,6 +195,8 @@ describe("the settings registry (ST-03)", () => {
       ["LICENSING_RESERVED_NAMES", "licensing.reservedNames"],
       // PX-W13: the reserved display-name severity, an ordered enum like LX-05's.
       ["IDENTITY_RESERVED_DISPLAY_NAMES", "identity.reservedDisplayNames"],
+      // PX-W9: the key-entry refusal switch (WIRE-CONTRACT-V4 §12.2 step 4).
+      ["KEYENTRY_REFUSALS", "identity.keyEntryRefusals"],
     ];
     for (const [alias, key] of pairs) {
       expect(SETTINGS.canonicalKey(alias)).toBe(key);

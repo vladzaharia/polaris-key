@@ -6,6 +6,9 @@
  *   activating new devices. Per-product opt-in, recent sign-in required, shown once.
  * - `POST  /api/activate/preview` — what adding a key WOULD do, before it is added: the product,
  *   the tier and terms, the platforms, or a typed refusal.
+ * - `POST  /api/key/preview` (PX-W9, WIRE-CONTRACT-V4 §12.2 rule 8) — the same question asked
+ *   SIGNED OUT, for the login card's key on-ramp: the product, the tier and term, an "in an
+ *   account" verdict, the key-entry meter and whether the account upgrade may be skipped.
  *
  * ── ONE EVALUATOR FOR THE PREVIEW AND THE CLAIM ─────────────────────────────────────────────
  *
@@ -25,6 +28,17 @@
  * it, and `email_mismatch` shows the first character and the domain of the address (§4.19). The
  * preview and the claim charge ONE rate bucket (`portalClaimKey`, per account), so previewing is
  * never a cheaper probe than adding.
+ *
+ * The signed-out preview has no account to charge, so it charges its own per-network bucket
+ * (`portalKeyPreview`, 10 a minute) and answers less: never an email, a masked email, a licence
+ * id, devices or an account; `license_owned` says only that the licence is in an account. It reads
+ * the same resolver (`resolveClaimKey`) as the claim and never writes, so it never counts.
+ *
+ * ── KEY ENTRIES (PX-W9) ────────────────────────────────────────────────────────────────────
+ *
+ * On an Identity product both previews answer `keyEntries {used, limit}` (else `null`), and a
+ * claim whose attach commits records one `portal` entry (`core/keyEntries.ts`). A claim is never
+ * refused for the limit: adding the key to an account is the way past it.
  */
 
 import {
@@ -46,6 +60,12 @@ import {
 } from "../../../core/data.js";
 import { licenseDeviceLimit } from "../../../core/authz.js";
 import { licenseUsable } from "../../../core/devices.js";
+import {
+  keyEntryRefusalsOn,
+  keyEntryState,
+  recordPortalKeyEntry,
+} from "../../../core/keyEntries.js";
+import { clientNetwork, rateLimitOk } from "../../../core/rateLimit.js";
 import { loadProductPublic } from "../../../core/products.js";
 import { ErrorCode } from "../../../core/errors.js";
 import {
@@ -131,12 +151,27 @@ export function maskEmail(email: string): string {
   return `${normalized[0]}•••@${normalized.slice(at + 1)}`;
 }
 
-export async function evaluateKeyClaim(
+/**
+ * The account-free half of the claim rules: the key's shape, its product, the key and its
+ * licence, and whether the product manages licences in this portal. The claim and both previews
+ * start here, so none of them can disagree on what a key is.
+ */
+type ResolvedClaimKey =
+  | { kind: "invalid" }
+  | { kind: "unknown"; product: null }
+  | { kind: "portal_off"; product: ProductFacts; license: LicenseRow }
+  | {
+      kind: "resolved";
+      product: ProductFacts;
+      license: LicenseRow;
+      settings: Awaited<ReturnType<typeof getPortalProductSettings>>;
+    };
+
+async function resolveClaimKey(
   env: Env,
   db: Db,
-  accountId: string,
   key: string,
-): Promise<KeyClaimVerdict> {
+): Promise<ResolvedClaimKey> {
   const slug = productFromKey(key);
   if (!slug) return { kind: "invalid" };
   const productRow = await getProduct(db, slug);
@@ -163,8 +198,24 @@ export async function evaluateKeyClaim(
     settings.portal_enabled !== 1 ||
     settings.license_key_claim_enabled !== 1
   ) {
-    return { kind: "portal_off", product };
+    return { kind: "portal_off", product, license };
   }
+  return { kind: "resolved", product, license, settings };
+}
+
+export async function evaluateKeyClaim(
+  env: Env,
+  db: Db,
+  accountId: string,
+  key: string,
+): Promise<KeyClaimVerdict> {
+  const resolved = await resolveClaimKey(env, db, key);
+  if (resolved.kind === "invalid" || resolved.kind === "unknown")
+    return resolved;
+  if (resolved.kind === "portal_off")
+    return { kind: "portal_off", product: resolved.product };
+  const { product, license, settings } = resolved;
+  const slug = product.slug;
   const mine = await getPortalLicense(db, accountId, slug, license.id);
   if (mine) return { kind: "already_yours", product, license: mine };
   if (await licenseLinkedElsewhere(db, accountId, slug, license.id)) {
@@ -276,8 +327,12 @@ export async function handleActivatePreview(
   const base = {
     verdict: verdict.kind,
     product: productView(verdict.product),
-    // G21 (key-entry counting) is PX-W9's: until it lands no entry is counted, so none is reported.
-    entries: null,
+    // PX-W9 (§12.2 rule 8): the licence's key entries on an Identity product, for a licence this
+    // account can see; `null` otherwise. Previewing never counts.
+    keyEntries:
+      verdict.kind === "addable" || verdict.kind === "already_yours"
+        ? await keyEntryState(db, verdict.product.slug, verdict.license.id)
+        : null,
   };
   switch (verdict.kind) {
     case "addable":
@@ -364,12 +419,19 @@ export async function handleClaimKey(
         },
         403,
       );
-    case "already_yours":
-      // Idempotent: nothing is written and nobody is emailed a second time.
+    case "already_yours": {
+      // Idempotent: nothing is written (no key entry either) and nobody is emailed a second time.
+      const keyEntries = await keyEntryState(
+        db,
+        verdict.product.slug,
+        verdict.license.id,
+      );
       return portalJson({
         ok: true,
         license: await shapeLicenseSummary(db, verdict.license, now),
+        ...(keyEntries ? { keyEntries } : {}),
       });
+    }
     case "addable":
       break;
   }
@@ -401,6 +463,8 @@ export async function handleClaimKey(
     }
     return err(401, ErrorCode.Unauthorized, "license key not found");
   }
+  // PX-W9 (§12.2 rule 1): the attach committed, so this is a `portal` key entry (Identity on only).
+  await recordPortalKeyEntry(db, product.slug, license.id, now);
   await portalAudit(db, {
     accountId: session.accountId,
     action: "portal.license.claim",
@@ -428,9 +492,96 @@ export async function handleClaimKey(
     product.slug,
     license.id,
   );
+  const keyEntries = await keyEntryState(db, product.slug, license.id);
   return portalJson({
     ok: true,
     license: portalRow ? await shapeLicenseSummary(db, portalRow, now) : null,
+    ...(keyEntries ? { keyEntries } : {}),
+  });
+}
+
+// ── PX-W9: the signed-out key preview (WIRE-CONTRACT-V4 §12.2 rule 8) ──────────────────────
+
+/** The signed-out preview's bucket: per client network, since there is no account to charge. */
+export const KEY_PREVIEW_BUCKET = "portalKeyPreview";
+export const KEY_PREVIEW_LIMIT_PER_MINUTE = 10;
+
+/**
+ * `POST /api/key/preview` — what a key would do, before anyone signs in (SIGN-IN.md §3.9, the
+ * login card's "Have a license key?"). Read-only: it writes nothing, so it never counts.
+ *
+ * Answers `{product, verdict, license, keyEntries, upgrade}`:
+ *
+ *   - `verdict`: `addable`, `license_owned` (the licence is in an account; never whose) or
+ *     `portal_off`. `email_mismatch` stays a signed-in verdict.
+ *   - `license`: `{tierName, term}` (`term` is `perpetual` or the end in epoch seconds), `null` on
+ *     `portal_off`. Activation by key already tells the key holder more (S-24 H6).
+ *   - `keyEntries`: `{used, limit}` on an Identity product, else `null`.
+ *   - `upgrade`: `forced` exactly when a new device would be refused `key_entry_limit` (an
+ *     addable, usable licence at its limit with refusals on; plans/PX-W9.md §8 Q4), else
+ *     `skippable`.
+ *
+ * Never an email, a masked email, a licence id, devices or an account. `422` for a string that is
+ * not a licence key, `401` for an unknown key, `429` past the budget, as the claim answers.
+ */
+export async function handleKeyPreview(
+  req: Request,
+  env: Env,
+  db: Db,
+  now: number,
+): Promise<Response> {
+  if (req.method !== "POST") return err(405, "method_not_allowed");
+  // Charged BEFORE any lookup, so a refused guess costs as much as an accepted one.
+  const allowed = await rateLimitOk(
+    env,
+    "_portal",
+    {
+      bucket: KEY_PREVIEW_BUCKET,
+      id: clientNetwork(req),
+      limit: KEY_PREVIEW_LIMIT_PER_MINUTE,
+      windowSec: 60,
+    },
+    now,
+  );
+  if (!allowed) return err(429, "rate_limited", "too many attempts");
+  const body = await readBody(req);
+  const key = typeof body.key === "string" ? body.key.trim() : "";
+  const resolved = await resolveClaimKey(env, db, key);
+  if (resolved.kind === "invalid")
+    return err(422, ErrorCode.BadRequest, "invalid license key");
+  if (resolved.kind === "unknown")
+    return err(401, ErrorCode.Unauthorized, "license key not found");
+  const { product, license } = resolved;
+  const view = productView(product)!;
+  if (resolved.kind === "portal_off") {
+    return portalJson({
+      product: view,
+      verdict: "portal_off",
+      license: null,
+      keyEntries: null,
+      upgrade: "skippable",
+    });
+  }
+  const verdict = license.account_id ? "license_owned" : "addable";
+  const keyEntries = await keyEntryState(db, product.slug, license.id);
+  const forced =
+    verdict === "addable" &&
+    keyEntries !== null &&
+    keyEntries.used >= keyEntries.limit &&
+    licenseUsable(license, now) &&
+    (await keyEntryRefusalsOn(env, db));
+  const tier = license.tier_id
+    ? await getTier(db, product.slug, license.tier_id)
+    : null;
+  return portalJson({
+    product: view,
+    verdict,
+    license: {
+      tierName: tier?.label ?? null,
+      term: license.expires_at ?? "perpetual",
+    },
+    keyEntries,
+    upgrade: forced ? "forced" : "skippable",
   });
 }
 

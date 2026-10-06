@@ -29,6 +29,11 @@ import { readAppDeliverable } from "../../services/release/descriptor.js";
 import { hasArtifactMap } from "../../services/release/artifactMap.js";
 import { countKeysByLicense } from "../repo.js";
 import { licenseHolder } from "../../core/licenseHolders.js";
+import {
+  countKeyEntries,
+  keyEntriesApply,
+  keyEntryLimit,
+} from "../../core/keyEntries.js";
 import { subjectFor } from "../../core/accountSubjects.js";
 import {
   approvalMismatch,
@@ -131,11 +136,32 @@ export async function loadCatalog(
   }
 }
 
+/**
+ * PX-W9: what a licence list shares across its rows for `keyEntries` — the product's limit, or
+ * `null` when its Identity toggle is off — so a list reads the toggle and the limit once.
+ */
+export interface KeyEntryListContext {
+  limit: number | null;
+}
+
+/** The {@link KeyEntryListContext} of one product. */
+export async function keyEntryListContext(
+  db: Db,
+  product: string,
+): Promise<KeyEntryListContext> {
+  return {
+    limit: (await keyEntriesApply(db, product))
+      ? await keyEntryLimit(db, product)
+      : null,
+  };
+}
+
 /** The list/detail summary projection of a license row (with derived key + device counts). */
 export async function licenseSummary(
   db: Db,
   product: string,
   row: LicenseRow,
+  keyEntryContext?: KeyEntryListContext,
 ): Promise<Record<string, unknown>> {
   const keyCounts = await countKeysByLicense(db, product, row.id);
   const devices = await listDevicesByLicense(db, product, row.id);
@@ -172,6 +198,9 @@ export async function licenseSummary(
     // LX-26 (S-24 D1): floating or assigned, derived from the owner pointer and the licence's own
     // email; never the account's details.
     holder: licenseHolder(row),
+    // PX-W9 (WIRE-CONTRACT-V4 §12.2): the licence's key entries, `null` with Identity off. LX-30
+    // renders the "Key entries 3 of 10" row from it.
+    keyEntries: await licenseKeyEntries(db, product, row.id, keyEntryContext),
     identityProvider: row.sub ? "oidc" : "manual",
     // How the row was minted (`admin`, `oidc`, `enroll`): decides whether it may be deleted.
     origin: row.origin ?? "admin",
@@ -638,4 +667,16 @@ async function productSetupView(
     sync,
     nextActions,
   };
+}
+
+/** `keyEntries` for one licence of the console's record (`null` with Identity off). */
+async function licenseKeyEntries(
+  db: Db,
+  product: string,
+  licenseId: string,
+  context?: KeyEntryListContext,
+): Promise<{ used: number; limit: number } | null> {
+  const { limit } = context ?? (await keyEntryListContext(db, product));
+  if (limit === null) return null;
+  return { used: await countKeyEntries(db, product, licenseId), limit };
 }

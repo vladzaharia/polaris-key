@@ -103,6 +103,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   portalPasskey: "closed",
   portalPasskeyChange: "closed",
   portalClaimKey: "closed",
+  // PX-W9: the login card's signed-out key preview, per client network. It looks a licence key up
+  // with no account behind the request, so with the limiter gone it must not become an
+  // unmetered lookup (THREAT-MODEL "Key-entry counting and the signed-out key preview").
+  portalKeyPreview: "closed",
   // P2-02: the trusted-publisher exchange mints a `pkeyci_` token from a GitHub OIDC token —
   // per caller IP (every request), and per product (charged only after the token passes the
   // signature, audience and publisher policy, so no outsider can spend it).

@@ -385,6 +385,38 @@ export interface PortalKeyPreview {
   platforms?: string[];
   /** `email_mismatch` only: `m•••@proton.me`. */
   maskedEmail?: string;
+  /**
+   * PX-W9 (WIRE-CONTRACT-V4 §12.2 rule 8): the licence's key entries on an Identity product, for
+   * `addable` and `already_yours`; `null` otherwise and with Identity off.
+   */
+  keyEntries?: PortalKeyEntries | null;
+}
+
+/** §12.2 rule 5: a licence's key entries. `used` may exceed `limit`; show `max(0, limit - used)`. */
+export interface PortalKeyEntries {
+  used: number;
+  limit: number;
+}
+
+/**
+ * `POST /api/key/preview` (PX-W9, §12.2 rule 8): the login card's signed-out key preview, before
+ * anyone signs in. Read-only, never counted; never an email, a licence id or devices.
+ */
+export interface PortalSignedOutKeyPreview {
+  product: {
+    slug: string;
+    name: string;
+    developerName: string | null;
+    iconUrl: string | null;
+    headerUrl: string | null;
+  };
+  /** `license_owned`: the licence is in an account (never whose). */
+  verdict: "addable" | "license_owned" | "portal_off";
+  /** `term`: `perpetual`, or the licence's end in epoch seconds. `null` on `portal_off`. */
+  license: { tierName: string | null; term: "perpetual" | number } | null;
+  keyEntries: PortalKeyEntries | null;
+  /** `forced` exactly when a new device would be refused `key_entry_limit`. */
+  upgrade: "skippable" | "forced";
 }
 
 // ── Discover (PX-W10; G24, G25) ─────────────────────────────────────────────────────────────

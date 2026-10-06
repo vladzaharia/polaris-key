@@ -231,8 +231,15 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
   }),
 
   // ── Identity (registered for I-09 and I-10a; I-04 §7 step 3, S-18 §5.5) ────────────────
+  // PX-W9 (plans/PX-W9.md §3) made the refusal switch an A-13 store entry. Its row and `[vars]`
+  // name is `KEYENTRY_REFUSALS`, "key entry" as one word and no `IDENTITY_` prefix: a `KEY` token
+  // or a `_KEY` would read as key material to the AT-2 deny-list (`rules.ts`,
+  // `test/platformSettings.test.ts`). Counting runs whatever it says; it decides
+  // only whether a licence past its limit is refused (WIRE-CONTRACT-V4 §12.2 step 4). I-09 adds
+  // its own reader (`license_owned`).
   setting({
     key: "identity.keyEntryRefusals",
+    aliases: ["KEYENTRY_REFUSALS"],
     scope: "platform",
     service: "platform",
     area: "identity",
@@ -247,12 +254,13 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     policyBound: "lock",
     // Off is the permissive side: with refusals off, every key entry is admitted.
     widensWhen: "off",
+    varName: "KEYENTRY_REFUSALS",
     precedence: "runtime",
     ownership: "operator",
     confirm: { on: "L1", off: "L1" },
     wire: ["refusal"],
-    storage: { kind: "scalar" },
-    pending: { wp: "I-09" },
+    readers: ["core/keyEntries.ts"],
+    storage: { kind: "scalar", storedAs: "KEYENTRY_REFUSALS" },
   }),
   setting({
     key: "identity.keyEntry.limit",
@@ -261,7 +269,7 @@ export const PLATFORM_SLICE: readonly SettingDef[] = [
     area: "product-defaults",
     label: "Key-entry limit ceiling",
     description:
-      "The most key entries any product may allow per floating licence. A product may set a lower limit, never a higher one; there is no unlimited value while Identity is on.",
+      "The most key entries any product may allow per licence that is in no account. A product may set a lower limit, never a higher one; there is no unlimited value while Identity is on.",
     keywords: ["key entry", "activations", "floating licence"],
     docs: "/docs/services/identity/",
     value: {

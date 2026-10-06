@@ -216,7 +216,7 @@ describe("POST /api/activate/preview (G22)", () => {
         usable: true,
       },
       platforms: ["macos", "windows"],
-      entries: null,
+      keyEntries: null,
     });
     expect(typeof body.license.deviceLimit).toBe("number");
     expect(body.license.id).toBeUndefined(); // not yours yet: no licence id
@@ -315,7 +315,7 @@ describe("POST /api/activate/preview (G22)", () => {
     expect(body).toEqual({
       verdict: "license_owned",
       product: expect.objectContaining({ slug: "djdl" }),
-      entries: null,
+      keyEntries: null,
     });
     const text = JSON.stringify(body);
     expect(text).not.toContain("first@");

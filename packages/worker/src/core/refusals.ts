@@ -35,18 +35,21 @@ export const REFUSAL_DEBOUNCE_SECONDS = 60;
 /** The longest label stored, in characters (the portal's device-name limit, PX-W5). */
 export const REFUSAL_LABEL_MAX = 64;
 
-/** Why an activation was refused. Mirrors `AuthzError` plus the licence-usability check. */
+/** Why an activation was refused. Mirrors `AuthzError` plus the licence-usability check, and
+ *  PX-W9's key-entry refusal (`core/keyEntries.ts`, logged by the two key-entry routes). */
 export type RefusalReason =
   | "device_limit"
   | "hardware_mismatch"
   | "fingerprint_required"
-  | "license_unusable";
+  | "license_unusable"
+  | "key_entry_limit";
 
 export const REFUSAL_REASONS: readonly RefusalReason[] = [
   "device_limit",
   "hardware_mismatch",
   "fingerprint_required",
   "license_unusable",
+  "key_entry_limit",
 ];
 
 export function isRefusalReason(v: unknown): v is RefusalReason {

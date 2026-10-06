@@ -49,6 +49,12 @@ import {
 } from "../../core/data.js";
 import { deviceMetadata } from "../../core/devices.js";
 import { buildManageUrl } from "../../core/manageUrl.js";
+import {
+  countKeyEntries,
+  keyEntryGate,
+  keyEntryLimitResponse,
+} from "../../core/keyEntries.js";
+import { logRefusal } from "../../core/refusals.js";
 // The seat decision, the licence-gated device check and the fused merge all live in
 // `core/authz.ts`: Core's `validateDeviceToken` answers only "is this token a live device",
 // because a config-only product has devices with no licence at all (D-08), and the
@@ -111,6 +117,9 @@ export async function createBrowserSession(
    *  metadata a native device does. Browsers send no hardware fingerprint by design — the
    *  headers are all the honest signal there is. */
   req?: Request,
+  /** PX-W9 (WIRE-CONTRACT-V4 §12.2): a browser KEY session on an Identity product records its
+   *  key entry with the seat claim. The OIDC return path never passes it. */
+  opts: { keyEntry?: { surface: "browser" } } = {},
 ): Promise<
   | { ok: true; cookie: string; record: BrowserSessionRecord }
   | {
@@ -134,6 +143,7 @@ export async function createBrowserSession(
     sdkVersion: meta?.sdkVersion ?? null,
     // I-05: a browser key entry (plans/I-04.md §2.2) never sets the account binding.
     boundBy: "key",
+    ...(opts.keyEntry ? { keyEntry: opts.keyEntry } : {}),
   });
   if ("error" in auth) {
     if (auth.error === "device_limit") {
@@ -374,6 +384,25 @@ export async function handleBrowserSessionLicense(
     return errorResponse(401, ErrorCode.Unauthorized);
   const license = await getLicense(db, product.slug, keyRow.license_id);
   if (!license) return errorResponse(401, ErrorCode.Unauthorized);
+  // PX-W9 (WIRE-CONTRACT-V4 §12.2): a key entry on the `browser` surface. This route exists only
+  // while Identity is on, so the gate always counts here. The browser device is
+  // `browser:<licenseId>`, so it counts at most once per enrolment.
+  const deviceId = `browser:${license.id}`;
+  const gate = await keyEntryGate(env, db, product, license, deviceId, now);
+  if (gate.kind === "refuse") {
+    const meta = deviceMetadata(req);
+    await logRefusal(db, {
+      product: product.slug,
+      licenseId: license.id,
+      deviceId,
+      reason: "key_entry_limit",
+      at: now,
+      platform: meta.platform,
+      arch: meta.arch,
+      userAgent: meta.userAgent ?? "browser-session",
+    });
+    return keyEntryLimitResponse(env, db, req, product, gate.keyEntries);
+  }
   const session = await createBrowserSession(
     env,
     db,
@@ -381,6 +410,7 @@ export async function handleBrowserSessionLicense(
     license,
     now,
     req,
+    gate.kind === "admit" ? { keyEntry: { surface: "browser" } } : {},
   );
   if (!session.ok) {
     // PX-W8: the browser key entry's seat refusal carries the refusal link. The OIDC return
@@ -399,7 +429,18 @@ export async function handleBrowserSessionLicense(
   }
   await touchKey(db, product.slug, keyHash, now);
   return json(
-    { ok: true },
+    {
+      ok: true,
+      // §12.2 rule 5: the count after this entry.
+      ...(gate.kind === "admit"
+        ? {
+            keyEntries: {
+              used: await countKeyEntries(db, product.slug, license.id),
+              limit: gate.keyEntries.limit,
+            },
+          }
+        : {}),
+    },
     { status: 201, headers: { "set-cookie": session.cookie } },
   );
 }
