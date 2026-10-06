@@ -4,7 +4,10 @@
  *   - the library, the product page and Discover hand out image-host URLs, each at the ladder
  *     width its surface draws at, chosen exactly as the image host's `/icon` and `/header` aliases
  *     choose the slot; never a developer URL;
- *   - `/media/<p>/{icon,header}` fetches nothing: a 302 to the image host's stable alias, or 404;
+ *   - `/media/<p>/{icon,header}` fetches nothing for a slot with a copy: a 302 to the image host's
+ *     stable alias;
+ *   - PER SLOT, a slot with no copy (production at deploy: no product has resynced since HA-05)
+ *     keeps exactly its pre-HA-07 art, the `/media` proxy URL, and `/media` proxies it;
  *   - the sign-in card's client record keeps §12.7.2's same-origin `/media/<p>/icon`;
  *   - the portal shell's CSP admits exactly the image host;
  *   - with the kill switch off (HA-10's `assets.hosting.enabled`, a code constant until then) or no
@@ -248,7 +251,45 @@ describe("the portal's presentation on hosted copies", () => {
     );
     // No ladder: the original.
     expect(p.iconUrl).toBe(`${IMG}/tidewater/a/${B}`);
-    expect(p.headerUrl).toBeNull();
+    // No copy of the header: its pre-HA-07 proxy URL.
+    expect(p.headerUrl).toBe(
+      `/media/tidewater/header?v=${await mediaVersion(HEADER)}`,
+    );
+  });
+
+  it("hosting on but no copies at all (no resync since HA-05): exactly the pre-HA-07 presentation", async () => {
+    const env = portalEnv();
+    const db = makeTestDb();
+    await tidewater(db);
+    const s = await signedIn(env, db);
+    const library = await api(env, db, "/api/library", s);
+    const product = await api(env, db, "/api/products/tidewater", s);
+    for (const body of [library.products[0], product])
+      expect(body).toMatchObject({
+        iconUrl: `/media/tidewater/icon?v=${await mediaVersion(ICON)}`,
+        headerUrl: `/media/tidewater/header?v=${await mediaVersion(HEADER)}`,
+      });
+    // Byte-identical to the rollback's answer.
+    hosting.on = false;
+    expect((await api(env, db, "/api/library", s)).products[0]).toEqual(
+      library.products[0],
+    );
+  });
+
+  it("an icon copy but no header copy: the hosted icon and the proxied header", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    await tidewater(db);
+    await seedHosted(db, "tidewater", "presentation.icon", {
+      sha256: A,
+      widths: [64, 128, 256],
+    });
+    const s = await signedIn(env, db);
+    const library = await api(env, db, "/api/library", s);
+    expect(library.products[0]).toMatchObject({
+      iconUrl: `${IMG}/tidewater/a/${A}/128.webp`,
+      headerUrl: `/media/tidewater/header?v=${await mediaVersion(HEADER)}`,
+    });
   });
 
   it("keeps serving a failed or stale re-pull's last good copy, as the image host does", async () => {
@@ -284,7 +325,10 @@ describe("the portal's presentation on hosted copies", () => {
       NOW,
       portalHooksFor(env, db),
     );
-    expect(none.iconUrl).toBeNull();
+    // No copy yet: the proxy URL it always was.
+    expect(none.iconUrl).toBe(
+      `/media/tidewater/icon?v=${await mediaVersion(ICON)}`,
+    );
     await seedHosted(db, "tidewater", "listing.icon", { sha256: B });
     const rec = await clientRecordFor(
       env,
@@ -298,7 +342,7 @@ describe("the portal's presentation on hosted copies", () => {
   });
 });
 
-describe("GET /media/<p>/<asset> redirects to the hosted copy", () => {
+describe("GET /media/<p>/<asset> redirects to the hosted copy, else proxies per slot", () => {
   it("302s to the image host's stable alias and fetches nothing", async () => {
     const db = makeTestDb();
     const env = portalEnv();
@@ -322,13 +366,52 @@ describe("GET /media/<p>/<asset> redirects to the hosted copy", () => {
     expect(up.calls).toEqual([]);
   });
 
-  it("is the plain 404, never a fetch, when there is no copy (the GitHub fetch is gone)", async () => {
+  it("a slot with no copy is proxied exactly as before HA-07, so a deploy never blanks the art", async () => {
     const db = makeTestDb();
     const env = portalEnv();
     await tidewater(db);
     const up = recorder();
     const res = await media(env, db, "/media/tidewater/icon", up.fetchImpl);
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("image/png");
+    expect(res.headers.get("content-security-policy")).toBe(MEDIA_CSP);
+    expect(up.calls).toEqual([ICON]);
+  });
+
+  it("per slot: the icon with a copy redirects (no fetch), the header without one is proxied", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    await tidewater(db);
+    await seedHosted(db, "tidewater", "presentation.icon", { sha256: A });
+    const up = recorder();
+    const icon = await media(env, db, "/media/tidewater/icon", up.fetchImpl);
+    expect(icon.status).toBe(302);
+    expect(icon.headers.get("location")).toBe(`${IMG}/tidewater/icon`);
+    expect(up.calls).toEqual([]);
+    const header = await media(
+      env,
+      db,
+      "/media/tidewater/header",
+      up.fetchImpl,
+    );
+    expect(header.status).toBe(200);
+    expect(up.calls).toEqual([HEADER]);
+  });
+
+  it("the proxy fallback keeps its guards: a source off the GitHub allowlist is never fetched", async () => {
+    const db = makeTestDb();
+    const env = portalEnv();
+    await tidewater(db);
+    await db.run(
+      "UPDATE dist_listing SET listing_json = ? WHERE product = 'tidewater'",
+      JSON.stringify({
+        icon: { kind: "url", src: "https://cdn.example.test/i.png" },
+      }),
+    );
+    const up = recorder();
+    expect(
+      (await media(env, db, "/media/tidewater/icon", up.fetchImpl)).status,
+    ).toBe(404);
     expect(up.calls).toEqual([]);
   });
 

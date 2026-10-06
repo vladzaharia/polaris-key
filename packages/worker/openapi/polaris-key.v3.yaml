@@ -11185,9 +11185,10 @@ paths:
         status of its best licence, that licence's summary with seats, and the support links.
         Art is never a developer URL: it is Polaris Key's hosted copy on the image host
         (`IMG_ORIGIN`, HA-07), the icon at the 128 px and the header at the 1280 px WebP width
-        (or the original when no such width exists), and null without a copy. With hosting off or
-        no image host it is the same-origin `/media/…` proxy URL instead, and only when the proxy
-        would serve it. Session-authenticated by the portal cookie; `cache-control: no-store`.
+        (or the original when no such width exists). Per slot, without a copy (and for every slot
+        with hosting off or no image host) it is the same-origin `/media/…` proxy URL, and only
+        when the proxy would serve it, else null. Session-authenticated by the portal cookie;
+        `cache-control: no-store`.
       responses:
         "200":
           description: The library.
@@ -11775,14 +11776,14 @@ paths:
       summary: A product's art, as a redirect to its hosted copy
       description: >
         HA-07: while Polaris Key serves hosted copies (an image host is configured and
-        `assets.hosting.enabled` is on), this route fetches nothing. It answers `302` to the image
+        `assets.hosting.enabled` is on), a slot with a hosted copy is answered `302` to the image
         host's stable alias (`https://img…/<product>/icon` or `/header`, which redirects on to the
-        content-addressed copy) when the product has a copy, with `cache-control: public,
-        max-age=300`, and the same `404` otherwise; `v` is ignored. The portal no longer links
-        here (its presentation names the image host), but URLs already handed out and the sign-in
-        card's client record do.
+        content-addressed copy), with `cache-control: public, max-age=300`; nothing is fetched and
+        `v` is ignored. The portal then names the image host directly, but URLs already handed out
+        and the sign-in card's client record follow the redirect.
 
-        Otherwise (the rollback) it is the customer portal's media proxy: the product's listing `icon` (`asset` = `icon`, at
+        A slot with no hosted copy, and every slot with hosting off or no image host, is the
+        customer portal's media proxy, exactly as before HA-07: the product's listing `icon` (`asset` = `icon`, at
         most 1 MiB) or `header` (`header`, at most 5 MiB) when it is an https URL (or the
         deprecated `iconUrl` / `headerUrl` it was written as), fetched by the Worker
         and served from this origin, because the portal's CSP is `img-src 'self' data:`. Public
@@ -11811,11 +11812,11 @@ paths:
           }
       responses:
         "302":
-          description: "HA-07: to the image host's stable alias for this asset. `cache-control: public, max-age=300`."
+          description: "HA-07: the slot has a hosted copy; to the image host's stable alias for this asset. `cache-control: public, max-age=300`."
           headers:
             Location: { schema: { type: string, format: uri } }
         "200":
-          description: "The rollback's proxied image. `cache-control: public, max-age=31536000, immutable` with the current `v`, else `public, max-age=300`."
+          description: "The proxied image (a slot with no hosted copy, or the rollback). `cache-control: public, max-age=31536000, immutable` with the current `v`, else `public, max-age=300`."
           content:
             image/png: { schema: { type: string, format: binary } }
             image/jpeg: { schema: { type: string, format: binary } }
@@ -16010,13 +16011,14 @@ components:
           type: [string, "null"]
           description: >
             The product's hosted icon on the image host (HA-07), `https://img…/<product>/a/<sha256>`
-            or one of its `/<w>.webp` widths, or null without a copy. With hosting off or no image
-            host, a same-origin `/media/<product>/icon?v=…` URL, or null.
+            or one of its `/<w>.webp` widths. Without a copy (or with hosting off or no image
+            host), a same-origin `/media/<product>/icon?v=…` proxy URL, or null.
         headerUrl:
           type: [string, "null"]
           description: >
-            The product's hosted header art on the image host, like `iconUrl`; with hosting off or
-            no image host, a same-origin `/media/<product>/header?v=…` URL, or null.
+            The product's hosted header art on the image host, like `iconUrl`; without a copy (or
+            with hosting off or no image host), a same-origin `/media/<product>/header?v=…` proxy
+            URL, or null.
         support:
           oneOf:
             - type: "null"

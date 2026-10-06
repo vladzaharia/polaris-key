@@ -8,22 +8,24 @@
  *
  * Polaris Key now keeps its own copy of a product's art (HA-01, HA-05) and serves it from the
  * image host (HA-02). While hosting is on and the deployment has an image host
- * (`hostedImageOrigin`), this route fetches nothing: it answers `302` to the image host's stable
- * alias (`https://img…/<product>/icon` or `/header`, which 302s on to the content-addressed copy),
- * when the product has a copy the host serves, and the plain `404` otherwise. The portal no longer
- * links here (its presentation names the image host directly, `library.ts`), but URLs already
- * handed out, and the sign-in card's client record (§12.7.2 names this path), keep working.
+ * (`hostedImageOrigin`), a slot that has a copy the host serves is answered `302` to the image
+ * host's stable alias (`https://img…/<product>/icon` or `/header`, which 302s on to the
+ * content-addressed copy), and nothing is fetched. The portal then names the image host directly
+ * (`library.ts`), but URLs already handed out, and the sign-in card's client record (§12.7.2 names
+ * this path), keep working.
  *
- * The proxy below runs only in HA-10's rollback (`assets.hosting.enabled` off, or no image host):
- * exactly the route as it was, so turning hosting off restores it.
+ * The proxy below answers everything else, exactly as it did before HA-07 and under every rule
+ * below: PER SLOT, a slot with no servable copy (a product not resynced since HA-05 pulled its
+ * art, a first pull in flight), so a deploy never blanks a product's art; and every slot in
+ * HA-10's rollback (`assets.hosting.enabled` off, or no image host).
  *
  * ── WHY A PROXY AT ALL ──────────────────────────────────────────────────────────────────────
  *
  * The portal shell's CSP is `img-src 'self' data:` plus, since HA-07, exactly the image host's
  * origin (`securityHeaders.ts`), and it never names a developer's host: that would let any
  * product's manifest decide what the signed-in page loads, and would hand each of those hosts the
- * customer's IP and `Referer` for every library view. So in the rollback, a product's art is
- * served from this origin.
+ * customer's IP and `Referer` for every library view. So wherever there is no hosted copy, a
+ * product's art is served from this origin.
  *
  * ── WHY IT IS NOT AN SSRF (THREAT-MODEL "Portal media proxy") ───────────────────────────────
  *
@@ -91,8 +93,8 @@ import type { PortalHooksFor } from "./api.js";
  * The two proxied listing slots, their path names and byte caps. Each slot's source is read with
  * `listingImageUrl` (HA-04): the normalised `icon` / `header` ref when it is an https URL, or the
  * legacy `iconUrl` / `headerUrl` of a listing row stored before HA-04. A repo-path ref has no
- * URL to proxy. The caps and the proxy apply only in HA-10's rollback; otherwise the route
- * redirects to the hosted copy (see the file comment).
+ * URL to proxy. The caps and the proxy apply to a slot with no hosted copy, and to every slot in
+ * HA-10's rollback; a slot with a copy redirects to it (see the file comment).
  */
 export const MEDIA_ASSETS = {
   icon: { maxBytes: 1024 * 1024 },
@@ -206,7 +208,8 @@ function refused(status = 404): Response {
  * Fetch `source` under rules 2–5: allowlisted hops only, bounded, and sniffed. `null` for any
  * refusal or failure. The fetch itself is Core's guarded fetcher (`core/safeFetch.ts`, HA-01),
  * narrowed to rule 2's GitHub-hosted names on every hop (`allowHost`); the cap, the redirect rule
- * and the 5 s budget are unchanged. Reached only in HA-10's rollback (see the file comment).
+ * and the 5 s budget are unchanged. Reached for a slot with no hosted copy and in HA-10's rollback
+ * (see the file comment).
  */
 export async function fetchMedia(
   source: URL,
@@ -295,17 +298,18 @@ export async function handlePortalMedia(
       await hostedImages(env, db, product, slots),
       slots,
     );
-    if (!copy) return refused();
-    return new Response(null, {
-      status: 302,
-      headers: mediaResponseHeaders({
-        location: `${origin}/${product}/${asset}`,
-        "cache-control": MEDIA_SHORT,
-      }),
-    });
+    if (copy)
+      return new Response(null, {
+        status: 302,
+        headers: mediaResponseHeaders({
+          location: `${origin}/${product}/${asset}`,
+          "cache-control": MEDIA_SHORT,
+        }),
+      });
   }
 
-  // The rollback (hosting off, or no image host): the proxy, exactly as before HA-07.
+  // No servable copy of this slot, or the rollback (hosting off, no image host): the proxy,
+  // exactly as before HA-07.
   if (!hooksFor) return refused();
   const delivery = hooksFor(loaded, now).delivery();
   const listing = delivery ? await delivery.listing() : null;

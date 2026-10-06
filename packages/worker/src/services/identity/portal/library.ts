@@ -18,9 +18,11 @@
  *                  (HA-07, `core/hostedImages.ts`): the icon of `presentation.icon`, else
  *                  `listing.icon`, and the header of `listing.header`, exactly as the image host's
  *                  `/icon` and `/header` aliases choose them, each at the ladder width its surface
- *                  draws at (`PRESENTATION_WIDTHS`). With hosting off or no image host (HA-10's
- *                  rollback), art is the same-origin `/media/…` proxy URL, and only when the proxy
- *                  would serve it (`mediaUrlFor`), as before HA-07.
+ *                  draws at (`PRESENTATION_WIDTHS`). PER SLOT, a slot with no copy the image host
+ *                  would serve (a product not resynced since HA-05, a first pull in flight) gets
+ *                  what it got before HA-07: the same-origin `/media/…` proxy URL, and only when
+ *                  the proxy would serve it (`mediaUrlFor`), so art never vanishes on deploy. With
+ *                  hosting off or no image host (HA-10's rollback), every slot gets that.
  *   seats          `deviceLimit` is `licenseDeviceLimit`, the number `authorizeDevice` enforces;
  *                  `activeSeatCount` counts authorized devices seen inside the dormancy window
  *                  (`SEAT_DORMANCY_SECONDS`), the predicate `countActiveDevices` applies at
@@ -91,9 +93,9 @@ export interface Presentation {
   tintColor: string | null;
   website: string | null;
   /**
-   * The hosted icon on the image host (`https://img…/<p>/a/<sha256>/<w>.webp`, or the original),
-   * or `null` when there is no copy. With hosting off (HA-10's rollback) the same-origin
-   * `/media/<p>/icon?v=…` proxy URL, or `null` when the proxy would not serve one.
+   * The hosted icon on the image host (`https://img…/<p>/a/<sha256>/<w>.webp`, or the original).
+   * Without a copy (or with hosting off, HA-10's rollback) the same-origin `/media/<p>/icon?v=…`
+   * proxy URL, or `null` when the proxy would not serve one either.
    */
   iconUrl: string | null;
   /** The hosted header art, like `iconUrl`. */
@@ -142,7 +144,7 @@ export const PRESENTATION_WIDTHS: Record<
   discover: { icon: 128, header: 1280 },
 };
 
-/** The art of one surface: hosted copies, or the rollback's proxy URLs (see the file comment). */
+/** The art of one surface: hosted copies, else per slot the proxy URLs (see the file comment). */
 async function presentationArt(
   env: Env,
   db: Db,
@@ -164,20 +166,25 @@ async function presentationArt(
   ]);
   const icon = firstHostedImage(images, PRESENTATION_ICON_SLOTS);
   const header = firstHostedImage(images, PRESENTATION_HEADER_SLOTS);
+  // A slot without a copy keeps its pre-HA-07 art: the proxy URL (`media.ts` proxies it too).
+  const proxied = (asset: "icon" | "header") =>
+    mediaUrlFor(product.slug, asset, listing);
   if (surface === "client")
     return {
       // §12.7.2: the same-origin path; `v` moves with the copy, so a new icon is a new URL.
       iconUrl: icon
         ? `/media/${encodeURIComponent(product.slug)}/icon?v=${icon.sha256.slice(0, 16)}`
-        : null,
+        : await proxied("icon"),
       headerUrl: null,
     };
   const widths = PRESENTATION_WIDTHS[surface];
   return {
-    iconUrl: icon ? hostedImageUrl(env, product.slug, icon, widths.icon) : null,
-    headerUrl: header
-      ? hostedImageUrl(env, product.slug, header, widths.header)
-      : null,
+    iconUrl:
+      (icon && hostedImageUrl(env, product.slug, icon, widths.icon)) ||
+      (await proxied("icon")),
+    headerUrl:
+      (header && hostedImageUrl(env, product.slug, header, widths.header)) ||
+      (await proxied("header")),
   };
 }
 

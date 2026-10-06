@@ -50,12 +50,22 @@ It turns the stored copies into the owner's outcome, and makes the THREAT-MODEL 
 
 Where the brief and the code disagreed, the code won. As built:
 
-- **The rollback keeps the proxy.** "The GitHub-only fetch is removed" and "turning hosting off
-  restores today's path" (HA-10's acceptance) conflict. While hosted copies are served, the fetch
-  is unreachable: `/media/<p>/<asset>` 302s to the image host's alias, or 404s. The proxy code stays
-  only for the rollback. The rollback is the kill switch (`core/assetHosting.ts`
-  `assetHostingEnabled`, a constant until HA-10) or a deployment with no `IMG_ORIGIN`. Every
-  surface branches on one answer, `hostedImageOrigin(env)` in `core/hostedImages.ts`.
+- **The proxy stays, as the per-slot fallback and as the rollback.** "The GitHub-only fetch is
+  removed" conflicts with two things: "turning hosting off restores today's path" (HA-10's
+  acceptance), and the rollout. Production had no `hosted_assets` rows at deploy, because DJDL
+  last resynced before HA-05 and HA-05 pulls only on resync; removing the fetch would blank
+  DJDL's portal art until its next push. So, per slot:
+  - with a copy the image host serves, the presentation names the image host and
+    `/media/<p>/<asset>` 302s there, fetching nothing;
+  - without a copy, the presentation returns its pre-HA-07 `/media` proxy URL, and the proxy
+    serves it unchanged and still guarded;
+  - the kill switch (`core/assetHosting.ts` `assetHostingEnabled`, a constant until HA-10), or a
+    deployment with no `IMG_ORIGIN`, puts every slot on the proxy. Every surface branches on
+    `hostedImageOrigin(env)` in `core/hostedImages.ts`.
+
+  The portal shell keeps the image host in `img-src` while hosting is on, so both paths load. The
+  download page is unchanged by this: without a copy it shows no icon, as before HA-07.
+
 - **The client record keeps `/media/<p>/icon`.** WIRE-CONTRACT-V4 §12.7.2 and
   `@polaris-key/protocol/identity` name the same-origin path. Changing it to an image-host URL would
   be a wire change, so the sign-in card's `iconUrl` stays the `/media` path (`v` is now the copy's
