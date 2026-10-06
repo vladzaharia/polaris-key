@@ -69,7 +69,7 @@ Sign-in methods are the account's core ([PORTAL.md §4.26](../../../../design/PO
 /api/me/methods/email/verify`); `passkey` hands over to I-16's registration routes.
 - **Join = the existing primitive.** Both the card's join offer and Link an existing account end in
   `accounts/merge.ts`; the 72-hour undo is a snapshot that `mergeAccounts` writes in its own batch
-  (`account_merges`, migration `00XX_account_merges.sql`, number assigned by the lead) and
+  (`account_merges`, migration `0098_account_merges.sql`, the number the lead assigned) and
   `accounts/mergeUndo.ts` replays. Routes: `GET /api/me/link`, `POST /api/me/link/start|confirm|
 cancel|undo`. The two proofs are collected in one browser by a `__Host-pkey_link` flow cookie
   while the session moves to the other account on the login card.
@@ -87,7 +87,7 @@ cancel|undo`. The two proofs are collected in one browser by a `__Host-pkey_link
 - [x] Join requires both proofs; undo works within 72 h (tests).
 - [x] Every change writes an audit row and sends a notice (tests); OpenAPI and `routeCoverage` cover every route.
 - [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header. (Builder, 2026-10-06: every step green except `test/recordDeploy.test.ts`, which refuses the unnumbered `00XX_account_merges.sql` by design; it passes once the lead assigns the number.)
+- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header. (Builder, 2026-10-06: every step green except `test/recordDeploy.test.ts`, which refused the then-unnumbered migration by design; with the lead's number, 0098, it passes.)
 
 ## Verify
 

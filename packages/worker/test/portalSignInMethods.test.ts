@@ -138,7 +138,8 @@ describe("GET /api/me/methods", () => {
   it("lists every method grouped, Apple, Google and Steam always, and the step-up state", async () => {
     const w = await seededWorld();
     const { d, accountId } = await emailAccount(w);
-    await addSteam(w, accountId);
+    // Connected a second after the email, so the list's oldest-first order is fixed.
+    await addSteam(w, accountId, "lnk_steam", "76561198000000000", NOW + 1);
     const body = await methods(d);
     expect(body.methods.map((m) => [m.kind, m.group, m.display])).toEqual([
       ["email", "email", "ada@example.com"],

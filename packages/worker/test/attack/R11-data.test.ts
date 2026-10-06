@@ -697,7 +697,7 @@ describe("R11-05 product scoping", () => {
       // (a hash of the account and the picture) and owned by the account, never by a
       // product. An app sees a picture only through the account's consent step.
       "account_avatars",
-      // 00XX (PX-W12) — account joins and their 72-hour undo: one row per join of two accounts,
+      // 0098 (PX-W12) — account joins and their 72-hour undo: one row per join of two accounts,
       // keyed by the join and owned by the surviving account, never by a product. Read only by
       // that account's own portal session; no developer route reads it.
       "account_merges",
