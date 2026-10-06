@@ -50,7 +50,8 @@ docker run --rm --init --ipc=host --platform linux/amd64 \
     pnpm config set store-dir /pnpm-store >/dev/null
     pnpm install --frozen-lockfile --filter=@polaris-key/admin... --filter=@polaris-key/worker... >/dev/null
     # The e2e harness imports the Worker (its security headers, media proxy and handlers), so the
-    # Worker's workspace dependencies build too (client-core among them since PX-W13).
+    # workspace packages the Worker depends on build too (client-core among them since PX-W13).
+    # (No apostrophes in here: this whole block is one single-quoted bash -c argument.)
     pnpm exec turbo run build --filter=@polaris-key/admin... --filter=@polaris-key/worker... --output-logs=errors-only
     cd packages/admin
     # Update re-records every state it visits over the committed set, so a state that fails
