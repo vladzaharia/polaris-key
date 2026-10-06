@@ -4,7 +4,7 @@
  */
 
 import { execFile } from "node:child_process";
-import { readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
@@ -477,5 +477,152 @@ describe("SigV4", () => {
         "SignedHeaders=date;host;x-amz-content-sha256;x-amz-date;x-amz-storage-class, " +
         "Signature=98ad721746da40c64f1a55b78f14c238d841ea1380cd77a1b5971af0ece108bd",
     );
+  });
+});
+
+describe("the Action's assets input (HA-06)", () => {
+  const PNG = new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 9, 8, 7,
+  ]);
+  const SHOT = new Uint8Array([
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 6, 5, 4,
+  ]);
+
+  async function workspace(): Promise<string> {
+    const cwd = await tempDir();
+    for (const [rel, bytes] of [
+      ["art/icon.png", PNG],
+      ["art/shots/b.png", SHOT],
+      ["art/shots/a.png", PNG],
+    ] as const) {
+      await mkdir(path.dirname(path.join(cwd, rel)), { recursive: true });
+      await writeFile(path.join(cwd, rel), bytes);
+    }
+    return cwd;
+  }
+
+  it("pushes the map's files in one ticket and one POST, with no dir needed", async () => {
+    const cwd = await workspace();
+    const server = fakeServer();
+    server.script("/assets", () =>
+      json({ ok: true, stored: [], kept: [], refused: [] }),
+    );
+    const io = capture();
+    const env = await githubStepEnv({
+      product: SLUG,
+      "base-url": BASE,
+      assets:
+        "art/icon.png: presentation.icon\n# the listing\nart/shots/*.png: listing.screenshot\n",
+    });
+    const code = await runAction({
+      env: {
+        ...actionsEnv(),
+        ...env,
+        PKEY_CI_TOKEN: `pkeyci_${"A".repeat(43)}`,
+      },
+      cwd,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      fetchImpl: server.fetchImpl,
+      sleep: instant,
+    });
+    expect(code, io.err()).toBe(0);
+    expect(server.to("/release/publish/uploads")).toHaveLength(1);
+    // Two distinct files (the icon and screenshot a share their bytes).
+    expect(server.to("/staging/")).toHaveLength(2);
+    const [push] = server.to(`/${SLUG}/assets`);
+    expect(
+      (push!.body as { assets: { slot: string }[] }).assets.map((a) => a.slot),
+    ).toEqual([
+      "presentation.icon",
+      "listing.screenshot:1",
+      "listing.screenshot:2",
+    ]);
+  });
+
+  it("resolves globs against dir, fails the step on a refusal and refuses other inputs", async () => {
+    const cwd = await workspace();
+    const refused = fakeServer();
+    refused.script("/assets", () =>
+      json({
+        ok: false,
+        stored: [],
+        kept: [],
+        refused: [
+          { slot: "listing.header", locale: "", reason: "not-an-image" },
+        ],
+      }),
+    );
+    const io = capture();
+    const code = await runAction({
+      env: {
+        ...actionsEnv(),
+        ...(await githubStepEnv({
+          product: SLUG,
+          dir: "art",
+          "base-url": BASE,
+          assets: "icon.png: listing.header",
+        })),
+        PKEY_CI_TOKEN: `pkeyci_${"A".repeat(43)}`,
+      },
+      cwd,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      fetchImpl: refused.fetchImpl,
+      sleep: instant,
+    });
+    expect(code).toBe(1);
+    expect(io.err()).toContain(
+      "1 file was refused: listing.header (not-an-image)",
+    );
+    for (const [extra, message] of [
+      [{ tag: "v1.0.0" }, /^tag does not apply to an assets step/],
+      [{ storefront: "itch-push" }, /^assets is a step of its own/],
+      [{ deliverable: "core.pack" }, /^deliverable does not apply/],
+    ] as const) {
+      const bad = capture();
+      const c = await runAction({
+        env: {
+          ...actionsEnv(),
+          ...(await githubStepEnv({
+            product: SLUG,
+            "base-url": BASE,
+            assets: "art/icon.png: presentation.icon",
+            ...extra,
+          })),
+        },
+        cwd,
+        stdout: bad.stdout,
+        stderr: bad.stderr,
+        fetchImpl: fakeServer().fetchImpl,
+        sleep: instant,
+      });
+      expect(c).toBe(1);
+      expect(bad.err()).toMatch(message);
+    }
+  });
+
+  it("dry-run: true resolves the map and sends nothing", async () => {
+    const cwd = await workspace();
+    const server = fakeServer();
+    const io = capture();
+    const code = await runAction({
+      env: {
+        ...actionsEnv(),
+        ...(await githubStepEnv({
+          product: SLUG,
+          "dry-run": "true",
+          assets: "art/icon.png: presentation.icon",
+        })),
+      },
+      cwd,
+      stdout: io.stdout,
+      stderr: io.stderr,
+      fetchImpl: server.fetchImpl,
+      sleep: instant,
+    });
+    expect(code, io.err()).toBe(0);
+    expect(io.out()).toContain("Would push art/icon.png → presentation.icon");
+    expect(server.calls).toHaveLength(0);
   });
 });
