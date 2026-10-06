@@ -62,6 +62,8 @@ import type { ManifestIngest } from "../../core/registry.js";
 import { serializeWebOrigins } from "../../core/cors.js";
 import { stmtUpsertManifestPublisher } from "../../core/publisher.js";
 import { manifestSnapshotStatement } from "../../core/manifestSnapshot.js";
+import { syncHostedAssets } from "../../core/hostedAssetPulls.js";
+import { repoBlobLookup } from "./assetSource.js";
 import { reservedNamesMode } from "../../core/reservedNames.js";
 import type { LinkCheck } from "./linkExisting.js";
 
@@ -1080,6 +1082,23 @@ async function registerFromManifest(
   // (`syncReleaseStore` swallows GitHub failures) — a repo with no releases yet is the normal
   // case at link time, and a link must not fail because of it.
   await syncReleaseStore(env, db, slug, now, fetchImpl);
+
+  // HA-05 (notes/S-20 §6.3): the manifest's hosted assets (presentation icon, listing art), pulled
+  // off the request path on `pkey-assets-<env>`. After the batch (the rows reference the product)
+  // and best-effort: a link never fails because an image is unreachable.
+  await syncHostedAssets(env, db, {
+    product: slug,
+    manifest,
+    commit: applied.sha,
+    repoBlob: repoBlobLookup(
+      gh.token,
+      gh.owner,
+      gh.repo,
+      applied.sha,
+      fetchImpl,
+    ),
+    now,
+  });
 
   // Secrets the manifest references by NAME (OIDC client secret, edge-mint key material) but
   // that an operator must still supply out-of-band via PUT /secrets. Names only — never values.
