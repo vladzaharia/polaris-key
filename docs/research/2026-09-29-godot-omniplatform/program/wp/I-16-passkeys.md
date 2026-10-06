@@ -68,9 +68,11 @@ Passkeys are the main defence of a high-value shared account and are phishing-re
   post-quantum ASN.1 module the Worker does not need).
 - **The workerd lane** ordered migrations by `parseInt` of the prefix, so a `00XX_` placeholder
   that alters a table ran before the table existed. It now sorts by filename, as the Node lane,
-  `record-deploy` and `LATEST_MIGRATION` do. `record-deploy`'s migration-name check refuses a
-  `00XX_` placeholder by design, so `test/recordDeploy.test.ts` passes only once the lead numbers
-  the two files (verified with `0090_a`/`0090_b`).
+  `record-deploy` and `LATEST_MIGRATION` do. Two Node-lane files still need the lead's numbers:
+  `test/recordDeploy.test.ts` (its migration-name check refuses any `00XX_` placeholder by design)
+  and `test/checkRepresentable.test.ts` (real `wrangler d1 migrations apply`, which also orders
+  by the leading number, so an `ALTER` placeholder runs first). Both pass with the files numbered
+  (verified with `0091_a`/`0091_b` after merging main, which holds 0090).
 
 ## Steps
 
