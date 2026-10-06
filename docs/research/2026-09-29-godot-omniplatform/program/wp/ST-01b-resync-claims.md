@@ -79,7 +79,9 @@ owner delegated open questions to the lead, who takes the recommended option):**
   NOT claim the row, since a manifest cannot express a secret value and the R2 carry-forward
   already keeps them; any other value edit, a rename or a create claims it. The R2 test that a
   console plain-config value is replaced by the manifest was changed to the new rule (it is now
-  kept, with the row claimed).
+  kept, with the row claimed). With `config.catalog` claimed, the carry-forward asks the
+  installed console catalog (not the uninstalled manifest one) which keys are managed secrets,
+  so a secret the console catalog declares survives a resync (review fix round 2).
 - **Claim vs conflict** for a console row holding a manifest id: a claim (skipped silently,
   listed in `claimed`) when the last applied snapshot already declared that id; a conflict
   (reported in the result's own `conflicts` list, S-18 §4.5 item 4's shape, and in

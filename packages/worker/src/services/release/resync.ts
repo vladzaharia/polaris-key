@@ -357,6 +357,20 @@ async function applyRepoManifest(
     };
   }
 
+  // The catalog the profile carry-forward (R2) asks which keys are managed secrets: the one that
+  // stays installed. With `config.catalog` claimed that is the console's catalog, not the
+  // manifest's (which is not installed), so a secret the console catalog declares and an operator
+  // sealed on a manifest profile is carried rather than silently wiped. The stored catalog was
+  // screened when it was published; one that no longer parses falls back to the manifest's.
+  let carryCatalog = incomingCatalog;
+  if (catalogClaimed && activeSchema) {
+    try {
+      carryCatalog = new Catalog(JSON.parse(activeSchema.catalog_json) as never);
+    } catch {
+      carryCatalog = incomingCatalog;
+    }
+  }
+
   // Defence in depth for R6-01 (the repo-name fallback bypasses the manifest boundary).
   const rel = manifest.release;
   const binaryName = rel ? rel.binaryName || repo : null;
@@ -920,7 +934,7 @@ async function applyRepoManifest(
       const payload = withStoredSecrets(
         profile.payload,
         stored.get(profile.id),
-        incomingCatalog,
+        carryCatalog,
       );
       stmts[index] = profileStatement(slug, profile, payload, now);
       const before = storedProfileById.get(profile.id);

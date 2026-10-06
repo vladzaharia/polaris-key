@@ -729,4 +729,41 @@ describe("claims that are refused (ST-01b)", () => {
     expect(res.status).toBe(200);
     expect((await rows(ctx, "profiles"))[0]!.source).toBe("manifest");
   });
+
+  it("a secret the claimed console catalog declares, sealed on a manifest profile, survives a resync", async () => {
+    // The manifest's catalog lacks the secret and is not installed (the catalog is claimed), so
+    // the carry-forward must ask the installed console catalog, or the sealed value is wiped.
+    const ctx = await linked();
+    const secret = {
+      key: "api.key",
+      kind: "secret",
+      category: "api",
+      label: "API key",
+      description: "",
+      schema: { type: "string", minLength: 8 },
+    };
+    const put = await call(ctx, "PUT", "config/catalog", {
+      catalog: { schemaVersion: 1, entries: [entry("run.name"), secret] },
+      expectedVersion: 1,
+    });
+    expect(put.status).toBe(200);
+    const set = await call(ctx, "PUT", "config/profiles/standard", {
+      updates: [{ key: "api.key", value: "sk-0123456789", state: "enforced" }],
+    });
+    expect(set.status).toBe(200);
+    const payloadOf = async () =>
+      JSON.parse(
+        (await ctx.db.first<{ payload_json: string }>(
+          "SELECT payload_json FROM profiles WHERE product = ? AND id = 'standard'",
+          SLUG,
+        ))!.payload_json,
+      ) as { secrets?: Record<string, { value?: unknown }> };
+    const sealed = (await payloadOf()).secrets?.["api.key"];
+    expect(sealed?.value).toBeDefined();
+
+    const res = await okResync(ctx, { schema: schemaJson("run.other") });
+    expect(res.claimed).toContain("config.catalog");
+    expect((await rows(ctx, "profiles"))[0]!.source).toBe("manifest");
+    expect((await payloadOf()).secrets?.["api.key"]).toEqual(sealed);
+  });
 });
