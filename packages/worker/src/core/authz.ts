@@ -77,6 +77,7 @@ import {
   tighterMin,
 } from "./entitlements.js";
 import { logRefusal, type RefusalReason, type WaitUntil } from "./refusals.js";
+import { notifyNewAuthorization } from "./authorizationListeners.js";
 
 export type AuthzError =
   | { error: "unauthorized" }
@@ -444,7 +445,7 @@ export async function authorizeDevice(
   }
 
   // Core mints the token and writes every row the binding consists of.
-  return bindDevice(env, db, product, license, deviceId, now, {
+  const bound = await bindDevice(env, db, product, license, deviceId, now, {
     existing: reconciled.existing,
     presented,
     hwid: reconciled.hwid,
@@ -454,4 +455,14 @@ export async function authorizeDevice(
     ...(opts.boundBy ? { boundBy: opts.boundBy } : {}),
     ...(opts.subject ? { subject: opts.subject } : {}),
   });
+  // PS-04: the device now holds a seat on this licence it did not hold before. Bookkeeping only
+  // (`core/authorizationListeners.ts`): total, after the bind, off the response path with a
+  // `waitUntil`, so a listener can neither refuse nor fail the activation.
+  if (isNewAuthorization)
+    await notifyNewAuthorization(
+      { db, env, now },
+      { product: product.slug, licenseId: license.id, deviceId },
+      opts.waitUntil,
+    );
+  return bound;
 }

@@ -56,6 +56,7 @@ import {
   settleOwnershipConflicts,
 } from "./services/identity/accounts/legacy.js";
 import { sweepAvatars } from "./services/identity/card/avatars.js";
+import { pruneStorefrontSeen } from "./services/identity/portal/store/analytics.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
 import { REFUSAL_RETENTION_SECONDS, pruneRefusals } from "./core/refusals.js";
 import { lazyDeltaProducts } from "./core/deltaDemand.js";
@@ -362,6 +363,11 @@ export async function runScheduledMaintenance(
       drain((limit) =>
         pruneRefusals(db, product, now - REFUSAL_RETENTION_SECONDS, limit),
       ),
+    );
+    // PS-04: the storefront's impression dedupe keys older than yesterday (notes/S-21 §6.6:
+    // nothing per person is kept past two days).
+    await step(report, `storefrontSeen:${product}`, () =>
+      drain((limit) => pruneStorefrontSeen(db, product, now, limit)),
     );
   }
 

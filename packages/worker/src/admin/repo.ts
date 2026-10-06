@@ -123,6 +123,20 @@ export async function deleteProduct(
       sql: "DELETE FROM account_terms_acceptances WHERE product = ?",
       params: [slug],
     },
+    // PS-04: every account's library entry for it, its storefront aggregates and its impression
+    // dedupe keys (a re-created slug starts with an empty storefront history).
+    {
+      sql: "DELETE FROM library_entries WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "DELETE FROM storefront_daily WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "DELETE FROM storefront_seen WHERE product = ?",
+      params: [slug],
+    },
     {
       sql: "UPDATE devices SET status = 'deauthorized', subject = NULL WHERE product = ?",
       params: [slug],

@@ -136,7 +136,7 @@ export async function removeProductData(
  * Erase an account (right to erasure; S-16 §5.5). Stores delete first, every binding is cleared,
  * the developer of each product gets `subject.deleted` with the licence ids, licences detach and
  * their registry tokens are revoked, and every row naming the person goes: links, subjects and
- * aliases, sessions, grants, terms acceptances, passkeys, the account, and the pre-I-05 `portal_*`
+ * aliases, sessions, grants, terms acceptances, passkeys, library entries, the account, and the pre-I-05 `portal_*`
  * rows (so a Worker rollback cannot resurrect them). What remains is an id-only tombstone (a
  * restore from backup can re-apply the deletion) and one `portal.account.delete` receipt with no
  * email, name or product.
@@ -244,6 +244,11 @@ export async function deleteAccount(
     },
     // LX-26: the account's auto-attach blocks (its account id) go with it.
     stmtDeleteAccountAutoAttachBlocks(accountId),
+    // PS-04: and its library entries (open products added from the storefront, S-21 §6.4).
+    {
+      sql: "DELETE FROM library_entries WHERE account_id = ?",
+      params: [accountId],
+    },
     { sql: "DELETE FROM accounts WHERE id = ?", params: [accountId] },
     {
       sql: `INSERT OR REPLACE INTO account_tombstones (id, email_hash, merged_into, deleted_at)
