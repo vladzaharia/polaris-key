@@ -59,7 +59,16 @@ import type {
   DeviceSignInResult,
   MintedToken,
 } from "../core/types.js";
-import type { StoreStatus } from "@polaris-key/client-core";
+import type { BootState, StoreStatus } from "@polaris-key/client-core";
+import type { BootResult, BootRunOptions } from "../core/boot.js";
+import type { CrashTags, CrashTagsOptions } from "../core/crash.js";
+import type { FeedKind, FeedUrl, FeedUrlOptions } from "../core/types.js";
+import type {
+  FetchTarget,
+  ReleaseFetchOptions,
+  ReleaseFetchResult,
+} from "../browser/releaseFetch.js";
+import type { DownloadModel, ThisPlatform } from "../browser/distribution.js";
 import { isCatalog } from "../browser/catalog.js";
 import { activationError } from "../core/activationError.js";
 import type { ActivationOutcome } from "../core/activation.js";
@@ -87,6 +96,12 @@ import {
 const V4_FEATURES = new Set<string>([
   Feature.configMint,
   Feature.commerceReceipt,
+  // SP-12: the host's boot, verified download, download model, feed URLs and crash tags.
+  Feature.uiBoot,
+  Feature.releaseFetch,
+  Feature.releaseDistribution,
+  Feature.updateFeeds,
+  Feature.crashTags,
 ]);
 
 export interface DesktopAdapterOptions {
@@ -808,6 +823,118 @@ export class DesktopAdapter implements PolarisAdapter {
     }
   }
 
+  // ── SP-12: the host's boot, verified download, download model, feed URLs and crash tags,
+  //    each a bridge v4 `invoke` verb answered by the host's Node client. Callbacks and
+  //    signals do not cross the bridge. ──
+
+  /** `invoke("core", "boot", opts)`: the host's `client.boot()`. The boot runs in the host, so
+   *  `onStage` is called once, at the end, with the final state and every emit; `answer` and
+   *  `packs` stay in the renderer (the host decides consent with its own default). */
+  async boot(opts: BootRunOptions = {}): Promise<BootResult> {
+    const { onStage, answer, packs, ...wire } = opts;
+    void answer;
+    void packs;
+    const r = await this.invokeV4<{
+      outcome: BootState["outcome"];
+      state: BootState;
+      license?: { status?: PolarisState["status"] } | null;
+      decision?: UpdateCheck | null;
+      emits?: BootResult["emits"];
+    }>(Feature.uiBoot, "the one-call boot", "core", "boot", wire);
+    // The host's boot moved its state; re-read it (no network).
+    try {
+      this.apply(await this.bridge.getSyncState());
+    } catch {
+      // The pushed `stateChanged` carries it instead.
+    }
+    const emits = r.emits ?? [];
+    onStage?.({ state: r.state, emits });
+    return {
+      outcome: r.outcome,
+      state: r.state,
+      status: r.license?.status ?? this.store.get().status,
+      decision: r.decision ?? null,
+      emits: [...emits],
+    };
+  }
+
+  /** `invoke("release", "fetch", {target, to})`: the host's `client.release.fetch()`, which
+   *  writes and verifies the file in the privileged process and answers its `path`. */
+  async releaseFetch(
+    target: FetchTarget,
+    opts: ReleaseFetchOptions & { to?: string } = {},
+  ): Promise<ReleaseFetchResult> {
+    if (!opts.to)
+      throw new PolarisError(
+        "invalid-options",
+        "A desktop download is written by the host: pass `to`, the destination path.",
+      );
+    opts.signal?.throwIfAborted();
+    try {
+      return await this.invokeV4<ReleaseFetchResult>(
+        Feature.releaseFetch,
+        "the verified download",
+        "release",
+        "fetch",
+        { target, to: opts.to },
+      );
+    } catch (e) {
+      throw this.fail("release", fetchError(e));
+    }
+  }
+
+  /** `invoke("distribution", "downloadModel", {channel})`. */
+  async downloadModel(opts: { channel?: string } = {}): Promise<DownloadModel> {
+    return this.invokeV4<DownloadModel>(
+      Feature.releaseDistribution,
+      "the download model",
+      "distribution",
+      "downloadModel",
+      opts,
+    );
+  }
+
+  /** `invoke("distribution", "thisPlatform", {channel, platform})`: the host's platform's group
+   *  unless `platform` is given. */
+  async thisPlatform(
+    opts: { channel?: string; platform?: string } = {},
+  ): Promise<ThisPlatform> {
+    return this.invokeV4<ThisPlatform>(
+      Feature.releaseDistribution,
+      "the download model",
+      "distribution",
+      "thisPlatform",
+      opts,
+    );
+  }
+
+  /** `invoke("update", "feedUrl", {kind, ...opts})`: the host's `client.update.feedUrl()`. An
+   *  older host answers the typed `version` N/A, as a result. */
+  async feedUrl(kind: FeedKind, opts: FeedUrlOptions = {}): Promise<FeedUrl> {
+    if (!this.bridge.invoke || !this.speaksV4())
+      return (
+        this.v4Unsupported(
+          Feature.updateFeeds,
+          "the updater feed URLs",
+        ) as UnsupportedError
+      ).unsupported;
+    return (await this.bridge.invoke("update", "feedUrl", {
+      kind,
+      ...opts,
+    })) as FeedUrl;
+  }
+
+  /** `invoke("core", "crashTags", opts)`: the host's `client.crashTags()`. */
+  async crashTags(opts: CrashTagsOptions = {}): Promise<CrashTags> {
+    return this.invokeV4<CrashTags>(
+      Feature.crashTags,
+      "the crash-reporter tags",
+      "core",
+      "crashTags",
+      opts,
+    );
+  }
+
   /** True when the host reports bridge protocol v4 or later (an absent `version` is 1). A v3
    *  host's `invoke` may answer only the v3 verbs, so a v4 verb is never sent to it. */
   private speaksV4(): boolean {
@@ -910,6 +1037,26 @@ function releaseError(e: unknown): PolarisError {
   // trouble, not an entitlement answer.
   if (code === "not_found" || code === "local-only")
     return new PolarisError("network", message, code);
+  return code
+    ? new PolarisError(ErrorCode.releaseRefused, message, code)
+    : new PolarisError("unknown", message);
+}
+
+/** The host's own download failures keep their codes; any other code is the server's refusal
+ *  (`download_auth_required`, `unauthorized`, …), carried as `release-refused`'s `wireCode`. */
+function fetchError(e: unknown): PolarisError {
+  if (e instanceof PolarisError) return e;
+  const code = errorCode(e);
+  const message = (e as Error)?.message ?? String(e);
+  if (code === "network-error" || code === "network")
+    return new PolarisError("network", message, code);
+  if (
+    code === "payload-mismatch" ||
+    code === "invalid-options" ||
+    code === "service-unavailable" ||
+    code === "not-configured"
+  )
+    return new PolarisError(code, message, code);
   return code
     ? new PolarisError(ErrorCode.releaseRefused, message, code)
     : new PolarisError("unknown", message);

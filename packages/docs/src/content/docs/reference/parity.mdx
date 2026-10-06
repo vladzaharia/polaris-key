@@ -20,7 +20,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | SDK | Runtimes | Implemented | N/A | Planned (owned) | Planned (unowned) |
 | --- | --- | --- | --- | --- | --- |
 | Node | `node` | 68 | 6 | 4 | 0 |
-| React | `web`, `desktop-bridge` | 55 | 12 | 11 | 0 |
+| React | `web`, `desktop-bridge` | 60 | 12 | 6 | 0 |
 | Python | `python` | 67 | 6 | 5 | 0 |
 | Swift | `macos`, `ios` | 65 | 6 | 7 | 0 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 68 | 2 | 8 | 0 |
@@ -88,17 +88,17 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `release.changelog` | Changelog | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `release.download` | Download and install URLs | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `release.record` | Verify pkey-release+jws against pinned release keys | `cases.json` `releaseRecordCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `release.fetch` | Verified download: bearer delivery, Range resume, size and SHA-256 checked | transcripts | ✓ | planned (SP-12) | ✓ | planned (SP-19) | planned (SP-25) | ✓ | — |
-| `release.distribution` | The distribution download model: platforms and the current build | transcripts | ✓ | planned (SP-12) | ✓ | ✓ | ✓ | ✓ | — |
+| `release.fetch` | Verified download: bearer delivery, Range resume, size and SHA-256 checked | transcripts | ✓ | ✓ | ✓ | planned (SP-19) | planned (SP-25) | ✓ | — |
+| `release.distribution` | The distribution download model: platforms and the current build | transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.check` | Today's version check | transcripts (not recorded) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.feed` | Verify pkey-feed+jws: freshness, seq | `cases.json` `feedCases` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `update.feeds` | Native updater feed URLs: appcast, WinSparkle, Velopack, App Installer, zsync | `feed-url-matrix.json` | ✓ | planned (SP-12); N/A (web: runtime) | ✓ | ✓ | planned (SP-26) | ✓ | web: runtime |
+| `update.feeds` | Native updater feed URLs: appcast, WinSparkle, Velopack, App Installer, zsync | `feed-url-matrix.json` | ✓ | ✓; N/A (web: runtime) | ✓ | ✓ | planned (SP-26) | ✓ | web: runtime |
 | `update.decide` | The update decision | `update-matrix.json` + transcripts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.content` | The content decision: feed pack sets, floors and revocations, packs and prestage | `update-matrix.json` `contentRows` + `cases.json` `feedContentCases` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `update.driver` | Hand off to the native updater, or a store link | device tests | ✓ | planned (SP-15) | ✓ | ✓; N/A (ios: outlet) | ✓; N/A (ios: outlet) | ✓ | ios: outlet; jvm: runtime |
 | `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | ✓ | planned (SP-15) | ✓ | ✓ | ✓ | ✓ | — |
 | `outlet.detect` | Outlet detection | `outlet-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `crash.tags` | Crash-report tags: release, build, outlet and channel for Sentry | unit | ✓ | planned (SP-12) | ✓ | planned (SP-17) | ✓ | ✓ | — |
+| `crash.tags` | Crash-report tags: release, build, outlet and channel for Sentry | unit | ✓ | ✓ | ✓ | planned (SP-17) | ✓ | ✓ | — |
 
 ## Packs
 
@@ -134,7 +134,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Id | Capability | Proven by | Node | React | Python | Swift | Godot | Kotlin | Allowed N/A |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `ui.stages` | The boot stage machine: states, events, outcomes | `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `ui.boot` | One-call boot: discovery, register, trust, documents and report to a stage outcome | transcripts + `stage-matrix.json` | ✓ | planned (SP-12) | ✓ | ✓ | ✓ | planned (SP-20) | — |
+| `ui.boot` | One-call boot: discovery, register, trust, documents and report to a stage outcome | transcripts + `stage-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | planned (SP-20) | — |
 | `ui.kit` | Gate, activation, sign-in with QR, settings, devices, update banner, pack progress | snapshot tests | N/A (headless: runtime) | ✓ | N/A (headless: runtime) | planned (UK-07) | ✓ | ✓ | headless: runtime |
 | `ui.cli` | Terminal UI: status, activate, deactivate, sign-in and devices verbs | unit | ✓ | N/A (web, desktop-bridge: runtime) | ✓ | N/A (macos, ios: runtime) | N/A (linux, macos, windows, android, ios, web: runtime) | N/A (android, jvm: runtime) | web, desktop-bridge, macos, ios, windows, linux, android, jvm, dotnet, unity, tauri: runtime |
 | `commerce.receipt` | Store purchase to licence entitlement | transcripts | ✓ | planned (SP-16) | ✓ | ✓ | ✓ | ✓ | — |
