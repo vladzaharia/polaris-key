@@ -185,6 +185,7 @@ export const MICROSOFT_STORE_ADAPTER: StorefrontAdapter = {
     ciTokens: ["delete", "users"],
   },
   ci: null,
+  pr: null,
   listing: adapterListingProfile(STORE_LISTING_COLUMNS["ms-store"]),
   confirmation: { phrase: "app-name", label: "Partner Center" },
   audit: { action: "msstore", projection: PROJECTION },

@@ -70,6 +70,7 @@ export const ITCH_ADAPTER: StorefrontAdapter = {
     ciTokens: [...ITCH_CI.neverTokens],
   },
   ci: ITCH_CI.list,
+  pr: null,
   // itch.io's page text has no store-side limit Polaris Key sends to: nothing is pushed.
   listing: { fields: {}, images: {} },
   confirmation: { phrase: "app-name", label: "itch.io" },

@@ -3,6 +3,9 @@
 // NO Android dependency (checkModuleBoundaries), so the same JAR runs on Android API 24+ and on a
 // JVM desktop, with Java 17 bytecode.
 //
+// UK-40: KeyringStore binds the OS keyring through java-keyring, compileOnly like Tink: a desktop app
+// adds it at runtime, and without it the store keeps the token in its 0600 file and says so.
+//
 // Ed25519 has two backends behind one port: the JCA (`Signature.getInstance("Ed25519")`, JDK 15+
 // and Android API 33+) and Tink below that. Tink is compileOnly here: a JVM desktop always has
 // the JCA, and the Android glue (P6-12) brings tink-android for API 24–32.
@@ -32,9 +35,12 @@ dependencies {
     api(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
     compileOnly(libs.tink)
+    // UK-40: the OS keyring binding is optional (KeyringStore's `dependency` N/A when absent).
+    compileOnly(libs.java.keyring)
 
     testImplementation(libs.junit)
     testImplementation(libs.tink)
+    testImplementation(libs.java.keyring)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)
 }
@@ -70,6 +76,10 @@ publishing {
 }
 
 tasks.withType<Test>().configureEach {
+    // KeyringStoreTest runs or skips its real-OS-keyring contract on PKEY_KEYRING_TESTS; declaring it
+    // an input keeps a run with the variable from reusing an up-to-date or build-cache result recorded
+    // without it (and the reverse).
+    inputs.property("pkeyKeyringTests", providers.environmentVariable("PKEY_KEYRING_TESTS").orElse(""))
     systemProperty("pkey.repoRoot", rootProject.projectDir.resolve("../..").canonicalPath)
     systemProperty("pkey.sourceRoot", projectDir.resolve("src/main/kotlin").canonicalPath)
     testLogging {

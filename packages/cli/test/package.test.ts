@@ -243,9 +243,18 @@ describe("pkey release publish --deliverable <package> (F-03)", () => {
       deliverable: "npm.sdk",
       version: "1.4.0",
       channel: "stable",
-      seq: 7,
       package: { ecosystem: "npm", name: "@acme/sdk" },
     });
+    // No seq, and no releases asked of the ticket (so it answers none): the Worker takes the
+    // next seq at insert, so a concurrent publish of the same package (a main prerelease beside
+    // a tag's stable release) can never make this descriptor's seq stale (v0.8.22).
+    expect(d.seq).toBeUndefined();
+    expect(
+      (submits[0]!.body as Record<string, any>).descriptor.seq,
+    ).toBeUndefined();
+    const tickets = server.to("/release/publish/uploads");
+    expect(tickets).toHaveLength(1);
+    expect((tickets[0]!.body as Record<string, any>).releases).toBeUndefined();
     const tgzSha = sha(npmPackage()["acme-sdk-1.4.0.tgz"]!);
     expect(d.package.files[0]).toMatchObject({
       sha256: tgzSha,

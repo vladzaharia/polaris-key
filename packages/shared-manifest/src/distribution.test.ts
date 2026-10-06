@@ -312,6 +312,60 @@ describe("parseManifest and .pkey/distribution", () => {
     ]);
   });
 
+  it("reads a direct outlet's own tap and bucket, and refuses the official ones (A-18i)", () => {
+    const ok = validateIngestDocuments({
+      product,
+      schema,
+      release,
+      distribution: {
+        outlets: {
+          direct: {
+            platforms: ["windows", "macos"],
+            homebrewCask: "dice",
+            homebrewTap: "vlad/homebrew-games",
+            scoop: { bin: "Dice.exe" },
+            scoopBucket: "vlad/scoop-games",
+          },
+        },
+      },
+    });
+    expect(ok.errors).toEqual([]);
+    expect(
+      normalizeDistribution({
+        outlets: {
+          direct: {
+            homebrewTap: "vlad/homebrew-games",
+            scoopBucket: "vlad/scoop-games",
+          },
+        },
+      }).outlets[0]!.identity,
+    ).toEqual({
+      homebrewTap: "vlad/homebrew-games",
+      scoopBucket: "vlad/scoop-games",
+    });
+    for (const [homebrewTap, scoopBucket] of [
+      ["Homebrew/homebrew-cask", "ScoopInstaller/Main"],
+      ["homebrew/homebrew-core", "scoopinstaller/extras"],
+      ["vlad/games", "vlad/.hidden"],
+      ["vlad/homebrew-games/extra", "vlad"],
+    ]) {
+      const bad = validateIngestDocuments({
+        product,
+        schema,
+        release,
+        distribution: {
+          outlets: {
+            direct: { platforms: ["windows"], homebrewTap, scoopBucket },
+          },
+        },
+      });
+      expect(bad.errors.map((e) => [e.path, e.code])).toEqual([
+        ["/outlets/direct/homebrewTap", "invalid_outlet_identity"],
+        ["/outlets/direct/scoopBucket", "invalid_outlet_identity"],
+      ]);
+    }
+  });
+
   it("reads a snap outlet's channels: declared channels onto snap channels (A-18h)", () => {
     const ok = validateIngestDocuments({
       product,

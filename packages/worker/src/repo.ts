@@ -172,12 +172,12 @@ export interface ProfileRow {
   payload_json: string;
   modified_by: string | null;
   modified_at: number;
-  /** ST-01b (0074): who owns the row. Absent on rows read before the migration ran. */
+  /** ST-01b (0075): who owns the row. Absent on rows read before the migration ran. */
   source?: RowSource;
 }
 
 /**
- * ST-01b (migrations/0074): who owns a tier or profile row. A resync upserts only `manifest` rows
+ * ST-01b (migrations/0075): who owns a tier or profile row. A resync upserts only `manifest` rows
  * and leaves `console` rows (created or edited in the console) alone.
  */
 export type RowSource = "manifest" | "console";
@@ -197,7 +197,7 @@ export interface TierRow {
   policy_fingerprint?: string | null;
   modified_by: string | null;
   modified_at: number;
-  /** ST-01b (0074): who owns the row. */
+  /** ST-01b (0075): who owns the row. */
   source?: RowSource;
 }
 

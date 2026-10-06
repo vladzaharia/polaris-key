@@ -479,8 +479,14 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
               (a) => a.getAttribute("aria-labelledby") === "tile-nightfall",
             )!;
             const art = article.querySelector<HTMLElement>("[data-art]")!;
-            const plate = art.querySelector<HTMLElement>("span.absolute")!;
+            // Healthy is silence on art (UX-03): Nightfall has no plate; the issue plate
+            // (owner's padding) is measured on Ember Tactics, which has expired.
+            const emberArt = document.querySelector<HTMLElement>(
+              "article[aria-labelledby='tile-ember-tactics'] [data-art]",
+            )!;
+            const plate = emberArt.querySelector<HTMLElement>("span.absolute")!;
             const a = art.getBoundingClientRect();
+            const e = emberArt.getBoundingClientRect();
             const p = plate.getBoundingClientRect();
             const pill = plate.firstElementChild!.getBoundingClientRect();
             const icon = article.querySelector<HTMLElement>("img[data-art]")!;
@@ -492,8 +498,11 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
             const q = getComputedStyle(square);
             return {
               ratio: a.width / a.height,
-              insetRight: a.right - p.right,
-              insetBottom: a.bottom - p.bottom,
+              healthyPlate:
+                (art.querySelector("span.absolute")?.childElementCount ?? 0) >
+                0,
+              insetRight: e.right - p.right,
+              insetBottom: e.bottom - p.bottom,
               plateHeight: pill.height,
               byline: article.textContent!.includes("Lanternworks"),
               iconFrame: [
@@ -511,6 +520,7 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
             1,
           );
           expect(card.insetRight).toBeGreaterThanOrEqual(16);
+          expect(card.healthyPlate).toBe(false);
           expect(card.insetBottom).toBeGreaterThanOrEqual(16);
           expect(card.insetRight).toBe(card.insetBottom);
           expect(card.plateHeight).toBeGreaterThanOrEqual(32);
@@ -602,7 +612,8 @@ describe("focused flows (PX-10)", () => {
     await shoot(o.page, "device-limit-done-mobile-dark");
     expect(
       await o.page
-        .getByRole("link", { name: "Return to Orbit Survey" })
+        .getByRole("link", { name: "Back to Orbit Survey" })
+        .last()
         .getAttribute("href"),
     ).toBe("orbitsurvey://retry");
     expect(o.requests).toContain(
@@ -620,7 +631,7 @@ describe("focused flows (PX-10)", () => {
     await h1(o.page, "Your license is on 2 of 2 devices");
     expect(
       await o.page
-        .getByRole("link", { name: "Back to Orbit Survey" })
+        .getByRole("link", { name: "See Orbit Survey in your library" })
         .getAttribute("href"),
     ).toBe("#/p/orbit-survey");
     expect(await o.page.content()).not.toContain("evil.example");
