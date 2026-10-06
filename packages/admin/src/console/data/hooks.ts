@@ -8,6 +8,7 @@ import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import {
   api,
   setCsrf,
+  type AdminSummary,
   type Me,
   type PlatformIdentity,
   type ProductDetail,
@@ -40,6 +41,22 @@ export function fetchProducts(): Promise<ProductDetail[]> {
 export function useProducts(): UseQueryResult<ProductDetail[]> {
   return useQuery(
     { queryKey: qk.products(), queryFn: fetchProducts },
+    queryClient,
+  );
+}
+
+export function fetchSummary(): Promise<AdminSummary> {
+  return api.summary().then((r) => ({ products: r?.products ?? {} }));
+}
+
+/**
+ * Home's product-card facts (`GET /manage/api/summary`): every product's in one read. A card
+ * renders without them; while they load each fact is a skeleton, and if they fail it simply has
+ * none (the facts are additive, never the card's content).
+ */
+export function useSummary(): UseQueryResult<AdminSummary> {
+  return useQuery(
+    { queryKey: qk.summary(), queryFn: fetchSummary, retry: 1 },
     queryClient,
   );
 }

@@ -1,6 +1,9 @@
 import * as React from "react";
 import { cn } from "../../lib/cn.js";
+import { iconShape, type IconShape } from "../../lib/productArt.js";
 import { letterOf, tintFor } from "./ProductArt.js";
+
+export { iconShape };
 
 const SIZE: Record<number, string> = {
   20: "size-5",
@@ -20,27 +23,6 @@ const RADIUS: Record<number, string> = {
   64: "rounded-2xl",
   112: "rounded-[1.75rem]",
 };
-
-type IconShape = "shaped" | "square";
-
-/**
- * `square` when the icon's top-left corner pixel is opaque (a full-bleed square), else `shaped`.
- * The art is same-origin (the media proxy), so reading it back is allowed; where it can't be read
- * (no canvas) the icon is left exactly as the developer drew it.
- */
-export function iconShape(img: HTMLImageElement): IconShape {
-  try {
-    const canvas = document.createElement("canvas");
-    canvas.width = 32;
-    canvas.height = 32;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return "shaped";
-    ctx.drawImage(img, 0, 0, 32, 32);
-    return ctx.getImageData(0, 0, 1, 1).data[3]! >= 250 ? "square" : "shaped";
-  } catch {
-    return "shaped";
-  }
-}
 
 /** The letter tile's own chrome: its radius and letter size, per size. */
 const TILE: Record<number, string> = {

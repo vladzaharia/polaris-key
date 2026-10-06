@@ -37,6 +37,11 @@ import {
   type MintPolicyProduct,
 } from "../../services/config/mint.js";
 import { parseAutoIssue } from "../../core/fingerprint.js";
+import {
+  productIcons,
+  type ProductIconView,
+  type ProductPresentationView,
+} from "./presentation.js";
 
 interface RequiredSecretStatus {
   name: string;
@@ -182,6 +187,9 @@ export async function productView(
   db: Db,
   p: ProductRow,
   now: number = Math.floor(Date.now() / 1000),
+  /** Every product's icon, read once by the list (`productIcons(env, db)`); one product's
+   *  own read otherwise. */
+  icons?: Map<string, ProductIconView>,
 ): Promise<Record<string, unknown>> {
   const activeKey = await loadPublicSigningKey(db, p.slug);
   const signingKid = activeKey?.kid ?? p.signing_kid;
@@ -216,9 +224,14 @@ export async function productView(
     },
   );
   const portalSettings = await getPortalProductSettings(db, p.slug);
+  const icon =
+    (icons ?? (await productIcons(env, db, p.slug))).get(p.slug) ?? null;
+  const presentation: ProductPresentationView = { icon };
   return {
     slug: p.slug,
     name: p.name,
+    // The console's logo (Home, Products): the hosted icon as image-host URLs, or null.
+    presentation,
     // F-03: the platform's own product (the package-feeds owner of our SDKs). The console keeps it
     // out of the product switcher and the Products registry; it is reached from Platform.
     system: p.system === 1,

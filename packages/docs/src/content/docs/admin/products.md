@@ -10,15 +10,26 @@ authority can see, which today is every product that exists. This page covers re
 what its lifecycle actions actually do server-side, and the setup-health checklist the
 [Overview page](/docs/admin/console-tour/#core) and Home are built from.
 
-The registry is a table: each product's name (a link to its Overview; a click anywhere on the row
-follows it), slug, the services it runs, whether its setup is complete, where it comes from
+The registry is a table: each product's logo and name (a link to its Overview; a click anywhere on
+the row follows it), slug, the services it runs, whether its setup is complete, where it comes from
 (GitHub or manual) and when it last changed. Search, the Setup and Source filters, and the sort
 live in the URL, so a filtered view can be bookmarked or shared.
 
 **Home** (`#/`) is the cross-product view of the same registry: a **Needs attention** list (every
 product's open setup items, each with the one link that fixes it), live figures (products,
-products needing attention, setup complete, repository-linked) and a card per product with the
-services it runs. Its filter and sort are in the URL too.
+products needing attention, repository-linked) and a card for each of the six most recently changed
+products, with **All products** opening this table. A card shows the product's logo, its name and
+slug, and one row per service it runs. Each row links to that service's page and shows one fact:
+the active licenses, the latest release and its channel, the storefronts, the catalog's schema
+version or the users. When a service needs something, its row shows what instead, and links to
+the fix. A product with more than four services lists three rows (those that need something
+first) and links to the rest by their icons. An issue that belongs to the product itself, such as
+a missing signing key, is a pill beside its name. A healthy card shows no status at all.
+
+The logo is the product's hosted icon: the copy Polaris Key keeps of the `presentation.icon` in
+`.pkey/product`, or of the store listing's icon. Until a copy exists, or when it cannot load, the
+card shows the name's first letter on a plain tile. A failed re-fetch keeps showing the last good
+copy.
 
 ## Registering a product
 

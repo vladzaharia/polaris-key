@@ -180,6 +180,23 @@ const ROW_LAST_SIGNIN = `
     WHERE pa.account_id = s.account_id AND pa.product = s.product AND pa.action = '${PRODUCT_SIGNIN_ACTION}')`;
 
 /**
+ * How many users each product's Users page lists (`listProductUsers` with Identity on: a subject
+ * with a licence, a signed-in device or a sign-in through the product), for every product in ONE
+ * grouped query. The console's summary read (`admin/lib/summary.ts`) puts it on Home's card.
+ */
+export async function countListedUsersByProduct(
+  db: Db,
+): Promise<Map<string, number>> {
+  const rows = await db.all<{ product: string; n: number }>(
+    `SELECT s.product AS product, COUNT(*) AS n
+       FROM account_product_subjects s
+      WHERE (${ROW_LICENSES} > 0 OR ${ROW_SIGNED_IN} > 0 OR ${ROW_LAST_SIGNIN} IS NOT NULL)
+      GROUP BY s.product`,
+  );
+  return new Map(rows.map((r) => [r.product, Number(r.n)]));
+}
+
+/**
  * One page of the product's users, newest subject first. A subject is listed once it holds a
  * licence of the product, a device signed in with it, or a sign-in through the product: a
  * subject minted only for a support code stays unlisted, so that action cannot flood a console

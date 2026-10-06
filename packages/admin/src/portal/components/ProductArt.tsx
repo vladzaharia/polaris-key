@@ -1,5 +1,6 @@
 import * as React from "react";
 import { cn } from "../../lib/cn.js";
+import { letterOf } from "../../lib/productArt.js";
 
 /**
  * Product art (PORTAL.md §5.2 `ProductArt`): the listing's header art through the same-origin
@@ -27,10 +28,7 @@ export function tintFor(slug: string, tint: string | null): string {
   return TINTS[h % TINTS.length]!;
 }
 
-export function letterOf(name: string): string {
-  const m = name.match(/[\p{L}\p{N}]/u);
-  return (m?.[0] ?? "?").toUpperCase();
-}
+export { letterOf };
 
 /** `icon` is `ProductIcon`. */
 export type ArtVariant = "banner" | "tile" | "thumb";

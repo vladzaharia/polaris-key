@@ -5,7 +5,14 @@ import { chromium, firefox, webkit, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
 import { GLOBAL_PAGES, SECTIONS } from "../src/console/nav.js";
-import { DEVICE_ID, LONG_SLUG, PACK_ID, resolve } from "./layoutFixtures.js";
+import {
+  DEVICE_ID,
+  fixtureImage,
+  IMG_ORIGIN,
+  LONG_SLUG,
+  PACK_ID,
+  resolve,
+} from "./layoutFixtures.js";
 import {
   probeLayout,
   type LayoutViolation,
@@ -35,7 +42,10 @@ import {
  */
 
 const here = fileURLToPath(new URL("..", import.meta.url));
-const CSP = appSecurityHeaders().get("content-security-policy")!;
+// The console shell's policy as the Worker sends it with an image host configured.
+const CSP = appSecurityHeaders(new Headers(), {
+  imgOrigin: IMG_ORIGIN,
+}).get("content-security-policy")!;
 const SHOTS = process.env.PK_SHOTS_DIR;
 const REPORT = process.env.PK_LAYOUT_REPORT;
 /** The page wrapper's bottom padding is 24px; 48 allows a card's own padding on top of it. */
@@ -272,6 +282,15 @@ async function open(
   const errors: string[] = [];
   await ctx.route("**/*", async (route) => {
     const url = new URL(route.request().url());
+    const image = fixtureImage(url);
+    if (image)
+      return route.fulfill({
+        body: image,
+        headers: {
+          "content-type": "image/png",
+          "access-control-allow-origin": "*",
+        },
+      });
     if (url.pathname.startsWith("/manage/api/")) {
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });

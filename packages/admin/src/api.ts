@@ -899,9 +899,44 @@ export interface ProductOnboarding {
   nextActions?: ProductSetupAction[] | string[];
 }
 
+/** A product's hosted icon on the image host (worker `admin/lib/presentation.ts`). */
+export interface ProductIconRef {
+  /** The original, content-addressed. */
+  url: string;
+  /** The 64 px WebP variant, or `null` when the ladder has none. */
+  w64: string | null;
+  /** The 128 px WebP variant, or `null`. */
+  w128: string | null;
+}
+
+/** What the console draws for a product's identity (`ProductLogo`). */
+export interface ProductPresentation {
+  /** The hosted icon, or `null` when there is no copy the image host serves. */
+  icon: ProductIconRef | null;
+  /** HA-12: `presentation.accent` (`#rrggbb`). Not served yet, so always absent today. */
+  accent?: string | null;
+  /** HA-12: the accent on a dark ground. */
+  accentDark?: string | null;
+}
+
+/** One product's facts for Home's card (`GET /manage/api/summary`; a member per service it runs). */
+export interface ProductSummary {
+  license?: { active: number };
+  /** The newest app release a channel serves and that channel; `null` when none is served yet. */
+  release?: { version: string; channel: string } | null;
+  distribution?: { storefronts: number };
+  identity?: { users: number };
+}
+
+export interface AdminSummary {
+  products: Record<string, ProductSummary>;
+}
+
 export interface ProductDetail {
   slug: string;
   name: string;
+  /** The logo (owner request 2026-10-06). Absent from a Worker that predates it. */
+  presentation?: ProductPresentation;
   /** The platform's own product (F-03: the package-feeds owner of our SDKs); kept out of the
    *  product switcher and the Products registry. */
   system?: boolean;
@@ -3759,6 +3794,8 @@ const rawApi = {
 
   // ── products (platform registry) ──────────────────────────────────────────────
   products: () => call<{ products: ProductDetail[] }>("/manage/api/products"),
+  /** Home's product-card facts, every product in one read (A-8, sliced). */
+  summary: () => call<AdminSummary>("/manage/api/summary"),
   product: (slug: string) => call<{ product: ProductDetail }>(p(slug)),
   createManualProduct: (body: CreateManualProductBody) =>
     call<CreateManualProductResult>("/manage/api/products", {

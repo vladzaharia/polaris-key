@@ -23,6 +23,8 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/manage/api/products/{product}/license/licenses` | admin | Create a licence and mint its first key (shown once) |
 | POST | `/manage/api/products/link-repo` | admin | Create a product from a repository's `.pkey/`, or dry-run it |
 | GET | `/manage/api/products/slug-check` | admin | Is a slug free for a new product |
+| GET | `/manage/api/products` | admin | Every registered product, as the console's registry, Home and switcher read it |
+| GET | `/manage/api/summary` | admin | One fact per service for every product, for Home's product cards |
 | GET | `/{product}/{channel}/appcast.xml` | aliases | Alias → /\{product\}/update/\{channel\}/appcast.xml |
 | GET | `/{product}/appcast.xml` | aliases | Alias → /\{product\}/update/appcast.xml |
 | GET | `/{product}/install.sh` | aliases | Alias → /\{product\}/distribution/install.sh |

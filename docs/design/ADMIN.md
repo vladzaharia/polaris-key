@@ -1064,9 +1064,11 @@ The wireframes are low fidelity. Glyph legend:
 
 **Purpose.** "What needs me across all products?" Fixes DSH-1 to DSH-7 (and relies on chunk 2's SH-1 fix).
 
-**Data.** `useMe` + `useProducts` (`GET /products` carries setup, onboarding, services and signing for
-every product). Per-product attention signals load lazily and are capped at the first 12 products by
-recent activity. **A-8** (summary endpoint) is optional, for scale.
+**Data.** `useMe` + `useProducts` + `useSummary`, and no read of its own per card. `GET /products`
+carries every product's setup, onboarding, services, signing and logo (`presentation.icon`: the
+hosted icon as image-host URLs). `GET /summary` (**A-8**, sliced to what the cards show) carries one
+fact per service for every product, in four grouped queries. The catalog's schema version rides
+`/me`.
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────────┐
@@ -1084,14 +1086,17 @@ recent activity. **A-8** (summary endpoint) is optional, for scale.
 │           │ │ ○ Atlas    No catalog published yet                         [Publish →]│ │
 │           │ └───────────────────────────────────────────────────────────────────────┘ │
 │           │                                                                           │
-│           │ Products                                [ Filter products… ]  Sort: Recent▾│
-│           │ ┌────────────────────────────────┐ ┌────────────────────────────────┐    │
-│           │ │ DJDL                 djdl      │ │ Diceroll             diceroll  │    │
-│           │ │ ◇ ◈ ▣ ★ ★ ◉   (service dots)  │ │ ◇ ◈ ▣                         │    │
-│           │ │ 1,284 active licenses · 3 exp. │ │ 46 active licenses             │    │
-│           │ │ 2.4.0 on stable · rolling 25 % │ │ 0.9.2 on beta                  │    │
-│           │ │ ▲ 2 need attention     Open →  │ │ ▲ 2 need attention     Open →  │    │
-│           │ └────────────────────────────────┘ └────────────────────────────────┘    │
+│           │ Recent products                                     [ All products → ]    │
+│           │ ┌────────────────────────────────┐ ┌────────────────────────────────┐     │
+│           │ │ [logo] DJDL                    │ │  [D]  Diceroll                 │     │
+│           │ │        djdl                    │ │       diceroll                 │     │
+│           │ │ ────────────────────────────── │ │ ────────────────────────────── │     │
+│           │ │ ◇ License         1,284 active │ │ ◇ License            46 active │     │
+│           │ │ ◈ Config      ▲ Needs approval │ │ ◈ Config             Schema v8 │     │
+│           │ │ ◉ Identity    ▲ Secret missing │ │ ▣ Release         0.9.2 · beta │     │
+│           │ │ ▣ ★ ★ ☁                 4 more │ │                                │     │
+│           │ │ Synced 2 hr ago                │ │ Changed yesterday              │     │
+│           │ └────────────────────────────────┘ └────────────────────────────────┘     │
 │           │                                                                           │
 │           │ Recent activity (all products, A-2b)               [View activity →]     │
 │           │  · 14:02  Ada  published catalog v8            DJDL                       │
@@ -1099,12 +1104,44 @@ recent activity. **A-8** (summary endpoint) is optional, for scale.
 └───────────┴───────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Product cards.**
-  - The whole card is **not** a link. The product name is the link, plus an explicit "Open" (DSH-3).
-  - Service dots are `ServiceGlyph`s with an sr-only list ("Runs License, Config, Release,
-    Distribution, Update, Identity").
-  - The card's facts come from cached queries when available. A product never visited shows its
-    setup state only (from `/products`), with no extra fetches.
+- **Recent products.** Home shows the **six most recently changed** products. **All products**
+  opens the Products table, which keeps search, the facets and the sort (EXPERIENCE C17); Home has
+  no filter or sort of its own.
+- **Product cards** (owner request 2026-10-06; the directions and the choice are in
+  [console-product-card](console-product-card/README.md), direction B):
+  - **The name is the card's one link to the product.** Its hit area stretches over the card
+    (`::after`), so a click anywhere opens Overview (DSH-3). Focus on it rings the whole card
+    (`has-[a[data-card-link]:focus-visible]`).
+  - **Header:** the product's logo, its name (up to two lines) and its slug. The logo is the
+    hosted `presentation.icon` copy, else the `listing.icon` copy, as the 64 and 128 px variants.
+    With no copy, or when it fails to load, the logo is a neutral monogram tile, with no spinner.
+  - **Rows:** one per service the product runs, up to four: the glyph, the label and one fact at the
+    right edge. The facts:
+    - License: active licences;
+    - Config: the schema version;
+    - Release: the version a channel serves, and that channel;
+    - Distribution: storefronts;
+    - Identity: users;
+    - Update and Cloud Sync: none.
+
+    Each row links to its service's page. It is a **sibling** of the name link, above its stretched
+    hit area, never nested in it, and it rings on its own focus. Past four services, the card shows
+    three rows (those that need something first) and links to the rest by their glyphs, with "N
+    more". Rows are 44 px tall on phones.
+
+  - **Issues sit where they belong.** A service's issue replaces that row's fact with a pill naming
+    it ("Needs approval"), and the row then links to the fix. Only an issue of the product itself
+    (no signing key, setup not finished) is a pill, at the end of the card header. Healthy draws
+    nothing (§5.11).
+  - **Footer:** "Synced …" for a repository-linked product, "Changed …" for a manual one. It is
+    pinned to the card's bottom, so the cards in a row share one height and one footer edge; a card
+    with fewer rows shows air above its footer.
+  - **Facts never hold the card back.** Each one is a skeleton while `GET /summary` loads. If that
+    read fails, the card renders without them.
+
+- **Figures:** Products, Need attention and Linked to a repository. There is no "Setup complete"
+  figure: healthy is silence (EXPERIENCE C2). Below 1280 px an odd last tile spans its row, so none
+  is left alone beside empty space.
 - **Attention items** are typed (`AttentionItem {product, severity, kind, target, action}`). The
   kinds:
 
