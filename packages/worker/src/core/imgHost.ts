@@ -25,7 +25,9 @@
  * product's ref is never enough (the same rule `blobs.ts` `hasRef` enforces for the byte routes),
  * and neither is a ref of another kind: release files, packs and bundles are the bytes host's,
  * never this host's. A variant answers only when the original's row lists it in `variants_json`
- * AND the same slot holds a ref to the variant's object. Everything else is the plain not-found.
+ * (read by HA-03's `parseVariants`, the one parser: `{w, format: "image/webp", sha256, size}`
+ * entries only) AND the same slot holds a ref to the variant's object. Everything else is the
+ * plain not-found.
  *
  * NEVER GATED (owner decision 7). The host builds only `blobs/sha256/<hex>` keys (`blobKey`
  * without `gated`), so nothing under `gated/` is reachable here, and it carries no auth code: a
@@ -60,11 +62,17 @@
  * are public, nothing secret is behind the limit).
  */
 
+import { PRODUCT_SLUG_PATTERN } from "@polaris-key/manifest";
 import type { Env } from "../env.js";
 import type { Db } from "../db/types.js";
 import { errorResponse, notFound } from "./errors.js";
 import { blobKey, checksumHex } from "./blobs.js";
-import { HOSTED_ASSET_REF, slotClass } from "./hostedAssets.js";
+import {
+  HOSTED_ASSET_REF,
+  VARIANT_FORMAT,
+  parseVariants,
+  slotClass,
+} from "./hostedAssets.js";
 import { IMAGE_TYPES } from "./sniff.js";
 import { clientIp, rateLimitOk } from "./rateLimit.js";
 import { IMG_MAX_WIDTH, imgOrigin } from "./imgHostname.js";
@@ -103,7 +111,8 @@ export const IMG_ALIASES = {
 /** The highest screenshot an alias addresses: the listing's 16 slots (`hostedAssets.ts`). */
 export const IMG_MAX_SCREENSHOT = 16;
 
-const SLUG = "[a-z0-9][a-z0-9-]{0,63}";
+/** P0-14's one product slug rule (`PRODUCT_SLUG_PATTERN`), unanchored to embed in a path. */
+const SLUG = PRODUCT_SLUG_PATTERN.slice(1, -1);
 const ASSET_RE = new RegExp(`^/(${SLUG})/a/([0-9a-f]{64})$`);
 const VARIANT_RE = new RegExp(
   `^/(${SLUG})/a/([0-9a-f]{64})/([1-9][0-9]{0,3})\\.webp$`,
@@ -257,16 +266,6 @@ async function original(
   return null;
 }
 
-/** One `variants_json` entry (HA-03: `{w, format, sha256, size}`), or `null` when malformed. */
-function variantEntry(v: unknown): { w: number; sha256: string } | null {
-  if (typeof v !== "object" || v === null) return null;
-  const e = v as { w?: unknown; format?: unknown; sha256?: unknown };
-  if (!Number.isSafeInteger(e.w)) return null;
-  if (e.format !== "webp" && e.format !== "image/webp") return null;
-  if (typeof e.sha256 !== "string" || !SHA256_RE.test(e.sha256)) return null;
-  return { w: e.w as number, sha256: e.sha256 };
-}
-
 /** The `w`-pixel WebP variant of the original at `sha256`, when `product` holds both. */
 async function variant(
   db: Db,
@@ -285,17 +284,11 @@ async function variant(
     sha256,
   );
   for (const row of rows) {
-    if (!imageSlot(row.slot) || !row.variants_json) continue;
-    let list: unknown;
-    try {
-      list = JSON.parse(row.variants_json);
-    } catch {
-      continue;
-    }
-    if (!Array.isArray(list)) continue;
-    for (const raw of list) {
-      const entry = variantEntry(raw);
-      if (!entry || entry.w !== w) continue;
+    if (!imageSlot(row.slot)) continue;
+    // HA-03's own reader: a malformed list, or any entry whose `format` is not exactly
+    // `VARIANT_FORMAT` ("image/webp"), reads as no variants at all.
+    for (const entry of parseVariants(row.variants_json)) {
+      if (entry.w !== w) continue;
       const held = await db.first<{ one: number }>(
         `SELECT 1 AS one FROM blob_refs
           WHERE product = ? AND storage_key = ? AND ref_kind = ? AND ref_id = ? LIMIT 1`,
@@ -304,7 +297,7 @@ async function variant(
         HOSTED_ASSET_REF,
         `${row.slot}@${row.locale}`,
       );
-      if (held) return { sha256: entry.sha256, contentType: "image/webp" };
+      if (held) return { sha256: entry.sha256, contentType: VARIANT_FORMAT };
     }
   }
   return null;
