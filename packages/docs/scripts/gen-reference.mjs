@@ -454,6 +454,8 @@ const TABLE_OWNERS = {
     "library_entries",
     "storefront_daily",
     "storefront_seen",
+    // PX-W12: account joins and their 72-hour undo.
+    "account_merges",
     "portal_accounts",
     "portal_account_emails",
     "portal_account_identities",

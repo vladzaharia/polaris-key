@@ -32,6 +32,7 @@ import { endLicenseLinks, moveLicenseOwnerEndingLinks } from "./legacy.js";
 import type { AccountContext } from "./links.js";
 import { getAccountRow } from "./repo.js";
 import { stmtDeleteTermsAcceptances } from "./terms.js";
+import { stmtDeleteAccountMerges } from "./mergeUndo.js";
 
 /** Statements that end one (account, product) subject: its aliases, then the row itself. */
 function stmtsEndSubject(
@@ -249,6 +250,8 @@ export async function deleteAccount(
       sql: "DELETE FROM library_entries WHERE account_id = ?",
       params: [accountId],
     },
+    // PX-W12: its join records, whose snapshots hold the absorbed accounts' details.
+    stmtDeleteAccountMerges(accountId),
     { sql: "DELETE FROM accounts WHERE id = ?", params: [accountId] },
     {
       sql: `INSERT OR REPLACE INTO account_tombstones (id, email_hash, merged_into, deleted_at)

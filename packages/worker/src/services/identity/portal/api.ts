@@ -78,6 +78,12 @@ import {
 } from "./accountSessions.js";
 import { avatarUrl, handleCardApi, turnstileSiteKey } from "../card/index.js";
 import { handleAccountPasskeys } from "../passkeys/routes.js";
+import {
+  LINK_FLOW_COOKIE,
+  clearAccountRealmCookie,
+} from "../../../core/accountCookies.js";
+import { handleAccountMethods } from "./methods.js";
+import { handleAccountLink } from "./link.js";
 import { clearDeviceSubjects } from "../../../core/subjectHooks.js";
 import {
   handleLibraryEntryRemove,
@@ -1277,9 +1283,12 @@ async function handleSessions(
       summary: `Signed out everywhere (${ended} sessions, ${devices.cleared} devices)`,
       now,
     });
-    return portalJson({ ok: true, ended, devices: devices.cleared }, 200, {
+    const out = portalJson({ ok: true, ended, devices: devices.cleared }, 200, {
       "set-cookie": buildPortalClearCookie(),
     });
+    // PX-W12: a Link an existing account flow in this browser ends with the session.
+    out.headers.append("set-cookie", clearAccountRealmCookie(LINK_FLOW_COOKIE));
+    return out;
   }
   if (rest.length === 1 && rest[0]) {
     if (req.method !== "DELETE") return err(405, "method_not_allowed");
@@ -1294,11 +1303,17 @@ async function handleSessions(
       now,
     });
     const current = id === currentIdHash;
-    return portalJson(
+    const out = portalJson(
       { ok: true, current },
       200,
       current ? { "set-cookie": buildPortalClearCookie() } : undefined,
     );
+    if (current)
+      out.headers.append(
+        "set-cookie",
+        clearAccountRealmCookie(LINK_FLOW_COOKIE),
+      );
+    return out;
   }
   return notFound();
 }
@@ -1437,6 +1452,21 @@ export async function handlePortalApi(
       segments.slice(2),
       now,
     );
+  }
+  // PX-W12 (G27): sign-in methods (list, connect, disconnect) and Link an existing account (join,
+  // undo). Each change checks step-up, the never-orphan guard and its own rate limit.
+  if (
+    segments[0] === "me" &&
+    (segments[1] === "methods" || segments[1] === "link")
+  ) {
+    const caller = {
+      accountId: session.accountId,
+      authenticatedAt: portalSessionAuthenticatedAt(session),
+      sessionIdHash,
+    };
+    return segments[1] === "methods"
+      ? handleAccountMethods(req, env, db, caller, segments.slice(2), now)
+      : handleAccountLink(req, env, db, caller, segments.slice(2), now);
   }
   await syncAccountLicenseLinks(db, session.accountId, now);
 

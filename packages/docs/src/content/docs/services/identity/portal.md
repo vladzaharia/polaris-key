@@ -283,6 +283,48 @@ url96}}`; it does not change the profile until a `PATCH` puts it to use. An unus
   **`DELETE /api/me/passkeys/<id>`** removes one under the same step-up; removing the account's
   last way to sign in is refused (`409 last_link`). Adding and removing are audited and emailed
   to every verified address, and share 10 changes a minute per account.
+- **`GET /api/me/methods`** — Account → Sign-in methods: every method (`id`, `kind`, `group` of
+  `accounts`, `email` or `passkeys`, the connected identity as `display`, when it was connected and
+  last used, and `canRemove` with a `reason`: `last_link` for the only method, `only_email` for the
+  only address while it is the primary), the addresses and passkeys in their own shapes, Apple,
+  Google and Steam always (`providers`, with `connected` and whether this deploy has them),
+  `hideMyEmail` for an Apple relay primary address, and `stepUp` (whether this session signed in
+  within 5 minutes). No account id or provider subject is in it.
+  **`POST /api/me/methods/<kind>/start`** connects one, with a sign-in in the last 5 minutes
+  (`401 step_up_required` otherwise). `google`, `apple` and `steam` answer `{redirect}` for the
+  browser to open; the provider comes back to its registered sign-in callback, which links the
+  identity to this account without signing anyone in (a method another account holds is refused,
+  `link_conflict`; the provider's email claim is narrowed exactly as at sign-in, and an address
+  another account uses is never stored as verified) and lands on
+  `/#/account/methods?connected=<provider>` or `?error=<code>&method=<provider>`. `email` takes
+  `{email}` and sends a code, with the same answer whatever the address;
+  **`POST /api/me/methods/email/verify {code}`** then connects it (`409 link_conflict` when another
+  account uses it, known only once proven), making it the primary email of an account that had
+  none. `passkey` answers the passkey registration challenge above.
+  **`DELETE /api/me/methods/<id>`** disconnects one under the same step-up; the last method is
+  refused (`409 last_link`) and so is the only address while it is the primary (`403 forbidden`,
+  `reason: only_email`); removing the primary while another address exists makes the oldest other
+  one primary. Every change is audited and emailed to every verified address (an email method is
+  named generically, and a removed address is told too); changes share 10 a minute per account.
+- **Link an existing account** (`/api/me/link`) — joins two accounts only with proof of both in one
+  browser. **`POST /api/me/link/start`** (a sign-in in the last 5 minutes) records this account's
+  proof in a 15-minute `__Host-pkey_link` flow; the person signs in to the other account on the
+  login card by any of its methods, and **`GET /api/me/link`** then shows both accounts (how each
+  was proven, what each holds), the result, and `canJoin` with a `reason` (`sign_in_other`,
+  `step_up_required`, `merge_pending`). **`POST /api/me/link/confirm {keep?}`** joins them when both
+  proofs are under 5 minutes old and both sessions are live, keeping the account linked in
+  (`other`, the default) or the started one; it is refused while either account could still undo
+  a join of its own (`403 forbidden`, `reason: merge_pending`), uses up the flow (two racing
+  confirms merge once), and is audited and emailed to both with the undo window. An account's
+  details show on the join screen only while its proof's session is live; signing out clears the
+  flow. **`POST /api/me/link/cancel`** forgets the flow. `GET /api/me/link`
+  also lists `undoable` joins, and **`POST /api/me/link/undo {merge}`** (a fresh sign-in to the kept
+  account) separates the two again within 72 hours: the joined account's methods still on the kept
+  account (one disconnected since stays disconnected), its licences, sessions and the rest go back;
+  a licence that goes back revokes the registry tokens the kept account minted on it meanwhile;
+  developers keep the alias they were told about, and the joined account gets a fresh pairwise
+  subject where its old one became an alias (`404 not_found` once undone or past 72 hours,
+  `409 last_link` when an account would be left with no way to sign in).
 - **`DELETE /api/me`** — the account holder erases their own account. Deletes every email,
   identity, and license-link row plus the account row itself in one atomic batch, then writes a
   single tombstone audit entry naming only the opaque `acct_…` id — nothing that still identifies

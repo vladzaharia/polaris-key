@@ -133,6 +133,15 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | DELETE | `/api/library/{product}` | portal | Remove a library entry |
 | GET | `/api/library` | portal | The signed-in account's library |
 | DELETE | `/api/licenses/{product}/{licenseId}` | portal | Remove a licence from the library |
+| POST | `/api/me/link/cancel` | portal | Forget this browser's link flow |
+| POST | `/api/me/link/confirm` | portal | Join the two accounts, with proof of both |
+| POST | `/api/me/link/start` | portal | Start linking an existing account |
+| POST | `/api/me/link/undo` | portal | Undo a join within 72 hours |
+| GET | `/api/me/link` | portal | The join screen, and the joins this account can still undo |
+| POST | `/api/me/methods/{kind}/start` | portal | Connect a sign-in method |
+| DELETE | `/api/me/methods/{methodId}` | portal | Disconnect a sign-in method |
+| POST | `/api/me/methods/email/verify` | portal | Connect an email address with its code |
+| GET | `/api/me/methods` | portal | The account's sign-in methods, grouped, with what each allows |
 | DELETE | `/api/me/passkeys/{passkeyId}` | portal | Remove a passkey |
 | POST | `/api/me/passkeys/options` | portal | A registration challenge for this session |
 | GET | `/api/me/passkeys` | portal | The account's passkeys, and whether one can be added |

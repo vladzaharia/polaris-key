@@ -5723,6 +5723,74 @@ merge and deletion) apply to it unchanged.
   (I-17). AAGUIDs are stored for display only and are not verified (no attestation); a malicious
   authenticator can claim any model, which affects only the label the person sees.
 
+### Sign-in methods and joining accounts (PX-W12)
+
+Account → Sign-in methods and Link an existing account (`services/identity/portal/methods.ts`,
+`portal/link.ts`, `accounts/mergeUndo.ts`; PORTAL.md §4.11, §4.26, §10.2 G27) put I-05's link
+engine and merge behind portal routes. S-16 §5.4 item 3 (account takeover through linking) and
+item 15 (merge takeover) are the threats; the rules below are what the routes add.
+
+- **Connect.** Every connect needs a sign-in no older than 5 minutes, re-checked when the change
+  lands (`linkIdentity`), so a stolen days-old cookie cannot add an attacker's method as a way back
+  in. A provider connect reuses the provider's registered sign-in callback, the single-use flow
+  record and the `SameSite=None` binding cookie (so a callback finishes only in the browser that
+  started it), and the record carries the account and its session row because Apple's form_post
+  sends no Lax session cookie; the callback refuses when that session was signed out or revoked
+  meanwhile, and it never signs anyone in or opens the email gate. The provider's email claim is
+  narrowed exactly as at sign-in (`providerVouchesForEmail`), and an address another account uses
+  is stored unverified, so a connect cannot make one address verified on two accounts (which would
+  hand that address's waiting licences to the wrong account). An email connect sends a code bound
+  to the session that asked, under I-02's send and attempt limits, and answers its start
+  identically whatever the address; whose the address is shows only after the code proved it. A
+  method another account holds is refused (`link_conflict`) and nothing moves.
+- **Disconnect.** The same step-up; the last method is never removed (`last_link`, guarded inside
+  the DELETE, so two racing removals cannot orphan the account, a test); the only address cannot
+  go while it is the primary, so notices and passkey enrolment always have a verified address
+  (guarded in the same DELETE, with the promotion of the next address in the same batch, a test).
+  Every change is audited and emailed to every verified address; an email method is named
+  generically in those notices, so no notice hands one of the account's addresses to the others,
+  and a removed address is told too.
+- **Join with proof of both, in one browser.** Linking starts from a fresh session and records its
+  proof in a server-held flow named by a host-only `__Host-pkey_link` cookie (15 minutes; the
+  dispatcher strips it from product routes like every account-realm cookie, and signing out
+  clears it). The second proof is only ever the session presenting that cookie, after a real
+  sign-in (the login card, or a PX-W14 device approval, which also mints a fresh session), so both
+  proofs come from one browser and neither can be supplied by another party's session (a test).
+  The merge refuses unless both proofs are under 5 minutes old, the link routes also refuse when
+  either proof's session was signed out, and the join screen shows an account's details only
+  while its proof's session is live. The flow is claimed before the merge, so two racing confirms
+  merge once (a test). Nothing looks at email addresses: never by email match.
+- **Undo for 72 hours.** Every join (the login card's offer too) records a snapshot of what moved
+  in `account_merges`, in the merge's own batch. The kept account can undo with a fresh sign-in,
+  which a person whose method was joined away can always get (their methods sign in to the kept
+  account), so a join made with stolen proof of one account is reversible by its owner after the
+  notice. Only methods still on the kept account go back: a method disconnected since the join (a
+  lost passkey, a compromised provider account) never comes back silently, and the snapshot holds
+  method ids only, never their subjects, addresses or keys. The undo refuses (`last_link`) when an
+  account would be left with no way to sign in; that guard is the first statement of the undo's
+  batch and aborts it, so a removal racing the undo cannot orphan either side (a test). A licence
+  that goes back revokes every registry token the kept account minted on it during the window
+  (F-21, `onLicenseOwnershipEnded`) and clears its devices' bindings; the absorbed account's own
+  tokens move back untouched (a test). A join is refused while EITHER account could still undo a
+  join of its own (`merge_pending`): absorbing that account would destroy its undo, and absorbing
+  into it would hand the second join's data and aliases to the first join's absorbed account on
+  undo. The snapshot holds the absorbed person's details: it is cleared by the undo, deleted
+  nightly once the window ends, and deleted with either account (docs/PRIVACY.md).
+- **Residuals.** Someone with a fresh session for an account can already change it directly
+  (connect their own method, disconnect the others, delete it); joining gives them nothing more,
+  and the notices to every verified address of both accounts are the detection. Deleting the kept
+  account inside the window deletes the snapshot, so the joined account cannot be restored
+  afterwards (the deletion is itself step-up gated and emailed). An undo does not split account ×
+  product data a store already re-keyed (`runSubjectMerge`), and developers keep the
+  `subject.merged` alias they were told about; the restored account gets a fresh pairwise subject
+  where its old one became an alias, so to that developer it is a new person, and no
+  `subject.unmerged` event exists (`subject_events` allows only merged and deleted). A device
+  activated during the window on one of the absorbed account's licences keeps its seat; its
+  binding to the kept account's subject is cleared with the licence's other bindings at the undo,
+  but a device bound to the kept account's subject on a licence that stays with the kept account
+  is untouched. A picture the kept account did not use may be swept before an undo
+  (`sweepAvatars`, after a day), and the restored account then shows initials.
+
 ### The console's Users page and the relink tool (I-12)
 
 Every product's console has a Users page (`/manage/api/products/<slug>/users…`,

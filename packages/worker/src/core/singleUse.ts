@@ -51,7 +51,11 @@ export type SingleUseKind =
   /** An issuer authorization code (I-16). */
   | "auth-code"
   /** A passthrough sign-in request handle (PX-W13, WIRE-CONTRACT-V4 §12.7.2), by its hash. */
-  | "signin-request";
+  | "signin-request"
+  /** Adding an email sign-in method (PX-W12): the code's address, by the account session. */
+  | "method-flow"
+  /** Link an existing account (PX-W12): the two accounts' proofs, by the browser's flow secret. */
+  | "link-flow";
 
 /** The address of one artefact. */
 export interface ArtefactRef {

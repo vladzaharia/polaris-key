@@ -12670,6 +12670,515 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+  # ── Account → Sign-in methods and Link an existing account (PX-W12, PORTAL.md §4.11, §4.26,
+  # G27). Session-authenticated by the portal cookie; the mutations need the
+  # `X-PKey-Portal-CSRF` header. No answer carries an account id or a provider subject.
+  /api/me/methods:
+    get:
+      operationId: listAccountMethods
+      tags: [portal]
+      summary: The account's sign-in methods, grouped, with what each allows
+      description: >
+        Every sign-in method (`methods`: `id`, `kind`, `group` of `accounts`, `email` or
+        `passkeys`, `label`, the connected identity as `display`, `connectedAt`, `lastUsedAt`,
+        `canRemove` with a `reason` of `last_link` or `only_email`, the provider's `flag`, Apple's
+        Hide My Email `relay`, and `tenantScoped`), then the same email addresses (`emails`, primary
+        first) and passkeys (`passkeys`, I-16's view plus `canRemove`) in their own shapes. Apple,
+        Google and Steam are always listed in `providers` (`connected`, and `available` on this
+        deploy); `passkey` says whether one can be added; `hideMyEmail` is true when the primary
+        email is an Apple private-relay address; `stepUp` says whether this session's sign-in is
+        recent enough (5 minutes) for a change.
+      responses:
+        "200":
+          description: The methods.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [
+                    methods,
+                    emails,
+                    passkeys,
+                    providers,
+                    passkey,
+                    primaryEmail,
+                    hideMyEmail,
+                    stepUp,
+                  ]
+                properties:
+                  methods:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [
+                          id,
+                          kind,
+                          group,
+                          label,
+                          display,
+                          connectedAt,
+                          lastUsedAt,
+                          canRemove,
+                          reason,
+                        ]
+                      properties:
+                        id: { type: string }
+                        kind: { type: string }
+                        group:
+                          { type: string, enum: [accounts, email, passkeys] }
+                        label: { type: string }
+                        display: { type: [string, "null"] }
+                        connectedAt: { type: integer }
+                        lastUsedAt: { type: [integer, "null"] }
+                        canRemove: { type: boolean }
+                        reason:
+                          {
+                            type: [string, "null"],
+                            enum: [last_link, only_email, null],
+                          }
+                        flag: { type: [string, "null"] }
+                        relay: { type: boolean }
+                        tenantScoped: { type: boolean }
+                  emails:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        methodId: { type: string }
+                        email: { type: string }
+                        primary: { type: boolean }
+                        connectedAt: { type: integer }
+                        lastUsedAt: { type: [integer, "null"] }
+                        canRemove: { type: boolean }
+                        reason: { type: [string, "null"] }
+                  passkeys:
+                    type: array
+                    items:
+                      allOf:
+                        - { $ref: "#/components/schemas/AccountPasskey" }
+                        - type: object
+                          properties:
+                            canRemove: { type: boolean }
+                            reason: { type: [string, "null"] }
+                  providers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind: { type: string, enum: [google, apple, steam] }
+                        connected: { type: boolean }
+                        available: { type: boolean }
+                  passkey:
+                    type: object
+                    properties:
+                      canAdd: { type: boolean }
+                      reason:
+                        {
+                          type: [string, "null"],
+                          enum: [email_unverified, limit, null],
+                        }
+                  primaryEmail: { type: [string, "null"] }
+                  hideMyEmail: { type: boolean }
+                  stepUp:
+                    type: object
+                    properties:
+                      authenticatedAt: { type: integer }
+                      freshUntil: { type: integer }
+                      fresh: { type: boolean }
+                      maxAgeSeconds: { type: integer }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/methods/{kind}/start:
+    post:
+      operationId: startAccountMethod
+      tags: [portal]
+      summary: Connect a sign-in method
+      description: >
+        Needs a sign-in in the last 5 minutes (`step_up_required` otherwise). `google`, `apple` and
+        `steam` answer `{redirect, expiresIn}`: the provider URL for the browser to open, with a
+        browser-binding cookie; the provider returns to its registered sign-in callback
+        (`/login/<provider>/callback`), which links the identity to this account without signing
+        anyone in and lands on `/#/account/methods?connected=<provider>` or
+        `?error=<code>&method=<provider>` (`link_conflict`, `step_up_required`, `signin_expired`).
+        The provider's email claim is narrowed as a sign-in narrows it, and an address another
+        account uses is never stored as verified. `email` takes `{email}` and sends a 6-digit code,
+        answering the same `code_sent` whatever the address (an address already on this account
+        answers `connected` with `already: true`); `passkey` answers I-16's registration challenge
+        (as `POST /api/me/passkeys/options`), completed by `POST /api/me/passkeys`.
+      parameters:
+        - {
+            name: kind,
+            in: path,
+            required: true,
+            schema:
+              { type: string, enum: [google, apple, steam, email, passkey] },
+          }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  {
+                    type: string,
+                    description: "`email` only: the address to connect.",
+                  }
+      responses:
+        "200":
+          description: "`{redirect, expiresIn}` (a provider), `{status: code_sent, email, expiresIn, codeLength}` or `{status: connected, already: true, email}` (email), or the passkey options."
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: "Missing or wrong CSRF header; for `passkey`, I-16's `forbidden` refusals."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404":
+          description: "`not_found` (an unknown kind) or `auth_method_disabled` (the provider is not configured on this deploy)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "422":
+          description: "`bad_request`: not an email address."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many method changes by this account (10 a minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "503":
+          description: "`email_unavailable` (mail cannot leave) or `unavailable` (the provider cannot be reached)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/methods/email/verify:
+    post:
+      operationId: verifyAccountEmailMethod
+      tags: [portal]
+      summary: Connect an email address with its code
+      description: >
+        The code `POST /api/me/methods/email/start` sent, bound to this session. Once the code is
+        right the address is proven, so an address another Polaris Key account uses is refused
+        (`link_conflict`) and nothing is connected. Otherwise it becomes an email sign-in method
+        (and the primary email of an account that had none), its licences waiting on it come in,
+        and the change is audited and emailed to every verified address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+      responses:
+        "200":
+          description: Already connected.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountMethodConnected" }
+        "201":
+          description: Connected.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountMethodConnected" }
+        "400":
+          description: "`invalid_code` (with `triesLeft`) or `signin_expired` (no live code for this session)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "409":
+          description: "`link_conflict`: another account uses this address."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many code attempts from this address.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/methods/{methodId}:
+    delete:
+      operationId: removeAccountMethod
+      tags: [portal]
+      summary: Disconnect a sign-in method
+      description: >
+        Needs a sign-in in the last 5 minutes. Goes through the link engine, whose guard is inside
+        the DELETE, so the account's last way to sign in is never removed (`last_link`, also when
+        two removals race). The account's only email address cannot go while it is the primary
+        (`forbidden`, `reason: only_email`); removing the primary while another address exists
+        makes the oldest other address primary. A passkey's WebAuthn material goes with its method.
+        Audited, and emailed to every verified address (an email method is named generically; the
+        removed address is told too).
+      parameters:
+        - {
+            name: methodId,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The method's `id` from the list.",
+          }
+      responses:
+        "200":
+          description: Removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  removed:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      kind: { type: string }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: "`forbidden` with `reason: only_email`, or a missing or wrong CSRF header."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`last_link`: this is the account's only way to sign in."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many method changes by this account (10 a minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/link:
+    get:
+      operationId: getAccountLink
+      tags: [portal]
+      summary: The join screen, and the joins this account can still undo
+      description: >
+        `undoable` lists this account's joins inside their 72 hours (`id`, `mergedAt`,
+        `undoUntil`, and the joined account's own `email` and `name`). `flow` is null without a link
+        flow in this browser; otherwise it records this session as a proof (a second account
+        becomes `other`; the started account signing in again refreshes its own proof) and shows
+        both accounts (`role`, `current`, `name`, `email`, `avatarUrl`, `methods`, `products`, and
+        `proven: {by, at, fresh}`), the result of joining with the default `keep: other`, and
+        `canJoin` with a `reason` (`sign_in_other`, `step_up_required`, `merge_pending`,
+        `unavailable`).
+      responses:
+        "200":
+          description: The view.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [flow, undoable]
+                properties:
+                  flow: { type: [object, "null"], additionalProperties: true }
+                  undoable:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        mergedAt: { type: integer }
+                        undoUntil: { type: integer }
+                        joined:
+                          type: object
+                          properties:
+                            email: { type: [string, "null"] }
+                            name: { type: [string, "null"] }
+        "400":
+          description: "`signin_expired`: the link flow is gone."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/link/start:
+    post:
+      operationId: startAccountLink
+      tags: [portal]
+      summary: Start linking an existing account
+      description: >
+        Needs a sign-in in the last 5 minutes. Records this account's proof in a server-held flow
+        named by a host-only `__Host-pkey_link` cookie (15 minutes). The person then signs in to the
+        other account on the login card (`next`), by any of its methods, and comes back to the join
+        screen. Never by email match.
+      responses:
+        "200":
+          description: Started.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [started] }
+                  expiresAt: { type: integer }
+                  next: { type: string }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many link changes by this account (10 a minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/link/confirm:
+    post:
+      operationId: confirmAccountLink
+      tags: [portal]
+      summary: Join the two accounts, with proof of both
+      description: >
+        Both proofs must come from this browser's link flow, both no older than 5 minutes, and both
+        sessions still live (`step_up_required` with `stale` naming which). `keep` picks the account
+        that stays (`other`, the default: the account linked in, whose primary email stays; or
+        `started`). Refused while either account could still undo a join of its own (`forbidden`,
+        `reason: merge_pending`). The flow is used up by the attempt, so two racing confirms merge
+        once. Everything moves to the account kept (I-05's merge:
+        links, licences, sessions, passkeys, consents, terms acceptances, pictures, registry tokens;
+        per product the kept subject wins and the other becomes an alias), audited, and emailed to
+        every verified address of both with the undo window.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                keep: { type: string, enum: [other, started] }
+      responses:
+        "200":
+          description: Joined.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [joined] }
+                  kept: { type: string, enum: [other, started] }
+                  merge:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      undoUntil: { type: integer }
+        "400":
+          description: "`signin_expired` (no link flow), or `bad_request` with `reason` `sign_in_other` or `same_account`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: "`forbidden` with `reason` `merge_pending` or `unavailable`, or a missing or wrong CSRF header."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many link changes by this account (10 a minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/link/cancel:
+    post:
+      operationId: cancelAccountLink
+      tags: [portal]
+      summary: Forget this browser's link flow
+      responses:
+        "200":
+          description: Cancelled; the link cookie is cleared.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [cancelled] }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/link/undo:
+    post:
+      operationId: undoAccountLink
+      tags: [portal]
+      summary: Undo a join within 72 hours
+      description: >
+        Needs a sign-in to the kept account in the last 5 minutes (any of its methods, the joined
+        account's included). The joined account comes back under its own id with those of its
+        methods still on the kept account (one disconnected since stays disconnected), and what
+        still sits on the kept account goes back to it: licences, sessions, passkeys, pictures,
+        registry tokens, consents, terms acceptances. A licence that goes back revokes the registry
+        tokens the kept account minted on it during the window. Developers keep the alias they were
+        told about; the joined account gets a
+        fresh pairwise subject at its next contact where its old one became an alias, and devices
+        whose subject changed hands bind again at their next sign-in. Refused when either account
+        would be left with no way to sign in (`last_link`, checked atomically with the undo). Once
+        only; audited on both and emailed
+        to every verified address of both.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [merge]
+              properties:
+                merge:
+                  {
+                    type: string,
+                    description: "The join's `id` from `undoable`.",
+                  }
+      responses:
+        "200":
+          description: Separated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [separated] }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404":
+          description: "`not_found`: no such join of this account, already undone, or past its 72 hours."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "409":
+          description: "`last_link`: an account would be left with no way to sign in."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many link changes by this account (10 a minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   # ── Account → Profile (PX-W16, PORTAL.md §4.30, G32, G33). Session-authenticated by the
   # portal cookie; the mutations need the `X-PKey-Portal-CSRF` header.
   /api/me/profile:
@@ -17484,6 +17993,19 @@ components:
           properties:
             email: { type: string }
             proven: { type: boolean }
+    AccountMethodConnected:
+      type: object
+      description: An email sign-in method connected by its code (PX-W12).
+      required: [status, already, email]
+      properties:
+        status: { type: string, enum: [connected] }
+        already: { type: boolean }
+        email: { type: string }
+        method:
+          type: object
+          properties:
+            id: { type: string }
+            kind: { type: string, enum: [email] }
     AccountPasskey:
       type: object
       description: One of the account's passkeys (I-16). Display facts only; never key material.

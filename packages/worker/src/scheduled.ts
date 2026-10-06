@@ -57,6 +57,7 @@ import {
 } from "./services/identity/accounts/legacy.js";
 import { sweepAvatars } from "./services/identity/card/avatars.js";
 import { pruneStorefrontSeen } from "./services/identity/portal/store/analytics.js";
+import { pruneAccountMerges } from "./services/identity/accounts/mergeUndo.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
 import { REFUSAL_RETENTION_SECONDS, pruneRefusals } from "./core/refusals.js";
 import { lazyDeltaProducts } from "./core/deltaDemand.js";
@@ -436,6 +437,9 @@ export async function runScheduledMaintenance(
   // PX-W16: account pictures nothing has used for a day (a disconnected provider's copy, an
   // upload never saved, a merged account's leftovers, a write that died half way).
   if (env) await step(report, "avatars", () => sweepAvatars(env, db, now));
+
+  // PX-W12: a join whose 72-hour undo window ended keeps no snapshot of the absorbed account.
+  await step(report, "accountMerges", () => pruneAccountMerges(db, now));
 
   if (env) await runBlobGc(report, env, db, now);
 
