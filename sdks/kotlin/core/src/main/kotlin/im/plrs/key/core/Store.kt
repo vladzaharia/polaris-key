@@ -154,6 +154,12 @@ public interface Store {
 
     /** Where the token lives now; null when the store does not report. Never throws. */
     public suspend fun status(): StoreStatus? = null
+
+    /**
+     * A private directory for the SDK's own UNSIGNED state beside the token (the update-event
+     * journal, local config overrides, boot-guard slots); null keeps that state in memory.
+     */
+    public val stateDirectory: File? get() = null
 }
 
 /** In-memory store: nothing survives the process. */
@@ -185,6 +191,7 @@ public class InMemoryStore(productSlug: String = "test", deviceId: String? = nul
  * (a temporary file renamed over the target) and never follow a symlink at the target.
  */
 public class FileStore(public val productSlug: String, public val directory: File) : Store {
+    override val stateDirectory: File get() = directory
     private val lock = Mutex()
     private val tokenFile = File(directory, "token")
     private val deviceFile = File(directory, "device-id")

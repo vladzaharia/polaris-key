@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  GENERATED FILE — do not edit by hand.
+
+  Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/kit-copy.ts) from
+  packages/brand/kit-copy/ (en.json and the eight locale packs) and the core copy in
+  conformance/parity/copy.<locale>.json. `pnpm gen:brand -- --check` fails the green gate on any
+  difference. To change a string, edit its source and regenerate.
+
+  The kit copy for locale fr (Compose Multiplatform resources). Names are the catalog key with
+  "." and "-" as "_". A formFactor select is <name>__<case> (the bare name is "other"); a platform
+  variant is <name>__<platform>. Inert until UK-09 makes :ui a KMP module.
+-->
+<resources>
+    <!-- A button. Arguments: 1=product. -->
+    <string name="common_signInTo">[fr] %1$s</string>
+    <string name="common_signInTo__macos">[fr] %1$s</string>
+    <!-- Queues a restart. -->
+    <string name="common_restart">[fr] restart</string>
+    <string name="common_restart__macos">[fr] restart</string>
+    <!-- A count. Arguments: 1=product, 2=count. -->
+    <plurals name="part_devices">
+        <item quantity="one">%1$s %2$d fr-1</item>
+        <item quantity="many">%1$s %2$d fr-M</item>
+        <item quantity="other">%1$s %2$d fr-N</item>
+    </plurals>
+    <!-- The device. -->
+    <string name="part_thisDevice">fr device</string>
+    <string name="part_thisDevice__iphone">fr iPhone</string>
+    <string name="part_thisDevice__ipad">fr iPad</string>
+    <string name="part_thisDevice__mac">fr Mac</string>
+    <string name="part_thisDevice__phone">fr phone</string>
+    <string name="part_thisDevice__tablet">fr tablet</string>
+    <string name="part_thisDevice__computer">fr computer</string>
+    <string name="part_thisDevice__tv">fr TV</string>
+    <!-- Escaping. Arguments: 1=name. -->
+    <string name="common_quote">[fr] "%1$s"</string>
+    <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
+    <string name="core_fallback_title">Oops</string>
+    <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->
+    <string name="core_fallback_message">Oops (%1$s).</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_found_title">Gone</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_found_message">It's gone.</string>
+</resources>

@@ -2,6 +2,12 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "dist",
+    // The repo root, so a test may import this package by its own name (test/sdkConfigSample.ts,
+    // as `pkey sdk --lang react` writes it); tsconfig.build.json narrows it back to src.
+    "rootDir": "../..",
+    // Resolve that self-import from source, not dist/: `pnpm build` empties dist/ first, and a
+    // dependant's `^build` can rebuild this package while its own typecheck runs.
+    "paths": { "@polaris-key/react": ["./src/index.ts"] },
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "types": ["node"],
     "jsx": "react-jsx"

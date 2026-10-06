@@ -41,7 +41,7 @@ final class CapabilitiesTests: XCTestCase {
 
     func testAPlannedFeatureIsVersion() async throws {
         let c = try client(expected: allServices)
-        for feature in [Feature.identityOidc, Feature.updateBootguard] {
+        for feature in [Feature.identityOidc, Feature.packsTransportSteam] {
             let answer = await c.supports(feature)
             XCTAssertEqual(answer.unsupported?.reason, UnsupportedReason.version, feature)
             XCTAssertEqual(answer.unsupported?.feature, feature)

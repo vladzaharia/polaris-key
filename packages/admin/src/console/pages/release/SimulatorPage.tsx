@@ -174,7 +174,7 @@ function decisionLine(d: SimulateResponse["decision"]): {
 
 function PackRow({ p }: { p: SimulatedPackDto }): React.ReactElement {
   return (
-    <tr className="border-b border-border align-top" data-pack={p.pack}>
+    <tr className="border-b border-border" data-pack={p.pack}>
       <th scope="row" className="px-3 py-2 text-left font-normal">
         <span className="font-mono text-xs">{p.pack}</span>
         {p.declared?.required ? (

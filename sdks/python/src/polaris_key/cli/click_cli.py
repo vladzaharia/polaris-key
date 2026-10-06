@@ -14,7 +14,7 @@ from typing import Optional
 
 import click
 
-from . import core
+from . import core, verbs
 
 _common = [
     click.option("--product", required=True, help="Product slug (the doc audience)."),
@@ -120,17 +120,6 @@ def polaris_click_group(
         opts = _options(product, version, base_url, config_dir, trust, service)
         _emit(core.run_command(factory, opts, core.register))
 
-    # ── config ──────────────────────────────────────────────────────────────────────
-    @group.command(help="[config] Resolve a single layered-config key.")
-    @_with_common
-    @click.argument("key")
-    @click.option("--fallback", default=None, help="Value if the key is unset.")
-    def config(  # noqa: ANN001
-        product, version, base_url, config_dir, trust, service, key, fallback
-    ):
-        opts = _options(product, version, base_url, config_dir, trust, service)
-        _emit(core.run_command(factory, opts, lambda c: core.config(c, key, fallback)))
-
     # ── core ────────────────────────────────────────────────────────────────────────
     @group.command(name="import-bundle", help="[core] Import an offline activation bundle.")
     @_with_common
@@ -145,7 +134,29 @@ def polaris_click_group(
             raise click.UsageError(str(e))
         _emit(core.run_command(factory, opts, lambda c: core.import_bundle(c, jws)))
 
+    # ── the full verb set (cli/verbs.py) ────────────────────────────────────────────
+    for verb in verbs.VERBS:
+        group.add_command(_click_verb(factory, verb, _emit))
+
     return group
+
+
+def _click_verb(factory: core.ClientFactory, verb: "verbs.Verb", emit) -> click.Command:  # noqa: ANN001
+    def callback(product, version, base_url, config_dir, trust, service, words=(), **values):  # noqa: ANN001
+        opts = _options(product, version, base_url, config_dir, trust, service)
+        ns = verbs.namespace(verb, list(words), values)
+        emit(core.run_command(factory, opts, lambda c: verb.run(c, ns)))
+
+    params = []
+    if verb.words:
+        params.append(click.Argument(["words"], nargs=-1))
+    for o in verb.opts:
+        if o.kind == "flag":
+            params.append(click.Option([f"--{o.name}"], is_flag=True, default=False, help=o.help))
+        else:
+            params.append(click.Option([f"--{o.name}"], type=int if o.kind == "int" else str, default=o.default, help=o.help))
+    cmd = click.Command(name=verb.name, callback=callback, params=params, help=f"[{verb.group}] {verb.help}")
+    return _with_common(cmd)
 
 
 # Standalone entry point (``python -m polaris_key.cli.click_cli``).

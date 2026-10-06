@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { SERVICE_SLUGS } from "@polaris-key/manifest";
 import {
@@ -23,10 +23,24 @@ import {
 } from "./manifest.js";
 import { authGithubOidc, CI_TOKEN_ENV, type CiEnv } from "./oidc.js";
 import {
+  descriptorManifestOf,
   PUBLISH_USAGE,
   publishRelease,
   type PublishSource,
 } from "./publish.js";
+import {
+  factsSummary,
+  isSdkLang,
+  parseReleaseKeyFlags,
+  renderSdkConfig,
+  resolveSdkFacts,
+  SDK_CONFIG_DEFAULT_OUT,
+  SDK_CONFIG_MARKER,
+  SDK_CONFIG_USAGE,
+  SDK_LANGS,
+  type DeclaredReleaseKey,
+} from "./sdkConfig.js";
+import { MIRROR_USAGE, writeMirrors } from "./mirrors.js";
 import { parseRemoves } from "./saveCompat.js";
 import { CHANNEL_USAGE, movePointer, yankRelease } from "./channels.js";
 import { isPackageDeliverable, publishPackage } from "./package/publish.js";
@@ -453,7 +467,9 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
       case "trust":
         return cmdTrust(parsed, stdout);
       case "sdk":
-        return cmdSdk(parsed, stdout);
+        return await cmdSdk(parsed, cwd, stdout, ci.fetchImpl);
+      case "mirror":
+        return await cmdMirror(parsed, cwd, stdout, ci.fetchImpl);
       case "auth":
         return await cmdAuth(parsed, stdout, stderr, ci);
       case "release":
@@ -805,25 +821,117 @@ function cmdTrust(
   return 0;
 }
 
-function cmdSdk(
+async function cmdSdk(
   parsed: ParsedArgs,
+  cwd: string,
   stdout: Pick<NodeJS.WriteStream, "write">,
-): number {
-  const product = flagString(parsed, "product") ?? parsed.positional[0];
-  const baseUrl = flagString(parsed, "base-url") ?? "https://key.example.com";
-  if (!product)
-    throw new Error(
-      "Usage: pkey sdk --product <slug> [--base-url <url>] [--kid <kid> --public-key <key>]",
+  fetchImpl?: typeof fetch,
+): Promise<number> {
+  const lang = flagString(parsed, "lang");
+  if (lang === undefined) {
+    // The original snippet mode: a Node example with whatever pins were given.
+    const product = flagString(parsed, "product") ?? parsed.positional[0];
+    const baseUrl = flagString(parsed, "base-url") ?? "https://key.example.com";
+    if (!product) throw new Error(SDK_CONFIG_USAGE);
+    stdout.write(
+      `${sdkSnippet({
+        baseUrl,
+        product,
+        kid: flagString(parsed, "kid"),
+        publicKey: flagString(parsed, "public-key"),
+      })}\n`,
     );
-  stdout.write(
-    `${sdkSnippet({
-      baseUrl,
-      product,
-      kid: flagString(parsed, "kid"),
-      publicKey: flagString(parsed, "public-key"),
-    })}\n`,
-  );
+    return 0;
+  }
+  if (!isSdkLang(lang))
+    throw new Error(
+      `--lang must be one of ${SDK_LANGS.join(", ")}.\n${SDK_CONFIG_USAGE}`,
+    );
+
+  // The product repo's .pkey/, when there is one: the slug and the declared release keys.
+  let local: { slug: string; releaseKeys: DeclaredReleaseKey[] } | null = null;
+  try {
+    const m = descriptorManifestOf(await loadManifest(cwd));
+    if (m.product) local = { slug: m.product.slug, releaseKeys: m.releaseKeys };
+  } catch (e) {
+    if (!/No \.pkey\/product manifest/.test((e as Error).message)) throw e;
+  }
+  const product =
+    flagString(parsed, "product") ?? parsed.positional[0] ?? local?.slug;
+  if (!product) throw new Error(SDK_CONFIG_USAGE);
+  if (local && local.slug !== product)
+    throw new Error(
+      `The .pkey/ in ${cwd} is product ${local.slug}, not ${product}; run pkey sdk from ${product}'s repo or drop --product.`,
+    );
+  const kid = flagString(parsed, "kid");
+  const publicKey = flagString(parsed, "public-key");
+  if ((kid === undefined) !== (publicKey === undefined))
+    throw new Error("--kid and --public-key go together.");
+  const facts = await resolveSdkFacts({
+    product,
+    baseUrl: flagString(parsed, "base-url") ?? DEFAULT_BASE_URL,
+    releaseKeys: [
+      ...(local?.releaseKeys ?? []),
+      ...parseReleaseKeyFlags(parsed.multi["release-key"] ?? []),
+    ],
+    ...(kid !== undefined && publicKey !== undefined
+      ? { expectPin: { kid, publicKey } }
+      : {}),
+    ...(fetchImpl ? { fetchImpl } : {}),
+  });
+  const out = flagString(parsed, "out");
+  const pkg = flagString(parsed, "package");
+  const content = renderSdkConfig(lang, facts, {
+    ...(out !== undefined ? { out } : {}),
+    ...(pkg !== undefined ? { kotlinPackage: pkg } : {}),
+  });
+  if (!flagBool(parsed, "write")) {
+    stdout.write(content);
+    return 0;
+  }
+  const target = path.resolve(cwd, out ?? SDK_CONFIG_DEFAULT_OUT[lang]);
+  const existing = await readFile(target, "utf8").catch(() => null);
+  if (
+    existing !== null &&
+    !existing.includes(SDK_CONFIG_MARKER) &&
+    !flagBool(parsed, "force")
+  )
+    throw new Error(
+      `${target} exists and was not written by pkey sdk; pass --force to replace it.`,
+    );
+  await mkdir(path.dirname(target), { recursive: true });
+  await writeFile(target, content, "utf8");
+  stdout.write(`${factsSummary(facts)}\nWrote ${target}\n`);
   return 0;
+}
+
+async function cmdMirror(
+  parsed: ParsedArgs,
+  cwd: string,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+  fetchImpl?: typeof fetch,
+): Promise<number> {
+  const langs = (flagString(parsed, "lang") ?? "")
+    .split(",")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (langs.length === 0) throw new Error(MIRROR_USAGE);
+  const written = await writeMirrors({
+    cwd,
+    langs,
+    outDir: flagString(parsed, "out-dir") ?? ".",
+    catalog: flagString(parsed, "catalog"),
+    product: flagString(parsed, "product"),
+    baseUrl: flagString(parsed, "base-url") ?? DEFAULT_BASE_URL,
+    kotlinPackage: flagString(parsed, "package"),
+    check: flagBool(parsed, "check"),
+    ...(fetchImpl ? { fetchImpl } : {}),
+  });
+  for (const w of written)
+    stdout.write(
+      `${w.changed ? (flagBool(parsed, "check") ? "stale" : "wrote") : "up to date"}: ${w.path}\n`,
+    );
+  return flagBool(parsed, "check") && written.some((w) => w.changed) ? 1 : 0;
 }
 
 interface CiIo {
@@ -1507,6 +1615,11 @@ Commands:
   pkey doctor [--base-url url --product slug]
   pkey trust --kid kid --public-key key
   pkey sdk --product slug [--base-url url] [--kid kid --public-key key]
+  pkey sdk --lang node|react|python|swift|kotlin|godot [--product slug] [--base-url url]
+              [--write [--out path] [--force]] [--kid kid --public-key key]
+              [--release-key kid=key ...] [--package kotlin.package]
+  pkey mirror --lang ts,python,swift,gdscript,kotlin [--out-dir dir] [--catalog file |
+              --product slug [--base-url url]] [--package kotlin.package] [--check]
   pkey bundle --product slug --device id --grace-days n [--no-config] [--license id]
               [--base-url url] [--out file] [--force]
   pkey manifest schemas --out dir

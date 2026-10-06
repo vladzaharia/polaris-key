@@ -3,7 +3,7 @@
 // @pkey-feature config.schema release.changelog release.download
 // @pkey-feature identity.devicecode config.mint
 // @pkey-feature update.feed release.record update.decide
-// @pkey-feature packs.apply.chunk
+// @pkey-feature packs.apply.chunk commerce.receipt
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
 // drive the umbrella `PolarisKeyClient` (:sdk) through every recorded conversation
@@ -58,6 +58,8 @@ import im.plrs.key.license.ActivationResult
 import im.plrs.key.license.LicenseClientOptions
 import im.plrs.key.core.JsonText
 import im.plrs.key.release.ChangelogEntry
+import im.plrs.key.sdk.ClaimResult
+import im.plrs.key.sdk.CommerceClient
 import im.plrs.key.sdk.PolarisKeyClient
 import im.plrs.key.sdk.PolarisKeyClientOptions
 import im.plrs.key.core.BinaryMethod
@@ -267,6 +269,44 @@ object KotlinReplay {
                 out["result"] = JsonPrimitive("error")
                 out["code"] = JsonPrimitive(e.code)
             }
+            "commerceBinding" -> try {
+                val b = client.commerce.binding()
+                out["result"] = JsonPrimitive("ok")
+                out["bindingId"] = JsonPrimitive(b.bindingId)
+                out["products"] = JsonArray(
+                    b.products.map {
+                        JsonObject(
+                            mapOf(
+                                "store" to JsonPrimitive(it.store), "productId" to JsonPrimitive(it.productId),
+                                "flag" to JsonPrimitive(it.flag), "deliverable" to JsonPrimitive(it.deliverable),
+                            ),
+                        )
+                    },
+                )
+            } catch (e: PolarisException) {
+                out["result"] = JsonPrimitive(e.code)
+            }
+            "commerceClaim" -> {
+                val payload = args["payload"].objectValue?.mapValues { it.value.stringValue ?: it.value.toString() } ?: emptyMap()
+                when (val r = client.commerce.claim(args["store"].stringValue ?: "", payload)) {
+                    is ClaimResult.Ok -> {
+                        out["result"] = JsonPrimitive("ok")
+                        out["flag"] = r.flag?.let { JsonPrimitive(it) } ?: JsonNull
+                        out["state"] = r.state?.let { JsonPrimitive(it) } ?: JsonNull
+                        out["granted"] = JsonPrimitive(r.granted)
+                    }
+                    is ClaimResult.NotOwned -> {
+                        out["result"] = JsonPrimitive(r.code)
+                        out["reason"] = JsonPrimitive(CommerceClient.NOT_OWNED)
+                    }
+                    ClaimResult.AttestationRequired -> out["result"] = JsonPrimitive("attestation_required")
+                    is ClaimResult.Refused -> {
+                        out["result"] = JsonPrimitive(r.code)
+                        out["reason"] = r.reason?.let { JsonPrimitive(it) } ?: JsonNull
+                    }
+                    is ClaimResult.Error -> out["result"] = JsonPrimitive(r.code)
+                }
+            }
             "installUrl" -> out["url"] = JsonPrimitive(client.release.installUrl())
             "downloadUrl" -> out["url"] = JsonPrimitive(
                 client.release.downloadUrl(
@@ -310,6 +350,12 @@ object KotlinReplay {
         ActivationResult.FingerprintRequired -> "fingerprint-required"
         is ActivationResult.HardwareMismatch -> "hardware-mismatch"
         ActivationResult.EnrollDisabled -> "enroll-disabled"
+        ActivationResult.EnrollClaimed -> "enroll-claimed"
+        ActivationResult.LicenseDisabled -> "license-disabled"
+        ActivationResult.LicenseExpired -> "license-expired"
+        ActivationResult.AttestationRequired -> "attestation-required"
+        is ActivationResult.RateLimited -> "rate-limited"
+        is ActivationResult.Refused -> "refused"
         is ActivationResult.Error -> "error"
     }
 
@@ -455,8 +501,8 @@ class TranscriptTest : ConformanceSuite() {
     @Test
     fun aTranscriptForAPlannedFeatureDoesNotApply() {
         val statuses = Transcript.manifestStatuses()
-        // commerce.receipt stays planned and unowned (as in Swift).
-        assertFalse(Transcript.applies(transcripts.first { it.id == "commerce-claim" }, statuses))
+        // SP-K05 implemented commerce.receipt: the commerce transcript now applies.
+        assertTrue(Transcript.applies(transcripts.first { it.id == "commerce-claim" }, statuses))
         // P6-08 implemented update.decide and update.feed: the update transcripts now apply.
         assertTrue(Transcript.applies(transcripts.first { it.id == "update-record-by-hash" }, statuses))
         assertTrue(Transcript.applies(transcripts.first { it.id == "update-feed-rollback" }, statuses))
@@ -527,6 +573,8 @@ class TranscriptTest : ConformanceSuite() {
             "update-feed-rollback", "update-record-by-hash",
             // P4-32: the chunk-bundle Range + If-Range fetch.
             "packs-chunk-range",
+            // SP-K05: the commerce bridge.
+            "commerce-claim",
         )
     }
 }

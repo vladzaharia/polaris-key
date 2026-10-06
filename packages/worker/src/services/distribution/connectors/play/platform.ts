@@ -18,7 +18,15 @@
  */
 
 import type { Db, Env } from "../../../../core/platform.js";
-import { platformGoogleAccessToken } from "../../../../core/outletTokens.js";
+import {
+  platformGoogleAccessToken,
+  TokenExchangeError,
+  transientGoogleAccessToken,
+} from "../../../../core/outletTokens.js";
+import type {
+  OutletCredentialMeta,
+  TransientOutletCredential,
+} from "../../../../core/outletCredentials.js";
 import {
   recordPlatformCredentialResult,
   resolvePlatformCredential,
@@ -39,6 +47,14 @@ import {
 import { errorLine } from "./run.js";
 import { PlayEditLeaseHeld, withPlayEditLease } from "./lease.js";
 import { PLAY_PLATFORM_CREDENTIAL } from "./setup.js";
+import {
+  appCount,
+  checked,
+  hiddenAssignedApps,
+  storeUnavailable,
+  type CheckFact,
+  type CredentialCheck,
+} from "../credentialCheck.js";
 import {
   cachedPlatformApps,
   PlatformStoreNotConfigured,
@@ -286,5 +302,175 @@ export async function listPlatformPlayApps(
         );
       }
     },
+  );
+}
+
+// ── the live check (UX-69, SETUP.md D42) ────────────────────────────────────────────────────
+
+export interface PlayCheckOptions {
+  /** The UNSAVED service-account key, validated (an RSA key, Google's token endpoint). */
+  cred: TransientOutletCredential<"google-service-account">;
+  now: number;
+  /** The package names products are assigned on this connection. */
+  assigned: readonly string[];
+  current: OutletCredentialMeta | null;
+  fetchImpl?: FetchImpl;
+}
+
+/** Apps read by the check: one page. Enough to name the account and spot assigned apps. */
+const CHECK_PAGE = 1000;
+const GOOGLE_REASON = /^[A-Z][A-Z0-9_]{0,63}$/;
+
+/**
+ * `error.status` and the first `error.details[].reason` of a Google error body (enum tokens such
+ * as `PERMISSION_DENIED`, `SERVICE_DISABLED`), never its message. Reads at most 64 KiB.
+ */
+async function googleErrorReasons(res: Response): Promise<string[]> {
+  try {
+    const doc = JSON.parse(
+      await readCappedText(res, 64 * 1024, () => new Error("too large")),
+    ) as { error?: { status?: unknown; details?: unknown } };
+    const out: string[] = [];
+    const status = doc?.error?.status;
+    if (typeof status === "string" && GOOGLE_REASON.test(status))
+      out.push(status);
+    for (const d of Array.isArray(doc?.error?.details)
+      ? doc.error.details.slice(0, 10)
+      : []) {
+      const reason = (d as { reason?: unknown } | null)?.reason;
+      if (typeof reason === "string" && GOOGLE_REASON.test(reason))
+        out.push(reason);
+    }
+    return out;
+  } catch {
+    await res.body?.cancel().catch(() => undefined);
+    return [];
+  }
+}
+
+/**
+ * Check an unsaved Play service-account key: Google's token exchange (which proves the key is
+ * live), then ONE page of the Play Developer Reporting API's `apps:search` (which proves the
+ * service account was invited to a Play Console and names what it sees). Read-only: no edit is
+ * opened. `redirect: "manual"`, capped bodies, one fixed host each.
+ */
+export async function checkPlayServiceAccount(
+  o: PlayCheckOptions,
+): Promise<CredentialCheck> {
+  const email = (o.cred.meta as { clientEmail: string }).clientEmail;
+  const fetchImpl = o.fetchImpl ?? ((u, i) => fetch(u, i));
+  let token: string;
+  try {
+    token = await transientGoogleAccessToken(
+      o.cred,
+      [PLAY_REPORTING_SCOPE],
+      o.now,
+      fetchImpl,
+    );
+  } catch (e) {
+    if (e instanceof TokenExchangeError && e.status >= 400 && e.status < 500)
+      return checked(
+        "invalid",
+        "rejected",
+        "Google did not accept this service-account key",
+        e.code?.error === "invalid_grant"
+          ? `The key was deleted or disabled, or ${email} no longer exists. Create a new JSON key for the service account (Google Cloud → IAM → Service accounts → Keys) and paste it.`
+          : `Google refused the key for ${email}. Create a new JSON key for the service account (Google Cloud → IAM → Service accounts → Keys) and paste it.`,
+        [{ label: "Service account", value: email }],
+        { status: e.status },
+      );
+    return storeUnavailable(
+      "Google",
+      e instanceof TokenExchangeError ? e.status : 0,
+    );
+  }
+
+  const url = new URL("/v1beta1/apps:search", PLAY_REPORTING_ORIGIN);
+  url.searchParams.set("pageSize", String(CHECK_PAGE));
+  let res: Response;
+  try {
+    res = await fetchImpl(url.toString(), {
+      method: "GET",
+      redirect: "manual",
+      headers: { authorization: `Bearer ${token}`, accept: "application/json" },
+    });
+  } catch {
+    return storeUnavailable("Google Play", 0);
+  }
+  const facts: CheckFact[] = [{ label: "Service account", value: email }];
+  if (res.status === 401 || res.status === 403) {
+    const reasons = await googleErrorReasons(res);
+    if (reasons.includes("SERVICE_DISABLED"))
+      return checked(
+        "invalid",
+        "permission",
+        "The Play Developer Reporting API is turned off for this key's Cloud project",
+        "Polaris Key lists your apps through it. Enable the Google Play Developer Reporting API (and the Google Play Android Developer API) in the service account's Google Cloud project, then check again.",
+        facts,
+        { status: res.status },
+      );
+    return checked(
+      "invalid",
+      "permission",
+      "This service account is not in your Play Console",
+      `Invite ${email} in Play Console → Users and permissions, with access to your apps (Admin, or Release manager on each app), then check again. A new invitation can take a few minutes to apply.`,
+      facts,
+      { status: res.status },
+    );
+  }
+  if (!res.ok || isRedirect(res)) {
+    await res.body?.cancel().catch(() => undefined);
+    return storeUnavailable("Google Play", res.status);
+  }
+  let doc: { apps?: unknown; nextPageToken?: unknown };
+  try {
+    doc = JSON.parse(
+      await readCappedText(res, MAX_RESPONSE_BYTES, () => new Error("large")),
+    ) as typeof doc;
+    if (!doc || typeof doc !== "object" || Array.isArray(doc))
+      throw new Error("not an object");
+  } catch {
+    return storeUnavailable("Google Play", 502);
+  }
+  const apps = (Array.isArray(doc.apps) ? doc.apps : [])
+    .map((a) => a as { packageName?: unknown; displayName?: unknown })
+    .filter(
+      (a): a is { packageName: string; displayName?: unknown } =>
+        typeof a.packageName === "string" && PACKAGE_NAME.test(a.packageName),
+    );
+  const more = typeof doc.nextPageToken === "string";
+  facts.push({ label: "Apps", value: `${apps.length}${more ? "+" : ""}` });
+  const names = apps
+    .map((a) => (typeof a.displayName === "string" ? a.displayName : null))
+    .filter((n): n is string => n !== null)
+    .slice(0, 3)
+    .map((n) => n.slice(0, 80));
+  if (names.length > 0)
+    facts.push({ label: "First apps", value: names.join(", ") });
+
+  const seen = new Set(apps.map((a) => a.packageName));
+  // Past one page an unseen package may just be on a later page: no warning then.
+  const hidden = more ? [] : o.assigned.filter((p) => !seen.has(p));
+  if (hidden.length > 0)
+    return hiddenAssignedApps(hidden, facts, "service account");
+  if (apps.length === 0)
+    return checked(
+      "warning",
+      "permission",
+      "Google accepted the key, but the service account sees no apps",
+      `Invite ${email} in Play Console → Users and permissions with access to your apps, then check again. A new invitation can take a few minutes to apply.`,
+      facts,
+    );
+  if (o.current?.clientEmail && o.current.clientEmail !== email)
+    facts.push({
+      label: "Replaces",
+      value: o.current.clientEmail,
+    });
+  return checked(
+    "valid",
+    "ok",
+    `${email.split("@")[0]} · ${appCount(apps.length, more)}`,
+    null,
+    facts,
   );
 }

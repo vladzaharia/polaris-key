@@ -10,7 +10,7 @@ import { useRemoveDevice } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
 import {
   devicesText,
-  isAccountWide,
+  isSignInLicense,
   normalisePlatform,
   osName,
 } from "../../model/library.js";
@@ -22,9 +22,9 @@ import { SectionCard } from "./Card.js";
  * Devices (§4.20, §4.22): the devices using a seat, each with **Remove**, which expands the row
  * in place into the consequences and the confirm (focus moves to its heading). Devices that no
  * longer use a seat are counted ("+1 not using a seat"). With the seat limit (G5, PX-W1) the
- * count reads "2 of 3 devices in use"; without it the limit is never guessed. Key and
- * account-wide licences both list their devices with Remove (remote deauthorize); a key
- * licence drops its counter when an account-wide one covers the product (owner, 2026-10-05).
+ * count reads "2 of 3 devices in use"; without it the limit is never guessed. Every licence, from
+ * a key or from signing in, lists its devices with Remove (remote deauthorize); a key licence
+ * drops its counter when a sign-in licence covers the product (owner, 2026-10-05).
  */
 export function DevicesCard({
   productName,
@@ -50,7 +50,7 @@ export function DevicesCard({
 }): React.ReactElement {
   const active = detail?.devices.filter((d) => d.status === "authorized") ?? [];
   const idle = (detail?.devices.length ?? 0) - active.length;
-  const accountWide = detail ? isAccountWide(detail) : false;
+  const signIn = detail ? isSignInLicense(detail) : false;
   return (
     <SectionCard id="devices" title="Devices">
       {loading ? (
@@ -86,7 +86,7 @@ export function DevicesCard({
           ) : null}
           {active.length === 0 ? (
             <p className="py-3 text-sm text-fg-muted">
-              {accountWide
+              {signIn
                 ? `No device is signed in with this license. Sign in to ${productName} on a device to use it.`
                 : `No device is using this license. Open ${productName} on a device to activate it.`}
             </p>
@@ -108,7 +108,7 @@ export function DevicesCard({
           )}
           <p className="mt-3 flex gap-2 text-sm text-fg-muted">
             <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            {accountWide
+            {signIn
               ? "Removing a device signs it out of this license at once."
               : "Removing a device frees its seat at once."}
           </p>
@@ -217,7 +217,7 @@ export function DeviceRow({
                 : "Its seat is free straight away."}
             </li>
             <li>
-              {isAccountWide(detail)
+              {isSignInLicense(detail)
                 ? `${productName} on that device asks you to sign in again the next time it starts.`
                 : `${productName} on that device asks to be activated the next time it starts.`}
             </li>

@@ -16,6 +16,9 @@ signal activated()
 ## Offer "Continue free" (keyless enrolment, POST /license/enroll) where License runs. Off by
 ## default: only a product with a free tier turns it on.
 @export var offer_enrollment := false
+## Show key entry even on an App Store, TestFlight or Play build (off: hidden there, as the
+## stores' payment rules require; PKeyActivationController.STORE_OUTLETS).
+@export var allow_key_entry_on_store := false
 
 ## Show the panel's own "Activate" title (off when a host card already has one).
 var show_title := true:
@@ -38,6 +41,9 @@ var _sign_in: Button
 var _free: Button
 var _offline: Button
 var _message: Label
+var _manage: Button
+## The last result's kind (device-limit shows "Manage devices": the portal's free-device flow).
+var last_kind: StringName = &""
 var _main: VBoxContainer
 var sign_in_dialog: PKeySignInDialog
 var offline_dialog: PKeyOfflineDialog
@@ -63,6 +69,7 @@ func _build() -> void:
 	_free = button(_main, "ContinueFree", _on_free)
 	_offline = button(_main, "OfflineActivation", _on_offline)
 	_message = label(_main, "Message")
+	_manage = button(_main, "ManageDevices", _on_manage)
 	sign_in_dialog = PKeySignInDialog.new()
 	sign_in_dialog.auto_sdk = false
 	sign_in_dialog.closed.connect(_back)
@@ -91,7 +98,7 @@ func set_capabilities(caps: Variant) -> void:
 func capabilities() -> Dictionary:
 	if _caps_override is Dictionary:
 		return _caps_override
-	return PKeyActivationController.capabilities_from(sdk, offer_enrollment)
+	return PKeyActivationController.capabilities_from(sdk, offer_enrollment, OS.has_feature("web"), allow_key_entry_on_store)
 
 
 func _render() -> void:
@@ -128,6 +135,9 @@ func _render() -> void:
 	_offline.disabled = busy
 	show_text(_message, message)
 	_message.theme_type_variation = "PKeyMuted" if message_ok else "PKeyError"
+	_manage.text = t.text("activation_manage_devices")
+	_manage.visible = last_kind == PKeyActivationResult.KIND_DEVICE_LIMIT and manage_url() != ""
+	_manage.disabled = busy
 
 
 func _focus_chain() -> Array:
@@ -135,12 +145,13 @@ func _focus_chain() -> Array:
 		return sign_in_dialog._focus_chain()
 	if mode == "offline":
 		return offline_dialog._focus_chain()
-	return [_key, _submit, _sign_in, _free, _offline]
+	return [_key, _submit, _sign_in, _free, _offline, _manage]
 
 
 ## Render an activation result (also used by snapshots).
 func show_result(r: PKeyActivationResult) -> void:
 	var m := PKeyActivationController.message_for(r)
+	last_kind = r.kind if r != null else &""
 	message = c().text(m[0], m[1])
 	message_ok = r != null and r.ok
 	refresh_view()
@@ -166,6 +177,19 @@ func _on_submit() -> void:
 	if r.ok:
 		_key.text = ""
 	show_result(r)
+
+
+## Where "Manage devices" goes on a device-limit refusal: only a link the server supplies
+## (`manageUrl`, PX-W8), never one built here (owner decision Q6). The Worker does not send one
+## yet, so this is "" and the button stays hidden.
+func manage_url() -> String:
+	return ""
+
+
+func _on_manage() -> void:
+	var u := manage_url()
+	if u != "":
+		OS.shell_open(u)
 
 
 func _on_free() -> void:

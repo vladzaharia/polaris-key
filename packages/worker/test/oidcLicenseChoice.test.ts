@@ -35,9 +35,14 @@ import {
   handleAuthStart,
 } from "../src/services/identity/oidc.js";
 import {
+  chooserBody,
   compareCandidates,
+  legacyLicenseChoices,
   LICENSE_CHOICE_BINDER_COOKIE,
+  originLabel,
 } from "../src/services/identity/licenseChoice.js";
+import { licenseProvenance } from "../src/services/license/provenance.js";
+import type { HookContext, ServiceHooks } from "../src/core/hooks.js";
 import {
   portalActionLimit,
   DEVICE_DISCONNECT_BUCKET,
@@ -537,7 +542,10 @@ describe("I-26 device-code flow", () => {
     await callback(flow.state, flow.nonce, flow.binder);
     const page = await readChooser(flow.binder!);
     expect(page.rows.map((r) => r.id).sort()).toEqual(["lic_own", "lic_std"]);
-    expect(page.html).toContain("Account-wide · 0 of 2 devices");
+    // Owner decision (2026-10-05): no "Account-wide" label; the origin is plain words.
+    expect(page.html).toContain("0 of 2 devices");
+    expect(page.html).toContain("From signing in · Lifetime");
+    expect(page.html).not.toContain("Account-wide");
     await postChooser(flow.binder, {
       choice: page.token,
       action: "use",
@@ -1037,5 +1045,79 @@ describe("I-26 Replace a device", () => {
       NOW,
     );
     expect(del.status).toBe(429);
+  });
+});
+
+// ── origins (owner, 2026-10-05) ─────────────────────────────────────────────────────────────
+
+describe("I-26 row origins name the store with the key, never a licence type", () => {
+  it("words every origin in plain words", () => {
+    expect(originLabel("sign_in", null, false)).toBe("From signing in");
+    expect(originLabel("store", "steam", true)).toBe("Steam key");
+    expect(originLabel("store", "steam", false)).toBe("From Steam");
+    expect(originLabel("store", "app-store", false)).toBe("From the App Store");
+    expect(originLabel("developer", null, true)).toBe("Added with a key");
+    expect(originLabel("developer", null, false)).toBe("From the developer");
+    expect(originLabel("free", null, false)).toBe("Free");
+  });
+
+  /** The chooser's rows with License's real provenance hook over this test's DB. */
+  async function rowsHtml(): Promise<string> {
+    const hooks = {
+      licenseProvenance: () =>
+        licenseProvenance({ db, product, now: NOW } as unknown as HookContext),
+    } as unknown as ServiceHooks;
+    const view = await legacyLicenseChoices(db, product, {
+      accountId,
+      sub: SUB,
+      deviceId: "dev-new",
+      grantTierId: null,
+      hooks,
+      origin: "https://keys.example",
+      deviceLabel: "Studio Mac",
+      now: NOW,
+    });
+    return chooserBody({
+      productName: "DJDL",
+      deviceLabel: "Studio Mac",
+      action: "/choose",
+      token: "t",
+      view,
+      now: NOW,
+    });
+  }
+
+  async function steamGrant(licenseId: string, hash: string): Promise<void> {
+    await db.run(
+      `INSERT INTO license_store_grants (product, license_id, flag, store, purchase_key_hash,
+         state, granted_at)
+       VALUES ('djdl', ?, 'extras.skins', 'steam', ?, 'active', ?)`,
+      licenseId,
+      hash,
+      NOW,
+    );
+  }
+
+  it('a Steam-bound key licence reads "Steam key"; no order id or purchase hash shows', async () => {
+    await insertLic({ id: "lic_steam", tier: "std", account: accountId });
+    await db.run(
+      `INSERT INTO keys_index (product, key_hash, license_id, status, created_at)
+       VALUES ('djdl', 'kh_steam', 'lic_steam', 'active', ?)`,
+      NOW,
+    );
+    await steamGrant("lic_steam", "ph_secret_steam");
+    const html = await rowsHtml();
+    expect(html).toContain("Steam key · Lifetime");
+    expect(html).not.toContain("ph_secret_steam");
+    expect(html).not.toContain("kh_steam");
+    expect(html).not.toContain("Account-wide");
+  });
+
+  it('a store-bound licence with no key reads "From Steam"', async () => {
+    await insertLic({ id: "lic_bound", tier: "std", account: accountId });
+    await steamGrant("lic_bound", "ph_bound");
+    const html = await rowsHtml();
+    expect(html).toContain("From Steam · Lifetime");
+    expect(html).not.toContain("ph_bound");
   });
 });

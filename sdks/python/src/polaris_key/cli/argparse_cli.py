@@ -1,12 +1,15 @@
 """The dependency-free argparse front end + injectable hook for the ``polaris-key`` CLI.
 
-Exposes the v3 verb set, grouped by owning service (see
-:data:`polaris_key.cli.core.SERVICE_COMMANDS`)::
+Exposes the full verb set, grouped by owning service (see
+:data:`polaris_key.cli.core.SERVICE_COMMANDS` and :mod:`polaris_key.cli.verbs`)::
 
-    license  activate · enroll · deactivate · status
-    devices  register
-    config   config <key>
-    core     import-bundle
+    license   activate · enroll · deactivate · status
+    identity  sign-in · sign-out
+    devices   register · devices
+    config    config · secret · mint
+    release   changelog
+    update    update · packs
+    core      import-bundle · offline-request · boot · doctor
 
 Trust keys are passed as repeated ``--trust kid=rawBase64url`` pairs so the CLI stays
 product-agnostic (no pinned keys baked in). Used as ``python -m polaris_key`` and the
@@ -22,7 +25,7 @@ import argparse
 import sys
 from typing import List, Optional
 
-from . import core
+from . import core, verbs
 
 
 def _add_common(p: argparse.ArgumentParser) -> None:
@@ -135,15 +138,6 @@ def register_argparse(
     _add_common(p_reg)
     p_reg.set_defaults(func=_dispatch(core.register))
 
-    # ── config ──────────────────────────────────────────────────────────────────────
-    p_cf = subparsers.add_parser(
-        "config", help="[config] Resolve a single layered-config key."
-    )
-    _add_common(p_cf)
-    p_cf.add_argument("key", help="The config key to resolve.")
-    p_cf.add_argument("--fallback", default=None, help="Value if the key is unset.")
-    p_cf.set_defaults(func=lambda args: _config(factory, args))
-
     # ── core ────────────────────────────────────────────────────────────────────────
     p_bundle = subparsers.add_parser(
         "import-bundle", help="[core] Import an offline activation bundle (§7)."
@@ -152,7 +146,32 @@ def register_argparse(
     p_bundle.add_argument("bundle", help="Path to the .pkeybundle file, or - for stdin.")
     p_bundle.set_defaults(func=lambda args: _import_bundle(factory, args))
 
+    # ── the full verb set (cli/verbs.py), one table for all three front ends ─────────
+    for verb in verbs.VERBS:
+        p = subparsers.add_parser(verb.name, help=f"[{verb.group}] {verb.help}")
+        _add_common(p)
+        if verb.words:
+            p.add_argument("words", nargs="*", metavar="ARG", help=verb.help)
+        for o in verb.opts:
+            flag = f"--{o.name}"
+            if o.kind == "flag":
+                p.add_argument(flag, action="store_true", help=o.help)
+            else:
+                p.add_argument(flag, type=int if o.kind == "int" else str, default=o.default, help=o.help)
+        p.set_defaults(func=_verb(factory, verb))
+
     return subparsers
+
+
+def _verb(factory: core.ClientFactory, verb: "verbs.Verb"):
+    def run(args: argparse.Namespace) -> int:
+        values = {verbs.option_dest(o.name): getattr(args, verbs.option_dest(o.name), o.default) for o in verb.opts}
+        ns = verbs.namespace(verb, getattr(args, "words", []), values)
+        result = core.run_command(factory, _options(args), lambda c: verb.run(c, ns))
+        result.emit()
+        return result.code
+
+    return run
 
 
 def _activate(factory: core.ClientFactory, args: argparse.Namespace) -> int:
@@ -163,14 +182,6 @@ def _activate(factory: core.ClientFactory, args: argparse.Namespace) -> int:
     except (ValueError, OSError) as e:
         raise SystemExit(str(e))
     result = core.run_command(factory, _options(args), lambda c: core.activate(c, key))
-    result.emit()
-    return result.code
-
-
-def _config(factory: core.ClientFactory, args: argparse.Namespace) -> int:
-    result = core.run_command(
-        factory, _options(args), lambda c: core.config(c, args.key, args.fallback)
-    )
     result.emit()
     return result.code
 

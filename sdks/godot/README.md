@@ -51,6 +51,25 @@ The setup dock (right dock) edits `res://polaris_key.tres`, a `PKeyOptions` reso
    confirmation box, then **Save**.
 4. **Editor channel**: the channel editor runs use (`dev` by default). Exports take theirs from
    the build stamp (see [Export presets and CI](#export-presets-and-ci)).
+5. **Tools** run the Polaris Key CLI (`pkey` on PATH, or set the command, for example
+   `npx @polaris-key/cli`):
+   - **Generate config** runs `pkey sdk --lang godot --write` into `res://polaris_key_config.gd`
+     (product, base URL, trust pins, pinned release keys and expected services from discovery;
+     `PolarisKey.configure(preload("res://polaris_key_config.gd").options())`). Release keys have
+     no public route: the command runs in the nearest directory above the project holding
+     `.pkey/release`, and without one the keys already in `res://polaris_key.tres` are passed as
+     `--release-key`. The CLI refuses, writing nothing, when they do not match discovery's
+     `releaseKeyFingerprints`, and prints every pin's fingerprint to compare with the console.
+   - **Generate catalog mirror** runs `pkey mirror --lang gdscript`, writing
+     `res://catalog_generated.gd` from the product's schema route
+     (`PolarisKey.config.set_compiled_catalog(preload("res://catalog_generated.gd"))`).
+   - **Add pkey_packs/\* to exports** adds `pkey_packs/*` to every export preset's
+     non-resource filter, so embedded pack baselines and their markers ship. **Save** does the
+     same once `res://pkey_packs/` exists.
+6. **Web exports** need the origin that serves the game listed under `web.origins` in the
+   product's `.pkey/product` (exact origins, `http://localhost:8060` for local testing), then a
+   resync. Without it the browser blocks every call. The dock shows this reminder; the rules are
+   in [Web clients and CORS](/docs/build/web-cors/).
 
 Everything else is a `PKeyOptions` property you can set in the inspector or in code: `version`
 (defaults to `application/config/version`, which must be SemVer), `pinned_release_keys` (the CI
@@ -62,186 +81,14 @@ unknown services, before touching the disk or the network.
 
 ## Boot
 
-````gdscript
+```gdscript
 func _ready() -> void:
 	var boot := await PolarisKey.boot({allow_offline = true})
 	if boot.outcome == PKeyBoot.READY:
 		get_tree().change_scene_to_file("res://game/title.tscn")
 	# BLOCKED, OFFLINE and ERROR stay on the PKeyBoot card with Retry; a later stop arrives as
 	# PolarisKey.boot_finished(result).
-||||||| e833c885
-```text
-sdks/godot/
-  project.godot               main loop = PKeyTestRunner; flush_stdout_on_print
-  export_presets.cfg          one preset, "Conformance (Linux)": the test pack (and its
-                              polaris_key/* stamp options)
-  polaris_key.tres            the harness's PKeyOptions, as the setup dock writes it (product
-                              pkey-harness, editor channel dev)
-  parity.json                 the Godot parity manifest (conformance/parity/)
-  addons/polaris_key/         the addon (the only directory a release ships)
-    plugin.cfg, plugin.gd     editor shell: the autoload, the export plugin, the setup dock
-    export/export_plugin.gd   PKeyExportPlugin: the build stamp and the pkey_* feature tags
-    editor/setup_dock.tscn    the setup dock (setup_dock.gd); editor/setup_check.gd is
-                              PKeySetupCheck, its editor-free logic (pins, Check, Save)
-    core/build_stamp.gd       PKeyBuildStamp: res://.polaris_key/build.json, its reader, the
-                              editor fallback and the export-side checks
-    polaris_key.gd            the PolarisKey autoload: configure, start, discover, capabilities,
-                              sync, get_sync_state, import_bundle, status, build_info; three
-                              signals;
-                              the `devices`, `license`, `update` and `release` sub-objects
-    services/devices.gd       PKeyDevices (PolarisKey.devices): fingerprint, register, list,
-                              rename, deauthorize, report (also after every sync)
-    services/license.gd       PKeyLicense (PolarisKey.license): the gate, activate_with_key,
-                              enroll, deactivate, entitlements, entitled_channels, and the
-                              401 re-acquire it installs into Core (license/token or
-                              devices/register, P1b-06's rule)
-    services/license/         PKeyActivationResult (both error spellings), PKeyLicenseEndpoints
-    services/update.gd        PKeyUpdate (PolarisKey.update): decide -> PKeyUpdateCheck, feed ->
-                              PKeyUpdateFeed, release_record -> PKeyReleaseRecordResult (wire
-                              v4); check -> PKeyVersionCheck (v3); update_available(result),
-                              appcast_url
-    services/update/          flow.gd (PKeyUpdateFlow: §2.5 steps 2–18, client-core
-                              `runUpdateCheck`) and the result classes
-    distribution/decision.gd  PKeyDecision: rollout_bucket, effective_capabilities (the compiled
-                              outlet tables), resolve_update_outlet, decide_update (the content
-                              decision included), select_pack_rows, boot_decision
-    distribution/outlets/     PKeyOutletAdapter and one adapter per outlet kind (direct.gd,
-                              app_store.gd, steam.gd, web.gd, …; adapters.gd maps kinds to them);
-                              the native-updater bridges PKeyNativeBridge, PKeySparkleBridge,
-                              PKeyVelopackBridge, PKeyWinSparkleBridge, PKeyAppImageBridge
-    updater/                  PKeyUpdater (PolarisKey.update.updater: the adapters' context,
-                              methods, boot confirmation), PKeySlots (staged/current/previous),
-                              PKeyBootGuard, PKeySidecarSwap, PKeyUpdaterEnv (every side effect),
-                              PKeyApplyResult
-    core/download.gd          PKeyDownload: a file download on HTTPClient with Range resume, the
-                              transport's redirect and credential rules, gzip off
-    services/packs.gd         PKeyPacks (PolarisKey.update.packs, P4-08): start, ensure, estimate,
-                              mount, boot_fetch, background, state, path, rollback, confirm,
-                              packSetId, is_available, pack_for; the pack signals; P4-24:
-                              ensure_releases, revocations, content_input, record_revocations;
-                              P4-26: the stamp's holds reach the engine, content_input's
-                              `delegated`, a delegated install is never mounted
-    packs/                    the pack core, ported from client-core `packs/`: pack_claims.gd
-                              (PKeyPackClaims: pack ids, object refs, content claims, the pack
-                              record claims, variant keys, packSetId, the content stamp), files.gd
-                              (PKeyPackFiles: the files index, path rules, treeDigest), select.gd
-                              (PKeyPackSelect: selectVariant, planTarget, the planner), patch.gd,
-                              apply.gd (PKeyPackApply: full, delta, file), marker.gd, state.gd
-                              (PKeyPackState), revocations.gd (PKeyPackRevocations: the sibling
-                              revocations.json, P4-24), engine.gd (PKeyPackEngine: the pipeline,
-                              pack-revoked; P4-26: fetch_verified, the delegated surface,
-                              pack-not-data-only, revoked_by, delegated_releases), dataonly.gd
-                              (PKeyDataOnly: the data-only rule, P4-26), and the
-                              Godot ports: zstd.gd (PKeyPackZstd: decompress, the window rule,
-                              GDDL prefix decodes), pck.gd (PKeyPck: the PCK reader, the header and
-                              directory checks, helper packs, the trailer), storage.gd
-                              (PKeyPackStorage: user://pkey), byte_source.gd, job.gd, http.gd
-                              (Range/If-Range on HTTPClient), transport*.gd (pkey-cdn, embedded),
-                              handler.gd, godot_pck_handler.gd, files_tree_handler.gd
-    services/release.gd       PKeyRelease (PolarisKey.release): changelog -> PKeyChangelogResult
-                              of PKeyChangelogEntry (services/release/), install_url,
-                              download_url
-    core/uri.gd               PKeyUri: encodeURIComponent and URLSearchParams encoding, byte for
-                              byte as sdk-node (String.uri_encode() is not)
-    core/channel.gd           PKeyChannel: the §5.1 channel vocabulary, the header this SDK sends
-    core/fingerprint.gd       PKeyFingerprint: per-platform readers as pure parsers over captured
-                              output, hashing, the desktop device-id raw source
-    core/host_io.gd           PKeyHostIo: every side effect the readers perform (replaceable)
-    core/facts.gd             PKeyFacts: DeviceFacts, declared probes, the engine and outlet keys
-    core/options.gd           PKeyOptions (a Resource): product, base_url, version, pins, …
-    core/core.gd              PKeyCore: wiring, request(), sync state; PolarisKey.core
-    core/b64url.gd            PKeyB64Url: strict (wire) and lenient (trust-set keys) base64url
-    core/json_strict.gd       PKeyJson: RFC 8259 validator, duplicate keys, the §10 NUL rule
-    core/jws.gd               PKeyJws: the 13-step verify; per-kid key cache; inline, thread, sliced
-    core/verify.gd, claims.gd envelope, licence and config claims
-    core/trust.gd, clock.gd   trust manifest (pins terminal) and the clock floor
-    core/gate.gd, bundle.gd   license_state and bundle inspect/import
-    core/cache.gd             PKeyCache: CacheRecordV3 (the `feeds` and `releaseRecords` slices
-                              included), verified at load, one write per sync
-    core/version.gd           PKeyVersion: parse_version, compare_versions (semver, semver+build,
-                              4part; digit strings, no floats)
-    core/feed.gd              PKeyFeed: feed_claims, verify_feed, feed_floor, reload_feeds,
-                              commit_feed (`pkey-feed+jws`), feed_content, with_feed_content
-    core/release_record.gd    PKeyReleaseRecord: record_hash, release_record_claims,
-                              verify_release_record (`pkey-release+jws`, hash before signature),
-                              revocation_of, verify_revocation, newer_revocation; P4-26:
-                              verify_release_record's `delegation` (steps 13 and 16),
-                              delegation_hash_of, delegation_of, verify_delegation, covers_pack,
-                              record_revoked
-    core/store/               PKeyStore, PKeyFileStore (0600, temp + rename), PKeyMemoryStore
-    core/transport.gd         PKeyTransport: redirects by hand, credentials dropped cross-origin
-    core/discovery.gd, sync.gd, token.gd, headers.gd, errors.gd, result.gd, caps.gd, semver.gd, device_id.gd
-    core/services_generated.gd  GENERATED by `pnpm gen:services` — never edit
-    core/crypto/              PKeySha512 (+ streaming), PKeyEd25519 (fast, resumable job), PKeyEd25519Ref
-    core/stages.gd            PKeyStages: the boot stage machine (client-core `stages.ts`), the
-                              five vocabulary constants, the boot guard and boot confirmation
-    services/config.gd        PKeyConfig, PolarisKey.config: precedence, secrets, the catalog,
-                              edge-mint, config_changed(keys)
-    services/config/          PKeyConfigResolve (client-core's rules), PKeyConfigEnv,
-                              PKeyOverrideStore, PKeyConfigFileStore, PKeyConfigEntry,
-                              PKeyMintResult, PKeyConfigBinding
-    services/identity.gd      PKeyIdentity (PolarisKey.identity): device-code sign-in, polling,
-                              the opt-in confirm-identity step and licence attach
-    services/identity/        PKeySignInPrompt, PKeySignInResult
-    ui/qr/                    PKeyQr (byte mode, level M, versions 1-10), PKeyQrCode, PKeyQrRect
-    ui/pkey_ui_view.gd        PKeyUiView: the base of every scene (copy, focus chain, sdk)
-    ui/boot/                  PKeyBoot (pkey_boot.tscn), PKeyBootHost (each stage's work and the
-                              event it sends), PKeyBootResult
-    ui/gate/ activation/ sign_in/ offline/ settings/ banner/ update/ badge/ dev_menu/
-                              one scene each (`.tscn` + view script) with a headless controller
-                              (PKeyGateController, PKeyActivationController, …)
-    ui/copy/pkey_ui_copy.gd   PKeyUiCopy: every string, English defaults, through tr()
-    ui/theme/                 PKeyUiTheme (pkey_ui_theme.gd): the neutral look (pkey_theme.tres,
-                              the stock theme every scene references) and the opt-in Polaris Key
-                              theme (pkey_brand_{dark,light}.tres), written by tools/gen_theme.gd;
-                              PKeyBrand and PKeyBrandMarks (generated); fonts/ holds Rubik (OFL 1.1)
-  tests/
-    runner.gd                 PKeyTestRunner
-    support/test_context.gd   PKeyTestContext: check() and info()
-    support/fake_server.gd    a TCPServer on 127.0.0.1 the core and transcript tests talk to
-    support/transcript_replay.gd  replays conformance/transcripts against the fake server
-    support/fake_host.gd      a PKeyHostIo over fixtures/devices-captures.json (any platform)
-    support/fake_boot_host.gd a scripted PKeyBootHost: PKeyBoot's stage work answered step by step
-    support/fake_updater_env.gd  a recording PKeyUpdaterEnv: an install anywhere, every hand-off,
-                              link and restart recorded
-    updater/                  the updater suite's groups (adapters, bridges, download, swap,
-                              guard, boot, grep) and their support.gd
-    packs/                    the packs suite's groups (content, plan, records, pck, bake, engine,
-                              state, http, boot, guard, uid, revocations, delegation), support.gd and
-                              fixtures.gd (pack
-                              records signed with the corpus's test release key by
-                              support/test_signer.gd, a fake pack transport)
-    fixtures/packs/           P4-03's PCK fixtures and lint verdicts (check/) and the kaykit v1/v2
-                              update objects (update/), written by
-                              packages/cli/test/godotFixtures.test.ts — never edit; that test
-                              byte-compares them
-    fixtures/uid_packs/       two data-pack projects (dataA, dataB; `.gdignore`d) run_tests.sh
-                              exports for the f_uid case
-    support/ui_snapshot.gd    structural snapshots of a scene, and the focus test's oracle
-    ui/                       scenarios.gd (every pinned scene state) and snapshots/*.txt (the
-                              committed fixtures; `--pkey-test ui update` rewrites them)
-    suite_<name>.gd           one suite per file (core/, config/, devices/, update/ and
-                              build_stamp/ hold
-                              their suites' groups); suite_platform reads THIS machine's
-                              fingerprint; suite_export_stamps (outside `ci`) reads the ZIP
-                              exports run_tests.sh makes
-    config/catalog.json       the mirror fixture; catalog_generated.gd is GENERATED from it by
-                              `pnpm gen:mirrors -- --lang gdscript` (a tools test keeps it fresh)
-    fixtures/                 hand-maintained captures (identifiers replaced by fake values);
-                              release-urls.json holds sdk-node's URL outputs, which
-                              packages/sdk-node/test/godotUrlVectors.test.ts keeps true
-    corpus/v2/                GENERATED mirror of conformance/corpus/v2/ — never edit
-    transcripts/              GENERATED mirror of conformance/transcripts/ — never edit
-    vectors/                  hand-generated SHA-512 and Ed25519 vectors (byte-for-byte)
-    qr/                       QR fixtures from a reference encoder (gen_fixtures.py; byte-for-byte)
-  tools/
-    run_tests.sh              the one entry point, locally and in CI
-    fetch_godot.sh            CI: download and hash-check the official editor (Linux, macOS,
-                              Windows) and the Linux template
-    godot.sha512              upstream SHA-512 pins for those downloads
-    gen_theme.gd              writes the ui/theme/*.tres themes (`--script`, editor only)
-    ui_screenshots.gd         PNGs of every scene per look and size, for review (needs a display)
-````
+```
 
 `PolarisKey.boot()` configures from `res://polaris_key.tres` when nothing has configured yet,
 starts offline from the verified cache, syncs, gates on the licence, checks for an update and
@@ -268,13 +115,15 @@ richer result class; nothing throws. The autoload's signals are `state_changed(s
 
 One `PolarisKey` autoload, one sub-object per service, in the same shape as every other SDK
 (see [SDKs](/docs/build/sdks/)). A sub-object whose service the product does not run answers
-`service-unavailable` without a request.
+`service-unavailable` without a request. The SDK's `examples/minimal` folder is the smallest
+whole game (boot, gate, config, settings and a store purchase in one script); its README says how
+to run it.
 
 ### License
 
 ```gdscript
 var r := await PolarisKey.license.activate_with_key(key)    # a PKeyActivationResult
-if not r.ok: show_error(r.kind)                             # device-limit, unauthorized, …
+if not r.ok: show_error(PKeyUiCopy.shared().for_code(r.code)) # words for r.code, never a raw body
 await PolarisKey.license.enroll()                           # keyless: the device's free licence
 if PolarisKey.license.is_entitled("soundtrack"): unlock_soundtrack()
 PolarisKey.license.get_entitlements()                       # {name: value}
@@ -284,8 +133,19 @@ PolarisKey.state_changed.connect(func(s): print(s["status"]))
 
 `PolarisKey.status()` is the gate's state: `status` is `ok`, `grace`, `expired`, `revoked`,
 `needs-activation` or a block reason, or `not-applicable` for a product without License, where
-`is_licensed()` is true. A 401 during a
-sync re-acquires the token once. The client gate is a user-experience gate, not DRM: see
+`is_licensed()` is true. `is_entitled(name)` is true only while the gate is usable: a revoked
+or expired licence unlocks nothing, even though `get_entitlements()` still reads the last verified
+values (S-19 G11). A 401 during a
+sync re-acquires the token once.
+
+`r.kind` sorts every activation outcome: `ok`, `device-limit` (`limit`, `device_count`),
+`unauthorized`, `fingerprint-required`, `enroll-disabled`, `enroll-claimed`, `license-disabled`,
+`license-expired`, `attestation-required`, `hardware-mismatch`, `rate-limited`, `unsupported`,
+`refused` and `error`. The mapping goes by the server's code, never by the status alone: a 403
+with any code other than the known ones (`registration_closed`, a code a later server adds) is
+`refused` with that code, never `device-limit`; a 5xx or a code-less answer is `error`. Every code
+has plain-words copy in `PKeyUiCopy` (`for_code(code, reason)`, `for_result(result)`), so a
+custom screen shows the same text the kit does. The client gate is a user-experience gate, not DRM: see
 [Platform caveats](#platform-caveats).
 
 ### Config
@@ -337,6 +197,55 @@ never talked into updating its own code. `PKeyBoot` and `PKeyUpdatePrompt` do th
 Downloadable content as `godot.pck` and `files.tree` releases, fetched, verified, checked and
 mounted at a boot. A build needs a content stamp at `res://pkey_packs/pkey-content.json` (written
 by CI) to have packs at all. See [Packs](#packs-polariskeyupdatepacks-p4-08).
+
+### Commerce
+
+```gdscript
+var r := await PolarisKey.commerce.purchase("extras.diceSkins")  # a PKeyPurchaseResult
+match r.kind:
+	PKeyPurchaseResult.KIND_OK: unlock(r.flags)             # claimed and synced
+	PKeyPurchaseResult.KIND_PENDING: show_pending()         # Ask to Buy: it arrives later
+	PKeyPurchaseResult.KIND_CANCELLED, PKeyPurchaseResult.KIND_NOT_OWNED: pass
+	_: show_error(PKeyUiCopy.shared().for_result(r))
+await PolarisKey.commerce.restore()                         # re-claim what the store says you own
+await PolarisKey.commerce.claim_play(sku, purchase_token)   # from your own Play billing plugin
+if PolarisKey.commerce.is_unlocked("extras.diceSkins"): ...
+```
+
+Store purchases become licence flags (P6-01): the store sells, the Worker verifies the purchase
+and puts the mapped flag on the licence. `purchase(flag)` is the whole flow: the binding, the
+store's purchase with the binding token, the claim, the transaction finished only after the
+claim succeeded, then a sync. It drives the App Store on iOS (`PKeyApple`) and Steam through
+GodotSteam (the overlay's store page; the DLC is claimed with a Web API ticket bound to the
+binding once Steam says it is owned). On Play it answers unsupported with reason `dependency`
+until the addon drives Play Billing; buy with your billing plugin (`obfuscatedAccountId =
+commerce.binding_id`) and call `claim_play()`. A build that no store sells answers `outlet`.
+A `pending` App Store purchase (Ask to Buy, a slow payment) is not lost: on an App Store outlet
+commerce listens to `PKeyApple.transaction_updated` and claims each new transaction when it
+arrives, finishes it after the claim, syncs, and emits `app_store_update_claimed(result)`
+(refunds are not claimed; a failed claim stays unfinished for StoreKit to redeliver).
+`restore()` re-claims App Store current entitlements and owned Steam DLC. The lower-level
+`get_binding()`, `claim(store, payload)` and `claim_app_store(tx)` stay available.
+
+### Distribution and crash tags
+
+```gdscript
+var m := await PolarisKey.distribution.download_model()  # the public download page's model
+var here := PolarisKey.distribution.this_platform()       # {platform, label, primary, others, builds}
+SentrySDK.set_tag("pkey.outlet", PolarisKey.crash_tags().get("pkey.outlet", ""))
+```
+
+- `distribution.download_model()` reads `GET /<p>/distribution/download.json`, the unsigned,
+  public document the hosted download page renders: show it ("Also on Steam, Flathub…"), never
+  install from it. `this_platform()` picks this device's group with its primary action first.
+- The addon builds no customer-portal URLs. **Manage devices** links come from the server: once
+  the Worker sends a `manageUrl` on the `device_limit` refusal (PX-W8), `PKeyActivationPanel`
+  shows the button for it; until then the button stays hidden. Point players at the customer
+  portal in your own copy.
+- `crash_tags()` is `{release: "app@<version>[+<build>]", environment: <update channel>,
+"pkey.outlet": <outlet>}`, the convention update health maps a crash report to a rollout with.
+  No crash SDK is bundled; give the values to yours (Sentry: `release`, `environment` and a
+  `pkey.outlet` tag).
 
 ### What works here
 
@@ -465,6 +374,12 @@ plugin, run it) on 4.4.1 and 4.7.2 before each zip reaches the feed.
 - **Web** needs the product's origin in the Worker's CORS allowlist. A web build has no
   fingerprint, no keyless enrolment and no `strict` tiers. `user://` is IndexedDB in memory,
   which the browser may clear: that mints a new device id. Keep large packs out of `user://`.
+  **Clearing site data can consume a seat**: the device token goes with it, and with no
+  fingerprint the server cannot tell the browser is the same device, so entering the key again
+  activates a new device against the licence's device limit. The old one stays listed until it
+  is freed in the customer portal (Devices) or in the console. The addon cannot reuse the old
+  token on re-entry: `license/token` needs the old bearer and device id, and the clear took
+  both. Avoiding the extra seat needs a server-side rebind by key (not available yet).
 - **Device-code sign-in sends no fingerprint**, so a `strict` tier refuses that path.
 - **Secrets are not secret in a game.** A `clientScoped` secret is readable by anyone with the
   build (and on web by any same-origin script); use edge-mint (`mint_token`) for third-party API
@@ -563,7 +478,9 @@ PKEY_BUILD_OUTLET=itch-beta PKEY_BUILD_OUTLET_KIND=itch \
   line is `const PINNED_TRUST_KEYS := {...}`), editor channel. "Check" verifies the live trust
   manifest against the pasted pins and lists each kid with a SHA-256 fingerprint. "Fill from
   discovery" only pre-fills candidates; "Save" needs the box confirming the pins match
-  `pkey trust` or the console.
+  `pkey trust` or the console. Its tools (`editor/setup_tools.gd`, PKeySetupTools) build the
+  `pkey sdk --lang godot --write` and `pkey mirror --lang gdscript` command lines, run them
+  through the platform shell and add `pkey_packs/*` to the export presets.
 
 ## Boot and UI kit (`PolarisKey.boot()`, `PKeyBoot`, P1-10)
 
@@ -636,7 +553,7 @@ func _ready() -> void:
 
 ```gdscript
 var speed: float = PolarisKey.config.get_value("dice.animSpeed", 1.0)
-PolarisKey.config.set_override_store(PKeyConfigFileStore.new("user://settings.cfg"))
+PolarisKey.config.set_override_store(PKeyConfigFileStore.new("user://settings.cfg"))  # optional
 PolarisKey.config.set_compiled_catalog(preload("res://catalog_generated.gd"))
 PolarisKey.config.bind_property($Dice, "roll_speed", "dice.animSpeed", 1.0)
 var minted := await PolarisKey.config.mint_token("leaderboard")   # minted.token, minted.expires_at
@@ -645,6 +562,11 @@ var minted := await PolarisKey.config.mint_token("leaderboard")   # minted.token
 - Precedence is client-core's: enforced or hidden (remote) > local override > environment >
   remote default > fallback. An enforced or hidden key ignores the player's saved value without
   deleting it from `settings.cfg`.
+- **Settings persist by default.** Until the game installs its own store, the local layer is a
+  `PKeyConfigFileStore` at `PKeyOptions.settings_path` (`user://pkey_settings.cfg`), so a change
+  made in `PKeySettingsPanel` survives a restart with no code. `set_override_store()` replaces
+  it (point a `PKeyConfigFileStore` at your own `settings.cfg` to keep one file);
+  `persist_settings = false` keeps the layer in memory.
 - The local layer is read at call time. `PKeyConfigFileStore` finds a key at its catalog
   `accessor` (`section.key` -> `[section] key`), then in an explicit table, then at the key
   itself.
@@ -672,7 +594,18 @@ PolarisKey.identity.sign_in_pending.connect(func(p: PKeySignInPrompt):
 PolarisKey.identity.sign_in_finished.connect(func(r: PKeySignInResult):
 	if r.ok: $Who.text = "Signed in as %s" % r.identity.get("email", r.identity.get("name", "")))
 await PolarisKey.identity.begin_sign_in()        # polls in the background; cancel() stops it
+await PolarisKey.identity.sign_in_with_browser() # the same, and opens the page in the browser
+var who = PolarisKey.identity.current()          # {name, email, activatedAt} or null
+await PolarisKey.identity.sign_out()             # cancel, forget, license.deactivate()
 ```
+
+- **Account calls.** `current()` reads the signed-in person off the verified licence's profile.
+  `sign_out()` cancels any sign-in, forgets the identity and releases the seat through
+  `license.deactivate()` (best-effort server call, then the mandatory local wipe), so
+  `state_changed` fires as for a deactivation. `sign_in_with_browser()` is the interim "Sign in
+  with browser": device code with the verification page opened in the system browser. A native
+  redirect sign-in waits on the server's redirect token route (I-15); the deprecated
+  `/identity/auth/poll` route is not used.
 
 - Device-code sign-in (RFC 8628) is the only native way a game finishes an identity sign-in.
   `begin_sign_in` refuses with `service-unavailable` before any request when Identity is off or,
@@ -722,7 +655,17 @@ if check.ok:
         "binary", "store", "platform", "code-ready", "blocked": $PKeyUpdatePrompt.show_result(check)
         "none": pass                                     # check.decision["reason"] says why
 var notes := await PolarisKey.release.changelog()        # notes.entries: Array[PKeyChangelogEntry]
+PolarisKey.update.set_channel("beta")                    # persisted; check/decide/feed use it
 ```
+
+**The player's channel.** `set_channel(channel)` persists the player's update channel
+(`<store_root>/<product>/updates/channel.json`); `check()`, `decide()` and `feed()` called without
+a channel use it, and the dev menu's picker calls it. An alias is stored canonically, a malformed
+name is `invalid-options`, and an outlet that owns the channel (`channelSwitch` false: Steam
+branches, the App Store, …) answers unsupported with reason `outlet`. Staged code from another
+channel is dropped. `get_channel()`, `clear_channel()` and `channel_changed(channel)` complete it.
+The server still decides entitlement (`channel_not_allowed`), and the licence gate's
+`X-PKey-Channel` stays this build's channel.
 
 **The decision (wire v4, P3-08).** `decide(channel, staged, skip_version)` runs plans/P3-01.md
 §2.5 in the same order as every SDK: it reads `update.endpoints.feed` and
@@ -1442,6 +1385,12 @@ challenge's `play.cloudProjectNumber`, else `PKeyOptions.play_cloud_project_numb
   re-registration, mints a new device token and resets the device to `basic` on the Worker. Call
   `attest()` once the device holds its final token — after `activate`/`enroll`/`register`, not
   before. A token refresh keeps the level.
+- **Attest and retry, automatically.** When a product's trust policy wants an attested device, an
+  edge-mint (`config.mint_token`), a gated download (the sidecar pack, the APK, a pack object) or
+  a commerce claim answers 403 `attestation_required`. The addon then runs `attest()` once and
+  retries the call once (`PKeyCore.with_attestation`). Where `attest()` is unsupported, or it
+  fails, the caller gets the original refusal, with `detail.attestation` naming why the attest
+  did not happen. Set `PKeyOptions.auto_attest = false` to always get the refusal.
 - **A rare 422.** Challenges live in KV; very occasionally the attest request reaches a Cloudflare
   location the challenge has not propagated to yet and answers `attestation_rejected`. Call
   `attest()` again (it fetches a fresh challenge).

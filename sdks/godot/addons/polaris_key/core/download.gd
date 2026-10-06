@@ -29,6 +29,8 @@ const MAX_REDIRECTS := 5
 const CHUNK := 256 * 1024
 const READ_BUDGET_MSEC := 6
 const DEFAULT_TIMEOUT := 600.0
+## The most of an error answer's body read for its code.
+const ERROR_BODY_LIMIT := 8192
 
 
 ## Download `url` into `dest + ".part"`. Options: expected_size (int >= 0, required), timeout
@@ -148,8 +150,13 @@ static func fetch(transport: PKeyTransport, url: String, dest: String, headers: 
 				continue
 			append = true
 		elif status != 200:
+			# Read a small error body so the caller sees the server's code (a gated build's
+			# `attestation_required`, `download_auth_required`, `not_entitled`, …).
+			var err_body := await _small_body(client, tree, deadline, ERROR_BODY_LIMIT)
 			client.close()
-			return PKeyResult.failure(PKeyErrors.HTTP_ERROR, "The download answered %d." % status, {"status": status})
+			var e := PKeyErrors.read_body(err_body)
+			var code: String = e["code"] if e["code"] != "" else String(PKeyErrors.HTTP_ERROR)
+			return PKeyResult.failure(StringName(code), e["message"] if e["message"] != "" else "The download answered %d." % status, {"status": status, "error": e})
 		if not append:
 			have = 0
 			resumed = false
@@ -213,6 +220,21 @@ static func _body(client: HTTPClient, f: FileAccess, tree: SceneTree, deadline: 
 		if client.get_status() == HTTPClient.STATUS_BODY:
 			await tree.process_frame
 	return {"have": have, "error": ""}
+
+
+## Up to `limit` bytes of a (non-2xx) body, in memory.
+static func _small_body(client: HTTPClient, tree: SceneTree, deadline: int, limit: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	while client.get_status() == HTTPClient.STATUS_BODY and out.size() < limit:
+		client.poll()
+		var chunk := client.read_response_body_chunk()
+		if chunk.is_empty():
+			if Time.get_ticks_msec() >= deadline:
+				break
+			await tree.process_frame
+			continue
+		out.append_array(chunk)
+	return out.slice(0, limit) if out.size() > limit else out
 
 
 static func _lower(d: Dictionary) -> Dictionary:

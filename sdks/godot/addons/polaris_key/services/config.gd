@@ -44,6 +44,8 @@ var core: PKeyCore = null
 var env: PKeyConfigEnv
 
 var _store: PKeyOverrideStore = null
+## True while `_store` is the default persisted store attach() installed (not the game's own).
+var _default_store := false
 var _compiled_entries := {}
 var _compiled_defaults := {}
 var _compiled_version = null
@@ -97,7 +99,25 @@ func attach(p_core: PKeyCore) -> void:
 		set_compiled_catalog(core.options.config_catalog)
 	_minted.clear()
 	_minting.clear()
+	_install_default_store()
 	_snapshot = _take_snapshot()
+
+
+## SDK parity §3.11: the settings layer persists by default (PKeyOptions.persist_settings), in a
+## PKeyConfigFileStore at PKeyOptions.settings_path. A store the game installed itself is never
+## replaced; the default one follows the options at every configure().
+func _install_default_store() -> void:
+	if _store != null and not _default_store:
+		return
+	var path := core.options.settings_path
+	if core.options.persist_settings and path != "":
+		if _store is PKeyConfigFileStore and (_store as PKeyConfigFileStore).path == path:
+			return
+		_set_store(PKeyConfigFileStore.new(path))
+		_default_store = true
+	elif _default_store:
+		_set_store(null)
+		_default_store = false
 
 
 # ── Resolution ─────────────────────────────────────────────────────────────────────────────
@@ -158,12 +178,22 @@ func enabled() -> bool:
 ## The player's settings layer (PKeyOverrideStore; PKeyConfigFileStore for a settings.cfg), or
 ## null for none. Read at every `get_value`.
 func set_override_store(store: PKeyOverrideStore) -> void:
+	_default_store = false
+	_set_store(store)
+	refresh()
+
+
+## Whether the current settings layer is the default persisted one (PKeyOptions.persist_settings).
+func is_default_override_store() -> bool:
+	return _default_store
+
+
+func _set_store(store: PKeyOverrideStore) -> void:
 	if _store != null and _store.changed.is_connected(_on_store_changed):
 		_store.changed.disconnect(_on_store_changed)
 	_store = store
 	if _store != null:
 		_store.changed.connect(_on_store_changed)
-	refresh()
 
 
 func get_override_store() -> PKeyOverrideStore:

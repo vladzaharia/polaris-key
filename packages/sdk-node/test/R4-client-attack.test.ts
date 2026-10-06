@@ -707,7 +707,8 @@ describe("R4-04: clock rollback / grace extension", () => {
     await anchored.init();
     expect(anchored.status(issued + 60).status).toBe("expired");
     expect(anchored.isLicensed(issued + 60)).toBe(false);
-    expect(anchored.license.isEntitled("pro")).toBe(true); // the doc parsed; the GATE refuses
+    // The doc parsed, and the GATE refuses — so its grants are not read either (S-19 G11).
+    expect(anchored.license.isEntitled("pro", issued + 60)).toBe(false);
     // An honest clock is unaffected — the floor is a minimum, never a substitute.
     expect(anchored.status(realNow).status).toBe("expired");
     anchored.close();
