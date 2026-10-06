@@ -22,6 +22,7 @@ import {
   SIGNIN_FLOW_COOKIE,
 } from "../src/core/accountCookies.js";
 import { TURNSTILE_VERIFY_URL } from "../src/services/identity/card/turnstile.js";
+import { EMAIL_RESEND_AFTER_SECONDS } from "../src/services/identity/card/emailSignIn.js";
 
 // I-07: the login card's email sign-in (S-16 §5.4 item 4; PORTAL.md §4.1, §4.4). A code and a
 // magic link in one email, bound to the browser that asked; identical answers for known and
@@ -119,6 +120,7 @@ describe("email start (identifier-first)", () => {
       ok: true,
       expiresIn: EMAIL_CODE_TTL_SECONDS,
       codeLength: EMAIL_CODE_DIGITS,
+      resendIn: EMAIL_RESEND_AFTER_SECONDS,
     });
     const cookie = res.headers.get("set-cookie")!;
     expect(cookie).toMatch(new RegExp(`^${SIGNIN_FLOW_COOKIE}=`));

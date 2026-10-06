@@ -1369,12 +1369,14 @@ WCAG 2.2 AA in both themes (BRAND §9), plus:
 `DELETE /api/licenses/:p/:id/devices/:deviceId`, `GET /api/releases`,
 `POST /api/releases/:p/:r/artifacts/:a/token`, `GET /download/<token>`, plus `/login`,
 `/callback`, `/logout`, `/magic/verify` and `POST /api/magic/start`. All are root paths on
-`key.plrs.im`; the route kinds are in `routeCoverage` (`portalApi`,
-`portalDownload`, …) as **narrative-only**: the OpenAPI spec covers the product-scoped wire and
-must not list `/api/*` (the coverage test fails on a path outside its expected set), so **rule 10
-for every new portal route means documenting it on the docs site's portal page**
-(`packages/docs/src/content/docs/services/identity/portal.md`) (corrected by PX-W7 against the
-code).
+`key.plrs.im`. In `routeCoverage` the route kinds (`portalApi`, `portalDownload`, …) are
+narrative-only as kinds, but each `/api/*` route a package adds is pinned path by path in
+`PORTAL_KIND_PATHS` and must be in the OpenAPI spec (PX-W1 started this; the login card, Discover,
+device login, sign-in requests and the resend followed). The coverage test fails on a spec path
+outside its expected set and on a pinned route the spec lacks, so **rule 10 for a new portal route
+means its OpenAPI operation, its `PORTAL_KIND_PATHS` row, and a line on the docs site's portal page**
+(`packages/docs/src/content/docs/services/identity/portal.md`) (corrected by PX-W4 against the
+code; PX-W7's earlier note said the spec must not list `/api/*`).
 
 ### 10.2 Gaps the Worker must close
 

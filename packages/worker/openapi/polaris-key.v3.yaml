@@ -11851,13 +11851,7 @@ paths:
               schema: { type: string }
           content:
             application/json:
-              schema:
-                type: object
-                required: [ok, expiresIn, codeLength]
-                properties:
-                  ok: { type: boolean, enum: [true] }
-                  expiresIn: { type: integer, enum: [600] }
-                  codeLength: { type: integer, enum: [6] }
+              schema: { $ref: "#/components/schemas/CardEmailSent" }
         "400": { $ref: "#/components/responses/CardError" }
         "403":
           description: "`turnstile_failed`: the security check did not pass."
@@ -11902,6 +11896,61 @@ paths:
         "403": { $ref: "#/components/responses/CardError" }
         "409": { $ref: "#/components/responses/CardError" }
         "429": { $ref: "#/components/responses/CardError" }
+  /api/signin/email/resend:
+    post:
+      operationId: resendCardEmailCode
+      tags: [portal]
+      summary: A new code and magic link for this browser's email sign-in
+      description: >
+        PX-W4 (PORTAL.md §4.4, "Resend"). Retires this browser's flow atomically and opens a new one
+        for the same address and `returnTo`, mailing a new code and link when every send limit
+        passes; the previous code and link stop working, and of two racing resends one mails. No
+        body and no new Turnstile token: the flow passed one at the start. A resend waits 60 seconds
+        after the last code (`429 rate_limited` with `retryAfter` and `Retry-After`), and one flow
+        sends at most 5 emails, its start included (`429 rate_limited` without `retryAfter`: start
+        again). It shares the start's 8-a-minute budget per client address (`429 rate_limited` with
+        `retryAfter: 60`, so only the per-flow cap answers without one) and every I-02 send
+        limit, with the start's enumeration rule: a refused send answers the same bytes as a sent
+        one, which are the start's. A browser without a live flow gets `400 signin_expired`, its
+        cookie left alone (a double click's second request must not clear the first one's).
+      responses:
+        "200":
+          description: Accepted (whether or not mail was sent); the flow cookie names the new flow.
+          headers:
+            Set-Cookie:
+              description: "`__Host-pkey_signin=<secret>; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=600`."
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CardEmailSent" }
+        "400": { $ref: "#/components/responses/CardError" }
+        "404":
+          description: "`auth_method_disabled`: email sign-in is off."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: >
+            `rate_limited`: too soon after the last code, or the client address's minute budget is
+            spent (both with `retryAfter` seconds, also in `Retry-After`); or too many emails for
+            this flow (no `retryAfter`: no more codes for this sign-in, the latest still works).
+          headers:
+            Retry-After:
+              description: Seconds until a resend may be accepted; absent on the per-flow cap.
+              schema: { type: integer }
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/FlatError"
+                  - type: object
+                    properties:
+                      retryAfter: { type: integer, minimum: 1, maximum: 60 }
+        "503":
+          description: "`email_unavailable`: mail cannot leave at all (a platform fact that names no one)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   /api/signin/flow:
     post:
       operationId: pollCardEmailFlow
@@ -15377,6 +15426,23 @@ components:
                             dormant:
                               type: boolean
                               description: Past the dormancy window; holds no seat.
+    CardEmailSent:
+      type: object
+      description: >
+        The email start's and the resend's one answer (I-07, PX-W4), the same bytes whether or not
+        mail went out.
+      required: [ok, expiresIn, codeLength, resendIn]
+      properties:
+        ok: { type: boolean, enum: [true] }
+        expiresIn:
+          type: integer
+          enum: [600]
+          description: Seconds the code and the link work.
+        codeLength: { type: integer, enum: [6] }
+        resendIn:
+          type: integer
+          enum: [60]
+          description: Seconds before `POST /api/signin/email/resend` accepts this flow (the card's countdown).
     CardSignedIn:
       type: object
       required: [status, next, nudge]

@@ -6,6 +6,7 @@
  *
  *   POST /api/signin/email/start           identifier-first email start: a code and a link
  *   POST /api/signin/email/verify          redeem the code for this browser's flow
+ *   POST /api/signin/email/resend          a new code and link for this browser's flow (PX-W4)
  *   POST /api/signin/flow                  the asking browser's poll after a link elsewhere
  *   GET  /api/signin/confirm-email         the email gate's state
  *   POST /api/signin/confirm-email         confirm the provider's email or a typed one (+ terms)
@@ -17,6 +18,7 @@
 
 import type { Db, Env } from "../../../core/platform.js";
 import {
+  handleSigninEmailResend,
   handleSigninEmailStart,
   handleSigninEmailVerify,
   handleSigninFlowPoll,
@@ -52,6 +54,8 @@ export async function handleCardApi(
     return handleSigninEmailStart(req, env, db, now);
   if (first === "email" && rest.length === 1 && rest[0] === "verify")
     return handleSigninEmailVerify(req, env, db, now);
+  if (first === "email" && rest.length === 1 && rest[0] === "resend")
+    return handleSigninEmailResend(req, env, db, now);
   if (first === "flow" && rest.length === 0)
     return handleSigninFlowPoll(req, env, db, now);
   if (first === "confirm-email")

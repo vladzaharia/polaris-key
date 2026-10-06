@@ -430,9 +430,24 @@ export interface PortalDiscoverClaim {
   };
 }
 
+/**
+ * The email start's and the resend's one answer (I-07, PX-W4), the same whether or not mail went
+ * out. The numbers are optional so an older Worker's bare `{ ok: true }` still reads.
+ */
+export interface PortalEmailSent {
+  ok: true;
+  /** Seconds the code and the link work. */
+  expiresIn?: number;
+  codeLength?: number;
+  /** Seconds before "Send a new code" is accepted (the card's countdown). */
+  resendIn?: number;
+}
+
 export class PortalApiError extends Error {
   /** A refusal's numeric extras the card shows (`triesLeft` on a wrong sign-in code). */
   triesLeft?: number;
+  /** Seconds to wait before asking again (a resend asked too soon, PX-W4). */
+  retryAfter?: number;
   constructor(
     public readonly status: number,
     public readonly code?: string,
@@ -474,21 +489,25 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     let code: string | undefined;
     let message: string | undefined;
     let triesLeft: number | undefined;
+    let retryAfter: number | undefined;
     try {
       const body = (await res.json()) as {
         error?: string;
         message?: string;
         triesLeft?: unknown;
+        retryAfter?: unknown;
       };
       code = body.error;
       message = body.message;
       if (typeof body.triesLeft === "number") triesLeft = body.triesLeft;
+      if (typeof body.retryAfter === "number") retryAfter = body.retryAfter;
     } catch {
       // non-JSON response
     }
     const error = new PortalApiError(res.status, code);
     if (message) error.message = message;
     if (triesLeft !== undefined) error.triesLeft = triesLeft;
+    if (retryAfter !== undefined) error.retryAfter = retryAfter;
     throw error;
   }
   const text = await res.text();
@@ -515,10 +534,23 @@ export const portalApi = {
    * (SIGN-IN.md §3.4). `/api/magic/start` is the older alias of the same route.
    */
   startEmailSignIn: async (email: string) => {
-    const out = await call<{ ok: true }>("/api/signin/email/start", {
+    const out = await call<PortalEmailSent>("/api/signin/email/start", {
       method: "POST",
       // Never the carried license key (carriedKey.ts).
       body: JSON.stringify({ email, returnTo: returnUrl() }),
+    });
+    signInPending = true;
+    return out;
+  },
+  /**
+   * PX-W4: "Send a new code" for this tab's email sign-in. The Worker mails the same address
+   * (and keeps where the sign-in was headed), asks for no new security check, and retires the
+   * previous code and link; starting again would need a fresh Turnstile token and leave the old
+   * link alive.
+   */
+  resendSignInCode: async () => {
+    const out = await call<PortalEmailSent>("/api/signin/email/resend", {
+      method: "POST",
     });
     signInPending = true;
     return out;

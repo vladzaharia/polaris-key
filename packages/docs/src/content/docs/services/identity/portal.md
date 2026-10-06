@@ -48,6 +48,7 @@ are the portal SPA's.
 | `GET /callback`                         | The OIDC redirect URI: exchanges the code, verifies the ID token, signs in. |
 | `POST /api/signin/email/start`          | Emails a 6-digit code and a magic link, bound to this browser.              |
 | `POST /api/signin/email/verify`         | Redeems the code in the browser that asked.                                 |
+| `POST /api/signin/email/resend`         | Sends a new code and link for this browser's sign-in.                       |
 | `GET /magic/verify`                     | The magic link's landing page. Consumes nothing.                            |
 | `POST /magic/verify`                    | The landing page's button: signs in here, or confirms the asking browser.   |
 | `POST /api/signin/flow`                 | The asking browser's poll after the link was confirmed on another device.   |
@@ -78,7 +79,21 @@ minute and 10 sends an hour per client address, 30 an hour per network, 5 an hou
 recipient. A code lives 10 minutes and dies after 5 wrong attempts; 10 wrong attempts in an hour
 lock the recipient out of new codes for 15 minutes, silently. When the deploy sets
 `TURNSTILE_SECRET_KEY`, the start verifies a Cloudflare Turnstile token first and fails closed;
-`GET /api/capabilities` hands the card the public `turnstileSiteKey`.
+`GET /api/capabilities` hands the card the public `turnstileSiteKey`. The answer is
+`{ "ok": true, "expiresIn": 600, "codeLength": 6, "resendIn": 60 }`.
+
+**Send a new code.** `POST /api/signin/email/resend` takes no body. It retires this browser's
+flow and opens a new one for the same address and `returnTo`, mailing a new code and link under
+the same limits and answering the start's bytes whether or not mail went out; the previous code
+and link stop working, and of two racing resends (a double click) one mails. It asks for no new
+Turnstile token, because the flow passed one, so it is bounded instead: it waits 60 seconds after
+the last code (`429 rate_limited` with `retryAfter`), it shares the start's 8 a minute per client
+address (also with `retryAfter`), and one flow sends at most 5 emails, its start included
+(`429 rate_limited` without `retryAfter`: no more codes for this sign-in, the latest still
+works). A browser without a live flow gets `400 signin_expired`, and the card goes back to the
+email step. The card's countdown reads `resendIn` from the start's and the resend's answer. A
+resend whose send then fails (`503 email_unavailable` from the mail provider) has already retired
+the previous code and link, so the person starts again.
 
 The link's landing page consumes nothing, so a mail scanner or a link prefetcher cannot burn it;
 its button `POST`s the token back. In the browser that asked, that signs in. Anywhere else the

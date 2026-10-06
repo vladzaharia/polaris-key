@@ -380,6 +380,202 @@ describe("LoginCard (SIGN-IN.md §3.1–§3.4, §3.9)", () => {
     ).toBe(true);
   });
 
+  describe("Send a new code (PX-W4)", () => {
+    /** Type the address, Continue, and wait for the code step. */
+    async function toCodeStep(): Promise<void> {
+      await userEvent.type(
+        await screen.findByRole("textbox", { name: "Email" }),
+        "mara@fennick.studio",
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Check your email",
+      });
+    }
+
+    it("counts down from the start's resendIn", async () => {
+      signedOut(CAPS_ALL, {
+        "POST /api/signin/email/start": {
+          ok: true,
+          expiresIn: 600,
+          codeLength: 6,
+          resendIn: 30,
+        },
+      });
+      renderPortal();
+      await toCodeStep();
+      expect(
+        screen.getByText(/^Send a new code in 0:(30|29|28)$/),
+      ).toBeTruthy();
+    });
+
+    it("resends this sign-in (never a second start) and restarts the countdown from the answer", async () => {
+      signedOut(CAPS_ALL, {
+        "POST /api/signin/email/start": { ok: true, resendIn: 0 },
+        "POST /api/signin/email/resend": {
+          ok: true,
+          expiresIn: 600,
+          codeLength: 6,
+          resendIn: 45,
+        },
+      });
+      renderPortal();
+      await toCodeStep();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Send a new code" }),
+      );
+      expect(
+        await screen.findByText(
+          "We sent a new code and link to mara@fennick.studio.",
+        ),
+      ).toBeTruthy();
+      expect(screen.getByText(/^Send a new code in 0:4[3-5]$/)).toBeTruthy();
+      // The button became a countdown: focus is on the code, not lost to the page.
+      expect(document.activeElement).toBe(
+        screen.getByRole("textbox", { name: "6-digit code" }),
+      );
+      expect(
+        fetchedRequests().filter((r) =>
+          r.startsWith("POST /api/signin/email/"),
+        ),
+      ).toEqual([
+        "POST /api/signin/email/start",
+        "POST /api/signin/email/resend",
+      ]);
+      // No body: the Worker reads the address from this tab's sign-in.
+      const resend = vi
+        .mocked(fetch)
+        .mock.calls.find(([u]) =>
+          String(u).includes("/api/signin/email/resend"),
+        )!;
+      expect(resend[1]!.body).toBeUndefined();
+      expect(await axeViolations()).toEqual([]);
+    });
+
+    it("asked too soon, shows the Worker's wait as the countdown", async () => {
+      signedOut(CAPS_ALL, {
+        "POST /api/signin/email/start": { ok: true, resendIn: 0 },
+        "POST /api/signin/email/resend": {
+          status: 429,
+          body: {
+            error: "rate_limited",
+            message: "Wait a minute, then send a new code.",
+            retryAfter: 42,
+          },
+        },
+      });
+      renderPortal();
+      await toCodeStep();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Send a new code" }),
+      );
+      expect(
+        await screen.findByText(/^Send a new code in 0:(42|41|40)$/),
+      ).toBeTruthy();
+      expect(screen.queryByRole("alert")).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: "Send a new code" }),
+      ).toBeNull();
+      expect(document.activeElement).toBe(
+        screen.getByRole("textbox", { name: "6-digit code" }),
+      );
+    });
+
+    it("a bare 429 from the edge (no JSON) is a retry-later error, not the cap", async () => {
+      signedOut(CAPS_ALL, {
+        "POST /api/signin/email/start": { ok: true, resendIn: 0 },
+        "POST /api/signin/email/resend": { status: 429, body: undefined },
+      });
+      renderPortal();
+      await toCodeStep();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Send a new code" }),
+      );
+      expect((await screen.findByRole("alert")).textContent).toBe(
+        "Too many codes. Try again in a few minutes.",
+      );
+      expect(screen.queryByText(/No more codes can be sent/)).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Send a new code" }),
+      ).toBeTruthy();
+    });
+
+    it("at the sign-in's limit, says no more codes can be sent and the latest still works", async () => {
+      signedOut(CAPS_ALL, {
+        "POST /api/signin/email/start": { ok: true, resendIn: 0 },
+        "POST /api/signin/email/resend": {
+          status: 429,
+          body: {
+            error: "rate_limited",
+            message: "Too many codes for this sign-in. Start again.",
+          },
+        },
+      });
+      renderPortal();
+      await toCodeStep();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Send a new code" }),
+      );
+      expect(
+        await screen.findByText(
+          "No more codes can be sent for this sign-in. The latest code still works.",
+        ),
+      ).toBeTruthy();
+      expect(
+        screen.queryByRole("button", { name: "Send a new code" }),
+      ).toBeNull();
+      expect(screen.queryByText(/Send a new code in/)).toBeNull();
+      expect(screen.queryByRole("alert")).toBeNull();
+      // The button went away: focus is on the code that still works.
+      expect(document.activeElement).toBe(
+        screen.getByRole("textbox", { name: "6-digit code" }),
+      );
+      expect(
+        screen.getByRole("button", { name: "Use a different email" }),
+      ).toBeTruthy();
+      expect(await axeViolations()).toEqual([]);
+    });
+
+    it("an expired sign-in goes back to the email step with the address kept", async () => {
+      signedOut(CAPS_ALL, {
+        "POST /api/signin/email/start": { ok: true, resendIn: 0 },
+        "POST /api/signin/email/resend": {
+          status: 400,
+          body: {
+            error: "signin_expired",
+            message: "This sign-in has expired. Start again.",
+          },
+        },
+      });
+      renderPortal();
+      await toCodeStep();
+      await userEvent.click(
+        screen.getByRole("button", { name: "Send a new code" }),
+      );
+      const h1 = await screen.findByRole("heading", {
+        level: 1,
+        name: "Sign in to Polaris Key",
+      });
+      await waitFor(() => expect(document.activeElement).toBe(h1));
+      expect(
+        (screen.getByRole("textbox", { name: "Email" }) as HTMLInputElement)
+          .value,
+      ).toBe("mara@fennick.studio");
+      // The reason is announced with the step change (an alert), not only shown.
+      expect(screen.getByRole("alert").textContent).toBe(
+        "That sign-in has expired. Continue to get a new code.",
+      );
+      expect(await axeViolations()).toEqual([]);
+      // Continue starts a new sign-in for the kept address.
+      await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+      await screen.findByRole("heading", { name: "Check your email" });
+      expect(
+        fetchedRequests().filter((r) => r === "POST /api/signin/email/start"),
+      ).toHaveLength(2);
+    });
+  });
+
   it("does not treat the first load as a step change: no announcement", async () => {
     signedOut();
     renderPortal();

@@ -124,6 +124,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/api/signin/confirm-email/verify` | portal | The code for a typed or unverified address |
 | GET | `/api/signin/confirm-email` | portal | The email gate's state (the required first-provider-sign-in interstitial) |
 | POST | `/api/signin/confirm-email` | portal | Confirm the provider's email or a typed one (and accept terms) |
+| POST | `/api/signin/email/resend` | portal | A new code and magic link for this browser's email sign-in |
 | POST | `/api/signin/email/start` | portal | Identifier-first email start (a code and a magic link) |
 | POST | `/api/signin/email/verify` | portal | Redeem the emailed code in the browser that asked |
 | POST | `/api/signin/flow` | portal | The asking browser's poll after the link was confirmed elsewhere |

@@ -12,6 +12,13 @@
  *   `POST /api/signin/email/verify {code}` redeems the code for the flow in this browser. Right:
  *   the flow is consumed (atomically: one completion only) and the account session opens.
  *
+ *   `POST /api/signin/email/resend` (PX-W4; PORTAL.md §4.4 "Resend") retires this browser's flow
+ *   atomically and opens a new one for the same address and `returnTo`: a new code and link go out,
+ *   and the previous ones stop working. It needs no new Turnstile token (the flow passed one); it
+ *   waits `EMAIL_RESEND_AFTER_SECONDS` after the last code and sends at most `EMAIL_SENDS_PER_FLOW`
+ *   emails per flow, its start included, so one Turnstile pass buys at most one hour's
+ *   per-recipient budget.
+ *
  *   `GET /magic/verify?token=` is a landing page that consumes NOTHING (link prefetchers and
  *   mail scanners cannot burn the link); its button `POST`s the token back. In the browser that
  *   asked, that completes the sign-in. Anywhere else it shows "Confirm sign-in, requested at
@@ -26,6 +33,9 @@
  * deploy that cannot send mail at all answers `503 email_unavailable`, a fact about the platform
  * that names no one. The address-specific answer (a join offer) comes only after the code proved
  * the address.
+ *
+ * The resend answers the start's bytes too, whether or not mail went out; its other answers (wait,
+ * too many for this flow, expired) are facts about this browser's own flow, never the address.
  *
  * Limits and lifetimes are I-02's (`core/emailLimits.ts`), scoped to the platform bucket
  * `_portal`: 6 digits, 10 minutes, 5 wrong attempts per code, lockout after 10 an hour, 5 sends
@@ -48,6 +58,7 @@ import {
   EMAIL_CODE_DIGITS,
   EMAIL_CODE_MAX_ATTEMPTS,
   EMAIL_CODE_TTL_SECONDS,
+  EMAIL_SEND_PER_RECIPIENT_HOUR,
   issueEmailCode,
   verifyEmailCode,
 } from "../../../core/emailLimits.js";
@@ -84,6 +95,13 @@ export const PORTAL_EMAIL_SCOPE = "_portal";
 export const EMAIL_START_PER_IP_MINUTE = 8;
 /** Code verifications from one client address per minute, across flows. */
 export const CODE_VERIFY_PER_IP_MINUTE = 30;
+/** Seconds after a code before this browser may ask for another (the card's resend countdown). */
+export const EMAIL_RESEND_AFTER_SECONDS = 60;
+/**
+ * Emails one email sign-in may send, its start included: one hour of the per-recipient budget.
+ * The resend asks for no new Turnstile token, so this is what one Turnstile pass can buy.
+ */
+export const EMAIL_SENDS_PER_FLOW = EMAIL_SEND_PER_RECIPIENT_HOUR;
 
 interface FlowRecord {
   v: 1;
@@ -94,6 +112,10 @@ interface FlowRecord {
   status: "pending" | "confirmed";
   attempts: number;
   confirmedAt?: number;
+  /** Emails this sign-in has asked for, its start included (PX-W4; absent on older flows: 1). */
+  sends?: number;
+  /** The store id of the magic link minted with the current code (PX-W4), so a resend retires it. */
+  link?: string;
 }
 
 interface MagicRecord {
@@ -213,10 +235,28 @@ export async function handleSigninEmailStart(
     );
   }
   if (!portalEmailConfigured(env)) return emailUnavailable();
+  return openFlow(req, env, db, { email, returnTo, sends: 1 }, now);
+}
 
+/**
+ * Open a flow for `email` bound to a fresh browser secret and, if every send limit passes, mail its
+ * code and link. The answer is the same bytes whether or not mail went out (enumeration safety);
+ * only a sender that cannot send at all answers `503 email_unavailable`.
+ */
+async function openFlow(
+  req: Request,
+  env: Env,
+  db: Db,
+  input: { email: string; returnTo?: string; sends: number },
+  now: number,
+): Promise<Response> {
+  const { email, returnTo } = input;
   const secret = randomSecret(32);
   const ref = await signinFlowRef(env, secret);
   const place = requestPlace(req);
+  // The link's address is minted first so the flow can name it: a resend retires it.
+  const token = randomSecret(24);
+  const magicRef = await portalMagicKey(env, token);
   const record: FlowRecord = {
     v: 1,
     email,
@@ -225,6 +265,8 @@ export async function handleSigninEmailStart(
     ...(returnTo ? { returnTo } : {}),
     status: "pending",
     attempts: 0,
+    sends: input.sends,
+    link: magicRef.id,
   };
   await putArtefact(env, ref, JSON.stringify(record), EMAIL_CODE_TTL_SECONDS);
 
@@ -240,8 +282,6 @@ export async function handleSigninEmailStart(
       { product: PORTAL_EMAIL_SCOPE, recipient: email, flowId: ref.id },
       JSON.stringify({ flow: ref.id }),
     );
-    const token = randomSecret(24);
-    const magicRef = await portalMagicKey(env, token);
     const magic: MagicRecord = {
       email,
       flow: ref.id,
@@ -275,9 +315,93 @@ export async function handleSigninEmailStart(
       ok: true,
       expiresIn: EMAIL_CODE_TTL_SECONDS,
       codeLength: EMAIL_CODE_DIGITS,
+      resendIn: EMAIL_RESEND_AFTER_SECONDS,
     },
     200,
     [accountRealmCookie(SIGNIN_FLOW_COOKIE, secret, EMAIL_CODE_TTL_SECONDS)],
+  );
+}
+
+/** A resend asked for too early (or lost a race to another): this browser's own state. */
+function resendLater(retryAfter: number): Response {
+  const res = cardJson(
+    {
+      error: "rate_limited",
+      message: "Wait a minute, then send a new code.",
+      retryAfter,
+    },
+    429,
+  );
+  res.headers.set("retry-after", String(retryAfter));
+  return res;
+}
+
+/** `POST /api/signin/email/resend`: a new code and link for this browser's flow (PX-W4). */
+export async function handleSigninEmailResend(
+  req: Request,
+  env: Env,
+  db: Db,
+  now: number,
+): Promise<Response> {
+  if (req.method !== "POST")
+    return cardJson({ error: "method_not_allowed" }, 405);
+  // One budget with the start: both ask for mail. Its refusal carries a wait (the minute
+  // window's upper bound), so a 429 without `retryAfter` means only the per-flow cap below.
+  const allowed = await rateLimitOk(
+    env,
+    PORTAL_EMAIL_SCOPE,
+    {
+      bucket: "portalMagic",
+      id: clientIp(req),
+      limit: EMAIL_START_PER_IP_MINUTE,
+      windowSec: 60,
+    },
+    now,
+  );
+  if (!allowed) return resendLater(60);
+  const caps = await portalAuthCapabilities(db);
+  if (!caps.portalEnabled || !caps.magicEnabled) {
+    return cardJson(
+      { error: "auth_method_disabled", message: "email sign-in is disabled" },
+      404,
+    );
+  }
+  const flow = await currentFlow(env, req);
+  // The cookie is left alone: on a double click, the second request still carries the flow the
+  // first one just retired, and clearing it here would drop the new flow's cookie the first
+  // answer set.
+  if (!flow) return expired([]);
+  const sends = flow.record.sends ?? 1;
+  if (sends >= EMAIL_SENDS_PER_FLOW) {
+    // The flow stays: its latest code and link still work.
+    return cardJson(
+      {
+        error: "rate_limited",
+        message: "Too many codes for this sign-in. Start again.",
+      },
+      429,
+    );
+  }
+  const wait = flow.record.createdAt + EMAIL_RESEND_AFTER_SECONDS - now;
+  if (wait > 0) return resendLater(wait);
+  if (!portalEmailConfigured(env)) return emailUnavailable();
+  // Retire the flow atomically: of two racing resends (or a resend and a completion) one wins,
+  // and the previous code and link die with it (both are bound to its id).
+  if (!(await consumeArtefact(env, flow.ref)))
+    return resendLater(EMAIL_RESEND_AFTER_SECONDS);
+  if (flow.record.link) {
+    await deleteArtefact(env, artefactRef("portal-magic", flow.record.link));
+  }
+  return openFlow(
+    req,
+    env,
+    db,
+    {
+      email: flow.record.email,
+      ...(flow.record.returnTo ? { returnTo: flow.record.returnTo } : {}),
+      sends: sends + 1,
+    },
+    now,
   );
 }
 
@@ -340,8 +464,9 @@ export async function handleSigninEmailVerify(
       400,
     );
   }
-  // One completion only: of two racing verifications (or a code and a link), one wins.
-  if (!(await consumeArtefact(env, flow.ref))) return expired();
+  // One completion only: of two racing verifications (or a code and a link), one wins. A loser
+  // leaves the cookie alone: the winner may be a resend that just set the new flow's (PX-W4).
+  if (!(await consumeArtefact(env, flow.ref))) return expired([]);
   return completeEmailSignIn(req, env, db, flow.record, now, "json");
 }
 
@@ -429,8 +554,10 @@ async function completeEmailSignIn(
 
 /**
  * The expired or used code/link page (SIGN-IN.md §3.13, frame 15). The spec's **Send a new code**
- * (a POST to the masked address) needs a route that does not exist yet, so the page offers
- * **Sign in again**, back to where the sign-in was headed when the link's record still says so.
+ * (a POST to the masked address) is the resend route's, but a flow lives exactly as long as its
+ * link, so by the time a link has expired this page knows no address to send to: it takes the
+ * spec's "without a known address" branch and offers **Sign in again**, back to where the sign-in
+ * was headed when the link's record still says so.
  */
 function expiredLinkPage(returnTo?: string): Response {
   return cardPage(400, {

@@ -878,7 +878,13 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
     return {
       "/api/me": { status: 401, body: { error: "unauthorized" } },
       "/api/capabilities": { body: CAPS },
-      "POST /api/signin/email/start": { body: { ok: true } },
+      // The Worker's answer shape (I-07, PX-W4): the countdown reads `resendIn`.
+      "POST /api/signin/email/start": {
+        body: { ok: true, expiresIn: 600, codeLength: 6, resendIn: 60 },
+      },
+      "POST /api/signin/email/resend": {
+        body: { ok: true, expiresIn: 600, codeLength: 6, resendIn: 60 },
+      },
     };
   }
   let licenses = licensesFor(s);

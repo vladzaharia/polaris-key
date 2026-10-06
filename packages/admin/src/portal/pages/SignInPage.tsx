@@ -4,7 +4,12 @@ import { ArrowRight, KeyRound, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { Input } from "../../ui/Input.js";
 import { cn } from "../../lib/cn.js";
-import { portalApi, PortalApiError, type PortalCapabilities } from "../api.js";
+import {
+  portalApi,
+  PortalApiError,
+  type PortalCapabilities,
+  type PortalEmailSent,
+} from "../api.js";
 import { CardHeader, LoginCard } from "../components/signin/LoginCard.js";
 import { ProviderRow } from "../components/signin/ProviderRow.js";
 import { KeyField } from "../components/KeyField.js";
@@ -25,7 +30,9 @@ import { returnUrl, stashCarriedKey } from "../carriedKey.js";
  *   centred **Have a license key?** link.
  * - **CodeStep**: I-07's email carries a 6-digit code and a sign-in link. One input drawn as six
  *   cells, submitted on the sixth digit; the link still signs this tab in by itself
- *   (`useSessionRecheck`).
+ *   (`useSessionRecheck`). **Send a new code** is PX-W4's resend for this sign-in, after the
+ *   Worker's `resendIn` countdown; a sign-in that has expired goes back to the email step with
+ *   the address kept.
  * - **KeyStep** (the on-ramp): the key field; Continue keeps the key in `#/?activate=` and moves
  *   on to sign-in, after which the Activate dialog opens with it filled in (the same round trip
  *   as `/activate#key=…`).
@@ -33,12 +40,21 @@ import { returnUrl, stashCarriedKey } from "../carriedKey.js";
  * Copy is inlined with its `signin.*` key (§5.2) until UK-02a ships the catalog.
  */
 type Step =
-  | { kind: "methods" }
-  | { kind: "code"; email: string }
+  | { kind: "methods"; email?: string; notice?: string }
+  | { kind: "code"; email: string; resendIn: number }
   | { kind: "key" };
 
-const RESEND_AFTER_S = 60;
+/** The countdown when an answer carries no `resendIn` (a Worker from before PX-W4). */
+const RESEND_FALLBACK_S = 60;
 const CODE_LENGTH = 6;
+
+/** Seconds until "Send a new code", from the start's or the resend's answer. */
+function resendDelay(out: PortalEmailSent | undefined): number {
+  const n = out?.resendIn;
+  return typeof n === "number" && Number.isFinite(n) && n >= 0
+    ? Math.ceil(n)
+    : RESEND_FALLBACK_S;
+}
 
 function productFromUrl(): string | null {
   const search = new URLSearchParams(window.location.search).get("product");
@@ -104,7 +120,19 @@ export function SignInPage(): React.ReactElement {
       ) : step.kind === "code" ? (
         <CodeStep
           email={step.email}
+          resendIn={step.resendIn}
           onChangeEmail={() => go({ kind: "methods" }, "back")}
+          onExpired={() =>
+            go(
+              {
+                kind: "methods",
+                email: step.email,
+                // signin.code.expiredRestart (PX-W4; joins the §5.2 catalog with UK-02a)
+                notice: "That sign-in has expired. Continue to get a new code.",
+              },
+              "back",
+            )
+          }
         />
       ) : step.kind === "key" ? (
         <KeyStep
@@ -118,7 +146,9 @@ export function SignInPage(): React.ReactElement {
         <MethodsStep
           caps={caps.data}
           context={ctx ?? null}
-          onSent={(email) => go({ kind: "code", email })}
+          initialEmail={step.email}
+          notice={step.notice}
+          onSent={(email, resendIn) => go({ kind: "code", email, resendIn })}
           onKey={() => go({ kind: "key" })}
         />
       )}
@@ -244,15 +274,21 @@ function QuietLink({
 function MethodsStep({
   caps,
   context,
+  initialEmail,
+  notice,
   onSent,
   onKey,
 }: {
   caps: PortalCapabilities;
   context: { slug: string; name: string; developerName?: string | null } | null;
-  onSent: (email: string) => void;
+  /** The address to start from: kept when an expired sign-in comes back here. */
+  initialEmail?: string;
+  /** Why the card came back here (an expired sign-in), shown under the title. */
+  notice?: string;
+  onSent: (email: string, resendIn: number) => void;
   onKey: () => void;
 }): React.ReactElement {
-  const [email, setEmail] = React.useState("");
+  const [email, setEmail] = React.useState(initialEmail ?? "");
   const [invalid, setInvalid] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [sending, setSending] = React.useState(false);
@@ -291,8 +327,8 @@ function MethodsStep({
     setError(null);
     setSending(true);
     try {
-      await portalApi.startEmailSignIn(value);
-      onSent(value);
+      const out = await portalApi.startEmailSignIn(value);
+      onSent(value, resendDelay(out));
     } catch (err) {
       setError(startErrorText(err));
       if (err instanceof PortalApiError && err.status === 422) setInvalid(true);
@@ -320,6 +356,12 @@ function MethodsStep({
       <div className="space-y-2">
         <Title>{title}</Title>
         {lede ? <p className="text-fg-muted">{lede}</p> : null}
+        {notice ? (
+          // An alert, so the reason is announced along with the step change (WCAG 4.1.3).
+          <p data-signin-notice role="alert" className="text-sm text-fg">
+            {notice}
+          </p>
+        ) : null}
       </div>
       {magic ? (
         <form onSubmit={submit} noValidate className="space-y-4">
@@ -442,18 +484,29 @@ function codeErrorText(err: unknown): string {
 
 function CodeStep({
   email,
+  resendIn,
   onChangeEmail,
+  onExpired,
 }: {
   email: string;
+  /** Seconds before the first "Send a new code" (the start's `resendIn`). */
+  resendIn: number;
   onChangeEmail: () => void;
+  /** The sign-in itself is gone (the resend answered `signin_expired`): back to the email. */
+  onExpired: () => void;
 }): React.ReactElement {
   const qc = useQueryClient();
   const [code, setCode] = React.useState("");
-  const [wait, setWait] = React.useState(RESEND_AFTER_S);
-  const [status, setStatus] = React.useState<string | null>(null);
+  const [wait, setWait] = React.useState(resendIn);
+  const [status, setStatus] = React.useState<{
+    text: string;
+    tone: "success" | "muted";
+  } | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [verifying, setVerifying] = React.useState(false);
   const [sending, setSending] = React.useState(false);
+  /** This sign-in sent every code it may (the Worker's per-flow cap): no more resends. */
+  const [capped, setCapped] = React.useState(false);
   const errorId = React.useId();
   const inputId = React.useId();
   React.useEffect(() => {
@@ -485,15 +538,61 @@ function CodeStep({
     }
   };
 
+  /**
+   * The resend's button goes away (a countdown, or nothing at the cap) while this step stays, so
+   * focus moves to the code, the next thing to do, rather than falling to the page (§9 item 9).
+   */
+  const focusCode = (): void => {
+    document.getElementById(inputId)?.focus();
+  };
+
   const resend = async (): Promise<void> => {
+    if (sending) return;
     setSending(true);
     setError(null);
+    setStatus(null);
     try {
-      await portalApi.startEmailSignIn(email);
-      setStatus(`We sent a new code and link to ${email}.`); // signin.code.resent
+      const out = await portalApi.resendSignInCode();
+      // signin.code.resent
+      setStatus({
+        text: `We sent a new code and link to ${email}.`,
+        tone: "success",
+      });
       setCode("");
-      setWait(RESEND_AFTER_S);
+      setWait(resendDelay(out));
+      focusCode();
     } catch (err) {
+      if (err instanceof PortalApiError && err.code === "signin_expired") {
+        onExpired();
+        return;
+      }
+      if (
+        err instanceof PortalApiError &&
+        err.status === 429 &&
+        err.retryAfter !== undefined
+      ) {
+        // Too soon (or this address's minute is spent): the countdown says when.
+        setWait(Math.max(1, Math.ceil(err.retryAfter)));
+        focusCode();
+        return;
+      }
+      if (
+        err instanceof PortalApiError &&
+        err.status === 429 &&
+        err.code === "rate_limited"
+      ) {
+        // The Worker's per-flow cap (its only 429 without a wait): the code already sent is the
+        // one to use.
+        setCapped(true);
+        setStatus({
+          // signin.code.noMore (PX-W4; joins the §5.2 catalog with UK-02a)
+          text: "No more codes can be sent for this sign-in. The latest code still works.",
+          tone: "muted",
+        });
+        focusCode();
+        return;
+      }
+      // Anything else, a bare 429 from the edge included: retry later, the link stays.
       setError(startErrorText(err));
     } finally {
       setSending(false);
@@ -559,12 +658,18 @@ function CodeStep({
       {/* Always in the tree so the resend is announced; visually hidden while empty. */}
       <div
         role="status"
-        className={status ? "text-sm text-success" : "sr-only"}
+        className={
+          status
+            ? status.tone === "success"
+              ? "text-sm text-success"
+              : "text-sm text-fg-muted"
+            : "sr-only"
+        }
       >
-        {status}
+        {status?.text}
       </div>
       <QuietLinks>
-        {wait > 0 ? (
+        {capped ? null : wait > 0 ? (
           <span className="inline-flex min-h-11 items-center px-1 text-fg-muted">
             {/* signin.code.resendIn */}
             Send a new code in {clock}
