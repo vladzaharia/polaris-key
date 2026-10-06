@@ -128,6 +128,16 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/me/passkeys", ["get", "post"]],
     ["/api/me/passkeys/options", ["post"]],
     ["/api/me/passkeys/{passkeyId}", ["delete"]],
+    // PX-W12 (G27): sign-in methods, and Link an existing account with its 72-hour undo.
+    ["/api/me/methods", ["get"]],
+    ["/api/me/methods/{kind}/start", ["post"]],
+    ["/api/me/methods/email/verify", ["post"]],
+    ["/api/me/methods/{methodId}", ["delete"]],
+    ["/api/me/link", ["get"]],
+    ["/api/me/link/start", ["post"]],
+    ["/api/me/link/confirm", ["post"]],
+    ["/api/me/link/cancel", ["post"]],
+    ["/api/me/link/undo", ["post"]],
   ],
 };
 
@@ -698,6 +708,8 @@ function concrete(template: string): string {
     request: `rq_${"A".repeat(22)}`,
     licenseId: "lic_1",
     passkeyId: "A".repeat(43),
+    kind: "google",
+    methodId: "lnk_AAAAAAAAAAAA",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];
