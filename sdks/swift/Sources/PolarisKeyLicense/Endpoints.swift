@@ -143,7 +143,7 @@ public enum ActivationResult: Sendable, Equatable {
     var copyParams: ErrorCopy.Params {
         var p: ErrorCopy.Params = [:]
         switch self {
-        case .deviceLimit(let limit, let count):
+        case .deviceLimit(let limit, let count, _):
             if let limit { p["limit"] = String(limit) }
             if let count { p["deviceCount"] = String(count) }
         case .rateLimited(let after):
