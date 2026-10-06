@@ -171,7 +171,7 @@
     {
       "action": "activate",
       "note": "The hardware drifted past the threshold: re-activation is required (409, not 403).",
-      "args": { "key": "pkey_djdl_BQJvLxbJCMT7KGeHf6SG7g" },
+      "args": { "key": "pkey_djdl_KGeHf6SG7t5XuQ-r_NKdnA" },
       "now": 1700000180,
       "exchanges": {
         "ordered": false,
@@ -226,7 +226,7 @@
     {
       "action": "activate",
       "note": "Too many activation attempts from this client. Today's 429 carries no Retry-After.",
-      "args": { "key": "pkey_djdl_BQJvLxbJCMT7KGeHf6SG7g" },
+      "args": { "key": "pkey_djdl_KGeHf6SG7t5XuQ-r_NKdnA" },
       "now": 1700000600,
       "exchanges": {
         "ordered": false,
