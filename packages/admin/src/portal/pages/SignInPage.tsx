@@ -231,7 +231,7 @@ function QuietLink({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex min-h-11 items-center gap-1.5 rounded-sm px-1 transition-colors duration-[var(--pk-duration-fast)] hover:text-fg-strong"
+      className="inline-flex min-h-11 items-center gap-1.5 rounded-sm px-1 transition-colors duration-(--pk-duration-fast) hover:text-fg-strong"
     >
       {icon}
       {children}
