@@ -23,6 +23,15 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 - **[`plans/PX-W9.md`](../plans/PX-W9.md):** the byte-identity snapshot includes a counted key-entry device.
 - **[`plans/PX-W17.md`](../plans/PX-W17.md):** relies on the §1 invariant (no device is signed in on an Identity-off product) and does not read the toggle.
 
+## Changed by plan PX-W9 (2026-10-06)
+
+[`plans/PX-W9.md`](../plans/PX-W9.md) revision 2 was approved by the lead under the owner's delegation on 2026-10-06. These notes win over the text of this brief where they differ.
+
+- **The byte-identity snapshot.** Its fixtures include a device enrolled by key on an Identity-on product, with
+  `license_key_entries` rows, in both `legacy` and `combined` modes. The licence document bytes must not change
+  because of counting: `keyEntries` lives only in unsigned HTTP bodies. The counter rows are written with the seat
+  claim (`claimDeviceSeat`), so the snapshot covers that path.
+
 ## Goal
 
 `resolveDeviceEntitlements` computes every device's entitlements in `legacy` mode (byte-identical to today) and `combined` mode (contributors under `entitlementHolder: device`, combine and state rules), produces the holder report, caches by holder versions, and every caller uses it.

@@ -90,6 +90,17 @@ every row, no "Account-wide"). For this package:
 - **Transcripts:** `redirect-web-choose-app.json`, `choice-replace-app.json`, `choice-key-app.json`, `choice-grant-errors.json`, and `discovery-capabilities.json` re-recorded; parity row `identity.choice` (planned, I-10a/I-10b).
 - **Acceptance (additions):** device code never issues a grant; a grant from another device id answers `invalid_grant`; `choice/devices` answers one `404` for unknown, foreign and non-replaceable licences; a Replace through a grant shares the portal's budget and audit row.
 
+## Changed by plan PX-W9 (2026-10-06)
+
+[`plans/PX-W9.md`](../plans/PX-W9.md) revision 2 was approved by the lead under the owner's delegation on 2026-10-06. These notes win over the text of this brief where they differ.
+
+- **One `app` entry for a key choice.** An app-mode `{kind: "key"}` choice through `choice/complete` (I-04
+  §G.5) records exactly one `app` key entry. It goes through PX-W9's `authorizeDevice(…, {keyEntry: {surface:
+"app"}})`, atomically with the seat claim, and never also as a `portal` claim.
+- **Refusals and `choice-key-app.json`.** The choice refuses with `key_entry_limit`, built as PX-W9 does, when the
+  limit applies. `choice-key-app.json` expects `keyEntries` on the activation response.
+- **Never counted.** Choosing a licence, **Keep**, **Create a new free license** and **Replace a device**.
+
 ## Goal
 
 An app can send a person to the login card and get them back signed in: the card carries a persistent "<App> wants you to sign in" header and ends with "Continue to <App>"; device code lands on the card with callback binding and an explicit Continue; a person can approve a sign-in on another device by QR; and a product web app gets a browser device token through a PKCE web redirect, never through a token in a URL.
