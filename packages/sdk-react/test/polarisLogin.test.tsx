@@ -178,7 +178,7 @@ describe("PolarisLogin — key submission", () => {
     );
     await waitFor(() => {
       const alert = within(container).getByRole("alert");
-      expect(alert.textContent).toMatch(/not accepted/i);
+      expect(alert.textContent).toMatch(/license key wasn't accepted/i);
     });
     adapter.dispose();
   });
@@ -186,11 +186,11 @@ describe("PolarisLogin — key submission", () => {
   it.each([
     [
       { kind: "refused", code: "license_disabled", message: "device limit" },
-      /license was disabled/i,
+      /license has been disabled/i,
     ],
     [
       { kind: "device-limit", limit: 2, deviceCount: 2 },
-      /reached its device limit/i,
+      /already on all its devices/i,
     ],
   ] as const)(
     "the alert is the copy catalog's sentence for the typed outcome, never the message text (%j)",
@@ -213,7 +213,7 @@ describe("PolarisLogin — key submission", () => {
         expect(alert.textContent).toMatch(expected);
         // A refusal whose diagnostic message says "device limit" is not the device limit.
         if (outcome.kind === "refused")
-          expect(alert.textContent).not.toMatch(/device limit/i);
+          expect(alert.textContent).not.toMatch(/all its devices/i);
       });
       adapter.dispose();
     },

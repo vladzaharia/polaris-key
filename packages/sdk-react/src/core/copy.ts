@@ -1,20 +1,38 @@
-// The error copy catalog (SDK-PARITY-PASS §3.2): what a kit SAYS for a code, in one place.
+// The error copy catalog (SDK-PARITY-PASS §3.2, core.copy): what a kit SAYS for a code, in one
+// place.
 //
-//   copyMessage(code, { locale?, detail? })   the sentence a screen shows
-//   copyTitle(code, locale?)                  the short heading above it
-//   describeError(err, locale?)               the sentence for a PolarisError: its `wireCode`
-//                                             (the server's code) first, then its own `code`
+//   copyMessage(code, { locale?, detail?, params? })  the sentence a screen shows
+//   copyTitle(code, locale?)                          the short heading above it
+//   activationMessage(kind, locale?)                  the sentence for a typed activation result
+//   activationTitle(kind, locale?)                    its heading
+//   describeError(err, locale?)                       the sentence for a PolarisError: its typed
+//                                                     activation result first, then its
+//                                                     `wireCode` (the server's code), then its
+//                                                     own `code`
 //
-// Keys are every wire code in `conformance/parity/errors.json`, the user-facing client codes,
-// every gate status and every §3.1 activation kind. A code with no entry falls back to a generic
-// sentence that NAMES the code, never the raw server body: a body is not copy, and it is not
-// localised.
+// ENGLISH IS GENERATED. `../copy.generated.ts` is written by `pnpm gen:constants` from
+// `conformance/parity/copy.en.json` (checked against errors.json and enums.json), with three
+// tables: COPY_CODES (per error code), COPY_GATE (per licenseStatus) and COPY_ACTIVATION (per
+// activationResult). They are separate on purpose: the error code `unauthorized` reads "Not
+// signed in", the activation result `unauthorized` reads "Key not accepted". `copyMessage(code)`
+// looks a code up as an error code, then as a gate status, then as an activation result;
+// `describeError` reads a typed activation result from the activation table only.
 //
-// English is the base and French the proof locale; more locales are content, not code
-// (`registerCopyLocale`). The shared base `conformance/parity/copy.en.json` and its generated
-// per-language emitters are planned in SP-00/SP-03 (a conformance change, plan mode); until it
-// exists this table is the React base, and `test/copy.test.ts` pins that every registered wire
-// code has an English and a French entry, so the generated file can replace it key for key.
+// A code with no entry falls back to COPY_FALLBACK, which NAMES the code and never shows the raw
+// server body: a body is not copy, and it is not localised.
+//
+// French is the proof locale and stays a hand table until SP-03 generates the locales; more
+// locales are content, not code (`registerCopyLocale`). A non-English bundle is keyed by error
+// code, gate status and §3.1 activation kind (camelCase, as `ActivationOutcome.kind`), and every
+// key it lacks falls back to the generated English.
+
+import {
+  COPY_ACTIVATION,
+  COPY_CODES,
+  COPY_FALLBACK,
+  COPY_GATE,
+  type CopyEntry,
+} from "../copy.generated.js";
 
 /** A locale bundle: code → sentence, and code → title. */
 export interface CopyBundle {
@@ -24,179 +42,35 @@ export interface CopyBundle {
   generic: string;
 }
 
+/** A §3.1 activation kind (`deviceLimit`) as its activationResult (`device-limit`). */
+function activationResult(kind: string): string {
+  return kind.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
+}
+
+/** The generated English entry for a code: error code, then gate status, then activation result. */
+function englishEntry(code: string): CopyEntry | undefined {
+  return (
+    ownEntry(COPY_CODES, code) ??
+    ownEntry(COPY_GATE, code) ??
+    ownEntry(COPY_ACTIVATION, activationResult(code))
+  );
+}
+
+function ownEntry(
+  table: Readonly<Record<string, CopyEntry>>,
+  key: string,
+): CopyEntry | undefined {
+  return Object.prototype.hasOwnProperty.call(table, key)
+    ? table[key]
+    : undefined;
+}
+
+/** English as a bundle (for `copyLocales()` and the per-key fallback); the tables above are the
+ *  source, this is only their projection. */
 const EN: CopyBundle = {
-  generic: "Something went wrong ({code}). Please try again.",
-  titles: {
-    deviceLimit: "Device limit reached",
-    device_limit: "Device limit reached",
-    licenseDisabled: "License disabled",
-    license_disabled: "License disabled",
-    licenseExpired: "License expired",
-    license_expired: "License expired",
-    enrollClaimed: "Sign in to continue",
-    enroll_claimed: "Sign in to continue",
-    rateLimited: "Too many attempts",
-    rate_limited: "Too many attempts",
-    unauthorized: "Key not accepted",
-    network: "You're offline",
-    "network-error": "You're offline",
-    attestation_required: "Device check required",
-    attestationRequired: "Device check required",
-    "needs-activation": "Activation required",
-    revoked: "License revoked",
-    expired: "License expired",
-    grace: "Offline grace",
-    "version-too-old": "Update required",
-    "version-too-new": "Version not allowed",
-    "channel-not-entitled": "Channel not entitled",
-  },
-  messages: {
-    // ── §3.1 activation kinds ────────────────────────────────────────────────
-    deviceLimit:
-      "This license has reached its device limit. Free a device in your account, then try again.",
-    fingerprintRequired:
-      "This license needs a device check this app can't provide here. Contact the developer.",
-    hardwareMismatch:
-      "This device changed since it was activated. Activate again to bind it.",
-    enrollClaimed:
-      "This device's free license now belongs to an account. Sign in to use it.",
-    licenseDisabled:
-      "This license was disabled. Contact the seller or your administrator.",
-    licenseExpired: "This license has expired. Renew it to keep using the app.",
-    attestationRequired:
-      "This product only runs on verified devices, and this device couldn't be verified.",
-    rateLimited: "Too many attempts. Wait a moment, then try again.",
-    enrollDisabled:
-      "Free activation isn't offered for this product. Enter a key or sign in.",
-    refused: "The licensing service refused this request ({code}).",
-    error:
-      "We couldn't reach the licensing service. Check your connection and try again.",
-    // ── wire codes (conformance/parity/errors.json) ──────────────────────────
-    unauthorized:
-      "That key was not accepted. Check it for typos and try again.",
-    not_found: "That item doesn't exist, or this product doesn't offer it.",
-    bad_request: "The request was not valid. Update the app and try again.",
-    forbidden: "You're not allowed to do that with this license.",
-    attestation_required:
-      "This product only runs on verified devices, and this device couldn't be verified.",
-    attestation_rejected: "This device couldn't be verified. Try again later.",
-    attestation_unavailable:
-      "Device verification isn't set up for this product yet.",
-    rate_limited: "Too many attempts. Wait a moment, then try again.",
-    body_too_large: "That was too large to send.",
-    method_not_allowed:
-      "This app sent a request the service doesn't accept. Update the app.",
-    misconfigured:
-      "This product isn't fully set up yet. Contact the developer.",
-    registration_closed:
-      "This product needs a license key or a sign-in before this device can join.",
-    value_not_representable:
-      "That value can't be saved. Remove unusual characters and try again.",
-    document_not_representable:
-      "The developer's configuration can't be delivered right now. Try again later.",
-    device_limit:
-      "This license has reached its device limit. Free a device in your account, then try again.",
-    license_disabled:
-      "This license was disabled. Contact the seller or your administrator.",
-    license_unusable:
-      "This license can no longer be used (disabled, expired or removed). Contact the seller or your administrator.",
-    license_expired:
-      "This license has expired. Renew it to keep using the app.",
-    not_entitled: "Your license doesn't include this.",
-    version_blocked:
-      "This version of the app isn't allowed by your license. Update the app.",
-    channel_not_allowed: "Your license doesn't include this release channel.",
-    hardware_mismatch:
-      "This device changed since it was activated. Activate again to bind it.",
-    fingerprint_required:
-      "This license needs a device check this app can't provide here. Contact the developer.",
-    enroll_disabled:
-      "Free activation isn't offered for this product. Enter a key or sign in.",
-    enroll_claimed:
-      "This device's free license now belongs to an account. Sign in to use it.",
-    enroll_failed: "Free activation couldn't finish. Try again in a moment.",
-    managed_by_admin: "Your administrator manages this setting.",
-    catalog_unavailable:
-      "Settings can't be delivered right now. Try again later.",
-    disabled: "Sign-in isn't set up for this product.",
-    oidc_error: "The sign-in provider didn't answer correctly. Try again.",
-    unavailable: "Sign-in is busy right now. Try again in a moment.",
-    auth_method_disabled: "That sign-in method is turned off.",
-    email_not_configured: "Email sign-in isn't available right now.",
-    license_owned:
-      "This license belongs to another account. Sign in with that account.",
-    email_mismatch: "This license was sold to a different email address.",
-    link_conflict: "That sign-in method is already linked to another account.",
-    last_link: "You can't remove your only sign-in method.",
-    step_up_required: "Sign in again to confirm it's you.",
-    not_eligible: "This offer is no longer available.",
-    download_auth_required: "Sign in or activate to download this.",
-    delivery_gate_missing:
-      "This download isn't available yet. Contact the developer.",
-    upstream_rate_limited:
-      "Downloads are busy right now. Try again in a moment.",
-    server_misconfigured:
-      "This product isn't fully set up yet. Contact the developer.",
-    internal_error: "The download service failed. Try again in a moment.",
-    release_record_rejected: "This release couldn't be published.",
-    release_tag_is_pack_release: "This release couldn't be published.",
-    feed_not_composable: "Updates can't be checked right now. Try again later.",
-    // ── client codes a screen shows ──────────────────────────────────────────
-    network:
-      "We couldn't reach the licensing service. Check your connection and try again.",
-    "network-error":
-      "We couldn't reach the licensing service. Check your connection and try again.",
-    "server-error":
-      "The licensing service had a problem. Try again in a moment.",
-    timeout: "The licensing service took too long to answer. Try again.",
-    "service-disabled": "That isn't enabled for this product.",
-    "service-unavailable": "That isn't available for this product.",
-    "key-entry-unsupported":
-      "Key entry isn't available here. Use the sign-in button instead.",
-    "device-management-unsupported":
-      "This app can't manage devices from here. Open your account to review them.",
-    "refresh-failed":
-      "We couldn't refresh your license. Try again in a moment.",
-    "bridge-missing":
-      "The licensing service isn't available in this app. Reinstall it or contact support.",
-    "sign-in-failed": "Sign-in failed. Please try again.",
-    "sign-in-expired": "The sign-in code expired. Start again.",
-    "sign-in-denied": "The sign-in was declined.",
-    "sign-in-unavailable":
-      "Sign-in can't start right now. Try again in a moment.",
-    "sign-out-failed": "We couldn't sign you out. Try again.",
-    "bundle-rejected": "That activation file isn't valid for this device.",
-    "bundle-import-unsupported": "This app can't import activation files here.",
-    "bundle-jws-rejected": "That activation file's signature isn't valid.",
-    "bundle-claims-rejected":
-      "That activation file is for another device, or it has expired.",
-    "bundle-trust-rejected": "That activation file wasn't issued for this app.",
-    "inner-doc-rejected": "Part of that activation file failed verification.",
-    "release-refused": "Your license doesn't include this download.",
-    "report-unsupported": "This app can't send device reports here.",
-    unsupported: "That isn't supported here.",
-    "no-token": "Activate or sign in first.",
-    "mint-unavailable": "That service token can't be issued right now.",
-    "not-configured": "This app isn't configured for that yet.",
-    "store-failed":
-      "This browser couldn't save your sign-in. Check its storage settings.",
-    cancelled: "Cancelled.",
-    // ── gate statuses ────────────────────────────────────────────────────────
-    ok: "Your license is active.",
-    grace:
-      "The licensing service is offline. You can keep working until grace ends.",
-    expired:
-      "Your license or offline grace period has ended. Sign in or activate a key to continue.",
-    revoked:
-      "This license is no longer active on this device. Contact your administrator.",
-    "needs-activation": "Sign in or enter a license key to unlock this app.",
-    "version-too-old":
-      "This version is no longer supported. Please update the app.",
-    "version-too-new": "This app version is newer than your license permits.",
-    "channel-not-entitled":
-      "Your license doesn't include this release channel. Switch channels or contact your administrator.",
-    "not-applicable": "This product is not licensed separately.",
-  },
+  generic: COPY_FALLBACK.message,
+  messages: {},
+  titles: {},
 };
 
 const FR: CopyBundle = {
@@ -403,9 +277,12 @@ export function copyLocales(): string[] {
   return [...LOCALES.keys()];
 }
 
-/** Add or replace a locale's bundle. Entries missing from it fall back to English. */
+/** Add or replace a locale's bundle. Entries missing from it fall back to English. English
+ *  itself is generated and cannot be replaced. */
 export function registerCopyLocale(locale: string, bundle: CopyBundle): void {
-  LOCALES.set(locale.toLowerCase(), bundle);
+  const tag = locale.toLowerCase();
+  if (tag === "en") return;
+  LOCALES.set(tag, bundle);
 }
 
 /** The bundle for a BCP-47 tag: exact, then its language (`fr-CA` → `fr`), then English. */
@@ -424,26 +301,59 @@ function own(
     : undefined;
 }
 
-/** Whether a locale's bundle (not the English fallback) has its own sentence for `code`. */
+/** Whether a locale has its own sentence for `code` (English: the generated tables). */
 export function hasCopy(code: string, locale = "en"): boolean {
-  return own(bundleFor(locale).messages, code) !== undefined;
+  const bundle = bundleFor(locale);
+  return bundle === EN
+    ? englishEntry(code) !== undefined
+    : own(bundle.messages, code) !== undefined;
+}
+
+/** Placeholder values for a sentence (`copy.en.json`'s `{name}` set). */
+export type CopyParams = Partial<
+  Record<
+    | "code"
+    | "detail"
+    | "limit"
+    | "deviceCount"
+    | "retryAfterSeconds"
+    | "product",
+    string | number
+  >
+>;
+
+/** Fill `{name}` placeholders; `{code}` defaults to the code. An unfilled placeholder is
+ *  dropped (with the space before it), so a raw `{name}` never shows. */
+function fill(text: string, code: string, params: CopyParams): string {
+  return text.replace(/( ?)\{(\w+)\}/g, (_m, space: string, name: string) => {
+    const v = (params as Record<string, string | number | undefined>)[name];
+    if (v !== undefined) return `${space}${String(v)}`;
+    if (name === "code") return `${space}${code}`;
+    return "";
+  });
 }
 
 /**
- * The sentence for `code`. `{code}` in a sentence is replaced by the code; `detail` (a refusal's
- * `reason`, for instance) is appended in parentheses when given. An unknown code falls back to
- * the locale's generic sentence naming it — never the server's raw body.
+ * The sentence for `code`. `{code}` in a sentence is replaced by the code (or `codeLabel`), the
+ * other placeholders by `params`; `detail` (a refusal's `reason`, for instance) is appended in
+ * parentheses when given. An unknown code falls back to the locale's generic sentence naming it,
+ * never the server's raw body.
  */
 export function copyMessage(
   code: string,
-  opts: { locale?: string; detail?: string; codeLabel?: string } = {},
+  opts: {
+    locale?: string;
+    detail?: string;
+    codeLabel?: string;
+    params?: CopyParams;
+  } = {},
 ): string {
   const bundle = bundleFor(opts.locale);
   const text =
-    own(bundle.messages, code) ??
-    own(EN.messages, code) ??
+    (bundle === EN ? undefined : own(bundle.messages, code)) ??
+    englishEntry(code)?.message ??
     (bundle.generic || EN.generic);
-  const out = text.replace(/\{code\}/g, opts.codeLabel ?? code);
+  const out = fill(text, opts.codeLabel ?? code, opts.params ?? {});
   return opts.detail ? `${out} (${opts.detail})` : out;
 }
 
@@ -451,32 +361,78 @@ export function copyMessage(
 export function copyTitle(code: string, locale?: string): string {
   const bundle = bundleFor(locale);
   return (
-    own(bundle.titles, code) ??
-    own(EN.titles, code) ??
-    (bundleFor(locale) === FR
-      ? "Une erreur s'est produite"
-      : "Something went wrong")
+    (bundle === EN ? undefined : own(bundle.titles, code)) ??
+    englishEntry(code)?.title ??
+    (bundle === FR ? "Une erreur s'est produite" : COPY_FALLBACK.title)
   );
 }
 
-/** The sentence for an error a verb threw: the activation kind for a classified refusal, else
- *  the server's code (`wireCode`), else the SDK's own code. */
+/** A typed activation result's entry for a locale: the bundle's own (keyed by the §3.1 kind),
+ *  else the generated activation table — never the error-code table. */
+function activationText(
+  kind: string,
+  locale: string | undefined,
+  field: "message" | "title",
+): string | undefined {
+  const bundle = bundleFor(locale);
+  // A bundle is keyed by the camelCase kind; accept the activationResult spelling too.
+  const key = kind.replace(/-(\w)/g, (_m, c: string) => c.toUpperCase());
+  const local =
+    bundle === EN
+      ? undefined
+      : own(field === "message" ? bundle.messages : bundle.titles, key);
+  return local ?? ownEntry(COPY_ACTIVATION, activationResult(kind))?.[field];
+}
+
+/** The sentence for a typed activation result (`ActivationOutcome.kind`, or its
+ *  activationResult spelling). `refused` names the server's `code`. */
+export function activationMessage(
+  kind: string,
+  opts: { locale?: string; code?: string; params?: CopyParams } = {},
+): string {
+  const text = activationText(kind, opts.locale, "message");
+  if (text === undefined) return copyMessage(kind, opts);
+  return fill(text, opts.code ?? kind, opts.params ?? {});
+}
+
+/** The heading for a typed activation result. */
+export function activationTitle(kind: string, locale?: string): string {
+  return activationText(kind, locale, "title") ?? copyTitle(kind, locale);
+}
+
+/** The sentence for an error a verb threw: the activation table for a classified activation
+ *  result, else the server's code (`wireCode`) in the error-code table, else the SDK's own code. */
 export function describeError(
   err: {
     code?: string;
     wireCode?: string;
-    activation?: { kind: string; code: string };
+    activation?: {
+      kind: string;
+      code: string;
+      limit?: number;
+      deviceCount?: number;
+      retryAfterSeconds?: number;
+    };
   } | null,
   locale?: string,
 ): string {
   if (!err) return copyMessage("unknown", { locale });
   const a = err.activation;
   if (a && a.kind !== "ok") {
-    // `refused` names the server's code; every other kind has its own sentence.
-    if (a.kind !== "refused") return copyMessage(a.kind, { locale });
+    const params: CopyParams = {
+      ...(a.limit !== undefined ? { limit: a.limit } : {}),
+      ...(a.deviceCount !== undefined ? { deviceCount: a.deviceCount } : {}),
+      ...(a.retryAfterSeconds !== undefined
+        ? { retryAfterSeconds: a.retryAfterSeconds }
+        : {}),
+    };
+    // `refused` names the server's code: its own sentence when the catalog has one, else the
+    // activation table's "refused ({code})". Every other kind reads the activation table.
+    if (a.kind !== "refused")
+      return activationMessage(a.kind, { locale, code: a.code, params });
     return hasCopy(a.code)
-      ? copyMessage(a.code, { locale })
-      : copyMessage("refused", { locale, codeLabel: a.code });
+      ? copyMessage(a.code, { locale, params })
+      : activationMessage("refused", { locale, code: a.code, params });
   }
   if (err.wireCode && hasCopy(err.wireCode))
     return copyMessage(err.wireCode, { locale });
