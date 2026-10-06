@@ -4,7 +4,7 @@
 // @pkey-feature identity.devicecode config.mint
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
-// @pkey-feature license.refusals telemetry.updates release.fetch release.distribution
+// @pkey-feature license.refusals telemetry.updates release.fetch release.distribution ui.boot
 // @pkey-feature license.manage
 //
 // The Kotlin transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, read in place:
@@ -59,6 +59,8 @@ import im.plrs.key.core.ReleaseRecordBuild
 import im.plrs.key.core.ReleaseRecordDoc
 import im.plrs.key.core.Store
 import im.plrs.key.core.PolarisException
+import im.plrs.key.sdk.ClientBootOptions
+import im.plrs.key.sdk.boot
 import im.plrs.key.core.RegisterResult
 import im.plrs.key.core.ServiceSlug
 import im.plrs.key.core.arrayValue
@@ -252,6 +254,8 @@ object KotlinReplay {
                 } ?: JsonNull
             }
             "deactivate" -> client.deactivate()
+            // SP-20: the one-call boot, to its first stop (no delayed launch confirmation in a replay).
+            "boot" -> out["bootOutcome"] = JsonPrimitive(client.boot(ClientBootOptions(autoConfirm = false)).outcome.wire)
             "register" -> out["result"] = JsonPrimitive(
                 when (client.register()) {
                     is RegisterResult.Ok -> "ok"
@@ -679,6 +683,8 @@ class TranscriptTest : ConformanceSuite() {
             "commerce-claim",
             // SP-K01, SP-K03, SP-K13: typed refusals, update-health events, verified download, the download model.
             "activate-refusals", "telemetry-report-updates", "release-fetch-gated", "distribution-download-model",
+            // SP-20: the one-call boot.
+            "boot-cold-register",
         )
     }
 }

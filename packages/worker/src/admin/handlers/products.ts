@@ -6,6 +6,14 @@
  *                                             a per-product Ed25519 signing key (sealed under
  *                                             the platform KEK). NO release/minter rows.
  *   - `POST /api/products/link-repo`        — GITHUB-forward create: read a repo's `.pkey/`.
+ *                                             `?dryRun=1` checks and previews it, writing
+ *                                             nothing (UX-72, W23); the create accepts the dry
+ *                                             run's `manifestDigest` and refuses (409) on a
+ *                                             mismatch, and answers the created `product`.
+ *   - `GET  /api/products/slug-check?slug=` — is a slug free for a new product (UX-72, W24):
+ *                                             `available`, or `taken` / `reserved` / `invalid`
+ *                                             with a free suggestion. Any signed-in operator: a
+ *                                             product's slug is public (its discovery document).
  *   - `GET  /api/products/kek`              — platform KEK keyring status: which kid is active
  *                                             and how many sealed rows sit under each kid.
  *   - `POST /api/products/kek`              — re-seal a bounded batch of rows under the active
@@ -56,6 +64,11 @@ import {
   type Sealed,
 } from "../../keyvault.js";
 import { linkRepo, MAX_MANIFEST_BYTES } from "../../services/release/sync.js";
+import {
+  checkSlug,
+  PRODUCT_ROUTE_ACTIONS,
+  prepareCreate,
+} from "../../services/release/linkRepo.js";
 import { manifestIngestFor } from "../../core/registry.js";
 import { SERVICES } from "../../mount.js";
 import {
@@ -135,6 +148,20 @@ export async function handleProducts(
   segments: string[],
   now: number,
 ): Promise<Response> {
+  // /api/products/slug-check — W24. Before the platform-admin gate: anyone may fill in the New
+  // Product wizard (F16), and whether a slug is taken is already public (`/<slug>/.well-known/
+  // polaris.json` answers for every product).
+  if (segments.length === 1 && segments[0] === "slug-check") {
+    if (req.method !== "GET")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    const slug = (new URL(req.url).searchParams.get("slug") ?? "").trim();
+    if (!slug)
+      return err(422, ErrorCode.BadRequest, "slug is required", {
+        fields: ["slug"],
+      });
+    return adminJson(await checkSlug(db, slug));
+  }
+
   if (!isPlatformAdmin(env, session))
     return forbidden("platform admin required");
 
@@ -153,6 +180,22 @@ export async function handleProducts(
       return err(422, ErrorCode.BadRequest, "repoUrl is required", {
         fields: ["repoUrl"],
       });
+    // W23: the create dry run. Every check the create runs, the product as it will be, and
+    // every problem with its file and path; nothing is written. A refusal before the manifest
+    // could be read (the URL, the App, the fetch) is a 422 naming that check.
+    if (new URL(req.url).searchParams.get("dryRun") === "1") {
+      const dry = await prepareCreate(env, db, repoUrl, now, fetch);
+      if (!dry.ok)
+        return err(dry.status, ErrorCode.BadRequest, dry.error, {
+          reason: dry.check,
+        });
+      return adminJson({ ...dry, dryRun: true });
+    }
+    const digest = body.manifestDigest;
+    if (digest !== undefined && typeof digest !== "string")
+      return err(422, ErrorCode.BadRequest, "manifestDigest must be a string", {
+        fields: ["manifestDigest"],
+      });
     const result = await linkRepo(
       env,
       db,
@@ -160,8 +203,13 @@ export async function handleProducts(
       now,
       fetch,
       manifestIngestFor(SERVICES),
+      digest === undefined ? {} : { manifestDigest: digest },
     );
     if (!result.ok) {
+      if (result.status === 409)
+        return err(409, ErrorCode.BadRequest, result.error, {
+          reason: "manifest",
+        });
       return err(
         422,
         ErrorCode.BadRequest,
@@ -192,6 +240,12 @@ export async function handleProducts(
         },
         install: result.install,
         remainingSecrets: result.remainingSecrets,
+        // C-2: the created product (its name), which the console's `LinkRepoResult` already
+        // promises, so "<Name> is ready" never has to fall back to the slug.
+        product: await (async () => {
+          const created = await getProduct(db, result.slug);
+          return created ? productView(env, db, created) : null;
+        })(),
       },
       201,
     );
@@ -359,8 +413,13 @@ async function manualCreate(
   // Same list `validateManifestDocuments` enforces (reserved_slug): these are root paths the
   // router matches before `/<product>/…`, so a product created under one would be permanently
   // shadowed — every one of its routes unreachable. The link-repo path gets this for free via
-  // manifest validation; manual create must check explicitly.
-  if (RESERVED_PRODUCT_SLUGS.includes(slug))
+  // manifest validation; manual create must check explicitly. The admin API's own one-segment
+  // actions (`kek`, `link-repo`, `slug-check`) would shadow the product's console record the
+  // same way (UX-72: the slug check calls them reserved, and both create paths refuse them).
+  if (
+    RESERVED_PRODUCT_SLUGS.includes(slug) ||
+    PRODUCT_ROUTE_ACTIONS.includes(slug)
+  )
     return err(422, ErrorCode.BadRequest, "reserved slug", {
       fields: ["slug"],
     });

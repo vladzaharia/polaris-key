@@ -1333,7 +1333,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "core.errors": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.caps": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.store": CapabilityRow(status: "implemented", service: "core", na: []),
-    "core.copy": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "core.copy": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "license.gate": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.activate": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.enroll": CapabilityRow(status: "implemented", service: "license", na: []),
@@ -1372,7 +1372,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "update.driver": CapabilityRow(status: "implemented", service: "update", na: [CapabilityNa(runtime: "ios", reason: "outlet")]),
     "update.bootguard": CapabilityRow(status: "implemented", service: "update", na: []),
     "outlet.detect": CapabilityRow(status: "implemented", service: "update", na: []),
-    "crash.tags": CapabilityRow(status: "planned", service: "sdk", na: []),
+    "crash.tags": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "packs.record": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.revoke": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.delegation": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1406,4 +1406,4 @@ public let CAPABILITIES: [String: CapabilityRow] = [
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "a97496397bb8cdd516cc09757f7bdeee6817f35668055dabe5e01592b3c5324e"
+public let CAPABILITY_DIGEST = "d056dba77dfd6ad4ba160227f1fc850ff2f75a7482107a0d3d89f465a87ae109"

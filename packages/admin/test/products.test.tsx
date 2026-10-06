@@ -275,8 +275,27 @@ describe("Products", () => {
     expect(screen.getByRole("alertdialog")).toBe(dialog);
   });
 
-  it("offers Resync from repo only for repository-linked products, behind a caution confirm", async () => {
-    const log = boot("#/products", { extra: registry() });
+  it("offers Resync from repo only for repository-linked products, behind the plan (UX-78)", async () => {
+    const log = boot("#/products", {
+      extra: {
+        ...registry(),
+        // One path answers both: the dry run (`?dryRun=1`) reads `plan`, the resync `updated`.
+        "/manage/api/products/acme/release/resync": {
+          ok: true,
+          dryRun: true,
+          slug: "acme",
+          repository: "acme/acme",
+          commit: "0123456789abcdef",
+          plan: {
+            apply: [{ area: "tiers", id: "pro", summary: "Tier pro added" }],
+            skipClaimed: [],
+            delete: [],
+            conflicts: [],
+          },
+          updated: ["tiers"],
+        },
+      },
+    });
     await page();
     await waitFor(() => expect(rows()).toHaveLength(2));
     await openRowMenu("DJDL");
@@ -290,19 +309,30 @@ describe("Products", () => {
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Resync from repo…" }),
     );
-    const dialog = await screen.findByRole("alertdialog");
+    const dialog = await screen.findByRole("alertdialog", {
+      name: /Resync Acme from its repository\?/,
+    });
+    expect(await within(dialog).findByText("Tier pro added")).toBeTruthy();
+    const resyncs = () =>
+      log.calls.filter(
+        (c) =>
+          c.method === "POST" &&
+          c.path === "/manage/api/products/acme/release/resync",
+      );
+    expect(resyncs().map((c) => c.query)).toEqual(["dryRun=1"]);
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Resync from repo" }),
     );
     await waitFor(() =>
-      expect(
-        log.calls.some(
-          (c) =>
-            c.method === "POST" &&
-            c.path === "/manage/api/products/acme/release/resync",
-        ),
-      ).toBe(true),
+      expect(resyncs().map((c) => c.query)).toEqual(["dryRun=1", ""]),
     );
+    // The result is a panel on the page, named for the row's product, not a toast.
+    const panel = await screen.findByTestId("resync-result");
+    expect(
+      within(panel).getByText("Resynced Acme from acme/acme"),
+    ).toBeTruthy();
+    expect(within(panel).getByText("Updated: tiers.")).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(panel));
   });
 
   it("passes axe", async () => {

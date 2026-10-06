@@ -207,7 +207,9 @@ const DEFAULTS := {
 	"dev_checked": "Checked: %s",
 	# ── Error copy by code (SDK parity §3.2, core.copy). `PKeyUiCopy.code_key(code, reason)`
 	# picks `reason_<reason>`, then `error_<code>`, then `error_generic` with the code, so a raw
-	# server body is never shown. Codes are the registry's (conformance/parity/errors.json). ──
+	# server body is never shown. Codes are the registry's (conformance/parity/errors.json).
+	# In English an `error_<code>` key shows the core copy (PKeyCopy, generated from
+	# copy.en.json); these lines stay as the source strings the kit's .po files translate. ──
 	"error_generic": "Something went wrong (%s).",
 	"error_unauthorized": "You're signed out. Activate or sign in again.",
 	"error_forbidden": "This isn't allowed for your license.",
@@ -335,29 +337,54 @@ static func shared() -> PKeyUiCopy:
 
 ## The English template for `key` (an override first), before translation.
 func template(key: String) -> String:
-	if overrides.get(key) is String:
-		return overrides[key]
-	return String(DEFAULTS.get(key, key))
+	return _resolve(key)[0]
 
 
 ## The string to show: the template translated with `tr()`, then formatted with `args` (a value
-## or an Array) when given.
+## or an Array) when given. A sentence from the core copy has its `{name}` placeholders filled
+## (`{code}` with the code) after translation.
 func text(key: String, args: Variant = null) -> String:
-	var s := tr(template(key))
+	var r := _resolve(key)
+	var s := tr(r[0])
+	if r[1] != "":
+		s = PKeyCopy.fill(s, r[1])
 	if args == null:
 		return s
 	return s % (args if args is Array else [args])
 
 
+## [template, core code] for `key`. An `error_<code>` key reads the core copy (PKeyCopy.shared(),
+## the generated table plus the host's core overrides) where the code exists there, in this
+## order: this object's `overrides`, a core host override, the kit's own line when the running
+## locale translates it (the kit's .po files carry those until the core copy has its own
+## translations), the core copy, the kit's own line. The core code is "" for a kit template.
+func _resolve(key: String) -> Array:
+	if overrides.get(key) is String:
+		return [overrides[key], ""]
+	var own := String(DEFAULTS.get(key, key))
+	if not key.begins_with("error_") or key == "error_generic":
+		return [own, ""]
+	var code := key.substr(6)
+	var core := PKeyCopy.shared()
+	if core.has_override(code):
+		return [core.message_template(code), code]
+	if DEFAULTS.has(key) and tr(own) != own:
+		return [own, ""]
+	if core.has(code):
+		return [core.message_template(code), code]
+	return [own, ""]
+
+
 ## [copy key, args] for an error code (and an optional reason, as commerce refusals carry):
-## `reason_<reason>`, then `error_<code>`, then `error_generic` with the code (SDK parity §3.2:
-## a missing code falls back to a generic message plus the code, never the raw body).
+## `reason_<reason>`, then `error_<code>` (a kit line or a core copy entry, see _resolve), then
+## `error_generic` with the code (SDK parity §3.2: a missing code falls back to a generic message
+## plus the code, never the raw body).
 static func code_key(code: Variant, reason: Variant = "") -> Array:
 	var r := str(reason) if reason != null else ""
 	if r != "" and DEFAULTS.has("reason_" + r):
 		return ["reason_" + r, null]
 	var c := str(code) if code != null else ""
-	if c != "" and DEFAULTS.has("error_" + c):
+	if c != "" and (DEFAULTS.has("error_" + c) or PKeyCopy.shared().has(c)):
 		return ["error_" + c, null]
 	return ["error_generic", c if c != "" else "unknown"]
 

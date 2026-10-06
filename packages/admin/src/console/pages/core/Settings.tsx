@@ -7,8 +7,9 @@
  *   display name is refused, a cleared admin group is sent as `null` (A-3, PRD-6), never dropped.
  * - Signing moved to Keys & secrets and the compatibility window to Update → Feed; this page
  *   links to each instead of describing where they went (SET-3).
- * - Resync from repo is L1 and ends in a result panel listing what it re-applied, what it
- *   refused and the pack-set outcome (RSY-3).
+ * - Resync from repo is the console's one resync flow (`components/ResyncDialog.tsx`, UX-78):
+ *   an L1 confirm that shows the dry run's plan, then a focused, announced result panel listing
+ *   what it re-applied, what it refused and the pack-set outcome (RSY-3).
  * - A manual product offers Link repository… instead (EXPERIENCE.md §0.4 S1, AS 1.5): the drawer
  *   checks the repository, shows the plan, then links and applies; the same result panel
  *   follows.
@@ -34,7 +35,6 @@ import {
 } from "../../../lib/format.js";
 import { Button } from "../../../ui/Button.js";
 import { Callout } from "../../../ui/Callout.js";
-import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { Form, FormField, diffValues, useAdminForm } from "../../../ui/form.js";
 import { Input } from "../../../ui/Input.js";
@@ -47,6 +47,10 @@ import { toast } from "../../../ui/toast.js";
 import { useLoadingAnnouncement } from "../../../ui/loading.js";
 import { useUnsavedChangesGuard } from "../../../ui/useUnsavedChangesGuard.js";
 import { DeleteProductDialog } from "../../components/DeleteProductDialog.js";
+import {
+  ResyncDialog,
+  ResyncResultPanel,
+} from "../../components/ResyncDialog.js";
 import { PageHeader } from "../../components/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
@@ -61,7 +65,6 @@ import {
   SettingsSection,
   SettingsTemplate,
 } from "../../templates/Settings.js";
-import { intentOf } from "./confirmGate.js";
 import { LinkRepositoryDrawer } from "./LinkRepository.js";
 
 interface Draft extends Record<string, unknown> {
@@ -293,7 +296,8 @@ function RepositorySection({
   const [open, setOpen] = React.useState(false);
   const [linking, setLinking] = React.useState(false);
   const [result, setResult] = React.useState<{
-    title: string;
+    title?: string;
+    repository: string | null;
     result: ResyncResult;
   } | null>(null);
   const linked = product.releaseSource === "github";
@@ -355,27 +359,19 @@ function RepositorySection({
           <ResyncResultPanel
             title={result.title}
             result={result.result}
+            productName={product.name}
+            repository={result.repository}
             onDismiss={() => setResult(null)}
           />
         </div>
       ) : null}
-      <ConfirmDialog
+      <ResyncDialog
+        target={{ slug, name: product.name }}
         open={open}
         onOpenChange={setOpen}
-        intent={intentOf("repo.resync")}
-        title="Resync from repo?"
-        description={`Fetches ${product.name}'s .pkey/ manifest from its repository now and applies it.`}
-        consequences={[
-          "Services, catalog, tiers, profiles, channels and update settings follow the manifest, except values set in the console.",
-          "Clients see the result on their next document fetch.",
-        ]}
-        confirmLabel="Resync from repo"
-        describeError={(e) => errorCopy(e)}
-        onConfirm={async () => {
-          const res = await mutate("resyncProduct", slug);
-          setResult({ title: "Resync finished", result: res });
-          toast.success("Resynced from repo");
-        }}
+        onResult={(o) =>
+          setResult({ repository: o.repository, result: o.result })
+        }
       />
       {!linked ? (
         <LinkRepositoryDrawer
@@ -384,63 +380,15 @@ function RepositorySection({
           open={linking}
           onClose={() => setLinking(false)}
           onLinked={(res) =>
-            setResult({ title: `Linked to ${res.repository}`, result: res })
+            setResult({
+              title: `Linked to ${res.repository}`,
+              repository: res.repository,
+              result: res,
+            })
           }
         />
       ) : null}
     </SettingsSection>
-  );
-}
-
-/** What a resync did: the panel §5.3 asks for, not just a toast (RSY-3). */
-export function ResyncResultPanel({
-  title = "Resync finished",
-  result,
-  onDismiss,
-}: {
-  title?: string;
-  result: ResyncResult;
-  onDismiss: () => void;
-}): React.ReactElement {
-  const updated = result.updated ?? [];
-  const refused = result.refused ?? [];
-  const packs = result.packSets;
-  return (
-    <Callout
-      tone={refused.length || (packs && !packs.ok) ? "warning" : "success"}
-      title={title}
-      live
-      action={
-        <Button variant="ghost" size="sm" onClick={onDismiss}>
-          Dismiss
-        </Button>
-      }
-    >
-      <p>
-        {updated.length
-          ? `Re-applied: ${updated.join(", ")}.`
-          : "Nothing changed: the product already matched its manifest."}
-      </p>
-      {refused.length ? (
-        <div className="mt-2">
-          <p className="font-bold">Refused</p>
-          <ul className="list-disc pl-5">
-            {refused.map((x) => (
-              <li key={`${x.code}:${x.path}`}>
-                <span className="font-mono text-xs">{x.path}</span>: {x.message}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
-      {packs ? (
-        <p className="mt-2">
-          {packs.ok
-            ? `Pack sets resolved: ${formatCount(packs.sets)}.`
-            : `Pack sets were cleared: ${packs.message}`}
-        </p>
-      ) : null}
-    </Callout>
   );
 }
 

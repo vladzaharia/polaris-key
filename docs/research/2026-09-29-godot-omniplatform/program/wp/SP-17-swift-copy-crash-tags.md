@@ -55,11 +55,11 @@ The generated Swift copy module is read by nothing, and `ErrorCopy` differs from
 
 ## Acceptance criteria
 
-- [ ] `@pkey-feature core.copy` unit tests: every generated table, the fallback, placeholders and the activation-versus-code split.
-- [ ] `@pkey-feature crash.tags` unit tests over the Sentry vectors.
-- [ ] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
-- [ ] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
-- [ ] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
+- [x] `@pkey-feature core.copy` unit tests: every generated table, the fallback, placeholders and the activation-versus-code split.
+- [x] `@pkey-feature crash.tags` unit tests over the Sentry vectors.
+- [x] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
+- [x] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
+- [x] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
 
 ## Verify
 

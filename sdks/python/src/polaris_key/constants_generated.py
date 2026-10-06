@@ -1623,7 +1623,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "core.errors": CapabilityRow("implemented", "core", ()),
         "core.caps": CapabilityRow("implemented", "core", ()),
         "core.store": CapabilityRow("implemented", "core", (CapabilityNa("python", "dependency"),)),
-        "core.copy": CapabilityRow("planned", "sdk", ()),
+        "core.copy": CapabilityRow("implemented", "sdk", ()),
         "license.gate": CapabilityRow("implemented", "license", ()),
         "license.activate": CapabilityRow("implemented", "license", ()),
         "license.enroll": CapabilityRow("implemented", "license", ()),
@@ -1697,4 +1697,4 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "319b0e9e8271c6bbb49b7569365296127e6afd9ffd7443aa6e8d8953d010c9eb"
+CAPABILITY_DIGEST: Final[str] = "6a9e536216e9e441c493fa89420ee11c55ffb433b7024a1a68b77accb9c45747"

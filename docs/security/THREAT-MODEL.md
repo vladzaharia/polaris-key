@@ -5133,6 +5133,42 @@ services, policies, compat window, access modes and publisher stay), the edge-mi
 resync, and the checks above make that reachable only by a push landing inside that window. The
 signing key is never touched.
 
+### The New Product probes: repository picker, create dry run, slug check (UX-72)
+
+**What is new.** Three read-only routes back the New Product wizard (FLOWS.md §3.11 W22 to W24):
+`GET /manage/api/github/repositories` (the repositories the GitHub App can read), the create dry
+run `POST /manage/api/products/link-repo?dryRun=1`, and `GET /manage/api/products/slug-check`.
+None of them writes to D1 or KV. Code: `admin/handlers/github.ts`, `services/release/githubApp.ts`
+(the listing and probe half), `services/release/linkRepo.ts` (`prepareCreate`, `checkSlug`);
+tests: `test/createProbes.test.ts`.
+
+**Two new installation-token uses, both outside the release read path.** Neither is the R5-03
+release token, and neither goes through its sealed KV cache (R12-03):
+
+- **Listing token.** `metadata: read` across one installation, minted per request to list that
+  installation's repositories. It reads names, languages, push times and default branches, and no
+  content.
+- **Probe token.** `contents: read` (plus `metadata: read`), narrowed with `repositories` to the
+  repositories on the page being shown (at most 100), minted per installation per page to ask
+  whether each has a `.pkey/` directory.
+
+Both are minted per request and dropped when it ends. They are never cached, sealed or persisted,
+and never returned to the browser. A suspended installation is skipped, since GitHub refuses it a
+token. An installation whose token or listing fails is reported with `repositoryCount: null` and
+`listingError`, and the other installations still list. The create dry run reuses the existing
+release-path `getInstallationToken`, which has the same caching as UX-23's link dry run.
+
+**Private repository names.** The picker lists private repositories, so W22 is limited to
+platform admins (F16), the same gate as both create paths. Its inventory and each page's probe
+result are held only in the isolate's memory for 60 s, so a re-render does not re-list GitHub. They
+are never written to KV or D1, never shared across isolates, and gone when the isolate is.
+
+**The slug check is open to any signed-in operator.** It answers only whether a slug is
+`available`, `taken`, `reserved` or `invalid`, with a free suggestion. Whether a product exists is
+already public: `/<slug>/.well-known/polaris.json` answers for every product. Each call is at most
+two indexed prefix reads of the registry and sits behind the session-keyed `adminApi` limiter
+(600 requests per 60 s; it fails open on a limiter outage, as for every console route), so it adds no enumeration beyond discovery and no new load path.
+
 ### The refusal log (UX-15)
 
 `authorizeDevice` (`core/authz.ts`) now records each refused activation in `license_refusals`

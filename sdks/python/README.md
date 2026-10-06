@@ -271,8 +271,12 @@ healthy, so an update that fails to start rolls back (`update.confirm_boot()` by
 `enroll-claimed`, `license-disabled`, `license-expired`, `attestation-required`,
 `rate-limited`, `refused` (any other 4xx, keeping the server's `code`) or `error`. An unknown
 403 is `refused`, never `device-limit`. Device calls (`rename`, `deauthorize`) raise with the
-server's own code too. `polaris_key.copy.message(code)` and `title(code)` give the localised
-wording for any registry code or gate status (`register_locale()` adds a table).
+server's own code too. `polaris_key.copy.message(code)` and `title(code)` give the wording for
+any registry code, gate status or activation result from the generated catalog
+(`copy_generated.py`, from `conformance/parity/copy.en.json`); `activation_message(kind)` and
+`describe_error(result_or_error)` read a typed activation result from the activation table only.
+An unknown code reads `COPY_FALLBACK` naming it. `register_locale("en", ...)` overrides English
+per key; any other tag adds a locale that falls back to English.
 
 ### Entitlements
 

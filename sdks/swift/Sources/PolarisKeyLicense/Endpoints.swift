@@ -106,19 +106,51 @@ public enum ActivationResult: Sendable, Equatable {
         }
     }
 
-    /// The person-facing sentence for this outcome (`ErrorCopy`), or nil for `.ok`. A hardware
-    /// mismatch names the components that changed.
+    /// The person-facing sentence for this outcome, or nil for `.ok` (core.copy): every kind
+    /// reads the generated ACTIVATION table (`ErrorCopy.activationMessage`), never the error-code
+    /// table, with `{limit}`, `{deviceCount}` and `{retryAfterSeconds}` filled. A `.refused`
+    /// names the server's code: its own sentence when the catalog has one, else "refused
+    /// ({code})". A hardware mismatch names the components that changed.
     public var message: String? {
         switch self {
         case .ok: return nil
+        case .refused(let code, _, _):
+            return ErrorCopy.has(code)
+                ? ErrorCopy.message(code)
+                : ErrorCopy.activationMessage(kind, code: code)
         case .hardwareMismatch(_, let changed):
-            guard let changed, !changed.isEmpty else { return ErrorCopy.message(code) }
-            return ErrorCopy.message(code)
-                .replacingOccurrences(
-                    of: "hardware changed.",
-                    with: "hardware changed (\(changed.joined(separator: ", "))).")
-        default: return ErrorCopy.message(code)
+            let base = ErrorCopy.activationMessage(kind, code: code)
+            guard let changed, !changed.isEmpty else { return base }
+            return base.replacingOccurrences(
+                of: "hardware changed.",
+                with: "hardware changed (\(changed.joined(separator: ", "))).")
+        default: return ErrorCopy.activationMessage(kind, code: code, params: copyParams)
         }
+    }
+
+    /// The heading for this outcome, or nil for `.ok`: the activation table's title, or the
+    /// server code's own title for a `.refused` the catalog knows.
+    public var title: String? {
+        switch self {
+        case .ok: return nil
+        case .refused(let code, _, _):
+            return ErrorCopy.has(code) ? ErrorCopy.title(code) : ErrorCopy.activationTitle(kind)
+        default: return ErrorCopy.activationTitle(kind)
+        }
+    }
+
+    /// The placeholder values this outcome carries.
+    var copyParams: ErrorCopy.Params {
+        var p: ErrorCopy.Params = [:]
+        switch self {
+        case .deviceLimit(let limit, let count):
+            if let limit { p["limit"] = String(limit) }
+            if let count { p["deviceCount"] = String(count) }
+        case .rateLimited(let after):
+            if let after { p["retryAfterSeconds"] = String(after) }
+        default: break
+        }
+        return p
     }
 }
 

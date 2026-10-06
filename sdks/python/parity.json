@@ -44,9 +44,8 @@
       "note": "keyring is an optional extra; without it the token is in a 0600 file and store_status() reports keyring-unavailable."
     },
     "core.copy": {
-      "status": "planned",
-      "wp": "SP-22",
-      "note": "copy_generated.py is emitted from copy.en.json, but polaris_key.copy.message()/title() still read the hand-kept EN table (different strings, and a fallback that is not COPY_FALLBACK); core.copy flips once copy.py serves the generated catalog."
+      "status": "implemented",
+      "note": "polaris_key.copy serves copy_generated.py (from copy.en.json): message()/title() read the error-code, then gate, then activation table; activation_message()/activation_title() and describe_error() read typed activation results from the activation table only; unknown codes read COPY_FALLBACK naming the code; {name} placeholders fill or drop; register_locale('en', ...) is the host override layer. The hand-kept EN table is gone. tests/test_copy.py checks every table against copy.en.json."
     },
     "license.gate": {
       "status": "implemented"

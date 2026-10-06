@@ -21,14 +21,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import im.plrs.key.core.BootOptions
 import im.plrs.key.core.LicenseState
+import im.plrs.key.sdk.bootHost
 import im.plrs.key.sdk.PolarisKeyClient
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.JsonElement
 
 /** The client PolarisKeyApp (or PolarisKeyProvider) provides; null outside one. */
@@ -46,27 +48,34 @@ public fun PolarisKeyProvider(client: PolarisKeyClient, content: @Composable () 
 public fun polarisKey(): PolarisKeyClient =
     LocalPolarisKey.current ?: error("polarisKey() needs PolarisKeyApp or PolarisKeyProvider above it")
 
+// The live helpers are cold flows collected with collectAsState: the first read, then every
+// change. (Not produceState: the Compose lint run by AGP 8.6 reports ProduceStateDoesNotAssignValue
+// on these producer lambdas even though they assign `value`.)
+
 /** The licence state now and after every change (`client.licenseChanges`); null until first read. */
 @Composable
 public fun rememberPolarisLicense(client: PolarisKeyClient = polarisKey()): State<LicenseState?> =
-    produceState<LicenseState?>(null, client) {
-        value = client.status()
-        client.licenseChanges.collect { value = it }
-    }
+    remember(client) {
+        flow {
+            emit(client.status())
+            emitAll(client.licenseChanges)
+        }
+    }.collectAsState(null)
 
 /** Whether [name] is entitled now (false whenever the gate is not usable, S-19 G11), live. */
 @Composable
-public fun rememberPolarisEntitled(name: String, client: PolarisKeyClient = polarisKey()): State<Boolean> {
-    val license by rememberPolarisLicense(client)
-    return produceState(false, client, name, license) { value = client.license.isEntitled(name) }
-}
+public fun rememberPolarisEntitled(name: String, client: PolarisKeyClient = polarisKey()): State<Boolean> =
+    remember(client, name) {
+        flow {
+            emit(client.license.isEntitled(name))
+            client.licenseChanges.collect { emit(client.license.isEntitled(name)) }
+        }
+    }.collectAsState(false)
 
 /** A config key's effective value, live (`client.config.setting(key)`: local overrides and new documents). */
 @Composable
 public fun rememberPolarisSetting(key: String, client: PolarisKeyClient = polarisKey()): State<JsonElement?> =
-    produceState<JsonElement?>(null, client, key) {
-        client.config.setting(key).collect { value = it }
-    }
+    remember(client, key) { flow { emitAll(client.config.setting(key)) } }.collectAsState(null)
 
 /**
  * The whole kit wired to [client]: boot (with the gate, pack progress and the update banner) and

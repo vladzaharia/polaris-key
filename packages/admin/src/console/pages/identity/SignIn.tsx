@@ -5,8 +5,8 @@
  * points; its one action is a resync.
  *
  * Fixes IDN-2: the provider, issuer and client come from `config/mint` → `identity`, the same read
- * Edge mint shows. Fixes IDN-1: resync is an L1 action with a caution confirm and its consequences,
- * the same verb ("Resync") as everywhere else.
+ * Edge mint shows. Fixes IDN-1: resync is the console's one resync flow (UX-78), an L1 confirm
+ * showing the dry run's plan and a focused result panel, the same verb ("Resync") as everywhere.
  */
 
 import * as React from "react";
@@ -17,21 +17,19 @@ import {
   type EdgeMintIdentity,
   type ProductDetail,
 } from "../../../api.js";
-import { confirmFor, triggerVariant } from "../../../lib/actions.js";
+import { triggerVariant } from "../../../lib/actions.js";
 import { docsUrl } from "../../../lib/docsLinks.js";
 import { Button } from "../../../ui/Button.js";
 import { CodeBlock } from "../../../ui/CodeBlock.js";
-import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { DescriptionList } from "../../../ui/DescriptionList.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { IdChip } from "../../../ui/IdChip.js";
 import { PageSkeleton } from "../../../ui/Skeleton.js";
-import { toast } from "../../../ui/toast.js";
 import { EntityLink } from "../../components/EntityLink.js";
 import { PageHeader } from "../../components/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
-import { mutate } from "../../data/mutations.js";
+import { useResyncFlow } from "../../components/ResyncDialog.js";
 import { qk } from "../../data/queries.js";
 import { queryClient } from "../../data/queryClient.js";
 import { Link } from "../../router.js";
@@ -92,16 +90,9 @@ export function SignInPage({ slug }: { slug: string }): React.ReactElement {
     queryClient,
   );
   const product = useProduct(slug);
-  const [confirming, setConfirming] = React.useState(false);
   const linked = product.data ? isRepoLinked(product.data) : false;
-  const policy = confirmFor("repo.resync");
-
-  const resync = async (): Promise<void> => {
-    await mutate("resyncProduct", slug);
-    toast.success("Resynced from repo", {
-      description: "Sign-in settings were re-applied from .pkey/product.",
-    });
-  };
+  // The console's one resync flow (UX-78): the dry run's plan, then a focused result panel.
+  const resync = useResyncFlow();
 
   const header = (
     <PageHeader
@@ -122,7 +113,9 @@ export function SignInPage({ slug }: { slug: string }): React.ReactElement {
               : undefined
           }
           disabled={!product.data}
-          onClick={() => setConfirming(true)}
+          onClick={() =>
+            resync.start({ slug, name: product.data?.name ?? slug })
+          }
         >
           Resync from repo…
         </Button>
@@ -181,34 +174,9 @@ export function SignInPage({ slug }: { slug: string }): React.ReactElement {
   return (
     <div className="space-y-6" data-template="record">
       {header}
+      {resync.panel}
       {body}
-      <ConfirmDialog
-        open={confirming}
-        onOpenChange={setConfirming}
-        intent={policy.intent === "none" ? "neutral" : policy.intent}
-        title="Resync from the linked repo?"
-        description={
-          <>
-            Re-reads <code className="font-mono text-xs">.pkey/</code> and
-            re-applies it.{" "}
-            <a
-              className="underline underline-offset-2"
-              href={docsUrl("resync")}
-              target="_blank"
-              rel="noreferrer"
-            >
-              How resync works
-            </a>
-          </>
-        }
-        consequences={[
-          "The OIDC provider, group map and provisioning hooks are replaced by the manifest's.",
-          "Product metadata, the catalog, tiers, profiles and release settings are re-applied too.",
-          "Licenses, devices and values set in the console are kept.",
-        ]}
-        confirmLabel="Resync"
-        onConfirm={resync}
-      />
+      {resync.dialog}
     </div>
   );
 }

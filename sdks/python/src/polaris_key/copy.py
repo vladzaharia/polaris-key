@@ -1,157 +1,201 @@
 """User-facing copy for every code the SDK can surface (SDK parity pass §3.2, ``core.copy``).
 
-``message(code, detail=None, locale=None)`` and ``title(code)`` turn a registry error code
-(``conformance/parity/errors.json``), a gate status or an activation / claim kind into a short
-English sentence for a CLI line, a dialog or a log. A code without curated copy falls back to a
-generic sentence that names the code — never the raw response body.
+``message(code)`` and ``title(code)`` turn a registry error code (``errors.json``), a gate status
+(``licenseStatus``) or an activation result (``activationResult``) into a short English sentence
+and heading for a CLI line, a dialog or a log.
 
-The English base here is hand-kept until the shared ``copy.en.json`` and its generated emitters
-land (SP-03); ``tests/test_copy.py`` checks that every registry code, gate status and kind
-resolves. More locales are content: :func:`register_locale` adds a table (missing keys fall back
-to English).
+ENGLISH IS GENERATED. :mod:`polaris_key.copy_generated` is written by ``pnpm gen:constants`` from
+``conformance/parity/copy.en.json`` with three tables, kept apart on purpose as React and Node
+read them: ``COPY_CODES`` (per error code), ``COPY_GATE`` (per gate status) and
+``COPY_ACTIVATION`` (per activation result). The error code ``unauthorized`` reads "Not signed
+in"; the activation result ``unauthorized`` reads "Key not accepted".
+
+* :func:`message` / :func:`title` look a code up as an error code, then as a gate status, then as
+  an activation result.
+* :func:`activation_message` / :func:`activation_title` read a typed activation result
+  (``ActivationResult.kind``) from the activation table only.
+* :func:`describe_error` says an activation result a verb returned or an error it raised.
+
+A code with no entry falls back to ``COPY_FALLBACK``, which names the code and never shows a raw
+server body. ``{name}`` placeholders are filled from ``params`` (``{code}`` defaults to the code);
+an unfilled placeholder is dropped with the space before it, so a raw ``{name}`` never shows.
+
+:func:`register_locale` adds a table for another locale (missing keys fall back to English). For
+``en`` it feeds the host's override layer instead, which wins per key over the generated text.
 """
 
 from __future__ import annotations
 
-from typing import Dict, Mapping, Optional, Tuple
+import re
+from typing import Any, Dict, Mapping, Optional, Tuple, Union
 
-__all__ = ["message", "title", "register_locale", "EN", "GENERIC"]
+from .copy_generated import (
+    COPY_ACTIVATION,
+    COPY_CODES,
+    COPY_FALLBACK,
+    COPY_GATE,
+    COPY_PLACEHOLDERS,
+    CopyEntry,
+)
 
-#: The fallback for a code without curated copy.
-GENERIC = ("Something went wrong", "Something went wrong ({code}). Try again, or contact support if it keeps happening.")
+__all__ = [
+    "message",
+    "title",
+    "activation_message",
+    "activation_title",
+    "describe_error",
+    "has_copy",
+    "register_locale",
+    "reset_overrides",
+    "COPY_FALLBACK",
+    "COPY_PLACEHOLDERS",
+    "GENERIC",
+    "CopyEntry",
+]
 
-#: code → (title, message). ``{detail}`` and ``{code}`` are filled in when present.
-EN: Dict[str, Tuple[str, str]] = {
-    # ── Gate statuses ───────────────────────────────────────────────────────────────
-    "ok": ("Licensed", "This device is licensed."),
-    "grace": ("Offline grace", "Running offline on your licence's grace period. Connect to the internet to renew it."),
-    "expired": ("Licence expired", "Your licence has expired. Renew it or activate another key."),
-    "revoked": ("Licence revoked", "This device is no longer licensed. Activate it again or contact support."),
-    "needs-activation": ("Activation needed", "Activate this device with a licence key, or sign in."),
-    "version-too-old": ("Update required", "This version is no longer supported. Update to continue."),
-    "version-too-new": ("Version not available", "Your licence does not cover this version."),
-    "channel-not-entitled": ("Channel not available", "Your licence does not include this release channel."),
-    "not-applicable": ("No licence needed", "This product does not need a licence."),
-    # ── Activation and enrolment ────────────────────────────────────────────────────
-    "device_limit": ("Device limit reached", "This licence is already in use on all of its devices. Free a device in your account, then try again."),
-    "device-limit": ("Device limit reached", "This licence is already in use on all of its devices. Free a device in your account, then try again."),
-    "fingerprint_required": ("Hardware check needed", "This licence needs a hardware fingerprint, and this device could not provide one."),
-    "fingerprint-required": ("Hardware check needed", "This licence needs a hardware fingerprint, and this device could not provide one."),
-    "hardware_mismatch": ("Hardware changed", "This device's hardware changed. Activate again to re-bind it (this uses a device seat)."),
-    "hardware-mismatch": ("Hardware changed", "This device's hardware changed. Activate again to re-bind it (this uses a device seat)."),
-    "enroll_claimed": ("Sign in to continue", "This device's free licence now belongs to an account. Sign in to use it."),
-    "enroll-claimed": ("Sign in to continue", "This device's free licence now belongs to an account. Sign in to use it."),
-    "enroll_disabled": ("Free use not offered", "This product does not offer free use. Activate with a licence key instead."),
-    "enroll-disabled": ("Free use not offered", "This product does not offer free use. Activate with a licence key instead."),
-    "enroll_failed": ("Could not start free use", "Free use could not be set up right now. Try again later."),
-    "license_disabled": ("Licence disabled", "This licence has been disabled. Contact support."),
-    "license-disabled": ("Licence disabled", "This licence has been disabled. Contact support."),
-    "license_expired": ("Licence expired", "This licence has expired. Renew it or use another key."),
-    "license-expired": ("Licence expired", "This licence has expired. Renew it or use another key."),
-    "license_owned": ("Licence owned by another account", "This licence belongs to another account. Sign in with that account to use it."),
-    "attestation_required": ("Verified install required", "This product only runs on verified store installs."),
-    "attestation-required": ("Verified install required", "This product only runs on verified store installs."),
-    "attestation_rejected": ("Install could not be verified", "This install could not be verified. Reinstall it from the store."),
-    "attestation_unavailable": ("Verification unavailable", "Install verification is not set up for this product."),
-    "unauthorized": ("Not authorised", "The licence key or sign-in was not accepted."),
-    "rate_limited": ("Too many attempts", "Too many attempts. Wait a moment and try again."),
-    "rate-limited": ("Too many attempts", "Too many attempts. Wait a moment and try again."),
-    "registration_closed": ("Activation needed", "This product needs a licence or a sign-in before this device can be used."),
-    "registration-closed": ("Activation needed", "This product needs a licence or a sign-in before this device can be used."),
-    "refused": ("Request refused", "The request was refused ({code})."),
-    "forbidden": ("Not allowed", "This action is not allowed for this device or licence."),
-    "not_found": ("Not found", "That could not be found."),
-    "bad_request": ("Invalid request", "The request was not valid{detail_sep}{detail}"),
-    "not_entitled": ("Not included", "Your licence does not include this."),
-    "channel_not_allowed": ("Channel not available", "Your licence does not include this release channel."),
-    "version_blocked": ("Update required", "This version is not allowed. Update to continue."),
-    "managed_by_admin": ("Managed setting", "This setting is managed by your administrator."),
-    # ── Transport ───────────────────────────────────────────────────────────────────
-    "network-error": ("No connection", "Could not reach the server. Check your internet connection and try again."),
-    "network": ("No connection", "Could not reach the server. Check your internet connection and try again."),
-    "server-error": ("Server problem", "The server had a problem. Try again in a moment."),
-    "http-error": ("Request failed", "The server refused the request."),
-    "bad_response": ("Unexpected answer", "The server's answer could not be read. Try again later."),
-    "timeout": ("Timed out", "The server took too long to answer."),
-    "local-only": ("Offline build", "This build does not connect to the internet."),
-    "service-unavailable": ("Not available", "This feature is not available for this product."),
-    "unsupported": ("Not supported here", "This is not supported on this device."),
-    "insecure-base-url": ("Insecure server address", "The server address is not secure."),
-    "insecure-redirect": ("Insecure redirect", "The download was redirected to an insecure address."),
-    "too-many-redirects": ("Too many redirects", "The download was redirected too many times."),
-    "invalid-options": ("Configuration problem", "The app is not configured correctly{detail_sep}{detail}"),
-    "not-configured": ("Not configured", "This feature is not configured in the app."),
-    "no-token": ("Activation needed", "Activate this device or sign in first."),
-    "device-management-unsupported": ("Activation needed", "Activate this device or sign in to manage devices."),
-    "cancelled": ("Cancelled", "Cancelled."),
-    # ── Devices ─────────────────────────────────────────────────────────────────────
-    "device_list_failed": ("Could not load devices", "Your devices could not be loaded. Try again later."),
-    "device_rename_failed": ("Could not rename", "The device could not be renamed."),
-    "device_deauthorize_failed": ("Could not remove device", "The device could not be removed."),
-    # ── Sign-in ─────────────────────────────────────────────────────────────────────
-    "sign-in-unavailable": ("Sign-in unavailable", "Sign-in is not available right now."),
-    "sign-in-expired": ("Code expired", "The sign-in code expired. Start again."),
-    "sign-in-denied": ("Sign-in failed", "The sign-in was not completed."),
-    "sign-in-failed": ("Sign-in failed", "The sign-in did not complete."),
-    "disabled": ("Sign-in not offered", "This product does not offer sign-in."),
-    "pending": ("Waiting for sign-in", "Finish signing in on the page that opened, then come back."),
-    "expired-code": ("Code expired", "The sign-in code expired. Start again."),
-    # ── Offline bundles ─────────────────────────────────────────────────────────────
-    "bundle-jws-rejected": ("Invalid activation file", "This activation file is not valid."),
-    "bundle-claims-rejected": ("Wrong activation file", "This activation file is for another device or has expired."),
-    "bundle-trust-rejected": ("Untrusted activation file", "This activation file is not signed by this product."),
-    "inner-doc-rejected": ("Invalid activation file", "This activation file holds a document that is not valid."),
-    # ── Updates and downloads ───────────────────────────────────────────────────────
-    "download_auth_required": ("Licence needed to download", "Downloading this needs a valid licence."),
-    "payload-mismatch": ("Download damaged", "The download did not match its signature and was discarded. Try again."),
-    "record-rejected": ("Update not trusted", "The update's signature could not be verified."),
-    "record-mismatch": ("Update not trusted", "The update does not match its release record."),
-    "feed-rejected": ("Update check failed", "The update feed could not be verified."),
-    "feed-rollback": ("Update check failed", "The update feed is older than one already seen."),
-    "update-available": ("Update available", "A new version is available."),
-    "update-required": ("Update required", "Update to continue."),
-    # ── Packs ───────────────────────────────────────────────────────────────────────
-    "pack-not-entitled": ("Content not included", "Your licence does not include this content."),
-    "pack-revoked": ("Content withdrawn", "This content was withdrawn by the publisher."),
-    "plan-insufficient-disk": ("Not enough space", "There is not enough free disk space for this download."),
-    "fetch-failed": ("Download failed", "Required content could not be downloaded."),
-    "sync-failed": ("Could not check your licence", "Your licence could not be checked. Try again."),
-    "content-declined": ("Download needed", "This content is needed to continue."),
-    # ── Commerce ────────────────────────────────────────────────────────────────────
-    "not-owned": ("Purchase not found", "The store does not show this purchase on your account."),
-    "store-opened": ("Store opened", "Finish the update in the store."),
-}
+#: The fallback for a code without copy (an alias of the generated ``COPY_FALLBACK``).
+GENERIC = COPY_FALLBACK
 
-_LOCALES: Dict[str, Dict[str, Tuple[str, str]]] = {"en": EN}
+Params = Mapping[str, Union[str, int, float]]
+
+#: The host's English override layer (``register_locale("en", ...)``): code → (title, message).
+_OVERRIDES: Dict[str, Tuple[str, str]] = {}
+#: Non-English locale tables: tag → code → (title, message).
+_LOCALES: Dict[str, Dict[str, Tuple[str, str]]] = {}
+
+_PLACEHOLDER = re.compile(r"( ?)\{(\w+)\}")
+_CAMEL = re.compile(r"[A-Z]")
 
 
 def register_locale(locale: str, table: Mapping[str, Tuple[str, str]]) -> None:
-    """Add (or extend) a locale's table; missing keys fall back to English."""
-    _LOCALES.setdefault(locale.lower(), {}).update(table)
+    """Add entries (code → ``(title, message)``) to a locale. ``en`` entries override the
+    generated English for those keys only; every other key keeps the generated text."""
+    tag = locale.lower().replace("_", "-")
+    target = _OVERRIDES if tag == "en" else _LOCALES.setdefault(tag, {})
+    target.update(table)
 
 
-def _entry(code: str, locale: Optional[str]) -> Optional[Tuple[str, str]]:
+def reset_overrides() -> None:
+    """Drop every host override and registered locale (tests, or a host reloading its copy)."""
+    _OVERRIDES.clear()
+    _LOCALES.clear()
+
+
+def _activation_key(kind: str) -> str:
+    """``deviceLimit`` / ``device_limit`` / ``device-limit`` → the activationResult spelling."""
+    return _CAMEL.sub(lambda m: "-" + m.group(0).lower(), kind).replace("_", "-")
+
+
+def _english(code: str) -> Optional[CopyEntry]:
+    """The generated entry: error code, then gate status, then activation result."""
+    return COPY_CODES.get(code) or COPY_GATE.get(code) or COPY_ACTIVATION.get(_activation_key(code))
+
+
+def _localised(code: str, locale: Optional[str]) -> Optional[Tuple[str, str]]:
+    """A registered non-English entry (exact tag, then its language), else a host override."""
     if locale:
-        loc = locale.lower().replace("_", "-")
-        for candidate in (loc, loc.split("-")[0]):
+        tag = locale.lower().replace("_", "-")
+        for candidate in (tag, tag.split("-")[0]):
             table = _LOCALES.get(candidate)
             if table and code in table:
                 return table[code]
-    return EN.get(code)
+    return _OVERRIDES.get(code)
 
 
-def message(code: str, detail: Optional[str] = None, locale: Optional[str] = None) -> str:
-    """One sentence for ``code`` (``detail`` appended where the copy takes it)."""
-    entry = _entry(code, locale)
-    text = entry[1] if entry is not None else GENERIC[1]
-    return text.format(
-        code=code,
-        detail=detail or "",
-        detail_sep=(": " if detail else "."),
-    )
+def _fill(text: str, code: str, params: Optional[Params]) -> str:
+    values = params or {}
+
+    def sub(m: "re.Match[str]") -> str:
+        space, name = m.group(1), m.group(2)
+        value = values.get(name)
+        if value is not None:
+            return f"{space}{value}"
+        if name == "code":
+            return f"{space}{code}"
+        return ""
+
+    return _PLACEHOLDER.sub(sub, text)
+
+
+def has_copy(code: str, locale: Optional[str] = None) -> bool:
+    """Whether ``code`` has its own sentence (a locale entry, a host override or generated)."""
+    return _localised(code, locale) is not None or _english(code) is not None
+
+
+def message(
+    code: str,
+    detail: Optional[str] = None,
+    locale: Optional[str] = None,
+    *,
+    params: Optional[Params] = None,
+) -> str:
+    """The sentence for ``code``; ``detail`` (a refusal's reason, say) is appended in
+    parentheses. An unknown code reads ``COPY_FALLBACK`` naming it."""
+    own = _localised(code, locale)
+    if own is not None:
+        text = own[1]
+    else:
+        entry = _english(code)
+        text = entry.message if entry is not None else COPY_FALLBACK.message
+    out = _fill(text, code, params)
+    return f"{out} ({detail})" if detail else out
 
 
 def title(code: str, locale: Optional[str] = None) -> str:
-    """A short heading for ``code``."""
-    entry = _entry(code, locale)
-    return entry[0] if entry is not None else GENERIC[0]
+    """The short heading for ``code``, or ``COPY_FALLBACK``'s title."""
+    own = _localised(code, locale)
+    if own is not None:
+        return own[0]
+    entry = _english(code)
+    return entry.title if entry is not None else COPY_FALLBACK.title
+
+
+def _activation_entry(kind: str, locale: Optional[str]) -> Optional[Tuple[str, str]]:
+    key = _activation_key(kind)
+    own = _localised(key, locale)
+    if own is not None:
+        return own
+    return COPY_ACTIVATION.get(key)
+
+
+def activation_message(
+    kind: str,
+    *,
+    locale: Optional[str] = None,
+    code: Optional[str] = None,
+    params: Optional[Params] = None,
+) -> str:
+    """The sentence for a typed activation result, from the activation table only (never the
+    error-code table). ``refused`` names the server's ``code``. A kind outside the table reads
+    like :func:`message`."""
+    entry = _activation_entry(kind, locale)
+    if entry is None:
+        return message(kind, locale=locale, params=params)
+    return _fill(entry[1], code or kind, params)
+
+
+def activation_title(kind: str, locale: Optional[str] = None) -> str:
+    """The heading for a typed activation result."""
+    entry = _activation_entry(kind, locale)
+    return entry[0] if entry is not None else title(kind, locale)
+
+
+def describe_error(err: Any, locale: Optional[str] = None) -> str:
+    """The sentence for an activation result (anything with ``kind``) or a raised error (anything
+    with ``code``). An activation result reads the activation table, except ``refused``, which
+    reads the server code's own sentence when the catalog has one."""
+    if err is None:
+        return message("unknown", locale=locale)
+    kind = getattr(err, "kind", None)
+    code = getattr(err, "code", None)
+    code = code if isinstance(code, str) else None
+    if isinstance(kind, str) and kind != "ok":
+        params: Dict[str, Union[str, int, float]] = {}
+        for name in ("limit", "deviceCount", "retryAfterSeconds"):
+            value = getattr(err, name, None)
+            if value is not None:
+                params[name] = value
+        if kind == "refused" and code is not None and has_copy(code, locale):
+            return message(code, locale=locale, params=params)
+        return activation_message(kind, locale=locale, code=code, params=params)
+    return message(code or "unknown", locale=locale)

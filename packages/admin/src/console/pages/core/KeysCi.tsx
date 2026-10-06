@@ -449,8 +449,9 @@ function TokensRow({ slug }: { slug: string }): React.ReactElement {
         meta: { priority: 1 },
         cell: ({ row }) => {
           const s = tokenState(row.original, nowSec);
+          // Pills only for issues (EXPERIENCE.md §2): a working token is plain text.
           return s === "active" ? (
-            <StatusPill tone="success">Active</StatusPill>
+            <span className="text-sm text-fg">Active</span>
           ) : s === "expired" ? (
             <StatusPill tone="neutral">Expired</StatusPill>
           ) : (
@@ -651,7 +652,6 @@ function IssueTokenDialog({
       }}
       dismissible={!saving}
       title="Issue a CI token"
-      description="The token is shown once. Polaris Key stores only its hash."
     >
       <form onSubmit={submit} noValidate>
         <DialogBody className="space-y-4">

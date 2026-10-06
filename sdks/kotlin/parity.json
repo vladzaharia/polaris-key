@@ -343,9 +343,8 @@
       "note": ":core's bootTransition; every stage-matrix.json row, probe, guard and confirm case in :conformance."
     },
     "ui.boot": {
-      "status": "planned",
-      "wp": "SP-20",
-      "note": "The one-call boot is :ui's PolarisBootState.launch over client.bootHost(), an Android library; there is no JVM boot API the :conformance replayer can drive, so boot-cold-register cannot replay yet."
+      "status": "implemented",
+      "note": "SP-20: client.boot() in :sdk (Boot.kt, plain coroutines, no Android): BootDriver runs :core's stage machine over client.bootHost(): discovery when services are unpinned or no token is held, keyless registration of a fresh install under an open policy before the sync pass, the boot guard over the default update slots where present, sync, a gate that registers keylessly and syncs again when it needs activation under an open policy, decide when usable, packs.bootFetch and mount, to its first stop. :ui's PolarisBootState is a thin holder over the same driver. Proof: :conformance replays boot-cold-register.json through client.boot() and plays every stage-matrix.json row through BootDriver with a scripted host (BootDriverMatrixTest); BootDriverTest in :sdk."
     },
     "ui.kit": {
       "status": "implemented",

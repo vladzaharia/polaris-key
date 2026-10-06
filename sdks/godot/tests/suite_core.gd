@@ -1,12 +1,12 @@
 extends RefCounted
-# @pkey-feature core.cache core.local core.sync core.discover core.verify core.errors core.caps
+# @pkey-feature core.cache core.local core.sync core.discover core.verify core.errors core.caps core.copy
 # The Core unit suite: strict JSON and base64url, the store, the verified cache, the transport,
 # sync, local-only, the autoload, and verification off the main thread. Network tests run
 # against PKeyFakeServer on 127.0.0.1. Each group is a file under res://tests/core/ with
 # `func run(t: PKeyTestContext) -> void` (it may await); this suite runs them in order and
 # ends with a coverage check that every group ran.
 
-const GROUPS := ["load", "json", "errors", "semver", "store", "cache", "transport", "sync", "local", "autoload", "offload", "caps"]
+const GROUPS := ["load", "json", "errors", "semver", "store", "cache", "transport", "sync", "local", "autoload", "offload", "caps", "copy"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

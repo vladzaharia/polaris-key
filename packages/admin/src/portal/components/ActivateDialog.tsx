@@ -105,6 +105,32 @@ export function ActivateDialog({
     document.getElementById(fieldId)?.focus();
   };
 
+  /*
+   * Focus follows the step (FLOWS.md §2 C18, P-5): a new step's heading takes focus once it has
+   * rendered, so a screen reader hears where it is and focus never stays on the dialog itself;
+   * coming back to the key (Back, Change key, a refused claim) puts it on the field. A refusal
+   * (an inline verdict) also puts focus on the field: Continue is disabled until the key
+   * changes, and a disabled button that held focus would drop it to `body`.
+   */
+  const anchorRef = React.useRef<HTMLSpanElement>(null);
+  const lastStep = React.useRef<Step["kind"]>(step.kind);
+  React.useEffect(() => {
+    if (lastStep.current === step.kind) return;
+    lastStep.current = step.kind;
+    const frame = requestAnimationFrame(() => {
+      if (step.kind === "enter") focusField();
+      else focusDialogHeading(anchorRef.current);
+    });
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step.kind]);
+  React.useEffect(() => {
+    if (!serverVerdict || step.kind !== "enter") return;
+    const frame = requestAnimationFrame(focusField);
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverVerdict]);
+
   const reset = (): void => {
     setKey("");
     setTouched(false);
@@ -217,6 +243,7 @@ export function ActivateDialog({
       }
       size="md"
     >
+      <span ref={anchorRef} hidden />
       {confirm ? (
         <ConfirmStep
           preview={confirm.preview}
@@ -516,6 +543,20 @@ function ConfirmStep({
       </DialogFooter>
     </>
   );
+}
+
+/**
+ * Focus the open dialog's title (`ui/Dialog` renders it as the dialog's one heading), made
+ * programmatically focusable first. `from` is any element inside the dialog.
+ */
+function focusDialogHeading(from: HTMLElement | null): void {
+  const heading = from
+    ?.closest('[role="dialog"], [role="alertdialog"]')
+    ?.querySelector<HTMLElement>("h1, h2");
+  if (!heading) return;
+  if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+  heading.classList.add("outline-none");
+  heading.focus();
 }
 
 /** A failed preview or claim as a verdict (§4.19), never a toast. */

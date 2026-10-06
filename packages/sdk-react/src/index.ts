@@ -67,6 +67,8 @@ export {
   type UseChangelog,
   type UseChangelogOptions,
 } from "./release/useChangelog.js";
+// ui.boot (SP-12): the one-call boot as a hook.
+export { useBoot, type UseBoot, type UseBootOptions } from "./react/useBoot.js";
 
 // ── Components ───────────────────────────────────────────────────────────────
 export {
@@ -156,6 +158,25 @@ export {
   type BrowserAdapterOptions,
 } from "./browser/browserAdapter.js";
 export { fetchCatalog } from "./browser/catalog.js";
+// release.fetch and release.distribution for the browser transport (SP-12).
+export {
+  fetchReleaseBuild,
+  fetchVerifiedRecord,
+  type FetchTarget,
+  type PartStore,
+  type ReleaseFetchOptions,
+  type ReleaseFetchResult,
+} from "./browser/releaseFetch.js";
+export {
+  browserPlatform,
+  fetchDownloadModel,
+  pickPlatform,
+  type DownloadAction,
+  type DownloadBuild,
+  type DownloadModel,
+  type DownloadPlatformGroup,
+  type ThisPlatform,
+} from "./browser/distribution.js";
 // Outlet detection (plans/P3-01.md §2.9): the mapping is client-core's, re-exported so a React
 // host reaches it through this package; the reader is the page's own.
 export {
@@ -261,6 +282,36 @@ export {
   type ServicesMap,
   type ServiceBusyMap,
   type ServiceErrorMap,
+  // ui.boot / ui.stages (SP-12)
+  runBoot,
+  reacquire,
+  bootDecisionOf,
+  BOOT_CONFIRMATIONS,
+  BOOT_OK_SECONDS,
+  BOOT_OUTCOMES,
+  BOOT_STAGES,
+  bootConfirmation,
+  bootTransition,
+  initialBootState,
+  type BootDriver,
+  type BootPacks,
+  type BootResult,
+  type BootRunOptions,
+  type BootStep,
+  type ReacquireResult,
+  type BootDecision,
+  type BootEmit,
+  type BootEvent,
+  type BootOptions,
+  type BootState,
+  type BootStage,
+  // crash.tags and update.feeds (SP-12)
+  crashTagsFor,
+  type CrashTags,
+  type CrashTagsOptions,
+  type FeedKind,
+  type FeedUrl,
+  type FeedUrlOptions,
 } from "./core/index.js";
 
 // ── Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts) ──

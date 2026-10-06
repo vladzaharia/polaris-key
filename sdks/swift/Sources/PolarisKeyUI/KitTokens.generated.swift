@@ -41,7 +41,7 @@ public enum PolarisKit {
     public static let monoFamily = "JetBrains Mono"
 
     /// Motion durations in seconds and distances in points (the kit's own animations; system
-    /// sheets keep their springs). notes/S-23 §5; zero them all under Reduce Motion.
+    /// sheets keep their springs). notes/S-23 §5; zero the durations under Reduce Motion.
     public enum Motion {
         public static let micro: Double = 0.08
         public static let fast: Double = 0.12
