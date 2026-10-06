@@ -53,7 +53,7 @@ Where the brief and the code disagreed, the code was the fact:
 - **Rule 10:** the admin licence routes were narrative only. `GET`/`POST …/license/licenses` and
   `GET`/`PATCH …/license/licenses/{licenseId}` are now in the spec (tag `admin`, `routeCoverage`'s
   `products` kind); `DELETE` stays narrative.
-- The migration is `00XX_license_auto_attach_blocks.sql`; the lead numbers it.
+- The migration is `0092_license_auto_attach_blocks.sql`; the lead numbered it 0092.
 
 ## Goal
 

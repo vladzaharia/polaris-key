@@ -18,7 +18,7 @@
  *
  * Association by email is automatic, so a person who removes an email-bearing licence from their
  * library would get it back on the next sweep (S-24 H5). `license_auto_attach_blocks` (Core's
- * table, migrations `00XX_license_auto_attach_blocks.sql`) records "never attach this licence to
+ * table, migrations `0092_license_auto_attach_blocks.sql`) records "never attach this licence to
  * this account automatically again". Every AUTOMATIC attach skips a blocked pair: the portal's
  * link sweep (both its email and its OIDC-subject halves), the email hook below and the
  * association at creation. An explicit act still works: the person adding the key, or a developer
