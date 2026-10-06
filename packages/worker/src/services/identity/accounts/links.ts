@@ -242,9 +242,16 @@ export async function unlinkIdentity(
       "SELECT COUNT(*) AS n FROM account_links WHERE account_id = ?",
       A,
     );
+    // Without `emailRule` only the last-link guard can hold the DELETE back, so a method still
+    // here past it left the account meanwhile (a join, or a join's undo, moved it): not found.
     return {
       ok: false,
-      error: (count?.n ?? 0) <= 1 ? "last_link" : "only_email",
+      error:
+        (count?.n ?? 0) <= 1
+          ? "last_link"
+          : opts.emailRule
+            ? "only_email"
+            : "not_found",
     };
   }
   await mirrorLinkRemoval(db, link);
