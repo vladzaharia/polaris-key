@@ -12,8 +12,11 @@ extends PKeyKeyringBackend
 ## for ever on the main thread.
 ##
 ## unavailable() says why when `secret-tool` is not on PATH or there is no session bus
-## (DBUS_SESSION_BUS_ADDRESS, or $XDG_RUNTIME_DIR/bus). A daemon that is not running or a locked
-## collection shows up as a failed call, which the store surfaces.
+## (DBUS_SESSION_BUS_ADDRESS, or $XDG_RUNTIME_DIR/bus), and on an engine older than Godot 4.5,
+## whose OS.execute_with_pipe never delivers what is written to the child's stdin (`store` then
+## fails, and the write can raise SIGPIPE): the store keeps the token in its 0600 file and says so.
+## A daemon that is not running or a locked collection shows up as a failed call, which the store
+## surfaces.
 
 ## The program to run: `secret-tool` on PATH by default. Tests point it at a stand-in script.
 var tool := ""
@@ -35,6 +38,8 @@ func unavailable() -> String:
 	var p := platform if platform != "" else PKeyHeaders.platform()
 	if p != PKeyConstants.Platform.LINUX:
 		return "the Secret Service backend runs on Linux, not %s" % (p if p != "" else "this platform")
+	if not engine_pipes_stdin():
+		return "secret-tool needs Godot 4.5 or later: Godot %s's OS.execute_with_pipe does not deliver stdin, and the secret never goes on a command line" % Engine.get_version_info().get("string", "4.4")
 	if _program() == "":
 		return "secret-tool (libsecret-tools) is not on PATH"
 	if OS.get_environment("DBUS_SESSION_BUS_ADDRESS") == "":
@@ -73,6 +78,12 @@ func delete_secret(service: String, account: String) -> Dictionary:
 	if r["exit"] == 0 or (r["exit"] > 0 and r["err"].strip_edges() == ""):
 		return {"ok": true}
 	return {"ok": false, "error": _why("clear", r)}
+
+
+## Whether this engine's OS.execute_with_pipe delivers stdin to the child (Godot 4.5 and later).
+static func engine_pipes_stdin() -> bool:
+	var v := Engine.get_version_info()
+	return int(v.get("major", 0)) > 4 or (int(v.get("major", 0)) == 4 and int(v.get("minor", 0)) >= 5)
 
 
 func _program() -> String:

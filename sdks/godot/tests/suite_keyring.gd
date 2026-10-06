@@ -242,6 +242,17 @@ func _linux(t: PKeyTestContext) -> void:
 	OS.set_environment("DBUS_SESSION_BUS_ADDRESS", "unix:path=/fake/bus")
 	OS.set_environment("PKEY_FAKE_SECRET_DIR", dir)
 	var b := PKeySecretServiceBackend.new(script, "linux")
+	if not PKeySecretServiceBackend.engine_pipes_stdin():
+		# Godot 4.4 (the floor): no stdin through OS.execute_with_pipe, so the backend steps aside
+		# and the store keeps its 0600 file (the fake-tool checks below need 4.5 or later).
+		t.check("linux: before Godot 4.5 the backend says it needs 4.5", b.unavailable().contains("Godot 4.5"), b.unavailable())
+		var kr_floor := PKeyKeyringStore.new(PRODUCT, b, _root("st44"))
+		t.check("linux: before Godot 4.5 the store keeps the 0600 file and says why", kr_floor.set_token("pkeyt_ss") and kr_floor.get_token() == "pkeyt_ss" \
+				and kr_floor.status().get("backend") == "file" and kr_floor.status().get("degraded", {}).get("reason") == "keyring-unavailable" \
+				and kr_floor.clear_token(), str(kr_floor.status()))
+		OS.set_environment("DBUS_SESSION_BUS_ADDRESS", saved_bus)
+		OS.set_environment("PKEY_FAKE_SECRET_DIR", "")
+		return
 	t.check("linux: usable with secret-tool and a session bus", b.unavailable() == "" and b.id() == "secret-service")
 	t.check("linux: absent (exit 1, silent) is a null value", b.get_secret("pkey:diceroll", "device-token") == {"ok": true, "value": null})
 	var secret := "pkeyt_" + "a".repeat(40) + " with spaces\tand tabs"
