@@ -114,11 +114,13 @@ Confirm before adding, and arrive from apps with context ([PORTAL.md §4.17](../
 
 ## Acceptance criteria
 
-- [ ] Error-state tests for every §4.19 case.
-- [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
-- [ ] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
-- [ ] No horizontal page scroll at 360 px on every screen this package touches (§8).
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] Error-state tests for every §4.19 case. (`test/portalActivateLink.test.tsx`; the quality bar's
+      `activate-error-*` and `activate-entries` states.)
+- [x] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations. (The
+      Activate, device-limit and CSP e2e, filtered; every new state also in Playwright's linux image.)
+- [x] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
+- [x] No horizontal page scroll at 360 px on every screen this package touches (§8).
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 
