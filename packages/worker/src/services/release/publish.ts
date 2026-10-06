@@ -321,11 +321,13 @@ async function handleUploads(ctx: ServiceContext): Promise<Response> {
   // `distribution:feeds` buys one too. Only the submit (`release:publish`) ingests a release, and
   // only the feed register (`distribution:feeds`) registers feed files, each redeeming its own.
   // So does `distribution:listing` (A-18d), for the listing assets `pkey listing assets` derived;
-  // only the listing register redeems that ticket.
+  // only the listing register redeems that ticket. And `assets:write` (HA-06), for the files
+  // `pkey assets push` hosts; only `POST /<p>/assets` redeems that one.
   const holder = await requirePublisher(ctx, [
     "release:publish",
     "distribution:feeds",
     "distribution:listing",
+    "assets:write",
   ]);
   if (holder instanceof Response) return holder;
   const body = await readCiJson(req, MAX_UPLOADS_BODY_BYTES);
