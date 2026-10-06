@@ -38,7 +38,7 @@ export function legacyMarker(raw: unknown): "manifest" | "console" {
 }
 
 /** `UPDATE products SET <sets>, modified_at = ? WHERE slug = ? AND <guard>`. */
-function updateProduct(
+function updateProductColumns(
   { product, at, guard }: ColumnWriteArgs,
   sets: readonly [column: string, value: string | number | null][],
 ): DbStatement[] {
@@ -74,7 +74,7 @@ function productScalar(
     columns: [column],
     decode: (row) => (row ? decode(row[column]) : undefined),
     set: (args) =>
-      updateProduct(args, [[column, args.value as string | number | null]]),
+      updateProductColumns(args, [[column, args.value as string | number | null]]),
   };
 }
 
@@ -95,13 +95,13 @@ function productClaimedJson(
     },
     marker: (row) => legacyMarker(row?.[markerColumn]),
     set: (args) =>
-      updateProduct(args, [
+      updateProductColumns(args, [
         [column, encode(args.value)],
         [markerColumn, "admin"],
       ]),
     // Only the owner flips: the stored value stays as the operator left it until the next resync
     // re-applies the manifest (the `revert…ToManifest` contract these replace).
-    reset: (args) => updateProduct(args, [[markerColumn, "manifest"]]),
+    reset: (args) => updateProductColumns(args, [[markerColumn, "manifest"]]),
   };
 }
 
@@ -167,7 +167,7 @@ export const CORE_COLUMN_ADAPTERS: Readonly<
       return typeof raw === "string" ? parseWebOrigins(raw) : undefined;
     },
     set: (args) =>
-      updateProduct(args, [
+      updateProductColumns(args, [
         ["web_origins_json", serializeWebOrigins(args.value as string[])],
       ]),
   },
@@ -193,12 +193,12 @@ export const CORE_COLUMN_ADAPTERS: Readonly<
     marker: (row) =>
       row?.trust_policy_source === "admin" ? "console" : "default",
     set: (args) =>
-      updateProduct(args, [
+      updateProductColumns(args, [
         ["trust_policy_json", jsonOrNull(args.value)],
         ["trust_policy_source", args.value === null ? "default" : "admin"],
       ]),
     reset: (args) =>
-      updateProduct(args, [
+      updateProductColumns(args, [
         ["trust_policy_json", null],
         ["trust_policy_source", "default"],
       ]),
@@ -228,13 +228,13 @@ export const CORE_COLUMN_ADAPTERS: Readonly<
     marker: (row) => legacyMarker(row?.compat_source),
     set: (args) => {
       const v = (args.value ?? {}) as { min?: unknown; max?: unknown };
-      return updateProduct(args, [
+      return updateProductColumns(args, [
         ["compat_min", (v.min as string | null | undefined) ?? null],
         ["compat_max", (v.max as string | null | undefined) ?? null],
         ["compat_source", "admin"],
       ]);
     },
-    reset: (args) => updateProduct(args, [["compat_source", "manifest"]]),
+    reset: (args) => updateProductColumns(args, [["compat_source", "manifest"]]),
   },
 
   // ── The Polaris Key storefront (PS-02), Core's columns on `portal_product_settings` ──────
