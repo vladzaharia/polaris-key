@@ -12,6 +12,22 @@
 | Human input | none                                                                                                 |
 | Repo        | `vladzaharia/polaris-key`                                                                            |
 
+## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
+
+The owner decided on 2026-10-05 that every in-app sign-in step happens in **one form whose body
+morphs in place** (no stacked sheets), that the license is chosen **inside the app** when it can
+show it, that the presentation is configurable with native controls kept, that there are **two
+equal ways to integrate** (the hosted card, and the kit form with headless primitives), and that
+the web flow is one continuous, animated card. The wire is
+[`plans/I-04.md`](../plans/I-04.md) §G (a pending sign-in grant, `licenseChoice: "app" | "card"`);
+the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) §2.4, §3.17, §3.18, §4.16 and
+D-78–D-93. Where this brief differs, they win. **No device-wire version change**
+(`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2; no corpus file). New UI copy uses
+the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
+every row, no "Account-wide"). For this package:
+
+- **The one sign-in form** (SIGN-IN.md §3.17, UI-KITS §1.3): the sidecar holds the grant and calls `choice.*`; the webview's form gets view data only (SIGN-IN.md D-91). Steps morph in place; nothing stacks on the form except the system confirm for Replace where the platform expects one (D-80).
+
 ## Goal
 
 A Tauri v2 app uses the elements or the React kit unchanged, backed by the same bridge contract as Electron.

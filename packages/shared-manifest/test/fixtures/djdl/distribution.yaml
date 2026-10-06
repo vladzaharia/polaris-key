@@ -1,0 +1,54 @@
+# A verbatim copy of vladzaharia/djdl .pkey/distribution.yaml at 9ba79dd (2026-10-05), kept as the
+# HA-04 fixture: the listing still spells iconUrl/headerUrl, which must keep validating with
+# only the listing_url_field_deprecated warning. Do not modernise it.
+# Polaris Key distribution manifest for djdl: where djdl reaches people.
+#
+# Identities only. What each outlet may do (capabilities) is operator-owned in the console and
+# never declared here. With no file, Polaris Key would assume the same single `direct` outlet;
+# this file adds its platform and the Homebrew cask, so the download page at
+# https://dl.plrs.im/djdl shows `brew install --cask vladzaharia/tap/djdl` and a cask install
+# is recognised as such.
+outlets:
+  # The notarized DMG and the CLI binary, downloaded from Polaris Key (dl.plrs.im) and kept
+  # current by Sparkle (the app) or the install script (the CLI).
+  direct:
+    platforms: [macos]
+    # The cask lives in our own tap, vladzaharia/homebrew-tap (Casks/djdl.rb). The release
+    # workflow renders it from each stable DMG (scripts/make-cask.sh).
+    homebrewCask: djdl
+transports:
+  default: pkey-cdn
+# The store listing. Polaris Key's customer portal shows the icon and header through its own
+# media proxy, which only fetches unauthenticated from GitHub hosts and caches a URL for a
+# year, so the art lives in the public vladzaharia/djdl-assets repo and these two URLs are
+# pinned to a commit by scripts/publish-listing-art.sh. Don't hand-edit them.
+listing:
+  name: DJDL
+  subtitle: Turn playlists into DJ files
+  description: |-
+    Your playlists. Your files. Your decks.
+
+    DJDL turns Apple Music and Spotify playlists into organized, tagged audio files ready for your local DJ library.
+
+    Choose a playlist. DJDL reads its track metadata, searches multiple audio sources, and prepares the best available matches with clean tags and cover art for import into Djay.
+
+    QUALITY THAT MEANS SOMETHING
+    Save FLAC when the source is genuinely lossless. Otherwise, DJDL outputs MP3 at 320 kbps. Encoding at a higher bitrate does not restore detail missing from the source.
+
+    A LIBRARY READY TO USE
+    Keep track titles, artists, albums and artwork together so your collection stays useful beyond a streaming playlist.
+
+    HOW IT WORKS
+    1. Read a playlist from the macOS Music app or Spotify.
+    2. Match its tracks across available audio sources.
+    3. Download and tag the available matches.
+    4. Import the resulting files into Djay.
+
+    DJDL uses playlist metadata to find audio from separate sources. It does not convert or remove DRM from Apple Music or Spotify streams. Audio availability and match quality vary by track and source. Only download music you have permission to download and use.
+
+    DJDL is an independent product and is not affiliated with Apple, Spotify or the makers of Djay.
+  iconUrl: https://raw.githubusercontent.com/vladzaharia/djdl-assets/3bb6289e4e9d8a05586a907cedbe6a848f4a53a1/listing/icon.png
+  headerUrl: https://raw.githubusercontent.com/vladzaharia/djdl-assets/3bb6289e4e9d8a05586a907cedbe6a848f4a53a1/listing/header.png
+  tintColor: "#2ED6E6"
+  category: Music
+  developerName: Vlad Zaharia

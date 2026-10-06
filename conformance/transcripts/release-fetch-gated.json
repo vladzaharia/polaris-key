@@ -1,0 +1,317 @@
+{
+  "transcriptVersion": 1,
+  "id": "release-fetch-gated",
+  "description": "A verified download under licensed delivery. After discovery, releaseFetch() expands distribution.endpoints.builds with the version as the selector and the build id of the release record's entry for the device's platform and arch, and streams it with the device bearer and the metadata headers (gated delivery needs both); the result reports the size and SHA-256 it verified against the record. A second fetch resumes a partial download the replayer seeds (the first `partial` bytes): Range from that offset and If-Range with the payload's strong ETag, answered 206. Once an operator disables the licence, the device is no longer entitled and the fetch is refused 401 download_auth_required, surfaced by its code; no file is produced.",
+  "features": ["release.fetch"],
+  "requires": ["core.store", "core.discover", "release.record"],
+  "product": "djdl",
+  "baseUrl": "https://key.plrs.im",
+  "now": 1700000000,
+  "trust": {
+    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+  },
+  "initial": {
+    "deviceId": "TRANSCRIPTDEVICE0000000000000001",
+    "token": "pkeyt_eeKVdssz0frfFn7dfFS9KBs4sSFlcLsJBVu79WRtkIM",
+    "version": "1.0.0",
+    "services": ["license", "config", "release", "distribution"],
+    "platform": "linux"
+  },
+  "steps": [
+    {
+      "action": "discover",
+      "args": {},
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/.well-known/polaris.json",
+              "headers": {},
+              "requiredHeaders": [],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "public, max-age=300",
+                "content-type": "application/json"
+              },
+              "body": {
+                "version": 2,
+                "protocolVersion": 4,
+                "schemaVersion": 1,
+                "product": "djdl",
+                "slug": "djdl",
+                "name": "djdl",
+                "baseUrl": "https://key.plrs.im",
+                "core": {
+                  "registration": "requires-license",
+                  "compat": { "min": "0.0.0", "max": "99.0.0" },
+                  "endpoints": {
+                    "discovery": "https://key.plrs.im/djdl/.well-known/polaris.json",
+                    "jwks": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                    "trustManifest": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                    "devices": "https://key.plrs.im/djdl/devices",
+                    "report": "https://key.plrs.im/djdl/devices/report"
+                  }
+                },
+                "trust": {
+                  "jwksUrl": "https://key.plrs.im/djdl/.well-known/jwks.json",
+                  "trustManifestUrl": "https://key.plrs.im/djdl/.well-known/polaris-trust.jws",
+                  "cacheSeconds": 300,
+                  "pinnedKeys": {
+                    "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+                  },
+                  "signingKid": "pkey-test-prod-2026",
+                  "signingPub": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                  "keys": [
+                    {
+                      "kid": "pkey-test-prod-2026",
+                      "alg": "EdDSA",
+                      "kty": "OKP",
+                      "crv": "Ed25519",
+                      "publicKey": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI",
+                      "status": "active",
+                      "active": true
+                    }
+                  ]
+                },
+                "services": {
+                  "license": {
+                    "enabled": true,
+                    "endpoints": {
+                      "activate": "https://key.plrs.im/djdl/license/activate",
+                      "enroll": "https://key.plrs.im/djdl/license/enroll",
+                      "token": "https://key.plrs.im/djdl/license/token",
+                      "deauthorize": "https://key.plrs.im/djdl/license/deauthorize",
+                      "document": "https://key.plrs.im/djdl/license/document"
+                    }
+                  },
+                  "config": {
+                    "enabled": true,
+                    "schemaVersion": 1,
+                    "endpoints": {
+                      "document": "https://key.plrs.im/djdl/config/document",
+                      "schema": "https://key.plrs.im/djdl/config/schema"
+                    },
+                    "mint": { "available": false }
+                  },
+                  "release": {
+                    "enabled": true,
+                    "configured": true,
+                    "binaryName": "djdl",
+                    "repository": { "owner": "acme", "name": "djdl" },
+                    "endpoints": {
+                      "changelog": "https://key.plrs.im/djdl/release/changelog",
+                      "install": "https://key.plrs.im/djdl/release/install.sh",
+                      "download": "https://key.plrs.im/djdl/release/dl",
+                      "builds": "https://key.plrs.im/djdl/release/builds/{selector}/{buildId}",
+                      "blobs": "https://key.plrs.im/djdl/release/blobs/sha256/{sha256}",
+                      "record": "https://key.plrs.im/djdl/release/records/{sha256}"
+                    },
+                    "releaseKeyFingerprints": [],
+                    "packs": true,
+                    "chunks": true,
+                    "revocations": true,
+                    "delegations": true
+                  },
+                  "distribution": {
+                    "enabled": true,
+                    "configured": true,
+                    "endpoints": {
+                      "download": "https://key.plrs.im/djdl/distribution/dl",
+                      "install": "https://key.plrs.im/djdl/distribution/install.sh",
+                      "builds": "https://key.plrs.im/djdl/distribution/builds/{selector}/{buildId}",
+                      "blobs": "https://key.plrs.im/djdl/distribution/blobs/sha256/{sha256}"
+                    }
+                  },
+                  "update": { "enabled": false },
+                  "identity": { "enabled": false }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "services": {
+          "license": true,
+          "config": true,
+          "release": true,
+          "distribution": true,
+          "update": false,
+          "identity": false
+        }
+      }
+    },
+    {
+      "action": "releaseFetch",
+      "note": "The whole payload, with the device bearer.",
+      "args": {
+        "version": "1.0.0",
+        "platform": "linux",
+        "arch": "x86_64",
+        "build": "linux-x64",
+        "size": 126,
+        "sha256": "62397ed772a5a8450cd6e9c62bbb031fe0770d70ef81c302f41725e8ce20c937"
+      },
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/distribution/builds/1.0.0/linux-x64",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 200,
+              "headers": {
+                "cache-control": "private, no-store, no-transform",
+                "content-type": "application/octet-stream",
+                "etag": "\"62397ed772a5a8450cd6e9c62bbb031fe0770d70ef81c302f41725e8ce20c937\""
+              },
+              "body": "polaris-key transcript payload: djdl-1.0.0-linux-x86_64.tar.gz\npolaris-key transcript payload: djdl-1.0.0-linux-x86_64.tar.gz\n"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "size": 126,
+        "sha256": "62397ed772a5a8450cd6e9c62bbb031fe0770d70ef81c302f41725e8ce20c937",
+        "tokenHeld": true
+      }
+    },
+    {
+      "action": "releaseFetch",
+      "note": "Resumed: the replayer seeds the first `partial` bytes; Range + If-Range, 206.",
+      "args": {
+        "version": "1.0.0",
+        "platform": "linux",
+        "arch": "x86_64",
+        "build": "linux-x64",
+        "size": 126,
+        "sha256": "62397ed772a5a8450cd6e9c62bbb031fe0770d70ef81c302f41725e8ce20c937",
+        "partial": 32
+      },
+      "now": 1700000060,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/distribution/builds/1.0.0/linux-x64",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}",
+                "range": "bytes=32-",
+                "if-range": "\"62397ed772a5a8450cd6e9c62bbb031fe0770d70ef81c302f41725e8ce20c937\""
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 206,
+              "headers": {
+                "cache-control": "private, no-store, no-transform",
+                "content-range": "bytes 32-125/126",
+                "content-type": "application/octet-stream",
+                "etag": "\"62397ed772a5a8450cd6e9c62bbb031fe0770d70ef81c302f41725e8ce20c937\""
+              },
+              "body": "djdl-1.0.0-linux-x86_64.tar.gz\npolaris-key transcript payload: djdl-1.0.0-linux-x86_64.tar.gz\n"
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "ok",
+        "size": 126,
+        "sha256": "62397ed772a5a8450cd6e9c62bbb031fe0770d70ef81c302f41725e8ce20c937",
+        "tokenHeld": true
+      }
+    },
+    {
+      "action": "releaseFetch",
+      "note": "The licence is disabled: the device is not entitled to the bytes.",
+      "args": {
+        "version": "1.0.0",
+        "platform": "linux",
+        "arch": "x86_64",
+        "build": "linux-x64",
+        "size": 126,
+        "sha256": "62397ed772a5a8450cd6e9c62bbb031fe0770d70ef81c302f41725e8ce20c937"
+      },
+      "now": 1700000120,
+      "exchanges": {
+        "ordered": false,
+        "items": [
+          {
+            "request": {
+              "method": "GET",
+              "path": "/djdl/distribution/builds/1.0.0/linux-x64",
+              "headers": {
+                "x-pkey-device": "{deviceId}",
+                "x-pkey-version": "{version}",
+                "authorization": "Bearer {token}"
+              },
+              "requiredHeaders": [
+                "x-pkey-device",
+                "x-pkey-version",
+                "x-pkey-channel",
+                "x-pkey-sdk",
+                "x-pkey-sdk-version",
+                "x-pkey-platform",
+                "x-pkey-arch"
+              ],
+              "body": null
+            },
+            "response": {
+              "status": 401,
+              "headers": {
+                "cache-control": "no-store",
+                "content-type": "application/json"
+              },
+              "body": {
+                "error": "download_auth_required",
+                "message": "a valid license is required to download this release artifact"
+              }
+            }
+          }
+        ]
+      },
+      "expect": {
+        "result": "refused",
+        "code": "download_auth_required",
+        "tokenHeld": true
+      }
+    }
+  ]
+}

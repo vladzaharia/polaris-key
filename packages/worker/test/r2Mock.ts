@@ -26,6 +26,8 @@ interface Stored {
   sha256?: ArrayBuffer;
   md5: ArrayBuffer;
   customMetadata: Record<string, string>;
+  /** As R2 stores it: `{}` when the put sent none (every object before HA-01). */
+  httpMetadata: R2HTTPMetadata;
 }
 
 const CHUNK = 7_919; // an odd prime, so chunk boundaries never align with anything meaningful
@@ -105,6 +107,18 @@ function conditionHolds(
   return true;
 }
 
+/** `R2PutOptions.httpMetadata` (an object or `Headers`) as R2 stores it. */
+function httpMetadataOf(
+  v: R2HTTPMetadata | Headers | undefined,
+): R2HTTPMetadata {
+  if (!v) return {};
+  if (v instanceof Headers) {
+    const t = v.get("content-type");
+    return t ? { contentType: t } : {};
+  }
+  return { ...v };
+}
+
 export class R2Mock {
   private store = new Map<string, Stored>();
   /** Every key a `put` call was ATTEMPTED on, in order (test introspection). */
@@ -128,6 +142,7 @@ export class R2Mock {
       checksums,
       uploaded: s.uploaded,
       customMetadata: s.customMetadata,
+      httpMetadata: { ...s.httpMetadata },
       storageClass: "Standard",
       ...(range ? { range } : {}),
       writeHttpMetadata: () => undefined,
@@ -210,6 +225,7 @@ export class R2Mock {
       uploaded: new Date(),
       md5: ab(createHash("md5").update(bytes).digest()),
       customMetadata: options?.customMetadata ?? {},
+      httpMetadata: httpMetadataOf(options?.httpMetadata),
       ...(sha256 ? { sha256 } : {}),
     };
     this.store.set(key, stored);
@@ -244,14 +260,25 @@ export class R2Mock {
 
   private uploads = new Map<
     string,
-    { key: string; parts: Map<number, { bytes: Uint8Array; etag: string }> }
+    {
+      key: string;
+      parts: Map<number, { bytes: Uint8Array; etag: string }>;
+      httpMetadata: R2HTTPMetadata;
+    }
   >();
   /** R2's smallest part but the last; a test may lower it (never in production code). */
   minPartBytes = 5 * 1024 * 1024;
 
-  async createMultipartUpload(key: string): Promise<R2MultipartUpload> {
+  async createMultipartUpload(
+    key: string,
+    options?: R2MultipartOptions,
+  ): Promise<R2MultipartUpload> {
     const uploadId = randomBytes(12).toString("hex");
-    this.uploads.set(uploadId, { key, parts: new Map() });
+    this.uploads.set(uploadId, {
+      key,
+      parts: new Map(),
+      httpMetadata: httpMetadataOf(options?.httpMetadata),
+    });
     return this.resumeMultipartUpload(key, uploadId);
   }
 
@@ -317,6 +344,7 @@ export class R2Mock {
           uploaded: new Date(),
           md5: ab(createHash("md5").update(bytes).digest()),
           customMetadata: {},
+          httpMetadata: u.httpMetadata,
         };
         self.store.set(key, stored);
         return self.meta(key, stored);
@@ -330,7 +358,7 @@ export class R2Mock {
   seed(
     key: string,
     bytes: Uint8Array,
-    opts: { withSha256?: boolean } = {},
+    opts: { withSha256?: boolean; contentType?: string } = {},
   ): void {
     const sha = createHash("sha256").update(bytes).digest();
     this.store.set(key, {
@@ -339,6 +367,7 @@ export class R2Mock {
       uploaded: new Date(),
       md5: ab(createHash("md5").update(bytes).digest()),
       customMetadata: {},
+      httpMetadata: opts.contentType ? { contentType: opts.contentType } : {},
       ...(opts.withSha256 ? { sha256: ab(sha) } : {}),
     });
   }

@@ -31,6 +31,7 @@ export const DOCS_LINKS = {
   fingerprintRevert: "/docs/services/license/policy/",
   updateSettingsRevert: "/docs/services/update/eligibility/",
   releaseChannels: "/docs/services/release/channels/",
+  ciPublishing: "/docs/build/ci/",
   packDeliverables: "/docs/services/release/packs/",
   compatSimulator: "/docs/services/release/compatibility/",
   rolloutControl: "/docs/admin/distribution-matrix/",

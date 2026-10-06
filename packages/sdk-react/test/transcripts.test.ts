@@ -445,16 +445,24 @@ async function replay(t: Transcript): Promise<void> {
 }
 
 describe("HTTP transcripts: @polaris-key/react", () => {
-  it("replays every transcript but commerce's: the cookie-free bearer engine closed the device-token ones", () => {
+  it("replays every transcript but the planned features': the cookie-free bearer engine closed the device-token ones", () => {
     const ids = TRANSCRIPTS.filter((t) => applies(t, MANIFEST)).map(
       (t) => t.id,
     );
-    // commerce.receipt is planned on the web (SP-R10: the Worker's CORS list does not cover
-    // distribution/commerce yet), so the transcripts that exercise it do not apply.
+    // Planned here, so their transcripts do not apply: commerce.receipt (LX-20; the Worker's CORS
+    // list does not cover distribution/commerce yet) and SP-00's newer ids, which this SDK's
+    // manifest still lists as planned (SP-R03, SP-R06, SP-R09, SP-R11).
+    const plannedHere = [
+      "commerce.receipt",
+      "license.refusals",
+      "ui.boot",
+      "release.fetch",
+      "release.distribution",
+      "telemetry.updates",
+    ];
     const expected = TRANSCRIPTS.filter(
-      (t) => !t.features.includes("commerce.receipt"),
+      (t) => !t.features.some((f) => plannedHere.includes(f)),
     ).map((t) => t.id);
-    expect(expected.length).toBe(TRANSCRIPTS.length - 1);
     expect(ids.sort()).toEqual(expected.sort());
   });
 

@@ -67,6 +67,13 @@ export interface Env {
    */
   BLOBS?: R2Bucket;
   /**
+   * The Cloudflare Images binding (S-20 §6.3 step 6, §6.6). OPTIONAL: `core/hostedAssets.ts` reads
+   * an ingested image's dimensions with `.info()` when it is bound, and records none otherwise.
+   * HA-03 binds it in `wrangler.toml` and builds the variant ladder with it.
+   * @inventory binding delivery
+   */
+  IMAGES?: ImagesBinding;
+  /**
    * The blob collector's kill switch (P4-14, `core/blobGc.ts`). A `[vars]` value, never a secret.
    * A-13: read only through the platform settings store (`core/platformSettings.ts`, `ceiling`):
    * `off` here is a hard off; otherwise the console's value, then `on`/unset = on.

@@ -1,6 +1,6 @@
 {
   "gateMatrixVersion": 2,
-  "description": "Cross-SDK gate decision matrix for wire contract v3 §5. Each row carries the build-gate inputs (version/channel/compat window/entitlements) AND the license-state inputs, paired with the single expected decision. The first fourteen rows are corpus v1's matrix, carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` (every v1 product was licensed) and `hasToken` → `activation: \"token\" | null` — and inlined here when corpus v1 was deleted, so a v3 gate that changes any decision v2 made goes red here; a fifteenth carried row, the pre-R3-01 dev-build bypass, was retired by P0-04 and its successor row appended. The next rows pin what v1 could not express: `not-applicable` for a product that does not enable the license service (D-08), `activation: \"bundle\"` for an air-gapped install (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint. `expect.reason` names the build-gate hint that was derived, which on the activation-precedes-blocked row is deliberately NOT the status. The channel rows that follow pin the channel vocabulary of §5.1 (P0-04): header normalisation, the `staging`/`beta` alias, the `pr` family, manual names, `dev`, and the build-implied channel. Times are epoch SECONDS. ManagedEntry values use the {state, value, updatedAt} shape.",
+  "description": "Cross-SDK gate decision matrix for wire contract v3 §5. Each row carries the build-gate inputs (version/channel/compat window/entitlements) AND the license-state inputs, paired with the single expected decision. The first fourteen rows are corpus v1's matrix, carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` (every v1 product was licensed) and `hasToken` → `activation: \"token\" | null` — and inlined here when corpus v1 was deleted, so a v3 gate that changes any decision v2 made goes red here; a fifteenth carried row, the pre-R3-01 dev-build bypass, was retired by P0-04 and its successor row appended. The next rows pin what v1 could not express: `not-applicable` for a product that does not enable the license service (D-08), `activation: \"bundle\"` for an air-gapped install (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint. `expect.reason` names the build-gate hint that was derived, which on the activation-precedes-blocked row is deliberately NOT the status. The channel rows that follow pin the channel vocabulary of §5.1 (P0-04): header normalisation, the `staging`/`beta` alias, the `pr` family, manual names, `dev`, and the build-implied channel. Times are epoch SECONDS. ManagedEntry values use the {state, value, updatedAt} shape. `entitlementRows` (SP-00, plans/SP-00.md D4) is a separate family over the same `gate` and `license` inputs, so a runner evaluates the status exactly as for `rows`: `entitlement.entry` is what the cached licence document carries at `entitlements[entitlement.key]` (null when it carries nothing, and always null without a document), and `expect.isEntitled` is `isUsable(status) && entry.value === true` — the entitlement answer follows the gate, so a revoked, expired or unactivated licence entitles nothing even while its cached document still says `true` (S-19 G11). The documents are today's licence shape (S-19 `legacy` mode): no new member and no per-entry expiry.",
   "rows": [
     {
       "name": "ok — stable build inside window, valid doc",
@@ -880,6 +880,136 @@
         "now": 1500
       },
       "expect": { "status": "ok", "ok": true }
+    }
+  ],
+  "entitlementRows": [
+    {
+      "name": "ok — dlc enforced true is entitled",
+      "gate": {
+        "version": "2.0.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500,
+        "lastVerifiedAt": 1490
+      },
+      "entitlement": {
+        "key": "dlc",
+        "entry": { "state": "enforced", "value": true, "updatedAt": 1699990000 }
+      },
+      "expect": { "status": "ok", "isEntitled": true }
+    },
+    {
+      "name": "grace — dlc enforced true is still entitled past expiresAt, inside graceUntil",
+      "gate": {
+        "version": "2.0.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 5000
+      },
+      "entitlement": {
+        "key": "dlc",
+        "entry": { "state": "enforced", "value": true, "updatedAt": 1699990000 }
+      },
+      "expect": { "status": "grace", "isEntitled": true }
+    },
+    {
+      "name": "expired — dlc enforced true in a document past graceUntil is not entitled",
+      "gate": {
+        "version": "2.0.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 2593001
+      },
+      "entitlement": {
+        "key": "dlc",
+        "entry": { "state": "enforced", "value": true, "updatedAt": 1699990000 }
+      },
+      "expect": { "status": "expired", "isEntitled": false }
+    },
+    {
+      "name": "revoked — hard 401 on the last sync: dlc enforced true in the cached document is not entitled (G11)",
+      "gate": {
+        "version": "2.0.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": "token",
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500,
+        "lastSyncUnauthorized": true
+      },
+      "entitlement": {
+        "key": "dlc",
+        "entry": { "state": "enforced", "value": true, "updatedAt": 1699990000 }
+      },
+      "expect": { "status": "revoked", "isEntitled": false }
+    },
+    {
+      "name": "needs-activation — an unactivated device is not entitled even with a cached dlc document",
+      "gate": {
+        "version": "2.0.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "licenseServiceEnabled": true,
+        "activation": null,
+        "issuedAt": 1000,
+        "expiresAt": 4600,
+        "graceUntil": 2593000,
+        "now": 1500
+      },
+      "entitlement": {
+        "key": "dlc",
+        "entry": { "state": "enforced", "value": true, "updatedAt": 1699990000 }
+      },
+      "expect": { "status": "needs-activation", "isEntitled": false }
+    },
+    {
+      "name": "not-applicable — usable, but no document means no entitlement",
+      "gate": {
+        "version": "2.0.0",
+        "compatMin": "1.0.0",
+        "compatMax": "3.0.0",
+        "entitlements": {}
+      },
+      "license": {
+        "licenseServiceEnabled": false,
+        "activation": null,
+        "now": 1500
+      },
+      "entitlement": { "key": "dlc", "entry": null },
+      "expect": { "status": "not-applicable", "isEntitled": false }
     }
   ]
 }

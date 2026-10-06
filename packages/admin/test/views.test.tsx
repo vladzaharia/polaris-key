@@ -10,23 +10,16 @@ import userEvent from "@testing-library/user-event";
 import type { ReactElement } from "react";
 import { AdminProvider } from "../src/context.js";
 import type { Me } from "../src/api.js";
-import {
-  Badge,
-  Button,
-  ConfirmDialog,
-  DataTable,
-  EmptyState,
-  Field,
-  Input,
-  type ColumnDef,
-} from "../src/components/ui/index.js";
+import { Button } from "../src/ui/Button.js";
+import { ConfirmDialog } from "../src/ui/ConfirmDialog.js";
 import { ThemeProvider, useTheme } from "../src/components/theme.js";
 import { Logo } from "../src/components/brand/Logo.js";
 import { Home } from "../src/console/pages/global/Home.js";
 import { resetConsole, mockFetch, productRow } from "./consoleHarness.js";
 
 // Foundation-level smoke tests: the primitive layer and brand compile, render, and behave.
-// View-specific behavior lives with each view test suite.
+// View-specific behavior lives with each view test suite; each `ui/` primitive has its own suite
+// under test/ui (the legacy components/ui kit and its tests went with UX-10).
 
 const ME: Me = {
   sub: "u1",
@@ -69,120 +62,6 @@ describe("Button primitive", () => {
       (screen.getByRole("button", { name: /Save/ }) as HTMLButtonElement)
         .disabled,
     ).toBe(true);
-  });
-});
-
-describe("Field primitive", () => {
-  it("wires the label, help, and error to the control via aria-describedby + aria-invalid", () => {
-    render(
-      <Field label="Email" help="we never share it" error="required">
-        <Input />
-      </Field>,
-    );
-    const input = screen.getByLabelText("Email");
-    expect(input.getAttribute("aria-invalid")).toBe("true");
-    const describedBy = input.getAttribute("aria-describedby") ?? "";
-    expect(describedBy.split(" ").length).toBe(2);
-    expect(screen.getByRole("alert").textContent).toBe("required");
-  });
-});
-
-describe("Badge + EmptyState primitives", () => {
-  it("renders a badge with its label and an empty state with an action", () => {
-    render(
-      <>
-        <Badge variant="success">active</Badge>
-        <EmptyState title="Nothing here" action={<Button>Add</Button>} />
-      </>,
-    );
-    expect(screen.getByText("active")).toBeTruthy();
-    expect(screen.getByText("Nothing here")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Add" })).toBeTruthy();
-  });
-});
-
-describe("DataTable primitive", () => {
-  interface Row {
-    id: string;
-    name: string;
-    count: number;
-  }
-  const rows: Row[] = [
-    { id: "a", name: "Charlie", count: 3 },
-    { id: "b", name: "Alice", count: 1 },
-    { id: "c", name: "Bob", count: 2 },
-  ];
-  const columns: ColumnDef<Row>[] = [
-    {
-      id: "name",
-      header: "Name",
-      cell: (r) => r.name,
-      accessor: (r) => r.name,
-      sortable: true,
-    },
-    {
-      id: "count",
-      header: "Count",
-      cell: (r) => r.count,
-      accessor: (r) => r.count,
-      sortable: true,
-    },
-  ];
-
-  it("renders rows and supports client-side sort", async () => {
-    render(<DataTable columns={columns} rows={rows} rowKey={(r) => r.id} />);
-    expect(screen.getByText("Charlie")).toBeTruthy();
-    // Sort by name ascending.
-    await userEvent.click(screen.getByRole("button", { name: /Name/ }));
-    const cells = screen.getAllByRole("cell").map((c) => c.textContent);
-    // First data cell should now be "Alice".
-    expect(cells[0]).toBe("Alice");
-  });
-
-  it("filters rows via the global filter", () => {
-    render(
-      <DataTable
-        columns={columns}
-        rows={rows}
-        rowKey={(r) => r.id}
-        filterable
-      />,
-    );
-    fireEvent.change(screen.getByLabelText("Filter rows"), {
-      target: { value: "bob" },
-    });
-    expect(screen.getByText("Bob")).toBeTruthy();
-    expect(screen.queryByText("Charlie")).toBeNull();
-  });
-
-  it("shows the empty state when there are no rows", () => {
-    render(
-      <DataTable
-        columns={columns}
-        rows={[]}
-        rowKey={(r) => r.id}
-        empty={<EmptyState title="No data" />}
-      />,
-    );
-    expect(screen.getByText("No data")).toBeTruthy();
-  });
-
-  it("makes clickable rows keyboard reachable", async () => {
-    const onRowClick = vi.fn();
-    render(
-      <DataTable
-        columns={columns}
-        rows={rows}
-        rowKey={(r) => r.id}
-        onRowClick={onRowClick}
-        onRowClickLabel={(r) => `Open ${r.name}`}
-      />,
-    );
-    const row = screen.getByRole("button", { name: "Open Charlie" });
-    row.focus();
-    expect(document.activeElement).toBe(row);
-    await userEvent.keyboard("{Enter}");
-    expect(onRowClick).toHaveBeenCalledWith(rows[0]);
   });
 });
 

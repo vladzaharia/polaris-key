@@ -38,6 +38,11 @@
       "status": "implemented",
       "note": "macOS uses the data-protection keychain where entitled; an unentitled process (an unsigned CLI) keeps the file-based keychain and storeStatus() reports legacy-keychain."
     },
+    "core.copy": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S01 and SP-S13, SDK-PARITY-PASS §5.4."
+    },
     "license.gate": {
       "status": "implemented"
     },
@@ -59,9 +64,14 @@
     "license.reregister": {
       "status": "implemented"
     },
+    "license.refusals": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S01, SDK-PARITY-PASS §5.4."
+    },
     "config.resolve": {
       "status": "implemented",
-      "note": "Member names compare by scalar value, but JSONValue keeps the first of two canonically equivalent names (WIRE-CONTRACT-V3 \u00a710)."
+      "note": "Member names compare by scalar value, but JSONValue keeps the first of two canonically equivalent names (WIRE-CONTRACT-V3 §10)."
     },
     "config.list": {
       "status": "implemented"
@@ -79,6 +89,11 @@
       "status": "implemented",
       "note": "The Swift mirror is rendered by tools/gen-mirrors.ts."
     },
+    "config.local": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S14, SDK-PARITY-PASS §5.4."
+    },
     "devices.fingerprint": {
       "status": "implemented"
     },
@@ -93,6 +108,11 @@
     },
     "devices.report": {
       "status": "implemented"
+    },
+    "telemetry.updates": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S05, SDK-PARITY-PASS §5.4."
     },
     "devices.attest": {
       "status": "implemented",
@@ -125,18 +145,33 @@
     "release.record": {
       "status": "implemented"
     },
+    "release.fetch": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S10, SDK-PARITY-PASS §5.4."
+    },
+    "release.distribution": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S10, SDK-PARITY-PASS §5.4."
+    },
     "update.check": {
       "status": "implemented"
     },
     "update.feed": {
       "status": "implemented"
     },
+    "update.feeds": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S10, SDK-PARITY-PASS §5.4."
+    },
     "update.decide": {
       "status": "implemented"
     },
     "update.content": {
       "status": "implemented",
-      "note": "PolarisKeyCore's feedContent, holdsOf (stampHolds) and decideUpdate with UpdateContentInput (selectPackRows, the composition, prestage, contentBlock, packs; bootDecision gives required only for revoked required content); runUpdateCheck runs P4-13 \u00a72.5 steps 10\u201314. ContentDecisionConformanceTests drives every feedContentCases and contentRows vector; UpdateClient.decide() builds the content input from update.packs."
+      "note": "PolarisKeyCore's feedContent, holdsOf (stampHolds) and decideUpdate with UpdateContentInput (selectPackRows, the composition, prestage, contentBlock, packs; bootDecision gives required only for revoked required content); runUpdateCheck runs P4-13 §2.5 steps 10–14. ContentDecisionConformanceTests drives every feedContentCases and contentRows vector; UpdateClient.decide() builds the content input from update.packs."
     },
     "update.driver": {
       "status": "implemented",
@@ -155,6 +190,11 @@
     "outlet.detect": {
       "status": "implemented",
       "note": "PolarisKeyCore detectOutlet over PolarisKeyUpdate readOutletSignals: AppDistributor.current behind #available(iOS 17.4) (web from 17.5) raced against the 2 s deadline, AltStore's ALTBundleIdentifier, embedded.mobileprovision, the macOS _MASReceipt and ProductionSandbox, the signing leaf (SecCodeCopySigningInformation) and the product's Caskroom link. UpdateClient detects at its first decision when the host names no outlet."
+    },
+    "crash.tags": {
+      "status": "planned",
+      "unowned": true,
+      "note": "No task yet: the lead cuts a Swift crashTags() task (plans/SP-00.md §5; SDK-PARITY-PASS §5.4)."
     },
     "packs.record": {
       "status": "implemented",
@@ -269,10 +309,21 @@
       "status": "implemented",
       "note": "bootTransition and the stage-matrix replay (StageMatrixTests); client.boot() drives it end to end (discover, guard, sync, keyless reacquire under an open policy, gate, decide and fetch hooks installed by PolarisKeyUpdate, mount)."
     },
+    "ui.boot": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-S09, SDK-PARITY-PASS §5.4."
+    },
     "ui.kit": {
       "status": "planned",
       "unowned": true,
-      "note": "PolarisLoginView, PolarisGate, PolarisSignIn and PolarisOfflineActivation over the @Observable PolarisKeyModel; the rest of the kit (PARITY \u00a75.9) belongs to the UI-kit program (UK-*)."
+      "note": "PolarisLoginView, PolarisGate, PolarisSignIn and PolarisOfflineActivation over the @Observable PolarisKeyModel; the rest of the kit (PARITY §5.9) belongs to the UI-kit program (UK-*)."
+    },
+    "ui.cli": {
+      "status": "na",
+      "runtime": ["macos", "ios"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
     "commerce.receipt": {
       "status": "implemented",

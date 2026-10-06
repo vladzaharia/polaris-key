@@ -53,6 +53,11 @@
       ],
       "note": "SP-R02: bearer mode's indexedDbStore (src/browser/bearer/store.ts) implements client-core's Store: the token in its own object store, the random device id and the cache in the offline record; status() reports backend indexeddb, degraded not-persistent unless navigator.storage.persisted(). The cookie session holds no credential, so a cookie page's supports() answers it runtime-unsupported."
     },
+    "core.copy": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R03, SDK-PARITY-PASS §5.2."
+    },
     "license.gate": {
       "status": "implemented"
     },
@@ -90,6 +95,11 @@
       ],
       "note": "SP-R02: bearer mode's single re-acquire takes devices/register for a registered (or licence-less) device, as Node's chooseReacquireRoute; register-reregister-401 replays through it."
     },
+    "license.refusals": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R03, SDK-PARITY-PASS §5.2."
+    },
     "config.resolve": {
       "status": "implemented"
     },
@@ -112,6 +122,11 @@
     "config.mirror": {
       "status": "implemented",
       "note": "The TypeScript mirror is rendered by tools/gen-mirrors.ts."
+    },
+    "config.local": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R05, SDK-PARITY-PASS §5.2."
     },
     "devices.fingerprint": {
       "status": "na",
@@ -144,6 +159,18 @@
       "status": "implemented",
       "note": "Desktop through invoke(\"devices\", \"report\"). Web in bearer mode (SP-R02): POST /<p>/devices/report after every sync and on report(), with the browser facts (os family, cores, memory bucket, locale, time zone), caps, outlet and the update-health journal (src/browser/bearer/facts.ts); telemetry-report replays through it. A cookie-session page throws report-unsupported."
     },
+    "telemetry.updates": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R11, SDK-PARITY-PASS §5.2.",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "note": "No device bearer in a browser cookie session (as devices.report); SP-R02 removes it."
+        }
+      ]
+    },
     "devices.attest": {
       "status": "na",
       "runtime": ["web", "desktop-bridge"],
@@ -167,12 +194,34 @@
       "status": "implemented",
       "note": "client-core verifyReleaseRecord (hash before signature, pinned release keys only); the browser adapter fetches by hash and persists releaseRecords in IndexedDB, desktop through the host's decide()."
     },
+    "release.fetch": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R09, SDK-PARITY-PASS §5.2."
+    },
+    "release.distribution": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R09, SDK-PARITY-PASS §5.2."
+    },
     "update.check": {
       "status": "implemented"
     },
     "update.feed": {
       "status": "implemented",
       "note": "client-core verifyFeed with floors keyed by the canonical channel; the browser adapter fetches, verifies and persists the feeds slice in IndexedDB; desktop through invoke(\"update\", \"decide\")."
+    },
+    "update.feeds": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R08 (desktop), SDK-PARITY-PASS §5.2.",
+      "except": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "note": "A browser has no native updater feed; the service worker is update.driver."
+        }
+      ]
     },
     "update.decide": {
       "status": "implemented",
@@ -195,6 +244,11 @@
     "outlet.detect": {
       "status": "implemented",
       "note": "client-core's detectOutlet, re-exported; the browser adapter reads the page's display mode (readOutletSignals) and detects over the synthesised web stamp when the host names no outlet. The desktop adapter defers to the host (Node's detection)."
+    },
+    "crash.tags": {
+      "status": "planned",
+      "unowned": true,
+      "note": "No task yet: the lead cuts a React crashTags() task (plans/SP-00.md §5; SDK-PARITY-PASS §5.2)."
     },
     "packs.record": {
       "status": "implemented",
@@ -306,13 +360,24 @@
     "ui.stages": {
       "status": "implemented"
     },
+    "ui.boot": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-R06, SDK-PARITY-PASS §5.2."
+    },
     "ui.kit": {
       "status": "implemented"
     },
+    "ui.cli": {
+      "status": "na",
+      "runtime": ["web", "desktop-bridge"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
+    },
     "commerce.receipt": {
       "status": "planned",
-      "unowned": true,
-      "note": "Web commerce is SP-R10 (not yet a program work package). The bearer engine already speaks GET /<p>/distribution/commerce/binding and POST .../claim, but the Worker's CORS allow-list (packages/worker/src/core/cors.ts CORS_SERVICE_PATHS) does not cover distribution/commerce, so a cross-origin bearer page cannot reach them; no claim until SP-R10 closes that gap. Desktop: the renderer half of bridge v4's invoke(\"commerce\", ...) is gated on host version 4, and the Node host side is pending SP-N10."
+      "wp": "LX-20",
+      "note": "Required. LX-20 builds the client side through client-core over P6-01's Worker bridge. The bearer engine already speaks GET /<p>/distribution/commerce/binding and POST .../claim, but the Worker's CORS allow-list (packages/worker/src/core/cors.ts CORS_SERVICE_PATHS) does not cover them, so a cross-origin page cannot use them yet; the desktop bridge verbs wait on the v4 host (SP-N10)."
     }
   }
 }
