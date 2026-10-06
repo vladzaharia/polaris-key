@@ -3,10 +3,14 @@
  *
  *   GET /api/library         every product the signed-in account holds a licence for, ONE entry
  *                            per product: presentation, status, the best licence's summary with
- *                            seats, and the support links.
+ *                            seats, and the support links (`kind: "license"`); then every library
+ *                            entry (PS-04, `kind: "entry"`): an open product added from the
+ *                            storefront with no licence behind it, until a licence exists.
  *   GET /api/products/<p>    one of those products in full: presentation, `services`, the status,
  *                            and every linked licence with its seats and devices (dormancy
- *                            included), the best one first.
+ *                            included), the best one first; an entry's product with no licences.
+ *   DELETE /api/library/<p>  remove a library ENTRY (PS-04). A licence leaves the library only by
+ *                            the existing detach (`accounts/claim.ts`), never here.
  *
  * ── WHERE EACH FACT COMES FROM ──────────────────────────────────────────────────────────────
  *
@@ -41,14 +45,19 @@ import {
 import { licenseDeviceLimit } from "../../../core/authz.js";
 import { seatActiveSince } from "../../../core/data.js";
 import type { DeviceRow } from "../../../core/data.js";
-import type { PortalHooksFor } from "./api.js";
+import { err, notFound, portalJson, type PortalHooksFor } from "./api.js";
 import { entitlementView } from "./entitlements.js";
 import { mediaUrlFor } from "./media.js";
 import { purchasesFor } from "./purchase.js";
 import {
   getPortalProductSettings,
+  listHeldProducts,
+  listLibraryEntries,
   listPortalLicenses,
   listVisibleDevices,
+  portalAudit,
+  removeLibraryEntry,
+  type LibraryEntryRow,
   type PortalLicenseRow,
 } from "./repo.js";
 
@@ -102,16 +111,32 @@ function str(v: unknown): string | null {
   return typeof v === "string" && v.length > 0 ? v : null;
 }
 
+/** The product's own store listing, read through Distribution's `delivery` hook, or `null`. */
+export async function productListing(
+  product: ProductPublic,
+  hooksFor: PortalHooksFor | undefined,
+  now: number,
+): Promise<Record<string, unknown> | null> {
+  const delivery = hooksFor ? hooksFor(product, now).delivery() : null;
+  return delivery
+    ? ((await delivery.listing()) as Record<string, unknown> | null)
+    : null;
+}
+
 /** The product's presentation, from its listing when Distribution has one (see file comment). */
 export async function presentationFor(
   product: ProductPublic,
   hooksFor: PortalHooksFor | undefined,
   now: number,
 ): Promise<Presentation> {
-  const delivery = hooksFor ? hooksFor(product, now).delivery() : null;
-  const listing = delivery
-    ? ((await delivery.listing()) as Record<string, unknown> | null)
-    : null;
+  return presentationOf(product, await productListing(product, hooksFor, now));
+}
+
+/** The presentation from a listing already read (`productListing`). */
+export async function presentationOf(
+  product: ProductPublic,
+  listing: Record<string, unknown> | null,
+): Promise<Presentation> {
   const supportUrl = str(listing?.supportUrl);
   const supportEmail = str(listing?.supportEmail);
   return {
@@ -254,6 +279,45 @@ export async function rankedLicensesFor(
   return shaped.sort(compareLicenses);
 }
 
+/**
+ * The account's library entries the library shows (PS-04, notes/S-21 §6.4), oldest first, with
+ * their products: an entry is dropped once the account holds any licence for the product (the
+ * licence is the library item then), and, like a licence, while the product is gone or the
+ * developer has the portal off for it.
+ */
+async function shownEntries(
+  db: Db,
+  accountId: string,
+  only?: string,
+): Promise<Array<{ entry: LibraryEntryRow; product: ProductPublic }>> {
+  const entries = await listLibraryEntries(db, accountId, only);
+  if (entries.length === 0) return [];
+  const licensed = await listHeldProducts(db, accountId);
+  const out: Array<{ entry: LibraryEntryRow; product: ProductPublic }> = [];
+  for (const entry of entries) {
+    if (licensed.has(entry.product)) continue;
+    const settings = await getPortalProductSettings(db, entry.product);
+    if (settings.portal_enabled !== 1) continue;
+    const product = await loadProductPublic(db, entry.product);
+    if (product) out.push({ entry, product });
+  }
+  return out;
+}
+
+/**
+ * The fields an entry's library item and product view carry in place of a licence's: it is
+ * always `active` (there is nothing to expire, suspend or fill), holds no licence, and was added
+ * when the entry was written.
+ */
+function entryFields(entry: LibraryEntryRow): Record<string, unknown> {
+  return {
+    kind: "entry",
+    via: entry.via,
+    status: "active" satisfies LibraryStatus,
+    addedAt: entry.added_at,
+  };
+}
+
 /** `GET /api/library`. */
 export async function libraryView(
   db: Db,
@@ -272,6 +336,7 @@ export async function libraryView(
     const best = shaped[0]!;
     products.push({
       product: slug,
+      kind: "license",
       ...(await presentationFor(product, hooksFor, now)),
       status: best.status,
       license: licenseSummary(best),
@@ -279,7 +344,44 @@ export async function libraryView(
       addedAt: await addedAt(db, accountId, slug),
     });
   }
+  for (const { entry, product } of await shownEntries(db, accountId)) {
+    products.push({
+      product: product.slug,
+      ...(await presentationFor(product, hooksFor, now)),
+      ...entryFields(entry),
+      license: null,
+      licenseCount: 0,
+    });
+  }
   return { products };
+}
+
+/**
+ * `DELETE /api/library/<p>`: remove the account's library ENTRY for the product (PS-04). Entries
+ * only: a licence-backed library item is never touched here (a licence leaves the library only by
+ * the existing detach, `detachLicense`, which also writes its auto-attach block), so a product
+ * with no entry answers the plain `404`, whatever licences the account holds for it.
+ */
+export async function handleLibraryEntryRemove(
+  req: Request,
+  db: Db,
+  accountId: string,
+  slug: string,
+  now: number,
+): Promise<Response> {
+  if (req.method !== "DELETE") return err(405, "method_not_allowed");
+  if (!(await removeLibraryEntry(db, accountId, slug))) return notFound();
+  await portalAudit(db, {
+    accountId,
+    action: "portal.library.remove",
+    product: slug,
+    targetKind: "product",
+    targetId: slug,
+    summary:
+      "Removed a product from the library (source: discover; path: open)",
+    now,
+  });
+  return portalJson({ ok: true, product: slug });
 }
 
 /** `GET /api/products/<p>`, or `null` when the account holds nothing here (a 404). */
@@ -291,7 +393,8 @@ export async function productView(
   hooksFor: PortalHooksFor | undefined,
 ): Promise<Record<string, unknown> | null> {
   const rows = (await groupedLicenses(db, accountId, slug)).get(slug);
-  if (!rows || rows.length === 0) return null;
+  if (!rows || rows.length === 0)
+    return entryProductView(db, accountId, slug, hooksFor, now);
   const product = await loadProductPublic(db, slug);
   if (!product) return null;
   const shaped: ShapedLicense[] = [];
@@ -327,19 +430,53 @@ export async function productView(
   }
   return {
     product: slug,
+    kind: "license",
     ...(await presentationFor(product, hooksFor, now)),
-    // Each service's own toggle (§3.1): the product page shows a section only for a service
-    // that is on — Cloud Sync and Identity among them as their work packages add them.
-    services: Object.fromEntries(
-      Object.entries(product.services).map(([s, v]) => [s, v.enabled]),
-    ),
+    services: serviceToggles(product),
     status: shaped[0]!.status,
     addedAt: await addedAt(db, accountId, slug),
-    // PX-10: where the portal's focused flows may send the person back to (`?return=`, §3.3):
-    // the product's exact declared browser origins (`web.origins`, P0-05). App schemes join
-    // when the manifest can declare them (S-16 I-15); until then a scheme return is refused and
-    // the flow ends on the product page.
-    returnTo: { origins: [...product.webOrigins], schemes: [] },
+    returnTo: returnTo(product),
     licenses,
+  };
+}
+
+/** Each service's own toggle (§3.1): the product page shows a section only for a service that is on. */
+function serviceToggles(product: ProductPublic): Record<string, boolean> {
+  return Object.fromEntries(
+    Object.entries(product.services).map(([s, v]) => [s, v.enabled]),
+  );
+}
+
+/**
+ * PX-10: where the portal's focused flows may send the person back to (`?return=`, §3.3): the
+ * product's exact declared browser origins (`web.origins`, P0-05). App schemes join when the
+ * manifest can declare them (S-16 I-15); until then a scheme return is refused and the flow ends
+ * on the product page.
+ */
+function returnTo(product: ProductPublic): {
+  origins: string[];
+  schemes: string[];
+} {
+  return { origins: [...product.webOrigins], schemes: [] };
+}
+
+/** `GET /api/products/<p>` for a product the library holds as an entry only (PS-04), or `null`. */
+async function entryProductView(
+  db: Db,
+  accountId: string,
+  slug: string,
+  hooksFor: PortalHooksFor | undefined,
+  now: number,
+): Promise<Record<string, unknown> | null> {
+  const [shown] = await shownEntries(db, accountId, slug);
+  if (!shown) return null;
+  const { entry, product } = shown;
+  return {
+    product: slug,
+    ...(await presentationFor(product, hooksFor, now)),
+    services: serviceToggles(product),
+    ...entryFields(entry),
+    returnTo: returnTo(product),
+    licenses: [],
   };
 }
