@@ -77,7 +77,7 @@ The code is the fact; these replace the brief where they differ.
 - [x] Focus lands on the new page's `h1` and the live region announces it, as today.
 - [x] A tab switch morphs the indicator and fades the panel; keyboard tab order is unchanged.
 - [x] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
-- [ ] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
+- [x] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
 
 ## Verify
 
