@@ -66,9 +66,9 @@ Owner decision: import profile data from identity providers ([PORTAL.md §4.30](
 
 - [x] Explicit choices survive re-sign-in (test): `test/portalProfile.test.ts` ("explicit choices survive re-sign-in": typed name, picked name, picked picture, Initials, upload) and the gate's typed name in `test/identityCardProfile.test.ts`.
 - [x] Fetch refuses non-allowlisted hosts (test: off-list host never dialled, an allowlisted host redirecting elsewhere refused at the hop); a CSP browser test shows proxied avatars with zero violations (`packages/admin/e2e/portalAvatar.e2e.test.ts`, run with `test:e2e`; the gate script does not run it).
-- [x] The migration (`00XX_account_avatars.sql`, number for the lead) and `TABLE_OWNERS` entry land together; OpenAPI and `routeCoverage` cover every route.
+- [x] The migration (`0093_account_avatars.sql`, the lead's number) and `TABLE_OWNERS` entry land together; OpenAPI and `routeCoverage` cover every route.
 - [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass (new `test-workerd/avatars.test.ts`); `gen:transcripts -- --check` stays green.
-- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header. With the `00XX` placeholder, `test/recordDeploy.test.ts` refuses `LATEST_MIGRATION` until the lead assigns the number (the gate was run with it provisionally numbered).
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 

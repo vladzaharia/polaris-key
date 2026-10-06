@@ -686,7 +686,7 @@ describe("R11-05 product scoping", () => {
       "account_sessions",
       "account_product_grants",
       "account_passkeys",
-      // 00XX (PX-W16) — the account's pictures: one row per re-encoded asset, keyed by the asset
+      // 0093 (PX-W16) — the account's pictures: one row per re-encoded asset, keyed by the asset
       // (a peppered hash of the account and the picture) and owned by the account, never by a
       // product. An app sees a picture only through the account's consent step.
       "account_avatars",
