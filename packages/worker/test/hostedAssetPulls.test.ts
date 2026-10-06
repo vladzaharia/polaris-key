@@ -41,6 +41,7 @@ import type { FetchImpl } from "../src/core/safeFetch.js";
 import { handleAssetQueue } from "../src/assetQueue.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
+import type { Db, DbParam } from "../src/db/types.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { R2Mock, asR2, installDigestStream } from "./r2Mock.js";
@@ -532,6 +533,54 @@ describe("recheckHostedAssets", () => {
     // Each enqueue holds off the next one for a back-off step.
     expect(await recheckHostedAssets(env, db, later + 1, 10)).toBe(0);
     expect(await recheckHostedAssets({}, db, later + 10_000)).toBe(0);
+  });
+
+  it("enqueues a row once even when a concurrent insert shifts it onto the next page", async () => {
+    await syncAndPull(
+      iconManifest("https://cdn.example.com/none.png"),
+      NOW,
+      upstream({}),
+    );
+    // Page one: a row it cannot act on, then the owed pull it sends. A page that full reads on.
+    await db.run(
+      `UPDATE hosted_assets SET wanted_ref = 'not a ref', next_attempt_at = ?
+        WHERE slot = 'listing.icon'`,
+      NOW + 10,
+    );
+    await db.run(
+      `UPDATE hosted_assets SET next_attempt_at = ? WHERE slot = 'presentation.icon'`,
+      NOW + 20,
+    );
+    // Between the pages a resync inserts a slot that sorts first, so OFFSET 2 lands on the
+    // owed pull again.
+    let reads = 0;
+    const racing: Db = Object.assign(Object.create(db) as Db, {
+      all: async (sql: string, ...params: DbParam[]) => {
+        const rows = await db.all(sql, ...params);
+        if (++reads === 1)
+          await db.run(
+            `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, source_ref,
+               status, modified_at, wanted_ref, attempts, next_attempt_at)
+             VALUES ('djdl', 'listing.header', '', 'manifest', 'url', ?, 'pending', ?, ?, 0, NULL)`,
+            URL_B,
+            NOW,
+            wantedRefOf({ kind: "url", src: URL_B }),
+          );
+        return rows;
+      },
+    });
+    const t = NOW + PULL_BACKOFF_BASE_SECONDS;
+    const before = q.sent.length;
+    expect(await recheckHostedAssets(env, racing, t, 2)).toBe(1);
+    expect(reads).toBe(2);
+    expect(q.sent.slice(before)).toEqual([
+      expect.objectContaining({ slot: "presentation.icon", reason: "recheck" }),
+    ]);
+    // The slot it stepped past is the next run's.
+    expect(await recheckHostedAssets(env, db, t, 2)).toBe(1);
+    expect(q.sent.slice(before + 1)).toEqual([
+      expect.objectContaining({ slot: "listing.header", reason: "recheck" }),
+    ]);
   });
 
   it("leaves ready, console and deleted-product rows alone", async () => {
