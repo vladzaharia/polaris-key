@@ -31,12 +31,8 @@ import { Catalog } from "@polaris-key/catalog";
 import { validateCatalogCloudSync } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
 import { getActiveSchema } from "../../../core/data.js";
-import {
-  claimFacts,
-  claimsApply,
-  stmtClaim,
-  systemClaimRefusal,
-} from "../../../core/settingsClaims.js";
+import { claimFacts, systemClaimRefusal } from "../../../core/settingsClaims.js";
+import { writeSetting } from "../../../core/settings/write.js";
 import {
   catalogRepresentabilityResponse,
   adminJson,
@@ -53,7 +49,7 @@ import {
   parsePayload,
   readBody,
   reservedNamesResponse,
-  stmtInsertSchema,
+  settingRefused,
 } from "../../../core/adminApi.js";
 import { reservedNamesMode } from "../../../core/reservedNames.js";
 import type { ConfigAdminContext } from "./index.js";
@@ -172,35 +168,50 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
         reason: "manifest_authoritative",
       });
     const version = await nextSchemaVersion(db, slug);
-    await db.batch([
+    const published = {
+      schemaVersion: version,
+      entries: catalog.entries,
+      ...(cloudSync === undefined ? {} : { cloudSync }),
+    };
+    // ST-04: `config.catalog` is a rich registry setting; `writeSetting()` claims it (on a
+    // repo-linked product) and audits the publish in the same batch as the new active version.
+    if (!ctx.settings)
+      throw new Error("the catalog route needs ServiceContext.settings");
+    const written = await writeSetting(
+      { env: ctx.env, db, registry: ctx.settings },
       {
-        sql: "UPDATE product_schema SET active = 0 WHERE product = ?",
-        params: [slug],
+        key: "config.catalog",
+        value: published,
+        statements: (guard) => [
+          {
+            sql: `UPDATE product_schema SET active = 0 WHERE product = ? AND (${guard.sql})`,
+            params: [slug, ...guard.params],
+          },
+          {
+            sql: `INSERT INTO product_schema (product, catalog_version, catalog_json, active, created_at)
+                  SELECT ?, ?, ?, 1, ? WHERE (${guard.sql})`,
+            params: [slug, version, JSON.stringify(published), now, ...guard.params],
+          },
+        ],
+        audit: {
+          action: "schema.publish",
+          target: { kind: "schema", id: String(version) },
+          summary: `Published catalog v${version}`,
+        },
       },
-      stmtInsertSchema({
+      {
+        actor: {
+          sub: session.sub,
+          name: session.name ?? null,
+          email: session.email ?? null,
+        },
+        origin: "console",
+        now,
         product: slug,
-        catalog_version: version,
-        catalog_json: JSON.stringify({
-          schemaVersion: version,
-          entries: catalog.entries,
-          ...(cloudSync === undefined ? {} : { cloudSync }),
-        }),
-        active: 1,
-        created_at: now,
-      }),
-      ...(facts && claimsApply(facts)
-        ? [stmtClaim(slug, "config.catalog", session.sub, now)]
-        : []),
-    ]);
-    await audit(
-      db,
-      slug,
-      session,
-      now,
-      "schema.publish",
-      { kind: "schema", id: String(version) },
-      `Published catalog v${version}`,
+        strict: false,
+      },
     );
+    if (!written.ok) return settingRefused(written);
     return adminJson({ ok: true, schemaVersion: version });
   }
   return err(405, ErrorCode.BadRequest, "method not allowed");

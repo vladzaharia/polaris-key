@@ -26,6 +26,7 @@ import {
   seedProduct,
 } from "../seed.js";
 import { loadProduct, type Product } from "../../src/core/products.js";
+import { SETTINGS } from "../../src/mount.js";
 import type { Env } from "../../src/env.js";
 import type { Db } from "../../src/db/types.js";
 import type { SqliteDb } from "../../src/db/sqlite.js";
@@ -295,6 +296,9 @@ describe("R10-01 catalog validation no longer generates code at request time", (
         session,
         hooks: NO_HOOKS,
         ingest: NO_INGEST,
+        // ST-04: the publish writes `config.catalog` through `writeSetting()`, which needs the
+        // registry the dispatcher hands every service.
+        settings: SETTINGS,
       }),
     );
     expect(res.status).toBe(200); // was 422
