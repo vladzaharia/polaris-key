@@ -40,7 +40,7 @@ export function celebrateOnce(key: string): boolean {
   return true;
 }
 
-/** The check `.pk-check` draws (`stroke-dashoffset`, S-23 §6.2 exception 3). */
+/** The check `.pk-check` draws by its dash offset (S-23 §6.2 exception 3). */
 function CheckGlyph({ size }: { size: number }): React.ReactElement {
   return (
     <svg
