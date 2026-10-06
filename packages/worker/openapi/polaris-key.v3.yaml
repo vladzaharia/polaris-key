@@ -11908,7 +11908,8 @@ paths:
         body and no new Turnstile token: the flow passed one at the start. A resend waits 60 seconds
         after the last code (`429 rate_limited` with `retryAfter` and `Retry-After`), and one flow
         sends at most 5 emails, its start included (`429 rate_limited` without `retryAfter`: start
-        again). It shares the start's 8-a-minute budget per client address and every I-02 send
+        again). It shares the start's 8-a-minute budget per client address (`429 rate_limited` with
+        `retryAfter: 60`, so only the per-flow cap answers without one) and every I-02 send
         limit, with the start's enumeration rule: a refused send answers the same bytes as a sent
         one, which are the start's. A browser without a live flow gets `400 signin_expired`, its
         cookie left alone (a double click's second request must not clear the first one's).
@@ -11930,12 +11931,12 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
         "429":
           description: >
-            `rate_limited`: too soon after the last code (`retryAfter` seconds, also in
-            `Retry-After`), too many emails for this flow (no `retryAfter`: start again), or the
-            client address's minute budget is spent.
+            `rate_limited`: too soon after the last code, or the client address's minute budget is
+            spent (both with `retryAfter` seconds, also in `Retry-After`); or too many emails for
+            this flow (no `retryAfter`: no more codes for this sign-in, the latest still works).
           headers:
             Retry-After:
-              description: Seconds until a resend is accepted, on the too-soon answer only.
+              description: Seconds until a resend may be accepted; absent on the per-flow cap.
               schema: { type: integer }
           content:
             application/json:

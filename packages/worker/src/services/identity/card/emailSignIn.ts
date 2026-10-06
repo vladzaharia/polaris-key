@@ -345,7 +345,8 @@ export async function handleSigninEmailResend(
 ): Promise<Response> {
   if (req.method !== "POST")
     return cardJson({ error: "method_not_allowed" }, 405);
-  // One budget with the start: both ask for mail.
+  // One budget with the start: both ask for mail. Its refusal carries a wait (the minute
+  // window's upper bound), so a 429 without `retryAfter` means only the per-flow cap below.
   const allowed = await rateLimitOk(
     env,
     PORTAL_EMAIL_SCOPE,
@@ -357,7 +358,7 @@ export async function handleSigninEmailResend(
     },
     now,
   );
-  if (!allowed) return cardJson({ error: "rate_limited" }, 429);
+  if (!allowed) return resendLater(60);
   const caps = await portalAuthCapabilities(db);
   if (!caps.portalEnabled || !caps.magicEnabled) {
     return cardJson(

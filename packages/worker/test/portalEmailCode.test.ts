@@ -301,7 +301,13 @@ describe("resend", () => {
     const mailed = w.mail.length;
     const res = await d.send("POST", RESEND, undefined, { now: LATER });
     expect(res.status).toBe(429);
-    expect(await res.json()).toEqual({ error: "rate_limited" });
+    // With a wait, so that a 429 without `retryAfter` means only the per-flow cap.
+    expect(res.headers.get("retry-after")).toBe("60");
+    expect(await res.json()).toEqual({
+      error: "rate_limited",
+      message: "Wait a minute, then send a new code.",
+      retryAfter: 60,
+    });
     expect(w.mail).toHaveLength(mailed);
   });
 

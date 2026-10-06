@@ -87,9 +87,11 @@ flow and opens a new one for the same address and `returnTo`, mailing a new code
 the same limits and answering the start's bytes whether or not mail went out; the previous code
 and link stop working, and of two racing resends (a double click) one mails. It asks for no new
 Turnstile token, because the flow passed one, so it is bounded instead: it waits 60 seconds after
-the last code (`429 rate_limited` with `retryAfter`), one flow sends at most 5 emails, its start
-included (`429 rate_limited` without `retryAfter`: start again), and it shares the start's 8 a
-minute per client address. A browser without a live flow gets `400 signin_expired`.
+the last code (`429 rate_limited` with `retryAfter`), it shares the start's 8 a minute per client
+address (also with `retryAfter`), and one flow sends at most 5 emails, its start included
+(`429 rate_limited` without `retryAfter`: no more codes for this sign-in, the latest still
+works). A browser without a live flow gets `400 signin_expired`, and the card goes back to the
+email step. The card's countdown reads `resendIn` from the start's and the resend's answer.
 
 The link's landing page consumes nothing, so a mail scanner or a link prefetcher cannot burn it;
 its button `POST`s the token back. In the browser that asked, that signs in. Anywhere else the
