@@ -372,7 +372,8 @@ may publish.
 The default scopes are `release:publish`, `release:promote` and `distribution:report`;
 `release:yank`, `distribution:rollout` (the
 [rollout controls](/docs/services/distribution/rollouts/)), `distribution:feeds` and
-`distribution:listing` ([listing assets](/docs/build/ci/#listing-assets)) are opt-in. Scopes are an operator setting, never a manifest one: in the console's
+`distribution:listing` ([listing assets](/docs/build/ci/#listing-assets)) and `assets:write`
+([hosted assets](/docs/build/ci/#hosted-assets)) are opt-in. Scopes are an operator setting, never a manifest one: in the console's
 admin API an operator can read the policy (`GET /manage/api/products/<slug>/ci-publisher`),
 claim and edit it (`PUT`, which also stops resync from changing it), and issue, list and revoke
 **static** `pkeyci_` tokens for a CI that is not GitHub (`/manage/api/products/<slug>/ci-tokens`;

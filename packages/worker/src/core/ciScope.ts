@@ -36,8 +36,8 @@ export function ciActor(principal: CiPrincipal): string {
 
 /**
  * Authenticate a CI request for `product` and require `scope` — or, given a list, ANY one of its
- * scopes (P2-02's uploads route takes `release:publish`, `distribution:feeds` or
- * `distribution:listing`). Returns the principal, or the refusal to send; a refusal names the
+ * scopes (P2-02's uploads route takes `release:publish`, `distribution:feeds`,
+ * `distribution:listing` or `assets:write`). Returns the principal, or the refusal to send; a refusal names the
  * first scope of a list.
  */
 export async function requireCiScope(

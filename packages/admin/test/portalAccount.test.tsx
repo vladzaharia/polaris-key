@@ -38,7 +38,7 @@ describe("Account v1 (PX-07)", () => {
       within(nav)
         .getAllByRole("link")
         .map((a) => a.textContent),
-    ).toEqual(["Sign-in methods", "Appearance", "Your data"]);
+    ).toEqual(["Profile", "Sign-in methods", "Appearance", "Your data"]);
     const signOut = within(screen.getByRole("main")).getByRole("button", {
       name: "Sign out",
     });

@@ -21,6 +21,25 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 - **[`plans/PX-W8.md`](../plans/PX-W8.md) and owner:** portal paths are root paths (`/activate`, `/signin`), not `/portal/…`.
 - **[`plans/PX-W17.md`](../plans/PX-W17.md):** `/signin` reads `error=identity_disabled`.
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`. Each item names the package whose review raised it.
+
+- **Download my data includes the profile** ([PX-W16](PX-W16-profile-avatars.md)). The full export
+  carries the account's profile: `display_name` and `locale`, the picture in use and every copied
+  or uploaded avatar (`account_avatars`, the renditions `/media/avatar/<asset>` serves), each
+  value's source and explicit flag (`details_source_json`), and each sign-in method's import
+  (`account_links.profile_json`). The portal's `YourData` section has no export yet; its comment
+  still points at "I-15's export", an id from before the re-cut. The full export is this package's.
+- **A merge must keep the survivor's explicit Initials** ([PX-W16](PX-W16-profile-avatars.md)). Still
+  open on `main`: `mergeAccounts` (`accounts/merge.ts`) fills the survivor's `avatar_key` from the
+  absorbed account with `COALESCE`. A survivor that chose Initials (no `avatar_key`, and
+  `details_source_json` says `picture: { source: "initials", explicit: true }`) therefore takes the
+  absorbed account's picture,
+  and its record disagrees with itself. `fix/followups-sweep-1006` owns the fix. If it has landed
+  when this package starts there is nothing to do; otherwise the link-existing-account merge's
+  tests pin it.
+
 ## Goal
 
 The customer portal becomes the account's home, a proto-Steam Library: Library (default), Discover with "Add to library", the Activate License modal, product pages with a reserved Cloud Sync section, and account settings (sign-in methods, Profile, devices and sessions, connected apps, privacy), with per-product and full export and deletion. It owns the one Core revocation hook.

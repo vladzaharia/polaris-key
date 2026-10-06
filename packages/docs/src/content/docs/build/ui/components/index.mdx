@@ -1,0 +1,50 @@
+---
+title: "Components"
+description: "The component catalog every kit implements under the same names: one page per component with its states, its copy keys and every kit's baselines in both themes."
+sidebar:
+  order: 4
+  label: "All components"
+---
+
+import ComponentIndex from "../../../../../components/ui/ComponentIndex.astro";
+
+Every kit is to implement the same components under the same names. Web components add a `pk-` prefix
+and Godot a `PKey` prefix; Swift and Compose use the bare name inside their module; React exports
+the bare name. Headless names follow each language (`useActivate`, `ActivateModel`,
+`rememberActivateState`, `PKeyActivateController`, `ActivateViewModel`).
+
+The table is the catalog, `packages/brand/kit-copy/components.json`: each component, its states,
+and the copy keys each state shows. A kit cannot add a state the catalog lacks, and every catalog
+state needs a render in each kit's visual QA.
+
+<ComponentIndex />
+
+The screens share a set of **styled parts**, each also exported on its own: `ProductHeader`,
+`KeyField`, `CodeDisplay`, `QrCode`, `SeatMeter`, `DeviceRow`, `SettingsRow`, `Banner`,
+`ProgressBar`, `LoadingIndicator`, `StatusPill`, `PoweredBy` and `MonogramIcon`.
+
+## The component page template
+
+Every component page has the same four parts, in this order. The file to copy for a new
+component is `packages/docs/src/content/docs/build/ui/components/_template.mdx`; Starlight skips
+files whose names start with an underscore, so the template is never published.
+
+1. **A lead paragraph**: what the component is and where it appears, in the catalog's words.
+2. **States and copy**: `<ComponentStates component="…" />` renders every state with its copy keys,
+   their English text and their platform variants, from the catalog and the generated copy table.
+3. **Baselines**: `<KitBaselines component="…" />` renders one tab per kit that records baselines
+   for the component, every state in dark and light side by side, from the kit's committed
+   baseline directory. Nothing is copied into the docs, so the page always shows what the kit's
+   visual QA compares against.
+4. **In each kit**: one tab per kit, written by the kit when it ships the component, with the
+   drop-in, the styled part (its slots and restyle hooks) and the headless model. Use
+   `<Tabs syncKey="ui-kit">` and the kit's label from `packages/docs/src/lib/uiKits.ts`, so a
+   reader's choice of kit carries from page to page.
+
+A kit's baselines reach a component page when two things hold. First, the file is named after the
+component and state in kebab case with the theme last, such as `devices-list-dark.png`;
+`devices-list-390-dark.png` is a variant of the same state, and Roborazzi's
+`devices-list/phone-dark.png` layout works too. Second, the kit's pattern in
+`packages/docs/src/lib/baselines.ts` matches the file. Every matched file is published, so a kit's
+pattern selects one default render per state and theme, never every size and preset it records.
+The kit's framework page lists any baselines whose names match no component.

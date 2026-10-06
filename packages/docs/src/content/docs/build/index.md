@@ -26,6 +26,7 @@ those documents and gates the app on them. Everything below is one of those thre
 | [Integrate in 5 minutes](/docs/build/quickstart/)                     | One page per SDK: `pkey sdk --lang <x> --write`, then create the client, gate and read config                                      |
 | [Recipes](/docs/build/recipes/)                                       | Device-limit recovery, server-side licence checks, crash tags, attestation-gated products, store outlets                           |
 | [SDKs](/docs/build/sdks/)                                             | One wire contract, seven surfaces — Node, React, Python, Swift, Godot, Kotlin and the CLI                                          |
+| [UI kits](/docs/build/ui/)                                            | One design system for every SDK's UI: theming, localisation, the component catalog and a page per framework                        |
 | [Installing the SDKs from the feeds](/docs/build/install-from-feeds/) | Each SDK on its package feed at `pkg.plrs.im`, and the snippet every client needs                                                  |
 | [The wire contract](/docs/build/wire/)                                | The frozen JWS envelope your client verifies, for debugging a rejection or porting a sixth SDK                                     |
 | [Going offline](/docs/build/offline/)                                 | The three offline depths: grace, air-gapped bundles, and local-only builds                                                         |

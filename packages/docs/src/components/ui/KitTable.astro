@@ -1,0 +1,57 @@
+---
+/**
+ * Every kit in src/lib/uiKits.ts with its framework page, when the page exists (checked against
+ * the docs collection at build time, so a kit's row links itself the moment its page lands).
+ */
+import { getCollection } from "astro:content";
+import { frameworkHref, UI_KITS } from "../../lib/uiKits";
+
+const pages = new Set(
+  (
+    await getCollection("docs", (e) =>
+      e.id.startsWith("build/ui/frameworks/"),
+    )
+  ).map((e) => e.id.slice("build/ui/frameworks/".length)),
+);
+---
+
+<table class="pk-ui-kits">
+  <thead>
+    <tr>
+      <th scope="col">Kit</th>
+      <th scope="col">Framework</th>
+      <th scope="col">Tier</th>
+      <th scope="col">Package</th>
+      <th scope="col">Docs today</th>
+    </tr>
+  </thead>
+  <tbody>
+    {
+      UI_KITS.map((kit) => (
+        <tr>
+          <td>
+            {pages.has(kit.id) ? (
+              <a href={frameworkHref(kit)}>{kit.label}</a>
+            ) : (
+              kit.label
+            )}
+          </td>
+          <td>{kit.framework}</td>
+          <td>{kit.tier}</td>
+          <td>
+            <code>{kit.package}</code>
+          </td>
+          <td>
+            {pages.has(kit.id) ? (
+              <a href={frameworkHref(kit)}>Framework page</a>
+            ) : kit.current !== undefined ? (
+              <a href={kit.current.href}>{kit.current.label}</a>
+            ) : (
+              <span class="pk-ui-muted">Not shipped yet</span>
+            )}
+          </td>
+        </tr>
+      ))
+    }
+  </tbody>
+</table>

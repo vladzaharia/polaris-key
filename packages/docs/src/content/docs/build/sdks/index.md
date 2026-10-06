@@ -12,15 +12,18 @@ SDKs, and a CLI built from the same core as a seventh. Whichever one your produc
 it verifies the identical signed documents, exposes the identical `core` +
 per-service-sub-client shape, and fails closed the same way when a capability is not on.
 
-| Surface | Package                                                   | Page                                                                                                 |
-| ------- | --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Node    | `@polaris-key/node`                                       | [Node](/docs/build/sdks/node/)                                                                       |
-| React   | `@polaris-key/react`                                      | [React](/docs/build/sdks/react/)                                                                     |
-| Python  | `polaris-key` (Polaris Key's PyPI feed)                   | [Python](/docs/build/sdks/python/)                                                                   |
-| Swift   | `polaris-key.PolarisKey` (Polaris Key's Swift registry)   | [Swift](/docs/build/sdks/swift/)                                                                     |
-| Godot   | the `addons/polaris_key` addon (Polaris Key's Godot feed) | [Godot](/docs/build/sdks/godot/)                                                                     |
-| Kotlin  | `polaris-key-sdk` (Polaris Key's Maven feed)              | [Kotlin](/docs/build/sdks/kotlin/); the Compose UI kit: [Kotlin UI kit](/docs/build/sdks/kotlin-ui/) |
-| CLI     | `@polaris-key/node/cli`, `polaris-key`'s console script   | shipped inside the Node and Python pages above                                                       |
+| Surface | Package                                                   | Page                                                                                                  |
+| ------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Node    | `@polaris-key/node`                                       | [Node](/docs/build/sdks/node/)                                                                        |
+| React   | `@polaris-key/react`                                      | [React](/docs/build/sdks/react/)                                                                      |
+| Python  | `polaris-key` (Polaris Key's PyPI feed)                   | [Python](/docs/build/sdks/python/)                                                                    |
+| Swift   | `polaris-key.PolarisKey` (Polaris Key's Swift registry)   | [Swift](/docs/build/sdks/swift/)                                                                      |
+| Godot   | the `addons/polaris_key` addon (Polaris Key's Godot feed) | [Godot](/docs/build/sdks/godot/)                                                                      |
+| Kotlin  | `polaris-key-sdk` (Polaris Key's Maven feed)              | [Kotlin](/docs/build/sdks/kotlin/); the Compose UI kit: [Compose](/docs/build/ui/frameworks/compose/) |
+| CLI     | `@polaris-key/node/cli`, `polaris-key`'s console script   | shipped inside the Node and Python pages above                                                        |
+
+Every SDK that draws UI ships a UI kit. The kits share one component catalog, one theme API and
+one copy catalog, documented once in [UI kits](/docs/build/ui/), with a page per framework.
 
 Every package is published to Polaris Key's own feeds on `pkg.plrs.im`, and nowhere else:
 [Installing the SDKs from the feeds](/docs/build/install-from-feeds/) has each client's snippet.

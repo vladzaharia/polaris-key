@@ -152,6 +152,15 @@ export interface SettingDef<T = unknown> {
   value: ValueSpec;
   /** `null` only when `allowUnset` is true (`null` reads as "unset" / "unlimited"). */
   defaultValue: T | null;
+  /**
+   * Product scope only: a different default for products registered before a cut-over, so a new
+   * default never changes an existing product's behaviour (plans/LX-01.md §8 Q2:
+   * `licensing.entitlementModel` is `legacy` for products created before LX-06 and `combined`
+   * after). `createdBefore` is epoch seconds, compared with `products.created_at`. Still DATA:
+   * the resolver (ST-04) applies it, with source `default`; a manifest value or a console claim
+   * overrides it like any default.
+   */
+  legacyDefault?: { createdBefore: number; value: T };
   merge: SettingMerge;
   /**
    * Product scope only: the product value inherits the platform entry of the same key (D5, live
@@ -184,8 +193,14 @@ export interface SettingDef<T = unknown> {
   varName?: string;
   /** A-13's semantics for the deploy step: `ceiling` = a deploy-time `off` is a hard off. */
   precedence?: "runtime" | "ceiling";
-  /** The manifest field that seeds or sets it: `<document>:<dotted path>`, e.g. `product:web.origins`. */
-  manifest?: { path: string };
+  /**
+   * The manifest field that seeds or sets it: `<document>:<dotted path>`, e.g. `product:web.origins`.
+   * `alsoPaths` (ST-19b) names further fields the same entry reads, for the one setting whose value
+   * the manifest spells as two sibling fields (`release.compatWindow`: `product.compatMin` and
+   * `product.compatMax`). Each is held to the same rules as `path`: canonical, present in the
+   * schema, and a coverage target the entry declares.
+   */
+  manifest?: { path: string; alsoPaths?: readonly string[] };
   /**
    * Who writes it (S-18 §4.2 places this inside `manifest`; it is top-level here so operator-only
    * and read-only entries carry it too). `manifest` / `claimable` / `narrow-only` need
@@ -215,6 +230,13 @@ export interface SettingDef<T = unknown> {
   /** Worker files (under `src/`) or Worker scripts (`deltas`) that read the value. */
   readers: readonly string[];
   storage: SettingStorage;
+  /**
+   * Product scope only: the value every system product (`system = 1`) has, fixed by this entry
+   * (S-18 §4.5 item 8). No row, console write or manifest changes it there, and the console shows
+   * it locked. `rules.ts` requires it on every key `SYSTEM_LOCKED_KEYS` names, so the lock is a
+   * registry rule rather than a row an operator could delete.
+   */
+  systemLock?: { value: T };
   /** The work package that registered it. */
   since: string;
   /**

@@ -66,7 +66,8 @@ export function PortalShell({
       >
         Skip to content
       </a>
-      <header className="sticky top-0 z-30 border-b border-border bg-surface-page">
+      {/* pk-vt-chrome: kept above a list transition's moving content (src/motion.css). */}
+      <header className="pk-vt-chrome sticky top-0 z-30 border-b border-border bg-surface-page">
         <div className="mx-auto flex h-14 w-full max-w-[82rem] items-center gap-4 px-4 desk:h-16 desk:gap-8 desk:px-8">
           <a
             href={href.library()}
@@ -130,7 +131,7 @@ export function PortalShell({
       </footer>
       <nav
         aria-label="Phone"
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface-page pb-[env(safe-area-inset-bottom)] desk:hidden"
+        className="pk-vt-chrome fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface-page pb-[env(safe-area-inset-bottom)] desk:hidden"
       >
         <div className="grid h-[3.25rem] grid-cols-3 items-center px-2">
           <a

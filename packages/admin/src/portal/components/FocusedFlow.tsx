@@ -105,6 +105,8 @@ export function FlowCard({
         tint={tint}
         src={headerUrl}
         variant="banner"
+        // No cover: a bare tint field; the icon overlapping the strip already shows the letter.
+        letter={false}
         className="h-24 desk:h-30"
       />
       <div className="px-5 pb-6 desk:px-8 desk:pb-8">

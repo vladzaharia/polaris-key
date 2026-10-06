@@ -27,8 +27,11 @@ export { setMeter } from "./meter.js";
 export { highlight } from "./highlight.js";
 export {
   Celebration,
+  SuccessCheck,
   celebrateOnce,
   momentSeen,
   markMomentSeen,
   type CelebrationProps,
+  type SuccessCheckProps,
 } from "./Celebration.js";
+export { Expand, type ExpandProps } from "./Expand.js";

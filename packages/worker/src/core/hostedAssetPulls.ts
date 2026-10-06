@@ -58,6 +58,7 @@ import {
   ingest,
   isHostedAssetLocale,
   ladderOwedSql,
+  parseVariants,
   PULL_BACKOFF_BASE_SECONDS,
   rebuildLadder,
   variantFamily,
@@ -73,6 +74,11 @@ export { PULL_BACKOFF_BASE_SECONDS } from "./hostedAssets.js";
 export const PULL_BACKOFF_CAP_SECONDS = 24 * 60 * 60;
 /** How many owed pulls and ladder retries one nightly run enqueues, at most (one budget). */
 export const RECHECK_MAX_PER_RUN = 50;
+/**
+ * How many budget-sized pages of due rows one nightly run reads, at most. Rows the re-check
+ * cannot act on are read past rather than counted, so this bounds the reading, not the budget.
+ */
+export const RECHECK_MAX_PAGES = 20;
 /** Queues' `sendBatch` limit. */
 const SEND_BATCH_MAX = 100;
 
@@ -656,7 +662,10 @@ export type PullOutcome =
   /** No blob store bound: nothing attempted. */
   | "unavailable";
 
-/** Record a failed pull's back-off (the row's status and error are `ingest`'s, or set here). */
+/**
+ * Record a failed pull's back-off (the row's status and error are `ingest`'s, or set here). Never
+ * on a slot an operator uploaded while the pull ran (HA-06): the claim is not the pull's to mark.
+ */
 function stmtPullFailed(
   product: string,
   slot: string,
@@ -668,7 +677,8 @@ function stmtPullFailed(
     sql: `UPDATE hosted_assets SET attempts = attempts + 1,
             next_attempt_at = ? + ${backoffAfterFailureSql()}
             ${error ? ", status = 'failed', error = ?, checked_at = ?" : ""}
-           WHERE product = ? AND slot = ? AND locale = '' AND wanted_ref = ?`,
+           WHERE product = ? AND slot = ? AND locale = '' AND wanted_ref = ?
+             AND origin <> 'console'`,
     params: error
       ? [now, error, now, product, slot, wanted]
       : [now, product, slot, wanted],
@@ -708,6 +718,8 @@ export async function processAssetPull(
       sourceKind: "url",
       sourceRef: ref.src,
       expectedSha256: ref.sha256 ?? null,
+      // A console upload that lands while this pull is in flight wins (HA-06, S-18 model C).
+      yieldsTo: ["console"],
     };
   } else {
     const commit = gitShaOrNull(msg.commit);
@@ -736,6 +748,7 @@ export async function processAssetPull(
       expectedSha256: ref.sha256 ?? null,
       // The raw Contents URL changes with the commit; a validator from another commit means nothing.
       force: true,
+      yieldsTo: ["console"],
     };
   }
 
@@ -750,7 +763,8 @@ export async function processAssetPull(
         sql: `UPDATE hosted_assets SET pulled_ref = ?, source_blob = ?,
                 attempts = CASE WHEN ${owed} THEN 1 ELSE 0 END,
                 next_attempt_at = CASE WHEN ${owed} THEN ? ELSE NULL END
-               WHERE product = ? AND slot = ? AND locale = '' AND wanted_ref = ?`,
+               WHERE product = ? AND slot = ? AND locale = '' AND wanted_ref = ?
+                 AND origin <> 'console'`,
         params: [
           msg.wanted,
           blob,
@@ -765,6 +779,8 @@ export async function processAssetPull(
   }
   if (result.reason === "retry") return "retry";
   if (result.reason === "unavailable") return "unavailable";
+  // An operator uploaded the slot while the pull ran: the claim stands, nothing is recorded.
+  if (result.reason === "claimed") return "superseded";
   await db.batch([
     stmtPullFailed(msg.product, msg.slot, msg.wanted, now, null),
   ]);
@@ -818,6 +834,12 @@ export async function processLadderRetry(
  * retries. Oldest-due first across both, at most `limit` per run. A repo ref is read at the
  * product's last applied commit (the manifest snapshot). Returns how many were enqueued; nothing
  * without a queue binding.
+ *
+ * A due row the re-check cannot act on (an unreadable `wanted_ref`, a repo ref with no applied
+ * commit to read it at) is read past, never counted: the budget is what is enqueued, so a few such
+ * rows, always the oldest due, cannot crowd every ladder retry out of a run. They are not held
+ * off either: a resync that brings the commit pulls at once (the planner waits out the back-off of
+ * an unchanged ref). Reading is bounded by `RECHECK_MAX_PAGES` pages of `limit` rows.
  */
 export async function recheckHostedAssets(
   env: Pick<Env, "HOSTED_ASSET_QUEUE" | "IMAGES">,
@@ -825,55 +847,61 @@ export async function recheckHostedAssets(
   now: number,
   limit = RECHECK_MAX_PER_RUN,
 ): Promise<number> {
-  if (!env.HOSTED_ASSET_QUEUE) return 0;
-  const due = await db.all<{
-    product: string;
-    slot: string;
-    locale: string;
-    wanted_ref: string | null;
-    sha256: string | null;
-    applied_sha: string | null;
-    pull: number;
-  }>(
-    `SELECT h.product, h.slot, h.locale, h.wanted_ref, h.sha256, s.applied_sha,
-            ${pullOwedSql("h.")} AS pull
-       FROM hosted_assets h
-       JOIN products p ON p.slug = h.product
-       LEFT JOIN product_manifest_snapshot s ON s.product = h.product
-      WHERE p.deleted_at IS NULL
-        AND (${pullOwedSql("h.")} OR ${ladderRetrySql(!!env.IMAGES, "h.")})
-        AND (h.next_attempt_at IS NULL OR h.next_attempt_at <= ?)
-      ORDER BY COALESCE(h.next_attempt_at, 0), h.product, h.slot, h.locale
-      LIMIT ?`,
-    now,
-    limit,
-  );
+  if (!env.HOSTED_ASSET_QUEUE || limit <= 0) return 0;
   const messages: AssetQueueMessage[] = [];
   const statements: DbStatement[] = [];
-  for (const r of due) {
-    if (!r.pull) {
-      if (!r.sha256 || variantFamily(r.slot) === null) continue;
-      messages.push(
-        ladderMessage(r.product, r.slot, r.locale, r.sha256, "recheck"),
-      );
-      statements.push(stmtHold(r.product, r.slot, r.locale, now));
-      continue;
+  // Nothing is written until every page is read, so OFFSET pages over a stable result.
+  for (let page = 0; page < RECHECK_MAX_PAGES; page++) {
+    const due = await db.all<{
+      product: string;
+      slot: string;
+      locale: string;
+      wanted_ref: string | null;
+      sha256: string | null;
+      applied_sha: string | null;
+      pull: number;
+    }>(
+      `SELECT h.product, h.slot, h.locale, h.wanted_ref, h.sha256, s.applied_sha,
+              ${pullOwedSql("h.")} AS pull
+         FROM hosted_assets h
+         JOIN products p ON p.slug = h.product
+         LEFT JOIN product_manifest_snapshot s ON s.product = h.product
+        WHERE p.deleted_at IS NULL
+          AND (${pullOwedSql("h.")} OR ${ladderRetrySql(!!env.IMAGES, "h.")})
+          AND (h.next_attempt_at IS NULL OR h.next_attempt_at <= ?)
+        ORDER BY COALESCE(h.next_attempt_at, 0), h.product, h.slot, h.locale
+        LIMIT ? OFFSET ?`,
+      now,
+      limit,
+      page * limit,
+    );
+    for (const r of due) {
+      if (messages.length >= limit) break;
+      if (!r.pull) {
+        if (!r.sha256 || variantFamily(r.slot) === null) continue;
+        messages.push(
+          ladderMessage(r.product, r.slot, r.locale, r.sha256, "recheck"),
+        );
+        statements.push(stmtHold(r.product, r.slot, r.locale, now));
+        continue;
+      }
+      if (r.wanted_ref === null) continue;
+      const ref = parseWantedRef(r.wanted_ref);
+      if (!ref || !isManifestAssetSlot(r.slot)) continue;
+      const commit = gitShaOrNull(r.applied_sha);
+      if (ref.kind === "repo" && !commit) continue;
+      messages.push({
+        v: 1,
+        product: r.product,
+        slot: r.slot,
+        locale: "",
+        wanted: r.wanted_ref,
+        ...(ref.kind === "repo" ? { commit: commit! } : {}),
+        reason: "recheck",
+      });
+      statements.push(stmtHold(r.product, r.slot, "", now));
     }
-    if (r.wanted_ref === null) continue;
-    const ref = parseWantedRef(r.wanted_ref);
-    if (!ref || !isManifestAssetSlot(r.slot)) continue;
-    const commit = gitShaOrNull(r.applied_sha);
-    if (ref.kind === "repo" && !commit) continue;
-    messages.push({
-      v: 1,
-      product: r.product,
-      slot: r.slot,
-      locale: "",
-      wanted: r.wanted_ref,
-      ...(ref.kind === "repo" ? { commit: commit! } : {}),
-      reason: "recheck",
-    });
-    statements.push(stmtHold(r.product, r.slot, "", now));
+    if (messages.length >= limit || due.length < limit) break;
   }
   if (messages.length === 0) return 0;
   await enqueueAssetPulls(env, messages);
@@ -903,12 +931,24 @@ export interface HostedAssetView {
   pullPending: boolean;
   attempts: number;
   nextAttemptAt: number | null;
+  /**
+   * HA-06: a ready copy that still owes its WebP size ladder (`ladderOwedSql`) while the Images
+   * binding is bound, so HA-05 retries it. Without the binding the original serves alone, by
+   * design, and nothing is pending.
+   */
+  sizesPending: boolean;
+  /** The widths of the copy's size ladder (`variants_json`), ascending. */
+  widths: number[];
 }
 
-/** Every hosted asset of `product`, ordered by slot and locale. */
+/**
+ * Every hosted asset of `product`, ordered by slot and locale. `images` says whether the Images
+ * binding is bound (`sizesPending` is only ever true while it is).
+ */
 export async function listHostedAssetViews(
   db: Db,
   product: string,
+  opts: { images?: boolean } = {},
 ): Promise<HostedAssetView[]> {
   const rows = await db.all<{
     slot: string;
@@ -929,10 +969,12 @@ export async function listHostedAssetViews(
     pulled_ref: string | null;
     attempts: number;
     next_attempt_at: number | null;
+    variants_json: string | null;
+    ladder_owed: number;
   }>(
     `SELECT slot, locale, origin, source_kind, source_ref, status, error, sha256, size,
             content_type, width, height, checked_at, modified_at, wanted_ref, pulled_ref,
-            attempts, next_attempt_at
+            attempts, next_attempt_at, variants_json, ${ladderOwedSql()} AS ladder_owed
        FROM hosted_assets WHERE product = ? ORDER BY slot, locale`,
     product,
   );
@@ -958,5 +1000,9 @@ export async function listHostedAssetViews(
       r.wanted_ref !== r.pulled_ref,
     attempts: r.attempts,
     nextAttemptAt: r.next_attempt_at,
+    sizesPending: !!opts.images && r.ladder_owed === 1,
+    widths: parseVariants(r.variants_json)
+      .map((v) => v.w)
+      .sort((a, b) => a - b),
   }));
 }

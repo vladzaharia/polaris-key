@@ -133,6 +133,14 @@ function base(): Docs {
       licensing: {
         defaultDeviceLimit: 5,
         defaultMaxOfflineDays: 30,
+        // LX-06: S-19's licensing settings, every one declared (plans/LX-01.md §3.2).
+        entitlementModel: "combined",
+        entitlementHolder: "device",
+        clampGraceToExpiry: true,
+        anchorPolicy: "rank-first",
+        reanchor: "onActivation",
+        refundGraceHours: 48,
+        dunningGraceDays: 7,
         profiles: [
           { id: "base", name: "Base profile", payload: { config: {} } },
         ],
@@ -156,6 +164,7 @@ function base(): Docs {
         clientSecretSecret: "OIDC_CLIENT_SECRET",
         redirectUris: ["https://key.plrs.im/acme/identity/auth/callback"],
         groupRoleMap: { staff: { tier: "pro" } },
+        syncTierOnSignIn: "upgradeOnly",
       },
       provisioning: [
         {
@@ -919,6 +928,56 @@ const MUTATIONS: Mutation[] = [
     file: "product",
     schema: "rejects",
     mutate: (d) => (p(d).licensing.tiers[0].policyFingerprint = "paranoid"),
+  },
+  // LX-06 (plans/LX-01.md §3.1): one rule per licensing setting, and the sign-in tier sync.
+  {
+    code: "invalid_licensing_entitlement_model",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.entitlementModel = "both"),
+  },
+  {
+    code: "invalid_licensing_entitlement_holder",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.entitlementHolder = "signin"),
+  },
+  {
+    code: "invalid_licensing_clamp_grace_to_expiry",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.clampGraceToExpiry = "yes"),
+  },
+  {
+    code: "invalid_licensing_anchor_policy",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.anchorPolicy = "newest"),
+  },
+  {
+    code: "invalid_licensing_reanchor",
+    file: "product",
+    schema: "rejects",
+    // Refused until LX-21 builds it (S-19 §7.5).
+    mutate: (d) => (p(d).licensing.reanchor = "onRefresh"),
+  },
+  {
+    code: "invalid_licensing_refund_grace_hours",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.refundGraceHours = 169),
+  },
+  {
+    code: "invalid_licensing_dunning_grace_days",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).licensing.dunningGraceDays = 2.5),
+  },
+  {
+    code: "invalid_oidc_sync_tier_on_sign_in",
+    file: "product",
+    schema: "rejects",
+    mutate: (d) => (p(d).oidc.syncTierOnSignIn = "always"),
   },
   {
     code: "invalid_oidc",

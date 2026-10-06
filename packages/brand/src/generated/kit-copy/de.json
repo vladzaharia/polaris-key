@@ -569,6 +569,8 @@
   "core.codes.step_up_required.message": "Melden Sie sich zu Ihrer Sicherheit erneut an, um fortzufahren.",
   "core.codes.not_eligible.title": "Angebot nicht verfügbar",
   "core.codes.not_eligible.message": "Dieses Angebot ist für Ihr Konto nicht mehr verfügbar. Aktualisieren Sie die Ansicht und versuchen Sie es erneut.",
+  "core.codes.not_removable.title": "Entfernen nicht möglich",
+  "core.codes.not_removable.message": "Diese Lizenz kann nicht mit einem Lizenzschlüssel wieder hinzugefügt werden, deshalb bleibt sie in Ihrer Bibliothek.",
   "core.codes.download_auth_required.title": "Zum Herunterladen anmelden",
   "core.codes.download_auth_required.message": "Melden Sie sich an oder aktivieren Sie eine Lizenz, um dies herunterzuladen.",
   "core.codes.delivery_gate_missing.title": "Download nicht verfügbar",

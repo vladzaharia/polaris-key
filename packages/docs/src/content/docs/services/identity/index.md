@@ -43,7 +43,7 @@ Ten product-scoped routes, all under `/<product>/identity`:
 | `POST /<p>/identity/session/license`          | Mint a browser session from a license key                                   |
 | `GET /<p>/identity/auth/start`                | Begin browser OIDC (PKCE) — 302 to the IdP                                  |
 | `GET /<p>/identity/auth/callback`             | The OIDC redirect URI                                                       |
-| `GET /<p>/identity/auth/poll`                 | Poll a browser sign-in flow                                                 |
+| `GET`/`POST /<p>/identity/auth/choose`        | The legacy sign-in's license chooser — a step of the choice, or the choice  |
 | `POST /<p>/identity/auth/logout`              | End the browser session                                                     |
 | `POST /<p>/identity/auth/device/start`        | Begin the device-code flow                                                  |
 | `GET`/`POST /<p>/identity/auth/device`        | The RFC 8628 user-code page — type or scan the code, then confirm           |

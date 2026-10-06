@@ -32,8 +32,8 @@ inputs:
     description: The canonical channel the release is published to (stable, beta or a declared one).
     required: false
   dir:
-    description: The directory of built files, searched recursively, relative to the workspace. For a pack, each declared variant's payload sits at <dir>/<variant key or "default">/ (one .pck file, or the tree).
-    required: true
+    description: The directory of built files, searched recursively, relative to the workspace. For a pack, each declared variant's payload sits at <dir>/<variant key or "default">/ (one .pck file, or the tree). Required for every step but assets, where it is only the base the globs resolve against (default the workspace).
+    required: false
   source:
     description: App only. Where the bytes live. `r2` (the default) uploads them to Polaris Key; `github` locates them on the tagged, immutable GitHub release. No `default:` here on purpose, because GitHub passes every defaulted input, and a package publish or a transport step refuses this one; the Action applies `r2` for the app itself.
     required: false
@@ -123,6 +123,9 @@ inputs:
     required: false
   storefront-outlet:
     description: A-18h, storefront steps. The outlet id whose identity binds the step, when .pkey/distribution declares more than one of the store's kind.
+    required: false
+  assets:
+    description: 'HA-06. Instead of publishing, host files that are not on the web: one "<glob>: <slot>[@<locale>]" per line (a block scalar; blank lines and # comments skipped). Slots are presentation.icon, listing.icon, listing.header, listing.screenshot:<1-16> or a listing image slot (icon-master, play:feature-graphic, ...); the unnumbered listing.screenshot numbers its glob''s matches 1 to n in path order, and every other glob must match exactly one file. Globs resolve against dir when set, else the workspace. PNG, JPEG, WebP, GIF or AVIF only, up to 10 MiB for icon slots and 20 MiB for the rest. A slot an operator uploaded in the console, or one a manifest declares, is kept as it is. Needs the opt-in assets:write scope on the trusted publisher and Release on for the product. A refused file fails the step.'
     required: false
 outputs:
   release-id:

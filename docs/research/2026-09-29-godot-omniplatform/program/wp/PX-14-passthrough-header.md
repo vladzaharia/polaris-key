@@ -18,6 +18,7 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/PX-W13.md`](../plans/PX-W13.md):** read `SignInRequestView` and `AppConsentView`; render the neutral frame when `nameVerified` is `false`; switch the device-code page to `303 /signin?request=rq_…` (a root path).
 - **[`plans/PX-W17.md`](../plans/PX-W17.md):** render the Identity-off card from the `error=identity_disabled` query parameter and the API code.
+- **From PX-22 (`Avatar`, PORTAL.md §4.30 rule 5):** Render `Avatar` with `picture={account.avatarUrl}` in the AppConsent person row and the device-code done row; never before authentication (from PX-22).
 
 ## Owner decision (2026-10-05): licence choice at sign-in
 
@@ -66,6 +67,25 @@ every row, no "Account-wide"). For this package:
 - **The card in app mode** (I-04 §G.3): skip LicenseChoiceStep; Consent keeps its place with `signin.consent.licenseInApp` ("You'll choose a license in {app}.") and no **Change**; the desktop ReturnStep variant `signin.return.chooseInApp` (frame 26).
 - **The integrated web flow** (SIGN-IN.md §4.16, D-87): one card at one address; the key entry (KeyStep), the choice, **Replace a device** (a step that replaces the list, D-81), Consent and the return are steps of it, each a history entry restored from the server flow record; **Free a device** only where Replace is not offered.
 - **Motion** (SIGN-IN.md §3.18): morph, shared-element, enter and exit by direction of travel, stagger-list, expand, success and skeleton, with the `--pk-*` tokens; View Transitions with the Web Animations fallback; instant swaps under reduced motion; CSP-safe (no inline styles or scripts). The prototype in `docs/design/sign-in/prototype/` is the reference.
+
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`. Each item names the package whose review raised it.
+
+- **The card's KeyStep confirms with PX-17's `ConfirmStep`** ([PX-17](PX-17-activate-confirm.md)).
+  There is no passthrough card in the SPA yet, so PX-17 exported `ConfirmStep` from
+  `ActivateDialog.tsx` with a `primaryLabel` (pass **Add and use on this device**,
+  `signin.key.addAndUse`) and a `notes` slot (PX-23 fills it). In the card the confirm binds the
+  device, because it is the licence choice (SIGN-IN.md §3.9). When the added licence is full it
+  offers **Replace a device** inline rather than failing.
+- **`FreeDevicePage` accepts a same-origin `/signin` return** ([PX-17](PX-17-activate-confirm.md)).
+  The Activate dialog follows `return=/signin?request=…` through `cardReturn`
+  (`portal/model/returnUrl.ts`: only `/signin` on the portal's own origin). `FreeDevicePage.tsx`
+  still reads `return=` through `allowedReturn` alone (the product's declared app return URLs), so a
+  card that sends someone to free a device cannot bring them back. Accept `cardReturn` there too, as
+  the dialog does. The card's "You don't have <Product> yet" link
+  (`/activate?product=…&return=/signin?request=…`) is also this package's; the portal already
+  honours that `return=`.
 
 ## Goal
 

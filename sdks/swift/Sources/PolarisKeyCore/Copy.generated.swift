@@ -71,6 +71,7 @@ public let COPY_CODES: [String: CopyEntry] = [
     "last_link": CopyEntry(title: "Can't remove", message: "This is your account's only sign-in method. Add another one before removing it."),
     "step_up_required": CopyEntry(title: "Confirm it's you", message: "For your security, sign in again to continue."),
     "not_eligible": CopyEntry(title: "Offer unavailable", message: "This offer isn't available to your account anymore. Refresh and try again."),
+    "not_removable": CopyEntry(title: "Can't remove", message: "This license can't be added back with a key, so it stays in your library."),
     "download_auth_required": CopyEntry(title: "Sign in to download", message: "Sign in or activate a license to download this."),
     "delivery_gate_missing": CopyEntry(title: "Download unavailable", message: "This download isn't set up yet. Contact the developer."),
     "upstream_rate_limited": CopyEntry(title: "Download busy", message: "Downloads are busy right now. Try again in a few minutes."),

@@ -12,6 +12,19 @@
 | Human input | none                                                                                                                                                              |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                         |
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`.
+
+- **Document LX-26's audit actions** ([LX-26](LX-26-licence-holders-worker.md)).
+  `packages/docs/src/content/docs/admin/activity.md` lists the licence actions (`license.create` to
+  `license.disable`, `license.enroll`) but none of LX-26's. Add `license.holder.assign` (the
+  product's console trail: a floating licence given an email). Name the two that live in the account's own
+  history (`portal_audit`) rather than the console trail, and say so: `account.license.attach`
+  (every attach, now including the automatic ones by `email` or `oidc`) and
+  `account.license.auto_attach_block` (a removal or reassignment keeps the licence from
+  re-attaching to that account).
+
 ## Goal
 
 The glossary, the docs site and the threat model describe floating and assigned licences, the New

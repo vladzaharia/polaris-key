@@ -63,7 +63,7 @@ export function TopBar({
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden"
+        className="shrink-0 lg:hidden"
         id="console-nav-button"
         onClick={onOpenNav}
         aria-label="Open navigation"
@@ -110,7 +110,10 @@ export function TopBar({
             Docs
           </a>
         </Button>
-        <ThemeMenu />
+        {/* Nor for the theme menu: the product switcher needs the room (at 360 px, beside the
+            environment badge, its chevron was pushed out of its border box), so the account
+            menu carries the theme and motion choices there. */}
+        <ThemeMenu className="max-sm:hidden" />
         <UserMenu
           me={me}
           version={version}

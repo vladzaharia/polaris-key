@@ -33,9 +33,8 @@ import { ErrorCode } from "../../../core/errors.js";
 import { getActiveSchema } from "../../../core/data.js";
 import {
   claimFacts,
-  claimsApply,
+  decideClaim,
   stmtClaim,
-  systemClaimRefusal,
 } from "../../../core/settingsClaims.js";
 import {
   catalogRepresentabilityResponse,
@@ -163,13 +162,17 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
       });
     }
     // ST-01b: a console publish claims the whole catalog (`config.catalog`, one claimable unit)
-    // on a repo-linked product, so the next resync leaves it alone; the system product's catalog
-    // is manifest-authoritative and refused until ST-20.
+    // on a repo-linked product, so the next resync leaves it alone. ST-20: a manifest-authoritative
+    // product (the system product always) refuses it unless it is a break-glass claim
+    // (`breakGlass: { reason }`), which expires in 7 days or at the first apply that changes it.
     const facts = await claimFacts(db, slug);
-    const refusal = facts ? systemClaimRefusal(facts) : null;
-    if (refusal)
-      return err(409, ErrorCode.BadRequest, refusal, {
-        reason: "manifest_authoritative",
+    const decision = facts
+      ? await decideClaim(db, { slug, ...facts }, body.breakGlass, now)
+      : ({ ok: true, claim: null } as const);
+    if (!decision.ok)
+      return err(decision.status, ErrorCode.BadRequest, decision.message, {
+        reason: decision.reason,
+        ...(decision.fields ? { fields: decision.fields } : {}),
       });
     const version = await nextSchemaVersion(db, slug);
     await db.batch([
@@ -188,10 +191,22 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
         active: 1,
         created_at: now,
       }),
-      ...(facts && claimsApply(facts)
-        ? [stmtClaim(slug, "config.catalog", session.sub, now)]
+      ...(decision.claim
+        ? [
+            stmtClaim(
+              slug,
+              "config.catalog",
+              session.sub,
+              now,
+              decision.claim.reason,
+              decision.claim.expiresAt,
+            ),
+          ]
         : []),
     ]);
+    const breakGlass = decision.claim?.expiresAt
+      ? { reason: decision.claim.reason!, expiresAt: decision.claim.expiresAt }
+      : null;
     await audit(
       db,
       slug,
@@ -199,9 +214,17 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
       now,
       "schema.publish",
       { kind: "schema", id: String(version) },
-      `Published catalog v${version}`,
+      breakGlass
+        ? `Published catalog v${version} as a break-glass claim until ${new Date(breakGlass.expiresAt * 1000).toISOString()}: ${breakGlass.reason}`
+        : `Published catalog v${version}`,
     );
-    return adminJson({ ok: true, schemaVersion: version });
+    return adminJson({
+      ok: true,
+      schemaVersion: version,
+      ...(breakGlass
+        ? { breakGlass: { expiresAt: breakGlass.expiresAt } }
+        : {}),
+    });
   }
   return err(405, ErrorCode.BadRequest, "method not allowed");
 }

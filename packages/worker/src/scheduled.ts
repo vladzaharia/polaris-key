@@ -56,6 +56,8 @@ import {
   settleOwnershipConflicts,
 } from "./services/identity/accounts/legacy.js";
 import { sweepAvatars } from "./services/identity/card/avatars.js";
+import { pruneStorefrontSeen } from "./services/identity/portal/store/analytics.js";
+import { pruneAccountMerges } from "./services/identity/accounts/mergeUndo.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
 import { REFUSAL_RETENTION_SECONDS, pruneRefusals } from "./core/refusals.js";
 import { lazyDeltaProducts } from "./core/deltaDemand.js";
@@ -63,6 +65,7 @@ import { refreshPlatformSettings } from "./core/platformSettings.js";
 import { sweepLazyDeltas } from "./services/release/packs/deltas/sweep.js";
 import { buildHooks } from "./core/hooks.js";
 import { recheckHostedAssets } from "./core/hostedAssetPulls.js";
+import { backfillReleaseMirrors } from "./services/release/mirror.js";
 import {
   JOB_RUN_RETENTION_SECONDS,
   pruneHeartbeats,
@@ -363,6 +366,11 @@ export async function runScheduledMaintenance(
         pruneRefusals(db, product, now - REFUSAL_RETENTION_SECONDS, limit),
       ),
     );
+    // PS-04: the storefront's impression dedupe keys older than yesterday (notes/S-21 §6.6:
+    // nothing per person is kept past two days).
+    await step(report, `storefrontSeen:${product}`, () =>
+      drain((limit) => pruneStorefrontSeen(db, product, now, limit)),
+    );
   }
 
   // `portal_audit.product` is nullable — a magic-link sign-in belongs to no tenant — so without
@@ -417,9 +425,21 @@ export async function runScheduledMaintenance(
   if (env)
     await step(report, "hostedAssets", () => recheckHostedAssets(env, db, now));
 
+  // HA-08: release files still owing a copy of ours (S-20 §6.8): on first deploy the backfill of
+  // every existing release, afterwards the retry of failed ones once their back-off elapsed, at
+  // most `MIRROR_BACKFILL_MAX_PER_RUN` per night, to `pkey-assets-<env>`. Before the collector,
+  // which never drops either ref a copy is held by.
+  if (env)
+    await step(report, "releaseMirrors", () =>
+      backfillReleaseMirrors(env, db, now),
+    );
+
   // PX-W16: account pictures nothing has used for a day (a disconnected provider's copy, an
   // upload never saved, a merged account's leftovers, a write that died half way).
   if (env) await step(report, "avatars", () => sweepAvatars(env, db, now));
+
+  // PX-W12: a join whose 72-hour undo window ended keeps no snapshot of the absorbed account.
+  await step(report, "accountMerges", () => pruneAccountMerges(db, now));
 
   if (env) await runBlobGc(report, env, db, now);
 

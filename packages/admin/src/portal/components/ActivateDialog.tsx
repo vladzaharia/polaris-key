@@ -1,9 +1,16 @@
 import * as React from "react";
-import { AlertTriangle, ArrowRight, Check } from "lucide-react";
+import { flushSync } from "react-dom";
+import {
+  AlertTriangle,
+  ArrowRight,
+  Check,
+  MonitorSmartphone,
+} from "lucide-react";
 import { cn } from "../../lib/cn.js";
 import { Button } from "../../ui/Button.js";
 import { Dialog, DialogBody, DialogFooter } from "../../ui/Dialog.js";
 import { toast } from "../../ui/toast.js";
+import { Celebration, viewTransition } from "../../ui/motion/index.js";
 import {
   PortalApiError,
   type PortalKeyPreview,
@@ -15,6 +22,7 @@ import {
   useLicenses,
   usePreviewKey,
   useProduct,
+  useSession,
 } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
 import { requestHeadingFocus } from "../focus.js";
@@ -61,6 +69,14 @@ import { ProductIcon } from "./ProductIcon.js";
  * (`/signin?request=…`, plans/I-04.md) at once, or offers **Back to <product>** on Done for a
  * target the product declares (PX-10's rule). Nothing is followed that `model/returnUrl.ts`
  * refuses, and none of it ever carries the key.
+ *
+ * **Motion** (notes/S-23 §6.1 morph and success; MO-06): a step change is one `dialog` View
+ * Transition with the panel as `pk-vt-dialog`: the old step leaves in `fast`, the new one comes
+ * in after `micro` while the panel morphs its size at `moderate`; focus moves on
+ * `updateCallbackDone`, when the new step is in the DOM. The first add on an account shows the
+ * success moment on Done (`<Celebration momentKey="first-activation:<account>">`: the check
+ * draws and six sparks burst, once per account); every later Done shows the check only. Under
+ * reduced motion the step swaps at once and the check is static.
  */
 export type ConfirmPreview = PortalKeyPreview &
   KeyVerdictExtras & {
@@ -77,6 +93,9 @@ type Step =
       already: boolean;
       /** From the preview, when it ran: the name and art the confirm step showed. */
       product?: ConfirmPreview["product"];
+      /** From the preview: the devices that came with it (PX-23), and whether Cloud Sync runs. */
+      devices?: number;
+      cloudSync?: boolean;
     };
 
 /** Why an app's link sent the person here, from what it carries (§4.18). */
@@ -115,6 +134,7 @@ export function ActivateDialog({
   const claim = useClaimKey();
   const preview = usePreviewKey();
   const licenses = useLicenses(open);
+  const accountId = useSession().data?.account.id ?? null;
   const fieldId = React.useId();
   const noticeId = React.useId();
   /** Set while the page leaves for the login card, so the busy state holds until it unloads. */
@@ -146,24 +166,43 @@ export function ActivateDialog({
   };
 
   /*
-   * Focus follows the step (FLOWS.md §2 C18, P-5): a new step's heading takes focus once it has
-   * rendered, so a screen reader hears where it is and focus never stays on the dialog itself;
+   * Focus follows the step (FLOWS.md §2 C18, P-5): a new step's heading takes focus once it is in
+   * the DOM, so a screen reader hears where it is and focus never stays on the dialog itself;
    * coming back to the key (Back, Change key, a refused claim) puts it on the field. A refusal
    * (an inline verdict) also puts focus on the field: Continue is disabled until the key
    * changes, and a disabled button that held focus would drop it to `body`.
    */
   const anchorRef = React.useRef<HTMLSpanElement>(null);
-  const lastStep = React.useRef<Step["kind"]>(step.kind);
-  React.useEffect(() => {
-    if (lastStep.current === step.kind) return;
-    lastStep.current = step.kind;
-    const frame = requestAnimationFrame(() => {
-      if (step.kind === "enter") focusField();
+  /** The step on screen now (a step change in flight has not landed yet). */
+  const stepRef = React.useRef(step);
+  stepRef.current = step;
+
+  /**
+   * Change step (with `also`, the state that changes with it) in one `dialog` View Transition:
+   * the update runs once the old step is captured, and focus moves when it has landed
+   * (`updateCallbackDone`), never after the animation. Without the API or under reduced motion
+   * the update runs here and focus moves right after: the same end state, at once. A step change
+   * made while another is in flight is the newer one: the running transition is skipped to its
+   * end, its update lands first and this one after it, and focus follows the step that is on
+   * screen when each lands.
+   */
+  const goTo = (next: Step, also?: () => void): void => {
+    const apply = (): void => {
+      also?.();
+      setStep(next);
+    };
+    if (stepRef.current.kind === next.kind) {
+      apply();
+      return;
+    }
+    const handle = viewTransition(() => flushSync(apply), { type: "dialog" });
+    void handle.updateCallbackDone.then(() => {
+      if (stepRef.current.kind !== next.kind) return;
+      if (next.kind === "enter") focusField();
       else focusDialogHeading(anchorRef.current);
     });
-    return () => cancelAnimationFrame(frame);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step.kind]);
+  };
+
   React.useEffect(() => {
     if (!serverVerdict || step.kind !== "enter") return;
     const frame = requestAnimationFrame(focusField);
@@ -172,12 +211,13 @@ export function ActivateDialog({
   }, [serverVerdict]);
 
   const reset = (): void => {
-    setKey("");
-    setTouched(false);
-    setServerVerdict(null);
-    claim.reset();
-    preview.reset();
-    setStep({ kind: "enter" });
+    goTo({ kind: "enter" }, () => {
+      setKey("");
+      setTouched(false);
+      setServerVerdict(null);
+      claim.reset();
+      preview.reset();
+    });
   };
 
   /**
@@ -208,14 +248,12 @@ export function ActivateDialog({
       browser.go(toCard);
       return;
     }
-    setStep(done);
+    goTo(done);
   };
 
   /** Add the key (the claim); refusals go back to the enter step, inline. */
-  const add = (
-    slugToAdd: string,
-    product?: ConfirmPreview["product"],
-  ): void => {
+  const add = (slugToAdd: string, confirmed?: ConfirmPreview): void => {
+    const product = confirmed?.product;
     const before = new Set(
       (licenses.data ?? []).map((l) => `${l.product}:${l.id}`),
     );
@@ -228,11 +266,13 @@ export function ActivateDialog({
           slug: lic?.product ?? slugToAdd,
           already: lic ? before.has(`${lic.product}:${lic.id}`) : false,
           product,
+          devices: confirmed?.devices,
+          cloudSync: confirmed?.cloudSync,
         });
       },
       onError: (err) => {
-        setStep({ kind: "enter" });
-        setServerVerdict(claimError(err, product?.name ?? nameFor(slugToAdd)));
+        const verdict = claimError(err, product?.name ?? nameFor(slugToAdd));
+        goTo({ kind: "enter" }, () => setServerVerdict(verdict));
       },
     });
   };
@@ -256,7 +296,7 @@ export function ActivateDialog({
             [slugNow]: named.name,
           }));
         if (p.verdict === "addable" && p.product) {
-          setStep({
+          goTo({
             kind: "confirm",
             preview: p as ConfirmPreview,
             slug: slugNow,
@@ -319,6 +359,7 @@ export function ActivateDialog({
         !done && !confirm && fromProduct && linkContext ? noticeId : undefined
       }
       size="md"
+      className="pk-vt-dialog"
     >
       <span ref={anchorRef} hidden />
       {confirm ? (
@@ -326,8 +367,9 @@ export function ActivateDialog({
           preview={confirm.preview}
           licenseKey={key}
           adding={claim.isPending || leaving}
-          onBack={() => setStep({ kind: "enter" })}
-          onAdd={() => add(confirm.slug, confirm.preview.product)}
+          onBack={() => goTo({ kind: "enter" })}
+          onAdd={() => add(confirm.slug, confirm.preview)}
+          notes={<DevicesNote count={confirm.preview.devices} step="confirm" />}
         />
       ) : done ? (
         <DoneStep
@@ -335,7 +377,14 @@ export function ActivateDialog({
           name={doneName}
           headerUrl={done.product?.headerUrl}
           already={done.already}
+          devices={done.already ? undefined : done.devices}
+          cloudSync={done.cloudSync === true}
           appReturn={toCard ? undefined : returnTo}
+          momentKey={
+            accountId && !done.already
+              ? `first-activation:${accountId}`
+              : undefined
+          }
           onAnother={reset}
           onOpen={() => openProduct(done.slug)}
         />
@@ -526,13 +575,21 @@ function LinkNotice({
  * /api/products/<p>` `returnTo`, PX-10's rule), the way forward is the app that sent the person:
  * **Back to <product>**, with **See it in your library** beside it. An undeclared target is
  * dropped and Done stays as it is.
+ *
+ * An add carries `momentKey`: the plate's check is the success moment (EXPERIENCE §0.7, S-23 D5),
+ * which draws and bursts the first time the key is seen and is a still check after that (and
+ * under reduced motion). The plate sits over the art, outside its clipping box, so the sparks are
+ * never cut off. A key that was already yours changed nothing: the plate keeps its plain check.
  */
 function DoneStep({
   slug,
   name,
   headerUrl,
   already,
+  devices,
+  cloudSync,
   appReturn,
+  momentKey,
   onAnother,
   onOpen,
 }: {
@@ -540,8 +597,14 @@ function DoneStep({
   name: string;
   headerUrl?: string | null;
   already: boolean;
+  /** The devices that came with it (PX-23); none or absent says nothing. */
+  devices?: number;
+  /** Cloud Sync runs, so signing in on those devices turns it on. */
+  cloudSync: boolean;
   /** The link's `return=`, not yet validated; absent for the login card (gone to already). */
   appReturn?: string;
+  /** `first-activation:<account>` for an add; absent when nothing was added. */
+  momentKey?: string;
   onAnother: () => void;
   onOpen: () => void;
 }): React.ReactElement {
@@ -560,20 +623,26 @@ function DoneStep({
   return (
     <>
       <DialogBody className="space-y-4">
-        <ProductArt
-          slug={slug}
-          name={name}
-          tint={null}
-          src={headerUrl}
-          variant="banner"
-          className="h-36 rounded-lg"
-        >
+        <div className="relative">
+          <ProductArt
+            slug={slug}
+            name={name}
+            tint={null}
+            src={headerUrl}
+            variant="banner"
+            className="h-36 rounded-lg"
+          />
           <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full border border-success-border bg-surface-overlay px-2.5 py-1 text-xs font-bold text-success shadow-elevation-2">
-            <Check aria-hidden className="size-3.5" />
+            {momentKey ? (
+              <Celebration momentKey={momentKey} size={14} />
+            ) : (
+              <Check aria-hidden className="size-3.5" />
+            )}
             In your library
           </span>
-        </ProductArt>
+        </div>
         <p className="text-fg">{lede}</p>
+        <DevicesNote count={devices} step="done" cloudSync={cloudSync} />
       </DialogBody>
       {/* §8: side by side when both fit, primary last (right); otherwise stacked full
           width, primary last (bottom, nearest the thumb). */}
@@ -614,6 +683,51 @@ function DoneStep({
         )}
       </DialogFooter>
     </>
+  );
+}
+
+/**
+ * A floating key's devices (notes/S-24 §10, D22; PX-23): on Confirm, "It's on 2 devices already.
+ * They keep working and come with it."; on Done, "Its 2 devices came with it." and, when the
+ * product runs Cloud Sync, "Sign in on them to turn on Cloud Sync." (the devices keep their
+ * seats and tokens; only signing in on each one turns Cloud Sync on). Nothing for a licence on
+ * no device, or when the Worker did not say.
+ */
+function DevicesNote({
+  count,
+  step,
+  cloudSync = false,
+}: {
+  count?: number;
+  step: "confirm" | "done";
+  cloudSync?: boolean;
+}): React.ReactElement | null {
+  if (!count || count < 1) return null;
+  const one = count === 1;
+  const devices = one ? "1 device" : `${count} devices`;
+  const lead =
+    step === "confirm"
+      ? `It's on ${devices} already.`
+      : `Its ${devices} came with it.`;
+  const rest =
+    step === "confirm"
+      ? one
+        ? "It keeps working and comes with it."
+        : "They keep working and come with it."
+      : cloudSync
+        ? `Sign in on ${one ? "it" : "them"} to turn on Cloud Sync.`
+        : null;
+  return (
+    <p className="flex gap-3 rounded-lg border border-border bg-surface-sunken p-3 text-sm text-fg">
+      <MonitorSmartphone
+        aria-hidden
+        className="mt-0.5 size-4 shrink-0 text-accent-fg"
+      />
+      <span>
+        <strong className="font-bold text-fg-strong">{lead}</strong>
+        {rest ? ` ${rest}` : null}
+      </span>
+    </p>
   );
 }
 
@@ -676,6 +790,8 @@ export function ConfirmStep({
             tint={null}
             src={p.headerUrl}
             variant="banner"
+            // No cover: a bare tint field; the icon overlapping the art already shows the letter.
+            letter={false}
             className="h-36 rounded-lg"
           />
           <ProductIcon

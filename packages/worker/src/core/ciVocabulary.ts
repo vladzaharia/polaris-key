@@ -17,7 +17,9 @@ export const CI_TOKEN_PREFIX = "pkeyci_";
  * files CI signed, and buys an upload ticket for them (P2-02's uploads route accepts it beside
  * `release:publish`); it is opt-in too. `distribution:listing` (A-18d) buys an upload ticket for
  * the listing assets `pkey listing assets` derived and registers them into `dist_listing_assets`;
- * opt-in as well.
+ * opt-in as well. `assets:write` (HA-06) buys an upload ticket for the files `pkey assets push`
+ * and the publish Action's `assets` input send, and hosts them (`POST /<p>/assets`); opt-in too,
+ * and it never replaces a slot an operator uploaded or a manifest declares.
  */
 export const CI_SCOPES = [
   "release:publish",
@@ -27,6 +29,7 @@ export const CI_SCOPES = [
   "distribution:rollout",
   "distribution:feeds",
   "distribution:listing",
+  "assets:write",
 ] as const;
 export type CiScope = (typeof CI_SCOPES)[number];
 

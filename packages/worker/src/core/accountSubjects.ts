@@ -344,6 +344,16 @@ export interface SyncPrincipal {
  * device whose licence is floating ({@link isFloatingLicense}; S-24, owner 2026-10-06): a
  * floating licence has no account features, whatever binding the device carries.
  *
+ * And so does a device whose binding belongs to an account the licence was REMOVED from
+ * (S-24 D19, lead decision of 2026-10-06, PX-23): "Remove from my library" keeps the licence's
+ * email, so the licence is assigned and waiting rather than floating, but for the removing
+ * account's devices the effect is the same as floating. LX-26's auto-attach block
+ * (`license_auto_attach_blocks`, which `detachLicense` and a developer's move away write) marks
+ * the (licence, account) pair; while the licence is not in that account, a device bound to that
+ * account's subject has no principal. Re-adding the key (or a move back) lifts the block, and the
+ * principal returns with it. A block for the account that holds the licence again is inert here,
+ * as it is for the sweeps. Devices bound to any other account are unaffected.
+ *
  * The licence check runs for every device that names a licence. A device whose `license_id`
  * names a licence row that does not exist (deleted, or never written) resolves to `null` too: an
  * unknown licence is not evidence of an assigned one, so the answer fails closed. A device that
@@ -372,8 +382,9 @@ export async function resolveSyncPrincipal(
   if (!bound || !PAIRWISE_SUBJECT_PATTERN.test(bound)) return null;
   // S-24 (owner, 2026-10-06): a floating licence has no account features, Cloud Sync included,
   // even when a binding survives on the device (a detach keeps it; it is hidden, not cleared).
+  let licence: LicenseHolderFacts | null = null;
   if (device.license_id !== NO_LICENSE_ID) {
-    const licence = await db.first<LicenseHolderFacts>(
+    licence = await db.first<LicenseHolderFacts>(
       "SELECT account_id, email FROM licenses WHERE product = ? AND id = ?",
       device.product,
       device.license_id,
@@ -382,7 +393,50 @@ export async function resolveSyncPrincipal(
     if (!licence || isFloatingLicense(licence)) return null;
   }
   const subject = await resolveSubject(db, device.product, bound);
-  return subject ? { product: device.product, subject } : null;
+  if (!subject) return null;
+  // S-24 D19 (lead, 2026-10-06): removed from this subject's account's library, the licence is
+  // floating for that account's devices.
+  if (
+    licence &&
+    (await removedFromSubjectAccount(
+      db,
+      device.product,
+      device.license_id,
+      subject,
+      licence.account_id ?? null,
+    ))
+  )
+    return null;
+  return { product: device.product, subject };
+}
+
+/**
+ * Does LX-26's auto-attach block keep this licence out of the account behind `subject` (the
+ * canonical subject {@link resolveSubject} answered)? One read over Core's
+ * `license_auto_attach_blocks`; `core/licenseHolders.ts` owns its writes, and the read is written
+ * out here because that module imports this one. A block for the account that holds the licence
+ * again (`holder`) is inert and answers false.
+ */
+async function removedFromSubjectAccount(
+  db: Db,
+  product: string,
+  licenseId: string,
+  subject: string,
+  holder: string | null,
+): Promise<boolean> {
+  const row = await db.first<{ one: number }>(
+    `SELECT 1 AS one
+       FROM license_auto_attach_blocks b
+       JOIN account_product_subjects s
+         ON s.account_id = b.account_id AND s.product = b.product
+      WHERE b.product = ? AND b.license_id = ? AND s.subject = ?
+        AND b.account_id IS NOT ?`,
+    product,
+    licenseId,
+    subject,
+    holder,
+  );
+  return row !== null;
 }
 
 // ── The device binding ────────────────────────────────────────────────────────────────────────

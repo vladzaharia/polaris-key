@@ -15,6 +15,9 @@
  *      deliverables every publish is checked against, and the trusted publisher
  *      (`publish-package.yml` in the `package-registry` environment) the SDK publishes exchange
  *      their OIDC tokens through.
+ *      ST-20: the system product is manifest-authoritative (locked), so this apply also ends any
+ *      break-glass claim whose 7 days ran out or whose field the manifest changed, and the answer
+ *      lists the live ones (`breakGlass`, key and expiry) for the deploy summary.
  *   3. The answer reports `uploads: {ready, missing}`: whether this Worker can issue the upload
  *      tickets every publish needs (the `BLOBS` binding and the parent R2 token, by name only).
  *      `scripts/register-platform.mjs` fails the deploy job on `ready: false`, so a missing R2
@@ -296,6 +299,20 @@ export async function handleDeployHook(
   if (!linked.ok)
     return refuse(409, ErrorCode.BadRequest, linked.reason, linked.message);
 
+  // ST-20 (S-18 §4.5 item 7): every deploy summary lists the system product's live break-glass
+  // claims. The answer goes to the deploy job's log, which may be readable beyond the operators,
+  // so it carries each claim's key and expiry only; the reason and the claimant stay in the
+  // console and this platform activity row.
+  const iso = (at: number) => new Date(at * 1000).toISOString();
+  const breakGlassNote =
+    linked.breakGlass.length > 0
+      ? `; live break-glass claims: ${linked.breakGlass.map((b) => `${b.key} until ${iso(b.expiresAt)} (${b.reason})`).join(", ")}`
+      : "";
+  const endedNote =
+    linked.breakGlassEnded.length > 0
+      ? `; ended break-glass claims: ${linked.breakGlassEnded.map((e) => `${e.key} (${e.why})`).join(", ")}`
+      : "";
+
   await appendPlatformAudit(db, {
     id: randomId("paud"),
     at: now,
@@ -313,7 +330,9 @@ export async function handleDeployHook(
         ? "; the operator-claimed trusted publisher was left as set)"
         : linked.publisher
           ? `; trusted publisher ${linked.publisher.workflow} in ${linked.publisher.environment})`
-          : "; no trusted publisher)"),
+          : "; no trusted publisher)") +
+      breakGlassNote +
+      endedNote,
     before_json: null,
     after_json: JSON.stringify({
       created: ensured.created,
@@ -322,6 +341,8 @@ export async function handleDeployHook(
       publisher: linked.publisher,
       publisherClaimed: linked.publisherClaimed,
       ref: claims.ref,
+      breakGlass: linked.breakGlass,
+      breakGlassEnded: linked.breakGlassEnded,
     }),
   });
 
@@ -334,6 +355,12 @@ export async function handleDeployHook(
     publisher: linked.publisher,
     publisherClaimed: linked.publisherClaimed,
     publisherChanged: linked.publisherChanged,
+    // ST-20: the live break-glass claims (key and expiry only) and the ones this deploy ended.
+    breakGlass: linked.breakGlass.map((b) => ({
+      key: b.key,
+      expiresAt: b.expiresAt,
+    })),
+    breakGlassEnded: linked.breakGlassEnded,
     // Whether this Worker can issue upload tickets at all: every SDK publish needs one. Names
     // only; register-platform.mjs fails the deploy on `ready: false`.
     uploads: (() => {

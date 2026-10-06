@@ -24,7 +24,8 @@ import {
  *
  * Each page (enumerated from `nav.ts`, plus every record, tab, drawer and dialog the fixtures
  * reach) is opened in the BUILT console, under the Worker's CSP, at 1440×900, 1280×800 (a laptop),
- * 768×1024 (a tablet) and 390×844, in the
+ * 768×1024 (a tablet) and 390×844, plus 360×780 (ADMIN.md's narrowest) for a few product pages
+ * whose top bar is the tightest (the product switcher beside the environment badge), in the
  * dark and the light theme, over realistic data (`layoutFixtures.ts`): a populated product, a
  * product with a long name and an empty product. `probeLayout` (`layoutProbe.ts`) then measures
  * the page inside the console's own scroll container (`main#content`), every open drawer's scroller
@@ -166,8 +167,13 @@ function cases(): Case[] {
 
 const CASES = cases();
 /** `PK_LAYOUT_VIEWPORTS=1280x720,1920x1080` swaps the gate viewports for others locally. */
-const VIEWPORTS: { label: string; width: number; height: number }[] = process
-  .env.PK_LAYOUT_VIEWPORTS
+const VIEWPORTS: {
+  label: string;
+  width: number;
+  height: number;
+  /** Only these cases (by name) at this viewport. */
+  only?: readonly string[];
+}[] = process.env.PK_LAYOUT_VIEWPORTS
   ? process.env.PK_LAYOUT_VIEWPORTS.split(",").map((v) => {
       const [width, height] = v.split("x").map(Number) as [number, number];
       return { label: v, width, height };
@@ -179,6 +185,14 @@ const VIEWPORTS: { label: string; width: number; height: number }[] = process
       // A tablet or a narrow window: no sidebar, but too narrow for wide tables.
       { label: "tablet", width: 768, height: 1024 },
       { label: "phone", width: 390, height: 844 },
+      // ADMIN.md's narrowest width, for the pages with a product in the top bar: the switcher's
+      // chevron once spilled out of its border box here (ADMIN.md §2.2).
+      {
+        label: "small-phone",
+        width: 360,
+        height: 780,
+        only: ["djdl:overview", "djdl:health", "long:overview"],
+      },
     ];
 const THEMES = ["dark", "light"] as const;
 
@@ -381,6 +395,7 @@ for (const vp of VIEWPORTS) {
     if (ONLY && ONLY !== `${vp.label}/${theme}`) continue;
     describe(`layout · ${vp.label} ${vp.width}×${vp.height} · ${theme}`, () => {
       for (const c of CASES) {
+        if (vp.only && !vp.only.includes(c.name)) continue;
         if (ONLY_CASES && !ONLY_CASES.some((n) => c.name.includes(n))) continue;
         it(c.name, async () => {
           const { page, gaps, errors } = await open(c, theme, vp);

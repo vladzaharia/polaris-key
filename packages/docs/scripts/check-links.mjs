@@ -1,7 +1,9 @@
 // Internal link checker for the built site: every `/docs/...` href in the emitted HTML must
 // resolve — page links against the route set, asset links against real dist files, and
-// `#fragment` targets against actual element ids in the target page. Runs after `astro build`
-// via `pnpm check:links` (CI runs it on every PR); exits 1 with a per-page report on breakage.
+// `#fragment` targets against actual element ids in the target page. Every `/docs/...` src
+// (images, such as the UI-kit baselines the build/ui/ component pages embed, and scripts) must
+// be a real dist file too. Runs after `astro build` via `pnpm check:links` (CI runs it on every
+// PR); exits 1 with a per-page report on breakage.
 //
 // External links (http…) are deliberately not fetched — this origin is auth-gated and CI
 // should not depend on the outside world; the reviewer wave owns external-link hygiene.
@@ -66,13 +68,25 @@ for (const file of htmlFiles(dist)) {
       failures.push(`${page}: dead anchor ${href} (no id "${fragment}")`);
     }
   }
+  for (const match of html.matchAll(/\ssrc="(\/docs\/[^"#?]*)"/g)) {
+    checked += 1;
+    const src = match[1];
+    const target = distFileFor(src);
+    if (!existsSync(target)) {
+      failures.push(
+        `${page}: missing asset ${src} (no ${relative(dist, target)})`,
+      );
+    }
+  }
 }
 
 if (failures.length) {
   console.error(
-    `check-links: ${failures.length} broken of ${checked} internal links:`,
+    `check-links: ${failures.length} broken of ${checked} internal links and assets:`,
   );
   for (const failure of failures) console.error(`  ${failure}`);
   process.exit(1);
 }
-console.log(`check-links: ${checked} internal links OK across the built site`);
+console.log(
+  `check-links: ${checked} internal links and assets OK across the built site`,
+);

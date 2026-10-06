@@ -43,6 +43,7 @@ import {
   Gauge,
   Globe,
   Grid3x3,
+  Image,
   HeartPulse,
   House,
   KeyRound,
@@ -109,6 +110,7 @@ export type ProductPageId =
   | "services"
   | "devices"
   | "users"
+  | "presentation"
   | "keys"
   | "activity"
   | "settings"
@@ -116,6 +118,7 @@ export type ProductPageId =
   | "licenses"
   | "tiers"
   | "enrollment"
+  | "license-settings"
   // config
   | "catalog"
   | "catalog-edit"
@@ -185,6 +188,12 @@ export interface NavPage {
   page: PageId;
   /** Sidebar and palette label, sentence case. */
   label: string;
+  /**
+   * The palette's label when the sidebar's would be ambiguous there (the palette lists every
+   * section's pages in one list: License → Settings is "Licensing", Core's stays "Settings").
+   * Kept in the keywords, so typing the sidebar label still finds it.
+   */
+  paletteLabel?: string;
   /**
    * The path after the scope prefix: `#/p/<slug>/<path>` for a product page (`""` is the product
    * root), `#/<path>` for a global page (`""` is Home).
@@ -287,6 +296,16 @@ export const SECTIONS: NavSection[] = [
         },
       },
       {
+        // HA-06: the images Polaris Key hosts for the product (icon, listing art, store slots).
+        page: "presentation",
+        label: "Presentation",
+        path: "presentation",
+        icon: Image,
+        docs: "/docs/admin/presentation/",
+        inNav: true,
+        ready: true,
+      },
+      {
         page: "keys",
         label: "Keys & secrets",
         path: "keys",
@@ -356,6 +375,17 @@ export const SECTIONS: NavSection[] = [
         path: "license/enrollment",
         icon: Fingerprint,
         docs: "/docs/services/license/enrollment/",
+        inNav: true,
+        ready: true,
+      },
+      // LX-06: S-19's licensing settings (`licensing.*`, the settings area `license.licensing`).
+      {
+        page: "license-settings",
+        label: "Settings",
+        paletteLabel: "Licensing",
+        path: "license/settings",
+        icon: SlidersHorizontal,
+        docs: "/docs/services/license/model/",
         inNav: true,
         ready: true,
       },

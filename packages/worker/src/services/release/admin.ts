@@ -57,7 +57,11 @@ import {
   readBody,
 } from "../../core/adminApi.js";
 import { compareSemver, parseSemver } from "../../core/entitlements.js";
-import { upsertProductSyncState } from "../../core/ingest.js";
+import {
+  getProduct,
+  systemResyncRefusal,
+  upsertProductSyncState,
+} from "../../core/ingest.js";
 import {
   classifyChannel,
   floorChannelOf,
@@ -417,6 +421,14 @@ export async function handleReleaseAdmin(
   if (rest[0] !== "resync") return adminNotFound();
   if (req.method !== "POST")
     return err(405, ErrorCode.BadRequest, "method not allowed");
+  // ST-20 (S-18 §4.5 item 8): the system product's only writer is the deploy hook. Refused here,
+  // before the dry run or the apply, without a sync-state row (nothing failed to sync).
+  const row = await getProduct(db, slug);
+  const systemRefusal = row ? systemResyncRefusal(row) : null;
+  if (systemRefusal)
+    return err(409, ErrorCode.BadRequest, systemRefusal, {
+      reason: "system_product",
+    });
   // `?dryRun=1` (S-18 §4.5 item 4, UX-78): the plan the console's Resync confirm renders. It
   // reads the manifest as the resync would and writes nothing: no sync state, no audit row.
   if (new URL(req.url).searchParams.get("dryRun") === "1") {
@@ -429,6 +441,10 @@ export async function handleReleaseAdmin(
       repository: planned.repository,
       commit: planned.commit,
       plan: planned.plan,
+      // ST-20: the break-glass claims the resync would keep (ST-17's dry run shows them).
+      ...(planned.breakGlass.length > 0
+        ? { breakGlass: planned.breakGlass }
+        : {}),
     });
   }
   const result = await resyncRepo(env, db, slug, now, fetch, ctx.ingest);
@@ -481,6 +497,11 @@ export async function handleReleaseAdmin(
     ...(result.refused ? { refused: result.refused } : {}),
     // ST-01b: what it left alone because the console claimed it.
     ...(result.claimed ? { claimed: result.claimed } : {}),
+    // ST-20: the live break-glass claims, and the ones this resync ended.
+    ...(result.breakGlass ? { breakGlass: result.breakGlass } : {}),
+    ...(result.breakGlassEnded
+      ? { breakGlassEnded: result.breakGlassEnded }
+      : {}),
     ...(result.conflicts ? { conflicts: result.conflicts } : {}),
     ...(result.packSets ? { packSets: result.packSets } : {}),
   });

@@ -583,6 +583,8 @@ export type KitCopyKey =
   | "core.codes.step_up_required.message"
   | "core.codes.not_eligible.title"
   | "core.codes.not_eligible.message"
+  | "core.codes.not_removable.title"
+  | "core.codes.not_removable.message"
   | "core.codes.download_auth_required.title"
   | "core.codes.download_auth_required.message"
   | "core.codes.delivery_gate_missing.title"

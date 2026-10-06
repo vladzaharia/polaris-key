@@ -37,6 +37,16 @@
  * A refusal is a stable reason code (`IngestReason`), stored in `hosted_assets.error` and in the
  * audit row. A slot that already had a good copy KEEPS it: the row keeps its `sha256` and its
  * refs, and goes `failed` (or `stale`, when the source answered 404 or 410: the source is gone).
+ * An upload (HA-06, `recordRefusal: false`) answers its refusal to the operator or CI job instead
+ * and leaves the row alone: bytes that never became the copy say nothing about the copy.
+ *
+ * ── PRECEDENCE (HA-06; S-20 §6.3, owner decision 11) ────────────────────────────────────────
+ *
+ * A console upload claims its slot; otherwise the manifest's source fills it; otherwise a CI push.
+ * A lower way in names who it yields to (`yieldsTo`): a manifest pull yields to a console claim, a
+ * CI push to a claim and to a manifest declaration. A held slot is answered `claimed` before any
+ * byte is read, and the batch that writes the copy re-checks it atomically, so a console upload
+ * that lands while a pull or a push is in flight is never overwritten.
  *
  * ── VARIANTS (HA-03; notes/S-20 §6.6, owner decision 4) ──────────────────────────────────────
  *
@@ -66,7 +76,14 @@
  * as one buffer. Video and release-file slots are streamed into R2 without buffering, and so
  * need the hash and the length BEFORE the put (the key is named by the hash): a streamed ingest
  * without an expected SHA-256 and a known length is refused as `unverifiable`. Every release
- * file has one (GitHub's `digest` and the descriptor's `sha256`, S-20 §5).
+ * file has one (GitHub's `digest` and the descriptor's `sha256`, S-20 §5). A pull may name the
+ * length it expects (`expectedSize`): a source that declares another `Content-Length` is refused
+ * as `size-mismatch` before a byte is read, and one that declares none is held to it.
+ *
+ * A release file's pull (HA-08, `services/release/mirror.ts`) gets a longer time budget than an
+ * image's, scaled by its size (`releaseFileTimeoutMs`, at most `SAFE_FETCH_FILE_TIMEOUT_MS`): 30
+ * seconds cannot move a gigabyte. Its caller may also narrow the hosts a redirect may reach
+ * (`allowHost`, a GitHub asset's storage hosts), on top of the guard.
  */
 
 import type { Db, DbStatement } from "../db/types.js";
@@ -85,6 +102,8 @@ import {
   bodyFailureReason,
   cappedStream,
   safeFetch,
+  SAFE_FETCH_FILE_TIMEOUT_MS,
+  SAFE_FETCH_TIMEOUT_MS,
   type FetchImpl,
   type SafeFetchReason,
 } from "./safeFetch.js";
@@ -124,6 +143,23 @@ export const SLOT_CLASSES = {
 
 /** The largest slot whose bytes are read into memory; anything larger is streamed. */
 const BUFFER_MAX = 32 * MiB;
+
+/** The slowest transfer a release file's time budget allows for (10 MiB/s). */
+const RELEASE_FILE_MIN_BYTES_PER_SECOND = 10 * MiB;
+
+/**
+ * The time budget of a release file's pull (HA-08): the ordinary 30 s plus a second per 10 MiB of
+ * the file, at most `SAFE_FETCH_FILE_TIMEOUT_MS` (which an unknown size gets).
+ */
+export function releaseFileTimeoutMs(size: number | null): number {
+  if (size === null || !Number.isSafeInteger(size) || size < 0)
+    return SAFE_FETCH_FILE_TIMEOUT_MS;
+  return Math.min(
+    SAFE_FETCH_TIMEOUT_MS +
+      Math.ceil((size / RELEASE_FILE_MIN_BYTES_PER_SECOND) * 1000),
+    SAFE_FETCH_FILE_TIMEOUT_MS,
+  );
+}
 
 const PRODUCT_RE = /^[a-z0-9-]{1,64}$/;
 const LOCALE_RE = /^(?:[a-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,3})?$/;
@@ -189,6 +225,11 @@ export type IngestReason =
   | "retry"
   /** Over the product's hosting quota (HA-10 enforces it; reserved here). */
   | "quota"
+  /**
+   * A source the caller yields to holds the slot (`yieldsTo`: a console claim, a manifest
+   * declaration; S-20 §6.3's precedence). Answered to the caller only: the row is never touched.
+   */
+  | "claimed"
   /** No blob store is bound: nothing was attempted and no row was written. */
   | "unavailable";
 
@@ -196,7 +237,12 @@ export type IngestReason =
 export interface IngestActor {
   sub: string | null;
   name: string | null;
+  /** The console session's email, recorded as every console write records it. */
+  email?: string | null;
 }
+
+/** The sources a lower-precedence way in yields to (S-20 §6.3: console, then manifest, then CI). */
+export type HostedAssetClaim = "console" | "manifest";
 
 interface IngestCommon {
   origin: HostedAssetOrigin;
@@ -205,6 +251,20 @@ interface IngestCommon {
   /** The SHA-256 the bytes must have (the manifest's, GitHub's `digest`, the descriptor's). */
   expectedSha256?: string | null;
   actor?: IngestActor;
+  /**
+   * Who this ingest gives way to (HA-06; S-20 §6.3). `"console"`: a slot an operator uploaded
+   * (`origin = 'console'`); `"manifest"`: a slot a manifest declares (`wanted_ref` set). A slot
+   * held so is answered `claimed` and left exactly as it is, checked before the bytes are read and
+   * again, atomically, in the batch that would write the copy. A manifest pull yields to the
+   * console; a CI push to both; a console upload to nobody.
+   */
+  yieldsTo?: readonly HostedAssetClaim[];
+  /**
+   * Record a refusal on the slot's row (the default). An upload (`false`) answers its caller
+   * instead: bytes that never became the slot's copy must not mark the copy the slot already
+   * serves `failed`. The audit row is written either way.
+   */
+  recordRefusal?: boolean;
 }
 
 export type IngestInput =
@@ -219,6 +279,14 @@ export type IngestInput =
       headers?: Record<string, string>;
       /** Pull even when the source's validator says the stored copy is current. */
       force?: boolean;
+      /**
+       * The length the bytes must have, when the caller knows it (a release file's descriptor or
+       * GitHub size). A source declaring another `Content-Length` is refused unread
+       * (`size-mismatch`); one declaring none is held to this length.
+       */
+      expectedSize?: number | null;
+      /** A host rule on top of the guard, for every hop (`safeFetch`'s `allowHost`): only narrows. */
+      allowHost?: (host: string) => boolean;
     })
   | (IngestCommon & {
       kind: "stream";
@@ -278,6 +346,8 @@ export interface HostedAssetRow {
   error: string | null;
   checked_at: number | null;
   modified_at: number;
+  /** What the manifest declares for the slot now (HA-05), or `null`. */
+  wanted_ref: string | null;
 }
 
 /** One hosted asset's row, or `null`. */
@@ -289,7 +359,8 @@ export async function getHostedAsset(
 ): Promise<HostedAssetRow | null> {
   return db.first<HostedAssetRow>(
     `SELECT product, slot, locale, origin, source_kind, source_ref, source_etag, sha256, size,
-            content_type, width, height, variants_json, status, error, checked_at, modified_at
+            content_type, width, height, variants_json, status, error, checked_at, modified_at,
+            wanted_ref
        FROM hosted_assets WHERE product = ? AND slot = ? AND locale = ?`,
     product,
     slot,
@@ -994,6 +1065,31 @@ export async function rebuildLadder(
   return variants.length > 0 ? "built" : "none";
 }
 
+/** Is the slot held by a source in `yieldsTo` (S-20 §6.3's precedence)? */
+function heldBy(
+  row: Pick<HostedAssetRow, "origin" | "wanted_ref"> | null,
+  yieldsTo: readonly HostedAssetClaim[],
+): boolean {
+  if (!row) return false;
+  return (
+    (yieldsTo.includes("console") && row.origin === "console") ||
+    (yieldsTo.includes("manifest") && row.wanted_ref !== null)
+  );
+}
+
+/**
+ * SQL: the slot is NOT held by a source in `yieldsTo` (bind `product, slot, locale`), or `null`
+ * when the ingest yields to nobody. The same test as `heldBy`, inside the batch that writes.
+ */
+function yieldGuardSql(yieldsTo: readonly HostedAssetClaim[]): string | null {
+  const held: string[] = [];
+  if (yieldsTo.includes("console")) held.push("origin = 'console'");
+  if (yieldsTo.includes("manifest")) held.push("wanted_ref IS NOT NULL");
+  if (held.length === 0) return null;
+  return `NOT EXISTS (SELECT 1 FROM hosted_assets
+    WHERE product = ? AND slot = ? AND locale = ? AND (${held.join(" OR ")}))`;
+}
+
 function auditRow(
   product: string,
   slot: string,
@@ -1008,7 +1104,7 @@ function auditRow(
     at: now,
     actor_sub: actor.sub,
     actor_name: actor.name,
-    actor_email: null,
+    actor_email: actor.email ?? null,
     action: "assets.ingest",
     target_kind: "hosted-asset",
     target_id: hostedAssetRefId(slot, locale),
@@ -1038,6 +1134,13 @@ export async function ingest(
   const expected = input.expectedSha256?.toLowerCase() ?? null;
   if (expected !== null && !/^[0-9a-f]{64}$/.test(expected))
     throw new HostedAssetError("expectedSha256 must be 64 hex characters");
+  const expectedSize =
+    input.kind === "pull" ? (input.expectedSize ?? null) : null;
+  if (
+    expectedSize !== null &&
+    (!Number.isSafeInteger(expectedSize) || expectedSize < 0)
+  )
+    throw new HostedAssetError("expectedSize must be a non-negative integer");
   const bucket = ctx.env.BLOBS;
   if (!bucket) {
     if (input.kind === "stream")
@@ -1046,6 +1149,18 @@ export async function ingest(
   }
   const actor = input.actor ?? SYSTEM_ACTOR;
   const prev = await getHostedAsset(ctx.db, product, slot, locale);
+  const yieldsTo = input.yieldsTo ?? [];
+  // A source this ingest yields to holds the slot: nothing is read, written or audited (the
+  // caller reports it). The batch below checks the same again, atomically.
+  if (heldBy(prev, yieldsTo)) {
+    if (input.kind === "stream")
+      await input.body.cancel().catch(() => undefined);
+    return { ok: false, reason: "claimed" };
+  }
+  const refusal: FailOptions = {
+    record: input.recordRefusal !== false,
+    yieldsTo,
+  };
 
   const source = {
     origin: input.origin,
@@ -1072,6 +1187,10 @@ export async function ingest(
     const res = await safeFetch(input.url, {
       maxBytes: cls.maxBytes,
       etag: current,
+      ...(cls.name === "release-file"
+        ? { releaseFile: true, timeoutMs: releaseFileTimeoutMs(expectedSize) }
+        : {}),
+      ...(input.allowHost ? { allowHost: input.allowHost } : {}),
       headers: {
         "user-agent": PULL_USER_AGENT,
         ...(cls.accept === "image"
@@ -1082,7 +1201,17 @@ export async function ingest(
       fetchImpl: ctx.fetchImpl,
     });
     if (!res.ok)
-      return fail(ctx, product, slot, locale, prev, source, actor, res.reason);
+      return fail(
+        ctx,
+        product,
+        slot,
+        locale,
+        prev,
+        source,
+        actor,
+        res.reason,
+        refusal,
+      );
     if (res.status === 304) {
       await ctx.db.batch([
         {
@@ -1100,15 +1229,42 @@ export async function ingest(
       ]);
       return { ok: true, status: "unchanged", sha256: prev?.sha256 ?? null };
     }
+    if (
+      expectedSize !== null &&
+      res.length !== null &&
+      res.length !== expectedSize
+    ) {
+      await res.body.cancel().catch(() => undefined);
+      return fail(
+        ctx,
+        product,
+        slot,
+        locale,
+        prev,
+        source,
+        actor,
+        "size-mismatch",
+      );
+    }
     body = res.body;
-    declared = res.length;
+    declared = res.length ?? expectedSize;
     source.etag = res.etag;
   } else {
     if (!Number.isSafeInteger(input.size) || input.size < 0)
       throw new HostedAssetError("size must be a non-negative integer");
     if (input.size > cls.maxBytes) {
       await input.body.cancel().catch(() => undefined);
-      return fail(ctx, product, slot, locale, prev, source, actor, "too-large");
+      return fail(
+        ctx,
+        product,
+        slot,
+        locale,
+        prev,
+        source,
+        actor,
+        "too-large",
+        refusal,
+      );
     }
     body = cappedStream(input.body, cls.maxBytes);
     declared = input.size;
@@ -1120,7 +1276,17 @@ export async function ingest(
       ? await storeBuffered(ctx, bucket, cls, body, declared, expected)
       : await storeStreamed(ctx, bucket, cls, body, declared, expected);
   if (typeof stored === "string")
-    return fail(ctx, product, slot, locale, prev, source, actor, stored);
+    return fail(
+      ctx,
+      product,
+      slot,
+      locale,
+      prev,
+      source,
+      actor,
+      stored,
+      refusal,
+    );
 
   // 6. Describe, and 7. vary. The product's rows that already hold these bytes (this slot's own
   // previous copy among them) lend their dimensions, and in the same family their ladder, with
@@ -1154,72 +1320,118 @@ export async function ingest(
   // none, or, when it owes its ladder while the binding is bound, this ingest as the ladder's
   // first failed attempt (HA-05 retries it one step later). The same bytes keep the row's.
   const owed = !!ctx.env.IMAGES && owesLadder(slot, stored.width, variants);
-  await ctx.db.batch([
-    {
-      sql: `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, source_ref,
-              source_etag, sha256, size, content_type, width, height, variants_json, status, error,
-              checked_at, modified_at, attempts, next_attempt_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ready', NULL, ?, ?, ?, ?)
-            ON CONFLICT(product, slot, locale) DO UPDATE SET
-              origin = excluded.origin, source_kind = excluded.source_kind,
-              source_ref = excluded.source_ref, source_etag = excluded.source_etag,
-              sha256 = excluded.sha256, size = excluded.size,
-              content_type = excluded.content_type, width = excluded.width,
-              height = excluded.height, variants_json = excluded.variants_json,
-              status = 'ready', error = NULL, checked_at = excluded.checked_at,
-              modified_at = excluded.modified_at,
-              attempts = CASE WHEN hosted_assets.sha256 IS excluded.sha256
-                THEN hosted_assets.attempts ELSE excluded.attempts END,
-              next_attempt_at = CASE WHEN hosted_assets.sha256 IS excluded.sha256
-                THEN hosted_assets.next_attempt_at ELSE excluded.next_attempt_at END`,
-      params: [
-        product,
-        slot,
-        locale,
-        source.origin,
-        source.kind,
-        source.ref,
-        source.etag,
-        stored.sha256,
-        stored.size,
-        stored.contentType,
-        stored.width,
-        stored.height,
-        JSON.stringify(variants),
-        ctx.now,
-        ctx.now,
-        owed ? 1 : 0,
-        owed ? ctx.now + PULL_BACKOFF_BASE_SECONDS : null,
-      ],
-    },
-    // The slot's refs are exactly the original and the variants in `variants_json`: a replaced
-    // copy's refs (its original and its variants) are dropped in this batch, and unchanged bytes
-    // keep theirs, as the row keeps its variants.
-    {
-      sql: `DELETE FROM blob_refs
-             WHERE product = ? AND ref_kind = ? AND ref_id = ?
-               AND storage_key NOT IN (${keys.map(() => "?").join(", ")})`,
-      params: [product, HOSTED_ASSET_REF, refId, ...keys],
-    },
-    ...keys.map((storageKey) =>
-      stmtRecordRef(
-        { product, storageKey, refKind: HOSTED_ASSET_REF, refId },
-        ctx.now,
+  // A yielding ingest (`yieldsTo`) writes nothing unless the slot is still not held: every
+  // statement carries the same guard, and the row's upsert runs last, so all of them read the
+  // state before the batch and all apply, or none does (a console upload raced this pull or push).
+  const guard = yieldGuardSql(yieldsTo);
+  const guardParams = guard ? [product, slot, locale] : [];
+  const where = guard ? ` WHERE ${guard}` : "";
+  const rowValues = [
+    product,
+    slot,
+    locale,
+    source.origin,
+    source.kind,
+    source.ref,
+    source.etag,
+    stored.sha256,
+    stored.size,
+    stored.contentType,
+    stored.width,
+    stored.height,
+    JSON.stringify(variants),
+    ctx.now,
+    ctx.now,
+    owed ? 1 : 0,
+    owed ? ctx.now + PULL_BACKOFF_BASE_SECONDS : null,
+  ];
+  const row: DbStatement = {
+    sql: `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, source_ref,
+            source_etag, sha256, size, content_type, width, height, variants_json, status, error,
+            checked_at, modified_at, attempts, next_attempt_at)
+          ${guard ? "SELECT" : "VALUES ("} ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ready', NULL, ?, ?, ?, ?${guard ? where : ")"}
+          ON CONFLICT(product, slot, locale) DO UPDATE SET
+            origin = excluded.origin, source_kind = excluded.source_kind,
+            source_ref = excluded.source_ref, source_etag = excluded.source_etag,
+            sha256 = excluded.sha256, size = excluded.size,
+            content_type = excluded.content_type, width = excluded.width,
+            height = excluded.height, variants_json = excluded.variants_json,
+            status = 'ready', error = NULL, checked_at = excluded.checked_at,
+            modified_at = excluded.modified_at,
+            attempts = CASE WHEN hosted_assets.sha256 IS excluded.sha256
+              THEN hosted_assets.attempts ELSE excluded.attempts END,
+            next_attempt_at = CASE WHEN hosted_assets.sha256 IS excluded.sha256
+              THEN hosted_assets.next_attempt_at ELSE excluded.next_attempt_at END`,
+    params: [...rowValues, ...guardParams],
+  };
+  const summary = `${slot}: hosted from ${source.kind} (${stored.contentType}, ${stored.size} bytes${
+    variants.length > 0 ? `; sizes ${variants.map((v) => v.w).join(", ")}` : ""
+  })`;
+  // The slot's refs are exactly the original and the variants in `variants_json`: a replaced
+  // copy's refs (its original and its variants) are dropped in this batch, and unchanged bytes
+  // keep theirs, as the row keeps its variants.
+  const dropReplaced: DbStatement = {
+    sql: `DELETE FROM blob_refs
+           WHERE product = ? AND ref_kind = ? AND ref_id = ?
+             AND storage_key NOT IN (${keys.map(() => "?").join(", ")})${guard ? ` AND ${guard}` : ""}`,
+    params: [product, HOSTED_ASSET_REF, refId, ...keys, ...guardParams],
+  };
+  if (!guard) {
+    await ctx.db.batch([
+      row,
+      dropReplaced,
+      ...keys.map((storageKey) =>
+        stmtRecordRef(
+          { product, storageKey, refKind: HOSTED_ASSET_REF, refId },
+          ctx.now,
+        ),
       ),
-    ),
-    auditRow(
-      product,
-      slot,
-      locale,
-      actor,
-      ctx.now,
-      `${slot}: hosted from ${source.kind} (${stored.contentType}, ${stored.size} bytes${
-        variants.length > 0
-          ? `; sizes ${variants.map((v) => v.w).join(", ")}`
-          : ""
-      })`,
-    ),
-  ]);
+      auditRow(product, slot, locale, actor, ctx.now, summary),
+    ]);
+  } else {
+    const statements: DbStatement[] = [
+      dropReplaced,
+      ...keys.map((storageKey) => ({
+        sql: `INSERT INTO blob_refs (product, storage_key, ref_kind, ref_id, created_at)
+              SELECT ?, ?, ?, ?, ?${where}
+              ON CONFLICT(product, storage_key, ref_kind, ref_id) DO UPDATE SET
+                created_at = MAX(blob_refs.created_at, excluded.created_at)`,
+        params: [
+          product,
+          storageKey,
+          HOSTED_ASSET_REF,
+          refId,
+          ctx.now,
+          ...guardParams,
+        ],
+      })),
+      {
+        sql: `INSERT INTO audit (product, id, at, actor_sub, actor_name, actor_email, action,
+                target_kind, target_id, parent_id, summary)
+              SELECT ?, ?, ?, ?, ?, ?, 'assets.ingest', 'hosted-asset', ?, NULL, ?${where}`,
+        params: [
+          product,
+          randomId("aud"),
+          ctx.now,
+          actor.sub,
+          actor.name,
+          actor.email ?? null,
+          refId,
+          summary,
+          ...guardParams,
+        ],
+      },
+      row,
+    ];
+    if (ctx.db.batchChanges) {
+      const changes = await ctx.db.batchChanges(statements);
+      if (changes.at(-1) === 0) return { ok: false, reason: "claimed" };
+    } else {
+      await ctx.db.batch(statements);
+      const after = await getHostedAsset(ctx.db, product, slot, locale);
+      if (heldBy(after, yieldsTo)) return { ok: false, reason: "claimed" };
+    }
+  }
   return {
     ok: true,
     status: "ready",
@@ -1229,6 +1441,12 @@ export async function ingest(
     width: stored.width,
     height: stored.height,
   };
+}
+
+/** How `fail` records a refusal: on the row (unless an upload answers it), never over a claim. */
+interface FailOptions {
+  record: boolean;
+  yieldsTo: readonly HostedAssetClaim[];
 }
 
 /**
@@ -1250,6 +1468,7 @@ async function fail(
   },
   actor: IngestActor,
   reason: IngestReason,
+  opts: FailOptions = { record: true, yieldsTo: [] },
 ): Promise<IngestResult> {
   const gone = reason === "status:404" || reason === "status:410";
   const audit = auditRow(
@@ -1260,11 +1479,19 @@ async function fail(
     ctx.now,
     `${slot}: refused (${reason})`,
   );
+  // An upload's refusal is answered to its caller: the slot's row (and the copy it serves) is
+  // left as it was. A yielding ingest never marks a slot held by a source it yields to.
+  if (!opts.record) {
+    await ctx.db.batch([audit]);
+    return { ok: false, reason };
+  }
+  const guard = yieldGuardSql(opts.yieldsTo);
+  const guardParams = guard ? [product, slot, locale] : [];
   if (prev?.sha256) {
     await ctx.db.batch([
       {
         sql: `UPDATE hosted_assets SET status = ?, error = ?, checked_at = ?, modified_at = ?
-               WHERE product = ? AND slot = ? AND locale = ?`,
+               WHERE product = ? AND slot = ? AND locale = ?${guard ? ` AND ${guard}` : ""}`,
         params: [
           gone ? "stale" : "failed",
           reason,
@@ -1273,6 +1500,7 @@ async function fail(
           product,
           slot,
           locale,
+          ...guardParams,
         ],
       },
       audit,
@@ -1283,7 +1511,7 @@ async function fail(
         sql: `INSERT INTO hosted_assets (product, slot, locale, origin, source_kind, source_ref,
                 source_etag, sha256, size, content_type, width, height, variants_json, status,
                 error, checked_at, modified_at)
-              VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'failed', ?, ?, ?)
+              ${guard ? "SELECT" : "VALUES ("} ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'failed', ?, ?, ?${guard ? ` WHERE ${guard}` : ")"}
               ON CONFLICT(product, slot, locale) DO UPDATE SET
                 origin = excluded.origin, source_kind = excluded.source_kind,
                 source_ref = excluded.source_ref, status = 'failed', error = excluded.error,
@@ -1298,6 +1526,7 @@ async function fail(
           reason,
           ctx.now,
           ctx.now,
+          ...guardParams,
         ],
       },
       audit,

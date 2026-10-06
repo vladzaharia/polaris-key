@@ -21,6 +21,7 @@ import {
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
 import { getDevice, insertLicense, setServices } from "../src/repo.js";
+import { MERGE_UNDO_SECONDS } from "../src/services/identity/accounts/mergeUndo.js";
 import { serializeServices } from "../src/core/services.js";
 import { loadProduct } from "../src/core/products.js";
 import {
@@ -476,6 +477,9 @@ describe("merge with proof of both", () => {
         { product: "acme", subject: subjA, alias: subjB },
         { product: "other", subject: subjOther, alias: null },
       ],
+      // PX-W12: the join's undo handle and window.
+      mergeId: expect.stringMatching(/^amrg_/),
+      undoUntil: NOW + MERGE_UNDO_SECONDS,
     });
     // The survivor's subject wins; the absorbed one is an alias of it.
     expect(await resolveSubject(w.db, "acme", subjB)).toBe(subjA);

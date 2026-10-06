@@ -10,15 +10,59 @@
  * (`invalid_identity_key_entry_limit`) must use the same numbers.
  */
 
+import {
+  OIDC_SYNC_TIER_ON_SIGN_IN_VALUES,
+  type OidcSyncTierOnSignIn,
+} from "@polaris-key/manifest";
+import type { Db } from "../../core/platform.js";
+import {
+  readRowSettings,
+  type RowSettingProduct,
+} from "../../core/rowSettings.js";
 import { setting } from "../../core/settings/define.js";
 import {
   KEY_ENTRY_LIMIT_DEFAULT,
   KEY_ENTRY_LIMIT_MAX,
   KEY_ENTRY_LIMIT_MIN,
 } from "../../core/settings/platform.js";
-import type { ServiceSettingsSlice } from "../../core/settings/types.js";
+import type {
+  ServiceSettingsSlice,
+  SettingDef,
+} from "../../core/settings/types.js";
 
 const VISIBLE = { service: "identity", offBehaviour: "hide" } as const;
+
+/**
+ * S-19 §7.5 (LX-06, plans/LX-01.md §3.2): kept beside the other S-19 settings (License's
+ * `licensing.*`) in the same row store, but in Identity's namespace under `identity.oidc`,
+ * because its manifest home is the `oidc:` block. Row-backed: there is no `oidc_config` column.
+ * It names `oidc`, so the registry's rule 2 makes it security-widening: `upgradeOnly` lets an
+ * identity provider's groups raise a licence's tier.
+ */
+const SYNC_TIER_ON_SIGN_IN: SettingDef = setting({
+  key: "identity.oidc.syncTierOnSignIn",
+  scope: "product",
+  service: "identity",
+  area: "identity.signIn",
+  label: "Sync tier on sign-in",
+  description:
+    "Whether a sign-in may move a licence to the tier the identity provider's groups map to. Upgrade-only never lowers a tier.",
+  keywords: ["groupRoleMap", "tier", "upgrade"],
+  docs: "/docs/services/identity/oidc/",
+  value: { kind: "enum", values: OIDC_SYNC_TIER_ON_SIGN_IN_VALUES },
+  defaultValue: "off",
+  merge: "cascade",
+  ownership: "claimable",
+  manifest: { path: "product:oidc.syncTierOnSignIn" },
+  securityWidening: true,
+  widensWhen: "higher",
+  critical: true,
+  confirm: { change: "L1" },
+  visibleWhen: VISIBLE,
+  readers: ["services/identity/settings.ts", "core/rowSettings.ts"],
+  storage: { kind: "scalar" },
+  since: "LX-06",
+});
 
 /** `browserSession.ts`'s 30-day browser session: a product may only shorten it (rule 3). */
 const BROWSER_SESSION_DAYS = 30;
@@ -79,6 +123,36 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       readers: ["services/identity/oidc.ts", "core/identityTrust.ts"],
       storage: { kind: "rich", adapter: "oidc_config" },
     }),
+    // ST-19b: `.pkey/product`'s `provisioning` hooks. Link and every resync replace the rows whole
+    // (`resync.ts`), and no admin route writes them, so the manifest owns them. A hook writes an
+    // entitlement and a templated secret into a signed-in licence's payload from a verified claim
+    // (`applyProvisioningHooks`), so changing one can widen what a sign-in grants:
+    // security-widening, like the OIDC block it extends. The entitlement reaches the document.
+    setting({
+      key: "identity.provisioning",
+      scope: "product",
+      service: "identity",
+      area: "identity.signIn",
+      label: "Provisioning hooks",
+      description:
+        "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's licence: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in grants.",
+      keywords: ["claims", "entitlements", "provisioning_config"],
+      docs: "/docs/services/identity/oidc/",
+      value: { kind: "json", schema: "provisioning (product.schema.json)" },
+      defaultValue: [],
+      merge: "cascade",
+      ownership: "manifest",
+      manifest: { path: "product:provisioning" },
+      securityWidening: true,
+      widensWhen: "any",
+      critical: true,
+      confirm: { change: "L2" },
+      visibleWhen: VISIBLE,
+      wire: ["document"],
+      readers: ["services/identity/oidc.ts"],
+      storage: { kind: "rich", adapter: "provisioning_config" },
+      since: "ST-19b",
+    }),
     setting({
       key: "identity.browserSessionDays",
       scope: "product",
@@ -128,27 +202,23 @@ export const IDENTITY_SETTINGS_SLICE: ServiceSettingsSlice = {
       storage: { kind: "scalar" },
       pending: { wp: "ST-04" },
     }),
-    // S-19 §7.5: kept beside the other S-19 settings' owner (LX-06) but in Identity's namespace,
-    // because its manifest home is the `oidc:` block.
-    setting({
-      key: "identity.syncTierOnSignIn",
-      scope: "product",
-      service: "identity",
-      area: "identity.signIn",
-      label: "Sync tier on sign-in",
-      description:
-        "Whether a sign-in may move a licence to the tier the identity provider reports. Upgrade-only never lowers a tier.",
-      docs: "/docs/services/identity/oidc/",
-      value: { kind: "enum", values: ["off", "upgradeOnly"] },
-      defaultValue: "off",
-      merge: "cascade",
-      ownership: "claimable",
-      manifest: { path: "product:oidc.syncTierOnSignIn" },
-      critical: true,
-      confirm: { change: "L1" },
-      visibleWhen: VISIBLE,
-      storage: { kind: "scalar" },
-      pending: { wp: "LX-06" },
-    }),
+    SYNC_TIER_ON_SIGN_IN,
   ],
 };
+
+/**
+ * Identity's row-backed claimable settings (`core/rowSettings.ts`): what its descriptor's
+ * `manifestIngestAlways` applies from `.pkey/product` on every link and resync.
+ */
+export const IDENTITY_ROW_SETTINGS: readonly SettingDef[] = [
+  SYNC_TIER_ON_SIGN_IN,
+];
+
+/** The product's `identity.oidc.syncTierOnSignIn` in force (until ST-04's resolver). */
+export async function readSyncTierOnSignIn(
+  db: Db,
+  product: RowSettingProduct,
+): Promise<OidcSyncTierOnSignIn> {
+  const [view] = await readRowSettings(db, product, IDENTITY_ROW_SETTINGS);
+  return view!.value as OidcSyncTierOnSignIn;
+}

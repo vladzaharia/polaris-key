@@ -27,6 +27,19 @@
  * email, whether the provider verified it, and the provider's name and picture. It signs a known
  * account with a confirmed email in at once (an account session from `startAccountSession`) and
  * otherwise opens the email gate (email confirmation, join offer, first-consent name).
+ *
+ * **Connect (PX-W12).** Account → Sign-in methods → Connect starts the same flow from a signed-in
+ * session (`POST /api/me/methods/<provider>/start`, `startProviderConnect`): the record also
+ * carries `purpose: "connect"`, the account, the session row and its sign-in time. The provider
+ * returns to the SAME registered callback, which then never signs anyone in: it checks the session
+ * row is still live, narrows the provider's email claim exactly as a sign-in does
+ * (`providerVouchesForEmail`, and never verified when another account already uses the address),
+ * and hands the identity to I-05's `linkIdentity`, which applies the step-up (the session's
+ * sign-in no older than 5 minutes), refuses a method another account holds (`link_conflict`),
+ * audits, fires LX-26's verified-email hook and emails every verified address. The browser lands
+ * on `#/account/methods` with `connected=<provider>` or `error=<code>`. The record holds the
+ * account because Apple's form_post carries no Lax session cookie; the binding cookie still ties
+ * the callback to the browser that started it.
  */
 
 import { hashKey, type Db, type Env } from "../../../core/platform.js";
@@ -39,6 +52,10 @@ import {
   type ArtefactRef,
 } from "../../../core/singleUse.js";
 import { beginProviderSignIn } from "../card/gate.js";
+import { importProfile } from "../card/profile.js";
+import { linkIdentity } from "../accounts/links.js";
+import { accountUsingEmail } from "../accounts/repo.js";
+import { providerVouchesForEmail } from "./vouch.js";
 import { htmlError, safeReturnTo, signInPage } from "../portal/auth.js";
 import { portalSecurityHeaders } from "../portal/headers.js";
 import { portalAuthCapabilities } from "../portal/repo.js";
@@ -93,7 +110,16 @@ export interface SignInFlowRecord {
   returnTo?: string;
   /** Peppered hash of the browser-binding cookie's value. */
   bindingHash: string;
+  /** PX-W12: a Connect from Account → Sign-in methods, not a sign-in. */
+  purpose?: "connect";
+  /** Connect only: the signed-in account, its session row, and when that session signed in. */
+  accountId?: string;
+  sessionIdHash?: string;
+  authenticatedAt?: number;
 }
+
+/** Where a Connect lands: the account page's sign-in methods (PX-W12). */
+export const CONNECT_LANDING = "/#/account/methods";
 
 /** Single-use store address of a provider flow, by its `state`. Exported for tests. */
 export async function signInFlowKey(
@@ -189,6 +215,98 @@ function json(body: unknown, status: number): Response {
   });
 }
 
+/**
+ * The provider URL and the flow record for one start, before the binding is set. `null` when
+ * the provider cannot be reached or does not offer what the flow needs.
+ */
+async function buildProviderFlow(
+  env: Env,
+  kind: SignInProviderKind,
+  origin: string,
+  returnTo: string | undefined,
+  opts: ProviderRouteOptions,
+): Promise<{
+  state: string;
+  location: string;
+  record: SignInFlowRecord;
+} | null> {
+  const client = await resolveSignInClient(env, kind);
+  if (!client) return null;
+  const state = randomToken(24);
+  const nonce = randomToken(24);
+  try {
+    if (client.kind === "steam") {
+      // Steam carries no state parameter of its own: ours rides in the signed return URL.
+      const redirectUri = `${origin}/login/steam/callback?state=${state}`;
+      return {
+        state,
+        location: steamAuthorizeUrl({ returnTo: redirectUri, realm: origin }),
+        record: {
+          provider: kind,
+          nonce,
+          redirectUri,
+          returnTo,
+          bindingHash: "",
+        },
+      };
+    }
+    const redirectUri = `${origin}/login/${kind}/callback`;
+    const discovered = await discoverProvider(client.kind, {
+      fetch: opts.fetch,
+    });
+    if (client.kind === "google") {
+      const verifier = randomToken(32);
+      return {
+        state,
+        location: googleAuthorizeUrl(client, discovered, {
+          redirectUri,
+          state,
+          nonce,
+          codeChallenge: await s256(verifier),
+        }),
+        record: {
+          provider: kind,
+          nonce,
+          verifier,
+          redirectUri,
+          returnTo,
+          bindingHash: "",
+        },
+      };
+    }
+    if (!discovered.responseModes.includes("form_post")) {
+      throw new ProviderVerifyError("apple does not offer form_post");
+    }
+    return {
+      state,
+      location: appleAuthorizeUrl(client, discovered, {
+        redirectUri,
+        state,
+        nonce,
+      }),
+      record: { provider: kind, nonce, redirectUri, returnTo, bindingHash: "" },
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Bind a built flow to this browser and store it: the binding cookie to set. */
+async function storeProviderFlow(
+  env: Env,
+  built: { state: string; record: SignInFlowRecord },
+): Promise<string> {
+  const binding = randomToken(32);
+  built.record.bindingHash = await hashKey(binding, env.KEY_HASH_PEPPER);
+  await putArtefact(
+    env,
+    await signInFlowKey(env, built.state),
+    JSON.stringify(built.record),
+    FLOW_TTL_SECONDS,
+  );
+  return bindCookie(binding);
+}
+
 /** `GET /login/<provider>`. */
 export async function handleProviderStart(
   req: Request,
@@ -221,76 +339,65 @@ export async function handleProviderStart(
   const returnTo = safeReturnTo(req, rawReturnTo);
   if (rawReturnTo && !returnTo) return htmlError(400, "Invalid return URL.");
 
-  const state = randomToken(24);
-  const nonce = randomToken(24);
-  const binding = randomToken(32);
-  let location: string;
-  let record: SignInFlowRecord;
-  try {
-    if (client.kind === "steam") {
-      // Steam carries no state parameter of its own: ours rides in the signed return URL.
-      const redirectUri = `${url.origin}/login/steam/callback?state=${state}`;
-      record = {
-        provider: kind,
-        nonce,
-        redirectUri,
-        returnTo,
-        bindingHash: "",
-      };
-      location = steamAuthorizeUrl({
-        returnTo: redirectUri,
-        realm: url.origin,
-      });
-    } else {
-      const redirectUri = `${url.origin}/login/${kind}/callback`;
-      const discovered = await discoverProvider(client.kind, {
-        fetch: opts.fetch,
-      });
-      if (client.kind === "google") {
-        const verifier = randomToken(32);
-        record = {
-          provider: kind,
-          nonce,
-          verifier,
-          redirectUri,
-          returnTo,
-          bindingHash: "",
-        };
-        location = googleAuthorizeUrl(client, discovered, {
-          redirectUri,
-          state,
-          nonce,
-          codeChallenge: await s256(verifier),
-        });
-      } else {
-        if (!discovered.responseModes.includes("form_post")) {
-          throw new ProviderVerifyError("apple does not offer form_post");
-        }
-        record = {
-          provider: kind,
-          nonce,
-          redirectUri,
-          returnTo,
-          bindingHash: "",
-        };
-        location = appleAuthorizeUrl(client, discovered, {
-          redirectUri,
-          state,
-          nonce,
-        });
-      }
-    }
-  } catch {
-    return signInPage.unavailable(label);
+  const built = await buildProviderFlow(env, kind, url.origin, returnTo, opts);
+  if (!built) return signInPage.unavailable(label);
+  const cookie = await storeProviderFlow(env, built);
+  return redirect(built.location, 302, [cookie]);
+}
+
+/** The signed-in caller of a Connect (`portal/methods.ts` resolved it). */
+export interface ConnectCaller {
+  accountId: string;
+  sessionIdHash: string;
+  /** When the session signed in (`portalSessionAuthenticatedAt`). */
+  authenticatedAt: number;
+}
+
+/**
+ * `POST /api/me/methods/<provider>/start` (PX-W12): a Connect from a signed-in session. Answers
+ * the provider URL for the browser to open (JSON, since the SPA calls it with `fetch`), and sets
+ * the binding cookie. The session's step-up is checked here by the caller and again, by
+ * `linkIdentity`, when the provider comes back.
+ */
+export async function startProviderConnect(
+  req: Request,
+  env: Env,
+  kind: SignInProviderKind,
+  caller: ConnectCaller,
+  opts: ProviderRouteOptions,
+): Promise<Response> {
+  const client = await resolveSignInClient(env, kind);
+  if (!client) {
+    return json(
+      {
+        error: "auth_method_disabled",
+        message: `${PROVIDER_LABEL[kind]} isn't available here.`,
+      },
+      404,
+    );
   }
-  record.bindingHash = await hashKey(binding, env.KEY_HASH_PEPPER);
-  await putArtefact(
-    env,
-    await signInFlowKey(env, state),
-    JSON.stringify(record),
-    FLOW_TTL_SECONDS,
+  const origin = new URL(req.url).origin;
+  const built = await buildProviderFlow(env, kind, origin, undefined, opts);
+  if (!built) {
+    return json(
+      {
+        error: "unavailable",
+        message: `We couldn't reach ${PROVIDER_LABEL[kind]}. Try again in a moment.`,
+      },
+      503,
+    );
+  }
+  built.record.purpose = "connect";
+  built.record.accountId = caller.accountId;
+  built.record.sessionIdHash = caller.sessionIdHash;
+  built.record.authenticatedAt = caller.authenticatedAt;
+  const cookie = await storeProviderFlow(env, built);
+  const res = json(
+    { redirect: built.location, expiresIn: FLOW_TTL_SECONDS },
+    200,
   );
-  return redirect(location, 302, [bindCookie(binding)]);
+  res.headers.append("set-cookie", cookie);
+  return res;
 }
 
 /** The callback's parameters, from the query (GET) or the capped form body (Apple's POST). */
@@ -395,6 +502,9 @@ export async function handleProviderCallback(
       opts.now,
     );
   }
+  if (flow.purpose === "connect") {
+    return completeProviderConnect(req, env, db, kind, flow, result, opts.now);
+  }
   // I-07's seam: a known account with a confirmed email signs in at once (one account session,
   // `startAccountSession`); a first sign-in opens the email gate. Either way no session is minted
   // here.
@@ -419,6 +529,99 @@ export async function handleProviderCallback(
   const status =
     kind === "apple" && handedOff.status === 302 ? 303 : handedOff.status;
   return new Response(handedOff.body, { status, headers });
+}
+
+/** Where a Connect ends: the methods section, with its outcome in the hash route's query. */
+function connectLanding(
+  kind: SignInProviderKind,
+  outcome: { ok: true } | { error: string },
+): Response {
+  const qs =
+    "ok" in outcome
+      ? `connected=${kind}`
+      : `error=${encodeURIComponent(outcome.error)}&method=${kind}`;
+  // 303 after Apple's POST, so the browser follows with a GET.
+  const headers = new Headers({
+    location: `${CONNECT_LANDING}?${qs}`,
+    "cache-control": "no-store",
+  });
+  headers.append("set-cookie", clearBindCookie());
+  return new Response(null, {
+    status: kind === "apple" ? 303 : 302,
+    headers: portalSecurityHeaders(headers),
+  });
+}
+
+/**
+ * The end of a Connect (PX-W12): link the verified identity to the account that started it,
+ * through I-05's link engine. Never signs anyone in and never opens the email gate.
+ */
+async function completeProviderConnect(
+  req: Request,
+  env: Env,
+  db: Db,
+  kind: SignInProviderKind,
+  flow: SignInFlowRecord,
+  result: ProviderSignInResult,
+  now: number,
+): Promise<Response> {
+  const accountId = flow.accountId;
+  if (!accountId || !flow.sessionIdHash || flow.authenticatedAt === undefined) {
+    return connectLanding(kind, { error: "signin_expired" });
+  }
+  // The session that started it must still be live: signing out cancels a Connect in flight.
+  const session = await db.first<{
+    account_id: string;
+    revoked_at: number | null;
+    expires_at: number;
+  }>(
+    "SELECT account_id, revoked_at, expires_at FROM account_sessions WHERE id_hash = ?",
+    flow.sessionIdHash,
+  );
+  if (
+    !session ||
+    session.account_id !== accountId ||
+    session.revoked_at !== null ||
+    session.expires_at <= now
+  ) {
+    return connectLanding(kind, { error: "signin_expired" });
+  }
+  // The provider's email claim, narrowed exactly as a sign-in narrows it, and never verified when
+  // another account already uses the address: no address is verified on two accounts.
+  const email = result.identity.email ?? null;
+  const vouched = providerVouchesForEmail(
+    result.identity,
+    result.hostedDomain ?? null,
+  );
+  const emailVerified =
+    vouched &&
+    email !== null &&
+    !(await accountUsingEmail(db, email, accountId));
+  const linked = await linkIdentity(
+    { db, env, now, origin: new URL(req.url).origin },
+    { accountId, authenticatedAt: flow.authenticatedAt },
+    { ...result.identity, emailVerified },
+  );
+  if (!linked.ok) return connectLanding(kind, { error: linked.error });
+  if (!linked.already) {
+    // The provider's name and picture become choices in the profile editor (PX-W16); a value the
+    // account never set follows the new method, an explicit one never moves.
+    await importProfile(
+      env,
+      db,
+      {
+        accountId,
+        linkId: linked.link.id,
+        profile: {
+          name: result.profile.firstConsentName ?? result.profile.displayName,
+          pictureUrl: result.profile.avatarUrl,
+        },
+        fill: "refresh",
+      },
+      now,
+    ).catch(() => undefined);
+  }
+  return connectLanding(kind, { ok: true });
 }
 
 async function completeProvider(

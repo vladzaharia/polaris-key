@@ -1,0 +1,24 @@
+---
+title: "CloudSyncStatus"
+description: "A small Cloud Sync status: the time of the last sync, syncing, a conflict or offline, opening the details."
+sidebar:
+  order: 24
+---
+
+import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+
+A small Cloud Sync status: the time of the last sync, syncing, a conflict or offline, opening the details. It is quiet when sync is healthy and speaks only for an issue.
+
+## States and copy
+
+<ComponentStates component="CloudSyncStatus" />
+
+## Baselines
+
+<KitBaselines component="CloudSyncStatus" />
+
+## In each kit
+
+No kit documents CloudSyncStatus here yet. Each kit adds its tab when it ships the component: the drop-in,
+the styled part with its slots and restyle hooks, and the headless model.

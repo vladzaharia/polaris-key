@@ -49,6 +49,14 @@ All of these are instant today (`DevicesCard.tsx:158-237`, `FreeDevicePage.tsx:2
 - PX-17 (activate confirm step) also edits `ActivateDialog.tsx`; whichever lands second rebases. The motion change is additive (a wrapper and a class).
 - The new state is in the DOM before any animation (D3); the live region announces "Studio PC removed. 1 of 3 devices in use."
 
+## Corrections from the code (recorded at implementation)
+
+- **The removal toast has no Undo today**, and there is nothing to undo it with: the portal API has no route that re-authorizes a device (only `DELETE …/devices/<id>`), and adding one is a new route (AGENTS.md rule 10) and a product decision. The toast stays as it was ("<device> was removed"); the prototype's Undo is not built.
+- **The row leaves when the refetched licence lands**, not when the DELETE answers: `useRemoveDevice` invalidates, and the card sees the new detail. So the list transition is driven by the data, as MO-09's DataTable does it: when the devices using a seat change for the same licence, the old view is held for the frame the `list` transition captures and the newest data lands inside it. A device activated elsewhere arrives the same way (entering rows use DataTable's `.pk-vt-table` timing).
+- **Focus after a removal** goes to the product's `h1` through MO-05's `focusPageHeading()`, which never scrolls (the prototype's `preventScroll`), so the person sees the list close up. The confirm's heading takes focus as soon as it shows; the opened region is then brought into view (`nearest`).
+- **Files beyond the list above** (each a small addition): `ui/motion/Expand.tsx` and `SuccessCheck` in `ui/motion/Celebration.tsx` (the expand pattern and the check without sparks, for SIGN-IN's Replace to reuse); `src/motion.css` (`.pk-vt-chrome` joins MO-09's overlay rule for list transitions); `PortalShell.tsx` and `product/SectionNav.tsx` (`pk-vt-chrome` on the top bar, the phone bar and the section nav); `pages/ProductPage.tsx` (`pk-vt-scope` on both card columns). Without these, on a scrolled product page the main region's picture was painted over the top bar during the removal and the cards under the Devices card jumped under it (seen in the frame strips).
+- **Done for a key that was already yours** keeps the plain check: nothing was added, so the first-activation moment is not spent on it.
+
 ## Files it touches
 
 `portal/components/product/DevicesCard.tsx`, `portal/components/SeatMeter.tsx`, `portal/components/ActivateDialog.tsx`, `portal/pages/FreeDevicePage.tsx`, tests, `e2e/motion.e2e.test.ts`. In flight: `wp/SP-08` (DevicesCard, FreeDevicePage).
@@ -62,11 +70,11 @@ All of these are instant today (`DevicesCard.tsx:158-237`, `FreeDevicePage.tsx:2
 
 ## Acceptance criteria
 
-- [ ] Removing a device runs a list transition, the meter and count reach the new value, and the text says the new count (unit + e2e).
-- [ ] The Activate success shows the celebration exactly once per account (a second activation shows the check only).
-- [ ] axe passes on every state; focus order matches today's.
-- [ ] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
-- [ ] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
+- [x] Removing a device runs a list transition, the meter and count reach the new value, and the text says the new count (unit + e2e).
+- [x] The Activate success shows the celebration exactly once per account (a second activation shows the check only).
+- [x] axe passes on every state; focus order matches today's.
+- [x] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
+- [x] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
 
 ## Verify
 

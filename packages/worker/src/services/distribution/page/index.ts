@@ -24,7 +24,9 @@
  *     `allow-top-navigation-to-custom-protocols` (the `altstore://`, `obtainium://`, … links);
  *     neither runs script or lifts the opaque origin;
  *   - `default-src 'none'` with the one stylesheet allowed by its hash: no request leaves the
- *     page, to any host;
+ *     page, to any host but one. Since HA-07 the header shows the product's hosted icon, so
+ *     while there is one the policy adds `img-src <image host>` (`pageCsp`): the image host
+ *     serves only public raster images, cookie-less, under its own sandbox policy;
  *   - `frame-ancestors 'none'`, `base-uri 'none'`, `form-action 'none'`.
  *
  * Every string is escaped and every link built by the Worker (`model.ts`, `render.ts`). The
@@ -62,6 +64,14 @@ import {
 } from "../feeds/cache.js";
 import { feedResponse } from "../feeds/index.js";
 import { detectPlatform } from "./detect.js";
+import { cspImageOrigin } from "../../../core/platform.js";
+import {
+  PRESENTATION_ICON_SLOTS,
+  firstHostedImage,
+  hostedImageOrigin,
+  hostedImageUrl,
+  hostedImages,
+} from "../../../core/hostedImages.js";
 import { buildDownloadModel, memoHooks, type DownloadModel } from "./model.js";
 import { PAGE_CSS, renderDownloadPage } from "./render.js";
 
@@ -85,18 +95,50 @@ async function sha256Base64(text: string): Promise<string> {
 
 let cssHash: Promise<string> | null = null;
 
-/** The page's Content-Security-Policy: script-free, sandboxed, the stylesheet by hash. */
-export async function pageCsp(): Promise<string> {
+/**
+ * The page's Content-Security-Policy: script-free, sandboxed, the stylesheet by hash. With
+ * `imgOrigin` (the image host, while hosted copies are served: HA-07) the product's icon may load
+ * from exactly it, `img-src <origin>`; nothing else is ever an image source. The dispatcher
+ * checks the result (`inertDocumentPolicy`) against the same origin.
+ */
+export async function pageCsp(
+  imgOrigin: string | null = null,
+): Promise<string> {
   cssHash ??= sha256Base64(PAGE_CSS);
+  const img = cspImageOrigin(imgOrigin);
   return [
     "default-src 'none'",
     `style-src 'sha256-${await cssHash}'`,
+    ...(img ? [`img-src ${img}`] : []),
     "base-uri 'none'",
     "form-action 'none'",
     "frame-ancestors 'none'",
     PAGE_SANDBOX,
   ].join("; ");
 }
+
+/**
+ * The product's icon for the page's header (HA-07): its hosted copy on the image host, chosen as
+ * the image host's `/icon` alias chooses it (`presentation.icon`, else `listing.icon`), at the
+ * width the page draws it (64 px at 2x). `null` without a copy, or while nothing is served from
+ * the image host; the page then has no icon, as before. Read per request, never cached with the
+ * model, so `download.json` (and the transcripts that record it) do not change.
+ */
+async function pageIcon(
+  env: Env,
+  db: Db,
+  product: string,
+): Promise<string | null> {
+  if (hostedImageOrigin(env) === null) return null;
+  const icon = firstHostedImage(
+    await hostedImages(env, db, product, PRESENTATION_ICON_SLOTS),
+    PRESENTATION_ICON_SLOTS,
+  );
+  return icon ? hostedImageUrl(env, product, icon, PAGE_ICON_WIDTH) : null;
+}
+
+/** The icon's drawn size in CSS px (`.icon` in `PAGE_CSS`) times two. */
+export const PAGE_ICON_WIDTH = 128;
 
 /**
  * The console host's origin, where the storefront feeds live (`CONSOLE_ORIGIN`, e.g.
@@ -236,12 +278,17 @@ async function handlePage(
   });
   if (text === null) return notFound();
   const model = JSON.parse(text) as DownloadModel;
-  const html = renderDownloadPage(model, detectPlatform(req.headers));
+  const iconUrl = await pageIcon(env, db, product.slug);
+  const html = renderDownloadPage(model, detectPlatform(req.headers), {
+    iconUrl,
+  });
   return new Response(req.method === "HEAD" ? null : html, {
     status: 200,
     headers: {
       "content-type": "text/html; charset=utf-8",
-      "content-security-policy": await pageCsp(),
+      "content-security-policy": await pageCsp(
+        iconUrl ? hostedImageOrigin(env) : null,
+      ),
       "cache-control": PAGE_CACHE,
       // The page differs by platform: a shared cache must key on what detection read.
       vary: "Sec-CH-UA-Platform, Sec-CH-UA-Mobile, User-Agent",

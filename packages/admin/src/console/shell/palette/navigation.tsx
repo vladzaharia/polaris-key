@@ -34,9 +34,9 @@ export function navigationSource(
         items.push({
           id: `nav:${slug}:${p.page}`,
           group: "Pages",
-          label: p.label,
+          label: p.paletteLabel ?? p.label,
           detail: `${section.label} · ${productName ?? slug}`,
-          keywords: `${section.label} ${slug}`,
+          keywords: `${section.label} ${slug}${p.paletteLabel ? ` ${p.label}` : ""}`,
           icon: <Icon aria-hidden className="size-4" />,
           shortcut: p.shortcut ? `g ${p.shortcut}` : undefined,
           href: productPage(slug, p.page as ProductPageId),

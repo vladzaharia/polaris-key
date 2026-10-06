@@ -419,6 +419,37 @@ describe("Catalog editor", () => {
     ).toBeTruthy();
   });
 
+  it("takes a manifest-authoritative product's publish only as a break-glass claim with a reason (ST-20)", async () => {
+    const backend = await openEditor({}, undefined, {
+      releaseSource: "github",
+      manifestAuthoritative: { value: true, locked: false },
+    });
+    await userEvent.type(await labelBox(), "!");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Review changes" }),
+    );
+    const drawer = await screen.findByRole("dialog");
+    expect(
+      within(drawer).getByText("Publishing is a break-glass claim"),
+    ).toBeTruthy();
+    const publish = within(drawer).getByRole("button", {
+      name: "Publish version 9",
+    });
+    expect(publish.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.type(
+      within(drawer).getByLabelText("Reason"),
+      " incident 42 ",
+    );
+    await userEvent.click(
+      within(drawer).getByRole("button", { name: "Publish version 9" }),
+    );
+    await waitFor(() => expect(backend.writes()).toHaveLength(1));
+    expect(backend.writes()[0]!.body).toMatchObject({
+      expectedVersion: 8,
+      breakGlass: { reason: "incident 42" },
+    });
+  });
+
   it("keeps a refused publish's error inline, with no toast (CAT-6)", async () => {
     await openEditor({
       [`PUT ${P}/config/catalog`]: apiError(422, {

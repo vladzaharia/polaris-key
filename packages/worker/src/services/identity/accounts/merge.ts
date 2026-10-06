@@ -16,7 +16,12 @@
  * Every registered store of account × product data re-keys first (`runSubjectMerge`): Config's
  * overrides and Cloud Sync's saves never collide silently (S-17 §5.5 owns the conflict UI).
  *
- * The same primitive completes the login card's join offer (I-07) when both sides are accounts.
+ * The same primitive completes the login card's join offer (I-07) when both sides are accounts,
+ * and the account page's Link an existing account (PX-W12, `portal/link.ts`).
+ *
+ * PX-W12: every join is undoable for 72 hours (`mergeUndo.ts`). The batch also writes an
+ * `account_merges` row with a snapshot of what moved, and no join involves an account that can
+ * still undo a join of its own (`merge_pending`), so each undo stays possible and exact.
  */
 
 import type { DbStatement } from "../../../core/platform.js";
@@ -28,6 +33,12 @@ import { sendNotice, securityNoticeRecipients } from "../portal/email.js";
 import { accountsMergedNotice } from "../portal/notices.js";
 import { stmtSubjectEvent } from "./events.js";
 import { isFresh, type AccountContext, type AccountProof } from "./links.js";
+import {
+  MERGE_UNDO_SECONDS,
+  captureMergeSnapshot,
+  hasUndoableMerge,
+  stmtRecordMerge,
+} from "./mergeUndo.js";
 import { getAccountRow } from "./repo.js";
 import { stmtsMoveTermsAcceptances } from "./terms.js";
 
@@ -39,6 +50,9 @@ export type MergeResult =
         subject: string;
         alias: string | null;
       }>;
+      /** The join's undo handle (`account_merges.id`), and until when it can be undone. */
+      mergeId: string;
+      undoUntil: number;
     }
   | {
       ok: false;
@@ -46,7 +60,10 @@ export type MergeResult =
         | "step_up_required"
         | "same_account"
         | "not_found"
-        | "account_disabled";
+        | "account_disabled"
+        /** Either account joined another less than 72 hours ago, and that join can still be
+         *  undone: wait until it no longer can. */
+        | "merge_pending";
     };
 
 export async function mergeAccounts(
@@ -69,6 +86,15 @@ export async function mergeAccounts(
   }
   const S = survivor.id;
   const A = absorbed.id;
+  // Either side could still undo a join of its own: absorbing A would lose that undo, and
+  // absorbing into S would hand this join's data and aliases to S's earlier absorbed account if
+  // S's join were undone.
+  if (
+    (await hasUndoableMerge(db, A, now)) ||
+    (await hasUndoableMerge(db, S, now))
+  ) {
+    return { ok: false, reason: "merge_pending" };
+  }
 
   // Everyone on either account hears about it; read before the absorbed rows move.
   const recipients = [
@@ -89,6 +115,20 @@ export async function mergeAccounts(
         S,
       )
     ).map((r) => [r.product, r.subject]),
+  );
+
+  // PX-W12: what is about to move, so the join can be undone for 72 hours. Read before any
+  // store re-keys, so the devices list is the absorbed account's own.
+  const mergeId = randomId("amrg");
+  const snapshot = await captureMergeSnapshot(
+    db,
+    S,
+    A,
+    absorbedSubjects.map((r) => ({
+      product: r.product,
+      subject: r.subject,
+      aliasOf: survivorSubjects.get(r.product) ?? null,
+    })),
   );
 
   // Re-key account × product data BEFORE the subject rows change, while both still resolve.
@@ -206,13 +246,30 @@ export async function mergeAccounts(
     },
     // LX-26 (S-24 D19): a licence the absorbed account removed stays out of the survivor too.
     ...stmtsMoveAccountAutoAttachBlocks(A, S),
+    // PS-04: the absorbed account's library entries join the survivor's; the survivor's own entry
+    // for a product (its earlier add) wins.
+    {
+      sql: `INSERT OR IGNORE INTO library_entries (account_id, product, via, added_at)
+            SELECT ?, product, via, added_at FROM library_entries WHERE account_id = ?`,
+      params: [S, A],
+    },
+    {
+      sql: "DELETE FROM library_entries WHERE account_id = ?",
+      params: [A],
+    },
     // Personal details fill in where the survivor has none. So does the WebAuthn user handle
     // (I-16): a survivor without one takes the absorbed account's, so the passkeys that moved
     // over and the next one added share one "Polaris Key" entry in an authenticator.
+    // A picture the survivor chose explicitly is never filled in: Initials (PX-W16) is a null
+    // `avatar_key` with an explicit `picture` in `details_source_json`, and it stays Initials.
     {
       sql: `UPDATE accounts SET
               display_name = COALESCE(display_name, (SELECT display_name FROM accounts WHERE id = ?)),
-              avatar_key = COALESCE(avatar_key, (SELECT avatar_key FROM accounts WHERE id = ?)),
+              avatar_key = CASE
+                WHEN (CASE WHEN json_valid(details_source_json)
+                        THEN json_extract(details_source_json, '$.picture.explicit') END) = 1
+                  THEN avatar_key
+                ELSE COALESCE(avatar_key, (SELECT avatar_key FROM accounts WHERE id = ?)) END,
               locale = COALESCE(locale, (SELECT locale FROM accounts WHERE id = ?)),
               primary_email_verified_at = CASE WHEN primary_email IS NULL
                 THEN (SELECT primary_email_verified_at FROM accounts WHERE id = ?)
@@ -255,13 +312,15 @@ export async function mergeAccounts(
         "Joined another Polaris Key account into this one",
       ],
     },
+    stmtRecordMerge(mergeId, S, A, snapshot, now),
   );
   await db.batch(stmts);
 
-  const message = accountsMergedNotice({ origin: ctx.origin });
+  const undoUntil = now + MERGE_UNDO_SECONDS;
+  const message = accountsMergedNotice({ origin: ctx.origin, undoUntil });
   for (const to of recipients) {
     // A notice that does not go out never undoes the merge (it already committed).
     await sendNotice(env, db, to, message, now).catch(() => false);
   }
-  return { ok: true, products };
+  return { ok: true, products, mergeId, undoUntil };
 }

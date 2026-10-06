@@ -777,7 +777,8 @@ export interface BlobRef {
   product: string;
   storageKey: string;
   /** What holds the reference: `artifact` (P2-04), `pack-object` (P4-02), `hosted-asset`
-   *  (HA-01, `core/hostedAssets.ts`), … */
+   *  (HA-01, `core/hostedAssets.ts`), `release-artifact` (HA-08: a mirrored release file's `r2`
+   *  location, `services/release/mirror.ts`), … */
   refKind: string;
   /** The holder's id within its kind. */
   refId: string;

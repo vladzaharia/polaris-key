@@ -3,8 +3,9 @@ import { cn } from "../../lib/cn.js";
 import { letterOf } from "../../lib/productArt.js";
 
 /**
- * Product art (PORTAL.md §5.2 `ProductArt`): the listing's header art through the same-origin
- * media proxy (G1, PX-W1) when there is one, else (or when it fails to load) the flat fallback: a
+ * Product art (PORTAL.md §5.2 `ProductArt`): the product's hosted header art on the image host
+ * (HA-07; the same-origin media proxy in HA-10's rollback, G1, PX-W1) when there is one, else (or
+ * when it fails to load) the flat fallback: a
  * tint field with the product's letter (or a bare tint field with `letter={false}`, where an icon
  * already stands in front of the art). No gradients. The tint is the developer's `tintColor`
  * when present, else a stable pick from a muted set by slug, so a product keeps its colour
@@ -52,7 +53,7 @@ export function ProductArt({
   slug: string;
   name: string;
   tint: string | null;
-  /** A same-origin `/media/…` URL, or null for the fallback. */
+  /** An image-host URL (or a same-origin `/media/…` one), or null for the fallback. */
   src?: string | null;
   variant: ArtVariant;
   className?: string;

@@ -183,6 +183,7 @@ class ErrorCode:
     LAST_LINK: Final = "last_link"
     STEP_UP_REQUIRED: Final = "step_up_required"
     NOT_ELIGIBLE: Final = "not_eligible"
+    NOT_REMOVABLE: Final = "not_removable"
     DOWNLOAD_AUTH_REQUIRED: Final = "download_auth_required"
     DELIVERY_GATE_MISSING: Final = "delivery_gate_missing"
     UPSTREAM_RATE_LIMITED: Final = "upstream_rate_limited"
@@ -339,6 +340,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "last_link",
     "step_up_required",
     "not_eligible",
+    "not_removable",
     "download_auth_required",
     "delivery_gate_missing",
     "upstream_rate_limited",
@@ -497,6 +499,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "last_link": "wire",
         "step_up_required": "wire",
         "not_eligible": "wire",
+        "not_removable": "wire",
         "download_auth_required": "wire",
         "delivery_gate_missing": "wire",
         "upstream_rate_limited": "wire",

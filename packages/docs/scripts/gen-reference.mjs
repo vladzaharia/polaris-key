@@ -77,8 +77,9 @@ function manifestValidationCodes() {
     ]);
   }
   // constrained/constrainedList/boundedText(errors, "<file>", value, <path>, "<code>", …, "<message>")
+  // The gaps stop at a `;` so a match cannot run past its own call into the next statement.
   const helperRe =
-    /(?:constrained|constrainedList|boundedText)\(\s*errors,\s*"(product|schema|release)",\s*[\s\S]*?,\s*(`[^`]*`|"[^"]*")\s*,\s*"([a-z_]+)",\s*[\s\S]*?(`[^`]*`|"(?:[^"\\]|\\.)*")\s*,?\s*\)/g;
+    /(?:constrained|constrainedList|boundedText)\(\s*errors,\s*"(product|schema|release)",\s*[^;]*?,\s*(`[^`]*`|"[^"]*")\s*,\s*"([a-z_]+)",\s*[^;]*?(`[^`]*`|"(?:[^"\\]|\\.)*")\s*,?\s*\)/g;
   for (const m of sources.flatMap((source) => [...source.matchAll(helperRe)])) {
     rows.push([
       `\`${m[3]}\``,
@@ -363,6 +364,7 @@ const TABLE_OWNERS = {
     "tiers",
     "license_profiles",
     "license_store_grants",
+    "license_batches",
   ],
   config: [
     "product_schema",
@@ -396,6 +398,7 @@ const TABLE_OWNERS = {
     "release_native_uploads",
     "release_package_prunes",
     "release_package_retention",
+    "release_mirrors",
   ],
   distribution: [
     "dist_outlets",
@@ -447,6 +450,13 @@ const TABLE_OWNERS = {
     "license_relinks",
     // PX-W16: account pictures, re-encoded and content-addressed (renditions in R2 `avatars/`).
     "account_avatars",
+    // PS-04: the storefront's library entries (open products, no licence) and its daily
+    // aggregates with their two-day keyed-hash impression dedupe.
+    "library_entries",
+    "storefront_daily",
+    "storefront_seen",
+    // PX-W12: account joins and their 72-hour undo.
+    "account_merges",
     "portal_accounts",
     "portal_account_emails",
     "portal_account_identities",
@@ -455,6 +465,25 @@ const TABLE_OWNERS = {
     "portal_audit",
   ],
 };
+
+/**
+ * The column names a `CREATE TABLE` body declares, in order. Table constraints (`PRIMARY KEY`,
+ * `UNIQUE`, `FOREIGN KEY`, `CHECK`, `CONSTRAINT`) and comments are skipped. Each keyword is
+ * matched as a whole word, so a column whose name only starts with one (`checked_at`,
+ * `unique_hash`) is still a column.
+ */
+export function createTableColumns(body) {
+  return body
+    .split("\n")
+    .map((line) => line.trim().replace(/,$/, ""))
+    .filter(
+      (line) =>
+        line &&
+        !line.startsWith("--") &&
+        !/^(PRIMARY\s+KEY|UNIQUE|FOREIGN\s+KEY|CHECK|CONSTRAINT)\b/i.test(line),
+    )
+    .map((line) => line.split(/\s+/)[0]);
+}
 
 function dataModel() {
   const migrationsDir = join(repo, "packages", "worker", "migrations");
@@ -474,17 +503,7 @@ function dataModel() {
     ];
     for (const m of statements) {
       if (m[1]) {
-        const cols = m[2]
-          .split("\n")
-          .map((line) => line.trim().replace(/,$/, ""))
-          .filter(
-            (line) =>
-              line &&
-              !line.startsWith("--") &&
-              !/^(PRIMARY KEY|UNIQUE|FOREIGN KEY|CHECK|CONSTRAINT)/i.test(line),
-          )
-          .map((line) => line.split(/\s+/)[0]);
-        columns.set(m[1], cols);
+        columns.set(m[1], createTableColumns(m[2]));
         if (!migrationOf.has(m[1])) migrationOf.set(m[1], file);
       } else if (m[3]) {
         if (columns.has(m[3]))

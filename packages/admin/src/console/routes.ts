@@ -427,6 +427,7 @@ export const r = {
     productPage(slug, "users", { query }),
   user: (slug: string, subject: string, tab?: string) =>
     productPage(slug, "users", { id: subject, tab }),
+  presentation: (slug: string) => productPage(slug, "presentation"),
   keys: (slug: string) => productPage(slug, "keys"),
   activity: (slug: string, query?: QueryInit) =>
     productPage(slug, "activity", { query }),
@@ -439,6 +440,7 @@ export const r = {
   tier: (slug: string, id: string, tab?: string) =>
     productPage(slug, "tiers", { id, tab }),
   enrollment: (slug: string) => productPage(slug, "enrollment"),
+  licenseSettings: (slug: string) => productPage(slug, "license-settings"),
   catalog: (slug: string) => productPage(slug, "catalog"),
   catalogEdit: (slug: string) => productPage(slug, "catalog-edit"),
   profiles: (slug: string) => productPage(slug, "profiles"),

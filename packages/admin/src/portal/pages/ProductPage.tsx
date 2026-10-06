@@ -17,6 +17,8 @@ import {
   useProduct,
 } from "../data.js";
 import { PackageAccessCard } from "../components/product/PackageAccessCard.js";
+import { RemoveLicenseDialog } from "../components/product/RemoveLicenseDialog.js";
+import { toast } from "../../ui/toast.js";
 import { consumeHeadingFocus } from "../focus.js";
 import { useLibrary } from "../library.js";
 import {
@@ -33,11 +35,13 @@ import {
   seatsFor,
   showsDeviceCount,
   storeFor,
+  tierName,
   withSeats,
 } from "../model/product.js";
 import {
   focusPageHeading,
   href,
+  navigate,
   scrollBehavior,
   setParams,
   useDocumentTitle,
@@ -137,6 +141,20 @@ function ProductBody({
     section && sections.includes(section) ? section : (sections[0] ?? null),
   );
   const headingRef = React.useRef<HTMLHeadingElement>(null);
+  // PX-23: the header menu's Remove from my library, for the licence the page shows.
+  const [removing, setRemoving] = React.useState(false);
+  const removed = (others: number): void => {
+    if (others > 0) {
+      toast.success(
+        `The ${tierName(selected)} license was removed from your library`,
+      );
+      setParams({ license: null });
+      focusPageHeading(() => headingRef.current);
+      return;
+    }
+    toast.success(`${product.name} was removed from your library`);
+    navigate(href.library());
+  };
 
   // After adding this product, focus its heading (§9.4): once the dialog has left (through its
   // exit) and handed focus back to its opener, and without scrolling away from a deep link.
@@ -235,12 +253,28 @@ function ProductBody({
         product={product}
         action={action}
         headingRef={headingRef}
+        // Only a licence its key can bring back (the Worker's `removable`, PX-23 review).
+        onRemove={
+          selected.removable === true ? () => setRemoving(true) : undefined
+        }
+      />
+      <RemoveLicenseDialog
+        open={removing}
+        onOpenChange={setRemoving}
+        product={product}
+        license={selected}
+        detail={detail.data}
+        cloudSync={view.data?.services.sync === true}
+        store={storeOf(selected.id)}
+        onRemoved={removed}
       />
       <SectionNav {...navProps} variant="pills" />
       <div className="flex gap-8">
         <SectionNav {...navProps} variant="toc" />
+        {/* pk-vt-scope on both columns: when the Devices card's list changes (MO-06), every card
+            moves to its new place with it instead of jumping under it (src/motion.css). */}
         <div className="flex min-w-0 flex-1 flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_21.25rem] desk:items-start wide:grid-cols-[minmax(0,1fr)_24rem]">
-          <div className="contents desk:flex desk:flex-col desk:gap-6">
+          <div className="pk-vt-scope contents desk:flex desk:flex-col desk:gap-6">
             {has("get") ? (
               <div className="order-1">
                 <GetItPanel product={product} device={here} />
@@ -267,7 +301,7 @@ function ProductBody({
               </div>
             ) : null}
           </div>
-          <div className="contents desk:flex desk:flex-col desk:gap-6">
+          <div className="pk-vt-scope contents desk:flex desk:flex-col desk:gap-6">
             <div className="order-2">
               <LicenseCard
                 product={product}

@@ -1,0 +1,90 @@
+---
+/**
+ * The launch locales and the state of each pack, read from the catalog sources at build time:
+ * the kit packs (packages/brand/kit-copy/<locale>.json), the core packs
+ * (conformance/parity/copy.<locale>.json) and the generated table's core fallback list.
+ */
+import { KIT_COPY_CORE_FALLBACK, KIT_COPY_LOCALES } from "../../lib/kitCopy";
+
+interface KitPack {
+  locale: string;
+  reviewed?: boolean;
+  messages: Record<string, unknown>;
+}
+interface CorePack {
+  locale: string;
+  reviewed?: boolean;
+}
+
+const kitPacks = Object.values(
+  import.meta.glob<KitPack>("../../../../brand/kit-copy/*.json", {
+    eager: true,
+    import: "default",
+  }),
+).filter((p) => typeof p.locale === "string" && p.messages !== undefined);
+const corePacks = Object.values(
+  import.meta.glob<CorePack>("../../../../../conformance/parity/copy.*.json", {
+    eager: true,
+    import: "default",
+  }),
+).filter((p) => typeof p.locale === "string");
+
+const names = new Intl.DisplayNames(["en"], { type: "language" });
+const english = kitPacks.find((p) => p.locale === "en");
+if (english === undefined) throw new Error("LocaleTable: no en.json kit pack");
+const total = Object.keys(english.messages).length;
+
+const rows = KIT_COPY_LOCALES.map((locale) => {
+  const kit = kitPacks.find((p) => p.locale === locale);
+  const core = corePacks.find((p) => p.locale === locale);
+  if (kit === undefined) {
+    throw new Error(`LocaleTable: no kit pack for launch locale ${locale}`);
+  }
+  return {
+    locale,
+    name: names.of(locale) ?? locale,
+    kit: Object.keys(kit.messages).length,
+    core:
+      locale === "en"
+        ? "Source"
+        : KIT_COPY_CORE_FALLBACK.includes(locale) || core === undefined
+          ? "English until its core pack lands"
+          : "Translated",
+    reviewed:
+      locale === "en"
+        ? "Source"
+        : kit.reviewed === true && core?.reviewed === true
+          ? "Reviewed"
+          : "Not yet",
+  };
+});
+---
+
+<table class="pk-ui-locales">
+  <thead>
+    <tr>
+      <th scope="col">Locale</th>
+      <th scope="col">Language</th>
+      <th scope="col">Kit strings</th>
+      <th scope="col">Core strings</th>
+      <th scope="col">Native-speaker review</th>
+    </tr>
+  </thead>
+  <tbody>
+    {
+      rows.map((row) => (
+        <tr>
+          <td>
+            <code>{row.locale}</code>
+          </td>
+          <td>{row.name}</td>
+          <td>
+            {row.kit} of {total}
+          </td>
+          <td>{row.core}</td>
+          <td>{row.reviewed}</td>
+        </tr>
+      ))
+    }
+  </tbody>
+</table>

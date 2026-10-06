@@ -33,7 +33,7 @@ this page or fails the freshness gate.
 | `blob_objects` | 0026_blob_store.sql | `storage_key`, `sha256`, `size`, `kind`, `gated`, `verified_at`, `created_at`, `unreferenced_since (0048)`, `gc_claimed_at (0048)` |
 | `blob_refs` | 0026_blob_store.sql | `product`, `storage_key`, `ref_kind`, `ref_id`, `created_at` |
 | `blob_gc_log` | 0048_a_dist_readiness_blob_gc.sql | `id`, `at`, `action`, `storage_key`, `product`, `ref_kind`, `ref_id`, `size`, `detail` |
-| `hosted_assets` | 0078_hosted_assets.sql | `product`, `slot`, `locale`, `origin`, `source_kind`, `source_ref`, `source_etag`, `sha256`, `size`, `content_type`, `width`, `height`, `variants_json`, `status`, `error`, `modified_at`, `wanted_ref (0089)`, `pulled_ref (0089)`, `source_blob (0089)`, `attempts (0089)`, `next_attempt_at (0089)` |
+| `hosted_assets` | 0078_hosted_assets.sql | `product`, `slot`, `locale`, `origin`, `source_kind`, `source_ref`, `source_etag`, `sha256`, `size`, `content_type`, `width`, `height`, `variants_json`, `status`, `error`, `checked_at`, `modified_at`, `wanted_ref (0089)`, `pulled_ref (0089)`, `source_blob (0089)`, `attempts (0089)`, `next_attempt_at (0089)` |
 | `ci_publishers` | 0035_a_ci_publishing.sql | `product`, `provider`, `repository_id`, `repository_owner_id`, `repository`, `workflow`, `environment`, `scopes_json`, `source`, `created_at`, `modified_at`, `modified_by` |
 | `ci_tokens` | 0035_a_ci_publishing.sql | `product`, `token_hash`, `token_id`, `kind`, `scopes_json`, `subject`, `label`, `jti`, `issued_at`, `expires_at`, `revoked_at`, `created_by` |
 | `ci_upload_tickets` | 0035_a_ci_publishing.sql | `product`, `ticket_hash`, `ticket_id`, `token_hash`, `objects_json`, `issued_at`, `expires_at`, `redeemed_at` |
@@ -58,11 +58,12 @@ this page or fails the freshness gate.
 
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
-| `licenses` | 0001_init.sql | `product`, `id`, `status`, `sub`, `name`, `email`, `groups_json`, `tier_id`, `activated_at`, `expires_at`, `max_offline_days`, `overrides_json`, `modified_by`, `modified_at`, `channels_json (0002)`, `min_version (0002)`, `max_version (0002)`, `origin (0011)`, `enroll_hwid (0011)`, `account_id (0068)`, `device_limit (0084)` |
+| `licenses` | 0001_init.sql | `product`, `id`, `status`, `sub`, `name`, `email`, `groups_json`, `tier_id`, `activated_at`, `expires_at`, `max_offline_days`, `overrides_json`, `modified_by`, `modified_at`, `channels_json (0002)`, `min_version (0002)`, `max_version (0002)`, `origin (0011)`, `enroll_hwid (0011)`, `account_id (0068)`, `device_limit (0084)`, `batch_id (0095)` |
 | `keys_index` | 0001_init.sql | `product`, `key_hash`, `license_id`, `status`, `label`, `created_at`, `created_by`, `last_used_at` |
 | `tiers` | 0001_init.sql | `product`, `id`, `label`, `profile_id`, `policy_expiry_days`, `policy_device_limit`, `modified_by`, `modified_at`, `policy_fingerprint (0010)`, `source (0086)` |
 | `license_profiles` | 0004_license_profiles.sql | `product`, `license_id`, `profile_id`, `sort_order` |
 | `license_store_grants` | 0052_commerce.sql | `product`, `license_id`, `flag`, `store`, `purchase_key_hash`, `state`, `granted_at`, `revoked_at` |
+| `license_batches` | 0095_a_license_batches.sql | `product`, `id`, `label`, `count`, `tier_id`, `created_by`, `created_at` |
 
 ## config
 
@@ -82,7 +83,7 @@ this page or fails the freshness gate.
 | `release_artifacts` | 0007_backend_contracts.sql | `product`, `release_id`, `artifact_id`, `name`, `kind`, `platform`, `arch`, `content_type`, `size_bytes`, `sha256`, `source_url`, `storage_key`, `sparkle_signature`, `access`, `metadata_json`, `created_at`, `build_id (0027)`, `role (0027)`, `locations_json (0027)` |
 | `release_channels` | 0007_backend_contracts.sql | `product`, `channel`, `release_id`, `policy_json`, `created_at`, `modified_at` |
 | `release_channel_floors` | 0023_release_resolution.sql | `product`, `channel`, `version`, `release_id`, `raised_at`, `lowered_by`, `lowered_at` |
-| `release_health` | 0007_backend_contracts.sql | `product`, `subject_kind`, `subject_id`, `status`, `details_json` |
+| `release_health` | 0007_backend_contracts.sql | `product`, `subject_kind`, `subject_id`, `status`, `checked_at`, `details_json` |
 | `release_download_tokens` | 0016_drop_dead_pii.sql (rebuilt 0016) | `product`, `token_hash`, `release_id`, `artifact_id`, `device_id`, `scope_json`, `expires_at`, `used_at`, `created_at`, `REFERENCES` |
 | `release_deliverables` | 0058_b_release_deliverables_kind.sql (rebuilt 0058) | `product`, `deliverable_id`, `kind`, `pack_type`, `def_json`, `def_source`, `created_at`, `modified_at`, `ecosystem`, `package_name` |
 | `release_builds` | 0027_a_release_model.sql | `product`, `release_id`, `build_id`, `platform`, `arch`, `format`, `build_number`, `variant_json`, `requires_json`, `min_os`, `created_at`, `modified_at`, `metadata_json (0043)`, `embeds_json (0045)`, `conflicts_json (0046)` |
@@ -102,6 +103,7 @@ this page or fails the freshness gate.
 | `release_native_uploads` | 0075_release_native_uploads.sql | `product`, `ecosystem`, `name_norm`, `version`, `deliverable_id`, `name`, `session_id`, `principal_id`, `principal_json`, `client`, `files_json`, `metadata_json`, `channel`, `state`, `error`, `release_id`, `touch_seq`, `created_at`, `updated_at` |
 | `release_package_prunes` | 0090_release_package_prune.sql | `product`, `ecosystem`, `name_norm`, `version`, `deliverable_id`, `release_id`, `stable`, `files`, `bytes`, `freed_bytes`, `pruned_at`, `pruned_by` |
 | `release_package_retention` | 0090_release_package_prune.sql | `product`, `prune_prereleases`, `version`, `updated_at`, `updated_by` |
+| `release_mirrors` | 0097_release_mirrors.sql | `product`, `release_id`, `artifact_id`, `status`, `source_ref`, `sha256`, `error`, `attempts`, `next_attempt_at`, `tried_at`, `modified_at` |
 
 ## distribution
 
@@ -129,7 +131,7 @@ this page or fails the freshness gate.
 | `dist_registry_policy` | 0058_d_registry.sql | `ecosystem`, `enabled`, `max_package_bytes_ceiling`, `version`, `updated_at`, `updated_by` |
 | `dist_listings` | 0065_dist_listing_model.sql | `product`, `default_locale`, `name`, `developer_name`, `category`, `content_descriptors_json`, `iarc_certificate_id`, `urls_json`, `contact_email`, `copyright`, `tint`, `tint_dark`, `precedence_json`, `source`, `created_at`, `modified_at`, `modified_by`, `provenance_json (0069)` |
 | `dist_listing_locales` | 0065_dist_listing_model.sql | `product`, `locale`, `name`, `subtitle`, `short_description`, `description`, `keywords_json`, `features_json`, `promotional_text`, `source`, `modified_at`, `modified_by`, `provenance_json (0069)` |
-| `dist_listing_assets` | 0065_dist_listing_model.sql | `product`, `slot`, `locale`, `blob`, `sha256`, `width`, `height`, `alpha`, `derived_from`, `text_allowed`, `source`, `modified_at`, `modified_by`, `accepted_sha256 (0083)`, `accepted_at (0083)`, `accepted_by (0083)` |
+| `dist_listing_assets` | 0099_dist_listing_assets_manifest.sql (rebuilt 0099) | `product`, `slot`, `locale`, `blob`, `sha256`, `width`, `height`, `alpha`, `derived_from`, `text_allowed`, `source`, `modified_at`, `modified_by`, `accepted_sha256`, `accepted_at`, `accepted_by` |
 | `dist_listing_release_notes` | 0065_dist_listing_model.sql | `product`, `release_id`, `locale`, `text`, `short`, `source`, `modified_at`, `modified_by` |
 | `dist_listing_overrides` | 0065_dist_listing_model.sql | `product`, `store`, `locale`, `field`, `value_json`, `source`, `modified_at`, `modified_by` |
 | `store_edit_leases` | 0070_store_edit_leases.sql | `store`, `app`, `holder`, `purpose`, `actor`, `acquired_at`, `expires_at` |
@@ -160,6 +162,10 @@ this page or fails the freshness gate.
 | `account_terms_acceptances` | 0091_account_terms_acceptances.sql | `account_id`, `product`, `version`, `url`, `accepted_at` |
 | `license_relinks` | 0082_license_relinks.sql | `product`, `id`, `license_id`, `from_account_id`, `to_account_id`, `from_subject`, `to_subject`, `reason`, `actor_sub`, `actor_name`, `notices_sent`, `created_at`, `undo_until`, `undone_at`, `undone_by`, `undo_reason` |
 | `account_avatars` | 0093_account_avatars.sql | `asset`, `account_id`, `origin`, `bytes`, `created_at` |
+| `library_entries` | 0096_storefront_library.sql | `account_id`, `product`, `via`, `added_at` |
+| `storefront_daily` | 0096_storefront_library.sql | `product`, `day`, `path_kind`, `impressions`, `adds`, `activations` |
+| `storefront_seen` | 0096_storefront_library.sql | `product`, `day`, `account_key` |
+| `account_merges` | 0098_account_merges.sql | `id`, `survivor_id`, `absorbed_id`, `merged_at`, `undo_until`, `undone_at`, `snapshot_json` |
 | `portal_accounts` | 0008_portal.sql | `id`, `status`, `display_name`, `primary_email`, `created_at`, `modified_at` |
 | `portal_account_emails` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `email`, `account_id`, `verified_at`, `created_at` |
 | `portal_account_identities` | 0017_portal_fk_cascade.sql (rebuilt 0017) | `provider`, `subject`, `account_id`, `email`, `display_name`, `created_at`, `last_seen_at` |

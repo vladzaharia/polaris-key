@@ -23,7 +23,6 @@ import {
   handleAuthDevicePoll,
   handleAuthDeviceStart,
   handleAuthDeviceVerify,
-  handleAuthPoll,
   handleAuthStart,
   normalizeUserCode,
   USER_CODE_ALPHABET,
@@ -234,7 +233,47 @@ describe("applyProvisioning", () => {
   });
 });
 
-describe("handleAuthPoll states", () => {
+/**
+ * Polls the flow under `state` the one way a device can since the `state`-keyed
+ * `/identity/auth/poll` was retired: `/device/poll`, with a device code whose confirmed record
+ * points at `state` for `device`. Re-seeded per call, so the poll interval never answers
+ * `slow_down`; the flow record's own device binding and confirmation still decide.
+ */
+async function pollState(
+  env: Env,
+  db: SqliteDb,
+  product: Product,
+  state: string,
+  device = "dev-1",
+): Promise<Response> {
+  const deviceCode = `dc-${state}`;
+  await artefacts(env).put(
+    await deviceFlowKey(env, product.slug, deviceCode),
+    JSON.stringify({
+      state,
+      deviceId: device,
+      userCode: "BCDF-GHJK",
+      authorizeUrl: "https://id.example/authorize",
+      confirmedAt: NOW,
+    }),
+  );
+  return handleAuthDevicePoll(
+    new Request(
+      `https://key.plrs.im/${product.slug}/identity/auth/device/poll`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ deviceCode, deviceId: device }),
+      },
+    ) as unknown as Request,
+    env,
+    db,
+    product,
+    NOW,
+  );
+}
+
+describe("poll states (pollAuthFlow, through /device/poll)", () => {
   let db: SqliteDb;
   let env: Env;
   let kv: KvMock;
@@ -250,15 +289,7 @@ describe("handleAuthPoll states", () => {
   });
 
   const poll = (state: string, device = "dev-1") =>
-    handleAuthPoll(
-      new Request(
-        `https://key.plrs.im/djdl/identity/auth/poll?state=${state}&device=${device}`,
-      ) as unknown as Request,
-      env,
-      db,
-      product,
-      NOW,
-    );
+    pollState(env, db, product, state, device);
 
   /** A flow record shaped the way beginAuthFlow + device confirmation write it: bound to the
    *  device that started it and stamped confirmed. Both are authorization inputs on the poll
@@ -285,17 +316,29 @@ describe("handleAuthPoll states", () => {
     expect(((await res.json()) as { status: string }).status).toBe("timeout");
   });
 
-  it("requires state + device query params", async () => {
-    const res = await handleAuthPoll(
-      new Request(
-        "https://key.plrs.im/djdl/identity/auth/poll?state=x",
-      ) as unknown as Request,
+  it("requires the device code and the device id", async () => {
+    const res = await handleAuthDevicePoll(
+      new Request("https://key.plrs.im/djdl/identity/auth/device/poll", {
+        method: "POST",
+        body: JSON.stringify({ deviceCode: "x" }),
+      }) as unknown as Request,
       env,
       db,
       product,
       NOW,
     );
     expect(res.status).toBe(400);
+  });
+
+  it("answers a device the flow was not started for with the generic error, no token", async () => {
+    const r = await activateFromIdentity(db, product, identity(), NOW);
+    if (!("licenseId" in r)) throw new Error("expected license");
+    await putFlow("s0", { licenseId: r.licenseId });
+    const body = (await (await poll("s0", "other-device")).json()) as {
+      status: string;
+      token?: string;
+    };
+    expect(body).toEqual({ status: "error" });
   });
 
   it("returns pending while the flow has neither error nor licenseId", async () => {
@@ -1322,16 +1365,7 @@ describe("handleAuthCallback ID-token verification (D9/D8)", () => {
       NOW,
     );
 
-  const poll = (state: string) =>
-    handleAuthPoll(
-      new Request(
-        `https://key.plrs.im/djdl/identity/auth/poll?state=${state}&device=dev-1`,
-      ) as unknown as Request,
-      env,
-      db,
-      product,
-      NOW,
-    );
+  const poll = (state: string) => pollState(env, db, product, state);
 
   beforeEach(async () => {
     db = makeTestDb();

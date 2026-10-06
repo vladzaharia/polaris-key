@@ -4,6 +4,11 @@ export interface PortalAccount {
   id: string;
   name: string;
   email: string;
+  /**
+   * The picture in use (PX-W16): a same-origin `/media/avatar/<asset>` URL (256 px; `-96` names
+   * the small one), or null for initials. Absent on an older Worker, which means initials.
+   */
+  avatarUrl?: string | null;
 }
 
 export interface PortalMe {
@@ -47,6 +52,17 @@ export interface PortalEntitlement {
   value: unknown;
 }
 
+/**
+ * How a licence reached the person (PX-23; notes/S-24 D21, SIGN-IN.md O-11): the Worker decides,
+ * the card words it. An open set: a value this build does not know reads by the older facts.
+ */
+export type PortalLicenseOrigin =
+  | "key"
+  | "store-key"
+  | "store"
+  | "developer"
+  | "signin";
+
 export interface PortalLicenseSummary {
   id: string;
   product: string;
@@ -68,6 +84,15 @@ export interface PortalLicenseSummary {
   activeKeyCount: number;
   deviceCount: number;
   entitlements: PortalEntitlement[];
+  /** PX-23: how it reached the person. Absent on an older Worker (the card then infers it). */
+  origin?: PortalLicenseOrigin | (string & {});
+  /** The store for `store-key` and `store` (`purchase.store`'s ids), else null. */
+  originStore?: string | null;
+  /**
+   * PX-23: Remove from my library is offered (its key can bring it back: an active key, on a
+   * product that lets a key add a licence). Absent on an older Worker, which offers no Remove.
+   */
+  removable?: boolean;
 }
 
 export interface PortalKey {
@@ -139,7 +164,10 @@ export type PortalStatus =
   | "expires_soon"
   | "active";
 
-/** A product's presentation; art is always a same-origin `/media/…` URL or null. */
+/**
+ * A product's presentation; art is a hosted copy on the image host (HA-07), the same-origin
+ * `/media/…` proxy path in HA-10's rollback, or null (`model/library.ts` `mediaUrl`).
+ */
 export interface PortalPresentation {
   name: string;
   developerName: string | null;
@@ -177,6 +205,8 @@ export interface PortalLibrary {
 
 export interface PortalLibraryItem extends PortalPresentation {
   product: string;
+  /** PS-04: `entry` is an open product with no licence (filtered out until PS-05 shows it). */
+  kind?: "license" | "entry";
   status: PortalStatus;
   license: PortalLicenseSeats;
   licenseCount: number;
@@ -383,6 +413,13 @@ export interface PortalKeyPreview {
     deviceLimit: number | null;
   };
   platforms?: string[];
+  /**
+   * `addable` only (PX-23, S-24 D22): how many devices the licence is already on; they keep
+   * working and come with it. A count, never which. Absent on an older Worker.
+   */
+  devices?: number;
+  /** `addable` only: the product runs Cloud Sync, so signing in on those devices turns it on. */
+  cloudSync?: boolean;
   /** `email_mismatch` only: `m•••@proton.me`. */
   maskedEmail?: string;
 }
@@ -415,6 +452,41 @@ export interface PortalDiscoverOffer extends PortalPresentation {
   reason: PortalDiscoverReason;
 }
 
+/**
+ * One offer as the Worker sends it since PS-04: the additive storefront fields, and `offer` and
+ * `reason` `null` for an open product (no licence terms) or a link (nothing to add).
+ */
+type WirePortalDiscoverOffer = Omit<PortalDiscoverOffer, "offer" | "reason"> & {
+  offer: PortalDiscoverTerms | null;
+  reason: PortalDiscoverReason | null;
+  cta?: "add" | "link";
+};
+
+/**
+ * Until PS-05 renders open products and link-only listings (notes/S-21 §6.5), the Discover page
+ * shows only the offers PX-16's tile can show: an Add with licence terms.
+ */
+function addableOffers(body: { offers: WirePortalDiscoverOffer[] }): {
+  offers: PortalDiscoverOffer[];
+} {
+  const offers: PortalDiscoverOffer[] = [];
+  for (const o of body.offers)
+    if ((o.cta ?? "add") === "add" && o.offer !== null && o.reason !== null)
+      offers.push({ ...o, offer: o.offer, reason: o.reason });
+  return { offers };
+}
+
+/**
+ * Until PS-05 renders library entries (open products with no licence, PS-04), the library shows
+ * only the products it holds a licence for.
+ */
+function licensedOnly(body: PortalLibrary): PortalLibrary {
+  return {
+    ...body,
+    products: body.products.filter((p) => (p.kind ?? "license") === "license"),
+  };
+}
+
 /** `POST /api/discover/<p>/claim`: the licence, new (`added`) or already held. */
 export interface PortalDiscoverClaim {
   added: boolean;
@@ -428,6 +500,60 @@ export interface PortalDiscoverClaim {
     expiresAt: number | null;
     deviceLimit: number;
   };
+}
+
+// ── Account → Profile (PX-W16; PORTAL.md §4.30, G32, G33) ──────────────────────────────────
+
+/** A stored picture: same-origin URLs only, WebP or PNG by the browser's `Accept`. */
+export interface PortalAvatar {
+  asset: string;
+  /** 256 px. */
+  url: string;
+  /** 96 px. */
+  url96: string;
+}
+
+/**
+ * Where a profile value came from. `provider` is a sign-in method's import; its `provider` is null
+ * once that method was disconnected (the value stays and follows nothing).
+ */
+export type PortalProfileSource =
+  | { kind: "provider"; linkId: string; provider: string | null }
+  | { kind: "typed" }
+  | { kind: "upload" }
+  | { kind: "initials" };
+
+/** One sign-in method that supplied a name or a picture: the editor's chips and tiles. */
+export interface PortalProfileSourceOption {
+  linkId: string;
+  /** `google`, `apple`, `steam`, later the platform identities. */
+  provider: string;
+  /** The connected identity (an address or a persona), as Sign-in methods shows it. */
+  label: string | null;
+  name: string | null;
+  picture: PortalAvatar | null;
+}
+
+/** `GET /api/me/profile`. */
+export interface PortalProfile {
+  displayName: string | null;
+  displayNameSource: PortalProfileSource | null;
+  explicitName: boolean;
+  /** The picture in use; null shows initials. */
+  picture: PortalAvatar | null;
+  pictureSource: PortalProfileSource | null;
+  explicitPicture: boolean;
+  locale: string | null;
+  sources: PortalProfileSourceOption[];
+}
+
+/** `PATCH /api/me/profile`: every value it sets is an explicit choice that sticks. */
+export interface PortalProfileChange {
+  /** A typed name. */
+  name?: string;
+  /** A sign-in method's name, by the method's id. */
+  nameFrom?: string;
+  picture?: "initials" | { from: string } | { upload: string };
 }
 
 /**
@@ -448,6 +574,11 @@ export class PortalApiError extends Error {
   triesLeft?: number;
   /** Seconds to wait before asking again (a resend asked too soon, PX-W4). */
   retryAfter?: number;
+  /**
+   * The case a refusal names beside its registered code (PX-W16's profile routes: `invalid_name`,
+   * `too_large`, `unsupported_type` …). Copy is chosen from it, never from `message`.
+   */
+  reason?: string;
   constructor(
     public readonly status: number,
     public readonly code?: string,
@@ -472,7 +603,9 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const mutating = init.method != null && init.method !== "GET";
   if (mutating) {
     headers.set(CSRF_HEADER, csrf);
-    if (init.body) headers.set("Content-Type", "application/json");
+    // JSON unless the caller sent bytes with their own type (a picture upload).
+    if (init.body && !headers.has("Content-Type"))
+      headers.set("Content-Type", "application/json");
   }
   let res: Response;
   try {
@@ -490,17 +623,20 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     let message: string | undefined;
     let triesLeft: number | undefined;
     let retryAfter: number | undefined;
+    let reason: string | undefined;
     try {
       const body = (await res.json()) as {
         error?: string;
         message?: string;
         triesLeft?: unknown;
         retryAfter?: unknown;
+        reason?: unknown;
       };
       code = body.error;
       message = body.message;
       if (typeof body.triesLeft === "number") triesLeft = body.triesLeft;
       if (typeof body.retryAfter === "number") retryAfter = body.retryAfter;
+      if (typeof body.reason === "string") reason = body.reason;
     } catch {
       // non-JSON response
     }
@@ -508,6 +644,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (message) error.message = message;
     if (triesLeft !== undefined) error.triesLeft = triesLeft;
     if (retryAfter !== undefined) error.retryAfter = retryAfter;
+    if (reason !== undefined) error.reason = reason;
     throw error;
   }
   const text = await res.text();
@@ -526,6 +663,24 @@ export const portalApi = {
   me: () => call<PortalMe>("/api/me"),
   deleteMe: () =>
     call<{ ok: true; deleted: string }>("/api/me", { method: "DELETE" }),
+  /** Account → Profile (PX-W16): the profile, its sources and what each method supplied. */
+  profile: () => call<{ profile: PortalProfile }>("/api/me/profile"),
+  /** An explicit choice (a typed or picked name; Initials, a method's picture or an upload). */
+  updateProfile: (change: PortalProfileChange) =>
+    call<{ profile: PortalProfile }>("/api/me/profile", {
+      method: "PATCH",
+      body: JSON.stringify(change),
+    }),
+  /**
+   * A picture upload (PNG or JPEG, at most 5 MB; the Worker judges by the bytes, re-encodes and
+   * crops it square). It stays unused until a PATCH picks it.
+   */
+  uploadPicture: (file: Blob) =>
+    call<{ upload: PortalAvatar }>("/api/me/profile/picture", {
+      method: "POST",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    }),
   licenses: () => call<{ licenses: PortalLicenseSummary[] }>("/api/licenses"),
   license: (product: string, id: string) =>
     call<PortalLicenseDetail>(`/api/licenses/${enc(product)}/${enc(id)}`),
@@ -589,13 +744,25 @@ export const portalApi = {
         body: JSON.stringify({ key }),
       },
     ),
+  /**
+   * PX-23 (S-24 D19): Remove from my library. The licence leaves the account and does not come
+   * back to it by itself; its key adds it back.
+   */
+  removeLicense: (product: string, id: string) =>
+    call<{ ok: true; product: string; licenseId: string }>(
+      `/api/licenses/${enc(product)}/${enc(id)}`,
+      { method: "DELETE" },
+    ),
   disconnectDevice: (product: string, id: string, deviceId: string) =>
     call<{ ok: true; deviceId: string }>(
       `/api/licenses/${enc(product)}/${enc(id)}/devices/${enc(deviceId)}`,
       { method: "DELETE" },
     ),
-  library: () => call<PortalLibrary>("/api/library"),
-  discover: () => call<{ offers: PortalDiscoverOffer[] }>("/api/discover"),
+  library: () => call<PortalLibrary>("/api/library").then(licensedOnly),
+  discover: () =>
+    call<{ offers: WirePortalDiscoverOffer[] }>("/api/discover").then(
+      addableOffers,
+    ),
   /** "Add to library" (G25): mints through the auto-issue path; idempotent per product. */
   claimDiscover: (product: string) =>
     call<PortalDiscoverClaim>(`/api/discover/${enc(product)}/claim`, {

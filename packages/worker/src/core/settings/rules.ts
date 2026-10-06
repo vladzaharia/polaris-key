@@ -22,6 +22,10 @@
  *   5. **Platform-only keys stay platform-only:** a product-scope entry may share a key with a
  *      platform entry only when that platform entry declares `productLink` (a default products
  *      inherit, or a bound that clamps them), and the two must agree.
+ *   6. **System-product locks hold** (the system-lock rule): every key `SYSTEM_LOCKED_KEYS` names
+ *      is registered at product scope with exactly that `systemLock` value (ST-20:
+ *      `core.manifest.authoritative` is on for the system product, S-18 §4.5 item 8), and only
+ *      product entries declare one.
  *
  * Plus the structural rules every consumer relies on: unique keys per scope, unique aliases,
  * slices owning only their own namespaces (rule 6), defaults that fit their value spec, confirm
@@ -144,7 +148,24 @@ export const SECURITY_WIDENING_KEYS: readonly string[] = [
   "release.sparkleEd25519Pub",
   "update.metadataAccess",
   "distribution.access",
+  "cloudSync.writes",
+  // ST-19b: the manifest-declared settings that widen access.
+  "core.registration",
+  "identity.provisioning",
+  "release.github",
+  "release.keys",
+  "release.publishing.trustedPublisher",
 ];
+
+/**
+ * Product keys whose value is fixed for the system product (`system = 1`) by a registry rule (the
+ * system-lock rule). ST-20 (S-18 §4.5 item 8, owner decision D2): the system product is
+ * manifest-authoritative, so two environments deployed from the same commit have the same
+ * settings. Dropping an entry here, or the entry's `systemLock`, fails the registry test.
+ */
+export const SYSTEM_LOCKED_KEYS: Readonly<Record<string, unknown>> = {
+  "core.manifest.authoritative": true,
+};
 
 /** Name patterns that mark a product key as security-widening even when it is not listed. */
 const SECURITY_WIDENING_PATTERN =
@@ -264,6 +285,17 @@ function checkEntry(def: SettingDef, out: string[]): void {
       out.push(`${at}: a null default needs allowUnset: true`);
   } else if (!fitsValueSpec(def.value, def.defaultValue))
     out.push(`${at}: defaultValue does not fit its value spec`);
+  if (def.legacyDefault) {
+    if (def.scope !== "product")
+      out.push(`${at}: legacyDefault is declared on product entries only`);
+    if (!fitsValueSpec(def.value, def.legacyDefault.value))
+      out.push(`${at}: legacyDefault.value does not fit its value spec`);
+    if (
+      !Number.isSafeInteger(def.legacyDefault.createdBefore) ||
+      def.legacyDefault.createdBefore <= 0
+    )
+      out.push(`${at}: legacyDefault.createdBefore is epoch seconds`);
+  }
   if (def.value.kind === "integer" && def.value.min > def.value.max)
     out.push(`${at}: integer min is above max`);
   if (def.sensitivity === "secret" && def.defaultValue !== null)
@@ -284,6 +316,16 @@ function checkEntry(def: SettingDef, out: string[]): void {
     );
   if (def.manifest && !MANIFEST_PATH_RE.test(def.manifest.path))
     out.push(`${at}: manifest.path must be <document>:<dotted path>`);
+  // ST-19b: a second field of the same value is held to the same shape, and names a new field.
+  const also = def.manifest?.alsoPaths ?? [];
+  for (const p of also)
+    if (!MANIFEST_PATH_RE.test(p))
+      out.push(`${at}: manifest.alsoPaths must be <document>:<dotted path>`);
+  if (
+    def.manifest &&
+    new Set([def.manifest.path, ...also]).size !== also.length + 1
+  )
+    out.push(`${at}: manifest.alsoPaths repeats a path`);
   if (def.scope === "platform" && needsManifest)
     out.push(`${at}: platform settings have no manifest`);
 
@@ -373,6 +415,14 @@ function checkEntry(def: SettingDef, out: string[]): void {
     out.push(`${at}: capability must be settings.<scope>.<owner>.write`);
   if (def.visibleWhen?.service && def.visibleWhen.service !== def.service)
     out.push(`${at}: visibleWhen.service must be the owning service`);
+
+  // The system-lock rule: a lock is a product value, and a value of the entry's spec.
+  if (def.systemLock) {
+    if (def.scope !== "product")
+      out.push(`${at}: systemLock is declared on product entries only`);
+    if (!fitsValueSpec(def.value, def.systemLock.value))
+      out.push(`${at}: systemLock.value does not fit its value spec`);
+  }
 }
 
 function checkSlice(slice: RegisteredSlice, out: string[]): void {
@@ -433,6 +483,24 @@ export function checkRegistry(registry: SettingsRegistry): string[] {
       aliasOwner.set(a, def.key);
     }
     checkEntry(def, out);
+  }
+
+  // The system-lock rule: every locked key is registered, at product scope, with its lock.
+  for (const [key, value] of Object.entries(SYSTEM_LOCKED_KEYS)) {
+    const def = registry.entries.find(
+      (e) => e.scope === "product" && e.key === key,
+    );
+    if (!def)
+      out.push(
+        `product ${key}: locked for the system product, so it must be registered`,
+      );
+    else if (
+      !def.systemLock ||
+      JSON.stringify(def.systemLock.value) !== JSON.stringify(value)
+    )
+      out.push(
+        `product ${key}: the system product's value is locked to ${JSON.stringify(value)} (systemLock)`,
+      );
   }
 
   // Rule 5: platform-only keys, and the platform ↔ product link.

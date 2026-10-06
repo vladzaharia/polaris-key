@@ -92,7 +92,39 @@
         "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
         "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
         "profiles": { "$ref": "#/$defs/profiles" },
-        "tiers": { "$ref": "#/$defs/tiers" }
+        "tiers": { "$ref": "#/$defs/tiers" },
+        "entitlementModel": {
+          "description": "Whether devices see the combined entitlements of every grant their holder has (combined) or only their own licence's (legacy). Undeclared: legacy for products registered before 2026-10-06, combined for newer ones. A console edit claims it; Revert returns it to this value.",
+          "enum": ["legacy", "combined"]
+        },
+        "entitlementHolder": {
+          "description": "Whose entitlements a device sees: the account signed in on that device (device, the default) or the licence owner's whole set (owner).",
+          "enum": ["device", "owner"]
+        },
+        "clampGraceToExpiry": {
+          "description": "End a device's offline grace no later than its licence's expiry (default true).",
+          "type": "boolean"
+        },
+        "anchorPolicy": {
+          "description": "Which of a holder's licences a device runs on (default rank-first).",
+          "enum": ["rank-first", "most-free-seats", "oldest"]
+        },
+        "reanchor": {
+          "description": "When a device may move to a better anchor licence (default onActivation). onRefresh is not available yet.",
+          "enum": ["never", "onActivation"]
+        },
+        "refundGraceHours": {
+          "description": "Hours a refunded or charged-back grant keeps working before it is revoked (default 0: at once). It only delays the revocation.",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 168
+        },
+        "dunningGraceDays": {
+          "description": "Days a subscription grant keeps working while the store retries a failed renewal (default 0).",
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30
+        }
       }
     },
     "profiles": {
@@ -561,6 +593,10 @@
             "maxLength": 2048,
             "pattern": "^https?://[^\\u0000-\\u001f\\u007f]+$"
           }
+        },
+        "syncTierOnSignIn": {
+          "description": "Whether a sign-in may move a licence to the tier the provider's groups map to: off (the default) or upgradeOnly, which never lowers a tier.",
+          "enum": ["off", "upgradeOnly"]
         },
         "groupRoleMap": {
           "description": "IdP group name -> role/entitlement grant map.",

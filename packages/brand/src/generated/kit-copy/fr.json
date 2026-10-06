@@ -569,6 +569,8 @@
   "core.codes.step_up_required.message": "For your security, sign in again to continue.",
   "core.codes.not_eligible.title": "Offer unavailable",
   "core.codes.not_eligible.message": "This offer isn't available to your account anymore. Refresh and try again.",
+  "core.codes.not_removable.title": "Can't remove",
+  "core.codes.not_removable.message": "This license can't be added back with a key, so it stays in your library.",
   "core.codes.download_auth_required.title": "Sign in to download",
   "core.codes.download_auth_required.message": "Sign in or activate a license to download this.",
   "core.codes.delivery_gate_missing.title": "Download unavailable",

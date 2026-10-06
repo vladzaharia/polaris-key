@@ -129,6 +129,9 @@ describe("R11-01 missing foreign keys / no ON DELETE anywhere", () => {
       // PX-W15: terms acceptances are the account's too (an orphan would say what a deleted
       // person agreed to).
       "account_terms_acceptances",
+      // HA-08: a release file's mirror job is meaningless without the file; a new table, so it
+      // declares the cascade from the start (no rebuild, no triggers to reconstruct).
+      "release_mirrors",
     ];
     for (const table of cascading) {
       const fks = await db.all<{ on_delete: string; table: string }>(
@@ -697,6 +700,16 @@ describe("R11-05 product scoping", () => {
       // (a hash of the account and the picture) and owned by the account, never by a
       // product. An app sees a picture only through the account's consent step.
       "account_avatars",
+      // PS-04 — the storefront's library entries, keyed (account, product) like the grants: an
+      // open product in one account's library, no licence behind it. Product deletion clears a
+      // product's rows through `idx_library_entries_product`; no tenant route lists them. (The
+      // storefront's aggregates and dedupe keys, `storefront_daily` and `storefront_seen`, ARE
+      // product-first: this loop checks them.)
+      "library_entries",
+      // 0098 (PX-W12) — account joins and their 72-hour undo: one row per join of two accounts,
+      // keyed by the join and owned by the surviving account, never by a product. Read only by
+      // that account's own portal session; no developer route reads it.
+      "account_merges",
       // 0070 (A-18e) — the Play edit lease: one row per (store, app) while a caller holds an edit
       // on that app. An app id belongs to the store account, not a product (the platform service
       // account serves every product pinned to it; A-16's lister is team-wide), and the row holds
@@ -964,7 +977,7 @@ describe("R11-08 migration safety", () => {
   });
 
   it("migrations are additive only, so migrate-then-deploy ordering is forward-safe", () => {
-    // THREE deliberate exceptions, all create/copy/drop/rename rebuilds — the only shape SQLite
+    // FOUR deliberate exceptions, all create/copy/drop/rename rebuilds — the only shape SQLite
     // offers for changing a constraint in place:
     //   * 0016_drop_dead_pii.sql removes `customers`, `identity` and
     //     `release_download_tokens.customer_id`, none of which any code in src/ reads or writes
@@ -976,10 +989,14 @@ describe("R11-08 migration safety", () => {
     //     kind CHECK with `package` and add two NULLable columns. It renames and removes nothing an
     //     older Worker reads or writes, so the rebuild is invisible above the schema too; its
     //     child rows are set aside and restored around the drop (the file says why).
+    //   * 0099_dist_listing_assets_manifest.sql (HA-07) rebuilds `dist_listing_assets` to widen its
+    //     source CHECK with `manifest`. Every column is copied unchanged and nothing is renamed or
+    //     removed above the schema; no table holds a foreign key into it.
     const REBUILDS = [
       "0016_drop_dead_pii.sql",
       "0017_portal_fk_cascade.sql",
       "0058_b_release_deliverables_kind.sql",
+      "0099_dist_listing_assets_manifest.sql",
     ];
     const sql = MIGRATION_FILES.filter((f) => !REBUILDS.includes(f))
       .map(sqlFor)

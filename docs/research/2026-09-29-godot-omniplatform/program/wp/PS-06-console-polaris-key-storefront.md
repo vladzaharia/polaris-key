@@ -12,6 +12,20 @@
 | Human input | none                                                                                                                                                                 |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                            |
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`.
+
+- **Wire the first-party `status` port** ([PS-03](PS-03-obtain-path-engine.md)).
+  `core/storefront/firstParty.ts` declares `FirstPartyPorts` (`readListing`, `writeListing`,
+  `setListing`, `status`, `audit`), and nothing implements any of them yet. PS-03 built the engine
+  `status` reports from: `evaluateObtain`, `storefrontOffers` and `obtainPaths` in
+  `services/identity/portal/store/obtain.ts`, with the deployment switch
+  `polarisKeyStorefrontEnabled` (`core/storefrontSwitch.ts`). Implement the ports in the services
+  that own their tables. `status` answers the listing state, readiness and the offers visible today
+  from that engine, so the console panel and the conformance suite's first-party branch read the
+  same answer.
+
 ## Goal
 
 In the console, Polaris Key appears as a storefront tile with its capability strip, its listing in the shared Listing editor, a Polaris Key panel (listing state, audience, ways to add, group labels), the readiness checklist, a persona-based "Who can see this?" and a 28-day analytics card.

@@ -65,7 +65,7 @@ export async function signInRequestView(
   const { record, product } = live;
   const view: SignInRequestView = {
     request: handle,
-    client: await clientRecordFor(product, record.kind, now, hooksFor),
+    client: await clientRecordFor(env, db, product, record.kind, now, hooksFor),
     deviceLabel: record.deviceLabel,
     userCode: record.userCode,
     expiresAt: record.expiresAt,

@@ -111,6 +111,8 @@ export const qk = {
   ciPublisher: (slug: string) => product(slug, "core", "ci", "publisher"),
   ciTokens: (slug: string) => product(slug, "core", "ci", "tokens"),
   blobGc: (slug: string) => product(slug, "core", "blob-gc"),
+  /** HA-06: the product's hosted-asset slots (the Presentation page). */
+  hostedAssets: (slug: string) => product(slug, "core", "assets"),
 
   // license
   licenses: (slug: string) => product(slug, "license", "licenses"),
@@ -121,6 +123,10 @@ export const qk = {
     product(slug, "license", "licenses", "_cleanup"),
   tiers: (slug: string) => product(slug, "license", "tiers"),
   fingerprintPolicy: (slug: string) => product(slug, "license", "enrollment"),
+  /** LX-06: the row-backed settings of one area; every area under one prefix (`productSettingsAll`). */
+  productSettings: (slug: string, area: string) =>
+    product(slug, "core", "settings", area),
+  productSettingsAll: (slug: string) => product(slug, "core", "settings"),
 
   // config
   catalog: (slug: string) => product(slug, "config", "catalog"),

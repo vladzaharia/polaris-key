@@ -7,7 +7,13 @@ import {
   type OpenOptions,
   type PortalHarness,
 } from "./portalHarness.js";
-import type { PortalScenario } from "./portalFixtures.js";
+import {
+  PROFILE_STEAM,
+  profileRoutes,
+  UPLOAD_ASSET,
+  type PortalScenario,
+} from "./portalFixtures.js";
+import { FLOATING_ON_TWO, licenseSourceIs } from "./portalStates.js";
 
 /**
  * The customer site's main flows (PORTAL.md) in real Chromium under the Worker's exact CSP, driven
@@ -525,6 +531,124 @@ describe("package access (PX-11)", () => {
   });
 });
 
+describe("Account → Profile (PX-22, §4.30)", () => {
+  /** Every picture on the page: its source, whether it decoded, and its natural width. */
+  const pictures = (page: Page) =>
+    page.evaluate(() =>
+      [...document.querySelectorAll("img")]
+        .filter((i) => i.getAttribute("src")?.startsWith("/media/avatar/"))
+        .map((i) => ({
+          src: i.getAttribute("src"),
+          decoded: i.complete && i.naturalWidth > 0,
+        })),
+    );
+
+  it("explicit choices: a typed name and a picked picture are sent alone, stick, and reach the header chip", async () => {
+    const patches: unknown[] = [];
+    const o = await open("three", "/#/account/profile", {
+      routes: profileRoutes(PROFILE_STEAM, patches),
+    });
+    try {
+      await h1(o.page, "Account");
+      const card = o.page.getByRole("region", { name: "Profile" });
+      await card
+        .getByText("Name typed by you · picture from Steam (marafox)")
+        .waitFor();
+      await card.getByRole("button", { name: "Edit profile" }).click();
+      const field = card.getByRole("textbox", { name: "Display name" });
+      await field.fill("Mara F.");
+      await card.getByText("Your choice", { exact: true }).waitFor();
+      await card
+        // The tile (its label) takes the click; the native radio inside is visually hidden.
+        .locator('[data-tile="link:lnk_google"]')
+        .click();
+      await card.getByRole("button", { name: "Save profile" }).click();
+      await card.getByText("Name typed by you · picture from Google").waitFor();
+      expect(patches).toEqual([
+        { name: "Mara F.", picture: { from: "lnk_google" } },
+      ]);
+      const chip = o.page.getByRole("button", { name: "Account: Mara F." });
+      await chip.waitFor();
+      await o.page.waitForFunction(() =>
+        [...document.images].every((i) => i.complete),
+      );
+      const shown = await pictures(o.page);
+      // The chip's 96 px picture and the card's 256 px one, both same-origin and decoded.
+      const google = `/media/avatar/${"6a".repeat(32)}`;
+      expect(shown.map((p) => p.src)).toEqual(
+        expect.arrayContaining([`${google}-96`, google]),
+      );
+      expect(shown.every((p) => p.decoded)).toBe(true);
+      expect(await o.violations()).toEqual([]);
+    } finally {
+      await o.close();
+    }
+  });
+
+  it("upload: the bytes go up, Your upload is selected, and Save picks it", async () => {
+    const patches: unknown[] = [];
+    const o = await open("three", "/#/account/profile", {
+      routes: profileRoutes(PROFILE_STEAM, patches),
+      width: 390,
+      height: 844,
+    });
+    try {
+      await h1(o.page, "Account");
+      const card = o.page.getByRole("region", { name: "Profile" });
+      await card.getByRole("button", { name: "Edit profile" }).click();
+      const chooser = o.page.waitForEvent("filechooser");
+      await card.getByRole("button", { name: "Upload" }).click();
+      await (
+        await chooser
+      ).setFiles({
+        name: "me.png",
+        mimeType: "image/png",
+        buffer: Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+          "base64",
+        ),
+      });
+      const mine = card.getByRole("radio", { name: /Your upload/ });
+      await mine.waitFor({ state: "attached" });
+      expect(await mine.isChecked()).toBe(true);
+      expect(o.requests).toContain("POST /api/me/profile/picture");
+      await card.getByRole("button", { name: "Save profile" }).click();
+      await card
+        .getByText("Name typed by you · picture uploaded by you")
+        .waitFor();
+      expect(patches).toEqual([{ picture: { upload: UPLOAD_ASSET } }]);
+      expect(
+        await o.page.evaluate(
+          () => document.documentElement.scrollWidth - window.innerWidth,
+        ),
+      ).toBeLessThanOrEqual(0);
+      expect(await o.violations()).toEqual([]);
+    } finally {
+      await o.close();
+    }
+  });
+
+  it("no picture before authentication: the login card asks for no profile and loads no picture", async () => {
+    // The profile route would answer with a picture; signed out, nothing may ask for it.
+    const o = await open("signedOut", "/", {
+      routes: {
+        "GET /api/me/profile":
+          profileRoutes(PROFILE_STEAM)["GET /api/me/profile"]!,
+      },
+    });
+    try {
+      await h1(o.page, /Sign in/);
+      expect(await pictures(o.page)).toEqual([]);
+      expect(
+        o.all.filter((r) => /\/media\/avatar\/|\/api\/me\/profile/.test(r)),
+      ).toEqual([]);
+      expect(await o.violations()).toEqual([]);
+    } finally {
+      await o.close();
+    }
+  });
+});
+
 describe("main flows", () => {
   it("activates a license from the header and lands on the product page", async () => {
     const o = await open("three", "/");
@@ -683,7 +807,7 @@ describe("main flows", () => {
   it("a sign-in licence lists its devices and removes one remotely", async () => {
     const o = await open("signIn", "/#/p/quill/devices");
     await h1(o.page, "Quill");
-    await o.page.getByText("From signing in · Lifetime").waitFor();
+    await licenseSourceIs(o.page, "From signing in");
     expect(await o.page.getByText(/Account-wide/).count()).toBe(0);
     await o.page
       .getByRole("button", { name: "Remove Living room PC" })
@@ -716,15 +840,161 @@ describe("main flows", () => {
       "Standard · Sign-in",
       "Standard · Steam key",
     ]);
-    await card.getByText("Steam key · Lifetime").waitFor();
+    await licenseSourceIs(o.page, "Steam key");
     expect(await card.getByText(/\d+ (of \d+ )?devices?$/).count()).toBe(0);
     const devices = o.page.getByRole("region", { name: "Devices" });
     await devices.getByText("Mara's MacBook Pro").waitFor();
     expect(await devices.getByText(/in use/).count()).toBe(0);
     await picker.selectOption({ label: "Standard · Sign-in" });
-    await card.getByText("From signing in · Lifetime").waitFor();
+    await licenseSourceIs(o.page, "From signing in");
     await card.getByText(/^1 of \d+ devices?$/).waitFor();
     await devices.getByText("Mara's Steam Deck").waitFor();
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("adds a floating key with its devices: the count on Confirm and on Done (PX-23)", async () => {
+    const o = await open("three", "/", { routes: FLOATING_ON_TWO });
+    await h1(o.page, "Your library");
+    await o.page.getByRole("button", { name: "Activate license" }).click();
+    const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
+    await dialog
+      .getByRole("textbox", { name: "License key" })
+      .fill("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w");
+    await dialog.getByRole("button", { name: "Continue" }).click();
+    const confirm = o.page.getByRole("dialog", {
+      name: "Add Mossgarden to your account?",
+    });
+    await confirm
+      .getByText(
+        "It's on 2 devices already. They keep working and come with it.",
+      )
+      .waitFor();
+    await shoot(o.page, "activate-confirm-devices-desktop-dark");
+    await confirm.getByRole("button", { name: "Add Mossgarden" }).click();
+    const done = o.page.getByRole("dialog", {
+      name: "Mossgarden is in your library",
+    });
+    await done
+      .getByText(
+        "Its 2 devices came with it. Sign in on them to turn on Cloud Sync.",
+      )
+      .waitFor();
+    await shoot(o.page, "activate-done-devices-desktop-dark");
+    expect(o.requests).toContain("POST /api/claim/license-key");
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("each licence names how it reached the person (PX-23)", async () => {
+    const o = await open("origins", "/#/p/tidewater");
+    await h1(o.page, "Tidewater Studio");
+    await licenseSourceIs(o.page, "Added with a key");
+    const card = o.page.getByRole("region", {
+      name: "Tidewater Studio license",
+    });
+    const picker = card.getByRole("combobox");
+    expect((await picker.locator("option").allTextContents()).sort()).toEqual([
+      "Free · From Harbor Audio",
+      "Pro · Key",
+    ]);
+    await picker.selectOption({ label: "Free · From Harbor Audio" });
+    await licenseSourceIs(o.page, "From Harbor Audio");
+    // The term is said once, as Updates included, never as a meta line under the tier.
+    expect(await card.getByText(/ · (Lifetime|Expires|Ended)/).count()).toBe(0);
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("no Remove for a licence its key can't bring back: a sign-in licence (PX-23 review)", async () => {
+    const o = await open("signIn", "/#/p/quill");
+    await h1(o.page, "Quill");
+    await licenseSourceIs(o.page, "From signing in");
+    await o.page.getByRole("button", { name: "More for Quill" }).click();
+    const items = o.page.getByRole("menuitem");
+    await items.first().waitFor();
+    expect(await items.allTextContents()).toEqual([
+      "Manage devices",
+      "Copy link",
+    ]);
+    expect(o.requests.some((r) => r.startsWith("DELETE /api/licenses/"))).toBe(
+      false,
+    );
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("Remove from my library: the licence leaves and stays out across reloads (PX-23, with LX-26)", async () => {
+    const o = await open(
+      "origins",
+      "/#/p/tidewater?license=lic_tidewater-free",
+    );
+    await h1(o.page, "Tidewater Studio");
+    await licenseSourceIs(o.page, "From Harbor Audio");
+    const removeFromMenu = async (dialogName: string) => {
+      await o.page
+        .getByRole("button", { name: "More for Tidewater Studio" })
+        .click();
+      await o.page
+        .getByRole("menuitem", { name: "Remove from my library" })
+        .click();
+      const dialog = o.page.getByRole("alertdialog", { name: dialogName });
+      await dialog.waitFor();
+      return dialog;
+    };
+    // A licence the developer assigned keeps its email: not in an account, never "floating".
+    const first = await removeFromMenu(
+      "Remove this Tidewater Studio license from your library?",
+    );
+    await first
+      .getByText(
+        "It won't be in an account, and it won't come back to this account by itself. To add it again, use its key.",
+      )
+      .waitFor();
+    expect(await first.getByText(/floating/i).count()).toBe(0);
+    await shoot(o.page, "product-remove-license-desktop-dark");
+    await first.getByRole("button", { name: "Remove from my library" }).click();
+    await o.page
+      .getByText("The Free license was removed from your library")
+      .first()
+      .waitFor();
+    expect(o.requests).toContain(
+      "DELETE /api/licenses/tidewater/lic_tidewater-free",
+    );
+    // The page now shows the licence that is left, and only it, after every reload.
+    for (let i = 0; i < 2; i++) {
+      await licenseSourceIs(o.page, "Added with a key");
+      const card = o.page.getByRole("region", {
+        name: "Tidewater Studio license",
+      });
+      expect(await card.getByRole("combobox").count()).toBe(0);
+      await o.page.reload();
+      await h1(o.page, "Tidewater Studio");
+    }
+    // The key Mara added floats again once removed: anyone with the key can add it.
+    const last = await removeFromMenu(
+      "Remove Tidewater Studio from your library?",
+    );
+    await last
+      .getByText(
+        "It won't be in an account: anyone with the key can add it, and it won't come back to this account by itself.",
+      )
+      .waitFor();
+    await last.getByRole("button", { name: "Remove from my library" }).click();
+    await o.page
+      .getByText("Tidewater Studio was removed from your library")
+      .first()
+      .waitFor();
+    await h1(o.page, "Your library");
+    for (let i = 0; i < 2; i++) {
+      await o.page.reload();
+      await h1(o.page, "Your library");
+      expect(
+        await o.page.getByRole("link", { name: /Tidewater Studio/ }).count(),
+      ).toBe(0);
+    }
+    await o.page.goto(`${portal.base()}/#/p/tidewater`);
+    await h1(o.page, "That product isn't in your library");
     expect(await o.violations()).toEqual([]);
     await o.close();
   });

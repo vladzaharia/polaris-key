@@ -176,7 +176,9 @@ export function declaredByEntry(e: SettingDef): string[] {
   }
   if (s.kind === "rich") out.push(`table:${s.adapter}`, `rows:${s.adapter}`);
   if (e.varName) out.push(`env:${e.varName}`);
-  if (e.manifest) out.push(manifestTargetId(e.manifest.path));
+  if (e.manifest)
+    for (const p of [e.manifest.path, ...(e.manifest.alsoPaths ?? [])])
+      out.push(manifestTargetId(p));
   return out;
 }
 
@@ -205,7 +207,7 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
   {
     thing: "Refund, void and chargeback handling",
     reason:
-      "Always revokes that one grant (S-19 decision 5); a keep-access-after-refund switch would override a store's revocation.",
+      "Always revokes that one grant (S-19 decision 5). licensing.refundGraceHours can only delay the revocation, by at most 168 hours, never prevent it; a keep-access-after-refund switch would override a store's revocation.",
     shows: "Distribution → Commerce",
   },
   {
@@ -461,7 +463,11 @@ export const PENDING: readonly PendingEntry[] = [
   { target: "env:EMAIL_APPLE_RELAY", owner: "ST-09", note: "email.appleRelay" },
   // Operator-owned product objects the settings hub hosts.
   { target: "table:product_keys", owner: "ST-08", note: "core.keys" },
-  { target: "table:product_secrets", owner: "ST-08", note: "core.secrets" },
+  {
+    target: "table:product_secrets",
+    owner: "ST-08",
+    note: "extends core.secrets (ST-19b registered it, pending on ST-08)",
+  },
   {
     target: "table:release_channel_floors",
     owner: "ST-08",
@@ -473,90 +479,10 @@ export const PENDING: readonly PendingEntry[] = [
     note: "release.channelFloors (packs)",
   },
   { target: "column:release_pack_floors.source", owner: "ST-08" },
-  // Manifest-declared settings with no entry yet (ST-19 split them out to ST-19b, plans/ST-19.md
-  // Q1). The duplicate spellings ST-06 parked here left with ST-19: the generated NOT_A_SETTING
-  // row "Deprecated manifest spellings" covers them.
-  {
-    target: "table:ci_publishers",
-    owner: "ST-19b",
-    note: "release.publishing.trustedPublisher",
-  },
-  { target: "column:ci_publishers.source", owner: "ST-19b" },
-  {
-    target: "table:release_channel_policy",
-    owner: "ST-19b",
-    note: "release.channelPolicy",
-  },
-  { target: "column:release_channel_policy.source", owner: "ST-19b" },
-  {
-    target: "column:release_deliverables.def_source",
-    owner: "ST-19b",
-    note: "release.deliverables",
-  },
-  {
-    target: "table:provisioning_config",
-    owner: "ST-19b",
-    note: "identity.provisioning",
-  },
-  {
-    target: "table:dist_transports",
-    owner: "ST-19b",
-    note: "distribution.transports",
-  },
-  {
-    target: "manifest:product:product.compatMax",
-    owner: "ST-19b",
-    note: "second field of release.compatWindow",
-  },
-  {
-    target: "manifest:product:devices",
-    owner: "ST-19b",
-    note: "core.registration",
-  },
-  {
-    target: "manifest:product:provisioning",
-    owner: "ST-19b",
-    note: "identity.provisioning",
-  },
-  {
-    target: "manifest:product:secrets",
-    owner: "ST-19b",
-    note: "core.secrets (names only)",
-  },
-  {
-    target: "manifest:release:release.provider",
-    owner: "ST-19b",
-    note: "release.github",
-  },
-  { target: "manifest:release:release.binaryName", owner: "ST-19b" },
-  { target: "manifest:release:release.channelWorkflow", owner: "ST-19b" },
-  { target: "manifest:release:release.betaBranch", owner: "ST-19b" },
-  { target: "manifest:release:release.summaryMarker", owner: "ST-19b" },
-  { target: "manifest:release:release.manualChannels", owner: "ST-19b" },
-  {
-    target: "manifest:release:release.deliverables",
-    owner: "ST-19b",
-    note: "release.deliverables",
-  },
-  {
-    target: "manifest:release:release.publishing",
-    owner: "ST-19b",
-    note: "release.publishing.trustedPublisher",
-  },
-  {
-    target: "manifest:release:release.releaseKeys",
-    owner: "ST-19b",
-    note: "release.keys",
-  },
-  {
-    target: "manifest:distribution:transports",
-    owner: "ST-19b",
-    note: "distribution.transports",
-  },
 ];
 
 /** `PENDING.length`, written down: lower it with every removal; raising it needs a review. */
-export const PENDING_CEILING = 47;
+export const PENDING_CEILING = 26;
 
 export interface CoverageInputs {
   targets: readonly CoverageTarget[];

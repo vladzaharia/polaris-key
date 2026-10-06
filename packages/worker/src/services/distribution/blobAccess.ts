@@ -20,7 +20,9 @@
  *
  * ── WHAT EACH HOLDER REQUIRES ───────────────────────────────────────────────────────────────
  *
- *   - the app side (any non-pack ref, public path only): P2b-04's rule, unchanged — the strictest
+ *   - nobody, for listing art and hosted copies (`listing-asset`, `hosted-asset`; HA-07): those refs
+ *     authorise nothing here (`SERVES_NOTHING_REF_KINDS`); the image host serves them;
+ *   - the app side (any other non-pack ref, public path only): P2b-04's rule, unchanged — the strictest
  *     delivery mode of the deliverables whose releases carry the digest (the `app` mode when none
  *     do): `public`, a usable licence, or under `entitled` an APP release of THIS product carrying
  *     the digest whose stored version passes the window (`entitledBlobRefusal`);
@@ -71,6 +73,8 @@ import {
   type RefHolder,
 } from "../../core/blobs.js";
 import { lazyDeltasEnabled } from "../../core/deltaDemand.js";
+import { HOSTED_ASSET_REF } from "../../core/hostedAssets.js";
+import { LISTING_ASSET_REF } from "./listing/assets.js";
 import {
   accessRefusal,
   entitlementFlagRefusal,
@@ -96,6 +100,20 @@ type Requirement =
   | { level: 2; check: "window" }
   | { level: 2; check: "flag"; flag: string }
   | { level: 2; check: "closed"; deliverable: string };
+
+/**
+ * Holders that authorise NOTHING on this route (HA-07; notes/S-20 §4.6 #2): store listing art
+ * (`listing-asset`, A-18d) and Polaris Key's hosted copies (`hosted-asset`, HA-01). They are public
+ * images served from the image host (`core/imgHost.ts`), or bytes pushed to a store, never app
+ * bytes: before HA-07 they counted as "app-side" here, so a `public` app served them to anyone
+ * holding the digest, which the THREAT-MODEL said no route did. An object such a ref alone holds
+ * is the plain not-found; one an artifact, feed file or pack also holds is served under THAT
+ * holder's rule, as before.
+ */
+const SERVES_NOTHING_REF_KINDS: ReadonlySet<string> = new Set([
+  LISTING_ASSET_REF,
+  HOSTED_ASSET_REF,
+]);
 
 const PACK_REF_KINDS: ReadonlySet<string> = new Set([
   "pack-upload",
@@ -125,6 +143,8 @@ function classify(
     if (r.storageKey !== key) continue;
     // F-23: an OCI push upload is possession only and authorises nothing (core `OCI_PUSH_REF`).
     if (r.refKind === OCI_PUSH_REF) continue;
+    // HA-07: listing art and hosted copies are the image host's, never this route's.
+    if (SERVES_NOTHING_REF_KINDS.has(r.refKind)) continue;
     if (!PACK_REF_KINDS.has(r.refKind)) appSide = true;
     // A malformed holder (no `@` in a pack release id) names no pack and so admits nothing.
     else if (isDeliverableId(r.holder)) packs.add(r.holder);

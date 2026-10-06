@@ -4,7 +4,8 @@
  * authored. Product OIDC is manifest-fed (`.pkey/product`'s `oidc` block), so that part reads and
  * points; its one action is a resync. I-12 adds the one console-edited part, sign-in THROUGH this
  * product (`SignInThroughProduct`: the passthrough header's app name and the App Review 4.8
- * warning).
+ * warning). LX-06 adds the tier sync row (`oidc.syncTierOnSignIn`), claimable like the licensing
+ * settings.
  *
  * Fixes IDN-2: the provider, issuer and client come from `config/mint` → `identity`, the same read
  * Edge mint shows. Fixes IDN-1: resync is the console's one resync flow (UX-78), an L1 confirm
@@ -46,6 +47,23 @@ import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import { SettingsRow, SettingsSection } from "../../templates/Settings.js";
 import { releaseSourceOf } from "../../../lib/products.js";
+import {
+  ProductSettingsSection,
+  type SettingCopy,
+} from "../../components/ProductSettingsSection.js";
+
+/** The sign-in settings' value labels and confirmation copy (LX-06). */
+const SIGN_IN_SETTINGS_COPY: Record<string, SettingCopy> = {
+  "identity.oidc.syncTierOnSignIn": {
+    values: { off: "Off", upgradeOnly: "Upgrade only" },
+    consequences: (to) =>
+      to === "upgradeOnly"
+        ? [
+            "A sign-in may move a licence up to the tier its groups map to; it never moves one down.",
+          ]
+        : ["A sign-in never changes a licence's tier."],
+  },
+};
 
 /** Resync needs a linked repo: `release/resync.ts` refuses (422) any other release source. */
 const isRepoLinked = (product: Pick<ProductDetail, "releaseSource">): boolean =>
@@ -331,6 +349,16 @@ function SignInBody({
           </p>
         </div>
       </SettingsSection>
+
+      {/* LX-06: `oidc.syncTierOnSignIn`, a claimable setting (`identity.oidc.syncTierOnSignIn`). */}
+      <ProductSettingsSection
+        slug={slug}
+        area="identity.signIn"
+        keys={["identity.oidc.syncTierOnSignIn"]}
+        id="sign-in-tier-sync"
+        title="Tier sync"
+        copy={SIGN_IN_SETTINGS_COPY}
+      />
 
       <SettingsSection
         id="sign-in-manifest"

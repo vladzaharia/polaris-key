@@ -1286,6 +1286,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_eligible_message">이 혜택은 더 이상 회원님 계정에서 사용할 수 없어요. 새로고침한 후 다시 시도하세요.</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_removable_title">제거할 수 없음</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_removable_message">이 라이선스는 라이선스 키로 다시 추가할 수 없어서 라이브러리에 남아 있어요.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_download_auth_required_title">로그인하여 다운로드</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_download_auth_required_message">다운로드하려면 로그인하거나 라이선스를 활성화하세요.</string>

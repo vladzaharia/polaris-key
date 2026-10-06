@@ -1,0 +1,82 @@
+---
+/**
+ * The component catalog (packages/brand/kit-copy/components.json) as a table: each component's
+ * page, with the page's own description, its priority, its state count and the kits that record
+ * baselines for it. A catalog component without a page fails the build (and test/ui.test.ts).
+ */
+import { getCollection } from "astro:content";
+import catalog from "../../../../brand/kit-copy/components.json";
+import { BASELINES } from "../../lib/baselines";
+import { kebab } from "../../lib/shots";
+import { UI_KITS } from "../../lib/uiKits";
+
+const pages = new Map(
+  (
+    await getCollection("docs", (e) =>
+      e.id.startsWith("build/ui/components/"),
+    )
+  ).map((e) => [e.id, e.data]),
+);
+const components = (
+  catalog as {
+    components: Record<
+      string,
+      { priority: string; states: Record<string, unknown> }
+    >;
+  }
+).components;
+
+const rows = Object.entries(components).map(([name, c]) => {
+  const id = `build/ui/components/${kebab(name)}`;
+  const page = pages.get(id);
+  if (page === undefined) {
+    throw new Error(
+      `ComponentIndex: no page for catalog component "${name}" (expected src/content/docs/${id}.mdx)`,
+    );
+  }
+  const kits = UI_KITS.filter((k) =>
+    BASELINES.some((b) => b.kit === k.id && b.component === name),
+  ).map((k) => k.label);
+  return {
+    name,
+    href: `/docs/${id}/`,
+    description: page.description ?? "",
+    priority: c.priority,
+    states: Object.keys(c.states).length,
+    kits,
+  };
+});
+---
+
+<table class="pk-ui-components">
+  <thead>
+    <tr>
+      <th scope="col">Component</th>
+      <th scope="col">What it is</th>
+      <th scope="col">Priority</th>
+      <th scope="col">States</th>
+      <th scope="col">Baselines from</th>
+    </tr>
+  </thead>
+  <tbody>
+    {
+      rows.map((row) => (
+        <tr>
+          <td>
+            <a href={row.href}>{row.name}</a>
+          </td>
+          <td>{row.description}</td>
+          <td>{row.priority}</td>
+          <td>{row.states}</td>
+          <td>
+            {row.kits.length === 0 ? (
+              <span class="pk-ui-muted">No kit yet</span>
+            ) : (
+              row.kits.join(", ")
+            )}
+          </td>
+        </tr>
+      ))
+    }
+  </tbody>
+</table>

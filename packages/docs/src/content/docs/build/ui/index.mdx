@@ -1,0 +1,164 @@
+---
+title: "UI kits"
+description: "One design system for every SDK's UI: the three layers, the Polaris Key look in the product's accent, where product identity comes from, and the one sign-in form."
+sidebar:
+  order: 1
+  label: "Overview"
+---
+
+import KitTable from "../../../../components/ui/KitTable.astro";
+
+:::note[Status]
+This section documents the UI-kit specification (`docs/design/UI-KITS.md`) the kits are being
+rebuilt to. No kit ships the shared theme API, copy catalog or sign-in form yet;
+[The kits](#the-kits) says where each kit's current docs are.
+:::
+
+Every Polaris Key SDK that draws UI is getting a **UI kit** built to one specification,
+`docs/design/UI-KITS.md`: the screens a product needs to gate itself on a license, from boot and
+sign-in to devices, updates and settings. The kits will share one component catalog, one theme
+API, one copy catalog and one set of flows, so a person who moves between a product's app, the
+customer portal and the console meets one system, whichever SDK the product links.
+
+This section is the shared half of the kit docs. Each kit adds its own framework page, and its tab
+on every component page, as it ships. Until a kit has its framework page, its current docs are on
+its SDK page (see [The kits](#the-kits)).
+
+## Two ways to integrate
+
+- **The hosted card.** No UI code: the kit's sign-in form runs with `presentation: "browser"` and
+  hands the whole flow to the Polaris Key sign-in card in the browser.
+- **The kit.** The kit's own form, dropped in whole or used piece by piece, or your own UI drawn
+  over the kit's headless layer and the SDK's primitives.
+
+## Three layers in every kit
+
+Every component in the [catalog](/docs/build/ui/components/) is specified in three layers, so a team can
+drop in a flow, restyle a component, or rebuild the UI on the state alone:
+
+- **(a) The drop-in flow:** one call that gates the app and runs every screen it needs.
+- **(b) The styled parts:** each screen and each part on its own, themed, with slots.
+- **(c) Headless:** the state machine, its actions and its copy keys, with no UI.
+
+The specification names each layer per kit as follows; a kit's framework page documents the API it
+ships.
+
+| Kit     | (a) Drop-in flow                             | (b) Styled parts                                        | (c) Headless                                       |
+| ------- | -------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------- |
+| Web     | `<PolarisKeyGate>`, `<pk-gate>`              | `<Activate>`, `<DeviceList>` with `data-part` and slots | `useActivate()` (React), `ActivateModel` (ui-core) |
+| SwiftUI | `.polarisKeyGate(client)`                    | `ActivateView`, `DeviceList` with a style               | `@Observable ActivateModel`                        |
+| Compose | `PolarisKeyGate(client) { }`                 | `Activate(state)`, `DeviceList(state)` with `*Defaults` | `rememberActivateState(client)`                    |
+| Godot   | `PKeyGate` node, `await PolarisKey.boot()`   | `PKeyActivate.tscn` with theme type variations          | `PKeyActivateController`                           |
+| Qt      | `polaris_key.ui.qt.run_gate(client, window)` | `Activate.qml`, QWidget parts with QSS                  | `ActivateViewModel` (`polaris_key.ui.core`)        |
+
+Layer (c) is to be one state machine in every language, specified once as shared fixtures: a
+React screen, a SwiftUI screen and a Godot scene fed the same inputs will show the same step with
+the same copy key. An app that draws its own UI on the SDK primitives gets the same steps, states
+and copy keys as the drop-in.
+
+## The look
+
+- **The Polaris Key look by default.** Every kit is to render the brand's surface, text, status and
+  elevation tokens, Rubik, and the radius and motion tokens. It is dark first with full light
+  parity and a System, Dark and Light choice. Games and TV default to dark.
+- **In the product's accent.** Polaris violet appears only when the integrator asks for
+  `accent: "core"`. Every accent goes through one contrast resolver, so buttons, links and the
+  focus ring stay legible in both themes ([Theming](/docs/build/ui/theming/#the-accent-resolver)).
+- **In each platform's idiom.** The modern web flow card; Liquid Glass on Apple's 26 releases,
+  with a designed fallback on the 18-era floor; Material 3 Expressive on Android; Fluent 2 on
+  Windows; libadwaita on GNOME; modern game UI in Godot; a 2026 command line in the terminal.
+  The product-first hierarchy, Rubik, the token colours, the copy and the flows stay identical
+  everywhere.
+- **Or the host's look.** The `native` preset keeps the structure, flows, copy and spacing and
+  hands colour, type and materials to the host ([Theming](/docs/build/ui/theming/#the-native-preset)).
+
+The specification's hard rules for a modern UI (no boxed forms, no heavy borders, no stock
+alerts or spinners, visible states, tokenised motion) are checked by `pnpm ui:lint` and by each
+kit's own tests.
+
+## Product identity
+
+The product is the hero of every kit screen. Polaris Key supplies the design language, structure
+and polish; the product's name, icon and accent lead.
+
+A kit's `ProductIdentity` holds `name`, `icon`, `developer`, and optionally `shortName`, `accent`,
+`art`, `wordmark` and `deviceCodeUrl`. The kit fills it from, in order:
+
+1. the integrator's theme (`product`);
+2. the product's **registered presentation**: the `presentation` block of `.pkey/product`
+   ([Presentation](/docs/build/manifest/authoring/#presentation-presentation)), served in the
+   discovery document and read, verified and cached by the SDK;
+3. the app bundle: `Info.plist`, the Android manifest, `package.json`'s `productName`, or
+   Godot's `application/config/name` and icon.
+
+Kits never fetch discovery or the icon themselves: they are to read the presentation through
+their SDK, and fall through to the bundle until the SDK exposes it. With no icon at all, a kit draws a
+monogram tile (the product's initial on a neutral surface), never a Polaris Key mark.
+
+The accent follows the same idea: the integrator's colour, else the presentation's `accent` (its
+`accentDark` in the dark scheme), else a colour derived from the product icon, else a neutral ink
+primary.
+
+Polaris Key itself appears only in the optional "Powered by Polaris Key" line or badge
+(`poweredBy`, off by default), and in two statements that are true about who handles a step: the
+sign-in footnote, and the device-code URL when the product sets no `deviceCodeUrl`. The six service
+accents are off on product screens; an integrator can opt in with `serviceCues: true`.
+
+## The presentation default
+
+The specification gives every kit **one sign-in form**. Its body morphs in place through Sign in, Finish in your
+browser (or the code), Choose a license (and Replace a device, when the license is full), and
+Done. No sheet or dialog stacks on it. Activation with a license key is a step of the same form,
+and also ships on its own for a key-only product.
+
+One option sets where the form appears, with the same values in every kit:
+
+| `presentation`       | The form                                                                                                                  |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `"inline"` (default) | In the screen or window pane the kit already owns                                                                         |
+| `"sheet"`            | In one platform sheet or dialog that holds every step: a sheet on macOS, `ContentDialog` on Windows, `AdwDialog` on GNOME |
+| `"browser"`          | The hosted sign-in card in the browser; the kit waits and moves on by itself                                              |
+
+`replace` (`"inline"` or `"browser"`) does the same for Replace a device. Native controls stay
+native inside the form, including the system confirmation for a destructive Replace where the
+platform expects one.
+
+## Accessibility
+
+Every kit is to meet WCAG 2.2 AA in both themes, and the specification's shared rules: one heading per
+screen; visible labels on every field; errors announced and focused; modals that trap focus,
+restore it and close on Escape, B or back; layouts that survive the largest text size; full
+keyboard, gamepad and D-pad reach; named icon-only controls; status never shown by colour alone;
+the focus ring on keyboard focus only for pointer users, and always for gamepad and TV; and glass
+that turns opaque under reduced transparency.
+
+## The kits
+
+The must kits ship first; the should kits follow the kit they extend.
+
+<KitTable />
+
+## In this section
+
+| Page                                         | What it covers                                                                              |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [Theming](/docs/build/ui/theming/)           | The one theme value, where each kit takes it, the accent resolver, the `native` preset      |
+| [Localisation](/docs/build/ui/localisation/) | The one copy catalog, the launch locales, per-platform tables, overrides                    |
+| [Components](/docs/build/ui/components/)     | One page per catalog component: states, copy keys, and every kit's baselines in both themes |
+| [Frameworks](/docs/build/ui/frameworks/)     | One page per kit: install, the one-line flow, piecemeal and headless use                    |
+| [Recipes](/docs/build/ui/recipes/)           | Framework integrations and host design systems                                              |
+
+## Writing into this section
+
+A kit that ships adds, in its own change:
+
+- **its framework page**, `build/ui/frameworks/<id>.mdx`, copied from the
+  [framework page template](/docs/build/ui/frameworks/#the-framework-page-template);
+- **its tab on each component page** it implements, in the page's "In each kit" section (the
+  [component page template](/docs/build/ui/components/#the-component-page-template) shows the
+  shape);
+- **its baselines**, which appear on the component pages by themselves once the kit's files are
+  named `<component>-<state>-<theme>.png` and its docs pattern in
+  `packages/docs/src/lib/baselines.ts` selects one render per state and theme;
+- **its sample**, under `examples/ui/<id>/`, with a row in `examples/ui/README.md`;
+- **a slimmer README**: install, the one-line flow, and a link to its framework page.

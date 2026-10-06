@@ -9,9 +9,11 @@
  * attribute is double-quoted). Every `href` goes through `safeHref`, which admits only an `https:`
  * URL the URL parser accepts or one of the deep-link schemes the Worker itself builds
  * (`model.ts`), so a `javascript:`, `data:` or `vbscript:` value can never become a link, whatever
- * a listing says. There is no script, no inline event handler, no `style=` attribute and no
- * external resource: the one `<style>` element is allowed by its hash (`PAGE_CSS`, `index.ts`
- * sets the policy), and QR codes are inline SVG built from numbers (`qr.ts`).
+ * a listing says. There is no script, no inline event handler, no `style=` attribute and one
+ * external resource at most: the product's hosted icon on the image host (HA-07), a Worker-built
+ * `https:` URL the policy names by origin. The one `<style>` element is allowed by its hash
+ * (`PAGE_CSS`, `index.ts` sets the policy), and QR codes are inline SVG built from numbers
+ * (`qr.ts`).
  *
  * ── THE PRIMARY ACTION ──────────────────────────────────────────────────────────────────────
  *
@@ -115,6 +117,7 @@ export const PAGE_CSS = [
   `body{margin:0;background:var(--bg);color:var(--fg);font-family:${FONT.sans};font-synthesis:none;font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}`,
   `main,header,footer{max-width:56rem;margin:0 auto;padding:0 1rem}`,
   `header{padding-top:2.5rem}`,
+  `.icon{display:block;width:4rem;height:4rem;margin:0 0 1rem;border-radius:22%;object-fit:contain}`,
   `h1{margin:0;color:var(--strong);font-size:2rem;line-height:2.5rem;font-weight:700;letter-spacing:-.01em}`,
   `h2{margin:2rem 0 .75rem;color:var(--strong);font-size:1.25rem;line-height:1.75rem;font-weight:700}`,
   `h3{margin:1.25rem 0 .5rem;color:var(--strong);font-size:1rem;font-weight:700}`,
@@ -356,6 +359,14 @@ function way(a: PageAction, group: PagePlatformGroup): string {
   return `<li class="way" data-action="${esc(a.kind)}">${parts.join("")}</li>`;
 }
 
+/** The header's icon: an `https:` URL only (`safeHref`), never a deep link; decorative. */
+function iconTag(url: string | null): string {
+  const src = url && url.startsWith("https:") ? safeHref(url) : null;
+  return src
+    ? `<img class="icon" src="${src}" alt="" width="64" height="64" decoding="async">`
+    : "";
+}
+
 let delivery: string | null = null;
 
 /**
@@ -367,10 +378,20 @@ function deliveryMark(): string {
   return delivery;
 }
 
+/** What the page shows beside its model, resolved per request (`index.ts`). */
+export interface PageExtras {
+  /**
+   * The product's hosted icon on the image host (HA-07), or `null`. Drawn only when it is an
+   * `https:` URL `safeHref` accepts; it is decorative (the name is the heading beside it).
+   */
+  iconUrl?: string | null;
+}
+
 /** Render the page. */
 export function renderDownloadPage(
   model: DownloadModel,
   detected: DetectedPlatform,
+  extras: PageExtras = {},
 ): string {
   const name = model.listing.name;
   const groupOf = (p: PagePlatform | null) =>
@@ -472,7 +493,7 @@ export function renderDownloadPage(
     `<title>Download ${esc(name)}</title>`,
     `<style>${PAGE_CSS}</style>`,
     "</head><body>",
-    `<header><h1>${esc(name)}</h1>${
+    `<header>${iconTag(extras.iconUrl ?? null)}<h1>${esc(name)}</h1>${
       model.listing.subtitle
         ? `<p class="sub">${esc(model.listing.subtitle)}</p>`
         : ""

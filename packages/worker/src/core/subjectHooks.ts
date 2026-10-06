@@ -160,7 +160,10 @@ export type ClearReason =
   | "relinked"
   /** PX-W17: the product's Identity service was turned off. Every binding of the product goes;
    *  no seat is ever released for this reason, whatever `bound_by` says. */
-  | "identity_disabled";
+  | "identity_disabled"
+  /** PX-W12: an account join was undone and the device's subject changed hands; it binds again
+   *  at its next sign-in. No seat is released. */
+  | "merge_undone";
 
 /** Which devices a clear reaches. */
 export type ClearScope =

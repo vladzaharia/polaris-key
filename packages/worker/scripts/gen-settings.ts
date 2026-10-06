@@ -109,7 +109,13 @@ function describeDefault(e: SettingDef): string {
   if (e.sensitivity === "secret") return "—";
   if (e.defaultValue === null) return e.allowUnset ? "unset" : "—";
   const json = JSON.stringify(e.defaultValue);
-  return json.length > 60 ? "structured" : code(json);
+  const value = json.length > 60 ? "structured" : code(json);
+  if (!e.legacyDefault) return value;
+  // LX-06: a derived default (plans/LX-01.md §8 Q2), shown with its cut-over date.
+  const before = new Date(e.legacyDefault.createdBefore * 1000)
+    .toISOString()
+    .slice(0, 10);
+  return `${value} (${code(JSON.stringify(e.legacyDefault.value))} for products registered before ${before})`;
 }
 
 export function describeConfirm(c: SettingConfirm): string {
@@ -131,6 +137,10 @@ function notes(e: SettingDef): string {
   if (e.pending) n.push(`registered ahead of ${e.pending.wp}`);
   if (e.critical) n.push("reason required");
   if (e.securityWidening) n.push("security-widening");
+  if (e.systemLock)
+    n.push(
+      `locked to ${code(JSON.stringify(e.systemLock.value))} for the system product`,
+    );
   if (e.sensitivity === "secret") n.push("secret: presence only");
   if (e.wire?.length) n.push(`devices see it (${e.wire.join(", ")})`);
   if (e.aliases?.length)
@@ -191,7 +201,11 @@ function productTable(entries: readonly SettingDef[]): string {
       describeDefault(e),
       cell(describeMerge(e)),
       e.ownership,
-      e.manifest ? code(e.manifest.path) : "—",
+      e.manifest
+        ? [e.manifest.path, ...(e.manifest.alsoPaths ?? [])]
+            .map((p) => code(p))
+            .join(", ")
+        : "—",
       describeConfirm(e.confirm),
       notes(e),
     ]),

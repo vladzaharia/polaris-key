@@ -90,6 +90,35 @@ every row, no "Account-wide"). For this package:
 - **Transcripts:** `redirect-web-choose-app.json`, `choice-replace-app.json`, `choice-key-app.json`, `choice-grant-errors.json`, and `discovery-capabilities.json` re-recorded; parity row `identity.choice` (planned, I-10a/I-10b).
 - **Acceptance (additions):** device code never issues a grant; a grant from another device id answers `invalid_grant`; `choice/devices` answers one `404` for unknown, foreign and non-replaceable licences; a Replace through a grant shares the portal's budget and audit row.
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`. Each item names the package whose review raised it.
+
+- **Pass the product's terms into the gate** ([PX-W15](PX-W15-email-gate.md)). `beginProviderSignIn`
+  (`card/gate.ts`) takes `product: { slug, tenantScopes, terms }`, but I-06's provider callbacks
+  (`providers/flow.ts`) pass no product context, so the gate's terms step runs only in tests. A
+  passthrough sign-in knows its product: pass its `identity.requireTerms` (a `TermsRequirement`,
+  `{ url, version }`, from I-09's manifest block) as `product.terms`, so a first sign-in through the
+  app accepts the product's terms. Acceptances live in `account_terms_acceptances`
+  (`accounts/terms.ts`), never in `accounts.terms_json`.
+- **Call `onAccountEmailVerified` where an address is verified** ([LX-26](LX-26-licence-holders-worker.md)).
+  The hook (`core/licenseHolders.ts`) attaches the licences waiting on that address. On `main`,
+  every sign-in reaches it through the link sweep (`syncAccountLicenseLinks`, run by `finishSignIn`,
+  the portal OIDC callback and device login), `linkIdentity` calls it directly, and the portal API
+  also runs the sweep on every request (`handlePortalApi`, `handleMe` and `handleLicenses` in
+  `portal/api.ts`). Each verification point this package adds calls the hook directly. Once every
+  point outside a sign-in does (add-email, PX-W12; this package's and I-09's), drop the
+  per-request sweep from `portal/api.ts`; the per-sign-in sweeps stay. Whichever of I-08 and I-09
+  lands second makes the drop.
+- **The `picture` claim** ([PX-W16](PX-W16-profile-avatars.md)). The account's picture is
+  `avatarUrl(accounts.avatar_key)` (`card/avatars.ts`): the same value the consent view shows, a
+  same-origin `/media/avatar/<asset>` path served cross-origin, or `null` for initials. Layer 1
+  issues no ID token, and the device-code poll's `identity` carries only the consented `name` and
+  `email` (`plans/I-04.md` §2.4), even though the consent screen asks for `picture` (PX-W13's
+  `CONSENT_PROFILE_CLAIMS`). If this package hands an app the picture anywhere, it reads that value,
+  made absolute. On the device wire an `identity.picture` member would be a wire change (plan mode).
+  I-21's ID token carries it (recorded there).
+
 ## Goal
 
 An app can send a person to the login card and get them back signed in: the card carries a persistent "<App> wants you to sign in" header and ends with "Continue to <App>"; device code lands on the card with callback binding and an explicit Continue; a person can approve a sign-in on another device by QR; and a product web app gets a browser device token through a PKCE web redirect, never through a token in a URL.
