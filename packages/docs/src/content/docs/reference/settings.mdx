@@ -7,7 +7,7 @@ description: "Every platform, product and service setting in the settings regist
     Source of truth: the settings registry (packages/worker/src/core/settings/ and each service's
     settings.ts), emitted by packages/worker/scripts/gen-settings.ts. */}
 
-The settings registry describes every setting Polaris Key has: 42 entries (9 platform, 33 product, 0 entity), 14 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
+The settings registry describes every setting Polaris Key has: 43 entries (9 platform, 34 product, 0 entity), 15 of them registered ahead of the work package that wires them. This page is generated from the registry and checked against it in CI, so it cannot drift from it. An entry registered ahead of its work package is not offered in the console yet.
 
 How to read the columns:
 
@@ -44,6 +44,7 @@ One value per product. A service's settings are product settings whose key start
 | `core.adminGroup` | [Admin group](/docs/admin/products/): The identity-provider group named by the manifest as this product's administrators. Manifest-only (owner decision 1). | text, at most 200 characters | unset | cascade | manifest | `product:adminGroup` | L1 on change | reason required; security-widening |
 | `core.web.origins` | [Web origins](/docs/build/onboarding/): Browser origins allowed to call this product's endpoints (the CORS allow-list). Adding one lets that site's scripts call the product. | list of up to 50: text, at most 2048 characters | `[]` | cascade | claimable | `product:web.origins` | L1 on change | reason required; security-widening; devices see it (header) |
 | `core.services` | [Services](/docs/admin/services-enablement/): Which opt-in services this product runs. A service that is off does not exist from outside. | structured (ServicesMap (core/services.ts)) | unset | cascade | claimable | `product:modules` | L1 on change | devices see it (discovery) |
+| `core.presentation` | [Icon and accent](/docs/build/manifest/): The product's icon and accent colours (light and dark), declared in .pkey/product and shown by the console, the portal and the SDK UI kits. Manifest-only. | structured (ManifestPresentation (@polaris-key/manifest)) | unset | cascade | manifest | `product:presentation` | L0 on change | registered ahead of HA-12; devices see it (discovery) |
 | `core.trustPolicy` | [Device trust policy](/docs/services/core/device-trust/): Which attestation a device must present to enrol (App Attest, Play Integrity) and whether it is enforced. Relaxing it lets unattested clients enrol. | structured (TrustPolicy (core/deviceTrust.ts)) | unset | cascade | operator | — | L2 on change | reason required; security-widening |
 
 ### License

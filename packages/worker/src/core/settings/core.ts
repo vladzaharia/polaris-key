@@ -102,6 +102,32 @@ export const CORE_SLICE: readonly SettingDef[] = [
     storage: { kind: "column", table: "products", column: "services_json" },
   }),
   setting({
+    key: "core.presentation",
+    scope: "product",
+    service: "core",
+    area: "general",
+    label: "Icon and accent",
+    description:
+      "The product's icon and accent colours (light and dark), declared in .pkey/product and shown by the console, the portal and the SDK UI kits. Manifest-only.",
+    keywords: ["icon", "accent", "brand", "colour", "color"],
+    docs: "/docs/build/manifest/",
+    value: {
+      kind: "json",
+      schema: "ManifestPresentation (@polaris-key/manifest)",
+    },
+    defaultValue: null,
+    allowUnset: true,
+    merge: "cascade",
+    ownership: "manifest",
+    manifest: { path: "product:presentation" },
+    confirm: { change: "L0" },
+    wire: ["discovery"],
+    storage: { kind: "scalar" },
+    since: "ST-06",
+    // HA-04 added the manifest field; HA-12 stores it and carries it in discovery.
+    pending: { wp: "HA-12" },
+  }),
+  setting({
     key: "core.trustPolicy",
     scope: "product",
     service: "core",

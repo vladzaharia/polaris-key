@@ -99,6 +99,14 @@ The code is the fact; these record where it, or an open question, shaped the wor
   whose registry ↔ manifest parity test needs exactly these entries. ST-25 still closes the list.
 - **PENDING owners must be registered work packages** (checked against `workpackages.json`); the
   test does not check their status, so marking a package done never breaks the gate by itself.
+- **A manifest field that lands after ST-06 is registered, never added to `PENDING`** (fix round 1,
+  merging main at 915424055). HA-04 added `.pkey/product` `presentation` (icon and accent), and the
+  coverage test reported `manifest:product:presentation has no home`. `PENDING` only shrinks, and
+  the icon and accent are product configuration rather than identity, so `NOT_A_SETTING` would be
+  wrong. ST-06 registers `core.presentation` in `CORE_SLICE`: manifest-owned, `json` value
+  (`ManifestPresentation`), carried in discovery, with `pending: { wp: "HA-12" }`, because HA-12
+  stores it and serves it in discovery. Storage is `scalar` (`product_settings`), which is
+  provisional: HA-12's plan (HA-11) may pick a different store and edits the entry when it lands.
 
 ## Verify
 
