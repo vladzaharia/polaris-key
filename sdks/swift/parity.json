@@ -141,9 +141,8 @@
       "status": "implemented"
     },
     "release.fetch": {
-      "status": "planned",
-      "wp": "SP-19",
-      "note": "client.update.fetch(version:buildId:size:sha256:to:) streams and checks size and SHA-256, but has no Range/If-Range resume (release-fetch-gated.json's 206 step) and reads a 401 as download_auth_required without the body's code; it streams through URLSession directly rather than the client's transport."
+      "status": "implemented",
+      "note": "client.update.fetch(version:buildId:size:sha256:to:) (PolarisKeyUpdate/Install.swift) streams through the client's transport (PolarisTransport.stream) into <to>.part, resumes with Range and If-Range on the payload SHA-256 (206 appends after re-hashing the part, 200 restarts, 416 verifies), maps a refusal to the body's registered wire code, and verifies size and SHA-256 before the file appears at <to>; the replayer runs all three steps of release-fetch-gated.json."
     },
     "release.distribution": {
       "status": "implemented",

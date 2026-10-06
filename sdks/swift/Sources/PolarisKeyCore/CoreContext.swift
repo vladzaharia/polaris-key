@@ -600,6 +600,17 @@ public actor CoreContext {
                 timeoutSeconds: requestTimeoutSeconds, maxBodyBytes: maxBodyBytes))
     }
 
+    /// One streamed request (a verified download), with this client's metadata headers and
+    /// deadline applied, through the same transport as `request`.
+    public func stream(
+        _ url: URL, method: String = "GET", headers extra: [String: String] = [:]
+    ) async throws -> PolarisStreamResponse {
+        try await transport.stream(
+            PolarisRequest(
+                url: url, method: method, headers: headers(extra),
+                timeoutSeconds: requestTimeoutSeconds))
+    }
+
     /// GET one signed document with conditional-request support, mapping the whole §5 status
     /// taxonomy. Shared verbatim by `/license/document` and `/config/document`, so the two can
     /// never drift on what a 403, a 429 or a dropped connection means.

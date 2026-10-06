@@ -5,6 +5,7 @@
 // @pkey-feature update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk commerce.receipt
 // @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
+// @pkey-feature release.fetch
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read
 // from the generator-owned mirror in Resources/transcripts/): drive `PolarisKeyClient` through every
@@ -69,6 +70,8 @@ final class ReplaySession: @unchecked Sendable {
     var prompt: SignInPrompt?
     /// `initial.platform`: the device's canonical platform.
     var platform: String?
+    /// The transcript's steps (`releaseFetch`'s `partial` seeds from the whole-payload answer).
+    var steps: [Transcript.Step] = []
 }
 
 enum SwiftReplay {
@@ -230,6 +233,8 @@ enum SwiftReplay {
             out["result"] = .string("ok")
             out["platforms"] = .array(model.platforms.map { .string($0.platform) })
             out["current"] = session.platform.flatMap(model.group(for:)).map(groupValue) ?? .null
+        case "releaseFetch":
+            try await releaseFetch(client, step: step, session: session, into: &out)
         case "register":
             switch await client.core.registerDevice(fingerprint: registerFingerprint) {
             case .ok: out["result"] = .string("ok")
@@ -278,6 +283,61 @@ enum SwiftReplay {
         out["licenseStatus"] = .string(await client.status().status.rawValue)
         out["tokenHeld"] = .bool(await store.getToken() != nil)
         return out
+    }
+
+    /// `releaseFetch` (SP-19) is `client.update.fetch(version:buildId:size:sha256:to:)` into a
+    /// fresh directory; `partial` seeds `<to>.part` with the first that many bytes of the
+    /// transcript's whole-payload answer. A refusal is `refused` with the server's code (the
+    /// client's own failures are `error`), and must leave no file at `to`.
+    static func releaseFetch(
+        _ client: PolarisKeyClient, step: Transcript.Step, session: ReplaySession,
+        into out: inout [String: JSONValue]
+    ) async throws {
+        let a = step.args
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pkey-replay-fetch-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let to = dir.appendingPathComponent("payload.bin")
+        if let n = a["partial"]?.intValue {
+            guard let path = step.exchanges.items.first?.request.path,
+                let whole = payload(of: session.steps, path: path)
+            else { throw ReplayError("releaseFetch: no whole-payload answer to seed from") }
+            try whole.prefix(n).write(to: dir.appendingPathComponent("payload.bin.part"))
+        }
+        do {
+            let r = try await client.update.fetch(
+                version: a["version"]?.stringValue ?? "", buildId: a["build"]?.stringValue ?? "",
+                size: a["size"]?.intValue, sha256: a["sha256"]?.stringValue ?? "", to: to)
+            out["result"] = .string("ok")
+            out["size"] = .int(r.size)
+            out["sha256"] = .string(r.sha256)
+            let written = try Data(contentsOf: to)
+            guard written.count == r.size else {
+                throw ReplayError("releaseFetch: the verified file holds \(written.count) bytes, not \(r.size)")
+            }
+        } catch let e as PolarisError {
+            let local: Set<String> = [
+                ErrorCode.network, ErrorCode.networkError, ErrorCode.payloadMismatch,
+                ErrorCode.invalidOptions, ErrorCode.serviceUnavailable, ErrorCode.notConfigured,
+            ]
+            out["result"] = .string(local.contains(e.code) ? "error" : "refused")
+            out["code"] = .string(e.code)
+            guard !FileManager.default.fileExists(atPath: to.path) else {
+                throw ReplayError("releaseFetch: a refusal left a file at the destination")
+            }
+        }
+    }
+
+    /// The body of the first 200 GET of `path` in `steps`.
+    static func payload(of steps: [Transcript.Step], path: String) -> Data? {
+        for s in steps {
+            for x in s.exchanges.items
+            where x.request.method == "GET" && x.request.path == path && x.response.status == 200 {
+                if case .string(let text) = x.response.body { return Data(text.utf8) }
+            }
+        }
+        return nil
     }
 
     /// `initial.update.outlet`: a kind, or `{id, kind, subkind?}`.
@@ -367,6 +427,7 @@ enum SwiftReplay {
         }
         let session = ReplaySession()
         session.platform = t.initial.platform
+        session.steps = t.steps
         for i in t.steps.indices {
             let step = await server.beginStep(i)
             clock.now = step.now ?? t.now
@@ -476,5 +537,44 @@ final class TranscriptTests: XCTestCase {
         }
         await assertReplayFails(
             t, matching: "step 1 (chunkRange): bytes: expected string(\"ghijklmnopqrstuvwxyzABCD\"), got nil")
+    }
+
+    // ── release.fetch (SP-19): the cases the recording does not hold ──────────────────
+
+    private func fetchGated() throws -> Transcript {
+        try XCTUnwrap(try transcripts().first { $0.id == "release-fetch-gated" })
+    }
+
+    /// A 200 to the ranged request means the representation changed: the part is discarded
+    /// and the whole payload is taken, still verified.
+    func testA200ToARangedRequestRestarts() async throws {
+        var t = try fetchGated()
+        let whole = t.steps[1].exchanges.items[0].response
+        t.steps[2].exchanges.items[0].response = whole
+        try await SwiftReplay.replay(t)
+    }
+
+    /// The refused code is the body's registered wire code; an unregistered one falls back to
+    /// the status's (`unauthorized` for a 401).
+    func testAnUnregisteredRefusalCodeFallsBackToTheStatus() async throws {
+        var t = try fetchGated()
+        t.steps[3].exchanges.items[0].response.body = .object([
+            "error": .string("not_a_registered_code"), "message": .string("doctored"),
+        ])
+        t.steps[3].expect["code"] = .string(ErrorCode.unauthorized)
+        try await SwiftReplay.replay(t)
+        t.steps[3].exchanges.items[0].response.body = .object([
+            "error": .object(["code": .string(ErrorCode.downloadAuthRequired)])
+        ])
+        t.steps[3].expect["code"] = .string(ErrorCode.downloadAuthRequired)
+        try await SwiftReplay.replay(t)
+    }
+
+    /// Bytes that disagree with the record never reach the destination.
+    func testAPayloadThatDisagreesWithTheRecordIsRefused() async throws {
+        var t = try fetchGated()
+        t.steps[1].args["sha256"] = .string(String(repeating: "0", count: 64))
+        t.steps[1].expect = ["result": .string("error"), "code": .string(ErrorCode.payloadMismatch)]
+        try await SwiftReplay.replay(t)
     }
 }
