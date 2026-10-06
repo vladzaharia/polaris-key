@@ -7176,7 +7176,7 @@
         "notes/S-20 §9 HA-01"
       ],
       "brief": "wp/HA-01-hosted-asset-core.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-02",
@@ -7242,7 +7242,7 @@
         "notes/S-20 §10.2 Q5"
       ],
       "brief": "wp/HA-04-manifest-presentation.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-05",

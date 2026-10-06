@@ -4903,6 +4903,48 @@ sit behind the portal session; the claim also needs the CSRF header.
   `audit`, both with `source: discover`.
 - **Developers can withhold an offer without changing the policy** (`discover_enabled = 0`).
 
+### The outbound fetcher and hosted-asset ingest (HA-01)
+
+`core/safeFetch.ts` is the one guarded fetcher for URLs someone other than Polaris Key wrote, and
+`core/hostedAssets.ts` is the one ingest that turns such a URL, an upload or a CI push into a copy
+in the blob store (notes/S-20 §6.3, §6.12). HA-01 adds no route: the pulls are started by later
+packages (HA-05 register and resync, HA-06 uploads, HA-08 release mirroring), and the portal media
+proxy now fetches through the same guard.
+
+- **New outbound fetcher (S-20 §6.12).** Any public `https` host may be named, with no host
+  allowlist, so the guard is what bounds it: `https` only, port 443, no userinfo, at most 2048
+  characters, no IP literal, no single-label host, never `plrs.im` or any `*.plrs.im` (without
+  `global_fetch_strictly_public` a fetch to our own custom domain is routed to origin and bypasses
+  the front door), never `.local`, `.internal`, `.localhost` or `.home.arpa`. Redirects are
+  followed by hand, at most three, and each hop is guarded again **before** it is dialled; an
+  `Authorization` header reaches the first hop only, never a `Location`. One 30 s budget covers
+  every hop and the body; a declared `Content-Length` over the slot's cap is refused unread, and
+  the body is counted and cut at the cap whatever the header said. The Worker resolves nothing
+  itself, and the edge dials neither IP literals nor RFC 1918 or loopback space from a Worker, so
+  the remaining surface is "public hosts the operator named". **Who can name one:** manifest
+  authors and product operators of that product, never an end user's request. Every pull,
+  refused or not, writes an `assets.ingest` audit row. `test/safeFetch.test.ts` runs the S-20
+  reference puller's guard table case for case and the redirect-to-a-denied-host refusal.
+- **Content risk.** The type comes from the magic number, never from the source's
+  `Content-Type`: image slots take PNG, JPEG, WebP, GIF or AVIF; video slots MP4; nothing ever
+  sniffs as SVG or HTML (`core/sniff.ts` has no branch that could answer either). Per-slot caps
+  are code constants (icon 10 MiB, header and screenshots 20 MiB, notes images 5 MiB, video
+  512 MiB, release files R2's 4.995 GiB single-put limit), not settings (S-18 §5.6).
+- **Possession, unchanged (§3, "The blob store").** A product earns a `hosted-asset` ref only to
+  bytes it delivered: the ingest reads and hashes every byte even when the object is already
+  stored, an expected hash is checked against the bytes and never used to skip the read, and
+  whether another product already stored them never leaves the module. A streamed ingest (video,
+  release files) needs the expected SHA-256 and length up front, and R2 refuses the put if the
+  bytes miss it. A replaced copy's refs are dropped in the batch that writes the new one, and the
+  collector reclaims the bytes after the lock and the grace period; a failed re-pull keeps the
+  last good copy.
+- **Every put now stores a `Content-Type` (S-20 §4.6 #1).** `putVerified` (and so `promote`)
+  stores the sniffed type, never a declared one; it is metadata only, since `blobResponse` still
+  decides what a response may carry. The Play listing-image read sniffs objects stored before
+  this change.
+- **The portal media proxy** keeps its GitHub-only host rule on every hop (`allowHost`) on top of
+  this guard until HA-07 serves hosted copies; its cap, 5 s budget and sniff are unchanged.
+
 ### The refusal log (UX-15)
 
 `authorizeDevice` (`core/authz.ts`) now records each refused activation in `license_refusals`

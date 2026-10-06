@@ -1018,7 +1018,7 @@ describe("the package record", () => {
 });
 
 describe("Core → Services: the package feeds switch", () => {
-  it("is its own section and save; turning it off asks first", async () => {
+  it("is its own section and saves on its own; turning it off asks first", async () => {
     const log = boot("#/p/djdl/services", {
       extra: {
         ...feedRoutes(),
@@ -1036,15 +1036,16 @@ describe("Core → Services: the package feeds switch", () => {
       },
     });
     await heading("Services");
-    const form = await within(await mainReady()).findByRole("form", {
+    const section = await within(await mainReady()).findByRole("region", {
       name: "Package feeds",
     });
-    const sw = await within(form).findByRole("switch");
+    const sw = await within(section).findByRole("switch");
     await waitFor(() => expect(sw.getAttribute("aria-checked")).toBe("true"));
     await userEvent.click(sw);
-    await userEvent.click(
-      within(form).getByRole("button", { name: "Save package feeds" }),
-    );
+    // No save bar: the switch's own L1 confirm is the only step.
+    expect(
+      within(section).queryByRole("button", { name: "Save package feeds" }),
+    ).toBeNull();
     const dialog = await screen.findByRole("alertdialog");
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Turn off package feeds" }),

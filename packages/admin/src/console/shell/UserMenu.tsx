@@ -1,15 +1,15 @@
 import * as React from "react";
 import { BookOpen, CloudUpload, Keyboard, LogOut } from "lucide-react";
 import type { Me, PlatformIdentity } from "../../api.js";
+import { Button } from "../../ui/Button.js";
 import {
-  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "../../components/ui/index.js";
+} from "../../ui/DropdownMenu.js";
 import { Kbd } from "./bits.js";
 import { r } from "../routes.js";
 import { Link } from "../router.js";

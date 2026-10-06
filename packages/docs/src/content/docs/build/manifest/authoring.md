@@ -230,6 +230,32 @@ are at [Web clients and CORS](/docs/build/web-cors/).
 }
 ```
 
+## Presentation: `presentation`
+
+`presentation` is how the product shows itself: its `icon`, its `accent` colour and its
+`accentDark` colour for a dark ground (each `#rrggbb`). It lives in `.pkey/product`, so a product
+without the Distribution service still has an icon. Every member is optional. A malformed block
+or colour is `invalid_presentation`.
+
+The icon is an **asset ref**, the same grammar as the store listing's art:
+
+- an https URL of at most 2048 characters; or
+- a path in the product's own repository, read at the commit being synced, so it works for a
+  private repository. A repo path may start with `./`, never with `/`, has no `.` or `..`
+  segment, has at most 512 characters, and ends in `.png`, `.jpg`, `.jpeg`, `.webp`, `.gif` or
+  `.avif` (lower case). SVG is never accepted.
+
+Either form may be written as an object `{ src, sha256 }`, where `sha256` (64 lower-case hex
+digits) pins the bytes. A malformed ref is `invalid_asset_ref`. Validation never fetches the
+file.
+
+```yaml
+presentation:
+  icon: .pkey/art/icon.png
+  accent: "#2ED6E6"
+  accentDark: "#7FE9F2"
+```
+
 ## Device policy: fingerprinting + auto-issued licenses
 
 Both blocks live in `.pkey/product` and are applied on link/resync. Either can also be changed

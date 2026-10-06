@@ -22,36 +22,61 @@ services it runs. Its filter and sort are in the URL too.
 
 ## Registering a product
 
-**New product** opens a full-page wizard at `#/products/new`. You choose the source first
-(**Link a GitHub repository** or **Start manually**; `?via=github|manual` preselects it), then
-fill one step at a time. The step is in the URL (`?step=…`) and the draft is kept for the tab, so
-a refresh loses nothing; leaving with a draft asks first. A **Review** step comes before anything
-is created. The result names the new product's signing `kid` and public key, with a copy button —
-give the public key to your SDK trust configuration and release tooling (it is also in the
-product's JWKS); the private key never leaves the platform, sealed under `PLATFORM_KEK` from the
-moment it's minted. **Open product** takes you to its Overview.
+**New product** opens one screen at `#/products/new`. **Start from** picks the source:
+**Nothing** or **A GitHub repository** (`?via=manual|github` preselects it). There are no steps
+and no review page: fill the fields and press **Enter** or the button to create. The draft is
+kept for the tab, so a refresh loses nothing; leaving with a draft asks first.
 
-### Manual
+A refusal stays on the screen, in plain words, with its fix beside it. A refusal about one field
+sits on that field and moves focus there, such as a taken slug or a repository the GitHub App
+can't read. Anything else goes in a callout above the button, such as a manifest the server
+would not accept. Nothing is created until every check passes.
 
-For early experiments, before release syncing, OIDC or provisioning matter. The steps are
-**Basics** (a slug, an optional display name and the metadata-only admin group), **Catalog** (an
-optional config catalog in JSON or YAML — publish one later from Catalog if you skip it) and
-**Defaults** (the per-license offline days and device limit; blank uses the platform default). The
-compatibility window is not asked for: it lives in
-[Update → Feed](/docs/admin/console-tour/#update). The worker mints an Ed25519 signing key and an active catalog (empty if none was
-supplied) in one batch — **a product can never exist without a usable signing key**. No release
-row and no edge-mint row are created; this path has no GitHub coordinates to hang them on.
+There is no result page. A new product opens on its **Overview**, which shows "_Name_ is ready"
+once, with the new signing `kid` and a button that copies its public key. Give the public key to
+your SDK trust configuration and release tooling; it is also in the product's JWKS. The private
+key never leaves the platform: it is sealed under `PLATFORM_KEK` from the moment it's minted.
+Dismiss the welcome, refresh, or come back later and Overview shows its ordinary setup.
 
-### From GitHub
+### Starting from nothing
 
-The path onboarding actually uses. You give a repository URL; the linked GitHub App reads its
-`.pkey/` directory, validates the manifest, and registers the product from it — services,
-tiers, profiles, OIDC configuration, release coordinates, edge-mint recipes, all of it. A refused
-manifest is listed problem by problem on the Review step, so you can fix them in one commit. The
-result lists **remaining secrets**: names the manifest declared but that have no value yet (an
-OIDC client secret, an edge-mint signing key), with a **Set missing secrets** button into
-[Secrets & keys](/docs/admin/secrets-and-keys/) — they're write-only and never echoed back.
-This is also the path DJDL uses in production; see [Operating: the KEK
+For early experiments, before release syncing, OIDC or provisioning matter. Type the **Name**
+first. The **Slug** follows it (lowercase letters, digits and hyphens) until you edit it, and it is
+checked against the registry as you type. A taken slug says so and offers a free one to take
+with one click (**Use tonebox-app**). A reserved or malformed slug is refused before anything is
+sent. The slug is permanent: it is used in keys and URLs.
+
+**Advanced: license defaults** holds the per-license offline grace (1 to 365 days) and device
+limit. Leave either blank to use the platform default. A config catalog, the compatibility window
+([Update → Feed](/docs/admin/console-tour/#update)) and everything else are set up later from
+Overview. The worker mints an Ed25519 signing key and an empty active catalog in one batch:
+**a product can never exist without a usable signing key**. No release row and no edge-mint row
+are created, because this path has no GitHub coordinates to hang them on.
+
+### From a GitHub repository
+
+This is the path onboarding uses. Give the repository as `owner/repo` or its GitHub URL and press
+**Link repository**. The linked GitHub App reads the `.pkey/` directory on the default branch,
+validates the manifest, and registers the product from it: name, slug, services, tiers, profiles,
+OIDC configuration, release coordinates, edge-mint recipes, all of it. The name and slug come from
+`.pkey/product`, so the screen does not ask for them.
+
+When the link is refused, the screen shows what to do next:
+
+- **The GitHub App isn't installed on the repository, or the repository is private.** The message
+  sits on the Repository field, with **Install the GitHub App** beside it. Install the Polaris Key
+  GitHub App on the repository, then link again.
+- **The manifest has problems.** The callout lists each problem with its file and path, so you can
+  fix them all in one commit. Push the fix and press **Check again** to link again.
+- **The manifest's slug is taken, reserved or malformed.** Change `product.slug` in
+  `.pkey/product`, push, then press **Check again**. Linking registers new products only: if the
+  slug is taken because this repository is already registered, open that product and resync it
+  instead (see [What resync actually re-applies](#what-resync-actually-re-applies)).
+
+Overview's welcome lists any **remaining secrets**. These are names the manifest declared that
+have no value yet, such as an OIDC client secret or an edge-mint signing key. A **Set _n_ missing
+secrets** link goes to [Secrets & keys](/docs/admin/secrets-and-keys/). Secrets are write-only
+and never echoed back. This is also the path DJDL uses in production; see [Operating: the KEK
 keyring](/docs/admin/kek/) → _Product operations_ for its specific checklist.
 
 ### Reserved slugs
@@ -93,7 +118,7 @@ out of the product switcher and the Products list.
 
 ### The `adminGroup` field is metadata, not a grant
 
-The wizard's Basics step, and Settings, carry an "Admin group" field labeled _metadata only_. It's recorded
+Settings carries an "Admin group" field labeled _metadata only_ (New product does not ask for it). It's recorded
 on the product row and shown back to you, and it authorizes **nothing**: there is no
 per-product admin tier. The console authorizes every request on the platform-wide
 `PLATFORM_ADMIN_GROUP` alone (see [Operating: the KEK keyring](/docs/admin/kek/) → _Secrets_).

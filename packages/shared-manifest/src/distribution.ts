@@ -30,6 +30,14 @@ import {
   RELEASE_PLATFORMS,
   type ValidationMessage,
 } from "./index.js";
+import {
+  assetRefProblem,
+  assetRefUrl,
+  isAssetUrl,
+  isHexColour,
+  normalizeAssetRef,
+  type ManifestAssetRef,
+} from "./assets.js";
 
 // ── Vocabulary ──────────────────────────────────────────────────────────────────────────────
 
@@ -510,16 +518,26 @@ const scoopCheck: FieldCheck = (v) => {
 
 // ── Listing ─────────────────────────────────────────────────────────────────────────────────
 
-/** Store-page metadata (README §3.1 "listing"). Every field is optional. */
+/**
+ * Store-page metadata (README §3.1 "listing"). Every field is optional.
+ *
+ * The art (`icon`, `header`, `screenshots`) is a list of asset refs (HA-04, `./assets.ts`): an
+ * https URL or a path in the product's repo, each normalised with its `kind`. The written
+ * `iconUrl` and `headerUrl` are deprecated aliases: they validate as before, warn
+ * (`listing_url_field_deprecated`) and normalise INTO `icon` and `header`, so the normalised
+ * listing never carries them. A consumer that reads a listing row stored before HA-04 uses
+ * `listingImageUrl` / `listingScreenshotUrls`, which read both shapes.
+ */
 export interface ManifestListing {
   name?: string;
   subtitle?: string;
   description?: string;
-  iconUrl?: string;
-  headerUrl?: string;
+  /** The listing icon. When absent, the Worker falls back to `presentation.icon` (HA-05). */
+  icon?: ManifestAssetRef;
+  header?: ManifestAssetRef;
   tintColor?: string;
   category?: string;
-  screenshots?: string[];
+  screenshots?: ManifestAssetRef[];
   website?: string;
   developerName?: string;
   /**
@@ -531,49 +549,41 @@ export interface ManifestListing {
   supportEmail?: string;
 }
 
+/** The written form of a listing: what `.pkey/distribution` may still spell (the aliases). */
+type WrittenListingAlias = "iconUrl" | "headerUrl";
+
 const LISTING_TEXT_FIELDS = [
   "name",
   "subtitle",
   "category",
   "developerName",
 ] as const;
-const LISTING_URL_FIELDS = [
-  "iconUrl",
-  "headerUrl",
-  "website",
-  "supportUrl",
-] as const;
+const LISTING_URL_FIELDS = ["website", "supportUrl"] as const;
+/** The image slots, each with its deprecated URL-only alias. */
+const LISTING_IMAGE_FIELDS = [
+  ["icon", "iconUrl"],
+  ["header", "headerUrl"],
+] as const satisfies readonly (readonly [
+  "icon" | "header",
+  WrittenListingAlias,
+])[];
 const MAX_LISTING_TEXT = 200;
 const MAX_LISTING_DESCRIPTION = 4000;
 const MAX_LISTING_URL = 2048;
-const MAX_SCREENSHOTS = 16;
-const TINT_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
+/** The most screenshots one listing may name. */
+export const MAX_LISTING_SCREENSHOTS = 16;
 /** No control characters at all (a single-line field). */
 const LINE_RE = /^[^\u0000-\u001f\u007f]+$/;
 /** No control characters but tab and newline (the description). */
 const PROSE_RE = /^[^\u0000-\u0008\u000b-\u001f\u007f]+$/;
-const HTTPS_URL_RE = /^https:\/\/[^\s\u0000-\u001f\u007f]+$/;
 /** RFC 5321's 254-character path limit. */
 const MAX_LISTING_EMAIL = 254;
 /** One `local@domain.tld` address: no whitespace, no control characters, no angle brackets, one `@`. */
 const LISTING_EMAIL_RE =
   /^[^\s@<>\u0000-\u001f\u007f]+@[^\s@<>\u0000-\u001f\u007f]+\.[^\s@<>\u0000-\u001f\u007f]+$/;
 
-function isListingUrl(v: unknown): v is string {
-  if (
-    typeof v !== "string" ||
-    v.length > MAX_LISTING_URL ||
-    !HTTPS_URL_RE.test(v)
-  )
-    return false;
-  try {
-    return new URL(v).protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-/** What is wrong with a listing object, or `null`. */
+/** What is wrong with a listing's shape and text fields, or `null` (`invalid_listing`). The art
+ *  refs and the aliases' pairing are judged separately, by `reportListing`. */
 function listingProblem(raw: unknown): string | null {
   if (!isRecord(raw)) return "must be an object";
   for (const f of LISTING_TEXT_FIELDS) {
@@ -592,14 +602,11 @@ function listingProblem(raw: unknown): string | null {
       !PROSE_RE.test(d))
   )
     return `description must be 1 to ${MAX_LISTING_DESCRIPTION} characters with no control characters but tab and newline`;
-  for (const f of LISTING_URL_FIELDS) {
-    if (raw[f] !== undefined && !isListingUrl(raw[f]))
+  for (const f of [...LISTING_URL_FIELDS, "iconUrl", "headerUrl"] as const) {
+    if (raw[f] !== undefined && !isAssetUrl(raw[f]))
       return `${f} must be an https URL of at most ${MAX_LISTING_URL} characters`;
   }
-  if (
-    raw.tintColor !== undefined &&
-    (typeof raw.tintColor !== "string" || !TINT_COLOR_RE.test(raw.tintColor))
-  )
+  if (raw.tintColor !== undefined && !isHexColour(raw.tintColor))
     return "tintColor must be a #rrggbb colour";
   if (
     raw.supportEmail !== undefined &&
@@ -611,12 +618,98 @@ function listingProblem(raw: unknown): string | null {
   const shots = raw.screenshots;
   if (
     shots !== undefined &&
-    (!Array.isArray(shots) ||
-      shots.length > MAX_SCREENSHOTS ||
-      !shots.every(isListingUrl))
+    (!Array.isArray(shots) || shots.length > MAX_LISTING_SCREENSHOTS)
   )
-    return `screenshots must be a list of at most ${MAX_SCREENSHOTS} https URLs`;
+    return `screenshots must be a list of at most ${MAX_LISTING_SCREENSHOTS} asset refs`;
   return null;
+}
+
+/** The listing's malformed art refs: `[path below the listing, field label, problem]`. */
+function listingRefProblems(
+  raw: Record<string, unknown>,
+): Array<[string, string, string]> {
+  const out: Array<[string, string, string]> = [];
+  for (const [field] of LISTING_IMAGE_FIELDS) {
+    const problem =
+      raw[field] === undefined ? null : assetRefProblem(raw[field]);
+    if (problem) out.push([`/${field}`, field, problem]);
+  }
+  if (Array.isArray(raw.screenshots))
+    for (const [i, shot] of raw.screenshots.entries()) {
+      const problem = assetRefProblem(shot);
+      if (problem)
+        out.push([`/screenshots/${i}`, `screenshots[${i}]`, problem]);
+    }
+  return out;
+}
+
+/** Is this listing valid (warnings aside)? What `normalizeListing` keeps. */
+function listingValid(raw: unknown): boolean {
+  if (listingProblem(raw) !== null) return false;
+  const r = raw as Record<string, unknown>;
+  if (
+    LISTING_IMAGE_FIELDS.some(
+      ([f, a]) => r[f] !== undefined && r[a] !== undefined,
+    )
+  )
+    return false;
+  return listingRefProblems(r).length === 0;
+}
+
+/**
+ * Report a listing's problems under `at` (`/listing` or `/outlets/<id>/listing`): its shape
+ * (`invalid_listing`), each malformed art ref (`invalid_asset_ref`), an image slot declared
+ * together with its deprecated alias (`listing_field_conflict`), and, as a warning, an alias on
+ * its own (`listing_url_field_deprecated`).
+ */
+function reportListing(
+  errors: ValidationMessage[],
+  warnings: ValidationMessage[] | undefined,
+  raw: unknown,
+  at: string,
+  label: string,
+): void {
+  const problem = listingProblem(raw);
+  if (problem) {
+    // The path is a template literal so the docs generator (`gen-reference.mjs`) sees this site.
+    add(
+      errors,
+      "distribution",
+      `${at}`,
+      "invalid_listing",
+      `${label} ${problem}.`,
+    );
+  }
+  if (!isRecord(raw)) return;
+  for (const [below, field, refProblem] of listingRefProblems(raw)) {
+    add(
+      errors,
+      "distribution",
+      `${at}${below}`,
+      "invalid_asset_ref",
+      `${label}.${field} ${refProblem}.`,
+    );
+  }
+  for (const [field, alias] of LISTING_IMAGE_FIELDS) {
+    if (raw[alias] === undefined) continue;
+    if (raw[field] !== undefined) {
+      add(
+        errors,
+        "distribution",
+        `${at}/${alias}`,
+        "listing_field_conflict",
+        `${label} declares both ${field} and its deprecated alias ${alias}; keep ${field}.`,
+      );
+    } else if (warnings) {
+      add(
+        warnings,
+        "distribution",
+        `${at}/${alias}`,
+        "listing_url_field_deprecated",
+        `${label}.${alias} is deprecated; write ${field} instead (an https URL or a repo path).`,
+      );
+    }
+  }
 }
 
 // ── Validation ──────────────────────────────────────────────────────────────────────────────
@@ -668,13 +761,15 @@ export function transportAllowed(
 
 /**
  * Validate a `.pkey/distribution` document. Problems are appended to `errors` with
- * `file: "distribution"`; nothing is returned. Called by `validateManifestDocuments` (and so by
- * ingest and `pkey validate`) whenever the document is present.
+ * `file: "distribution"`, and advisories (a deprecated listing alias) to `warnings` when given;
+ * nothing is returned. Called by `validateManifestDocuments` (and so by ingest and
+ * `pkey validate`) whenever the document is present.
  */
 export function validateDistribution(
   errors: ValidationMessage[],
   doc: unknown,
   ctx: DistributionContext,
+  warnings?: ValidationMessage[],
 ): void {
   if (!isRecord(doc)) {
     add(
@@ -721,7 +816,7 @@ export function validateDistribution(
       );
     } else {
       for (const [id, entry] of Object.entries(outlets)) {
-        validateOutlet(errors, id, entry, ctx, kinds);
+        validateOutlet(errors, warnings, id, entry, ctx, kinds);
       }
     }
   } else {
@@ -746,21 +841,13 @@ export function validateDistribution(
 
   // ── listing ──
   if (doc.listing !== undefined) {
-    const problem = listingProblem(doc.listing);
-    if (problem) {
-      add(
-        errors,
-        "distribution",
-        "/listing",
-        "invalid_listing",
-        `listing ${problem}.`,
-      );
-    }
+    reportListing(errors, warnings, doc.listing, "/listing", "listing");
   }
 }
 
 function validateOutlet(
   errors: ValidationMessage[],
+  warnings: ValidationMessage[] | undefined,
   id: string,
   entry: unknown,
   ctx: DistributionContext,
@@ -868,16 +955,13 @@ function validateOutlet(
   }
 
   if (entry.listing !== undefined) {
-    const problem = listingProblem(entry.listing);
-    if (problem) {
-      add(
-        errors,
-        "distribution",
-        `/outlets/${id}/listing`,
-        "invalid_listing",
-        `outlets.${id}.listing ${problem}.`,
-      );
-    }
+    reportListing(
+      errors,
+      warnings,
+      entry.listing,
+      `/outlets/${id}/listing`,
+      `outlets.${id}.listing`,
+    );
   }
 }
 
@@ -1184,7 +1268,7 @@ function structuredCloneScoop(v: unknown): ManifestScoop {
 }
 
 function normalizeListing(raw: unknown): ManifestListing | null {
-  if (raw === undefined || listingProblem(raw) !== null) return null;
+  if (raw === undefined || !listingValid(raw)) return null;
   const r = raw as Record<string, unknown>;
   const out: ManifestListing = {};
   for (const f of [
@@ -1196,8 +1280,42 @@ function normalizeListing(raw: unknown): ManifestListing | null {
   ] as const) {
     if (typeof r[f] === "string") out[f] = r[f] as string;
   }
-  if (Array.isArray(r.screenshots)) out.screenshots = [...r.screenshots];
+  // The deprecated alias normalises into its slot (declaring both is an error, so at most one
+  // of the two is set here).
+  for (const [field, alias] of LISTING_IMAGE_FIELDS) {
+    const ref = normalizeAssetRef(r[field] ?? r[alias]);
+    if (ref) out[field] = ref;
+  }
+  if (Array.isArray(r.screenshots))
+    out.screenshots = r.screenshots
+      .map(normalizeAssetRef)
+      .filter((x): x is ManifestAssetRef => x !== null);
   return out;
+}
+
+/**
+ * The https URL of a listing's `icon` or `header`, or `undefined`. It reads the normalised ref
+ * (only a `kind: "url"` ref has one; a repo path has none until HA-05 hosts its bytes) and, for a
+ * listing row stored before HA-04, the legacy `iconUrl` / `headerUrl` string.
+ */
+export function listingImageUrl(
+  listing: object | null | undefined,
+  slot: "icon" | "header",
+): string | undefined {
+  if (!listing) return undefined;
+  const l = listing as Record<string, unknown>;
+  const alias = slot === "icon" ? "iconUrl" : "headerUrl";
+  return assetRefUrl(l[slot]) ?? assetRefUrl(l[alias]);
+}
+
+/** The https URLs among a listing's screenshots (normalised refs or pre-HA-04 strings), in order. */
+export function listingScreenshotUrls(
+  listing: object | null | undefined,
+): string[] {
+  const shots = (listing as Record<string, unknown> | null | undefined)
+    ?.screenshots;
+  if (!Array.isArray(shots)) return [];
+  return shots.map(assetRefUrl).filter((u): u is string => u !== undefined);
 }
 
 /** The listing an outlet shows: the document's listing with the outlet's override merged over it. */
