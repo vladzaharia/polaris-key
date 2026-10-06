@@ -371,11 +371,16 @@ export class PolarisKeyClient {
     return this.pinnedServices;
   }
 
+  /** Whether this client holds a device token (a fresh install holds none). */
+  get hasToken(): boolean {
+    return this.tokens.current !== null;
+  }
+
   // ── One-call boot (SDK parity pass §3.4) ──────────────────────────────────────────────
   /**
-   * Boot to a working, gated, updated app: discovery (when no services are pinned) → boot guard
-   * → sync → reacquire per `core.registration` → gate → update decision → required packs →
-   * mount, driving client-core's stage machine and reporting every step to `onStage`. Never
+   * Boot to a working, gated, updated app: discovery (when no services are pinned, or no token
+   * is held) and the keyless registration of a fresh install on an `open` product → boot guard →
+   * sync → reacquire per `core.registration` → gate → update decision → required packs → mount, driving client-core's stage machine and reporting every step to `onStage`. Never
    * prompts: a gate that needs the player ends `waiting`, and the host shows its activation UI.
    */
   boot(opts: ClientBootOptions = {}): Promise<BootOutcome> {

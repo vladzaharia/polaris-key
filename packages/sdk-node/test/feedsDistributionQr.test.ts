@@ -151,9 +151,14 @@ describe("update.feedUrl (§3.7)", () => {
 
   it("a missing input or template is the typed Unsupported (product)", async () => {
     const c = await client();
-    expect(await c.update.feedUrl("velopack")).toMatchObject({
+    expect(await c.update.feedUrl("zsync")).toMatchObject({
       supported: false,
       reason: "product",
+    });
+    // Velopack without its channel is the feed directory (feed-url-matrix.json).
+    expect(await c.update.feedUrl("velopack")).toEqual({
+      supported: true,
+      url: `${P}/update/beta/velopack/`,
     });
   });
 });
