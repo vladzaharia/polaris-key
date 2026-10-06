@@ -1135,7 +1135,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const headerSome = table.getIsSomeRowsSelected();
 
   const tableEl = (
-    <table className="w-full border-separate border-spacing-0 text-sm">
+    <table className="w-full border-separate [border-spacing:0] text-sm">
       <caption className="sr-only">{caption}</caption>
       <thead className="sticky top-0 z-[2] bg-surface-raised">
         <tr className="[&>th]:border-b [&>th]:border-border">
