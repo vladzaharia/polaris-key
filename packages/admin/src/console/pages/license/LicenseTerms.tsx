@@ -176,17 +176,29 @@ export function LicenseTerms({
   const nextTier = draft.tier
     ? tiers.find((t) => t.id === draft.tier)
     : undefined;
+  // LX-14a: a limit set on this license beats any tier, so a tier change cannot move it.
+  const entitlementDeviceLimit =
+    license.inheritedDeviceLimitSource === "entitlement"
+      ? (license.inheritedDeviceLimit ?? null)
+      : null;
   const nextLimit =
+    license.deviceLimit ??
     nextTier?.policyDeviceLimit ??
+    entitlementDeviceLimit ??
     (product?.defaultDeviceLimit && product.defaultDeviceLimit > 0
       ? product.defaultDeviceLimit
       : null);
   const overLimit =
-    tierChanged && nextLimit !== null && license.deviceCount > nextLimit;
+    tierChanged &&
+    license.deviceLimit == null &&
+    nextLimit !== null &&
+    license.deviceCount > nextLimit;
 
   const policy = effectivePolicy(
     {
       tier: draft.tier ?? null,
+      deviceLimit: license.deviceLimit ?? null,
+      entitlementDeviceLimit,
       maxOfflineDays: draft.maxOfflineDays ?? null,
       channels: draft.channels ?? [],
       minVersion: (draft.minVersion ?? "").trim() || null,
@@ -335,9 +347,11 @@ export function LicenseTerms({
         {overLimit ? (
           <div className="px-5 py-4">
             <Callout tone="warning" title={`Over the new device limit`}>
-              {nextTier
+              {nextTier?.policyDeviceLimit != null
                 ? `Tier “${nextTier.label || nextTier.id}”`
-                : "The product default"}{" "}
+                : entitlementDeviceLimit !== null
+                  ? "An entitlement"
+                  : "The product default"}{" "}
               allows {nextLimit} {nextLimit === 1 ? "device" : "devices"} and
               this license has {license.deviceCount}. Existing devices are
               grandfathered and keep working; no new device can activate until

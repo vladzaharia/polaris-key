@@ -55,7 +55,7 @@ this page or fails the freshness gate.
 
 | Table | Since | Columns (ALTERs annotated with their migration) |
 | --- | --- | --- |
-| `licenses` | 0001_init.sql | `product`, `id`, `status`, `sub`, `name`, `email`, `groups_json`, `tier_id`, `activated_at`, `expires_at`, `max_offline_days`, `overrides_json`, `modified_by`, `modified_at`, `channels_json (0002)`, `min_version (0002)`, `max_version (0002)`, `origin (0011)`, `enroll_hwid (0011)`, `account_id (0068)` |
+| `licenses` | 0001_init.sql | `product`, `id`, `status`, `sub`, `name`, `email`, `groups_json`, `tier_id`, `activated_at`, `expires_at`, `max_offline_days`, `overrides_json`, `modified_by`, `modified_at`, `channels_json (0002)`, `min_version (0002)`, `max_version (0002)`, `origin (0011)`, `enroll_hwid (0011)`, `account_id (0068)`, `device_limit (0084)` |
 | `keys_index` | 0001_init.sql | `product`, `key_hash`, `license_id`, `status`, `label`, `created_at`, `created_by`, `last_used_at` |
 | `tiers` | 0001_init.sql | `product`, `id`, `label`, `profile_id`, `policy_expiry_days`, `policy_device_limit`, `modified_by`, `modified_at`, `policy_fingerprint (0010)` |
 | `license_profiles` | 0004_license_profiles.sql | `product`, `license_id`, `profile_id`, `sort_order` |

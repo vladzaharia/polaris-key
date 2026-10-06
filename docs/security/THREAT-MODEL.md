@@ -5595,6 +5595,26 @@ device id. Only the platform-admin session reads it (`GET /manage/api/products/<
 - **No raw identifier is copied.** The device id is stored only as a truncated hash; the licence
   holder's name and email are not stored here at all.
 
+### Licence administration: the per-licence device limit (LX-14a)
+
+`licenses.device_limit` (0084) lets an operator set one licence's seat limit, seat or
+Account-wide alike, through `PATCH /manage/api/products/<slug>/license/licenses/<id>`
+`deviceLimit`. It beats the tier's limit, any `deviceLimit` entitlement and the product default
+(`core/authz.ts` `licenseDeviceLimitInfo`, `core/entitlements.ts` `injectAdminPolicy`).
+
+- **An operator with licence write can raise one licence's seats past its tier.** That is the
+  feature (SIGN-IN.md D-53); it needs the same product-admin session as a tier change or an
+  override, and every change is audited as `license.device_limit.set` with the old and new values
+  ("inherit" for NULL). No manifest push, sign-in or device request writes the column: OIDC
+  sign-in's licence write names its columns and leaves this one alone, and a store grant or
+  profile can no longer outvote it.
+- **The value is validated twice.** The handler refuses anything but a positive integer or
+  `null` (`422`), and the column's CHECK refuses zero and negatives at the database.
+- **Lowering it never deauthorizes.** Like a tier downgrade, the new limit applies at the next
+  activation; existing devices keep their seats and the response reports `overLimit`.
+- **No wire change.** The signed licence document carries the resolved number in its existing
+  `deviceLimit` entitlement, so a client cannot tell (or forge) where the number came from.
+
 ### Licence deletion (owner request, 2026-10-05)
 
 A platform admin can delete a licence outright (`DELETE /manage/api/products/<slug>/license/licenses/<id>`,

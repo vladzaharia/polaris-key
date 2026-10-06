@@ -89,6 +89,18 @@ temporary raise through seat-pack grants).
 - THREAT-MODEL: one line under licence administration (an operator with licence write can raise one
   licence's seats; audited).
 
+**Corrections from the code (implementation, 2026-10-05):**
+
+- Rule 10 does not apply: `packages/worker/openapi/polaris-key.v3.yaml` documents the device and
+  portal surfaces only, never `/manage/api/*`, and this package adds no route (the field rides
+  the existing licence `PATCH`). `routeCoverage` is unchanged; the admin API is documented in
+  `admin/licenses-and-devices.md` instead.
+- `TABLE_OWNERS` needs no entry: `licenses` is already License's; the generated data-model page
+  picks up the column (`device_limit (0084)`).
+- The licence read also answers `inheritedDeviceLimit` and `inheritedDeviceLimitSource`, which
+  the sheet's placeholder ("Inherits 5 from Pro") and **Use inherited limit** need.
+- `reservedNames.ts` is bundled into `actions/publish/dist`, so the bundle is regenerated with it.
+
 ## Steps
 
 1. Migration, repo read/write, precedence in `licenseDeviceLimit` and `injectAdminPolicy`, tests.

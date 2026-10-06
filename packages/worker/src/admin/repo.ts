@@ -255,6 +255,7 @@ export async function patchLicense(
       | "channels_json"
       | "min_version"
       | "max_version"
+      | "device_limit"
     >
   >,
   modifiedBy: string | null,

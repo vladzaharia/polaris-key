@@ -103,6 +103,10 @@ export interface LicenseRow {
    *  global account id never reaches a developer-facing response, so every shaper names the
    *  columns it emits. Written only through `core/accountSubjects.ts`. */
   account_id?: string | null;
+  /** LX-14a (0084): the licence's own seat limit, a positive integer; NULL (or absent on a row
+   *  read before the migration) inherits the tier, a `deviceLimit` entitlement, then the product
+   *  default. Written only by the admin licence PATCH. */
+  device_limit?: number | null;
   modified_by: string | null;
   modified_at: number;
 }

@@ -1560,8 +1560,10 @@ built, on A-17d's and A-17e's connector routes:
 **Status.** Computed client-side from `status` + `expiresAt` (LIC-1): Active, Expires in N days
 (≤ 14), Expired, Disabled. The **Expires** column is sortable.
 
-**Seats.** A `Meter` of `deviceCount` over the effective device limit (from the tier; "—" when
-unlimited).
+**Seats.** A `Meter` of `deviceCount` over the effective device limit ("—" when unlimited),
+with its source under it (LX-14a): the licence's own limit, else the tier's, else a `deviceLimit`
+entitlement, else the product default, as the Worker reports it (`effectiveDeviceLimit`,
+`deviceLimitSource`).
 
 **Other columns.** Channels and Sign-in (Manual, Single sign-on) are hidden by default (LIC-8). The
 id moves to the record header.
@@ -1589,7 +1591,8 @@ id moves to the record header.
    - **profiles** (`OrderedMultiSelect`, numbered, with order = precedence; LIC-3).
    - Lookup failures are shown inline, not as "none defined" (LIC-6).
    - The live "Effective policy" aside names where each value comes from (license, tier, product
-     default), and drops the false per-license device limit (LIC-4).
+     default). A new license inherits its device limit; the record's **Device limit…** sets
+     one (LIC-4, LX-14a).
 3. **Result:** `OneTimeSecretPanel`, with Open license and Create another.
 
 #### 6.5.2 License record
@@ -1598,7 +1601,8 @@ id moves to the record header.
 ┌ Licenses / Studio Pro ─────────────────────────────────────────────────────────────────┐
 │ H1 Studio Pro  [● Active]   Expires 30 Sep 2027 (in 361 days)       [ Mint key ] [⋯]  │
 │ ada@example.com · lic_01J9… ⧉ · Single sign-on · changed 2 h ago by Ada               │
-│ ⋯ = Edit holder… · Mint offline bundle… · View in activity · ─── · Disable license…   │
+│ ⋯ = Edit holder… · Device limit… · Mint offline bundle… · View in activity · ─── ·   │
+│     Disable license…                                                                   │
 ├ Overview · Keys (2) · Devices (3/5) · Config overrides · History ─────────────────────┤
 │ Terms                                     [From tier "Pro" ⓘ]          (T4 form)      │
 │  Tier            [ Pro ▾ ]       ▲ Downgrading to Edu: 3 devices > limit 1, grandfathered│
@@ -1623,6 +1627,18 @@ id moves to the record header.
 - Cleared values send `null`. This needs **A-3**, the worker accepting `null` for `maxOfflineDays`
   (LDT-2), and the same for tiers (TIR-1).
 - The downgrade warning is a `Callout tone="warning"` using the server's `deviceCount` (LDT-12).
+  A limit set on the license beats any tier, so a tier change then raises no warning.
+
+**Device limit…** (LX-14a; SIGN-IN.md D-53) opens a side sheet for this one license, seat or
+Account-wide: a number field whose placeholder is the inherited value ("Inherits 5 from Pro"),
+**Save** and **Use inherited limit** (sends `deviceLimit: null`). Below the active device count it
+warns "4 devices are signed in. None is signed out; new devices are refused until the count is
+under 3." It never deauthorizes. Precedence: the license's own `device_limit`, else the tier's,
+else a `deviceLimit` entitlement (profiles, store grants, overrides), else the product default;
+the signed document's `deviceLimit` entitlement carries the same number. The header, the
+Effective policy row, the Seats meter and the list show the effective limit with its source
+("3 · set on this license", "5 · from Pro", "5 · product default"). Each change is audited as
+`license.device_limit.set`, old → new.
 
 **Disable license** is a danger-menu action with an L1 confirm, replacing the Switch (LDT-7).
 Enable is the primary action while disabled.
