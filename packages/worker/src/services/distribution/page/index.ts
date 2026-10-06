@@ -64,7 +64,7 @@ import {
 } from "../feeds/cache.js";
 import { feedResponse } from "../feeds/index.js";
 import { detectPlatform } from "./detect.js";
-import { cspImageOrigin } from "../../../securityHeaders.js";
+import { cspImageOrigin } from "../../../core/platform.js";
 import {
   PRESENTATION_ICON_SLOTS,
   firstHostedImage,

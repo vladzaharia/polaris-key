@@ -69,7 +69,7 @@ type ScreenshotClass = (typeof SCREENSHOT_CLASSES)[number];
  *   landscape 16:10 (within 2 %)                    desktop-16x10
  *
  * `tv`, `wear` and `xr` are never inferred: a TV or XR capture is 16:9 like a desktop one, and a
- * square image says nothing. Those masters come from CI or the console.
+ * square image says nothing. Those masters come from CI or an operator's upload.
  */
 export function screenshotClass(
   width: number | null,
