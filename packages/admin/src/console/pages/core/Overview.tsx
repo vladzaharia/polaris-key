@@ -69,6 +69,7 @@ import {
 import { ActivityTarget, actorName, useActivityFeed } from "./Activity.js";
 import { verbFor } from "./activityVerbs.js";
 import { fetchDeviceSummary } from "./Devices.js";
+import { fetchSigningKeys } from "./Keys.js";
 import {
   SDK_OPTIONS,
   sdkInit,
@@ -884,7 +885,7 @@ function TrustPanel({
   const [sdk, setSdk] = React.useState<SdkId>("node");
   // Every key an app pins: active plus staged, from the authenticated admin API (D16).
   const keys = useQuery(
-    { queryKey: qk.keys(slug), queryFn: () => api.productKeys(slug) },
+    { queryKey: qk.keys(slug), queryFn: () => fetchSigningKeys(slug) },
     queryClient,
   );
   const origin = typeof window !== "undefined" ? window.location.origin : "";
