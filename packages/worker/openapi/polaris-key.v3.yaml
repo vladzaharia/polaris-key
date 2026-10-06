@@ -13264,6 +13264,159 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  # ── Product settings (LX-06: the first slice of S-18 §4.7's generic settings API) ──
+  /manage/api/products/{product}/settings/effective:
+    get:
+      operationId: listAdminProductSettings
+      tags: [admin]
+      summary: The product's row-backed settings, with the value in force and where it came from
+      description: >
+        LX-06 (notes/S-18 §4.7). Every live row-backed claimable product setting of the registry
+        (`licensing.*` and `identity.oidc.syncTierOnSignIn` today; ST-05 widens this to every
+        key), optionally limited to one settings-hub `area` (`license.licensing` is License →
+        Settings). Each carries the registry's label, description, value spec and confirm level,
+        the value in force with its `source` (`default`, `manifest` or `console`), the default
+        this product falls back to (`licensing.entitlementModel` is `legacy` for products
+        registered before 2026-10-06), what the last applied manifest declares (`manifestValue`,
+        Revert's target), and the row `version` a write passes back as `expectedVersion`.
+        Platform admins only; admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: area,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "Only the settings of this settings-hub area, e.g. `license.licensing`.",
+          }
+      responses:
+        "200":
+          description: The settings, in registry order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [settings]
+                properties:
+                  settings:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminProductSetting" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/settings/{key}:
+    patch:
+      operationId: updateAdminProductSetting
+      tags: [admin]
+      summary: Set a product setting in the console, claiming it from the manifest
+      description: >
+        LX-06 (notes/S-18 §4.5 model C, §4.7). Validates `value` against the registry entry and
+        stores it as a console row: on a repo-linked product that claims the setting, and every
+        later resync leaves it alone until Revert (audited `setting.claim`; `setting.update` on a
+        product no manifest feeds). A critical setting needs a `reason`. `expectedVersion` (the
+        row version the console read, 0 for none) turns a concurrent change into a `409
+        version_conflict` carrying the current value. `licensing.reanchor: onRefresh` is not a
+        value yet (LX-21), and `licensing.dunningGraceDays` is refused with `setting_pending`
+        until LX-23. The system product is manifest-authoritative (`409 system_product`).
+        Platform admins only; admin session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: key, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminProductSettingWrite" }
+            examples:
+              holder:
+                value:
+                  {
+                    value: owner,
+                    expectedVersion: 1,
+                    reason: Studio keys are shared,
+                  }
+      responses:
+        "200":
+          description: Saved; the setting as it now reads.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, claimed, setting]
+                properties:
+                  ok: { type: boolean, const: true }
+                  claimed:
+                    type: boolean
+                    description: The write claimed the setting from a repo-linked product's manifest.
+                  setting: { $ref: "#/components/schemas/AdminProductSetting" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: "No such product, or a key this API does not serve (`reason: unknown_setting`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "`version_conflict` (with `current`), `setting_pending` or `system_product`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "`invalid_value`, `reason_required`, `invalid_reason` or `invalid_expected_version`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+    delete:
+      operationId: revertAdminProductSetting
+      tags: [admin]
+      summary: Revert a console setting to the manifest (or to its default)
+      description: >
+        LX-06 (notes/S-18 §4.5 item 2). Drops the console claim and, on a repo-linked product,
+        re-applies the last applied manifest's value at once (`applied: true`); with no manifest
+        snapshot yet the value returns at the next resync (`applied: false`, `message`). On a
+        product no manifest feeds this resets the setting to its default. Audited
+        `setting.revert`. An optional `expectedVersion` body field guards against a concurrent
+        change. Platform admins only; admin session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: key, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: Reverted; the setting as it now reads.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, applied, setting]
+                properties:
+                  ok: { type: boolean, const: true }
+                  applied: { type: boolean }
+                  message: { type: string }
+                  setting: { $ref: "#/components/schemas/AdminProductSetting" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: "No such product, or a key this API does not serve (`reason: unknown_setting`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "`not_claimed`, `version_conflict`, `invalid_manifest_value`, `setting_pending` or `system_product`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   # ── Godot tokenised URLs (F-21) ──
   /godot/{owner}/t/{token}/asset-library/api/configure:
     servers:
@@ -15551,6 +15704,86 @@ components:
             format: uri,
             description: "The 128 px WebP variant, or null.",
           }
+    AdminProductSetting:
+      type: object
+      description: >
+        One row-backed product setting (LX-06, `admin/handlers/productSettings.ts`): the registry
+        entry's description and the value in force for this product.
+      required:
+        [
+          key,
+          area,
+          service,
+          label,
+          description,
+          docs,
+          spec,
+          confirm,
+          critical,
+          manifestPath,
+          visibleWhen,
+          serviceEnabled,
+          value,
+          source,
+          defaultValue,
+          version,
+          updatedAt,
+          updatedBy,
+          reason,
+        ]
+      properties:
+        key: { type: string, examples: [licensing.entitlementHolder] }
+        area: { type: string, examples: [license.licensing] }
+        service: { type: string }
+        label: { type: string }
+        description: { type: string }
+        docs: { type: string }
+        spec:
+          type: object
+          description: The registry's value spec (`kind` enum, integer with bounds, boolean, ...).
+          required: [kind]
+          additionalProperties: true
+          properties:
+            kind: { type: string }
+        confirm:
+          type: object
+          description: The confirm level per direction (`up`/`down`, `on`/`off` or `change`).
+          additionalProperties: { type: string, enum: [L0, L1, L2, L3] }
+        critical:
+          type: boolean
+          description: A write needs a reason.
+        manifestPath:
+          {
+            type: [string, "null"],
+            examples: ["product:licensing.entitlementHolder"],
+          }
+        visibleWhen:
+          type: [object, "null"]
+          additionalProperties: true
+        serviceEnabled: { type: boolean }
+        value: {}
+        source: { type: string, enum: [default, manifest, console] }
+        defaultValue: {}
+        manifestValue:
+          description: What the last applied manifest declares; absent when it declares nothing.
+        version:
+          type: integer
+          minimum: 0
+          description: "The row version (0 when there is no row), which a write passes back as `expectedVersion`."
+        updatedAt: { type: [integer, "null"] }
+        updatedBy: { type: [string, "null"] }
+        reason: { type: [string, "null"] }
+    AdminProductSettingWrite:
+      type: object
+      required: [value]
+      properties:
+        value:
+          description: A value of the setting's spec.
+        expectedVersion: { type: integer, minimum: 0 }
+        reason:
+          type: string
+          maxLength: 500
+          description: Required for critical settings; stored on the row and in the audit summary.
     AdminHostedAssets:
       type: object
       required: [assets]

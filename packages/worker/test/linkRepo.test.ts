@@ -1120,9 +1120,13 @@ describe("linkRepo (GitHub-forward product creation)", () => {
           "edgeMint",
           // The app deliverable's declaration rides with the release document (P2-04).
           "deliverables",
+          // LX-06: License's and Identity's `manifestIngestAlways` keep their row-backed settings
+          // (`licensing.*`, `identity.oidc.syncTierOnSignIn`) current on every resync.
+          "license",
           // Distribution's `manifestIngestAlways` keeps the `app` delivery-access row
           // (`dist_access`) current whatever Distribution's enablement (P2b-04).
           "distribution",
+          "identity",
         ],
       },
     ]);

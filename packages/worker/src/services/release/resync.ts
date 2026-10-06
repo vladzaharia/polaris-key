@@ -33,6 +33,7 @@ import {
   isSealedEnvelope,
   listProfiles,
   listTiers,
+  liveRowClaimKeys,
   nextSchemaVersion,
   parsePayload,
   parseWebOrigins,
@@ -322,7 +323,9 @@ async function applyRepoManifest(
   const nextProfileIds = new Set(manifest.profiles.map((p) => p.id));
   const nextTierIds = new Set(manifest.tiers.map((t) => t.id));
   const refused: { code: string; path: string; message: string }[] = [];
-  const claimed: string[] = [];
+  // LX-06: row-backed settings the console has claimed. The owning services' ingest hooks skip
+  // them in SQL; they are named here so the result says what was left alone.
+  const claimed: string[] = await liveRowClaimKeys(db, slug, now);
   const conflicts: { path: string; message: string }[] = [];
   const skip = (
     kind: "tier" | "profile",

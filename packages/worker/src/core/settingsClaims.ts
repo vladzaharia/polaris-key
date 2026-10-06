@@ -232,7 +232,11 @@ export function stmtSettingAudit(
   product: string,
   now: number,
   actor: AuditActor,
-  action: "setting.resync" | "setting.claim" | "setting.revert",
+  action:
+    | "setting.resync"
+    | "setting.claim"
+    | "setting.revert"
+    | "setting.update",
   targetKind: "setting" | "tier" | "profile",
   targetId: string,
   summary: string,

@@ -267,11 +267,27 @@ describe("the settings registry (ST-03)", () => {
       "reanchor",
       "refundGraceHours",
     ]);
+    // LX-06 made them live, row-backed (`core/rowSettings.ts`); only the billing-retry grace
+    // stays hidden until LX-23 builds it.
     for (const e of licensing) {
       expect(e.ownership).toBe("claimable");
       expect(e.service).toBe("license");
-      expect(e.pending).toEqual({ wp: "LX-06" });
+      expect(e.storage).toEqual({ kind: "scalar" });
+      expect(e.manifest?.path).toBe(`product:${e.key}`);
+      if (e.key === "licensing.dunningGraceDays")
+        expect(e.pending).toEqual({ wp: "LX-23" });
+      else {
+        expect(e.pending).toBeUndefined();
+        expect(e.readers.length).toBeGreaterThan(0);
+      }
     }
+    // plans/LX-01.md §8 Q2: the derived default for the entitlement model.
+    expect(
+      licensing.find((e) => e.key === "licensing.entitlementModel"),
+    ).toMatchObject({
+      defaultValue: "combined",
+      legacyDefault: { value: "legacy" },
+    });
     // S-18 D20 / S-19 model OC: the account is not a settings scope.
     for (const e of SETTINGS.entries) expect("accountMerge" in e).toBe(false);
   });
