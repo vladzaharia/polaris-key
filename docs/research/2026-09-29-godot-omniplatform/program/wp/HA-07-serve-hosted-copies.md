@@ -94,10 +94,16 @@ Where the brief and the code disagreed, the code won. As built:
 
 ## Acceptance criteria
 
-- [ ] The portal e2e test shows icons from the media host and still blocks a raw GitHub image.
-- [ ] Feed goldens show media URLs for a fixture with hosted assets.
-- [ ] `GET /<p>/distribution/blobs/sha256/<listing-asset hash>` is a 404 (test).
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] The portal e2e test shows icons from the media host and still blocks a raw GitHub image
+      (`packages/admin/e2e/portalMedia.e2e.test.ts`).
+- [x] Feed goldens show media URLs for a fixture with hosted assets
+      (`test/fixtures/feeds/altstore-stable-hosted.json`; the existing goldens are unchanged).
+- [x] `GET /<p>/distribution/blobs/sha256/<listing-asset hash>` is a 404 (test:
+      `test/distributionDelivery.test.ts`, on both hosts, for `hosted-asset` too).
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header. The one
+      exception is the placeholder migration name. `recordDeploy` (2 tests) and
+      `checkRepresentable` refuse `00XX`: wrangler's ordering reads it as 0. Both are green with
+      the file numbered (verified as `0095`), as with HA-08.
 
 ## Verify
 
