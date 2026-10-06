@@ -123,58 +123,8 @@ export function PanelRow({
   );
 }
 
-/** A titled card for a dashboard panel, with an optional "View all →" link. */
-export function Panel({
-  title,
-  description,
-  action,
-  children,
-  className,
-  headingLevel = 2,
-}: {
-  title: React.ReactNode;
-  description?: React.ReactNode;
-  /** A link or button at the header's end. */
-  action?: React.ReactNode;
-  children: React.ReactNode;
-  className?: string;
-  headingLevel?: 2 | 3;
-}): React.ReactElement {
-  const Heading = headingLevel === 2 ? "h2" : "h3";
-  const id = React.useId();
-  return (
-    <section
-      aria-labelledby={id}
-      className={cn(
-        "flex flex-col rounded-lg border border-border bg-surface-raised",
-        className,
-      )}
-    >
-      {/* The title takes the free width and the action stays right, centred on the title; only
-          an action wider than what is left (a phone) wraps under the title. */}
-      <div
-        data-card-header=""
-        className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3"
-      >
-        <div className="min-w-0 flex-1">
-          <Heading id={id} className="text-base font-bold text-fg-strong">
-            {title}
-          </Heading>
-          {description ? (
-            <p className="text-sm text-fg-muted">{description}</p>
-          ) : null}
-        </div>
-        {/* A labelled ghost button that ends the header meets the edge by its ink (the trailing
-            ghost rule in styles.css; the header is a data-card-header). */}
-        {/* The action never sets the header's height: a 32 px sm button or a 36 px field beside a
-            24 px title would grow this header past its siblings' 49 px, so it hangs 6 px into the
-            padding (the layout lint's rhythm/header-height). */}
-        {action ? <div className="-my-1.5 max-w-full">{action}</div> : null}
-      </div>
-      <div className="min-w-0 flex-1 p-4">{children}</div>
-    </section>
-  );
-}
+/** A titled card for a dashboard panel: the shared `Section` (EXPERIENCE.md §3), from `ui/`. */
+export { Panel, type PanelProps } from "../../ui/Section.js";
 
 export type AttentionTone = "danger" | "warning" | "info";
 
@@ -213,7 +163,8 @@ export function sortAttention(items: AttentionItem[]): AttentionItem[] {
 }
 
 /**
- * T1's attention list (ADMIN.md §3): only rendered when non-empty, at most `max` items with
+ * T1's attention list (ADMIN.md §3), drawn on the shared `Section` card metrics (radius, side
+ * padding, light elevation) so it lines up with the panels under it: only rendered when non-empty, at most `max` items with
  * "Show all n". Each item: a tone pill (icon and word), the object, a one-line reason and one
  * action.
  */
@@ -234,11 +185,11 @@ export function AttentionList({
   return (
     <section
       aria-labelledby={id}
-      className="rounded-lg border border-border bg-surface-raised"
+      className="rounded-xl border border-border bg-surface-raised light:shadow-elevation-1"
     >
       <div
         data-card-header=""
-        className="flex items-center justify-between border-b border-border px-4 py-2"
+        className="flex items-center justify-between border-b border-border px-5 py-2"
       >
         <h2 id={id} className="text-sm font-bold text-fg-strong">
           {title}
@@ -251,7 +202,7 @@ export function AttentionList({
         {shown.map((item) => (
           <li
             key={item.id}
-            className="flex flex-col items-start gap-2 px-4 py-2.5 sm:flex-row sm:items-center"
+            className="flex flex-col items-start gap-2 px-5 py-2.5 sm:flex-row sm:items-center"
           >
             <StatusPill tone={item.tone}>{TONE_WORD[item.tone]}</StatusPill>
             {/* The object never takes the reason's width: from 640 px it is capped at 40 % of the
@@ -293,7 +244,7 @@ export function AttentionList({
         ))}
       </ul>
       {sorted.length > max ? (
-        <div className="border-t border-border px-4 py-2">
+        <div className="border-t border-border px-5 py-2">
           <Button variant="link" size="sm" onClick={() => setAll((v) => !v)}>
             {all ? "Show fewer" : `Show all ${sorted.length}`}
           </Button>

@@ -1,324 +1,425 @@
 import * as React from "react";
-import { ArrowLeft, ArrowRight, Github, PenLine } from "lucide-react";
-import type {
-  CreateManualProductResult,
-  LinkRepoResult,
+import { RESERVED_PRODUCT_SLUGS } from "@polaris-key/manifest";
+import { ArrowRight, Check, ChevronRight, Github, Plus } from "lucide-react";
+import {
+  type CreateManualProductResult,
+  type LinkRepoResult,
 } from "../../../api.js";
 import { cn } from "../../../lib/cn.js";
-import { errorCopy } from "../../../lib/errorCopy.js";
+import { DOCS_LINKS } from "../../../lib/docsLinks.js";
 import {
-  parseSchemaField,
-  signingBundleOf,
-  slugError,
-} from "../../../lib/products.js";
+  errorCopy,
+  type ErrorCopy,
+  type ErrorFix,
+} from "../../../lib/errorCopy.js";
+import { signingBundleOf, slugError } from "../../../lib/products.js";
 import { Button } from "../../../ui/Button.js";
 import { Callout } from "../../../ui/Callout.js";
-import { DescriptionList } from "../../../ui/DescriptionList.js";
 import { FormField } from "../../../ui/form.js";
 import { Input } from "../../../ui/Input.js";
-import { KeyDisplay } from "../../../ui/KeyDisplay.js";
 import { NumberInput } from "../../../ui/NumberInput.js";
 import { RadioCards } from "../../../ui/RadioCards.js";
-import { Stepper, type Step } from "../../../ui/Stepper.js";
-import { Textarea } from "../../../ui/Textarea.js";
-import { toast } from "../../../ui/toast.js";
 import { useUnsavedChangesGuard } from "../../../ui/useUnsavedChangesGuard.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
 import { PageHeader } from "../../components/PageHeader.js";
+import { useProducts } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { codecs, Link, navigate, useSearchParam } from "../../router.js";
 import { r } from "../../routes.js";
-import { Panel, STRETCH_CELL } from "../../templates/Dashboard.js";
+import { storeWelcome, type Welcome } from "../core/Welcome.js";
 
+/**
+ * Where the product's definition comes from. The URL keeps the old `?via=` names, so Home's and
+ * Products' first-run links still preselect: `manual` is "Nothing", `github` is "A GitHub
+ * repository".
+ */
 export type Via = "github" | "manual";
-type StepId =
-  | "source"
-  | "repository"
-  | "basics"
-  | "catalog"
-  | "defaults"
-  | "review"
-  | "result";
-
-const STEPS: Record<Via, Step[]> = {
-  github: [
-    { id: "source", label: "Source" },
-    { id: "repository", label: "Repository" },
-    { id: "review", label: "Review" },
-  ],
-  manual: [
-    { id: "source", label: "Source" },
-    { id: "basics", label: "Basics" },
-    { id: "catalog", label: "Catalog" },
-    { id: "defaults", label: "Defaults" },
-    { id: "review", label: "Review" },
-  ],
-};
 
 /** The draft. Nothing in it is secret, so it may live in `sessionStorage` (ADMIN.md §5.7). */
 export interface ProductDraft {
-  repoUrl: string;
-  slug: string;
   name: string;
-  adminGroup: string;
-  schema: string;
+  slug: string;
+  /** The operator typed the slug: it no longer follows the name. */
+  slugEdited: boolean;
+  repo: string;
   maxOfflineDays: number | null;
   deviceLimit: number | null;
 }
 
 const EMPTY: ProductDraft = {
-  repoUrl: "",
-  slug: "",
   name: "",
-  adminGroup: "",
-  schema: "",
+  slug: "",
+  slugEdited: false,
+  repo: "",
   maxOfflineDays: null,
   deviceLimit: null,
 };
 
-/** What the result step shows: public material and names only, never a secret value. */
-interface Created {
-  via: Via;
-  slug: string;
-  name: string;
-  kid: string;
-  publicKey: string | null;
-  remainingSecrets: string[];
-}
-
 export const DRAFT_KEY = "pk-product-new";
 
-interface Stored {
-  draft: ProductDraft;
-  created: Created | null;
-}
-
-function readStored(): Stored {
+function readDraft(): ProductDraft {
   try {
     const raw = window.sessionStorage.getItem(DRAFT_KEY);
-    if (!raw) return { draft: EMPTY, created: null };
-    const v = JSON.parse(raw) as Partial<Stored>;
+    if (!raw) return EMPTY;
+    const v = JSON.parse(raw) as Partial<ProductDraft>;
     return {
-      draft: { ...EMPTY, ...(v.draft ?? {}) },
-      created: v.created ?? null,
+      name: typeof v.name === "string" ? v.name : "",
+      slug: typeof v.slug === "string" ? v.slug : "",
+      slugEdited: v.slugEdited === true,
+      repo: typeof v.repo === "string" ? v.repo : "",
+      maxOfflineDays:
+        typeof v.maxOfflineDays === "number" ? v.maxOfflineDays : null,
+      deviceLimit: typeof v.deviceLimit === "number" ? v.deviceLimit : null,
     };
   } catch {
-    return { draft: EMPTY, created: null };
+    return EMPTY;
   }
 }
 
-function writeStored(value: Stored | null): void {
+function writeDraft(draft: ProductDraft | null): void {
   try {
-    if (value === null) window.sessionStorage.removeItem(DRAFT_KEY);
-    else window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify(value));
+    if (draft === null) window.sessionStorage.removeItem(DRAFT_KEY);
+    else window.sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
   } catch {
     // storage unavailable: the draft lasts as long as the page
   }
 }
 
-const isDirtyDraft = (d: ProductDraft): boolean =>
+const isDirty = (d: ProductDraft): boolean =>
   JSON.stringify(d) !== JSON.stringify(EMPTY);
 
-const GITHUB_URL = /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+?\/?$/;
+/**
+ * The slug a name derives (EXPERIENCE.md S1: "Name first; the slug follows"): lowercase ASCII
+ * letters and digits, everything else a single hyphen, no hyphen at either end.
+ */
+export function slugFromName(name: string): string {
+  return name
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
-/** Field errors for one step. Empty: the step is complete. */
-export function stepErrors(
-  step: StepId,
-  draft: ProductDraft,
-): Record<string, string> {
-  const e: Record<string, string> = {};
-  if (step === "repository") {
-    const url = draft.repoUrl.trim();
-    if (url === "") e.repoUrl = "Enter the repository's URL.";
-    else if (!GITHUB_URL.test(url))
-      e.repoUrl = "Use the repository's https://github.com/<owner>/<repo> URL.";
-  }
-  if (step === "basics") {
-    const s = slugError(draft.slug);
-    if (s) e.slug = s;
-  }
-  if (step === "catalog") {
-    const parsed = parseSchemaField(draft.schema);
-    if (parsed.error) e.schema = parsed.error;
-  }
-  if (step === "defaults") {
-    for (const key of ["maxOfflineDays", "deviceLimit"] as const) {
-      const v = draft[key];
-      if (v !== null && (!Number.isInteger(v) || v < 1)) {
-        e[key] = "Use a whole number of 1 or more, or leave it blank.";
-      }
-    }
-  }
-  return e;
+/**
+ * `owner/repo` from what the worker's `parseRepoUrl` accepts: an https or git@ GitHub URL, or a
+ * bare `owner/repo`. Null when it is neither.
+ */
+export function repoOf(input: string): string | null {
+  const t = input
+    .trim()
+    .replace(/\.git$/, "")
+    .replace(/\/+$/, "");
+  const m =
+    t.match(/github\.com[/:]([^/\s]+)\/([^/\s]+)$/i) ??
+    t.match(/^([A-Za-z0-9._-]+)\/([A-Za-z0-9._-]+)$/);
+  return m && m[1] && m[2] ? `${m[1]}/${m[2]}` : null;
+}
+
+/** What the registry says about a slug, before asking the server. */
+export type SlugVerdict =
+  | { kind: "empty" }
+  | { kind: "invalid"; message: string }
+  | { kind: "reserved" }
+  | { kind: "taken"; suggestion: string }
+  | { kind: "available" }
+  /** The registry hasn't loaded: the server decides on Create. */
+  | { kind: "unknown" };
+
+const isReserved = (slug: string): boolean =>
+  RESERVED_PRODUCT_SLUGS.includes(slug);
+
+/** The first free variant of a taken slug: `-app`, then `-2`, `-3`… */
+export function suggestSlug(slug: string, taken: ReadonlySet<string>): string {
+  const free = (s: string) => !taken.has(s) && !isReserved(s);
+  if (free(`${slug}-app`)) return `${slug}-app`;
+  for (let i = 2; ; i++) if (free(`${slug}-${i}`)) return `${slug}-${i}`;
+}
+
+export function slugVerdict(
+  slug: string,
+  taken: ReadonlySet<string> | null,
+): SlugVerdict {
+  const t = slug.trim();
+  if (t === "") return { kind: "empty" };
+  const invalid = slugError(t);
+  if (invalid) return { kind: "invalid", message: invalid };
+  if (isReserved(t)) return { kind: "reserved" };
+  if (!taken) return { kind: "unknown" };
+  if (taken.has(t)) return { kind: "taken", suggestion: suggestSlug(t, taken) };
+  return { kind: "available" };
+}
+
+/**
+ * The field a refusal is about: the one `errorCopy` says to focus, when the source on screen
+ * has it. Nothing has a Slug field and no Repository; a linked product has the Repository and
+ * takes its slug from `.pkey/product`, so a slug refusal there goes to the callout.
+ */
+function refusedField(copy: ErrorCopy, via: Via): "slug" | "repoUrl" | null {
+  if (via === "manual") return copy.focus === "slug" ? "slug" : null;
+  return copy.focus === "repoUrl" ? "repoUrl" : null;
+}
+
+/**
+ * A slug refusal on the GitHub path, worded as the manifest change it needs: the slug lives in
+ * `product.slug` in `.pkey/product`, so there is no free slug to take on this screen. The
+ * reason `errorCopy` gives (reserved, malformed) is kept; its "Try …" is not.
+ */
+function manifestSlugRefusal(copy: ErrorCopy): ErrorCopy {
+  const reason = copy.description
+    .replace(/\s*(?:Try \S+|Choose another slug)\.$/, "")
+    .trim();
+  // link-repo registers new products only: a repository already registered resyncs from its
+  // product's page, so "taken" may mean this very product.
+  const resync = /\btaken$/.test(copy.title)
+    ? " If it is this repository's product, resync it from that product instead."
+    : "";
+  return {
+    ...copy,
+    description: `${reason ? `${reason} ` : ""}The slug comes from product.slug in .pkey/product: change it there, push, then check again.${resync}`,
+    fieldErrors: undefined,
+    suggestion: undefined,
+    focus: undefined,
+    fix: { kind: "check-again", label: "Check again" },
+  };
+}
+
+/**
+ * "tonebox is taken. Try tonebox-app." for a slug the server refused: `errorCopy`'s title and
+ * description together. The free slug it offers is checked against the registry here, so a
+ * suggestion that is itself taken is swapped for one that is not.
+ */
+function slugRefusal(
+  copy: ErrorCopy,
+  slug: string,
+  taken: ReadonlySet<string>,
+): { message: string; suggestion?: string } {
+  const suggestion = copy.suggestion
+    ? suggestSlug(slug, new Set([...taken, slug]))
+    : undefined;
+  const description =
+    copy.suggestion && suggestion
+      ? copy.description.replace(copy.suggestion, suggestion)
+      : copy.description;
+  return {
+    message: `${copy.title.replace(/[.!]$/, "")}. ${description}`,
+    ...(suggestion ? { suggestion } : {}),
+  };
 }
 
 const viaCodec = codecs.string();
-const stepCodec = codecs.string();
+
+const focusField = (name: string): void => {
+  window.setTimeout(
+    () =>
+      document
+        .querySelector<HTMLElement>(`[data-field-name="${name}"]`)
+        ?.focus(),
+    0,
+  );
+};
 
 /**
- * New product (ADMIN.md §2.3, T6): a full-page wizard instead of tabs inside tabs in a dialog
- * (PRD-7). The source comes first (`?via=github|manual`, preselected from Home's first-run
- * actions, DSH-6), the step is in the URL (`?step=`), the draft survives a refresh in
- * `sessionStorage`, Back keeps values, and leaving with a draft asks first.
+ * New product (EXPERIENCE.md §0.4 S1, C1): one screen, three actions. Start from Nothing or a
+ * GitHub repository; for Nothing, the name comes first and the slug follows it, checked against
+ * the registry as you type. License defaults sit under Advanced. Enter creates.
  *
- * - The compatibility window is not asked for: it lives in Update → Feed now (PRD-7).
- * - A Review step comes before the irreversible create, and the create button cannot be pressed
- *   twice (PRD-10). A refusal is worded by `errorCopy`, inline, with every field the server named
- *   (PRD-12, and the aggregated manifest errors of link-repo).
- * - The result names the signing key with a copy button (PRD-9) and offers the next steps: Open
- *   product, and Set the missing secrets in Keys & secrets (PRD-8).
+ * There is no result page and no toast: a created product opens on its Overview, which shows a
+ * one-time welcome with the new signing key (`core/Welcome.tsx`). A refusal stays on this screen,
+ * worded by `errorCopy` and placed on the field it is about.
+ *
+ * "Start from" comes first rather than after the slug (the storyboard's order): a linked product
+ * takes its name and slug from `.pkey/product` (link-repo accepts only the repository), so the
+ * name and slug fields belong to Nothing alone, and choosing a source must not move fields that
+ * sit above the pointer.
+ *
+ * The GitHub path has no live "App installed · manifest valid" check before Link (AS 1.6, the
+ * storyboard's frame 1): that needs a read-only worker probe this screen does not own. Until it
+ * exists, the same problems arrive as the refusal of Link, each with its fix beside it.
  */
 export function ProductNew(): React.ReactElement {
   const [viaRaw, setViaParam] = useSearchParam("via", viaCodec);
-  const [stepRaw, setStepParam] = useSearchParam("step", stepCodec);
-  const via: Via | null =
-    viaRaw === "github" || viaRaw === "manual" ? viaRaw : null;
+  const via: Via = viaRaw === "github" ? "github" : "manual";
 
-  const [stored] = React.useState(readStored);
-  const [draft, setDraft] = React.useState<ProductDraft>(stored.draft);
-  const [created, setCreated] = React.useState<Created | null>(stored.created);
-  const [shown, setShown] = React.useState<Set<StepId>>(new Set());
-  const [submitError, setSubmitError] = React.useState<unknown>(null);
-  const [submitting, setSubmitting] = React.useState(false);
-
-  React.useEffect(() => {
-    writeStored(isDirtyDraft(draft) || created ? { draft, created } : null);
-  }, [draft, created]);
-
-  const steps = via ? STEPS[via] : STEPS.manual.slice(0, 1);
-  const ids = steps.map((s) => s.id as StepId);
-
-  // The step the URL may show: the asked one, unless an earlier step is still incomplete.
-  const firstIncomplete = ids.find(
-    (id) => id !== "review" && Object.keys(stepErrors(id, draft)).length > 0,
+  const [draft, setDraft] = React.useState<ProductDraft>(readDraft);
+  const [showErrors, setShowErrors] = React.useState(false);
+  const [advanced, setAdvanced] = React.useState(
+    () => draft.maxOfflineDays !== null || draft.deviceLimit !== null,
   );
-  let step: StepId;
-  if (created) step = "result";
-  else if (!via) step = "source";
-  else {
-    const asked = (ids as string[]).includes(stepRaw)
-      ? (stepRaw as StepId)
-      : "source";
-    const askedIndex = ids.indexOf(asked);
-    const blockIndex = firstIncomplete ? ids.indexOf(firstIncomplete) : -1;
-    step =
-      blockIndex !== -1 && blockIndex < askedIndex ? firstIncomplete! : asked;
-  }
+  const [submitError, setSubmitError] = React.useState<{
+    error: unknown;
+    via: Via;
+    slug: string;
+  } | null>(null);
+  const [submitting, setSubmitting] = React.useState(false);
+  const created = React.useRef(false);
 
-  // Keep the URL honest about the step actually shown.
   React.useEffect(() => {
-    const want = step === "source" ? "" : step;
-    if (stepRaw !== want) setStepParam(want);
-  }, [step, stepRaw, setStepParam]);
+    if (!created.current) writeDraft(isDirty(draft) ? draft : null);
+  }, [draft]);
 
-  const guard = useUnsavedChangesGuard(isDirtyDraft(draft) && !created, {
+  const products = useProducts();
+  const taken = React.useMemo(
+    () => (products.data ? new Set(products.data.map((p) => p.slug)) : null),
+    [products.data],
+  );
+
+  const guard = useUnsavedChangesGuard(isDirty(draft), {
     message: "Discard this new product?",
-    consequences: [
-      "What you entered in this wizard is lost. Nothing was created.",
-    ],
+    consequences: ["What you entered is lost. Nothing was created."],
     onDiscard: () => {
-      writeStored(null);
+      writeDraft(null);
       setDraft(EMPTY);
     },
-    allow: (hash) => hash.startsWith(r.productNew()),
+    allow: (hash) => hash.startsWith(r.productNew()) || created.current,
   });
 
-  const set = <K extends keyof ProductDraft>(key: K, value: ProductDraft[K]) =>
-    setDraft((d) => ({ ...d, [key]: value }));
-
-  const errors = shown.has(step) ? stepErrors(step, draft) : {};
-
-  const goTo = (id: StepId) => {
+  const update = (patch: Partial<ProductDraft>) => {
     setSubmitError(null);
-    setStepParam(id === "source" ? "" : id);
+    setDraft((d) => ({ ...d, ...patch }));
   };
 
-  const next = () => {
-    if (!via) return;
-    const problems = stepErrors(step, draft);
-    if (Object.keys(problems).length > 0) {
-      setShown((s) => new Set(s).add(step));
-      const first = Object.keys(problems)[0];
-      window.setTimeout(
-        () =>
-          document
-            .querySelector<HTMLElement>(`[data-field-name="${first}"]`)
-            ?.focus(),
-        0,
-      );
+  const setName = (name: string) =>
+    update(draft.slugEdited ? { name } : { name, slug: slugFromName(name) });
+
+  // Typing the slug the name derives (or one back to it) makes it follow the name again.
+  const setSlug = (slug: string) =>
+    update({ slug, slugEdited: slug !== slugFromName(draft.name) });
+
+  const verdict = slugVerdict(draft.slug, taken);
+  const repo = repoOf(draft.repo);
+
+  // Client checks; a failing one keeps Create from reaching the server.
+  const fieldErrors: Record<string, string> = {};
+  if (via === "manual") {
+    if (draft.name.trim() === "")
+      fieldErrors.name = "Enter the product's name.";
+    if (verdict.kind === "empty") fieldErrors.slug = "Enter a slug.";
+    if (verdict.kind === "invalid") fieldErrors.slug = verdict.message;
+    if (verdict.kind === "reserved")
+      fieldErrors.slug = `${draft.slug.trim()} is reserved. Choose another slug.`;
+    if (verdict.kind === "taken")
+      fieldErrors.slug = `${draft.slug.trim()} is taken. Try ${verdict.suggestion}.`;
+    const days = draft.maxOfflineDays;
+    // The worker's cap (WriteChecks.offlineDays): checked here so it lands on the field.
+    if (days !== null && (!Number.isInteger(days) || days < 1 || days > 365))
+      fieldErrors.maxOfflineDays =
+        "Use a whole number from 1 to 365, or leave it blank.";
+    const devices = draft.deviceLimit;
+    if (devices !== null && (!Number.isInteger(devices) || devices < 1))
+      fieldErrors.deviceLimit =
+        "Use a whole number of 1 or more, or leave it blank.";
+  } else if (draft.repo.trim() === "") {
+    fieldErrors.repoUrl = "Enter the repository.";
+  } else if (!repo) {
+    fieldErrors.repoUrl = "Use owner/repo or the repository's GitHub URL.";
+  }
+
+  // The slug's own state shows as you type (taken, reserved, malformed); "Enter a…" waits for a
+  // Create attempt, so an empty form opens quiet.
+  const liveSlugError =
+    verdict.kind === "invalid" ||
+    verdict.kind === "reserved" ||
+    verdict.kind === "taken"
+      ? fieldErrors.slug
+      : undefined;
+
+  // A refusal belongs to the source it was made for; switching source sets it aside.
+  const refusal = submitError && submitError.via === via ? submitError : null;
+  const worded = refusal
+    ? errorCopy(refusal.error, {
+        thing: "Product",
+        ...(via === "manual" ? { slug: refusal.slug } : repo ? { repo } : {}),
+      })
+    : null;
+  const copy =
+    worded && via === "github" && worded.focus === "slug"
+      ? manifestSlugRefusal(worded)
+      : worded;
+  const serverField = copy ? refusedField(copy, via) : null;
+  const slugServer =
+    copy && serverField === "slug"
+      ? slugRefusal(copy, refusal!.slug, taken ?? new Set())
+      : null;
+
+  const errorFor = (name: string): string | undefined => {
+    if (name === "slug" && slugServer) return slugServer.message;
+    if (copy && serverField === name) return copy.description;
+    if (name === "slug" && liveSlugError) return liveSlugError;
+    return showErrors ? fieldErrors[name] : undefined;
+  };
+
+  const suggestion =
+    slugServer?.suggestion ??
+    (verdict.kind === "taken" ? verdict.suggestion : null);
+
+  const finish = (welcome: Welcome) => {
+    created.current = true;
+    writeDraft(null);
+    storeWelcome(welcome);
+    navigate(r.overview(welcome.slug));
+  };
+
+  const submit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (submitting) return;
+    const problems = Object.keys(fieldErrors);
+    if (problems.length > 0) {
+      setShowErrors(true);
+      const first = problems[0]!;
+      if (first === "maxOfflineDays" || first === "deviceLimit")
+        setAdvanced(true);
+      focusField(first);
       return;
     }
-    const i = ids.indexOf(step);
-    if (i < ids.length - 1) goTo(ids[i + 1]!);
-  };
-
-  const back = () => {
-    const i = ids.indexOf(step);
-    if (i > 0) goTo(ids[i - 1]!);
-  };
-
-  const submit = async () => {
-    if (!via || submitting) return;
     setSubmitting(true);
     setSubmitError(null);
+    const slug = draft.slug.trim();
     try {
       if (via === "github") {
-        const res: LinkRepoResult = await mutate(
-          "linkRepo",
-          draft.repoUrl.trim(),
-        );
+        const res: LinkRepoResult = await mutate("linkRepo", draft.repo.trim());
         const bundle = signingBundleOf(res);
-        setCreated({
-          via,
+        finish({
           slug: res.slug,
           name: res.product?.name ?? res.slug,
           kid: bundle.kid ?? res.kid,
           publicKey: bundle.publicKey,
+          ...(repo ? { repo } : {}),
           remainingSecrets: res.remainingSecrets ?? [],
-        });
-        toast.success("Repository linked", {
-          description: `${res.slug} is registered.`,
         });
       } else {
         const res: CreateManualProductResult = await mutate(
           "createManualProduct",
           {
-            slug: draft.slug.trim(),
-            name: draft.name.trim() || undefined,
-            schema: parseSchemaField(draft.schema).value,
+            slug,
+            name: draft.name.trim(),
             defaultMaxOfflineDays: draft.maxOfflineDays ?? undefined,
             defaultDeviceLimit: draft.deviceLimit ?? undefined,
-            adminGroup: draft.adminGroup.trim() || undefined,
           },
         );
         const bundle = signingBundleOf(res);
-        setCreated({
-          via,
+        finish({
           slug: res.slug,
-          name: res.product?.name ?? (draft.name.trim() || res.slug),
+          name: res.product?.name ?? draft.name.trim(),
           kid: bundle.kid ?? res.kid,
           publicKey: bundle.publicKey,
           remainingSecrets: [],
         });
-        toast.success("Product created", {
-          description: `${res.slug} is registered.`,
-        });
       }
-      setDraft(EMPTY);
-    } catch (e) {
-      setSubmitError(e);
-    } finally {
+    } catch (err) {
+      setSubmitError({ error: err, via, slug });
       setSubmitting(false);
+      const f = refusedField(errorCopy(err), via);
+      if (f) focusField(f);
     }
   };
 
-  const startOver = () => {
-    writeStored(null);
-    setCreated(null);
-    setDraft(EMPTY);
-    setShown(new Set());
-    setViaParam("");
-  };
+  const createLabel =
+    via === "github"
+      ? "Link repository"
+      : draft.name.trim()
+        ? `Create ${draft.name.trim()}`
+        : "Create product";
 
   return (
     <div className="space-y-6" data-template="flow">
@@ -333,556 +434,316 @@ export function ProductNew(): React.ReactElement {
         }
         title="New product"
       />
-      {step !== "result" ? (
-        <Stepper
-          label="New product steps"
-          steps={steps}
-          current={step}
-          onStep={(id) => goTo(id as StepId)}
-        />
-      ) : null}
-
-      {/* The step card and the aside share a row and both stretch to its height; the actions get
-          a row of their own under the step card, so the two cards share top and bottom edges. On
-          a phone the order is step, actions, aside. */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className={cn(STRETCH_CELL, "lg:col-span-2 lg:row-start-1")}>
-          <section
-            aria-labelledby="wizard-step-title"
-            className="rounded-lg border border-border bg-surface-raised p-4 sm:p-6"
-          >
-            {step === "source" ? (
-              <SourceStep
-                via={via}
-                onChange={(v) => {
-                  setSubmitError(null);
-                  setViaParam(v);
-                }}
-              />
-            ) : null}
-            {step === "repository" ? (
-              <RepositoryStep draft={draft} set={set} errors={errors} />
-            ) : null}
-            {step === "basics" ? (
-              <BasicsStep draft={draft} set={set} errors={errors} />
-            ) : null}
-            {step === "catalog" ? (
-              <CatalogStep draft={draft} set={set} errors={errors} />
-            ) : null}
-            {step === "defaults" ? (
-              <DefaultsStep draft={draft} set={set} errors={errors} />
-            ) : null}
-            {step === "review" && via ? (
-              <ReviewStep via={via} draft={draft} error={submitError} />
-            ) : null}
-            {step === "result" && created ? (
-              <ResultStep created={created} />
-            ) : null}
-          </section>
-        </div>
-        <div className="min-w-0 lg:col-span-2 lg:row-start-2">
-          {step === "result" && created ? (
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-              <Button variant="outline" onClick={startOver}>
-                Register another
-              </Button>
-              {created.remainingSecrets.length > 0 ? (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    writeStored(null);
-                    navigate(r.keys(created.slug));
-                  }}
-                >
-                  {created.remainingSecrets.length === 1
-                    ? "Set 1 missing secret"
-                    : `Set ${created.remainingSecrets.length} missing secrets`}
-                </Button>
-              ) : null}
-              <Button
-                onClick={() => {
-                  writeStored(null);
-                  navigate(r.overview(created.slug));
-                }}
-              >
-                Open product
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <Button variant="ghost" asChild>
-                <Link to={r.products()}>Cancel</Link>
-              </Button>
-              <div className="flex flex-col-reverse gap-2 sm:flex-row">
-                {step !== "source" ? (
-                  <Button
-                    variant="outline"
-                    iconStart={<ArrowLeft aria-hidden />}
-                    onClick={back}
-                    disabled={submitting}
-                  >
-                    Back
-                  </Button>
-                ) : null}
-                {step === "review" ? (
-                  <Button loading={submitting} onClick={() => void submit()}>
-                    {via === "github" ? "Link repository" : "Create product"}
-                  </Button>
-                ) : (
-                  <Button
-                    iconEnd={<ArrowRight aria-hidden />}
-                    disabledReason={
-                      step === "source" && !via
-                        ? "Choose where the product comes from first."
-                        : undefined
-                    }
-                    onClick={next}
-                  >
-                    Continue
-                  </Button>
-                )}
-              </div>
-            </div>
+      <form
+        noValidate
+        aria-label="New product"
+        onSubmit={(e) => void submit(e)}
+        className="max-w-2xl space-y-5 rounded-xl border border-border bg-surface-raised p-4 sm:p-6"
+      >
+        <FormField
+          name="via"
+          label="Start from"
+          group
+          value={via}
+          onChange={(v: Via) => {
+            setShowErrors(false);
+            setViaParam(v);
+          }}
+        >
+          {(field) => (
+            <RadioCards<Via>
+              {...field}
+              id="product-new-via"
+              options={[
+                {
+                  value: "manual",
+                  label: "Nothing",
+                  icon: <Plus aria-hidden className="size-4" />,
+                  description:
+                    "A name and a slug; set up the rest from Overview",
+                },
+                {
+                  value: "github",
+                  label: "A GitHub repository",
+                  icon: <Github aria-hidden className="size-4" />,
+                  description: "Reads .pkey/ and publishes from CI",
+                },
+              ]}
+            />
           )}
+        </FormField>
+
+        {via === "manual" ? (
+          <>
+            <FormField
+              name="name"
+              label="Name"
+              value={draft.name}
+              onChange={setName}
+              error={errorFor("name")}
+              announceError
+            >
+              {(field) => (
+                <Input
+                  {...field}
+                  data-field-name="name"
+                  onChange={(e) => field.onChange(e.target.value)}
+                  placeholder="Tonebox"
+                  autoComplete="off"
+                />
+              )}
+            </FormField>
+            <FormField
+              name="slug"
+              label="Slug"
+              labelAside={
+                <span className="text-xs text-fg-subtle">
+                  Permanent · used in keys and URLs
+                </span>
+              }
+              help={
+                verdict.kind === "available" && !errorFor("slug") ? (
+                  <span className="inline-flex items-center gap-1">
+                    <Check aria-hidden className="size-3.5" />
+                    Available
+                  </span>
+                ) : undefined
+              }
+              value={draft.slug}
+              onChange={setSlug}
+              error={errorFor("slug")}
+              announceError
+            >
+              {(field) => (
+                <div className="flex items-center gap-2">
+                  <Input
+                    {...field}
+                    data-field-name="slug"
+                    onChange={(e) => field.onChange(e.target.value)}
+                    placeholder="tonebox"
+                    autoComplete="off"
+                    spellCheck={false}
+                    mono
+                    className="min-w-0 flex-1"
+                  />
+                  {suggestion ? (
+                    <Button
+                      variant="outline"
+                      className="shrink-0"
+                      onClick={() => {
+                        setSlug(suggestion);
+                        focusField("slug");
+                      }}
+                    >
+                      Use {suggestion}
+                    </Button>
+                  ) : null}
+                </div>
+              )}
+            </FormField>
+          </>
+        ) : (
+          <FormField
+            name="repoUrl"
+            label="Repository"
+            help={
+              repo && !errorFor("repoUrl")
+                ? `Polaris Key reads .pkey/ on ${repo}'s default branch when you link it.`
+                : undefined
+            }
+            value={draft.repo}
+            onChange={(v: string) => update({ repo: v })}
+            error={errorFor("repoUrl")}
+            announceError
+          >
+            {(field) => (
+              <Input
+                {...field}
+                data-field-name="repoUrl"
+                onChange={(e) => field.onChange(e.target.value)}
+                placeholder="acme/tonebox"
+                autoComplete="off"
+                spellCheck={false}
+                mono
+              />
+            )}
+          </FormField>
+        )}
+
+        {copy?.fix && serverField ? (
+          <RefusalFix fix={copy.fix} onCheckAgain={() => void submit()} />
+        ) : null}
+
+        {via === "manual" ? (
+          <div>
+            <button
+              type="button"
+              aria-expanded={advanced}
+              aria-controls="product-new-advanced"
+              onClick={() => setAdvanced((a) => !a)}
+              className="inline-flex items-center gap-1 rounded-sm text-sm text-fg-muted hover:text-fg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              <ChevronRight
+                aria-hidden
+                className={cn(
+                  "size-4 transition-transform motion-reduce:transition-none",
+                  advanced && "rotate-90",
+                )}
+              />
+              Advanced: license defaults
+            </button>
+            <div
+              id="product-new-advanced"
+              hidden={!advanced}
+              className="mt-4 grid gap-5 sm:grid-cols-2"
+            >
+              <FormField
+                name="maxOfflineDays"
+                label="Offline grace"
+                optional
+                help="Blank uses the platform default."
+                value={draft.maxOfflineDays}
+                onChange={(v: number | null) => update({ maxOfflineDays: v })}
+                error={errorFor("maxOfflineDays")}
+                announceError
+              >
+                {(field) => (
+                  <NumberInput
+                    {...field}
+                    data-field-name="maxOfflineDays"
+                    nullable
+                    integer
+                    min={1}
+                    max={365}
+                    unit="days"
+                    placeholder="14"
+                  />
+                )}
+              </FormField>
+              <FormField
+                name="deviceLimit"
+                label="Device limit"
+                optional
+                help="Blank uses the platform default."
+                value={draft.deviceLimit}
+                onChange={(v: number | null) => update({ deviceLimit: v })}
+                error={errorFor("deviceLimit")}
+                announceError
+              >
+                {(field) => (
+                  <NumberInput
+                    {...field}
+                    data-field-name="deviceLimit"
+                    nullable
+                    integer
+                    min={1}
+                    unit="devices"
+                    placeholder="3"
+                  />
+                )}
+              </FormField>
+            </div>
+          </div>
+        ) : null}
+
+        {copy && !serverField ? (
+          <RefusalCallout copy={copy} onCheckAgain={() => void submit()} />
+        ) : null}
+
+        <div className="flex flex-col-reverse gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
+          <Button variant="ghost" asChild>
+            <Link to={r.products()}>Cancel</Link>
+          </Button>
+          <Button type="submit" loading={submitting}>
+            {createLabel}
+          </Button>
         </div>
-        <Aside via={via} step={step} />
-      </div>
+      </form>
       {guard.dialog}
     </div>
   );
 }
 
-interface StepProps {
-  draft: ProductDraft;
-  set: <K extends keyof ProductDraft>(key: K, value: ProductDraft[K]) => void;
-  errors: Record<string, string>;
-}
-
-function StepTitle({
-  children,
-  description,
+/**
+ * A refusal no single field owns: a manifest the server would not accept, GitHub access, service
+ * settings that don't fit together. Every problem is listed, so they can be fixed in one commit.
+ */
+function RefusalCallout({
+  copy,
+  onCheckAgain,
 }: {
-  children: React.ReactNode;
-  description?: React.ReactNode;
+  copy: ErrorCopy;
+  onCheckAgain: () => void;
 }): React.ReactElement {
+  const lines = copy.problems?.length
+    ? copy.problems.map((p) => ({
+        key: `${p.file}${p.path}${p.message}`,
+        text: (
+          <>
+            <span className="font-mono text-xs">
+              {p.file}
+              {p.path ? ` ${p.path}` : ""}
+            </span>
+            {": "}
+            {p.message}
+          </>
+        ),
+      }))
+    : [...(copy.fieldErrors ?? []), ...(copy.lines ?? [])].map((l) => ({
+        key: l,
+        text: <>{l}</>,
+      }));
   return (
-    <div className="mb-5 space-y-1">
-      <h2 id="wizard-step-title" className="text-lg font-bold text-fg-strong">
-        {children}
-      </h2>
-      {description ? (
-        <p className="text-sm text-fg-muted">{description}</p>
+    <Callout tone="danger" title={copy.title} live>
+      <p>{copy.description}</p>
+      {lines.length ? (
+        <ul className="mt-2 list-disc space-y-1 pl-5">
+          {lines.map((l) => (
+            <li key={l.key}>{l.text}</li>
+          ))}
+        </ul>
       ) : null}
-    </div>
-  );
-}
-
-function SourceStep({
-  via,
-  onChange,
-}: {
-  via: Via | null;
-  onChange: (via: Via) => void;
-}): React.ReactElement {
-  return (
-    <>
-      <StepTitle description="Where the product's definition lives. You can link a repository to a manual product later.">
-        Source
-      </StepTitle>
-      <RadioCards<Via>
-        aria-labelledby="wizard-step-title"
-        value={via}
-        onChange={onChange}
-        options={[
-          {
-            value: "github",
-            label: "Link a GitHub repository",
-            icon: <Github aria-hidden className="size-4" />,
-            description:
-              "The Polaris Key GitHub App reads the repository's .pkey/ directory: services, catalog, tiers, profiles, sign-in and releases, all from the manifest.",
-          },
-          {
-            value: "manual",
-            label: "Start manually",
-            icon: <PenLine aria-hidden className="size-4" />,
-            description:
-              "A slug, a name and optional catalog and license defaults. For experiments before release syncing, sign-in or provisioning matter.",
-          },
-        ]}
-      />
-    </>
-  );
-}
-
-function RepositoryStep({ draft, set, errors }: StepProps): React.ReactElement {
-  return (
-    <>
-      <StepTitle description="The repository must have a .pkey/ directory on its default branch.">
-        Repository
-      </StepTitle>
-      <FormField
-        name="repoUrl"
-        label="Repository URL"
-        required
-        help="For example https://github.com/acme/my-product."
-        value={draft.repoUrl}
-        onChange={(v: string) => set("repoUrl", v)}
-        error={errors.repoUrl}
-        announceError
-      >
-        {(field) => (
-          <Input
-            {...field}
-            data-field-name="repoUrl"
-            onChange={(e) => field.onChange(e.target.value)}
-            placeholder="https://github.com/acme/my-product"
-            autoComplete="off"
-            spellCheck={false}
-            mono
-          />
-        )}
-      </FormField>
-    </>
-  );
-}
-
-function BasicsStep({ draft, set, errors }: StepProps): React.ReactElement {
-  return (
-    <>
-      <StepTitle description="The slug is permanent: it is in every URL and SDK configuration of the product.">
-        Basics
-      </StepTitle>
-      <div className="grid gap-5 sm:grid-cols-2">
-        <FormField
-          name="slug"
-          label="Slug"
-          required
-          help="Lowercase letters, digits and hyphens, for example djdl."
-          value={draft.slug}
-          onChange={(v: string) => set("slug", v)}
-          error={errors.slug}
-          announceError
-        >
-          {(field) => (
-            <Input
-              {...field}
-              data-field-name="slug"
-              onChange={(e) => field.onChange(e.target.value)}
-              placeholder="my-product"
-              autoComplete="off"
-              spellCheck={false}
-              mono
-            />
-          )}
-        </FormField>
-        <FormField
-          name="name"
-          label="Name"
-          help="Shown in the console and the customer portal. Blank uses the slug."
-          value={draft.name}
-          onChange={(v: string) => set("name", v)}
-        >
-          {(field) => (
-            <Input
-              {...field}
-              onChange={(e) => field.onChange(e.target.value)}
-              placeholder="My Product"
-            />
-          )}
-        </FormField>
-        <FormField
-          name="adminGroup"
-          label="Admin group (metadata only)"
-          help="A label recorded on the product. It grants no access: the console authorizes on PLATFORM_ADMIN_GROUP alone."
-          value={draft.adminGroup}
-          onChange={(v: string) => set("adminGroup", v)}
-          className="sm:col-span-2"
-        >
-          {(field) => (
-            <Input
-              {...field}
-              onChange={(e) => field.onChange(e.target.value)}
-              placeholder="pkey-my-product-admins"
-              autoComplete="off"
-            />
-          )}
-        </FormField>
-      </div>
-    </>
-  );
-}
-
-function CatalogStep({ draft, set, errors }: StepProps): React.ReactElement {
-  return (
-    <>
-      <StepTitle description="Optional. The product starts with an empty catalog when you leave this blank; publish one later from Config → Catalog.">
-        Catalog
-      </StepTitle>
-      <FormField
-        name="schema"
-        label="Catalog (JSON or YAML)"
-        help="The product's config catalog: its keys, kinds and defaults."
-        value={draft.schema}
-        onChange={(v: string) => set("schema", v)}
-        error={errors.schema}
-        announceError
-      >
-        {(field) => (
-          <Textarea
-            {...field}
-            data-field-name="schema"
-            onChange={(e) => field.onChange(e.target.value)}
-            rows={10}
-            mono
-            spellCheck={false}
-            placeholder={'{\n  "schemaVersion": 2,\n  "entries": []\n}'}
-          />
-        )}
-      </FormField>
-    </>
-  );
-}
-
-function DefaultsStep({ draft, set, errors }: StepProps): React.ReactElement {
-  return (
-    <>
-      <StepTitle description="Optional. What a new license gets unless its tier or the license itself says otherwise. Blank uses the platform default.">
-        License defaults
-      </StepTitle>
-      <div className="grid gap-5 sm:grid-cols-2">
-        <FormField
-          name="maxOfflineDays"
-          label="Offline grace"
-          help="Days a device keeps working without reaching Polaris Key."
-          value={draft.maxOfflineDays}
-          onChange={(v: number | null) => set("maxOfflineDays", v)}
-          error={errors.maxOfflineDays}
-          announceError
-        >
-          {(field) => (
-            <NumberInput
-              {...field}
-              data-field-name="maxOfflineDays"
-              nullable
-              integer
-              min={1}
-              unit="days"
-              placeholder="14"
-            />
-          )}
-        </FormField>
-        <FormField
-          name="deviceLimit"
-          label="Device limit"
-          help="Devices one license may activate at a time."
-          value={draft.deviceLimit}
-          onChange={(v: number | null) => set("deviceLimit", v)}
-          error={errors.deviceLimit}
-          announceError
-        >
-          {(field) => (
-            <NumberInput
-              {...field}
-              data-field-name="deviceLimit"
-              nullable
-              integer
-              min={1}
-              unit="devices"
-              placeholder="3"
-            />
-          )}
-        </FormField>
-      </div>
-    </>
-  );
-}
-
-function ReviewStep({
-  via,
-  draft,
-  error,
-}: {
-  via: Via;
-  draft: ProductDraft;
-  error: unknown;
-}): React.ReactElement {
-  const copy = error ? errorCopy(error, { thing: "Product" }) : null;
-  const blank = <span className="text-fg-muted">Not set</span>;
-  return (
-    <>
-      <StepTitle description="Check the details. The product is created when you confirm, with a new signing key.">
-        Review
-      </StepTitle>
-      {via === "github" ? (
-        <DescriptionList
-          items={[
-            { term: "Source", detail: "GitHub repository" },
-            {
-              term: "Repository",
-              detail: (
-                <span className="break-all font-mono text-xs">
-                  {draft.repoUrl.trim()}
-                </span>
-              ),
-            },
-            {
-              term: "Slug and settings",
-              detail: "From the repository's .pkey/product manifest",
-            },
-          ]}
-        />
-      ) : (
-        <DescriptionList
-          columns={2}
-          items={[
-            { term: "Source", detail: "Manual" },
-            {
-              term: "Slug",
-              detail: <span className="font-mono">{draft.slug.trim()}</span>,
-            },
-            { term: "Name", detail: draft.name.trim() || draft.slug.trim() },
-            {
-              term: "Admin group",
-              detail: draft.adminGroup.trim() || blank,
-            },
-            {
-              term: "Catalog",
-              detail: draft.schema.trim() ? "Provided" : "Empty catalog",
-            },
-            {
-              term: "Offline grace",
-              detail:
-                draft.maxOfflineDays !== null
-                  ? `${draft.maxOfflineDays} days`
-                  : "Platform default",
-            },
-            {
-              term: "Device limit",
-              detail:
-                draft.deviceLimit !== null
-                  ? String(draft.deviceLimit)
-                  : "Platform default",
-            },
-          ]}
-        />
-      )}
-      {copy ? (
-        <div className="mt-5">
-          <Callout tone="danger" title={copy.title} live>
-            <p>{copy.description}</p>
-            {copy.fieldErrors?.length ? (
-              <ul className="mt-2 list-disc space-y-1 pl-5">
-                {copy.fieldErrors.map((f) => (
-                  <li key={f}>{f}</li>
-                ))}
-              </ul>
-            ) : null}
-            {copy.lines?.length ? (
-              <ul className="mt-2 list-disc space-y-1 pl-5">
-                {copy.lines.map((l) => (
-                  <li key={l}>{l}</li>
-                ))}
-              </ul>
-            ) : null}
-          </Callout>
+      {copy.fix ? (
+        <div className="mt-3">
+          <RefusalFix fix={copy.fix} onCheckAgain={onCheckAgain} />
         </div>
       ) : null}
-    </>
+    </Callout>
   );
 }
 
-function ResultStep({ created }: { created: Created }): React.ReactElement {
-  return (
-    <>
-      <StepTitle
-        description={
-          created.via === "github"
-            ? "The repository is linked and the product is registered from its manifest."
-            : "The product is registered with a new signing key and an empty release history."
-        }
-      >
-        {created.name} is registered
-      </StepTitle>
-      <div className="space-y-5">
-        <KeyDisplay
-          kind="signing"
-          label="Signing key"
-          kid={created.kid}
-          status="active"
-          value={created.publicKey ?? undefined}
-        />
-        <p className="text-sm text-fg-muted">
-          Give this key to your SDK trust configuration and release tooling. The
-          private key never leaves the platform; the public key is also in the
-          product's JWKS.
-        </p>
-        {created.via === "github" ? (
-          <Callout
-            tone={created.remainingSecrets.length ? "warning" : "success"}
-            title={
-              created.remainingSecrets.length
-                ? "Secrets the manifest declares but nobody has set"
-                : "Every secret the manifest declares is set"
-            }
-          >
-            {created.remainingSecrets.length ? (
-              <>
-                <ul className="mt-1 space-y-1">
-                  {created.remainingSecrets.map((s) => (
-                    <li key={s} className="font-mono text-xs">
-                      {s}
-                    </li>
-                  ))}
-                </ul>
-                <p className="mt-2">
-                  Set each one in Keys &amp; secrets. Values are write-only and
-                  never shown again. Install the Polaris Key GitHub App on the
-                  repository too, so publishing and resync can authenticate.
-                </p>
-              </>
-            ) : (
-              <p>
-                Install the Polaris Key GitHub App on the repository, so
-                publishing and resync can authenticate.
-              </p>
-            )}
-          </Callout>
-        ) : null}
-      </div>
-    </>
-  );
-}
-
-function Aside({
-  via,
-  step,
+/**
+ * The fix a refusal offers beside its words (EXPERIENCE.md §0.3 "Inline fixes on errors"): the
+ * GitHub App install guide, or "Check again" once a fixed manifest is pushed, which links the
+ * repository again. Shown under the field a refusal sits on, or inside the callout.
+ */
+function RefusalFix({
+  fix,
+  onCheckAgain,
 }: {
-  via: Via | null;
-  step: StepId;
+  fix: ErrorFix;
+  onCheckAgain: () => void;
 }): React.ReactElement {
-  const text =
-    step === "result"
-      ? "Next: open the product's Overview for its setup checklist, and set any secrets it still needs."
-      : via === "github"
-        ? "Polaris Key validates the manifest before anything is created. A refusal lists every problem it found, so you can fix them in one commit."
-        : via === "manual"
-          ? "Creating the product mints its Ed25519 signing key and an active catalog in one step. A product never exists without a usable signing key."
-          : "Most products are linked from a repository: the manifest is reviewed in pull requests and resync keeps the console in step with it.";
+  if (fix.kind === "check-again")
+    return (
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        onClick={onCheckAgain}
+      >
+        {fix.label}
+      </Button>
+    );
   return (
-    <aside className={cn(STRETCH_CELL, "lg:col-start-3 lg:row-start-1")}>
-      <Panel title="What happens next" headingLevel={2}>
-        <p className="text-sm text-fg">{text}</p>
-        <p className="mt-3 text-sm">
-          <a
-            href="/docs/admin/products/"
-            target="_blank"
-            rel="noreferrer"
-            className="text-accent-fg underline underline-offset-4"
-          >
-            Registering a product (docs)
-          </a>
-        </p>
-      </Panel>
-    </aside>
+    <a
+      href={DOCS_LINKS.createProduct}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex items-center gap-1 text-sm font-bold underline underline-offset-4"
+    >
+      {fix.label}
+      <ArrowRight aria-hidden className="size-3.5" />
+    </a>
   );
 }

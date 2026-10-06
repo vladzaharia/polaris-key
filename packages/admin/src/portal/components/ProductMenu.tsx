@@ -10,7 +10,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../../components/ui/index.js";
+} from "../../ui/DropdownMenu.js";
 import { toast } from "../../ui/toast.js";
 import { href } from "../router.js";
 

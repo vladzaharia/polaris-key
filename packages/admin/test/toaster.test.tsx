@@ -8,7 +8,6 @@ import {
 } from "@testing-library/react";
 import * as React from "react";
 import { ApiError } from "../src/api.js";
-import { Toaster, useToast } from "../src/components/ui/index.js";
 import { AppToaster, TOAST_DURATIONS, toast } from "../src/ui/toast.js";
 
 /**
@@ -19,22 +18,10 @@ import { AppToaster, TOAST_DURATIONS, toast } from "../src/ui/toast.js";
  */
 const EXIT = 200;
 
-function Trigger({ duration }: { duration?: number }): React.ReactElement {
-  const t = useToast();
-  return (
-    <button type="button" onClick={() => t.toast({ title: "Saved", duration })}>
-      go
-    </button>
-  );
-}
-
-function renderLegacy(duration?: number): void {
-  render(
-    <Toaster>
-      <Trigger duration={duration} />
-    </Toaster>,
-  );
-  act(() => screen.getByRole("button", { name: "go" }).click());
+/** Mounts the toaster and shows one info toast, "Saved". */
+function renderToast(duration?: number): void {
+  render(<AppToaster />);
+  act(() => void toast.info("Saved", { duration }));
   act(() => vi.advanceTimersByTime(1)); // sonner adds a toast on the next tick
 }
 
@@ -63,9 +50,9 @@ describe("toaster durations", () => {
     });
   });
 
-  it("dismisses a toast after its duration (legacy useToast)", () => {
+  it("dismisses a toast after its own duration", () => {
     vi.useFakeTimers();
-    renderLegacy(1_000);
+    renderToast(1_000);
     expect(screen.getByText("Saved")).toBeTruthy();
     act(() => vi.advanceTimersByTime(999));
     expect(screen.queryByText("Saved")).not.toBeNull();
@@ -97,7 +84,7 @@ describe("toaster durations", () => {
 
   it("pauses while the tab is hidden and resumes with the time that was left", () => {
     vi.useFakeTimers();
-    renderLegacy(1_000);
+    renderToast(1_000);
     act(() => vi.advanceTimersByTime(400));
     act(() => setHidden(true));
     act(() => vi.advanceTimersByTime(5_000));
@@ -113,7 +100,7 @@ describe("toaster durations", () => {
   // unmounted fired after jsdom was torn down (CI on products.test.tsx). Still must not happen.
   it("leaves no pending timer once the tree unmounts with a toast open", async () => {
     vi.useFakeTimers();
-    renderLegacy();
+    renderToast();
     expect(screen.getByText("Saved")).toBeTruthy();
     cleanup();
     await Promise.resolve();

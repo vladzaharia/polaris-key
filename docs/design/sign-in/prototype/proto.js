@@ -382,6 +382,14 @@
   });
 
   // ---------- start ----------
+  const themeBtn = $('[data-action="theme"]');
+  themeBtn.textContent =
+    root.dataset.theme === "dark" ? "Light theme" : "Dark theme";
+  const motionBtn = $('[data-action="motion"]');
+  motionBtn.setAttribute(
+    "aria-pressed",
+    String(root.classList.contains("reduce")),
+  );
   const initial = (location.hash || "").slice(1);
   render(LABELS[initial] ? initial : "methods");
   history.replaceState({ step: state.step }, "", `#${state.step}`);
