@@ -22,7 +22,12 @@ import {
   isImgHost,
   matchImgPath,
 } from "../src/core/imgHost.js";
-import { HOSTED_ASSET_REF, ingest } from "../src/core/hostedAssets.js";
+import {
+  HOSTED_ASSET_REF,
+  getHostedAsset,
+  ingest,
+  parseVariants,
+} from "../src/core/hostedAssets.js";
 import {
   blobKey,
   putVerified,
@@ -108,7 +113,8 @@ async function host(
   return sha(bytes);
 }
 
-/** Store a WebP variant of `slot`'s copy and list it in the row (HA-03's shape). */
+/** Store a WebP variant of `slot`'s copy and list it in the row (HA-03's shape:
+ *  `{w, format: "image/webp", sha256, size}`). */
 async function addVariant(
   product: string,
   slot: string,
@@ -157,7 +163,7 @@ async function addVariant(
   const list = JSON.parse(row?.variants_json ?? "[]") as unknown[];
   list.push({
     w,
-    format: opts.format ?? "webp",
+    format: opts.format ?? "image/webp",
     sha256: h,
     size: bytes.length,
   });
@@ -702,12 +708,167 @@ describe("image host: variants", () => {
       },
     );
     expect((await get(`${IMG}/djdl/a/${h2}/1280.webp`)).status).toBe(404);
+    // Nor is a bare "webp": the stored value is the MIME type HA-03 writes, and nothing else. The
+    // variant is listed and held, so the format is the only thing wrong with it…
+    const h3 = await host("djdl", "listing.screenshot:1", PNG3);
+    const v3 = await addVariant(
+      "djdl",
+      "listing.screenshot:1",
+      480,
+      filled(WEBP_SIG, 600, 23),
+      { format: "webp" },
+    );
+    expect((await get(`${IMG}/djdl/a/${h3}/480.webp`)).status).toBe(404);
+    // …and the same entry with format "image/webp" answers.
+    await db.run(
+      "UPDATE hosted_assets SET variants_json = ? WHERE product = 'djdl' AND slot = 'listing.screenshot:1'",
+      JSON.stringify([{ w: 480, format: "image/webp", sha256: v3, size: 600 }]),
+    );
+    expect((await get(`${IMG}/djdl/a/${h3}/480.webp`)).status).toBe(200);
   });
 
   it("a variant's hash is not itself a servable original", async () => {
     await host("djdl", "presentation.icon", PNG);
     const v = await addVariant("djdl", "presentation.icon", 64, WEBP64);
     expect((await get(`${IMG}/djdl/a/${v}`)).status).toBe(404);
+  });
+});
+
+// ── HA-03's ladder, end to end ───────────────────────────────────────────────────────────────
+
+/** A PNG whose IHDR says `px` × `px`: the signature, a real IHDR chunk, then filler. */
+function pngOf(px: number, n: number, seed: number): Uint8Array {
+  const be32 = [px >>> 24, (px >>> 16) & 0xff, (px >>> 8) & 0xff, px & 0xff];
+  const ihdr = [0, 0, 0, 13, ...enc("IHDR"), ...be32, ...be32, 8, 6, 0, 0, 0];
+  return filled([...PNG_SIG, ...ihdr], n, seed);
+}
+
+/** The fake WebP the stub makes of `src` at `w`: distinct per width and per source. */
+const webpOf = (w: number, src: Uint8Array) =>
+  filled(WEBP_SIG, 200 + w, w * 31 + src.length);
+
+/**
+ * A stub Images binding: `.info()` reads the PNG's IHDR width, as the real binding reports it,
+ * and each transformation answers `webpOf(w, src)`. `asked` records every width transformed.
+ */
+function stubImages(): ImagesBinding & { asked: number[] } {
+  const asked: number[] = [];
+  const px = (b: Uint8Array) =>
+    new DataView(b.buffer, b.byteOffset, b.byteLength).getUint32(16);
+  const binding = {
+    asked,
+    info: async (s: ReadableStream<Uint8Array>) => {
+      const b = new Uint8Array(await new Response(s).arrayBuffer());
+      return {
+        format: "image/png",
+        fileSize: b.length,
+        width: px(b),
+        height: px(b),
+      };
+    },
+    input: (s: ReadableStream<Uint8Array>) => {
+      let w = 0;
+      const t = {
+        transform(tr: { width: number }) {
+          w = tr.width;
+          return t;
+        },
+        async output(o: { format: string }) {
+          expect(o.format).toBe("image/webp");
+          const src = new Uint8Array(await new Response(s).arrayBuffer());
+          asked.push(w);
+          const bytes = webpOf(w, src);
+          return {
+            image: () => stream(bytes),
+            contentType: () => "image/webp",
+          };
+        },
+      };
+      return t;
+    },
+  };
+  return binding as unknown as ImagesBinding & { asked: number[] };
+}
+
+describe("image host: HA-03's ladder, end to end", () => {
+  it("serves the 64/128/256 variants ingest made of a 300 px icon, and drops them with the copy", async () => {
+    const e = env();
+    const images = stubImages();
+    const ctx = { env: { BLOBS: asR2(r2), IMAGES: images }, db, now: NOW };
+    const upload = (bytes: Uint8Array) =>
+      ingest(ctx, "djdl", "presentation.icon", {
+        kind: "stream",
+        body: stream(bytes),
+        size: bytes.length,
+        sourceKind: "upload",
+        origin: "console",
+      });
+
+    const icon = pngOf(300, 4000, 31);
+    const h = sha(icon);
+    expect(await upload(icon)).toMatchObject({
+      ok: true,
+      sha256: h,
+      width: 300,
+    });
+    expect(images.asked).toEqual([64, 128, 256]);
+    const variants = parseVariants(
+      (await getHostedAsset(db, "djdl", "presentation.icon"))?.variants_json ??
+        null,
+    );
+    expect(variants.map((v) => [v.w, v.format])).toEqual([
+      [64, "image/webp"],
+      [128, "image/webp"],
+      [256, "image/webp"],
+    ]);
+
+    // The original, and each variant through the URL helper HA-07 and HA-12 build with.
+    const orig = await get(imgUrl(e, "djdl", h)!, undefined, e);
+    expect(orig.status).toBe(200);
+    expect(orig.headers.get("content-type")).toBe("image/png");
+    for (const v of variants) {
+      const url = imgUrl(e, "djdl", h, v.w)!;
+      expect(url).toBe(`${IMG}/djdl/a/${h}/${v.w}.webp`);
+      const res = await get(url, undefined, e);
+      expect(res.status, url).toBe(200);
+      expect(res.headers.get("content-type"), url).toBe("image/webp");
+      expect(res.headers.get("etag"), url).toBe(`"${v.sha256}"`);
+      expect(res.headers.get("content-length"), url).toBe(String(v.size));
+      expect(res.headers.get("cache-control"), url).toBe(IMG_IMMUTABLE);
+      expectHardened(res, url);
+      const body = new Uint8Array(await res.arrayBuffer());
+      expect(body, url).toEqual(webpOf(v.w, icon));
+      expect(sha(body), url).toBe(v.sha256);
+    }
+
+    // Never upscaled, so there is no 512; another product's path never answers.
+    expect((await get(imgUrl(e, "djdl", h, 512)!, undefined, e)).status).toBe(
+      404,
+    );
+    for (const w of [64, 128, 256])
+      expect(
+        (await get(imgUrl(e, "other", h, w)!, undefined, e)).status,
+        `other ${w}`,
+      ).toBe(404);
+    expect((await get(imgUrl(e, "other", h)!, undefined, e)).status).toBe(404);
+
+    // Replace the copy: the old original and its variants stop answering; the new ones answer.
+    const next = pngOf(300, 4100, 37);
+    const h2 = sha(next);
+    expect(await upload(next)).toMatchObject({ ok: true, sha256: h2 });
+    expect(images.asked).toEqual([64, 128, 256, 64, 128, 256]);
+    expect((await get(imgUrl(e, "djdl", h)!, undefined, e)).status).toBe(404);
+    for (const w of [64, 128, 256]) {
+      expect(
+        (await get(imgUrl(e, "djdl", h, w)!, undefined, e)).status,
+        `old ${w}`,
+      ).toBe(404);
+      const fresh = await get(imgUrl(e, "djdl", h2, w)!, undefined, e);
+      expect(fresh.status, `new ${w}`).toBe(200);
+      expect(new Uint8Array(await fresh.arrayBuffer())).toEqual(
+        webpOf(w, next),
+      );
+    }
   });
 });
 
