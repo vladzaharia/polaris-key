@@ -85,10 +85,10 @@ The code is the fact; these replace the Scope wording where they differ.
 
 ## Acceptance criteria
 
-- [ ] After a sync, a fixture release's files serve from R2 with an unchanged ETag/sha256 (test).
-- [ ] Corrupted bytes are refused and GitHub keeps serving (test).
-- [ ] `pnpm gen:corpus -- --check` and `pnpm gen:transcripts -- --check` stay green (no wire change).
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] After a sync, a fixture release's files serve from R2 with an unchanged ETag/sha256 (test).
+- [x] Corrupted bytes are refused and GitHub keeps serving (test).
+- [x] `pnpm gen:corpus -- --check` and `pnpm gen:transcripts -- --check` stay green (no wire change).
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 
