@@ -5,7 +5,7 @@ extends RefCounted
 # (it may await); the suite ends with a coverage check that every group ran. The QR encoder is
 # the `qr` suite's.
 
-const GROUPS := ["flow", "confirm"]
+const GROUPS := ["flow", "confirm", "account"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

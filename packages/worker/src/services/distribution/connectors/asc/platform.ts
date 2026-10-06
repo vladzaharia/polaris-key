@@ -17,7 +17,14 @@
  */
 
 import type { Db, Env } from "../../../../core/platform.js";
-import { platformAscToken } from "../../../../core/outletTokens.js";
+import {
+  platformAscToken,
+  transientAscToken,
+} from "../../../../core/outletTokens.js";
+import type {
+  OutletCredentialMeta,
+  TransientOutletCredential,
+} from "../../../../core/outletCredentials.js";
 import {
   recordPlatformCredentialResult,
   resolvePlatformCredential,
@@ -35,6 +42,14 @@ import {
 } from "../../../../core/asc/client.js";
 import { recordTeamRate } from "../../../../core/storefront/budget.js";
 import { ASC_PLATFORM_CREDENTIAL } from "./setup.js";
+import {
+  appCount,
+  checked,
+  hiddenAssignedApps,
+  storeUnavailable,
+  type CheckFact,
+  type CredentialCheck,
+} from "../credentialCheck.js";
 import {
   cachedPlatformApps,
   PlatformStoreNotConfigured,
@@ -251,4 +266,141 @@ export async function listPlatformAscApps(
       }
     },
   );
+}
+
+// ── the live check (UX-69, SETUP.md D42) ────────────────────────────────────────────────────
+
+export interface AscCheckOptions {
+  /** The UNSAVED key, validated (a P-256 `.p8`, a key id, an issuer id). */
+  cred: TransientOutletCredential<"asc-api-key">;
+  now: number;
+  /** The Apple IDs products are assigned on this connection (the primary credential's pins). */
+  assigned: readonly string[];
+  /** The display metadata of the key connected now, if any (to spot another team). */
+  current: OutletCredentialMeta | null;
+  fetchImpl?: FetchImpl;
+}
+
+/** Apple IDs per `filter[id]` lookup (Apple caps a filter list well above this). */
+const CHECK_FILTER_IDS = 50;
+
+/**
+ * Check an unsaved App Store Connect API key with ONE read: `GET /v1/apps?limit=200` (names and
+ * bundle ids only), and — only when products are assigned apps beyond that first page — one
+ * `filter[id]` read for those. GETs through `AscClient`, so the write gate stands in front of it
+ * anyway; no user, key, certificate or device endpoint is touched (S-14 §7.5). No retries: a
+ * 429 is answered as "check again", not waited out.
+ */
+export async function checkAscApiKey(
+  o: AscCheckOptions,
+): Promise<CredentialCheck> {
+  const { keyId, issuerId } = o.cred.meta as {
+    keyId: string;
+    issuerId: string;
+  };
+  const token = await transientAscToken(o.cred, o.now);
+  const client = new AscClient({
+    token: () => Promise.resolve(token),
+    maxRetries: 0,
+    ...(o.fetchImpl ? { fetchImpl: o.fetchImpl } : {}),
+  });
+  let doc;
+  try {
+    doc = await client.get(ascPath("apps"), {
+      limit: "200",
+      "fields[apps]": "name,bundleId",
+    });
+  } catch (e) {
+    return ascRefusal(e);
+  }
+  const apps = (Array.isArray(doc?.data) ? doc.data : []).filter(
+    (a) => a.type === "apps",
+  );
+  const paging = (doc as { meta?: { paging?: { total?: unknown } } } | null)
+    ?.meta?.paging;
+  const total =
+    typeof paging?.total === "number" && paging.total >= apps.length
+      ? paging.total
+      : apps.length;
+  const facts: CheckFact[] = [
+    { label: "Issuer ID (team)", value: issuerId },
+    { label: "Key ID", value: keyId },
+    { label: "Apps", value: String(total) },
+  ];
+  const names = apps
+    .map((a) => attr(a, "name"))
+    .filter((n): n is string => typeof n === "string")
+    .slice(0, 3);
+  if (names.length > 0)
+    facts.push({
+      label: total > names.length ? "First apps" : "Apps seen",
+      value: names.join(", "),
+    });
+
+  const seen = new Set(apps.map((a) => a.id));
+  let hidden = o.assigned.filter((id) => !seen.has(id));
+  if (hidden.length > 0 && total > apps.length) {
+    try {
+      const more = await client.get(ascPath("apps"), {
+        "filter[id]": hidden.slice(0, CHECK_FILTER_IDS).join(","),
+        "fields[apps]": "bundleId",
+        limit: String(CHECK_FILTER_IDS),
+      });
+      const found = new Set(
+        (Array.isArray(more?.data) ? more.data : []).map((a) => a.id),
+      );
+      hidden = hidden.filter((id) => !found.has(id));
+    } catch (e) {
+      return ascRefusal(e);
+    }
+  }
+  if (hidden.length > 0) return hiddenAssignedApps(hidden, facts, "key");
+  if (o.current?.issuerId && o.current.issuerId !== issuerId)
+    return checked(
+      "warning",
+      "wrong-account",
+      "This key belongs to another team than the one connected now",
+      `Its issuer ID is ${issuerId}; the key connected now is from ${o.current.issuerId}. Saving it moves the connection to that team.`,
+      facts,
+    );
+  if (total === 0)
+    return checked(
+      "warning",
+      "permission",
+      "App Store Connect accepted the key, but it sees no apps",
+      "The team has no apps yet, or the key's access is limited to apps it was not given. Create the app record in App Store Connect, or use a key with access to all apps.",
+      facts,
+    );
+  return checked(
+    "valid",
+    "ok",
+    `Team ${issuerId.split("-")[0]} · ${appCount(total)}`,
+    null,
+    facts,
+  );
+}
+
+/** App Store Connect's refusal of a key, in words. */
+function ascRefusal(e: unknown): CredentialCheck {
+  // Not an answer at all (no connection, DNS, a reset): App Store Connect answered nothing.
+  if (!(e instanceof AscError)) return storeUnavailable("App Store Connect", 0);
+  if (e.status === 401)
+    return checked(
+      "invalid",
+      "rejected",
+      "App Store Connect did not accept this key",
+      "The key ID, issuer ID and .p8 must all come from the same key, and the key must not be revoked. Compare them with Users and Access → Integrations → App Store Connect API.",
+      [],
+      { status: 401 },
+    );
+  if (e.status === 403)
+    return checked(
+      "invalid",
+      "permission",
+      "This key's role cannot read the team's apps",
+      "Polaris Key needs a team key (not an individual key) with the App Manager or Admin role and access to all apps. Generate one in Users and Access → Integrations → App Store Connect API.",
+      [],
+      { status: 403 },
+    );
+  return storeUnavailable("App Store Connect", e.status);
 }

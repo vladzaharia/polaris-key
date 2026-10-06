@@ -304,7 +304,7 @@ jobs:
           :update:test :packs:test :sdk:test :conformance:test :platform:testPlayDebugUnitTest
           :platform:testDirectDebugUnitTest :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest
           :ui:verifyRoborazziDebug :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest
-          checkModuleBoundaries :platform:checkStandalone :godot:checkPlatformOnly
+          :billing:testDebugUnitTest checkModuleBoundaries :platform:checkStandalone :godot:checkPlatformOnly
       - name: Stamp the version
         env:
           VERSION: ${{ needs.version.outputs.version }}
@@ -319,7 +319,7 @@ jobs:
           VERSION: ${{ needs.version.outputs.version }}
         run: |
           tools/check_publication.sh
-          expected="android-direct android-play config core godot-direct godot-play identity license packs platform-direct platform-play release sdk ui update"
+          expected="android-direct android-play billing config core godot-direct godot-play identity license packs platform-direct platform-play release sdk ui update"
           repo=build/repo/im/plrs/key
           actual="$(find "$repo" -mindepth 1 -maxdepth 1 -type d -name 'polaris-key-*' -printf '%f\n' | sed 's/^polaris-key-//' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
           if [ "$actual" != "$expected" ]; then
@@ -367,6 +367,7 @@ jobs:
           - godot-play
           - godot-direct
           - ui
+          - billing
           - android-play
           - android-direct
     permissions:

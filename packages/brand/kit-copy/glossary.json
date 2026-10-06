@@ -1,0 +1,125 @@
+{
+  "$schema": "./glossary.schema.json",
+  "$comment": "Fixed translations of the product vocabulary (plans/UK-02.md §3.1). Every locale pack uses these words; the native-speaker review checks them first. Product, tier and developer names, {product} and Polaris Key are never translated.",
+  "glossaryVersion": 1,
+  "neverTranslate": [
+    "Polaris Key",
+    "{product}",
+    "{app}",
+    "{tier}",
+    "{developer}",
+    "pkey_"
+  ],
+  "terms": {
+    "license": {
+      "note": "The access a person holds to a product (US spelling in English). Never \"grant\".",
+      "de": "Lizenz",
+      "fr": "licence",
+      "es": "licencia",
+      "pt-BR": "licença",
+      "it": "licenza",
+      "ja": "ライセンス",
+      "ko": "라이선스",
+      "zh-Hans": "许可证"
+    },
+    "license key": {
+      "note": "The pkey_… string a person types or pastes.",
+      "de": "Lizenzschlüssel",
+      "fr": "clé de licence",
+      "es": "clave de licencia",
+      "pt-BR": "chave de licença",
+      "it": "chiave di licenza",
+      "ja": "ライセンスキー",
+      "ko": "라이선스 키",
+      "zh-Hans": "许可证密钥"
+    },
+    "device": {
+      "note": "A computer, phone, tablet, console or TV that uses a license. Never \"machine\".",
+      "de": "Gerät",
+      "fr": "appareil",
+      "es": "dispositivo",
+      "pt-BR": "dispositivo",
+      "it": "dispositivo",
+      "ja": "デバイス",
+      "ko": "기기",
+      "zh-Hans": "设备"
+    },
+    "product": {
+      "note": "The app or game a developer sells. Never \"app\" in English copy about licensing.",
+      "de": "Produkt",
+      "fr": "produit",
+      "es": "producto",
+      "pt-BR": "produto",
+      "it": "prodotto",
+      "ja": "製品",
+      "ko": "제품",
+      "zh-Hans": "产品"
+    },
+    "tier": {
+      "note": "A level of a product (Free, Pro). Never \"plan\".",
+      "de": "Stufe",
+      "fr": "niveau",
+      "es": "nivel",
+      "pt-BR": "nível",
+      "it": "livello",
+      "ja": "ティア",
+      "ko": "등급",
+      "zh-Hans": "等级"
+    },
+    "sign in": {
+      "note": "The verb (button). The noun is \"sign-in\".",
+      "de": "Anmelden",
+      "fr": "Se connecter",
+      "es": "Iniciar sesión",
+      "pt-BR": "Entrar",
+      "it": "Accedi",
+      "ja": "サインイン",
+      "ko": "로그인",
+      "zh-Hans": "登录"
+    },
+    "sign out": {
+      "note": "The verb (button).",
+      "de": "Abmelden",
+      "fr": "Se déconnecter",
+      "es": "Cerrar sesión",
+      "pt-BR": "Sair",
+      "it": "Esci",
+      "ja": "サインアウト",
+      "ko": "로그아웃",
+      "zh-Hans": "退出登录"
+    },
+    "update": {
+      "note": "A newer version of a product (noun) or installing it (verb).",
+      "de": "Update",
+      "fr": "mise à jour",
+      "es": "actualización",
+      "pt-BR": "atualização",
+      "it": "aggiornamento",
+      "ja": "アップデート",
+      "ko": "업데이트",
+      "zh-Hans": "更新"
+    },
+    "download ticket": {
+      "note": "Short-lived permission to download one file. Never \"download grant\".",
+      "de": "Download-Ticket",
+      "fr": "ticket de téléchargement",
+      "es": "ticket de descarga",
+      "pt-BR": "tíquete de download",
+      "it": "ticket di download",
+      "ja": "ダウンロードチケット",
+      "ko": "다운로드 티켓",
+      "zh-Hans": "下载凭证"
+    },
+    "Cloud Sync": {
+      "note": "The feature that syncs a person's data through their account.",
+      "de": "Cloud-Synchronisierung",
+      "fr": "Synchronisation cloud",
+      "es": "Sincronización en la nube",
+      "pt-BR": "Sincronização na nuvem",
+      "it": "Sincronizzazione cloud",
+      "ja": "クラウド同期",
+      "ko": "클라우드 동기화",
+      "zh-Hans": "云同步"
+    }
+  }
+}

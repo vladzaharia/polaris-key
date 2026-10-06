@@ -50,7 +50,31 @@ func fetch_object(req: Dictionary, on_response: Callable, on_chunk: Callable) ->
 	var b: Dictionary = await _blob(String(req["sha256"]))
 	if b.is_empty():
 		return {"status": 0, "content_range": "", "error": String(PKeyErrors.SERVICE_UNAVAILABLE)}
-	return await PKeyPackHttp.fetch(core.transport, b["url"], b["headers"], int(req.get("offset", 0)), String(req.get("if_range", "")), on_response, on_chunk, object_timeout)
+	# Gated delivery (SDK parity §3.10): a 403 `attestation_required` is held back from the engine
+	# while this device attests once (PKeyCore.attest_hook, PKeyOptions.auto_attest); then the
+	# object is fetched again. Any other answer, or a failed attestation, reaches the engine as is.
+	var can_attest := core.attest_hook.is_valid() and core.options != null and core.options.auto_attest
+	var held := {"status": 0, "range": ""}
+	var first := on_response
+	if can_attest:
+		first = func(status: int, content_range: String) -> bool:
+			if status == 403:
+				held["status"] = status
+				held["range"] = content_range
+				return false
+			return on_response.call(status, content_range) if on_response.is_valid() else true
+	var res: Dictionary = await PKeyPackHttp.fetch(core.transport, b["url"], b["headers"], int(req.get("offset", 0)), String(req.get("if_range", "")), first, on_chunk, object_timeout)
+	if int(held["status"]) != 403:
+		return res
+	if String(res.get("code", "")) == PKeyConstants.ErrorCode.ATTESTATION_REQUIRED:
+		var a: PKeyResult = await core.attest_hook.call()
+		if a.ok:
+			b = await _blob(String(req["sha256"]))
+			if not b.is_empty():
+				return await PKeyPackHttp.fetch(core.transport, b["url"], b["headers"], int(req.get("offset", 0)), String(req.get("if_range", "")), on_response, on_chunk, object_timeout)
+	if on_response.is_valid():
+		on_response.call(held["status"], held["range"])
+	return res
 
 
 func supports_range() -> bool:

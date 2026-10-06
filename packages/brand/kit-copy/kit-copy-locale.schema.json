@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/brand/kit-copy-locale.schema.json",
+  "title": "Polaris Key kit copy, a locale pack (packages/brand/kit-copy/<locale>.json)",
+  "description": "One launch locale's translation of en.json: the same keys, values only. packages/brand/scripts/kit-copy.ts checks the key set, the argument set and the locale's CLDR plural categories against en.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "kitCopyVersion",
+    "locale",
+    "reviewed",
+    "glossaryVersion",
+    "messages"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "$comment": { "type": "string" },
+    "kitCopyVersion": { "const": 1 },
+    "locale": {
+      "enum": ["de", "fr", "es", "pt-BR", "it", "ja", "ko", "zh-Hans"]
+    },
+    "reviewed": {
+      "description": "false until a native speaker has reviewed the pack (a release follow-up, not a merge blocker).",
+      "type": "boolean"
+    },
+    "glossaryVersion": { "type": "integer", "minimum": 1 },
+    "messages": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[a-z][A-Za-z0-9]*(\\.[a-z][A-Za-z0-9]*)+$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^[^\\n\\t%]*$"
+      }
+    }
+  }
+}

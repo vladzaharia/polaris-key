@@ -239,10 +239,18 @@ public protocol Store: Sendable {
     /// Where the token lives now, and why if that is weaker than this platform's best option.
     /// Optional: the default is `nil` ("this store does not report"). Never throws.
     func status() async -> StoreStatus?
+    /// A small persisted SDK record beside the credential (`update-events`: the P6-03 journal;
+    /// `boot-guard`: the launch counter), or nil. Optional: the default keeps nothing across
+    /// launches (the SDK then holds it for the process only).
+    func readRecord(_ name: String) async -> Data?
+    /// Replace a record; nil deletes it. Best-effort, never throws.
+    func writeRecord(_ name: String, _ data: Data?) async
 }
 
 extension Store {
     public func status() async -> StoreStatus? { nil }
+    public func readRecord(_ name: String) async -> Data? { nil }
+    public func writeRecord(_ name: String, _ data: Data?) async {}
 }
 
 // ── In-memory (tests) ────────────────────────────────────────────────────────────
@@ -251,6 +259,7 @@ extension Store {
 public actor InMemoryStore: Store {
     private var token: String?
     private var cache: CacheRecord?
+    private var records: [String: Data] = [:]
     private let deviceId: String
 
     public init(productSlug: String = "test", deviceId: String? = nil) {
@@ -265,6 +274,8 @@ public actor InMemoryStore: Store {
     public func writeCache(_ record: CacheRecord) async { cache = record }
     public func clearCache() async { cache = nil }
     public func status() async -> StoreStatus? { StoreStatus(backend: .memory) }
+    public func readRecord(_ name: String) async -> Data? { records[name] }
+    public func writeRecord(_ name: String, _ data: Data?) async { records[name] = data }
 }
 
 // ── Keychain + 0600 file (production) ──────────────────────────────────────────────
@@ -327,14 +338,22 @@ public actor KeychainStore: Store {
     private let account = "token"
     private let dir: URL
     private let cacheURL: URL
+    private let recordsDir: URL
     private let deviceURL: URL
     private let keychain: any KeychainAPI
+    /// The keychain access group the item lives in (SP-S15), or nil for the app's default.
+    public nonisolated let accessGroup: String?
 
-    public init(productSlug: String, configDir: URL? = nil) {
-        self.init(productSlug: productSlug, configDir: configDir, keychain: SystemKeychain())
+    /// `accessGroup` (`<TeamID>.<group>`, listed in the app's keychain-access-groups
+    /// entitlement) shares the token with the app's extensions. It applies to the data-protection
+    /// keychain only; the legacy macOS fallback keeps the default.
+    public init(productSlug: String, configDir: URL? = nil, accessGroup: String? = nil) {
+        self.init(
+            productSlug: productSlug, configDir: configDir, keychain: SystemKeychain(), accessGroup: accessGroup)
     }
 
-    init(productSlug: String, configDir: URL?, keychain: any KeychainAPI) {
+    init(productSlug: String, configDir: URL?, keychain: any KeychainAPI, accessGroup: String? = nil) {
+        self.accessGroup = accessGroup
         self.productSlug = productSlug
         // §8 — the keychain service tag is `pkey:<product>`, stable across wire-contract
         // revisions. The `plrs:` spelling Amendment A1 withdrew is never written or read.
@@ -343,6 +362,7 @@ public actor KeychainStore: Store {
         let base = configDir ?? ProductDirs.defaultConfigBase()
         self.dir = base.appendingPathComponent(productSlug, isDirectory: true)
         self.cacheURL = dir.appendingPathComponent("managed.json")
+        self.recordsDir = dir
         self.deviceURL = dir.appendingPathComponent("device")
         try? FileManager.default.createDirectory(
             at: dir, withIntermediateDirectories: true,
@@ -362,7 +382,10 @@ public actor KeychainStore: Store {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
         ]
-        if dataProtection { query[kSecUseDataProtectionKeychain as String] = true }
+        if dataProtection {
+            query[kSecUseDataProtectionKeychain as String] = true
+            if let accessGroup { query[kSecAttrAccessGroup as String] = accessGroup }
+        }
         return query
     }
 
@@ -536,6 +559,27 @@ public actor KeychainStore: Store {
     }
 
     // ── Offline cache (0600 file) ──
+    private func recordURL(_ name: String) -> URL? {
+        // Only the SDK's own names: letters, digits and `-`, so a name can never leave the dir.
+        guard !name.isEmpty, name.allSatisfy({ $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") })
+        else { return nil }
+        return recordsDir.appendingPathComponent("\(name).json")
+    }
+
+    public func readRecord(_ name: String) async -> Data? {
+        guard let url = recordURL(name) else { return nil }
+        return (try? readSecure(url)) ?? nil
+    }
+
+    public func writeRecord(_ name: String, _ data: Data?) async {
+        guard let url = recordURL(name) else { return }
+        if let data {
+            try? writeSecure(data, to: url)
+        } else {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
     public func readCache() async -> CacheRecord? {
         guard let data = (try? readSecure(cacheURL)) ?? nil else { return nil }
         return try? JSONDecoder().decode(CacheRecord.self, from: data)

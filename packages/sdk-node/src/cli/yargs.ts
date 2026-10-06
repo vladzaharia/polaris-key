@@ -5,20 +5,13 @@
 // this module compiles + ships without yargs installed; the consumer supplies the `Argv`.
 //
 // Same per-service grouping as the commander adapter; the two must stay verb-for-verb
-// identical, which is why both are shells over `commands.ts` and neither has logic of its own.
+// identical, which is why both build from `CLI_VERBS` (`kit.ts`) and neither declares a verb.
 
 import { readFile } from "node:fs/promises";
 import type { Argv, ArgumentsCamelCase, CommandModule } from "yargs";
-import {
-  activate,
-  deactivate,
-  enroll,
-  getConfig,
-  importBundle,
-  register,
-  status,
-  type ClientFactory,
-} from "./commands.js";
+import type { ClientFactory } from "./commands.js";
+import { ttyProgress } from "./commander.js";
+import { argName, CLI_VERBS, type CliIO, type CliVerb } from "./kit.js";
 import type { ServiceSlug } from "../discovery.js";
 
 /** Shared options for the yargs adapter (see the commander adapter for the analog). */
@@ -33,6 +26,10 @@ export interface YargsAdapterOptions {
   /** Sink for printed lines + exit-code mapping (defaults to console + `process.exitCode`).*/
   print?: (line: string) => void;
   setExitCode?: (code: number) => void;
+  /** Progress sink (default: redraw one line on stderr when it is a TTY). */
+  progress?: (line: string) => void;
+  /** Stops long-running verbs. */
+  signal?: AbortSignal;
 }
 
 interface CommonArgs {
@@ -54,7 +51,11 @@ function makeBuildClient(factory: ClientFactory, options: YargsAdapterOptions) {
     });
 }
 
-/** Build a yargs `CommandModule` (`polaris-key <command>`) covering the four subcommands. */
+/** yargs spells a variadic positional `[name..]`; the table uses commander's `[name...]`. */
+const yargsArg = (spec: string): string => spec.replace("...", "..");
+
+/** Build a yargs `CommandModule` (`polaris-key <command>`) covering every verb in
+ *  `CLI_VERBS`; multi-word verbs (`devices list`) nest under a group command. */
 export function polarisCommandModule(
   factory: ClientFactory,
   options: YargsAdapterOptions,
@@ -66,66 +67,57 @@ export function polarisCommandModule(
       if (code !== 0) process.exitCode = code;
     });
   const buildClient = makeBuildClient(factory, options);
-  const emit = (r: { ok: boolean; message: string }) => {
-    print(r.message);
-    setExitCode(r.ok ? 0 : 1);
+  const io: CliIO = {
+    print,
+    progress: options.progress ?? ttyProgress,
+    readFile: (path) => readFile(path, "utf8"),
+    ...(options.signal ? { signal: options.signal } : {}),
   };
+
+  const leaf = (verb: CliVerb) => ({
+    command: [verb.path.at(-1)!, ...verb.args.map(yargsArg)].join(" "),
+    describe: `[${verb.group}] ${verb.describe}`,
+    handler: async (argv: ArgumentsCamelCase<CommonArgs>) => {
+      const bag = argv as unknown as Record<string, unknown>;
+      const positional = verb.args.map((a) => bag[argName(a)]);
+      const r = await verb.run(await buildClient(argv), positional, io);
+      print(r.message);
+      setExitCode(r.ok ? 0 : 1);
+    },
+  });
 
   return {
     command: "polaris-key <command>",
     describe: "Polaris Key commands",
-    builder: (yargs: Argv<CommonArgs>) =>
-      yargs
-        .command<CommonArgs & { key: string }>({
-          command: "activate <key>",
-          describe: "[license] Activate this device with a licence key",
-          handler: async (argv) =>
-            emit(await activate(await buildClient(argv), argv.key)),
-        })
-        .command<CommonArgs>({
-          command: "deactivate",
-          describe:
-            "[license] Deauthorize this device and wipe local credentials",
-          handler: async (argv) =>
-            emit(await deactivate(await buildClient(argv))),
-        })
-        .command<CommonArgs>({
-          command: "status",
-          describe: "[license] Show the current licence gate status",
-          handler: async (argv) => {
-            const client = await buildClient(argv);
-            emit(status(client, await client.storeStatus()));
+    builder: (yargs: Argv<CommonArgs>) => {
+      const groups = new Map<string, CliVerb[]>();
+      let y = yargs;
+      for (const verb of CLI_VERBS) {
+        if (verb.path.length === 1) {
+          y = y.command(leaf(verb) as CommandModule<CommonArgs, CommonArgs>);
+          continue;
+        }
+        const word = verb.path[0]!;
+        if (!groups.has(word)) groups.set(word, []);
+        groups.get(word)!.push(verb);
+      }
+      for (const [word, verbs] of groups) {
+        y = y.command({
+          command: `${word} <command>`,
+          describe: `[${verbs[0]!.group}] ${word} commands`,
+          builder: (g: Argv<CommonArgs>) => {
+            let gy = g;
+            for (const v of verbs)
+              gy = gy.command(leaf(v) as CommandModule<CommonArgs, CommonArgs>);
+            return gy.demandCommand(1);
           },
-        })
-        .command<CommonArgs>({
-          command: "enroll",
-          describe: "[license] Obtain a licence with no key, when offered",
-          handler: async (argv) => emit(await enroll(await buildClient(argv))),
-        })
-        .command<CommonArgs>({
-          command: "register",
-          describe: "[devices] Register this device keylessly",
-          handler: async (argv) =>
-            emit(await register(await buildClient(argv))),
-        })
-        .command<CommonArgs & { key: string }>({
-          command: "config <key>",
-          describe: "[config] Resolve the effective value of a config key",
-          handler: async (argv) =>
-            emit(getConfig(await buildClient(argv), argv.key)),
-        })
-        .command<CommonArgs & { file: string }>({
-          command: "import-bundle <file>",
-          describe: "[core] Import an offline activation bundle",
-          handler: async (argv) =>
-            emit(
-              await importBundle(
-                await buildClient(argv),
-                (await readFile(argv.file, "utf8")).trim(),
-              ),
-            ),
-        })
-        .demandCommand(1),
+          handler: () => {
+            /* group node; subcommand handlers do the work */
+          },
+        });
+      }
+      return y.demandCommand(1);
+    },
     handler: () => {
       /* group node; subcommand handlers do the work */
     },

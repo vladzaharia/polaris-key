@@ -1,0 +1,1798 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  GENERATED FILE — do not edit by hand.
+
+  Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/kit-copy.ts) from
+  packages/brand/kit-copy/ (en.json and the eight locale packs) and the core copy in
+  conformance/parity/copy.<locale>.json. `pnpm gen:brand -- --check` fails the green gate on any
+  difference. To change a string, edit its source and regenerate.
+
+  The kit copy for locale fr (Compose Multiplatform resources). Names are the catalog key with
+  "." and "-" as "_". A formFactor select is <name>__<case> (the bare name is "other"); a platform
+  variant is <name>__<platform>. Inert until UK-09 makes :ui a KMP module.
+-->
+<resources>
+    <!-- Shared verb used across the kit's screens. -->
+    <string name="common_cancel">Annuler</string>
+    <!-- Shared verb used across the kit's screens. -->
+    <string name="common_close">Fermer</string>
+    <!-- Shared verb used across the kit's screens. Returns to the previous step. -->
+    <string name="common_back">Retour</string>
+    <!-- Shared verb used across the kit's screens. -->
+    <string name="common_continue">Continuer</string>
+    <!-- Shared verb used across the kit's screens. -->
+    <string name="common_done">Terminé</string>
+    <!-- Shared verb used across the kit's screens. -->
+    <string name="common_save">Enregistrer</string>
+    <!-- Shared verb used across the kit's screens. Dismisses an offer without doing it. -->
+    <string name="common_notNow">Pas maintenant</string>
+    <string name="common_notNow__macos">Pas maintenant</string>
+    <!-- Shared verb used across the kit's screens. Postpones an action. -->
+    <string name="common_later">Plus tard</string>
+    <!-- Shared verb used across the kit's screens. Repeats the action that failed. -->
+    <string name="common_tryAgain">Réessayer</string>
+    <string name="common_tryAgain__macos">Réessayer</string>
+    <!-- Shared verb used across the kit's screens. Copies a code or link to the clipboard. -->
+    <string name="common_copy">Copier</string>
+    <!-- Confirmation shown briefly after something is copied to the clipboard. -->
+    <string name="common_copied">Copié</string>
+    <!-- Shared verb used across the kit's screens. Pastes from the clipboard into a field. -->
+    <string name="common_paste">Coller</string>
+    <!-- Busy label on a button or screen while an action runs. -->
+    <string name="common_working">En cours…</string>
+    <!-- Shown while a screen loads. -->
+    <string name="common_loading">Chargement…</string>
+    <!-- Shared verb used across the kit's screens. Signs this device out of the product. -->
+    <string name="common_signOut">Se déconnecter</string>
+    <string name="common_signOut__macos">Se déconnecter</string>
+    <!-- Shared verb used across the kit's screens. Opens the person's Polaris Key account in the browser. -->
+    <string name="common_manage">Gérer</string>
+    <!-- Shared verb used across the kit's screens. Tries to reach the licensing service again. -->
+    <string name="common_reconnect">Se reconnecter</string>
+    <!-- Shared verb used across the kit's screens. Hides a banner or toast. -->
+    <string name="common_dismiss">Ignorer</string>
+    <!-- Shown under the product name on the welcome screen. Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="common_byDeveloper">par %1$s</string>
+    <!-- The current device, used inside sentences. Each case is the platform's own word. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
+    <string name="part_thisDevice">cet appareil</string>
+    <string name="part_thisDevice__iphone">cet iPhone</string>
+    <string name="part_thisDevice__ipad">cet iPad</string>
+    <string name="part_thisDevice__mac">ce Mac</string>
+    <string name="part_thisDevice__phone">ce téléphone</string>
+    <string name="part_thisDevice__tablet">cette tablette</string>
+    <string name="part_thisDevice__computer">cet ordinateur</string>
+    <string name="part_thisDevice__tv">ce téléviseur</string>
+    <!-- The current device as a tag in a device list. Each case is the platform's own word, capitalized as a label. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
+    <string name="part_thisDeviceTitle">Cet appareil</string>
+    <string name="part_thisDeviceTitle__iphone">Cet iPhone</string>
+    <string name="part_thisDeviceTitle__ipad">Cet iPad</string>
+    <string name="part_thisDeviceTitle__mac">Ce Mac</string>
+    <string name="part_thisDeviceTitle__phone">Ce téléphone</string>
+    <string name="part_thisDeviceTitle__tablet">Cette tablette</string>
+    <string name="part_thisDeviceTitle__computer">Cet ordinateur</string>
+    <string name="part_thisDeviceTitle__tv">Ce téléviseur</string>
+    <!-- Visible label of the license key field. -->
+    <string name="part_keyField_label">Clé de licence</string>
+    <!-- Placeholder inside the empty license key field. Carries no information the label lacks. -->
+    <string name="part_keyField_placeholder">Collez votre clé</string>
+    <!-- Shown under the key field as soon as the key's prefix names the product, before the server answers. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="part_keyField_forProduct">Clé pour %1$s</string>
+    <!-- Shown under the key field after the server accepts the key. Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated); {term} = the license term (one of the signin.term.* strings). Arguments: 1=product, 2=tier, 3=term. -->
+    <string name="part_keyField_verdict">%1$s %2$s · %3$s</string>
+    <!-- Inline error when a pasted key is missing its end. {used} and {limit} count characters here, not devices. Arguments: {prefix} = the start of a license key, such as pkey_tidewater_; {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=prefix, 2=used, 3=limit. -->
+    <plurals name="part_keyField_cutShort">
+        <item quantity="one">Cette clé est tronquée : après %1$s, elle compte %2$s sur %3$d caractère.</item>
+        <item quantity="many">Cette clé est tronquée : après %1$s, elle compte %2$s sur %3$d de caractères.</item>
+        <item quantity="other">Cette clé est tronquée : après %1$s, elle compte %2$s sur %3$d caractères.</item>
+    </plurals>
+    <!-- Inline error when the field holds something that is not a key. pkey_ is literal. -->
+    <string name="part_keyField_malformed">Cela ne ressemble pas à une clé de licence. Les clés commencent par pkey_.</string>
+    <!-- Inline error when Activate is pressed with an empty field. -->
+    <string name="part_keyField_empty">Saisissez d’abord une clé de licence.</string>
+    <!-- Label above the user code a person types on another device. -->
+    <string name="part_code_label">Code de connexion</string>
+    <!-- Opens a larger view of the QR code. -->
+    <string name="part_qr_enlarge">Agrandir</string>
+    <string name="part_qr_enlarge__macos">Agrandir</string>
+    <!-- Shows the QR code on narrow layouts. -->
+    <string name="part_qr_scanInstead">Scanner plutôt avec votre téléphone</string>
+    <string name="part_qr_scanInstead__macos">Scanner plutôt avec votre téléphone</string>
+    <!-- Caption under the seat meter. {used} and {limit} are numbers of devices. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
+    <string name="part_seatMeter_caption">%1$s sur %2$s utilisés</string>
+    <!-- Optional footer line. Polaris Key is never translated. -->
+    <string name="part_poweredBy">Propulsé par Polaris Key</string>
+    <!-- Status pill: the license works. -->
+    <string name="part_status_ok">Active</string>
+    <!-- Status pill: offline grace period. -->
+    <string name="part_status_grace">Hors ligne</string>
+    <!-- Status pill: the license expired. -->
+    <string name="part_status_expired">Expirée</string>
+    <!-- Status pill: the license was revoked. -->
+    <string name="part_status_revoked">Révoquée</string>
+    <!-- Status pill: the device is not activated yet. -->
+    <string name="part_status_inactive">Non activé</string>
+    <!-- Status pill: this version or channel is blocked. -->
+    <string name="part_status_blocked">Bloqué</string>
+    <!-- Status pill: the product needs no license. -->
+    <string name="part_status_notApplicable">Non requise</string>
+    <!-- Screen reader label; never shown. Names an icon-only close control. -->
+    <string name="a11y_closeDialog">Fermer la boîte de dialogue</string>
+    <!-- Screen reader label; never shown. Names the busy indicator. -->
+    <string name="a11y_busy">En cours</string>
+    <!-- Screen reader label; never shown. Names the icon-only copy control beside a code. -->
+    <string name="a11y_copyCode">Copier le code</string>
+    <!-- Screen reader label; never shown. Names the icon-only copy control beside a web address. -->
+    <string name="a11y_copyAddress">Copier l’adresse</string>
+    <!-- Screen reader label; never shown. Added to links that leave the app. -->
+    <string name="a11y_externalLink">S’ouvre dans votre navigateur</string>
+    <!-- Screen reader label; never shown. Describes the QR code. -->
+    <string name="a11y_qr">Code QR qui ouvre la page de connexion</string>
+    <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
+    <string name="a11y_code">Code de connexion %1$s</string>
+    <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
+    <plurals name="a11y_seatMeter">
+        <item quantity="one">%1$s sur %2$d appareil utilisés</item>
+        <item quantity="many">%1$s sur %2$d d’appareils utilisés</item>
+        <item quantity="other">%1$s sur %2$d appareils utilisés</item>
+    </plurals>
+    <!-- Screen reader label; never shown. Names the product icon. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="a11y_productIcon">Icône de %1$s</string>
+    <!-- Screen reader label; never shown. Added to a setting someone else controls. -->
+    <string name="a11y_locked">Verrouillé</string>
+    <!-- Screen reader label; never shown. Describes a download progress bar. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”). Arguments: 1=size, 2=total. -->
+    <string name="a11y_progress">%1$s sur %2$s téléchargés</string>
+    <!-- Screen reader label; never shown. Names a device's icon by its form factor. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
+    <string name="a11y_formFactor">Appareil</string>
+    <string name="a11y_formFactor__iphone">iPhone</string>
+    <string name="a11y_formFactor__ipad">iPad</string>
+    <string name="a11y_formFactor__mac">Mac</string>
+    <string name="a11y_formFactor__phone">Téléphone</string>
+    <string name="a11y_formFactor__tablet">Tablette</string>
+    <string name="a11y_formFactor__computer">Ordinateur</string>
+    <string name="a11y_formFactor__tv">Téléviseur</string>
+    <!-- Screen reader label; never shown. Describes a toast's visible timer. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
+    <string name="a11y_toastTimer">Se ferme dans %1$s</string>
+    <!-- Screen reader label; never shown. State of the selected row in a list. -->
+    <string name="a11y_selected">Sélectionné</string>
+    <!-- Screen reader label; never shown. Names the rename control on a device row. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="a11y_renameDevice">Renommer %1$s</string>
+    <!-- Screen reader label; never shown. Names the remove control on a device row. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="a11y_removeDevice">Retirer %1$s</string>
+    <!-- PolarisKeyGate and Boot: shown while the license is checked at start. -->
+    <string name="gate_checking">Vérification de votre licence…</string>
+    <!-- PolarisKeyGate and Boot: title of the error screen; the message comes from the error's core copy. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="gate_error_title">Impossible de démarrer %1$s</string>
+    <!-- Boot screen, shown while the product starts. -->
+    <string name="boot_starting">Démarrage…</string>
+    <!-- Boot screen, shown while the product starts. -->
+    <string name="boot_syncing">Recherche de mises à jour…</string>
+    <!-- Boot screen, shown while the product starts. -->
+    <string name="boot_deciding">Recherche d’une version plus récente…</string>
+    <!-- Boot screen, shown while the product starts. -->
+    <string name="boot_fetching">Téléchargement du contenu…</string>
+    <!-- Boot screen, shown while the product starts. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”). Arguments: 1=size, 2=total. -->
+    <string name="boot_fetchingProgress">Téléchargement du contenu · %1$s sur %2$s</string>
+    <!-- Boot screen, shown while the product starts. Shown for a moment before the product opens. -->
+    <string name="boot_ready">Prêt</string>
+    <!-- Boot screen, shown while the product starts. The product cannot start without a connection. -->
+    <string name="boot_offline_title">Vous êtes hors ligne</string>
+    <!-- Boot screen, shown while the product starts. -->
+    <string name="boot_offline_body">Connectez-vous à Internet et réessayez.</string>
+    <!-- Boot screen, shown while the product starts. Optional content is missing but the product can start. -->
+    <string name="boot_offline_playable">Une partie du contenu n’a pas pu être téléchargée. Vous pouvez continuer avec ce qui est installé, ou vous connecter et réessayer.</string>
+    <!-- Boot screen, shown while the product starts. Starts with the content already installed. -->
+    <string name="boot_continueOffline">Continuer hors ligne</string>
+    <string name="boot_continueOffline__godot">Continuer hors ligne</string>
+    <string name="boot_continueOffline__macos">Continuer hors ligne</string>
+    <!-- Boot screen, shown while the product starts. The person declined a required download. -->
+    <string name="boot_declined_title">Contenu non téléchargé</string>
+    <!-- Boot screen, shown while the product starts. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="boot_declined_body">%1$s a besoin de ce contenu pour démarrer. Téléchargez-le quand vous le souhaitez.</string>
+    <!-- Boot screen, shown while the product starts. Shown once after an automatic rollback. -->
+    <string name="boot_rolledBack">La dernière mise à jour n’a pas démarré : la version précédente a donc été restaurée.</string>
+    <!-- Boot screen, shown while the product starts. Asks before a large or metered download. -->
+    <string name="boot_consent_title">Télécharger le contenu ?</string>
+    <!-- Boot screen, shown while the product starts. Arguments: {product} = the product's name from ProductIdentity (never translated); {size} = a byte size already formatted by the platform (“38 MB”). Arguments: 1=product, 2=size. -->
+    <string name="boot_consent_body">%1$s a besoin de %2$s de nouveau contenu.</string>
+    <!-- Boot screen, shown while the product starts. A metered connection is one that charges by data used. Arguments: {product} = the product's name from ProductIdentity (never translated); {size} = a byte size already formatted by the platform (“38 MB”). Arguments: 1=product, 2=size. -->
+    <string name="boot_consent_bodyMetered">%1$s a besoin de %2$s de nouveau contenu, et votre connexion est facturée à l’usage.</string>
+    <!-- Boot screen, shown while the product starts. -->
+    <string name="boot_consent_download">Télécharger</string>
+    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. Arguments: {product} = the product's name from ProductIdentity (never translated); {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=product, 2=code. -->
+    <string name="boot_error_body">%1$s n’a pas pu terminer son démarrage (%2$s).</string>
+    <!-- Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="welcome_title">Bienvenue dans %1$s</string>
+    <!-- Welcome screen, the gate's first screen. -->
+    <string name="welcome_lede">Connectez-vous ou utilisez une clé de licence pour continuer.</string>
+    <!-- Welcome screen, the gate's first screen. Shown when the product only takes license keys. -->
+    <string name="welcome_ledeKeyOnly">Saisissez une clé de licence pour continuer.</string>
+    <!-- Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="welcome_ledeSignInOnly">Connectez-vous pour utiliser %1$s.</string>
+    <!-- Welcome screen, the gate's first screen. Primary button. -->
+    <string name="welcome_signIn">Se connecter</string>
+    <string name="welcome_signIn__macos">Se connecter</string>
+    <!-- Welcome screen, the gate's first screen. Secondary button; reveals the key field. -->
+    <string name="welcome_useKey">Utiliser une clé de licence</string>
+    <string name="welcome_useKey__macos">Utiliser une clé de licence</string>
+    <!-- Welcome screen, the gate's first screen. Quiet link in the extras row. -->
+    <string name="welcome_trial">Commencer un essai gratuit</string>
+    <string name="welcome_trial__macos">Commencer un essai gratuit</string>
+    <!-- Welcome screen, the gate's first screen. Quiet link in the extras row; starts the free tier. -->
+    <string name="welcome_continueFree">Continuer gratuitement</string>
+    <string name="welcome_continueFree__macos">Continuer gratuitement</string>
+    <!-- Welcome screen, the gate's first screen. Quiet link in the extras row. -->
+    <string name="welcome_restore">Restaurer l’achat</string>
+    <string name="welcome_restore__macos">Restaurer l’achat</string>
+    <!-- Welcome screen, the gate's first screen. Quiet link in the extras row; opens offline activation. -->
+    <string name="welcome_offline">Activer hors ligne</string>
+    <string name="welcome_offline__macos">Activer hors ligne</string>
+    <!-- SignIn method sheet title in an app. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signIn_title">Se connecter à %1$s</string>
+    <!-- SignIn: shown when the build enables no sign-in method. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signIn_noMethods">Aucune méthode de connexion n’est disponible pour %1$s. Utilisez plutôt une clé de licence.</string>
+    <!-- SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…). Arguments: 1=method. -->
+    <string name="signIn_methodError">La connexion avec %1$s n’a pas abouti. Essayez un autre moyen.</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. -->
+    <string name="signInHandoff_starting">Obtention d’un code de connexion…</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. TV and console layout. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
+    <string name="signInHandoff_scan">Scannez le code avec votre téléphone, ou rendez-vous sur %1$s et saisissez ce code.</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
+    <string name="signInHandoff_linkCopied">Lien copié</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signInHandoff_confirm">Choisissez Continuer vers %1$s sur la page de connexion pour terminer.</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues. -->
+    <string name="signInHandoff_ok">Connecté</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. After the code expired or was refused. -->
+    <string name="signInHandoff_newCode">Obtenir un nouveau code</string>
+    <string name="signInHandoff_newCode__macos">Obtenir un nouveau code</string>
+    <!-- Activate: license key entry. -->
+    <string name="activate_title">Saisissez votre clé de licence</string>
+    <!-- Activate: license key entry. -->
+    <string name="activate_lede">Vous la trouverez dans l’e-mail de confirmation de votre achat.</string>
+    <!-- Activate: license key entry. Submits the key. -->
+    <string name="activate_submit">Activer la licence</string>
+    <string name="activate_submit__macos">Activer la licence</string>
+    <!-- Activate: license key entry. -->
+    <string name="activate_busy">Activation…</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_title">Activation hors ligne</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_request">Envoyez ce code de demande à la personne qui vous a fourni votre licence.</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="offlineActivation_product">Produit : %1$s</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_copyCode">Copier le code</string>
+    <string name="offlineActivation_copyCode__macos">Copier le code</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_codeCopied">Code copié</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_loadHint">Chargez ensuite le fichier d’activation que vous recevrez en retour, ou collez son texte.</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. Opens a file picker. -->
+    <string name="offlineActivation_loadFile">Charger un fichier…</string>
+    <string name="offlineActivation_loadFile__macos">Charger un fichier…</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. Placeholder of the paste box. -->
+    <string name="offlineActivation_paste">Collez le texte d’activation ici</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_submit">Activer depuis le fichier</string>
+    <string name="offlineActivation_submit__macos">Activer depuis le fichier</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_dropHint">Vous pouvez aussi déposer le fichier dans cette fenêtre.</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_done">Activé à partir du fichier hors ligne.</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. Inline error. -->
+    <string name="offlineActivation_empty">Chargez ou collez d’abord un fichier d’activation.</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Screen title. -->
+    <string name="deviceLimit_title">Remplacer un appareil</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
+    <plurals name="deviceLimit_heading">
+        <item quantity="one">Votre licence utilise %1$s sur %2$d appareil</item>
+        <item quantity="many">Votre licence utilise %1$s sur %2$d d’appareils</item>
+        <item quantity="other">Votre licence utilise %1$s sur %2$d appareils</item>
+    </plurals>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
+    <string name="deviceLimit_lede">Pour l’utiliser sur cet appareil, remplacez-en un. Vous pourrez le rajouter plus tard.</string>
+    <string name="deviceLimit_lede__iphone">Pour l’utiliser sur cet iPhone, remplacez-en un. Vous pourrez le rajouter plus tard.</string>
+    <string name="deviceLimit_lede__ipad">Pour l’utiliser sur cet iPad, remplacez-en un. Vous pourrez le rajouter plus tard.</string>
+    <string name="deviceLimit_lede__mac">Pour l’utiliser sur ce Mac, remplacez-en un. Vous pourrez le rajouter plus tard.</string>
+    <string name="deviceLimit_lede__phone">Pour l’utiliser sur ce téléphone, remplacez-en un. Vous pourrez le rajouter plus tard.</string>
+    <string name="deviceLimit_lede__tablet">Pour l’utiliser sur cette tablette, remplacez-en un. Vous pourrez le rajouter plus tard.</string>
+    <string name="deviceLimit_lede__computer">Pour l’utiliser sur cet ordinateur, remplacez-en un. Vous pourrez le rajouter plus tard.</string>
+    <string name="deviceLimit_lede__tv">Pour l’utiliser sur ce téléviseur, remplacez-en un. Vous pourrez le rajouter plus tard.</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block under the selected device. On macOS the kit wraps {device} in curly quotes. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="deviceLimit_confirmTitle">Remplacer %1$s ?</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
+    <string name="deviceLimit_consequence">%1$s sera déconnecté de %2$s et %3$s prendra sa place. %1$s pourra se reconnecter plus tard si une place se libère. Nous vous enverrons un e-mail à ce sujet.</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button. -->
+    <string name="deviceLimit_primary">Remplacer et continuer</string>
+    <string name="deviceLimit_primary__macos">Remplacer et continuer</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated). Arguments: 1=device, 2=product. -->
+    <string name="deviceLimit_removed">%1$s a été remplacé. %2$s continue.</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="deviceLimit_failed">Impossible de remplacer %1$s. Réessayez.</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode: the device list is only in the browser. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="deviceLimit_browser">Remplacez un appareil dans votre navigateur. %1$s reprendra une fois que vous aurez terminé.</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode. -->
+    <string name="deviceLimit_openBrowser">Ouvrir dans le navigateur</string>
+    <string name="deviceLimit_openBrowser__macos">Ouvrir dans le navigateur</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode on TV and console. -->
+    <string name="deviceLimit_scan">Scannez le code pour remplacer un appareil depuis votre téléphone.</string>
+    <!-- Devices: the list of devices using the license. -->
+    <string name="devices_title">Vos appareils</string>
+    <!-- Devices: the list of devices using the license. -->
+    <string name="devices_lede">Appareils utilisant cette licence.</string>
+    <!-- Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
+    <string name="devices_meta">%1$s · dernière activité %2$s</string>
+    <!-- Devices: the list of devices using the license. Arguments: {count} = a number of items. Arguments: 1=count. -->
+    <plurals name="devices_count">
+        <item quantity="one">%1$d appareil</item>
+        <item quantity="many">%1$d d’appareils</item>
+        <item quantity="other">%1$d appareils</item>
+    </plurals>
+    <!-- Devices: the list of devices using the license. A device with no name. -->
+    <string name="devices_unnamed">Appareil sans nom</string>
+    <!-- Devices: the list of devices using the license. -->
+    <string name="devices_rename">Renommer</string>
+    <!-- Devices: the list of devices using the license. Label of the inline rename field. -->
+    <string name="devices_renameLabel">Nom de l’appareil</string>
+    <!-- Devices: the list of devices using the license. -->
+    <string name="devices_remove">Retirer</string>
+    <!-- Devices: the list of devices using the license. Inline confirm. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated). Arguments: 1=device, 2=product. -->
+    <string name="devices_removeConfirm">Retirer %1$s ? Il sera déconnecté de %2$s.</string>
+    <!-- Devices: the list of devices using the license. -->
+    <string name="devices_empty">Aucun appareil n’utilise encore cette licence.</string>
+    <!-- Devices: the list of devices using the license. Browser mode. -->
+    <string name="devices_browser">Gérez vos appareils dans votre navigateur.</string>
+    <!-- Devices: the list of devices using the license. Browser mode; opens the account in the browser. -->
+    <string name="devices_manage">Gérer les appareils</string>
+    <string name="devices_manage__macos">Gérer les appareils</string>
+    <!-- UpdatePrompt: an app update. Title: the product and the new version. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
+    <string name="update_title">%1$s %2$s</string>
+    <!-- UpdatePrompt: an app update. Used when the version is unknown. -->
+    <string name="update_availableTitle">Une mise à jour est disponible</string>
+    <!-- UpdatePrompt: an app update. Arguments: {version} = a version string such as 2.4.1; {size} = a byte size already formatted by the platform (“38 MB”). Arguments: 1=version, 2=size. -->
+    <string name="update_current">Vous avez la version %1$s · %2$s à télécharger</string>
+    <!-- UpdatePrompt: an app update. Label over the release notes. -->
+    <string name="update_whatsNew">Nouveautés</string>
+    <!-- UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
+    <string name="update_allChanges">Toutes les modifications de la version %1$s</string>
+    <string name="update_allChanges__macos">Toutes les modifications de la version %1$s</string>
+    <!-- UpdatePrompt: an app update. Dismisses the prompt. -->
+    <string name="update_later">Plus tard</string>
+    <string name="update_later__macos">Plus tard</string>
+    <!-- UpdatePrompt: an app update. Queues the restart after the download. -->
+    <string name="update_restartWhenReady">Redémarrer une fois prêt</string>
+    <string name="update_restartWhenReady__macos">Redémarrer une fois prêt</string>
+    <!-- UpdatePrompt: an app update. The update is downloaded. -->
+    <string name="update_restartNow">Redémarrer maintenant</string>
+    <string name="update_restartNow__macos">Redémarrer maintenant</string>
+    <!-- UpdatePrompt: an app update. -->
+    <string name="update_skipVersion">Ignorer cette version</string>
+    <string name="update_skipVersion__macos">Ignorer cette version</string>
+    <!-- UpdatePrompt: an app update. -->
+    <string name="update_install">Mettre à jour</string>
+    <string name="update_install__macos">Mettre à jour</string>
+    <!-- UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”). Arguments: 1=size, 2=total. -->
+    <string name="update_downloading">Téléchargement · %1$s sur %2$s</string>
+    <!-- UpdatePrompt: an app update. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
+    <string name="update_timeLeft">Environ %1$s restant</string>
+    <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
+    <string name="update_readyTitle">%1$s %2$s est prêt</string>
+    <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="update_readyBody">Redémarrez %1$s pour terminer la mise à jour.</string>
+    <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="update_mandatoryTitle">Mettez à jour pour continuer à utiliser %1$s</string>
+    <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="update_mandatoryBody">Cette version est antérieure à la version minimale prise en charge. Mettez à jour pour continuer à utiliser %1$s.</string>
+    <!-- UpdatePrompt: an app update. No update is available yet. -->
+    <string name="update_blockedTitle">Cette version n’est plus prise en charge</string>
+    <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="update_blockedBody">Aucune mise à jour n’est encore disponible ici. Vous pouvez continuer à utiliser %1$s pour le moment.</string>
+    <!-- UpdatePrompt: an app update. -->
+    <string name="update_critical">Cette mise à jour comprend un correctif de sécurité important.</string>
+    <!-- UpdatePrompt: an app update. App Store outlet. -->
+    <string name="update_appStore">Mettre à jour sur l’App Store</string>
+    <!-- UpdatePrompt: an app update. Google Play outlet. -->
+    <string name="update_googlePlay">Mettre à jour sur Google Play</string>
+    <!-- UpdatePrompt: an app update. Steam outlet. -->
+    <string name="update_steam">Obtenir sur Steam</string>
+    <string name="update_steam__macos">Obtenir sur Steam</string>
+    <!-- UpdatePrompt: an app update. Other store outlets. Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
+    <string name="update_openStore">Ouvrir %1$s</string>
+    <!-- UpdatePrompt: an app update. TestFlight outlet. -->
+    <string name="update_testflight">Ouvrir TestFlight</string>
+    <!-- UpdatePrompt: an app update. AltStore outlet. -->
+    <string name="update_altstore">Ouvrir AltStore</string>
+    <!-- UpdatePrompt: an app update. Web outlet. -->
+    <string name="update_reload">Recharger</string>
+    <!-- UpdatePrompt: an app update. Platform-managed update. -->
+    <string name="update_platform_steam">Steam l’installe. Redémarrez Steam si elle n’est pas encore arrivée.</string>
+    <!-- UpdatePrompt: an app update. Platform-managed update. -->
+    <string name="update_platform_itch">L’application itch l’installe.</string>
+    <!-- UpdatePrompt: an app update. Platform-managed update (Linux). -->
+    <string name="update_platform_store">Votre logithèque l’installe.</string>
+    <!-- UpdatePrompt: an app update. Platform-managed update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="update_platform_appInstaller">Windows l’installe au prochain démarrage de %1$s.</string>
+    <!-- UpdatePrompt: an app update. Package-manager update (winget, brew). Arguments: {command} = a terminal command, shown as is. Arguments: 1=command. -->
+    <string name="update_platform_command">Exécutez %1$s pour l’installer.</string>
+    <!-- UpdatePrompt: an app update. Web update. -->
+    <string name="update_platform_web">Rechargez la page pour l’obtenir.</string>
+    <!-- UpdatePrompt: an app update. Platform-managed update. -->
+    <string name="update_platform_package">Votre gestionnaire de paquets l’installe.</string>
+    <!-- UpdatePrompt: an app update. Platform-managed update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="update_platform_generic">Elle s’installe via la boutique ou la plateforme d’où vous avez obtenu %1$s.</string>
+    <!-- UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="update_revokedContent">Une partie du contenu de %1$s a été retirée et ne peut plus être utilisée. Mettez à jour %1$s pour continuer.</string>
+    <!-- UpdatePrompt: an app update. -->
+    <string name="update_upToDate">Vous êtes à jour</string>
+    <!-- UpdatePrompt: an app update. Menu item and settings button. -->
+    <string name="update_checkNow">Rechercher des mises à jour</string>
+    <string name="update_checkNow__macos">Rechercher des mises à jour</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. -->
+    <string name="updateProgress_contentTitle">Téléchargement du contenu</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. -->
+    <string name="updateProgress_queued">En attente de téléchargement</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”); {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=size, 2=total, 3=time. -->
+    <string name="updateProgress_downloading">%1$s sur %2$s · %3$s restant</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. -->
+    <string name="updateProgress_installing">Installation…</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. Paused on a metered connection. -->
+    <string name="updateProgress_paused">En pause · en attente du Wi-Fi</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. -->
+    <string name="updateProgress_failed">Échec du téléchargement</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. -->
+    <string name="updateProgress_done">À jour</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. Resumes a paused download. -->
+    <string name="updateProgress_resume">Télécharger maintenant</string>
+    <string name="updateProgress_resume__macos">Télécharger maintenant</string>
+    <!-- ReleaseNotes: the changelog. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="releaseNotes_title">Nouveautés de %1$s</string>
+    <!-- ReleaseNotes: the changelog. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
+    <string name="releaseNotes_version">Version %1$s</string>
+    <!-- ReleaseNotes: the changelog. Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
+    <string name="releaseNotes_released">Publiée le %1$s</string>
+    <!-- ReleaseNotes: the changelog. -->
+    <string name="releaseNotes_empty">Aucune note de version pour le moment.</string>
+    <!-- ReleaseNotes: the changelog. -->
+    <string name="releaseNotes_error">Impossible de charger les notes de version.</string>
+    <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Expired license. -->
+    <string name="status_renew">Renouveler</string>
+    <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version too old. -->
+    <string name="status_update">Mettre à jour</string>
+    <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Channel not included. -->
+    <string name="status_switchChannel">Changer de canal</string>
+    <string name="status_switchChannel__macos">Changer de canal</string>
+    <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version. Arguments: 1=min, 2=max. -->
+    <string name="status_allowedRange">Versions autorisées : de %1$s à %2$s</string>
+    <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {min} = the lowest allowed value or version. Arguments: 1=min. -->
+    <string name="status_allowedMin">Versions autorisées : %1$s ou ultérieure</string>
+    <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {max} = the highest allowed value or version. Arguments: 1=max. -->
+    <string name="status_allowedMax">Versions autorisées : jusqu’à %1$s</string>
+    <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="status_contact">Contacter %1$s</string>
+    <!-- GraceBanner: the product works offline for a limited time. Arguments: {days} = a number of days. Arguments: 1=days. -->
+    <plurals name="grace_daysLeft">
+        <item quantity="one">Hors ligne · %1$d jour restant pour vous reconnecter</item>
+        <item quantity="many">Hors ligne · %1$d de jours restants pour vous reconnecter</item>
+        <item quantity="other">Hors ligne · %1$d jours restants pour vous reconnecter</item>
+    </plurals>
+    <!-- GraceBanner: the product works offline for a limited time. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="grace_lastDay">Hors ligne · reconnectez-vous aujourd’hui pour continuer à utiliser %1$s</string>
+    <!-- GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
+    <string name="grace_deadline">Reconnectez-vous avant le %1$s</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. -->
+    <string name="account_title">Compte et licence</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="account_tier">Licence %1$s</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. The account signed in on this device. Arguments: {name} = the person's display name. Arguments: 1=name. -->
+    <string name="account_holder">Connecté en tant que %1$s</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. No account is signed in on this device. -->
+    <string name="account_keyOnly">Activé avec une clé de licence</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
+    <string name="account_devices">Appareils</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term. -->
+    <string name="account_cloudSync">Synchronisation cloud</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Group header. -->
+    <string name="account_updates">Mises à jour</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Switch label. -->
+    <string name="account_autoUpdate">Mettre à jour automatiquement</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
+    <string name="account_channel">Canal de publication</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
+    <string name="account_version">Version %1$s</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
+    <string name="account_managedSettings">Paramètres gérés</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. -->
+    <string name="account_offline">Hors ligne · affichage des dernières informations enregistrées</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_title">Paramètres</string>
+    <!-- Settings: settings delivered by the developer. Search field placeholder. -->
+    <string name="settings_search">Rechercher dans les paramètres</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_empty">Aucun paramètre à afficher.</string>
+    <!-- Settings: settings delivered by the developer. Group header for the developer's defaults. Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="settings_fromDeveloper">De %1$s</string>
+    <!-- Settings: settings delivered by the developer. A locked row. Arguments: {org} = the organization that set a value. Arguments: 1=org. -->
+    <string name="settings_setBy">Défini par %1$s</string>
+    <!-- Settings: settings delivered by the developer. A locked row on consoles. -->
+    <string name="settings_setByGuardian">Défini par votre parent ou tuteur</string>
+    <!-- Settings: settings delivered by the developer. Where a value comes from. -->
+    <string name="settings_source_local">Modifié par vous</string>
+    <!-- Settings: settings delivered by the developer. Where a value comes from. -->
+    <string name="settings_source_env">Défini par l’environnement</string>
+    <!-- Settings: settings delivered by the developer. Where a value comes from. -->
+    <string name="settings_source_default">Par défaut</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_reset">Rétablir la valeur par défaut</string>
+    <string name="settings_reset__macos">Rétablir la valeur par défaut</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_advanced">Afficher les paramètres avancés</string>
+    <string name="settings_advanced__macos">Afficher les paramètres avancés</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_saving">Enregistrement…</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_saved">Enregistré</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_unsaved">Modifications non enregistrées</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_error">Impossible d’enregistrer les paramètres. Réessayez.</string>
+    <!-- Settings: settings delivered by the developer. Allowed range of a number. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version. Arguments: 1=min, 2=max. -->
+    <string name="settings_range">Entre %1$s et %2$s</string>
+    <!-- Settings: settings delivered by the developer. A switch's value shown as text. -->
+    <string name="settings_on">Activé</string>
+    <!-- Settings: settings delivered by the developer. A switch's value shown as text. -->
+    <string name="settings_off">Désactivé</string>
+    <!-- Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated). Arguments: 1=product, 2=tier. -->
+    <string name="paywall_title">Profitez de plus avec %1$s %2$s</string>
+    <!-- Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="paywall_includes">%1$s comprend</string>
+    <!-- Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="paywall_upgrade">Passer à %1$s</string>
+    <!-- Paywall: what a tier adds, and how to get it. -->
+    <string name="paywall_redeem">Utiliser un code</string>
+    <string name="paywall_redeem__macos">Utiliser un code</string>
+    <!-- Paywall: what a tier adds, and how to get it. -->
+    <string name="paywall_restore">Restaurer les achats</string>
+    <string name="paywall_restore__macos">Restaurer les achats</string>
+    <!-- Paywall: what a tier adds, and how to get it. -->
+    <string name="paywall_purchasing">Finalisation de l’achat…</string>
+    <!-- Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="paywall_purchased">%1$s est débloqué</string>
+    <!-- Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="paywall_notAvailable">Les achats ne sont pas disponibles dans cette version de %1$s.</string>
+    <!-- Paywall: what a tier adds, and how to get it. -->
+    <string name="paywall_portal">Acheter dans votre navigateur</string>
+    <string name="paywall_portal__macos">Acheter dans votre navigateur</string>
+    <!-- EntitlementGate: shown in place of a locked feature. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="entitlement_locked">Cette fonctionnalité nécessite %1$s.</string>
+    <!-- EntitlementGate: opens the paywall. -->
+    <string name="entitlement_unlock">Débloquer</string>
+    <!-- CloudSyncStatus: a small sync status. {time} is relative, like “2 min ago”. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
+    <string name="cloudSync_synced">Synchronisé %1$s</string>
+    <!-- CloudSyncStatus: a small sync status. -->
+    <string name="cloudSync_syncing">Synchronisation…</string>
+    <!-- CloudSyncStatus: a small sync status. -->
+    <string name="cloudSync_offline">Hors ligne · les modifications seront synchronisées à la reconnexion</string>
+    <!-- CloudSyncStatus: a small sync status. -->
+    <string name="cloudSync_conflict">Certaines modifications sont en conflit. Vérifiez-les.</string>
+    <!-- CloudSyncStatus: a small sync status. -->
+    <string name="cloudSync_error">Échec de la synchronisation. Réessayez plus tard.</string>
+    <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
+    <string name="cloudSync_signIn">Se connecter pour synchroniser</string>
+    <string name="cloudSync_signIn__macos">Se connecter pour synchroniser</string>
+    <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="about_title">À propos de %1$s</string>
+    <!-- About: product and build information. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
+    <string name="about_version">Version %1$s</string>
+    <!-- About: product and build information. Opens the open-source notices. -->
+    <string name="about_licenses">Licences open source</string>
+    <string name="about_licenses__macos">Licences open source</string>
+    <!-- About: product and build information. -->
+    <string name="about_copyDiagnostics">Copier les diagnostics</string>
+    <string name="about_copyDiagnostics__macos">Copier les diagnostics</string>
+    <!-- About: product and build information. -->
+    <string name="about_diagnosticsCopied">Diagnostics copiés</string>
+    <!-- ChannelPicker: the release channel choice. -->
+    <string name="channel_title">Canal de publication</string>
+    <!-- ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
+    <string name="channel_locked">%1$s définit le canal de publication.</string>
+    <!-- Toast action. -->
+    <string name="toast_undo">Annuler</string>
+    <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
+    <string name="toast_updateAvailable">%1$s %2$s est disponible</string>
+    <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
+    <string name="signin_methods_title">Se connecter à Polaris Key</string>
+    <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
+    <string name="signin_methods_titleApp">Se connecter</string>
+    <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_methods_ledeApp">Utilisez l’adresse e-mail avec laquelle vous avez acheté %1$s.</string>
+    <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
+    <string name="signin_email_label">E-mail</string>
+    <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
+    <string name="signin_email_invalid">Saisissez une adresse e-mail complète, par exemple nom@exemple.com.</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). -->
+    <string name="signin_continue">Continuer</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). -->
+    <string name="signin_or">ou</string>
+    <!-- Sign-in provider buttons (SIGN-IN.md §3.3). -->
+    <string name="signin_provider_group">Ou continuer avec</string>
+    <!-- Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam). Arguments: 1=provider. -->
+    <string name="signin_provider_continue">Continuer avec %1$s</string>
+    <!-- Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam). Arguments: 1=provider. -->
+    <string name="signin_provider_connect">Associer %1$s</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). -->
+    <string name="signin_passkey">Se connecter avec une clé d’accès</string>
+    <string name="signin_passkey__macos">Se connecter avec une clé d’accès</string>
+    <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
+    <string name="signin_email_continue">Continuer avec l’e-mail</string>
+    <string name="signin_email_continue__macos">Continuer avec l’e-mail</string>
+    <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
+    <string name="signin_link_key">Vous avez une clé de licence ?</string>
+    <string name="signin_link_key__macos">Vous avez une clé de licence ?</string>
+    <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
+    <string name="signin_link_anotherDevice">Se connecter avec un autre appareil</string>
+    <string name="signin_link_anotherDevice__macos">Se connecter avec un autre appareil</string>
+    <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
+    <string name="signin_link_deviceCode">Se connecter sur votre téléphone ou ordinateur</string>
+    <string name="signin_link_deviceCode__macos">Se connecter sur votre téléphone ou ordinateur</string>
+    <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_header_app">%1$s vous demande de vous connecter</string>
+    <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
+    <string name="signin_header_context">%1$s · %2$s</string>
+    <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). -->
+    <string name="signin_header_contextLine">Votre licence, vos téléchargements et vos appareils</string>
+    <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
+    <string name="signin_header_codePanel">Code à l’écran · %1$s · Vérifiez qu’il correspond à l’écran</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated). Arguments: 1=app, 2=developer. -->
+    <string name="signin_footer">Polaris Key vous connecte à %1$s. %2$s ne voit jamais vos codes ni vos clés d’accès.</string>
+    <!-- Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
+    <string name="signin_off_product">La connexion est désactivée pour %1$s. Contactez %2$s.</string>
+    <!-- Sign-in is turned off (SIGN-IN.md §4.12). -->
+    <string name="signin_off_any">La connexion est indisponible. Réessayez plus tard.</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {minutes} = a number of minutes. Arguments: 1=minutes. -->
+    <string name="signin_rateLimited">Trop de codes. Réessayez dans %1$s minutes.</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). -->
+    <string name="signin_emailDown">Nous ne pouvons pas envoyer d’e-mail pour le moment. Essayez un autre moyen de vous connecter.</string>
+    <!-- The card can't reach the service. -->
+    <string name="signin_network_title">Impossible de joindre Polaris Key</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). -->
+    <string name="signin_retry">Réessayer</string>
+    <string name="signin_retry__macos">Réessayer</string>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_title">Consultez vos e-mails</string>
+    <!-- Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address. Arguments: 1=email. -->
+    <string name="signin_code_sent">Nous avons envoyé un code et un lien de connexion à %1$s. Tous deux sont valables 10 minutes.</string>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_link">Ou ouvrez le lien dans l’e-mail. Gardez cet onglet ouvert.</string>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_resend">Envoyer un nouveau code</string>
+    <string name="signin_code_resend__macos">Envoyer un nouveau code</string>
+    <!-- Email code step (SIGN-IN.md §3.4). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
+    <string name="signin_code_resendIn">Envoyer un nouveau code dans %1$s</string>
+    <string name="signin_code_resendIn__macos">Envoyer un nouveau code dans %1$s</string>
+    <!-- Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address. Arguments: 1=email. -->
+    <string name="signin_code_resent">Nous avons envoyé un nouveau code et un nouveau lien à %1$s.</string>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_wrong">Ce code est incorrect. Vérifiez l’e-mail et réessayez.</string>
+    <!-- Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number. Arguments: 1=n. -->
+    <plurals name="signin_code_triesLeft">
+        <item quantity="one">%1$d essai restant.</item>
+        <item quantity="many">%1$d d’essais restants.</item>
+        <item quantity="other">%1$d essais restants.</item>
+    </plurals>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_tooMany">Trop d’essais. Envoyez un nouveau code.</string>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_expired">Ce code a expiré. Envoyez un nouveau code.</string>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_differentEmail">Utiliser une autre adresse e-mail</string>
+    <string name="signin_code_differentEmail__macos">Utiliser une autre adresse e-mail</string>
+    <!-- Sign-in email subject (SIGN-IN.md §3.15). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
+    <string name="signin_email_subject">Votre code Polaris Key : %1$s</string>
+    <!-- Sign-in email body (SIGN-IN.md §3.15). -->
+    <string name="signin_email_body">Ou connectez-vous avec le bouton. Le code et le lien ne fonctionnent qu’une fois, pendant 10 minutes.</string>
+    <!-- Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”); {place} = an approximate place (city, country). Arguments: 1=time, 2=place. -->
+    <string name="signin_confirmLink_title">Confirmer la connexion demandée à %1$s depuis %2$s</string>
+    <!-- Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4). -->
+    <string name="signin_confirmLink_note">C’est l’appareil à l’origine de la demande qui se connecte, pas celui-ci.</string>
+    <!-- Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4). -->
+    <string name="signin_confirmLink_done">Connexion confirmée. Revenez sur l’appareil où vous avez commencé. Il se connectera tout seul.</string>
+    <!-- Returning person hint (SIGN-IN.md §3.4). Arguments: {name} = the person's display name. Arguments: 1=name. -->
+    <string name="signin_hint_welcome">Bon retour, %1$s</string>
+    <!-- Returning person hint (SIGN-IN.md §3.4). Arguments: {method} = a sign-in method's name (Apple, Google, passkey…). Arguments: 1=method. -->
+    <string name="signin_hint_usual">Vous vous connectez habituellement avec %1$s</string>
+    <!-- Returning person hint (SIGN-IN.md §3.4). -->
+    <string name="signin_hint_other">Autres moyens de se connecter</string>
+    <string name="signin_hint_other__macos">Autres moyens de se connecter</string>
+    <!-- Create account step (SIGN-IN.md §3.4). -->
+    <string name="signin_register_title">Créez votre compte</string>
+    <!-- Create account step (SIGN-IN.md §3.4). Arguments: {email} = an email address. Arguments: 1=email. -->
+    <string name="signin_register_verified">L’adresse %1$s est vérifiée</string>
+    <!-- Create account step (SIGN-IN.md §3.4). -->
+    <string name="signin_register_submit">Créer le compte et continuer</string>
+    <string name="signin_register_submit__macos">Créer le compte et continuer</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam); {identity} = the provider account's handle or email. Arguments: 1=provider, 2=identity. -->
+    <string name="signin_gate_strip">Connecté avec %1$s · %2$s</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_title">Confirmez votre adresse e-mail</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_gate_ledeApp">Une dernière étape avant %1$s. Nous y envoyons les codes de connexion, les reçus et les alertes de sécurité.</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_steam">Steam ne partage pas d’adresse e-mail. Ajoutez-en une pour pouvoir revenir sans Steam.</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_verify">Vérifier et continuer</string>
+    <string name="signin_gate_verify__macos">Vérifier et continuer</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_sendCode">Envoyer le code</string>
+    <string name="signin_gate_sendCode__macos">Envoyer le code</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_cancel">Annuler la connexion</string>
+    <string name="signin_gate_cancel__macos">Annuler la connexion</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_join">Fusionner en un seul compte</string>
+    <string name="signin_gate_join__macos">Fusionner en un seul compte</string>
+    <!-- Profile import (SIGN-IN.md §3.5). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam). Arguments: 1=provider. -->
+    <string name="signin_profile_source">Nom et photo issus de %1$s.</string>
+    <!-- Profile import (SIGN-IN.md §3.5). -->
+    <string name="signin_profile_applePicture">Apple ne partage pas de photo. En ajouter une</string>
+    <string name="signin_profile_applePicture__macos">Apple ne partage pas de photo. En ajouter une</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_title">Choisissez une licence pour cet appareil</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
+    <string name="signin_choice_lede">%1$s l’utilisera sur %2$s.</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_choice_ledeBrowser">%1$s l’utilisera dans ce navigateur.</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
+    <string name="signin_choice_ledeNew">Vous n’avez pas encore de licence %1$s. %2$s vous offre celle-ci.</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_choice_group">Licences pour %1$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {origin} = where the license came from (one of the signin.origin.* strings); {term} = the license term (one of the signin.term.* strings). Arguments: 1=origin, 2=term. -->
+    <string name="signin_choice_meta">%1$s · %2$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
+    <plurals name="signin_choice_devices">
+        <item quantity="one">%1$s sur %2$d appareil</item>
+        <item quantity="many">%1$s sur %2$d d’appareils</item>
+        <item quantity="other">%1$s sur %2$d appareils</item>
+    </plurals>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_metaNew">Créée lorsque vous continuez</string>
+    <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). -->
+    <string name="signin_term_lifetime">À vie</string>
+    <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
+    <string name="signin_term_until">Jusqu’au %1$s</string>
+    <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
+    <string name="signin_term_yearlyUntil">Annuelle, jusqu’au %1$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_signIn">Via la connexion</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is. Arguments: 1=last6. -->
+    <string name="signin_choice_origin_key">Clé se terminant par %1$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_keyAdded">Ajoutée avec une clé</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is. Arguments: 1=store, 2=last6. -->
+    <string name="signin_choice_origin_storeKey">Clé %1$s se terminant par %2$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store). Arguments: 1=store. -->
+    <string name="signin_choice_origin_storeKeyAdded">Clé %1$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). A store license with no key. Arguments: {store} = a store's name (Steam, App Store). Arguments: 1=store. -->
+    <string name="signin_choice_origin_store">Via %1$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="signin_choice_origin_developer">Fournie par %1$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_free">Gratuite</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_gift">Cadeau</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {org} = the organization that provides the license. Arguments: 1=org. -->
+    <string name="signin_choice_origin_org">Incluse avec %1$s</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_choice_picker_signIn">%1$s · Connexion</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {last6} = the license key's last six characters, shown as is. Arguments: 1=tier, 2=last6. -->
+    <string name="signin_choice_picker_key">%1$s · Clé …%2$s</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is. Arguments: 1=tier, 2=store, 3=last6. -->
+    <string name="signin_choice_picker_storeKey">%1$s · Clé %2$s …%3$s</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store). Arguments: 1=tier, 2=store. -->
+    <string name="signin_choice_picker_store">%1$s · %2$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_tag_current">Sur cet appareil</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_tag_new">Nouvelle</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_tag_full">Aucun appareil libre</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_keep">Garder la licence utilisée par cet appareil</string>
+    <string name="signin_choice_keep__macos">Garder la licence utilisée par cet appareil</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_choice_keepMeta">%1$s continue de fonctionner comme maintenant.</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_create">Créer une nouvelle licence gratuite</string>
+    <string name="signin_choice_create__macos">Créer une nouvelle licence gratuite</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_createMeta">Une licence distincte · créée lorsque vous continuez</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_allFull">Vos licences sont utilisées sur tous leurs appareils. Remplacez un appareil pour en utiliser une ici.</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_allFullCreate">Vos licences sont utilisées sur tous leurs appareils. Remplacez un appareil ou créez une nouvelle licence gratuite.</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="signin_choice_noneReplaceable">%1$s gère les appareils de ces licences. Demandez à %1$s d’en libérer un, ou utilisez une autre licence.</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_choice_combined">Vos autres éléments %1$s s’appliquent toujours.</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="signin_choice_portalOff">%1$s gère les appareils de cette licence.</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_keyInstead">Utiliser plutôt une clé de licence</string>
+    <string name="signin_choice_keyInstead__macos">Utiliser plutôt une clé de licence</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_freeDevice">Libérer un appareil</string>
+    <string name="signin_choice_freeDevice__macos">Libérer un appareil</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_continue">Utiliser cette licence et continuer</string>
+    <string name="signin_choice_continue__macos">Utiliser cette licence et continuer</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_raced">Cette place vient d’être prise. Faites un autre choix.</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_choice_codeExpired">Le code sur %1$s a expiré. Obtenez-en un nouveau sur cet appareil et scannez-le à nouveau.</string>
+    <!-- No license in this account (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_none_title">Aucune licence %1$s dans ce compte</string>
+    <!-- No license in this account (SIGN-IN.md §3.6). -->
+    <string name="signin_none_body">Vous l’avez acheté avec une autre adresse e-mail ? Connectez-vous plutôt avec ce compte.</string>
+    <!-- No license in this account (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_none_get">Obtenir %1$s</string>
+    <!-- No license in this account (SIGN-IN.md §3.6). -->
+    <string name="signin_none_otherAccount">Utiliser un autre compte</string>
+    <string name="signin_none_otherAccount__macos">Utiliser un autre compte</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_open">Remplacer un appareil</string>
+    <string name="signin_replace_open__macos">Remplacer un appareil</string>
+    <!-- Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice). Arguments: 1=thisDevice. -->
+    <string name="signin_replace_lede">Choisissez un appareil à déconnecter. %1$s prend sa place.</string>
+    <!-- Replace a device in a system dialog (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_openSystem">Remplacer…</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
+    <string name="signin_replace_meta">%1$s · dernière utilisation %2$s</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_leastRecent">Le moins récent</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_activeNow">Actif maintenant</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_thisBrowser">Ce navigateur</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_replace_title">Remplacer %1$s ?</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
+    <string name="signin_replace_consequence">%1$s sera déconnecté de %2$s et %3$s prendra sa place. %1$s pourra se reconnecter plus tard si une place se libère. Nous vous enverrons un e-mail à ce sujet.</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_replace_inUse">%1$s est en cours d’utilisation.</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_confirm">Remplacer et continuer</string>
+    <string name="signin_replace_confirm__macos">Remplacer et continuer</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_back">Retour</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_gone">Cet appareil a déjà été retiré. Faites un autre choix.</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {seconds} = a number of seconds. Arguments: 1=seconds. -->
+    <plurals name="signin_replace_rateLimited">
+        <item quantity="one">Trop de changements d’appareil. Réessayez dans %1$d seconde.</item>
+        <item quantity="many">Trop de changements d’appareil. Réessayez dans %1$d de secondes.</item>
+        <item quantity="other">Trop de changements d’appareil. Réessayez dans %1$d secondes.</item>
+    </plurals>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_raced">Quelqu’un a pris cette place avant vous. Faites un autre choix.</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_replace_racedAfterFree">%1$s a été retiré, mais quelqu’un a pris la place avant vous. Faites un autre choix.</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated); {name} = the person's display name. Arguments: 1=app, 2=name. -->
+    <string name="signin_consent_title">Continuer vers %1$s en tant que %2$s ?</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
+    <string name="signin_consent_license">Licence pour cet appareil</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
+    <string name="signin_consent_licenseLine">%1$s · %2$s · %3$s devient l’appareil %4$s sur %5$s</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
+    <string name="signin_consent_replaces">%1$s · remplace %2$s</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_consent_licenseInApp">Vous choisirez une licence dans %1$s.</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
+    <string name="signin_consent_change">Modifier</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_consent_continue">Continuer vers %1$s</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_consent_alsoGets">%1$s recevra également</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
+    <string name="signin_consent_profile">Votre profil et votre adresse e-mail</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
+    <string name="signin_consent_pairwise">L’application reçoit un identifiant qui lui est propre et ne verra ni vos autres produits ni votre mode de connexion.</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). -->
+    <string name="signin_notYou">Ce n’est pas vous ?</string>
+    <string name="signin_notYou__macos">Ce n’est pas vous ?</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). -->
+    <string name="signin_cancel">Annuler</string>
+    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_addTitle">Ajouter %1$s à votre compte</string>
+    <!-- License key step (SIGN-IN.md §3.9). -->
+    <string name="signin_key_addAndUse">Ajouter et utiliser sur cet appareil</string>
+    <string name="signin_key_addAndUse__macos">Ajouter et utiliser sur cet appareil</string>
+    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_keep">Conserver %1$s dans un compte</string>
+    <string name="signin_key_keep__macos">Conserver %1$s dans un compte</string>
+    <!-- License key step (SIGN-IN.md §3.9). Arguments: {left} = how many are left, as a number; {limit} = the license's device limit, as a number; {n} = a number. Arguments: 1=left, 2=limit, 3=n. -->
+    <string name="signin_key_entries">Saisies de clé restantes : %1$s sur %2$s · Ce sera la saisie %3$s</string>
+    <!-- License key step (SIGN-IN.md §3.9). Arguments: {left} = how many are left, as a number. Arguments: 1=left. -->
+    <plurals name="signin_key_entriesLeftShort">
+        <item quantity="one">%1$d saisie de clé restante</item>
+        <item quantity="many">%1$d de saisies de clé restantes</item>
+        <item quantity="other">%1$d saisies de clé restantes</item>
+    </plurals>
+    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_noEntries">Cette clé n’a plus de saisies disponibles dans %1$s. Ajoutez-la à votre compte et %1$s vous connectera à la place.</string>
+    <!-- License key step (SIGN-IN.md §3.9). -->
+    <string name="signin_key_skip">Passer pour l’instant</string>
+    <string name="signin_key_skip__macos">Passer pour l’instant</string>
+    <!-- License key step (SIGN-IN.md §3.9). -->
+    <string name="signin_key_ownedSignIn">Se connecter à ce compte</string>
+    <string name="signin_key_ownedSignIn__macos">Se connecter à ce compte</string>
+    <!-- License key step (SIGN-IN.md §3.9). -->
+    <string name="signin_key_differentKey">Utiliser une autre clé</string>
+    <string name="signin_key_differentKey__macos">Utiliser une autre clé</string>
+    <!-- Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_return_yours">%1$s est à vous</string>
+    <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_return_signedIn">Vous êtes connecté à %1$s</string>
+    <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_return_button">Revenir à %1$s</string>
+    <!-- Return step (SIGN-IN.md §3.10). Arguments: {s} = a number of seconds. Arguments: 1=s. -->
+    <string name="signin_return_timer">Retour automatique dans %1$s s</string>
+    <!-- Return step (SIGN-IN.md §3.10). -->
+    <string name="signin_return_stay">Rester ici</string>
+    <string name="signin_return_stay__macos">Rester ici</string>
+    <!-- Last step of the in-app sign-in form (SIGN-IN.md §3.10). Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="signin_done_start">Commencer à utiliser %1$s</string>
+    <string name="signin_done_start__macos">Commencer à utiliser %1$s</string>
+    <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_device_title">Connectez-vous pour terminer sur %1$s</string>
+    <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_device_lede">Utilisez votre téléphone ou ordinateur ici. %1$s continuera tout seul une fois que vous aurez terminé.</string>
+    <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). -->
+    <string name="signin_device_cancel">Vous n’êtes pas à l’origine de cette demande ? Annulez-la. Quelqu’un tente peut-être d’utiliser votre compte.</string>
+    <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {app} = the requesting app's name (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=app, 2=device. -->
+    <string name="signin_device_done">%1$s est connecté sur %2$s</string>
+    <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_device_doneLede">Regardez %1$s : il continue tout seul.</string>
+    <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). -->
+    <string name="signin_device_signOut">Déconnecter le téléviseur</string>
+    <string name="signin_device_signOut__macos">Déconnecter le téléviseur</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_title">Terminez dans votre navigateur</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_check">Vérifiez que le code affiché correspond à celui-ci.</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
+    <string name="signin_handoff_url">Ou rendez-vous sur %1$s</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
+    <string name="signin_handoff_expires">Le code expire dans %1$s</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_again">Rouvrir le navigateur</string>
+    <string name="signin_handoff_again__macos">Rouvrir le navigateur</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_cancelled">La connexion a été annulée. Obtenez un nouveau code</string>
+    <!-- Desktop app after sign-in (SIGN-IN.md §3.17). -->
+    <string name="signin_desktop_continue">Continuer dans le navigateur</string>
+    <string name="signin_desktop_continue__macos">Continuer dans le navigateur</string>
+    <!-- Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {name} = the person's display name; {tier} = the tier's name (never translated). Arguments: 1=name, 2=tier. -->
+    <string name="signin_desktop_toast">Connecté en tant que %1$s · licence %2$s</string>
+    <!-- Desktop app after sign-in (SIGN-IN.md §3.17). -->
+    <string name="signin_desktop_notifyTitle">Vous êtes connecté</string>
+    <!-- Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_desktop_notifyBody">%1$s est prêt.</string>
+    <!-- Desktop system notification when the app needs a license choice to finish (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_desktop_notifyChoose">Choisissez une licence · %1$s est prêt à terminer la connexion.</string>
+    <!-- App menu item that opens sign-in (SIGN-IN.md §3.17). -->
+    <string name="signin_menu_signIn">Se connecter…</string>
+    <string name="signin_menu_signIn__macos">Se connecter…</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_handoff_browserBody">Nous avons ouvert Polaris Key dans votre navigateur. Connectez-vous-y et %1$s continuera tout seul.</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_waiting">En attente de votre navigateur…</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_finishing">Finalisation de la connexion…</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_useCode">Utiliser plutôt un code</string>
+    <string name="signin_handoff_useCode__macos">Utiliser plutôt un code</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_useBrowser">Se connecter via le navigateur</string>
+    <string name="signin_handoff_useBrowser__macos">Se connecter via le navigateur</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_noBrowser">Impossible d’ouvrir votre navigateur</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_noBrowserBody">Ouvrez ce lien dans un navigateur sur cet ordinateur, ou utilisez plutôt un code.</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_copyLink">Copier le lien</string>
+    <string name="signin_handoff_copyLink__macos">Copier le lien</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_tooLong">Cette connexion a pris trop de temps.</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_codeTitle">Se connecter avec un code</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
+    <string name="signin_handoff_codeBody">Sur n’importe quel téléphone ou ordinateur, rendez-vous sur %1$s et saisissez ce code.</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_openBrowser">Ouvrir le navigateur</string>
+    <string name="signin_handoff_openBrowser__macos">Ouvrir le navigateur</string>
+    <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_return_closeTab">Vous pouvez fermer cet onglet et revenir à %1$s.</string>
+    <!-- Return step when the license is chosen in the app (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_return_chooseInApp">Revenez dans %1$s pour choisir une licence. Vous pouvez fermer cet onglet.</string>
+    <!-- Return step, short form (SIGN-IN.md §3.10). -->
+    <string name="signin_return_signedInShort">Vous êtes connecté</string>
+    <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_return_cancelled">La connexion a été annulée dans %1$s. Recommencez depuis %1$s.</string>
+    <!-- Return step (SIGN-IN.md §3.10). -->
+    <string name="signin_return_library">Ouvrir votre bibliothèque</string>
+    <string name="signin_return_library__macos">Ouvrir votre bibliothèque</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_freed">Un appareil est désormais libre sur cette licence.</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_opensBrowser">Ouvre Polaris Key dans votre navigateur</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
+    <string name="signin_cli_opening">Ouverture de Polaris Key dans votre navigateur…</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
+    <string name="signin_cli_ifNotOpened">S’il ne s’est pas ouvert, rendez-vous sur %1$s</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
+    <string name="signin_cli_keys">Entrée rouvrir · c utiliser un code · Échap annuler</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
+    <string name="signin_cli_headless">Aucun navigateur sur cet ordinateur. Utilisez plutôt un code :</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {name} = the person's display name; {email} = an email address. Arguments: 1=name, 2=email. -->
+    <string name="signin_cli_signedIn">Connecté en tant que %1$s (%2$s)</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
+    <string name="signin_cli_license">%1$s · %2$s · %3$s est l’appareil %4$s sur %5$s</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
+    <string name="signin_cli_closeTab">Vous pouvez fermer l’onglet du navigateur.</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_cli_logoutConfirm">Se déconnecter de %1$s sur cet appareil ? (y/N)</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {command} = a terminal command, shown as is. Arguments: 1=command. -->
+    <string name="signin_cli_signInAgain">Exécutez %1$s pour vous reconnecter.</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_title">Se connecter avec un autre appareil</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
+    <string name="signin_approve_works">Valable %1$s</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_waiting">En attente de votre approbation sur l’autre appareil…</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_ask">Approuver un nouvel appareil ?</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_warning">N’approuvez que si vous êtes à l’origine de cette demande, sur un appareil qui se trouve devant vous. Personne chez Polaris Key ni aucun développeur ne vous le demandera jamais.</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_approve">Approuver et le connecter</string>
+    <string name="signin_approve_approve__macos">Approuver et le connecter</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_deny">Refuser</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_denied">Cette demande a été refusée. Utilisez un autre moyen de vous connecter.</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_expired">Ce code a expiré. Obtenez-en un nouveau.</string>
+    <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
+    <string name="signin_console_title">Se connecter à la console</string>
+    <!-- Console operator sign-in (SIGN-IN.md §3.12). Arguments: {idp} = the identity provider's name; {host} = a host name. Arguments: 1=idp, 2=host. -->
+    <string name="signin_console_next">Étape suivante : %1$s sur %2$s</string>
+    <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
+    <string name="signin_console_signedOut">Vous êtes déconnecté</string>
+    <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
+    <string name="signin_console_sessionEnded">Votre session a pris fin</string>
+    <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
+    <string name="signin_console_sessionEndedBody">Reconnectez-vous pour continuer. Vos modifications non enregistrées restent dans cet onglet.</string>
+    <!-- Console operator sign-in (SIGN-IN.md §3.12). Arguments: {email} = an email address. Arguments: 1=email. -->
+    <string name="signin_console_notOperator">%1$s ne fait pas partie du groupe des opérateurs.</string>
+    <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
+    <string name="signin_console_notConfigured">La connexion administrateur n’est pas configurée</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). -->
+    <string name="signin_expired_title">Ce code ou ce lien a expiré</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). -->
+    <string name="signin_expired_body">Les codes et les liens ne fonctionnent qu’une fois, pendant 10 minutes.</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). -->
+    <string name="signin_again">Se reconnecter</string>
+    <string name="signin_again__macos">Se reconnecter</string>
+    <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_identityOff_notice">%1$s n’utilise pas la connexion Polaris Key. Ouvrez %1$s et saisissez-y votre clé de licence.</string>
+    <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_identityOff_lede">Connectez-vous ici pour voir %1$s dans votre bibliothèque.</string>
+    <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_signout_title">Se déconnecter de %1$s sur cet appareil ?</string>
+    <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated). Arguments: 1=product, 2=tier. -->
+    <string name="signin_signout_released">%1$s cesse d’utiliser votre licence %2$s ici et libère sa place.</string>
+    <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number. Arguments: 1=n. -->
+    <plurals name="signin_signout_unsynced">
+        <item quantity="one">%1$d modification n’a pas encore été synchronisée.</item>
+        <item quantity="many">%1$d de modifications n’ont pas encore été synchronisées.</item>
+        <item quantity="other">%1$d modifications n’ont pas encore été synchronisées.</item>
+    </plurals>
+    <!-- Sign-out confirmation (SIGN-IN.md §4.9). -->
+    <string name="signin_signout_waitSync">Attendre la synchronisation</string>
+    <string name="signin_signout_waitSync__macos">Attendre la synchronisation</string>
+    <!-- Session ended (SIGN-IN.md §4.10). -->
+    <string name="signin_session_toastTitle">Vous avez été déconnecté</string>
+    <!-- Session ended (SIGN-IN.md §4.10). -->
+    <string name="signin_session_toastBody">Reconnectez-vous pour reprendre là où vous en étiez.</string>
+    <!-- Session ended (SIGN-IN.md §4.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_session_kitEnded">Votre connexion a pris fin. Reconnectez-vous pour continuer à utiliser %1$s.</string>
+    <!-- Sign-in provider buttons (SIGN-IN.md §3.3). -->
+    <string name="signin_provider_manage">Gérer les méthodes de connexion dans Polaris Key</string>
+    <string name="signin_provider_manage__macos">Gérer les méthodes de connexion dans Polaris Key</string>
+    <!-- Profile import (SIGN-IN.md §3.5). -->
+    <string name="signin_profile_changePicture">Changer de photo</string>
+    <string name="signin_profile_changePicture__macos">Changer de photo</string>
+    <!-- Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
+    <string name="signin_mail_replaced_subject">%1$s déconnecté sur %2$s</string>
+    <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform. Arguments: 1=device, 2=newDevice, 3=product, 4=date. -->
+    <string name="signin_mail_replaced_body">%1$s a été remplacé par %2$s lorsque vous vous êtes connecté à %3$s le %4$s. Il pourra se reconnecter plus tard si une place se libère. Si ce n’était pas vous, ouvrez Polaris Key et vérifiez vos appareils.</string>
+    <!-- Security email (SIGN-IN.md §3.15). -->
+    <string name="signin_mail_newDevice_subject">Un nouvel appareil s’est connecté à votre compte Polaris Key</string>
+    <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->
+    <string name="signin_mail_newDevice_body">%1$s s’est connecté le %2$s depuis %3$s. Si ce n’était pas vous, déconnectez-le dans Polaris Key, section Où vous êtes connecté.</string>
+    <!-- Security email (SIGN-IN.md §3.15). -->
+    <string name="signin_mail_open">Ouvrir Polaris Key</string>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_label">Code à 6 chiffres</string>
+    <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
+    <string name="core_fallback_title">Something went wrong</string>
+    <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->
+    <string name="core_fallback_message">Something went wrong (%1$s). Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_title">Not signed in</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_message">This device isn't signed in, or its license is no longer valid. Sign in or activate again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_found_title">Not found</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_found_message">That wasn't found. It may have been removed.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bad_request_title">Request refused</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bad_request_message">The request wasn't valid. Update the app, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_forbidden_title">Not allowed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_forbidden_message">You don't have permission to do that.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attestation_required_title">Device check needed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attestation_required_message">This needs a verified device. Let the app check this device, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attestation_rejected_title">Device check failed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attestation_rejected_message">This device couldn't be verified. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attestation_unavailable_title">Device check unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attestation_unavailable_message">Device verification isn't available for this app right now. Try again in a few minutes.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_rate_limited_title">Too many attempts</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_rate_limited_message">Too many attempts. Wait a moment and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_body_too_large_title">Too large</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_body_too_large_message">That is too large to send.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_method_not_allowed_title">Request refused</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_method_not_allowed_message">The request wasn't valid. Update the app, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_misconfigured_title">Service not set up</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_misconfigured_message">This service isn't set up correctly. Contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_registration_closed_title">Registration closed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_registration_closed_message">New devices can't register right now. Activate with a license key or sign in.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_value_not_representable_title">Value not accepted</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_value_not_representable_message">A value couldn't be saved. Change it and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_document_not_representable_title">Service problem</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_document_not_representable_message">The service couldn't prepare your settings. Contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_limit_title">Device limit reached</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_limit_message">This license is already on all its devices. Replace a device to use it here.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_disabled_title">License disabled</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_disabled_message">This license has been disabled. Contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_expired_title">License expired</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_expired_message">This license has expired. Renew it to continue.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_entitled_title">Not included</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_entitled_message">Your license doesn't include this.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_version_blocked_title">Update required</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_version_blocked_message">This version can't be used with your license. Update the app to continue.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_channel_not_allowed_title">Channel not included</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_channel_not_allowed_message">Your license doesn't include this release channel.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_hardware_mismatch_title">Device changed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_hardware_mismatch_message">This device's hardware changed. Activate again to use your license here.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_fingerprint_required_title">Device check failed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_fingerprint_required_message">This license needs a hardware fingerprint, which couldn't be read on this device.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_enroll_disabled_title">No free license</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_enroll_disabled_message">This app doesn't offer a free license. Enter a license key or sign in.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_enroll_claimed_title">Sign in to continue</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_enroll_claimed_message">This device's free license belongs to an account now. Sign in to use it.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_enroll_failed_title">Couldn't get a free license</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_enroll_failed_message">A free license couldn't be issued. Try again in a few minutes.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_managed_by_admin_title">Set by your organization</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_managed_by_admin_message">This setting is managed by your organization and can't be changed here.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_catalog_unavailable_title">Settings unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_catalog_unavailable_message">Settings can't be loaded right now. Try again in a few minutes.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_unusable_title">License no longer valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_unusable_message">Your license is no longer valid, so settings can't be loaded. Sign in or activate again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_disabled_title">Sign-in unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_disabled_message">Sign-in isn't turned on for this app.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_oidc_error_title">Sign-in failed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_oidc_error_message">Sign-in didn't finish. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unavailable_title">Sign-in unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unavailable_message">Sign-in isn't available right now. Try again in a few minutes.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_auth_method_disabled_title">Sign-in method unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_auth_method_disabled_message">That sign-in method is turned off. Choose another one.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_not_configured_title">Email sign-in unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_not_configured_message">Email sign-in isn't available right now. Choose another sign-in method.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_owned_title">License in another account</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_license_owned_message">This %1$s license is already in another Polaris Key account. A license never moves by its key.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_mismatch_title">Email not verified</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_mismatch_message">This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_link_conflict_title">Already linked</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_link_conflict_message">That sign-in method belongs to another Polaris Key account. Sign in to that account, or join the two accounts.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_last_link_title">Can't remove</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_last_link_message">This is your account's only sign-in method. Add another one before removing it.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_step_up_required_title">Confirm it's you</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_step_up_required_message">For your security, sign in again to continue.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_eligible_title">Offer unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_eligible_message">This offer isn't available to your account anymore. Refresh and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_download_auth_required_title">Sign in to download</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_download_auth_required_message">Sign in or activate a license to download this.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delivery_gate_missing_title">Download unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delivery_gate_missing_message">This download isn't set up yet. Contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upstream_rate_limited_title">Download busy</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upstream_rate_limited_message">Downloads are busy right now. Try again in a few minutes.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_server_misconfigured_title">Service not set up</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_server_misconfigured_message">This service isn't set up correctly. Contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_internal_error_title">Download failed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_internal_error_message">The download server had a problem. Try again in a few minutes.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_release_record_rejected_title">Release refused</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_release_record_rejected_message">The release wasn't published because a check failed. The publish log names the check.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_release_tag_is_pack_release_title">Release skipped</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_release_tag_is_pack_release_message">A release was skipped because its tag matches a content pack release. Rename the tag.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_feed_not_composable_title">Update check unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_feed_not_composable_message">Updates can't be checked right now. Try again in a few minutes.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_service_unavailable_title">Not available</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_service_unavailable_message">This app doesn't use this service.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_service_disabled_title">Not available</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_service_disabled_message">This service is turned off for this app.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_only_title">Offline mode</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_only_message">This app is running offline, so it didn't connect.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_insecure_base_url_title">Insecure connection</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_insecure_base_url_message">The app refused an insecure connection. Contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_jws_rejected_title">Activation file not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_jws_rejected_message">The activation file's signature isn't valid.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_claims_rejected_title">Activation file not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_claims_rejected_message">The activation file is for another product or device, or it has expired.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_trust_rejected_title">Activation file not trusted</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_trust_rejected_message">The activation file is signed by a key this app doesn't trust.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_inner_doc_rejected_title">Activation file not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_inner_doc_rejected_message">The license inside the activation file isn't valid.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_title">Activation file not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_message">The activation file couldn't be read.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_transport_title">Connection problem</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_transport_message">Check your connection and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_network_title">Can't connect</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_network_message">Can't reach Polaris Key. Check your connection and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_refresh_failed_title">Couldn't refresh</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_refresh_failed_message">Your license and settings couldn't be refreshed. Check your connection and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_failed_title">Couldn't check your license</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_failed_message">Your license couldn't be checked, so the app can't start. Check your connection and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_fetch_failed_title">Content missing</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_fetch_failed_message">Required content couldn't be downloaded, so the app can't start. Check your connection and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bridge_missing_title">App problem</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bridge_missing_message">The app's licensing bridge is missing. Reinstall the app or contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unknown_title">Something went wrong</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unknown_message">Something went wrong. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_release_refused_title">Not included</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_release_refused_message">Your license doesn't include this release.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_rejected_title">Activation file not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_rejected_message">The activation file was refused.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_import_unsupported_title">Not available here</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_import_unsupported_message">Offline activation isn't available here.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_report_unsupported_title">Not available here</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_report_unsupported_message">Device reports aren't available here.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_management_unsupported_title">Not available here</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_management_unsupported_message">Devices can't be managed from here. Manage them in your account.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_list_failed_title">Couldn't load devices</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_list_failed_message">Your devices couldn't be loaded. Check your connection and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_rename_failed_title">Couldn't rename</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_rename_failed_message">The device couldn't be renamed. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_deauthorize_failed_title">Couldn't remove device</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_deauthorize_failed_message">The device couldn't be removed. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_unsupported_title">Not available here</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_unsupported_message">License keys can't be entered here. Sign in instead.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_failed_title">Sign-in failed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_failed_message">Sign-in didn't finish. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_out_failed_title">Sign-out failed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_out_failed_message">Sign-out didn't finish. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bad_response_title">Unexpected answer</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bad_response_message">The service sent an answer the app couldn't use. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_network_error_title">Can't connect</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_network_error_message">Can't reach Polaris Key. Check your connection and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_server_error_title">Service problem</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_server_error_message">The service had a problem. Try again in a few minutes.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_cancelled_title">Sign-in cancelled</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_cancelled_message">Sign-in was cancelled.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_expired_title">Code expired</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_expired_message">The code expired before sign-in finished. Start again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_denied_title">Sign-in declined</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_denied_message">Sign-in was declined. Start again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_unavailable_title">Sign-in unavailable</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_unavailable_message">Sign-in isn't available right now. Try again in a few minutes.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_options_title">App not set up</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_options_message">The app's licensing isn't set up correctly. Contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_configured_title">App not set up</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_configured_message">The app's licensing isn't set up yet. Contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_title">Not available here</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_message">This isn't available here.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_timeout_title">Timed out</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_timeout_message">The service took too long to answer. Check your connection and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_response_too_large_title">Unexpected answer</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_response_too_large_message">The service sent an answer the app couldn't use. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_too_many_redirects_title">Connection problem</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_too_many_redirects_message">The connection was redirected too many times. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_insecure_redirect_title">Insecure connection</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_insecure_redirect_message">The app refused an insecure redirect.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_http_error_title">Service problem</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_http_error_message">The service answered with an error. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_response_title">Unexpected answer</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_response_message">The service sent an answer the app couldn't use. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_store_failed_title">Storage problem</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_store_failed_message">The app couldn't read or save its license on this device. Check that the app can write its data folder.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_error_title">Platform problem</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_error_message">The platform reported an error. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_no_token_title">Not activated</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_no_token_message">This device isn't activated yet. Activate it or sign in.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_mint_unavailable_title">Not available</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_mint_unavailable_message">This isn't available for this app.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_feed_rejected_title">Update check failed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_feed_rejected_message">The update information couldn't be verified, so nothing was installed.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_feed_rollback_title">Update check failed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_feed_rollback_message">The update information was older than what this device already has, so it was refused.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_record_rejected_title">Update not verified</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_record_rejected_message">The update couldn't be verified, so it wasn't installed.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_record_mismatch_title">Update not verified</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_record_mismatch_message">The update didn't match what was published, so it wasn't installed.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_payload_mismatch_title">Download corrupted</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_payload_mismatch_message">The update didn't download correctly, so it wasn't installed. Try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_swap_refused_title">Can't update here</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_swap_refused_message">This installation can't update itself. Update it the way you installed it.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_swap_failed_title">Update not finished</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_swap_failed_message">The update couldn't be applied. It will be tried again next launch.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_index_invalid_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_index_invalid_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_unsafe_path_title">Content refused</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_unsafe_path_message">Some content was refused because it contains an unsafe file path.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_duplicate_path_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_duplicate_path_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_case_collision_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_case_collision_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_path_conflict_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_path_conflict_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_layout_mismatch_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_layout_mismatch_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_content_stamp_invalid_title">App build problem</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_content_stamp_invalid_message">This build's content information isn't valid. Reinstall the app or contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_full_corrupt_title">Download corrupted</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_full_corrupt_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delta_artifact_mismatch_title">Download corrupted</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delta_artifact_mismatch_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delta_base_mismatch_title">Content changed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delta_base_mismatch_message">Installed content changed on this device, so a full download is needed.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delta_apply_failed_title">Update not applied</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delta_apply_failed_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_corrupt_title">Download corrupted</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_corrupt_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_source_missing_title">Content missing</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_source_missing_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_payload_hash_mismatch_title">Download corrupted</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_payload_hash_mismatch_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_ref_mismatch_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_ref_mismatch_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_length_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_length_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_magic_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_magic_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_unsupported_version_title">Content not supported</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_unsupported_version_message">This content needs a newer version of the app. Update the app.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_record_size_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_record_size_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_flags_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_flags_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_reserved_nonzero_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_reserved_nonzero_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_zero_length_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_zero_length_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_clen_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_clen_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_bundle_ref_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_bundle_ref_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_bundle_range_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_bundle_range_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_size_mismatch_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_size_mismatch_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_payload_mismatch_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_payload_mismatch_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunk_bundle_truncated_title">Download interrupted</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunk_bundle_truncated_message">A download was cut short. Check your connection and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunk_corrupt_title">Download corrupted</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunk_corrupt_message">Some content couldn't be installed. It will be downloaded again next time.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_plan_transport_unsupported_title">Can't download here</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_plan_transport_unsupported_message">This content can't be downloaded on this platform.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_plan_insufficient_disk_title">Not enough space</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_plan_insufficient_disk_message">There isn't enough free space for this content. Free up some space and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_plan_no_strategy_title">Can't install content</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_plan_no_strategy_message">This content can't be installed on this device.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_no_variant_title">Content not available</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_no_variant_message">This content isn't available for this device.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_type_unsupported_title">Content not supported</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_type_unsupported_message">This content needs a newer version of the app. Update the app.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_type_check_failed_title">Content not valid</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_type_check_failed_message">Some content failed its check and wasn't installed.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_not_pinned_title">Content not available</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_not_pinned_message">This content isn't part of this version of the app.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_not_entitled_title">Not included</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_not_entitled_message">Your license doesn't include this content.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_state_unreadable_title">Storage problem</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_state_unreadable_message">Installed content couldn't be read, so nothing new was installed. Restart the app.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pck_directory_refused_title">Content refused</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pck_directory_refused_message">Some content was refused because it contains files a content pack may not hold.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pck_engine_mismatch_title">Content not supported</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pck_engine_mismatch_message">This content needs a different version of the game. Update the game.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_rolled_back_title">Content restored</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_rolled_back_message">The last content update didn't start, so the previous version was restored.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_revoked_title">Content withdrawn</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_revoked_message">This content was withdrawn by its developer and can't be used.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_not_data_only_title">Content refused</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_not_data_only_message">Some content was refused because it contains files a data pack may not hold.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_marker_rejected_title">App build problem</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_marker_rejected_message">This build's built-in content isn't valid. Reinstall the app or contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_ok_title">License active</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_ok_message">Your license is active.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_grace_title">Offline grace</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_grace_message">The licensing service can't be reached. You can keep using the app until the grace period ends.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_expired_title">License expired</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_expired_message">Your license has expired. Connect to the internet or renew it to continue.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_revoked_title">Signed out</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_revoked_message">This device was signed out. Sign in or activate again to continue.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_needs_activation_title">Activate</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_needs_activation_message">Enter a license key or sign in to continue.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_version_too_old_title">Update required</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_version_too_old_message">This version is no longer supported. Update the app to continue.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_version_too_new_title">Not available on this license</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_version_too_new_message">This build is newer than your license allows.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_channel_not_entitled_title">Channel not included</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_channel_not_entitled_message">Your license doesn't include this release channel.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_not_applicable_title">No license needed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_not_applicable_message">This app doesn't need a license.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_ok_title">Activated</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_ok_message">Your license is active on this device.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_device_limit_title">Device limit reached</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_device_limit_message">This license is already on all its devices. Replace a device to use it here.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_fingerprint_required_title">Device check failed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_fingerprint_required_message">This license needs a hardware fingerprint, which couldn't be read on this device.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_hardware_mismatch_title">Device changed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_hardware_mismatch_message">This device's hardware changed. Activate again to use your license here.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_enroll_claimed_title">Sign in to continue</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_enroll_claimed_message">This device's free license belongs to an account now. Sign in to use it.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_disabled_title">License disabled</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_disabled_message">This license has been disabled. Contact the developer.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_expired_title">License expired</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_expired_message">This license has expired. Renew it to continue.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_attestation_required_title">Device check needed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_attestation_required_message">This license needs a verified device. Let the app check this device, then try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_rate_limited_title">Too many attempts</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_rate_limited_message">Too many attempts. Wait a moment and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_unauthorized_title">Key not accepted</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_unauthorized_message">That license key wasn't accepted. Check it and try again.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_enroll_disabled_title">No free license</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_enroll_disabled_message">This app doesn't offer a free license. Enter a license key or sign in.</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_refused_title">Activation refused</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->
+    <string name="core_activation_refused_message">Activation was refused (%1$s).</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_error_title">Activation failed</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_error_message">Activation didn't finish. Check your connection and try again.</string>
+</resources>

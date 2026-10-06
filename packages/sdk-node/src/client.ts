@@ -56,7 +56,6 @@ import {
   type TokenSource,
 } from "./core/token.js";
 import { TrustManager } from "./core/trust.js";
-import { buildSnapshot, reportSnapshot } from "./core/telemetry.js";
 import { ConfigClient, type ConfigClientOptions } from "./config/client.js";
 import { LicenseClient, type LicenseClientOptions } from "./license/client.js";
 import { reacquireToken } from "./license/endpoints.js";
@@ -67,7 +66,18 @@ import {
 } from "./devices/client.js";
 import { IdentityClient } from "./identity/client.js";
 import { ReleaseClient } from "./release/client.js";
+import { CommerceClient } from "./commerce/client.js";
+import { DistributionClient } from "./distribution/client.js";
+import { PolarisEventEmitter } from "./core/events.js";
+import { crashTagsFor, type CrashTags } from "./server.js";
 import { UpdateClient, type UpdateClientOptions } from "./update/client.js";
+import {
+  ensureActivated,
+  runBoot,
+  type BootOutcome,
+  type ClientBootOptions,
+  type EnsureActivatedResult,
+} from "./boot.js";
 import {
   discoverProduct,
   type DiscoverProductResult,
@@ -145,6 +155,12 @@ export class PolarisKeyClient {
   readonly identity: IdentityClient;
   readonly release: ReleaseClient;
   readonly update: UpdateClient;
+  /** What changed: license, config, updateAvailable, packs, store (§3.11). */
+  readonly events = new PolarisEventEmitter();
+  /** The public download model (§3.8). */
+  readonly distribution: DistributionClient;
+  /** Store purchases to licence flags (§3.9). */
+  readonly commerce: CommerceClient;
 
   private readonly cache: CacheManager;
   private readonly tokens: TokenManager;
@@ -154,9 +170,14 @@ export class PolarisKeyClient {
   private readonly probes: DevicesClientOptions["probes"];
   private timer: ReturnType<typeof setInterval> | null = null;
   private discoveryDoc: ProductDiscoveryDocument | null = null;
+  /** Whether the host pinned `expectedServices` (then boot skips discovery). */
+  private readonly pinnedServices: boolean;
   /** The token store's last `status()`, read at `init()` and before every report, so
    *  `supports()` can answer offline and synchronously. */
   private lastStoreStatus: StoreStatus | null = null;
+  /** The gate status `events.license` last reported. */
+  private lastStatus: LicenseState["status"] | null = null;
+  private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly capabilityContext: CapabilityContext;
 
   constructor(opts: PolarisKeyClientOptions & { localOnly?: boolean }) {
@@ -203,10 +224,22 @@ export class PolarisKeyClient {
     );
     // Device-code sign-in raises the same acquisition event activation does: a signed-in
     // device holds a licensed token exactly as an activated one does, and syncs the same way.
-    this.identity = new IdentityClient(this.core, this.tokens, () =>
-      this.onLicenseAcquired(),
+    this.identity = new IdentityClient(
+      this.core,
+      this.tokens,
+      () => this.onLicenseAcquired(),
+      () => this.license.deactivate(),
     );
-    this.release = new ReleaseClient(this.core, this.tokens);
+    this.release = new ReleaseClient(
+      this.core,
+      this.tokens,
+      () => this.discoveryDoc,
+      () => this.update,
+    );
+    this.distribution = new DistributionClient(this.core);
+    this.commerce = new CommerceClient(this.core, this.tokens, () =>
+      this.sync({ force: true }).then(() => undefined),
+    );
     this.update = new UpdateClient(
       this.core,
       this.tokens,
@@ -222,7 +255,28 @@ export class PolarisKeyClient {
     // `devices/report` carries the active pack set's id (plans/P4-01.md §2.11).
     this.devices.packSetId = () => this.update.packs.packSetId();
     this.devices.packInstalls = () => this.update.packs.packInstalls();
+    // The update-health half of the report (§3.13): the gate, the outlet and the journal's
+    // pending events, marked sent once a report carrying them was accepted.
+    this.devices.reportExtras = async () => ({
+      gate: this.license.status().status,
+      outlet: this.update.outlet?.id ?? null,
+      updates: await this.update.journal.pending().catch(() => []),
+    });
+    this.devices.reportAccepted = async (extras) => {
+      const ids = (extras.updates ?? []).map((e) => e.eventId);
+      if (ids.length > 0) await this.update.journal.markSent(ids);
+    };
 
+    this.pinnedServices = opts.expectedServices !== undefined;
+    // client.events (§3.11): config changes, pack progress and update offers forward here.
+    this.config.onConfigChange("*", (c) => this.events.safeEmit("config", c));
+    this.update.packs.on((p) => this.events.safeEmit("packs", p));
+    this.update.onUpdateAvailable = (check) =>
+      this.events.safeEmit("updateAvailable", check);
+    this.license.onDeactivated = async () => {
+      await this.identity.forget();
+      this.noteLicense();
+    };
     this.refreshIntervalSeconds = opts.refreshIntervalSeconds;
     this.onChange = opts.onChange;
 
@@ -271,6 +325,7 @@ export class PolarisKeyClient {
     await this.storeStatus();
     await this.tokens.load();
     await this.cache.load();
+    this.lastStatus = this.license.status().status;
     // Wire v4's update slices go through the same reload path: every committed feed and record
     // is re-verified against what this load trusts, and each channel's `seq` floor comes from
     // the feed that survives.
@@ -306,6 +361,37 @@ export class PolarisKeyClient {
     return result;
   }
 
+  /** The discovery document this session loaded, or null. */
+  discovery(): ProductDiscoveryDocument | null {
+    return this.discoveryDoc;
+  }
+
+  /** Whether the build pinned `expectedServices` (boot then needs no discovery round trip). */
+  get servicesPinned(): boolean {
+    return this.pinnedServices;
+  }
+
+  // ── One-call boot (SDK parity pass §3.4) ──────────────────────────────────────────────
+  /**
+   * Boot to a working, gated, updated app: discovery (when no services are pinned) → boot guard
+   * → sync → reacquire per `core.registration` → gate → update decision → required packs →
+   * mount, driving client-core's stage machine and reporting every step to `onStage`. Never
+   * prompts: a gate that needs the player ends `waiting`, and the host shows its activation UI.
+   */
+  boot(opts: ClientBootOptions = {}): Promise<BootOutcome> {
+    return runBoot(this, opts);
+  }
+
+  /** Steps 1–3 of `boot()`: sync, then register or enrol where the product allows it. */
+  ensureActivated(
+    opts: { registration?: boolean } = {},
+  ): Promise<EnsureActivatedResult> {
+    return ensureActivated(this, {
+      discover: !this.pinnedServices && this.discoveryDoc === null,
+      ...opts,
+    });
+  }
+
   /** What this client currently believes the product runs. */
   capabilities(): ServicesMap {
     return this.core.services();
@@ -338,6 +424,7 @@ export class PolarisKeyClient {
   async sync(opts: SyncOptions = {}): Promise<SyncResult> {
     const before = this.cache.etag("license");
     const beforeConfig = this.cache.etag("config");
+    const beforeValues = this.config.snapshot();
     const result = await sync(
       {
         ctx: this.core,
@@ -356,6 +443,8 @@ export class PolarisKeyClient {
     if (this.onChange && result.applied && changed) {
       this.onChange(this.license.status());
     }
+    this.config.emitChanges(beforeValues);
+    this.noteLicense();
     return result;
   }
 
@@ -387,18 +476,7 @@ export class PolarisKeyClient {
     if (!token) return;
     // A token write since init() may have fallen back to the file; report what is true now.
     await this.storeStatus();
-    const packSetId = await this.update.packs.packSetId().catch(() => null);
-    await reportSnapshot(
-      this.core,
-      token,
-      buildSnapshot(
-        this.cache,
-        this.probes ?? [],
-        this.caps(),
-        packSetId,
-        this.update.packs.packInstalls(),
-      ),
-    );
+    await this.devices.report();
   }
 
   private async onLicenseAcquired(): Promise<void> {
@@ -423,7 +501,37 @@ export class PolarisKeyClient {
    * Throws `PolarisError` carrying the §7 step that refused.
    */
   async importBundle(jws: string, now = nowSec()): Promise<ImportBundleResult> {
-    return importBundle(this.core, this.cache, jws, now);
+    const beforeValues = this.config.snapshot();
+    const r = await importBundle(this.core, this.cache, jws, now);
+    this.config.emitChanges(beforeValues);
+    this.noteLicense();
+    return r;
+  }
+
+  /** Emit `events.license` when the gate's status moved since it was last reported. */
+  private noteLicense(): void {
+    const state = this.license.status();
+    if (state.status === this.lastStatus) return;
+    const previous = this.lastStatus;
+    this.lastStatus = state.status;
+    this.events.safeEmit("license", { state, previous });
+  }
+
+  /**
+   * The crash-reporter tags for this install (SDK parity pass §3.14): `release`
+   * (`app@<version>[+<build>]`), `environment` (the channel) and `pkey.outlet`. Pass them to a
+   * Sentry init as `release`, `environment` and a tag; the Worker's Sentry hook maps an alert on
+   * them to the staged rollout it came from.
+   */
+  crashTags(
+    opts: { deliverable?: string; build?: string | null } = {},
+  ): CrashTags {
+    return crashTagsFor({
+      version: this.core.version,
+      channel: this.core.channel,
+      outlet: this.update.outlet?.id ?? null,
+      ...opts,
+    });
   }
 
   // ── Convenience passthroughs ──────────────────────────────────────────────────────────
@@ -449,6 +557,8 @@ export class PolarisKeyClient {
         status = null;
       }
     }
+    if (JSON.stringify(status) !== JSON.stringify(this.lastStoreStatus))
+      this.events.safeEmit("store", status);
     this.lastStoreStatus = status;
     return status;
   }
@@ -530,8 +640,73 @@ export class PolarisKeyClient {
     this.timer.unref?.();
   }
 
-  /** Stop the refresh timer. Safe to call more than once. */
+  /**
+   * The default refresh for a long-running host (SDK parity pass §3.11): sync every
+   * `intervalSeconds` (default 3600), at once after a wake (the timer fired much later than
+   * scheduled: the machine slept), and with backoff after a failed sync (30 s doubling up to the
+   * interval) so a host that comes back online syncs within a minute. Each sync honours the
+   * documents' ETags. Off unless called; `close()` stops it. The timer never holds the process
+   * open.
+   */
+  startRefresh(
+    opts: {
+      intervalSeconds?: number;
+      /** Test seam: the timer and clock (default `setTimeout` and `Date.now`). */
+      timers?: {
+        setTimeout: (fn: () => void, ms: number) => unknown;
+        now: () => number;
+      };
+    } = {},
+  ): void {
+    if (this.refreshTimer || this.core.localOnly) return;
+    const interval = Math.max(60, opts.intervalSeconds ?? 3600) * 1000;
+    const now = opts.timers?.now ?? Date.now;
+    const arm =
+      opts.timers?.setTimeout ??
+      ((fn: () => void, ms: number) => {
+        const t = setTimeout(fn, ms);
+        t.unref?.();
+        return t;
+      });
+    let backoff = 30_000;
+    const failed = (r: SyncResult): boolean => {
+      const docs = Object.values(r.documents).filter(
+        (d) => d && d.kind !== "skipped",
+      );
+      return docs.length > 0 && docs.every((d) => d!.kind === "error");
+    };
+    const schedule = (delay: number): void => {
+      const due = now() + delay;
+      this.refreshTimer = arm(() => {
+        if (this.refreshTimer === null) return;
+        // Slept through the deadline by more than a minute: a wake, so force past the ETags.
+        const woke = now() - due > 60_000;
+        void this.sync(woke ? { force: true } : {})
+          .then(
+            (r) => !failed(r),
+            () => false,
+          )
+          .then((ok) => {
+            if (this.refreshTimer === null) return;
+            if (ok) {
+              backoff = 30_000;
+              schedule(interval);
+            } else {
+              schedule(Math.min(backoff, interval));
+              backoff = Math.min(backoff * 2, interval);
+            }
+          });
+      }, delay) as ReturnType<typeof setTimeout>;
+    };
+    schedule(interval);
+  }
+
+  /** Stop the refresh timers. Safe to call more than once. */
   close(): void {
+    if (this.refreshTimer !== null) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = null;
+    }
     if (this.timer === null) return;
     clearInterval(this.timer);
     this.timer = null;

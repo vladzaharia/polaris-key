@@ -25,10 +25,13 @@ a product with no license service does not carry the gate.
 | `PolarisKeyRelease`  | the changelog, the install and artifact URLs (macOS **and** iOS)                                                                                     | Core                                      |
 | `PolarisKeyPacks`    | packs: the planner, appliers, install state and pipeline, and the `update.packs` facet (macOS **and** iOS)                                           | Core, libzstd 1.5.7                       |
 | `PolarisKeyUpdate`   | wire v4's `UpdateClient` and its `packs` facet (macOS **and** iOS), and the Sparkle wiring (**macOS only**)                                          | Core, Packs, Sparkle ≥ 2.9.6 (macOS only) |
-| `PolarisKeyUI`       | the brandable SwiftUI drop-in gate                                                                                                                   | Core, License, Config                     |
+| `PolarisKeyUI`       | the brandable SwiftUI gate, sign-in and offline activation over the `@Observable` `PolarisKeyModel`                                                  | Core, License, Config                     |
 | `PolarisKeyPlatform` | the Apple platform edges behind a C surface: AppDistributor, AppTransaction, StoreKit 2, Keychain, Background Assets (P5-05), App Attest (P6-02)     | — (standalone)                            |
 
-Platforms: macOS 14+, iOS 17+. Swift 6 (strict concurrency, everything `Sendable`).
+Platforms: macOS 14+, iOS 17+ (iPadOS and Mac Catalyst take the iOS paths and are built in CI).
+tvOS, visionOS and watchOS derive the device id from `identifierForVendor`; their platform header
+value waits on a shared enum (W8), so until then they report `ios`. Swift 6 (strict concurrency,
+everything `Sendable`).
 
 ## Install
 
@@ -59,6 +62,51 @@ Signature enforcement and the other clients:
 [Installing the SDKs from the feeds](/docs/build/install-from-feeds/). Working on the SDK itself,
 depend on a checkout instead: `.package(path: "../polaris-key/sdks/swift")`, with
 `package: "PolarisKey"` in each product.
+
+### Which products to add
+
+- **Every app:** `PolarisKey` (licensing, config, identity, devices, commerce, release notes).
+- **A SwiftUI app:** add `PolarisKeyUI` for the gate, sign-in and offline-activation views.
+- **Updates or packs:** add `PolarisKeyUpdate`. It links Sparkle on macOS only, so it is safe in
+  an iOS target. An iOS-only app that ships no packs can leave it out: App Store builds update
+  through the store, and `client.update` / `client.packs` exist only when it is imported.
+
+### From a bundled plist
+
+`pkey sdk --lang swift --write` writes `PolarisKey.plist` (product, base URL, trust pins,
+release-key pins, services, and optionally `keychainAccessGroup` and `appGroup`). Add it to the
+app target and start the client in one call. The version is the bundle's
+`CFBundleShortVersionString`:
+
+```swift
+let client = try await PolarisKeyClient.fromBundle()
+```
+
+## One client, every service
+
+Everything below hangs off one `PolarisKeyClient`. Names match the other SDKs up to casing
+(`notes/SDK-PARITY-PASS.md`).
+
+| Surface                                                                    | What it does                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `activate(key:)`, `enroll()`                                               | A typed `ActivationResult` sorted by the server's error code: `deviceLimit`, `fingerprintRequired`, `hardwareMismatch`, `enrollDisabled`, `enrollClaimed`, `licenseDisabled`, `licenseExpired`, `attestationRequired`, `rateLimited(retryAfterSeconds:)` or `refused(code:status:message:)`. An unknown 403 is never `deviceLimit`. `PolarisError` is a `LocalizedError` whose text comes from the shared copy.                                                                            |
+| `isEnabled(flag:)`, `license.isEntitled(_:)`                               | False whenever the gate is not usable (revoked, expired, blocked), even while a cached document still lists the flag.                                                                                                                                                                                                                                                                                                                                                                      |
+| `licenseInfo()`                                                            | Licence id, tier and tier label, device limit, expiry, profile and channels.                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `config.bool` / `int` / `double` / `string` / `decode(_:as:)`              | Typed reads of the resolved value.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `config.set(_:_:)`, `clear(_:)`, `localValues()`                           | The user's own values, persisted in UserDefaults (an app-group suite with `appGroup`). They beat the environment and a remote `default`, never `enforced` or `hidden`, and are checked against the catalog's `type` and `enum`.                                                                                                                                                                                                                                                            |
+| `config.fetchCatalog()`                                                    | The served catalog decoded as `ConfigCatalog` (entries, schema type, enum, UI hints).                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `events`                                                                   | One `AsyncStream<PolarisKeyEvent>` per subscriber, one event per difference: `license(status:previous:)`, `entitlement(name:value:previous:)`, `config(key:value:previous:source:)`, `updateAvailable(version:action:mandatory:channel:)`, `packs(pack:phase:done:total:)`, `store(reason:detail:)`, the same kinds and fields as every SDK. `changes` is the deprecated earlier name. `syncOnForeground()` syncs when the app becomes active; SwiftUI gets it from `.polarisKey(client)`. |
+| `devices.attest()`                                                         | App Attest on iOS: challenge, `attestKey` over SHA-256 of the request hash, POST, key id in the Keychain, a fresh key when the old one is invalid. A 403 `attestation_required` from edge-mint or a commerce claim attests once and retries once. macOS answers the typed `runtime` N/A.                                                                                                                                                                                                   |
+| `commerce.purchase(productID:)`, `restore()`, `startTransactionUpdates()`  | StoreKit 2 with `appAccountToken` set to the server binding, then claim, then `finish()` only after the claim, then sync.                                                                                                                                                                                                                                                                                                                                                                  |
+| `identity.signInWithBrowser()`, `identity.signOut()`, `identity.current()` | Device-code sign-in shown in `ASWebAuthenticationSession` (the interim until native OIDC, I-15); sign-out is `deactivate()` plus the `license` event; `current()` is the signed profile (an empty field reads nil), or nil when no licence or an anonymous profile names no one. `SignInPoll.ready` carries `identity` and `attached`. The client-level `signInWithBrowser()` and `signOut()` forward to these.                                                                            |
+| `report(extras:)`                                                          | The device report carries the gate, the outlet and up to 16 queued update-health events (`update_offered`, `update_downloaded`, `update_applied`, `update_confirmed`, `pack_failed`, `boot_rolled_back`), dropped only once a report is accepted.                                                                                                                                                                                                                                          |
+| `boot()`                                                                   | Drives the boot stages (discover, guard, sync, gate, decide, fetch, mount) and confirms the launch after `BOOT_OK_SECONDS`. The boot guard counts unconfirmed launches; an Apple app has no previous build, so it journals `boot_rolled_back` once instead.                                                                                                                                                                                                                                |
+| `update.install(_:)`, `update.feedUrl(_:)`, `update.fetch(...)`            | Opens the App Store, TestFlight or marketplace listing on iOS and hands off to Sparkle on macOS. `PolarisSparkle.start(client:)` follows licence and channel changes.                                                                                                                                                                                                                                                                                                                      |
+| `distribution`                                                             | The download-page model.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+
+Keychain and directories: `keychainAccessGroup` (`<TeamID>.<group>`) puts the token item in a
+shared access group so extensions read the same credential, and `appGroup` places the config,
+data, cache and state directories in the group container.
 
 ## Headless usage
 
@@ -649,6 +697,16 @@ try await update.packs.confirm()                             // this boot is hea
   is configured.
 - **Handlers.** `registerHandler(_:)` adds a type (`layout` `tree` or `container`, `activation`
   `hot` or `restart`, `supports(formatVersion)`, optional `activate`/`deactivate`).
+- **Apple-hosted Background Assets** (`packs.transport.apple`, P5-08). Pass
+  `PacksOptions(platformTransport: AppleAssetPackTransport(packs: ["diceroll.foes"]))`. A carried
+  pack is installed only through Background Assets: the asset pack `<pack>-c<contentApi>` (dots to
+  hyphens, as `pkey transport apple-ba package` uploads it), its files under `pkey/<asset pack>/`
+  resolved with `url(for:)` on every call. The engine verifies the marker and the payload or
+  treeDigest against the signed record, accepts a later unrevoked release (Apple-hosted packs
+  float), and never copies the files into its own store. Below iOS / macOS 26.4 the transport
+  answers the typed `version` N/A, and a build without the Background Assets Info.plist keys
+  answers `outlet`. Either way the pack is refused with `plan-transport-unsupported`, never
+  fetched from the CDN instead.
 
 ### Source changes (P4-23)
 

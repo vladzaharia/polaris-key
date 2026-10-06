@@ -1,0 +1,60 @@
+{
+  "_source": "Microsoft Entra v1 token endpoint (client credentials) and Store submission API GET /v1.0/my/applications answers, in Microsoft's published shapes (learn.microsoft.com/windows/uwp/monetize/create-and-manage-submissions-using-windows-store-services, learn.microsoft.com/entra/identity-platform/reference-error-codes). Ids and names are fictional.",
+  "token": {
+    "status": 200,
+    "body": {
+      "token_type": "Bearer",
+      "expires_in": "3599",
+      "ext_expires_in": "3599",
+      "expires_on": "1700003599",
+      "not_before": "1700000000",
+      "resource": "https://manage.devcenter.microsoft.com",
+      "access_token": "eyJ0eXAiOiJKV1Qi.fake-transient"
+    }
+  },
+  "secretExpired": {
+    "status": 401,
+    "body": {
+      "error": "invalid_client",
+      "error_description": "AADSTS7000222: The provided client secret keys for app '00000000-0000-0000-0000-000000000000' are expired. Visit the Azure portal to create new keys for your app.",
+      "error_codes": [7000222],
+      "timestamp": "2026-10-05 10:00:00Z",
+      "trace_id": "00000000-0000-0000-0000-000000000000",
+      "correlation_id": "00000000-0000-0000-0000-000000000000"
+    }
+  },
+  "secretWrong": {
+    "status": 401,
+    "body": {
+      "error": "invalid_client",
+      "error_description": "AADSTS7000215: Invalid client secret provided. Ensure the secret being sent in the request is the client secret value, not the client secret ID.",
+      "error_codes": [7000215]
+    }
+  },
+  "appNotFound": {
+    "status": 400,
+    "body": {
+      "error": "unauthorized_client",
+      "error_description": "AADSTS700016: Application with identifier '...' was not found in the directory '...'.",
+      "error_codes": [700016]
+    }
+  },
+  "applications": {
+    "status": 200,
+    "body": {
+      "value": [
+        {
+          "id": "9NBLGGH4R315",
+          "primaryName": "Tonebox",
+          "packageFamilyName": "Acme.Tonebox_8wekyb3d8bbwe",
+          "packageIdentityName": "Acme.Tonebox",
+          "publisherName": "CN=00000000-0000-0000-0000-000000000000",
+          "firstPublishedDate": "2025-01-01T00:00:00Z"
+        }
+      ],
+      "totalCount": 1,
+      "@nextLink": null
+    }
+  },
+  "unauthorized": { "status": 401, "body": null }
+}

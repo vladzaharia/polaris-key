@@ -6,9 +6,10 @@ P6-05: P6-06 landed the verified core and the conformance runner, P6-07 the lice
 devices, identity and release services and the umbrella client, P6-08 the update client and the
 pack engine, P6-09 the platform module's stable API, P6-10 the Godot binding on `:platform`, P6-11
 the Compose UI kit and P6-12 the Android glue. `parity.json` says which features are implemented;
-the docs' parity page renders it. The only rows it leaves planned are the ones Swift also leaves
-planned with no owner (`devices.attest`, `identity.oidc`, `packs.transport.steam`,
-`commerce.receipt`), each with a note.
+the docs' parity page renders it. The SDK parity pass (notes/SDK-PARITY-PASS.md §5.5) added
+attestation, commerce, update-health events and the typed activation results; the rows it leaves
+planned are `identity.oidc` (native browser sign-in waits on I-15) and `packs.transport.steam`,
+each with a note.
 
 | Module         | Kind                  | What                                                                                                                                                                      |
 | -------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -26,6 +27,7 @@ planned with no owner (`devices.attest`, `identity.oidc`, `packs.transport.steam
 | `:godot`       | Android library (AAR) | the Godot Android plugin (v2) over `:platform` ONLY, singleton `PolarisKeyAndroid` (`../godot/native/android/`); `checkPlatformOnly`                                      |
 | `:boundary`    | Android app (probe)   | an empty app per flavour; `tools/check_flavours.sh` proves the flavour boundary on its release                                                                            |
 | `:ui`          | Android library (AAR) | the Jetpack Compose UI kit (P6-11): boot shell, gate, activation, sign-in with QR, settings, devices, update banner and prompt, pack progress; see `ui/README.md`         |
+| `:billing`     | Android library (AAR) | Play Billing as licence flags (SP-K05): `PolarisPlayBilling` buys with the licence binding as `obfuscatedAccountId`, claims, acknowledges after the claim, restores       |
 
 `:ui` sees `:sdk` and never `:platform` or `:android`. No JVM module has an Android
 dependency, each service module depends on `:core` only (never on a sibling; `:sdk` is the one
@@ -143,18 +145,82 @@ client.identity.waitForSignIn(prompt)
 
 - **`:license`**: `LicenseClient.status()` (the §5 gate over the verified cache and the clock
   floor), `activate`, `enroll`, `deactivate` (remote best-effort, local wipe mandatory),
-  `entitlements`, `isEntitled`, `profile`, `licenseId`, `entitledChannels` (the grants, raw, or
-  `["stable"]`). A 401 re-acquires once per pass (§5): `POST /license/token`, or re-registration
+  `entitlements`, `entitlementValue`, `isEntitled`, `licenseInfo` (licence id, tier, tier label,
+  device limit, profile, channels), `profile`, `licenseId`, `entitledChannels` (the grants, raw, or
+  `["stable"]`). **`isEntitled` answers `false` whenever the gate is not usable** (revoked,
+  expired, blocked, never activated; S-19 G11), whatever the last document said; it used to read
+  the document alone. Activation answers a typed `ActivationResult` whose every refusal carries the
+  server's registry `code`: `DeviceLimit`, `Unauthorized`, `FingerprintRequired`,
+  `HardwareMismatch`, `EnrollDisabled`, `EnrollClaimed`, `LicenseDisabled`, `LicenseExpired`,
+  `AttestationRequired`, `RateLimited(retryAfterSeconds)`, `Refused(code, status, message)` for any
+  other 4xx, and `Error` (`network` or `server-error`). An unknown 403 is `Refused`, never
+  `DeviceLimit` (notes/SDK-PARITY-PASS.md §3.1). A 401 re-acquires once per pass (§5): `POST /license/token`, or re-registration
   for a registered-without-licence device (P1b-06).
 - **`:config`**: `ConfigClient.config(key, default)` and `configSource` (enforced or hidden, then
   local, environment, remote default, fallback), `listUserConfig`, `secret`, `fetchSchema` (null
   on any failure), `mintToken` (edge-mint, cached in memory only and bound to the device token).
-  `ConfigResolution` is the pure resolver `config-matrix.json` pins.
+  `ConfigResolution` is the pure resolver `config-matrix.json` pins. **Local overrides**
+  (notes/SDK-PARITY-PASS.md §3.11): `set(key, value)` persists one (it beats a remote default,
+  never an enforced or hidden key: `managed_by_admin`), checked against the catalog entry's schema
+  once `fetchCatalog()` has run, else against the document's JSON type (`invalid-options`);
+  `clear(key)` and `clearAll()` remove them. They live in `local-config.json` beside the token
+  store (on Android, the Keystore store's no-backup directory), or any `StateSlot` passed as
+  `ConfigClientOptions.localStore`. This deliberately differs from the plan's Jetpack DataStore
+  (notes/SDK-PARITY-PASS.md §3.11, SP-K07): one small JSON file read whole and replaced
+  atomically keeps `:config` free of an Android dependency, the same on the JVM and Android, and
+  on Android the no-backup directory keeps overrides out of cloud backups, as the token store is.
+  `setting(key)` is a live `StateFlow` of the key's effective value and `changes` a
+  `SharedFlow<ConfigChange>` of every change (a local override or a new document). `fetchCatalog()` / `catalog` type the served catalog (label, description, schema,
+  widget) for a settings screen.
+- **`client.events`**: one multi-subscriber `SharedFlow<PolarisEvent>`: `License` (a sync that
+  changed the documents, an activation), `Config` (a key's value moved), `UpdateAvailable` (a
+  decision offered a newer build; also `update.offers`) and `Packs` (pack progress).
+- **Channels**: `channelChoices()` lists the current channel, `stable` and every channel the licence
+  grants, and `lockedBy` names the outlet when its capabilities forbid a switch (store, Steam,
+  package-managed builds). `setChannel(channel)` switches at runtime (persisted beside the store;
+  `null` returns to the build's channel), refused `channel_not_allowed` when the outlet locks it or
+  the licence does not grant it, then syncs so documents and decisions follow.
+- **Java callers** (SP-K11): `PolarisKeyFutures(client)` wraps the suspend API as
+  `CompletableFuture`s (`start`, `sync`, `status`, `isEntitled`, `licenseInfo`, `activate`,
+  `enroll`, `setConfig`, `decide`, `install`, `fetch`, `setChannel`, `crashTags`, …;
+  `PolarisKeyFutures.create(options)` builds the client), and every options class has
+  `@JvmOverloads` constructors.
 - **Devices** (in `:core`, as the registry files them): `registerDevice`, `listDevices`,
   `renameDevice`, `deauthorizeDevice`, the report, and two ports: `FingerprintSource`
   (`JvmFingerprintSource` on a desktop) and `DeviceFactsSource` (`JvmDeviceFactsSource`); the
   Android implementations are `:android`'s.
+- **`devices.attest()`** (P6-02, notes/SDK-PARITY-PASS.md §3.10): `client.devices.attest()` runs the
+  Worker's challenge, the platform token and `POST /devices/attest` through an
+  `AttestationProvider`: Play Integrity on a play build Google Play installed (`:android`'s
+  `PlayIntegrityAttestation`, installed by `PolarisKeyAndroid.client`), the typed `outlet` N/A on any
+  other Android build and `runtime` on a JVM desktop. Edge-mint and commerce claims that answer
+  `attestation_required` attest once and retry once.
+- **`client.commerce`** (P6-01, §3.9): `binding()` (hand `bindingId` to the store before buying),
+  `claim(store, payload)`, `claimPlay`, `claimSteam` (the host passes the `GetAuthTicketForWebApi`
+  hex ticket; works on the JVM), `claimAppStore`, typed `ClaimResult`s (`Ok`, `NotOwned`,
+  `AttestationRequired`, `Refused(code, reason)`), `hiddenHere`/`isUnlocked` (App Store 3.1.3(b)).
+  After an `Ok` claim call `sync(force = true)`. `polaris-key-billing`'s `PolarisPlayBilling`
+  (`PolarisPlayBilling.create(context, client)`) is the one-call Play purchase: `purchase(...)`
+  sets the binding as `obfuscatedAccountId`, claims, acknowledges only after the claim
+  answered ok and syncs; `restore()` and the `PurchasesUpdatedListener` loop claim what Play holds,
+  each purchase under its own product. When Play Billing is unavailable both answer a typed
+  `BillingFailed` (`unsupported`); `restore()`'s `Restored.unlisted` names the product types Play
+  could not list. Built on Play Billing Library 8 (Play's floor for new apps and updates from
+  31 August 2026).
 - **`:identity`**: `beginSignIn`, `pollSignIn` (once), `waitForSignIn` (paced, cancellable).
+- **Delivery helpers** (notes/SDK-PARITY-PASS.md §3.5–§3.8, §3.14): `release.fetch(target, to,
+onProgress)` downloads one build of a verified release record (a `binary` decision, a version +
+  build + record hash, or a record you verified) from discovery's builds template, with the bearer
+  and the `X-PKey-*` headers gated delivery reads, in bounded `Range` windows resumed with
+  `If-Range`; nothing is left at `to` unless size and SHA-256 match (`payload-mismatch`
+  otherwise). `update.feedUrl(kind)` / `appcastUrl()` expand discovery's `appcast`, `winsparkle`,
+  `velopack`, `appInstaller` and `zsync` templates (the typed `product` N/A when one is not
+  advertised). `distribution.downloadModel()` / `thisPlatform()` type the public download page.
+  The SDK builds no customer-portal URLs (owner decision Q6): a "Manage devices" or "Sign in"
+  link is the server-supplied `manageUrl` / `signInUrl` on the refusal, once the Worker sends it
+  (PX-W8).
+  `crashTags()` answers `release` (`app@<version>[+<build>]`), `environment` and `pkey.outlet`
+  for your crash reporter.
 - **`:release`**: `changelog`, `installUrl`, `downloadUrl` (built, never fetched), `verifyRecord`
   (a `pkey-release+jws` against the keys the app pins; `:core`'s `verifyReleaseRecord`, which the
   update engine shares).
@@ -193,6 +259,12 @@ skipVersion)`, `releaseRecord(hash)`, `buildUrl(version, buildId)` and `install(
   count unconfirmed launches, roll back after two with `skipVersion`, the confirmation rows), with
   `DirUpdateSlots` and `FileBootGuardStore` as the default JVM slots and state; outlet signals come
   through `OutletSignalReader` (Android's reader is `:android`'s).
+  `client.bootGuard(slots)` builds one over `boot-guard.json` beside the token store, journaling to
+  `client.updateEvents`. A driver that keeps working after `install()` returns (a Play flexible
+  update) is a `ProgressiveInstallDriver`: `progress` is a `StateFlow<InstallStage>` (`Idle`,
+  `Downloading(done, total)`, `ReadyToRestart`, `Failed`), `finish()` installs the downloaded update
+  and `resume()` re-reads the platform on return to the foreground. `update.installDriver` is the
+  driver in use; `install()` journals `update_applied` when a `DesktopInstallDriver` hands off.
 - **`:packs`**: `PackEngine` (`load`, `ensure`, `ensureReleases`, `estimate`, `state`, `rollback`,
   `confirm`, `recoverState`, `revocations`, `isAvailable`, `packFor`, `registerHandler`, progress
   events) over the `PackStorage` port (`DirPackStorage` under the store's data directory, never a
@@ -210,6 +282,18 @@ skipVersion)`, `releaseRecord(hash)`, `buildUrl(version, buildId)` and `install(
   (`tools/check_16k_alignment.py`, in the `kotlin` CI job, and on the `:boundary` APKs in
   `tools/check_flavours.sh`). Where the native library cannot load, `supports(packs.apply.delta)`
   answers `dependency`.
+
+**Update health.** Every update outcome is journaled for staged-rollout auto-halt (P6-03,
+notes/SDK-PARITY-PASS.md §3.13): `update.decide()` records `update_offered` once per offered
+release, `BootGuard` (pass `events = client.updateEvents`) records `update_applied`,
+`boot_rolled_back` (`failed-boots`, or `no-previous` when nothing could be restored),
+`update_reverted` and, on the first healthy launch of a new version (staged swap or
+platform-installed), `update_confirmed`; `PacksClient` records `update_downloaded`,
+`update_applied` and `pack_failed` per pack, and `:android`'s install drivers record
+`update_downloaded` and `update_applied`. The journal lives in `update-events.json` beside the
+token store (`Store.stateDirectory`; in memory for a store without one), never in the verified
+cache. `report()` carries the oldest 16 as `updates`, with `gate` and `outlet`, and drops them once
+the Worker accepted the report.
 
 **Typed catalog mirror.** `pnpm gen:mirrors --catalog catalog.json --out-dir <dir> --lang kotlin
 --kotlin-package com.example.catalog` writes `ConfigSchema.generated.kt`, a dependency-free
@@ -366,11 +450,31 @@ client.update.install(check)   // In-App Updates (play) or the verified PackageI
   one `payload` artifact, downloaded into `filesDir/pkey/<product>/updates/apk/`, size and SHA-256
   checked, then `ApkInstaller`'s verified session; every refusal is `swap-refused` with its reasons.
   `DirectInstallDriver.launchOutcome(context)` reads the journaled result at the next launch.
+- **Lifecycle** (SP-K08): `PolarisKeyLifecycle.install(application, client)` (from
+  `Application.onCreate`) tracks the current activity (`AndroidOptions(activity =
+lifecycle::currentActivity)`), syncs when the app comes to the foreground (once a minute at most;
+  ETags and backoff still apply) and calls the install driver's `resume()`. `PlayInstallDriver`
+  reports a flexible update's download through `progress`, journals `update_downloaded` when Play
+  has it, and `finish()` completes it (`update_applied`); pass the activity's result for
+  `InAppUpdates.REQUEST_CODE` to `activityResult(requestCode, resultCode)`. A periodic background
+  sync is your own WorkManager worker calling `client.sync()`: the SDK adds no WorkManager
+  dependency.
 - **`PlayPackTransport`** (`packs.transport.play`): on play, `PadPackTransport` re-reads each carried
   pack's PAD location on every call (never persisted), finds `pkey/` or `pkey#tcf_*/`, and hands
   `:packs` an embedded baseline the marker, record and stamp pin verify; `ensure(packId)` waits for
   COMPLETED, asking the confirm hook before Play's cellular dialog. On direct it answers
   `Unsupported(outlet)`. A pack delivered mid-session mounts at the facet's next start.
+
+## Samples
+
+`samples/cli` (`:sample-cli`) is a runnable command-line app on `polaris-key-sdk` alone: `status`,
+`activate <key>`, `config <key>`, `set <key> <json>`, `channels`, `update` and `tags`.
+
+```sh
+PKEY_PRODUCT=djdl PKEY_TRUST=k1=<base64url key> ./gradlew :sample-cli:run --args="status"
+```
+
+Its test drives every command against a scripted Worker, so it builds and runs with the JVM modules.
 
 ## Build and test
 
@@ -378,7 +482,7 @@ client.update.install(check)   // In-App Updates (play) or the verified PackageI
 cd sdks/kotlin
 # JVM modules (JDK 17; no Android SDK needed with -Ppkey.jvmOnly=true)
 ./gradlew -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test :release:test \
-          :update:test :packs:test :sdk:test :conformance:test checkModuleBoundaries
+          :update:test :packs:test :sdk:test :conformance:test :sample-cli:test checkModuleBoundaries
 python3 tools/check_16k_alignment.py   # zstd-jni's Android natives are 16 KB page aligned
 # Android modules
 ./gradlew :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest \

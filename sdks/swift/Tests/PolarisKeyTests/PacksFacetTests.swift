@@ -345,7 +345,17 @@ final class PacksFacetTests: XCTestCase {
         let (c, update) = try await client(stamp: try stampFile(v1))
         let phases = Locked2<[String]>([])
         update.packs.on { e in phases.with { $0.append(e.phase) } }
+        var events = c.events.makeAsyncIterator()
         let install = try await update.packs.ensure(["djdl.l10n"])[0]
+        // The same progress reaches `client.events` as `packs` (pack, phase, done, total).
+        var packPhases: [String] = []
+        while let e = await events.next() {
+            guard case .packs(let pack, let phase, _, _) = e else { continue }
+            XCTAssertEqual(pack, "djdl.l10n")
+            packPhases.append(phase)
+            if phase == "done" { break }
+        }
+        XCTAssertEqual(packPhases.last, "done")
         XCTAssertEqual(install.recordSha256, v1.recordSha256)
         let dir = try await update.packs.path("djdl.l10n")
         XCTAssertEqual(

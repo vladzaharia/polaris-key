@@ -502,6 +502,10 @@ def _journal_runs(text: Optional[str], index_sha256: str, runs: int) -> Set[int]
 # ── The engine ───────────────────────────────────────────────────────────────────────────────
 
 
+#: At most this many recent installs ``pack_installs()`` keeps: the Worker reads 8 (P4-17).
+MAX_PACK_INSTALL_REPORTS = 8
+
+
 class PackEngine:
     """The pipeline. Construct it with the host's ports, call :meth:`load` once, then
     :meth:`ensure`."""
@@ -600,6 +604,9 @@ class PackEngine:
         self._doc: Optional[Dict[str, Any]] = None
         #: Plan ids ``estimate`` staged an index under, reused by the next ``ensure``.
         self._preflight_plans: Dict[str, Tuple[str, str]] = {}
+        #: The newest finished installs for ``devices/report``'s ``packInstalls`` (P4-17); in
+        #: memory only, at most ``MAX_PACK_INSTALL_REPORTS``.
+        self._install_reports: List[Dict[str, Any]] = []
         # plans/P4-13.md §2.5: the sibling document as loaded and updated; every revocation
         # verified in this process (loaded or learned), by target; the JWS of each learned in
         # this process; the document's issue; whether the file exists (never created empty).
@@ -2142,6 +2149,7 @@ class PackEngine:
                     False,
                     delegation,
                 )
+                self._report_install(pack_id, pre.installs, variant, cand, first_failure)
                 self._emit(PackProgress(pack_id, "done", total, total))
                 return install
             f = result.verdict
@@ -2160,6 +2168,48 @@ class PackEngine:
         raise first_failure or PackError(
             ErrorCode.PLAN_NO_STRATEGY, f"No way to install {pack_id}.", pack_id=pack_id
         )
+
+    def pack_installs(self) -> List[Dict[str, Any]]:
+        """The newest finished installs, oldest first, for ``devices/report``'s
+        ``packInstalls`` (P4-17): ``{pack, from, to, strategy, bytes, fallbackUsed,
+        failureStage?}``. A first install (nothing to move from) is not reported. A copy."""
+        return [dict(r) for r in self._install_reports]
+
+    def _report_install(
+        self,
+        pack_id: str,
+        installs: Sequence[Mapping[str, Any]],
+        variant: Mapping[str, Any],
+        cand: Mapping[str, Any],
+        first_failure: Optional[PackError],
+    ) -> None:
+        """Keep one finished install for :meth:`pack_installs` (client-core ``reportInstall``)."""
+        frm: Optional[str] = None
+        if cand.get("strategy") == "delta":
+            for d in variant.get("deltas") or ():
+                if not isinstance(d, Mapping):
+                    continue
+                ref = d.get("artifact") if d.get("scope") == "payload" else d.get("patch")
+                if isinstance(ref, Mapping) and ref.get("sha256") == cand.get("delta"):
+                    frm = d.get("from") if isinstance(d.get("from"), str) else None
+                    break
+        if frm is None and installs:
+            frm = installs[0].get("payloadSha256")
+        to = variant["payload"]["sha256"]
+        if not frm or frm == to:
+            return
+        entry: Dict[str, Any] = {
+            "pack": pack_id,
+            "from": frm,
+            "to": to,
+            "strategy": cand["strategy"],
+            "bytes": int(cand.get("bytes") or 0),
+            "fallbackUsed": first_failure is not None,
+        }
+        if first_failure is not None:
+            entry["failureStage"] = first_failure.code
+        self._install_reports.append(entry)
+        del self._install_reports[:-MAX_PACK_INSTALL_REPORTS]
 
     def _type_check(
         self,
