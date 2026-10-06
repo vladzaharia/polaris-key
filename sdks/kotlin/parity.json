@@ -59,7 +59,7 @@
     },
     "core.copy": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-21",
       "note": "Copy.generated.kt (gen:constants) carries the tables, but there is no copy.message(code)/copy.title(code) API with the fallback and placeholder fill over them, and no unit test of one; the Android kit's PolarisCopy uses its own strings."
     },
     "license.gate": {
@@ -148,7 +148,7 @@
     },
     "identity.oidc": {
       "status": "planned",
-      "unowned": true,
+      "wp": "I-15",
       "note": "Only through a host-supplied sign-in closure, as in Swift; no work package gives the Kotlin SDK its own browser sign-in (P6-07)."
     },
     "identity.devicecode": {
@@ -315,7 +315,7 @@
     },
     "packs.transport.steam": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-28",
       "except": [
         {
           "runtime": "android",
@@ -340,7 +340,7 @@
     },
     "ui.boot": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-20",
       "note": "The one-call boot is :ui's PolarisBootState.launch over client.bootHost(), an Android library; there is no JVM boot API the :conformance replayer can drive, so boot-cold-register cannot replay yet."
     },
     "ui.kit": {

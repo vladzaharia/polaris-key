@@ -30,7 +30,7 @@
     },
     "core.local": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-15",
       "note": "No local-only client in React; P1b-07 leaves it unowned."
     },
     "core.headers": {
@@ -123,7 +123,7 @@
     },
     "config.local": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-13",
       "note": "Not built: React has no persisted device-local override API (config.set, config.setting, onConfigChange); ConfigPanel shows the delivered values only (SP-R05, SDK-PARITY-PASS §5.2)."
     },
     "devices.fingerprint": {
@@ -159,7 +159,7 @@
     },
     "telemetry.updates": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-14",
       "note": "Half built: bearer mode's BearerSession queues P6-03 update events and drains at most 16 per POST /<p>/devices/report (dropping them only on a 200), but nothing records them: the adapter exposes no record call and the browser update path journals no update_offered, and the desktop renderer forwards none (SP-R11, SDK-PARITY-PASS §5.2).",
       "except": [
         {
@@ -194,12 +194,12 @@
     },
     "release.fetch": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-12",
       "note": "Not built: no verified licensed download (bearer delivery, Range resume, size and SHA-256 check) in React; the release client only builds URLs (SP-R09, SDK-PARITY-PASS §5.2)."
     },
     "release.distribution": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-12",
       "note": "Not built: React does not fetch GET /<p>/distribution/download.json or expose the download model (the Worker's CORS list already covers it) (SP-R09, SDK-PARITY-PASS §5.2)."
     },
     "update.check": {
@@ -211,7 +211,7 @@
     },
     "update.feeds": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-12",
       "note": "Not built: no update.feedUrl() for a desktop host (feed-url-matrix.json) (SP-R08, SDK-PARITY-PASS §5.2).",
       "except": [
         {
@@ -231,12 +231,12 @@
     },
     "update.driver": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-15",
       "note": "No updater hand-off in React, and no work package adds one."
     },
     "update.bootguard": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-15",
       "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
     },
     "outlet.detect": {
@@ -245,7 +245,7 @@
     },
     "crash.tags": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-12",
       "note": "Not built: no crashTags() in React; no task yet (plans/SP-00.md §5; SDK-PARITY-PASS §5.2)."
     },
     "packs.record": {
@@ -360,7 +360,7 @@
     },
     "ui.boot": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-12",
       "note": "Not built: client-core's stage functions are re-exported (ui.stages), but React has no one-call boot() over discovery, register, trust, documents and report (SP-R06, SDK-PARITY-PASS §5.2)."
     },
     "ui.kit": {
@@ -374,7 +374,7 @@
     },
     "commerce.receipt": {
       "status": "planned",
-      "wp": "LX-20",
+      "wp": "SP-16",
       "note": "Required. LX-20 builds the client side through client-core over P6-01's Worker bridge. The bearer engine already speaks GET /<p>/distribution/commerce/binding and POST .../claim, but the Worker's CORS allow-list (packages/worker/src/core/cors.ts CORS_SERVICE_PATHS) does not cover them, so a cross-origin page cannot use them yet; the desktop bridge verbs wait on the v4 host (SP-N10)."
     }
   }
