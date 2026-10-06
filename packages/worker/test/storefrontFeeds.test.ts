@@ -18,6 +18,10 @@
  * `test/fixtures/feeds/` (`UPDATE_FEED_GOLDENS=1` rewrites them).
  *
  * The `pkeyci_` lookup seam (`core/ciTokens.ts`) is mocked, as in the other CI-route suites.
+ *
+ * HA-07: with an image host and hosted copies, the AltStore sources name the copies
+ * (`altstore-stable-hosted.json`); the golden files above have no image host, so they hold the
+ * developer's URLs exactly as before.
  */
 
 import { createHash } from "node:crypto";
@@ -42,6 +46,12 @@ const tokens = vi.hoisted(
 vi.mock("../src/core/ciTokens.js", () => ({
   lookupCiToken: async (_env: unknown, _db: unknown, token: string) =>
     tokens.get(token) ?? null,
+}));
+// HA-07's kill switch (a code constant until HA-10), controllable per test.
+const hosting = vi.hoisted(() => ({ on: true }));
+vi.mock("../src/core/assetHosting.js", () => ({
+  ASSET_HOSTING_ENABLED: true,
+  assetHostingEnabled: () => hosting.on,
 }));
 
 import { parseManifest } from "@polaris-key/manifest";
@@ -79,6 +89,8 @@ import {
 } from "../src/services/distribution/feeds/select.js";
 import { buildHooks } from "../src/core/hooks.js";
 import { feedStateStamp } from "../src/services/distribution/feeds/cache.js";
+import { hostedArtStamp } from "../src/services/distribution/feeds/art.js";
+import { seedHosted } from "./hostedFixture.js";
 import { loadProduct } from "../src/core/products.js";
 import { SERVICES } from "../src/mount.js";
 
@@ -1784,5 +1796,158 @@ describe("storefront feeds: AltStore and Obtainium read the shared listing model
       NOW,
     );
     expect(await stamp()).not.toBe(withModel);
+  });
+});
+
+// ── Hosted art (HA-07) ───────────────────────────────────────────────────────────────────────
+
+describe("storefront feeds: the AltStore sources name hosted copies (HA-07)", () => {
+  const IMG = "https://img.example.test";
+  const ICON = "https://cdn.example.test/diceroll/icon.png";
+  const HEADER_NEW = "https://cdn.example.test/diceroll/header-v2.png";
+  const HEADER_OLD = "https://cdn.example.test/diceroll/header.png";
+  const SHOT_1 = "https://cdn.example.test/diceroll/shot-1.png";
+  const SHOT_3 = "https://cdn.example.test/diceroll/shot-3.png";
+  const I = "1".repeat(64);
+  const S1 = "2".repeat(64);
+  const S2 = "3".repeat(64);
+  const H = "4".repeat(64);
+  const ref = (kind: string, src: string) => JSON.stringify({ kind, src });
+
+  afterEach(() => {
+    hosting.on = true;
+  });
+
+  /** The world, with an image host and an AltStore listing in HA-04's normalised form. */
+  async function hostedWorld(): Promise<World> {
+    const w = await setup({ blobOrigin: BYTES });
+    w.env.IMG_ORIGIN = IMG;
+    await w.db.run(
+      "UPDATE dist_outlets SET listing_json = ? WHERE product = ? AND outlet_id IN ('altstore', 'altstore-pal')",
+      JSON.stringify({
+        ...LISTING,
+        iconUrl: undefined,
+        icon: { kind: "url", src: ICON },
+        header: { kind: "url", src: HEADER_NEW },
+        screenshots: [
+          { kind: "url", src: SHOT_1 },
+          { kind: "repo", src: "art/shot-2.png" },
+          { kind: "url", src: SHOT_3 },
+        ],
+      }),
+      SLUG,
+    );
+    // The icon and the first two screenshots were pulled for exactly these refs.
+    await seedHosted(w.db, SLUG, "listing.icon", {
+      sha256: I,
+      pulledRef: ref("url", ICON),
+      widths: [64, 128],
+    });
+    await seedHosted(w.db, SLUG, "listing.screenshot:1", {
+      sha256: S1,
+      pulledRef: ref("url", SHOT_1),
+    });
+    await seedHosted(w.db, SLUG, "listing.screenshot:2", {
+      sha256: S2,
+      pulledRef: ref("repo", "art/shot-2.png"),
+    });
+    // The header's ref changed and the new pull has not succeeded: the copy is the OLD art.
+    await seedHosted(w.db, SLUG, "listing.header", {
+      sha256: H,
+      status: "failed",
+      pulledRef: ref("url", HEADER_OLD),
+    });
+    return w;
+  }
+
+  it("altstore/stable/source.json matches altstore-stable-hosted.json", async () => {
+    const w = await hostedWorld();
+    const { res, body, doc } = await feed(w, "altstore/stable/source.json");
+    expect(res.status, body).toBe(200);
+    await golden("altstore-stable-hosted.json", body);
+    // The originals on the image host, never a WebP variant.
+    expect(doc.iconURL).toBe(`${IMG}/${SLUG}/a/${I}`);
+    expect(doc.apps[0].iconURL).toBe(`${IMG}/${SLUG}/a/${I}`);
+    expect(doc.apps[0].screenshots).toEqual([
+      `${IMG}/${SLUG}/a/${S1}`,
+      // A repo path has no URL of its own: the hosted copy is its only one.
+      `${IMG}/${SLUG}/a/${S2}`,
+      // No copy yet: the declared URL, as before HA-07.
+      SHOT_3,
+    ]);
+    // A copy pulled for another ref never stands in: the declared URL stays.
+    expect(doc.headerURL).toBe(HEADER_NEW);
+    // The PAL source names the same copies.
+    const pal = (await feed(w, "altstore-pal/stable/source.json")).doc;
+    expect(pal.iconURL).toBe(`${IMG}/${SLUG}/a/${I}`);
+  });
+
+  it("a console claim wins over the declared ref; a copy without its ref is never named", async () => {
+    const w = await hostedWorld();
+    await w.db.run(
+      "UPDATE hosted_assets SET origin = 'console' WHERE product = ? AND slot = 'listing.header'",
+      SLUG,
+    );
+    await w.db.run(
+      "DELETE FROM blob_refs WHERE product = ? AND ref_id = 'listing.icon@'",
+      SLUG,
+    );
+    const { doc } = await feed(w, "altstore/stable/source.json");
+    expect(doc.headerURL).toBe(`${IMG}/${SLUG}/a/${H}`);
+    expect(doc.iconURL).toBe(ICON);
+  });
+
+  it("a pre-HA-04 row's iconUrl string matches its copy too; an undeclared icon takes the product's", async () => {
+    const w = await setup({ blobOrigin: BYTES });
+    w.env.IMG_ORIGIN = IMG;
+    await seedHosted(w.db, SLUG, "listing.icon", {
+      sha256: I,
+      pulledRef: ref("url", ICON),
+    });
+    expect((await feed(w, "altstore/stable/source.json")).doc.iconURL).toBe(
+      `${IMG}/${SLUG}/a/${I}`,
+    );
+    // A listing with no icon: listing.icon is presentation.icon's fallback (HA-05).
+    await w.db.run(
+      "UPDATE dist_outlets SET listing_json = ? WHERE product = ? AND outlet_id = 'altstore'",
+      JSON.stringify({ ...LISTING, iconUrl: undefined }),
+      SLUG,
+    );
+    await w.db.run(
+      "UPDATE hosted_assets SET pulled_ref = ? WHERE product = ? AND slot = 'listing.icon'",
+      ref("url", "https://cdn.example.test/product-icon.png"),
+      SLUG,
+    );
+    expect((await feed(w, "altstore/stable/source.json")).doc.iconURL).toBe(
+      `${IMG}/${SLUG}/a/${I}`,
+    );
+  });
+
+  for (const [label, off] of [
+    ["the kill switch off", (w: World) => void ((hosting.on = false), w)],
+    ["no image host", (w: World) => void delete w.env.IMG_ORIGIN],
+  ] as const)
+    it(`rollback, ${label}: the developer's URLs, exactly as before HA-07`, async () => {
+      const w = await hostedWorld();
+      off(w);
+      const { doc } = await feed(w, "altstore/stable/source.json");
+      expect(doc.iconURL).toBe(ICON);
+      expect(doc.headerURL).toBe(HEADER_NEW);
+      expect(doc.apps[0].screenshots).toEqual([SHOT_1, SHOT_3]);
+      expect(JSON.stringify(doc)).not.toContain(IMG);
+    });
+
+  it("the feed cache key follows the hosted art", async () => {
+    const w = await hostedWorld();
+    const before = await hostedArtStamp(w.env, w.db, SLUG);
+    await w.db.run(
+      "UPDATE hosted_assets SET pulled_ref = ?, status = 'ready' WHERE product = ? AND slot = 'listing.header'",
+      ref("url", HEADER_NEW),
+      SLUG,
+    );
+    const after = await hostedArtStamp(w.env, w.db, SLUG);
+    expect(after).not.toBe(before);
+    hosting.on = false;
+    expect(await hostedArtStamp(w.env, w.db, SLUG)).toBe("-");
   });
 });
