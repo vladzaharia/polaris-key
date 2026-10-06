@@ -1267,6 +1267,76 @@ not available_ and the rest of the card works as before.
   isolate. A sign-in that answers _… sign-in is unavailable right now_ is the provider's endpoint
   failing, or answering with a host outside the allowlist (`providers/net.ts`).
 
+## Licence override migration (U-03)
+
+The licence-level config override layer is removed on every product and replaced by the
+**account override**: managed config an operator sets for one account on one product (notes/S-17
+§5.12; owner decisions 3, 4, 20 and 21). Devices get the layer of the account signed in on them,
+else of their licence's owner; a floating licence gets none. Entitlement overrides stay on the
+licence. Operators edit the layer on a user's record (Users → a user → Overview), or with
+`PUT /manage/api/products/<slug>/users/<subject>/overrides`.
+
+Until the migration runs, both layers are read (the account layer above the licence's) and every
+document is byte-identical to before: the account layer is empty until someone writes one. The
+migration is **one platform-wide run that the owner schedules**. Nothing in the Worker starts it;
+it stays off until the steps below are taken by hand, in order. Agents never run any of it against
+staging or production, and never run `wrangler` against a remote.
+
+**Owner steps (production).**
+
+1. **Deploy.** The `account_overrides` migration ships with the release that carries U-03 and is
+   applied by the normal deploy. Every licence keeps working unchanged.
+2. **Dry run on a production-shaped copy.** Either in the console (Platform → Override migration →
+   Dry run), which writes nothing, or offline, with no Worker and no KEK:
+
+   ```sh
+   npx wrangler d1 export polaris_key_prod --env prod --remote --output prod.sql   # owner only
+   pnpm --filter @polaris-key/worker override-migration:dry-run -- --sql prod.sql --out ovm-dry
+   ```
+
+   `ovm-dry/` then holds `inventory.json`, `report.json` and `report.csv`: per product, every
+   licence carrying config or secret overrides, whether it moves to its owner's account overrides
+   (`moved`), loses values to another licence of the same owner (`collapsed`, with the kept and
+   lost values), or is dropped (`dropped`: no account). Secret values are never in any of them
+   (names only). The tool loads the copy into memory and fails if the dry run changed anything.
+   Delete `prod.sql` afterwards: it holds customer data.
+
+3. **Flag the prerequisites** once the login card (I-07) **and** the portal Library with Activate
+   License (I-11) are live in production (decision 21: customers must be able to add their
+   licence to an account during the notice). Platform → Override migration → flag each, or
+   `PUT /manage/api/platform/override-migration/prerequisites` with `{"loginCard":true,"library":true}`.
+   The notice is refused until both are set.
+4. **Start the notice** (`POST …/override-migration/notice`). The run becomes possible 30 days
+   later (`runNotBefore`). During the window the inventory is recomputed nightly, so the count to
+   be dropped falls as customers attach; the console shows it on every affected product's
+   Licenses page. Operators can ask those customers to add the licence to their account (the
+   licence page offers the portal's Activate License link). Withdraw with
+   `DELETE …/override-migration/notice` if needed; a new notice starts a fresh 30 days.
+5. **Run it** on or after the run date: sign in to the console again (the run needs a sign-in from
+   the last 5 minutes), then Platform → Override migration → Run, or
+   `POST /manage/api/platform/override-migration/run`, repeated while `progress.done` is false
+   (each call processes up to 25 products). From the first call, `PUT
+…/licenses/<id>/overrides` refuses config and secrets (entitlements stay writable) and the OIDC
+   provisioning writer targets the owner's account overrides. When `done` is true, documents stop
+   reading config and secrets from licences. Each licence touched has an audit row
+   (`license.overrides.migrated` or `license.overrides.dropped`), and the platform activity log
+   has the start and the completion.
+6. **The report** (Platform → Override migration → Report, or
+   `GET …/override-migration/report?format=csv[&product=<slug>]`) stays 90 days; use it to
+   re-apply a dropped or lost value by hand once the customer has an account. Secret values are
+   never in it: re-enter those from the source.
+7. **After 90 days** the nightly job deletes the report and empties the licences' config and
+   secrets columns (entitlements kept). Nothing to do.
+
+**Rolling back.** Before step 5 nothing changed. Between the run and the 90-day mark the licences
+still hold their old config and secrets, so a Worker built before U-03 would deliver them again
+(the account rows it ignores); a dropped licence's values come back that way too. **Do not roll
+back past U-03 once the columns are emptied:** the licence values are gone, and only the account
+rows (which an older Worker does not read) hold them.
+
+**KEK rotation** covers the account rows: their sealed secrets are counted and re-sealed by the
+`managed` bucket of the KEK sweep (above).
+
 ## The blob collector (P4-14)
 
 The nightly maintenance cron (`17 3 * * *`) runs Core's blob collector after the retention steps:

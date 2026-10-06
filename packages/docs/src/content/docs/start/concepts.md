@@ -181,7 +181,8 @@ be an import in disguise.
   KV key, signature, and admin route is product-scoped. (Not "app" or "gateway".)
 - **license** — a grant of entitlements, optionally attached to an **account** (a license with
   no account is a **floating license**). Created manually by an admin or minted on OIDC sign-in.
-  Has a status, optional tier/profile, optional expiry, and per-license overrides.
+  Has a status, optional tier/profile, optional expiry, and per-license entitlement overrides
+  (config and secrets for a customer are **account overrides**).
 - **key** — a `pkey_<product>_…` activation secret a user redeems to activate a device. Shown to the
   user exactly once; stored only as a (peppered) hash.
 - **device** — an authorized install of the product, bound to a per-device bearer token
@@ -313,7 +314,9 @@ already means the document sync.
   operator can still enforce it, which is why an `enforced` or `hidden` management default refuses
   the block.
 - **account override** (user-level managed config) — an operator-authored managed-payload layer
-  for one account on one product. It replaces the licence override for config and secrets.
+  for one account on one product. It replaces the licence override for config and secrets on
+  every product; a licence keeps its entitlement overrides. A device gets the layer of the
+  account signed in on it, else of its licence's owner; an unowned (floating) licence has none.
 - **collection** — a developer-declared namespace of **records** (JSON values keyed by id) held
   for the Cloud Sync principal, declared in the catalog's `cloudSync` block.
 - **save** — a named slot holding an opaque blob plus metadata and revisions.
@@ -487,8 +490,13 @@ vocabulary first; the records arrive with the distribution manifest and the pack
 ## Layering & precedence
 
 Effective managed config is computed server-side by merging payload layers
-`tier(profile) → license(profile) → license overrides → device overrides` (later layers win;
-this is legitimate admin authority). On the **client**, a value's source is resolved as:
+`catalog defaults → tier(profile) → license(profile) → store grants → license overrides →
+account overrides → device overrides` (later layers win; this is legitimate admin authority). A
+licence keeps only its **entitlement overrides**; config and secrets for a customer are its
+**account overrides**, which reach the devices signed in to that account and the licence-key
+devices of licences it owns. An unowned (floating) licence has no account override layer. Until
+the licence-override migration runs, a licence's config and secret overrides are still read, below
+the account's (U-03). On the **client**, a value's source is resolved as:
 
 ```
 enforced | hidden (remote)  >  user/local override  >  environment  >  remote default  >  schema default

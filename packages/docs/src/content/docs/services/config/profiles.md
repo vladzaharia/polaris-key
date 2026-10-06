@@ -152,7 +152,7 @@ A profile can be attached at two different points, and both are just layers in t
 [management-state merge](/docs/services/config/management-states/):
 
 ```
-catalog default -> tier's profile -> license's profiles (in order) -> license overrides -> device overrides
+catalog default -> tier's profile -> license's profiles (in order) -> license overrides -> account overrides -> device overrides
                     ^^^^^^^^^^^^^^    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                     one profile,      an ordered list -- later entries beat earlier
                     inherited by      ones in the list, by the same key-by-key

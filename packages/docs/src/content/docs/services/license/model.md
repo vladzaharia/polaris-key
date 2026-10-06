@@ -95,9 +95,15 @@ Effective managed config is merged server-side, later layers winning:
 catalog defaults
   → the tier's profile
     → the license's profiles, in their stored order
-      → license overrides
-        → device overrides
+      → store grants
+        → license overrides (entitlements; config and secrets until the migration)
+          → account overrides (config and secrets)
+            → device overrides
 ```
+
+A licence's own overrides keep their **entitlements** on every product, floating licences
+included. Config and secrets for a customer are **account overrides** (U-03), set on the user's
+record; see [Management states](/docs/services/config/management-states/#account-overrides).
 
 The merge is Core's (`core/payload.ts`) because both signed documents are assembled from it.
 License then takes the `entitlements` slice and stamps admin/tier policy on top as **enforced**

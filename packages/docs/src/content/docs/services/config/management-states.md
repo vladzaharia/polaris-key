@@ -41,16 +41,16 @@ Two things fall out of that precisely:
   with.
 - `secret`-kind entries are never seeded here at all — the loop skips anything that isn't
   `kind: "config"`. A catalog secret only appears in a document once some admin layer (a profile,
-  a license override, a device override) explicitly sets a value for it; there is no such thing
+  an account override, a device override) explicitly sets a value for it; there is no such thing
   as a secret's "catalog default".
 
 ## How admin layers merge
 
-An admin can override a key's state and value at up to four places, layered in one fixed order —
+An admin can override a key's state and value at up to five places, layered in one fixed order —
 later layers win:
 
 ```
-catalog default  ->  tier's profile  ->  license's profiles (in order)  ->  license overrides  ->  device overrides
+catalog default  ->  tier's profile  ->  license's profiles (in order)  ->  license overrides  ->  account overrides  ->  device overrides
 ```
 
 - **tier(profile)** — a tier names one `profile_id`; every license on that tier inherits it as a
@@ -58,7 +58,10 @@ catalog default  ->  tier's profile  ->  license's profiles (in order)  ->  lice
 - **license(profile)** — a license may itself carry an ordered list of profiles
   (`license_profiles`); each is its own layer, later ones in the list beating earlier ones.
 - **license overrides** — the license row's own `overrides_json`, edited at
-  `PUT .../license/licenses/<id>/overrides`.
+  `PUT .../license/licenses/<id>/overrides`. Entitlements only, once the licence-override
+  migration has run; until then its config and secrets are still read, below the account layer.
+- **account overrides** — the managed config of one account on one product (U-03), edited on the
+  user's record or at `PUT .../users/<subject>/overrides`; see [Account overrides](#account-overrides).
 - **device overrides** — the device row's own `overrides_json`, the last layer Core reads before
   the merge is complete.
 
@@ -85,6 +88,36 @@ stack.
 
 Every other combination — including a higher layer explicitly re-`enforcing` or re-`hiding` — is a
 plain override: the higher layer's value and state replace the lower one's.
+
+## Account overrides
+
+The **account override** is the operator's managed config for one account on one product: `config`
+and `secret` keys (never `flag` keys, which stay on the licence), stored per pairwise subject in
+`account_overrides` and validated, sealed and redacted exactly like a profile's payload. It
+replaced the licence-level config override on every product (notes/S-17 §5.12).
+
+A device gets one account's layer, chosen in this order:
+
+1. the account **signed in on the device** (the same account Cloud Sync uses), unless the device's
+   licence is floating or that account removed the licence from its library;
+2. else the **owner of the device's licence**, so a device activated by licence key still gets its
+   owner's values. This line is Config's alone; Cloud Sync has none;
+3. else none: a floating (unowned) licence, or a device with no licence and no sign-in.
+
+Edit it on **Users → a user → Overview**, or with `GET`/`PUT
+/manage/api/products/<slug>/users/<subject>/overrides` (the licence editor's batch body). The
+layer exists on every product, Identity on or off: the account is platform-level, and the owner line
+needs no sign-in.
+
+**The licence-override migration.** One platform-wide run, scheduled by the owner, moves every
+owned licence's config and secret overrides onto its owner's account overrides and drops those of
+licences with no owner, after a 30-day notice that starts only once the login card and the portal
+Library are live. Several licences of one product on one account collapse to the value of the
+licence updated most recently (a value already on the account wins), and every lost value is in the
+90-day report; secrets are listed by name only. From the run's start, the licence route accepts
+entitlements only; from its completion, licences no longer deliver config or secrets. The console's
+licence page says where its values went, and for a licence with no account offers the portal's
+Activate License link to send the customer.
 
 ## Client-side resolution
 

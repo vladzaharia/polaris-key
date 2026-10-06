@@ -180,6 +180,8 @@ applications, and any raw hardware serial. None of these are read by any SDK.
 | Pending email sign-ins, email gates and passkey ceremonies (the address, the provider identity and profile, the requesting city and country; a passkey ceremony's challenge, relying party, return path or account id and user handle) | `SingleUseDO` (the sharded single-use store)                   | Until used or expired: 10 minutes for a sign-in, 15 for an email gate, 5 for a passkey ceremony                                                                           |
 | Provider profile per sign-in method (name, locale, picture reference) and the account's pictures (provider copies and uploads, re-encoded; metadata discarded, originals never kept)                                                   | `account_links.profile_json`, `account_avatars`, R2 `avatars/` | A picture nothing uses is deleted when replaced, or by the nightly sweep after a day (an upload never saved included); everything is deleted with the account             |
 | Passkeys (public key, credential id, counter, transports, user handle, times, AAGUID, synced flag, browser label)                                                                                                                      | `account_passkeys`, `accounts`                                 | Until the person removes the passkey or the account is deleted                                                                                                            |
+| Account overrides: managed config an operator sets for one person on one product (U-03), secrets sealed                                                                                                                                | `account_overrides` (by the product's pairwise subject)        | Until an operator removes them; deleted with the person's data for the product and with the account                                                                       |
+| The licence-override migration report: licence id, the licence's own email, key names, non-secret config values, the owner's pairwise subject (never a secret value)                                                                   | `override_migration_report`                                    | 90 days after the run, then deleted by the nightly sweep; a person's rows go with their data for the product and with the account                                         |
 
 Deauthorizing a device — from the app, the admin panel, or the customer portal — routes
 through `setDeviceStatus()` in `packages/worker/src/repo.ts`, which purges both tables in the
@@ -245,8 +247,10 @@ account id, the account's sign-in methods, or anything from another product. The
 is the licence's buyer email; the account's own email appears only when the person agreed to
 share it with that product. An admin can export that product's data for the person as JSON,
 delete it, detach a licence, or move a licence to another person of the same product (a fresh
-admin sign-in, a recorded reason, an email to both people first, and 72 hours to undo). No admin
-can delete, disable, sign out or merge an account, or change its sign-in methods.
+admin sign-in, a recorded reason, an email to both people first, and 72 hours to undo). An admin
+can also set the person's **account overrides** for that product (managed config; a secret is
+never shown again once saved). No admin can delete, disable, sign out or merge an account, or
+change its sign-in methods.
 
 ## What an end user can see
 

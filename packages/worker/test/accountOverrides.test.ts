@@ -25,6 +25,7 @@
  * emptying.
  */
 import { describe, expect, it } from "vitest";
+import Database from "better-sqlite3";
 import { verifyJws } from "@polaris-key/jws";
 import type { ConfigDoc } from "@polaris-key/protocol/config";
 import type { ManagedEntry } from "@polaris-key/protocol";
@@ -71,6 +72,7 @@ import { handleConfigDocument } from "../src/services/config/document.js";
 import { signIn } from "../src/services/identity/accounts/signIn.js";
 import { mergeAccounts } from "../src/services/identity/accounts/merge.js";
 import { handleAdmin } from "../src/admin/index.js";
+import { dryRunOnCopy } from "../scripts/override-migration-dry-run.js";
 import {
   ADMIN_COOKIE,
   CSRF_HEADER,
@@ -1061,6 +1063,34 @@ describe("U-03: the migration's guards", () => {
         r.values,
       ]),
     );
+    // The offline tool over a copy of the database (RUNBOOK step 2): the same answer, nothing
+    // written, and a copy that predates the U-03 tables works too.
+    const raw = (w.db as unknown as { db: { serialize(): Buffer } }).db;
+    const copy = new Database(raw.serialize());
+    copy.exec(
+      "DROP TABLE account_overrides; DROP TABLE override_migration_report; DROP TABLE override_migration;",
+    );
+    const offline = await dryRunOnCopy({
+      sqliteBytes: copy.serialize(),
+      now: NOW,
+    });
+    copy.close();
+    expect(offline.changes).toBe(0);
+    // Before the run (the copy was taken after it, with the account rows dropped), so compare
+    // with a fresh dry run's shape: every licence is reported, with no secret anywhere.
+    expect(offline.dryRun.inventory.totals).toEqual({
+      licences: 7,
+      owned: 4,
+      dropped: 3,
+    });
+    for (const s of [
+      "tok-PROD-SEALED",
+      "pw-PROD-PLAIN",
+      "tok-PROD-PLAIN",
+      "tok-BETA",
+      sealed,
+    ])
+      expect(offline.csv + JSON.stringify(offline.dryRun)).not.toContain(s);
     // Through the route: the same dry run (platform admins only).
     const viaRoute = await w.call(
       "POST",
