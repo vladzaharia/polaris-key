@@ -64,6 +64,7 @@ import { notFound, wireError } from "../../core/errors.js";
 import {
   blobKey,
   LAZY_DELTA_REF,
+  OCI_PUSH_REF,
   lazyDeltaKeys,
   parseKey,
   refHolders,
@@ -122,6 +123,8 @@ function classify(
   let appSide = false;
   for (const r of rows) {
     if (r.storageKey !== key) continue;
+    // F-23: an OCI push upload is possession only and authorises nothing (core `OCI_PUSH_REF`).
+    if (r.refKind === OCI_PUSH_REF) continue;
     if (!PACK_REF_KINDS.has(r.refKind)) appSide = true;
     // A malformed holder (no `@` in a pack release id) names no pack and so admits nothing.
     else if (isDeliverableId(r.holder)) packs.add(r.holder);
