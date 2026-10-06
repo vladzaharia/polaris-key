@@ -977,7 +977,7 @@ describe("R11-08 migration safety", () => {
   });
 
   it("migrations are additive only, so migrate-then-deploy ordering is forward-safe", () => {
-    // THREE deliberate exceptions, all create/copy/drop/rename rebuilds — the only shape SQLite
+    // FOUR deliberate exceptions, all create/copy/drop/rename rebuilds — the only shape SQLite
     // offers for changing a constraint in place:
     //   * 0016_drop_dead_pii.sql removes `customers`, `identity` and
     //     `release_download_tokens.customer_id`, none of which any code in src/ reads or writes
@@ -989,10 +989,14 @@ describe("R11-08 migration safety", () => {
     //     kind CHECK with `package` and add two NULLable columns. It renames and removes nothing an
     //     older Worker reads or writes, so the rebuild is invisible above the schema too; its
     //     child rows are set aside and restored around the drop (the file says why).
+    //   * 0099_dist_listing_assets_manifest.sql (HA-07) rebuilds `dist_listing_assets` to widen its
+    //     source CHECK with `manifest`. Every column is copied unchanged and nothing is renamed or
+    //     removed above the schema; no table holds a foreign key into it.
     const REBUILDS = [
       "0016_drop_dead_pii.sql",
       "0017_portal_fk_cascade.sql",
       "0058_b_release_deliverables_kind.sql",
+      "0099_dist_listing_assets_manifest.sql",
     ];
     const sql = MIGRATION_FILES.filter((f) => !REBUILDS.includes(f))
       .map(sqlFor)

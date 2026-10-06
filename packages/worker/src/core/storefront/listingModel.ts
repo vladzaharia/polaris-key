@@ -23,6 +23,19 @@
 export type ListingSource = "admin" | "import";
 export const LISTING_SOURCES: readonly ListingSource[] = ["admin", "import"];
 
+/**
+ * Where a listing ASSET came from: an operator's upload (`admin`), A-18d's CI derivation
+ * (`import`), or the product's manifest through Polaris Key's hosted copy (`manifest`, HA-07,
+ * `services/distribution/listing/manifestAssets.ts`). Precedence: admin, then import, then
+ * manifest; a writer never replaces a row of a source ahead of its own.
+ */
+export type ListingAssetSource = ListingSource | "manifest";
+export const LISTING_ASSET_SOURCES: readonly ListingAssetSource[] = [
+  "admin",
+  "import",
+  "manifest",
+];
+
 /** The listing's URLs (https only). */
 export interface ListingUrls {
   website?: string;

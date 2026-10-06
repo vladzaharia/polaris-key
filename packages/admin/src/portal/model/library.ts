@@ -57,7 +57,10 @@ export interface Presentation {
   website: string | null;
   supportUrl: string | null;
   supportEmail: string | null;
-  /** Same-origin `/media/…` art (PX-W1's proxy), or null for the letter-on-tint fallback. */
+  /**
+   * The hosted copy on the image host (HA-07), the same-origin `/media/…` proxy path in HA-10's
+   * rollback, or null for the letter-on-tint fallback (`mediaUrl`).
+   */
   iconUrl: string | null;
   headerUrl: string | null;
 }
@@ -135,9 +138,40 @@ export function readPresentation(branding: unknown): Presentation {
   };
 }
 
-/** Same-origin only: the proxy's `/media/…` paths, never a developer host (CSP, §G1). */
-function mediaUrl(v: string | null | undefined): string | null {
-  return typeof v === "string" && v.startsWith("/media/") ? v : null;
+/** The image host's content-addressed paths (HA-02): an original or one of its WebP widths. */
+const HOSTED_PATH =
+  /^\/[a-z0-9-]{1,64}\/a\/[0-9a-f]{64}(?:\/[1-9][0-9]{0,3}\.webp)?$/;
+
+/**
+ * Art the portal may show, never a developer host (CSP, §G1): a hosted copy on the image host
+ * (HA-07; the Worker builds it from the copy's hash), which is an `https:` URL whose path is the
+ * host's content-addressed shape and which carries nothing else (no credentials, no port, no
+ * query, no fragment; `http:` only on a loopback host, for local development); or, in HA-10's
+ * rollback, the same-origin proxy's `/media/…` path. Anything else reads as no art. The page's
+ * policy is the boundary: its `img-src` admits this origin, the image host and `data:`, so a URL
+ * of the right shape on any other host would still not load.
+ */
+export function mediaUrl(v: string | null | undefined): string | null {
+  if (typeof v !== "string") return null;
+  if (v.startsWith("/media/")) return v;
+  let u: URL;
+  try {
+    u = new URL(v);
+  } catch {
+    return null;
+  }
+  const loopback = u.hostname === "localhost" || u.hostname === "127.0.0.1";
+  const scheme =
+    u.protocol === "https:" || (u.protocol === "http:" && loopback);
+  const bare =
+    !u.username &&
+    !u.password &&
+    !u.search &&
+    !u.hash &&
+    (u.port === "" || loopback);
+  return scheme && bare && HOSTED_PATH.test(u.pathname) && u.href === v
+    ? v
+    : null;
 }
 
 /** The server-side library's presentation (PX-W1), validated like the branding fallback. */

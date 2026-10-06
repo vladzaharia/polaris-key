@@ -130,7 +130,7 @@ this page or fails the freshness gate.
 | `dist_registry_policy` | 0058_d_registry.sql | `ecosystem`, `enabled`, `max_package_bytes_ceiling`, `version`, `updated_at`, `updated_by` |
 | `dist_listings` | 0065_dist_listing_model.sql | `product`, `default_locale`, `name`, `developer_name`, `category`, `content_descriptors_json`, `iarc_certificate_id`, `urls_json`, `contact_email`, `copyright`, `tint`, `tint_dark`, `precedence_json`, `source`, `created_at`, `modified_at`, `modified_by`, `provenance_json (0069)` |
 | `dist_listing_locales` | 0065_dist_listing_model.sql | `product`, `locale`, `name`, `subtitle`, `short_description`, `description`, `keywords_json`, `features_json`, `promotional_text`, `source`, `modified_at`, `modified_by`, `provenance_json (0069)` |
-| `dist_listing_assets` | 0065_dist_listing_model.sql | `product`, `slot`, `locale`, `blob`, `sha256`, `width`, `height`, `alpha`, `derived_from`, `text_allowed`, `source`, `modified_at`, `modified_by`, `accepted_sha256 (0083)`, `accepted_at (0083)`, `accepted_by (0083)` |
+| `dist_listing_assets` | 0099_dist_listing_assets_manifest.sql (rebuilt 0099) | `product`, `slot`, `locale`, `blob`, `sha256`, `width`, `height`, `alpha`, `derived_from`, `text_allowed`, `source`, `modified_at`, `modified_by`, `accepted_sha256`, `accepted_at`, `accepted_by` |
 | `dist_listing_release_notes` | 0065_dist_listing_model.sql | `product`, `release_id`, `locale`, `text`, `short`, `source`, `modified_at`, `modified_by` |
 | `dist_listing_overrides` | 0065_dist_listing_model.sql | `product`, `store`, `locale`, `field`, `value_json`, `source`, `modified_at`, `modified_by` |
 | `store_edit_leases` | 0070_store_edit_leases.sql | `store`, `app`, `holder`, `purpose`, `actor`, `acquired_at`, `expires_at` |

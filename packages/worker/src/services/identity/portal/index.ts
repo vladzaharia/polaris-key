@@ -33,10 +33,22 @@ import {
 } from "./api.js";
 import { portalSecurityHeaders } from "./headers.js";
 import { handlePortalMedia } from "./media.js";
+import { hostedImageOrigin } from "../../../core/hostedImages.js";
 import { serveAvatar } from "../card/avatars.js";
 import { handleProviderSignInPath } from "../providers/flow.js";
 
-function portalShell(): Response {
+/**
+ * The portal's shell (and its assets) may load images from exactly one more origin: the image host
+ * (`IMG_ORIGIN`), where the library's and Discover's art lives since HA-07 (`library.ts`). Only
+ * while hosted copies are served (`hostedImageOrigin`); in HA-10's rollback the art is same-origin
+ * again and the policy is the one it was. `appSecurityHeaders` writes the origin only after
+ * `cspImageOrigin` accepts it (a bare https origin), as for the console's shell.
+ */
+function portalSecurityOptions(env: Env): { imgOrigin: string | null } {
+  return { imgOrigin: hostedImageOrigin(env) };
+}
+
+function portalShell(env: Env): Response {
   return new Response(
     `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Polaris Key</title></head><body><div id="root"></div><script type="module" src="/assets/portal.js"></script></body></html>`,
     {
@@ -48,6 +60,7 @@ function portalShell(): Response {
               "content-type": "text/html; charset=utf-8",
               "cache-control": "no-store",
             }),
+            portalSecurityOptions(env),
           ),
         ),
       },
@@ -60,7 +73,7 @@ async function servePortalAsset(
   env: Env,
   cleanPath: string,
 ): Promise<Response> {
-  if (!env.ASSETS) return portalShell();
+  if (!env.ASSETS) return portalShell(env);
   const url = new URL(req.url);
   // Same prefix-escape + CSP-stripping shape as the admin proxy (R1-06): only a literal,
   // already-normalised path is proxied, and every response carries the security headers.
@@ -75,7 +88,7 @@ async function servePortalAsset(
   const res = await env.ASSETS.fetch(new Request(url, req));
   const headers = new Headers(res.headers);
   if (isShell) headers.set("cache-control", "no-store");
-  portalSecurityHeaders(headers);
+  portalSecurityHeaders(headers, portalSecurityOptions(env));
   return new Response(res.body, { status: res.status, headers });
 }
 

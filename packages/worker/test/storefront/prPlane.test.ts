@@ -44,6 +44,7 @@ import {
   upsertReleaseNotes,
 } from "../../src/services/distribution/listing/store.js";
 import { prStepOp } from "../../src/services/distribution/storeSteps.js";
+import { seedHosted, urlRef } from "../hostedFixture.js";
 
 const SLUG = "diceroll";
 const CONSOLE = "https://key.example.test";
@@ -394,6 +395,22 @@ describe("the PR plane's CI read (A-18i)", () => {
       screenshots: [],
     });
     expect(i.app).not.toHaveProperty("iconUrl");
+    expect(JSON.stringify(i)).not.toContain("cdn.example.test");
+  });
+
+  it("screenshots are Polaris Key's hosted copies (HA-07), never a developer URL", async () => {
+    const w = await setup();
+    w.env.IMG_ORIGIN = "https://img.example.test";
+    const shot = "5".repeat(64);
+    // Pulled for the first declared screenshot; the second (http) has no copy.
+    await seedHosted(w.db, SLUG, "listing.screenshot:1", {
+      sha256: shot,
+      pulledRef: urlRef("https://cdn.example.test/diceroll/1.png"),
+    });
+    const i = await inputs(w, "pr/flathub");
+    expect(i.app.screenshots).toEqual([
+      `https://img.example.test/${SLUG}/a/${shot}`,
+    ]);
     expect(JSON.stringify(i)).not.toContain("cdn.example.test");
   });
 

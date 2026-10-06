@@ -1,16 +1,32 @@
 /// <reference types="@cloudflare/workers-types" />
 
 /**
- * The customer portal's same-origin media proxy (PX-W1, docs/design/PORTAL.md G1):
+ * The customer portal's same-origin media route (PX-W1, docs/design/PORTAL.md G1):
  * `GET /media/<product>/<asset>`, where `<asset>` is `icon`, `header`, or `screenshot-<n>` (the
  * storefront product page's screenshots, PS-04: the n-th https screenshot of the listing).
  *
+ * ── SINCE HA-07: A REDIRECT TO THE HOSTED COPY ──────────────────────────────────────────────
+ *
+ * Polaris Key now keeps its own copy of a product's art (HA-01, HA-05) and serves it from the
+ * image host (HA-02). While hosting is on and the deployment has an image host
+ * (`hostedImageOrigin`), a slot that has a copy the host serves is answered `302` to the image
+ * host's stable alias (`https://img…/<product>/icon` or `/header`, which 302s on to the
+ * content-addressed copy), and nothing is fetched. The portal then names the image host directly
+ * (`library.ts`), but URLs already handed out, and the sign-in card's client record (§12.7.2 names
+ * this path), keep working.
+ *
+ * The proxy below answers everything else, exactly as it did before HA-07 and under every rule
+ * below: PER SLOT, a slot with no servable copy (a product not resynced since HA-05 pulled its
+ * art, a first pull in flight), so a deploy never blanks a product's art; and every slot in
+ * HA-10's rollback (`assets.hosting.enabled` off, or no image host).
+ *
  * ── WHY A PROXY AT ALL ──────────────────────────────────────────────────────────────────────
  *
- * The portal shell's CSP is `img-src 'self' data:` (`securityHeaders.ts`), and it stays that way:
- * widening it to the developers' hosts would let any product's manifest decide what the signed-in
- * page loads, and would hand each of those hosts the customer's IP and `Referer` for every
- * library view. So a product's art is served from this origin.
+ * The portal shell's CSP is `img-src 'self' data:` plus, since HA-07, exactly the image host's
+ * origin (`securityHeaders.ts`), and it never names a developer's host: that would let any
+ * product's manifest decide what the signed-in page loads, and would hand each of those hosts the
+ * customer's IP and `Referer` for every library view. So wherever there is no hosted copy, a
+ * product's art is served from this origin.
  *
  * ── WHY IT IS NOT AN SSRF (THREAT-MODEL "Portal media proxy") ───────────────────────────────
  *
@@ -68,6 +84,13 @@ import {
   type FetchImpl,
 } from "../../../core/safeFetch.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import {
+  PRESENTATION_HEADER_SLOTS,
+  PRESENTATION_ICON_SLOTS,
+  firstHostedImage,
+  hostedImageOrigin,
+  hostedImages,
+} from "../../../core/hostedImages.js";
 import { getPortalProductSettings } from "./repo.js";
 import { portalSecurityHeaders } from "./headers.js";
 import type { PortalHooksFor } from "./api.js";
@@ -76,7 +99,8 @@ import type { PortalHooksFor } from "./api.js";
  * The two named listing slots, their path names and byte caps. Each slot's source is read with
  * `listingImageUrl` (HA-04): the normalised `icon` / `header` ref when it is an https URL, or the
  * legacy `iconUrl` / `headerUrl` of a listing row stored before HA-04. A repo-path ref has no
- * URL to proxy; HA-05 hosts it and HA-07 moves the portal to the media host.
+ * URL to proxy. The caps and the proxy apply to a slot with no hosted copy, and to every slot in
+ * HA-10's rollback; a slot with a copy redirects to it (see the file comment).
  */
 export const MEDIA_ASSETS = {
   icon: { maxBytes: 1024 * 1024 },
@@ -126,8 +150,18 @@ export const MEDIA_MAX_REDIRECTS = SAFE_FETCH_MAX_REDIRECTS;
 export const MEDIA_FETCH_TIMEOUT_MS = 5000;
 /** `Cache-Control` of an answer whose `v` is current: a new source URL is a new `v`. */
 export const MEDIA_IMMUTABLE = "public, max-age=31536000, immutable";
-/** `Cache-Control` of an answer requested without the current `v`. */
+/** `Cache-Control` of an answer requested without the current `v`, and of the HA-07 redirect
+ *  (the image host's alias it points at moves when the copy does). */
 export const MEDIA_SHORT = "public, max-age=300";
+
+/**
+ * The hosted slots behind each asset: the image host's `/icon` and `/header` aliases' own. A
+ * screenshot (PS-04) has no image-host alias, so it is always proxied.
+ */
+const MEDIA_SLOTS: Record<keyof typeof MEDIA_ASSETS, readonly string[]> = {
+  icon: PRESENTATION_ICON_SLOTS,
+  header: PRESENTATION_HEADER_SLOTS,
+};
 /** The media response's own policy: an image is never a document, never framed. */
 export const MEDIA_CSP = "default-src 'none'; sandbox";
 
@@ -233,8 +267,9 @@ function refused(status = 404): Response {
 /**
  * Fetch `source` under rules 2–5: allowlisted hops only, bounded, and sniffed. `null` for any
  * refusal or failure. The fetch itself is Core's guarded fetcher (`core/safeFetch.ts`, HA-01),
- * narrowed to rule 2's GitHub-hosted names on every hop (`allowHost`) until HA-07 serves hosted
- * copies instead; the cap, the redirect rule and the 5 s budget are unchanged.
+ * narrowed to rule 2's GitHub-hosted names on every hop (`allowHost`); the cap, the redirect rule
+ * and the 5 s budget are unchanged. Reached for a slot with no hosted copy and in HA-10's rollback
+ * (see the file comment).
  */
 export async function fetchMedia(
   source: URL,
@@ -310,11 +345,32 @@ export async function handlePortalMedia(
   }
   if (!/^[a-z0-9-]{1,64}$/.test(product) || !isMediaAsset(asset))
     return refused();
-  if (!hooksFor) return refused();
   const loaded = await loadProductPublic(db, product);
   if (!loaded) return refused();
   const settings = await getPortalProductSettings(db, product);
   if (settings.portal_enabled !== 1) return refused();
+
+  // HA-07: the hosted copy, through the image host's stable alias. Nothing is fetched.
+  const origin = hostedImageOrigin(env);
+  if (origin !== null && (asset === "icon" || asset === "header")) {
+    const slots = MEDIA_SLOTS[asset];
+    const copy = firstHostedImage(
+      await hostedImages(env, db, product, slots),
+      slots,
+    );
+    if (copy)
+      return new Response(null, {
+        status: 302,
+        headers: mediaResponseHeaders({
+          location: `${origin}/${product}/${asset}`,
+          "cache-control": MEDIA_SHORT,
+        }),
+      });
+  }
+
+  // No servable copy of this slot, or the rollback (hosting off, no image host): the proxy,
+  // exactly as before HA-07.
+  if (!hooksFor) return refused();
   const delivery = hooksFor(loaded, now).delivery();
   const listing = delivery ? await delivery.listing() : null;
   const source = mediaSourceUrl(slotSource(listing, asset));

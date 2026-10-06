@@ -91,7 +91,11 @@ import {
   requireActionRateLimit,
   type PortalHooksFor,
 } from "./api.js";
-import { presentationOf, productListing } from "./library.js";
+import {
+  presentationOf,
+  productListing,
+  type PresentationSurface,
+} from "./library.js";
 import { screenshotUrlsFor } from "./media.js";
 import {
   CLAIM_BUCKET,
@@ -275,15 +279,17 @@ async function storeLinks(
 
 /** What an offer shows, on the listing and the product page alike. */
 async function offerView(
+  env: Env,
   db: Db,
   offer: DiscoverOffer,
   listing: Record<string, unknown> | null,
   hooksFor: PortalHooksFor | undefined,
   now: number,
+  surface: PresentationSurface,
 ): Promise<Record<string, unknown>> {
   return {
     product: offer.product.slug,
-    ...(await presentationOf(offer.product, listing)),
+    ...(await presentationOf(env, db, offer.product, listing, surface)),
     platforms: await productPlatforms(db, hooksFor, offer.product.slug, now),
     shortDescription: text(listing?.subtitle),
     cta: offer.cta,
@@ -326,7 +332,9 @@ export async function handleDiscover(
     hooksFor,
   )) {
     const listing = await productListing(o.product, hooksFor, now);
-    offers.push(await offerView(db, o, listing, hooksFor, now));
+    offers.push(
+      await offerView(env, db, o, listing, hooksFor, now, "discover"),
+    );
     shown.push(impression(o));
   }
   // PS-04 (notes/S-21 §6.6): one impression per product per account per day. Only what the
@@ -377,7 +385,7 @@ export async function handleStorefrontPage(
   });
   const listing = await productListing(ev.product, hooksFor, now);
   const body = {
-    ...(await offerView(db, offer, listing, hooksFor, now)),
+    ...(await offerView(env, db, offer, listing, hooksFor, now, "product")),
     description: text(listing?.description),
     screenshots: await screenshotUrlsFor(ev.product.slug, listing),
     // Every live store page, whatever the action: the page lists where else the product is.

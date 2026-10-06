@@ -77,5 +77,6 @@ export {
 export {
   appSecurityHeaders,
   brandedHtmlSecurityHeaders,
+  cspImageOrigin,
   staticHtmlSecurityHeaders,
 } from "../securityHeaders.js";

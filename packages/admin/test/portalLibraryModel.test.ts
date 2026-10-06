@@ -9,6 +9,7 @@ import {
   deviceOsName,
   licenseOrigin,
   licenseStatus,
+  mediaUrl,
   shortOrigin,
   platformsOnlyNote,
   quickAction,
@@ -539,6 +540,35 @@ describe("the server-side library (PX-W1: G1, G5, G16)", () => {
     ]);
     expect(p!.presentation.iconUrl).toBeNull();
     expect(p!.presentation.headerUrl).toBeNull();
+  });
+
+  it("takes a hosted copy on the image host (HA-07): the content-addressed shape only", () => {
+    const sha = "a".repeat(64);
+    const icon = `https://img.plrs.im/x/a/${sha}/128.webp`;
+    const header = `https://img.plrs.im/x/a/${sha}`;
+    const [p] = build([lic()], [], NOW_S, [
+      item({ iconUrl: icon, headerUrl: header }),
+    ]);
+    expect(p!.presentation.iconUrl).toBe(icon);
+    expect(p!.presentation.headerUrl).toBe(header);
+    // A local image host over loopback HTTP, for development.
+    expect(mediaUrl(`http://localhost:8788/x/a/${sha}`)).toBe(
+      `http://localhost:8788/x/a/${sha}`,
+    );
+    for (const refused of [
+      "https://cdn.example/icon.png",
+      `http://img.plrs.im/x/a/${sha}`,
+      `https://img.plrs.im:8443/x/a/${sha}`,
+      `https://u:p@img.plrs.im/x/a/${sha}`,
+      `https://img.plrs.im/x/a/${sha}?v=1`,
+      `https://img.plrs.im/x/a/${sha}#f`,
+      `https://img.plrs.im/x/a/${sha.toUpperCase()}`,
+      `https://img.plrs.im/x/a/${sha}/128.png`,
+      `https://img.plrs.im/x/icon`,
+      `javascript:alert(1)`,
+      `data:image/png;base64,AAAA`,
+    ])
+      expect(mediaUrl(refused), refused).toBeNull();
   });
 
   it("a full licence is 'Device limit reached', and its action frees a device", () => {

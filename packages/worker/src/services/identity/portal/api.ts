@@ -1585,7 +1585,7 @@ export async function handlePortalApi(
   // PX-W1: the library and the product page (`library.ts`). Reads only.
   if (head === "library" && rest.length === 0) {
     if (req.method !== "GET") return err(405, "method_not_allowed");
-    const view = await libraryView(db, session.accountId, now, hooksFor);
+    const view = await libraryView(env, db, session.accountId, now, hooksFor);
     return portalJson({
       ...view,
       // PX-W10: the Discover count in the nav (§4.16); the offers themselves are `GET /api/discover`.
@@ -1623,6 +1623,7 @@ export async function handlePortalApi(
   if (head === "products" && rest.length === 1 && rest[0]) {
     if (req.method !== "GET") return err(405, "method_not_allowed");
     const view = await productView(
+      env,
       db,
       session.accountId,
       rest[0],

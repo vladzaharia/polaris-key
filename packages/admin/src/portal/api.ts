@@ -164,7 +164,10 @@ export type PortalStatus =
   | "expires_soon"
   | "active";
 
-/** A product's presentation; art is always a same-origin `/media/…` URL or null. */
+/**
+ * A product's presentation; art is a hosted copy on the image host (HA-07), the same-origin
+ * `/media/…` proxy path in HA-10's rollback, or null (`model/library.ts` `mediaUrl`).
+ */
 export interface PortalPresentation {
   name: string;
   developerName: string | null;

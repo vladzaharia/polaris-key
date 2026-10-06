@@ -14,6 +14,8 @@
  *     issue #735); and NO `marketplaceID`, which makes SideStore treat a source as notarized and
  *     refuse it.
  *   - AltStore PAL (`flavour: "pal"`): the same document WITH `marketplaceID`.
+ *   - Both name the art Polaris Key hosts (HA-07): `iconURL`, `headerURL` and `screenshots` come
+ *     from `input.art` (image-host URLs, resolved by `art.ts`) when it is given.
  *   - Obtainium (`renderObtainiumConfig`): the app-config JSON `obtainium://app/<json>` carries.
  *     `additionalSettings` is a JSON STRING. Key names were checked against Obtainium's source
  *     (`lib/models/app.dart` `App.fromJson`, `lib/app_sources/fdroidrepo.dart`,
@@ -56,10 +58,10 @@ export interface RenderEntry {
 }
 
 /**
- * The store-page metadata a feed shows (the outlet's merged `.pkey/distribution` listing). The art
- * is read through `listingImageUrl` / `listingScreenshotUrls`: a stored row holds normalised
- * asset refs (HA-04) or, when written before HA-04, the legacy URL strings, and only an https ref
- * has a URL a feed can name.
+ * The store-page metadata a feed shows (the outlet's merged `.pkey/distribution` listing). Without
+ * hosted art (`ListingArt`), the art is read through `listingImageUrl` / `listingScreenshotUrls`: a
+ * stored row holds normalised asset refs (HA-04) or, when written before HA-04, the legacy URL
+ * strings, and only an https ref has a URL a feed can name.
  */
 export interface RenderListing {
   name?: string;
@@ -76,6 +78,17 @@ export interface RenderListing {
   screenshots?: unknown[];
   website?: string;
   developerName?: string;
+}
+
+/**
+ * The art a source names when Polaris Key hosts it (HA-07, `art.ts`): already resolved per field to
+ * an image-host URL or, where no hosted copy stands for the listing's ref, the listing's own URL.
+ * Absent (`null`), the renderer reads the listing's art as before (HA-10's rollback).
+ */
+export interface ListingArt {
+  icon?: string;
+  header?: string;
+  screenshots: string[];
 }
 
 const str = (v: unknown): string | undefined =>
@@ -123,6 +136,8 @@ export interface AltStoreInput {
   marketplaceId?: string;
   /** Newest first. Entries without iOS metadata are skipped (AltStore needs its permissions). */
   entries: readonly RenderEntry[];
+  /** The art on hosted copies (HA-07), or absent/`null` to read the listing's own URLs. */
+  art?: ListingArt | null;
 }
 
 interface IosMeta {
@@ -152,7 +167,10 @@ function iosMeta(m: Record<string, unknown> | null): IosMeta | null {
 export function renderAltStoreSource(input: AltStoreInput): unknown {
   const l = input.listing ?? {};
   const name = str(l.name) ?? input.productName;
-  const screenshots = listingScreenshotUrls(l);
+  const art = input.art ?? null;
+  const screenshots = art ? art.screenshots : listingScreenshotUrls(l);
+  const iconURL = art ? art.icon : listingImageUrl(l, "icon");
+  const headerURL = art ? art.header : listingImageUrl(l, "header");
   const seen = new Set<string>();
   const versions: Record<string, unknown>[] = [];
   let newest: IosMeta | null = null;
@@ -201,7 +219,7 @@ export function renderAltStoreSource(input: AltStoreInput): unknown {
         developerName: str(l.developerName),
         subtitle: str(l.subtitle),
         localizedDescription: str(l.description) ?? str(l.subtitle) ?? name,
-        iconURL: listingImageUrl(l, "icon"),
+        iconURL,
         tintColor: str(l.tintColor)?.replace(/^#/, ""),
         category:
           l.category && ALTSTORE_CATEGORIES.has(l.category)
@@ -226,8 +244,8 @@ export function renderAltStoreSource(input: AltStoreInput): unknown {
     sourceURL: input.sourceUrl,
     subtitle: str(l.subtitle),
     description: str(l.description),
-    iconURL: listingImageUrl(l, "icon"),
-    headerURL: listingImageUrl(l, "header"),
+    iconURL,
+    headerURL,
     website: str(l.website),
     tintColor: str(l.tintColor)?.replace(/^#/, ""),
     apps,
