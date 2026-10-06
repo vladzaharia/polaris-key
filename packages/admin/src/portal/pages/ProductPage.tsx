@@ -239,8 +239,10 @@ function ProductBody({
       <SectionNav {...navProps} variant="pills" />
       <div className="flex gap-8">
         <SectionNav {...navProps} variant="toc" />
+        {/* pk-vt-scope on both columns: when the Devices card's list changes (MO-06), every card
+            moves to its new place with it instead of jumping under it (src/motion.css). */}
         <div className="flex min-w-0 flex-1 flex-col gap-6 desk:grid desk:grid-cols-[minmax(0,1fr)_21.25rem] desk:items-start wide:grid-cols-[minmax(0,1fr)_24rem]">
-          <div className="contents desk:flex desk:flex-col desk:gap-6">
+          <div className="pk-vt-scope contents desk:flex desk:flex-col desk:gap-6">
             {has("get") ? (
               <div className="order-1">
                 <GetItPanel product={product} device={here} />
@@ -267,7 +269,7 @@ function ProductBody({
               </div>
             ) : null}
           </div>
-          <div className="contents desk:flex desk:flex-col desk:gap-6">
+          <div className="pk-vt-scope contents desk:flex desk:flex-col desk:gap-6">
             <div className="order-2">
               <LicenseCard
                 product={product}
