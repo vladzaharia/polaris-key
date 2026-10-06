@@ -12,6 +12,9 @@
  *   GET/PATCH/DELETE /api/platform/settings[/:key]
  *                                 — the platform settings store and the read-only inventory
  *                                   (A-13, `platformSettings.ts`).
+ *   GET/POST /api/platform/settings/backfill
+ *                                 — the settings backfill's platform batch and every product's
+ *                                   newest report (ST-01c, `settingsBackfill.ts`).
  *   GET /api/platform/reserved-names
  *                                 — the reserved entitlement names and the registered products
  *                                   that declare one, compatible or not (LX-05,
@@ -42,6 +45,7 @@ import {
   notFound,
 } from "../lib/respond.js";
 import { handlePlatformSettings } from "./platformSettings.js";
+import { handlePlatformSettingsBackfill } from "./settingsBackfill.js";
 import { handleReservedNames } from "./reservedNames.js";
 import {
   appliedMigrations,
@@ -217,6 +221,10 @@ export async function handlePlatform(
   // S-19 §7.4 (LX-05): the reserved entitlement-name report, read-only.
   if (rest.length === 1 && rest[0] === "reserved-names")
     return handleReservedNames(req, env, db);
+  // ST-01c: the settings backfill's platform batch and its per-product overview. Before the
+  // settings store below, whose `settings/<key>` would otherwise read `backfill` as a key.
+  if (rest.length === 2 && rest[0] === "settings" && rest[1] === "backfill")
+    return handlePlatformSettingsBackfill(req, env, db, session, now);
   if (rest[0] === "settings") {
     try {
       return await handlePlatformSettings(

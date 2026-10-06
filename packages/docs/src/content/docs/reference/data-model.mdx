@@ -29,6 +29,7 @@ this page or fails the freshness gate.
 | `product_sync_state` | 0005_product_sync_state.sql | `product`, `source`, `status`, `last_checked_at`, `last_synced_at`, `commit_sha`, `changed_paths_json`, `updated_json`, `errors_json`, `message` |
 | `product_manifest_snapshot` | 0072_product_manifest_snapshot.sql | `product`, `applied_sha`, `applied_at`, `origin`, `files_sha256`, `manifest_json` |
 | `product_settings` | 0086_product_settings.sql | `product`, `key`, `value_json`, `source`, `version`, `updated_at`, `updated_by`, `reason`, `expires_at` |
+| `settings_backfill_reports` | 0102_settings_backfill_reports.sql | `product`, `id`, `at`, `mode`, `outcome`, `batch_id`, `commit_sha`, `changes`, `actor_sub`, `actor_name`, `report_json` |
 | `schema_index_assertion` | 0018_index_assertion.sql | `id`, `expected`, `found`, `missing` |
 | `blob_objects` | 0026_blob_store.sql | `storage_key`, `sha256`, `size`, `kind`, `gated`, `verified_at`, `created_at`, `unreferenced_since (0048)`, `gc_claimed_at (0048)` |
 | `blob_refs` | 0026_blob_store.sql | `product`, `storage_key`, `ref_kind`, `ref_id`, `created_at` |

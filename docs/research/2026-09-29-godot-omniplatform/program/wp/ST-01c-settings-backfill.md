@@ -48,6 +48,69 @@ The note proposed an operator-reviewed preserve step with a 30-day default. The 
 - Operators who want to keep a console value commit it to `.pkey/` before the run; the report shows what the run would revert.
 - Idempotent: a second apply changes nothing and records an empty report.
 
+### Corrections from the code (builder, 2026-10-06)
+
+- **The dry run writes no snapshot.** The brief has the dry run write the snapshot (origin
+  `backfill`). ST-01a's invariant is that a snapshot never describes a manifest that did not land,
+  and two readers depend on it: the resync's claim-or-conflict test for console rows
+  (`snapshotRowIds`) and ST-20's break-glass rule ("ends when the manifest changes the field from
+  the last applied one"). A dry-run snapshot of an unapplied commit would make the next resync
+  read that commit as already applied. So the dry run stores only its report, and the apply
+  writes the snapshot (origin `backfill`) in its own batch, only when the stored one does not
+  already describe the same documents.
+- **An apply applies one dry run (review N1, N2).** The dry-run report stores the manifest's
+  commit and the product's state token. An apply requires `expectReport=<the dry run's
+reportId>` and refuses with 409 `backfill_stale` when the commit or the token changed since, so
+  it writes exactly what the operator read. The platform batch's apply requires
+  `expectBatch=<the dry run's batchId>` and runs exactly the products that dry run covered, each
+  pinned to its own report.
+- **The system product's manifest is its deploy-hook snapshot**, not a GitHub read: ST-20 made
+  the deploy hook its single writer and refuses every other resync of it, so the backfill
+  classifies it against the root `.pkey/` at the deployed commit and never writes its snapshot.
+  Bootstrapped but never deploy-linked (`release_source` not `github`) it is `unlinked`; linked
+  with no snapshot it is `unreadable`.
+- **The system product's services are not equal.** S-18 §4.14.3 says the bootstrap's services
+  equal the root `.pkey/` (release and distribution on). The bootstrap starts from the default
+  set (`parseServices(null)`: License and Config on) and adds Release and Distribution, while
+  the root `.pkey/` turns License and Config off. The marker is therefore reset only when the
+  stored services equal the manifest's (the brief's "values equal"); otherwise it is kept and
+  reported, and the runbook tells the operator to switch them in the console first. Customer
+  products' `*_source` markers are kept and listed (S-18 §4.14.1).
+- **Break-glass claims follow ST-20's rule for any apply (review N3).** `claimsForApply` decides:
+  a claim ends (`endBreakGlassStatements`, audited `setting.breakGlass.end`) once expired or when
+  this manifest changes its field from the last applied snapshot, and the field then reverts;
+  otherwise it is live and kept. The system product's name is never written (F-03).
+- **Secrets (review B1, B2, N5).** A reverted profile's sealed secrets are carried by the catalog
+  that stays installed, as a resync picks it (`carryCatalog`): the console's while a live
+  break-glass claim keeps it. The report records the values a profile revert replaces, except
+  the `secrets` bucket, managed-secret keys by either catalog and sealed envelopes, which read
+  `[redacted]`, as do row-backed settings of `sensitivity: "secret"`.
+- **Concurrency.** A console edit landing during the apply's GitHub reads must not be reverted
+  unseen. The apply's first statement is its report row, inserted only while the product's state
+  token (product row, claims, tiers, profiles, catalog versions, snapshot) still matches the one
+  read before classifying; otherwise the NOT NULL `report_json` aborts the whole batch and the
+  route answers 409 `backfill_conflict`.
+- **The audit row** is `setting.backfill` (target the product, the operator as actor): `audit`
+  has no `origin` column until ST-04's structured audit lands, so the action names the origin and
+  the summary lists every change with before and after (bounded); the stored report holds the
+  full record.
+- **Evidence bound.** With neither a snapshot nor `product_sync_state.last_synced_at`, the
+  evidence is bounded by `products.created_at` (marked weak), not `modified_at` as S-18 §4.14.2
+  step 4 says: every console product edit bumps `modified_at`, so that bound would hide the very
+  edits the evidence exists to show.
+- **Row-backed settings (LX-06).** Besides the five column-backed claim keys, the admin group,
+  the catalog, tiers and profiles, the backfill reverts every row-backed claimable setting the
+  manifest declares (LX-06's `isRowBacked` and `manifestValueAt` over the registry's live
+  entries, so Core names no service). An undeclared console row stays; an undeclared manifest row
+  is the next resync's to clear (omit-clears).
+- **Routes** (narrative-only admin routes under rule 10, like resync and claims):
+  `POST|GET /manage/api/products/<slug>/settings/backfill[/<reportId>]` and
+  `POST|GET /manage/api/platform/settings/backfill`; `dryRun=1|0` is required, so a bare POST
+  never applies (405 `method_not_allowed`, 409 `backfill_stale` / `backfill_conflict`). The
+  product route sits ahead of LX-06's generic `settings/<key>` routes.
+  Migration `0102_settings_backfill_reports.sql` (numbered by the lead); rehearsed on a scratch
+  SQLite file with all 129 migrations (after batch 3), and replayed as a no-op on a populated database (test).
+
 ## Steps
 
 1. Classification over fixtures; the dry-run route; report storage.
@@ -56,11 +119,11 @@ The note proposed an operator-reviewed preserve step with a 30-day default. The 
 
 ## Acceptance criteria
 
-- [ ] Fixtures for equal, differs, not declared, unlinked, no `commit_sha` and fetch failure classify as §4.14.1 says (tests).
-- [ ] After apply every declared field equals the manifest and every undeclared console row has `source = 'console'` (test).
-- [ ] The dry-run report is stored and readable after apply (test).
-- [ ] A second apply is a no-op (test).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] Fixtures for equal, differs, not declared, unlinked, no `commit_sha` and fetch failure classify as §4.14.1 says (tests).
+- [x] After apply every declared field equals the manifest and every undeclared console row has `source = 'console'` (test).
+- [x] The dry-run report is stored and readable after apply (test).
+- [x] A second apply is a no-op (test).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header. (Scoped lead gate green, all 25 steps, Python, Swift and Godot included, after the batch-3 merge and the review fix round.)
 
 ## Verify
 
@@ -71,7 +134,9 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test
 
 ## Hand-off
 
-- From this run on, every linked product's resync honours claims. ST-17 builds the reusable dry-run UI on the same classifier.
+- From this run on, every linked product's resync honours claims. ST-17 builds the reusable dry-run UI on the same classifier (`planBackfill` in `core/settingsBackfill.ts`: its items carry `class` and `owner` independently of the backfill's `action`).
+- Owner step: the operator runs docs/RUNBOOK.md "Settings backfill" on production, `polaris-key` first, then `djdl` (dry run read and kept, then the apply pinned to it with `expectReport`).
+- ST-04: its "one write path" scan (`test/settings-writes.test.ts`) must list `core/settingsBackfill.ts` among the manifest writers (the backfill writes manifest values and drops claims, audited as `setting.backfill`); with ST-04's structured audit columns the backfill's row can carry `origin = 'backfill'`.
 
 The role agent sets `--set ST-01c in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

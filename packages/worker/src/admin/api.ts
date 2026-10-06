@@ -14,7 +14,7 @@
  *
  * Per-product resources are grouped by the SERVICE that owns them (plan §R1, spec §4.2). What is
  * left at the top level here is core/platform — the things a product has whether or not it runs
- * any service: `secrets/*`, `outlet-credentials/*`, `claims/*`, `ci-publisher`, `ci-tokens/*`, `keys/rotate`,
+ * any service: `secrets/*`, `outlet-credentials/*`, `claims/*`, `settings/backfill`, `ci-publisher`, `ci-tokens/*`, `keys/rotate`,
  * `activity`, `refusals`, `assets`, `services[/revert]`, `bundles`, `blob-gc[/bundles]`, `devices/*`, `users/*`. Everything
  * else is dispatched into a `ServiceDescriptor.adminHandle` with the full remaining path:
  *
@@ -76,6 +76,7 @@ import {
   handleProductScopedResource,
 } from "./handlers/products.js";
 import { handleActivity } from "./handlers/activity.js";
+import { handleProductSettingsBackfill } from "./handlers/settingsBackfill.js";
 import { handleCiPublisher, handleCiTokens } from "./handlers/ciPublishing.js";
 import { handleProductDevices } from "./handlers/devices.js";
 import { handleProductUsers } from "./handlers/users.js";
@@ -207,6 +208,22 @@ async function handleProductScoped(
     }
     return notFound();
   }
+
+  // The settings backfill (ST-01c, S-18 §4.14, owner decision D19). CORE, like `claims`: it
+  // moves the product onto ST-01b's claim model once and keeps its reports. Ahead of the
+  // generic `settings/<key>` routes (LX-06, S-18 §4.7), which would read `backfill` as a key.
+  //   POST /products/<slug>/settings/backfill?dryRun=1|0
+  //   GET  /products/<slug>/settings/backfill[/<reportId>]
+  if (resource === "settings" && rest[1] === "backfill")
+    return handleProductSettingsBackfill(
+      req,
+      env,
+      db,
+      session,
+      slug,
+      rest.slice(2),
+      now,
+    );
 
   // Platform-owned per-product resources — they exist for a product running NO service at all,
   // which is why they are not under one:
