@@ -705,6 +705,9 @@ function subscribe(listener: () => void): () => void {
     if (restoration) window.history.scrollRestoration = restoration;
     restoration = null;
     snapshot = null;
+    // A navigation still waiting to focus its heading (an overlay leaving, a page loading)
+    // belonged to the tree that just unmounted: it must not focus the next one's heading.
+    generation++;
   };
 }
 
