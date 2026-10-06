@@ -17,10 +17,14 @@
  * (promote, pin, yank, floors; the console and CI, `policy.ts`) and the trusted publisher (the
  * console's `PUT …/ci-publisher`, `admin/handlers/ciPublishing.ts`).
  *
- * `wire` is set only where the value already reaches a signed document: deliverables (pack ids
- * and version schemes in the feed's `packSets` and `packFloors`) and the channel policy (its
- * pointer, pin and `min_supported` floor decide what the feed names). None changes a document's
- * shape or discovery.
+ * `wire` labels the values that already reach a device, and none of these entries changes a
+ * document's or discovery's shape:
+ *
+ *   - discovery: Release's fragment publishes `binaryName` and `repository { owner, name }`
+ *     (`index.ts`), and Update's publishes `channels`, manual channels included;
+ *   - the signed feed: a manual channel's name is the feed's `channel` claim; deliverables give
+ *     its pack ids and version schemes (`packSets`, `packFloors`); the channel policy's pointer,
+ *     pin and `min_supported` floor decide what it names.
  */
 
 import { setting } from "../../core/settings/define.js";
@@ -39,21 +43,28 @@ export const RELEASE_MANIFEST_SETTINGS: readonly SettingDef[] = [
     area: "release.sync",
     label: "GitHub repository",
     description:
-      "The GitHub repository releases are read from, named in .pkey/release as provider: { type: github, owner, repo }. The stored coordinates are those of the repository the product is linked to, written with its GitHub App installation when it is linked.",
+      "The GitHub repository releases are read from. Linking the product (Settings → Repository) sets it, with the repository's GitHub App installation. .pkey/release names it as provider: { type: github, owner, repo }, which is validated and, for the platform's own product, must match the platform repository. Changing it changes whose releases are served and who can publish.",
     keywords: ["provider", "owner", "repo", "repository", "link"],
     docs: BLOCK_DOCS,
     value: { kind: "json", schema: "provider (release.schema.json)" },
     defaultValue: null,
     allowUnset: true,
     merge: "cascade",
-    // Read-only in the console: Link and Unlink change which repository is linked, never a
-    // settings write. The platform's own product must name the platform repository
-    // (`admin/systemProduct.ts`). Storage holds one column: `gh_repo` and `gh_installation_id`
-    // sit beside `gh_owner` and are written with it.
+    // Link (Settings → Repository; `linkRepo.ts`, `linkExisting.ts`) writes `gh_owner`,
+    // `gh_repo` and `gh_installation_id` (a refused link-existing restores the previous ones);
+    // resync never writes them. The manifest's `provider` is validated and, for the system
+    // product, checked against the platform repository (`systemManifestProblem`). No settings
+    // write exists, so the console's generic row is a read-out: `manifest` is the closest
+    // ownership. Storage holds one column: `gh_repo` and `gh_installation_id` sit beside
+    // `gh_owner` and are written with it.
     ownership: "manifest",
     manifest: { path: "release:release.provider" },
+    securityWidening: true,
+    widensWhen: "any",
+    critical: true,
     confirm: { change: "L1" },
     visibleWhen: VISIBLE,
+    wire: ["discovery"],
     readers: [
       "services/release/config.ts",
       "services/release/gateway.ts",
@@ -85,6 +96,7 @@ export const RELEASE_MANIFEST_SETTINGS: readonly SettingDef[] = [
     manifest: { path: "release:release.binaryName" },
     confirm: { change: "L1" },
     visibleWhen: VISIBLE,
+    wire: ["discovery"],
     readers: [
       "services/release/source.ts",
       "services/release/install.ts",
@@ -187,6 +199,7 @@ export const RELEASE_MANIFEST_SETTINGS: readonly SettingDef[] = [
     manifest: { path: "release:release.manualChannels" },
     confirm: { change: "L1" },
     visibleWhen: VISIBLE,
+    wire: ["discovery", "document"],
     readers: [
       "services/release/channels.ts",
       "services/release/resolve.ts",

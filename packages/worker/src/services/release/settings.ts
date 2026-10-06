@@ -88,6 +88,8 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
       critical: true,
       confirm: { change: "L2" },
       visibleWhen: VISIBLE,
+      // Update's discovery publishes it as `sparkleEd25519PublicKey` (`update/index.ts`).
+      wire: ["discovery"],
       readers: ["services/release/sparkle.ts", "services/update/feed.ts"],
       storage: {
         kind: "column",

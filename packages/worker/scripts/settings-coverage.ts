@@ -466,7 +466,7 @@ export const PENDING: readonly PendingEntry[] = [
   {
     target: "table:product_secrets",
     owner: "ST-08",
-    note: "core.secrets' storage (ST-19b registered the entry, names only)",
+    note: "extends core.secrets (ST-19b registered it, pending on ST-08)",
   },
   {
     target: "table:release_channel_floors",

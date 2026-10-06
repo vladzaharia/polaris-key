@@ -368,7 +368,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     ownership: "manifest",
     critical: false,
     secret: true,
-    pending: null,
+    pending: "ST-08",
     deprecated: null,
   },
   {
@@ -776,11 +776,11 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "release.sync",
     label: "GitHub repository",
     description:
-      "The GitHub repository releases are read from, named in .pkey/release as provider: { type: github, owner, repo }. The stored coordinates are those of the repository the product is linked to, written with its GitHub App installation when it is linked.",
+      "The GitHub repository releases are read from. Linking the product (Settings → Repository) sets it, with the repository's GitHub App installation. .pkey/release names it as provider: { type: github, owner, repo }, which is validated and, for the platform's own product, must match the platform repository. Changing it changes whose releases are served and who can publish.",
     keywords: ["provider", "owner", "repo", "repository", "link"],
     docs: "/docs/services/release/github-sync/",
     ownership: "manifest",
-    critical: false,
+    critical: true,
     secret: false,
     pending: null,
     deprecated: null,

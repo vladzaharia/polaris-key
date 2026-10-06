@@ -163,9 +163,11 @@ export const CORE_SLICE: readonly SettingDef[] = [
   }),
   // ST-19b: `.pkey/product`'s `secrets.required`, names only. A manifest names a secret and never
   // carries its value: an operator sets each value on Keys & secrets, sealed in `product_secrets`,
-  // and only its presence is shown. The names are not stored (the setup check derives the
-  // required set from the blocks that use them), so storage is `none` here; ST-08, which owns the
-  // `table:product_secrets` PENDING entry, gives this entry that table when it registers it.
+  // and only its presence is shown. No Worker file reads `secrets.required` yet (the validator
+  // collects it for `pkey validate`; the console's setup check derives the required names from
+  // `oidc` and `edgeMint`), so the entry is pending on ST-08 with no readers and storage `none`.
+  // ST-08, which owns the `table:product_secrets` PENDING entry, extends this entry with that
+  // table and its readers rather than registering a second one.
   setting({
     key: "core.secrets",
     scope: "product",
@@ -193,9 +195,9 @@ export const CORE_SLICE: readonly SettingDef[] = [
     manifest: { path: "product:secrets.required" },
     sensitivity: "secret",
     confirm: { change: "L0" },
-    readers: ["admin/lib/shape.ts", "services/release/linkRepo.ts"],
     storage: { kind: "none" },
     since: "ST-19b",
+    pending: { wp: "ST-08" },
   }),
   setting({
     key: "core.presentation",

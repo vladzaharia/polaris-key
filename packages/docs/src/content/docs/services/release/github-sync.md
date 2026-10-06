@@ -61,13 +61,18 @@ validation is rejected in full — nothing partial is ever applied.
 ## The release block
 
 `.pkey/release` keeps its fields in a `release:` block. The fields below configure the GitHub sync
-itself. Linking writes them into the product's release configuration and every resync rewrites
-them, so editing the file is the only way to change them; the console shows them read-only. Each
-one is a setting in the [settings reference](/docs/reference/settings/).
+itself. Each one is a setting in the [settings reference](/docs/reference/settings/).
+
+The repository is the exception to "the manifest is the edit path". Its stored coordinates come
+from **Settings → Repository**: linking the product records the repository's owner, name and App
+installation (a link that is refused puts the previous ones back). A resync never writes them. `provider` is validated, and
+for the platform's own product it must name the platform repository; otherwise it is not read.
+Every other field below is written at link and rewritten by every resync, so editing the file is
+the only way to change it.
 
 | Field             | What it does                                                                                                                                                                     | When unset                                       |
 | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `provider`        | `{ type: github, owner, repo }`: the repository releases come from. The stored coordinates are those of the repository you link, with its App installation.                      | required                                         |
+| `provider`        | `{ type: github, owner, repo }`: names the repository releases come from. It is validated, not stored: the stored repository is the one linked under Settings → Repository.      | required                                         |
 | `binaryName`      | The executable's name in artifact file names and in the install script (see [Binary name safety](#binary-name-safety)).                                                          | the repository's name                            |
 | `channelWorkflow` | A workflow file name or numeric id. `beta` is the newest tag a successful run of it built from `betaBranch`, and `pr-<n>` the newest tag it built from that pull request's head. | `beta` and `pr-<n>` fall back to prerelease tags |
 | `betaBranch`      | The branch whose `channelWorkflow` runs make `beta`.                                                                                                                             | `main`                                           |

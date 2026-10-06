@@ -92,25 +92,34 @@ the same count (21 in total).
 
 ### Corrections from the build (the code is the fact)
 
-- **`core.secrets` has no storage of its own yet.** Nothing in the Worker reads
-  `secrets.required`: the validator collects it for `pkey validate`, and the console's setup check
-  (`admin/lib/shape.ts`) derives the required names from `oidc` and `edgeMint`. The values live in
-  `product_secrets`, whose `PENDING` entry belongs to ST-08. The entry is registered with
-  `storage: { kind: "none" }`, and ST-08 gives it the `product_secrets` adapter when it removes
-  its own entry. ST-08 should extend `core.secrets`, not register it again.
+- **`core.secrets` is pending on ST-08.** Nothing in the Worker reads `secrets.required`: the
+  validator collects it for `pkey validate`, and the console's setup check (`admin/lib/shape.ts`)
+  derives the required names from `oidc` and `edgeMint`. The values live in `product_secrets`,
+  whose `PENDING` entry belongs to ST-08. The entry is registered with `pending: { wp: "ST-08" }`,
+  no readers and `storage: { kind: "none" }`. ST-08 extends it with the `product_secrets` adapter
+  and its readers, and does not register it again (its brief says so).
 - **`release.github` is stored from the link, not from the manifest.** `gh_owner`, `gh_repo` and
-  `gh_installation_id` come from the repository an operator links. The manifest's `provider` is
-  validated, and it is compared with the platform repository only for the system product
-  (`admin/systemProduct.ts`). The entry is `manifest`-owned, because the console has no write for
-  it besides Link and Unlink. Storage names `gh_owner`, because `storage` holds one column.
+  `gh_installation_id` come from the repository linked under Settings → Repository (a refused
+  link-existing restores the previous ones), and a resync never writes them. There is no Unlink
+  action in the code. The manifest's `provider` is validated, and it is
+  compared with the platform repository only for the system product (`systemManifestProblem`).
+  The entry is `manifest`-owned, because the console has no settings write for it besides Link. It is security-widening (whose releases are served, who can publish). Storage names
+  `gh_owner`, because `storage` holds one column.
 - **Claimable, from the code:** `core.registration` (the Services page's PATCH claims
   `services_json`), `release.channelPolicy` (console and CI operations claim the row) and
   `release.publishing.trustedPublisher` (the console's `PUT …/ci-publisher` claims it; there is no
   revert route yet). Everything else is `manifest`.
-- **`wire`** is set where a value already reaches a device: `core.registration` (discovery, and
-  the `registration_closed` refusal), `release.deliverables`, `release.channelPolicy`,
-  `distribution.transports` (the feed's pack sets, floors and pins), and `identity.provisioning`
-  (the entitlement a hook writes into the licence).
+- **`wire`** is set where a value already reaches a device:
+  - discovery: `core.registration` (with the `registration_closed` refusal), `release.github`
+    (Release's `repository`), `release.binaryName`, `release.manualChannels` (Update's
+    `channels`) and, on the existing entry, `release.sparkleEd25519Pub` (Update's
+    `sparkleEd25519PublicKey`);
+  - the signed feed: `release.manualChannels` (a manual channel's name is the feed's `channel`
+    claim), `release.deliverables`, `release.channelPolicy` and `distribution.transports` (pack
+    sets, floors and pins);
+  - the licence document: `identity.provisioning` (the entitlement a hook writes).
+- **`SECURITY_WIDENING_KEYS`** (`rules.ts`) now lists the five widening entries this package adds,
+  and the existing `cloudSync.writes`.
 - **Docs links are page paths, with no anchors.** The console's help-link gate
   (`test/docsLinks.test.ts`) checks the settings search index against the built slug manifest. The
   release block's fields link to the new "The release block" section's page, GitHub sync.
