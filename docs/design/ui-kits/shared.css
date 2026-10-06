@@ -5,45 +5,30 @@
  *
  * Critique round 1 (2026-10-05) changed the foundations:
  *   - Rubik ships as a variable font (wght 300–900) and JetBrains Mono is the kit mono, both
- *     from ./fonts/ (UK-01 moves them into packages/brand). Weights: 400 body and row titles,
- *     500 labels and buttons, 600 headings; 700 only for the product name on the Welcome hero.
+ *     from packages/brand/fonts (UK-01). Weights: 400 body and row titles, 500 labels and
+ *     buttons, 600 headings; 700 only for the product name on the Welcome hero.
  *   - The default accent is the PRODUCT's, derived from its icon (§3.3 resolver). The fixture
- *     Tidewater Studio resolves to teal; violet appears only under accent: "core".
+ *     Tidewater Studio resolves to teal; violet appears only under accent: "core". Every accent
+ *     value below is the resolver's output (packages/brand/src/accent.ts, UK-01).
  *   - Chromatic primaries carry a white label in both schemes; the resolver darkens `solid`
  *     until white reaches 4.5:1 and flips to ink only for light accents (Drift Kart orange).
  *   - Fields are filled (no border), focus is a 2 px outline with no glow, loading is a
  *     determinate countdown ring, a top-edge shimmer bar or a skeleton.
  */
+@import url("../../../packages/brand/fonts/fonts.css");
 @import url("../../../packages/brand/css/tokens.css");
-
-@font-face {
-  font-family: "Rubik";
-  font-style: normal;
-  font-weight: 300 900;
-  font-display: swap;
-  src: url("./fonts/rubik-var-latin.woff2") format("woff2");
-}
-@font-face {
-  font-family: "JetBrains Mono";
-  font-style: normal;
-  font-weight: 400 600;
-  font-display: swap;
-  src: url("./fonts/jetbrains-mono-var-latin.woff2") format("woff2");
-}
+@import url("../../../packages/brand/css/kit.css");
 
 :root {
-  --pk-font-weight-medium: 500;
-  --pk-font-weight-semibold: 600;
-  --kit-mono:
-    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --kit-mono: var(--pk-font-mono);
 
-  /* Resolved product accent (§3.3) for the fixture Tidewater Studio, derived from its icon.
-     Dark scheme: solid #0f8075 (white 4.81:1, page 4.14:1), fg #4fd8c4 (10.7:1). */
-  --kit-accent: #0f8075;
-  --kit-accent-fg: #4fd8c4;
+  /* Resolved product accent (§3.3) for the fixture Tidewater Studio, derived from its icon
+     (#369186). Dark scheme: solid #26847a (white 4.55:1), fg #72cabe (9.3:1 on every surface). */
+  --kit-accent: #26847a;
+  --kit-accent-fg: #72cabe;
   --kit-accent-on: #ffffff;
-  --kit-accent-subtle: #0c2628;
-  --kit-focus: #4fd8c4;
+  --kit-accent-subtle: #0a181e;
+  --kit-focus: #72cabe;
 
   --kit-radius-control: 12px;
   --kit-radius-card: 22px;
@@ -62,23 +47,25 @@
     var(--pk-text-strong) 12%,
     transparent
   );
-  --kit-danger-solid: #c83b2c; /* white 4.6:1 */
+  --kit-danger-solid: var(
+    --pk-kit-danger-solid
+  ); /* white-first: #db3a2b, 4.5:1 */
   --kit-scrim: rgb(2 4 8 / 0.5);
   --kit-scrim-blur: 16px;
 }
 [data-theme="light"] {
-  --kit-accent: #0d7268;
-  --kit-accent-fg: #0b6b62;
+  --kit-accent: #26847a;
+  --kit-accent-fg: #14796f;
   --kit-accent-on: #ffffff;
-  --kit-accent-subtle: #dff2ef;
-  --kit-focus: #0d7268;
+  --kit-accent-subtle: #e1ecf2;
+  --kit-focus: #26847a;
   --kit-highlight: rgb(255 255 255 / 0.9);
   --kit-fill: color-mix(
     in oklab,
     var(--pk-surface-sunken) 70%,
     var(--pk-surface-raised)
   );
-  --kit-danger-solid: #be2323;
+  --kit-danger-solid: var(--pk-kit-danger-solid);
   --kit-scrim: rgb(6 9 18 / 0.14);
   --kit-scrim-blur: 12px;
 }
