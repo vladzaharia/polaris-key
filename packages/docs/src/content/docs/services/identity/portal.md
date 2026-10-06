@@ -401,6 +401,34 @@ signed in" notice to every verified address.
 
 Requests and codes live in the Worker's atomic single-use store for 5 minutes.
 
+## The Activate license link
+
+`https://key.plrs.im/activate` opens the Library with the Activate license modal. The key, when
+the link carries one, goes in the **fragment**:
+
+```text
+https://key.plrs.im/activate#key=pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w
+https://key.plrs.im/activate?product=mossgarden#key=pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w
+```
+
+A browser never sends a fragment to a server, so the key is in no request, no Worker or edge log
+and no `Referer`. Never write the key as a query parameter (`?key=`): a query is part of every
+request log that records a URL. `product=` is optional context ("Mossgarden sent you here"), and a
+link with no key opens the modal with an empty field. The Worker never builds a link with a key in
+it (`manageUrl` on a refusal carries none); the SDKs' manage-link helpers (client-core's
+`withManageKey` and its ports) add `#key=`, and only to an `/activate` link.
+
+The page reads the key, then removes the fragment from the address bar and the history entry with
+`history.replaceState` before it does anything else. Signed out, the login card runs first and the
+modal opens after sign-in; the key stays in the tab and is left out of every sign-in's return URL.
+
+**Links already sent.** The first version of the link was `/activate?key=…`. The portal still
+reads it, and drops the query the same way. The Worker answers that request with the ordinary,
+uncached portal page (`Referrer-Policy: no-referrer`); it does not redirect, which could not unlog
+the request and would only send the key back in a `Location` header, and it fetches the page
+without the query, so the key goes no further. That one request is still in the platform's
+request logs; see the threat model's "Key-bearing deep links" for the residuals.
+
 ## Emails
 
 Every email is from **Polaris Key** (`PORTAL_EMAIL_FROM`, default `Polaris Key <noreply@plrs.im>`)
