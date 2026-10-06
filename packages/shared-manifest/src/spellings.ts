@@ -40,7 +40,10 @@ export interface DeprecatedSpelling {
   row: number;
   /** The document the old spelling lives in. */
   doc: "product" | "schema" | "release" | "distribution";
-  /** The old spelling's JSON pointer. A `*` segment stands for an array index. */
+  /**
+   * The old spelling's JSON pointer. A `*` segment stands for an array index (in row 18, which
+   * the pass skips, an outlet id).
+   */
   pointer: string;
   /**
    * The canonical spelling in registry form (`<doc>:<dotted path>`, `[]` for an array index):
@@ -551,7 +554,7 @@ export function checkSpellings(
           ignored ? " and is ignored" : "",
         );
       }
-      // `both` with another conflict code (row 16) is the existing error's to report.
+      // Rows whose conflict has its own code (16, 18) are `checkedElsewhere` and never get here.
     }
   }
 }
