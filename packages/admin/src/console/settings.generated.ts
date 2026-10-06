@@ -341,7 +341,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Who may mint a device token: open, requires-identity or requires-license. Unset follows the services: requires-license with License on, else requires-identity with Identity on, else open. Opening it lets any client register a device.",
     keywords: ["devices.registration", "register", "device token", "open"],
-    docs: "/docs/services/core/device-principal/#registration-policies",
+    docs: "/docs/services/core/device-principal/",
     ownership: "claimable",
     critical: true,
     secret: false,
@@ -364,7 +364,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
       "sealed",
       "missing secrets",
     ],
-    docs: "/docs/admin/secrets-and-keys/#product-secrets",
+    docs: "/docs/admin/secrets-and-keys/",
     ownership: "manifest",
     critical: false,
     secret: true,
@@ -778,7 +778,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The GitHub repository releases are read from, named in .pkey/release as provider: { type: github, owner, repo }. The stored coordinates are those of the repository the product is linked to, written with its GitHub App installation when it is linked.",
     keywords: ["provider", "owner", "repo", "repository", "link"],
-    docs: "/docs/services/release/github-sync/#the-release-block",
+    docs: "/docs/services/release/github-sync/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -796,7 +796,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The executable's name in artifact file names and in the install script users pipe into sh. Unset means the repository's name.",
     keywords: ["executable", "install.sh", "artifact names"],
-    docs: "/docs/services/release/github-sync/#the-release-block",
+    docs: "/docs/services/release/github-sync/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -814,7 +814,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The GitHub Actions workflow (a file name or numeric id) whose successful runs make the beta and pr-<n> channels: beta is the newest tag a run built from the beta branch, pr-<n> the newest from that pull request. Unset, both fall back to prerelease tags.",
     keywords: ["beta", "pull request", "actions", "workflow runs"],
-    docs: "/docs/services/release/github-sync/#the-release-block",
+    docs: "/docs/services/release/github-sync/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -832,7 +832,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The branch whose channel-workflow runs make the beta channel. Used only with a channel workflow.",
     keywords: ["beta", "branch"],
-    docs: "/docs/services/release/github-sync/#the-release-block",
+    docs: "/docs/services/release/github-sync/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -850,7 +850,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "The HTML-comment marker that fences a release's summary in its GitHub release notes (<!-- pkey:summary --> … <!-- /pkey:summary -->). The changelog route and the appcast show the fenced text, else the first paragraph above the first ## heading.",
     keywords: ["changelog", "release notes", "summary"],
-    docs: "/docs/services/release/github-sync/#the-release-block",
+    docs: "/docs/services/release/github-sync/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -868,7 +868,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Named channels beyond stable and beta, each matching release tags by an anchored regular expression (a nightly or canary line). Licences grant them and SDKs request them like any other channel.",
     keywords: ["nightly", "canary", "channels", "regex"],
-    docs: "/docs/services/release/github-sync/#the-release-block",
+    docs: "/docs/services/release/github-sync/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -886,7 +886,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "What the product releases: its app (versioning, channels and artifact map), its packs and its packages. Unset means one implicit app deliverable whose files are classified by name.",
     keywords: ["app", "packs", "packages", "artifact map", "versioning"],
-    docs: "/docs/build/manifest/authoring/#release-deliverables-deliverablesapp-and-the-artifact-map",
+    docs: "/docs/build/manifest/authoring/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -902,9 +902,9 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "release.channels",
     label: "Channel policy",
     description:
-      "Per deliverable and channel: the pointer, the pin, the channels it includes, the device floor and the critical flag. The manifest declares includes; a promote, pin, yank or floor change from the console or CI claims that row until Revert.",
+      "Per deliverable and channel: the pointer, the pin, the channels it includes, the device floor and the critical flag. The manifest declares includes; a promote, pin or floor change from the console or CI claims that row until Revert.",
     keywords: ["promote", "pin", "yank", "floor", "includes", "minSupported"],
-    docs: "/docs/services/release/channels/#the-policy-row",
+    docs: "/docs/services/release/channels/",
     ownership: "claimable",
     critical: false,
     secret: false,
@@ -922,7 +922,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Which GitHub Actions workflow and environment may exchange their OIDC token for a short-lived pkeyci_ token, and with which scopes. Pointing it at another workflow or environment changes who can publish.",
     keywords: ["ci", "oidc", "pkeyci", "publish", "workflow", "environment"],
-    docs: "/docs/services/release/artifacts/#trusted-publishing",
+    docs: "/docs/services/release/artifacts/",
     ownership: "claimable",
     critical: true,
     secret: false,
@@ -938,9 +938,9 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     area: "release.signing",
     label: "Release keys",
     description:
-      "The Ed25519 public keys CI signs release records with (pkey-release+jws), one to four. A release is published only with a record signed by one of them; whoever holds a matching private key can publish. Public keys only.",
+      "The Ed25519 public keys CI signs release records with (pkey-release+jws), one to four. A record is accepted only when signed by one of them, and a release without one is never a feed target, so whoever holds a matching private key can publish releases devices are offered. Public keys only.",
     keywords: ["releaseKeys", "release records", "signing", "kid"],
-    docs: "/docs/services/update/signed-feed/#release-records",
+    docs: "/docs/services/update/signed-feed/",
     ownership: "manifest",
     critical: true,
     secret: false,
@@ -1073,7 +1073,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Which transport carries each deliverable on each outlet: a deliverable's own entry, else the packs entry for a pack, else the default (pkey-cdn when unset).",
     keywords: ["pkey-cdn", "embedded", "play-pad", "apple-ba", "steam-depot"],
-    docs: "/docs/services/distribution/delivery/#pack-transports",
+    docs: "/docs/services/distribution/delivery/",
     ownership: "manifest",
     critical: false,
     secret: false,
@@ -1181,7 +1181,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
     description:
       "Hooks that turn a verified OIDC claim into an entitlement and a secret on the signed-in person's licence: the claim, the entitlement key and value, and a secret built from a URL template whose host must be one the hook allows. Changing one changes what a sign-in grants.",
     keywords: ["claims", "entitlements", "provisioning_config"],
-    docs: "/docs/services/identity/oidc/#provisioning-hooks-claim--entitlement--secret",
+    docs: "/docs/services/identity/oidc/",
     ownership: "manifest",
     critical: true,
     secret: false,

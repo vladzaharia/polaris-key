@@ -111,6 +111,9 @@ the same count (21 in total).
   the `registration_closed` refusal), `release.deliverables`, `release.channelPolicy`,
   `distribution.transports` (the feed's pack sets, floors and pins), and `identity.provisioning`
   (the entitlement a hook writes into the licence).
+- **Docs links are page paths, with no anchors.** The console's help-link gate
+  (`test/docsLinks.test.ts`) checks the settings search index against the built slug manifest. The
+  release block's fields link to the new "The release block" section's page, GitHub sync.
 - **`compatMax`** uses `manifest.alsoPaths`, which is checked by `rules.ts`, the registry test
   and `settings-coverage.ts`, and is listed in the generated reference.
 

@@ -97,7 +97,7 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       description:
         "Which transport carries each deliverable on each outlet: a deliverable's own entry, else the packs entry for a pack, else the default (pkey-cdn when unset).",
       keywords: ["pkey-cdn", "embedded", "play-pad", "apple-ba", "steam-depot"],
-      docs: "/docs/services/distribution/delivery/#pack-transports",
+      docs: "/docs/services/distribution/delivery/",
       value: { kind: "json", schema: "transports (distribution.schema.json)" },
       defaultValue: null,
       allowUnset: true,

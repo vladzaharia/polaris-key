@@ -27,7 +27,7 @@ import { setting } from "../../core/settings/define.js";
 import type { SettingDef } from "../../core/settings/types.js";
 
 const VISIBLE = { service: "release", offBehaviour: "hide" } as const;
-const BLOCK_DOCS = "/docs/services/release/github-sync/#the-release-block";
+const BLOCK_DOCS = "/docs/services/release/github-sync/";
 const releaseConfig = (column: string) =>
   ({ kind: "column", table: "release_config", column }) as const;
 
@@ -204,7 +204,7 @@ export const RELEASE_MANIFEST_SETTINGS: readonly SettingDef[] = [
     description:
       "What the product releases: its app (versioning, channels and artifact map), its packs and its packages. Unset means one implicit app deliverable whose files are classified by name.",
     keywords: ["app", "packs", "packages", "artifact map", "versioning"],
-    docs: "/docs/build/manifest/authoring/#release-deliverables-deliverablesapp-and-the-artifact-map",
+    docs: "/docs/build/manifest/authoring/",
     value: { kind: "json", schema: "deliverables (release.schema.json)" },
     defaultValue: null,
     allowUnset: true,
@@ -231,9 +231,9 @@ export const RELEASE_MANIFEST_SETTINGS: readonly SettingDef[] = [
     area: "release.channels",
     label: "Channel policy",
     description:
-      "Per deliverable and channel: the pointer, the pin, the channels it includes, the device floor and the critical flag. The manifest declares includes; a promote, pin, yank or floor change from the console or CI claims that row until Revert.",
+      "Per deliverable and channel: the pointer, the pin, the channels it includes, the device floor and the critical flag. The manifest declares includes; a promote, pin or floor change from the console or CI claims that row until Revert.",
     keywords: ["promote", "pin", "yank", "floor", "includes", "minSupported"],
-    docs: "/docs/services/release/channels/#the-policy-row",
+    docs: "/docs/services/release/channels/",
     value: { kind: "json", schema: "release_channel_policy rows (model.ts)" },
     defaultValue: null,
     allowUnset: true,
@@ -262,7 +262,7 @@ export const RELEASE_MANIFEST_SETTINGS: readonly SettingDef[] = [
     description:
       "Which GitHub Actions workflow and environment may exchange their OIDC token for a short-lived pkeyci_ token, and with which scopes. Pointing it at another workflow or environment changes who can publish.",
     keywords: ["ci", "oidc", "pkeyci", "publish", "workflow", "environment"],
-    docs: "/docs/services/release/artifacts/#trusted-publishing",
+    docs: "/docs/services/release/artifacts/",
     value: { kind: "json", schema: "ci_publishers row (core/publisher.ts)" },
     defaultValue: null,
     allowUnset: true,
@@ -291,9 +291,9 @@ export const RELEASE_MANIFEST_SETTINGS: readonly SettingDef[] = [
     area: "release.signing",
     label: "Release keys",
     description:
-      "The Ed25519 public keys CI signs release records with (pkey-release+jws), one to four. A release is published only with a record signed by one of them; whoever holds a matching private key can publish. Public keys only.",
+      "The Ed25519 public keys CI signs release records with (pkey-release+jws), one to four. A record is accepted only when signed by one of them, and a release without one is never a feed target, so whoever holds a matching private key can publish releases devices are offered. Public keys only.",
     keywords: ["releaseKeys", "release records", "signing", "kid"],
-    docs: "/docs/services/update/signed-feed/#release-records",
+    docs: "/docs/services/update/signed-feed/",
     value: { kind: "json", schema: "releaseKeys (release.schema.json)" },
     defaultValue: null,
     allowUnset: true,

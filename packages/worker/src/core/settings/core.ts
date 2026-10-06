@@ -137,7 +137,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
     description:
       "Who may mint a device token: open, requires-identity or requires-license. Unset follows the services: requires-license with License on, else requires-identity with Identity on, else open. Opening it lets any client register a device.",
     keywords: ["devices.registration", "register", "device token", "open"],
-    docs: "/docs/services/core/device-principal/#registration-policies",
+    docs: "/docs/services/core/device-principal/",
     value: {
       kind: "enum",
       values: ["open", "requires-identity", "requires-license"],
@@ -180,7 +180,7 @@ export const CORE_SLICE: readonly SettingDef[] = [
       "sealed",
       "missing secrets",
     ],
-    docs: "/docs/admin/secrets-and-keys/#product-secrets",
+    docs: "/docs/admin/secrets-and-keys/",
     value: {
       kind: "json",
       schema:
