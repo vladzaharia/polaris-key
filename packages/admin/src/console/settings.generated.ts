@@ -1109,7 +1109,7 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
       "Platform → Settings (secrets, by presence); Platform → Store connections",
   },
   {
-    thing: "Origins (console, blob and package hosts)",
+    thing: "Origins (console, blob, package and image hosts)",
     reason: "The S-13 §8.2 deny-list: an origin is deploy-time forever.",
     shows: "Platform → Settings (the read-only inventory)",
   },

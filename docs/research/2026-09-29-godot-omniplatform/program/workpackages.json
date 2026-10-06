@@ -7704,7 +7704,7 @@
         "notes/S-20 §9 HA-02"
       ],
       "brief": "wp/HA-02-img-host.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "HA-03",
@@ -7722,7 +7722,7 @@
       "optional": false,
       "refs": ["notes/S-20 §6.6", "notes/S-20 owner decision 4"],
       "brief": "wp/HA-03-image-variants.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "HA-04",
