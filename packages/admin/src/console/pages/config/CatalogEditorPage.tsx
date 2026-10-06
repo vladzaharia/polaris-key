@@ -32,6 +32,8 @@ import { PageSkeleton } from "../../../ui/Skeleton.js";
 import { SourceBadge } from "../../../ui/SourceBadge.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { toast } from "../../../ui/toast.js";
+import { Textarea } from "../../../ui/Textarea.js";
+import { BREAK_GLASS_REASON_MAX } from "../../components/BreakGlassDialog.js";
 import { Breadcrumbs } from "../../components/Breadcrumbs.js";
 import { PageHeader } from "../../components/PageHeader.js";
 import { useProduct } from "../../data/hooks.js";
@@ -120,6 +122,7 @@ export function CatalogEditorPage({
       setDraft={setDraft}
       server={catalog.data ?? null}
       source={catalogSource(product)}
+      authoritative={product?.manifestAuthoritative?.value ?? false}
       onDiscard={() => {
         clearDraft(slug);
         setDraftState(draftFrom(catalog.data ?? null));
@@ -160,6 +163,7 @@ function Editor({
   setDraft,
   server,
   source,
+  authoritative,
   onDiscard,
 }: {
   slug: string;
@@ -167,6 +171,8 @@ function Editor({
   setDraft: (next: CatalogDraft) => void;
   server: ProductCatalog | null;
   source: "manifest" | "admin";
+  /** ST-20: the product is manifest-authoritative, so a publish is a break-glass claim. */
+  authoritative: boolean;
   onDiscard: () => void;
 }): React.ReactElement {
   const [mode, setMode] = useSearchParam("mode", MODE);
@@ -610,6 +616,7 @@ function Editor({
         setDraft={setDraft}
         server={server}
         source={source}
+        authoritative={authoritative}
         blocked={issues.length > 0}
         onPublished={(version) => {
           clearDraft(slug);
@@ -693,6 +700,7 @@ function ReviewDrawer({
   setDraft,
   server,
   source,
+  authoritative,
   blocked,
   onPublished,
   onDiscard,
@@ -704,6 +712,7 @@ function ReviewDrawer({
   setDraft: (next: CatalogDraft) => void;
   server: ProductCatalog | null;
   source: "manifest" | "admin";
+  authoritative: boolean;
   blocked: boolean;
   onPublished: (version: number) => void;
   onDiscard: () => void;
@@ -715,11 +724,15 @@ function ReviewDrawer({
   );
   const usage = useCatalogUsage(slug, removedKeys);
   const [ack, setAck] = React.useState(false);
+  // ST-20: a manifest-authoritative product's publish is a break-glass claim with a reason (L2).
+  const [reason, setReason] = React.useState("");
+  const reasonId = React.useId();
   const [publishing, setPublishing] = React.useState(false);
   const [error, setError] = React.useState<unknown>(null);
   React.useEffect(() => {
     if (!open) {
       setAck(false);
+      setReason("");
       setError(null);
     }
   }, [open]);
@@ -753,6 +766,7 @@ function ReviewDrawer({
         slug,
         draftDocument(draft),
         draft.baseVersion,
+        authoritative ? { reason: reason.trim() } : undefined,
       );
       onOpenChange(false);
       onPublished(res.schemaVersion);
@@ -836,7 +850,36 @@ function ReviewDrawer({
                   onRetry={() => void usage.refetch()}
                 />
               ) : null}
-              {source === "manifest" ? (
+              {authoritative ? (
+                <Callout
+                  tone="danger"
+                  title="Publishing is a break-glass claim"
+                >
+                  <p>
+                    This product is manifest-authoritative:{" "}
+                    <code className="font-mono text-xs">{CATALOG_PATH}</code> is
+                    the only writer of its catalog. The published version holds
+                    for 7 days, or until the first resync that changes the
+                    catalog in the repository, whichever comes first. Commit the
+                    change to keep it.
+                  </p>
+                  <div className="mt-3 space-y-1">
+                    <label
+                      htmlFor={reasonId}
+                      className="text-sm font-bold text-fg-strong"
+                    >
+                      Reason
+                    </label>
+                    <Textarea
+                      id={reasonId}
+                      value={reason}
+                      maxLength={BREAK_GLASS_REASON_MAX}
+                      required
+                      onChange={(e) => setReason(e.target.value)}
+                    />
+                  </div>
+                </Callout>
+              ) : source === "manifest" ? (
                 <Callout tone="warning" title="This catalog is manifest-owned">
                   Publishing claims it for the console: resyncs from the
                   repository stop re-applying{" "}
@@ -882,7 +925,7 @@ function ReviewDrawer({
         </Button>
         {stale || conflict ? null : (
           <Button
-            variant={breaking ? "danger" : "primary"}
+            variant={breaking || authoritative ? "danger" : "primary"}
             loading={publishing}
             disabledReason={
               blocked
@@ -891,9 +934,11 @@ function ReviewDrawer({
                   ? "Nothing has changed yet."
                   : breaking && !ack
                     ? "Confirm that removed keys are dropped."
-                    : usage.isFetching
-                      ? "Checking the removed keys…"
-                      : undefined
+                    : authoritative && reason.trim() === ""
+                      ? "Give a reason for the break-glass claim."
+                      : usage.isFetching
+                        ? "Checking the removed keys…"
+                        : undefined
             }
             onClick={() => void publish()}
           >

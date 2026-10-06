@@ -4412,14 +4412,20 @@ const rawApi = {
     slug: string,
     catalog: ProductCatalog,
     expectedVersion?: number,
+    /** ST-20: a manifest-authoritative product takes a publish only as a break-glass claim. */
+    breakGlass?: { reason: string },
   ) =>
-    call<{ ok: true; schemaVersion: number }>(`${p(slug)}/config/catalog`, {
+    call<{
+      ok: true;
+      schemaVersion: number;
+      breakGlass?: { expiresAt: number };
+    }>(`${p(slug)}/config/catalog`, {
       method: "PUT",
-      body: JSON.stringify(
-        expectedVersion === undefined
-          ? { catalog }
-          : { catalog, expectedVersion },
-      ),
+      body: JSON.stringify({
+        catalog,
+        ...(expectedVersion === undefined ? {} : { expectedVersion }),
+        ...(breakGlass ? { breakGlass } : {}),
+      }),
     }),
   /** Every published catalog version, newest first (A-6). */
   catalogVersions: (slug: string) =>
