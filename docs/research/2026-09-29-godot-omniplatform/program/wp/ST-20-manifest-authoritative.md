@@ -80,7 +80,7 @@ The owner accepted manifest-authority for the system product ([S-18 owner decisi
 - [x] A break-glass claim expires after 7 days or at the first apply that changes the field, whichever is first (test).
 - [x] A webhook resync of the system product is refused (test).
 - [x] The deploy-hook summary lists live claims (test).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
