@@ -501,6 +501,11 @@ describe("?added= (model/discover.ts)", () => {
     const q = (s: string) => new URLSearchParams(s);
     expect(addedParam(q(""))).toEqual([]);
     expect(addedParam(q("added=a&added=&added=b&added=a"))).toEqual(["b", "a"]);
+    expect(
+      addedParam(
+        q(`added=a&added=Bad%20Slug&added=${"x".repeat(65)}&added=-x`),
+      ),
+    ).toEqual(["a"]);
     expect(withAdded(["a", "b"], "c")).toEqual(["a", "b", "c"]);
     expect(withAdded(["a", "b"], "a")).toEqual(["b", "a"]);
     const many = Array.from({ length: ADDED_PARAM_MAX + 3 }, (_, i) => `p${i}`);

@@ -1,3 +1,4 @@
+import { PRODUCT_SLUG_RE } from "@polaris-key/manifest";
 import type {
   PortalDiscoverOffer,
   PortalDiscoverTerms,
@@ -64,12 +65,13 @@ export const ADDED_PARAM_MAX = 12;
 
 /**
  * The just-added products a Discover URL names (`#/discover?added=<p>&added=<q>`): each once,
- * oldest first, at most {@link ADDED_PARAM_MAX} (the most recent).
+ * oldest first, at most {@link ADDED_PARAM_MAX} (the most recent). A value that is not a product
+ * slug is dropped, so a crafted link's junk is not carried forward on later adds.
  */
 export function addedParam(params: URLSearchParams): string[] {
   const out: string[] = [];
   for (const slug of params.getAll("added")) {
-    if (!slug) continue;
+    if (!PRODUCT_SLUG_RE.test(slug)) continue;
     const at = out.indexOf(slug);
     if (at >= 0) out.splice(at, 1);
     out.push(slug);
