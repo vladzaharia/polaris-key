@@ -24,6 +24,7 @@ import {
   type TableState,
 } from "../../src/ui/data-table/index.js";
 import { changedRowIds } from "../../src/ui/data-table/DataTable.js";
+import { LIST_BUDGET, viewTransition } from "../../src/ui/motion/index.js";
 import { StatusPill } from "../../src/ui/StatusPill.js";
 import { SignedBadge } from "../../src/ui/SignedBadge.js";
 import { PageSkeleton, Skeleton } from "../../src/ui/Skeleton.js";
@@ -353,6 +354,49 @@ describe("DataTable list transitions", () => {
       "border-separate",
     );
     expect(bodyRows()[0]!.className).toContain("[&>td]:border-b");
+  });
+});
+
+describe("the list budget on both sides of the update", () => {
+  it(`a list that grows past ${LIST_BUDGET} rows names only its on-screen rows in the new state`, async () => {
+    let finish: () => void = () => undefined;
+    doc.startViewTransition = (update: () => void) => {
+      const done = Promise.resolve().then(update);
+      const finished = done.then(() => new Promise<void>((r) => (finish = r)));
+      return {
+        updateCallbackDone: done,
+        finished,
+        skipTransition: () => finish(),
+      };
+    };
+    const list = document.createElement("ul");
+    document.body.append(list);
+    const add = (n: number): HTMLLIElement[] =>
+      Array.from({ length: n }, () => {
+        const li = document.createElement("li");
+        const i = list.children.length;
+        li.getBoundingClientRect = () =>
+          ({ top: i * 40, bottom: i * 40 + 40 }) as DOMRect;
+        list.append(li);
+        return li;
+      });
+    add(20);
+    const handle = viewTransition(() => add(40), { type: "list", list });
+    // The old state: 20 rows, all taking part.
+    expect(list.classList.contains("pk-vt-list")).toBe(true);
+    await handle.updateCallbackDone;
+    // The new state: 60 rows, so only the ones on screen are named.
+    expect(list.classList.contains("pk-vt-list")).toBe(false);
+    const named = Array.from(list.children).filter(
+      (r) =>
+        (r as HTMLElement).style.getPropertyValue("view-transition-name") ===
+        "match-element",
+    );
+    expect(named.length).toBe(Math.ceil(window.innerHeight / 40));
+    expect(named.length).toBeLessThanOrEqual(LIST_BUDGET);
+    finish();
+    await handle.finished;
+    list.remove();
   });
 });
 

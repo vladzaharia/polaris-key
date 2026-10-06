@@ -119,13 +119,15 @@ export function viewTransition(
     );
   html.dataset.vt = type;
 
-  const small = list !== null && list.children.length <= LIST_BUDGET;
+  // The budget is judged on each side of the update: a list that grows past LIST_BUDGET (Clear
+  // filters on a long table) names only its on-screen rows in the new state (MO-09).
   const nameRows = (): void => {
     if (!list) return;
-    if (small) {
+    if (list.children.length <= LIST_BUDGET) {
       list.classList.add("pk-vt-list");
       return;
     }
+    list.classList.remove("pk-vt-list");
     const vh = window.innerHeight;
     for (const row of Array.from(list.children)) {
       const r = row.getBoundingClientRect();
