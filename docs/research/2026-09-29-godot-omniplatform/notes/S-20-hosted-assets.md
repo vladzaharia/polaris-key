@@ -348,7 +348,7 @@ CREATE TABLE hosted_assets (
   size          INTEGER,
   content_type  TEXT,                      -- sniffed, never the declared type
   width         INTEGER, height INTEGER,   -- images only (Images .info, free)
-  variants_json TEXT,                      -- [{w, format, sha256, size}] (HA-03)
+  variants_json TEXT,                      -- [{w, format: "image/webp", sha256, size}] (HA-03)
   status        TEXT NOT NULL,             -- pending | ready | failed | stale (source gone, last good copy kept)
   error         TEXT,                      -- the guard or ingest reason code
   checked_at    INTEGER, modified_at INTEGER NOT NULL,
@@ -357,6 +357,9 @@ CREATE TABLE hosted_assets (
 ```
 
 - The bytes live at `blobs/sha256/<sha256>`, the same content-addressed store P2-01 uses.
+- `variants_json` is `[{w, format: "image/webp", sha256, size}]`. `format` is a MIME type, as
+  `content_type` is, and `"image/webp"` is its only value. HA-03 is the only writer; the image
+  host (HA-02) reads it with the same parser.
 - A `blob_refs` row with `ref_kind = 'hosted-asset'` holds each original and each variant. Its
   `ref_id` is `<slot>@<locale>`.
 - A replaced or removed slot drops its refs in the same batch. The P4-14 collector reclaims the

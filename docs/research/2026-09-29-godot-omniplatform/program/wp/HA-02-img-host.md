@@ -57,10 +57,11 @@ Decision 2 gives presentation images their own cookie-less, CSP-friendly host in
 - **Images only.** `IMG_HOST_TYPES` is `sniff.ts`'s `IMAGE_TYPES` (PNG, JPEG, WebP, GIF, AVIF).
   Video waits for HA-17. Tenancy is also narrowed to image slots: a `hosted-asset` ref held
   through a `release-file` slot is never served here, even when its bytes are a PNG.
-- **Variants.** The host reads `variants_json` entries of the shape S-20 §6.2 names,
-  `{w, format: "webp", sha256, size}`, and serves one only when the same slot (`ref_id`
-  `<slot>@<locale>`) also holds a `hosted-asset` ref to the variant's object. HA-03 must write
-  exactly that.
+- **Variants.** HA-03 writes `variants_json` entries `{w, format: "image/webp", sha256, size}`
+  (`VARIANT_FORMAT`; `format` is a MIME type, as `content_type` is). The host reads them with
+  HA-03's own `parseVariants`, the one parser, which accepts only `"image/webp"`, and serves one
+  only when the same slot (`ref_id` `<slot>@<locale>`) also holds a `hosted-asset` ref to the
+  variant's object.
 - **Aliases** read the every-locale (`''`) row; `/icon` is `presentation.icon`, else
   `listing.icon`. A locale-aware alias is a follow-up if a consumer needs one.
 - **Cost.** The bytes of an `/a/` answer are kept in the Cache API under their hash; the tenancy
