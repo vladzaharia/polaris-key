@@ -142,8 +142,9 @@ violet accent, no `data-service` attribute. Specifically:
   underline, selection, focus and small counts. Gold (`--pk-signed`) only on _Signed_ chips.
   Status colours always with an icon and a word.
 - **Illustration:** the stationary star (BRAND §7.7) is the only illustration, on empty, error and
-  no-context screens. A sparse static star field sits behind the login card on wide screens. Nothing
-  animates.
+  no-context screens. A sparse static star field sits behind the login card on wide screens. The
+  star and the star field never animate; everything else moves only through the shared motion
+  system (§7, [notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md)).
 - **No gradients** in chrome or fallback art. Developer key art is the developer's content and is
   shown as supplied.
 - **Theme:** dark first, following the system, with a persisted "Match my device / Dark / Light"
@@ -1281,8 +1282,14 @@ again." with the reference id. Never render the HTTP status or an internal code 
   listing docs).
 - **Type scale:** page `h1` 40/44 (30 on phones); product `h1` 36 (28); card `h2` 18; tile name 18
   (16 compact); body 15–16; metadata 13; group labels and counts 12 bold.
-- **Motion:** only the duration tokens (`fast` for hover, `base` for disclosure and the inline
-  confirm, `slow` for sheets). Nothing loops. The star never moves.
+- **Motion:** the one system of [notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) and EXPERIENCE §7.2, built by
+  phase MO (MO-05 navigation, MO-06 devices and activation, MO-07 Library and Discover). In the
+  portal: the Library tile's art and name fly into the product hero and back; routes fade through
+  with scroll reset and heading focus; the Library staggers in on first load only; tiles lift and
+  press; developer art fades in once decoded; the Remove confirm expands in place; a freed device
+  leaves the list while the seat meter and count follow; the Activate dialog morphs between steps
+  and its first success draws a check with a short burst of sparks, once per account. Only loading
+  indicators loop. The star never moves. Under reduced motion every change is an instant swap.
 - **Images:** all developer images are served **same-origin** through the media proxy (G1) because
   the site's CSP is `img-src 'self' data:`; sizes 1280 × 720 banner, 640 × 360 tile, 256 × 256 icon,
   WebP with PNG fallback.
@@ -1331,7 +1338,9 @@ WCAG 2.2 AA in both themes (BRAND §9), plus:
    cards and tabs; everything reachable without a pointer.
 8. **Text:** task-critical text ≥ 14 px; 13 px only for secondary metadata; 12 px only for group
    labels and counts; `text-subtle` never carries required information.
-9. **Motion:** reduced motion honoured through the duration tokens.
+9. **Motion:** reduced motion (the OS setting or the Reduce motion preference, MO-12) makes every
+   change an instant swap; motion never carries information on its own; focus moves when the new
+   state is in place (notes/S-23 §6.5–§6.6).
 10. **Testing:** `vitest-axe` on every page component; a Playwright axe pass over all states in both
     themes at 1440 and 390 px (PX-15).
 
@@ -1440,6 +1449,10 @@ platform identity signs in the account and links the product user.
 ---
 
 ## 11. Implementation work packages
+
+Motion is not in this table: it is phase MO of the execution program
+([notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) §10). MO-05 to MO-07 build on the PX packages below and wait for the ones
+that own their files (MO-06 for SP-08's `DevicesCard` changes, MO-07 for PX-16).
 
 Sizes: S ≤ 1 day, M 2–4 days, L 5+ days (agent-days). ⚑ = plan mode. **Every WP** runs the green
 gate: `mise exec node@22 -- pnpm build`, `pnpm typecheck`, `pnpm test`, `pnpm lint`,
