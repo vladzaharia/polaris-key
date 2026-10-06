@@ -111,8 +111,18 @@ describe("core.copy: the generated English catalog", () => {
     expect(copy.message("rate_limited", undefined, "xx")).toBe(
       COPY_CODES.rate_limited!.message,
     );
-    // English itself is generated and cannot be replaced.
-    registerCopy("en", { rate_limited: { title: "t", message: "m" } });
-    expect(copy.message("rate_limited")).toBe(COPY_CODES.rate_limited!.message);
+  });
+
+  // Last in the file: the English override layer is process-wide.
+  it("a host's English override wins per key; the generated text stays the default", () => {
+    registerCopy("en", {
+      rate_limited: { title: "Slow down", message: "Easy there ({code})." },
+    });
+    expect(copy.message("rate_limited")).toBe("Easy there (rate_limited).");
+    expect(copy.title("rate_limited")).toBe("Slow down");
+    expect(copy.has("rate_limited")).toBe(true);
+    // Keys the host did not name keep the generated English.
+    expect(copy.message("device_limit")).toBe(COPY_CODES.device_limit!.message);
+    expect(copy.title("device_limit")).toBe(COPY_CODES.device_limit!.title);
   });
 });

@@ -828,7 +828,12 @@ export class UpdateClient {
       // Without a Velopack channel the answer is the feed DIRECTORY Velopack's UpdateManager
       // opens: the template up to `releases.` (it appends `releases.<channel>.json` itself).
       if (!opts.velopackChannel) {
-        const dir = template.slice(0, template.lastIndexOf("releases."));
+        const cut = template.lastIndexOf("releases.");
+        if (cut < 0)
+          return unsupported(
+            "the velopack feed template has no releases. file to cut the directory from",
+          );
+        const dir = template.slice(0, cut);
         return {
           supported: true,
           url: expand(dir, this.ctx.baseUrl, values).toString(),

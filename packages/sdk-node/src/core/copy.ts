@@ -76,7 +76,8 @@ function english(code: string): CopyEntry | undefined {
   );
 }
 
-/** A registered locale's own entry (`fr-CA` falls back to `fr`), never English. */
+/** A registered locale's own entry (`fr-CA` falls back to `fr`); for `en` this is the host's
+ *  override layer, never the generated English. */
 function localised(code: string, locale?: string): CopyEntry | undefined {
   const tag = (locale ?? defaultLocale).toLowerCase();
   for (const l of [tag, tag.split("-")[0]!]) {
@@ -134,11 +135,13 @@ export const copy = {
       return copy.message(opts.code ?? kind, opts.detail, opts.locale);
     return fill(entry.message, opts.code ?? kind, opts.detail);
   },
-  /** Whether `code` has an entry in a locale (English: the generated tables; no fallback). */
+  /** Whether `code` has an entry in a locale (English: a host override or the generated
+   *  tables; no fallback). */
   has(code: string, locale = "en"): boolean {
-    return locale === "en"
-      ? english(code) !== undefined
-      : localised(code, locale) !== undefined;
+    return (
+      localised(code, locale) !== undefined ||
+      (locale === "en" && english(code) !== undefined)
+    );
   },
   /** Every code the generated English error-code table covers. */
   codes(): string[] {
@@ -146,14 +149,14 @@ export const copy = {
   },
 };
 
-/** Add or extend a locale. Entries a locale lacks fall back to the generated English, which
- *  cannot be replaced. */
+/** Add or extend a locale. Entries a locale lacks fall back to the generated English.
+ *  `registerCopy("en", {...})` is the host's English override layer: its entries win per key
+ *  over the generated text, which stays the default for every key the host does not name. */
 export function registerCopy(
   locale: string,
   entries: Record<string, CopyEntry>,
 ): void {
   const tag = locale.toLowerCase();
-  if (tag === "en") return;
   LOCALES.set(tag, { ...(LOCALES.get(tag) ?? {}), ...entries });
 }
 
