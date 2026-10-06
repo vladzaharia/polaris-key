@@ -1023,12 +1023,24 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "maxLength": 4000,
           "pattern": "^[^\\\\u0000-\\\\u0008\\\\u000b-\\\\u001f\\\\u007f]+$"
         },
+        "icon": {
+          "description": "The listing icon: an https URL or a repo path, optionally { src, sha256 }. When absent, the product's presentation.icon is used.",
+          "$ref": "#/$defs/assetRef"
+        },
         "iconUrl": {
+          "description": "Deprecated alias of icon, an https URL only. Still accepted with a warning; declaring both is an error.",
+          "deprecated": true,
           "type": "string",
           "maxLength": 2048,
           "pattern": "^https://[^\\\\s\\\\u0000-\\\\u001f\\\\u007f]+$"
         },
+        "header": {
+          "description": "The header or hero art: an https URL or a repo path, optionally { src, sha256 }.",
+          "$ref": "#/$defs/assetRef"
+        },
         "headerUrl": {
+          "description": "Deprecated alias of header, an https URL only. Still accepted with a warning; declaring both is an error.",
+          "deprecated": true,
           "type": "string",
           "maxLength": 2048,
           "pattern": "^https://[^\\\\s\\\\u0000-\\\\u001f\\\\u007f]+$"
@@ -1043,12 +1055,11 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]+$"
         },
         "screenshots": {
+          "description": "Up to 16 screenshots, each an https URL or a repo path, optionally { src, sha256 }.",
           "type": "array",
           "maxItems": 16,
           "items": {
-            "type": "string",
-            "maxLength": 2048,
-            "pattern": "^https://[^\\\\s\\\\u0000-\\\\u001f\\\\u007f]+$"
+            "$ref": "#/$defs/assetRef"
           }
         },
         "website": {
@@ -1073,11 +1084,785 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "maxLength": 254,
           "pattern": "^[^\\\\s@<>\\\\u0000-\\\\u001f\\\\u007f]+@[^\\\\s@<>\\\\u0000-\\\\u001f\\\\u007f]+\\\\.[^\\\\s@<>\\\\u0000-\\\\u001f\\\\u007f]+$"
         }
+      },
+      "not": {
+        "description": "An image slot and its deprecated alias are never declared together.",
+        "anyOf": [
+          {
+            "required": ["icon", "iconUrl"]
+          },
+          {
+            "required": ["header", "headerUrl"]
+          }
+        ]
       }
+    },
+    "assetSrc": {
+      "description": "Where an image's bytes come from: an https URL, or a relative path in the product's own repository, resolved at the synced commit (private repositories included). A repo path has an optional leading ./, no leading /, no . or .. segment, at most 512 characters, and ends in .png, .jpg, .jpeg, .webp, .gif or .avif (lower case).",
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://[^\\\\s\\\\u0000-\\\\u001f\\\\u007f]+$"
+        },
+        {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^(?:\\\\./)?(?!(?:[^/]*/)*\\\\.{1,2}(?:/|$))[A-Za-z0-9._~@+-]+(?:/[A-Za-z0-9._~@+-]+)*\\\\.(?:png|jpe?g|webp|gif|avif)$"
+        }
+      ]
+    },
+    "assetRef": {
+      "description": "An image Polaris Key hosts: its source as a string, or { src, sha256 } to pin the bytes (a pull whose hash differs is refused). Polaris Key keeps its own copy and serves it from its media host.",
+      "anyOf": [
+        {
+          "$ref": "#/$defs/assetSrc"
+        },
+        {
+          "type": "object",
+          "required": ["src"],
+          "additionalProperties": false,
+          "properties": {
+            "src": {
+              "$ref": "#/$defs/assetSrc"
+            },
+            "sha256": {
+              "description": "The file's SHA-256, as 64 lower-case hex digits.",
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        }
+      ]
     }
   }
 }
-`, "product.schema.json": '{\n  "$schema": "https://json-schema.org/draft/2020-12/schema",\n  "$id": "https://key.plrs.im/docs/schemas/v1/product.schema.json",\n  "title": "Polaris Key product manifest (.pkey/product)",\n  "description": "The product document of a .pkey/ manifest: product metadata, enabled services, device-registration policy, licensing tiers/profiles, OIDC, provisioning hooks, fingerprint + auto-issue policy, declared secrets, and (optionally, inlined) the release document. Mirrors validateManifestDocuments in @polaris-key/manifest — the TypeScript validator is authoritative; this schema exists for editor autocomplete and machine consumers, and the schema-parity test keeps the two agreeing. Unknown keys are tolerated everywhere, exactly as the validator tolerates them. NOTE: the $id URL is a canonical identifier, not a fetchable locator (the docs site is auth-gated); editors should reference this file by path — it ships inside the @polaris-key/manifest npm package.",\n  "type": "object",\n  "properties": {\n    "apiVersion": {\n      "description": "Optional manifest API marker; the only accepted value is pkey.dev/v1.",\n      "const": "pkey.dev/v1"\n    },\n    "product": { "$ref": "#/$defs/productCore" },\n    "slug": { "$ref": "#/$defs/slug" },\n    "name": { "$ref": "#/$defs/label" },\n    "adminGroup": { "$ref": "#/$defs/groupName" },\n    "compatMin": { "$ref": "#/$defs/semver" },\n    "compatMax": { "$ref": "#/$defs/semver" },\n    "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },\n    "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },\n    "modules": { "$ref": "#/$defs/modules" },\n    "devices": {\n      "type": "object",\n      "properties": {\n        "registration": {\n          "description": "Who may mint a device token via POST /<product>/devices/register. Default is derived from the enabled services: requires-license if License is on, else requires-identity if Identity is on, else open.",\n          "enum": ["open", "requires-identity", "requires-license"]\n        }\n      }\n    },\n    "web": {\n      "type": "object",\n      "description": "Browser clients (CORS). Origins listed here may read this product\'s device-facing responses (discovery, JWKS, trust manifest, devices, License, Config, Release downloads, Update and the device-code flow) with fetch. Credentials are never allowed, and the console, portal, docs and cookie-bearing identity routes never answer CORS.",\n      "properties": {\n        "origins": {\n          "type": "array",\n          "description": "Up to 16 exact origins, written as a browser sends them: https://<host>[:port], lower-case, no default port, no path, query, fragment, credentials or wildcard. http is accepted only for http://localhost[:port] and http://127.0.0.1[:port].",\n          "maxItems": 16,\n          "uniqueItems": true,\n          "items": { "$ref": "#/$defs/webOrigin" }\n        }\n      }\n    },\n    "licensing": {\n      "type": "object",\n      "properties": {\n        "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },\n        "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },\n        "profiles": { "$ref": "#/$defs/profiles" },\n        "tiers": { "$ref": "#/$defs/tiers" }\n      }\n    },\n    "profiles": { "$ref": "#/$defs/profiles" },\n    "tiers": { "$ref": "#/$defs/tiers" },\n    "oidc": { "$ref": "#/$defs/oidc" },\n    "provisioning": {\n      "type": "array",\n      "items": { "$ref": "#/$defs/provisioningHook" }\n    },\n    "fingerprint": { "$ref": "#/$defs/fingerprint" },\n    "autoIssue": { "$ref": "#/$defs/autoIssue" },\n    "secrets": {\n      "type": "object",\n      "properties": {\n        "required": {\n          "description": "Secret names the product requires an operator to set (sealed in product_secrets). Plain names or {name} objects.",\n          "type": "array",\n          "items": {\n            "anyOf": [\n              { "$ref": "#/$defs/secretRef" },\n              {\n                "type": "object",\n                "properties": { "name": { "$ref": "#/$defs/secretRef" } },\n                "required": ["name"]\n              }\n            ]\n          }\n        }\n      }\n    },\n    "edgeMint": {\n      "type": "array",\n      "items": { "$ref": "#/$defs/edgeMintRecipe" }\n    },\n    "cloudSync": { "$ref": "#/$defs/cloudSync" },\n    "release": {\n      "description": "The release document may be inlined here instead of living in .pkey/release — same shape (see release.schema.json).",\n      "type": "object"\n    }\n  },\n  "anyOf": [\n    {\n      "required": ["product"],\n      "properties": {\n        "product": { "required": ["slug", "name"] }\n      }\n    },\n    { "required": ["slug", "name"] }\n  ],\n  "allOf": [\n    {\n      "$comment": "distribution_requires_release: the distribution service delivers release artifacts. (The legacy `releases` module enables release, distribution and update, so it satisfies the requirement too.)",\n      "if": {\n        "required": ["modules"],\n        "properties": {\n          "modules": {\n            "required": ["distribution"],\n            "properties": {\n              "distribution": {\n                "required": ["enabled"],\n                "properties": { "enabled": { "const": true } }\n              }\n            }\n          }\n        }\n      },\n      "then": {\n        "properties": {\n          "modules": {\n            "anyOf": [\n              {\n                "required": ["release"],\n                "properties": {\n                  "release": {\n                    "required": ["enabled"],\n                    "properties": { "enabled": { "const": true } }\n                  }\n                }\n              },\n              {\n                "required": ["releases"],\n                "properties": {\n                  "releases": {\n                    "required": ["enabled"],\n                    "properties": { "enabled": { "const": true } }\n                  }\n                }\n              }\n            ]\n          }\n        }\n      }\n    },\n    {\n      "$comment": "update_requires_distribution: the update service serves a feed over distribution\'s delivery state. It subsumes the retired update_requires_release, because distribution itself requires release. (The legacy `releases` module enables all three, so it satisfies the requirement too.)",\n      "if": {\n        "required": ["modules"],\n        "properties": {\n          "modules": {\n            "required": ["update"],\n            "properties": {\n              "update": {\n                "required": ["enabled"],\n                "properties": { "enabled": { "const": true } }\n              }\n            }\n          }\n        }\n      },\n      "then": {\n        "properties": {\n          "modules": {\n            "anyOf": [\n              {\n                "required": ["distribution"],\n                "properties": {\n                  "distribution": {\n                    "required": ["enabled"],\n                    "properties": { "enabled": { "const": true } }\n                  }\n                }\n              },\n              {\n                "required": ["releases"],\n                "properties": {\n                  "releases": {\n                    "required": ["enabled"],\n                    "properties": { "enabled": { "const": true } }\n                  }\n                }\n              }\n            ]\n          }\n        }\n      }\n    },\n    {\n      "$comment": "sync_requires_config: Cloud Sync syncs catalog config keys. (The legacy `edgeMint` module enables config, so it satisfies the requirement too.)",\n      "if": {\n        "required": ["modules"],\n        "properties": {\n          "modules": {\n            "required": ["sync"],\n            "properties": {\n              "sync": {\n                "required": ["enabled"],\n                "properties": { "enabled": { "const": true } }\n              }\n            }\n          }\n        }\n      },\n      "then": {\n        "properties": {\n          "modules": {\n            "anyOf": [\n              {\n                "required": ["config"],\n                "properties": {\n                  "config": {\n                    "required": ["enabled"],\n                    "properties": { "enabled": { "const": true } }\n                  }\n                }\n              },\n              {\n                "required": ["edgeMint"],\n                "properties": {\n                  "edgeMint": {\n                    "required": ["enabled"],\n                    "properties": { "enabled": { "const": true } }\n                  }\n                }\n              }\n            ]\n          }\n        }\n      }\n    },\n    {\n      "$comment": "sync_requires_identity: Cloud Sync needs a person signed in through the product. (The legacy `oidc` module enables identity, so it satisfies the requirement too.)",\n      "if": {\n        "required": ["modules"],\n        "properties": {\n          "modules": {\n            "required": ["sync"],\n            "properties": {\n              "sync": {\n                "required": ["enabled"],\n                "properties": { "enabled": { "const": true } }\n              }\n            }\n          }\n        }\n      },\n      "then": {\n        "properties": {\n          "modules": {\n            "anyOf": [\n              {\n                "required": ["identity"],\n                "properties": {\n                  "identity": {\n                    "required": ["enabled"],\n                    "properties": { "enabled": { "const": true } }\n                  }\n                }\n              },\n              {\n                "required": ["oidc"],\n                "properties": {\n                  "oidc": {\n                    "required": ["enabled"],\n                    "properties": { "enabled": { "const": true } }\n                  }\n                }\n              }\n            ]\n          }\n        }\n      }\n    }\n  ],\n  "$defs": {\n    "slug": {\n      "description": "The product\'s tenant slug: lowercase [a-z0-9-], 1-64 chars, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known, media, activate, avatar).",\n      "type": "string",\n      "pattern": "^[a-z0-9-]{1,64}$",\n      "not": {\n        "enum": [\n          "docs",\n          "manage",\n          "api",\n          "assets",\n          "login",\n          "logout",\n          "callback",\n          "magic",\n          "download",\n          "webhooks",\n          "well-known",\n          "media",\n          "activate",\n          "avatar"\n        ]\n      }\n    },\n    "label": {\n      "description": "Human label: at most 200 chars, no control characters.",\n      "type": "string",\n      "minLength": 1,\n      "maxLength": 200,\n      "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]*$"\n    },\n    "longText": {\n      "description": "Longer human text: at most 2000 chars, no control characters.",\n      "type": "string",\n      "maxLength": 2000,\n      "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]*$"\n    },\n    "identifier": {\n      "description": "Simple identifier: [A-Za-z0-9._:-], 1-64 chars.",\n      "type": "string",\n      "pattern": "^[A-Za-z0-9._:-]{1,64}$"\n    },\n    "secretRef": {\n      "description": "Stable uppercase secret name: ^[A-Z0-9][A-Z0-9_:-]{1,127}$.",\n      "type": "string",\n      "pattern": "^[A-Z0-9][A-Z0-9_:-]{1,127}$"\n    },\n    "semver": {\n      "type": "string",\n      "pattern": "^(0|[1-9]\\\\d*)\\\\.(0|[1-9]\\\\d*)\\\\.(0|[1-9]\\\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\\\+[0-9A-Za-z.-]+)?$"\n    },\n    "groupName": {\n      "description": "IdP group name: ^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$.",\n      "type": "string",\n      "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$"\n    },\n    "channel": {\n      "description": "Release channel name (becomes a URL path segment): ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$.",\n      "type": "string",\n      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"\n    },\n    "nonNegativeInteger": { "type": "integer", "minimum": 0 },\n    "fingerprintMode": {\n      "description": "Drift-tolerance strength: off (never enforce) · lenient (4) · normal (2, default) · strict (0, and a fingerprint becomes mandatory).",\n      "enum": ["off", "lenient", "normal", "strict"]\n    },\n    "productCore": {\n      "type": "object",\n      "properties": {\n        "slug": { "$ref": "#/$defs/slug" },\n        "name": { "$ref": "#/$defs/label" },\n        "adminGroup": { "$ref": "#/$defs/groupName" },\n        "compatMin": { "$ref": "#/$defs/semver" },\n        "compatMax": { "$ref": "#/$defs/semver" },\n        "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },\n        "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" }\n      }\n    },\n    "modules": {\n      "description": "Per-service enablement. Service slugs (license, config, release, distribution, update, identity, sync) are canonical; the legacy module vocabulary (licensing, releases, oidc, edgeMint) is accepted and mapped (releases enables release+distribution+update; edgeMint enables config). Undeclared defaults to license+config.",\n      "type": "object",\n      "properties": {\n        "license": { "$ref": "#/$defs/moduleFlag" },\n        "config": { "$ref": "#/$defs/moduleFlag" },\n        "release": { "$ref": "#/$defs/moduleFlag" },\n        "distribution": { "$ref": "#/$defs/moduleFlag" },\n        "update": { "$ref": "#/$defs/moduleFlag" },\n        "identity": { "$ref": "#/$defs/moduleFlag" },\n        "sync": { "$ref": "#/$defs/moduleFlag" },\n        "licensing": { "$ref": "#/$defs/moduleFlag" },\n        "releases": { "$ref": "#/$defs/moduleFlag" },\n        "oidc": { "$ref": "#/$defs/moduleFlag" },\n        "edgeMint": { "$ref": "#/$defs/moduleFlag" }\n      }\n    },\n    "moduleFlag": {\n      "type": "object",\n      "properties": { "enabled": { "type": "boolean" } }\n    },\n    "profiles": {\n      "type": "array",\n      "items": {\n        "type": "object",\n        "properties": {\n          "id": { "$ref": "#/$defs/identifier" },\n          "name": { "$ref": "#/$defs/label" },\n          "label": { "$ref": "#/$defs/label" },\n          "description": { "$ref": "#/$defs/longText" },\n          "payload": {\n            "description": "Managed-payload baseline: config/secrets/entitlements maps.",\n            "type": "object"\n          }\n        },\n        "required": ["id"]\n      }\n    },\n    "tiers": {\n      "type": "array",\n      "items": {\n        "type": "object",\n        "properties": {\n          "id": { "$ref": "#/$defs/identifier" },\n          "label": { "$ref": "#/$defs/label" },\n          "profileId": {\n            "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]\n          },\n          "profile": {\n            "description": "Alias of profileId.",\n            "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]\n          },\n          "policyExpiryDays": { "type": ["number", "null"] },\n          "expiryDays": {\n            "description": "Alias of policyExpiryDays.",\n            "type": ["number", "null"]\n          },\n          "policyDeviceLimit": {\n            "anyOf": [\n              { "$ref": "#/$defs/nonNegativeInteger" },\n              { "type": "null" }\n            ]\n          },\n          "policyFingerprint": {\n            "description": "Fingerprint enforcement for this tier; null (or omitted) inherits the product default.",\n            "anyOf": [{ "$ref": "#/$defs/fingerprintMode" }, { "type": "null" }]\n          },\n          "channels": {\n            "description": "Upgrade channels this tier may follow.",\n            "type": "array",\n            "items": { "$ref": "#/$defs/channel" }\n          },\n          "minVersion": {\n            "anyOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }]\n          },\n          "maxVersion": {\n            "anyOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }]\n          }\n        },\n        "required": ["id"]\n      }\n    },\n    "oidc": {\n      "type": "object",\n      "properties": {\n        "provider": {\n          "description": "platform uses the platform IdP (PLATFORM_OIDC_*); custom uses this product\'s own issuer/client.",\n          "enum": ["platform", "custom"]\n        },\n        "issuer": {\n          "description": "Absolute https URL of the product\'s OIDC issuer (custom provider only; http is accepted only for localhost; no credentials, query, or fragment; not a private/reserved address).",\n          "type": "string",\n          "maxLength": 2048,\n          "pattern": "^https?://[^\\\\u0000-\\\\u001f\\\\u007f]+$"\n        },\n        "clientId": {\n          "type": "string",\n          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/~-]{0,255}$"\n        },\n        "clientSecretSecret": { "$ref": "#/$defs/secretRef" },\n        "clientSecretRef": {\n          "description": "Alias of clientSecretSecret.",\n          "$ref": "#/$defs/secretRef"\n        },\n        "redirectUris": {\n          "type": "array",\n          "maxItems": 20,\n          "items": {\n            "type": "string",\n            "maxLength": 2048,\n            "pattern": "^https?://[^\\\\u0000-\\\\u001f\\\\u007f]+$"\n          }\n        },\n        "groupRoleMap": {\n          "description": "IdP group name -> role/entitlement grant map.",\n          "type": "object",\n          "propertyNames": {\n            "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$"\n          }\n        }\n      },\n      "if": {\n        "required": ["provider"],\n        "properties": { "provider": { "const": "custom" } }\n      },\n      "then": { "required": ["issuer", "clientId"] }\n    },\n    "provisioningHook": {\n      "type": "object",\n      "properties": {\n        "claim": {\n          "description": "Verified OIDC claim that triggers this hook. Must not be a JS prototype property name.",\n          "type": "string",\n          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",\n          "not": {\n            "enum": [\n              "__proto__",\n              "constructor",\n              "prototype",\n              "toString",\n              "valueOf",\n              "hasOwnProperty",\n              "isPrototypeOf",\n              "propertyIsEnumerable",\n              "toLocaleString",\n              "__defineGetter__",\n              "__defineSetter__"\n            ]\n          }\n        },\n        "entitlementKey": { "$ref": "#/$defs/identifier" },\n        "entitlementValue": {},\n        "secretKey": { "$ref": "#/$defs/identifier" },\n        "secretUrlTemplate": {\n          "description": "Absolute https URL template ({claim} substituted; never in the host).",\n          "type": "string",\n          "maxLength": 2048,\n          "pattern": "^https://[^\\\\u0000-\\\\u001f\\\\u007f]+$"\n        },\n        "allowedHosts": {\n          "type": "array",\n          "items": {\n            "type": "string",\n            "pattern": "^[A-Za-z0-9._-]{1,253}(?::[0-9]{1,5})?$"\n          }\n        }\n      },\n      "required": ["claim"]\n    },\n    "fingerprint": {\n      "description": "Hardware-fingerprint policy. On by default at normal strength; set enabled:false to collect nothing.",\n      "type": "object",\n      "properties": {\n        "enabled": { "type": "boolean" },\n        "defaultMode": { "$ref": "#/$defs/fingerprintMode" },\n        "probes": {\n          "description": "Companion-application probes the client answers present/absent. Omit a platform to skip the probe there.",\n          "type": "array",\n          "items": {\n            "type": "object",\n            "properties": {\n              "id": { "$ref": "#/$defs/identifier" },\n              "label": { "$ref": "#/$defs/label" },\n              "macos": { "$ref": "#/$defs/probeTarget" },\n              "windows": { "$ref": "#/$defs/probeTarget" },\n              "linux": { "$ref": "#/$defs/probeTarget" }\n            },\n            "required": ["id"]\n          }\n        }\n      }\n    },\n    "probeTarget": {\n      "type": "string",\n      "maxLength": 512,\n      "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]*$"\n    },\n    "autoIssue": {\n      "description": "Auto-issued (\\"always free\\") licenses. Off unless enabled; a policy naming no tier cannot issue anything, so tierId is required when enabled.",\n      "type": "object",\n      "properties": {\n        "enabled": { "type": "boolean" },\n        "tierId": {\n          "description": "The declared tier auto-issued licenses land on. Must reference an id in tiers[].",\n          "$ref": "#/$defs/identifier"\n        },\n        "mode": {\n          "description": "anonymous opens POST /<product>/license/enroll (keyless, one license per machine); oidcDefault lands group-less authenticated users on the tier; both enables both paths.",\n          "enum": ["anonymous", "oidcDefault", "both"]\n        },\n        "rateLimitPerHour": { "$ref": "#/$defs/nonNegativeInteger" }\n      },\n      "if": {\n        "required": ["enabled"],\n        "properties": { "enabled": { "const": true } }\n      },\n      "then": { "required": ["tierId"] }\n    },\n    "edgeMintRecipe": {\n      "description": "Edge-mint recipe (a Config-service secret-delivery capability, served at /<product>/config/mint/<id>/...). May also live in the release document.",\n      "type": "object",\n      "properties": {\n        "id": { "$ref": "#/$defs/identifier" },\n        "alg": { "enum": ["ES256", "RS256", "EdDSA"] },\n        "signingKeySecret": { "$ref": "#/$defs/secretRef" },\n        "kid": {\n          "type": "string",\n          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"\n        },\n        "claimsTemplate": { "type": "object" },\n        "ttlSeconds": { "type": "integer", "exclusiveMinimum": 0 },\n        "audience": {\n          "anyOf": [{ "$ref": "#/$defs/label" }, { "type": "null" }]\n        }\n      },\n      "required": ["id", "alg", "signingKeySecret"]\n    },\n    "webOrigin": {\n      "type": "string",\n      "maxLength": 267,\n      "pattern": "^(?:https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*|http://(?:localhost|127\\\\.0\\\\.0\\\\.1))(?::[0-9]{1,5})?$"\n    },\n    "cloudSyncLimits": {\n      "description": "Per-person Cloud Sync limits, each at most the platform ceiling (settings 256 KiB, collections 64 MiB, saves 1 GiB per person).",\n      "type": "object",\n      "properties": {\n        "totalBytes": { "type": "integer", "minimum": 0 },\n        "settingsBytes": { "type": "integer", "minimum": 0 },\n        "records": { "type": "integer", "minimum": 0 },\n        "collectionBytes": { "type": "integer", "minimum": 0 },\n        "saves": {\n          "type": "object",\n          "properties": {\n            "slots": { "type": "integer", "minimum": 0 },\n            "maxBytes": { "type": "integer", "minimum": 0 },\n            "keepRevisions": { "type": "integer", "minimum": 0 }\n          },\n          "additionalProperties": false\n        }\n      },\n      "additionalProperties": false\n    },\n    "cloudSync": {\n      "description": "Cloud Sync limits and access policy, persisted as claimable product settings. The data shape (collections, saves, migrations) lives in .pkey/schema\'s cloudSync block.",\n      "type": "object",\n      "properties": {\n        "limits": {\n          "description": "The licensed per-person limits.",\n          "type": "object",\n          "properties": {\n            "totalBytes": { "type": "integer", "minimum": 0 },\n            "settingsBytes": { "type": "integer", "minimum": 0 },\n            "records": { "type": "integer", "minimum": 0 },\n            "collectionBytes": { "type": "integer", "minimum": 0 },\n            "saves": {\n              "type": "object",\n              "properties": {\n                "slots": { "type": "integer", "minimum": 0 },\n                "maxBytes": { "type": "integer", "minimum": 0 },\n                "keepRevisions": { "type": "integer", "minimum": 0 }\n              },\n              "additionalProperties": false\n            },\n            "byTier": {\n              "description": "Tier id → limits; the tier of the highest-rank contributing licence applies.",\n              "type": "object",\n              "additionalProperties": { "$ref": "#/$defs/cloudSyncLimits" }\n            },\n            "byEntitlement": {\n              "description": "Limit → a numeric catalog flag (combined by max) that raises it.",\n              "type": "object",\n              "properties": {\n                "totalBytes": { "type": "string" },\n                "saveSlots": { "type": "string" }\n              },\n              "additionalProperties": false\n            }\n          },\n          "additionalProperties": false\n        },\n        "unlicensed": {\n          "description": "Signed-in people with no usable licence for the product: limits no higher than the licensed ones; saves off unless saves is true.",\n          "type": "object",\n          "properties": {\n            "limits": { "$ref": "#/$defs/cloudSyncLimits" },\n            "saves": { "type": "boolean" }\n          },\n          "additionalProperties": false\n        },\n        "writes": {\n          "type": "object",\n          "properties": {\n            "requireLicense": { "type": "boolean" },\n            "minTrust": { "enum": [null, "basic", "attested"] }\n          },\n          "additionalProperties": false\n        }\n      },\n      "additionalProperties": false\n    }\n  }\n}\n', "release-descriptor.schema.json": `{
+`, "product.schema.json": `{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://key.plrs.im/docs/schemas/v1/product.schema.json",
+  "title": "Polaris Key product manifest (.pkey/product)",
+  "description": "The product document of a .pkey/ manifest: product metadata, enabled services, device-registration policy, licensing tiers/profiles, OIDC, provisioning hooks, fingerprint + auto-issue policy, declared secrets, and (optionally, inlined) the release document. Mirrors validateManifestDocuments in @polaris-key/manifest — the TypeScript validator is authoritative; this schema exists for editor autocomplete and machine consumers, and the schema-parity test keeps the two agreeing. Unknown keys are tolerated everywhere, exactly as the validator tolerates them. NOTE: the $id URL is a canonical identifier, not a fetchable locator (the docs site is auth-gated); editors should reference this file by path — it ships inside the @polaris-key/manifest npm package.",
+  "type": "object",
+  "properties": {
+    "apiVersion": {
+      "description": "Optional manifest API marker; the only accepted value is pkey.dev/v1.",
+      "const": "pkey.dev/v1"
+    },
+    "product": { "$ref": "#/$defs/productCore" },
+    "slug": { "$ref": "#/$defs/slug" },
+    "name": { "$ref": "#/$defs/label" },
+    "adminGroup": { "$ref": "#/$defs/groupName" },
+    "compatMin": { "$ref": "#/$defs/semver" },
+    "compatMax": { "$ref": "#/$defs/semver" },
+    "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
+    "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
+    "modules": { "$ref": "#/$defs/modules" },
+    "devices": {
+      "type": "object",
+      "properties": {
+        "registration": {
+          "description": "Who may mint a device token via POST /<product>/devices/register. Default is derived from the enabled services: requires-license if License is on, else requires-identity if Identity is on, else open.",
+          "enum": ["open", "requires-identity", "requires-license"]
+        }
+      }
+    },
+    "web": {
+      "type": "object",
+      "description": "Browser clients (CORS). Origins listed here may read this product's device-facing responses (discovery, JWKS, trust manifest, devices, License, Config, Release downloads, Update and the device-code flow) with fetch. Credentials are never allowed, and the console, portal, docs and cookie-bearing identity routes never answer CORS.",
+      "properties": {
+        "origins": {
+          "type": "array",
+          "description": "Up to 16 exact origins, written as a browser sends them: https://<host>[:port], lower-case, no default port, no path, query, fragment, credentials or wildcard. http is accepted only for http://localhost[:port] and http://127.0.0.1[:port].",
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/webOrigin" }
+        }
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "description": "How the product presents itself wherever Polaris Key shows it: the customer portal, the console, discovery and the SDK UI kits. Branding is data only, inside Polaris Key's fixed frame.",
+      "properties": {
+        "icon": {
+          "description": "The product icon: an https URL or a repo path, optionally { src, sha256 }. A square image works best. It is also the store listing's icon when .pkey/distribution declares none.",
+          "$ref": "#/$defs/assetRef"
+        },
+        "accent": {
+          "description": "The product's accent colour on a light ground, as #rrggbb.",
+          "$ref": "#/$defs/hexColour"
+        },
+        "accentDark": {
+          "description": "The accent colour on a dark ground, as #rrggbb.",
+          "$ref": "#/$defs/hexColour"
+        }
+      }
+    },
+    "licensing": {
+      "type": "object",
+      "properties": {
+        "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
+        "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
+        "profiles": { "$ref": "#/$defs/profiles" },
+        "tiers": { "$ref": "#/$defs/tiers" }
+      }
+    },
+    "profiles": { "$ref": "#/$defs/profiles" },
+    "tiers": { "$ref": "#/$defs/tiers" },
+    "oidc": { "$ref": "#/$defs/oidc" },
+    "provisioning": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/provisioningHook" }
+    },
+    "fingerprint": { "$ref": "#/$defs/fingerprint" },
+    "autoIssue": { "$ref": "#/$defs/autoIssue" },
+    "secrets": {
+      "type": "object",
+      "properties": {
+        "required": {
+          "description": "Secret names the product requires an operator to set (sealed in product_secrets). Plain names or {name} objects.",
+          "type": "array",
+          "items": {
+            "anyOf": [
+              { "$ref": "#/$defs/secretRef" },
+              {
+                "type": "object",
+                "properties": { "name": { "$ref": "#/$defs/secretRef" } },
+                "required": ["name"]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "edgeMint": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edgeMintRecipe" }
+    },
+    "cloudSync": { "$ref": "#/$defs/cloudSync" },
+    "release": {
+      "description": "The release document may be inlined here instead of living in .pkey/release — same shape (see release.schema.json).",
+      "type": "object"
+    }
+  },
+  "anyOf": [
+    {
+      "required": ["product"],
+      "properties": {
+        "product": { "required": ["slug", "name"] }
+      }
+    },
+    { "required": ["slug", "name"] }
+  ],
+  "allOf": [
+    {
+      "$comment": "distribution_requires_release: the distribution service delivers release artifacts. (The legacy \`releases\` module enables release, distribution and update, so it satisfies the requirement too.)",
+      "if": {
+        "required": ["modules"],
+        "properties": {
+          "modules": {
+            "required": ["distribution"],
+            "properties": {
+              "distribution": {
+                "required": ["enabled"],
+                "properties": { "enabled": { "const": true } }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "modules": {
+            "anyOf": [
+              {
+                "required": ["release"],
+                "properties": {
+                  "release": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              },
+              {
+                "required": ["releases"],
+                "properties": {
+                  "releases": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "$comment": "update_requires_distribution: the update service serves a feed over distribution's delivery state. It subsumes the retired update_requires_release, because distribution itself requires release. (The legacy \`releases\` module enables all three, so it satisfies the requirement too.)",
+      "if": {
+        "required": ["modules"],
+        "properties": {
+          "modules": {
+            "required": ["update"],
+            "properties": {
+              "update": {
+                "required": ["enabled"],
+                "properties": { "enabled": { "const": true } }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "modules": {
+            "anyOf": [
+              {
+                "required": ["distribution"],
+                "properties": {
+                  "distribution": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              },
+              {
+                "required": ["releases"],
+                "properties": {
+                  "releases": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "$comment": "sync_requires_config: Cloud Sync syncs catalog config keys. (The legacy \`edgeMint\` module enables config, so it satisfies the requirement too.)",
+      "if": {
+        "required": ["modules"],
+        "properties": {
+          "modules": {
+            "required": ["sync"],
+            "properties": {
+              "sync": {
+                "required": ["enabled"],
+                "properties": { "enabled": { "const": true } }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "modules": {
+            "anyOf": [
+              {
+                "required": ["config"],
+                "properties": {
+                  "config": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              },
+              {
+                "required": ["edgeMint"],
+                "properties": {
+                  "edgeMint": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "$comment": "sync_requires_identity: Cloud Sync needs a person signed in through the product. (The legacy \`oidc\` module enables identity, so it satisfies the requirement too.)",
+      "if": {
+        "required": ["modules"],
+        "properties": {
+          "modules": {
+            "required": ["sync"],
+            "properties": {
+              "sync": {
+                "required": ["enabled"],
+                "properties": { "enabled": { "const": true } }
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "modules": {
+            "anyOf": [
+              {
+                "required": ["identity"],
+                "properties": {
+                  "identity": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              },
+              {
+                "required": ["oidc"],
+                "properties": {
+                  "oidc": {
+                    "required": ["enabled"],
+                    "properties": { "enabled": { "const": true } }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "slug": {
+      "description": "The product's tenant slug: lowercase [a-z0-9-], 1-64 chars, and not a reserved platform route (docs, manage, api, assets, login, logout, callback, magic, download, webhooks, well-known, media, activate, avatar).",
+      "type": "string",
+      "pattern": "^[a-z0-9-]{1,64}$",
+      "not": {
+        "enum": [
+          "docs",
+          "manage",
+          "api",
+          "assets",
+          "login",
+          "logout",
+          "callback",
+          "magic",
+          "download",
+          "webhooks",
+          "well-known",
+          "media",
+          "activate",
+          "avatar"
+        ]
+      }
+    },
+    "label": {
+      "description": "Human label: at most 200 chars, no control characters.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]*$"
+    },
+    "longText": {
+      "description": "Longer human text: at most 2000 chars, no control characters.",
+      "type": "string",
+      "maxLength": 2000,
+      "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]*$"
+    },
+    "identifier": {
+      "description": "Simple identifier: [A-Za-z0-9._:-], 1-64 chars.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,64}$"
+    },
+    "secretRef": {
+      "description": "Stable uppercase secret name: ^[A-Z0-9][A-Z0-9_:-]{1,127}$.",
+      "type": "string",
+      "pattern": "^[A-Z0-9][A-Z0-9_:-]{1,127}$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\\\d*)\\\\.(0|[1-9]\\\\d*)\\\\.(0|[1-9]\\\\d*)(?:-[0-9A-Za-z.-]+)?(?:\\\\+[0-9A-Za-z.-]+)?$"
+    },
+    "groupName": {
+      "description": "IdP group name: ^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$"
+    },
+    "channel": {
+      "description": "Release channel name (becomes a URL path segment): ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$"
+    },
+    "nonNegativeInteger": { "type": "integer", "minimum": 0 },
+    "fingerprintMode": {
+      "description": "Drift-tolerance strength: off (never enforce) · lenient (4) · normal (2, default) · strict (0, and a fingerprint becomes mandatory).",
+      "enum": ["off", "lenient", "normal", "strict"]
+    },
+    "productCore": {
+      "type": "object",
+      "properties": {
+        "slug": { "$ref": "#/$defs/slug" },
+        "name": { "$ref": "#/$defs/label" },
+        "adminGroup": { "$ref": "#/$defs/groupName" },
+        "compatMin": { "$ref": "#/$defs/semver" },
+        "compatMax": { "$ref": "#/$defs/semver" },
+        "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
+        "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" }
+      }
+    },
+    "modules": {
+      "description": "Per-service enablement. Service slugs (license, config, release, distribution, update, identity, sync) are canonical; the legacy module vocabulary (licensing, releases, oidc, edgeMint) is accepted and mapped (releases enables release+distribution+update; edgeMint enables config). Undeclared defaults to license+config.",
+      "type": "object",
+      "properties": {
+        "license": { "$ref": "#/$defs/moduleFlag" },
+        "config": { "$ref": "#/$defs/moduleFlag" },
+        "release": { "$ref": "#/$defs/moduleFlag" },
+        "distribution": { "$ref": "#/$defs/moduleFlag" },
+        "update": { "$ref": "#/$defs/moduleFlag" },
+        "identity": { "$ref": "#/$defs/moduleFlag" },
+        "sync": { "$ref": "#/$defs/moduleFlag" },
+        "licensing": { "$ref": "#/$defs/moduleFlag" },
+        "releases": { "$ref": "#/$defs/moduleFlag" },
+        "oidc": { "$ref": "#/$defs/moduleFlag" },
+        "edgeMint": { "$ref": "#/$defs/moduleFlag" }
+      }
+    },
+    "moduleFlag": {
+      "type": "object",
+      "properties": { "enabled": { "type": "boolean" } }
+    },
+    "profiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "$ref": "#/$defs/identifier" },
+          "name": { "$ref": "#/$defs/label" },
+          "label": { "$ref": "#/$defs/label" },
+          "description": { "$ref": "#/$defs/longText" },
+          "payload": {
+            "description": "Managed-payload baseline: config/secrets/entitlements maps.",
+            "type": "object"
+          }
+        },
+        "required": ["id"]
+      }
+    },
+    "tiers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "$ref": "#/$defs/identifier" },
+          "label": { "$ref": "#/$defs/label" },
+          "profileId": {
+            "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]
+          },
+          "profile": {
+            "description": "Alias of profileId.",
+            "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]
+          },
+          "policyExpiryDays": { "type": ["number", "null"] },
+          "expiryDays": {
+            "description": "Alias of policyExpiryDays.",
+            "type": ["number", "null"]
+          },
+          "policyDeviceLimit": {
+            "anyOf": [
+              { "$ref": "#/$defs/nonNegativeInteger" },
+              { "type": "null" }
+            ]
+          },
+          "policyFingerprint": {
+            "description": "Fingerprint enforcement for this tier; null (or omitted) inherits the product default.",
+            "anyOf": [{ "$ref": "#/$defs/fingerprintMode" }, { "type": "null" }]
+          },
+          "channels": {
+            "description": "Upgrade channels this tier may follow.",
+            "type": "array",
+            "items": { "$ref": "#/$defs/channel" }
+          },
+          "minVersion": {
+            "anyOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }]
+          },
+          "maxVersion": {
+            "anyOf": [{ "$ref": "#/$defs/semver" }, { "type": "null" }]
+          }
+        },
+        "required": ["id"]
+      }
+    },
+    "oidc": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "description": "platform uses the platform IdP (PLATFORM_OIDC_*); custom uses this product's own issuer/client.",
+          "enum": ["platform", "custom"]
+        },
+        "issuer": {
+          "description": "Absolute https URL of the product's OIDC issuer (custom provider only; http is accepted only for localhost; no credentials, query, or fragment; not a private/reserved address).",
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https?://[^\\\\u0000-\\\\u001f\\\\u007f]+$"
+        },
+        "clientId": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:@/~-]{0,255}$"
+        },
+        "clientSecretSecret": { "$ref": "#/$defs/secretRef" },
+        "clientSecretRef": {
+          "description": "Alias of clientSecretSecret.",
+          "$ref": "#/$defs/secretRef"
+        },
+        "redirectUris": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {
+            "type": "string",
+            "maxLength": 2048,
+            "pattern": "^https?://[^\\\\u0000-\\\\u001f\\\\u007f]+$"
+          }
+        },
+        "groupRoleMap": {
+          "description": "IdP group name -> role/entitlement grant map.",
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._:@/-]{0,127}$"
+          }
+        }
+      },
+      "if": {
+        "required": ["provider"],
+        "properties": { "provider": { "const": "custom" } }
+      },
+      "then": { "required": ["issuer", "clientId"] }
+    },
+    "provisioningHook": {
+      "type": "object",
+      "properties": {
+        "claim": {
+          "description": "Verified OIDC claim that triggers this hook. Must not be a JS prototype property name.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
+          "not": {
+            "enum": [
+              "__proto__",
+              "constructor",
+              "prototype",
+              "toString",
+              "valueOf",
+              "hasOwnProperty",
+              "isPrototypeOf",
+              "propertyIsEnumerable",
+              "toLocaleString",
+              "__defineGetter__",
+              "__defineSetter__"
+            ]
+          }
+        },
+        "entitlementKey": { "$ref": "#/$defs/identifier" },
+        "entitlementValue": {},
+        "secretKey": { "$ref": "#/$defs/identifier" },
+        "secretUrlTemplate": {
+          "description": "Absolute https URL template ({claim} substituted; never in the host).",
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://[^\\\\u0000-\\\\u001f\\\\u007f]+$"
+        },
+        "allowedHosts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._-]{1,253}(?::[0-9]{1,5})?$"
+          }
+        }
+      },
+      "required": ["claim"]
+    },
+    "fingerprint": {
+      "description": "Hardware-fingerprint policy. On by default at normal strength; set enabled:false to collect nothing.",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "defaultMode": { "$ref": "#/$defs/fingerprintMode" },
+        "probes": {
+          "description": "Companion-application probes the client answers present/absent. Omit a platform to skip the probe there.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "$ref": "#/$defs/identifier" },
+              "label": { "$ref": "#/$defs/label" },
+              "macos": { "$ref": "#/$defs/probeTarget" },
+              "windows": { "$ref": "#/$defs/probeTarget" },
+              "linux": { "$ref": "#/$defs/probeTarget" }
+            },
+            "required": ["id"]
+          }
+        }
+      }
+    },
+    "probeTarget": {
+      "type": "string",
+      "maxLength": 512,
+      "pattern": "^[^\\\\u0000-\\\\u001f\\\\u007f]*$"
+    },
+    "autoIssue": {
+      "description": "Auto-issued (\\"always free\\") licenses. Off unless enabled; a policy naming no tier cannot issue anything, so tierId is required when enabled.",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "tierId": {
+          "description": "The declared tier auto-issued licenses land on. Must reference an id in tiers[].",
+          "$ref": "#/$defs/identifier"
+        },
+        "mode": {
+          "description": "anonymous opens POST /<product>/license/enroll (keyless, one license per machine); oidcDefault lands group-less authenticated users on the tier; both enables both paths.",
+          "enum": ["anonymous", "oidcDefault", "both"]
+        },
+        "rateLimitPerHour": { "$ref": "#/$defs/nonNegativeInteger" }
+      },
+      "if": {
+        "required": ["enabled"],
+        "properties": { "enabled": { "const": true } }
+      },
+      "then": { "required": ["tierId"] }
+    },
+    "edgeMintRecipe": {
+      "description": "Edge-mint recipe (a Config-service secret-delivery capability, served at /<product>/config/mint/<id>/...). May also live in the release document.",
+      "type": "object",
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "alg": { "enum": ["ES256", "RS256", "EdDSA"] },
+        "signingKeySecret": { "$ref": "#/$defs/secretRef" },
+        "kid": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "claimsTemplate": { "type": "object" },
+        "ttlSeconds": { "type": "integer", "exclusiveMinimum": 0 },
+        "audience": {
+          "anyOf": [{ "$ref": "#/$defs/label" }, { "type": "null" }]
+        }
+      },
+      "required": ["id", "alg", "signingKeySecret"]
+    },
+    "webOrigin": {
+      "type": "string",
+      "maxLength": 267,
+      "pattern": "^(?:https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*|http://(?:localhost|127\\\\.0\\\\.0\\\\.1))(?::[0-9]{1,5})?$"
+    },
+    "cloudSyncLimits": {
+      "description": "Per-person Cloud Sync limits, each at most the platform ceiling (settings 256 KiB, collections 64 MiB, saves 1 GiB per person).",
+      "type": "object",
+      "properties": {
+        "totalBytes": { "type": "integer", "minimum": 0 },
+        "settingsBytes": { "type": "integer", "minimum": 0 },
+        "records": { "type": "integer", "minimum": 0 },
+        "collectionBytes": { "type": "integer", "minimum": 0 },
+        "saves": {
+          "type": "object",
+          "properties": {
+            "slots": { "type": "integer", "minimum": 0 },
+            "maxBytes": { "type": "integer", "minimum": 0 },
+            "keepRevisions": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "cloudSync": {
+      "description": "Cloud Sync limits and access policy, persisted as claimable product settings. The data shape (collections, saves, migrations) lives in .pkey/schema's cloudSync block.",
+      "type": "object",
+      "properties": {
+        "limits": {
+          "description": "The licensed per-person limits.",
+          "type": "object",
+          "properties": {
+            "totalBytes": { "type": "integer", "minimum": 0 },
+            "settingsBytes": { "type": "integer", "minimum": 0 },
+            "records": { "type": "integer", "minimum": 0 },
+            "collectionBytes": { "type": "integer", "minimum": 0 },
+            "saves": {
+              "type": "object",
+              "properties": {
+                "slots": { "type": "integer", "minimum": 0 },
+                "maxBytes": { "type": "integer", "minimum": 0 },
+                "keepRevisions": { "type": "integer", "minimum": 0 }
+              },
+              "additionalProperties": false
+            },
+            "byTier": {
+              "description": "Tier id → limits; the tier of the highest-rank contributing licence applies.",
+              "type": "object",
+              "additionalProperties": { "$ref": "#/$defs/cloudSyncLimits" }
+            },
+            "byEntitlement": {
+              "description": "Limit → a numeric catalog flag (combined by max) that raises it.",
+              "type": "object",
+              "properties": {
+                "totalBytes": { "type": "string" },
+                "saveSlots": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "unlicensed": {
+          "description": "Signed-in people with no usable licence for the product: limits no higher than the licensed ones; saves off unless saves is true.",
+          "type": "object",
+          "properties": {
+            "limits": { "$ref": "#/$defs/cloudSyncLimits" },
+            "saves": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "writes": {
+          "type": "object",
+          "properties": {
+            "requireLicense": { "type": "boolean" },
+            "minTrust": { "enum": [null, "basic", "attested"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "assetSrc": {
+      "description": "Where an image's bytes come from: an https URL, or a relative path in the product's own repository, resolved at the synced commit (private repositories included). A repo path has an optional leading ./, no leading /, no . or .. segment, at most 512 characters, and ends in .png, .jpg, .jpeg, .webp, .gif or .avif (lower case).",
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://[^\\\\s\\\\u0000-\\\\u001f\\\\u007f]+$"
+        },
+        {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^(?:\\\\./)?(?!(?:[^/]*/)*\\\\.{1,2}(?:/|$))[A-Za-z0-9._~@+-]+(?:/[A-Za-z0-9._~@+-]+)*\\\\.(?:png|jpe?g|webp|gif|avif)$"
+        }
+      ]
+    },
+    "assetRef": {
+      "description": "An image Polaris Key hosts: its source as a string, or { src, sha256 } to pin the bytes (a pull whose hash differs is refused). Polaris Key keeps its own copy and serves it from its media host.",
+      "anyOf": [
+        { "$ref": "#/$defs/assetSrc" },
+        {
+          "type": "object",
+          "required": ["src"],
+          "additionalProperties": false,
+          "properties": {
+            "src": { "$ref": "#/$defs/assetSrc" },
+            "sha256": {
+              "description": "The file's SHA-256, as 64 lower-case hex digits.",
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        }
+      ]
+    },
+    "hexColour": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
+  }
+}
+`, "release-descriptor.schema.json": `{
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://key.plrs.im/docs/schemas/v1/release-descriptor.schema.json",
   "title": "Polaris Key release descriptor (pkey-release.json)",
@@ -12853,6 +13638,72 @@ var MODULE_SERVICES = {
   identity: ["identity"],
   sync: ["sync"]
 };
+var ASSET_REF_EXTENSIONS = [
+  "png",
+  "jpg",
+  "jpeg",
+  "webp",
+  "gif",
+  "avif"
+];
+var MAX_ASSET_REPO_PATH = 512;
+var MAX_ASSET_URL = 2048;
+var ASSET_REPO_PATH_PATTERN = "^(?:\\./)?(?!(?:[^/]*/)*\\.{1,2}(?:/|$))[A-Za-z0-9._~@+-]+(?:/[A-Za-z0-9._~@+-]+)*\\.(?:png|jpe?g|webp|gif|avif)$";
+var ASSET_URL_PATTERN = "^https://[^\\s\\u0000-\\u001f\\u007f]+$";
+var ASSET_SHA256_PATTERN = "^[0-9a-f]{64}$";
+var HEX_COLOUR_PATTERN = "^#[0-9A-Fa-f]{6}$";
+var REPO_PATH_RE = new RegExp(ASSET_REPO_PATH_PATTERN);
+var URL_RE = new RegExp(ASSET_URL_PATTERN);
+var SHA256_RE = new RegExp(ASSET_SHA256_PATTERN);
+var HEX_COLOUR_RE = new RegExp(HEX_COLOUR_PATTERN);
+function isAssetUrl(v) {
+  if (typeof v !== "string" || v.length > MAX_ASSET_URL || !URL_RE.test(v))
+    return false;
+  try {
+    return new URL(v).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+function isAssetRepoPath(v) {
+  return typeof v === "string" && v.length <= MAX_ASSET_REPO_PATH && REPO_PATH_RE.test(v);
+}
+function isHexColour(v) {
+  return typeof v === "string" && HEX_COLOUR_RE.test(v);
+}
+function srcKind(v) {
+  if (isAssetUrl(v)) return "url";
+  if (isAssetRepoPath(v)) return "repo";
+  return null;
+}
+var SRC_RULE = `an https URL of at most ${MAX_ASSET_URL} characters, or a relative repo path of at most ${MAX_ASSET_REPO_PATH} characters with no leading / and no . or .. segment, ending in .${ASSET_REF_EXTENSIONS.join(", .")}`;
+function assetRefProblem(v) {
+  if (typeof v === "string") {
+    return srcKind(v) ? null : `must be ${SRC_RULE}`;
+  }
+  if (v === null || typeof v !== "object" || Array.isArray(v)) {
+    return `must be a string or an object { src, sha256 }`;
+  }
+  const r = v;
+  const extra = Object.keys(r).filter((k) => k !== "src" && k !== "sha256");
+  if (extra.length) return `has unknown keys (${extra.join(", ")})`;
+  if (srcKind(r.src) === null) return `src must be ${SRC_RULE}`;
+  if (r.sha256 !== void 0 && (typeof r.sha256 !== "string" || !SHA256_RE.test(r.sha256)))
+    return "sha256 must be 64 lower-case hex digits";
+  return null;
+}
+function normalizeAssetRef(v) {
+  if (assetRefProblem(v) !== null) return null;
+  const raw = typeof v === "string" ? { src: v } : v;
+  const src = raw.src;
+  const kind = srcKind(src);
+  const out = {
+    kind,
+    src: kind === "repo" && src.startsWith("./") ? src.slice(2) : src
+  };
+  if (typeof raw.sha256 === "string") out.sha256 = raw.sha256;
+  return out;
+}
 var MAX_OUTLETS = 32;
 var TRANSPORTS = [
   "embedded",
@@ -13075,31 +13926,19 @@ var LISTING_TEXT_FIELDS = [
   "category",
   "developerName"
 ];
-var LISTING_URL_FIELDS = [
-  "iconUrl",
-  "headerUrl",
-  "website",
-  "supportUrl"
+var LISTING_URL_FIELDS = ["website", "supportUrl"];
+var LISTING_IMAGE_FIELDS = [
+  ["icon", "iconUrl"],
+  ["header", "headerUrl"]
 ];
 var MAX_LISTING_TEXT = 200;
 var MAX_LISTING_DESCRIPTION = 4e3;
 var MAX_LISTING_URL = 2048;
-var MAX_SCREENSHOTS = 16;
-var TINT_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
+var MAX_LISTING_SCREENSHOTS = 16;
 var LINE_RE = /^[^\u0000-\u001f\u007f]+$/;
 var PROSE_RE = /^[^\u0000-\u0008\u000b-\u001f\u007f]+$/;
-var HTTPS_URL_RE = /^https:\/\/[^\s\u0000-\u001f\u007f]+$/;
 var MAX_LISTING_EMAIL = 254;
 var LISTING_EMAIL_RE = /^[^\s@<>\u0000-\u001f\u007f]+@[^\s@<>\u0000-\u001f\u007f]+\.[^\s@<>\u0000-\u001f\u007f]+$/;
-function isListingUrl(v) {
-  if (typeof v !== "string" || v.length > MAX_LISTING_URL || !HTTPS_URL_RE.test(v))
-    return false;
-  try {
-    return new URL(v).protocol === "https:";
-  } catch {
-    return false;
-  }
-}
 function listingProblem(raw) {
   if (!isRecord3(raw)) return "must be an object";
   for (const f of LISTING_TEXT_FIELDS) {
@@ -13110,18 +13949,83 @@ function listingProblem(raw) {
   const d = raw.description;
   if (d !== void 0 && (typeof d !== "string" || d.length > MAX_LISTING_DESCRIPTION || !PROSE_RE.test(d)))
     return `description must be 1 to ${MAX_LISTING_DESCRIPTION} characters with no control characters but tab and newline`;
-  for (const f of LISTING_URL_FIELDS) {
-    if (raw[f] !== void 0 && !isListingUrl(raw[f]))
+  for (const f of [...LISTING_URL_FIELDS, "iconUrl", "headerUrl"]) {
+    if (raw[f] !== void 0 && !isAssetUrl(raw[f]))
       return `${f} must be an https URL of at most ${MAX_LISTING_URL} characters`;
   }
-  if (raw.tintColor !== void 0 && (typeof raw.tintColor !== "string" || !TINT_COLOR_RE.test(raw.tintColor)))
+  if (raw.tintColor !== void 0 && !isHexColour(raw.tintColor))
     return "tintColor must be a #rrggbb colour";
   if (raw.supportEmail !== void 0 && (typeof raw.supportEmail !== "string" || raw.supportEmail.length > MAX_LISTING_EMAIL || !LISTING_EMAIL_RE.test(raw.supportEmail)))
     return `supportEmail must be one email address of at most ${MAX_LISTING_EMAIL} characters`;
   const shots = raw.screenshots;
-  if (shots !== void 0 && (!Array.isArray(shots) || shots.length > MAX_SCREENSHOTS || !shots.every(isListingUrl)))
-    return `screenshots must be a list of at most ${MAX_SCREENSHOTS} https URLs`;
+  if (shots !== void 0 && (!Array.isArray(shots) || shots.length > MAX_LISTING_SCREENSHOTS))
+    return `screenshots must be a list of at most ${MAX_LISTING_SCREENSHOTS} asset refs`;
   return null;
+}
+function listingRefProblems(raw) {
+  const out = [];
+  for (const [field] of LISTING_IMAGE_FIELDS) {
+    const problem = raw[field] === void 0 ? null : assetRefProblem(raw[field]);
+    if (problem) out.push([`/${field}`, field, problem]);
+  }
+  if (Array.isArray(raw.screenshots))
+    for (const [i, shot] of raw.screenshots.entries()) {
+      const problem = assetRefProblem(shot);
+      if (problem)
+        out.push([`/screenshots/${i}`, `screenshots[${i}]`, problem]);
+    }
+  return out;
+}
+function listingValid(raw) {
+  if (listingProblem(raw) !== null) return false;
+  const r = raw;
+  if (LISTING_IMAGE_FIELDS.some(
+    ([f, a]) => r[f] !== void 0 && r[a] !== void 0
+  ))
+    return false;
+  return listingRefProblems(r).length === 0;
+}
+function reportListing(errors, warnings, raw, at, label) {
+  const problem = listingProblem(raw);
+  if (problem) {
+    add2(
+      errors,
+      "distribution",
+      `${at}`,
+      "invalid_listing",
+      `${label} ${problem}.`
+    );
+  }
+  if (!isRecord3(raw)) return;
+  for (const [below, field, refProblem2] of listingRefProblems(raw)) {
+    add2(
+      errors,
+      "distribution",
+      `${at}${below}`,
+      "invalid_asset_ref",
+      `${label}.${field} ${refProblem2}.`
+    );
+  }
+  for (const [field, alias] of LISTING_IMAGE_FIELDS) {
+    if (raw[alias] === void 0) continue;
+    if (raw[field] !== void 0) {
+      add2(
+        errors,
+        "distribution",
+        `${at}/${alias}`,
+        "listing_field_conflict",
+        `${label} declares both ${field} and its deprecated alias ${alias}; keep ${field}.`
+      );
+    } else if (warnings) {
+      add2(
+        warnings,
+        "distribution",
+        `${at}/${alias}`,
+        "listing_url_field_deprecated",
+        `${label}.${alias} is deprecated; write ${field} instead (an https URL or a repo path).`
+      );
+    }
+  }
 }
 function outletKindOf(id, entry) {
   const kind = isRecord3(entry) ? entry.kind : void 0;
@@ -13138,7 +14042,7 @@ function transportAllowed(transport, kind) {
   const kinds = TRANSPORT_OUTLET_KINDS[transport];
   return kinds === null || kinds.includes(kind);
 }
-function validateDistribution(errors, doc, ctx) {
+function validateDistribution(errors, doc, ctx, warnings) {
   if (!isRecord3(doc)) {
     add2(
       errors,
@@ -13180,7 +14084,7 @@ function validateDistribution(errors, doc, ctx) {
       );
     } else {
       for (const [id, entry] of Object.entries(outlets)) {
-        validateOutlet(errors, id, entry, ctx, kinds);
+        validateOutlet(errors, warnings, id, entry, ctx, kinds);
       }
     }
   } else {
@@ -13201,19 +14105,10 @@ function validateDistribution(errors, doc, ctx) {
     }
   }
   if (doc.listing !== void 0) {
-    const problem = listingProblem(doc.listing);
-    if (problem) {
-      add2(
-        errors,
-        "distribution",
-        "/listing",
-        "invalid_listing",
-        `listing ${problem}.`
-      );
-    }
+    reportListing(errors, warnings, doc.listing, "/listing", "listing");
   }
 }
-function validateOutlet(errors, id, entry, ctx, kinds) {
+function validateOutlet(errors, warnings, id, entry, ctx, kinds) {
   if (!OUTLET_ID_PATTERN.test(id)) {
     add2(
       errors,
@@ -13303,16 +14198,13 @@ function validateOutlet(errors, id, entry, ctx, kinds) {
     );
   }
   if (entry.listing !== void 0) {
-    const problem = listingProblem(entry.listing);
-    if (problem) {
-      add2(
-        errors,
-        "distribution",
-        `/outlets/${id}/listing`,
-        "invalid_listing",
-        `outlets.${id}.listing ${problem}.`
-      );
-    }
+    reportListing(
+      errors,
+      warnings,
+      entry.listing,
+      `/outlets/${id}/listing`,
+      `outlets.${id}.listing`
+    );
   }
 }
 function validateTransports(errors, transports, ctx, kinds) {
@@ -13530,7 +14422,7 @@ function structuredCloneScoop(v) {
   return out;
 }
 function normalizeListing(raw) {
-  if (raw === void 0 || listingProblem(raw) !== null) return null;
+  if (raw === void 0 || !listingValid(raw)) return null;
   const r = raw;
   const out = {};
   for (const f of [
@@ -13542,7 +14434,12 @@ function normalizeListing(raw) {
   ]) {
     if (typeof r[f] === "string") out[f] = r[f];
   }
-  if (Array.isArray(r.screenshots)) out.screenshots = [...r.screenshots];
+  for (const [field, alias] of LISTING_IMAGE_FIELDS) {
+    const ref = normalizeAssetRef(r[field] ?? r[alias]);
+    if (ref) out[field] = ref;
+  }
+  if (Array.isArray(r.screenshots))
+    out.screenshots = r.screenshots.map(normalizeAssetRef).filter((x) => x !== null);
   return out;
 }
 function distributionOutletIds(dist, outletId) {
@@ -13662,7 +14559,7 @@ function buildMetadataProblem(platform, m) {
   const abis = ANDROID_ABIS;
   if (m.nativecode !== void 0 && (!Array.isArray(m.nativecode) || new Set(m.nativecode).size !== m.nativecode.length || !m.nativecode.every((a) => typeof a === "string" && abis.includes(a))))
     return `nativecode must be distinct ABIs from ${ANDROID_ABIS.join(", ")}`;
-  if (typeof m.signerSha256 !== "string" || !SHA256_RE.test(m.signerSha256))
+  if (typeof m.signerSha256 !== "string" || !SHA256_RE2.test(m.signerSha256))
     return "signerSha256 must be 64 lower-case hex characters";
   return null;
 }
@@ -13740,10 +14637,10 @@ var FORMAT_RE = /^[a-z0-9][a-z0-9.+-]{0,31}$/;
 var BUILD_NUMBER_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 var MIN_OS_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,31}$/;
 var NAME_RE = /^[^/\\\u0000-\u001f\u007f]{1,255}$/u;
-var SHA256_RE = /^[0-9a-f]{64}$/;
+var SHA256_RE2 = /^[0-9a-f]{64}$/;
 var CONTENT_TYPE_RE = /^[a-z0-9][a-z0-9.+-]*\/[a-z0-9][a-z0-9.+-]*$/;
 var KEY_SHAPE_RE = /^(gated\/)?blobs\/sha256\/[0-9a-f]{64}$/;
-var HTTPS_URL_RE2 = /^https:\/\/[^\s\u0000-\u001f\u007f]{1,2040}$/;
+var HTTPS_URL_RE = /^https:\/\/[^\s\u0000-\u001f\u007f]{1,2040}$/;
 var COMMIT_RE = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 var RFC3339_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/;
 var MAX_TITLE = 200;
@@ -13759,7 +14656,7 @@ function codePoints(s) {
   return [...s].length;
 }
 function isHttpsUrl(v) {
-  if (typeof v !== "string" || !HTTPS_URL_RE2.test(v)) return false;
+  if (typeof v !== "string" || !HTTPS_URL_RE.test(v)) return false;
   try {
     const u = new URL(v);
     return u.protocol === "https:" && u.username === "" && u.password === "";
@@ -13784,7 +14681,7 @@ function descriptorContentProblem(c) {
     if (pinned.has(pin.pack)) return `${pin.pack} is pinned twice`;
     pinned.add(pin.pack);
     const r = pin.release;
-    if (!isRecord4(r) || typeof r.sha256 !== "string" || !SHA256_RE.test(r.sha256) || !(Number.isSafeInteger(r.seq) && r.seq >= 1) || typeof r.version !== "string" || !VERSION_RE.test(r.version))
+    if (!isRecord4(r) || typeof r.sha256 !== "string" || !SHA256_RE2.test(r.sha256) || !(Number.isSafeInteger(r.seq) && r.seq >= 1) || typeof r.version !== "string" || !VERSION_RE.test(r.version))
       return `the pin of ${pin.pack} needs release { sha256, seq ≥ 1, version }`;
   }
   const expects = c.expects;
@@ -13814,7 +14711,7 @@ function descriptorContentProblem(c) {
         return `${h.pack} is both pinned and held; a hold keeps a compatible pack, a pin fixes a pinned one`;
       held.add(h.pack);
       const r = h.release;
-      if (!isRecord4(r) || typeof r.sha256 !== "string" || !SHA256_RE.test(r.sha256) || !(Number.isSafeInteger(r.seq) && r.seq >= 1) || typeof r.version !== "string" || !VERSION_RE.test(r.version))
+      if (!isRecord4(r) || typeof r.sha256 !== "string" || !SHA256_RE2.test(r.sha256) || !(Number.isSafeInteger(r.seq) && r.seq >= 1) || typeof r.version !== "string" || !VERSION_RE.test(r.version))
         return `the hold of ${h.pack} needs release { sha256, seq ≥ 1, version }`;
       if (h.reason !== void 0 && (typeof h.reason !== "string" || h.reason.length > MAX_HOLD_REASON))
         return `the hold of ${h.pack} has a reason of at most ${MAX_HOLD_REASON} characters`;
@@ -14073,7 +14970,7 @@ function validateReleaseDescriptor(descriptor, manifest) {
           "invalid_descriptor_artifact",
           `role must be one of ${ARTIFACT_ROLES.join(", ")}.`
         );
-      const sha = typeof a.sha256 === "string" && SHA256_RE.test(a.sha256) ? a.sha256 : null;
+      const sha = typeof a.sha256 === "string" && SHA256_RE2.test(a.sha256) ? a.sha256 : null;
       if (!sha)
         err(
           `/builds/${bi}/artifacts/${ai}/sha256`,
@@ -14503,7 +15400,7 @@ function validatePackageDescriptor(d, manifest, errors) {
           `a ${eco} package file's type is one of ${vocab.join(", ")}.`
         );
       else types.push(f.type);
-      const sha = typeof f.sha256 === "string" && SHA256_RE.test(f.sha256) ? f.sha256 : null;
+      const sha = typeof f.sha256 === "string" && SHA256_RE2.test(f.sha256) ? f.sha256 : null;
       if (!sha)
         err(
           `${at}/sha256`,
@@ -16818,7 +17715,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     validateDistribution(
       errors,
       manifest.distribution,
-      distributionContext(relDoc)
+      distributionContext(relDoc),
+      warnings
     );
   }
   {
@@ -16903,6 +17801,42 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       "invalid_registration_policy",
       `devices.registration must be one of ${REGISTRATION_POLICIES.join(", ")}.`
     );
+  }
+  if (productRoot.presentation !== void 0) {
+    const presentation = productRoot.presentation;
+    if (!isRecord5(presentation)) {
+      add3(
+        errors,
+        "product",
+        "/presentation",
+        "invalid_presentation",
+        "presentation must be an object { icon, accent, accentDark }."
+      );
+    } else {
+      if (presentation.icon !== void 0) {
+        const problem = assetRefProblem(presentation.icon);
+        if (problem) {
+          add3(
+            errors,
+            "product",
+            "/presentation/icon",
+            "invalid_asset_ref",
+            `presentation.icon ${problem}.`
+          );
+        }
+      }
+      for (const field of ["accent", "accentDark"]) {
+        if (presentation[field] !== void 0 && !isHexColour(presentation[field])) {
+          add3(
+            errors,
+            "product",
+            `/presentation/${field}`,
+            "invalid_presentation",
+            `presentation.${field} must be a #rrggbb colour.`
+          );
+        }
+      }
+    }
   }
   if (productRoot.web !== void 0 && !isRecord5(productRoot.web)) {
     add3(
@@ -18209,6 +19143,9 @@ function parseManifest(files, opts = {}) {
       routedDeliverables(releaseDoc)
     );
   }
+  if (isRecord5(productRoot.presentation)) {
+    parsed.presentation = normalizePresentation(productRoot.presentation);
+  }
   if (productRoot.fingerprint !== void 0) {
     parsed.fingerprint = normalizeFingerprint(productRoot.fingerprint);
   }
@@ -18216,6 +19153,14 @@ function parseManifest(files, opts = {}) {
     parsed.autoIssue = normalizeAutoIssue(productRoot.autoIssue);
   }
   return { ok: true, manifest: parsed };
+}
+function normalizePresentation(raw) {
+  const out = {};
+  const icon2 = normalizeAssetRef(raw.icon);
+  if (icon2) out.icon = icon2;
+  if (isHexColour(raw.accent)) out.accent = raw.accent;
+  if (isHexColour(raw.accentDark)) out.accentDark = raw.accentDark;
+  return out;
 }
 function normalizeRelease(rel) {
   const provider = asRecord(rel.provider);
@@ -21362,7 +22307,7 @@ var NO_NON_WIRE_INTEGERS = /* @__PURE__ */ new Set();
 init_define_PKEY_EMBEDDED_SCHEMAS();
 var DELIVERABLE_RE2 = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
 var VERSION_RE2 = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
-var SHA256_RE2 = /^[0-9a-f]{64}$/;
+var SHA256_RE3 = /^[0-9a-f]{64}$/;
 function isObject(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
@@ -21395,7 +22340,7 @@ function isPackId(value) {
 function objectRef(value, pointer, minBytes, minSize, nonWire = NO_NON_WIRE_INTEGERS) {
   if (!isObject(value))
     return false;
-  if (typeof value.sha256 !== "string" || !SHA256_RE2.test(value.sha256))
+  if (typeof value.sha256 !== "string" || !SHA256_RE3.test(value.sha256))
     return false;
   if (!isWireInteger(value.bytes, `${pointer}/bytes`, minBytes, nonWire))
     return false;
@@ -21428,7 +22373,7 @@ function contentClaims(value, opts = {}) {
       const r = pin.release;
       if (!isObject(r))
         return false;
-      if (typeof r.sha256 !== "string" || !SHA256_RE2.test(r.sha256))
+      if (typeof r.sha256 !== "string" || !SHA256_RE3.test(r.sha256))
         return false;
       if (!isWireInteger(r.seq, `${at}/pins/${i}/release/seq`, 1, nonWire))
         return false;
@@ -21481,7 +22426,7 @@ function holdsOf(content, nonWire = NO_NON_WIRE_INTEGERS, pointer = "/content") 
       const r = h.release;
       if (!isObject(r))
         return null;
-      if (typeof r.sha256 !== "string" || !SHA256_RE2.test(r.sha256))
+      if (typeof r.sha256 !== "string" || !SHA256_RE3.test(r.sha256))
         return null;
       if (!isWireInteger(r.seq, `${pointer}/holds/${i}/release/seq`, 1, nonWire))
         return null;
@@ -21521,7 +22466,7 @@ function variantKey(variant) {
 // ../client-core/dist/record.js
 var DELIVERABLE_RE3 = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
 var VERSION_RE3 = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
-var SHA256_RE3 = /^[0-9a-f]{64}$/;
+var SHA256_RE4 = /^[0-9a-f]{64}$/;
 var MAX_BUILDS = 64;
 var MAX_ARTIFACTS = 32;
 function isObject2(v) {
@@ -21593,7 +22538,7 @@ function claimsOk(doc, opts, nonWire) {
         return false;
       if (artifact.role === "payload")
         payloads++;
-      if (typeof artifact.sha256 !== "string" || !SHA256_RE3.test(artifact.sha256))
+      if (typeof artifact.sha256 !== "string" || !SHA256_RE4.test(artifact.sha256))
         return false;
       if (!int(artifact.size, `/builds/${i}/artifacts/${j}/size`, 0))
         return false;
@@ -21620,7 +22565,7 @@ function embedsOk(embeds) {
 }
 var optPattern = (o, key, re) => !has2(o, key) || typeof o[key] === "string" && re.test(o[key]);
 function hashBytesOk(v, pointer, nonWire) {
-  return isObject2(v) && typeof v.sha256 === "string" && SHA256_RE3.test(v.sha256) && isWireInteger(v.bytes, `${pointer}/bytes`, 1, nonWire);
+  return isObject2(v) && typeof v.sha256 === "string" && SHA256_RE4.test(v.sha256) && isWireInteger(v.bytes, `${pointer}/bytes`, 1, nonWire);
 }
 function packClaimsOk(doc, nonWire) {
   const int = (v, pointer, min) => isWireInteger(v, pointer, min, nonWire);
@@ -21683,7 +22628,7 @@ function packClaimsOk(doc, nonWire) {
       return false;
     if (!int(p.size, `${at}/payload/size`, 0))
       return false;
-    if (typeof p.sha256 !== "string" || !SHA256_RE3.test(p.sha256))
+    if (typeof p.sha256 !== "string" || !SHA256_RE4.test(p.sha256))
       return false;
     if (!objectRef(v.full, `${at}/full`, 0, 0, nonWire))
       return false;
@@ -21720,7 +22665,7 @@ function packClaimsOk(doc, nonWire) {
           return false;
         if (d.scope === "payload" && f.layout === "tree")
           return false;
-        if (typeof d.from !== "string" || !SHA256_RE3.test(d.from))
+        if (typeof d.from !== "string" || !SHA256_RE4.test(d.from))
           return false;
         if (!int(d.memBytes, `${dt}/memBytes`, 1))
           return false;
@@ -21931,14 +22876,14 @@ function revocationOf(doc, nonWire = NO_NON_WIRE_INTEGERS) {
       return null;
     if (!isPackId(doc.deliverable))
       return null;
-    if (typeof doc.revokes !== "string" || !SHA256_RE3.test(doc.revokes))
+    if (typeof doc.revokes !== "string" || !SHA256_RE4.test(doc.revokes))
       return null;
     let replacement = null;
     if (has2(doc, "replacement")) {
       const r = doc.replacement;
       if (!isObject2(r))
         return null;
-      if (typeof r.sha256 !== "string" || !SHA256_RE3.test(r.sha256))
+      if (typeof r.sha256 !== "string" || !SHA256_RE4.test(r.sha256))
         return null;
       if (r.sha256 === doc.revokes)
         return null;
@@ -22260,12 +23205,12 @@ function entryOk(e, i, container, nonWire) {
     return false;
   if (!isWireInteger(e.size, `${at}/size`, 0, nonWire))
     return false;
-  if (typeof e.sha256 !== "string" || !SHA256_RE2.test(e.sha256))
+  if (typeof e.sha256 !== "string" || !SHA256_RE3.test(e.sha256))
     return false;
   const b = e.blob;
   if (!isObject(b))
     return false;
-  if (typeof b.sha256 !== "string" || !SHA256_RE2.test(b.sha256))
+  if (typeof b.sha256 !== "string" || !SHA256_RE3.test(b.sha256))
     return false;
   if (!isWireInteger(b.bytes, `${at}/blob/bytes`, 0, nonWire))
     return false;
@@ -22313,7 +23258,7 @@ async function parseFilesIndex(stored, ref, variant, opts = {}) {
       return invalid;
     if (!isWireInteger(p.size, "/payload/size", 0, nonWire))
       return invalid;
-    if (typeof p.sha256 !== "string" || !SHA256_RE2.test(p.sha256))
+    if (typeof p.sha256 !== "string" || !SHA256_RE3.test(p.sha256))
       return invalid;
     if (p.size !== variant.payload.size || p.sha256 !== variant.payload.sha256)
       return invalid;
@@ -27252,7 +28197,7 @@ var DEFAULT_DELEGATION_DAYS = 180;
 var MAX_DELEGATION_DAYS = MAX_DELEGATION_TTL_SECONDS / SECONDS_PER_DAY;
 var WINDOW_WARN_DAYS = 14;
 var KEY_B64URL_RE2 = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
-var SHA256_RE4 = /^[0-9a-f]{64}$/;
+var SHA256_RE5 = /^[0-9a-f]{64}$/;
 var sha256Hex3 = (s) => createHash9("sha256").update(s).digest("hex");
 var iso = (t) => new Date(t * 1e3).toISOString();
 async function generateContentKey(opts) {
@@ -27558,7 +28503,7 @@ A text file (json, csv, tsv, po, txt) is refused for a script marker (${DATA_ONL
     );
 }
 async function contentSigner(o) {
-  if (!SHA256_RE4.test(o.key.delegation))
+  if (!SHA256_RE5.test(o.key.delegation))
     throw new Error(
       "--delegation must be the delegation record's sha256 (64 lowercase hex), as pkey release delegate prints it."
     );

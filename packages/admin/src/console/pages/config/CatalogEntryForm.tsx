@@ -1,4 +1,5 @@
 import * as React from "react";
+import { AlertCircle, ChevronRight } from "lucide-react";
 import { SUPPORTED_FORMATS } from "@polaris-key/catalog";
 import type {
   UserSettingConflict,
@@ -21,6 +22,7 @@ import { Input } from "../../../ui/Input.js";
 import { SegmentedControl } from "../../../ui/SegmentedControl.js";
 import { Select } from "../../../ui/Select.js";
 import { Textarea } from "../../../ui/Textarea.js";
+import { newEntry } from "./catalogDraft.js";
 
 type Json = Record<string, unknown>;
 
@@ -89,16 +91,84 @@ const numberOrUndefined = (raw: string): number | undefined => {
   return Number.isFinite(n) ? n : undefined;
 };
 
+/** Keywords that only describe a fragment; anything else in it is a validation rule. */
+const DESCRIPTIVE_KEYWORDS = new Set(["type", "description"]);
+
 /**
- * One catalog entry as a structured form (docs/design/ADMIN.md §6.6.2, decision Q5): key, kind,
- * label, category, description, the schema's common keywords by type, default, management
- * default, user grant and UI hints. Anything the basic schema controls cannot express is edited
- * as a JSON fragment, validated by the same interpreter the server uses (CAT-5).
+ * The label a key implies: its last dotted segment in words, sentence case (`audio.bufferSize`
+ * → "Buffer size", `net.retry_count` → "Retry count"). All-caps words keep their case.
+ */
+export function labelFromKey(key: string): string {
+  const last = key.split(".").filter(Boolean).pop() ?? "";
+  const words = last
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1 $2")
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .map((w) => (w.length > 1 && /^[A-Z0-9]+$/.test(w) ? w : w.toLowerCase()));
+  const text = words.join(" ");
+  return text ? text[0]!.toUpperCase() + text.slice(1) : "";
+}
+
+/**
+ * The type a typed default implies, with the default in that type: `true` → On / off, `512` →
+ * Whole number, `0.5` → Number, `[…]`/`{…}` that parse → List/Object, anything else → Text.
+ * An empty box is no default.
+ */
+export function guessDefault(
+  raw: string,
+): { type: SchemaType; value: unknown } | null {
+  const t = raw.trim();
+  if (t === "") return null;
+  if (t === "true" || t === "false")
+    return { type: "boolean", value: t === "true" };
+  if (/^-?\d+$/.test(t) && Number.isSafeInteger(Number(t)))
+    return { type: "integer", value: Number(t) };
+  if (/^-?(\d+\.\d*|\.\d+|\d+(\.\d+)?[eE][+-]?\d+)$/.test(t)) {
+    const n = Number(t);
+    if (Number.isFinite(n)) return { type: "number", value: n };
+  }
+  if (t.startsWith("[") || t.startsWith("{")) {
+    try {
+      const parsed: unknown = JSON.parse(t);
+      if (Array.isArray(parsed)) return { type: "array", value: parsed };
+      if (parsed && typeof parsed === "object")
+        return { type: "object", value: parsed };
+    } catch {
+      // Not JSON (yet): it is text.
+    }
+  }
+  return { type: "string", value: raw };
+}
+
+/** The text a default reads as in the plain Default box. */
+const defaultText = (value: unknown): string =>
+  value === undefined
+    ? ""
+    : typeof value === "string"
+      ? value
+      : JSON.stringify(value);
+
+/** The label `newEntry` gives a fresh entry, which Label-from-Key replaces like a derived one. */
+const PLACEHOLDER_LABEL = newEntry([], "").label;
+
+/**
+ * One catalog entry as a structured form (docs/design/ADMIN.md §6.6.2, decision Q5;
+ * EXPERIENCE.md §0.4 S4). It leads with what every entry needs (Key, Kind, Type, Default, then
+ * Label, Category and Description) and collapses the rest: **Validation** (the schema's keywords
+ * by type, or the whole fragment as JSON checked by the server's own interpreter, CAT-5) and
+ * **Form hints**. A group opens by itself when it holds something or has a problem.
+ *
+ * - **Label from Key:** while the label is still the one the key implies (or the new-entry
+ *   placeholder), editing the key rewrites it.
+ * - **Type guess:** on an entry added in this draft whose type nobody picked and whose schema has
+ *   no rules yet, Default is a plain box and the type follows what is typed into it.
  */
 export function CatalogEntryForm({
   entry,
   issues,
   categories,
+  fresh = false,
   onChange,
 }: {
   entry: ConfigEntry;
@@ -106,6 +176,8 @@ export function CatalogEntryForm({
   issues: CatalogIssue[];
   /** Every category in the draft, offered as suggestions. */
   categories: string[];
+  /** The entry was added in this draft (its type may still be guessed from the default). */
+  fresh?: boolean;
   onChange: (next: ConfigEntry) => void;
 }): React.ReactElement {
   const schema = (entry.schema ?? {}) as Json;
@@ -144,6 +216,55 @@ export function CatalogEntryForm({
   const enumValues = Array.isArray(schema.enum) ? schema.enum : null;
   const secret = entry.kind === "secret";
   const ui = (entry.ui ?? {}) as Json;
+  const hasRules = Object.keys(schema).some(
+    (k) => !DESCRIPTIVE_KEYWORDS.has(k),
+  );
+  const schemaProblem = schemaTextError ?? issue("schema");
+
+  // The type is guessed until someone picks it or writes a rule that depends on it.
+  const [typePicked, setTypePicked] = React.useState(false);
+  const guessing = fresh && !secret && !typePicked && !hasRules && !advanced;
+  const [defaultRaw, setDefaultRaw] = React.useState(() =>
+    defaultText(entry.default),
+  );
+
+  const [validationOpen, setValidationOpen] = React.useState(
+    () => hasRules || schemaProblem !== undefined,
+  );
+  React.useEffect(() => {
+    if (schemaProblem) setValidationOpen(true);
+  }, [schemaProblem]);
+  const userIssue = issue("user");
+  const [userOpen, setUserOpen] = React.useState(
+    () => entry.user !== undefined || userIssue !== undefined,
+  );
+  React.useEffect(() => {
+    if (userIssue) setUserOpen(true);
+  }, [userIssue]);
+  const [hintsOpen, setHintsOpen] = React.useState(
+    () => Object.keys(ui).length > 0,
+  );
+
+  const changeKey = (key: string): void => {
+    const derived =
+      entry.label === "" ||
+      entry.label === PLACEHOLDER_LABEL ||
+      entry.label === labelFromKey(entry.key);
+    const label = derived ? labelFromKey(key) || entry.label : entry.label;
+    onChange({ ...entry, key, label });
+  };
+
+  const typeDefault = (raw: string): void => {
+    setDefaultRaw(raw);
+    const guess = guessDefault(raw);
+    if (guess === null) {
+      onChange(withField(entry, "default", undefined));
+      return;
+    }
+    const nextSchema: Json =
+      guess.type === type ? schema : { ...schema, type: guess.type };
+    onChange({ ...entry, schema: nextSchema, default: guess.value });
+  };
 
   return (
     <div className="space-y-6">
@@ -152,7 +273,6 @@ export function CatalogEntryForm({
           name="key"
           label="Key"
           required
-          help="A dotted identifier, unique in the catalog."
           value={entry.key}
           error={issue("key")}
         >
@@ -163,7 +283,7 @@ export function CatalogEntryForm({
               value={entry.key}
               autoComplete="off"
               spellCheck={false}
-              onChange={(e) => onChange({ ...entry, key: e.target.value })}
+              onChange={(e) => changeKey(e.target.value)}
             />
           )}
         </FormField>
@@ -182,8 +302,10 @@ export function CatalogEntryForm({
               onChange={(kind) => {
                 let next: ConfigEntry = { ...entry, kind };
                 // A secret has no plaintext default; a management default is config-only.
-                if (kind === "secret")
+                if (kind === "secret") {
                   next = withField(next, "default", undefined);
+                  setDefaultRaw("");
+                }
                 if (kind !== "config") {
                   next = withField(next, "managementDefault", undefined);
                   // A user setting is a config key (Cloud Sync rule 1).
@@ -203,6 +325,88 @@ export function CatalogEntryForm({
           )}
         </FormField>
         <FormField
+          name="type"
+          label="Type"
+          help={
+            guessing && entry.default !== undefined
+              ? "Guessed from the default."
+              : undefined
+          }
+          value={type}
+        >
+          {(f) => (
+            <Select
+              {...f}
+              value={type}
+              options={TYPES.map((t) => ({
+                value: t,
+                label: TYPE_LABELS[t],
+              }))}
+              onChange={(t) => {
+                setTypePicked(true);
+                setDefaultRaw("");
+                const next: Json = { type: t };
+                if (schema.description) next.description = schema.description;
+                onChange({
+                  ...withField(entry, "default", undefined),
+                  schema: next,
+                });
+              }}
+            />
+          )}
+        </FormField>
+        {secret ? (
+          <p className="self-end text-sm text-fg-muted sm:pb-2">
+            A secret has no default: its value is write-only and set per profile
+            or license.
+          </p>
+        ) : guessing ? (
+          <FormField
+            name="default"
+            label="Default"
+            help={
+              entry.default === undefined
+                ? "No default: clients get nothing until a profile or license sets the key."
+                : undefined
+            }
+            value={defaultRaw}
+          >
+            {(f) => (
+              <Input
+                {...f}
+                value={defaultRaw}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(e) => typeDefault(e.target.value)}
+              />
+            )}
+          </FormField>
+        ) : (
+          <div className="min-w-0 space-y-2">
+            <SchemaField
+              entry={entry}
+              value={entry.default}
+              label="Default"
+              labelAside={null}
+              help={
+                entry.default === undefined
+                  ? "No default: clients get nothing until a profile or license sets the key."
+                  : undefined
+              }
+              onChange={(result) => set("default", result.value)}
+            />
+            {entry.default !== undefined ? (
+              <Button
+                size="xs"
+                variant="outline"
+                onClick={() => set("default", undefined)}
+              >
+                Remove the default
+              </Button>
+            ) : null}
+          </div>
+        )}
+        <FormField
           name="label"
           label="Label"
           required
@@ -213,6 +417,7 @@ export function CatalogEntryForm({
             <Input
               {...f}
               value={entry.label}
+              placeholder={labelFromKey(entry.key) || undefined}
               onChange={(e) => onChange({ ...entry, label: e.target.value })}
             />
           )}
@@ -259,218 +464,6 @@ export function CatalogEntryForm({
         )}
       </FormField>
 
-      <fieldset className="space-y-4 rounded-md border border-border p-4">
-        <legend className="px-1 text-sm font-bold text-fg-strong">
-          Schema
-        </legend>
-        {advanced ? (
-          <FormField
-            name="schema-json"
-            label="Schema (JSON)"
-            help="The full JSON-Schema fragment, checked by the catalog's own validator."
-            value={schemaText}
-            error={schemaTextError ?? issue("schema")}
-            announceError
-          >
-            {(f) => (
-              <Textarea
-                {...f}
-                mono
-                rows={8}
-                spellCheck={false}
-                value={schemaText}
-                onChange={(e) => {
-                  const text = e.target.value;
-                  setSchemaText(text);
-                  let parsed: unknown;
-                  try {
-                    parsed = JSON.parse(text);
-                  } catch (err) {
-                    setSchemaTextError(
-                      `Invalid JSON: ${err instanceof Error ? err.message : String(err)}`,
-                    );
-                    return;
-                  }
-                  const problem = schemaIssue(parsed);
-                  setSchemaTextError(problem);
-                  if (problem === null) {
-                    lastSchema.current = parsed as Json;
-                    setSchema(parsed as Json);
-                  }
-                }}
-              />
-            )}
-          </FormField>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FormField name="type" label="Type" value={type}>
-              {(f) => (
-                <Select
-                  {...f}
-                  value={type}
-                  options={TYPES.map((t) => ({
-                    value: t,
-                    label: TYPE_LABELS[t],
-                  }))}
-                  onChange={(t) => {
-                    const next: Json = { type: t };
-                    if (schema.description)
-                      next.description = schema.description;
-                    onChange({
-                      ...withField(entry, "default", undefined),
-                      schema: next,
-                    });
-                  }}
-                />
-              )}
-            </FormField>
-            {type === "string" ? (
-              <FormField name="format" label="Format" value={schema.format}>
-                {(f) => (
-                  <Select
-                    {...f}
-                    value={
-                      typeof schema.format === "string" ? schema.format : null
-                    }
-                    allowEmpty
-                    emptyLabel="Any text"
-                    options={SUPPORTED_FORMATS.map((s) => ({
-                      value: s,
-                      label: s,
-                    }))}
-                    onChange={(v) => setSchemaField("format", v)}
-                  />
-                )}
-              </FormField>
-            ) : null}
-            {type === "string" || type === "integer" || type === "number" ? (
-              <FormField
-                name="enum"
-                label="Allowed values"
-                help="Comma-separated. Leave empty to allow any value."
-                value={enumValues}
-              >
-                {(f) => (
-                  <Input
-                    {...f}
-                    value={enumValues ? enumValues.map(String).join(", ") : ""}
-                    onChange={(e) => {
-                      const parts = e.target.value
-                        .split(",")
-                        .map((p) => p.trim())
-                        .filter((p) => p !== "");
-                      setSchemaField(
-                        "enum",
-                        type === "string"
-                          ? parts
-                          : parts.map(Number).filter((n) => Number.isFinite(n)),
-                      );
-                    }}
-                  />
-                )}
-              </FormField>
-            ) : null}
-            {type === "integer" || type === "number" ? (
-              <>
-                <NumberKeyword
-                  name="minimum"
-                  label="Minimum"
-                  schema={schema}
-                  onChange={setSchemaField}
-                />
-                <NumberKeyword
-                  name="maximum"
-                  label="Maximum"
-                  schema={schema}
-                  onChange={setSchemaField}
-                />
-              </>
-            ) : null}
-            {type === "string" ? (
-              <>
-                <NumberKeyword
-                  name="minLength"
-                  label="Minimum length"
-                  schema={schema}
-                  onChange={setSchemaField}
-                />
-                <NumberKeyword
-                  name="maxLength"
-                  label="Maximum length"
-                  schema={schema}
-                  onChange={setSchemaField}
-                />
-                <FormField
-                  name="pattern"
-                  label="Pattern"
-                  help="A regular expression the value must match."
-                  value={schema.pattern}
-                >
-                  {(f) => (
-                    <Input
-                      {...f}
-                      mono
-                      value={
-                        typeof schema.pattern === "string" ? schema.pattern : ""
-                      }
-                      onChange={(e) =>
-                        setSchemaField("pattern", e.target.value)
-                      }
-                    />
-                  )}
-                </FormField>
-              </>
-            ) : null}
-          </div>
-        )}
-        {issue("schema") && !advanced ? (
-          <p role="alert" className="text-xs text-danger">
-            {issue("schema")}
-          </p>
-        ) : null}
-        <Checkbox
-          label="Edit the schema as JSON"
-          checked={advanced}
-          onCheckedChange={(on) => {
-            setAdvanced(on);
-            const pretty = formatJson(JSON.stringify(schema));
-            setSchemaText((pretty ?? "{}").trimEnd());
-            setSchemaTextError(null);
-          }}
-        />
-      </fieldset>
-
-      {secret ? (
-        <p className="text-sm text-fg-muted">
-          A secret has no default: its value is write-only and set per profile
-          or license.
-        </p>
-      ) : (
-        <div className="space-y-2">
-          <SchemaField
-            entry={entry}
-            value={entry.default}
-            label="Default"
-            labelAside={null}
-            help={
-              entry.default === undefined
-                ? "No default: clients get nothing until a profile or license sets the key."
-                : undefined
-            }
-            onChange={(result) => set("default", result.value)}
-          />
-          {entry.default !== undefined ? (
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() => set("default", undefined)}
-            >
-              Remove the default
-            </Button>
-          ) : null}
-        </div>
-      )}
-
       {entry.kind === "config" ? (
         <FormField
           name="managementDefault"
@@ -500,14 +493,6 @@ export function CatalogEntryForm({
         </FormField>
       ) : null}
 
-      {entry.kind === "config" ? (
-        <UserSettingFields
-          user={entry.user}
-          error={issue("user")}
-          onChange={(user) => set("user", user)}
-        />
-      ) : null}
-
       {entry.kind === "flag" ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <Checkbox
@@ -534,76 +519,252 @@ export function CatalogEntryForm({
         </div>
       ) : null}
 
-      <fieldset className="space-y-4 rounded-md border border-border p-4">
-        <legend className="px-1 text-sm font-bold text-fg-strong">
-          Form hints
-        </legend>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <FormField name="widget" label="Widget" value={ui.widget}>
-            {(f) => (
-              <Select
-                {...f}
-                value={typeof ui.widget === "string" ? ui.widget : null}
-                allowEmpty
-                emptyLabel="Automatic"
-                options={WIDGETS.map((w) => ({ value: w, label: w }))}
-                onChange={(v) => setUi("widget", v)}
-              />
-            )}
-          </FormField>
-          <FormField name="unit" label="Unit" value={ui.unit}>
-            {(f) => (
-              <Input
-                {...f}
-                value={typeof ui.unit === "string" ? ui.unit : ""}
-                placeholder="seconds"
-                onChange={(e) => setUi("unit", e.target.value)}
-              />
-            )}
-          </FormField>
-          <FormField name="help" label="Help" value={ui.help}>
-            {(f) => (
-              <Input
-                {...f}
-                value={typeof ui.help === "string" ? ui.help : ""}
-                onChange={(e) => setUi("help", e.target.value)}
-              />
-            )}
-          </FormField>
-          <FormField
-            name="placeholder"
-            label="Placeholder"
-            value={ui.placeholder}
+      <div className="space-y-3">
+        <Group
+          title="Validation"
+          open={validationOpen}
+          onOpenChange={setValidationOpen}
+          problem={schemaProblem !== undefined}
+        >
+          {advanced ? (
+            <FormField
+              name="schema-json"
+              label="Schema (JSON)"
+              value={schemaText}
+              error={schemaProblem}
+              announceError
+            >
+              {(f) => (
+                <Textarea
+                  {...f}
+                  mono
+                  rows={8}
+                  spellCheck={false}
+                  value={schemaText}
+                  onChange={(e) => {
+                    const text = e.target.value;
+                    setSchemaText(text);
+                    let parsed: unknown;
+                    try {
+                      parsed = JSON.parse(text);
+                    } catch (err) {
+                      setSchemaTextError(
+                        `Invalid JSON: ${err instanceof Error ? err.message : String(err)}`,
+                      );
+                      return;
+                    }
+                    const problem = schemaIssue(parsed);
+                    setSchemaTextError(problem);
+                    if (problem === null) {
+                      lastSchema.current = parsed as Json;
+                      setSchema(parsed as Json);
+                    }
+                  }}
+                />
+              )}
+            </FormField>
+          ) : type === "string" || type === "integer" || type === "number" ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              {type === "string" ? (
+                <FormField name="format" label="Format" value={schema.format}>
+                  {(f) => (
+                    <Select
+                      {...f}
+                      value={
+                        typeof schema.format === "string" ? schema.format : null
+                      }
+                      allowEmpty
+                      emptyLabel="Any text"
+                      options={SUPPORTED_FORMATS.map((s) => ({
+                        value: s,
+                        label: s,
+                      }))}
+                      onChange={(v) => setSchemaField("format", v)}
+                    />
+                  )}
+                </FormField>
+              ) : null}
+              <FormField
+                name="enum"
+                label="Allowed values"
+                help="Comma-separated. Leave empty to allow any value."
+                value={enumValues}
+              >
+                {(f) => (
+                  <Input
+                    {...f}
+                    value={enumValues ? enumValues.map(String).join(", ") : ""}
+                    onChange={(e) => {
+                      const parts = e.target.value
+                        .split(",")
+                        .map((p) => p.trim())
+                        .filter((p) => p !== "");
+                      setSchemaField(
+                        "enum",
+                        type === "string"
+                          ? parts
+                          : parts.map(Number).filter((n) => Number.isFinite(n)),
+                      );
+                    }}
+                  />
+                )}
+              </FormField>
+              {type === "integer" || type === "number" ? (
+                <>
+                  <NumberKeyword
+                    name="minimum"
+                    label="Minimum"
+                    schema={schema}
+                    onChange={setSchemaField}
+                  />
+                  <NumberKeyword
+                    name="maximum"
+                    label="Maximum"
+                    schema={schema}
+                    onChange={setSchemaField}
+                  />
+                </>
+              ) : (
+                <>
+                  <NumberKeyword
+                    name="minLength"
+                    label="Minimum length"
+                    schema={schema}
+                    onChange={setSchemaField}
+                  />
+                  <NumberKeyword
+                    name="maxLength"
+                    label="Maximum length"
+                    schema={schema}
+                    onChange={setSchemaField}
+                  />
+                  <FormField
+                    name="pattern"
+                    label="Pattern"
+                    help="A regular expression the value must match."
+                    value={schema.pattern}
+                  >
+                    {(f) => (
+                      <Input
+                        {...f}
+                        mono
+                        value={
+                          typeof schema.pattern === "string"
+                            ? schema.pattern
+                            : ""
+                        }
+                        onChange={(e) =>
+                          setSchemaField("pattern", e.target.value)
+                        }
+                      />
+                    )}
+                  </FormField>
+                </>
+              )}
+            </div>
+          ) : null}
+          {issue("schema") && !advanced ? (
+            <p role="alert" className="text-xs text-danger">
+              {issue("schema")}
+            </p>
+          ) : null}
+          <Checkbox
+            label="Edit the schema as JSON"
+            checked={advanced}
+            onCheckedChange={(on) => {
+              setAdvanced(on);
+              const pretty = formatJson(JSON.stringify(schema));
+              setSchemaText((pretty ?? "{}").trimEnd());
+              setSchemaTextError(null);
+            }}
+          />
+        </Group>
+
+        {entry.kind === "config" ? (
+          <Group
+            title="User setting"
+            open={userOpen}
+            onOpenChange={setUserOpen}
+            problem={userIssue !== undefined}
           >
-            {(f) => (
-              <Input
-                {...f}
-                value={typeof ui.placeholder === "string" ? ui.placeholder : ""}
-                onChange={(e) => setUi("placeholder", e.target.value)}
-              />
-            )}
-          </FormField>
-          <FormField name="order" label="Order" value={ui.order}>
-            {(f) => (
-              <Input
-                {...f}
-                type="number"
-                inputMode="numeric"
-                value={typeof ui.order === "number" ? String(ui.order) : ""}
-                onChange={(e) =>
-                  setUi("order", numberOrUndefined(e.target.value))
-                }
-              />
-            )}
-          </FormField>
-        </div>
-        <Checkbox
-          label="Show under More settings"
-          description="Collapses the key into the trailing group of generated forms."
-          checked={ui.advanced === true}
-          onCheckedChange={(on) => setUi("advanced", on ? true : undefined)}
-        />
-      </fieldset>
+            <UserSettingFields
+              user={entry.user}
+              error={userIssue}
+              onChange={(user) => set("user", user)}
+            />
+          </Group>
+        ) : null}
+
+        <Group title="Form hints" open={hintsOpen} onOpenChange={setHintsOpen}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField name="widget" label="Widget" value={ui.widget}>
+              {(f) => (
+                <Select
+                  {...f}
+                  value={typeof ui.widget === "string" ? ui.widget : null}
+                  allowEmpty
+                  emptyLabel="Automatic"
+                  options={WIDGETS.map((w) => ({ value: w, label: w }))}
+                  onChange={(v) => setUi("widget", v)}
+                />
+              )}
+            </FormField>
+            <FormField name="unit" label="Unit" value={ui.unit}>
+              {(f) => (
+                <Input
+                  {...f}
+                  value={typeof ui.unit === "string" ? ui.unit : ""}
+                  placeholder="seconds"
+                  onChange={(e) => setUi("unit", e.target.value)}
+                />
+              )}
+            </FormField>
+            <FormField name="help" label="Help" value={ui.help}>
+              {(f) => (
+                <Input
+                  {...f}
+                  value={typeof ui.help === "string" ? ui.help : ""}
+                  onChange={(e) => setUi("help", e.target.value)}
+                />
+              )}
+            </FormField>
+            <FormField
+              name="placeholder"
+              label="Placeholder"
+              value={ui.placeholder}
+            >
+              {(f) => (
+                <Input
+                  {...f}
+                  value={
+                    typeof ui.placeholder === "string" ? ui.placeholder : ""
+                  }
+                  onChange={(e) => setUi("placeholder", e.target.value)}
+                />
+              )}
+            </FormField>
+            <FormField name="order" label="Order" value={ui.order}>
+              {(f) => (
+                <Input
+                  {...f}
+                  type="number"
+                  inputMode="numeric"
+                  value={typeof ui.order === "number" ? String(ui.order) : ""}
+                  onChange={(e) =>
+                    setUi("order", numberOrUndefined(e.target.value))
+                  }
+                />
+              )}
+            </FormField>
+          </div>
+          <Checkbox
+            label="Show under More settings"
+            description="Collapses the key into the trailing group of generated forms."
+            checked={ui.advanced === true}
+            onCheckedChange={(on) => setUi("advanced", on ? true : undefined)}
+          />
+        </Group>
+      </div>
     </div>
   );
 }
@@ -624,10 +785,7 @@ function UserSettingFields({
   onChange: (next: UserSettingPolicy | undefined) => void;
 }): React.ReactElement {
   return (
-    <fieldset className="space-y-4 rounded-md border border-border p-4">
-      <legend className="px-1 text-sm font-bold text-fg-strong">
-        User setting
-      </legend>
+    <div className="space-y-4">
       <Checkbox
         label="People choose this value"
         description="Kept on each device by the Config SDK; with Cloud Sync on, it syncs for people who sign in."
@@ -689,7 +847,49 @@ function UserSettingFields({
           {error}
         </p>
       ) : null}
-    </fieldset>
+    </div>
+  );
+}
+
+/**
+ * A collapsed group of the form: a native disclosure, so it needs no script to open and is
+ * announced as expandable. LX-14's `combine` and `entitlementKind` selects join Validation.
+ */
+function Group({
+  title,
+  open,
+  onOpenChange,
+  problem = false,
+  children,
+}: {
+  title: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  /** Something inside is wrong: the summary says so while the group is closed. */
+  problem?: boolean;
+  children: React.ReactNode;
+}): React.ReactElement {
+  return (
+    <details
+      open={open}
+      onToggle={(e) => onOpenChange(e.currentTarget.open)}
+      className="group rounded-md border border-border"
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md px-4 py-3 text-sm font-bold text-fg-strong focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus [&::-webkit-details-marker]:hidden">
+        <ChevronRight
+          aria-hidden
+          className="size-4 shrink-0 text-fg-muted transition-transform group-open:rotate-90"
+        />
+        <span className="flex-1">{title}</span>
+        {problem && !open ? (
+          <span className="inline-flex items-center gap-1 text-xs font-normal text-danger">
+            <AlertCircle aria-hidden className="size-3" />
+            Has a problem
+          </span>
+        ) : null}
+      </summary>
+      <div className="space-y-4 border-t border-border p-4">{children}</div>
+    </details>
   );
 }
 

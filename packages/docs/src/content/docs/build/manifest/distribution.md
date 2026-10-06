@@ -205,18 +205,41 @@ is served or derived for it ([Pack transports](/docs/services/distribution/deliv
 
 Store-page metadata, every field optional: `name`, `subtitle`, `category`, `developerName`
 (one line each, at most 200 characters), `description` (at most 4000, newlines allowed),
-`iconUrl`, `headerUrl`, `website` (https URLs), `screenshots` (up to 16 https URLs) and
-`tintColor` (`#rrggbb`), plus the two support links the customer portal shows: `supportUrl` (an
-https URL) and `supportEmail` (one address, at most 254 characters). An outlet may carry its own
-`listing`, merged over the document's for that outlet. A malformed listing is `invalid_listing`.
+`website` (an https URL) and `tintColor` (`#rrggbb`), plus the two support links the customer
+portal shows: `supportUrl` (an https URL) and `supportEmail` (one address, at most 254
+characters). An outlet may carry its own `listing`, merged over the document's for that outlet.
+A malformed listing is `invalid_listing`.
+
+The art is `icon`, `header` and `screenshots` (up to 16). Each is an **asset ref**: an https URL
+or a path in the product's repository, optionally `{ src, sha256 }`, with the rules in
+[Presentation](/docs/build/manifest/authoring/#presentation-presentation). A malformed ref is
+`invalid_asset_ref`. When the listing declares no `icon`, the product's `presentation.icon` is
+used.
+
+`iconUrl` and `headerUrl` are the older spellings of `icon` and `header`. They still validate
+(https URLs only) and mean the same thing, with a warning, `listing_url_field_deprecated`.
+Declaring a field and its older spelling together is an error, `listing_field_conflict`.
+
+```yaml
+listing:
+  name: Acme
+  icon: .pkey/art/icon.png
+  header:
+    {
+      src: https://cdn.acme.example/header.webp,
+      sha256: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08,
+    }
+  screenshots: [.pkey/art/shot-1.png, .pkey/art/shot-2.png]
+```
 
 The **document's** listing (not an outlet's) is also the product's presentation in the customer
-portal: `name`, `developerName`, `tintColor`, `website`, the support links, and `iconUrl` and
-`headerUrl` as art. The portal never loads that art from the developer's host: it serves it
+portal: `name`, `developerName`, `tintColor`, `website`, the support links, and `icon` and
+`header` as art. The portal never loads that art from the developer's host: it serves it
 same-origin through its media proxy (`/media/<product>/icon` and `/media/<product>/header`), which
 fetches only from GitHub-hosted URLs (`github.com`, `*.githubusercontent.com`), only PNG, JPEG,
-WebP or GIF, and at most 1 MB for the icon and 5 MB for the header. Art hosted anywhere else is
-not shown; the portal falls back to the product's initial on its tint.
+WebP or GIF, and at most 1 MB for the icon and 5 MB for the header. Art hosted anywhere else,
+and art given as a repo path, is not shown there; the portal falls back to the product's initial
+on its tint.
 
 ## Capabilities are not here
 

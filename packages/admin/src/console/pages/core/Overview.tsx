@@ -66,6 +66,7 @@ import { ActivityTarget, actorName, useActivityFeed } from "./Activity.js";
 import { verbFor } from "./activityVerbs.js";
 import { fetchDeviceSummary } from "./Devices.js";
 import { noCatalog, userSettings } from "../sync/data.js";
+import { useWelcome, WelcomeHeader } from "./Welcome.js";
 
 const DAY = 86_400;
 const SERVICE_ORDER: ServiceSlug[] = [
@@ -130,6 +131,8 @@ function OverviewBody({
   const complete = checklist.every((i) => i.state === "done");
   const attention = useAttention(slug, p, licenses.data?.licenses);
   const sync = p.setup?.sync;
+  // A product created a moment ago lands here with a one-time welcome (UX-20, EXPERIENCE.md S1).
+  const [welcome, dismissWelcome] = useWelcome(slug);
 
   const primary = on(p, "license") ? (
     <Button asChild>
@@ -184,7 +187,14 @@ function OverviewBody({
           ]}
         />
       }
-      attention={<AttentionList items={attention} />}
+      attention={
+        <>
+          {welcome ? (
+            <WelcomeHeader welcome={welcome} onDismiss={dismissWelcome} />
+          ) : null}
+          <AttentionList items={attention} />
+        </>
+      }
       firstRun={
         enabled.length === 0 ? (
           <EmptyState

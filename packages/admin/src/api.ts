@@ -955,6 +955,47 @@ export interface ResyncResult {
     | { ok: false; reason: string; message: string };
 }
 
+/** One line of a manifest plan (worker `release/linkExisting.ts`, S-18 §4.5's dry-run shape). */
+export interface ManifestPlanItem {
+  area: string;
+  /** The row it names (a tier, a catalog key), when there is one. */
+  id?: string;
+  summary: string;
+}
+
+/** What applying a repository's `.pkey/` to a product will do. */
+export interface ManifestPlan {
+  apply: ManifestPlanItem[];
+  /** Declared by the manifest but set in the console: they stay. */
+  skipClaimed: ManifestPlanItem[];
+  delete: ManifestPlanItem[];
+  /** What blocks the link. */
+  conflicts: ManifestPlanItem[];
+}
+
+/** `POST …/release/link?dryRun=1`: the checks passed; this is what a link would do. A refusal
+ *  is an `ApiError` whose `reason` names the failed check (`repository`, `app`, `manifest`,
+ *  `slug`, `policy`, `product`). */
+export interface LinkCheckResult {
+  ok: true;
+  dryRun: true;
+  slug: string;
+  repository: string;
+  /** Sent back with the link: a push since the check refuses it (409). */
+  manifestDigest: string;
+  plan: ManifestPlan;
+  /** Secret names the manifest references that the product does not hold yet. */
+  remainingSecrets: string[];
+}
+
+/** `POST …/release/link`: linked and applied. */
+export interface LinkExistingResult extends Omit<ResyncResult, "updated"> {
+  repository: string;
+  plan: ManifestPlan;
+  updated: string[];
+  remainingSecrets: string[];
+}
+
 // ── Core inventories (chunk 5 · A-4, A-5) and CI publishing (P2-02) ─────────────
 export type SigningKeyState = "active" | "staged" | "retired" | "revoked";
 
@@ -971,10 +1012,25 @@ export interface SigningKeyDto {
   revokedAt: number | null;
 }
 
+/**
+ * After a rotation (UX-29): the authorized devices seen in the last `windowDays`, and how many of
+ * them reached the server since the active key went live. Derived from `last_seen`; there is no
+ * per-device trust fetch record, so the console says "refreshed", never "fetched the new trust".
+ */
+export interface SigningKeyRefreshDto {
+  kid: string;
+  activatedAt: number;
+  activeDevices: number;
+  refreshedDevices: number;
+  windowDays: number;
+}
+
 export interface SigningKeysResponse {
   keys: SigningKeyDto[];
   /** The server's clock, epoch seconds: the staged countdown is measured against it. */
   now: number;
+  /** `null` unless the active key replaced another within the window; absent on older Workers. */
+  refresh?: SigningKeyRefreshDto | null;
 }
 
 /** One secret of the inventory (`GET …/secrets`, A-5). Never a value. */
@@ -2244,8 +2300,49 @@ export interface LicenseSummary {
   maxVersion: string | null;
   identityProvider: "manual" | "oidc";
   oidcSubject?: string;
+  /** How the licence was minted: by an operator, a sign-in, or an auto-issue. */
+  origin?: LicenseOrigin;
+  /** Whether it may be deleted, and every reason it may not. */
+  deletion?: LicenseDeletion;
   modifiedBy?: string;
   modifiedAt?: number;
+}
+
+export type LicenseOrigin = "admin" | "oidc" | "enroll";
+
+/** One reason a licence cannot be deleted (`issued_active`, `store_grants`, `store_purchases`). */
+export interface LicenseDeleteReason {
+  code: string;
+  message: string;
+}
+
+export interface LicenseDeletion {
+  allowed: boolean;
+  reasons: LicenseDeleteReason[];
+}
+
+/** One row of the "Clean up duplicates" list. */
+export interface LicenseCleanupCandidate {
+  id: string;
+  name: string;
+  email: string;
+  status: LicenseStatus;
+  tier: string | null;
+  /** The owner's pairwise subject, when it has one. */
+  accountSubject: string | null;
+  deviceCount: number;
+  lastSeen: number | null;
+  /** Always `duplicate`: the account holds another usable licence (`keeps`), which stays. */
+  reason: "duplicate";
+  keeps: string;
+  deletion: LicenseDeletion;
+}
+
+export interface LicenseBulkDeleteResult {
+  ok: boolean;
+  deleted: { id: string; devices: number }[];
+  refused: { id: string; reasons: LicenseDeleteReason[] }[];
+  notFound: string[];
 }
 
 export interface KeyDto {
@@ -3094,6 +3191,18 @@ const rawApi = {
     }),
   resyncProduct: (slug: string) =>
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
+  /** Link repository, step 1: check `repoUrl` and plan the hand-over. Writes nothing. */
+  checkRepoLink: (slug: string, repoUrl: string) =>
+    call<LinkCheckResult>(`${p(slug)}/release/link?dryRun=1`, {
+      method: "POST",
+      body: JSON.stringify({ repoUrl }),
+    }),
+  /** Link repository, step 2: link and apply the manifest the check read. */
+  linkProductRepo: (slug: string, repoUrl: string, manifestDigest: string) =>
+    call<LinkExistingResult>(`${p(slug)}/release/link`, {
+      method: "POST",
+      body: JSON.stringify({ repoUrl, manifestDigest }),
+    }),
   releaseHealth: (slug: string) =>
     call<{ health: ReleaseHealth }>(`${p(slug)}/release/health`),
   /** The release TRUTH STORE (`release_metadata`/`_artifacts`/`_channels`, P2.T2) — what
@@ -3604,6 +3713,22 @@ const rawApi = {
     call<{ ok: true; id: string; status: LicenseStatus }>(
       `${p(slug)}/license/licenses/${enc(id)}/${enabled ? "enable" : "disable"}`,
       { method: "POST" },
+    ),
+  /** Typed confirmation: `confirm` is `delete <id>`. */
+  deleteLicense: (slug: string, id: string, confirm: string) =>
+    call<{ ok: true; id: string; devices: number }>(
+      `${p(slug)}/license/licenses/${enc(id)}`,
+      { method: "DELETE", body: JSON.stringify({ confirm }) },
+    ),
+  /** Typed confirmation: `confirm` is `delete <n> licenses` (`delete 1 license`). */
+  deleteLicenses: (slug: string, ids: string[], confirm: string) =>
+    call<LicenseBulkDeleteResult>(`${p(slug)}/license/deletions`, {
+      method: "POST",
+      body: JSON.stringify({ ids, confirm }),
+    }),
+  licenseCleanupCandidates: (slug: string) =>
+    call<{ candidates: LicenseCleanupCandidate[] }>(
+      `${p(slug)}/license/deletions/candidates`,
     ),
   putLicenseOverrides: (slug: string, id: string, updates: OverrideUpdate[]) =>
     call<{ ok: true; id: string }>(

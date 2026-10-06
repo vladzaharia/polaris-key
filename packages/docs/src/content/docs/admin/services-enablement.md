@@ -49,27 +49,32 @@ The response, and the shape a `PATCH` body partially updates:
   for the full derivation and what each of the three policies allows.
 - `source` — `manifest` or `admin`. See below.
 
-## Why the whole set saves at once
+## Each switch saves on its own
 
-The Services page collects every toggle and the registration policy into one draft, saved from
-the sticky save bar with **Save services**, rather than writing on each flip. Each changed row is
-marked _Changed_ until you save or discard. That's a direct consequence
-of how the server validates: it checks the **set**, not each flag in isolation (see _Coherence
-errors_ below). Turning Distribution off while Update is also on is a coherent two-step change,
-and a page that PATCHed on every flip would reject the first step and never let you reach the
-second. Release, Distribution and Update form a chain — **Release ← Distribution ← Update** — so
-turning the feed on for a product means turning all three on, and turning Release off means
-turning the other two off with it.
+Every service switch on the Services page writes as soon as you flip it; there is no services
+save bar. The services form a chain, **Release ← Distribution ← Update**, and the page applies
+one rule to it, read from the generated `SERVICE_REQUIRES` edges rather than a list kept in the
+console:
 
-The page shows those dependencies before you save: each row says what it requires and what
-requires it, a **Delivery chain** row draws Release → Distribution → Update with each one's state
-in words, and a draft that breaks an edge shows the coherence message beside the row at once,
-with a one-click fix ("Turn on Release", "Turn off Update too").
+- **Turning a service on also turns on what it needs, and nothing more.** Turning on Update with
+  everything off turns on Distribution and Release with it; turning on Release turns on Release
+  alone. Each row says what its service needs before you flip it. The toast that follows names
+  what came on with it ("Also turned on Distribution and Release") and offers **Undo**, which
+  turns off exactly the services that flip turned on.
+- **Turning a service off asks first.** The confirmation lists the dependents that go off with it
+  (turning Release off also turns off Distribution and Update, which need it), what stops working
+  for each (for example "The update feed answers not-configured: clients see no updates"), and
+  that the section leaves the navigation. The service's settings are kept and come back when you
+  turn it on again. Cancelling sends nothing.
 
-Turning any service **off** asks first. The confirmation lists what stops working (for example
-"The update feed answers not-configured: clients see no updates") and that the section leaves the
-navigation; the service's settings are kept and come back when you turn it on again. Cancelling
-saves nothing.
+The `PATCH` carries only the flags the flip changed, so a page that has gone stale can never
+rewrite a service it did not touch, nor the registration policy. The server still validates the
+whole resulting **set** (see _Coherence errors_ below), and the chain keeps the service edges
+whole by construction. What it can't settle is the registration policy: a flip the declared
+policy forbids (turning Identity off while registration is declared `requires-identity`, say) is
+refused before anything is sent, and the message appears beside the controls involved: the
+switch and the registration choice. The registration policy is a choice of four rather than a
+switch, so it keeps its own **Save registration policy** action.
 
 ## Manifest vs admin ownership
 

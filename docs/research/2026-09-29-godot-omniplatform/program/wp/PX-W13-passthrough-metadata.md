@@ -19,6 +19,22 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 - **[`plans/PX-W13.md`](../plans/PX-W13.md):** this plan replaces "no separate plan" and was approved on 2026-10-05 with every recommendation accepted, except Q4, which the owner amended. `deviceName` stays the wire name (Q1); the label is also sent on `license/activate` and `register` (Q2); PX-W13 ships the §5 SDK and UI-kit label work itself (Q3); consent re-asks only on a change of claims or services (Q5); `account_product_grants` keeps its name and new surfaces say "app consent" (Q6).
 - **Owner (2026-10-05):** reserved display names **warn first, then enforce**: `reserved_display_name` ships behind the platform switch `identity.reservedDisplayNames` (default `warn`), reusing LX-05's validator warning path (new dependency LX-05). PX-W13 flips it to `error` after the S-19 decision-15 window (two minor releases or 60 days, whichever is later). It is not a hard error from day one.
 
+## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
+
+The owner decided on 2026-10-05 that every in-app sign-in step happens in **one form whose body
+morphs in place** (no stacked sheets), that the license is chosen **inside the app** when it can
+show it, that the presentation is configurable with native controls kept, that there are **two
+equal ways to integrate** (the hosted card, and the kit form with headless primitives), and that
+the web flow is one continuous, animated card. The wire is
+[`plans/I-04.md`](../plans/I-04.md) §G (a pending sign-in grant, `licenseChoice: "app" | "card"`);
+the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) §2.4, §3.17, §3.18, §4.16 and
+D-78–D-93. Where this brief differs, they win. **No device-wire version change**
+(`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2; no corpus file). New UI copy uses
+the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
+every row, no "Account-wide"). For this package:
+
+- The pushed request `POST /<p>/identity/request` (§2.5) carries `licenseChoice` (`"app" | "card"`, default `"card"`) and echoes the effective value in its response. I-08 adds the member when it builds on this route (I-04 §G.2); this package only keeps room for it in the request record.
+
 ## Goal
 
 Every app-initiated sign-in resolves a server-side client record (`appName`, `developerName`, proxied `iconUrl`, `kind`, registered origins, `services`) plus request-time `deviceLabel` and `user_code`, read by the login card through an opaque `request` handle, never from display query parameters; names are checked against a reserved list at registration.

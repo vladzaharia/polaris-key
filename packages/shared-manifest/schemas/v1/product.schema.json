@@ -40,6 +40,24 @@
         }
       }
     },
+    "presentation": {
+      "type": "object",
+      "description": "How the product presents itself wherever Polaris Key shows it: the customer portal, the console, discovery and the SDK UI kits. Branding is data only, inside Polaris Key's fixed frame.",
+      "properties": {
+        "icon": {
+          "description": "The product icon: an https URL or a repo path, optionally { src, sha256 }. A square image works best. It is also the store listing's icon when .pkey/distribution declares none.",
+          "$ref": "#/$defs/assetRef"
+        },
+        "accent": {
+          "description": "The product's accent colour on a light ground, as #rrggbb.",
+          "$ref": "#/$defs/hexColour"
+        },
+        "accentDark": {
+          "description": "The accent colour on a dark ground, as #rrggbb.",
+          "$ref": "#/$defs/hexColour"
+        }
+      }
+    },
     "licensing": {
       "type": "object",
       "properties": {
@@ -667,6 +685,41 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "assetSrc": {
+      "description": "Where an image's bytes come from: an https URL, or a relative path in the product's own repository, resolved at the synced commit (private repositories included). A repo path has an optional leading ./, no leading /, no . or .. segment, at most 512 characters, and ends in .png, .jpg, .jpeg, .webp, .gif or .avif (lower case).",
+      "anyOf": [
+        {
+          "type": "string",
+          "maxLength": 2048,
+          "pattern": "^https://[^\\s\\u0000-\\u001f\\u007f]+$"
+        },
+        {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^(?:\\./)?(?!(?:[^/]*/)*\\.{1,2}(?:/|$))[A-Za-z0-9._~@+-]+(?:/[A-Za-z0-9._~@+-]+)*\\.(?:png|jpe?g|webp|gif|avif)$"
+        }
+      ]
+    },
+    "assetRef": {
+      "description": "An image Polaris Key hosts: its source as a string, or { src, sha256 } to pin the bytes (a pull whose hash differs is refused). Polaris Key keeps its own copy and serves it from its media host.",
+      "anyOf": [
+        { "$ref": "#/$defs/assetSrc" },
+        {
+          "type": "object",
+          "required": ["src"],
+          "additionalProperties": false,
+          "properties": {
+            "src": { "$ref": "#/$defs/assetSrc" },
+            "sha256": {
+              "description": "The file's SHA-256, as 64 lower-case hex digits.",
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            }
+          }
+        }
+      ]
+    },
+    "hexColour": { "type": "string", "pattern": "^#[0-9A-Fa-f]{6}$" }
   }
 }
