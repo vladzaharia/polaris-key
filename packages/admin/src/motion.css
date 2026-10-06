@@ -585,6 +585,44 @@
     transition: transform var(--pk-duration-slow) var(--pk-ease-standard);
   }
 
+  /* card press (MO-07): a card that is one link with controls of its own inside (a Library tile:
+     its name stretched over the card, a quick action and a menu) presses when that link
+     (.pk-press-link) is pressed, never when one of its buttons is: a button has its own press.
+     `:active` also matches every ancestor of the pressed element, so `.pk-pressable` on the card
+     would press it for both. Paired with `.pk-lift`, whose transform transition it borrows. */
+  :where(.pk-pressable-card) {
+    transition: transform var(--pk-duration-fast) var(--pk-ease-spring);
+  }
+  .pk-pressable-card:has(.pk-press-link:active) {
+    transform: scale(var(--pk-motion-scale-press));
+    transition-duration: var(--pk-duration-micro);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pk-pressable-card:has(.pk-press-link:active) {
+      transform: none;
+    }
+  }
+  :root[data-motion="reduce"] .pk-pressable-card:has(.pk-press-link:active) {
+    transform: none;
+  }
+
+  /* image in (MO-07): developer art fades in once it is decoded. ProductArt sets data-loaded in
+     its load handler (at once when the image was already decoded, so a cached image never
+     fades). The box keeps its aspect and its tint shows meanwhile, so nothing shifts. Under
+     reduced motion the duration is 0: an instant swap. */
+  .pk-img-in {
+    opacity: 0;
+    transition: opacity var(--pk-duration-base) var(--pk-ease-standard);
+  }
+  .pk-img-in[data-loaded] {
+    opacity: 1;
+  }
+  .pk-img-in.pk-lift-art {
+    transition:
+      opacity var(--pk-duration-base) var(--pk-ease-standard),
+      transform var(--pk-duration-slow) var(--pk-ease-standard);
+  }
+
   /* Reduced motion: an instant swap. The tokens are already 0 ms; these also stop the loops and
      hide the burst, so nothing is left running (S-23 §6.6). */
   @media (prefers-reduced-motion: reduce) {

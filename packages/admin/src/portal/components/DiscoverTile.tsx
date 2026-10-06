@@ -38,6 +38,13 @@ export type DiscoverTileState = "offer" | "adding" | "added";
  * visible, owner decision Q-6) and the outlined **Add to library**. Added, the tile turns
  * green-edged with **In your library** on the art and **Open <product>**. Errors are inline on
  * the tile; an offer that ended loses its button.
+ *
+ * Motion (notes/S-23 §6.1; MO-07): under a pointer the tile lifts and its art scales a little (the
+ * tile has no link of its own, so only its button presses). When an Add goes through while the
+ * tile is on screen, its ring and the **In your library** plate pop in once (`.pk-pop-in`); a tile
+ * that is already added when it mounts (`?added=` after a reload) just shows them. The words carry
+ * the meaning; the ring is decoration. The lift and the ring sit on a wrapper because the card
+ * clips its art (`overflow-hidden`), which would clip both.
  */
 export function DiscoverTile({
   offer,
@@ -57,109 +64,136 @@ export function DiscoverTile({
   const reason = reasonCopy(offer.reason);
   const ReasonIcon = REASON_ICON[reason.kind];
   const added = state === "added";
+  // Added while on screen (not already added when the tile mounted): the ring pops in once.
+  const [addedAtMount] = React.useState(added);
+  const pop = added && !addedAtMount;
   const id = `offer-${offer.product}`;
   const errorId = `${id}-error`;
   return (
-    <article
-      aria-labelledby={id}
-      data-state={state}
-      className={cn(
-        "relative flex flex-col overflow-hidden rounded-xl border bg-surface-raised shadow-elevation-1",
-        added ? "border-success ring-1 ring-success" : "border-border",
-      )}
-    >
-      <ProductArt
-        slug={offer.product}
-        name={offer.name}
-        tint={offer.tintColor}
-        src={offer.headerUrl}
-        variant="tile"
-        // No cover: a bare tint field; the icon (or its letter tile) in front of the art's lower
-        // edge already shows the letter, as on Library cards.
-        letter={false}
-        className="aspect-video"
-      >
-        {added ? (
-          <span className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-success-border bg-surface-overlay px-2.5 py-0.5 text-sm font-bold text-success shadow-elevation-2">
-            <Check aria-hidden className="size-4" />
-            In your library
-          </span>
-        ) : null}
-      </ProductArt>
-      <div className="flex flex-1 flex-col px-5 pb-5">
-        <div className="-mt-7 flex items-start gap-3">
-          <ProductIcon
-            slug={offer.product}
-            name={offer.name}
-            tint={offer.tintColor}
-            src={offer.iconUrl}
-            size={64}
-            className="relative border-[3px] border-surface-raised shadow-elevation-2"
-          />
-          <div className="min-w-0 pt-9">
-            <h3 id={id} className="truncate text-lg font-bold text-fg-strong">
-              {offer.name}
-            </h3>
-            {offer.developerName ? (
-              <p className="truncate text-sm text-fg-muted">
-                {offer.developerName}
-              </p>
-            ) : null}
-          </div>
-        </div>
-        <div className="mt-4 flex items-center justify-between gap-3 text-sm text-fg-muted">
-          <span className="min-w-0">{termsLine(offer.offer)}</span>
-          <PlatformGlyphs
-            platforms={offerPlatforms(offer.platforms)}
-            className="shrink-0"
-          />
-        </div>
-        <p className="mt-3 flex gap-2.5 rounded-md bg-surface-sunken px-3 py-2.5 text-[0.9375rem] text-fg-strong">
-          <ReasonIcon
-            aria-hidden
-            className="mt-0.5 size-4 shrink-0 text-accent-fg"
-          />
-          <span>
-            <span className="sr-only">Why you can add it: </span>
-            {reason.text}
-          </span>
-        </p>
-        {error ? (
-          <p
-            id={errorId}
-            role="alert"
-            className="mt-3 flex gap-2 text-sm text-danger"
-          >
-            <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
-            {error}
-          </p>
-        ) : null}
-        {ended && !added ? null : (
-          <div className="mt-auto pt-5">
-            {added ? (
-              <Button asChild variant="quiet" size="lg" className="h-11 w-full">
-                <a id={`${id}-open`} href={href.product(offer.product)}>
-                  <ArrowRight aria-hidden />
-                  <span className="truncate">Open {offer.name}</span>
-                </a>
-              </Button>
-            ) : (
-              <Button
-                variant="quiet"
-                size="lg"
-                className="h-11 w-full"
-                iconStart={<Plus aria-hidden />}
-                loading={state === "adding"}
-                aria-describedby={error ? errorId : undefined}
-                aria-label={`Add to library: ${offer.name}`}
-                onClick={onAdd}
-              >
-                Add to library
-              </Button>
-            )}
-          </div>
+    <div className="pk-lift relative grid rounded-xl">
+      <article
+        aria-labelledby={id}
+        data-state={state}
+        className={cn(
+          "relative flex flex-col overflow-hidden rounded-xl border bg-surface-raised shadow-elevation-1",
+          added ? "border-success" : "border-border",
         )}
-      </div>
-    </article>
+      >
+        <ProductArt
+          slug={offer.product}
+          name={offer.name}
+          tint={offer.tintColor}
+          src={offer.headerUrl}
+          variant="tile"
+          // No cover: a bare tint field; the icon (or its letter tile) in front of the art's lower
+          // edge already shows the letter, as on Library cards.
+          letter={false}
+          liftArt
+          className="aspect-video"
+        >
+          {added ? (
+            <span
+              className={cn(
+                "absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full border border-success-border bg-surface-overlay px-2.5 py-0.5 text-sm font-bold text-success shadow-elevation-2",
+                pop && "pk-pop-in",
+              )}
+            >
+              <Check aria-hidden className="size-4" />
+              In your library
+            </span>
+          ) : null}
+        </ProductArt>
+        <div className="flex flex-1 flex-col px-5 pb-5">
+          <div className="-mt-7 flex items-start gap-3">
+            <ProductIcon
+              slug={offer.product}
+              name={offer.name}
+              tint={offer.tintColor}
+              src={offer.iconUrl}
+              size={64}
+              className="relative border-[3px] border-surface-raised shadow-elevation-2"
+            />
+            <div className="min-w-0 pt-9">
+              <h3 id={id} className="truncate text-lg font-bold text-fg-strong">
+                {offer.name}
+              </h3>
+              {offer.developerName ? (
+                <p className="truncate text-sm text-fg-muted">
+                  {offer.developerName}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="mt-4 flex items-center justify-between gap-3 text-sm text-fg-muted">
+            <span className="min-w-0">{termsLine(offer.offer)}</span>
+            <PlatformGlyphs
+              platforms={offerPlatforms(offer.platforms)}
+              className="shrink-0"
+            />
+          </div>
+          <p className="mt-3 flex gap-2.5 rounded-md bg-surface-sunken px-3 py-2.5 text-[0.9375rem] text-fg-strong">
+            <ReasonIcon
+              aria-hidden
+              className="mt-0.5 size-4 shrink-0 text-accent-fg"
+            />
+            <span>
+              <span className="sr-only">Why you can add it: </span>
+              {reason.text}
+            </span>
+          </p>
+          {error ? (
+            <p
+              id={errorId}
+              role="alert"
+              className="mt-3 flex gap-2 text-sm text-danger"
+            >
+              <AlertCircle aria-hidden className="mt-0.5 size-4 shrink-0" />
+              {error}
+            </p>
+          ) : null}
+          {ended && !added ? null : (
+            <div className="mt-auto pt-5">
+              {added ? (
+                <Button
+                  asChild
+                  variant="quiet"
+                  size="lg"
+                  className="h-11 w-full"
+                >
+                  <a id={`${id}-open`} href={href.product(offer.product)}>
+                    <ArrowRight aria-hidden />
+                    <span className="truncate">Open {offer.name}</span>
+                  </a>
+                </Button>
+              ) : (
+                <Button
+                  variant="quiet"
+                  size="lg"
+                  className="h-11 w-full"
+                  iconStart={<Plus aria-hidden />}
+                  loading={state === "adding"}
+                  aria-describedby={error ? errorId : undefined}
+                  aria-label={`Add to library: ${offer.name}`}
+                  onClick={onAdd}
+                >
+                  Add to library
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </article>
+      {added ? (
+        // The green ring around the card (outside its border, where the card can't clip it).
+        <span
+          aria-hidden
+          data-ring
+          className={cn(
+            "pointer-events-none absolute inset-0 rounded-xl ring-1 ring-success",
+            pop && "pk-pop-in",
+          )}
+        />
+      ) : null}
+    </div>
   );
 }
