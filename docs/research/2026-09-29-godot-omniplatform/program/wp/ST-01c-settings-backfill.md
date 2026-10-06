@@ -87,10 +87,17 @@ The note proposed an operator-reviewed preserve step with a 30-day default. The 
   evidence is bounded by `products.created_at` (marked weak), not `modified_at` as S-18 §4.14.2
   step 4 says: every console product edit bumps `modified_at`, so that bound would hide the very
   edits the evidence exists to show.
-- **Routes** (narrative-only admin routes, like resync and claims):
+- **Row-backed settings (LX-06).** Besides the five column-backed claim keys, the admin group,
+  the catalog, tiers and profiles, the backfill reverts every row-backed claimable setting the
+  manifest declares (`licensing.*`, the sign-in tier sync: the registry's live scalar claimable
+  product entries with a manifest path, so Core names no service). An undeclared console row
+  stays; an undeclared manifest row is the next resync's to clear (omit-clears).
+- **Routes** (narrative-only admin routes under rule 10, like resync and claims):
   `POST|GET /manage/api/products/<slug>/settings/backfill[/<reportId>]` and
   `POST|GET /manage/api/platform/settings/backfill`; `dryRun=1|0` is required, so a bare POST
-  never applies. Migration `00XX_settings_backfill_reports.sql` (the lead numbers it).
+  never applies. The product route sits ahead of LX-06's generic `settings/<key>` routes.
+  Migration `00XX_settings_backfill_reports.sql` (the lead numbers it); rehearsed on a scratch
+  SQLite file with all 122 migrations, and replayed as a no-op on a populated database (test).
 
 ## Steps
 
@@ -100,10 +107,10 @@ The note proposed an operator-reviewed preserve step with a 30-day default. The 
 
 ## Acceptance criteria
 
-- [ ] Fixtures for equal, differs, not declared, unlinked, no `commit_sha` and fetch failure classify as §4.14.1 says (tests).
-- [ ] After apply every declared field equals the manifest and every undeclared console row has `source = 'console'` (test).
-- [ ] The dry-run report is stored and readable after apply (test).
-- [ ] A second apply is a no-op (test).
+- [x] Fixtures for equal, differs, not declared, unlinked, no `commit_sha` and fetch failure classify as §4.14.1 says (tests).
+- [x] After apply every declared field equals the manifest and every undeclared console row has `source = 'console'` (test).
+- [x] The dry-run report is stored and readable after apply (test).
+- [x] A second apply is a no-op (test).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
@@ -115,7 +122,9 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test
 
 ## Hand-off
 
-- From this run on, every linked product's resync honours claims. ST-17 builds the reusable dry-run UI on the same classifier.
+- From this run on, every linked product's resync honours claims. ST-17 builds the reusable dry-run UI on the same classifier (`planBackfill` in `core/settingsBackfill.ts`: its items carry `class` and `owner` independently of the backfill's `action`).
+- Owner step: the operator runs docs/RUNBOOK.md "Settings backfill" on production, `polaris-key` first, then `djdl` (dry run read and kept, then the apply with `expectCommit`).
+- ST-04: its "one write path" scan (`test/settings-writes.test.ts`) must list `core/settingsBackfill.ts` among the manifest writers (the backfill writes manifest values and drops claims, audited as `setting.backfill`); with ST-04's structured audit columns the backfill's row can carry `origin = 'backfill'`.
 
 The role agent sets `--set ST-01c in-review` when it hands off. After review, the lead adds the last
 commit of the PR:
