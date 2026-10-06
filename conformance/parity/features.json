@@ -3,34 +3,94 @@
   "registryVersion": 1,
   "reasons": ["runtime", "outlet", "product", "dependency", "version"],
   "runtimes": [
-    { "id": "node", "title": "Node (servers, CLIs, Electron main)" },
-    { "id": "python", "title": "CPython" },
-    { "id": "web", "title": "Browser (React SDK over client-core)" },
-    { "id": "desktop-bridge", "title": "Desktop renderer over a host bridge" },
-    { "id": "macos", "title": "macOS" },
-    { "id": "ios", "title": "iOS and iPadOS" },
-    { "id": "windows", "title": "Windows" },
-    { "id": "linux", "title": "Linux" },
-    { "id": "android", "title": "Android" },
-    { "id": "jvm", "title": "JVM desktop" },
-    { "id": "dotnet", "title": ".NET desktop" },
-    { "id": "unity", "title": "Unity" },
-    { "id": "tauri", "title": "Tauri webview" }
+    {
+      "id": "node",
+      "title": "Node (servers, CLIs, Electron main)"
+    },
+    {
+      "id": "python",
+      "title": "CPython"
+    },
+    {
+      "id": "web",
+      "title": "Browser (React SDK over client-core)"
+    },
+    {
+      "id": "desktop-bridge",
+      "title": "Desktop renderer over a host bridge"
+    },
+    {
+      "id": "macos",
+      "title": "macOS"
+    },
+    {
+      "id": "ios",
+      "title": "iOS and iPadOS"
+    },
+    {
+      "id": "windows",
+      "title": "Windows"
+    },
+    {
+      "id": "linux",
+      "title": "Linux"
+    },
+    {
+      "id": "android",
+      "title": "Android"
+    },
+    {
+      "id": "jvm",
+      "title": "JVM desktop"
+    },
+    {
+      "id": "dotnet",
+      "title": ".NET desktop"
+    },
+    {
+      "id": "unity",
+      "title": "Unity"
+    },
+    {
+      "id": "tauri",
+      "title": "Tauri webview"
+    }
   ],
   "traits": [
     {
       "id": "headless",
-      "title": "Headless SDK: ships no UI toolkit (Node, Python)"
+      "title": "Headless SDK: ships no widget kit; its UI expectation is ui.cli (Node, Python)"
     }
   ],
   "families": [
-    { "id": "core", "title": "Core" },
-    { "id": "license", "title": "License" },
-    { "id": "config", "title": "Config" },
-    { "id": "devices", "title": "Devices and identity" },
-    { "id": "release", "title": "Release and update" },
-    { "id": "packs", "title": "Packs" },
-    { "id": "ui", "title": "UI and commerce" }
+    {
+      "id": "core",
+      "title": "Core"
+    },
+    {
+      "id": "license",
+      "title": "License"
+    },
+    {
+      "id": "config",
+      "title": "Config"
+    },
+    {
+      "id": "devices",
+      "title": "Devices and identity"
+    },
+    {
+      "id": "release",
+      "title": "Release and update"
+    },
+    {
+      "id": "packs",
+      "title": "Packs"
+    },
+    {
+      "id": "ui",
+      "title": "UI and commerce"
+    }
   ],
   "sdks": [
     {
@@ -76,7 +136,12 @@
       "family": "core",
       "title": "JWS verify, trust manifest (pinning, rotation), clock floor",
       "service": "core",
-      "proof": [{ "kind": "corpus", "file": "cases.json" }],
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "cases.json"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -84,7 +149,14 @@
       "family": "core",
       "title": "Verified cache; construct and load offline",
       "service": "core",
-      "proof": [{ "kind": "transcript" }, { "kind": "unit" }],
+      "proof": [
+        {
+          "kind": "transcript"
+        },
+        {
+          "kind": "unit"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -93,7 +165,11 @@
       "title": "Offline bundle import",
       "service": "core",
       "proof": [
-        { "kind": "corpus", "file": "cases.json", "family": "bundleCases" }
+        {
+          "kind": "corpus",
+          "file": "cases.json",
+          "family": "bundleCases"
+        }
       ],
       "allowedNa": []
     },
@@ -102,7 +178,11 @@
       "family": "core",
       "title": "Discovery and capabilities, fail-closed",
       "service": "core",
-      "proof": [{ "kind": "transcript" }],
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -110,7 +190,11 @@
       "family": "core",
       "title": "Sync, ETag/304, backoff, refresh loop, change events",
       "service": "core",
-      "proof": [{ "kind": "transcript" }],
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -118,7 +202,11 @@
       "family": "core",
       "title": "Local-only client (no network)",
       "service": "core",
-      "proof": [{ "kind": "unit" }],
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -126,7 +214,13 @@
       "family": "core",
       "title": "Canonical platform, arch and SDK header values",
       "service": "core",
-      "proof": [{ "kind": "corpus", "file": "headers.json", "wp": "P1b-04" }],
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "headers.json",
+          "wp": "P1b-04"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -148,7 +242,11 @@
       "family": "core",
       "title": "supports() and capability telemetry",
       "service": "core",
-      "proof": [{ "kind": "unit" }],
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
       "allowedNa": [],
       "note": "Also proven by the parity gate: the capability table supports() reads is generated from the SDK's manifest into its constants module, and parity:check fails when the module's CAPABILITY_DIGEST is not the manifest's (P1b-10)."
     },
@@ -157,7 +255,11 @@
       "family": "core",
       "title": "Secure token store, surfaced failure, no silent downgrade",
       "service": "core",
-      "proof": [{ "kind": "unit" }],
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "web",
@@ -187,11 +289,33 @@
       ]
     },
     {
+      "id": "core.copy",
+      "family": "core",
+      "title": "Error, gate and activation copy: copy.message(code), copy.title(code)",
+      "service": "sdk",
+      "proof": [
+        {
+          "kind": "generated",
+          "command": "pnpm gen:constants -- --check"
+        },
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [],
+      "note": "The English base is conformance/parity/copy.en.json (copy.schema.json); gen:constants emits one generated copy module per SDK and refuses a key set that does not cover every errors.json code, every licenseStatus and every activationResult. The unit proof is each SDK's fallback and placeholder table (SDK-PARITY-PASS §3.2)."
+    },
+    {
       "id": "license.gate",
       "family": "license",
       "title": "Gate evaluation, every status",
       "service": "license",
-      "proof": [{ "kind": "corpus", "file": "gate-matrix.json" }],
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "gate-matrix.json"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -199,7 +323,11 @@
       "family": "license",
       "title": "Activate with a key (+ fingerprint)",
       "service": "license",
-      "proof": [{ "kind": "transcript" }],
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -207,7 +335,11 @@
       "family": "license",
       "title": "Keyless enrolment",
       "service": "license",
-      "proof": [{ "kind": "transcript" }],
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "web",
@@ -226,7 +358,11 @@
       "family": "license",
       "title": "Remote best-effort, local wipe mandatory",
       "service": "license",
-      "proof": [{ "kind": "transcript" }],
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -234,7 +370,14 @@
       "family": "license",
       "title": "Refusal link: manageUrl on device-limit, withManageReturn, withManageKey",
       "service": "license",
-      "proof": [{ "kind": "transcript" }, { "kind": "unit" }],
+      "proof": [
+        {
+          "kind": "transcript"
+        },
+        {
+          "kind": "unit"
+        }
+      ],
       "allowedNa": [],
       "note": "PX-W8 (WIRE-CONTRACT-V4 §5.3): the result of a device-limit activation or enrolment exposes the Worker's manageUrl, validated (https, no userinfo, at most 2048 characters); the helpers add the app's return= and, on an /activate link, the fragment #key=. Never an auth failure. I-10a and I-10b extend this to key-entry-limit."
     },
@@ -243,15 +386,24 @@
       "family": "license",
       "title": "Entitlements, profile, licence id",
       "service": "license",
-      "proof": [{ "kind": "unit" }],
-      "allowedNa": []
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [],
+      "note": "The G11 rows are gate-matrix.json's entitlementRows family (isEntitled is isUsable(status) && value === true; a revoked licence with an enforced flag is not entitled). The corpus proof is attached by the last SDK G11 task to land (SP-N02, SP-R03, SP-P02, SP-S02, SP-K02, SP-G02; plans/SP-00.md D4)."
     },
     {
       "id": "license.channels",
       "family": "license",
       "title": "entitledChannels()",
       "service": "license",
-      "proof": [{ "kind": "unit" }],
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
       "allowedNa": [],
       "note": "PARITY §5.2 names cases.json, but no corpus case asserts entitledChannels yet (licenseDocCases only expect accept). Unit until a corpus case exists."
     },
@@ -260,7 +412,11 @@
       "family": "license",
       "title": "Re-register on 401 for licence-less devices",
       "service": "license",
-      "proof": [{ "kind": "transcript" }],
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "web",
@@ -275,13 +431,32 @@
       ]
     },
     {
+      "id": "license.refusals",
+      "family": "license",
+      "title": "Typed activation results: every refusal by its body code, never a collapsed 403",
+      "service": "license",
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
+      "allowedNa": [],
+      "note": "Proven by activate-refusals.json (enroll_claimed, license_disabled, an expired licence's key, hardware_mismatch, rate_limited, each with today's server body: the Worker answers an expired licence with 401 unauthorized and a rate limit without Retry-After, and activation is not a trust operation, so attestation_required has no step; see packages/worker/test/transcripts/format.ts), recorded beside activate-enroll-deactivate.json so the SDKs that implement license.activate keep replaying that one unchanged (plans/SP-00.md D2; SDK-PARITY-PASS §3.1)."
+    },
+    {
       "id": "config.resolve",
       "family": "config",
       "title": "Precedence (enforced, default, local, environment)",
       "service": "config",
       "proof": [
-        { "kind": "unit" },
-        { "kind": "corpus", "file": "config-matrix.json", "wp": "P1b-04" }
+        {
+          "kind": "unit"
+        },
+        {
+          "kind": "corpus",
+          "file": "config-matrix.json",
+          "wp": "P1b-04"
+        }
       ],
       "allowedNa": [],
       "note": "The environment layer applies to desktop hosts only; in a browser it is empty by definition, which the matrix pins as each case's `expectNoEnv` answer rather than an N/A."
@@ -292,8 +467,14 @@
       "title": "User-visible config, enforced rows flagged",
       "service": "config",
       "proof": [
-        { "kind": "unit" },
-        { "kind": "corpus", "file": "config-matrix.json", "wp": "P1b-04" }
+        {
+          "kind": "unit"
+        },
+        {
+          "kind": "corpus",
+          "file": "config-matrix.json",
+          "wp": "P1b-04"
+        }
       ],
       "allowedNa": []
     },
@@ -302,7 +483,11 @@
       "family": "config",
       "title": "getSecret",
       "service": "config",
-      "proof": [{ "kind": "transcript" }],
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "web",
@@ -321,7 +506,12 @@
       "family": "config",
       "title": "Catalog fetch (/config/schema)",
       "service": "config",
-      "proof": [{ "kind": "transcript", "wp": "P1b-07" }],
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "P1b-07"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -329,7 +519,12 @@
       "family": "config",
       "title": "Edge-mint of third-party tokens",
       "service": "config",
-      "proof": [{ "kind": "transcript", "wp": "P1b-08" }],
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "P1b-08"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -337,8 +532,25 @@
       "family": "config",
       "title": "Typed catalog mirrors",
       "service": "config",
-      "proof": [{ "kind": "unit" }],
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
       "allowedNa": []
+    },
+    {
+      "id": "config.local",
+      "family": "config",
+      "title": "Persisted device-local overrides: config.set, config.setting, onConfigChange",
+      "service": "sdk",
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [],
+      "note": "S-17 §5.11's names, so U-06 and U-20 add sync state under the same API. Device-local only. The unit proof persists, clears, validates against the catalog type and emits change events (SDK-PARITY-PASS §3.11)."
     },
     {
       "id": "devices.fingerprint",
@@ -346,8 +558,15 @@
       "title": "Components, hashing, device id",
       "service": "core",
       "proof": [
-        { "kind": "corpus", "file": "fingerprint.json" },
-        { "kind": "corpus", "file": "fingerprint.json", "family": "ramBuckets" }
+        {
+          "kind": "corpus",
+          "file": "fingerprint.json"
+        },
+        {
+          "kind": "corpus",
+          "file": "fingerprint.json",
+          "family": "ramBuckets"
+        }
       ],
       "allowedNa": [
         {
@@ -367,7 +586,11 @@
       "family": "devices",
       "title": "Device facts and probes",
       "service": "core",
-      "proof": [{ "kind": "unit" }],
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "web",
@@ -386,7 +609,11 @@
       "family": "devices",
       "title": "Keyless registration",
       "service": "core",
-      "proof": [{ "kind": "transcript" }],
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "web",
@@ -405,7 +632,11 @@
       "family": "devices",
       "title": "List, rename, deauthorise",
       "service": "core",
-      "proof": [{ "kind": "transcript" }],
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "web",
@@ -419,7 +650,11 @@
       "family": "devices",
       "title": "Telemetry (allowlisted keys)",
       "service": "core",
-      "proof": [{ "kind": "transcript" }],
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "web",
@@ -429,11 +664,34 @@
       ]
     },
     {
+      "id": "telemetry.updates",
+      "family": "devices",
+      "title": "Update-health events: the journalled update events on devices/report",
+      "service": "core",
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "The events ride POST /<p>/devices/report, which accepts only a device bearer token; a browser cookie session holds none (as devices.report; SP-R02's bearer mode removes both)."
+        }
+      ],
+      "note": "Proven by telemetry-report-updates.json: a 17-event journal drains as 16 then 1 (updatesPending 1, then 0), recorded beside telemetry-report.json rather than extending it (plans/SP-00.md D3; SDK-PARITY-PASS §3.13)."
+    },
+    {
       "id": "devices.attest",
       "family": "devices",
       "title": "Device attestation (App Attest, Play Integrity) raising the trust level",
       "service": "core",
-      "proof": [{ "kind": "unit" }],
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "node",
@@ -497,7 +755,11 @@
       "family": "devices",
       "title": "Browser sign-in",
       "service": "identity",
-      "proof": [{ "kind": "transcript" }],
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -505,7 +767,12 @@
       "family": "devices",
       "title": "Device-code sign-in (RFC 8628) with QR",
       "service": "identity",
-      "proof": [{ "kind": "transcript", "wp": "P1b-08" }],
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "P1b-08"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "web",
@@ -519,7 +786,12 @@
       "family": "release",
       "title": "Changelog",
       "service": "release",
-      "proof": [{ "kind": "transcript", "wp": "P1b-07" }],
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "P1b-07"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -527,7 +799,12 @@
       "family": "release",
       "title": "Download and install URLs",
       "service": "release",
-      "proof": [{ "kind": "transcript", "wp": "P1b-07" }],
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "P1b-07"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -550,11 +827,41 @@
       "allowedNa": []
     },
     {
+      "id": "release.fetch",
+      "family": "release",
+      "title": "Verified download: bearer delivery, Range resume, size and SHA-256 checked",
+      "service": "distribution",
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
+      "allowedNa": [],
+      "note": "Proven by release-fetch-gated.json: a licensed-delivery fetch (200), a resumed one (Range/If-Range, 206) and, once the licence is disabled, the licensed mode's refusal (401 download_auth_required) (SDK-PARITY-PASS §3.6)."
+    },
+    {
+      "id": "release.distribution",
+      "family": "release",
+      "title": "The distribution download model: platforms and the current build",
+      "service": "distribution",
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
+      "allowedNa": [],
+      "note": "Proven by distribution-download-model.json (GET /<p>/distribution/download.json). It also owns the download page link, so no portal.links id exists (plans/SP-00.md D1; SDK-PARITY-PASS §3.8)."
+    },
+    {
       "id": "update.check",
       "family": "release",
       "title": "Today's version check",
       "service": "update",
-      "proof": [{ "kind": "transcript" }],
+      "proof": [
+        {
+          "kind": "transcript"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -577,12 +884,37 @@
       "allowedNa": []
     },
     {
+      "id": "update.feeds",
+      "family": "release",
+      "title": "Native updater feed URLs: appcast, WinSparkle, Velopack, App Installer, zsync",
+      "service": "update",
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "feed-url-matrix.json",
+          "wp": "SP-00"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "A browser has no native updater to point at a feed; a web build updates through its service worker (update.driver)."
+        }
+      ],
+      "note": "Built from discovery's update.endpoints templates; a missing template is the typed unsupported (product). The proof is a generated corpus file rather than assertions in discovery-capabilities.json, which would stop that transcript applying where update.feeds is planned (plans/SP-00.md D5; SDK-PARITY-PASS §3.7)."
+    },
+    {
       "id": "update.decide",
       "family": "release",
       "title": "The update decision",
       "service": "update",
       "proof": [
-        { "kind": "corpus", "file": "update-matrix.json", "wp": "P3-02" },
+        {
+          "kind": "corpus",
+          "file": "update-matrix.json",
+          "wp": "P3-02"
+        },
         {
           "kind": "transcript",
           "wp": "P3-03"
@@ -616,7 +948,11 @@
       "family": "release",
       "title": "Hand off to the native updater, or a store link",
       "service": "update",
-      "proof": [{ "kind": "device" }],
+      "proof": [
+        {
+          "kind": "device"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "ios",
@@ -636,7 +972,11 @@
       "title": "Confirm a boot, roll back after N failures",
       "service": "update",
       "proof": [
-        { "kind": "corpus", "file": "stage-matrix.json", "wp": "P1-09" }
+        {
+          "kind": "corpus",
+          "file": "stage-matrix.json",
+          "wp": "P1-09"
+        }
       ],
       "allowedNa": []
     },
@@ -646,9 +986,26 @@
       "title": "Outlet detection",
       "service": "update",
       "proof": [
-        { "kind": "corpus", "file": "outlet-matrix.json", "wp": "P3-02" }
+        {
+          "kind": "corpus",
+          "file": "outlet-matrix.json",
+          "wp": "P3-02"
+        }
       ],
       "allowedNa": []
+    },
+    {
+      "id": "crash.tags",
+      "family": "release",
+      "title": "Crash-report tags: release, build, outlet and channel for Sentry",
+      "service": "sdk",
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [],
+      "note": "The unit proof is the vectors of packages/worker/src/services/distribution/sentry.ts (SDK-PARITY-PASS §3.14)."
     },
     {
       "id": "packs.record",
@@ -683,7 +1040,9 @@
           "family": "revocationCases",
           "wp": "P4-13"
         },
-        { "kind": "unit" }
+        {
+          "kind": "unit"
+        }
       ],
       "allowedNa": []
     },
@@ -699,8 +1058,14 @@
           "family": "delegationCases",
           "wp": "P4-19"
         },
-        { "kind": "corpus", "file": "content/", "wp": "P4-19" },
-        { "kind": "unit" }
+        {
+          "kind": "corpus",
+          "file": "content/",
+          "wp": "P4-19"
+        },
+        {
+          "kind": "unit"
+        }
       ],
       "allowedNa": []
     },
@@ -728,7 +1093,9 @@
           "family": "feedDeltaApplyCases",
           "wp": "P4-29"
         },
-        { "kind": "unit" }
+        {
+          "kind": "unit"
+        }
       ],
       "allowedNa": []
     },
@@ -738,7 +1105,11 @@
       "title": "The install planner",
       "service": "release",
       "proof": [
-        { "kind": "corpus", "file": "plan-matrix.json", "wp": "P4-04" }
+        {
+          "kind": "corpus",
+          "file": "plan-matrix.json",
+          "wp": "P4-04"
+        }
       ],
       "allowedNa": []
     },
@@ -747,7 +1118,13 @@
       "family": "packs",
       "title": "Files index parsing (`pkey-files/1`), path rules, `treeDigest`",
       "service": "release",
-      "proof": [{ "kind": "corpus", "file": "content/", "wp": "P4-04" }],
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "content/",
+          "wp": "P4-04"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -755,7 +1132,13 @@
       "family": "packs",
       "title": "Chunk index parsing",
       "service": "release",
-      "proof": [{ "kind": "corpus", "file": "content/", "wp": "P4-10" }],
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "content/",
+          "wp": "P4-10"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -763,7 +1146,13 @@
       "family": "packs",
       "title": "Full apply",
       "service": "release",
-      "proof": [{ "kind": "corpus", "file": "content/", "wp": "P4-04" }],
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "content/",
+          "wp": "P4-04"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -771,7 +1160,13 @@
       "family": "packs",
       "title": "File apply with type-neutral container rebuild",
       "service": "release",
-      "proof": [{ "kind": "corpus", "file": "content/", "wp": "P4-04" }],
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "content/",
+          "wp": "P4-04"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -780,8 +1175,15 @@
       "title": "Chunk sync from seeds, request runs",
       "service": "release",
       "proof": [
-        { "kind": "corpus", "file": "content/", "wp": "P4-10" },
-        { "kind": "transcript", "wp": "P4-32" }
+        {
+          "kind": "corpus",
+          "file": "content/",
+          "wp": "P4-10"
+        },
+        {
+          "kind": "transcript",
+          "wp": "P4-32"
+        }
       ],
       "allowedNa": []
     },
@@ -790,7 +1192,13 @@
       "family": "packs",
       "title": "Raw-prefix delta",
       "service": "release",
-      "proof": [{ "kind": "corpus", "file": "content/", "wp": "P4-04" }],
+      "proof": [
+        {
+          "kind": "corpus",
+          "file": "content/",
+          "wp": "P4-04"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "*",
@@ -810,14 +1218,20 @@
       "title": "Install state, journal, atomic switch, confirm, GC roots",
       "service": "release",
       "proof": [
-        { "kind": "corpus", "file": "stage-matrix.json", "wp": "P1-09" },
+        {
+          "kind": "corpus",
+          "file": "stage-matrix.json",
+          "wp": "P1-09"
+        },
         {
           "kind": "corpus",
           "file": "content/",
           "family": "packSetIdCases",
           "wp": "P4-04"
         },
-        { "kind": "unit" }
+        {
+          "kind": "unit"
+        }
       ],
       "allowedNa": []
     },
@@ -826,7 +1240,11 @@
       "family": "packs",
       "title": "Handler contract; registerHandler for custom types",
       "service": "release",
-      "proof": [{ "kind": "unit" }],
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -1007,7 +1425,11 @@
       "family": "packs",
       "title": "isAvailable(contentId) from provides",
       "service": "release",
-      "proof": [{ "kind": "unit" }],
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
       "allowedNa": []
     },
     {
@@ -1015,7 +1437,11 @@
       "family": "packs",
       "title": "Apple Background Assets",
       "service": "distribution",
-      "proof": [{ "kind": "device" }],
+      "proof": [
+        {
+          "kind": "device"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "node",
@@ -1069,7 +1495,11 @@
       "family": "packs",
       "title": "Play Asset Delivery",
       "service": "distribution",
-      "proof": [{ "kind": "device" }],
+      "proof": [
+        {
+          "kind": "device"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "node",
@@ -1128,7 +1558,11 @@
       "family": "packs",
       "title": "Steam depots",
       "service": "distribution",
-      "proof": [{ "kind": "device" }],
+      "proof": [
+        {
+          "kind": "device"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "web",
@@ -1157,7 +1591,11 @@
       "family": "packs",
       "title": "MSIX optional packages",
       "service": "distribution",
-      "proof": [{ "kind": "device" }],
+      "proof": [
+        {
+          "kind": "device"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "web",
@@ -1206,7 +1644,11 @@
       "family": "packs",
       "title": "Flatpak extensions",
       "service": "distribution",
-      "proof": [{ "kind": "device" }],
+      "proof": [
+        {
+          "kind": "device"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "web",
@@ -1251,22 +1693,47 @@
       "title": "The boot stage machine: states, events, outcomes",
       "service": "sdk",
       "proof": [
-        { "kind": "corpus", "file": "stage-matrix.json", "wp": "P1-09" }
+        {
+          "kind": "corpus",
+          "file": "stage-matrix.json",
+          "wp": "P1-09"
+        }
       ],
       "allowedNa": [],
       "note": "Headless SDKs implement ui.stages so a host can render it, but ship no widget kit."
+    },
+    {
+      "id": "ui.boot",
+      "family": "ui",
+      "title": "One-call boot: discovery, register, trust, documents and report to a stage outcome",
+      "service": "sdk",
+      "proof": [
+        {
+          "kind": "transcript"
+        },
+        {
+          "kind": "corpus",
+          "file": "stage-matrix.json"
+        }
+      ],
+      "allowedNa": [],
+      "note": "Proven by boot-cold-register.json, a cold boot with open registration (which exists only with License off, so it ends ready at not-applicable), and the stage-matrix.json outcomes (SDK-PARITY-PASS §3.4)."
     },
     {
       "id": "ui.kit",
       "family": "ui",
       "title": "Gate, activation, sign-in with QR, settings, devices, update banner, pack progress",
       "service": "sdk",
-      "proof": [{ "kind": "snapshot" }],
+      "proof": [
+        {
+          "kind": "snapshot"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "headless",
           "reason": "runtime",
-          "why": "A headless SDK ships no UI toolkit; hosts render ui.stages themselves."
+          "why": "A headless SDK ships no widget kit; its UI expectation is ui.cli, and hosts render ui.stages themselves."
         }
       ]
     },
@@ -1275,7 +1742,11 @@
       "family": "ui",
       "title": "Device-limit screen: Replace a device (button, or a QR on TV and console) and Try again",
       "service": "sdk",
-      "proof": [{ "kind": "snapshot" }],
+      "proof": [
+        {
+          "kind": "snapshot"
+        }
+      ],
       "allowedNa": [
         {
           "runtime": "headless",
@@ -1285,12 +1756,87 @@
       ]
     },
     {
+      "id": "ui.cli",
+      "family": "ui",
+      "title": "Terminal UI: status, activate, deactivate, sign-in and devices verbs",
+      "service": "sdk",
+      "proof": [
+        {
+          "kind": "unit"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "web",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "desktop-bridge",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "ios",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "linux",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "android",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "jvm",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "dotnet",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "unity",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        },
+        {
+          "runtime": "tauri",
+          "reason": "runtime",
+          "why": "The terminal kit is the UI expectation of the headless SDKs (Node, Python); an SDK on this runtime ships a widget kit (ui.kit) instead."
+        }
+      ],
+      "note": "Required on node and python, the headless SDKs, which ship no widget kit (plans/SP-00.md D6). One unit test per verb."
+    },
+    {
       "id": "commerce.receipt",
       "family": "ui",
       "title": "Store purchase to licence entitlement",
       "service": "license",
-      "proof": [{ "kind": "transcript", "wp": "P6-01" }],
-      "allowedNa": []
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "P6-01"
+        }
+      ],
+      "allowedNa": [],
+      "note": "Required on every SDK, Node and Python included (owner, 2026-10-05). LX-20 owns the client side in Node, React, Python, Swift and Kotlin."
     }
   ]
 }

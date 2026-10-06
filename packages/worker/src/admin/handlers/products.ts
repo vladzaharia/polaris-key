@@ -1190,6 +1190,67 @@ async function listSigningKeys(
     );
 }
 
+/** How far back a device counts as active for the rotation's refreshed line (EXPERIENCE §0.9). */
+const REFRESH_ACTIVE_WINDOW_SECONDS = 30 * 86_400;
+
+/**
+ * UX-29 (EXPERIENCE.md §0.5 O3, §0.9): after a rotation, how many recently active devices have
+ * been back since the new key went live. Derived, not tracked: there is no per-device trust
+ * fetch record, so the console says "refreshed" (the device reached the server after the
+ * activation time), never that it fetched the new trust. `null` unless the active key replaced
+ * another one within the 30-day window. The count rides `idx_devices_status`
+ * `(product, status, last_seen)` from 0007: no table scan and no migration.
+ */
+interface SigningKeyRefresh {
+  /** The active key the figure is about. */
+  kid: string;
+  /** When it went live, epoch seconds. */
+  activatedAt: number;
+  /** Authorized devices seen within the last `windowDays`. */
+  activeDevices: number;
+  /** Of those, the ones seen at or after `activatedAt`. */
+  refreshedDevices: number;
+  windowDays: number;
+}
+
+async function signingKeyRefresh(
+  db: Db,
+  slug: string,
+  keys: SigningKeyListing[],
+  now: number,
+): Promise<SigningKeyRefresh | null> {
+  const active = keys.find((k) => k.status === "active");
+  if (!active || active.activatedAt === null) return null;
+  // A key the active one REPLACED: retired in the activation's own batch (same timestamp), or
+  // created before the active key (and since revoked). A staged key cancelled before it went live
+  // is retired too, but it was created after the active key and never signed, so cancelling one
+  // is not a rotation and must not read as "refreshed since …".
+  const replacedOne = keys.some(
+    (k) =>
+      (k.status === "retired" || k.status === "revoked") &&
+      (k.retiredAt === active.activatedAt || k.createdAt < active.createdAt),
+  );
+  if (!replacedOne) return null;
+  const since = now - REFRESH_ACTIVE_WINDOW_SECONDS;
+  if (active.activatedAt < since) return null;
+  const row = await db.first<{ active: number; refreshed: number | null }>(
+    `SELECT COUNT(*) AS active,
+            SUM(CASE WHEN last_seen >= ? THEN 1 ELSE 0 END) AS refreshed
+       FROM devices
+      WHERE product = ? AND status = 'authorized' AND last_seen >= ?`,
+    active.activatedAt,
+    slug,
+    since,
+  );
+  return {
+    kid: active.kid,
+    activatedAt: active.activatedAt,
+    activeDevices: row?.active ?? 0,
+    refreshedDevices: row?.refreshed ?? 0,
+    windowDays: REFRESH_ACTIVE_WINDOW_SECONDS / 86_400,
+  };
+}
+
 /** POST /api/products/<slug>/keys/{prepare|activate|retire|revoke}. */
 async function handleKeys(
   req: Request,
@@ -1205,7 +1266,12 @@ async function handleKeys(
   if (!action) {
     if (req.method !== "GET")
       return err(405, ErrorCode.BadRequest, "method not allowed");
-    return adminJson({ keys: await listSigningKeys(db, slug), now });
+    const keys = await listSigningKeys(db, slug);
+    return adminJson({
+      keys,
+      now,
+      refresh: await signingKeyRefresh(db, slug, keys, now),
+    });
   }
   if (req.method !== "POST")
     return err(405, ErrorCode.BadRequest, "method not allowed");

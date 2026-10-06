@@ -58,9 +58,9 @@ pass. The owner approved it on 2026-10-05, to proceed through plan mode ("Owner 
 
 ## Acceptance criteria
 
-- [ ] `pnpm parity:check -- --check` and `pnpm gen:corpus -- --check` pass.
-- [ ] Every new id is `planned` in every SDK with its SP task named.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] `pnpm parity:check -- --check` and `pnpm gen:corpus -- --check` pass.
+- [x] Every new id is `planned` in every SDK with its SP task named.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 

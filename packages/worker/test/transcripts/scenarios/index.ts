@@ -3,15 +3,26 @@
 
 import type { Scenario } from "../world.js";
 import {
+  bootColdRegister,
   registerOpen,
   registerReregister401,
   telemetryReport,
+  telemetryReportUpdates,
 } from "./devices.js";
 import { discoveryCapabilities, discoveryFailure } from "./discovery.js";
+import { distributionDownloadModel } from "./distribution.js";
 import { devicecodeExpired, devicecodeHappy } from "./identity.js";
-import { activateEnrollDeactivate, licenseDeviceLimit } from "./license.js";
+import {
+  activateEnrollDeactivate,
+  activateRefusals,
+  licenseDeviceLimit,
+} from "./license.js";
 import { configSchemaFetch } from "./catalog.js";
-import { releaseChangelog, releaseChangelogEntitled } from "./release.js";
+import {
+  releaseChangelog,
+  releaseChangelogEntitled,
+  releaseFetchGated,
+} from "./release.js";
 import { edgeMint } from "./mint.js";
 import { syncConfigLicenseUnusable, syncErrors, syncEtag304 } from "./sync.js";
 import { updateFeedRollback, updateRecordByHash } from "./update.js";
@@ -39,4 +50,9 @@ export const SCENARIOS: Scenario[] = [
   updateRecordByHash,
   commerceClaim,
   packsChunkRange,
+  activateRefusals,
+  bootColdRegister,
+  telemetryReportUpdates,
+  releaseFetchGated,
+  distributionDownloadModel,
 ];
