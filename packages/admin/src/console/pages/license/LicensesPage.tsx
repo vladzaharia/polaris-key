@@ -107,7 +107,14 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           const l = row.original;
           return (
             <span className="flex min-w-0 max-w-[22rem] flex-col">
-              <span className="truncate" title={l.name || undefined}>
+              {/* The name flies into the record's title on a drill-down (S-23 §6.1
+                  shared-element): the router names it for the old page only. Both ends are
+                  fit-content, so the snapshot never stretches. */}
+              <span
+                className="w-fit max-w-full truncate"
+                title={l.name || undefined}
+                data-vt-shared="pk-key"
+              >
                 {l.name || "Unnamed license"}
               </span>
               {l.email ? (
