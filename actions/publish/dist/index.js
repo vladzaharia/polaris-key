@@ -19603,7 +19603,10 @@ function normalizeCatalog(parsed) {
   if (Array.isArray(parsed.catalog)) {
     return {
       schemaVersion: Number(parsed.schemaVersion ?? 1),
-      entries: parsed.catalog
+      entries: parsed.catalog,
+      // The legacy form's top-level `cloudSync` is validated with the rest of the schema
+      // (validateCloudSync reads manifest.schema.cloudSync), so it is kept, not dropped.
+      ...parsed.cloudSync === void 0 ? {} : { cloudSync: parsed.cloudSync }
     };
   }
   return null;
