@@ -32,10 +32,35 @@ The console shows and manages the licensing model: Entitlements and Grants tabs 
 **In:**
 
 - Tabs, actions, editors, report page; ADMIN.md amendment (remove "stored, not enforced").
+- **One licence's device limit, raised or lowered** (owner, 2026-10-05; SIGN-IN.md D-53): see the
+  section below.
 
 **Out** (and where it belongs instead):
 
 - Portal (→ LX-15).
+
+## One licence's device limit (owner, 2026-10-05)
+
+The owner decided that account-wide (sign-in, OIDC) licences stay device-limited and that "an
+administrator can change the numbers as needed" (SIGN-IN.md D-53, `plans/I-04.md` §F.6). Today the
+console changes the number only for a whole product (Settings, "Default device limit") or a whole
+tier (TierForm, "Device limit"). For one existing licence the only routes are **Change tier** or a
+`deviceLimit` entitlement override through `PUT …/licenses/<id>/overrides`. That override needs a
+catalog `deviceLimit` flag, loses to a tier that sets a limit (`injectAdminPolicy`), and is never
+shown: the console's seat count reads tier, else product (`console/pages/license/shared.tsx`
+`effectivePolicy`, `LicenseDevices.tsx` `seatLimitOf`). This package closes that gap for every
+licence, seat or Account-wide:
+
+- **Device limit…** on the licence record sets or clears a licence-held `deviceLimit` value
+  (raise or lower), audited, with the `overLimit` warning the tier change already shows when the
+  new number is below the active devices (devices are never signed out by it). Under `combined`
+  the licence value wins over the tier default (S-19 C2); under `legacy` it is offered only when
+  the tier sets no limit, and otherwise the sheet points at **Change tier**.
+- **Add seats…** comps a licence-held seat-pack grant with an optional expiry (EXPERIENCE.md §8
+  item 5): a temporary raise on top of the limit.
+- The seat meter, the Effective policy row and the licences list show the **resolved** limit
+  (`licenseDeviceLimit`), never tier-else-product, with its source ("4 · 3 from Pro + 1 comp until
+  4 Nov", "2 · set on this license").
 
 ## Design notes
 
@@ -50,6 +75,8 @@ The console shows and manages the licensing model: Entitlements and Grants tabs 
 ## Acceptance criteria
 
 - [ ] Each action writes an audited change (tests).
+- [ ] An operator can raise and lower one existing licence's device limit, including a sign-in
+      (Account-wide) licence, and the console shows the resolved limit (tests).
 - [ ] Console CSP parity passes.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 

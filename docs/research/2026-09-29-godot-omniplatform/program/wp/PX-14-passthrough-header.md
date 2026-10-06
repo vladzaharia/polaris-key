@@ -45,7 +45,7 @@ For this package:
 differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
 **No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
 
-- Build LicenseChoiceStep (SIGN-IN.md frames 05, 08, 09, 19–22 and every state of §3.6, including Account-wide rows and the mixed rule), ReplaceDevice (frame 06, §3.7), ConsentStep with **Change** (frame 07), the product-hero header and muted brand row (D-48), the identity_disabled card (frame 16) and the product-context header (D-11).
+- Build LicenseChoiceStep (SIGN-IN.md frames 05, 08, 09, 19–22 and every state of §3.6, including Account-wide rows, which keep their counter and meter like seat rows, D-53), ReplaceDevice (frame 06, §3.7), ConsentStep with **Change** (frame 07), the product-hero header and muted brand row (D-48), the identity_disabled card (frame 16) and the product-context header (D-11).
 - PX-10 accepts `license=` and the same-origin return `/signin?request=rq_…` (I-04 decision 14); `for=` stays the device label.
 - Accessibility per SIGN-IN.md §3.14: full and blocked rows are not radios, Replace stays in Tab order, focus moves to each step's h1.
 

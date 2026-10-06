@@ -35,12 +35,12 @@
 > lists them).
 >
 > **License vocabulary (owner, 2026-10-05; SIGN-IN.md O-11, D-53–D-58).** Account-bound licenses
-> (today's "Signed-in app") are labelled **Account-wide**, with "unlimited devices". Wherever a
+> (today's "Signed-in app") are labelled **Account-wide**. **Owner decision (2026-10-05):
+> account-wide licenses stay device-limited**, and operators change the numbers. Wherever a
 > license is shown (License card, switcher, Library note, LicenseChoiceStep) the tier is a neutral
-> pill ("Standard") with "0 of 5 devices" or "Account-wide · unlimited devices" beside it. "For
-> life" is **Lifetime**. When an account holds a seat license and an Account-wide license for one
-> product, the seat license hides its device counter and meter. **Devices**, with **Remove**, shows
-> for both kinds. The Worker reports the kind as `access: "seats" | "account"` (`plans/I-04.md`
+> pill ("Standard") with "0 of 5 devices" or "Account-wide · 1 of 5 devices" beside it. "For
+> life" is **Lifetime**. Both kinds keep their device counter and meter. **Devices**, with
+> **Remove**, shows for both kinds. The Worker reports the kind as `access: "seats" | "account"` (`plans/I-04.md`
 > §F.6).
 
 **Status:** draft for owner approval, revised with the owner decisions of 2026-10-04 (Appendix C,
@@ -254,8 +254,8 @@ The library aggregates by **product**. When a person holds several licenses for 
 product page shows the best one (by status precedence, §5.3) with a license switcher in the
 License card ("2 licenses · Pro, Edu"). Per-license sections (Devices, Package access) follow the
 switcher. Each license in the card and the switcher shows its tier as a neutral pill, then "2 of 3
-devices" for a seat license or "Account-wide · unlimited devices" for an Account-wide one; seat
-licenses drop the counter when the product also has an Account-wide license (SIGN-IN.md O-11).
+devices" for a seat license or "Account-wide · 2 of 3 devices" for an Account-wide one (both are
+device-limited; SIGN-IN.md O-11, D-53).
 
 ### 3.2 Global elements
 
@@ -881,8 +881,8 @@ scope and expiry, and the snippet with the real token inlined.
 
 **Remove** expands the row in place into a `danger-subtle` panel with the consequences (the seat is
 free straight away with the new count; the app on that device asks to activate next time; an email
-confirms it), **Remove Studio PC** and **Keep it**. Focus moves to the panel heading. On an Account-wide license there is no seat to free: the panel reads "Studio PC signs out of
-<Product>. It can sign in again any time." (SIGN-IN.md D-58).
+confirms it), **Remove Studio PC** and **Keep it**. Focus moves to the panel heading. On an Account-wide license the seat is freed the same way, and the panel adds "Studio PC signs
+out of <Product>." (SIGN-IN.md D-58).
 
 ### 4.23 Sign in with another device
 

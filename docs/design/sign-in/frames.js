@@ -139,9 +139,9 @@
     `<div class="meter" role="img" aria-label="${used} of ${limit} devices in use">${Array.from({ length: limit }, (_, i) => `<i class="${i < used ? "on" : ""}"></i>`).join("")}</div>`;
   // Full and blocked rows are not radios (SIGN-IN §3.14, D-45): a glyph sits where the radio would.
   // Row anatomy (SIGN-IN.md §3.6, O-11): title + tag; the tier as a neutral pill with the device
-  // counter, or "Account-wide · unlimited devices"; then "{origin} · {term}"; a meter on seat rows.
-  // `hideCount` is the mixed rule: seat rows drop the counter and meter when the account also
-  // holds an Account-wide license for the product.
+  // counter, or "Account-wide · {used} of {limit} devices"; then "{origin} · {term}"; then the seat
+  // meter. Account-wide licenses stay device-limited (owner, 2026-10-05; SIGN-IN.md D-53), so
+  // they keep the counter and meter too. `hideCount` drops both (no frame uses it now).
   const lic = ({
     name,
     tier,
@@ -160,7 +160,7 @@
     extra,
   }) => {
     const count = accountWide
-      ? `<span class="aw">${I.users}Account-wide · unlimited devices</span>`
+      ? `<span class="aw">${I.users}Account-wide · ${used} of ${limit} ${limit === 1 ? "device" : "devices"}</span>`
       : limit && !hideCount
         ? `<span>${used} of ${limit} ${limit === 1 ? "device" : "devices"}</span>`
         : "";
@@ -168,7 +168,7 @@
       tier || count
         ? `<div class="tl">${tier ? `<span class="pill">${tier}</span>` : ""}${count}</div>`
         : "";
-    const showMeter = limit && !accountWide && !hideCount && !noMeter;
+    const showMeter = limit && !hideCount && !noMeter;
     return `<div class="lic ${sel ? "sel" : ""} ${full ? "full" : ""} ${blocked ? "blocked" : ""}">${full || blocked ? `<div class="nosel" aria-hidden="true">${I.ban}</div>` : `<div class="radio"></div>`}<div class="ln">${name}</div>${tag ? `<span class="tag ${tagKind || ""}">${tag}</span>` : "<span></span>"}${line2}${meta ? `<div class="lm">${meta}</div>` : ""}${showMeter ? meter(used, limit) : ""}${act ? `<div class="act">${act}</div>` : ""}${extra || ""}</div>`;
   };
   const fullAct = `<div class="btn secondary inline">Replace a device</div><span class="link">Free a device</span>`;
@@ -625,8 +625,8 @@
     foot: footer("Drift Kart", "Pitlane Games"),
   });
 
-  // 22 A seat license and an Account-wide license for one product (owner vocabulary, O-11): the
-  // seat license hides its device counter; the Account-wide row reads "unlimited devices".
+  // 22 A seat license and an Account-wide license for one product (owner vocabulary, O-11): both
+  // keep their counter and meter; the Account-wide row reads "Account-wide · 2 of 3 devices" (D-53).
   F({
     id: "22-choice-account-wide",
     deskHead: appHeader({
@@ -648,8 +648,8 @@
       <h1>Choose a license for this device</h1>
       <p class="lede">Storytime will use it on Mara's iPad.</p>
       <div role="radiogroup" aria-label="Licenses for Storytime" style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Storytime", tier: "Standard", meta: "Bought on the App Store · Lifetime", used: 1, limit: 5, hideCount: true, sel: true })}
-      ${lic({ name: "Storytime", tier: "Standard", accountWide: true, meta: "Created when you signed in · Lifetime" })}
+      ${lic({ name: "Storytime", tier: "Standard", meta: "Bought on the App Store · Lifetime", used: 1, limit: 5, sel: true })}
+      ${lic({ name: "Storytime", tier: "Standard", accountWide: true, used: 2, limit: 3, meta: "Created when you signed in · Lifetime" })}
       </div>
       ${btn("primary", "Use this license and continue")}
       ${quiet(false)}`,
