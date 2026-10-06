@@ -48,6 +48,7 @@ const LICENSE_KEYED = [
   "dist_purchase_bindings",
   "dist_purchases",
   "keys_index",
+  "license_auto_attach_blocks",
   "license_profiles",
   "license_refusals",
   "license_relinks",
@@ -199,6 +200,12 @@ async function seedEverything(
     licenseId,
     NOW,
     NOW + 3 * DAY,
+  );
+  await db.run(
+    "INSERT INTO license_auto_attach_blocks (product, license_id, account_id, created_at) VALUES (?, ?, 'acct_removed', ?)",
+    SLUG,
+    licenseId,
+    NOW,
   );
   await db.run(
     "INSERT INTO dist_purchase_bindings (product, binding_id, license_id, created_at) VALUES (?, 'bind_1', ?, ?)",

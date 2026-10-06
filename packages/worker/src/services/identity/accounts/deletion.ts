@@ -18,6 +18,7 @@ import {
   accountLicenses,
   stmtDetachAccountLicenses,
 } from "../../../core/accountSubjects.js";
+import { stmtDeleteAccountAutoAttachBlocks } from "../../../core/licenseHolders.js";
 import { randomId, type DbStatement } from "../../../core/platform.js";
 import { stmtRevokeAccountRegistryTokens } from "../../../core/registryTokens.js";
 import {
@@ -240,6 +241,8 @@ export async function deleteAccount(
       sql: "UPDATE license_relinks SET to_account_id = NULL WHERE to_account_id = ?",
       params: [accountId],
     },
+    // LX-26: the account's auto-attach blocks (its account id) go with it.
+    stmtDeleteAccountAutoAttachBlocks(accountId),
     { sql: "DELETE FROM accounts WHERE id = ?", params: [accountId] },
     {
       sql: `INSERT OR REPLACE INTO account_tombstones (id, email_hash, merged_into, deleted_at)

@@ -262,8 +262,10 @@ export async function handleDiscoverClaim(
     // Idempotent: the second submit of an add answers the licence the first one minted.
     let found = evidence.existing;
     // I-05: a licence has one owner. The auto-issue licence keyed by this account's platform
-    // subject is linked here if it is still floating (the next sweep would do the same), and is
-    // never answered when another account owns it.
+    // subject is linked here if it is in no account, and is never answered when another account
+    // owns it. This is the person's own "Add to library", an explicit act, so it links even a
+    // licence this account once removed: an auto-attach block (LX-26, S-24 D19) stops only the
+    // automatic sweep, which skips that pair.
     if (found && (found.account_id ?? null) === null) {
       await linkLicense(
         db,

@@ -28,6 +28,7 @@ import { latestReleaseHasDmg } from "../../services/release/store.js";
 import { readAppDeliverable } from "../../services/release/descriptor.js";
 import { hasArtifactMap } from "../../services/release/artifactMap.js";
 import { countKeysByLicense } from "../repo.js";
+import { licenseHolder } from "../../core/licenseHolders.js";
 import { subjectFor } from "../../core/accountSubjects.js";
 import {
   approvalMismatch,
@@ -163,6 +164,9 @@ export async function licenseSummary(
     minVersion: row.min_version,
     maxVersion: row.max_version,
     ownerSubject,
+    // LX-26 (S-24 D1): floating or assigned, derived from the owner pointer and the licence's own
+    // email; never the account's details.
+    holder: licenseHolder(row),
     identityProvider: row.sub ? "oidc" : "manual",
     // How the row was minted (`admin`, `oidc`, `enroll`): decides whether it may be deleted.
     origin: row.origin ?? "admin",

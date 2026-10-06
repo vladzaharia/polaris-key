@@ -12533,6 +12533,220 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  # ── Licences (LX-26: the derived holder; the rest of `…/license/*` is narrative) ──
+  /manage/api/products/{product}/license/licenses:
+    get:
+      operationId: listAdminLicenses
+      tags: [admin]
+      summary: The product's licences, each with its derived holder, optionally filtered by holder
+      description: >
+        Every licence of the product, newest first, as the console's Licenses list reads it. LX-26
+        (notes/S-24 §5.1, §6.3): each carries `holder`, derived from whether the licence is in an
+        account and whether it has an email (no column): `floating` (neither: whoever holds the key
+        uses it) or `assigned` (in an account, or waiting for an account to verify its email). The
+        holder's `email` is the licence's own, never the account's. `?holder=` filters: `floating`,
+        `assigned` (in an account or waiting), `waiting`, `inAccount`. Platform admins only; admin
+        session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: holder,
+            in: query,
+            required: false,
+            schema:
+              { type: string, enum: [floating, assigned, waiting, inAccount] },
+            description: "Only licences in this holder state.",
+          }
+      responses:
+        "200":
+          description: The licences, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [licenses]
+                properties:
+                  licenses:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminLicenseSummary" }
+        "400":
+          description: "`holder` is not one of the four values (`bad_request`, `fields: [holder]`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+    post:
+      operationId: createAdminLicense
+      tags: [admin]
+      summary: Create a licence and mint its first key (shown once)
+      description: >
+        Creates a licence with its first key, which this answer carries ONCE (only its peppered
+        hash is kept). With an `email` the licence is assigned; without one (absent, `null` or
+        blank) it is floating. LX-26 (notes/S-24 D3, D4): when an account has verified that email
+        and the product's auto-link resolves on (custom issuers default off), the licence joins
+        that account in the same request (`account.license.attach`, the pairwise subject created).
+        The answer has the same shape either way: `license.holder` says what a read would. The
+        account lookup runs on every create with an email, whatever the outcome. `deviceLimit` is
+        refused here (set it afterwards with PATCH). Audited `license.create` with the holder.
+        Platform admins only; admin session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminLicenseCreate" }
+            examples:
+              assigned:
+                {
+                  value:
+                    { tier: pro, name: Ada Lovelace, email: ada@example.com },
+                }
+              floating: { value: { tier: pro } }
+      responses:
+        "201":
+          description: Created. The key is in this answer only.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [licenseId, key, license]
+                properties:
+                  licenseId: { type: string }
+                  key:
+                    {
+                      type: string,
+                      description: "`pkey_<slug>_…`, shown once.",
+                    }
+                  license:
+                    oneOf:
+                      - { $ref: "#/components/schemas/AdminLicenseSummary" }
+                      - { type: "null" }
+              examples:
+                waiting:
+                  summary: An email no account has verified yet (or one that has; the shape is the same)
+                  value:
+                    licenseId: lic_9f2c4e1a
+                    key: pkey_tonebox_3WPLDA7Q2M8K
+                    license:
+                      id: lic_9f2c4e1a
+                      email: ada@example.com
+                      holder:
+                        {
+                          kind: assigned,
+                          inAccount: false,
+                          email: ada@example.com,
+                        }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "An unknown tier or profile, `deviceLimit` on create, or a value a signed document cannot carry."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/license/licenses/{licenseId}:
+    get:
+      operationId: getAdminLicense
+      tags: [admin]
+      summary: One licence, with its holder, keys, devices and overrides
+      description: >
+        The licence record the console shows: the summary (with `holder`, LX-26) plus its keys (by
+        hash), devices, profiles, offline window, seat count and redacted overrides. Platform
+        admins only; admin session cookie. DELETE on this path is documented on the docs site.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: licenseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      responses:
+        "200":
+          description: The licence.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminLicenseSummary" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product or licence.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+    patch:
+      operationId: updateAdminLicense
+      tags: [admin]
+      summary: Change a licence's terms or holder
+      description: >
+        Changes the fields given. LX-26 (notes/S-24 §6.3): setting `email` on a floating licence
+        assigns it (audited `license.holder.assign`) and, as at creation, joins the account that
+        verified the address when one did; a new email on a waiting licence does the same.
+        Clearing the email of a licence that has one (`null` or blank) is refused with `400
+        bad_request`: removing a holder is the relink tool's Make floating, which takes a reason
+        and has an undo. A tier or device-limit change also answers `overLimit` when the licence
+        already has more devices than the new effective limit. Platform admins only; admin
+        session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: licenseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminLicensePatch" }
+            examples:
+              assign: { value: { name: Ada Lovelace, email: ada@example.com } }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, id]
+                properties:
+                  ok: { type: boolean, const: true }
+                  id: { type: string }
+                  overLimit:
+                    type: object
+                    required: [deviceCount, deviceLimit]
+                    properties:
+                      deviceCount: { type: integer }
+                      deviceLimit: { type: integer }
+        "400":
+          description: "Clearing an assigned licence's email (`bad_request`, `fields: [email]`): use Make floating."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product or licence.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "An unknown tier or profile, a bad `deviceLimit`, or a value a signed document cannot carry."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   # ── Godot tokenised URLs (F-21) ──
   /godot/{owner}/t/{token}/asset-library/api/configure:
     servers:
@@ -14726,6 +14940,78 @@ components:
               pullPending: { type: boolean }
               attempts: { type: integer }
               nextAttemptAt: { type: [integer, "null"] }
+    LicenseHolder:
+      description: >
+        LX-26 (notes/S-24 §5.1, D1): a licence's holder, derived from whether it is in an account
+        and whether it has an email; never stored. `floating`: neither, so whoever holds the key
+        uses it and it has no account features. `assigned`: in an account (`inAccount: true`) or
+        waiting for an account to verify `email` (`inAccount: false`). `email` is the licence's
+        own, which the developer wrote; nothing about the account is ever included.
+      oneOf:
+        - type: object
+          required: [kind]
+          additionalProperties: false
+          properties:
+            kind: { type: string, const: floating }
+        - type: object
+          required: [kind, inAccount]
+          additionalProperties: false
+          properties:
+            kind: { type: string, const: assigned }
+            inAccount: { type: boolean }
+            email: { type: string }
+    AdminLicenseSummary:
+      type: object
+      description: >
+        A licence as the console reads it. Only the members this specification pins are listed;
+        the answer carries more (keys, devices, deletion verdict, device-limit fields).
+      required: [id, status, holder]
+      additionalProperties: true
+      properties:
+        id: { type: string }
+        name: { type: string, description: "`''` when none." }
+        email:
+          {
+            type: string,
+            description: "The licence's own email; `''` when none.",
+          }
+        status: { type: string, enum: [active, disabled] }
+        tier: { type: [string, "null"] }
+        expiresAt: { type: [integer, "null"] }
+        ownerSubject:
+          type: [string, "null"]
+          description: "The owner's pairwise subject (`ps_…`) for this product; `null` when the licence is in no account."
+        holder: { $ref: "#/components/schemas/LicenseHolder" }
+        origin: { type: string, enum: [admin, oidc, enroll] }
+    AdminLicenseCreate:
+      type: object
+      properties:
+        tier: { type: string }
+        name: { type: string }
+        email:
+          type: [string, "null"]
+          description: "Assigns the licence (trimmed). Absent, `null` or blank: floating."
+        expiresAt: { type: [integer, "null"] }
+        maxOfflineDays: { type: integer, minimum: 1, maximum: 365 }
+        channels: { type: array, items: { type: string } }
+        minVersion: { type: string }
+        maxVersion: { type: string }
+        profiles: { type: array, items: { type: string } }
+    AdminLicensePatch:
+      type: object
+      properties:
+        name: { type: string }
+        email:
+          type: [string, "null"]
+          description: "A new email (trimmed) assigns a floating licence. `null` or blank on a licence with an email is refused (400)."
+        tier: { type: [string, "null"] }
+        expiresAt: { type: [integer, "null"] }
+        maxOfflineDays: { type: [integer, "null"] }
+        channels: { type: [array, "null"], items: { type: string } }
+        minVersion: { type: [string, "null"] }
+        maxVersion: { type: [string, "null"] }
+        deviceLimit: { type: [integer, "null"], minimum: 1 }
+        profiles: { type: array, items: { type: string } }
     AdminSlugCheck:
       type: object
       required: [slug, status]

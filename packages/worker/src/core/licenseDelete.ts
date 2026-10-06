@@ -27,7 +27,8 @@
  * Core's own rows go through {@link coreLicenseDeleteStatements}: the devices (their facts,
  * fingerprints, delta-demand rows and any download token naming them, ahead of the devices
  * themselves because `release_download_tokens` holds a foreign key onto `devices`), the
- * licence's registry tokens and its refused-activation log (`license_refusals`). The devices' bearer tokens live in KV and are purged by the caller
+ * licence's registry tokens, its refused-activation log (`license_refusals`) and its auto-attach
+ * blocks (`license_auto_attach_blocks`, LX-26). The devices' bearer tokens live in KV and are purged by the caller
  * after the batch commits.
  *
  * Every table holding a `license_id` column is accounted for here, in a contributor, or by a
@@ -221,6 +222,11 @@ export function coreLicenseDeleteStatements(
     // Main's 0074: the refused activations the licence's Status card shows.
     {
       sql: "DELETE FROM license_refusals WHERE product = ? AND license_id = ?",
+      params: [product, licenseId],
+    },
+    // LX-26: the accounts this licence must not rejoin automatically; nothing is left to block.
+    {
+      sql: "DELETE FROM license_auto_attach_blocks WHERE product = ? AND license_id = ?",
       params: [product, licenseId],
     },
   ];

@@ -6,6 +6,11 @@
 
 import { stmtRevokeProductCiTokens } from "../core/publisher.js";
 import { stmtRevokeProductRegistryTokens } from "../core/registryTokens.js";
+import {
+  holderFilterSql,
+  stmtDeleteProductAutoAttachBlocks,
+  type HolderFilter,
+} from "../core/licenseHolders.js";
 import type { Db, DbStatement } from "../db/types.js";
 import type {
   KeyRow,
@@ -97,6 +102,8 @@ export async function deleteProduct(
       sql: "DELETE FROM portal_license_links WHERE product = ?",
       params: [slug],
     },
+    // LX-26: the auto-attach blocks name accounts; the licences they guarded are erased above.
+    stmtDeleteProductAutoAttachBlocks(slug),
     // I-05: the product's pairwise subjects, their aliases and its "Continue to" grants go with
     // it; no account keeps a link to a product that no longer exists.
     {
@@ -231,9 +238,14 @@ export async function listSchemaPublishers(
 export async function listLicenses(
   db: Db,
   product: string,
+  filter: { holder?: HolderFilter } = {},
 ): Promise<LicenseRow[]> {
+  // LX-26: the holder filter is the derived rule as SQL (`core/licenseHolders.ts`), never a copy.
+  const holder = filter.holder
+    ? ` AND ${holderFilterSql(filter.holder, "licenses")}`
+    : "";
   return db.all<LicenseRow>(
-    "SELECT * FROM licenses WHERE product = ? ORDER BY activated_at DESC, id DESC",
+    `SELECT * FROM licenses WHERE product = ?${holder} ORDER BY activated_at DESC, id DESC`,
     product,
   );
 }

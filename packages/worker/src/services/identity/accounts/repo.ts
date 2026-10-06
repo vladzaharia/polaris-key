@@ -179,7 +179,9 @@ export async function insertLink(
  * Every address this account has verified: its verified email sign-in methods, the
  * provider-verified email of any link, and the primary email once verified. The licence claim
  * rule (an email-carrying licence attaches only to an account that verified that email) and the
- * security-notice fan-out both read this one list.
+ * security-notice fan-out both read this one list. {@link accountsVerifyingEmail} is its inverse
+ * and must stay in step: change what "verified" means here and change it there too
+ * (`test/licenseHolders.test.ts` pins the two agree).
  */
 export async function verifiedAccountEmails(
   db: Db,
@@ -196,6 +198,44 @@ export async function verifiedAccountEmails(
     accountId,
   );
   return rows.map((r) => r.email);
+}
+
+/**
+ * The ACTIVE accounts that verified `email`: the inverse of {@link verifiedAccountEmails}. The
+ * account holding it as an email sign-in method comes first (that link key is unique, so at most
+ * one), then any other account in id order. INTERNAL: for the licence association only (LX-26);
+ * nothing about it reaches a developer. The same two sources as `verifiedAccountEmails` (a link
+ * whose email is verified, a verified primary email), read the other way; only active accounts
+ * answer. Keep the two in step (`test/licenseHolders.test.ts` pins that they agree).
+ */
+export async function accountsVerifyingEmail(
+  db: Db,
+  email: string,
+): Promise<Array<{ accountId: string; emailMethod: boolean }>> {
+  const normalized = normalizeEmail(email);
+  if (!normalized) return [];
+  const rows = await db.all<{ account_id: string; method: number }>(
+    `SELECT v.account_id AS account_id, MAX(v.method) AS method
+       FROM (SELECT account_id,
+                    CASE WHEN issuer_key = ? AND tenant_scope = '' AND subject = ? THEN 1 ELSE 0 END
+                      AS method
+               FROM account_links
+              WHERE email = ? AND email_verified = 1
+             UNION ALL
+             SELECT id AS account_id, 0 AS method FROM accounts
+              WHERE primary_email = ? AND primary_email_verified_at IS NOT NULL) v
+       JOIN accounts a ON a.id = v.account_id AND a.status = 'active'
+      GROUP BY v.account_id
+      ORDER BY method DESC, v.account_id`,
+    EMAIL_ISSUER,
+    normalized,
+    normalized,
+    normalized,
+  );
+  return rows.map((r) => ({
+    accountId: r.account_id,
+    emailMethod: r.method === 1,
+  }));
 }
 
 /**

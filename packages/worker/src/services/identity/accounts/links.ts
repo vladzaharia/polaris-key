@@ -12,6 +12,7 @@
  */
 
 import type { Db, Env } from "../../../core/platform.js";
+import { onAccountEmailVerified } from "../../../core/licenseHolders.js";
 import { portalAudit } from "../portal/repo.js";
 import { sendSecurityNotice } from "../portal/email.js";
 import {
@@ -143,6 +144,9 @@ export async function linkIdentity(
     summary: `Connected ${id.kind}`,
     now,
   });
+  // LX-26 (S-24 §5.4): a newly verified address brings the licences waiting on it.
+  if (id.email && id.emailVerified)
+    await onAccountEmailVerified(db, account.id, id.email, now);
   await sendSecurityNotice(
     ctx.env,
     db,

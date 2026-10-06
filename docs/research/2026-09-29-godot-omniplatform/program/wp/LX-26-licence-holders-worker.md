@@ -12,6 +12,54 @@
 | Human input | none                                                                                                                                                             |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                        |
 
+## Corrections (as built, 2026-10-06)
+
+Where the brief and the code disagreed, the code was the fact:
+
+- **A fourth list filter, `inAccount`.** `holder=floating|assigned|waiting` cannot express LX-30's
+  "In an account" filter (`assigned` is in an account or waiting), so the list also takes
+  `holder=inAccount`. An unknown value is `400 bad_request` (`fields: ["holder"]`).
+- **The "Added to your library" notice is not reused for an email attach.** It exists as
+  `licenseAddedNotice` (`portal/notices.ts`, "<Product> is in your library"), sent on a portal key
+  claim (`portal/selfService.ts`), but its copy says the licence was added "with a license key",
+  which is false for an association by email. S-24 D11 and D12 make LX-27's key email ("Your
+  <Product> license", sent in the create request) the person's message for a licence the
+  developer assigned. `attachLicense`'s own notice goes only to a licence email the account has
+  NOT verified (S-16), which an email attach never is, so `via: "email"` sends nothing.
+  Follow-up for LX-27: a "from <Developer>" variant of the library notice, if a separate notice is
+  wanted for an association that happens after creation (at the email's first verification).
+- **Removal keeps the email, so the licence reads assigned and waiting, not floating.** The
+  acceptance ("another account that verifies the email still can") needs the email kept; the
+  derived holder of an email-bearing licence with no account is assigned/waiting. PX-23's
+  "Remove ... becomes floating" copy should say "not in an account" (follow-up for PX-23).
+- **There is no portal "Remove from my library" route on `main`.** `detachLicense` is reached by
+  I-12's console detach today; PX-23 adds the portal route. The tests call `detachLicense` as the
+  portal will.
+- **The hook is `onAccountEmailVerified(db, accountId, email, now)`** (`core/licenseHolders.ts`),
+  implemented by Identity (`services/identity/accounts/holders.ts`) and registered with Core at
+  module load, like a subject store; the creation direction is `associateLicenseHolder`. It
+  re-checks that the address is verified on the account. The link sweep's email half is its body,
+  run per verified address, so every sign-in on `main` (portal OIDC, the card's code, register,
+  gate and provider sign-ins through `finishSignIn`, device login) reaches it through the sweep it
+  already runs; `linkIdentity` (adding a sign-in method in Account) calls it directly. PX-W15 and
+  I-08 are not on `main`; they call the hook when they land, and the per-request sweeps stay.
+- **`reassignLicense` writes a block for the account it moves a licence away from and lifts the
+  block of the account it moves it into**, so a relink's undo deletes the block the relink wrote.
+  A key or device claim (`attachLicense` with `via: key | device`) lifts the claimer's block too.
+- **Both halves of the sweep honour the block** (a licence's `sub` re-attached it as well as its
+  email), and every automatic attach is now audited (`account.license.attach`, `email` or `oidc`);
+  before, the sweep attached silently.
+- **Also removed with their owner:** an account deletion deletes its blocks, and a licence
+  deletion deletes the licence's (`coreLicenseDeleteStatements`; `licenseDelete.test.ts` claims
+  the table).
+- **Floating is one helper** (U-02 follow-up): `isFloatingLicense` and `floatingLicenseSql` in
+  `core/accountSubjects.ts`; an email that is empty or only spaces counts as none. Create and PATCH
+  store the email trimmed, blank as `NULL`.
+- **Rule 10:** the admin licence routes were narrative only. `GET`/`POST …/license/licenses` and
+  `GET`/`PATCH …/license/licenses/{licenseId}` are now in the spec (tag `admin`, `routeCoverage`'s
+  `products` kind); `DELETE` stays narrative.
+- The migration is `0092_license_auto_attach_blocks.sql`; the lead numbered it 0092.
+
 ## Goal
 
 Every licence read says whether the licence is **floating** or **assigned** (in an account, or
@@ -95,15 +143,18 @@ request (H5: `detachLicense` keeps `email`; `syncAccountLicenseLinks` re-attache
 
 ## Acceptance criteria
 
-- [ ] `holder` is correct for floating, waiting and in-account licences, including legacy rows
+- [x] `holder` is correct for floating, waiting and in-account licences, including legacy rows
       (tests).
-- [ ] A licence created for a verified account's email is attached in the same request; one for an
+- [x] A licence created for a verified account's email is attached in the same request; one for an
       unknown email waits and joins at the email's first verification (tests).
-- [ ] After **Remove from my library**, no portal request, sign-in or verification re-attaches it to
+- [x] After **Remove from my library**, no portal request, sign-in or verification re-attaches it to
       that account; another account that verifies the email still can (tests).
-- [ ] The create answer is the same shape whether or not an account exists (test).
-- [ ] OpenAPI and `routeCoverage` pass; THREAT-MODEL rows T-H2 and T-H4 added.
-- [ ] The green gate passes (AGENTS.md), including the migration and workerd checks.
+- [x] The create answer is the same shape whether or not an account exists (test).
+- [x] OpenAPI and `routeCoverage` pass; THREAT-MODEL rows T-H2 and T-H4 added.
+- [x] The green gate passes (AGENTS.md), including the migration and workerd checks. The
+      migration is `0092_license_auto_attach_blocks.sql` (the lead's number) and `LATEST_MIGRATION`
+      names it. The gate ran before the numbering, with the file under a provisional number,
+      because `recordDeploy.test.ts` refuses a `00XX_` placeholder as `LATEST_MIGRATION`.
 
 ## Verify
 

@@ -40,8 +40,13 @@ decided with the recommended option (the owner delegated decisions to the lead).
   writes `subject = NULL`; only `opts.subject` (an Identity sign-in) binds.
 - **Floating licences have no account features (S-24, owner ruling 2026-10-06).**
   `resolveSyncPrincipal` also reads the device's `license_id` and returns `null` when that licence
-  is floating (`account_id IS NULL AND email IS NULL`), whatever binding the device holds. A
-  `NO_LICENSE_ID` device on a License-off product is unaffected. The check lives in
+  is floating (`account_id IS NULL` and no email), whatever binding the device holds, and also
+  when the licence row it names does not exist (fail closed). A device that names no licence
+  (`NO_LICENSE_ID`) is unaffected: a License-off product's device, and equally a keyless device
+  registered on a License-on product with `registration: "open"` (S-24 decides floating from a
+  licence's facts, and such a device has no licence). LX-26 moved the rule into one exported
+  helper, `isFloatingLicense` (with `floatingLicenseSql` for list filters), and made
+  `resolveSyncPrincipal`'s `license_id` required, as on `DeviceRow`. The check lives in
   `core/accountSubjects.ts` (the scan test bans `account_id` in `core/syncAccess.ts`). A plain
   detach still keeps the binding; the principal is hidden while the licence floats. This
   supersedes the brief's and THREAT-MODEL's earlier "a floating licence has a principal once
