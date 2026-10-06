@@ -1969,6 +1969,13 @@ describe("storefront feeds: the AltStore sources name hosted copies (HA-07)", ()
     );
     const after = await hostedArtStamp(w.env, w.db, SLUG);
     expect(after).not.toBe(before);
+    // A copy whose hosted-asset ref went is no longer served (the image host's tenancy check):
+    // a new key too, so the source stops naming it on its next read.
+    await w.db.run(
+      "DELETE FROM blob_refs WHERE product = ? AND ref_kind = 'hosted-asset' AND ref_id = 'listing.icon@'",
+      SLUG,
+    );
+    expect(await hostedArtStamp(w.env, w.db, SLUG)).not.toBe(after);
     hosting.on = false;
     expect(await hostedArtStamp(w.env, w.db, SLUG)).toBe("-");
   });

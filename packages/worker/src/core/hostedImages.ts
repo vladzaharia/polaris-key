@@ -83,6 +83,19 @@ export function hostedImageOrigin(env: HostedEnv): string | null {
 const BLOB_PREFIX = blobKey("0".repeat(64)).slice(0, -64);
 const SHA256_RE = /^[0-9a-f]{64}$/;
 
+/**
+ * SQL over a `hosted_assets` row aliased `h`: the image host's tenancy check, the copy's
+ * hosted-asset ref to its original exists. `hostedImages` serves only such copies, and the feed
+ * cache's stamp (`hostedArtStamp`) follows the same answer. Bind `params` where `sql` sits.
+ */
+export const HOSTED_REF_HELD: { sql: string; params: string[] } = {
+  sql: `EXISTS (SELECT 1 FROM blob_refs r
+                 WHERE r.product = h.product AND r.ref_kind = ?
+                   AND r.ref_id = h.slot || '@' || h.locale
+                   AND r.storage_key = ? || h.sha256)`,
+  params: [HOSTED_ASSET_REF, BLOB_PREFIX],
+};
+
 interface Row {
   slot: string;
   origin: string;
@@ -118,14 +131,10 @@ export async function hostedImages(
       WHERE h.product = ? AND h.locale = ''
         AND h.slot IN (${wanted.map(() => "?").join(", ")})
         AND h.sha256 IS NOT NULL
-        AND EXISTS (SELECT 1 FROM blob_refs r
-                     WHERE r.product = h.product AND r.ref_kind = ?
-                       AND r.ref_id = h.slot || '@' || h.locale
-                       AND r.storage_key = ? || h.sha256)`,
+        AND ${HOSTED_REF_HELD.sql}`,
     product,
     ...wanted,
-    HOSTED_ASSET_REF,
-    BLOB_PREFIX,
+    ...HOSTED_REF_HELD.params,
   );
   for (const row of rows) {
     if (!row.sha256 || !SHA256_RE.test(row.sha256)) continue;

@@ -28,6 +28,7 @@
 import { assetRefUrl, normalizeAssetRef } from "@polaris-key/manifest";
 import type { Db, Env } from "../../../core/platform.js";
 import {
+  HOSTED_REF_HELD,
   hostedImageOrigin,
   hostedImageUrl,
   hostedImages,
@@ -131,10 +132,11 @@ export async function hostedScreenshotUrls(
 
 /**
  * The part of the feed cache's stamp (`cache.ts`) the hosted art follows: whether hosted copies
- * are served (the kill switch, the image host) and every listing slot's copy and the ref it was
- * pulled for. A copy becoming ready, a re-pull, a claim or a flip of the switch is a new key, so a
- * source names the new art on its next read rather than five minutes later. One D1 read, and none
- * at all while nothing is served from the image host.
+ * are served (the kill switch, the image host) and every listing slot's copy, the ref it was
+ * pulled for, and whether its hosted-asset ref still exists (`HOSTED_REF_HELD`, the image host's
+ * tenancy check). A copy becoming ready, a re-pull, a claim, a dropped ref or a flip of the switch
+ * is a new key, so a source names the new art on its next read rather than five minutes later.
+ * One D1 read, and none at all while nothing is served from the image host.
  */
 export async function hostedArtStamp(
   env: Env,
@@ -145,10 +147,13 @@ export async function hostedArtStamp(
   if (origin === null) return "-";
   const row = await db.first<{ s: string | null }>(
     `SELECT group_concat(slot || '=' || COALESCE(sha256, '') || '/' || origin || '/' ||
-                         COALESCE(pulled_ref, ''), ',') AS s
-       FROM (SELECT slot, sha256, origin, pulled_ref FROM hosted_assets
-              WHERE product = ? AND locale = '' AND slot LIKE 'listing.%'
-              ORDER BY slot)`,
+                         COALESCE(pulled_ref, '') || '/' || held, ',') AS s
+       FROM (SELECT h.slot AS slot, h.sha256 AS sha256, h.origin AS origin,
+                    h.pulled_ref AS pulled_ref, ${HOSTED_REF_HELD.sql} AS held
+               FROM hosted_assets h
+              WHERE h.product = ? AND h.locale = '' AND h.slot LIKE 'listing.%'
+              ORDER BY h.slot)`,
+    ...HOSTED_REF_HELD.params,
     product,
   );
   const text = `${origin}|${row?.s ?? ""}`;
