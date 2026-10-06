@@ -76,9 +76,12 @@ Checked against `main` at `221d18a85`; where the brief and the code disagreed, t
 - **The e2e cases are in their own file**, `e2e/libraryMotion.e2e.test.ts` (as MO-10 did with
   `shellMotion.e2e.test.ts`), because MO-04, MO-05 and MO-09 extend `e2e/motion.e2e.test.ts` in
   parallel.
-- **"First load"** means the data arrived while the page was open (the page mounted with its
-  query pending). A return to a cached page does not stagger, nor does a refetch, a search, a
-  filter, a sort or a view switch (`src/portal/stagger.ts`).
+- **"First load"** means the page's first mount in this document, with its data still pending,
+  outside a View Transition (`useFirstLoad` in `src/portal/stagger.ts`). A return to the page
+  (cached or not) does not stagger, nor does a refetch, a search, a filter, a sort or a view
+  switch, and a list rendered while `html[data-vt]` is set never starts its stagger. This is the
+  integration point with MO-05: Back from a product remounts the Library inside MO-05's `back`
+  transition (the tile morph), so the stagger stays out of it without depending on MO-05's router.
 - **The Grid/List transition names regions, not tiles**: the products section's heading and view,
   and the page's blocks (`.pk-vt-scope` on the page), so it costs the same for 8 or 800 products
   and stays far inside the 30-row budget.
@@ -100,7 +103,7 @@ Checked against `main` at `221d18a85`; where the brief and the code disagreed, t
 - [x] Art never shifts layout (layout lint at zero).
 - [x] The view toggle runs one list transition.
 - [x] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
-- [ ] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
+- [x] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations. (2026-10-06: `test:e2e` had zero CSP violations; its 8 failures were main's at this branch's merge point, in files this branch does not touch, and are fixed on main by `e3e8042c4`. The portal's linux baselines match unchanged: 197/197 in Playwright's image.)
 
 ## Verify
 
