@@ -25,7 +25,7 @@ and what binary it installs next.
 
 | #    | Asset                                                                                                                                        | Where it lives                                                                                        | Loss impact                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A1   | **`PLATFORM_KEK`**                                                                                                                           | Worker secret                                                                                         | Decrypts every tenant's signing key and every product secret. Total platform compromise. Cannot be rotated today (see A9).                                                                                                                                                                                                                                                                                                                                                      |
+| A1   | **`PLATFORM_KEK`**                                                                                                                           | Worker secret                                                                                         | Decrypts every tenant's signing key and every product secret. Total platform compromise. Rotatable without downtime through the keyring, even when nobody holds the current key (§3, "The platform KEK keyring").                                                                                                                                                                                                                                                               |
 | A2   | **Per-product Ed25519 signing keys**                                                                                                         | `product_keys.enc_private_json`, sealed under A1                                                      | Forge any config doc, entitlement, or secret for that product. **Unrevocable for already-provisioned clients** — see §6.                                                                                                                                                                                                                                                                                                                                                        |
 | A3   | **The release channel**                                                                                                                      | GitHub App key, webhook secret, `release_config`                                                      | Ship arbitrary code to every installed client. Equal to A1 in practical severity.                                                                                                                                                                                                                                                                                                                                                                                               |
 | A4   | **`ADMIN_SESSION_SECRET`**                                                                                                                   | Worker secret                                                                                         | Forge admin sessions → reach A2, A3, A5, A6 through the API.                                                                                                                                                                                                                                                                                                                                                                                                                    |
@@ -5647,6 +5647,47 @@ be disabled.
   writes one `license.delete` row (written only while the licence still exists, so a racing
   double delete audits once) naming tier, origin, the account's pairwise subject (never the
   global account id) and the device count.
+
+### The platform KEK keyring and the legacy open-only key (R2-09)
+
+A1 is a keyring, not a single key (`src/keyvault.ts`). `PLATFORM_KEK_KEYS` maps kids to 32-byte
+AES-256-GCM keys, `PLATFORM_KEK_ACTIVE` names the one every new seal uses, and each blob carries
+the kid it was sealed under: `open` uses exactly that kid's key and refuses an unknown one. The
+AAD (`pkey:v2:<product>:<kind>:<id>`) leaves the kid out, so a re-seal keeps the slot binding.
+The re-seal sweep (`POST /manage/api/products/kek`: platform admin, CSRF-checked) moves every
+stored value to the active kid with a compare-and-swap, and verifies the new envelope opens to
+the same plaintext before it writes.
+
+**The legacy key.** Worker secrets are write-only, so an environment whose `PLATFORM_KEK` was
+never escrowed cannot copy it into a ring. With both `PLATFORM_KEK` and `PLATFORM_KEK_KEYS` set,
+the Worker adds `PLATFORM_KEK` to the ring under its legacy kid (`PLATFORM_KEK_ID`, else
+`default`), for opening only. The operator procedure is RUNBOOK "Rotating when the old KEK is
+unknown". Controls:
+
+- **It never seals.** `PLATFORM_KEK_ACTIVE` must name a `PLATFORM_KEK_KEYS` entry, checked before
+  the legacy key joins, and the legacy key is imported without the `encrypt` usage, so no path
+  can seal under it.
+- **No silent choice.** The same kid in both shapes with different bytes refuses to load the ring
+  (fail closed: `503` on the keyring endpoint, every product route 404s) instead of picking one.
+  A precedence rule would orphan one set of blobs, chosen by a rule an operator mid-rotation is
+  unlikely to know. Equal keys, compared as decoded bytes, are accepted.
+- **No key material in diagnostics.** The configuration error, the `kek_legacy_open_only`
+  warning on Platform → Settings, the endpoint's `legacy` block and the console name kids and
+  counts only. The sealed `SIGNIN_*` Worker secrets are reported by name when their envelope
+  names the legacy kid; the kid is read from the envelope and nothing is opened.
+- **A bounded life.** The warning stays until `PLATFORM_KEK` is deleted, and the endpoint reports
+  `legacy.remaining` (stored values under the legacy kid), `legacy.workerSecrets` and
+  `safeToDelete`, the gate for deleting it.
+
+**Residual risk.** (1) Re-sealing does not erase old ciphertext: D1 backups and Time Travel from
+before the sweep still hold blobs under the old key, so whoever holds that key and such a dump
+reads them. If the old key may have leaked, this is the KEK compromise case (RUNBOOK,
+containment): the rotation runs the same steps, and every product signing key sealed under the
+old key is rotated as well. (2) Deleting `PLATFORM_KEK` while a value is still under it makes
+that value dark (its product 404s, or a sign-in provider leaves the login card). `safeToDelete`
+is the gate, and the operator applies it; the Worker cannot stop a `wrangler secret delete`.
+(3) The legacy key adds no new writer: whoever can set Worker secrets could already replace the
+whole ring.
 
 ### Boundaries that are weaker than they look
 

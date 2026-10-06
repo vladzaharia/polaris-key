@@ -110,7 +110,7 @@ Required prod Worker secrets:
 KEY_HASH_PEPPER
 ADMIN_SESSION_SECRET
 PORTAL_SESSION_SECRET
-PLATFORM_KEK                 # or the keyring pair below, never both
+PLATFORM_KEK                 # or the keyring pair below; both only mid-rotation ("Rotating when the old KEK is unknown")
 PLATFORM_ADMIN_GROUP=admins
 PLATFORM_OIDC_ISSUER=https://id.plrs.im
 PLATFORM_OIDC_CLIENT_ID
@@ -209,21 +209,27 @@ secret names and JSON shapes.
 ### The platform KEK keyring
 
 The KEK is configured in one of two shapes. They are equivalent for a single key; only the
-second one can be rotated.
+second one can be rotated. Both at once is the rotation path for a key nobody holds: the
+legacy `PLATFORM_KEK` stays in the ring for opening only ("Rotating when the old KEK is
+unknown", below).
 
-| Variable              | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PLATFORM_KEK`        | Legacy single KEK: base64 of exactly 32 random bytes. Ignored when `PLATFORM_KEK_KEYS` is set.                                                                                                                                                                                                                                                                                                                                                |
-| `PLATFORM_KEK_ID`     | **Optional, and a loaded gun.** The kid stamped into blobs sealed under `PLATFORM_KEK`. Defaults to `default`, which is the kid every existing production blob carries. Setting or changing it on its own renames both the kid new writes use **and** the only kid that can be read — i.e. it instantly makes every stored blob unopenable. It exists for continuity with deployments that already set it; **do not use it to rotate a KEK.** |
-| `PLATFORM_KEK_KEYS`   | The keyring: a JSON object of `kid -> base64 KEK`, e.g. `{"k1":"…","k2":"…"}`. **Every** kid listed can be decrypted.                                                                                                                                                                                                                                                                                                                         |
-| `PLATFORM_KEK_ACTIVE` | The kid within `PLATFORM_KEK_KEYS` that **new** seals are written under. Must be a key of that map.                                                                                                                                                                                                                                                                                                                                           |
+| Variable              | Meaning                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `PLATFORM_KEK`        | Legacy single KEK: base64 of exactly 32 random bytes. On its own it is the whole ring. Beside `PLATFORM_KEK_KEYS` it is the **legacy key**: open-only, under the kid `PLATFORM_KEK_ID` names (default `default`), never sealed under, and deleted once nothing is sealed under it.                                                                                                                                                                                       |
+| `PLATFORM_KEK_ID`     | **Optional, and a loaded gun.** The kid stamped into blobs sealed under `PLATFORM_KEK`. Defaults to `default`, which is the kid every existing production blob carries. Setting or changing it on its own renames both the kid new writes use **and** the only kid that can be read — i.e. it instantly makes every stored blob unopenable. Beside `PLATFORM_KEK_KEYS` it still names the legacy key's kid. It exists for continuity; **do not use it to rotate a KEK.** |
+| `PLATFORM_KEK_KEYS`   | The keyring: a JSON object of `kid -> base64 KEK`, e.g. `{"k1":"…","k2":"…"}`. **Every** kid listed can be decrypted.                                                                                                                                                                                                                                                                                                                                                    |
+| `PLATFORM_KEK_ACTIVE` | The kid within `PLATFORM_KEK_KEYS` that **new** seals are written under. Must be a key of that map.                                                                                                                                                                                                                                                                                                                                                                      |
 
 Rules the Worker enforces (all fail closed — a bad keyring never falls back to a good one):
 
 - Every KEK must decode to exactly 32 bytes.
 - `PLATFORM_KEK_ACTIVE` must name an entry of `PLATFORM_KEK_KEYS`.
-- When `PLATFORM_KEK_KEYS` is set, `PLATFORM_KEK` is **not** consulted — a kid you leave out of
-  the map is a kid you can no longer read.
+- When `PLATFORM_KEK_KEYS` is set, a `PLATFORM_KEK` still set beside it joins the ring as the
+  legacy key, **open-only**, under its legacy kid (`PLATFORM_KEK_ID`, else `default`). Nothing is
+  ever sealed under it: `PLATFORM_KEK_ACTIVE` naming that kid fails closed. Any other kid you
+  leave out of the map is a kid you can no longer read.
+- If `PLATFORM_KEK_KEYS` and `PLATFORM_KEK` define the **same kid with different bytes**, the
+  keyring refuses to load rather than pick one. The same bytes under the same kid are fine.
 - A sealed blob is opened with the KEK its own `kekId` names. An unknown `kekId` is refused; no
   other key is ever tried.
 
@@ -238,14 +244,31 @@ curl -fsS https://key.plrs.im/manage/api/products/kek -H "cookie: __Host-pkey_ad
 #   "unopenable": 0 }      ← values under a kid the ring does NOT hold: these are DARK right now
 ```
 
-Four classes of value are covered, and all four are counted and swept together:
+While `PLATFORM_KEK` sits beside `PLATFORM_KEK_KEYS`, the answer also carries `legacy` (it is
+absent in either single shape):
 
-| `counts` bucket     | Where it lives                                                                                                  |
-| ------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `keys`              | `product_keys.enc_private_json` — per-product signing keys                                                      |
-| `secrets`           | `product_secrets.enc_value_json` — per-product secrets                                                          |
-| `outletCredentials` | `outlet_credentials.enc_value_json` — store credentials (App Store Connect, Google Play, Partner Center; P5-01) |
-| `managed`           | catalog-declared managed secrets sealed inside `profiles.payload_json` and `licenses.overrides_json` (R12-02)   |
+```jsonc
+"legacy": {
+  "kid": "default",         // the legacy key's kid
+  "openOnly": true,         // false: PLATFORM_KEK_KEYS holds the same key under this kid
+  "remaining": 4,           // stored values still sealed under it (every bucket below)
+  "workerSecrets": [],      // sealed Worker secrets (SIGNIN_*) still under it: the sweep cannot move these
+  "safeToDelete": false     // true once remaining is 0 and workerSecrets is empty
+}
+```
+
+Platform → Settings → Keyring shows the same: the legacy kid marked _Legacy, open only_, what
+is still under it, and _Safe to delete PLATFORM_KEK_ once nothing is.
+
+Five classes of value are covered, and all five are counted and swept together:
+
+| `counts` bucket       | Where it lives                                                                                                  |
+| --------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `keys`                | `product_keys.enc_private_json` — per-product signing keys                                                      |
+| `secrets`             | `product_secrets.enc_value_json` — per-product secrets                                                          |
+| `outletCredentials`   | `outlet_credentials.enc_value_json` — store credentials (App Store Connect, Google Play, Partner Center; P5-01) |
+| `managed`             | catalog-declared managed secrets sealed inside `profiles.payload_json` and `licenses.overrides_json` (R12-02)   |
+| `platformCredentials` | `platform_credentials.enc_value_json` — team store credentials stored in the console (A-16)                     |
 
 ### Rotating PLATFORM_KEK
 
@@ -348,7 +371,8 @@ migration). Do not skip step 6.
 
    Re-check `unopenable` is 0 immediately afterwards, and delete the now-unused `PLATFORM_KEK`
    secret so it cannot be silently re-adopted by a later rollback:
-   `npx wrangler secret delete PLATFORM_KEK --env prod`.
+   `npx wrangler secret delete PLATFORM_KEK --env prod`. Until it is deleted it sits in the ring
+   as the legacy key, open-only (harmless, and flagged on Platform → Settings).
 
 9. Update the escrowed copy of the KEK and destroy the old key material.
 
@@ -369,6 +393,137 @@ platform stays up throughout, which is the whole point of the keyring. Rotating 
 not invalidate anything an attacker already decrypted: treat every product signing key that was
 sealed under the leaked KEK as compromised and rotate those too (Product operations → keys
 prepare/activate/revoke), and re-enter every product secret.
+
+### Rotating when the old KEK is unknown
+
+Worker secrets are write-only, so an environment whose current `PLATFORM_KEK` was never copied
+off-platform cannot follow the procedure above: its step 3 needs the current key's bytes. This
+one does not. Set a new ring and leave `PLATFORM_KEK` where it is. With both set, the Worker
+keeps `PLATFORM_KEK` in the ring as the **legacy key**, open-only, under its legacy kid
+(`PLATFORM_KEK_ID`, else `default`). Every blob sealed under it keeps opening, every new seal
+uses the new active key, and the sweep moves the old blobs across. Nobody handles the old key.
+
+Three rules, all enforced by the Worker (fail closed):
+
+- `PLATFORM_KEK_ACTIVE` must name a `PLATFORM_KEK_KEYS` entry. The legacy key never seals.
+- Give the new key a kid of its own. If `PLATFORM_KEK_KEYS` holds the legacy kid with
+  **different** bytes, the ring refuses to load: every product route 404s and
+  `GET /manage/api/products/kek` answers `503` with _PLATFORM_KEK and PLATFORM_KEK_KEYS both
+  define kid default with different keys; refusing to choose_.
+- Leave `PLATFORM_KEK_ID` exactly as it is, set or unset. It names the legacy kid; changing it
+  orphans every legacy blob.
+
+Throughout, `<host>` is `key.plrs.im`, `key-staging.plrs.im` or `key-dev.plrs.im`, and the
+calls are a platform admin's: the console session cookie, plus the CSRF token from
+`GET /manage/api/me` on the `POST`.
+
+```sh
+BASE=https://<host>/manage/api
+COOKIE="cookie: __Host-pkey_admin=…"           # from a signed-in console tab
+CSRF=$(curl -fsS "$BASE/me" -H "$COOKIE" | jq -r .csrf)
+```
+
+0. **Preconditions.** The running Worker must support the legacy key: on an older build,
+   `PLATFORM_KEK` is ignored once `PLATFORM_KEK_KEYS` is set, and step 2 would make every
+   existing blob unopenable at once. `curl -fsS "$BASE/platform/version" -H "$COOKIE" | jq .gitSha`
+   must be a commit that contains this section (Platform → Deployment shows the same; if it is
+   `null`, confirm from the deploy log which commit is live). Then record the legacy kid and the
+   counts:
+
+   ```sh
+   curl -fsS "$BASE/products/kek" -H "$COOKIE" | jq '{active, kids, remaining, unopenable}'
+   # { "active": "default", "kids": ["default"], "remaining": 0, "unopenable": 0 }
+   ```
+
+   `active` is the legacy kid. Take a D1 Time Travel bookmark of the environment's database.
+
+1. **Generate the new key** into a file only you can read, check it decodes to 32 bytes, and
+   escrow it (password manager plus an offline copy) before going on. That copy is the one that
+   was missing.
+
+   ```sh
+   umask 077; mkdir -p ~/.secrets/polaris-key/kek
+   openssl rand -base64 32 > ~/.secrets/polaris-key/kek/<env>.key
+   base64 -d < ~/.secrets/polaris-key/kek/<env>.key | wc -c    # must print 32
+   ```
+
+2. **Set the new ring, leaving `PLATFORM_KEK` in place.** One `wrangler secret bulk` call (two
+   `secret put`s would deploy a version where `PLATFORM_KEK_ACTIVE` names a kid that is not in
+   the ring). The kid must differ from the legacy kid; the key travels file → `jq` → wrangler's
+   stdin and never appears on a command line:
+
+   ```sh
+   cd packages/worker
+   NEW_KID=k2026-10                                   # any kid other than the legacy one
+   jq -n --arg kid "$NEW_KID" --rawfile key ~/.secrets/polaris-key/kek/<env>.key \
+     '{PLATFORM_KEK_KEYS: ({($kid): ($key | rtrimstr("\n"))} | tojson), PLATFORM_KEK_ACTIVE: $kid}' \
+     | npx wrangler secret bulk --env <env>
+   ```
+
+3. **Deploy and verify.** The bulk call itself deploys a new version with the new secrets; there
+   is no code change to deploy. Confirm the ring loaded and the legacy key is in it:
+
+   ```sh
+   curl -fsS "$BASE/products/kek" -H "$COOKIE" | jq '{active, kids, remaining, unopenable, legacy}'
+   # "active": "k2026-10", "kids": ["k2026-10","default"], "unopenable": 0,
+   # "legacy": { "kid": "default", "openOnly": true, "remaining": <every stored value>, … }
+   curl -fsS https://<host>/<product>/.well-known/jwks.json | jq .   # a product still serves
+   ```
+
+   - `503` naming a kid conflict: re-run step 2 with another `NEW_KID`.
+   - No `legacy` in the answer while `PLATFORM_KEK` is set, or product routes 404: the build
+     predates this change. Undo at once with
+     `echo '{"PLATFORM_KEK_KEYS":null,"PLATFORM_KEK_ACTIVE":null}' | npx wrangler secret bulk --env <env>`,
+     which returns to the single-key shape, then deploy a build that has it.
+
+4. **Rewrap.** The sweep is the same `POST` as above: bounded, idempotent and resumable, so it
+   can be stopped and re-run at any time. Repeat until `legacy.remaining` is 0:
+
+   ```sh
+   while :; do
+     R=$(curl -fsS -X POST "$BASE/products/kek" -H "$COOKIE" -H "X-PKey-CSRF: $CSRF" \
+           -H "content-type: application/json" -d '{"limit":200}')
+     echo "$R" | jq -c '{resealed, skipped, failed, remaining, legacy: .legacy.remaining}'
+     [ "$(echo "$R" | jq '.legacy.remaining')" = 0 ] && break
+     [ "$(echo "$R" | jq '.resealed + .skipped')" = 0 ] && { echo "$R" | jq .failures; break; }
+   done
+   ```
+
+   A pass that re-seals nothing while values remain is stuck: `failures` names each row (see
+   step 6 of the procedure above for what `failed` means). Each pass is one `kek.reseal` row on
+   the platform activity log.
+
+5. **Verify zero legacy blobs.**
+
+   ```sh
+   curl -fsS "$BASE/products/kek" -H "$COOKIE" | jq '{remaining, unopenable, legacy}'
+   # "remaining": 0, "unopenable": 0,
+   # "legacy": { "kid": "default", "openOnly": true, "remaining": 0, "workerSecrets": [], "safeToDelete": true }
+   ```
+
+   Platform → Settings → Keyring says _Safe to delete PLATFORM_KEK_. If `workerSecrets` names a
+   `SIGNIN_*` secret, it is still sealed under the legacy key and the sweep cannot move it:
+   re-seal its plaintext with `signin:seal`, exporting only the new `PLATFORM_KEK_KEYS` and
+   `PLATFORM_KEK_ACTIVE` (the script seals under the active kid, as the Worker does), set it
+   ("Login-card providers"), and check again. Nothing can add a value under the legacy kid any
+   more, so once this reads 0 it stays 0.
+
+6. **Delete the old key.**
+
+   ```sh
+   npx wrangler secret delete PLATFORM_KEK --env <env>
+   curl -fsS "$BASE/products/kek" -H "$COOKIE" | jq '{active, kids, remaining, unopenable, legacy}'
+   # "kids": ["k2026-10"], "remaining": 0, "unopenable": 0, and no "legacy"
+   ```
+
+   The `kek_legacy_open_only` warning leaves Platform → Settings, and the environment is in the
+   plain keyring shape: the next rotation is the procedure above.
+
+**Rollback.** Until step 6 nothing is lost: `PLATFORM_KEK` is untouched, and keeping both shapes
+set is always safe. Do not go back to `PLATFORM_KEK` alone once anything has been sealed under
+the new kid (the sweep, or any admin write after step 2): those values would go dark. After step
+6 the old key is gone for good, and so is every D1 backup, bookmark or `wrangler rollback` target
+from before step 4: restored, their blobs carry the legacy kid and cannot be opened.
 
 ## Product operations
 
@@ -922,7 +1077,8 @@ not available_ and the rest of the card works as before.
   one. Apple: create a new key, seal its `.p8`, set `SIGNIN_APPLE_KEY_ID` and
   `SIGNIN_APPLE_PRIVATE_KEY` together in one bulk call, then revoke the old key. Steam: revoke and
   re-register at the same page, then seal and set. Rotating `PLATFORM_KEK` means re-sealing these
-  three as well as the D1 blobs.
+  three as well as the D1 blobs: `GET /manage/api/products/kek` names any still under a legacy
+  `PLATFORM_KEK` in `legacy.workerSecrets`.
 - **Turning one off.** `wrangler secret delete SIGNIN_<…>_CLIENT_ID` (or Steam's key); people who
   signed in with it keep their account and use another method.
 - **Apple notifications** (`consent-revoked`, `account-delete`, `email-disabled`,
@@ -1083,7 +1239,10 @@ admin broken:
   `null`, so a product whose signing key cannot be opened looks exactly like a product that
   does not exist.
 - `curl -fsS https://key.plrs.im/manage/api/products/kek -H "cookie: __Host-pkey_admin=…"`:
-  - `503` — the keyring itself does not parse; the message names the offending variable.
+  - `503` — the keyring itself does not parse; the message names the offending variable. _both
+    define kid … with different keys_ means `PLATFORM_KEK` and `PLATFORM_KEK_KEYS` disagree on
+    one kid: give the new key another kid in `PLATFORM_KEK_KEYS` (Secrets → Rotating when the old
+    KEK is unknown).
   - `unopenable > 0` — a KEK was removed from `PLATFORM_KEK_KEYS` while rows were still sealed
     under it. Put that kid back, then run the sweep (Secrets → Rotating PLATFORM_KEK, step 6).
 - Check whether `PLATFORM_KEK_ID` was set or changed. It renames the kid, which orphans every

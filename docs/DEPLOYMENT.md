@@ -646,6 +646,16 @@ npx wrangler secret put GITHUB_WEBHOOK_SECRET --env prod
 openssl rand -base64 32 | npx wrangler secret put DOWNLOAD_TICKET_KEY --env prod   # PX-W3, §3
 ```
 
+The KEK has two shapes (RUNBOOK "The platform KEK keyring"): `PLATFORM_KEK` alone, as above, or
+the rotation-capable keyring `PLATFORM_KEK_KEYS` + `PLATFORM_KEK_ACTIVE`, set together in one
+`wrangler secret bulk`. Never set `PLATFORM_KEK_ID`. Both shapes at once is a transitional
+state: `PLATFORM_KEK` is then the legacy key, open-only, kept until the re-seal sweep has moved
+every value off it (RUNBOOK "Rotating when the old KEK is unknown").
+
+Escrow the KEK off-platform as soon as it is set (a password manager plus an offline copy).
+Worker secrets are write-only: an environment whose KEK nobody holds can still rotate to a new
+one, but the old key itself can never be read back.
+
 Set the console client's three secrets (§2, PocketID) in **one** call, so no deployed version
 sees half of them. Each `wrangler secret put` deploys a new version, and while only some are
 set the console stays on the platform client:
@@ -1010,7 +1020,15 @@ Validate portal email:
 
 `PLATFORM_KEK must decode to exactly 32 bytes`.
 
-- Regenerate with `openssl rand -base64 32` and set `PLATFORM_KEK` again.
+- On first setup only: regenerate with `openssl rand -base64 32` and set `PLATFORM_KEK` again.
+  On an environment that already holds sealed values a new key orphans every one of them;
+  rotate instead (RUNBOOK "Rotating PLATFORM_KEK").
+
+`PLATFORM_KEK and PLATFORM_KEK_KEYS both define kid … with different keys; refusing to choose`.
+
+- `PLATFORM_KEK` sits beside the keyring as the legacy key, and `PLATFORM_KEK_KEYS` has an entry
+  under the same kid with other bytes. Give the new key its own kid in `PLATFORM_KEK_KEYS`
+  (RUNBOOK "Rotating when the old KEK is unknown"); never change `PLATFORM_KEK_ID` to dodge it.
 
 GitHub repo-link says the app is not installed.
 
