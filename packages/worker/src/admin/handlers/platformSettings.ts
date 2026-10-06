@@ -32,6 +32,7 @@ import { ADMIN_SESSION_TTL_SECONDS } from "../session.js";
 import { platformAuditStatementFor } from "../audit.js";
 import { adminJson, err, notFound, readBody } from "../lib/respond.js";
 import { adminOidcIsDedicated } from "../../platformOidc.js";
+import { legacyKekId } from "../../keyvault.js";
 import {
   deletePlatformSetting,
   invalidatePlatformSettings,
@@ -127,6 +128,18 @@ export function settingsWarnings(env: Env): Warning[] {
       message:
         "PLATFORM_KEK_ID is set. Changing it on its own makes every sealed secret unopenable; rotate through PLATFORM_KEK_KEYS and PLATFORM_KEK_ACTIVE instead.",
       names: ["PLATFORM_KEK_ID"],
+    });
+  // The rotation path for a KEK nobody holds (RUNBOOK "Rotating when the old KEK is unknown"):
+  // with both set, PLATFORM_KEK stays in the ring under its legacy kid, open-only. A transitional
+  // state, so it is flagged until PLATFORM_KEK is deleted. Names the kid, never key material.
+  if (
+    str(env, "PLATFORM_KEK_KEYS") !== null &&
+    str(env, "PLATFORM_KEK") !== null
+  )
+    out.push({
+      code: "kek_legacy_open_only",
+      message: `PLATFORM_KEK is set alongside PLATFORM_KEK_KEYS, so it stays in the ring as the legacy key ${legacyKekId(env)}, open-only: new values are sealed under PLATFORM_KEK_ACTIVE. Re-seal with the sweep, then delete PLATFORM_KEK once the Keyring section says it is safe to.`,
+      names: ["PLATFORM_KEK"],
     });
   if (str(env, "PORTAL_SESSION_SECRET") === null)
     out.push({

@@ -938,6 +938,68 @@ describe("Keyring", () => {
     expect(within(keyring).queryAllByRole("button")).toEqual([]);
   });
 
+  it("shows PLATFORM_KEK beside the ring as the legacy key, open only, until nothing is under it", async () => {
+    const legacyKek = {
+      ok: true,
+      active: "kek-2",
+      kids: ["kek-2", "default"],
+      counts: {
+        keys: { "kek-2": 3, default: 2 },
+        platformCredentials: { default: 1 },
+      },
+      remaining: 3,
+      unopenable: 0,
+      legacy: {
+        kid: "default",
+        openOnly: true,
+        remaining: 3,
+        workerSecrets: ["SIGNIN_STEAM_WEB_API_KEY"],
+        safeToDelete: false,
+      },
+    };
+    boot("#/platform/settings", {
+      extra: routes({ "/manage/api/products/kek": legacyKek }),
+    });
+    const keyring = await section("Keyring");
+    const ring = await within(keyring).findByRole("list", {
+      name: "Keys in the ring",
+    });
+    const legacyRow = within(ring)
+      .getAllByRole("listitem")
+      .find((li) => li.textContent?.includes("default"))!;
+    expect(within(legacyRow).getByText("Legacy, open only")).toBeTruthy();
+    expect(within(keyring).getByText("3 still under default")).toBeTruthy();
+    expect(within(keyring).getByText("SIGNIN_STEAM_WEB_API_KEY")).toBeTruthy();
+    // The store-credential bucket is labelled, not shown by its API name.
+    expect(
+      within(keyring).getByText("Store connection credentials"),
+    ).toBeTruthy();
+    const results = await axe(keyring);
+    expect(results.violations.map((v) => v.id)).toEqual([]);
+  });
+
+  it("says when PLATFORM_KEK can be deleted", async () => {
+    boot("#/platform/settings", {
+      extra: routes({
+        "/manage/api/products/kek": {
+          ...KEK,
+          kids: ["kek-1", "kek-2", "default"],
+          legacy: {
+            kid: "default",
+            openOnly: true,
+            remaining: 0,
+            workerSecrets: [],
+            safeToDelete: true,
+          },
+        },
+      }),
+    });
+    const keyring = await section("Keyring");
+    expect(
+      await within(keyring).findByText("Safe to delete PLATFORM_KEK"),
+    ).toBeTruthy();
+  });
+
   it("says when the keyring is unusable", async () => {
     boot("#/platform/settings", {
       extra: routes({

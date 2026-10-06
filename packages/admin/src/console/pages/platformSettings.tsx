@@ -248,6 +248,7 @@ const SECTIONS = [
 const WARNING_TITLES: Record<string, string> = {
   console_oidc_shared: "The console shares the customer sign-in client",
   kek_id_set: "PLATFORM_KEK_ID is set",
+  kek_legacy_open_only: "PLATFORM_KEK is kept as a legacy key",
   portal_session_secret_unset: "Portal sessions share the admin secret",
 };
 
@@ -1505,7 +1506,7 @@ const KEK_GROUPS: Record<string, string> = {
   secrets: "Product secrets",
   outletCredentials: "Outlet credentials",
   managed: "Managed secret values",
-  platform: "Store connection credentials",
+  platformCredentials: "Store connection credentials",
 };
 
 function KeyringSection({
@@ -1601,6 +1602,7 @@ function KeyringSection({
             <ul className="space-y-1.5" aria-label="Keys in the ring">
               {[...new Set([...k.kids, ...perKid.keys()])].map((kid) => {
                 const inRing = k.kids.includes(kid);
+                const legacyOnly = k.legacy?.kid === kid && k.legacy.openOnly;
                 return (
                   <li
                     key={kid}
@@ -1614,6 +1616,10 @@ function KeyringSection({
                       {kid === k.active ? (
                         <StatusPill tone="success" size="sm">
                           Active
+                        </StatusPill>
+                      ) : legacyOnly ? (
+                        <StatusPill tone="warning" size="sm">
+                          Legacy, open only
                         </StatusPill>
                       ) : inRing ? (
                         <StatusPill tone="neutral" size="sm">
@@ -1647,6 +1653,7 @@ function KeyringSection({
               </StatusPill>
             )}
           </SettingsRow>
+          {k.legacy ? <LegacyKeyRow legacy={k.legacy} /> : null}
           {groups.length > 0 ? (
             <SettingsRow label="Sealed values" align="block">
               <ul className="space-y-1.5">
@@ -1669,6 +1676,62 @@ function KeyringSection({
         </>
       )}
     </SettingsSection>
+  );
+}
+
+/**
+ * The legacy `PLATFORM_KEK` beside `PLATFORM_KEK_KEYS`: what is still sealed under it, and
+ * whether `PLATFORM_KEK` can be deleted yet. The sweep moves the stored values; sealed Worker
+ * secrets are re-sealed by hand, so they are named.
+ */
+function LegacyKeyRow({
+  legacy,
+}: {
+  legacy: NonNullable<PlatformKekStatus["legacy"]>;
+}): React.ReactElement {
+  return (
+    <SettingsRow label="Legacy key" align="block">
+      <div className="space-y-2">
+        <p className="text-sm text-fg-muted">
+          {legacy.openOnly ? (
+            <>
+              PLATFORM_KEK is kept in the ring as{" "}
+              <span className="font-mono text-xs text-fg">{legacy.kid}</span>,
+              open only: nothing new is sealed under it.
+            </>
+          ) : (
+            <>
+              PLATFORM_KEK is a copy of the ring&apos;s{" "}
+              <span className="font-mono text-xs text-fg">{legacy.kid}</span>{" "}
+              key.
+            </>
+          )}
+        </p>
+        {legacy.safeToDelete ? (
+          <StatusPill tone="success">Safe to delete PLATFORM_KEK</StatusPill>
+        ) : legacy.remaining > 0 ? (
+          <StatusPill tone="warning">
+            {formatCount(legacy.remaining)} still under {legacy.kid}
+          </StatusPill>
+        ) : (
+          <StatusPill tone="warning">
+            Worker secrets still under {legacy.kid}
+          </StatusPill>
+        )}
+        {legacy.workerSecrets.length > 0 ? (
+          <p className="text-sm text-fg-muted">
+            Re-seal and set again before deleting it:{" "}
+            {legacy.workerSecrets.map((name, i) => (
+              <React.Fragment key={name}>
+                {i > 0 ? ", " : null}
+                <span className="font-mono text-xs text-fg">{name}</span>
+              </React.Fragment>
+            ))}
+            .
+          </p>
+        ) : null}
+      </div>
+    </SettingsRow>
   );
 }
 
@@ -1703,7 +1766,9 @@ function PresenceItem({
 // ── Secrets ──────────────────────────────────────────────────────────────────────────────────
 
 const SECRET_NOTES: Record<string, { what: string; unset?: string }> = {
-  PLATFORM_KEK: { what: "Single platform KEK (legacy form of the ring)" },
+  PLATFORM_KEK: {
+    what: "Single platform KEK (legacy form of the ring; open only beside PLATFORM_KEK_KEYS)",
+  },
   PLATFORM_KEK_KEYS: { what: "Platform KEK ring" },
   KEY_HASH_PEPPER: { what: "Pepper for license key and token hashes" },
   ADMIN_SESSION_SECRET: { what: "Console session signing" },

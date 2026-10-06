@@ -251,15 +251,22 @@ export interface Env {
   //     PLATFORM_KEK    = "<base64 of 32 bytes>"
   //     PLATFORM_KEK_ID = "default"   ← OPTIONAL, and DANGEROUS to change on its own
   //
+  //   both (the rotation path when nobody holds the current PLATFORM_KEK): the ring is
+  //   PLATFORM_KEK_KEYS, plus PLATFORM_KEK under its legacy kid for OPENING ONLY. New seals use
+  //   PLATFORM_KEK_ACTIVE, which must be a PLATFORM_KEK_KEYS entry. The same kid in both with
+  //   different bytes fails closed. RUNBOOK § "Rotating when the old KEK is unknown".
+  //
   /**
-   * Legacy single platform KEK: base64 of 32 random bytes. Ignored when PLATFORM_KEK_KEYS
-   * is set.
+   * Legacy single platform KEK: base64 of 32 random bytes. On its own it is the whole ring.
+   * Beside PLATFORM_KEK_KEYS it is the legacy key: open-only, under the kid PLATFORM_KEK_ID
+   * names, kept until the sweep has re-sealed every value under it, then deleted.
    * @inventory secret keyring
    */
   PLATFORM_KEK?: string;
   /**
-   * The kid stamped into blobs sealed under the legacy `PLATFORM_KEK`. Defaults to
-   * `"default"`, which is the kid every pre-keyring blob carries.
+   * The kid stamped into blobs sealed under the legacy `PLATFORM_KEK`, and the kid that key opens
+   * under when it sits beside `PLATFORM_KEK_KEYS`. Defaults to `"default"`, which is the kid every
+   * pre-keyring blob carries.
    *
    * DO NOT set this to rotate a KEK: it renames the kid `seal` writes AND the only kid the
    * legacy shape can open, so every existing blob becomes unopenable and every product route

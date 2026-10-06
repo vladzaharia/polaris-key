@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { signJws, verifyJws } from "@polaris-key/jws";
 import type { Env } from "../src/env.js";
 import type { Db, DbParam } from "../src/db/types.js";
@@ -32,6 +32,8 @@ import {
 } from "../src/admin/session.js";
 import { loadProduct } from "../src/core/products.js";
 import { getProductSecret, listAudit, listPlatformAudit } from "../src/repo.js";
+import { signInSecretContext } from "../src/services/identity/providers/config.js";
+import { sealSignInSecret } from "../scripts/seal-signin-secret.js";
 
 const env = { PLATFORM_KEK: TEST_KEK } as unknown as Env;
 const ctx = { product: "djdl", kind: "signing-key", id: "kid-1" } as const;
@@ -241,6 +243,213 @@ describe("keyvault KEK keyring (R2-09)", () => {
   });
 });
 
+/** A ring that ALSO carries the legacy `PLATFORM_KEK` (the "old KEK is unknown" rotation). */
+function ringWithLegacy(
+  active: string,
+  keys: Record<string, string>,
+  legacy: string,
+  legacyId?: string,
+): Env {
+  return {
+    PLATFORM_KEK_KEYS: JSON.stringify(keys),
+    PLATFORM_KEK_ACTIVE: active,
+    PLATFORM_KEK: legacy,
+    ...(legacyId === undefined ? {} : { PLATFORM_KEK_ID: legacyId }),
+  } as unknown as Env;
+}
+
+/** Assert `p` rejects with `pattern` and that the message names no key material. */
+async function rejectsWithoutKeyMaterial(
+  p: Promise<unknown>,
+  pattern: RegExp,
+): Promise<void> {
+  let message = "";
+  try {
+    await p;
+  } catch (e) {
+    message = e instanceof Error ? e.message : String(e);
+  }
+  expect(message).toMatch(pattern);
+  // Compared as booleans so a failure can never print the key into the test output.
+  for (const key of [KEK_OLD, KEK_NEW, KEK_THIRD])
+    expect(message.includes(key)).toBe(false);
+}
+
+describe("keyvault: PLATFORM_KEK beside PLATFORM_KEK_KEYS (legacy key, open-only)", () => {
+  it("opens a blob sealed under the legacy key while the ring is active", async () => {
+    // Sealed exactly as today's single-key deployment seals: kid `default`, under PLATFORM_KEK.
+    const legacyBlob = await seal(env, "old-secret", ctx);
+    const both = ringWithLegacy("k2", { k2: KEK_NEW }, KEK_OLD);
+    expect(await open(both, legacyBlob, ctx)).toBe("old-secret");
+    // Without PLATFORM_KEK the same ring cannot: the legacy key is what opens it.
+    await expect(
+      open(ring("k2", { k2: KEK_NEW }), legacyBlob, ctx),
+    ).rejects.toThrow("sealed value uses unavailable KEK default");
+  });
+
+  it("seals new values under the active kid, never the legacy key", async () => {
+    const both = ringWithLegacy("k2", { k2: KEK_NEW }, KEK_OLD);
+    const sealed = await seal(both, "new-secret", ctx);
+    expect(JSON.parse(sealed)).toMatchObject({ v: 2, kekId: "k2" });
+    // Sealed with KEK_NEW: it opens under the new key alone, with PLATFORM_KEK gone.
+    expect(await open(ring("k2", { k2: KEK_NEW }), sealed, ctx)).toBe(
+      "new-secret",
+    );
+    expect(await open(both, sealed, ctx)).toBe("new-secret");
+  });
+
+  it("refuses PLATFORM_KEK_ACTIVE naming the legacy kid: the legacy key never seals", async () => {
+    const legacyActive = ringWithLegacy("default", { k2: KEK_NEW }, KEK_OLD);
+    await expect(seal(legacyActive, "value", ctx)).rejects.toThrow(
+      "PLATFORM_KEK_ACTIVE is not in PLATFORM_KEK_KEYS",
+    );
+    await expect(describeKeyring(legacyActive)).rejects.toThrow(
+      "PLATFORM_KEK_ACTIVE is not in PLATFORM_KEK_KEYS",
+    );
+  });
+
+  it("describes the legacy key as legacy and open-only", async () => {
+    expect(
+      await describeKeyring(ringWithLegacy("k2", { k2: KEK_NEW }, KEK_OLD)),
+    ).toEqual({
+      active: "k2",
+      kids: ["k2", "default"],
+      legacy: { kid: "default", openOnly: true },
+    });
+  });
+
+  it("keeps the legacy kid PLATFORM_KEK_ID names", async () => {
+    const named = {
+      PLATFORM_KEK: KEK_OLD,
+      PLATFORM_KEK_ID: "k1",
+    } as unknown as Env;
+    const blob = await seal(named, "value", ctx);
+    const both = ringWithLegacy("k2", { k2: KEK_NEW }, KEK_OLD, "k1");
+    expect(await open(both, blob, ctx)).toBe("value");
+    expect(await describeKeyring(both)).toEqual({
+      active: "k2",
+      kids: ["k2", "k1"],
+      legacy: { kid: "k1", openOnly: true },
+    });
+  });
+
+  it("accepts the legacy kid in PLATFORM_KEK_KEYS when the bytes match", async () => {
+    const legacyBlob = await seal(env, "value", ctx);
+    // Same 32 bytes, spelled without padding: equal keys are compared as bytes, not strings.
+    const same = ringWithLegacy(
+      "k2",
+      { default: KEK_OLD.replace(/=+$/, ""), k2: KEK_NEW },
+      KEK_OLD,
+    );
+    expect(await describeKeyring(same)).toEqual({
+      active: "k2",
+      kids: ["default", "k2"],
+      legacy: { kid: "default", openOnly: false },
+    });
+    expect(await open(same, legacyBlob, ctx)).toBe("value");
+    expect(JSON.parse(await seal(same, "value", ctx))).toMatchObject({
+      kekId: "k2",
+    });
+  });
+
+  it("fails closed when PLATFORM_KEK_KEYS holds the legacy kid with different bytes", async () => {
+    const legacyBlob = await seal(env, "value", ctx);
+    const conflict =
+      /both define kid default with different keys; refusing to choose/;
+    for (const active of ["default", "k2"]) {
+      const bad = ringWithLegacy(
+        active,
+        { default: KEK_NEW, k2: KEK_THIRD },
+        KEK_OLD,
+      );
+      // Never silently one or the other: not for sealing, opening or describing.
+      await rejectsWithoutKeyMaterial(seal(bad, "value", ctx), conflict);
+      await rejectsWithoutKeyMaterial(open(bad, legacyBlob, ctx), conflict);
+      await rejectsWithoutKeyMaterial(describeKeyring(bad), conflict);
+    }
+  });
+
+  it("fails closed on a malformed PLATFORM_KEK beside a valid ring", async () => {
+    const bad = ringWithLegacy("k2", { k2: KEK_NEW }, btoa("short-kek"));
+    await expect(seal(bad, "value", ctx)).rejects.toThrow(
+      "PLATFORM_KEK must decode to exactly 32 bytes",
+    );
+  });
+});
+
+describe("keyvault: the single shapes are unchanged", () => {
+  // Recorded from the keyvault before the legacy key could sit beside a ring, with the IV pinned
+  // to 0..11: either single shape must produce these exact bytes.
+  const GOLDEN_LEGACY =
+    '{"v":2,"kekId":"default","iv":"AAECAwQFBgcICQoL","ct":"76RfNmWT4efchwQX0BHmfQQKfjWJJg"}';
+  const GOLDEN_RING =
+    '{"v":2,"kekId":"k2","iv":"AAECAwQFBgcICQoL","ct":"3Mn5QkWQAqOtLy7I0Alf4Ujh6Hglpg"}';
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function pinIv(): void {
+    vi.spyOn(crypto, "getRandomValues").mockImplementation(((
+      arr: Uint8Array,
+    ) => {
+      for (let i = 0; i < arr.length; i++) arr[i] = i;
+      return arr;
+    }) as typeof crypto.getRandomValues);
+  }
+
+  it("PLATFORM_KEK alone seals, opens and describes byte-for-byte as before", async () => {
+    pinIv();
+    expect(await seal(env, "golden", ctx)).toBe(GOLDEN_LEGACY);
+    expect(await open(env, GOLDEN_LEGACY, ctx)).toBe("golden");
+    const described = await describeKeyring(env);
+    expect(JSON.stringify(described)).toBe(
+      '{"active":"default","kids":["default"]}',
+    );
+  });
+
+  it("PLATFORM_KEK_KEYS alone seals, opens and describes byte-for-byte as before", async () => {
+    pinIv();
+    const only = ring("k2", { k2: KEK_NEW });
+    expect(await seal(only, "golden", ctx)).toBe(GOLDEN_RING);
+    expect(await open(only, GOLDEN_RING, ctx)).toBe("golden");
+    expect(JSON.stringify(await describeKeyring(only))).toBe(
+      '{"active":"k2","kids":["k2"]}',
+    );
+    // …and still never consults a kid it does not list.
+    await expect(open(only, GOLDEN_LEGACY, ctx)).rejects.toThrow(
+      "sealed value uses unavailable KEK default",
+    );
+  });
+});
+
+describe("signin:seal resolves the keyring as the Worker does", () => {
+  it("seals under the active kid with both shapes set, and under the legacy kid alone", async () => {
+    const both = ringWithLegacy("k2", { k2: KEK_NEW }, KEK_OLD);
+    const steam = signInSecretContext("steam-web-api-key");
+    const mid = await sealSignInSecret(both, "steam", "ABCDEF0123456789");
+    expect(mid).toMatchObject({
+      name: "SIGNIN_STEAM_WEB_API_KEY",
+      kekId: "k2",
+    });
+    // Opens once PLATFORM_KEK is gone: the operator never needs the old key to re-seal.
+    expect(await open(ring("k2", { k2: KEK_NEW }), mid.sealed, steam)).toBe(
+      "ABCDEF0123456789",
+    );
+    const legacy = await sealSignInSecret(env, "steam", "ABCDEF0123456789");
+    expect(legacy.kekId).toBe("default");
+    expect(await open(both, legacy.sealed, steam)).toBe("ABCDEF0123456789");
+    await rejectsWithoutKeyMaterial(
+      sealSignInSecret(
+        ringWithLegacy("k2", { default: KEK_NEW, k2: KEK_NEW }, KEK_OLD),
+        "steam",
+        "ABCDEF0123456789",
+      ),
+      /both define kid default with different keys/,
+    );
+  });
+});
+
 // ── the re-seal sweep: GET|POST /manage/api/products/kek ────────────────────────────────────
 
 const ADMIN_SECRET = "test-admin-session-secret";
@@ -273,6 +482,13 @@ interface KekResponse {
   skipped?: number;
   failed?: number;
   failures?: { table: string; product: string; id: string; message: string }[];
+  legacy?: {
+    kid: string;
+    openOnly: boolean;
+    remaining: number;
+    workerSecrets: string[];
+    safeToDelete: boolean;
+  };
   message?: string;
 }
 
@@ -653,6 +869,146 @@ describe("KEK rotation sweep (GET|POST /api/products/kek)", () => {
       remaining: 0,
       unopenable: 0,
     });
+  });
+
+  it("rotates off an unknown PLATFORM_KEK: legacy blobs open, the sweep moves them, zero remain", async () => {
+    // Every seeded row is sealed under `default` with KEK_OLD — the key nobody holds. The
+    // operator adds a NEW ring and leaves PLATFORM_KEK where it is.
+    const { db, kv } = await seedSealedRows();
+    const steamCtx = signInSecretContext("steam-web-api-key");
+    const env = kekAdminEnv(kv, {
+      PLATFORM_KEK_KEYS: JSON.stringify({ k2: KEK_NEW }),
+      PLATFORM_KEK_ACTIVE: "k2",
+      PLATFORM_KEK: KEK_OLD,
+      // A sealed Worker secret under the legacy kid: the sweep cannot move it.
+      SIGNIN_STEAM_WEB_API_KEY: await seal(
+        { PLATFORM_KEK: KEK_OLD } as unknown as Env,
+        "ABCDEF0123456789",
+        steamCtx,
+      ),
+    });
+
+    const before = await kek(env, db, "GET");
+    expect(before.status).toBe(200);
+    expect(before.body).toMatchObject({
+      active: "k2",
+      kids: ["k2", "default"],
+      counts: { keys: { default: 2 }, secrets: { default: 2 } },
+      remaining: 4,
+      unopenable: 0,
+      legacy: {
+        kid: "default",
+        openOnly: true,
+        remaining: 4,
+        workerSecrets: ["SIGNIN_STEAM_WEB_API_KEY"],
+        safeToDelete: false,
+      },
+    });
+    // The platform serves throughout: the legacy blobs still open.
+    expect(await loadProduct(env, db, "djdl")).not.toBeNull();
+    expect(await openSecret(env, db, "acme", "MINTER_KEY")).toBe(
+      "acme-minter-key",
+    );
+
+    // Bounded and resumable…
+    const first = await kek(env, db, "POST", { body: { limit: 1 } });
+    expect(first.body).toMatchObject({
+      resealed: 1,
+      failed: 0,
+      remaining: 3,
+      legacy: { remaining: 3, safeToDelete: false },
+    });
+    const rest = await kek(env, db, "POST", { body: { limit: 200 } });
+    expect(rest.body).toMatchObject({
+      resealed: 3,
+      failed: 0,
+      remaining: 0,
+      unopenable: 0,
+      counts: { keys: { k2: 2 }, secrets: { k2: 2 } },
+      legacy: { kid: "default", remaining: 0 },
+    });
+    // …and idempotent.
+    expect((await kek(env, db, "POST")).body).toMatchObject({
+      resealed: 0,
+      skipped: 0,
+      remaining: 0,
+      legacy: { remaining: 0 },
+    });
+
+    // Zero D1 values left under the legacy kid, but a Worker secret still is: not yet safe.
+    expect((await kek(env, db, "GET")).body.legacy).toEqual({
+      kid: "default",
+      openOnly: true,
+      remaining: 0,
+      workerSecrets: ["SIGNIN_STEAM_WEB_API_KEY"],
+      safeToDelete: false,
+    });
+    // Re-sealed with signin:seal under the new ring (no old key needed) and set again.
+    const resealed = await sealSignInSecret(env, "steam", "ABCDEF0123456789");
+    expect(resealed.kekId).toBe("k2");
+    (env as Record<string, unknown>).SIGNIN_STEAM_WEB_API_KEY = resealed.sealed;
+    expect((await kek(env, db, "GET")).body.legacy).toEqual({
+      kid: "default",
+      openOnly: true,
+      remaining: 0,
+      workerSecrets: [],
+      safeToDelete: true,
+    });
+
+    // `wrangler secret delete PLATFORM_KEK`: nothing referenced it, so nothing breaks.
+    delete (env as Record<string, unknown>).PLATFORM_KEK;
+    const after = await kek(env, db, "GET");
+    expect(after.body).toMatchObject({
+      active: "k2",
+      kids: ["k2"],
+      remaining: 0,
+      unopenable: 0,
+    });
+    expect(after.body.legacy).toBeUndefined();
+    expect(await loadProduct(env, db, "djdl")).not.toBeNull();
+    expect(await openSecret(env, db, "djdl", "OIDC_SECRET")).toBe(
+      "djdl-oidc-secret",
+    );
+    expect(
+      await open(env, env.SIGNIN_STEAM_WEB_API_KEY as string, steamCtx),
+    ).toBe("ABCDEF0123456789");
+  });
+
+  it("reports the legacy key as safe to delete at once when PLATFORM_KEK_KEYS holds the same key", async () => {
+    const { db, kv } = await seedSealedRows();
+    const env = kekAdminEnv(kv, {
+      PLATFORM_KEK_KEYS: JSON.stringify({ default: KEK_OLD, k2: KEK_NEW }),
+      PLATFORM_KEK_ACTIVE: "k2",
+      PLATFORM_KEK: KEK_OLD,
+    });
+    expect((await kek(env, db, "GET")).body).toMatchObject({
+      kids: ["default", "k2"],
+      remaining: 4,
+      legacy: {
+        kid: "default",
+        openOnly: false,
+        remaining: 4,
+        safeToDelete: true,
+      },
+    });
+  });
+
+  it("answers 503 naming the kid when PLATFORM_KEK and PLATFORM_KEK_KEYS disagree on it", async () => {
+    const { db, kv } = await seedSealedRows();
+    const env = kekAdminEnv(kv, {
+      PLATFORM_KEK_KEYS: JSON.stringify({ default: KEK_NEW }),
+      PLATFORM_KEK_ACTIVE: "default",
+      PLATFORM_KEK: KEK_OLD,
+    });
+    const res = await kek(env, db, "GET");
+    expect(res.status).toBe(503);
+    expect(res.body.message).toMatch(
+      /both define kid default with different keys/,
+    );
+    for (const key of [KEK_OLD, KEK_NEW])
+      expect(JSON.stringify(res.body).includes(key)).toBe(false);
+    // Nothing was swept, so nothing was destroyed.
+    expect((await kek(env, db, "POST")).status).toBe(503);
   });
 
   it("surfaces an unusable keyring as 503, not a silent platform-wide 404", async () => {

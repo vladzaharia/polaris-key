@@ -407,6 +407,8 @@ PKEY_ENVIRONMENT = "test"
 #   PLATFORM_OIDC_ISSUER, PLATFORM_OIDC_CLIENT_ID, PLATFORM_OIDC_CLIENT_SECRET.
 # The KEK keyring (rotation-capable; replaces PLATFORM_KEK, written in ONE `wrangler secret bulk`):
 #   PLATFORM_KEK_KEYS, PLATFORM_KEK_ACTIVE. PLATFORM_KEK_ID stays unset (src/env.ts says why).
+#   A PLATFORM_KEK left beside them is the legacy key, open-only, until the re-seal sweep has
+#   moved every value off it; then delete it (RUNBOOK "Rotating when the old KEK is unknown").
 # Optional portal-specific secret:
 #   PORTAL_SESSION_SECRET (falls back to ADMIN_SESSION_SECRET when omitted).
 # Portal licensed downloads (PX-W3; optional, without it licensed R2-only files stay not_hosted):

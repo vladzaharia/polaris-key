@@ -560,6 +560,51 @@ describe("GET /manage/api/platform/settings", () => {
     expect(secrets.PLATFORM_STEAM_PUBLISHER_KEY).toBe(false);
   });
 
+  it("flags PLATFORM_KEK beside PLATFORM_KEK_KEYS as the legacy key, open-only, by kid", async () => {
+    const ring = JSON.stringify({ k2: btoa("\u0001".repeat(32)) });
+    const both = adminEnv({
+      PLATFORM_KEK_KEYS: ring,
+      PLATFORM_KEK_ACTIVE: "k2",
+      PORTAL_SESSION_SECRET: "portal-secret",
+    });
+    const { body } = await call(both, makeTestDb(), "/api/platform/settings");
+    const legacy = (body.warnings as any[]).find(
+      (w) => w.code === "kek_legacy_open_only",
+    );
+    expect(legacy.names).toEqual(["PLATFORM_KEK"]);
+    expect(legacy.message).toMatch(/legacy key default, open-only/);
+    // A kid name, never the key itself.
+    expect(legacy.message.includes(both.PLATFORM_KEK as string)).toBe(false);
+    expect(legacy.message.includes(ring)).toBe(false);
+
+    const named = adminEnv({
+      PLATFORM_KEK_KEYS: ring,
+      PLATFORM_KEK_ACTIVE: "k2",
+      PLATFORM_KEK_ID: "k1",
+    });
+    const viaId = await call(named, makeTestDb(), "/api/platform/settings");
+    expect(
+      (viaId.body.warnings as any[]).find(
+        (w) => w.code === "kek_legacy_open_only",
+      ).message,
+    ).toMatch(/legacy key k1, open-only/);
+
+    // Either single shape on its own is not flagged.
+    for (const single of [
+      adminEnv(),
+      adminEnv({
+        PLATFORM_KEK: undefined,
+        PLATFORM_KEK_KEYS: ring,
+        PLATFORM_KEK_ACTIVE: "k2",
+      }),
+    ]) {
+      const r = await call(single, makeTestDb(), "/api/platform/settings");
+      expect((r.body.warnings as any[]).map((w) => w.code)).not.toContain(
+        "kek_legacy_open_only",
+      );
+    }
+  });
+
   it("warns while the console borrows the platform client, on a set PLATFORM_KEK_ID and on an unset PORTAL_SESSION_SECRET", async () => {
     const env = adminEnv({
       PLATFORM_OIDC_ISSUER: "https://id.example",

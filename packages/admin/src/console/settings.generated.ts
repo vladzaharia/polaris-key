@@ -893,9 +893,10 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
     shows: "Platform → Settings (the read-only inventory)",
   },
   {
-    thing: "Key-encryption key identity (active key id and flag)",
+    thing:
+      "Key-encryption key identity (the active key id, and the legacy key id)",
     reason:
-      "Key material (the AT-2 deny-list); rotated by the keyring runbook.",
+      "Key material (the AT-2 deny-list); rotated by the keyring runbook. PLATFORM_KEK_ID is the legacy PLATFORM_KEK's key id: beside PLATFORM_KEK_KEYS that key is legacy and open-only.",
     shows: "Platform → Settings (the KEK keyring)",
   },
   {
