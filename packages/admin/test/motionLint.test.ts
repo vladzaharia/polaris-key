@@ -13,8 +13,8 @@ import { describe, expect, it } from "vitest";
  *   3. a raw millisecond value inside a class token (`[transition-duration:150ms]`, `delay-150ms`…);
  *   4. a JSX `style` that sets `transition*`, `animation*` or `transform` (D8: motion lives in
  *      the stylesheet; dynamic values go through the CSSOM in the motion layer);
- *   5. `animate-pulse`, beyond today's sites (D6: blocks do not pulse; MO-09 and MO-10 retire the
- *      allowlisted ones and shrink the list).
+ *   5. `animate-pulse` anywhere (D6: blocks do not pulse; a loading block is a shaped
+ *      `.pk-skeleton`). MO-10 retired the last sites and emptied the allowlist.
  *
  * The repo has no ESLint (AGENTS.md rule 6), so, like the boundary check, this is a test.
  */
@@ -22,15 +22,8 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const SRC = join(here, "..", "src");
 
-/** Today's `animate-pulse` sites, by file and count (S-23 §4.3). The list may only shrink. */
-const PULSE_ALLOWLIST: Record<string, number> = {
-  "ui/charts/StatTile.tsx": 2, // MO-09
-  "console/pages/platform.tsx": 4, // MO-10
-  "console/pages/platformOperations.tsx": 1, // MO-10
-  "console/pages/platformSettings.tsx": 2, // MO-10
-  "console/pages/platformStores.tsx": 2, // MO-10
-  "console/pages/global/Home.tsx": 1, // MO-10
-};
+/** `animate-pulse` sites still allowed (S-23 §4.3). MO-10 retired the last ones; it stays empty. */
+const PULSE_ALLOWLIST: Record<string, number> = {};
 
 export interface MotionFinding {
   rule:
@@ -186,7 +179,8 @@ describe("the motion lint", () => {
     expect(bad).toEqual([]);
   });
 
-  it("allows animate-pulse only at today's sites, and the allowlist only shrinks", () => {
+  it("finds no animate-pulse (the allowlist is empty and stays so)", () => {
+    expect(PULSE_ALLOWLIST).toEqual({});
     const counts: Record<string, number> = {};
     for (const f of files) {
       const n = f.findings.filter((x) => x.rule === "animate-pulse").length;

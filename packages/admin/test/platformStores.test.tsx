@@ -739,7 +739,7 @@ describe("Store connections: states", () => {
     });
     const page = await storesPage();
     expect(within(page).queryByRole("table")).toBeNull();
-    expect(page.querySelector(".animate-pulse")).not.toBeNull();
+    expect(page.querySelector(".pk-skeleton")).not.toBeNull();
   });
 
   it("shows an error state with Retry", async () => {

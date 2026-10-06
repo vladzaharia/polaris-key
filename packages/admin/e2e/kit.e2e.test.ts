@@ -459,15 +459,15 @@ async function readExitProbe(page: Page): Promise<ExitRecord[]> {
 }
 
 /**
- * Animations still running on the page, aside from the spinners (loading indicators that keep
- * turning) and the gallery's legacy `animate-pulse` skeletons (allowlisted until MO-09).
+ * Animations still running on the page, aside from the loading indicators that loop by design:
+ * the spinners and the skeleton sheen (`pk-shimmer`, gone under reduced motion).
  */
 const running = (page: Page): Promise<string[]> =>
   page.evaluate(() =>
     document
       .getAnimations()
       .map((a) => (a as CSSAnimation).animationName ?? "")
-      .filter((n) => !/spin/.test(n) && n !== "pulse"),
+      .filter((n) => !/spin/.test(n) && n !== "pk-shimmer"),
   );
 
 /**

@@ -341,12 +341,7 @@ const CONNECTOR_LABEL: Record<string, string> = {
 const connectorLabel = (c: string): string => CONNECTOR_LABEL[c] ?? c;
 
 function Skeleton({ className }: { className: string }): React.ReactElement {
-  return (
-    <div
-      aria-hidden
-      className={`animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none ${className}`}
-    />
-  );
+  return <div aria-hidden className={`pk-skeleton rounded-md ${className}`} />;
 }
 
 function Unavailable({ what }: { what: string }): React.ReactElement {
