@@ -23,8 +23,9 @@
  *
  * The plan (`planRepoManifest`) has the shape S-18 §4.5 gives ST-17's resync dry run
  * (`apply`, `skipClaimed`, `delete`, `conflicts`) and reads the same ownership columns
- * `applyRepoManifest` honours, so it says what that function will do. ST-17 makes resync, the
- * webhook and the deploy hook record it too.
+ * `applyRepoManifest` honours, so it says what that function will do. The console's Resync
+ * confirm renders it through `planResync` (`POST …/release/resync?dryRun=1`, UX-78). ST-17 makes
+ * resync, the webhook and the deploy hook record it too.
  */
 
 import { Catalog } from "@polaris-key/catalog";
@@ -258,35 +259,8 @@ export async function prepareLink(
 
   // The refusals `applyRepoManifest` reaches only after its first write, run here first so a
   // link either applies whole or not at all.
-  const binaryName = manifest.release?.binaryName || repo;
-  if (manifest.release && !isSafeBinaryName(binaryName))
-    return refuse(
-      "policy",
-      `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`,
-    );
-  if (manifest.oidc?.provider === "custom") {
-    const stored = await db.first<{ issuer: string | null }>(
-      "SELECT issuer FROM oidc_config WHERE product = ?",
-      slug,
-    );
-    if ((stored?.issuer ?? "") !== manifest.oidc.issuer) {
-      const refusal = manifestIssuerRefusal(env, manifest.oidc.issuer);
-      if (refusal) return refuse("policy", refusal);
-    }
-  }
-  // Screened only when it changed, as resync does: an unchanged catalog is already stored and
-  // resync will not publish it again.
-  const active = await getActiveSchema(db, slug);
-  try {
-    const catalog = new Catalog(manifest.catalog as never);
-    if (active?.catalog_json !== JSON.stringify(manifest.catalog))
-      catalog.compileAll();
-  } catch (e) {
-    return refuse(
-      "policy",
-      `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
-    );
-  }
+  const policy = await manifestPolicyRefusal(env, db, slug, repo, manifest);
+  if (policy) return refuse("policy", policy.summary);
 
   const plan = await planRepoManifest(db, slug, manifest);
   plan.apply.unshift({
@@ -433,6 +407,140 @@ export async function linkExistingProduct(
     ...(applied.packSets ? { packSets: applied.packSets } : {}),
     remainingSecrets: prepared.remainingSecrets,
   };
+}
+
+/**
+ * The refusals `applyRepoManifest` reaches only after its first write (an unsafe binary name, a
+ * custom issuer outside the allowlist, a catalog the validator refuses), checked up front and
+ * writing nothing. `null` when the manifest passes all three. Link refuses on one; the resync
+ * dry run lists it as what blocks the resync.
+ */
+async function manifestPolicyRefusal(
+  env: Env,
+  db: Db,
+  slug: string,
+  repo: string,
+  manifest: ParsedManifest,
+): Promise<PlanItem | null> {
+  const binaryName = manifest.release?.binaryName || repo;
+  if (manifest.release && !isSafeBinaryName(binaryName))
+    return {
+      area: "release",
+      summary: `unsafe binary name ${JSON.stringify(binaryName)}; set release.binaryName to match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`,
+    };
+  if (manifest.oidc?.provider === "custom") {
+    const stored = await db.first<{ issuer: string | null }>(
+      "SELECT issuer FROM oidc_config WHERE product = ?",
+      slug,
+    );
+    if ((stored?.issuer ?? "") !== manifest.oidc.issuer) {
+      const refusal = manifestIssuerRefusal(env, manifest.oidc.issuer);
+      if (refusal) return { area: "oidc", summary: refusal };
+    }
+  }
+  // Screened only when it changed, as resync does: an unchanged catalog is already stored and
+  // resync will not publish it again.
+  const active = await getActiveSchema(db, slug);
+  try {
+    const catalog = new Catalog(manifest.catalog as never);
+    if (active?.catalog_json !== JSON.stringify(manifest.catalog))
+      catalog.compileAll();
+  } catch (e) {
+    return {
+      area: "catalog",
+      summary: `invalid catalog in manifest: ${e instanceof Error ? e.message : "unknown error"}`,
+    };
+  }
+  return null;
+}
+
+/** The resync dry run's answer (`POST …/release/resync?dryRun=1`, UX-78, S-18 §4.5 item 4). */
+export type PlannedResync =
+  | {
+      ok: true;
+      /** `owner/repo`, from the product's stored coordinates. */
+      repository: string;
+      /** The default-branch commit the files were read at. */
+      commit: string;
+      plan: ManifestPlan;
+    }
+  | LinkRefusal;
+
+/**
+ * What a resync of `slug` would do now: the manifest read exactly as `resyncRepo` reads it (one
+ * pinned commit of the default branch), its pre-write refusals, and `planRepoManifest`'s plan.
+ * Writes nothing: no sync state, no audit row, no snapshot. A refusal that the resync itself
+ * would answer with (the product not linked, GitHub unreachable, the manifest invalid or not
+ * this product's) refuses here too, naming the check; a policy refusal or a dropped row still in
+ * use is a `conflicts` item, since that is what blocks the resync.
+ */
+export async function planResync(
+  env: Env,
+  db: Db,
+  slug: string,
+  now: number,
+  fetchImpl: FetchImpl = fetch,
+): Promise<PlannedResync> {
+  const product = await getProduct(db, slug);
+  if (!product) return refuse("product", "unknown product");
+  if (product.release_source !== "github")
+    return refuse("product", "product is not linked to a repo");
+  const cfg = await getReleaseConfig(db, slug);
+  if (!cfg || !cfg.gh_owner || !cfg.gh_repo)
+    return refuse("product", "product has no linked repo coordinates");
+  const owner = cfg.gh_owner;
+  const repo = cfg.gh_repo;
+
+  let token: string;
+  try {
+    const installId =
+      cfg.gh_installation_id ??
+      (await discoverInstallation(env, owner, repo, now, fetchImpl));
+    token = await getInstallationToken(
+      env,
+      { owner, repo },
+      installId,
+      now,
+      fetchImpl,
+    );
+  } catch (err) {
+    return refuse(
+      "app",
+      err instanceof Error ? err.message : "github access failed",
+    );
+  }
+
+  let files: Record<string, string>;
+  let commit: string;
+  try {
+    ({ files, sha: commit } = await fetchPinnedManifestFiles(
+      token,
+      owner,
+      repo,
+      fetchImpl,
+    ));
+  } catch (err) {
+    return refuse(
+      "manifest",
+      err instanceof Error ? err.message : "github manifest fetch failed",
+    );
+  }
+  const result = parseManifest(files, {
+    reservedNames: await reservedNamesMode(env, db),
+  });
+  if (!result.ok)
+    return refuse("manifest", "manifest validation failed", result.errors);
+  const manifest = result.manifest;
+  if (manifest.product.slug !== slug)
+    return refuse(
+      "slug",
+      `manifest slug ${manifest.product.slug} does not match product ${slug}`,
+    );
+
+  const plan = await planRepoManifest(db, slug, manifest);
+  const policy = await manifestPolicyRefusal(env, db, slug, repo, manifest);
+  if (policy) plan.conflicts.unshift(policy);
+  return { ok: true, repository: `${owner}/${repo}`, commit, plan };
 }
 
 /** The distinct secret NAMES a manifest references (OIDC, edge-mint, provisioning hooks). */
