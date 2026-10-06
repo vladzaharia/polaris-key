@@ -25,6 +25,10 @@ import { matchRoute } from "../src/router.js";
 import { CORS_SERVICE_PATHS, isCorsCoveredRoute } from "../src/core/cors.js";
 import { REGISTRY_OWNERLESS_ROUTES, REGISTRY_ROUTES } from "../src/mount.js";
 import { FEED_ADAPTERS } from "../src/services/distribution/registry/index.js";
+import {
+  RELEASE_PUBLISH_OPENAPI,
+  RELEASE_REGISTRY_OPENAPI,
+} from "../src/services/release/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const spec = parseYaml(
@@ -161,6 +165,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/report", ["post"]],
   // A-18h: a CI-plane store's projection of the listing model.
   ["/{product}/distribution/listing/{store}", ["get"]],
+  // A-18i: a PR-plane generator's inputs.
+  ["/{product}/distribution/pr/{store}", ["get"]],
   // P5-02: the App Store Connect webhook (Apple → Worker, HMAC-signed).
   ["/{product}/distribution/hooks/asc", ["post"]],
   // P6-03: the Sentry alert webhook (Sentry → Worker, HMAC-signed); opens halt candidates.
@@ -209,6 +215,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/identity/auth/device/start", ["post"]],
   ["/{product}/identity/auth/device/verify", ["get", "post"]],
   ["/{product}/identity/auth/device/poll", ["post"]],
+  // I-26: the legacy sign-in's licence chooser (server-rendered HTML).
+  ["/{product}/identity/auth/choose", ["get", "post"]],
 ];
 
 /**
@@ -239,20 +247,38 @@ const ALIAS_PATHS: Array<[string, string[]]> = [
  * The feed rows are each feed adapter's own `openapi` declaration (`FeedAdapter.openapi`, the
  * feed-adapter contract): a feed adds its paths there, in its own directory, and every check
  * below runs against them unchanged. `test/feedAdapters.test.ts` checks each adapter's rows
- * against its own routes.
+ * against its own routes. F-23's push rows are Release's (`RELEASE_REGISTRY_OPENAPI`), checked
+ * the same way by `test/registryPush.test.ts`.
  */
 const REGISTRY_SERVER = "https://pkg.plrs.im";
-const REGISTRY_PATHS: Array<[string, string[], string]> = [
+/**
+ * F-22: the native publish routes (Release's, `RELEASE_PUBLISH_OPENAPI`) write to paths their
+ * feed also reads (npm's packument, Swift's release, Maven's layout), so the rows are merged by
+ * path: one row per path, with every method and every route answering it.
+ */
+function mergeRegistryRows(
+  rows: readonly (readonly [string, readonly string[], string])[],
+): Array<[string, string[], string[]]> {
+  const byPath = new Map<
+    string,
+    { methods: Set<string>; owners: Set<string> }
+  >();
+  for (const [path, methods, owner] of rows) {
+    const e = byPath.get(path) ?? { methods: new Set(), owners: new Set() };
+    for (const m of methods) e.methods.add(m);
+    e.owners.add(owner);
+    byPath.set(path, e);
+  }
+  return [...byPath].map(([path, e]) => [path, [...e.methods], [...e.owners]]);
+}
+const REGISTRY_PATHS: Array<[string, string[], string[]]> = mergeRegistryRows([
   ["/", ["get", "head"], "host"],
   ["/v2/", ["get", "head"], "host"],
-  ...FEED_ADAPTERS.flatMap((a) =>
-    a.openapi.map(([path, methods, owner]): [string, string[], string] => [
-      path,
-      [...methods],
-      owner,
-    ]),
-  ),
-];
+  ...FEED_ADAPTERS.flatMap((a) => a.openapi),
+  ...RELEASE_PUBLISH_OPENAPI,
+  // F-23: Release's push routes (native `docker push`), declared beside their code.
+  ...RELEASE_REGISTRY_OPENAPI,
+]);
 
 function specMethods(path: string): string[] {
   const entry = spec.paths[path];
@@ -362,11 +388,19 @@ describe("spec → router", () => {
 
 describe("registry host (F-02, rule 10)", () => {
   it("every registry path is documented on the registry server with tag registry", () => {
+    // One path may have several rows (F-23: the pull manifest route's GET/HEAD and the push
+    // route's PUT): the spec documents exactly their union.
+    const union = new Map<string, Set<string>>();
+    for (const [path, methods] of REGISTRY_PATHS)
+      for (const m of methods)
+        union.set(path, (union.get(path) ?? new Set()).add(m));
     for (const [path, methods] of REGISTRY_PATHS) {
       expect(spec.paths[path]?.servers, path).toEqual([
         expect.objectContaining({ url: REGISTRY_SERVER }),
       ]);
-      expect(specMethods(path).sort(), path).toEqual([...methods].sort());
+      expect(specMethods(path).sort(), path).toEqual(
+        [...union.get(path)!].sort(),
+      );
       for (const method of methods) {
         const op = spec.paths[path]![method] as { tags?: string[] };
         expect(op.tags, `${method} ${path}`).toEqual(["registry"]);
@@ -392,7 +426,9 @@ describe("registry host (F-02, rule 10)", () => {
       ...REGISTRY_OWNERLESS_ROUTES.map((r) => r.name),
     ];
     const documented = new Set(
-      REGISTRY_PATHS.map(([, , owner]) => owner).filter((o) => o !== "host"),
+      REGISTRY_PATHS.flatMap(([, , owners]) => owners).filter(
+        (o) => o !== "host",
+      ),
     );
     for (const name of routeNames)
       expect(
@@ -424,6 +460,7 @@ const CORS_EXCLUDED = new Set([
   "/{product}/identity/auth/logout",
   "/{product}/identity/auth/device",
   "/{product}/identity/auth/device/verify",
+  "/{product}/identity/auth/choose",
   "/{product}/config/mint/{mintId}/auth",
   // P2-05: CI routes, authenticated by a `pkeyci_` bearer — never called from a browser page.
   "/{product}/release/channels/{channel}/promote",
@@ -446,6 +483,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/report",
   // A-18h: the CI listing read, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/listing/{store}",
+  // A-18i: the PR-plane inputs read, authenticated by a `pkeyci_` bearer.
+  "/{product}/distribution/pr/{store}",
   // P5-02: a store webhook, called server-to-server by App Store Connect.
   "/{product}/distribution/hooks/asc",
   // P6-02: device attestation — only a native iOS or Android build can attest, never a page.

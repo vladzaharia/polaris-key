@@ -26,6 +26,14 @@ key in the activate link, Q2 here governs. The Worker emits no key, the SDK may 
 and PX-17 opens with an empty field only when no fragment is present (this reconciles PX-W9 Q2).
 Q5 amends the LX-18 and I-08 briefs. PX-10 is done, so its `next=` handling is carried by PX-17.
 
+**Sign-in alignment (2026-10-05; `docs/design/SIGN-IN.md` §3.7, `plans/I-04.md` §F).** Q5's
+sign-in seat refusal is no longer the main path: the card's LicenseChoiceStep and its inline
+**Replace a device** handle a full licence, and LX-18's `device_limit` + `manageUrl` covers only
+the bind-time race on surfaces without the card. The link's `for=` carries the PX-W13 device label
+when it is known (else the platform string). The kit button that opens `manageUrl` is **Replace a
+device**; the portal quick action it lands near is **Free a device** ("Free up a device" is
+retired, SIGN-IN.md D-49). No wire change.
+
 > **Approved by the owner (2026-10-05)**; see "Owner decisions (2026-10-05)" above. As first written: It executes
 > and narrows the approved [`plans/I-04.md`](I-04.md) for one member. It reopens none of I-04's
 > answers, apart from the rename in Q1, which needs the owner's yes. The owner decisions of S-16
@@ -66,7 +74,7 @@ Q5 amends the LX-18 and I-08 briefs. PX-10 is done, so its `next=` handling is c
 - **Two targets, both existing portal routes.**
   - A licence attached to an account gets `#/p/<slug>/free-device`. PX-10 already ships it in `FreeDevicePage.tsx`.
   - A floating licence, and every `key_entry_limit`, gets `/activate?product=<slug>`. The SDK adds the key as a fragment (Q2, Q3).
-- **One client-core helper** reads and validates the member and adds the app's `return=`. Node, React, Python, Swift, Godot and Kotlin expose it, and the four UI kits show **Free up a device** (a button, or a QR on a TV or console).
+- **One client-core helper** reads and validates the member and adds the app's `return=`. Node, React, Python, Swift, Godot and Kotlin expose it, and the four UI kits show **Replace a device** (a button, or a QR on a TV or console).
 - The order is: this plan → Worker and transcript → client-core → the six SDKs and four UI kits. I-09 and I-10a/I-10b reuse the builder and the helper.
 
 ## 2. Contract
@@ -130,7 +138,7 @@ No change to `shared-catalog` or `shared-manifest`. The return targets are the p
 **`errors.json`:** no new code, because `device_limit` exists. **Parity** (`conformance/parity/features.json`, plus the rows in all six `parity.json`):
 
 - `license.manage`: family `license`, proof `transcript` (`license-device-limit.json`). It covers `manageUrl` on `device-limit`, plus `withManageReturn` and `withManageKey`. It has no N/A, so Node and Python expose the URL headlessly. I-10a and I-10b extend its note to `key-entry-limit`.
-- `ui.kit.manage`: family `ui`, proof `snapshot`. It covers the device-limit screen with **Free up a device** (a button, or a QR on TV and console) and "Try again". It has `allowedNa` `headless` for Node and Python. I-04's `ui.kit.account` reuses the same component for the key-entry screen.
+- `ui.kit.manage`: family `ui`, proof `snapshot`. It covers the device-limit screen with **Replace a device** (a button, or a QR on TV and console) and "Try again". It has `allowedNa` `headless` for Node and Python. I-04's `ui.kit.account` reuses the same component for the key-entry screen.
 
 ## 5. SDKs and UI kits, in order (all PX-W8)
 
@@ -140,7 +148,7 @@ Each SDK replays `license-device-limit.json`, passes `parity:check` and `gen:con
 2. **Node** (`packages/sdk-node`): `ActivationResult` `device-limit` gains `manageUrl?`, read with `readManageUrl` (`license/endpoints.ts`). The helpers are re-exported. The CLI prints the link (`cli/commands.ts`).
 3. **React** (`packages/sdk-react`):
    - `browserAdapter.ts` (`session/license`) and `desktop/bridge.ts` forward the member, and `useLicense` state exposes it.
-   - `LicenseGate.tsx` and `PolarisLogin.tsx` render **Free up a device**, which opens a new tab with `return` set to `location.href` when the host declares it.
+   - `LicenseGate.tsx` and `PolarisLogin.tsx` render **Replace a device**, which opens a new tab with `return` set to `location.href` when the host declares it.
 4. **Python** (`sdks/python`): `ActivationResult.manage_url`, plus `with_manage_return` and `with_manage_key` (`license/endpoints.py`).
 5. **Swift** (`sdks/swift`):
    - `.deviceLimit(limit:deviceCount:manageURL:)`. This is source-breaking for exhaustive bindings, which the 0.x line allows with a release note.

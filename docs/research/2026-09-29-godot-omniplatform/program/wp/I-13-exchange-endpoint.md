@@ -20,13 +20,24 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 ## Owner decision (2026-10-05): licence choice at sign-in
 
-The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a licence for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a license for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
 
 **Pre-decided for this plan.** When the person has candidates,
 `POST /<p>/identity/token` answers `200 {"status":"choose","choices":LicenseChoiceView}` instead
 of binding. A follow-up call carries `choice`, with an optional `replaceDeviceId`, and goes
 through I-08's `freeAccountDevice()`. The kits gain a native **LicenseChoice** component, with
 Replace, and the in-app device list. That plan names its transcripts and all six SDKs.
+
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- `POST /<p>/identity/token` answers `200 {"status":"choose","choices":LicenseChoiceView}` with the amended view (`current`, `access`, `seats.limit: null` for Account-wide, `getLicense.keyEntry`) and takes `choice` on a follow-up call (I-04 §D, §F). The plan names its transcripts and all six SDKs.
+- Carry the device list for an in-kit Replace (the `ReplaceView` shape) so the kit's **Replace a device** expands inline like the card's; until then it opens `manageUrl`.
+- Native LicenseChoice copy is `signin.choice.*` (title "Choose a license for this device", primary **Use this license and continue**, row anatomy of SIGN-IN.md §3.6).
 
 ## Goal
 

@@ -175,6 +175,91 @@ describe("registry auth (F-21)", () => {
     );
   });
 
+  it("F-22/F-23: a publish token is minted with publish and named feeds (OCI for docker push), owner-bound only", async () => {
+    const page = feedRoutes()[
+      "/manage/api/products/djdl/distribution/feeds/tokens"
+    ] as { tokens: Record<string, unknown>[]; limits: Record<string, unknown> };
+    const minted = {
+      ok: true,
+      token: `pkeyr_${"p".repeat(43)}`,
+      view: {
+        ...page.tokens[0],
+        tokenId: "rtok_push",
+        label: "Pusher",
+        scopes: ["publish", "read"],
+        ecosystems: ["npm", "oci"],
+      },
+    };
+    const log = boot("#/p/djdl/distribution/feeds/tokens", {
+      extra: {
+        ...feedRoutes(),
+        "/manage/api/products/djdl/distribution/feeds/tokens": {
+          ...page,
+          limits: {
+            ...page.limits,
+            publishDefaultDays: 7,
+            publishMaxDays: 30,
+            publishEcosystems: ["npm", "pypi", "swift", "maven", "oci"],
+          },
+        },
+        ...product(true),
+        "POST /manage/api/products/djdl/distribution/feeds/tokens": minted,
+      },
+    });
+    await heading("Registry tokens");
+    await within(main()).findByRole("table", { name: "Registry tokens" });
+    await userEvent.click(
+      within(main()).getByRole("button", { name: /New token/ }),
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "New registry token",
+    });
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: /Label/ }),
+      "Pusher",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("radio", { name: /Read and publish/ }),
+    );
+    expect(dialog.textContent).toContain("docker push");
+    // A publish token names its feeds: none picked yet, so it cannot be created.
+    expect(dialog.textContent).toContain(
+      "Choose the feeds this token publishes to.",
+    );
+    expect(
+      (
+        within(dialog).getByRole("button", {
+          name: "Create token",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+    // Never a Godot editor URL token, and never every feed.
+    expect(
+      within(dialog).queryByRole("switch", { name: /Godot editor URL/ }),
+    ).toBeNull();
+    expect(
+      within(dialog).queryByRole("checkbox", { name: /Every feed/ }),
+    ).toBeNull();
+    await userEvent.click(
+      within(dialog).getByRole("checkbox", { name: /npm/ }),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("checkbox", { name: /OCI/ }),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create token" }),
+    );
+    await waitFor(() =>
+      expect(log.calls.find((c) => c.method === "POST")?.json).toEqual({
+        label: "Pusher",
+        binding: "owner",
+        expiresInDays: 7,
+        scopes: ["publish"],
+        ecosystems: ["npm", "oci"],
+      }),
+    );
+  });
+
   it("revoking a token is L2", async () => {
     const log = boot("#/platform/feeds/tokens", {
       extra: {
@@ -305,6 +390,8 @@ describe("the Feeds overview", () => {
       "Swift",
       "Maven / Gradle",
       "Godot",
+      "Cargo",
+      "Go",
     ]);
     expect(within(rows[0]!).getByText("Enabled")).toBeTruthy();
     expect(
@@ -313,7 +400,7 @@ describe("the Feeds overview", () => {
     expect(
       within(rows[0]!).getByRole("link", { name: "npm" }).getAttribute("href"),
     ).toBe("#/platform/feeds/npm");
-    expect(within(main()).getByText("6 of 6")).toBeTruthy();
+    expect(within(main()).getByText("8 of 8")).toBeTruthy();
     expect(
       within(main()).getByRole("heading", { name: "Owners" }),
     ).toBeTruthy();
@@ -333,6 +420,8 @@ describe("the Feeds overview", () => {
       "Swift",
       "Maven / Gradle",
       "Godot",
+      "Cargo",
+      "Go",
       "Tokens",
     ]);
     // Nothing suggests a public registry, and nothing is "coming soon".
@@ -397,7 +486,7 @@ describe("the Feeds overview", () => {
     ).toBeTruthy();
     expect(
       within(table).getAllByText("This feed has no settings yet.").length,
-    ).toBe(3);
+    ).toBe(5);
     expect(
       within(main()).queryByRole("heading", { name: "Owners" }),
     ).toBeNull();
@@ -763,13 +852,13 @@ describe("a feed page", () => {
   });
 
   it("an unknown feed is a not-found page naming it", async () => {
-    boot("#/platform/feeds/cargo", { extra: feedRoutes() });
+    boot("#/platform/feeds/cpan", { extra: feedRoutes() });
     await heading("Feed not found");
-    expect(within(main()).getByText("There is no cargo feed")).toBeTruthy();
+    expect(within(main()).getByText("There is no cpan feed")).toBeTruthy();
   });
 
   it("passes axe on Settings, ecosystem panels included", async () => {
-    for (const eco of ["maven", "swift", "godot"]) {
+    for (const eco of ["maven", "swift", "godot", "cargo"]) {
       cleanup();
       resetConsole();
       boot(`#/platform/feeds/${eco}/settings`, { extra: feedRoutes() });
@@ -796,6 +885,8 @@ describe("a feed page", () => {
       "Swift",
       "Maven / Gradle",
       "Godot",
+      "Cargo",
+      "Go",
       "Tokens",
     ]);
     expect(

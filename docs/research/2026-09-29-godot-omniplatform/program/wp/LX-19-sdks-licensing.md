@@ -5,7 +5,7 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase C: the wire)                            |
 | Size        | 1.6–2.25 engineer-weeks                                                                                   |
 | Depends on  | [LX-18](LX-18-licensing-wire.md), [LX-17](LX-17-sdk-licenseid-audit.md)                                   |
-| Unblocks    | none                                                                                                      |
+| Unblocks    | [CM-15](CM-15-sdk-purchase-handoff.md)                                                                    |
 | Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                      |
 | Plan mode   | yes: executes the approved [`plans/LX-18.md`](../plans/LX-18.md) (no separate plan)                       |
 | Gates       | plan mode; all six SDKs (`parity:check`); every conformance runner; visual baselines (both themes, phone) |

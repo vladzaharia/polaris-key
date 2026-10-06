@@ -28,6 +28,8 @@ export type SingleUseKind =
   | "admin-flow"
   /** Product OIDC sign-in, by `state`. */
   | "oidc-flow"
+  /** The legacy sign-in's licence chooser (I-26): the browser binder's hash → the flow's `state`. */
+  | "oidc-choice"
   /** RFC 8628 device-code flow, by device code. */
   | "device-flow"
   /** RFC 8628 user-code index (user code → device code), by normalised user code. */

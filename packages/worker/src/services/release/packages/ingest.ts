@@ -125,10 +125,17 @@ export interface PackageFileRow {
 
 /** Who published, for `release_packages.source_json`. */
 export interface PackageSource {
-  kind: "oidc" | "static" | "console";
+  /** `oidc` / `static`: a CI token (trusted publishing, or an operator-issued one); `console`;
+   *  `registry`: a `pkeyr_` publish token of the owner (F-22's native clients, F-23's push). */
+  kind: "oidc" | "static" | "console" | "registry";
   publisher?: string;
   runUrl?: string;
   tokenId?: string;
+  /** F-22: the native client that published (`npm`, `twine`, `swift`, `maven`); absent for
+   *  `pkey release publish`. */
+  client?: string;
+  /** F-23: the release came through a registry protocol (`docker push`), not a ticket. */
+  via?: "oci-push";
 }
 
 export interface PackageIngestOptions {

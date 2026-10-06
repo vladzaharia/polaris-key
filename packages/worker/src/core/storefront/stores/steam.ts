@@ -155,6 +155,7 @@ export const STEAM_ADAPTER: StorefrontAdapter = {
     ciTokens: [...STEAM_CI.neverTokens],
   },
   ci: STEAM_CI.list,
+  pr: null,
   listing: adapterListingProfile(STORE_LISTING_COLUMNS.steam),
   confirmation: { phrase: "app-name", label: "Steamworks" },
   audit: {

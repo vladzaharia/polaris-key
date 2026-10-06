@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                               |
 | Size        | 0.1–0.2 engineer-weeks                                                                                                                                                                   |
 | Depends on  | [PX-08](PX-08-library-api.md), [PX-W10](PX-W10-discover.md)                                                                                                                              |
-| Unblocks    | none                                                                                                                                                                                     |
+| Unblocks    | [PS-05](PS-05-storefront-portal-ui.md)                                                                                                                                                   |
 | Role        | `pkey-implementer`                                                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                                                       |
 | Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |
@@ -85,6 +85,14 @@ Discover is the second nav item ([PORTAL.md §4.16](../../../../design/PORTAL.md
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/admin test -- portal
 ```
+
+## S-21 note (2026-10-05)
+
+[S-21](../../notes/S-21-polaris-storefront.md) turns Discover into the Polaris Key storefront. `GET /api/discover` keeps
+`reason` and `offer` as the first obtain path and only adds fields
+([PS-04](PS-04-storefront-portal-api.md)), so nothing here changes. Keep `reasonCopy` a table
+keyed by reason code so [PS-05](PS-05-storefront-portal-ui.md) can add `open`, `store_owned`,
+`email_domain` and group labels without restructuring the tile.
 
 ## Hand-off
 

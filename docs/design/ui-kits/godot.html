@@ -8,8 +8,9 @@
     <style>
       /* 1280 × 720 game viewport (and 1280 × 800 Steam Deck). Games default to the dark scheme
          (theme.colorScheme "dark" for Godot); light is opt-in and shown for parity.
-         Drift Kart's accent #ff6a3d is light, so the resolver keeps the orange solid and flips
-         its label to ink in both schemes rather than darkening it to brick. */
+         Drift Kart's accent #ff6a3d is light, so the resolver keeps the orange and flips its label
+         to ink in both schemes rather than darkening it to brick; in light it deepens the solid
+         only to #ec592a, the least move that clears 3:1 on white (resolver output, §3.3). */
       .shot {
         width: 1280px;
         height: 720px;
@@ -21,19 +22,20 @@
         line-height: 26px;
         color: var(--pk-text-default);
         --kit-accent: #ff6a3d;
-        --kit-accent-on: #1a0b06;
-        --kit-accent-fg: #ff8a63;
-        --kit-accent-subtle: rgb(255 106 61 / 0.16);
-        --kit-focus: #ff8a63;
+        --kit-accent-on: #060912;
+        --kit-accent-fg: #ff987a;
+        --kit-accent-subtle: #241517;
+        --kit-focus: #ff987a;
         --g-glass: rgb(14 12 24 / 0.8);
         --g-tonal: rgb(255 255 255 / 0.1);
         --g-tonal-2: rgb(255 255 255 / 0.06);
         --g-scrim: rgb(0 0 0 / 0.42);
       }
       [data-theme="light"] .shot {
-        --kit-accent-fg: #c2410c;
-        --kit-focus: #e8551f;
-        --kit-accent-subtle: rgb(255 106 61 / 0.14);
+        --kit-accent: #ec592a;
+        --kit-accent-fg: #b73500;
+        --kit-focus: #ec592a;
+        --kit-accent-subtle: #f5e8ea;
         --g-glass: rgb(255 255 255 / 0.86);
         --g-tonal: rgb(6 9 18 / 0.07);
         --g-tonal-2: rgb(6 9 18 / 0.04);
@@ -1152,6 +1154,129 @@
           </div>
           <div class="hints">
             <span><i class="pad">A</i>Select</span>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 9. Boot -->
+      <figure>
+        <figcaption>
+          godot · boot (the game's title art, its wordmark, a determinate bar;
+          no modal)
+        </figcaption>
+        <div class="shot" data-shot="boot">
+          <div
+            class="scrim"
+            style="
+              background: linear-gradient(
+                0deg,
+                rgb(0 0 0 / 0.5),
+                transparent 45%
+              );
+            "
+          ></div>
+          <div
+            style="
+              position: absolute;
+              left: 0;
+              right: 0;
+              bottom: 64px;
+              display: grid;
+              justify-items: center;
+              gap: 18px;
+            "
+          >
+            <span class="wm-slot"></span>
+            <div class="bar" style="width: 360px">
+              <i style="width: 45%"></i>
+            </div>
+            <span class="gs" style="font-size: 16px; color: #fff; opacity: 0.8"
+              >Checking your license</span
+            >
+          </div>
+        </div>
+      </figure>
+
+      <!-- 10. Status: blocked -->
+      <figure>
+        <figcaption>
+          godot · status (blocked: the license ended; focus on Renew)
+        </figcaption>
+        <div class="shot" data-shot="status">
+          <div class="scrim"></div>
+          <div
+            class="glass panel center"
+            style="width: 560px; text-align: center"
+          >
+            <span
+              class="k-appicon"
+              data-art="driftkart"
+              data-size="72"
+              style="border-radius: 18px; justify-self: center"
+            ></span>
+            <div style="display: grid; gap: 10px">
+              <h1 class="gt" style="font-size: 32px; line-height: 40px">
+                Your license has ended
+              </h1>
+              <p class="gs">
+                Drift Kart ended on 30 September. Renew to keep racing online
+                and in career.
+              </p>
+            </div>
+            <div style="display: grid; gap: 16px">
+              <div class="gb primary focus">Renew</div>
+              <div class="gb">Use a different key</div>
+            </div>
+          </div>
+          <div class="hints">
+            <span><i class="pad">A</i>Select</span
+            ><span><i class="pad">B</i>Back</span>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 11. Error: offline -->
+      <figure>
+        <figcaption>
+          godot · error (offline; play continues on the cached license)
+        </figcaption>
+        <div class="shot" data-shot="error">
+          <div class="scrim"></div>
+          <div
+            class="glass panel center"
+            style="width: 560px; text-align: center"
+          >
+            <div
+              style="
+                width: 72px;
+                height: 72px;
+                border-radius: 50%;
+                display: grid;
+                place-items: center;
+                justify-self: center;
+                background: var(--g-tonal);
+                color: var(--pk-text-strong);
+              "
+              data-icon="wifiOff"
+              data-size="30"
+            ></div>
+            <div style="display: grid; gap: 10px">
+              <h1 class="gt" style="font-size: 32px; line-height: 40px">
+                Can’t reach Lanternworks
+              </h1>
+              <p class="gs">
+                Check your connection. You can keep playing offline for 3 more
+                days.
+              </p>
+            </div>
+            <div style="display: grid; gap: 16px">
+              <div class="gb primary focus">Try again</div>
+              <div class="gb">Play offline</div>
+            </div>
+          </div>
+          <div class="hints">
+            <span><i class="pad">A</i>Select</span
+            ><span><i class="pad">B</i>Back</span>
           </div>
         </div>
       </figure>

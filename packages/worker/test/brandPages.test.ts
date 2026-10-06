@@ -142,13 +142,13 @@ describe("the branded page shell", () => {
     );
   });
 
-  it("loads Rubik only from files the admin build emits at the stable path", () => {
+  it("loads Rubik and JetBrains Mono only from files the admin build emits at the stable path", () => {
     const fonts = [...BRAND_PAGE_CSS.matchAll(/url\("([^"]+)"\)/g)].map(
       (m) => m[1]!,
     );
     expect(fonts).toEqual([
-      `${BRAND_FONT_PATH}/rubik-latin-400.woff2`,
-      `${BRAND_FONT_PATH}/rubik-latin-700.woff2`,
+      `${BRAND_FONT_PATH}/rubik-var-latin.woff2`,
+      `${BRAND_FONT_PATH}/jetbrains-mono-var-latin.woff2`,
     ]);
     const vite = readFileSync(
       join(here, "..", "..", "admin", "vite.config.ts"),

@@ -74,20 +74,26 @@ export const MOTION = {
 } as const;
 
 /**
- * Type. Rubik for everything set in the brand (Bold for the wordmark and headings, Regular for the
- * secondary phrase and body); the kit ships only those two weights, so there is no medium.
+ * Type. Rubik for everything set in the brand, as one variable face (wght 300–900; UI-KITS.md §2.1).
+ * UI uses three weights: 400 (body), 500 (labels, buttons) and 600 (headings); 700 is the
+ * wordmark's and a game wordmark fallback's only.
  *
- * Code uses the platform monospace stack rather than a bundled font: zero bytes, the face each
- * OS's developers already read code in, and native consumers (Godot, SwiftUI) get the same
- * answer from their own system monospace. Tables of figures use Rubik with tabular figures
- * (Rubik ships the OpenType `tnum` feature), not monospace.
+ * Code, keys, user codes and hashes use the kit mono, JetBrains Mono (variable, 400–600), so a key
+ * reads the same on every OS; the platform monospace stack follows it. Tables of figures use Rubik
+ * with tabular figures (`tnum`), not monospace. Each family names its metric-matched fallback face
+ * (fonts/fonts.css) second, so a page does not shift while the web font loads.
  */
 export const FONT = {
-  sans: '"Rubik", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-  mono: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+  sans: '"Rubik", "Rubik Fallback", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  mono: '"JetBrains Mono", "JetBrains Mono Fallback", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
 } as const;
 
-export const FONT_WEIGHT = { regular: 400, bold: 700 } as const;
+export const FONT_WEIGHT = {
+  regular: 400,
+  medium: 500,
+  semibold: 600,
+  bold: 700,
+} as const;
 
 /** Size / line-height pairs, rem. `sm` is the console's table and form size. */
 export const TYPE_SCALE = {
@@ -102,5 +108,5 @@ export const TYPE_SCALE = {
   "5xl": ["3rem", "1.1"],
 } as const satisfies Record<string, readonly [string, string]>;
 
-/** Heading tracking: Rubik Bold sits slightly loose at display sizes. */
+/** Heading tracking: Rubik sits slightly loose at display sizes. */
 export const LETTER_SPACING = { tight: "-0.015em", normal: "0" } as const;

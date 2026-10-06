@@ -1,34 +1,39 @@
 #!/usr/bin/env python3
-"""Subset the launch kit's Rubik binaries to WOFF2 (one-off; the outputs are committed).
+"""Subset the variable Rubik and JetBrains Mono to WOFF2 (one-off; the outputs are committed).
 
     python3 -m venv .venv && .venv/bin/pip install fonttools==4.* brotli
     .venv/bin/python scripts/build-fonts.py
 
-Reads kit/source/fonts/Rubik-{Regular,Bold}.ttf (the kit's unmodified binaries, SIL OFL 1.1)
-and writes fonts/rubik-{latin,latin-ext}-{400,700}.woff2. The unicode ranges are the ones Google
-Fonts serves for its `latin` and `latin-ext` subsets, so the @font-face blocks in fonts/fonts.css
-let a browser fetch only the file a page needs. The ranges are kept in one place (RANGES below),
-and test/fonts.test.ts checks that fonts.css declares exactly these ranges and that each WOFF2
-file exists.
+Reads fonts/ttf/Rubik-Variable.ttf (Rubik[wght].ttf 2.300 from google/fonts, wght 300-900) and
+fonts/ttf/JetBrainsMono-Variable.ttf (JetBrainsMono[wght].ttf 2.211 from google/fonts, wght
+100-800), both unmodified (SIL OFL 1.1), and writes fonts/rubik-var-{latin,latin-ext}.woff2 and
+fonts/jetbrains-mono-var-{latin,latin-ext}.woff2. Rubik keeps its whole weight axis; JetBrains
+Mono is limited to 400-600, the weights the kits use (UI-KITS.md §2.1). The unicode ranges are the
+ones Google Fonts serves for its `latin` and `latin-ext` subsets, so the @font-face blocks in
+fonts/fonts.css let a browser fetch only the file a page needs. The ranges are kept in one place
+(RANGES below), and test/fonts.test.ts checks that fonts.css declares exactly these ranges and
+that each WOFF2 file exists.
 
-Subsetting and format conversion make these Modified Versions under the OFL (section 1). Rubik
-declares no Reserved Font Name, so the family name stays "Rubik". The OFL and the kit's
-FONT-NOTICE travel with the files (fonts/OFL.txt, fonts/FONT-NOTICE.txt).
+Subsetting, axis limiting and format conversion make these Modified Versions under the OFL
+(section 1). Neither font declares a Reserved Font Name, so the family names stay "Rubik" and
+"JetBrains Mono". The OFL texts and FONT-NOTICE travel with the files (fonts/OFL.txt,
+fonts/OFL-JetBrainsMono.txt, fonts/FONT-NOTICE.txt).
 
 Layout features kept: kern, liga, calt, ccmp, case, tnum, frac, numr, dnom, sups, subs, mark,
-mkmk. Hinting is kept (the TTFs are hinted; dropping it would visibly change small sizes on
-Windows).
+mkmk, zero (slashed zero, for keys and codes).
 """
 
 from __future__ import annotations
 
+import io
 import pathlib
 
 from fontTools import subset
 from fontTools.ttLib import TTFont
+from fontTools.varLib.instancer import instantiateVariableFont
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SRC = ROOT / "kit" / "source" / "fonts"
+SRC = ROOT / "fonts" / "ttf"
 OUT = ROOT / "fonts"
 
 # Google Fonts' latin and latin-ext subset ranges.
@@ -40,9 +45,13 @@ RANGES = {
     "U+2C60-2C7F,U+A720-A7FF",
 }
 
-WEIGHTS = {"400": "Rubik-Regular.ttf", "700": "Rubik-Bold.ttf"}
+# (output stem, source file, weight-axis limits or None for the whole axis)
+FONTS = [
+    ("rubik-var", "Rubik-Variable.ttf", None),
+    ("jetbrains-mono-var", "JetBrainsMono-Variable.ttf", (400, 600)),
+]
 
-FEATURES = "kern,liga,calt,ccmp,case,tnum,frac,numr,dnom,sups,subs,mark,mkmk"
+FEATURES = "kern,liga,calt,ccmp,case,tnum,frac,numr,dnom,sups,subs,mark,mkmk,zero"
 
 
 def unicodes(spec: str) -> list[int]:
@@ -59,9 +68,15 @@ def unicodes(spec: str) -> list[int]:
 
 def main() -> None:
     OUT.mkdir(exist_ok=True)
-    for weight, filename in WEIGHTS.items():
+    for stem, filename, limits in FONTS:
         for name, spec in RANGES.items():
             font = TTFont(SRC / filename)
+            if limits is not None:
+                font = instantiateVariableFont(font, {"wght": limits})
+                # Round-trip through bytes so the subsetter reads the instancer's tables afresh.
+                buf = io.BytesIO()
+                font.save(buf)
+                font = TTFont(io.BytesIO(buf.getvalue()))
             options = subset.Options()
             options.flavor = "woff2"
             options.layout_features = FEATURES.split(",")
@@ -74,7 +89,7 @@ def main() -> None:
             sub = subset.Subsetter(options)
             sub.populate(unicodes=unicodes(spec))
             sub.subset(font)
-            target = OUT / f"rubik-{name}-{weight}.woff2"
+            target = OUT / f"{stem}-{name}.woff2"
             font.flavor = "woff2"
             font.save(target)
             print(f"wrote {target.relative_to(ROOT)} ({target.stat().st_size} bytes)")

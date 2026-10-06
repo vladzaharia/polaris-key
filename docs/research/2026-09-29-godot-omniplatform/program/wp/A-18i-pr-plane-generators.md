@@ -73,16 +73,65 @@ Once the adapter contract and the CI allow-list exist, each is a generator plus 
 
 ## Acceptance criteria
 
-- [ ] Golden files for each generator from a fixture release and listing.
-- [ ] winget manifests validate against schema 1.12.0 in CI.
-- [ ] The conformance suite runs over the PR-plane declarations; a PR step writes a ledger row.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] Golden files for each generator from a fixture release and listing.
+- [x] winget manifests validate against schema 1.12.0 in CI.
+- [x] The conformance suite runs over the PR-plane declarations; a PR step writes a ledger row.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/cli test -- storefronts winget flathub
 ```
+
+## Corrections from the code (A-18i implementation)
+
+- **Where the generators live.** The generators run in CI, in the CLI
+  (`packages/cli/src/storefronts/{winget,homebrew,scoop,flathub}.ts`), and read one Worker answer,
+  `GET /<p>/distribution/pr/<store>?channel=&outlet=` (`services/distribution/prInputs.ts`,
+  `distribution:report`; rule 10: OpenAPI and `routeCoverage`): the outlet, the channel's newest
+  release with its builds' HTTPS URLs and SHA-256, the listing model's projection, the release
+  notes and the feed URLs. The Worker never calls GitHub.
+- **The PR plane is a declaration like the CI plane.** `core/storefront/prPlane.ts` declares per
+  store the repository, `pull-request` and `status` commands for the pseudo-tool `github`, the
+  path templates a PR may write, the natural key and the review labels; the CLI reads the
+  generated copy (`ciPlane.generated.ts`, `prStores`). PR steps report through the existing
+  `type: "store-step"` ingest with `plane = 'pr'`, op `pr.pull_request` or `pr.status`, natural
+  key `pr:<package>:<version>`, each file's path and SHA-256, the pull request and its verdict.
+- **The tap and bucket had no identity field**: `direct` gains `homebrewTap`
+  (`<owner>/homebrew-<name>`) and `scoopBucket` (`<owner>/<repo>`), both refusing the `Homebrew`
+  and `ScoopInstaller` organisations (no new outlet kind, no new error code; schema updated).
+- **winget's identity has no installer details**, so a `.zip` build needs `--portable <exe in the
+archive>` (and `--command` for its alias); `.exe` is a portable installer, `.msi` and `.msix`
+  map directly. `License` defaults to `Proprietary` (`--license`).
+- **Homebrew's livecheck** reads the public `download.json`, which serves the stable channel only;
+  a cask for another channel gets `livecheck { skip … }`. The `.app` bundle name is `--app`
+  (default `<listing name>.app`): no build metadata records it.
+- **Flathub updates** rewrite the app repository's existing manifest in place (each `extra-data`
+  source's `url`, `sha256` and `size`, comments kept) plus the regenerated MetaInfo, rather than
+  replacing a hand-maintained manifest; Flathub's `pull-request` also performs
+  `writeListingAssets` and `contentRating` (the MetaInfo's screenshots and OARS rating). The OARS
+  mapping from the listing's content descriptors lives in one function (`oarsAttributes`).
+- **Scoop's `autoupdate` for content-addressed builds.** The feed (`renderScoopManifest`) writes
+  `autoupdate` only when a build URL contains the version; Polaris-hosted URLs are
+  `…/blobs/sha256/<hash>` and never do. The generator (`withHashAutoupdate` in `scoop.ts`) adds
+  it for such manifests: `checkver` becomes a regex over the feed JSON capturing the version and
+  each architecture's hash (`hashx` for `64bit`, `hasharm` for `arm64`, letter-only names because
+  Scoop title-cases them into `$matchHashx`/`$matchHasharm` and substitutes case-sensitively), and
+  `autoupdate.architecture.<arch>.url` is `…/blobs/sha256/$matchHash…`, with the hash read from
+  the feed's JSON path. The Worker's feed is unchanged (P2b-05 owns it).
+- **MetaInfo screenshots wait for HA-02/06/07** (S-20 §4.2 L6). The first cut projected the
+  manifest listing's raw `screenshots` (and `iconUrl`) into the Worker's answer and the MetaInfo.
+  The Worker now projects `screenshots: []` and no `iconUrl`. The generator also keeps only
+  hosted copies (`https://img.plrs.im/<p>/a/<sha256>`, `isHostedAsset` in `flathub.ts`), drops
+  anything else with a warning, and omits `<screenshots>` with the "no screenshots" warning until
+  HA-07's hosted copies fill the field.
+- **Flathub's runtime** defaults to Freedesktop `25.08` (24.08 is end of life, which Flathub's
+  linter refuses on a new submission); `--runtime-version` overrides it.
+- **The token** is `PKEY_PR_TOKEN`, a CI environment secret read from the job's environment.
+- **The Action's `storefront` input does not gain PR steps here**: the steps run as
+  `pkey storefront <store> pr|status` from a workflow (documented in the CI page); adding Action
+  inputs for them is a follow-up.
 
 ## Hand-off
 

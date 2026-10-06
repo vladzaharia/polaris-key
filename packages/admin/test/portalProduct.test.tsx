@@ -4,6 +4,9 @@ import userEvent from "@testing-library/user-event";
 import {
   artifact,
   axeViolations,
+  dlFile,
+  downloadsView,
+  storeLink,
   CAPS_ALL,
   DAY,
   detail,
@@ -197,7 +200,13 @@ describe("product page on today's data (PX-04)", () => {
     renderPortal();
     await page();
     const card = screen.getByRole("region", { name: "Nightfall license" });
-    expect(within(card).getByText("For life")).toBeTruthy();
+    expect(within(card).getByText("Lifetime")).toBeTruthy();
+    expect(within(card).queryByText("For life")).toBeNull();
+    // The tier is a neutral pill with the device count beside it.
+    const tier = within(card).getByText("Deluxe").closest("[data-status]")!;
+    expect(tier.getAttribute("data-status")).toBe("pill");
+    expect(tier.getAttribute("data-tone")).toBe("neutral");
+    expect(within(card).getByText("2 devices")).toBeTruthy();
     expect(within(card).getByText("Up to 1.x")).toBeTruthy();
     expect(within(card).getByText("30 days")).toBeTruthy();
     expect(
@@ -208,6 +217,53 @@ describe("product page on today's data (PX-04)", () => {
     expect(within(card).getByText("Original soundtrack")).toBeTruthy();
     // No "Get a new key" until G7.
     expect(within(card).queryByText(/Get a new key/)).toBeNull();
+  });
+
+  it("says nothing when healthy and keeps the facts as text (UX-03)", async () => {
+    mockFetch(routes());
+    renderPortal();
+    await page();
+    // Healthy is silence: no "Active" pill in the header or on the License card.
+    expect(within(screen.getByRole("main")).queryByText("Active")).toBeNull();
+    const card = screen.getByRole("region", { name: "Nightfall license" });
+    // The tier is a neutral pill on the License card (owner, 2026-10-05, overriding UX-03's
+    // "tier as text" for this card only); the facts stay as text.
+    expect(within(card).getByText("Deluxe")).toBeTruthy();
+    expect(within(card).queryByText("Tier")).toBeNull();
+    expect(within(card).getByText("Updates included").tagName).toBe("DT");
+    const included = within(card).getByRole("list", { name: "Included" });
+    expect(
+      within(included)
+        .getAllByRole("listitem")
+        .map((li) => li.textContent),
+    ).toEqual(["Original soundtrack", "Digital art book"]);
+  });
+
+  it("shows an issue once, in the header, not again on the License card (UX-03)", async () => {
+    const lapsed = license({
+      product: "nightfall",
+      tier: "deluxe",
+      expiresAt: NOW_S - 3 * DAY,
+    });
+    mockFetch(
+      signedIn([lapsed], {
+        "/api/releases": { releases },
+        "/api/licenses/nightfall/lic_nightfall": detail(lapsed, {
+          devices: [],
+        }),
+      }),
+    );
+    renderPortal();
+    const h1 = await screen.findByRole("heading", {
+      level: 1,
+      name: "Nightfall",
+    });
+    const card = await screen.findByRole("region", {
+      name: "Nightfall license",
+    });
+    await within(card).findByText("Updates included");
+    expect(within(h1.parentElement!).getByText("Expired")).toBeTruthy();
+    expect(within(card).queryByText("Expired")).toBeNull();
   });
 
   it("masks a key with its last 4 when the Worker sends them", async () => {
@@ -239,7 +295,7 @@ describe("product page on today's data (PX-04)", () => {
     renderPortal();
     await page();
     const get = screen.getByRole("region", { name: "Get Nightfall" });
-    expect(within(get).getByText("Recommended for this Mac")).toBeTruthy();
+    expect(within(get).getByText("Recommended for your Mac")).toBeTruthy();
     expect(
       within(get).getByText(/Runs on Apple silicon and Intel/),
     ).toBeTruthy();
@@ -536,7 +592,51 @@ describe("product page on today's data (PX-04)", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("an account-bound product has no Devices section", async () => {
+  it("an account-wide licence: Standard pill, Account-wide beside it, and its devices with Remove", async () => {
+    window.history.replaceState(null, "", "/#/p/quill");
+    const quill = license({
+      product: "quill",
+      identityProvider: "oidc",
+      keyCount: 0,
+      activeKeyCount: 0,
+    });
+    const removed: string[] = [];
+    mockFetch(
+      signedIn([quill], {
+        "/api/licenses/quill/lic_quill": detail(quill, {
+          keys: [],
+          devices: [device({ deviceId: "q1", label: "Living room PC" })],
+        }),
+        "/api/products/quill": productView("quill", [
+          { id: "lic_quill", deviceLimit: 5 },
+        ]),
+        "DELETE /api/licenses/quill/lic_quill/devices/q1": () => {
+          removed.push("q1");
+          return { ok: true, deviceId: "q1" };
+        },
+      }),
+    );
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Quill" });
+    const card = await screen.findByRole("region", { name: "Quill license" });
+    await within(card).findByText("Account-wide · 1 of 5 devices");
+    expect(within(card).getByText("Standard")).toBeTruthy();
+    expect(screen.queryByText("Signed-in app")).toBeNull();
+    expect(screen.queryByText(/any device/i)).toBeNull();
+    const devices = screen.getByRole("region", { name: "Devices" });
+    expect(within(devices).getByText(/of 5 devices/)).toBeTruthy();
+    await userEvent.click(
+      within(devices).getByRole("button", { name: "Remove Living room PC" }),
+    );
+    expect(within(devices).getByText(/asks you to sign in again/)).toBeTruthy();
+    await userEvent.click(
+      within(devices).getByRole("button", { name: "Remove Living room PC" }),
+    );
+    await waitFor(() => expect(removed).toEqual(["q1"]));
+    expect(await axeViolations()).toEqual([]);
+  });
+
+  it("an account-wide licence never claims a limit it doesn't know", async () => {
     window.history.replaceState(null, "", "/#/p/quill");
     const quill = license({
       product: "quill",
@@ -546,15 +646,293 @@ describe("product page on today's data (PX-04)", () => {
     });
     mockFetch(
       signedIn([quill], {
-        "/api/licenses/quill/lic_quill": detail(quill, {
-          keys: [],
-          devices: [],
-        }),
+        "/api/licenses/quill/lic_quill": detail(quill, { keys: [] }),
       }),
     );
     renderPortal();
-    await screen.findByRole("heading", { level: 1, name: "Quill" });
-    expect(screen.getAllByText("Signed-in app").length).toBeGreaterThan(0);
-    expect(screen.queryByRole("region", { name: "Devices" })).toBeNull();
+    const card = await screen.findByRole("region", { name: "Quill license" });
+    await within(card).findByText("Activated");
+    expect(within(card).getByText("Account-wide")).toBeTruthy();
+    expect(within(card).queryByText(/of \d+ devices?/)).toBeNull();
+  });
+
+  describe("a key licence and an account-wide licence for one product", () => {
+    const key = license({
+      product: "quill",
+      id: "lic_key",
+      activatedAt: NOW_S - 60 * DAY,
+    });
+    const acct = license({
+      product: "quill",
+      id: "lic_acct",
+      identityProvider: "oidc",
+      keyCount: 0,
+      activeKeyCount: 0,
+    });
+    const both = (extra = {}) =>
+      signedIn([key, acct], {
+        "/api/licenses/quill/lic_key": detail(key, {
+          devices: [device({ deviceId: "k1", label: "Studio Mac" })],
+        }),
+        "/api/licenses/quill/lic_acct": detail(acct, {
+          keys: [],
+          devices: [device({ deviceId: "a1", label: "Living room PC" })],
+        }),
+        "/api/products/quill": productView("quill", [
+          { id: "lic_acct", deviceLimit: 5 },
+          { id: "lic_key", deviceLimit: 3 },
+        ]),
+        ...extra,
+      });
+
+    it("names each licence by tier and how it's held in the picker", async () => {
+      window.history.replaceState(null, "", "/#/p/quill");
+      mockFetch(both());
+      renderPortal();
+      const card = await screen.findByRole("region", { name: "Quill license" });
+      const picker = within(card).getByRole("combobox");
+      const options = within(picker)
+        .getAllByRole("option")
+        .map((o) => o.textContent);
+      expect(options.sort()).toEqual([
+        "Standard · Account-wide",
+        "Standard · Key",
+      ]);
+    });
+
+    it("the key licence hides its device counter but keeps the device list", async () => {
+      window.history.replaceState(null, "", "/#/p/quill?license=lic_key");
+      mockFetch(both());
+      renderPortal();
+      const card = await screen.findByRole("region", { name: "Quill license" });
+      await within(card).findByText("Activated");
+      expect(within(card).getByText("Standard")).toBeTruthy();
+      expect(within(card).queryByText(/devices?$/)).toBeNull();
+      const devices = screen.getByRole("region", { name: "Devices" });
+      await within(devices).findByText("Studio Mac");
+      expect(within(devices).queryByText(/in use/)).toBeNull();
+      expect(
+        within(devices).queryByRole("img", { name: /devices? in use/ }),
+      ).toBeNull();
+      await userEvent.click(
+        within(devices).getByRole("button", { name: "Remove Studio Mac" }),
+      );
+      expect(
+        within(devices).getByText("Its seat is free straight away."),
+      ).toBeTruthy();
+    });
+
+    it("the account-wide licence keeps its counter", async () => {
+      window.history.replaceState(null, "", "/#/p/quill?license=lic_acct");
+      mockFetch(both());
+      renderPortal();
+      const card = await screen.findByRole("region", { name: "Quill license" });
+      await within(card).findByText("Account-wide · 1 of 5 devices");
+      const devices = screen.getByRole("region", { name: "Devices" });
+      await within(devices).findByText("Living room PC");
+      expect(
+        within(devices).getByRole("img", { name: "1 of 5 devices in use" }),
+      ).toBeTruthy();
+    });
   });
 });
+
+describe("product page correctness (UX-04)", () => {
+  it("one OS source: the header's action and Get it name the OS the Worker detected", async () => {
+    // The browser says Mac; the Worker (UA-CH) says Windows. Both read the Worker's answer.
+    mockFetch(
+      routes({
+        "/api/products/nightfall/downloads": downloadsView(
+          "nightfall",
+          [
+            dlFile({ artifactId: "m", platform: "macos" }),
+            dlFile({ artifactId: "w", platform: "windows", arch: "x86_64" }),
+          ],
+          { recommend: "windows" },
+        ),
+      }),
+    );
+    renderPortal();
+    await page();
+    const get = await screen.findByRole("region", { name: "Get Nightfall" });
+    await within(get).findByText("Recommended for your Windows PC");
+    expect(within(get).queryByText(/Recommended for your Mac/)).toBeNull();
+    expect(within(get).getByText(/Windows · x64/)).toBeTruthy();
+    expect(
+      screen.getAllByRole("button", {
+        name: /^Download for Windows: Nightfall/,
+      }).length,
+    ).toBe(1);
+    expect(
+      screen.queryByRole("button", { name: /^Download for macOS/ }),
+    ).toBeNull();
+  });
+
+  it("a not_hosted file says where to get it, never 'Not included'", async () => {
+    mockFetch(
+      routes({
+        "/api/products/nightfall/downloads": downloadsView(
+          "nightfall",
+          [
+            dlFile({ artifactId: "m", platform: "macos" }),
+            dlFile({
+              artifactId: "pack",
+              name: "Sample pack.zip",
+              platform: null,
+              canDownload: false,
+              reason: "not_hosted",
+            }),
+          ],
+          {
+            stores: [
+              storeLink({
+                kind: "steam",
+                label: "Steam",
+                url: "https://store.steampowered.com/app/1/",
+              }),
+            ],
+          },
+        ),
+      }),
+    );
+    renderPortal();
+    await page();
+    const get = await screen.findByRole("region", { name: "Get Nightfall" });
+    const steam = await within(get).findByRole("link", {
+      name: "Get it from Steam",
+    });
+    expect(steam.getAttribute("href")).toBe(
+      "https://store.steampowered.com/app/1/",
+    );
+    expect(within(get).queryByText("Not included")).toBeNull();
+    expect(get.textContent).not.toContain("here yet");
+  });
+
+  it("no downloads and no website: the header never offers a 'View details' back to itself", async () => {
+    window.history.replaceState(null, "", "/#/p/ember");
+    mockFetch(routes());
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Ember Tactics" });
+    expect(screen.queryByRole("link", { name: /View details/ })).toBeNull();
+  });
+
+  it("no downloads with a website: 'Get it from <developer>' everywhere", async () => {
+    const ember = license({
+      product: "ember",
+      productName: "Ember Tactics",
+      productBranding: {
+        developerName: "Kiln Games",
+        website: "https://kiln.example",
+      },
+    });
+    window.history.replaceState(null, "", "/#/p/ember");
+    mockFetch(signedIn([ember]));
+    renderPortal();
+    await screen.findByRole("heading", { level: 1, name: "Ember Tactics" });
+    const lead = screen.getByRole("link", {
+      name: "Get it from Kiln Games: Ember Tactics",
+    });
+    expect(lead.getAttribute("href")).toBe("https://kiln.example");
+    expect(screen.queryByRole("link", { name: /View details/ })).toBeNull();
+  });
+
+  it("one device source: the Devices card counts seats as the free-device flow does", async () => {
+    const seatLicense = {
+      id: "lic_nightfall",
+      tier: "deluxe",
+      status: "active" as const,
+      licenseStatus: "active",
+      activatedAt: NOW_S,
+      expiresAt: null,
+      maxOfflineDays: 30,
+      deviceLimit: 3,
+      activeSeatCount: 1,
+      deviceCount: 2,
+      dormantCount: 1,
+    };
+    const productDevice = (deviceId: string, dormant: boolean) => ({
+      deviceId,
+      label: deviceId,
+      platform: "macos",
+      arch: null,
+      appVersion: null,
+      firstSeen: NOW_S - 200 * DAY,
+      lastSeen: dormant ? NOW_S - 120 * DAY : NOW_S - DAY,
+      dormant,
+    });
+    mockFetch(
+      routes({
+        "/api/products/nightfall": {
+          product: "nightfall",
+          name: "Nightfall",
+          developerName: null,
+          tintColor: null,
+          website: null,
+          iconUrl: null,
+          headerUrl: null,
+          support: null,
+          services: { license: true },
+          status: "active",
+          addedAt: NOW_S,
+          licenses: [
+            {
+              ...seatLicense,
+              entitlements: [],
+              // Studio PC (d2) is past the dormancy window: it holds no seat.
+              devices: [productDevice("d1", false), productDevice("d2", true)],
+            },
+          ],
+        },
+      }),
+    );
+    renderPortal();
+    await page();
+    const devices = screen.getByRole("region", { name: "Devices" });
+    await waitFor(() =>
+      expect(devices.textContent).toContain("1 of 3 devices in use"),
+    );
+    expect(
+      within(devices).queryByRole("button", { name: "Remove Studio PC" }),
+    ).toBeNull();
+    expect(
+      within(devices).getByRole("button", {
+        name: "Remove Mara's MacBook Pro",
+      }),
+    ).toBeTruthy();
+  });
+});
+
+/** A minimal `GET /api/products/<p>`: the per-licence seat limits the product page reads. */
+function productView(
+  product: string,
+  licenses: { id: string; deviceLimit: number }[],
+) {
+  return {
+    product,
+    name: product,
+    developerName: null,
+    tintColor: null,
+    website: null,
+    iconUrl: null,
+    headerUrl: null,
+    support: null,
+    services: { license: true },
+    status: "active",
+    addedAt: NOW_S - 30 * DAY,
+    licenses: licenses.map((l) => ({
+      id: l.id,
+      tier: null,
+      status: "active",
+      licenseStatus: "active",
+      activatedAt: NOW_S - 30 * DAY,
+      expiresAt: null,
+      maxOfflineDays: null,
+      deviceLimit: l.deviceLimit,
+      activeSeatCount: 1,
+      deviceCount: 1,
+      dormantCount: 0,
+      entitlements: [],
+      devices: [],
+    })),
+  };
+}

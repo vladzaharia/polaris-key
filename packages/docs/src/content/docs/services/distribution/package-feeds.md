@@ -2,7 +2,7 @@
 sidebar:
   order: 10
 title: "Package feeds"
-description: "The registry host, pkg.plrs.im: package feeds for npm, PyPI, SwiftPM, Maven and Gradle, OCI and Godot clients, with one access check before every cached answer."
+description: "The registry host, pkg.plrs.im: package feeds for npm, PyPI, SwiftPM, Maven and Gradle, OCI, Godot, Cargo and Go clients, with one access check before every cached answer."
 ---
 
 Package feeds let a product publish libraries and tools to the package managers its users
@@ -16,20 +16,22 @@ Every feed is under its owner (the product slug), so a product never shadows ano
 OCI is the exception the protocol forces: its root is `/v2/`, and the repository name starts with
 the owner.
 
-| Ecosystem | Base URL                                   | Clients                                    |
-| --------- | ------------------------------------------ | ------------------------------------------ |
-| npm       | `https://pkg.plrs.im/npm/<owner>/`         | npm, pnpm, Yarn Berry, Bun                 |
-| PyPI      | `https://pkg.plrs.im/pypi/<owner>/simple/` | pip, uv, Poetry                            |
-| Swift     | `https://pkg.plrs.im/swift/<owner>/`       | SwiftPM                                    |
-| Maven     | `https://pkg.plrs.im/maven/<owner>/`       | Gradle, Maven                              |
-| OCI       | `https://pkg.plrs.im/v2/<owner>/…`         | docker, podman, crane                      |
-| Godot     | `https://pkg.plrs.im/godot/<owner>/`       | the Godot editor's asset library, GodotEnv |
+| Ecosystem | Base URL                                    | Clients                                    |
+| --------- | ------------------------------------------- | ------------------------------------------ |
+| npm       | `https://pkg.plrs.im/npm/<owner>/`          | npm, pnpm, Yarn Berry, Bun                 |
+| PyPI      | `https://pkg.plrs.im/pypi/<owner>/simple/`  | pip, uv, Poetry                            |
+| Swift     | `https://pkg.plrs.im/swift/<owner>/`        | SwiftPM                                    |
+| Maven     | `https://pkg.plrs.im/maven/<owner>/`        | Gradle, Maven                              |
+| OCI       | `https://pkg.plrs.im/v2/<owner>/…`          | docker, podman, crane                      |
+| Godot     | `https://pkg.plrs.im/godot/<owner>/`        | the Godot editor's asset library, GodotEnv |
+| Cargo     | `sparse+https://pkg.plrs.im/cargo/<owner>/` | Cargo                                      |
+| Go        | `https://pkg.plrs.im/go/<owner>`            | the go command (a GOPROXY)                 |
 
 `GET /` is a static page naming the host, and `GET /v2/` is OCI's base answer
 (`Docker-Distribution-API-Version: registry/2.0`): `200` to a request bearing a valid pull token,
 and the standard `401` Bearer challenge naming `/v2/token` to any other once the deployment has its
-registry token key set (before that, always `200`). Cargo, Go and NuGet names are reserved and
-answer the not-found.
+registry token key set (before that, always `200`). NuGet names are reserved and answer the
+not-found.
 
 ## What the host promises
 
@@ -38,8 +40,9 @@ only the types it may serve:
 
 - **No cookies.** None is read or set. The console's session cookies are host-only, so a browser
   never sends them here.
-- **No CORS, GET and HEAD only.** Registry clients are not browsers. `OPTIONS` and every other
-  method answer `405`.
+- **No CORS, GET and HEAD for reads.** Registry clients are not browsers. `OPTIONS` answers
+  `405`, and so does every other method except the few writes listed under
+  [Publishing with native clients](#publishing-with-native-clients) and SwiftPM's login.
 - **Inert answers.** Every answer carries `X-Content-Type-Options: nosniff`, a `sandbox`
   `Content-Security-Policy` with no sources, `Referrer-Policy: no-referrer` and
   `Cross-Origin-Resource-Policy: same-origin`. A success must have a type on the host's
@@ -69,14 +72,16 @@ mode reads the request's **registry token** (`pkeyr_…`) and judges who it belo
 | bound to a licence (minted in the portal, or by an operator for a licensee)              | admitted while it is active | also needs the package's delivery gate flag |
 
 A refused licence token is `403` (`forbidden`; OCI `DENIED`; Swift `problem+json`). The native
-challenge is `WWW-Authenticate: Basic realm="pkg.plrs.im"` for npm, PyPI, Maven, Swift and Godot,
+challenge is `WWW-Authenticate: Basic realm="pkg.plrs.im"` for npm, PyPI, Maven, Swift, Godot and Cargo,
 and OCI's `Bearer realm="https://pkg.plrs.im/v2/token",service=…,scope=…`. Device tokens
 (`pkeyt_…`) and licence keys (`pkey_…`) are never registry credentials.
 
 Each client sends the token its own way: Bearer for npm, pnpm, Yarn, Bun and SwiftPM (after
 `swift package-registry login`); Basic `__token__:<token>` for pip, uv, Poetry, Gradle and Maven;
 OCI clients run `docker login pkg.plrs.im -u __token__` and trade it at `/v2/token` for a
-five-minute pull token. The Godot editor sends no credentials, so a **Godot editor URL** token
+five-minute pull token. Cargo sends the bare token (`Authorization: <token>`, from
+`cargo login --registry <owner>` or `CARGO_REGISTRIES_<OWNER>_TOKEN`) once the feed's
+`config.json` says `auth-required`. The Godot editor sends no credentials, so a **Godot editor URL** token
 (read-only, Godot only) goes in its URL: `https://pkg.plrs.im/godot/<owner>/t/<token>/…`. The
 setup for each client is on [Installing from the feeds](/docs/build/install-from-feeds/#private-feeds).
 
@@ -335,18 +340,19 @@ podman pull pkg.plrs.im/polaris-key/tools/pkey:1.4.0
 crane pull --platform linux/arm64 pkg.plrs.im/polaris-key/tools/pkey:beta pkey.tar
 ```
 
-**What it answers.** Pulls only, anonymous while the feed is public:
+**What it answers.** Pulls, anonymous while the feed is public, and pushes from a publish token
+(see **Pushing with docker push** below):
 
-| Request                                                    | Answer                                                                                                                                                         |
-| ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`/`HEAD /v2/<owner>/<repository>/manifests/<tag>`      | the manifest or image index the tag points to, with its own media type and `Docker-Content-Digest`; cached for 60 s                                            |
-| `GET`/`HEAD /v2/<owner>/<repository>/manifests/sha256:<…>` | the same bytes by digest, immutable                                                                                                                            |
-| `GET`/`HEAD /v2/<owner>/<repository>/blobs/sha256:<…>`     | a config or layer, immutable, with `Range` (206) and `If-Range`; only digests this repository published                                                        |
-| `GET /v2/<owner>/<repository>/tags/list[?n=&last=]`        | the tags in lexical order; with `n`, a `Link: …; rel="next"` header names the next page                                                                        |
-| anything else under `/v2/`                                 | OCI's error JSON (`NAME_UNKNOWN`, `MANIFEST_UNKNOWN`, `BLOB_UNKNOWN`); push methods are 405 `UNSUPPORTED`; `/v2/token` is the token service (see Who may read) |
+| Request                                                    | Answer                                                                                                                                                    |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`/`HEAD /v2/<owner>/<repository>/manifests/<tag>`      | the manifest or image index the tag points to, with its own media type and `Docker-Content-Digest`; cached for 60 s                                       |
+| `GET`/`HEAD /v2/<owner>/<repository>/manifests/sha256:<…>` | the same bytes by digest, immutable                                                                                                                       |
+| `GET`/`HEAD /v2/<owner>/<repository>/blobs/sha256:<…>`     | a config or layer, immutable, with `Range` (206) and `If-Range`; only digests this repository published, or (privately) was pushed                        |
+| `GET /v2/<owner>/<repository>/tags/list[?n=&last=]`        | the tags in lexical order; with `n`, a `Link: …; rel="next"` header names the next page                                                                   |
+| anything else under `/v2/`                                 | OCI's error JSON (`NAME_UNKNOWN`, `MANIFEST_UNKNOWN`, `BLOB_UNKNOWN`); `DELETE` is 405 `UNSUPPORTED`; `/v2/token` is the token service (see Who may read) |
 
 Every answer carries `Docker-Distribution-API-Version: registry/2.0`. A feed that is not public
-answers 401 with OCI's `Bearer` challenge; registry credentials are not issued yet.
+answers 401 with OCI's `Bearer` challenge.
 
 **Tags.** Each version is a tag of its own name, and it never moves. Each channel is a moving tag:
 `stable` is `latest`, and every other channel (`beta`, a manual channel) a tag of its own name,
@@ -377,6 +383,38 @@ The CLI reads the layout's `index.json` (exactly one entry: a multi-arch image i
 index), walks every manifest it references, and uploads each blob once through the upload ticket.
 Each blob is at most the feed's ceiling (5 GiB by default), a release is at most 4,096 objects,
 and its descriptor at most 64 KiB, which in practice bounds an image to a few hundred blobs.
+
+**Pushing with docker push.** A repository also takes a native push from `docker`, `podman`,
+`crane`, `oras` and every other client of the distribution spec's push workflow. The repository
+must already be a declared package deliverable (a push never creates one), and the credential
+must be able to publish: a registry token minted with **Read and publish** and the OCI feed under
+Distribution → Package feeds → Tokens (owner-bound, at most 30 days; it also reads), or a CI token (`pkeyci_…`) holding
+`release:publish`, the scope a ticket publish needs:
+
+```sh
+echo "$PKEY_PUSH_TOKEN" | docker login pkg.plrs.im -u __token__ --password-stdin
+docker buildx build --platform linux/amd64,linux/arm64 -t pkg.plrs.im/polaris-key/tools/pkey:1.4.0 --push .
+```
+
+`docker login` trades the token at `/v2/token` for a five-minute token granting `pull,push` on
+the repository; every push request re-checks the token behind it, so a revoked one stops pushing
+within 30 seconds. A tag pushed is a **version**: the image becomes a release of the package
+exactly as `pkey release publish` would make it (the same release rows, refusals and audit
+entry), and it joins the product's channels by the same rules, so the newest stable version is
+`latest`. Channel tags (`latest`, `stable`, `beta`, `pr-<n>` and manual channel names) are moved
+with `pkey release promote`, never pushed, and a version that exists never takes another image.
+A manifest pushed **by digest** (an index's platform manifests) is stored and publishes nothing.
+Every object a manifest names must be one this owner holds, pushed or published before.
+
+Limits: each request carries at most 100 MB, the zone's body limit. `docker push` and `crane`
+(go-containerregistry) send each layer as one streamed `PATCH` without `Content-Length`, which
+the registry appends 16 MiB at a time, so a layer of up to 100 MB pushes as it is. A larger layer
+needs a client set to send chunks (`PATCH` with `Content-Range`, each under 100 MB) or the ticket
+path above. Chunks of any size work (they are fitted to R2's multipart parts server-side); each
+blob is at most the feed's ceiling.
+An object pushed but not yet in a version is served by digest from its repository only, never
+tagged, and never from the bytes host. Nothing is ever deleted: `DELETE` is refused, and an
+abandoned upload only drops its own staged bytes.
 
 **Setup snippet.** The console's Setup tab and `pkey feeds setup` (F-12) render this feed from
 three values: the registry host (`pkg.plrs.im`, or the environment's), the owner and the
@@ -429,6 +467,184 @@ Add the URL with no trailing slash: the editor appends its own paths. Each packa
   `4.4`; editors older than it, or of another major version, see nothing).
 - **Search** is filtered in memory over the owner's packages. Tags are not supported: a
   `#tag` search term matches nothing.
+
+## Cargo
+
+The Cargo feed is a read-only sparse index (Cargo 1.68 and later; 1.74 and later for a non-public
+feed). Name it as a registry and take a crate from it per dependency:
+
+```toml
+# .cargo/config.toml
+[registries.<owner>]
+index = "sparse+https://pkg.plrs.im/cargo/<owner>/"
+
+# Cargo.toml
+[dependencies]
+acme-sdk = { version = "1", registry = "<owner>" }
+```
+
+Cargo takes a crate from the feed only for a dependency that names it with `registry =`, so there
+is no namespace to set: every crate sits in the owner's own index.
+
+- **Publishing** is `pkey release publish` with a `kind: package`, `ecosystem: cargo` deliverable
+  whose artifact is the `.crate` that `cargo package` writes. `config.json` has no `api`, so
+  `cargo publish` refuses the registry. The CLI reads the crate's normalised `Cargo.toml` for the
+  index (dependencies of every kind and target, features, `links`, `rust-version`); the Worker never
+  unpacks a crate. A dependency on another registry must come from `cargo package`'s output, which
+  writes that registry's index URL; a dependency on this same feed resolves here.
+- **The index.** `config.json` names the download template,
+  `…/files/{sha256-checksum}/{crate}-{version}.crate`, so every crate URL is content-addressed.
+  Each crate's index file (`1/`, `2/`, `3/<c>/` or `<ab>/<cd>/` and the lower-case name) has one
+  JSON line per version, and Cargo checks every download against its `cksum`.
+- **Yank and channels.** A **yanked** version keeps its line marked `yanked`: an existing
+  `Cargo.lock` still builds, and a new resolution skips it. Cargo has no deprecation, so a
+  **deprecated** version is listed as live, and no channel tags: a pre-release is chosen by its
+  semver version (`=1.2.0-beta.1`). Versions are semver.
+- **Private feeds.** A non-public feed answers `config.json` `401` without a token; Cargo retries
+  with its registry token, and the answer says `auth-required: true`, so Cargo then sends the token
+  on every request. Cargo needs a credential provider named for such a registry:
+  `credential-provider = "cargo:token"` beside its `index`. A crate whose own delivery access is stricter than its feed's is refused to a
+  client the feed admits without a token, which Cargo reports as an error rather than a missing
+  crate: keep such crates on a non-public feed.
+
+## Go
+
+The Go feed is a module proxy (the
+[GOPROXY protocol](https://go.dev/ref/mod#goproxy-protocol)) at `https://pkg.plrs.im/go/<owner>`.
+A package's name is its module path (`go.acme.dev/sdk`, `go.acme.dev/sdk/v2`), and the feed's
+namespace is a list of **module prefixes**: every published path must equal one or sit under it.
+
+```sh
+go env -w GOPROXY=https://pkg.plrs.im/go/<owner>,https://proxy.golang.org,direct
+go env -w GONOSUMDB=<module prefix>[,<module prefix>…]
+go get go.acme.dev/sdk@latest
+```
+
+- **GONOSUMDB, never GOPRIVATE.** The public checksum database cannot see your modules, so
+  GONOSUMDB keeps their lookups away from it; go.sum still pins every hash. GOPRIVATE would do
+  that too, but it also sets GONOPROXY, so the go command would skip every proxy, this feed
+  included, and go to the module path's host directly.
+- **Routing.** The feed answers only for modules it holds and 404s everything else (another
+  module, and the parent paths the go command probes when it looks for a package's module), so
+  the go command moves on to the public proxy for every other dependency.
+- **Versions.** A release version is semver without Go's `v`, which the feed adds: release
+  `1.4.0` is module version `v1.4.0`. A v2+ module's path ends in `/v<major>`, and publishing
+  refuses a version whose major does not match. Build metadata is refused.
+- **Documents.** `@v/list` (every version that is not yanked), `@latest` (the `stable` channel's
+  head), `@v/<version>.info`, and the version's `.mod` and `.zip`, which are its own bytes,
+  immutable and served by digest. Module paths and versions are case-encoded as the go command
+  sends them (`!a` for `A`).
+- **Channels** are queries: `go get go.acme.dev/sdk@beta` asks for `@v/beta.info`, and the feed
+  answers with the version the `beta` channel serves.
+- **A yanked version** leaves `@v/list`, `@latest` and every channel, so no query (`@latest`,
+  `@v1`, `@v1.2`) resolves to it. Its `.info`, `.mod` and `.zip` stay, so a go.mod and go.sum
+  that pin it keep building. Go has no deprecation a proxy can carry (it reads `// Deprecated:`
+  from the module's own go.mod), so the console offers none.
+- **Credentials.** A feed that is not public answers `401` with `WWW-Authenticate: Basic`. The go
+  command answers from a `.netrc` entry for `pkg.plrs.im` (login `__token__`, password the
+  registry token), over https only.
+- **Zero-config use** (no GOPROXY setting at all) would need a `go-import` `<meta>` tag on the
+  module path's own host. The registry host never serves one: it answers only under `/go/`.
+
+**Publishing.** `pkey release publish --deliverable <id> --version <semver>` reads either a module
+zip (built by `golang.org/x/mod/zip` or another tool; every entry under `<module>@v<version>/`) or,
+when the artifacts glob matches a `go.mod`, the module's source tree, which the CLI zips by Go's
+own rules (no VCS directories, nested modules or vendored packages). It splits out the go.mod the
+`.mod` answer serves and records both go.sum hashes (`h1:`), so the console can show the lines a
+go.sum must hold:
+
+```yaml
+deliverables:
+  go.sdk:
+    kind: package
+    ecosystem: go
+    name: go.acme.dev/sdk
+    artifacts:
+      module: { match: "go.mod" }
+```
+
+## Publishing with native clients
+
+`pkey release publish` is the way CI publishes a package (it uploads straight to the blob store,
+with no size limit but the feed's). A product can also publish with the client its developers
+already use. Each request is turned into the same release descriptor the CLI sends and ingested
+the same way, so a version published natively is the same package release: the namespace rule,
+the feed's size ceiling, "a version is never republished" and Swift's signing rule all apply.
+
+| Client                                             | Request                                            | When the version appears                                   |
+| -------------------------------------------------- | -------------------------------------------------- | ---------------------------------------------------------- |
+| `npm publish` (also pnpm, `yarn npm publish`, Bun) | `PUT /npm/<owner>/<@scope%2fname>`                 | at once; the dist-tag is the channel (`latest` = `stable`) |
+| `twine upload`                                     | `POST /pypi/<owner>/legacy/`, one request per file | ten seconds after the last file                            |
+| `swift package-registry publish`                   | `PUT /swift/<owner>/<scope>/<name>/<version>`      | at once                                                    |
+| `mvn deploy`, Gradle `maven-publish`               | `PUT` each file, then `maven-metadata.xml`         | when `maven-metadata.xml` is uploaded                      |
+
+Before you publish:
+
+- **Declare the package** in `.pkey/release` as a package deliverable and sync the manifest. A
+  name no deliverable declares is refused (`package-undeclared`).
+- **Get a publish credential.** Either a registry token with **Read and publish** access, minted
+  under **Tokens** on the feeds page (owner-bound, naming the feeds it publishes to, at most 30
+  days), or, in CI, the 30-minute CI token `pkey auth github-oidc` exchanges for the job's OIDC
+  token (it holds `release:publish` and is written to `PKEY_CI_TOKEN`). Prefer the CI token in
+  CI: the repository then stores no publish secret at all, which is the point of trusted
+  publishing. A read-only or licence-bound token is refused with `403`.
+- **Keep a request under 32 MiB.** The bytes pass through the Worker; a larger package publishes
+  with `pkey release publish`.
+
+The client setup, with `PKEY_PUBLISH_TOKEN` holding either credential:
+
+```ini
+# .npmrc (npm, pnpm): then `npm publish` (or `npm publish --tag beta`)
+@acme:registry=https://pkg.plrs.im/npm/acme/
+//pkg.plrs.im/npm/acme/:_authToken=${PKEY_PUBLISH_TOKEN}
+```
+
+```sh
+# twine
+twine upload --repository-url https://pkg.plrs.im/pypi/acme/legacy/ \
+  -u __token__ -p "$PKEY_PUBLISH_TOKEN" dist/*
+
+# SwiftPM (5.9+): sign with your Swift signing identity when the feed requires it (the default)
+swift package-registry set --scope acme https://pkg.plrs.im/swift/acme
+swift package-registry login https://pkg.plrs.im/swift/acme --token "$PKEY_PUBLISH_TOKEN" --no-confirm
+swift package-registry publish acme.AcmeKit 1.0.0 --signing-identity "…"
+```
+
+```kotlin
+// Gradle maven-publish
+publishing {
+  repositories {
+    maven {
+      name = "acme"
+      url = uri("https://pkg.plrs.im/maven/acme/")
+      credentials { username = "__token__"; password = System.getenv("PKEY_PUBLISH_TOKEN") }
+    }
+  }
+}
+```
+
+For Maven, put the same `__token__` and token in `settings.xml` under a `<server>` whose id
+matches the `distributionManagement` repository.
+
+What each adapter checks:
+
+- **npm** — the name in the path, the document and the version agree; the tarball matches npm's
+  own `dist.integrity` and `dist.shasum`. Only a publish is accepted: deprecate and yank from the
+  console.
+- **twine** — each file is a wheel or an sdist of the project and version, and matches twine's
+  `sha256_digest`. The files of one version are gathered and published together once the
+  uploads stop for ten seconds (or by the next 15-minute cron run). No PEP 658 metadata file is
+  served for a twine upload; pip and uv then read the wheel itself.
+- **SwiftPM** — the manifests the feed serves are read out of the source archive (a top-level
+  `Package.swift` and `Package@swift-*.swift`, at most 1 MiB each). An unsigned release is
+  refused where the feed requires signing. An existing version is `409`.
+- **Maven and Gradle** — each checksum sidecar must match the file it names (it is not stored:
+  the feed derives every sidecar), `.asc` signatures are accepted and dropped, `-SNAPSHOT`
+  versions are refused, and a POM must name its path's coordinates. The version publishes when
+  `maven-metadata.xml` arrives, or after ten idle minutes.
+
+A publish that fails after the client was answered (a twine or Maven version, in a race) is
+recorded in the product's audit log as `release.publish.failed` with its reason.
 
 ## Local testing
 

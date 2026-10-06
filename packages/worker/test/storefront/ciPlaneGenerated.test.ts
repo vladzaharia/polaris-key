@@ -49,4 +49,17 @@ describe("the CLI's generated CI plane (A-18h)", () => {
       release: ["upload"],
     });
   });
+
+  it("carries every PR-plane store (A-18i)", () => {
+    const d = ciPlaneDeclaration();
+    expect(d.prStores.map((s) => s.store)).toEqual([
+      "winget",
+      "homebrew",
+      "scoop",
+      "flathub",
+    ]);
+    expect(d.prStores.find((s) => s.store === "winget")!.repo).toBe(
+      "microsoft/winget-pkgs",
+    );
+  });
 });
