@@ -69,11 +69,11 @@ There is no `active:` state anywhere; `hover:brightness-110` snaps because `filt
 
 ## Acceptance criteria
 
-- [ ] The drawer animates in from the edge and out again (smoke suite).
-- [ ] Every button has a visible press response and none when disabled.
-- [ ] No hover change snaps (motion lint and a test on Button's classes).
-- [ ] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
-- [ ] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
+- [x] The drawer animates in from the edge and out again (smoke suite).
+- [x] Every button has a visible press response and none when disabled.
+- [x] No hover change snaps (motion lint and a test on Button's classes).
+- [x] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
+- [x] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
 
 ## Verify
 

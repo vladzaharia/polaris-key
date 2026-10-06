@@ -9024,7 +9024,7 @@
       "optional": false,
       "refs": ["notes/S-23 §6.1 enter, exit, press", "notes/S-23 §4.2"],
       "brief": "wp/MO-08-console-overlay-controls-motion.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "MO-09",
