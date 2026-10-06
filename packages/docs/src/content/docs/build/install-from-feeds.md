@@ -379,3 +379,28 @@ package shows the version just published. The whole flow is on
 | ---------------- | ------------------------------------------ | ----------------------------------------- |
 | a push to `main` | `<next>-main.<N>` (Python `<next>.dev<N>`) | `main`                                    |
 | a `v*` tag       | the tag's version (`v0.9.0` → `0.9.0`)     | `stable`, or `beta` for a pre-release tag |
+
+### Builds of main are pruned once released
+
+Each build of `main` is a prerelease of the next version, so it stops being useful once that
+version ships. When a version is published on `stable`, the feeds **prune** the package's builds
+of main below it: `<next>-main.<N>` (Python `<next>.dev<N>`) for every `<next>` at or below the
+released version. Stable and beta versions are never touched. Neither are builds of a newer
+version, nor any other package. Once `0.9.1` is released, `0.9.1-main.4` and `0.9.0-main.2` are
+gone and `0.9.2-main.1` stays.
+
+A pruned version leaves every listing: npm's `versions` and `time`, PyPI's simple index, Swift's
+release list, `maven-metadata.xml`, the image's tags, Godot's lists, the Cargo index and the Go
+module list. Fetching it answers the ecosystem's not-found. npm's `main` dist-tag moves to the
+newest build of main that is left; when none is left, the tag disappears and never names a pruned
+version. A lockfile that pins a pruned build of main no longer installs. Pin a stable or beta
+release instead: those are never pruned. A pruned version can never be published again, because
+versions stay unique forever.
+
+A product's own feeds follow the same rule through the setting
+`release.packages.prunePrereleases`, which is on by default. An operator turns it off through
+the Feeds admin API: `PUT /manage/api/products/<slug>/distribution/feeds/retention` with
+`{"expectedVersion": <n>, "prunePrereleases": false}`. The platform's own feeds always prune.
+Versions released before this rule existed are cleaned up by the backfill,
+`pkey feeds prune --product <slug>`. It is a dry run unless `--apply` is given, and the token needs
+`release:yank`.

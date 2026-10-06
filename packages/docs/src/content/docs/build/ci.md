@@ -375,6 +375,12 @@ Promote, pin and unpin need the `release:promote` scope, which the default grant
 needs `release:yank`, which an operator adds to the product's publisher policy in the console.
 `--deliverable` selects a pack's channel pointers.
 
+`pkey feeds prune --product your-product` is the package feeds' retention backfill. For each
+package, it deletes the builds of main below the package's newest stable release. It is a dry
+run that prints what would go, with counts and bytes, unless you pass `--apply`. It needs
+`release:yank` as well. A stable publish already runs the same prune for its own package; see
+[Install from the feeds](/docs/build/install-from-feeds/#builds-of-main-are-pruned-once-released).
+
 ## Distribution commands
 
 The same credential reports what a store says and drives outlet rollouts:

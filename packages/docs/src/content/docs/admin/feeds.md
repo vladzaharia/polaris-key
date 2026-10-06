@@ -168,8 +168,21 @@ The row actions follow the protocol, and only what the protocol has a state for 
 | Godot     | Yes: leaves the asset listings                                            | No                                                            |
 
 A yank needs a reason and is a danger confirmation; unyank, deprecate (with a message) and lifting a
-deprecation are caution confirmations. There is no delete: a version number is unique forever, so a
-yanked version can never be published again.
+deprecation are caution confirmations. There is no delete action. A version number is unique
+forever, so a yanked version can never be published again.
+
+### Retention: builds of main
+
+Feed retention is the one thing that deletes versions. When a version is published on `stable`,
+the package's builds of main below it are pruned: `X-main.N`, or Python's `X.devN`, for every X
+at or below the released version. Stable and beta versions stay, and so do builds of a newer
+version and any version a channel points at. Each pruned version is audited as
+`package.version.prune` with its size, and it leaves a tombstone, so the number is still never
+published again. The bytes are reclaimed by the blob collector once no remaining version,
+package or product references them. It is on by default (`release.packages.prunePrereleases`).
+A product can turn it off, but the platform's own feeds cannot. `POST …/prune` is the backfill
+for versions released before this existed. It runs as a dry run unless `apply` is true, and so
+does `pkey feeds prune`.
 
 ## Setup from the CLI
 
@@ -208,6 +221,9 @@ rest of the console's API.
 | POST   | `…/versions/<version>/{yank,unyank,deprecate,undeprecate}` | the same                                                   | `package.version.*`                      |
 | POST   | `/<eco>/rebuild`                                           | `/<eco>/rebuild`                                           | `feed.rebuild`                           |
 | GET    | `/<eco>/activity`                                          | `/<eco>/activity`                                          | —                                        |
+| GET    | `/retention`: the owner's retention setting                | `/retention`                                               | —                                        |
+| PUT    | `/retention` (refused: the system product is locked on)    | `/retention` (`{expectedVersion, prunePrereleases}`)       | `feed.retention.update`                  |
+| POST   | `/prune` (`{apply?, deliverable?}`, a dry run by default)  | `/prune`                                                   | `package.version.prune` (each version)   |
 | POST   | `/bootstrap`                                               | —                                                          | `feed.bootstrap` (platform activity)     |
 | GET    | `/tokens[?license=<id>]`                                   | the same                                                   | —                                        |
 | POST   | `/tokens`                                                  | the same                                                   | `registry_token.create`                  |
