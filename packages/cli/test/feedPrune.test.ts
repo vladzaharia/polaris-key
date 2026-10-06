@@ -1,0 +1,192 @@
+/**
+ * `pkey feeds prune` (feed retention) against a fake Worker: the request it sends (dry run by
+ * default, `apply` only with `--apply`), the report it prints, and a refusal. The real Worker
+ * route is exercised by `packages/worker/test/feedPruneRoutes.test.ts`.
+ */
+
+import { describe, expect, it } from "vitest";
+import { runPkey } from "../src/index.js";
+import {
+  formatBytes,
+  renderPruneReport,
+  type PruneReport,
+} from "../src/feedPrune.js";
+
+const BASE = "https://key.example.test";
+const CI_TOKEN = `pkeyci_${"A".repeat(43)}`;
+
+function report(dryRun: boolean): PruneReport {
+  return {
+    ok: true,
+    product: "polaris-key",
+    dryRun,
+    prunePrereleases: true,
+    packages: [
+      {
+        deliverableId: "npm.node",
+        ecosystem: "npm",
+        name: "@polaris-key/node",
+        stable: "0.9.1",
+        prune: [
+          {
+            releaseId: "npm.node@0.9.1-main.3",
+            version: "0.9.1-main.3",
+            files: 1,
+            bytes: 2_500_000,
+            freedBytes: 2_500_000,
+          },
+        ],
+        kept: [{ releaseId: "x", version: "0.9.1-main.4", reason: "pinned" }],
+        bytes: 2_500_000,
+        freedBytes: 2_500_000,
+      },
+    ],
+    skipped: [{ deliverableId: "godot.sdk", reason: "no-stable" }],
+    totals: {
+      versions: 1,
+      bytes: 2_500_000,
+      freedBytes: 2_500_000,
+      failed: 0,
+    },
+  };
+}
+
+function fake(answer: (body: Record<string, unknown>) => [number, unknown]) {
+  const seen: {
+    url: string;
+    auth: string | null;
+    body: Record<string, unknown>;
+  }[] = [];
+  const fetchImpl = (async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ) => {
+    const body = JSON.parse(String(init?.body ?? "{}")) as Record<
+      string,
+      unknown
+    >;
+    seen.push({
+      url: String(input),
+      auth: new Headers(init?.headers).get("authorization"),
+      body,
+    });
+    const [status, out] = answer(body);
+    return new Response(JSON.stringify(out), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
+  }) as typeof fetch;
+  return { seen, fetchImpl };
+}
+
+async function run(argv: string[], w: ReturnType<typeof fake>) {
+  let out = "";
+  let err = "";
+  const code = await runPkey(argv, {
+    stdout: { write: (c: string) => ((out += c), true) },
+    stderr: { write: (c: string) => ((err += c), true) },
+    env: { PKEY_CI_TOKEN: CI_TOKEN },
+    fetchImpl: w.fetchImpl,
+    sleep: async () => {},
+  });
+  return { code, out, err };
+}
+
+describe("pkey feeds prune", () => {
+  it("dry-runs by default and prints counts and bytes per package", async () => {
+    const w = fake(() => [200, report(true)]);
+    const r = await run(
+      ["feeds", "prune", "--product", "polaris-key", "--base-url", BASE],
+      w,
+    );
+    expect(r.code, r.err).toBe(0);
+    expect(w.seen).toEqual([
+      {
+        url: `${BASE}/polaris-key/release/packages/prune`,
+        auth: `Bearer ${CI_TOKEN}`,
+        body: { apply: false },
+      },
+    ]);
+    expect(r.out).toContain("Dry run: nothing was deleted.");
+    expect(r.out).toContain(
+      "npm @polaris-key/node: newest stable 0.9.1; would prune 1 build of main, 2.5 MB (2.5 MB freed)",
+    );
+    expect(r.out).toContain("  - 0.9.1-main.3  1 file, 2.5 MB (2.5 MB freed)");
+    expect(r.out).toContain("  = 0.9.1-main.4  kept (pinned)");
+    expect(r.out).toContain("godot.sdk: skipped (no stable release yet)");
+    expect(r.out).toContain("Run again with --apply to delete them.");
+  });
+
+  it("--apply asks the Worker to delete, for one deliverable with --deliverable", async () => {
+    const w = fake(() => [200, report(false)]);
+    const r = await run(
+      [
+        "feeds",
+        "prune",
+        "--product",
+        "polaris-key",
+        "--deliverable",
+        "npm.node",
+        "--apply",
+        "--base-url",
+        BASE,
+      ],
+      w,
+    );
+    expect(r.code, r.err).toBe(0);
+    expect(w.seen[0]!.body).toEqual({ apply: true, deliverable: "npm.node" });
+    expect(r.out).toContain("Applied.");
+    expect(r.out).not.toContain("--apply to delete");
+  });
+
+  it("--json prints the Worker's report", async () => {
+    const w = fake(() => [200, report(true)]);
+    const r = await run(
+      [
+        "feeds",
+        "prune",
+        "--product",
+        "polaris-key",
+        "--json",
+        "--base-url",
+        BASE,
+      ],
+      w,
+    );
+    expect(JSON.parse(r.out)).toMatchObject({
+      dryRun: true,
+      totals: { versions: 1 },
+    });
+  });
+
+  it("a refusal (the token lacks release:yank) fails the command", async () => {
+    const w = fake(() => [
+      403,
+      {
+        error: "forbidden",
+        reason: "scope_missing",
+        message: "needs release:yank",
+      },
+    ]);
+    const r = await run(
+      ["feeds", "prune", "--product", "polaris-key", "--base-url", BASE],
+      w,
+    );
+    expect(r.code).not.toBe(0);
+    expect(r.err).toContain("403");
+  });
+
+  it("formats bytes in decimal units", () => {
+    expect(formatBytes(999)).toBe("999 B");
+    expect(formatBytes(1500)).toBe("1.5 kB");
+    expect(formatBytes(3_200_000_000)).toBe("3.2 GB");
+    expect(
+      renderPruneReport({
+        ...report(true),
+        packages: [],
+        skipped: [],
+        totals: { versions: 0, bytes: 0, freedBytes: 0, failed: 0 },
+      }),
+    ).not.toContain("--apply");
+  });
+});
