@@ -27,6 +27,21 @@ differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US 
 
 - Copy per SIGN-IN.md §3.3–§3.4: no lede on portal direct; the logo-only provider row (Apple, Google, Steam); **Have a license key?** and **Sign in with another device** under a rule; six-cell code input as one field; "{n} tries left."; no "Polaris Key · key.plrs.im" footer. Skip only when an app sent the person (D-36).
 
+## Changed by plan PX-W9 (2026-10-06)
+
+[`plans/PX-W9.md`](../plans/PX-W9.md) revision 2 was approved by the lead under the owner's delegation on 2026-10-06. These notes win over the text of this brief where they differ.
+
+- **`POST /api/key/preview`** (PX-W9) is signed out and read-only, and never counts. It charges the IP bucket
+  `portalKeyPreview`. Its body is `{product, verdict: "addable" | "license_owned" | "portal_off", license:
+{tierName, term} | null, keyEntries | null, upgrade: "skippable" | "forced"}` (Q5, following SIGN-IN.md §3.9).
+  - The `license_owned` verdict says only that the key is in an account.
+  - It never carries an email, masked email, licence id or device list.
+  - `email_mismatch` stays a signed-in verdict (`POST /api/activate/preview`).
+- **The forced body.** Render it only when `upgrade` is `"forced"`. The Worker sets that only at the limit **and**
+  with `identity.keyEntryRefusals` on (Q4). Otherwise render the skippable body with the meter, even at 0 left.
+- **The meter.** It reads `keyEntries {used, limit}` and shows `max(0, limit − used)` left. `used` may exceed
+  `limit`. With Identity off, `keyEntries` is `null`: show no meter.
+
 ## Goal
 
 The login card is identifier-first with the usual-method hint from the `pk_last_method` cookie, code entry, passkey button and conditional UI, the logo-only Apple/Google/Steam row per product, the license-key path, and `AccountUpgrade` (skippable while entries remain, forced at zero with the entries meter).
