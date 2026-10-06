@@ -107,6 +107,7 @@ import {
   handleDeviceLoginStart,
 } from "./deviceLogin.js";
 import { freeAccountDevice, portalActionLimit } from "./freeDevice.js";
+import { handleProfileApi } from "./profile.js";
 
 export function portalJson(
   body: unknown,
@@ -524,8 +525,8 @@ async function handleMe(
       id: account.id,
       name: account.display_name ?? session.name,
       email: account.primary_email ?? session.email,
-      // I-07: the account's chosen picture, copied into R2 and served same-origin; null shows
-      // initials.
+      // I-07, PX-W16: the picture in use, re-encoded and served same-origin (256 px; `-96` for
+      // the small one); null shows initials. `GET /api/me/profile` has the rest.
       avatarUrl: avatarUrl(account.avatar_key ?? null),
     },
     csrf: session.csrf,
@@ -1357,6 +1358,9 @@ export async function handlePortalApi(
   await syncAccountLicenseLinks(db, session.accountId, now);
 
   const [head, ...rest] = segments;
+  // PX-W16 (G32, G33): Account → Profile, and picture uploads (`profile.ts`).
+  if (head === "me" && rest[0] === "profile")
+    return handleProfileApi(req, env, db, session, rest, now);
   if (head === "me") return handleMe(db, session, now);
   if (head === "sessions") {
     return handleSessions(req, env, db, session, sessionIdHash, rest, now);

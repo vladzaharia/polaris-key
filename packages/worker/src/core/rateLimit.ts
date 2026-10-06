@@ -159,6 +159,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   // Maven PUTs), per publishing token. Each one writes to the blob store, so it fails closed: a
   // limiter outage must not become unmetered storage writes; a refused publish is a retry.
   registryPublish: "closed",
+  // PX-W16: an account's picture uploads (`POST /api/me/profile/picture`), per account. Each one
+  // is a re-encode and four writes to the blob store, so an outage refuses rather than becoming
+  // unmetered storage; a refused upload is a retry for one person.
+  portalAvatarUpload: "closed",
   // UX-69: the live credential check, per operator. Each check sends a value the Worker has never
   // seen to a store API and spends that store's quota, so an outage refuses (a 429 the form shows
   // as "check again") rather than letting a loop through.
@@ -168,6 +172,8 @@ const FAIL_MODE: Record<string, FailMode> = {
   adminApi: "open",
   adminAccessDenied: "open",
   portalDeviceDisconnect: "open",
+  // PX-W16: Account → Profile edits. Writes the account's own row only; nothing to guard.
+  portalProfileEdit: "open",
   portalDownloadToken: "open",
   // PX-W2: the product page's downloads listing. A read charged only after ownership is
   // proven; it mints no URL (the token mint above re-checks everything), so nothing to guard.

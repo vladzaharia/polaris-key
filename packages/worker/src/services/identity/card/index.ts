@@ -34,7 +34,7 @@ export {
   avatarUrl,
   deleteAccountAvatars,
   serveAvatar,
-  AVATAR_KEY_PATTERN,
+  AVATAR_ASSET_PATTERN,
 } from "./avatars.js";
 export { markNudgeShown, nudgeDue } from "./finish.js";
 export { turnstileSiteKey } from "./turnstile.js";

@@ -179,6 +179,12 @@ export async function mergeAccounts(
       sql: "UPDATE account_passkeys SET account_id = ? WHERE account_id = ?",
       params: [S, A],
     },
+    // PX-W16: the absorbed account's pictures move with the links that use them; whatever the
+    // survivor ends up not using goes in the nightly sweep.
+    {
+      sql: "UPDATE account_avatars SET account_id = ? WHERE account_id = ?",
+      params: [S, A],
+    },
     {
       sql: "UPDATE registry_tokens SET portal_account_id = ? WHERE portal_account_id = ?",
       params: [S, A],

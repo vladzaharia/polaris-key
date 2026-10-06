@@ -439,6 +439,8 @@ const TABLE_OWNERS = {
     "account_passkeys",
     // I-12: the developer relink tool's history and 72-hour undo.
     "license_relinks",
+    // PX-W16: account pictures, re-encoded and content-addressed (renditions in R2 `avatars/`).
+    "account_avatars",
     "portal_accounts",
     "portal_account_emails",
     "portal_account_identities",

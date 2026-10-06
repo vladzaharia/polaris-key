@@ -20,7 +20,9 @@
 //    product column at all, so their passes are by age alone, bounded per pass like every other
 //    prune; and `blob_objects` (P4-14's collector) belongs to no
 //    product: its sweep deletes only rows that NO product references
-//    (the `NOT EXISTS` on `blob_refs` is in every statement), bounded per tick.
+//    (the `NOT EXISTS` on `blob_refs` is in every statement), bounded per tick. `account_avatars`
+//    (PX-W16) belongs to an account, not a product: its sweep deletes only assets nothing uses
+//    (the two `NOT EXISTS` are in the statement), bounded per tick.
 // 2. IDEMPOTENT. Every step is a delete-what-is-already-past or a null-what-is-already-dormant,
 //    so a second run on the same clock removes nothing and changes nothing. Cron delivery is
 //    at-least-once; a duplicate tick must be a no-op, not a double-punishment.
@@ -53,6 +55,7 @@ import {
   catchUpLegacyAccounts,
   settleOwnershipConflicts,
 } from "./services/identity/accounts/legacy.js";
+import { sweepAvatars } from "./services/identity/card/avatars.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
 import { REFUSAL_RETENTION_SECONDS, pruneRefusals } from "./core/refusals.js";
 import { lazyDeltaProducts } from "./core/deltaDemand.js";
@@ -412,6 +415,10 @@ export async function runScheduledMaintenance(
   // collector, which never touches a ref a row still holds.
   if (env)
     await step(report, "hostedAssets", () => recheckHostedAssets(env, db, now));
+
+  // PX-W16: account pictures nothing has used for a day (a disconnected provider's copy, an
+  // upload never saved, a merged account's leftovers, a write that died half way).
+  if (env) await step(report, "avatars", () => sweepAvatars(env, db, now));
 
   if (env) await runBlobGc(report, env, db, now);
 

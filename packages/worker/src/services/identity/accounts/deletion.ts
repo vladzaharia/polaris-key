@@ -179,8 +179,9 @@ export async function deleteAccount(
       now,
     });
   }
-  // I-07: the copied provider pictures go before the rows that name them (R2 objects have no
-  // foreign key; once the rows are gone nothing could find them).
+  // I-07, PX-W16: every picture the account owns or uses (provider copies, uploads, pending ones)
+  // goes before the rows that name them (R2 objects have no foreign key; once the rows are gone
+  // nothing could find them), and its `account_avatars` rows with them.
   await deleteAccountAvatars(env, db, accountId);
   const stmts: DbStatement[] = [];
   for (const s of subjects) {
