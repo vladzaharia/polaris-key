@@ -10,7 +10,8 @@
 //   - [data-ui-allow="rule rule …"] allows the named rules on that subtree. Every use must carry a
 //     reason in the markup next to it; the e2e suite counts them so the allowance cannot grow
 //     unnoticed.
-//   - [data-ui-touch] (on the scope or any ancestor) marks a touch variant: touch targets ≥ 44 px.
+//   - [data-ui-touch] (on the scope, inside it or on any ancestor) marks a touch variant: touch
+//     targets ≥ 44 px.
 //   - [data-ui-preset="native"] marks the native preset (§3.4): the platform's own fonts and
 //     colours are expected there, so font-family and colour-literal do not apply.
 // Style rules (the ones about authored CSS) are checked on every CSSStyleRule whose selector
@@ -87,7 +88,6 @@
       const els = [scope, ...scope.querySelectorAll("*")].filter(
         (el) => !el.closest("[data-ui-chrome]") && visible(el),
       );
-      const touch = !!scope.closest("[data-ui-touch]");
 
       for (const el of els) {
         const cs = getComputedStyle(el);
@@ -216,7 +216,11 @@
             "an empty placeholder where an image or logo belongs",
           );
 
-        if (touch && el.matches(INTERACTIVE) && !inlineLink(el, cs)) {
+        if (
+          el.closest("[data-ui-touch]") &&
+          el.matches(INTERACTIVE) &&
+          !inlineLink(el, cs)
+        ) {
           const r = el.getBoundingClientRect();
           if (r.width < o.minTouch - 0.5 || r.height < o.minTouch - 0.5)
             report(

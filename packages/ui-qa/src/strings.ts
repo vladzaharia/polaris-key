@@ -27,7 +27,7 @@ export interface Matcher {
   key: string;
   platform: string | null;
   source: string;
-  re: RegExp;
+  patterns: Pattern[];
   /** How specific the message is: literal characters, so "Sign in" beats "{product}". */
   weight: number;
 }
@@ -81,8 +81,6 @@ export function loadCatalog(root: string): CatalogMessage[] {
   return out;
 }
 
-const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
 /** Normalise what a renderer may legitimately change: whitespace, quotes and the ellipsis. */
 export function normalise(s: string): string {
   return s
@@ -121,58 +119,120 @@ function tokens(msg: string): Array<{ lit?: string; arg?: string }> {
   return out;
 }
 
-/** The ICU subset the catalog allows → a regex source (plain args, plural, select). */
-export function icuToRegex(msg: string): { source: string; weight: number } {
+/** A message as glob segments: literal text, or null for one argument (any non-empty text). */
+export type Pattern = Array<string | null>;
+
+/**
+ * The ICU subset the catalog allows (plain arguments, plural, select) as glob patterns, one per
+ * combination of plural and select branches. Matching is a linear glob scan, never a regex with
+ * a group per argument: those backtrack polynomially on strings that do not match.
+ */
+export function icuToPatterns(msg: string): {
+  patterns: Pattern[];
+  weight: number;
+} {
   let weight = 0;
-  const conv = (m: string): string =>
-    tokens(m)
-      .map((t) => {
-        if (t.lit !== undefined) {
-          weight += (t.lit.match(/\p{L}/gu) ?? []).length;
-          return escape(t.lit).replace(/\s+/g, "\\s+");
-        }
+  const conv = (m: string): Pattern[] => {
+    let acc: Pattern[] = [[]];
+    for (const t of tokens(m)) {
+      let alts: Pattern[];
+      if (t.lit !== undefined) {
+        weight += (t.lit.match(/\p{L}/gu) ?? []).length;
+        alts = [[t.lit.replace(/\s+/g, " ")]];
+      } else {
         const arg = t.arg ?? "";
         const m2 = arg.match(/^\s*(\w+)\s*,\s*(plural|select)\s*,(.*)$/s);
-        if (!m2) return "(.+?)";
-        const branches: string[] = [];
-        const re = /(=?\w+)\s*\{/g;
-        const body = m2[3] ?? "";
-        let i = 0;
-        while (i < body.length) {
-          re.lastIndex = i;
-          const hit = re.exec(body);
-          if (!hit) break;
-          let depth = 1;
-          let j = hit.index + hit[0].length;
-          const start = j;
-          while (j < body.length && depth) {
-            if (body[j] === "{") depth++;
-            if (body[j] === "}") depth--;
-            j++;
+        if (!m2) alts = [[null]];
+        else {
+          alts = [];
+          const re = /(=?\w+)\s*\{/g;
+          const body = m2[3] ?? "";
+          let i = 0;
+          while (i < body.length) {
+            re.lastIndex = i;
+            const hit = re.exec(body);
+            if (!hit) break;
+            let depth = 1;
+            let j = hit.index + hit[0].length;
+            const start = j;
+            while (j < body.length && depth) {
+              if (body[j] === "{") depth++;
+              if (body[j] === "}") depth--;
+              j++;
+            }
+            const branch = body.slice(start, j - 1);
+            alts.push(
+              ...conv(
+                m2[2] === "plural" ? branch.replace(/#/g, "{n}") : branch,
+              ),
+            );
+            i = j;
           }
-          const branch = body.slice(start, j - 1);
-          branches.push(
-            conv(m2[2] === "plural" ? branch.replace(/#/g, "{n}") : branch),
-          );
-          i = j;
         }
-        return `(?:${branches.join("|")})`;
-      })
-      .join("");
-  return { source: conv(msg), weight };
+      }
+      const next: Pattern[] = [];
+      for (const a of acc) for (const b of alts) next.push([...a, ...b]);
+      acc = next.slice(0, 256);
+    }
+    return acc;
+  };
+  const patterns = conv(msg).map(merge);
+  return { patterns, weight };
+}
+
+/** Join adjacent literals and collapse adjacent wildcards. */
+function merge(p: Pattern): Pattern {
+  const out: Pattern = [];
+  for (const t of p) {
+    const last = out[out.length - 1];
+    if (t === null) {
+      if (last !== null || out.length === 0) out.push(null);
+    } else if (typeof last === "string") out[out.length - 1] = last + t;
+    else out.push(t);
+  }
+  return out;
+}
+
+/** Glob match: literals in order, each wildcard at least one character. Leftmost-greedy is exact. */
+export function globMatch(text: string, p: Pattern): boolean {
+  let pos = 0;
+  let i = 0;
+  // Leading literal anchors at 0.
+  if (typeof p[0] === "string") {
+    if (!text.startsWith(p[0])) return false;
+    pos = p[0].length;
+    i = 1;
+  }
+  if (i >= p.length) return pos === text.length;
+  // Trailing literal anchors at the end.
+  const tail = p[p.length - 1];
+  let end = text.length;
+  let last = p.length;
+  if (typeof tail === "string" && p.length - 1 >= i) {
+    if (!text.endsWith(tail) || text.length - tail.length < pos) return false;
+    end = text.length - tail.length;
+    last = p.length - 1;
+  }
+  let pendingWild = false;
+  for (; i < last; i++) {
+    const t = p[i] as string | null;
+    if (t === null) {
+      pendingWild = true;
+      continue;
+    }
+    const at = text.indexOf(t, pos + (pendingWild ? 1 : 0));
+    if (at < 0 || at + t.length > end) return false;
+    pos = at + t.length;
+    pendingWild = false;
+  }
+  return pendingWild ? end - pos >= 1 : end === pos;
 }
 
 export function compile(catalog: CatalogMessage[]): Matcher[] {
   const out: Matcher[] = [];
   const add = (key: string, platform: string | null, value: string) => {
-    const { source, weight } = icuToRegex(normalise(value));
-    out.push({
-      key,
-      platform,
-      source: value,
-      re: new RegExp(`^${source}$`, "u"),
-      weight,
-    });
+    const { patterns, weight } = icuToPatterns(normalise(value));
+    out.push({ key, platform, source: value, patterns, weight });
   };
   for (const m of catalog) {
     add(m.key, null, m.value);
@@ -235,10 +295,14 @@ export function matchString(
   platform: string,
 ): Match | null {
   const t = normalise(text);
+  const letters = (t.match(/\p{L}/gu) ?? []).length;
   for (const m of matchers) {
-    if (m.weight < 2) continue; // "{product} · {term}" alone says nothing about copy
+    // A message that is mostly arguments ("{store} key", "{product} · {term}") says little about
+    // copy: it matches only when its own words are at least a quarter of the string's letters.
+    if (m.weight < 2 || m.weight < letters * 0.25) continue;
     if (m.platform && m.platform !== platform) continue;
-    if (m.re.test(t)) return { key: m.key, variant: m.platform };
+    if (m.patterns.some((p) => globMatch(t, p)))
+      return { key: m.key, variant: m.platform };
   }
   return null;
 }

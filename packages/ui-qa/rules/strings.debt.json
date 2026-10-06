@@ -9,6 +9,11 @@
     {
       "board": "android",
       "state": "device-limit",
+      "text": "Remove Work laptop and continue"
+    },
+    {
+      "board": "android",
+      "state": "device-limit",
       "text": "Tidewater Studio signs out on Work laptop."
     },
     {
@@ -18,13 +23,28 @@
     },
     {
       "board": "android",
+      "state": "device-limit",
+      "text": "Work laptop Least recent Windows 11 · last used 41 days ago"
+    },
+    {
+      "board": "android",
       "state": "font",
       "text": "Sign in or add your license to start."
     },
     {
       "board": "android",
       "state": "gate",
+      "text": "by Harbor Audio"
+    },
+    {
+      "board": "android",
+      "state": "gate",
       "text": "Sign in or add your license to start."
+    },
+    {
+      "board": "android",
+      "state": "native-dynamic",
+      "text": "by Harbor Audio"
     },
     {
       "board": "android",
@@ -75,6 +95,11 @@
       "board": "android",
       "state": "sign-in-handoff",
       "text": "Waiting for you · code expires in 4:12"
+    },
+    {
+      "board": "android",
+      "state": "sign-in",
+      "text": "by Harbor Audio"
     },
     {
       "board": "android",
@@ -154,6 +179,11 @@
     {
       "board": "apple",
       "state": "ipad",
+      "text": "by Harbor Audio"
+    },
+    {
+      "board": "apple",
+      "state": "ipad",
       "text": "Sign in or add your license to start."
     },
     {
@@ -184,12 +214,22 @@
     {
       "board": "apple",
       "state": "visionos",
+      "text": "by Harbor Audio"
+    },
+    {
+      "board": "apple",
+      "state": "visionos",
       "text": "Sign in or add your license to start."
     },
     {
       "board": "apple",
       "state": "visionos",
       "text": "Welcome"
+    },
+    {
+      "board": "apple",
+      "state": "watch",
+      "text": "Open Tidewater Studio on your iPhone to finish."
     },
     {
       "board": "apple",
@@ -204,12 +244,27 @@
     {
       "board": "desktop",
       "state": "device-limit",
+      "text": "Remove \"Work laptop\" and Continue"
+    },
+    {
+      "board": "desktop",
+      "state": "device-limit",
       "text": "Tidewater Studio signs out on Work laptop."
     },
     {
       "board": "desktop",
       "state": "device-limit",
       "text": "To use it on this Mac, remove one. You can add it back later."
+    },
+    {
+      "board": "desktop",
+      "state": "device-limit",
+      "text": "Work laptop Least recent Windows 11 · last used 41 days ago"
+    },
+    {
+      "board": "desktop",
+      "state": "gate",
+      "text": "by Harbor Audio"
     },
     {
       "board": "desktop",
@@ -220,6 +275,11 @@
       "board": "desktop",
       "state": "gate",
       "text": "Start a 14-day trial"
+    },
+    {
+      "board": "desktop",
+      "state": "macos15",
+      "text": "by Harbor Audio"
     },
     {
       "board": "desktop",
@@ -360,6 +420,11 @@
       "board": "godot",
       "state": "device-limit",
       "text": "Drift Kart signs out on Living room PC."
+    },
+    {
+      "board": "godot",
+      "state": "device-limit",
+      "text": "Living room PC Least recent Windows 11 · last used 3 weeks ago"
     },
     {
       "board": "godot",
@@ -529,6 +594,11 @@
     {
       "board": "ios",
       "state": "activate",
+      "text": "by Harbor Audio"
+    },
+    {
+      "board": "ios",
+      "state": "activate",
       "text": "Sign in or add your license to start."
     },
     {
@@ -544,6 +614,11 @@
     {
       "board": "ios",
       "state": "device-limit",
+      "text": "Remove Work laptop and continue"
+    },
+    {
+      "board": "ios",
+      "state": "device-limit",
       "text": "Tidewater Studio signs out on Work laptop."
     },
     {
@@ -553,8 +628,23 @@
     },
     {
       "board": "ios",
+      "state": "device-limit",
+      "text": "Work laptop Least recent Windows 11 · last used 41 days ago"
+    },
+    {
+      "board": "ios",
+      "state": "gate",
+      "text": "by Harbor Audio"
+    },
+    {
+      "board": "ios",
       "state": "gate",
       "text": "Sign in or add your license to start."
+    },
+    {
+      "board": "ios",
+      "state": "ios18",
+      "text": "by Harbor Audio"
     },
     {
       "board": "ios",
@@ -565,6 +655,11 @@
       "board": "ios",
       "state": "ios18",
       "text": "Your key is in the purchase email from Harbor Audio."
+    },
+    {
+      "board": "ios",
+      "state": "live-activity",
+      "text": "About 20 s left · installs when you next open the app"
     },
     {
       "board": "ios",
@@ -664,6 +759,11 @@
     {
       "board": "ios",
       "state": "sign-in",
+      "text": "by Harbor Audio"
+    },
+    {
+      "board": "ios",
+      "state": "sign-in",
       "text": "Polaris Key handles sign-in. Harbor Audio never sees your passkeys."
     },
     {
@@ -714,6 +814,11 @@
     {
       "board": "linux",
       "state": "gate",
+      "text": "by Harbor Audio"
+    },
+    {
+      "board": "linux",
+      "state": "gate",
       "text": "Sign in or add your license to start."
     },
     {
@@ -745,6 +850,11 @@
       "board": "qt",
       "state": "quick-activate",
       "text": "Your key is in the purchase email from Harbor Audio."
+    },
+    {
+      "board": "qt",
+      "state": "quick-gate",
+      "text": "by Harbor Audio"
     },
     {
       "board": "qt",
@@ -874,12 +984,22 @@
     {
       "board": "terminal",
       "state": "device-limit",
+      "text": "Remove one to use it on build-server-02. You can add it back later."
+    },
+    {
+      "board": "terminal",
+      "state": "device-limit",
       "text": "Tidewater Studio · activate"
     },
     {
       "board": "terminal",
       "state": "device-limit",
       "text": "Tidewater Studio signs out on Work laptop."
+    },
+    {
+      "board": "terminal",
+      "state": "device-limit",
+      "text": "Windows 11 · last used 41 days ago · least recent"
     },
     {
       "board": "terminal",
@@ -1030,6 +1150,11 @@
       "board": "terminal",
       "state": "narrow",
       "text": "least recent"
+    },
+    {
+      "board": "terminal",
+      "state": "narrow",
+      "text": "Remove one to use it on build-server-02."
     },
     {
       "board": "terminal",
@@ -1190,6 +1315,11 @@
       "board": "terminal",
       "state": "status-error",
       "text": "Harbor Audio revoked this key on Oct 2, after a refund."
+    },
+    {
+      "board": "terminal",
+      "state": "status-error",
+      "text": "tidewater activate add a different key"
     },
     {
       "board": "terminal",
@@ -1394,6 +1524,11 @@
     {
       "board": "web",
       "state": "device-limit",
+      "text": "Remove Work laptop and continue"
+    },
+    {
+      "board": "web",
+      "state": "device-limit",
       "text": "Tidewater Studio signs out on Work laptop."
     },
     {
@@ -1424,6 +1559,11 @@
     {
       "board": "web",
       "state": "gate",
+      "text": "by Harbor Audio"
+    },
+    {
+      "board": "web",
+      "state": "gate",
       "text": "Sign in or add your license to start."
     },
     {
@@ -1435,6 +1575,11 @@
       "board": "web",
       "state": "layers",
       "text": "Harbor Audio account"
+    },
+    {
+      "board": "web",
+      "state": "native-full",
+      "text": "by Harbor Audio"
     },
     {
       "board": "web",
@@ -1545,6 +1690,11 @@
       "board": "windows",
       "state": "activate",
       "text": "Your key is in the purchase email from Harbor Audio."
+    },
+    {
+      "board": "windows",
+      "state": "gate",
+      "text": "by Harbor Audio"
     },
     {
       "board": "windows",
