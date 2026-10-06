@@ -52,13 +52,13 @@ import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
 } from "../src/services/identity/portal/session.js";
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { rateLimitOk } from "../src/core/rateLimit.js";
 import { hashKey } from "../src/crypto.js";
 import type { Env } from "../src/env.js";
 import type { SqliteDb } from "../src/db/sqlite.js";
 import { artefacts } from "./singleUseMock.js";
 import { handlePortalApi } from "./portalHarness.js";
-import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { secureResponse } from "../src/securityHeaders.js";
 import { brandPageStyleSource } from "../src/core/brandHtml.js";
 
@@ -1054,7 +1054,6 @@ describe("I-26 Replace a device", () => {
     ).toBe("authorized");
 
     // …and the portal's own DELETE is out of budget too: one budget for both surfaces.
-    // I-07: a bare signed cookie is refused now; a sign-in opens an account_sessions row.
     const { token: portalToken, session } = await issuePortalSessionRow(
       env,
       db,
