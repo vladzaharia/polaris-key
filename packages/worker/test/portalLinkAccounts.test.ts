@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { NOW, seedProduct } from "./seed.js";
 import { Device, seededWorld, type CardWorld } from "./identityCardHarness.js";
 import { insertLicense } from "../src/repo.js";
+import { deleteProduct } from "../src/admin/repo.js";
 import {
   ACCOUNT_SESSION_COOKIE,
   LINK_FLOW_COOKIE,
@@ -739,6 +740,70 @@ describe("undo within 72 hours", () => {
       ["other", NOW - 10],
     ]);
     expect(await library(b.accountId)).toEqual([["other", NOW - 5]]);
+  });
+
+  it("never brings back an entry, consent or acceptance the kept account no longer holds", async () => {
+    const w = await seededWorld();
+    await seedProduct(w.db, "other");
+    const b = await emailAccount(w, "mara@fennick.studio");
+    const a = await emailAccount(w, "a@example.com");
+    for (const [product, at] of [
+      ["acme", NOW - 20],
+      ["other", NOW - 10],
+    ] as const)
+      await w.db.run(
+        "INSERT INTO library_entries (account_id, product, via, added_at) VALUES (?, ?, 'open', ?)",
+        a.accountId,
+        product,
+        at,
+      );
+    await w.db.run(
+      `INSERT OR REPLACE INTO account_product_grants
+         (account_id, product, claims_json, granted_at, modified_at, scope_hash)
+       VALUES (?, 'other', '[]', ?, ?, NULL)`,
+      a.accountId,
+      NOW - 10,
+      NOW - 10,
+    );
+    for (const product of ["acme", "other"])
+      await w.db.run(
+        `INSERT INTO account_terms_acceptances (account_id, product, version, url, accepted_at)
+         VALUES (?, ?, 'v1', 'https://example.com/terms', ?)`,
+        a.accountId,
+        product,
+        NOW - 10,
+      );
+    await proveBoth(a, b);
+    const mergeId = (
+      (await (await join(a.d)).json()) as { merge: { id: string } }
+    ).merge.id;
+    // During the window the kept account removes acme from its library, and other is deleted.
+    await w.db.run(
+      "DELETE FROM library_entries WHERE account_id = ? AND product = 'acme'",
+      b.accountId,
+    );
+    await deleteProduct(w.db, "other", NOW + 60);
+    expect(
+      (await a.d.send("POST", `${LINK}/undo`, { merge: mergeId })).status,
+    ).toBe(200);
+    const rows = (table: string, accountId: string) =>
+      w.db.all<{ product: string }>(
+        `SELECT product FROM ${table} WHERE account_id = ? AND product IN ('acme', 'other')
+          ORDER BY product`,
+        accountId,
+      );
+    expect(await rows("library_entries", a.accountId)).toEqual([]);
+    expect(await rows("library_entries", b.accountId)).toEqual([]);
+    expect(
+      await w.db.all(
+        "SELECT product FROM account_product_grants WHERE product = 'other'",
+      ),
+    ).toEqual([]);
+    // The acceptance the kept account still held goes back; the deleted product's does not.
+    expect(await rows("account_terms_acceptances", a.accountId)).toEqual([
+      { product: "acme" },
+    ]);
+    expect(await rows("account_terms_acceptances", b.accountId)).toEqual([]);
   });
 
   it("never restores a primary email the joined account no longer holds", async () => {

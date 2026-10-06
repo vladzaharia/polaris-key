@@ -22,12 +22,14 @@
  *     compromised provider account that was removed never comes back silently. The snapshot
  *     therefore holds method ids only, never their subjects, addresses or keys.
  *   - What still sits on the survivor goes back: licences, sessions, pictures, registry tokens,
- *     relink history, consents, terms acceptances, auto-attach blocks and library entries (PS-04).
- *     What the survivor had before the join stays, and so does anything added to it since. A
- *     licence the survivor detached since the join stays floating (it is added again by its key,
- *     under the claim rules). A licence that goes back revokes every registry token the survivor
- *     minted on it during the window (F-21, `onLicenseOwnershipEnded`), and its devices' bindings
- *     go.
+ *     relink history, consents, terms acceptances and library entries (PS-04); a consent, terms
+ *     acceptance or library entry the survivor no longer holds (withdrawn, removed, its product
+ *     deleted) stays gone. Auto-attach blocks all come back, even one the survivor lifted: the
+ *     cautious direction. What the survivor had before the join stays, and so does anything added
+ *     to it since. A licence the survivor detached since the join stays floating (it is added
+ *     again by its key, under the claim rules). A licence that goes back revokes every registry
+ *     token the survivor minted on it during the window (F-21, `onLicenseOwnershipEnded`), and its
+ *     devices' bindings go.
  *   - Details the survivor took from the absorbed account (a name, a picture, a primary email, the
  *     passkey user handle) are cleared again where they are still the absorbed account's values.
  *   - **Developers keep what they were told.** The join told each developer that the absorbed
@@ -598,13 +600,19 @@ export async function undoMerge(
       params: [A, product, id, S],
     });
   }
-  // Consents, terms and blocks: the absorbed account's rows come back; the copies the survivor
-  // took (where it had none of its own) go, unless changed since.
+  // Consents and terms: the absorbed account's rows come back only while the survivor still
+  // holds one for the same product (and version), so a consent withdrawn, a product deleted or
+  // terms whose acceptance went during the window never return; the copies the survivor took
+  // (where it had none of its own) go, unless changed since. Each restore runs before that
+  // delete. Auto-attach blocks come back whatever happened since: a block the survivor lifted
+  // returns on the absorbed account, the cautious direction.
   for (const g of snap.grants) {
     stmts.push({
       sql: `INSERT OR IGNORE INTO account_product_grants
               (account_id, product, claims_json, granted_at, modified_at, scope_hash)
-            VALUES (?, ?, ?, ?, ?, ?)`,
+            SELECT ?, ?, ?, ?, ?, ?
+             WHERE EXISTS (SELECT 1 FROM account_product_grants
+                            WHERE account_id = ? AND product = ?)`,
       params: [
         A,
         g.product,
@@ -612,6 +620,8 @@ export async function undoMerge(
         g.granted_at,
         g.modified_at,
         g.scope_hash,
+        S,
+        g.product,
       ],
     });
     if (snap.grantsAdded.includes(String(g.product))) {
@@ -627,8 +637,19 @@ export async function undoMerge(
     stmts.push({
       sql: `INSERT OR IGNORE INTO account_terms_acceptances
               (account_id, product, version, url, accepted_at)
-            VALUES (?, ?, ?, ?, ?)`,
-      params: [A, t.product, t.version, t.url, t.accepted_at],
+            SELECT ?, ?, ?, ?, ?
+             WHERE EXISTS (SELECT 1 FROM account_terms_acceptances
+                            WHERE account_id = ? AND product = ? AND version = ?)`,
+      params: [
+        A,
+        t.product,
+        t.version,
+        t.url,
+        t.accepted_at,
+        S,
+        t.product,
+        t.version,
+      ],
     });
     if (termsAdded.has(`${t.product}\u0000${t.version}`)) {
       stmts.push({
@@ -656,14 +677,18 @@ export async function undoMerge(
       });
     }
   }
-  // PS-04's library entries, as the blocks: the absorbed account's come back; the copies the
-  // survivor took (where it had none of its own) go, unless changed since.
+  // PS-04's library entries, as the consents: the absorbed account's come back only while the
+  // survivor still holds an entry for the product (one removed, or a product deleted, during the
+  // window never returns); the copies the survivor took (where it had none of its own) go,
+  // unless changed since.
   const libraryAdded = new Set(snap.libraryAdded ?? []);
   for (const e of snap.library ?? []) {
     stmts.push({
       sql: `INSERT OR IGNORE INTO library_entries (account_id, product, via, added_at)
-            VALUES (?, ?, ?, ?)`,
-      params: [A, e.product, e.via, e.added_at],
+            SELECT ?, ?, ?, ?
+             WHERE EXISTS (SELECT 1 FROM library_entries
+                            WHERE account_id = ? AND product = ?)`,
+      params: [A, e.product, e.via, e.added_at, S, e.product],
     });
     if (libraryAdded.has(String(e.product))) {
       stmts.push({
