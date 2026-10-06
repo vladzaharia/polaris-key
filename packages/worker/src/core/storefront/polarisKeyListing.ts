@@ -28,9 +28,11 @@ export const LISTING_AUDIENCES = ["eligible", "everyone"] as const;
 export type ListingAudience = (typeof LISTING_AUDIENCES)[number];
 
 /**
- * Every obtain-path kind, in the engine's evaluation order (S-21 §6.3, owner decision 4). PS-03
- * builds `group`, `auto_issue` and `open`; `store_owned` (PS-07), `product_idp` (PS-08) and
- * `email_domain` (PS-09) follow their dependencies.
+ * Every obtain-path kind (S-21 §6.3, owner decision 4), in the order the packages build them,
+ * which is also the order a stored `offerPaths` list is normalised to. PS-03 builds `group`,
+ * `auto_issue` and `open`; `store_owned` (PS-07), `product_idp` (PS-08) and `email_domain` (PS-09)
+ * follow their dependencies. The engine EVALUATES in a different order, ownership first and `open`
+ * last: `OBTAIN_PATH_ORDER` in `services/identity/portal/store/obtain.ts`.
  */
 export const OBTAIN_PATH_KINDS = [
   "group",
@@ -101,8 +103,8 @@ export function isObtainPathKind(v: unknown): v is ObtainPathKind {
 }
 
 /**
- * A submitted offer-path list, normalised to evaluation order without duplicates, or `undefined`
- * when it is not a list of known kinds. `null` is "all kinds" and passes through.
+ * A submitted offer-path list, normalised to `OBTAIN_PATH_KINDS` order without duplicates, or
+ * `undefined` when it is not a list of known kinds. `null` is "all kinds" and passes through.
  */
 export function parseOfferPaths(
   v: unknown,
