@@ -17,7 +17,8 @@
  *
  * The statements carry key HASHES only (`hashKey`, peppered), exactly as a single create does. The
  * plaintext keys exist in the create answer and nowhere else: not in `license_batches`, not in the
- * audit row, not in a log (src/ writes no `console.*`). A batch's keys cannot be downloaded again.
+ * audit row, not in a log (the Worker has no console logging, R12). A batch's keys cannot be
+ * downloaded again.
  *
  * ── USED ────────────────────────────────────────────────────────────────────────────────────
  *
