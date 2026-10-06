@@ -369,6 +369,36 @@ describe("the stale-cache bugs stay fixed", () => {
     ).toEqual(["health"]);
   });
 
+  it("a licence create refreshes Home's card facts, and so does every write that moves one", () => {
+    const keys = {
+      summary: qk.summary(),
+      products: qk.products(),
+      catalog: qk.catalog("djdl"),
+    };
+    expect(staleAfter("createLicense", ["djdl", {}], keys)).toEqual([
+      "summary",
+    ]);
+    for (const [method, args] of [
+      ["deleteLicense", ["djdl", "lic_1"]],
+      ["patchLicense", ["djdl", "lic_1", {}]],
+      ["yankRelease", ["djdl", "rel_1", {}]],
+      ["updateReleaseChannel", ["djdl", "stable", {}]],
+      ["deleteProductUserData", ["djdl", "sub_1"]],
+      ["updateServices", ["djdl", {}]],
+      ["storefrontRequest", ["djdl", "app-store", "steps/submit", {}]],
+      ["resyncProduct", ["djdl"]],
+    ] as [WriteMethod, unknown[]][]) {
+      queryClient.clear();
+      expect(staleAfter(method, args, keys), method).toContain("summary");
+    }
+    // A write that moves no fact leaves it alone.
+    queryClient.clear();
+    expect(
+      staleAfter("publishSchema", ["djdl", {}], keys),
+      "publishSchema",
+    ).not.toContain("summary");
+  });
+
   it("a catalog publish re-validates every license record", () => {
     expect(
       staleAfter("publishSchema", ["djdl", {}], {

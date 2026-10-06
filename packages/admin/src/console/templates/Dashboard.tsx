@@ -65,8 +65,12 @@ export function DashboardTemplate({
       {firstRun ?? (
         <>
           {tiles ? (
-            // Two per row on a phone; from 1280 px as many equal columns as there are tiles.
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]">
+            // Two per row below 1280 px, where an odd last tile spans the row so none is left an
+            // orphan beside empty space; from 1280 px as many equal columns as there are tiles.
+            <div
+              data-tiles=""
+              className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))] max-xl:[&>:last-child:nth-child(odd)]:col-span-2"
+            >
               {tiles}
             </div>
           ) : null}
