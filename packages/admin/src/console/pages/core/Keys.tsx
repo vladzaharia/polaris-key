@@ -12,6 +12,9 @@
  *   its overflow, and Prepare is disabled with the reason. After activation one line says how
  *   many active devices have refreshed since (§0.9: derived from `last_seen`, never a trust
  *   fetch count).
+ * - **Motion** (notes/S-23 §6.1 "countdown", "meter", "count"; MO-11): the trust window drains as a
+ *   ring beside its countdown (the seconds stay in text, the ring is decoration), and the
+ *   refreshed share fills a meter while its percentage counts up, once per rotation per visit.
  * - **Secrets**: the union of what is stored (A-5) and what the configuration requires (SEC-2).
  * - **CI publishing**: the trusted publisher and static CI tokens.
  * - Edge mint and store credentials have their own pages, under Config and Distribution.
@@ -30,6 +33,11 @@ import {
 import { cn } from "../../../lib/cn.js";
 import { errorCopy } from "../../../lib/errorCopy.js";
 import { formatSpan, fromSeconds } from "../../../lib/format.js";
+import {
+  CountUp,
+  setMeter,
+  useReducedMotion,
+} from "../../../ui/motion/index.js";
 import { ActionMenu } from "../../../ui/ActionMenu.js";
 import { Button } from "../../../ui/Button.js";
 import { Callout } from "../../../ui/Callout.js";
@@ -189,7 +197,7 @@ function SigningKeysSection({
           onAction={(kind) => setAction({ kind, key: staged })}
         />
       ) : refresh ? (
-        <RefreshedLine refresh={refresh} />
+        <RefreshedLine slug={slug} refresh={refresh} />
       ) : null}
       <div className="px-5 py-4">
         {keys.isPending ? (
@@ -353,6 +361,8 @@ function RotationStrip({
   const wait =
     staged.activateAfter === null ? 0 : Math.max(0, staged.activateAfter - now);
   const ready = wait <= 0;
+  const trustWindow =
+    staged.activateAfter === null ? 0 : staged.activateAfter - staged.createdAt;
   // Announce the window ending only when it ended while the page was open.
   const sawWaiting = React.useRef(!ready);
   if (!ready) sawWaiting.current = true;
@@ -379,6 +389,13 @@ function RotationStrip({
             "Ended: clients have had time to pick the key up"
           ) : (
             <>
+              {trustWindow > 0 ? (
+                <CountdownRing
+                  key={staged.kid}
+                  total={trustWindow}
+                  left={wait}
+                />
+              ) : null}
               <span aria-live="off" className="font-mono tabular-nums">
                 {clock(wait)}
               </span>{" "}
@@ -444,29 +461,173 @@ function RotationStrip({
 }
 
 /**
+ * The trust window as a ring that drains (notes/S-23 §6.1 "countdown"; MO-11). Decoration only:
+ * `aria-hidden`, and the seconds beside it are the countdown. The draining is one CSS animation
+ * (`.pk-countdown` in src/motion.css) over the whole window, started where the window stands when
+ * the ring mounts: `--pk-countdown` (the window) and `--pk-countdown-elapsed` go through the CSSOM
+ * once, so the 1 s tick that updates the text never drives the motion. `--pk-countdown-spent`
+ * follows the tick: it is the still picture reduced motion shows instead (the animation is off),
+ * so both end in the same place, the ring as empty as the window is spent.
+ */
+function CountdownRing({
+  total,
+  left,
+}: {
+  /** The whole window, seconds. */
+  total: number;
+  /** Seconds left. */
+  left: number;
+}): React.ReactElement {
+  const ring = React.useRef<SVGGElement>(null);
+  const spent = Math.min(1, Math.max(0, 1 - left / total));
+  const startedAt = React.useRef(spent);
+  React.useLayoutEffect(() => {
+    const el = ring.current;
+    if (!el) return;
+    el.style.setProperty("--pk-countdown", `${Math.round(total * 1000)}ms`);
+    el.style.setProperty(
+      "--pk-countdown-elapsed",
+      `${Math.round(startedAt.current * total * 1000)}ms`,
+    );
+  }, [total]);
+  React.useLayoutEffect(() => {
+    ring.current?.style.setProperty(
+      "--pk-countdown-spent",
+      String(Math.round(spent * 1000) / 10),
+    );
+  }, [spent]);
+  return (
+    <svg
+      aria-hidden="true"
+      focusable="false"
+      data-countdown-ring=""
+      viewBox="0 0 16 16"
+      className="mr-1.5 inline-block size-3 align-[-1px]"
+    >
+      <circle
+        cx="8"
+        cy="8"
+        r="6"
+        fill="none"
+        strokeWidth="2.5"
+        className="stroke-border"
+      />
+      <g ref={ring} className="pk-countdown" transform="rotate(-90 8 8)">
+        <circle
+          cx="8"
+          cy="8"
+          r="6"
+          fill="none"
+          strokeWidth="2.5"
+          pathLength={100}
+          className="stroke-accent"
+        />
+      </g>
+    </svg>
+  );
+}
+
+/** The refreshed share, whole percent (floored, so 99.9 % never reads as 100 %); null with no devices. */
+export function refreshedPercent(r: SigningKeyRefreshDto): number | null {
+  if (r.activeDevices === 0) return null;
+  return Math.floor((r.refreshedDevices / r.activeDevices) * 100);
+}
+
+/** What follows the percentage in the refreshed line. */
+function refreshedTail(r: SigningKeyRefreshDto): string {
+  return ` of active devices have refreshed since ${r.kid} went live.`;
+}
+
+/**
  * After a rotation, one reassurance line (EXPERIENCE.md §0.5 O3, §0.9). "Refreshed" means the
  * device reached the server after the key went live; the server keeps no per-device record of a
  * trust fetch, so the copy never claims one.
  */
 export function refreshedCopy(r: SigningKeyRefreshDto): string {
-  if (r.activeDevices === 0)
+  const pct = refreshedPercent(r);
+  if (pct === null)
     return `No device has been active in the last ${r.windowDays} days, so none has refreshed since ${r.kid} went live.`;
-  const pct = Math.floor((r.refreshedDevices / r.activeDevices) * 100);
-  return `${pct}% of active devices have refreshed since ${r.kid} went live.`;
+  return `${pct}%${refreshedTail(r)}`;
 }
 
+/** Rotations whose refreshed line has filled once in this document (`<slug>:<kid>`). */
+const filledRefreshLines = new Set<string>();
+
+/** Forget which refreshed lines have filled: for tests, where each render is a fresh document. */
+export function forgetFilledRefreshLines(): void {
+  filledRefreshLines.clear();
+}
+
+/**
+ * The refreshed line with its meter (MO-11): the share fills a meter (`setMeter`, a transform-only
+ * fill on the tokens) and its percentage counts up (`<CountUp>`), the first time this rotation's
+ * line shows in this document. A return visit or a remount shows it at its value; a refetch that
+ * moves the share glides from the old value to the new. The sentence is said once to a screen
+ * reader (the visible copy, with its counting digits, is `aria-hidden`), and under reduced motion
+ * the meter and the number are at their value from the first paint.
+ */
 function RefreshedLine({
+  slug,
   refresh,
 }: {
+  slug: string;
   refresh: SigningKeyRefreshDto;
 }): React.ReactElement {
+  const pct = refreshedPercent(refresh);
+  const id = `${slug}:${refresh.kid}`;
+  const reduced = useReducedMotion();
+  const [first] = React.useState(() => !filledRefreshLines.has(id));
+  React.useEffect(() => {
+    filledRefreshLines.add(id);
+  }, [id]);
+  const fill = React.useRef<HTMLDivElement>(null);
+  const filled = React.useRef(false);
+  React.useLayoutEffect(() => {
+    const el = fill.current;
+    if (!el || pct === null) return;
+    if (first && !filled.current && !reduced) {
+      // Start the first fill from empty: the empty state is resolved before the value lands, so
+      // the token transition runs (an element's first style has nothing to transition from).
+      setMeter(el, 0);
+      void getComputedStyle(el).transform;
+    }
+    filled.current = true;
+    setMeter(el, pct / 100);
+  }, [pct, first, reduced]);
   return (
     <div className="flex items-start gap-2 px-5 py-3 text-sm">
       <span className="mt-1 shrink-0">
         <SignedGlyph size={12} />
       </span>
       <div className="flex min-w-0 flex-1 flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <p className="min-w-0 text-fg">{refreshedCopy(refresh)}</p>
+        {pct === null ? (
+          <p className="min-w-0 text-fg">{refreshedCopy(refresh)}</p>
+        ) : (
+          <div className="min-w-0 space-y-1.5">
+            <p className="text-fg">
+              <span aria-hidden="true">
+                <CountUp
+                  value={pct}
+                  from={first && !reduced ? 0 : undefined}
+                  format={(n) => `${n}%`}
+                  className="font-bold tabular-nums text-fg-strong"
+                />
+                {refreshedTail(refresh)}
+              </span>
+              <span className="sr-only">{refreshedCopy(refresh)}</span>
+            </p>
+            <div
+              aria-hidden="true"
+              data-refreshed-meter=""
+              className="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-surface-sunken"
+            >
+              <div
+                ref={fill}
+                className="pk-meter-fill h-full w-full rounded-full bg-signed"
+              />
+            </div>
+          </div>
+        )}
         {refresh.activeDevices > 0 ? (
           <p className="text-xs text-fg-muted">
             {refresh.refreshedDevices.toLocaleString()} of{" "}

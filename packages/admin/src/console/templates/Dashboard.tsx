@@ -147,6 +147,90 @@ export interface AttentionItem {
   at?: number;
 }
 
+// ── First-load stagger (notes/S-23 §6.1 stagger-list; MO-11) ───────────────────────────────────
+
+/** A View Transition is running: the motion layer sets `html[data-vt]` for its length. */
+function viewTransitionRunning(): boolean {
+  return (
+    typeof document !== "undefined" &&
+    document.documentElement.hasAttribute("data-vt")
+  );
+}
+
+/** Pages that have mounted in this document: a return visit is never a first load. */
+const visitedPages = new Set<string>();
+/** Pages whose first load has been committed: a list that mounts after it is not part of it. */
+const loadedPages = new Set<string>();
+
+/**
+ * A dashboard's first load: `page` (a stable key such as `home` or `overview:<slug>`) when the
+ * page's first mount in this document began with its data still on the way (`pending`), so the
+ * data arrives while the person watches; `undefined` on any later visit, cached or not. Pass it
+ * to `AttentionList`'s `stagger`. The first load ends with the first commit after `pending`
+ * clears: a list mounted after that (a refetch that turns an empty list into one, a remount)
+ * never staggers, however stale the prop it was given.
+ */
+export function useFirstLoad(
+  page: string,
+  pending: boolean,
+): string | undefined {
+  const [first] = React.useState(() => pending && !visitedPages.has(page));
+  React.useEffect(() => {
+    visitedPages.add(page);
+  }, [page]);
+  React.useEffect(() => {
+    if (!pending) loadedPages.add(page);
+  }, [page, pending]);
+  return first ? page : undefined;
+}
+
+/** Forget every first load: for tests, where each render stands for a fresh document. */
+export function forgetFirstLoads(): void {
+  visitedPages.clear();
+  loadedPages.clear();
+}
+
+/**
+ * The stagger-list pattern on an attention list (`.pk-stagger` in src/motion.css: each item rises
+ * 30 ms after the last, at most 6 steps). Only when the list mounts as part of its page's first
+ * load (`useFirstLoad`) with items to show, and never inside a View Transition (a route change's
+ * fade-through, which a stagger would fight). Off for good once "Show all" is used: the extra
+ * items appear in place, and an item still rising lands at once (the live state wins). The class
+ * comes off when the items' own animations have finished (timers never decide it, S-23 §6.2 rule
+ * 6), so an item a refetch adds later appears in place; under reduced motion there are none, so it
+ * comes off at once. Without the Web Animations API (jsdom) it stays until "Show all".
+ */
+function useListStagger(
+  page: string | undefined,
+  nonEmpty: boolean,
+  expanded: boolean,
+): { className: string | undefined; ref: React.RefCallback<HTMLElement> } {
+  const [on, setOn] = React.useState(
+    () =>
+      page !== undefined &&
+      nonEmpty &&
+      !loadedPages.has(page) &&
+      !viewTransitionRunning(),
+  );
+  // Adjusted while rendering, so the expanded list never commits with the class.
+  if (on && expanded) setOn(false);
+  const ref = React.useCallback((el: HTMLElement | null) => {
+    if (!el || typeof el.getAnimations !== "function") return;
+    // getAnimations() resolves styles first, so the stagger's animations exist by now. Only the
+    // items' own: an animation inside an item (a pill's pop) is not the stagger's.
+    const own = el
+      .getAnimations({ subtree: true })
+      .filter(
+        (a) =>
+          (a.effect as KeyframeEffect | null)?.target?.parentElement === el,
+      );
+    void Promise.allSettled(own.map((a) => a.finished)).then(() =>
+      setOn(false),
+    );
+  }, []);
+  return { className: on ? "pk-stagger" : undefined, ref };
+}
+
 const TONE_ORDER: Record<AttentionTone, number> = {
   danger: 0,
   warning: 1,
@@ -170,18 +254,23 @@ export function sortAttention(items: AttentionItem[]): AttentionItem[] {
  * T1's attention list (ADMIN.md §3), drawn on the shared `Section` card metrics (radius, side
  * padding, light elevation) so it lines up with the panels under it: only rendered when non-empty, at most `max` items with
  * "Show all n". Each item: a tone pill (icon and word), the object, a one-line reason and one
- * action.
+ * action. On the page's first load (`stagger`, from `useFirstLoad`) the items rise in one after
+ * another (MO-11).
  */
 export function AttentionList({
   items,
   max = 5,
   title = "Needs attention",
+  stagger,
 }: {
   items: AttentionItem[];
   max?: number;
   title?: string;
+  /** The page's first-load key (`useFirstLoad`): the items stagger in on that load only. */
+  stagger?: string;
 }): React.ReactElement | null {
   const [all, setAll] = React.useState(false);
+  const motion = useListStagger(stagger, items.length > 0, all);
   const id = React.useId();
   if (items.length === 0) return null;
   const sorted = sortAttention(items);
@@ -202,7 +291,10 @@ export function AttentionList({
           {items.length}
         </StatusPill>
       </div>
-      <ul className="divide-y divide-border">
+      <ul
+        ref={motion.ref}
+        className={cn("divide-y divide-border", motion.className)}
+      >
         {shown.map((item) => (
           <li
             key={item.id}
