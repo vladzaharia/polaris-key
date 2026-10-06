@@ -246,7 +246,9 @@ export function licenseOrigin(
     if (store) return last ? `${store} key ending ${last}` : `${store} key`;
     return last ? `Key ending ${last}` : "Added with a key";
   }
-  if (store) return `From ${store}`;
+  // "From the App Store", "From Steam", "From Google Play".
+  if (store)
+    return `From ${facts.store === "app-store" ? "the App Store" : store}`;
   if (isSignInLicense(l)) return FROM_SIGNING_IN;
   return "From the developer";
 }

@@ -223,7 +223,8 @@ export function originLabel(
   if (hasKey) return storeLabel ? `${storeLabel} key` : "Added with a key";
   switch (kind) {
     case "store":
-      return `From ${storeLabel ?? "a store"}`;
+      // "From the App Store", "From Steam", "From Google Play".
+      return `From ${store === "app-store" ? "the App Store" : (storeLabel ?? "a store")}`;
     case "sign_in":
       return "From signing in";
     case "free":

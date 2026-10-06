@@ -160,7 +160,7 @@ describe("status model (§5.3), first match wins", () => {
     );
     expect(licenseOrigin(keyless, { store: "steam" })).toBe("From Steam");
     expect(licenseOrigin(signIn, { store: "app-store" })).toBe(
-      "From App Store",
+      "From the App Store",
     );
     expect(licenseOrigin(keyless)).toBe("From the developer");
     expect(shortOrigin(signIn)).toBe("Sign-in");
