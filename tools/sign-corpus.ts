@@ -16,7 +16,7 @@
 //                           from `res://` in the editor and in an exported pack). Every file
 //                           is written into every target in `CORPUS_TARGETS`.
 //
-// Ten files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
+// Eleven files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
 // pack families included), `gate-matrix.json` (§5, with SP-00's `entitlementRows` family),
 // `fingerprint.json` (the hardware-hash
 // formulas), `stage-matrix.json` (the boot stage machine of `@polaris-key/client-core/stages`,
@@ -27,8 +27,10 @@
 // values, §2.2.1), `update-matrix.json` (the update decision, plans/P3-01.md §2.8),
 // `outlet-matrix.json` (outlet kinds, capabilities and detection, plans/P3-01.md §2.9),
 // `plan-matrix.json` (the pack plan, plans/P4-01.md), `feed-url-matrix.json` (the app-updater
-// feed URLs out of discovery's `update.endpoints`, plans/SP-00.md D5) and `content/` (the content corpus:
-// `cases.json` plus `blobs/`, plans/P4-01.md §4.4, P4-04).
+// feed URLs out of discovery's `update.endpoints`, plans/SP-00.md D5), `sync-scenarios.json` (the
+// Cloud Sync client scenario corpus, literal data from tools/sync-scenarios.ts, plans/U-01.md
+// §4.1, U-18) and `content/` (the content corpus: `cases.json` plus `blobs/`, plans/P4-01.md
+// §4.4, P4-04).
 //
 // `corpus/v1` (wire contract v2) is GONE: its fifteen gate-matrix rows were inlined into
 // `CARRIED_MATRIX_ROWS` below before deletion. Fourteen are still emitted; one, the pre-R3-01
@@ -78,6 +80,7 @@ import {
   type ContentSet,
   type RefJson,
 } from "./gen-content-corpus.js";
+import { buildSyncScenarios } from "./sync-scenarios.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -274,6 +277,7 @@ const V2_UPDATE_MATRIX_OUT = join(V2_DIR, "update-matrix.json");
 const V2_OUTLET_MATRIX_OUT = join(V2_DIR, "outlet-matrix.json");
 const V2_PLAN_MATRIX_OUT = join(V2_DIR, "plan-matrix.json");
 const V2_FEED_URL_MATRIX_OUT = join(V2_DIR, "feed-url-matrix.json");
+const V2_SYNC_SCENARIOS_OUT = join(V2_DIR, "sync-scenarios.json");
 /** Every directory that receives the corpus: the source, then each generator-owned mirror. */
 const CORPUS_TARGETS = [V2_DIR, SWIFT_V2_RESOURCES, GODOT_V2_RESOURCES];
 
@@ -20153,6 +20157,11 @@ async function main(): Promise<void> {
   const planMatrix = await format(JSON.stringify(content.planMatrix), {
     parser: "json",
   });
+  // plans/U-01.md §4.1 (U-18): the Cloud Sync client scenario corpus. Literal data with its own
+  // self-check (tools/sync-scenarios.ts); unsigned, mirrored like the rest.
+  const syncScenarios = await format(JSON.stringify(buildSyncScenarios()), {
+    parser: "json",
+  });
 
   // One map from file name to content, reconciled into the source directory and into every
   // generator-owned mirror, so a file added here reaches each mirror by construction.
@@ -20167,6 +20176,7 @@ async function main(): Promise<void> {
     [basename(V2_OUTLET_MATRIX_OUT), v2OutletMatrix],
     [basename(V2_PLAN_MATRIX_OUT), planMatrix],
     [basename(V2_FEED_URL_MATRIX_OUT), v2FeedUrlMatrix],
+    [basename(V2_SYNC_SCENARIOS_OUT), syncScenarios],
   ]);
   let stale = false;
   // `content/` is source-only (§4.1): its cases are reconciled in the source tree alone, its

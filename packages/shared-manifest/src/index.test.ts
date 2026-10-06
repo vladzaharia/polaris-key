@@ -897,6 +897,7 @@ describe("parseManifest carries the enablement set", () => {
       distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
+      sync: { enabled: false },
     });
   });
 
@@ -911,6 +912,7 @@ describe("parseManifest carries the enablement set", () => {
       distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
+      sync: { enabled: false },
     });
   });
 
@@ -958,6 +960,27 @@ describe("the release ← distribution ← update chain", () => {
     const got = codes({ config: { enabled: true }, update: { enabled: true } });
     expect(got).toContain("update_requires_distribution");
     expect(got).not.toContain("update_requires_release");
+  });
+
+  it("refuses Cloud Sync without Config or without Identity (U-04)", () => {
+    expect(
+      codes({
+        license: { enabled: true },
+        identity: { enabled: true },
+        sync: { enabled: true },
+      }),
+    ).toContain("sync_requires_config");
+    expect(
+      codes({ config: { enabled: true }, sync: { enabled: true } }),
+    ).toContain("sync_requires_identity");
+    // Identity through its legacy module name satisfies the edge too.
+    expect(
+      codes({
+        config: { enabled: true },
+        oidc: { enabled: true },
+        sync: { enabled: true },
+      }),
+    ).not.toContain("sync_requires_identity");
   });
 
   it("accepts the whole chain", () => {

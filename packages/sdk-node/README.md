@@ -312,6 +312,28 @@ needs a browser session) and lands on the hard 401.
 `client.getSyncState()` returns `{ activation, doc, lastSyncUnauthorized, blocked,
 lastVerifiedAt, highWaterMark }` — the snapshot the React bridge renders from.
 
+## When every seat is taken
+
+A refused activation or enrolment returns `{ kind: "device-limit", limit, deviceCount, manageUrl? }`.
+`manageUrl` is the customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while
+the product's portal is on and already validated. It is never an auth failure: nothing is wiped,
+and the app offers it behind a user action.
+
+```ts
+const r = await client.license.activateWithKey(key);
+if (r.kind === "device-limit" && r.manageUrl) {
+  const link = withManageReturn(
+    withManageKey(r.manageUrl, key),
+    "myapp://activated",
+  );
+  console.log(`Every seat is taken. Free one up at ${link}`);
+}
+```
+
+`withManageKey` adds `#key=` only to an `/activate` link (a fragment never reaches a server);
+`withManageReturn` adds `return=`, which the portal honours only for a declared return target. The
+CLI prints the link on a device-limit refusal.
+
 ## Device-code sign-in
 
 For a host that cannot complete a browser redirect — a CLI over SSH, a daemon, a game on a TV —

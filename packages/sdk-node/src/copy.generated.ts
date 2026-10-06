@@ -166,6 +166,11 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
     title: "Sign-in unavailable",
     message: "Sign-in isn't available right now. Try again in a few minutes.",
   },
+  identity_disabled: {
+    title: "Sign-in unavailable",
+    message:
+      "Sign-in through this app is turned off. Your installs and licenses keep working.",
+  },
   auth_method_disabled: {
     title: "Sign-in method unavailable",
     message: "That sign-in method is turned off. Choose another one.",

@@ -26,9 +26,15 @@ export const LONG_NAME =
 export const LONG_SLUG = "northwind-broadcast-audio-workstation";
 
 const services = Object.fromEntries(
-  ["license", "config", "release", "distribution", "update", "identity"].map(
-    (s) => [s, { enabled: true }],
-  ),
+  [
+    "license",
+    "config",
+    "release",
+    "distribution",
+    "update",
+    "identity",
+    "sync",
+  ].map((s) => [s, { enabled: true }]),
 );
 
 const baseProduct = (

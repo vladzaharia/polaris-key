@@ -276,6 +276,9 @@ h6,
 .sidebar-content details:has(> ul > li > a[href*="/docs/services/identity/"]) {
   --pkd-group-accent: var(--pk-service-identity);
 }
+.sidebar-content details:has(> ul > li > a[href*="/docs/services/sync/"]) {
+  --pkd-group-accent: var(--pk-service-sync);
+}
 
 /* ---- Page title: the section eyebrow and rule on service pages ------------------------------- */
 

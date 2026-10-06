@@ -291,6 +291,7 @@ async function namedProduct(db: Db, release = true): Promise<void> {
           distribution: { enabled: true },
           update: { enabled: false },
           identity: { enabled: false },
+          sync: { enabled: false },
         },
       }),
       "manifest",

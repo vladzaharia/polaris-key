@@ -8,6 +8,7 @@ import * as barrel from "../src/index.js";
 import * as core from "../src/core.js";
 import * as distribution from "../src/distribution.js";
 import * as packs from "../src/packs.js";
+import * as identity from "../src/identity.js";
 import * as release from "../src/release.js";
 import * as update from "../src/update.js";
 import { DEFAULT_RELEASE_ACCESS } from "../src/release.js";
@@ -282,5 +283,14 @@ describe("@polaris-key/protocol layout", () => {
     expect(barrel.MAX_DELEGATIONS_PER_CHECK).toBe(
       core.MAX_DELEGATIONS_PER_CHECK,
     );
+  });
+
+  it("the /identity subpath (plans/PX-W17.md §2)", () => {
+    expect(identity.IDENTITY_DISABLED_ERROR_PARAM).toBe("identity_disabled");
+    expect(barrel.IDENTITY_DISABLED_ERROR_PARAM).toBe(
+      identity.IDENTITY_DISABLED_ERROR_PARAM,
+    );
+    const code: core.PolarisErrorCode = "identity_disabled";
+    expect(code).toBe(identity.IDENTITY_DISABLED_ERROR_PARAM);
   });
 });

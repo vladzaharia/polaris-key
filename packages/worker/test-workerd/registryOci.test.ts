@@ -52,6 +52,7 @@ beforeAll(async () => {
         distribution: { enabled: true },
         update: { enabled: false },
         identity: { enabled: false },
+        sync: { enabled: false },
       },
     }),
     "manifest",

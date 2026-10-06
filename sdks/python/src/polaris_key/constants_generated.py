@@ -83,6 +83,7 @@ __all__ = [
     "UPDATE_MATRIX_VERSION",
     "OUTLET_MATRIX_VERSION",
     "PLAN_MATRIX_VERSION",
+    "SYNC_SCENARIOS_VERSION",
     "CONTENT_CORPUS_VERSION",
     "MAX_WIRE_INTEGER",
     "MAX_JSON_DEPTH",
@@ -164,6 +165,7 @@ class ErrorCode:
     DISABLED: Final = "disabled"
     OIDC_ERROR: Final = "oidc_error"
     UNAVAILABLE: Final = "unavailable"
+    IDENTITY_DISABLED: Final = "identity_disabled"
     AUTH_METHOD_DISABLED: Final = "auth_method_disabled"
     EMAIL_UNAVAILABLE: Final = "email_unavailable"
     TURNSTILE_FAILED: Final = "turnstile_failed"
@@ -318,6 +320,7 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "disabled",
     "oidc_error",
     "unavailable",
+    "identity_disabled",
     "auth_method_disabled",
     "email_unavailable",
     "turnstile_failed",
@@ -474,6 +477,7 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "disabled": "wire",
         "oidc_error": "wire",
         "unavailable": "wire",
+        "identity_disabled": "wire",
         "auth_method_disabled": "wire",
         "email_unavailable": "wire",
         "turnstile_failed": "wire",
@@ -615,6 +619,7 @@ class Feature:
     LICENSE_ACTIVATE: Final = "license.activate"
     LICENSE_ENROLL: Final = "license.enroll"
     LICENSE_DEACTIVATE: Final = "license.deactivate"
+    LICENSE_MANAGE: Final = "license.manage"
     LICENSE_ENTITLEMENTS: Final = "license.entitlements"
     LICENSE_CHANNELS: Final = "license.channels"
     LICENSE_REREGISTER: Final = "license.reregister"
@@ -635,6 +640,7 @@ class Feature:
     DEVICES_ATTEST: Final = "devices.attest"
     IDENTITY_OIDC: Final = "identity.oidc"
     IDENTITY_DEVICECODE: Final = "identity.devicecode"
+    IDENTITY_TOGGLE: Final = "identity.toggle"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
     RELEASE_RECORD: Final = "release.record"
@@ -676,6 +682,7 @@ class Feature:
     UI_STAGES: Final = "ui.stages"
     UI_BOOT: Final = "ui.boot"
     UI_KIT: Final = "ui.kit"
+    UI_KIT_MANAGE: Final = "ui.kit.manage"
     UI_CLI: Final = "ui.cli"
     COMMERCE_RECEIPT: Final = "commerce.receipt"
 
@@ -697,6 +704,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "license.activate",
     "license.enroll",
     "license.deactivate",
+    "license.manage",
     "license.entitlements",
     "license.channels",
     "license.reregister",
@@ -717,6 +725,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "devices.attest",
     "identity.oidc",
     "identity.devicecode",
+    "identity.toggle",
     "release.changelog",
     "release.download",
     "release.record",
@@ -758,6 +767,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "ui.stages",
     "ui.boot",
     "ui.kit",
+    "ui.kit.manage",
     "ui.cli",
     "commerce.receipt",
 )
@@ -1366,6 +1376,7 @@ class ServiceSlug:
     DISTRIBUTION: Final = "distribution"
     UPDATE: Final = "update"
     IDENTITY: Final = "identity"
+    SYNC: Final = "sync"
 
 
 #: Every ``ServiceSlug`` value, in source order.
@@ -1376,6 +1387,7 @@ SERVICE_SLUG_VALUES: Tuple[str, ...] = (
     "distribution",
     "update",
     "identity",
+    "sync",
 )
 
 
@@ -1409,6 +1421,10 @@ OUTLET_MATRIX_VERSION: Final[int] = 1
 
 #: `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
 PLAN_MATRIX_VERSION: Final[int] = 2
+
+
+#: `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
+SYNC_SCENARIOS_VERSION: Final[int] = 1
 
 
 #: `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
@@ -1639,6 +1655,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "license.activate": CapabilityRow("implemented", "license", ()),
         "license.enroll": CapabilityRow("implemented", "license", ()),
         "license.deactivate": CapabilityRow("implemented", "license", ()),
+        "license.manage": CapabilityRow("implemented", "license", ()),
         "license.entitlements": CapabilityRow("implemented", "license", ()),
         "license.channels": CapabilityRow("implemented", "license", ()),
         "license.reregister": CapabilityRow("implemented", "license", ()),
@@ -1659,6 +1676,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "devices.attest": CapabilityRow("na", "core", (CapabilityNa("python", "runtime"),)),
         "identity.oidc": CapabilityRow("planned", "identity", ()),
         "identity.devicecode": CapabilityRow("implemented", "identity", ()),
+        "identity.toggle": CapabilityRow("planned", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
         "release.record": CapabilityRow("implemented", "release", ()),
@@ -1700,10 +1718,11 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.stages": CapabilityRow("implemented", "sdk", ()),
         "ui.boot": CapabilityRow("implemented", "sdk", ()),
         "ui.kit": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
+        "ui.kit.manage": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.cli": CapabilityRow("implemented", "sdk", ()),
         "commerce.receipt": CapabilityRow("implemented", "license", ()),
     }
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "3a4f8c581b45905900de61c3cbc3ee67e73610ee218ba168c9e57e7bf28c27f2"
+CAPABILITY_DIGEST: Final[str] = "5f28148bf77c8b1ebc813b96c7af0ea36510a21744cee67a413339de08e3cd5c"

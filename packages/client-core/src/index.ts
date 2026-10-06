@@ -420,3 +420,12 @@ export {
   type BootSyncResult,
   type BootTransition,
 } from "./stages.js";
+
+export {
+  MANAGE_URL_MAX_LENGTH,
+  isManageUrl,
+  manageFormEncode,
+  readManageUrl,
+  withManageKey,
+  withManageReturn,
+} from "./manage.js";

@@ -61,6 +61,7 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
       distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
+      sync: { enabled: false },
     },
     setup: {
       secrets: [

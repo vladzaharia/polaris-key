@@ -107,7 +107,13 @@ export type BridgeOidcPoll =
  *  than the device cap is never shown as one (SDK-PARITY-PASS §3.1). */
 export type BridgeActivation =
   | { kind: "ok" }
-  | { kind: "device-limit"; limit?: number; deviceCount?: number }
+  /** `manageUrl` (PX-W8): the portal link the host's Node SDK read off the refusal. */
+  | {
+      kind: "device-limit";
+      limit?: number;
+      deviceCount?: number;
+      manageUrl?: string;
+    }
   | { kind: "unauthorized" }
   | { kind: "fingerprint-required" }
   | { kind: "enroll-disabled" }

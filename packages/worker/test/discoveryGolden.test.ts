@@ -26,6 +26,10 @@
  * I-01 removed Identity's `endpoints.authPoll` (S-16 §5.3: discovery response only, no SDK reads
  * it, owner decision D10). The `/identity/auth/poll` route still answers until I-13 retires it;
  * only its advertisement went.
+ * U-04 added the seventh service, Cloud Sync (plans/U-01.md §2.5, approved): each golden gained
+ * `services.sync` after `identity`, `{"enabled":false}` when off; the everything product turns it
+ * on and pins the fragment U-04 ships (every capability false, no endpoint until U-05, U-09 and
+ * U-10 serve one). Additive, like `distribution` was.
  */
 
 import { readFileSync } from "node:fs";
@@ -79,7 +83,7 @@ async function seedEverything(db: Db, slug: string): Promise<void> {
   await setServices(
     db,
     slug,
-    '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"distribution":{"enabled":true},"update":{"enabled":true},"identity":{"enabled":true}}',
+    '{"license":{"enabled":true},"config":{"enabled":true},"release":{"enabled":true},"distribution":{"enabled":true},"update":{"enabled":true},"identity":{"enabled":true},"sync":{"enabled":true}}',
     "manifest",
     NOW,
   );

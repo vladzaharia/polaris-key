@@ -217,6 +217,7 @@ export const SERVICES: ServicesResponse = {
     distribution: { enabled: false },
     update: { enabled: false },
     identity: { enabled: false },
+    sync: { enabled: false },
   },
   registration: null,
   effectiveRegistration: "requires-license",

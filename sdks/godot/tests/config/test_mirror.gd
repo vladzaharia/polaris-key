@@ -40,6 +40,10 @@ func run(t: PKeyTestContext) -> void:
 	t.check("mirror: DEFAULTS holds config keys only", defaults.keys() == ["audio.musicVolume", "dice.animSpeed", "difficulty.tuning", "game.killSwitch", "ui.theme"], str(defaults.keys()))
 	t.check("mirror: DEFAULTS keep their JSON types", defaults["audio.musicVolume"] is int and defaults["dice.animSpeed"] is float and defaults["game.killSwitch"] == false \
 			and S.same(defaults["difficulty.tuning"], {"easy": 0.5, "hard": [1, 2.5, 3], "none": null}))
+	var users: Dictionary = m.get("USER_SETTINGS", {})
+	t.check("mirror: USER_SETTINGS names the user settings, defaults applied (U-04)", users.keys() == ["audio.musicVolume", "ui.theme"] \
+			and S.same(users["audio.musicVolume"], {"sync": "user", "conflict": "max", "listed": true}) \
+			and S.same(users["ui.theme"], {"sync": "device", "conflict": "lastWrite", "listed": false}), str(users))
 
 	var sdk: Node = await S.sdk_with({"ui.theme": S.entry("enforced", "light")})
 	sdk.config.set_compiled_catalog(script)

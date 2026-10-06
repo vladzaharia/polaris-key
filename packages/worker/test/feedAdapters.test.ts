@@ -593,6 +593,7 @@ describe.each(FEED_ADAPTERS.map((a) => [a.ecosystem, a] as const))(
               distribution: { enabled: true },
               update: { enabled: false },
               identity: { enabled: false },
+              sync: { enabled: false },
             },
           }),
           "manifest",

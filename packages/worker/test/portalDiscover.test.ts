@@ -109,6 +109,7 @@ async function services(
         distribution: { enabled: false },
         update: { enabled: false },
         identity: { enabled: true },
+        sync: { enabled: false },
         ...over,
       },
     }),

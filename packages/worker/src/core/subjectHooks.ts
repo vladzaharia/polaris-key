@@ -143,14 +143,19 @@ export type ClearReason =
   | "account_disabled"
   | "account_deleted"
   | "product_removed"
-  | "relinked";
+  | "relinked"
+  /** PX-W17: the product's Identity service was turned off. Every binding of the product goes;
+   *  no seat is ever released for this reason, whatever `bound_by` says. */
+  | "identity_disabled";
 
 /** Which devices a clear reaches. */
 export type ClearScope =
   | { kind: "device"; product: string; deviceId: string }
   | { kind: "subject"; product: string; subject: string }
   | { kind: "account"; accountId: string }
-  | { kind: "license"; product: string; licenseId: string };
+  | { kind: "license"; product: string; licenseId: string }
+  /** PX-W17: every bound device of one product (Identity turned off). */
+  | { kind: "product"; product: string };
 
 interface BoundDevice {
   product: string;
@@ -201,6 +206,12 @@ async function boundDevices(db: Db, scope: ClearScope): Promise<BoundDevice[]> {
           WHERE d.product = ? AND d.license_id = ? AND d.subject IS NOT NULL`,
         scope.product,
         scope.licenseId,
+      );
+    case "product":
+      return db.all<BoundDevice>(
+        `SELECT ${cols} FROM devices d
+          WHERE d.product = ? AND d.subject IS NOT NULL`,
+        scope.product,
       );
   }
 }

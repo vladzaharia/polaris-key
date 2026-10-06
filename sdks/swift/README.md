@@ -334,6 +334,26 @@ floor, `lastVerifiedAt`, each channel's feed `seq` floor) is derived from that r
 content; `core.feedFloors` shows the floors. A record from any other cache
 version is **discarded, never migrated**.
 
+## When every seat is taken
+
+A refused activation returns `.deviceLimit(limit:deviceCount:manageURL:)`. `manageURL` is the
+customer-portal link that frees a seat (WIRE-CONTRACT-V4 §5.3), present while the product's portal
+is on and already validated by `ManageLink.read`. It is never an auth failure.
+
+```swift
+if case .deviceLimit(_, _, let manageURL?) = await client.activate(key: key) {
+    let link = ManageLink.withReturn(ManageLink.withKey(manageURL, key), "myapp://activated")
+    // offer "Replace a device", opening `link`
+}
+```
+
+`PolarisLoginView` does this for you: pass `returnURL:` to `PolarisGateModel` and the gate shows
+**Replace a device** under the error (a button on macOS and iOS, a QR code on tvOS). The tvOS QR
+code never carries the key (anyone who can see the screen can scan it), so the phone's page asks
+for it; leave `withKey` out of any QR you draw yourself. Release note:
+the case gained a third associated value, so an exhaustive `case .deviceLimit(let l, let c)`
+binding needs a third pattern.
+
 ## supports() and capabilities
 
 `client.supports(_:)` says whether a feature works here and now, without a request:

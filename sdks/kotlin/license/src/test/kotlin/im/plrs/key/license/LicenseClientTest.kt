@@ -1,4 +1,5 @@
 // @pkey-feature license.entitlements license.channels license.activate license.enroll license.deactivate license.refusals
+// @pkey-feature license.manage
 //
 // The licence client over a signed document it verified itself: entitlements, the profile and the
 // licence id are read off the VERIFIED licence document only; `entitledChannels()` is the
@@ -126,6 +127,31 @@ class LicenseClientTest {
         )
         assertNull(request.body)
         assertNull(request.headers["content-type"])
+    }
+
+    // @pkey-feature license.manage
+    /** PX-W8: device-limit carries the validated portal link from either envelope; an invalid or
+     *  absent one (or an unknown member) keeps the counts and is never an auth failure. */
+    @Test
+    fun deviceLimitCarriesTheManageUrl() {
+        val activate = "https://key.plrs.im/activate?product=djdl"
+        val free = "https://key.plrs.im/#/p/djdl/free-device?license=lic_1"
+        assertEquals(
+            ActivationResult.DeviceLimit(1, 1, activate),
+            activateAgainst(respond(403, """{"error":"device_limit","limit":1,"deviceCount":1,"manageUrl":"$activate"}""")).first,
+        )
+        assertEquals(
+            ActivationResult.DeviceLimit(2, 2, free),
+            activateAgainst(respond(403, """{"error":{"code":"device_limit","limit":2,"deviceCount":2,"manageUrl":"$free"}}""")).first,
+        )
+        assertEquals(
+            ActivationResult.DeviceLimit(3, 3, null),
+            activateAgainst(respond(403, """{"error":"device_limit","limit":3,"deviceCount":3,"manageUrl":"javascript:x"}""")).first,
+        )
+        assertEquals(
+            ActivationResult.DeviceLimit(4, 4, null),
+            activateAgainst(respond(403, """{"error":"device_limit","limit":4,"deviceCount":4,"manageUrl":7,"future":true}""")).first,
+        )
     }
 
     @Test

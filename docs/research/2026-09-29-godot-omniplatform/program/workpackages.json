@@ -3285,7 +3285,7 @@
         "notes/S-17 §6 U-04"
       ],
       "brief": "wp/U-04-catalog-and-service.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "U-05",
@@ -3369,7 +3369,7 @@
         "notes/S-17 §7.1 risk 2"
       ],
       "brief": "wp/U-18-scenario-corpus.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "U-06",
@@ -5335,7 +5335,7 @@
         "plans/PX-W8.md (approved 2026-10-05)"
       ],
       "brief": "wp/PX-W8-manage-url.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "PX-W9",
@@ -5549,7 +5549,7 @@
         "plans/PX-W17.md (approved 2026-10-05)"
       ],
       "brief": "wp/PX-W17-identity-per-product.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "PX-08",
