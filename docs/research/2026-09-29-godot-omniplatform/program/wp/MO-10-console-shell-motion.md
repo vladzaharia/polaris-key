@@ -45,6 +45,14 @@ The phone nav and bottom sheet reuse the 4 px rise, `PageLoading` is a spinner w
 
 - Start only after `wp/UX-10-shared-layer` (and `integ/ux-1a-ha`) merge: they rewrite these shell files, `Dialog.tsx` and `styles.css`. `platformSettings.tsx` is also edited by `wp/ST-06` and `wp/ST-01b`: rebase.
 
+**Corrections found against the code (MO-10, 2026-10-05):**
+
+- UX-10 and MO-02 had merged; MO-02 already ships `.pk-sheet` (below 640 px) in `src/motion.css`, so `ui/Dialog.tsx` only adds the class. `ShortcutSheet` is a `Dialog`, so it gets enter, exit and the sheet from there with no edit.
+- `src/motion.css`'s drawer slides from the inline end; the phone nav is anchored at the inline start (`left-0`), so its slide (`pk-nav-in` / `pk-nav-out`, `.pk-nav-drawer`) lives in `styles.css`, beside `animate-pk-in` so motion.css's exit probe and reduced-motion reset still apply. motion.css is left to MO-08 and MO-12.
+- Two of the last `animate-pulse` sites were in `ui/charts/StatTile.tsx` (allowlisted for MO-09). The allowlist can only be empty if they go too, so MO-10 converted them (two lines, a shaped `.pk-skeleton`) and MO-09 has nothing left there.
+- Tailwind v4 emits a theme variable only when a utility uses it, so rules in `styles.css` write the animation in full rather than `var(--animate-pk-*)`.
+- `test:e2e` gains `e2e/shellMotion.e2e.test.ts` (390 px, motion on and both reduced-motion switches); MO-03's `e2e/motion.e2e.test.ts` can absorb it.
+
 ## Files it touches
 
 `ui/Dialog.tsx`, `console/shell/{AppShell,Sidebar,StatePages,ShortcutSheet}.tsx`, `src/styles.css`, `console/pages/{platform,platformOperations,platformSettings,platformStores}.tsx`, `console/pages/global/Home.tsx`, tests. In flight: `wp/UX-10`, `integ/ux-1a-ha`, `wp/ST-06`, `wp/ST-01b`.
@@ -58,10 +66,10 @@ The phone nav and bottom sheet reuse the 4 px rise, `PageLoading` is a spinner w
 
 ## Acceptance criteria
 
-- [ ] No `animate-pulse` remains in `packages/admin/src` and the motion lint allowlist is empty.
-- [ ] The phone sheet and nav slide in and out (smoke suite at 390 px).
-- [ ] A lazy route shows a skeleton, never "Loading…" text.
-- [ ] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
+- [x] No `animate-pulse` remains in `packages/admin/src` and the motion lint allowlist is empty.
+- [x] The phone sheet and nav slide in and out (smoke suite at 390 px).
+- [x] A lazy route shows a skeleton, never "Loading…" text.
+- [x] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
 - [ ] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
 
 ## Verify
