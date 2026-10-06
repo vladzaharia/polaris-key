@@ -147,7 +147,7 @@ ELSE ? END`), the schema deactivate/insert and the matching `setting.resync` aud
 - [x] A resync refused by a referenced-tier guard leaves every row unchanged (test).
 - [x] Revert restores the snapshot value at once, or says "applies at the next resync" when no snapshot exists (test).
 - [x] A console claim on a `system = 1` product is refused (test).
-- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header (GATE GREEN at 76020db0b, after fix round 3: merge of main at 71f922884 and renumber to 0078; steps 1-10 on 0f29bc224, steps 11-22 on 76020db0b after a prettier-only fix).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header (GATE GREEN at bf9c53030, after fix round 3: two merges of main, last at 0b9db1430, migration renumbered to 0079, Link repository plan aligned; one timing retry in the turbo test step).
 
 ## Verify
 
