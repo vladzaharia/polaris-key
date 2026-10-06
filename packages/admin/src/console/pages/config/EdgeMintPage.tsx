@@ -627,14 +627,14 @@ function ApproveDrawer({
                         >
                           <th
                             scope="row"
-                            className="py-1.5 pr-3 align-top font-normal text-fg-muted"
+                            className="py-1.5 pr-3 align-middle font-normal text-fg-muted"
                           >
                             {FIELD_LABELS[field]}
                             {moved ? (
                               <span className="sr-only"> (changed)</span>
                             ) : null}
                           </th>
-                          <td className="py-1.5 pr-3 align-top">
+                          <td className="py-1.5 pr-3 align-middle">
                             {field === "claimsTemplateJson" && now !== null ? (
                               <CodeBlock
                                 code={String(now)}
@@ -654,7 +654,7 @@ function ApproveDrawer({
                             ) : null}
                           </td>
                           {recipe.approval ? (
-                            <td className="py-1.5 align-top">
+                            <td className="py-1.5 align-middle">
                               <span
                                 className={
                                   moved

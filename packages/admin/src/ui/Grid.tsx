@@ -161,7 +161,7 @@ export function Grid<R, C>({
               <th
                 scope="row"
                 className={cn(
-                  "bg-surface-raised px-3 py-2 text-left font-normal text-fg",
+                  "bg-surface-raised px-3 py-2 text-left align-middle font-normal text-fg",
                   stickyRowHeader && "sticky left-0 z-[1]",
                 )}
               >
@@ -189,7 +189,7 @@ export function Grid<R, C>({
                       if (!isActive) setActive({ r: ri, c: ci });
                     }}
                     className={cn(
-                      "px-3 py-2 align-top text-fg outline-hidden",
+                      "px-3 py-2 align-middle text-fg outline-hidden",
                       onCellActivate &&
                         "cursor-pointer hover:bg-surface-overlay",
                       "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",

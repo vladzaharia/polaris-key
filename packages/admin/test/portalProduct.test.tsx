@@ -595,7 +595,7 @@ describe("product page on today's data (PX-04)", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("an account-wide licence: Standard pill, Account-wide beside it, and its devices with Remove", async () => {
+  it("a sign-in licence: Standard pill, its device count, a quiet origin, and its devices with Remove", async () => {
     window.history.replaceState(null, "", "/#/p/quill");
     const quill = license({
       product: "quill",
@@ -622,8 +622,11 @@ describe("product page on today's data (PX-04)", () => {
     renderPortal();
     await screen.findByRole("heading", { level: 1, name: "Quill" });
     const card = await screen.findByRole("region", { name: "Quill license" });
-    await within(card).findByText("Account-wide · 1 of 5 devices");
+    await within(card).findByText("1 of 5 devices");
     expect(within(card).getByText("Standard")).toBeTruthy();
+    expect(within(card).getByText("From signing in · Lifetime")).toBeTruthy();
+    // Owner decision (2026-10-05): no licence type label; every licence is account-bound.
+    expect(screen.queryByText(/Account-wide/)).toBeNull();
     expect(screen.queryByText("Signed-in app")).toBeNull();
     expect(screen.queryByText(/any device/i)).toBeNull();
     const devices = screen.getByRole("region", { name: "Devices" });
@@ -639,7 +642,7 @@ describe("product page on today's data (PX-04)", () => {
     expect(await axeViolations()).toEqual([]);
   });
 
-  it("an account-wide licence never claims a limit it doesn't know", async () => {
+  it("a sign-in licence never claims a limit it doesn't know", async () => {
     window.history.replaceState(null, "", "/#/p/quill");
     const quill = license({
       product: "quill",
@@ -655,11 +658,12 @@ describe("product page on today's data (PX-04)", () => {
     renderPortal();
     const card = await screen.findByRole("region", { name: "Quill license" });
     await within(card).findByText("Activated");
-    expect(within(card).getByText("Account-wide")).toBeTruthy();
+    expect(within(card).getByText("From signing in · Lifetime")).toBeTruthy();
     expect(within(card).queryByText(/of \d+ devices?/)).toBeNull();
+    expect(within(card).queryByText(/Account-wide/)).toBeNull();
   });
 
-  describe("a key licence and an account-wide licence for one product", () => {
+  describe("a key licence and a sign-in licence for one product", () => {
     const key = license({
       product: "quill",
       id: "lic_key",
@@ -688,7 +692,7 @@ describe("product page on today's data (PX-04)", () => {
         ...extra,
       });
 
-    it("names each licence by tier and how it's held in the picker", async () => {
+    it("names each licence by tier and its origin in the picker", async () => {
       window.history.replaceState(null, "", "/#/p/quill");
       mockFetch(both());
       renderPortal();
@@ -697,10 +701,7 @@ describe("product page on today's data (PX-04)", () => {
       const options = within(picker)
         .getAllByRole("option")
         .map((o) => o.textContent);
-      expect(options.sort()).toEqual([
-        "Standard · Account-wide",
-        "Standard · Key",
-      ]);
+      expect(options.sort()).toEqual(["Standard · Key", "Standard · Sign-in"]);
     });
 
     it("the key licence hides its device counter but keeps the device list", async () => {
@@ -725,18 +726,91 @@ describe("product page on today's data (PX-04)", () => {
       ).toBeTruthy();
     });
 
-    it("the account-wide licence keeps its counter", async () => {
+    it("the sign-in licence keeps its counter", async () => {
       window.history.replaceState(null, "", "/#/p/quill?license=lic_acct");
       mockFetch(both());
       renderPortal();
       const card = await screen.findByRole("region", { name: "Quill license" });
-      await within(card).findByText("Account-wide · 1 of 5 devices");
+      await within(card).findByText("1 of 5 devices");
       const devices = screen.getByRole("region", { name: "Devices" });
       await within(devices).findByText("Living room PC");
       expect(
         within(devices).getByRole("img", { name: "1 of 5 devices in use" }),
       ).toBeTruthy();
     });
+  });
+});
+
+describe("a licence's origin names the store it came from (owner, 2026-10-05)", () => {
+  it('a Steam-bound key licence reads "Steam key" on the card and in the picker', async () => {
+    window.history.replaceState(null, "", "/#/p/quill");
+    const steam = license({ product: "quill", id: "lic_steam" });
+    const other = license({
+      product: "quill",
+      id: "lic_dev",
+      activatedAt: NOW_S - 90 * DAY,
+    });
+    mockFetch(
+      signedIn([steam, other], {
+        "/api/licenses/quill/lic_steam": detail(steam, {
+          keys: [
+            {
+              hash: "h1",
+              last4: "3WPLDA",
+              status: "active",
+              label: null,
+              createdAt: NOW_S - 30 * DAY,
+              lastUsedAt: null,
+            },
+          ],
+        }),
+        "/api/products/quill": productView("quill", [
+          {
+            id: "lic_steam",
+            deviceLimit: 3,
+            purchase: { source: "store", store: "steam" },
+          },
+          {
+            id: "lic_dev",
+            deviceLimit: 3,
+            purchase: { source: "developer", store: null },
+          },
+        ]),
+      }),
+    );
+    renderPortal();
+    const card = await screen.findByRole("region", { name: "Quill license" });
+    await within(card).findByText("Steam key ending 3WPLDA · Lifetime");
+    const options = within(within(card).getByRole("combobox"))
+      .getAllByRole("option")
+      .map((o) => o.textContent);
+    expect(options).toContain("Standard · Steam key …3WPLDA");
+    expect(options).toContain("Standard · Key");
+  });
+
+  it('a store-bound licence with no key reads "From Steam"', async () => {
+    window.history.replaceState(null, "", "/#/p/quill");
+    const bound = license({
+      product: "quill",
+      keyCount: 0,
+      activeKeyCount: 0,
+    });
+    mockFetch(
+      signedIn([bound], {
+        "/api/licenses/quill/lic_quill": detail(bound, { keys: [] }),
+        "/api/products/quill": productView("quill", [
+          {
+            id: "lic_quill",
+            deviceLimit: 2,
+            purchase: { source: "store", store: "steam" },
+          },
+        ]),
+      }),
+    );
+    renderPortal();
+    const card = await screen.findByRole("region", { name: "Quill license" });
+    await within(card).findByText("From Steam · Lifetime");
+    expect(within(card).getByText("Standard")).toBeTruthy();
   });
 });
 
@@ -908,7 +982,11 @@ describe("product page correctness (UX-04)", () => {
 /** A minimal `GET /api/products/<p>`: the per-licence seat limits the product page reads. */
 function productView(
   product: string,
-  licenses: { id: string; deviceLimit: number }[],
+  licenses: {
+    id: string;
+    deviceLimit: number;
+    purchase?: { source: string; store: string | null } | null;
+  }[],
 ) {
   return {
     product,
@@ -936,6 +1014,7 @@ function productView(
       dormantCount: 0,
       entitlements: [],
       devices: [],
+      ...(l.purchase !== undefined ? { purchase: l.purchase } : {}),
     })),
   };
 }
