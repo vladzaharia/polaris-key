@@ -2,17 +2,22 @@
  * The settings backfill's admin routes (ST-01c; notes/S-18 §4.14, owner decision D19). Behind the
  * dispatcher's platform-admin session, limiter and CSRF check, like every admin route:
  *
- *   POST /api/products/<slug>/settings/backfill?dryRun=1|0[&expectCommit=<sha>]
+ *   POST /api/products/<slug>/settings/backfill?dryRun=1
+ *   POST /api/products/<slug>/settings/backfill?dryRun=0&expectReport=<dry-run reportId>
  *        — classify the product against its manifest and store the report (`dryRun=1`), or apply
  *          it: every declared field and row takes its manifest value, undeclared console rows
  *          stay as `console`, one `setting.backfill` audit row (`dryRun=0`). `dryRun` is
- *          REQUIRED, so a bare POST never applies. `expectCommit` (the dry run's `commit`) makes
- *          the apply refuse with 409 `commit_moved` when the manifest moved since;
+ *          REQUIRED, so a bare POST never applies, and an apply REQUIRES the dry run it applies:
+ *          409 `backfill_stale` when the manifest's commit or the product's settings moved since
+ *          that report, 409 `backfill_conflict` when a console edit lands during the apply;
  *   GET  /api/products/<slug>/settings/backfill        — the product's reports, newest first;
  *   GET  /api/products/<slug>/settings/backfill/<id>   — one report;
- *   POST /api/platform/settings/backfill?dryRun=1|0[&after=<slug>]
- *        — the platform batch over every product (at most `BATCH_LIMIT` per call; `next`
- *          continues), audited once in `platform_audit` as `settings.backfill.batch`;
+ *   POST /api/platform/settings/backfill?dryRun=1[&after=<slug>]
+ *   POST /api/platform/settings/backfill?dryRun=0&expectBatch=<dry-run batchId>
+ *        — the platform batch: a dry run over every product (at most `BATCH_LIMIT` per call;
+ *          `next` continues), or the apply of exactly the products one dry run covered, each
+ *          pinned to its own report; audited once in `platform_audit` as
+ *          `settings.backfill.batch`;
  *   GET  /api/platform/settings/backfill               — every product's newest report (no body).
  *
  * Admin routes are narrative-only under AGENTS.md rule 10 (`adminApi` and `products` in
@@ -22,7 +27,6 @@
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
 import { ErrorCode } from "../../core/errors.js";
-import { gitShaOrNull } from "../../core/manifestSnapshot.js";
 import {
   getReport,
   latestReportPerProduct,
@@ -57,6 +61,13 @@ const DRY_RUN_REQUIRED = () =>
     { fields: ["dryRun"] },
   );
 
+const METHOD_NOT_ALLOWED = () =>
+  err(405, "method_not_allowed", "method not allowed");
+
+/** A report id (`sbf_…`) or a batch id (`sbb_…`), as `randomId` mints them. */
+const REPORT_ID = /^sbf_[A-Za-z0-9_-]{1,64}$/;
+const BATCH_ID = /^sbb_[A-Za-z0-9_-]{1,64}$/;
+
 function rowView(row: BackfillReportRow) {
   return {
     id: row.id,
@@ -82,8 +93,7 @@ export async function handleProductSettingsBackfill(
 ): Promise<Response> {
   if (rest.length > 1) return notFound();
   if (rest.length === 1) {
-    if (req.method !== "GET")
-      return err(405, ErrorCode.BadRequest, "method not allowed");
+    if (req.method !== "GET") return METHOD_NOT_ALLOWED();
     const row = await getReport(db, slug, rest[0]!);
     if (!row) return notFound();
     return adminJson({ ...rowView(row), report: reportOf(row) });
@@ -94,33 +104,29 @@ export async function handleProductSettingsBackfill(
       reports: rows.map((r) => ({ ...rowView(r), report: reportOf(r) })),
     });
   }
-  if (req.method !== "POST")
-    return err(405, ErrorCode.BadRequest, "method not allowed");
+  if (req.method !== "POST") return METHOD_NOT_ALLOWED();
   const url = new URL(req.url);
   const dryRun = dryRunOf(url);
   if (dryRun === null) return DRY_RUN_REQUIRED();
-  const rawExpect = url.searchParams.get("expectCommit");
-  const expectCommit = rawExpect === null ? null : gitShaOrNull(rawExpect);
-  if (rawExpect !== null && expectCommit === null)
+  const expectReport = url.searchParams.get("expectReport");
+  if (!dryRun && (expectReport === null || !REPORT_ID.test(expectReport)))
     return err(
       400,
       ErrorCode.BadRequest,
-      "expectCommit must be a lowercase git commit id",
-      { fields: ["expectCommit"] },
+      "an apply needs expectReport: the reportId of the dry run you read",
+      { fields: ["expectReport"] },
     );
   const run = await runSettingsBackfill(env, db, slug, {
     dryRun,
     actor: actorOf(session),
     now,
     fetchImpl: fetch,
-    expectCommit,
+    expectReport: dryRun ? null : expectReport,
   });
   if (!run.ok)
     return run.status === 404
       ? notFound()
-      : err(run.status, ErrorCode.BadRequest, run.message, {
-          reason: run.reason,
-        });
+      : err(run.status, run.reason, run.message, { reason: run.reason });
   return adminJson({
     ok: true,
     dryRun,
@@ -149,17 +155,25 @@ export async function handlePlatformSettingsBackfill(
       })),
     });
   }
-  if (req.method !== "POST")
-    return err(405, ErrorCode.BadRequest, "method not allowed");
+  if (req.method !== "POST") return METHOD_NOT_ALLOWED();
   const url = new URL(req.url);
   const dryRun = dryRunOf(url);
   if (dryRun === null) return DRY_RUN_REQUIRED();
+  const expectBatch = url.searchParams.get("expectBatch");
+  if (!dryRun && (expectBatch === null || !BATCH_ID.test(expectBatch)))
+    return err(
+      400,
+      ErrorCode.BadRequest,
+      "a batch apply needs expectBatch: the batchId of the dry run you read",
+      { fields: ["expectBatch"] },
+    );
   const result = await runPlatformBackfill(env, db, {
     dryRun,
     actor: actorOf(session),
     now,
     fetchImpl: fetch,
     after: url.searchParams.get("after"),
+    expectBatch: dryRun ? null : expectBatch,
   });
   const count = (o: string) =>
     result.products.filter((p) => p.outcome === o).length;
@@ -171,7 +185,7 @@ export async function handlePlatformSettingsBackfill(
     "unreadable",
     "refused",
     "conflict",
-    "commit_moved",
+    "stale",
     "error",
   ]
     .map((o) => [o, count(o)] as const)

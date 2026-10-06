@@ -56,6 +56,7 @@ import {
 } from "../src/admin/settingsBackfill.js";
 import {
   planBackfill,
+  REDACTED,
   type BackfillItem,
   type BackfillManifest,
   type BackfillReport,
@@ -89,6 +90,8 @@ interface Decl {
   tiers?: { id: string; label?: string; profileId?: string }[];
   profiles?: string[];
   schema?: string;
+  /** `licensing.*` (LX-06's row-backed settings), when declared. */
+  licensing?: Record<string, unknown>;
 }
 
 const BASE = {
@@ -118,6 +121,7 @@ function files(d: Decl = {}): Record<string, string> {
       profiles: m.profiles.map((id) => ({ id, name: id })),
       tiers: m.tiers.map((t) => ({ label: t.id, ...t })),
       provisioning: [],
+      ...(d.licensing ? { licensing: d.licensing } : {}),
     }),
     ".pkey/release.json": JSON.stringify({
       release: {
@@ -697,12 +701,25 @@ describe("the apply", () => {
     const applied = await call(
       ctx,
       "POST",
-      `products/${SLUG}/settings/backfill?dryRun=0&expectCommit=${dry.json.commit as string}`,
+      `products/${SLUG}/settings/backfill?dryRun=0&expectReport=${dry.json.reportId as string}`,
       undefined,
       NOW + 2,
     );
     expect(applied.status).toBe(200);
     expect(applied.json).toMatchObject({ dryRun: false, outcome: "applied" });
+    expect((applied.json.report as BackfillReport).basedOn).toBe(
+      dry.json.reportId,
+    );
+    // The same dry run cannot be applied twice: the apply changed the product's state.
+    const again = await call(
+      ctx,
+      "POST",
+      `products/${SLUG}/settings/backfill?dryRun=0&expectReport=${dry.json.reportId as string}`,
+      undefined,
+      NOW + 3,
+    );
+    expect(again.status).toBe(409);
+    expect(again.json).toMatchObject({ code: "backfill_stale" });
 
     const list = await call(ctx, "GET", `products/${SLUG}/settings/backfill`);
     const reports = list.json.reports as { id: string; mode: string }[];
@@ -820,7 +837,7 @@ describe("the apply", () => {
     expect(row!.report_json).not.toContain("sk-secret-0001");
   });
 
-  it("a live break-glass claim is kept; an expired one is not a claim", async () => {
+  it("a live break-glass claim is kept; an expired one ends (ST-20) and its field reverts", async () => {
     const ctx = await linked();
     await ctx.db.batch([
       {
@@ -844,13 +861,177 @@ describe("the apply", () => {
     expect(
       item(report, "setting", "license.defaults.deviceLimit"),
     ).toMatchObject({
-      owner: "manifest",
+      owner: "break-glass",
       action: "revert",
+      note: expect.stringMatching(/expired/),
     });
     const p = await productRow(ctx.db);
     expect(p.name).toBe("Incident");
     expect(p.default_device_limit).toBe(3);
-    expect((await claimRows(ctx.db)).map((c) => c.key)).toContain("core.name");
+    expect((await claimRows(ctx.db)).map((c) => c.key)).toEqual(["core.name"]);
+    expect(
+      (await audits(ctx.db, "setting.breakGlass.end")).map((a) => a.target_id),
+    ).toEqual(["license.defaults.deviceLimit"]);
+  });
+
+  it("a break-glass claim whose field this manifest changes ends, and the field takes the manifest's value", async () => {
+    const ctx = await linked();
+    await ctx.db.batch([
+      {
+        sql: "UPDATE products SET name = 'Incident' WHERE slug = ?",
+        params: [SLUG],
+      },
+      {
+        sql: `INSERT INTO product_settings (product, key, value_json, source, version, updated_at,
+                updated_by, reason, expires_at)
+              VALUES (?, 'core.name', NULL, 'console', 1, ?, 'u1', 'incident 42', ?)`,
+        params: [SLUG, NOW, NOW + 7 * 86400],
+      },
+    ]);
+    // The link applied "Acme"; this manifest says "Acme Two": the claim's field changed.
+    const report = await okRun(ctx, {
+      github: { head: { name: "Acme Two" } },
+    });
+    expect(item(report, "setting", "core.name")).toMatchObject({
+      owner: "break-glass",
+      action: "revert",
+      before: "Incident",
+      manifest: "Acme Two",
+      note: expect.stringMatching(/manifest changed the field/),
+    });
+    expect((await productRow(ctx.db)).name).toBe("Acme Two");
+    expect(await claimRows(ctx.db)).toEqual([]);
+    expect(
+      (await audits(ctx.db, "setting.breakGlass.end")).map((a) => a.target_id),
+    ).toEqual(["core.name"]);
+  });
+
+  it("under a live break-glass catalog, a reverted profile keeps the secrets that catalog declares", async () => {
+    const opsToken = {
+      key: "ops.token",
+      kind: "secret",
+      category: "ops",
+      label: "Ops token",
+      description: "",
+      schema: { type: "string", minLength: 8 },
+    };
+    const ctx = await linked();
+    // The console publishes a catalog adding `ops.token` (an ordinary claim on a linked
+    // product), made break-glass as ST-20's manifest-authoritative mode would.
+    const put = await call(ctx, "PUT", `products/${SLUG}/config/catalog`, {
+      catalog: {
+        schemaVersion: 1,
+        entries: [entry("run.name"), opsToken],
+      },
+      expectedVersion: 1,
+    });
+    expect(put.status).toBe(200);
+    await ctx.db.run(
+      `UPDATE product_settings SET reason = 'incident 7', expires_at = ?
+        WHERE product = ? AND key = 'config.catalog'`,
+      NOW + 7 * 86400,
+      SLUG,
+    );
+    const setOn = async (key: string, value: string) =>
+      expect(
+        (
+          await call(ctx, "PUT", `products/${SLUG}/config/profiles/standard`, {
+            updates: [{ key, value, state: "enforced" }],
+          })
+        ).status,
+      ).toBe(200);
+    await setOn("ops.token", "ops-secret-0001");
+    await setOn("run.name", "console value");
+
+    const report = await okRun(ctx);
+    expect(item(report, "setting", "config.catalog")).toMatchObject({
+      owner: "break-glass",
+      action: "keep",
+    });
+    expect(item(report, "profile", "standard")).toMatchObject({
+      action: "revert",
+      changed: ["config.run.name"],
+    });
+    const stored = await ctx.db.first<{ payload_json: string }>(
+      "SELECT payload_json FROM profiles WHERE product = ? AND id = 'standard'",
+      SLUG,
+    );
+    const payload = JSON.parse(stored!.payload_json) as {
+      config?: Record<string, unknown>;
+      secrets?: Record<string, { value?: unknown }>;
+    };
+    expect(payload.config?.["run.name"]).toBeUndefined();
+    expect(isSealedEnvelope(payload.secrets?.["ops.token"]?.value)).toBe(true);
+    expect(JSON.stringify(report)).not.toContain("ops-secret-0001");
+  });
+
+  it("the report records the values a profile revert replaced, and redacts every secret", async () => {
+    const schema = JSON.stringify({
+      schemaVersion: 1,
+      entries: [
+        entry("run.name"),
+        entry("run.other"),
+        {
+          ...entry("proxy.password"),
+          secret: true,
+        },
+      ],
+    });
+    const ctx = await linked({ schema });
+    const sealedShape = JSON.stringify({ v: 2, ct: "c2VhbGVkLWJ5dGVz" });
+    await ctx.db.run(
+      `UPDATE profiles SET source = 'console', payload_json = ? WHERE product = ? AND id = 'standard'`,
+      JSON.stringify({
+        config: {
+          "run.name": {
+            state: "enforced",
+            value: "console value",
+            updatedAt: 1,
+          },
+          // A legacy plaintext value of a managed secret, and a sealed value under a plain key.
+          "proxy.password": {
+            state: "enforced",
+            value: "plain-pass-0001",
+            updatedAt: 1,
+          },
+          "run.other": { state: "enforced", value: sealedShape, updatedAt: 1 },
+        },
+        secrets: {
+          "gone.key": {
+            state: "enforced",
+            value: "plain-secret-0001",
+            updatedAt: 1,
+          },
+        },
+      }),
+      SLUG,
+    );
+    const report = await okRun(ctx, {
+      dryRun: true,
+      github: { head: { schema } },
+    });
+    const profile = item(report, "profile", "standard");
+    expect(profile.changed).toEqual([
+      "config.proxy.password",
+      "config.run.name",
+      "config.run.other",
+      "secrets.gone.key",
+    ]);
+    expect(profile.values).toEqual({
+      "config.run.name": {
+        before: { state: "enforced", value: "console value", updatedAt: 1 },
+        manifest: null,
+      },
+      "config.proxy.password": { before: REDACTED, manifest: REDACTED },
+      "config.run.other": { before: REDACTED, manifest: REDACTED },
+      "secrets.gone.key": { before: REDACTED, manifest: REDACTED },
+    });
+    const row = await ctx.db.first<{ report_json: string }>(
+      "SELECT report_json FROM settings_backfill_reports WHERE product = ?",
+      SLUG,
+    );
+    for (const secret of ["plain-pass-0001", "plain-secret-0001", sealedShape])
+      expect(row!.report_json).not.toContain(secret);
   });
 
   it("a catalog the validator refuses is not published: the product is refused, nothing written", async () => {
@@ -899,26 +1080,112 @@ describe("the apply", () => {
     expect(await audits(ctx.db, "setting.backfill")).toEqual([]);
   });
 
-  it("expectCommit refuses an apply when the manifest moved since the dry run", async () => {
+  it("an apply pinned to a dry run applies exactly what it showed, or refuses as stale", async () => {
     const ctx = await linked();
-    const res = await run(ctx, { expectCommit: "e".repeat(40) });
-    expect(res).toMatchObject({
+    await preClaimConsoleEdits(ctx.db);
+    const dry = await okRun(ctx, { dryRun: true });
+    expect(dry.stateToken).toEqual(expect.any(String));
+
+    // The manifest moved (a push to the default branch) since the dry run.
+    const moved = await run(ctx, {
+      expectReport: dry.id,
+      fetchImpl: withDefaultHead(github(), "e".repeat(40)),
+    });
+    expect(moved).toMatchObject({
       ok: false,
       status: 409,
-      reason: "commit_moved",
+      reason: "backfill_stale",
     });
-    expect(await reportRows(ctx.db)).toEqual([]);
+    if (!moved.ok) expect(moved.message).toMatch(/manifest moved/);
+
+    // A console edit since the dry run.
+    await ctx.db.run(
+      "UPDATE products SET default_device_limit = 4, modified_at = ? WHERE slug = ?",
+      NOW + 50,
+      SLUG,
+    );
+    const edited = await run(ctx, { expectReport: dry.id });
+    expect(edited).toMatchObject({ ok: false, reason: "backfill_stale" });
+    if (!edited.ok) expect(edited.message).toMatch(/settings changed/);
+
+    // Not a dry run of this product.
+    expect(await run(ctx, { expectReport: "sbf_nope" })).toMatchObject({
+      ok: false,
+      reason: "backfill_stale",
+    });
+    expect((await productRow(ctx.db)).default_device_limit).toBe(4);
+    expect(await audits(ctx.db, "setting.backfill")).toEqual([]);
+
+    // Read again, then apply: it writes what that dry run listed.
+    const fresh = await okRun(ctx, { dryRun: true, now: NOW + 60 });
+    const applied = await okRun(ctx, { expectReport: fresh.id });
+    expect(applied.outcome).toBe("applied");
+    expect(applied.items.map((i) => [i.kind, i.key, i.action])).toEqual(
+      fresh.items.map((i) => [i.kind, i.key, i.action]),
+    );
+    expect((await productRow(ctx.db)).default_device_limit).toBe(3);
   });
 
-  it("the routes require an explicit dryRun and a well-formed expectCommit", async () => {
+  it("the routes require an explicit dryRun, and an apply the dry run it applies", async () => {
     const ctx = await linked();
-    for (const q of ["", "?dryRun=yes", "?dryRun=0&expectCommit=HEAD"]) {
+    for (const q of [
+      "",
+      "?dryRun=yes",
+      "?dryRun=0",
+      "?dryRun=0&expectReport=HEAD",
+      "?dryRun=0&expectCommit=" + "a".repeat(40),
+    ]) {
       const res = await call(
         ctx,
         "POST",
         `products/${SLUG}/settings/backfill${q}`,
       );
       expect(res.status, q).toBe(400);
+    }
+    const wrongMethod = await call(
+      ctx,
+      "PUT",
+      `products/${SLUG}/settings/backfill`,
+    );
+    expect(wrongMethod.status).toBe(405);
+    expect(wrongMethod.json).toMatchObject({ code: "method_not_allowed" });
+    expect(await reportRows(ctx.db)).toEqual([]);
+  });
+
+  it("the routes refuse a non-admin session (403) and a write without the CSRF header (403)", async () => {
+    const ctx = await linked();
+    const { token } = await issueSession(
+      ctx.env,
+      { sub: "u9", name: "Eve", email: "eve@x.io", groups: ["users"] },
+      NOW,
+    );
+    const outsider = { ...ctx, cookie: `${ADMIN_COOKIE}=${token}` };
+    for (const [method, path] of [
+      ["GET", `products/${SLUG}/settings/backfill`],
+      ["POST", `products/${SLUG}/settings/backfill?dryRun=1`],
+      ["GET", "platform/settings/backfill"],
+      ["POST", "platform/settings/backfill?dryRun=1"],
+    ] as const) {
+      const res = await call(outsider, method, path);
+      expect(res.status, `${method} ${path}`).toBe(403);
+    }
+    for (const path of [
+      `products/${SLUG}/settings/backfill?dryRun=1`,
+      "platform/settings/backfill?dryRun=1",
+    ]) {
+      const req = new Request(`https://key.plrs.im/manage/api/${path}`, {
+        method: "POST",
+        headers: { cookie: ctx.cookie },
+      });
+      const res = await handleAdmin(
+        req,
+        ctx.env,
+        ctx.db,
+        `/api/${path.split("?")[0]!}`,
+        { now: NOW + 1 },
+      );
+      expect(res.status, path).toBe(403);
+      expect(((await res.json()) as { code: string }).code).toBe("forbidden");
     }
     expect(await reportRows(ctx.db)).toEqual([]);
   });
@@ -989,6 +1256,7 @@ describe("row-backed claimable settings (the value is the product_settings row)"
           row("a.breakGlass", 9, "console", NOW + 3600),
           row("a.undeclaredConsole", 5, "console"),
           row("a.undeclaredManifest", 5, "manifest"),
+          row("a.secret", "old-token", "console"),
         ],
         tiers: [],
         profiles: [],
@@ -1016,6 +1284,7 @@ describe("row-backed claimable settings (the value is the product_settings row)"
           { key: "a.undeclaredConsole", declared: undefined, fits: true },
           { key: "a.undeclaredManifest", declared: undefined, fits: true },
           { key: "a.undeclaredNone", declared: undefined, fits: true },
+          { key: "a.secret", declared: "new-token", fits: true, secret: true },
         ],
       },
     );
@@ -1052,6 +1321,14 @@ describe("row-backed claimable settings (the value is the product_settings row)"
       "none",
     ]);
     expect(byKey.has("a.undeclaredNone")).toBe(false);
+    // `sensitivity: "secret"`: compared and reverted like any other, shown only as REDACTED.
+    expect(byKey.get("a.secret")).toMatchObject({
+      class: "differs",
+      action: "revert",
+      before: REDACTED,
+      manifest: REDACTED,
+    });
+    expect(JSON.stringify(plan.items)).not.toMatch(/old-token|new-token/);
     // One upsert per revert or released claim, each to `manifest` with the manifest's value.
     const upserts = plan.writes.filter((w) =>
       /INSERT INTO product_settings/.test(w.sql),
@@ -1061,7 +1338,63 @@ describe("row-backed claimable settings (the value is the product_settings row)"
       ["a.claimedDiffers", "3"],
       ["a.manifestDiffers", "4"],
       ["a.absent", "5"],
+      ["a.secret", '"new-token"'],
     ]);
+  });
+});
+
+describe("LX-06 row-backed settings, end to end", () => {
+  it("a console claim on a declared licensing setting is reverted; an undeclared console row stays", async () => {
+    const decl = { licensing: { refundGraceHours: 24 } };
+    const ctx = await linked(decl);
+    await ctx.db.run(
+      `UPDATE product_settings SET value_json = '48', source = 'console', updated_by = 'u1'
+        WHERE product = ? AND key = 'licensing.refundGraceHours'`,
+      SLUG,
+    );
+    await ctx.db.run(
+      `INSERT INTO product_settings (product, key, value_json, source, version, updated_at, updated_by)
+       VALUES (?, 'licensing.anchorPolicy', '"oldest"', 'console', 1, ?, 'u1')`,
+      SLUG,
+      NOW,
+    );
+    const report = await okRun(ctx, { github: { head: decl } });
+    expect(item(report, "setting", "licensing.refundGraceHours")).toMatchObject(
+      {
+        class: "differs",
+        owner: "console",
+        before: 48,
+        manifest: 24,
+        action: "revert",
+      },
+    );
+    expect(item(report, "setting", "licensing.anchorPolicy")).toMatchObject({
+      class: "not-declared",
+      owner: "console",
+      action: "none",
+    });
+    const rowsNow = await ctx.db.all<{
+      key: string;
+      value_json: string;
+      source: string;
+    }>(
+      "SELECT key, value_json, source FROM product_settings WHERE product = ? ORDER BY key",
+      SLUG,
+    );
+    expect(rowsNow).toEqual([
+      {
+        key: "licensing.anchorPolicy",
+        value_json: '"oldest"',
+        source: "console",
+      },
+      {
+        key: "licensing.refundGraceHours",
+        value_json: "24",
+        source: "manifest",
+      },
+    ]);
+    const again = await okRun(ctx, { github: { head: decl }, now: NOW + 300 });
+    expect(again.outcome).toBe("unchanged");
   });
 });
 
@@ -1208,12 +1541,54 @@ describe("the platform batch", () => {
     );
   });
 
+  it("the batch apply runs exactly the products its dry run covered, each pinned to its report", async () => {
+    const ctx = await linked();
+    await seedProduct(ctx.db, "manual");
+    await preClaimConsoleEdits(ctx.db);
+    const opts = {
+      actor: ACTOR,
+      now: NOW + 100,
+      fetchImpl: github(),
+    };
+    const dry = await runPlatformBackfill(ctx.env, ctx.db, {
+      ...opts,
+      dryRun: true,
+    });
+    // Without the dry run's batch id the apply touches nothing.
+    expect(
+      (await runPlatformBackfill(ctx.env, ctx.db, { ...opts, dryRun: false }))
+        .products,
+    ).toEqual([]);
+    // A product registered after the dry run is not in it.
+    await seedProduct(ctx.db, "later");
+    const applied = await runPlatformBackfill(ctx.env, ctx.db, {
+      ...opts,
+      dryRun: false,
+      expectBatch: dry.batchId,
+    });
+    expect(applied.products).toEqual([
+      expect.objectContaining({ product: SLUG, outcome: "applied" }),
+      expect.objectContaining({ product: "manual", outcome: "stale" }),
+    ]);
+    expect((await productRow(ctx.db)).name).toBe("Acme");
+    expect(await reportRows(ctx.db, "later")).toEqual([]);
+    // A second apply of the same batch is stale: the first one moved the product.
+    const again = await runPlatformBackfill(ctx.env, ctx.db, {
+      ...opts,
+      dryRun: false,
+      expectBatch: dry.batchId,
+    });
+    expect(again.products.map((p) => p.outcome)).toEqual(["stale", "stale"]);
+  });
+
   it("the routes: POST runs the batch (dryRun required), GET lists every product's newest report", async () => {
     const ctx = await linked();
     await seedProduct(ctx.db, "manual");
-    expect((await call(ctx, "POST", "platform/settings/backfill")).status).toBe(
-      400,
-    );
+    for (const q of ["", "?dryRun=0", "?dryRun=0&expectBatch=sbf_wrongkind"])
+      expect(
+        (await call(ctx, "POST", `platform/settings/backfill${q}`)).status,
+        q,
+      ).toBe(400);
     const original = globalThis.fetch;
     globalThis.fetch = github() as typeof fetch;
     try {

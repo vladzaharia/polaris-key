@@ -15,9 +15,14 @@
  *   - existing `*_source` markers are left alone (S-18 §4.14.1), except the system product's
  *     bootstrap `services_source = 'admin'`, which is reset to `manifest` when the stored services
  *     equal the manifest's (nothing is lost);
- *   - a LIVE break-glass claim (ST-20: `expires_at` set and in the future) is kept: ST-20's rule is
- *     that an apply which does not change the manifest's value for the field does not end it, and
- *     the backfill changes no manifest. The system product's name is never written (F-03).
+ *   - a break-glass claim (ST-20) follows ST-20's rule for any apply (`claimsForApply`): it ends
+ *     when it has expired or when this manifest changes the field from the last applied one, and
+ *     the field then reverts; otherwise it is live and kept. The system product's name is never
+ *     written (F-03).
+ *
+ * Secrets never enter a report or the audit row: profile payload values are recorded for the
+ * record (what the apply reverted) except the `secrets` bucket, managed-secret keys and sealed
+ * envelopes, which read `REDACTED`, as do row-backed settings of `sensitivity: "secret"`.
  *
  * The classification (S-18 §4.14.2 steps 1–5: equal / differs / not declared, with the audit
  * evidence) is still produced, as a report kept for the record, not as a gate. `planBackfill` is
@@ -30,7 +35,9 @@
  * inserted only while the product's state token (`STATE_TOKEN_SQL`) still equals the token read
  * before classifying; otherwise its `report_json` is NULL, the NOT NULL constraint fails and the
  * whole batch rolls back (D1 batches are transactions). The caller re-reads the token to tell this
- * conflict from any other failure, and answers 409.
+ * conflict from any other failure, and answers 409. The dry-run report stores the same token, and
+ * an apply pinned to it (`expectReport`) refuses unless both the token and the manifest's commit
+ * are still the dry run's, so the operator applies exactly what they read.
  */
 
 import type {
@@ -50,6 +57,7 @@ import { stmtInsertTier } from "../repo.js";
 import { randomId } from "./platform.js";
 import { parseWebOrigins, serializeWebOrigins } from "./cors.js";
 import { parseServices } from "./services.js";
+import { isSealedEnvelope } from "../admin/lib/managedSecrets.js";
 import {
   auditValue,
   type AuditActor,
@@ -124,8 +132,14 @@ export interface BackfillItem {
   before: unknown;
   /** The manifest's value; absent when the manifest does not declare it. Same redaction. */
   manifest?: unknown;
-  /** What differs, by field or payload key (never a value), when `class` is `differs`. */
+  /** What differs, by field or payload key, when `class` is `differs`. */
   changed?: string[];
+  /**
+   * Profiles: the stored and the manifest's value of each changed payload key (`bucket.key`), so
+   * the record shows what the apply reverted. Secrets never appear: the whole `secrets` bucket,
+   * any sealed envelope and any key a catalog marks as a managed secret read `REDACTED`.
+   */
+  values?: Record<string, { before: unknown; manifest: unknown }>;
   /** The live claim on the field, when there is one. */
   claim?: {
     by: string;
@@ -195,6 +209,14 @@ export interface BackfillReport {
    * system product (the deploy hook is its only writer) and for a dry run.
    */
   snapshot: "written" | "current" | "not-applicable";
+  /**
+   * The product's state token (`STATE_TOKEN_SQL`) when the run read it. An apply pinned to a dry
+   * run (`expectReport`) refuses unless the token and the commit are still the dry run's, so it
+   * writes exactly what that report showed.
+   */
+  stateToken?: string;
+  /** An apply: the dry-run report it was pinned to. */
+  basedOn?: string | null;
   batchId: string | null;
   actor: { sub: string | null; name: string | null };
 }
@@ -410,11 +432,21 @@ function profileView(
 }
 
 /** The payload keys (`bucket.key`) whose values differ, without the values. */
+/** One payload difference: `bucket.key` (or a whole non-map bucket), with both values. */
+interface PayloadChange {
+  path: string;
+  bucket: string;
+  key: string | null;
+  before: unknown;
+  manifest: unknown;
+}
+
+/** The payload keys (`bucket.key`) whose values differ, with both values (unredacted). */
 function payloadChanges(
   stored: Record<string, unknown>,
   declared: Record<string, unknown>,
-): string[] {
-  const out: string[] = [];
+): PayloadChange[] {
+  const out: PayloadChange[] = [];
   const buckets = new Set([...Object.keys(stored), ...Object.keys(declared)]);
   const isMap = (v: unknown): v is Record<string, unknown> =>
     !!v && typeof v === "object" && !Array.isArray(v);
@@ -423,15 +455,31 @@ function payloadChanges(
     const a = stored[bucket] ?? {};
     const b = declared[bucket] ?? {};
     if (!isMap(a) || !isMap(b)) {
-      if (canonical(a ?? null) !== canonical(b ?? null)) out.push(bucket);
+      if (canonical(a ?? null) !== canonical(b ?? null))
+        out.push({ path: bucket, bucket, key: null, before: a, manifest: b });
       continue;
     }
     const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
     for (const key of [...keys].sort())
       if (canonical(a[key] ?? null) !== canonical(b[key] ?? null))
-        out.push(`${bucket}.${key}`);
+        out.push({
+          path: `${bucket}.${key}`,
+          bucket,
+          key,
+          before: a[key] ?? null,
+          manifest: b[key] ?? null,
+        });
   }
   return out;
+}
+
+/** Whether `value` holds a sealed envelope anywhere (an entry's `value`, or deeper). */
+function holdsSealed(value: unknown): boolean {
+  if (isSealedEnvelope(value)) return true;
+  if (Array.isArray(value)) return value.some(holdsSealed);
+  if (value && typeof value === "object")
+    return Object.values(value as Record<string, unknown>).some(holdsSealed);
+  return false;
 }
 
 function payloadOf(json: string): Record<string, unknown> {
@@ -441,15 +489,40 @@ function payloadOf(json: string): Record<string, unknown> {
     : {};
 }
 
-/** The live claim on `key` among `rows` (ordinary or break-glass), or `null`. */
-function liveClaim(
+/**
+ * The console claim on `key` the plan deals with: a live one (ordinary or break-glass), or a
+ * break-glass one this apply ends (`ended`, even when already expired). `kept` is a live
+ * break-glass claim the apply leaves alone.
+ */
+function claimFor(
   rows: readonly ProductSettingRow[],
   key: ClaimKey,
   now: number,
-): ProductSettingRow | null {
+  ended: ReadonlyMap<string, "expired" | "changed">,
+): {
+  row: ProductSettingRow;
+  breakGlass: boolean;
+  kept: boolean;
+  ended?: "expired" | "changed";
+} | null {
   const row = rows.find((r) => r.key === key && r.source === "console");
   if (!row) return null;
-  return row.expires_at === null || row.expires_at > now ? row : null;
+  const breakGlass = row.expires_at !== null;
+  const why = breakGlass ? ended.get(key) : undefined;
+  const live = row.expires_at === null || row.expires_at > now;
+  if (!live && !why) return null;
+  return {
+    row,
+    breakGlass,
+    kept: breakGlass && !why,
+    ...(why ? { ended: why } : {}),
+  };
+}
+
+function endedNote(why: "expired" | "changed"): string {
+  return why === "expired"
+    ? "the break-glass claim expired; the apply removes it (ST-20)"
+    : "the break-glass claim ended: the manifest changed the field since the last apply (ST-20)";
 }
 
 function claimOf(row: ProductSettingRow): NonNullable<BackfillItem["claim"]> {
@@ -513,7 +586,22 @@ export interface PlanOptions {
    * Core names no service here.
    */
   rowSettings?: readonly RowSettingInput[];
+  /**
+   * Whether a catalog key is a managed secret (`isManagedSecretKey` against the stored catalog OR
+   * the manifest's): its profile values are redacted in the report.
+   */
+  isSecretKey?: (key: string) => boolean;
+  /**
+   * The break-glass claims this apply ends (ST-20's `claimsForApply`: expired, or the manifest
+   * changed the field from the last applied one), by key. The caller ends them in the batch
+   * (`endBreakGlassStatements`); the plan treats the field as unclaimed. Every other break-glass
+   * claim is live and kept.
+   */
+  endedBreakGlass?: ReadonlyMap<string, "expired" | "changed">;
 }
+
+/** What the report shows in place of a secret value. */
+export const REDACTED = "[redacted]";
 
 /** One row-backed claimable setting as the backfill sees it. */
 export interface RowSettingInput {
@@ -522,10 +610,12 @@ export interface RowSettingInput {
   declared: unknown;
   /** Whether the registry's value spec accepts `declared` (a resync skips one it does not). */
   fits: boolean;
+  /** `sensitivity: "secret"`: the report and the audit row show `REDACTED`, never the value. */
+  secret?: boolean;
 }
 
 const BREAK_GLASS_NOTE =
-  "a live break-glass claim (ST-20): an apply that does not change the manifest's value for the field leaves it, and the backfill changes no manifest";
+  "a live break-glass claim (ST-20), kept: it ends when it expires, or at an apply whose manifest changes the field from the last applied one";
 
 /**
  * Classify every field and row of one product against its manifest (S-18 §4.14.1), decide each
@@ -539,15 +629,22 @@ export function planBackfill(
   const { product } = state;
   const slug = product.slug;
   const { now, system } = opts;
+  const ended =
+    opts.endedBreakGlass ?? new Map<string, "expired" | "changed">();
+  const isSecretKey = opts.isSecretKey ?? (() => false);
   const items: BackfillItem[] = [];
   const writes: DbStatement[] = [];
   const claimDrops: DbStatement[] = [];
   const columns: [string, string | number | null][] = [];
 
-  const differs = (item: BackfillItem): BackfillItem =>
-    item.class === "differs"
-      ? { ...item, evidence: evidenceFor(item, state.evidence) }
-      : item;
+  // A secret setting's evidence keeps the rows but not their summaries (a summary may name a value).
+  const differs = (item: BackfillItem, secret = false): BackfillItem => {
+    if (item.class !== "differs") return item;
+    const evidence = evidenceFor(item, state.evidence);
+    if (secret)
+      evidence.rows = evidence.rows.map((r) => ({ ...r, summary: null }));
+    return { ...item, evidence };
+  };
 
   // ── the column-backed claimable settings and the admin group ──────────────────────────
   const scalar = (
@@ -558,9 +655,10 @@ export function planBackfill(
     write: string | number | null,
     view: (v: unknown) => unknown = (v) => v,
   ): void => {
-    const claimRow =
-      key === "core.adminGroup" ? null : liveClaim(state.settings, key, now);
-    const breakGlass = claimRow !== null && claimRow.expires_at !== null;
+    const claim =
+      key === "core.adminGroup"
+        ? null
+        : claimFor(state.settings, key, now, ended);
     const cls: BackfillClass =
       canonical(stored ?? null) === canonical(declared ?? null)
         ? "equal"
@@ -569,26 +667,34 @@ export function planBackfill(
       kind: "setting",
       key,
       class: cls,
-      owner: breakGlass ? "break-glass" : claimRow ? "console" : "manifest",
+      owner: claim
+        ? claim.breakGlass
+          ? "break-glass"
+          : "console"
+        : "manifest",
       before: view(stored ?? null),
       manifest: view(declared ?? null),
-      ...(claimRow ? { claim: claimOf(claimRow) } : {}),
+      ...(claim ? { claim: claimOf(claim.row) } : {}),
       action: "none",
     };
     if (system && key === "core.name" && cls === "differs") {
       item.action = "keep";
       item.note = "the system product keeps its name (F-03)";
-    } else if (breakGlass) {
+    } else if (claim?.kept) {
       item.action = "keep";
       item.note = BREAK_GLASS_NOTE;
     } else if (cls === "differs") {
       item.action = "revert";
       columns.push([column, write]);
-    } else if (claimRow) {
+    } else if (claim) {
       item.action = "release-claim";
     }
-    if (claimRow && !breakGlass && item.action !== "keep")
-      claimDrops.push(stmtDropClaim(slug, key as ClaimKey, claimRow.version));
+    if (claim?.ended)
+      item.note = item.note
+        ? `${item.note}; ${endedNote(claim.ended)}`
+        : endedNote(claim.ended);
+    if (claim && !claim.breakGlass && item.action !== "keep")
+      claimDrops.push(stmtDropClaim(slug, key as ClaimKey, claim.row.version));
     items.push(differs(item));
   };
 
@@ -632,8 +738,7 @@ export function planBackfill(
     const storedCatalog = state.activeSchema
       ? parseJson(state.activeSchema.catalog_json)
       : null;
-    const claimRow = liveClaim(state.settings, "config.catalog", now);
-    const breakGlass = claimRow !== null && claimRow.expires_at !== null;
+    const claim = claimFor(state.settings, "config.catalog", now, ended);
     const cls: BackfillClass =
       state.activeSchema &&
       catalogContent(storedCatalog) === catalogContent(manifest.catalog)
@@ -643,7 +748,11 @@ export function planBackfill(
       kind: "setting",
       key: "config.catalog",
       class: cls,
-      owner: breakGlass ? "break-glass" : claimRow ? "console" : "manifest",
+      owner: claim
+        ? claim.breakGlass
+          ? "break-glass"
+          : "console"
+        : "manifest",
       before: state.activeSchema
         ? catalogView(storedCatalog, state.activeSchema.catalog_version)
         : null,
@@ -651,20 +760,21 @@ export function planBackfill(
       ...(cls === "differs"
         ? { changed: catalogChanges(storedCatalog, manifest.catalog) }
         : {}),
-      ...(claimRow ? { claim: claimOf(claimRow) } : {}),
+      ...(claim ? { claim: claimOf(claim.row) } : {}),
       action: "none",
     };
-    if (breakGlass) {
+    if (claim?.kept) {
       item.action = "keep";
       item.note = BREAK_GLASS_NOTE;
     } else if (cls === "differs") {
       item.action = "revert";
       writes.push(...catalogPublishStatements(slug, manifest.catalog, now));
-    } else if (claimRow) {
+    } else if (claim) {
       item.action = "release-claim";
     }
-    if (claimRow && !breakGlass)
-      claimDrops.push(stmtDropClaim(slug, "config.catalog", claimRow.version));
+    if (claim?.ended) item.note = endedNote(claim.ended);
+    if (claim && !claim.breakGlass)
+      claimDrops.push(stmtDropClaim(slug, "config.catalog", claim.row.version));
     items.push(differs(item));
   }
 
@@ -695,13 +805,30 @@ export function planBackfill(
       continue;
     }
     const storedPayload = payloadOf(stored.payload_json);
+    const payloadDiff =
+      stored.payload_json !== JSON.stringify(payload)
+        ? payloadChanges(storedPayload, payload)
+        : [];
     const changed = [
       ...(stored.name !== p.name ? ["name"] : []),
       ...((stored.description ?? null) !== description ? ["description"] : []),
-      ...(stored.payload_json !== JSON.stringify(payload)
-        ? payloadChanges(storedPayload, payload)
-        : []),
+      ...payloadDiff.map((c) => c.path),
     ];
+    // The record of what the apply reverts, without a secret: the whole `secrets` bucket, a
+    // managed-secret key (by either catalog) and any sealed envelope read REDACTED.
+    const secret = (c: PayloadChange): boolean =>
+      c.bucket === "secrets" ||
+      (c.key !== null && isSecretKey(c.key)) ||
+      holdsSealed(c.before) ||
+      holdsSealed(c.manifest);
+    const values = Object.fromEntries(
+      payloadDiff.map((c) => [
+        c.path,
+        secret(c)
+          ? { before: REDACTED, manifest: REDACTED }
+          : { before: c.before, manifest: c.manifest },
+      ]),
+    );
     // A payload whose JSON differs only in key order is not a difference worth a write.
     const cls: BackfillClass = changed.length > 0 ? "differs" : "equal";
     const item: BackfillItem = {
@@ -712,6 +839,7 @@ export function planBackfill(
       before: profileView(stored.name, stored.description, storedPayload),
       manifest: declaredView,
       ...(cls === "differs" ? { changed } : {}),
+      ...(payloadDiff.length > 0 ? { values } : {}),
       action: "none",
     };
     if (cls === "differs") {
@@ -814,6 +942,9 @@ export function planBackfill(
       state.settings.find((r) => r.key === def.key && r.value_json !== null) ??
       null;
     const stored = row ? parseJson(row.value_json) : null;
+    // `sensitivity: "secret"`: compared as values, shown as REDACTED.
+    const shown = (v: unknown): unknown =>
+      def.secret && v !== null && v !== undefined ? REDACTED : v;
     if (def.declared === undefined) {
       // Not declared: a console row stays a console row; a manifest row is the resync's to clear
       // (omit-clears). Nothing to report when there is no row at all.
@@ -823,7 +954,7 @@ export function planBackfill(
         key: def.key,
         class: "not-declared",
         owner: row.source === "console" ? "console" : "manifest",
-        before: stored,
+        before: shown(stored),
         action: "none",
         ...(row.source === "manifest"
           ? {
@@ -851,8 +982,8 @@ export function planBackfill(
         : row?.source === "console"
           ? "console"
           : "manifest",
-      before: stored,
-      manifest: def.declared,
+      before: shown(stored),
+      manifest: shown(def.declared),
       ...(row?.source === "console" ? { claim: claimOf(row) } : {}),
       action: "none",
     };
@@ -867,7 +998,7 @@ export function planBackfill(
       item.action = cls === "differs" ? "revert" : "release-claim";
       writes.push(stmtRowSettingAsManifest(slug, def.key, def.declared, now));
     }
-    items.push(differs(item));
+    items.push(differs(item, def.secret));
   }
 
   // ── the services marker (an existing `*_source` column, S-18 §4.14.1) ──────────────────
@@ -1206,6 +1337,19 @@ export function getReport(
     "SELECT * FROM settings_backfill_reports WHERE product = ? AND id = ?",
     product,
     id,
+  );
+}
+
+/** A platform dry run's reports (one per product it covered), for the batch apply to pin to. */
+export function listBatchReports(
+  db: Db,
+  batchId: string,
+): Promise<Pick<BackfillReportRow, "product" | "id">[]> {
+  return db.all<Pick<BackfillReportRow, "product" | "id">>(
+    `SELECT product, id FROM settings_backfill_reports
+      WHERE batch_id = ? AND mode = 'dry-run'
+      ORDER BY product`,
+    batchId,
   );
 }
 

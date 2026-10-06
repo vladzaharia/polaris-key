@@ -6638,7 +6638,7 @@ signing key is never touched.
 ### The settings backfill (ST-01c)
 
 A one-off admin action (notes/S-18 §4.14, owner decision D19 "Revert all console values"),
-`POST /manage/api/products/<slug>/settings/backfill?dryRun=1|0` and a platform batch
+`POST /manage/api/products/<slug>/settings/backfill` and a platform batch
 (`POST /manage/api/platform/settings/backfill`), that moves a repo-linked product onto the claim
 model of "Resync as a write path, and console claims (ST-01b)" below: every field and tier or
 profile row the product's `.pkey/` declares takes the manifest's value and its console claim is
@@ -6646,7 +6646,14 @@ dropped (row-backed settings included), and every undeclared tier or profile bec
 row. It is a write path as wide as a resync, plus the claims it removes. Controls:
 
 - **Who.** A platform-admin session with the CSRF header, like every admin write. `dryRun` is
-  required (`1` or `0`), so a bare or replayed POST never applies.
+  required (`1` or `0`), so a bare POST never applies.
+- **What the operator read is what is applied.** Every dry run stores its report with the
+  product's state token (the product row, its claims, tiers, profiles, catalog versions and
+  snapshot) and the manifest's commit. An apply must name that dry run (`expectReport`, required)
+  and refuses (409 `backfill_stale`) unless the commit and the token are unchanged, so a push or a
+  console edit after the dry run can never be applied unread. The platform batch's apply takes the
+  dry run's batch id (`expectBatch`, required) and runs exactly the products that dry run covered,
+  each pinned to its own report; nothing outside the batch is touched.
 - **Which manifest.** A linked product's is the default branch's head, resolved by GitHub and
   pinned to one commit, read exactly as a resync reads it (R6-05: nothing caller-supplied chooses
   the content). The system product's is its deploy-hook snapshot (the deployed commit; ST-20 makes
@@ -6654,32 +6661,40 @@ row. It is a write path as wide as a resync, plus the claims it removes. Control
   and never writes that snapshot. `product_sync_state.commit_sha`, a webhook-supplied value, is
   read **only to corroborate**: it must be a well-formed git sha (`gitShaOrNull`) before it
   reaches a URL, its documents' digest is compared with the pinned read's, and they are never
-  applied; the report records whether they matched. `expectCommit` (the dry run's commit) is
-  compared, never fetched at.
-- **What it leaves alone.** A live break-glass claim (ST-20: an apply that does not change the
-  manifest's value for the field never ends one) and the existing `*_source` markers stay; the
-  one exception is the system product's bootstrap `services_source = 'admin'`, reset only when its
-  services already equal the root `.pkey/`, so nothing changes value. The system product's name is
-  never written (F-03). A catalog it would publish is compiled first and the product is refused
-  (nothing written) when it fails, as a resync refuses it. A reverted profile keeps its sealed
-  secret values (R2, the resync's carry-forward); the report and the audit row name payload KEYS
-  only and never hold a value, so `settings_backfill_reports` holds no secret material.
-- **No unseen revert.** The apply reads a state token (the product row, its claims, tiers,
-  profiles, catalog versions and snapshot) before classifying. Its batch's first statement is the
-  report row, inserted only while the token still matches; otherwise `report_json` is NULL, the
-  NOT NULL constraint fails and D1 rolls the whole batch back (409 `backfill_conflict`). A console
-  edit that lands during the GitHub reads is therefore never reverted without appearing in a
-  report.
+  applied; the report records whether they matched.
+- **What it leaves alone.** A break-glass claim follows ST-20's rule for every apply
+  (`claimsForApply`): it ends, audited as `setting.breakGlass.end`, once it has expired or when
+  this manifest changes its field from the last applied snapshot, and is otherwise live and kept.
+  The existing `*_source` markers stay; the one exception is the system product's bootstrap
+  `services_source = 'admin'`, reset only when its services already equal the root `.pkey/`, so
+  nothing changes value. The system product's name is never written (F-03). A catalog it would
+  publish is compiled first and the product is refused (nothing written) when it fails, as a
+  resync refuses it.
+- **Secrets.** A reverted profile keeps its sealed secret values (R2): they are carried by the
+  catalog that stays installed, exactly as a resync picks it, which is the console's catalog while
+  a live break-glass claim keeps it and the manifest's otherwise, so a secret only the console
+  catalog declares survives. The report records the values a profile revert replaces, but never a
+  secret: the whole `secrets` bucket, any key that either the stored or the manifest catalog marks
+  as a managed secret, and any sealed envelope read `[redacted]`; so do row-backed settings of
+  `sensitivity: "secret"`, in the report and the audit row, whose evidence keeps no audit summary.
+  `settings_backfill_reports` therefore holds no secret material.
+- **No unseen revert.** The apply reads the state token before classifying. Its batch's first
+  statement is the report row, inserted only while the token still matches; otherwise
+  `report_json` is NULL, the NOT NULL constraint fails and D1 rolls the whole batch back (409
+  `backfill_conflict`). A console edit that lands during the GitHub reads is therefore never
+  reverted without appearing in a report.
 - **Visibility.** Every run, dry or applied, stores its classification in
   `settings_backfill_reports` (append-only, kept for the record, product-scoped without
   `ON DELETE` like every product table, R11-01). An apply writes one `setting.backfill` audit row
   naming the operator and every changed value with before and after; the platform batch writes
   one `settings.backfill.batch` row in `platform_audit`.
 
-**Residual.** A stolen admin session (T7) can run it, and so revert console claims to what the
-repository says. That value is the repo's, never one the attacker chooses, and the run is audited
-and reported. A repo writer (T2) gains nothing beyond a resync: the backfill applies the same
-pinned read a push already triggers.
+**Residual.** A stolen admin session (T7) can run a dry run and apply it, and so revert console
+claims to what the repository says. That value is the repo's, never one the attacker chooses, and
+the run is audited and reported. A repo writer (T2) gains nothing beyond a resync: the backfill
+applies the same pinned read a push already triggers. The report keeps non-secret configuration
+values indefinitely (it is not pruned with the 180-day audit): they are values the product's
+profiles held, kept as long as the product's other rows (products are never hard-deleted).
 
 ### The New Product probes: repository picker, create dry run, slug check (UX-72)
 

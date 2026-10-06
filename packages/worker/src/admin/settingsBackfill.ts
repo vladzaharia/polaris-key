@@ -20,13 +20,16 @@
  *   - any other product (`release_source` is not `github`): no manifest exists, so nothing is
  *     classified or written, and the report says `unlinked`.
  *
- * A dry run stores its report and writes nothing else. An apply stores its report in the SAME
- * batch as the writes (guarded by the product's state token, see the Core module), with the
- * manifest snapshot (origin `backfill`, when the stored one does not already describe this
- * manifest) and one `setting.backfill` audit row; an apply that changes nothing stores an empty
- * report and no audit row, so a second apply is a no-op.
+ * A dry run stores its report (with the product's state token) and writes nothing else. An apply
+ * is pinned to that report (`expectReport`): it refuses unless the manifest's commit and the state
+ * token are still the dry run's. It stores its report in the SAME batch as the writes (guarded by
+ * the state token again, see the Core module), with ST-20's ending of any break-glass claim this
+ * manifest ends, the manifest snapshot (origin `backfill`, when the stored one does not already
+ * describe this manifest) and one `setting.backfill` audit row; an apply that changes nothing
+ * stores an empty report and no audit row, so a second apply is a no-op.
  */
 
+import { Catalog } from "@polaris-key/catalog";
 import type { ParsedManifest } from "@polaris-key/manifest";
 import type { Env } from "../env.js";
 import type { Db, DbStatement } from "../db/types.js";
@@ -46,9 +49,12 @@ import {
 } from "../core/manifestSnapshot.js";
 import type { AuditActor, ProductSettingRow } from "../core/settingsClaims.js";
 import {
+  getReport,
+  listBatchReports,
   newBatchId,
   newReportId,
   planBackfill,
+  reportOf,
   readEvidence,
   readStateToken,
   stmtBackfillAudit,
@@ -59,10 +65,15 @@ import {
   type BackfillOutcome,
   type BackfillReport,
   type BackfillSource,
+  type RowSettingInput,
 } from "../core/settingsBackfill.js";
 import { fitsValueSpec } from "../core/settings/rules.js";
-import type { SettingDef } from "../core/settings/types.js";
-import type { RowSettingInput } from "../core/settingsBackfill.js";
+import { isRowBacked, manifestValueAt } from "../core/rowSettings.js";
+import {
+  claimsForApply,
+  endBreakGlassStatements,
+} from "../core/settingsClaims.js";
+import { isManagedSecretKey } from "./lib/managedSecrets.js";
 import { SETTINGS } from "../mount.js";
 import type { FetchImpl } from "../services/release/githubApp.js";
 import {
@@ -80,11 +91,12 @@ export interface BackfillRunOptions {
   /** The platform batch this run belongs to (`null` for a single-product run). */
   batchId?: string | null;
   /**
-   * The commit the operator's dry run was read at. When given, the apply refuses (409
-   * `commit_moved`) if the default branch's head is no longer it, so the apply writes what the
-   * reviewed dry run showed. Compared only, never fetched at.
+   * The operator's dry-run report for this product (its id). An apply pinned to it refuses (409
+   * `backfill_stale`) unless the manifest's commit and the product's state token are still the
+   * ones that report recorded, so it writes exactly what the operator read. The admin routes
+   * require it for every apply; only a direct call (tests) may omit it.
    */
-  expectCommit?: string | null;
+  expectReport?: string | null;
 }
 
 export type BackfillRun =
@@ -92,7 +104,7 @@ export type BackfillRun =
   | {
       ok: false;
       status: 404 | 409;
-      reason: "unknown_product" | "commit_moved" | "backfill_conflict";
+      reason: "unknown_product" | "backfill_stale" | "backfill_conflict";
       message: string;
     };
 
@@ -236,43 +248,31 @@ async function manifestFor(
 }
 
 /**
- * Whether `def` is a ROW-BACKED claimable product setting (LX-06: its value is the
- * `product_settings` row): live, product scope, scalar storage, claimable, declared by a manifest
- * path. The same predicate as `core/rowSettings.ts`' `isRowBacked`.
+ * The registry's row-backed claimable settings (LX-06, `isRowBacked`; live entries only), each with
+ * what `manifest` declares for it.
  */
-function isRowBackedDef(def: SettingDef): boolean {
-  return (
-    def.scope === "product" &&
-    def.storage.kind === "scalar" &&
-    def.ownership === "claimable" &&
-    def.manifest !== undefined &&
-    !def.pending
-  );
-}
-
-/** The value a parsed manifest declares at a `product:<dotted path>` manifest path. */
-function declaredAt(manifest: unknown, path: string): unknown {
-  if (!path.startsWith("product:")) return undefined;
-  let node: unknown = manifest;
-  for (const seg of path.slice("product:".length).split(".")) {
-    if (!node || typeof node !== "object" || Array.isArray(node))
-      return undefined;
-    if (!Object.prototype.hasOwnProperty.call(node, seg)) return undefined;
-    node = (node as Record<string, unknown>)[seg];
-  }
-  return node;
-}
-
-/** The registry's row-backed claimable settings, each with what `manifest` declares for it. */
 function rowSettingInputs(manifest: unknown): RowSettingInput[] {
-  return SETTINGS.entries.filter(isRowBackedDef).map((def) => {
-    const declared = declaredAt(manifest, def.manifest!.path);
-    return {
-      key: def.key,
-      declared,
-      fits: declared === undefined || fitsValueSpec(def.value, declared),
-    };
-  });
+  return SETTINGS.entries
+    .filter((def) => isRowBacked(def) && !def.pending)
+    .map((def) => {
+      const declared = manifestValueAt(manifest, def);
+      return {
+        key: def.key,
+        declared,
+        fits: declared === undefined || fitsValueSpec(def.value, declared),
+        secret: def.sensitivity === "secret",
+      };
+    });
+}
+
+/** A catalog from stored JSON, or `null` when it does not parse. */
+function catalogOrNull(json: string | null | undefined): Catalog | null {
+  if (!json) return null;
+  try {
+    return new Catalog(JSON.parse(json) as never);
+  } catch {
+    return null;
+  }
 }
 
 /** The evidence bound (S-18 §4.14.2 steps 3–4): the last apply, else the product's creation. */
@@ -322,6 +322,30 @@ async function storeOnly(db: Db, report: BackfillReport): Promise<BackfillRun> {
 }
 
 /**
+ * Why an apply pinned to `reportId` must not run, or `null` when the product is still exactly as
+ * that dry run read it (the same manifest commit, the same state token).
+ */
+async function staleness(
+  db: Db,
+  slug: string,
+  reportId: string,
+  commit: string | null,
+  token: string,
+): Promise<string | null> {
+  const row = await getReport(db, slug, reportId);
+  const dry = row ? reportOf(row) : null;
+  if (!row || !dry || row.mode !== "dry-run")
+    return `${reportId} is not a dry run of ${slug}: run the dry run, read it, then apply with its report id`;
+  if (dry.outcome !== "planned")
+    return `the dry run ${reportId} planned nothing to apply (outcome ${dry.outcome})`;
+  if ((dry.source?.commit ?? null) !== commit)
+    return `the manifest moved since the dry run ${reportId}: run the dry run again`;
+  if (dry.stateToken !== token)
+    return `the product's settings changed since the dry run ${reportId}: run the dry run again`;
+  return null;
+}
+
+/**
  * Backfill one product (S-18 §4.14.2): read its manifest, classify every field and row, and either
  * store the classification (`dryRun`) or apply it with the report, the snapshot and the audit row
  * in one batch.
@@ -346,29 +370,35 @@ export async function runSettingsBackfill(
   const token = await readStateToken(db, slug);
 
   const source = await manifestFor(env, db, product, opts);
+  const pinned = !opts.dryRun && opts.expectReport ? opts.expectReport : null;
+  if (pinned) {
+    const why = await staleness(
+      db,
+      slug,
+      pinned,
+      source.ok ? source.source.commit : null,
+      token,
+    );
+    if (why)
+      return { ok: false, status: 409, reason: "backfill_stale", message: why };
+  }
   if (!source.ok)
     return storeOnly(
       db,
       emptyReport(slug, opts, source.outcome, {
         message: source.message,
         ...(source.errors ? { errors: source.errors } : {}),
+        stateToken: token,
       }),
     );
   const { manifest } = source;
   const commit = source.source.commit;
-  if (!opts.dryRun && opts.expectCommit && opts.expectCommit !== commit)
-    return {
-      ok: false,
-      status: 409,
-      reason: "commit_moved",
-      message: `the manifest moved since the dry run (${opts.expectCommit.slice(0, 12)} → ${commit ? commit.slice(0, 12) : "none"}): run the dry run again`,
-    };
 
   const corroboration = source.corroborate
     ? await source.corroborate()
     : undefined;
   const evidence = await evidenceBasis(db, product);
-  const [settings, tiers, profiles, activeSchema, evidenceRows] =
+  const [settings, tiers, profiles, activeSchema, evidenceRows, claims] =
     await Promise.all([
       db.all<ProductSettingRow>(
         "SELECT * FROM product_settings WHERE product = ? ORDER BY key",
@@ -378,11 +408,16 @@ export async function runSettingsBackfill(
       listProfiles(db, slug),
       getActiveSchema(db, slug),
       readEvidence(db, slug, evidence.since),
+      // ST-20's rule for every apply: a break-glass claim ends once it has expired or when this
+      // manifest changes its field from the last applied snapshot; otherwise it is live and kept.
+      claimsForApply(db, slug, manifest, opts.now),
     ]);
 
-  // The catalog the profile carry-forward (R2) asks which keys are managed secrets: the
-  // manifest's, which is what the product runs once the backfill has applied. Compiled (as a
-  // resync screens a changed catalog) only when the apply would publish it, below.
+  // The catalog the profile carry-forward (R2) asks which keys are managed secrets: the one that
+  // stays installed, exactly as a resync picks it (`resync.ts` `carryCatalog`). That is the
+  // manifest's unless a live break-glass claim keeps the console's catalog, and then the stored
+  // one (the manifest's when it no longer parses). Compiled (as a resync screens a changed
+  // catalog) only when the apply would publish it, below.
   const screened = screenCatalog(manifest as ParsedManifest, false);
   if (!screened.ok)
     return storeOnly(
@@ -391,8 +426,13 @@ export async function runSettingsBackfill(
         message: screened.error,
         source: source.source,
         ...(corroboration ? { corroboration } : {}),
+        stateToken: token,
       }),
     );
+  const storedCatalog = catalogOrNull(activeSchema?.catalog_json);
+  const catalogKept = claims.live.some((c) => c.key === "config.catalog");
+  const carryCatalog =
+    catalogKept && storedCatalog ? storedCatalog : screened.catalog;
   const plan = planBackfill(
     manifest,
     {
@@ -407,8 +447,13 @@ export async function runSettingsBackfill(
       now: opts.now,
       system: product.system === 1,
       profilePayload: (p, stored) =>
-        withStoredSecrets(p.payload, stored?.payload_json, screened.catalog),
+        withStoredSecrets(p.payload, stored?.payload_json, carryCatalog),
       rowSettings: rowSettingInputs(manifest),
+      // Redacted in the report when EITHER catalog calls the key a managed secret.
+      isSecretKey: (key) =>
+        isManagedSecretKey(screened.catalog, key) ||
+        (storedCatalog !== null && isManagedSecretKey(storedCatalog, key)),
+      endedBreakGlass: new Map(claims.ended.map((e) => [e.key, e.why])),
     },
   );
   const publishesCatalog = plan.items.some(
@@ -427,6 +472,7 @@ export async function runSettingsBackfill(
         evidence,
         items: plan.items,
         changes: plan.changes,
+        stateToken: token,
       }),
     );
 
@@ -460,14 +506,26 @@ export async function runSettingsBackfill(
           ? "written"
           : "current"
       : "not-applicable",
+    stateToken: token,
+    ...(opts.dryRun ? {} : { basedOn: pinned }),
   };
   if (opts.dryRun) return storeOnly(db, report);
 
-  const changed = plan.changes > 0 || snapshotStmt !== null;
+  const changed =
+    plan.changes > 0 || snapshotStmt !== null || claims.ended.length > 0;
   report.outcome = changed ? "applied" : "unchanged";
   const stmts: DbStatement[] = [stmtInsertReport(report, { token })];
   if (changed) {
-    stmts.push(...plan.writes);
+    // ST-20's ending of break-glass claims, first: the row (at the version read) and its
+    // `setting.breakGlass.end` audit row. The plan's own writes then apply the field.
+    stmts.push(
+      ...(await endBreakGlassStatements(db, slug, claims.ended, {
+        actor: opts.actor,
+        sha: commit,
+        now: opts.now,
+      })),
+      ...plan.writes,
+    );
     if (snapshotStmt) stmts.push(snapshotStmt);
     stmts.push(stmtBackfillAudit(report, opts.actor));
   }
@@ -490,7 +548,7 @@ export async function runSettingsBackfill(
 /** One product's line in a platform batch's answer. */
 export interface BatchEntry {
   product: string;
-  outcome: BackfillOutcome | "conflict" | "commit_moved" | "error";
+  outcome: BackfillOutcome | "conflict" | "stale" | "error";
   reportId: string | null;
   changes: number;
   message?: string;
@@ -500,15 +558,22 @@ export interface BatchEntry {
 export const BATCH_LIMIT = 20;
 
 /**
- * The platform batch: every registered product in slug order, at most `BATCH_LIMIT` per call
- * (`after` continues). Each runs exactly as a single-product run, its report carrying the batch
- * id. A product that fails is listed with its error and the batch goes on.
+ * The platform batch.
+ *
+ *   - A dry run covers every registered product in slug order, at most `BATCH_LIMIT` per call
+ *     (`after` continues), each report carrying the batch id.
+ *   - An apply takes `expectBatch`, a dry run's batch id, and runs exactly the products that dry
+ *     run covered, each pinned to its own report (`expectReport`): a product whose manifest or
+ *     settings moved since is refused as `stale`, and nothing outside that batch is touched.
+ *
+ * A product that fails is listed with its error and the batch goes on.
  */
 export async function runPlatformBackfill(
   env: Env,
   db: Db,
-  opts: Omit<BackfillRunOptions, "batchId" | "expectCommit"> & {
+  opts: Omit<BackfillRunOptions, "batchId" | "expectReport"> & {
     after?: string | null;
+    expectBatch?: string | null;
   },
 ): Promise<{
   batchId: string;
@@ -517,16 +582,31 @@ export async function runPlatformBackfill(
   next: string | null;
 }> {
   const batchId = newBatchId();
-  const all = (await listProducts(db)).filter(
-    (p) => !opts.after || p.slug > opts.after,
-  );
-  const page = all.slice(0, BATCH_LIMIT);
+  let page: { slug: string; expectReport: string | null }[];
+  let next: string | null = null;
+  if (opts.dryRun) {
+    const all = (await listProducts(db)).filter(
+      (p) => !opts.after || p.slug > opts.after,
+    );
+    page = all
+      .slice(0, BATCH_LIMIT)
+      .map((p) => ({ slug: p.slug, expectReport: null }));
+    next = all.length > page.length ? page[page.length - 1]!.slug : null;
+  } else {
+    page = opts.expectBatch
+      ? (await listBatchReports(db, opts.expectBatch)).map((r) => ({
+          slug: r.product,
+          expectReport: r.id,
+        }))
+      : [];
+  }
   const products: BatchEntry[] = [];
   for (const p of page) {
     try {
       const run = await runSettingsBackfill(env, db, p.slug, {
         ...opts,
         batchId,
+        expectReport: p.expectReport,
       });
       products.push(
         run.ok
@@ -542,8 +622,8 @@ export async function runPlatformBackfill(
               outcome:
                 run.reason === "backfill_conflict"
                   ? "conflict"
-                  : run.reason === "commit_moved"
-                    ? "commit_moved"
+                  : run.reason === "backfill_stale"
+                    ? "stale"
                     : "error",
               reportId: null,
               changes: 0,
@@ -560,10 +640,5 @@ export async function runPlatformBackfill(
       });
     }
   }
-  return {
-    batchId,
-    dryRun: opts.dryRun,
-    products,
-    next: all.length > page.length ? page[page.length - 1]!.slug : null,
-  };
+  return { batchId, dryRun: opts.dryRun, products, next };
 }
