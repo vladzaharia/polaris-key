@@ -14,8 +14,9 @@
 --   created_at   when it was last stored. An asset nothing uses (`accounts.avatar_key`, a link's
 --                `profile_json.avatarKey`) and older than a day is deleted by the nightly sweep.
 --
--- The two expression and partial indexes below serve the "does anything use this asset?" reads
--- of the sweep, deletion and replacement, so none of them scans `account_links`.
+-- "Does anything still use this asset?" reads only its owner's rows (the accounts primary key and
+-- `idx_account_links_account`): an asset belongs to one account, and a merge moves these rows with
+-- the links. So this file touches no existing table and applies in any order.
 --
 -- Identity owns the table (TABLE_OWNERS). Expand-only: nothing older reads it, and every
 -- statement is IF NOT EXISTS, so a replay converges.
@@ -31,7 +32,3 @@ CREATE INDEX IF NOT EXISTS idx_account_avatars_account
   ON account_avatars(account_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_account_avatars_created
   ON account_avatars(created_at);
-CREATE INDEX IF NOT EXISTS idx_accounts_avatar_key
-  ON accounts(avatar_key) WHERE avatar_key IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_account_links_avatar
-  ON account_links(json_extract(profile_json, '$.avatarKey'));

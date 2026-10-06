@@ -364,11 +364,19 @@ export async function copyProviderAvatar(
 // ── References, deletion and the sweep ─────────────────────────────────────────────────────
 
 /**
- * Whether an asset (or a legacy key) is in use by any account or any link. Every such read uses
- * `idx_accounts_avatar_key` and the expression index `idx_account_links_avatar`; a correlated
- * read compares with `+a.asset`, which drops the column's TEXT affinity so SQLite can SEARCH the
- * expression index instead of scanning it.
+ * "Does its owner still use it?", for an `account_avatars` row aliased `a`: the owner's picture
+ * in use or one of the owner's links' copies. An asset belongs to exactly one account (its id is
+ * derived from that account, and a merge moves the rows together with the links that use them),
+ * so only the owner's rows are read, through the accounts primary key and
+ * `idx_account_links_account`; the migration adds no index to the existing tables.
  */
+const OWNER_USES = `(EXISTS (SELECT 1 FROM accounts x
+                             WHERE x.id = a.account_id AND x.avatar_key = a.asset)
+     OR EXISTS (SELECT 1 FROM account_links l
+                 WHERE l.account_id = a.account_id
+                   AND json_extract(l.profile_json, '$.avatarKey') = a.asset))`;
+
+/** Whether any account or any link uses `key`, read across every account. */
 export async function avatarReferenced(db: Db, key: string): Promise<boolean> {
   const row = await db.first<{ n: number }>(
     `SELECT EXISTS (SELECT 1 FROM accounts WHERE avatar_key = ?)
@@ -378,6 +386,18 @@ export async function avatarReferenced(db: Db, key: string): Promise<boolean> {
     key,
   );
   return (row?.n ?? 0) > 0;
+}
+
+/**
+ * Whether `key` is still in use: by its owner when it has a row; otherwise (an I-07 key, which
+ * has none) by anyone, read across every account.
+ */
+async function inUse(db: Db, key: string): Promise<boolean> {
+  const row = await db.first<{ used: number }>(
+    `SELECT ${OWNER_USES} AS used FROM account_avatars a WHERE a.asset = ?`,
+    key,
+  );
+  return row ? row.used > 0 : avatarReferenced(db, key);
 }
 
 /** Delete one asset's renditions (or a legacy key's one object). Missing objects are fine. */
@@ -418,7 +438,7 @@ export async function releaseAvatars(
   let n = 0;
   for (const k of new Set(keys)) {
     if (typeof k !== "string" || k === "") continue;
-    if (await avatarReferenced(db, k)) continue;
+    if (await inUse(db, k)) continue;
     if (await deleteAsset(env, db, k)) n++;
   }
   return n;
@@ -438,9 +458,7 @@ export async function prunePendingUploads(
   const rows = await db.all<{ asset: string }>(
     `SELECT a.asset FROM account_avatars a
       WHERE a.account_id = ? AND a.origin = 'upload' AND a.asset <> ?
-        AND NOT EXISTS (SELECT 1 FROM accounts x WHERE x.avatar_key = a.asset)
-        AND NOT EXISTS (SELECT 1 FROM account_links l
-                         WHERE json_extract(l.profile_json, '$.avatarKey') = +a.asset)
+        AND NOT ${OWNER_USES}
       ORDER BY a.created_at DESC, a.asset
       LIMIT -1 OFFSET ?`,
     accountId,
@@ -541,9 +559,7 @@ export async function sweepAvatars(
   const rows = await db.all<{ asset: string }>(
     `SELECT a.asset FROM account_avatars a
       WHERE a.created_at < ?
-        AND NOT EXISTS (SELECT 1 FROM accounts x WHERE x.avatar_key = a.asset)
-        AND NOT EXISTS (SELECT 1 FROM account_links l
-                         WHERE json_extract(l.profile_json, '$.avatarKey') = +a.asset)
+        AND NOT ${OWNER_USES}
       ORDER BY a.created_at
       LIMIT ?`,
     cutoff,
