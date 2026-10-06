@@ -922,6 +922,11 @@ export interface ProductDetail {
   defaultMaxOfflineDays: number;
   defaultDeviceLimit: number;
   adminGroup: string | null;
+  /**
+   * ST-01b: the manifest-declared settings the console has claimed (a resync leaves each alone
+   * until it is reverted). Empty, or absent from an older Worker, when nothing is claimed.
+   */
+  claims?: ProductClaim[];
   createdAt: number;
   modifiedAt: number;
 }
@@ -1041,6 +1046,27 @@ export interface SignInSettings {
   appReview48Warning: boolean;
 }
 
+/** The column-backed claimable settings (worker `core/settingsClaims.ts` `CLAIM_KEYS`). */
+export type ClaimKey =
+  | "core.name"
+  | "license.defaults.maxOfflineDays"
+  | "license.defaults.deviceLimit"
+  | "core.web.origins"
+  | "config.catalog";
+
+/** One console claim on a manifest-declared setting (ST-01b). */
+export interface ProductClaim {
+  key: ClaimKey;
+  claimedBy: string;
+  claimedAt: number;
+  version: number;
+}
+
+/** What Revert to manifest did: re-applied the snapshot now, or left it to the next resync. */
+export type RevertClaimResult =
+  | { ok: true; key: ClaimKey; applied: true; value: unknown }
+  | { ok: true; key: ClaimKey; applied: false; message: string };
+
 export interface CreateManualProductBody {
   slug: string;
   name?: string;
@@ -1121,6 +1147,13 @@ export interface ResyncResult {
   updated?: string[];
   /** Parts of the manifest it refused while applying the rest (P3-03). */
   refused?: { code: string; path: string; message: string }[];
+  /**
+   * ST-01b: what it left alone because the console claimed it — setting keys (`core.name`, …)
+   * and console-owned rows (`tier:<id>`, `profile:<id>`).
+   */
+  claimed?: string[];
+  /** ST-01b: console rows holding an id the manifest newly declares; kept, manifest row skipped. */
+  conflicts?: { path: string; message: string }[];
   /** The pack-set re-resolution, when it stored sets or failed (P4-12). */
   packSets?:
     | { ok: true; sets: number }
@@ -3071,6 +3104,8 @@ export interface ProfileSummary {
   description?: string;
   modifiedBy?: string;
   modifiedAt?: number;
+  /** ST-01b: `console` once created or edited in the console; a resync leaves it alone. */
+  source?: "manifest" | "console";
   /** How many tiers (baseline) and licenses (profile stack) point at it. */
   usedBy?: { tiers: number; licenses: number };
 }
@@ -3112,6 +3147,8 @@ export interface TierSummary {
   channels: string[];
   minVersion: string | null;
   maxVersion: string | null;
+  /** ST-01b: `console` once created or edited in the console; a resync leaves it alone. */
+  source?: "manifest" | "console";
 }
 
 /** A tier create or patch. On a patch, `null` clears a nullable field (A-3). */
@@ -3739,6 +3776,11 @@ const rawApi = {
   planResync: (slug: string) =>
     call<ResyncPlanResult>(`${p(slug)}/release/resync?dryRun=1`, {
       method: "POST",
+    }),
+  /** ST-01b: Revert a console claim to the manifest (`DELETE …/claims/<key>`). */
+  revertClaim: (slug: string, key: ClaimKey) =>
+    call<RevertClaimResult>(`${p(slug)}/claims/${encodeURIComponent(key)}`, {
+      method: "DELETE",
     }),
   /** Link repository, step 1: check `repoUrl` and plan the hand-over. Writes nothing. */
   checkRepoLink: (slug: string, repoUrl: string) =>

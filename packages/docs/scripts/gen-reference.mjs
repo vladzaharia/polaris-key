@@ -328,6 +328,7 @@ const TABLE_OWNERS = {
     "audit",
     "product_sync_state",
     "product_manifest_snapshot",
+    "product_settings",
     "schema_index_assertion",
     "blob_objects",
     "blob_refs",

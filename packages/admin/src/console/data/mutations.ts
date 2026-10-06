@@ -42,6 +42,7 @@ export type WriteMethod =
   | "updateProduct"
   | "deleteProduct"
   | "resyncProduct"
+  | "revertClaim"
   | "checkRepoLink"
   | "planResync"
   | "linkProductRepo"
@@ -280,6 +281,16 @@ export const MUTATIONS: MutationTable = {
     label: "resync plan (dry run)",
     invalidates: () => [],
     why: "A dry run: it reads the repository and writes nothing.",
+  },
+  revertClaim: {
+    label: "revert a claimed setting to the manifest",
+    // The product row carries the claims and the reverted value; the catalog revert publishes a
+    // new active version, so everything under the product.
+    invalidates: (slug) => [
+      exact(qk.me()),
+      exact(qk.products()),
+      prefix(qk.product(slug)),
+    ],
   },
   checkRepoLink: {
     label: "link repository check (dry run)",

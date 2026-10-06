@@ -71,6 +71,11 @@ export { shapeFacts, shapeFingerprint } from "../admin/lib/deviceShape.js";
 
 export { parsePayload, redactPayload } from "../admin/lib/redact.js";
 
+// ST-01b: a catalog publish is one batch with its claim; a profile edit that only sets managed
+// secrets does not claim the row (`profiles.ts`).
+export { stmtInsertSchema } from "../repo.js";
+export { isManagedSecretKey } from "../admin/lib/managedSecrets.js";
+
 export { applyOverrides, type OverrideUpdate } from "../admin/lib/overrides.js";
 
 export {

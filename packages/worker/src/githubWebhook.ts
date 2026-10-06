@@ -10,6 +10,7 @@ import { SERVICES } from "./mount.js";
 import {
   getReleaseConfig,
   isManifestPath,
+  resyncNotes,
   resyncRepo,
   syncReleaseStoreReport,
   type FetchImpl,
@@ -363,11 +364,9 @@ export async function handleGithubWebhook(
         commit_sha: payload.after ?? null,
         changed_paths_json: JSON.stringify(paths),
         updated_json: JSON.stringify(result.updated),
-        // P3-03: parts the sync refused while applying the rest (`release_key_is_product_key`).
-        errors_json: result.refused ? JSON.stringify(result.refused) : null,
-        message: result.refused
-          ? result.refused.map((r) => `${r.code}: ${r.message}`).join("; ")
-          : null,
+        // P3-03: parts the sync refused while applying the rest (`release_key_is_product_key`);
+        // ST-01b: the console-row conflicts it kept.
+        ...resyncNotes(result),
       });
       results.push({
         product: product.slug,

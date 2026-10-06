@@ -404,7 +404,7 @@ describe("Catalog editor", () => {
     await waitFor(() => expect(backend.writes()).toHaveLength(1));
   });
 
-  it("warns that a manifest-owned catalog is re-applied by the next resync (CAT-3)", async () => {
+  it("warns that publishing claims a manifest-owned catalog (CAT-3, ST-01b)", async () => {
     await openEditor({}, undefined, { releaseSource: "github" });
     await userEvent.type(await labelBox(), "!");
     await userEvent.click(
@@ -413,6 +413,9 @@ describe("Catalog editor", () => {
     const drawer = await screen.findByRole("dialog");
     expect(
       within(drawer).getByText("This catalog is manifest-owned"),
+    ).toBeTruthy();
+    expect(
+      within(drawer).getByText(/Publishing claims it for the console/),
     ).toBeTruthy();
   });
 

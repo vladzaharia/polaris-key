@@ -196,7 +196,8 @@ describe("the manifest snapshot: one row per apply, in the apply's batch (ST-01a
     expect(written[0]!.filter((sql) => SNAPSHOT_INSERT.test(sql))).toHaveLength(
       1,
     );
-    expect(written[0]!.some((sql) => /DELETE FROM tiers/.test(sql))).toBe(true);
+    // ST-01b: the manifest's tiers are upserted per row in the same batch (no blanket DELETE).
+    expect(written[0]!.some((sql) => /INSERT INTO tiers/.test(sql))).toBe(true);
 
     expect(await getManifestSnapshot(db, SLUG)).toMatchObject({
       origin: "resync",

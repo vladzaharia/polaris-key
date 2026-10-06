@@ -838,10 +838,11 @@ function ReviewDrawer({
               ) : null}
               {source === "manifest" ? (
                 <Callout tone="warning" title="This catalog is manifest-owned">
-                  The next resync from the repository re-applies{" "}
-                  <code className="font-mono text-xs">{CATALOG_PATH}</code> over
-                  this publish. Make the same change in the repository to keep
-                  it.
+                  Publishing claims it for the console: resyncs from the
+                  repository stop re-applying{" "}
+                  <code className="font-mono text-xs">{CATALOG_PATH}</code>{" "}
+                  until it is reverted to the manifest. Make the same change in
+                  the repository to keep the two in step.
                 </Callout>
               ) : null}
               {breaking ? (

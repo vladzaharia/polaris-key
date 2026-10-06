@@ -52,6 +52,87 @@ Today every resync overwrites the product name, the licence defaults, web origin
 - `web.origins` keeps `omitClears: true` (`resync.ts` today).
 - I-09 and U-05 depend on this package: they write their settings as `product_settings` rows and create no bespoke tables.
 
+**Corrections from the code and decisions taken (recorded by the implementer, 2026-10-05; the
+owner delegated open questions to the lead, who takes the recommended option):**
+
+- **No `ON DELETE CASCADE`** on `product_settings.product`, unlike S-18 §4.3's sketch: R11-01
+  (`test/attack/R11-data.test.ts`) pins that no product-scoped table declares `ON DELETE`, the same
+  correction ST-01a made. Migration `0086_product_settings.sql` (renumbered from 0074 at fix round 2: main took 0074 for `license_refusals`; renumbered again from 0075 at fix round 3: integ/feeds-2 took 0075-0077 for `release_native_uploads`, `cargo_registry_policy` and `go_registry_policy`, then from 0078 because main took 0078 for `hosted_assets`, and from 0079 at integration because main took 0079-0085); `LATEST_MIGRATION` bumped.
+- **The claim module is `packages/worker/src/core/settingsClaims.ts`** (Core-owned, beside ST-01a's
+  `core/manifestSnapshot.ts`); `CLAIM_KEYS` lists the five column-backed keys. ST-04's resolver
+  should read claims through it rather than querying `product_settings` again.
+- **Claims are written only on repo-linked products** (`release_source = 'github'`): a manual
+  product has no manifest to claim from. Tier and profile rows written by the console are always
+  marked `console`, so they survive the product's first resync too.
+- **Link repository (main's `services/release/linkExisting.ts`, merged at fix round 3).** Linking an
+  existing manual product applies the manifest through `resyncRepo`, so ST-01b's rules govern it.
+  Its dry-run plan (`planRepoManifest`) was written before ST-01b and said every tier and profile
+  was replaced or deleted. It now reads the same ownership facts as the apply: claimed product
+  fields and a claimed catalog go under `skipClaimed`; a `console` tier or profile holding a
+  manifest id is listed as kept (the manifest row is not applied); a `console` row the manifest
+  omits is neither deleted nor a conflict; a dropped profile counts licences plus surviving tiers.
+  Decision (lead, recommended option): a manual product's console-made tiers stay console-owned
+  after the link rather than being adopted by the manifest, which is model C as written; renaming
+  or deleting the console row hands the id to the manifest. Pinned in `test/linkExisting.test.ts`.
+- **`core.adminGroup` manifest-only** is enforced by refusing a console write on a linked product
+  (409 `manifest_only`) rather than accepting a value the next resync would replace; manual
+  products keep the editor.
+- **System product**: every console claim is refused (409 `manifest_authoritative`): name (already
+  refused by F-03), the licence defaults, the admin group and the catalog publish. Tier and
+  profile writes are not refused there, because `linkSystemProduct` applies neither, so no
+  manifest owns those rows.
+- **Revert route**: `DELETE /manage/api/products/<slug>/claims/<key>` (admin API, narrative-only
+  per `routeCoverage.test.ts`, so no OpenAPI entry: rule 10 does not apply). Claims ride on the
+  product view (`claims`), so no GET route was added. Revert of tier and profile rows is left to
+  ST-17's drift view (Revert/Keep); ST-01b reverts the five column-backed keys.
+- **Profiles**: setting only managed-secret values on a profile (`PUT config/profiles/<id>`) does
+  NOT claim the row, since a manifest cannot express a secret value and the R2 carry-forward
+  already keeps them; any other value edit, a rename or a create claims it. The R2 test that a
+  console plain-config value is replaced by the manifest was changed to the new rule (it is now
+  kept, with the row claimed). With `config.catalog` claimed, the carry-forward asks the
+  installed console catalog (not the uninstalled manifest one) which keys are managed secrets,
+  so a secret the console catalog declares survives a resync (review fix round 2).
+- **Claim vs conflict** for a console row holding a manifest id: a claim (skipped silently,
+  listed in `claimed`) when the last applied snapshot already declared that id; a conflict
+  (reported in the result's own `conflicts` list, S-18 §4.5 item 4's shape, and in
+  `product_sync_state`'s message) when the id is new to the manifest. It is not a `refused` code:
+  that would be a new wire error code in `conformance/parity/errors.json` and every SDK's
+  constants for an admin-only answer. With no snapshot every such collision is a conflict.
+- **"Declared fields only"** (S-18 §4.5 item 1) is not distinguishable from the parsed manifest
+  today: `parseManifest` fills `defaultMaxOfflineDays`, `defaultDeviceLimit` and `adminGroup` with
+  defaults when omitted, so an unclaimed omitted field still resets to the parser default, as
+  before. Distinguishing it needs a `shared-manifest` change and belongs with ST-17's plan function
+  or ST-19's registry-manifest parity.
+- **Per-field audit** uses the existing `audit` columns (`action = 'setting.resync' |
+'setting.revert'`, `target_kind = 'setting' | 'tier' | 'profile'`, `target_id` = the key or row
+  id, before → after in `summary`); a claim is named in the console write's own audit row
+  (`product.update` "claimed for the console: …", `schema.publish`, `tier.*`, `profile.*`). ST-04 adds the structured
+  `before_json`/`after_json`/`origin`/`setting_key` columns.
+- **The web-origins console editor is ST-08's**; the per-field acceptance test for
+  `core.web.origins` claims it the way a console write would (column + claim in one batch).
+- **P0-12 tests changed meaning**: with one batch a refused or throwing push writes nothing, so the
+  two `linkRepo.test.ts` cases that pinned "a half-applied push still drops the approval" now pin
+  "a refused or throwing push widens nothing and the approval stands". The `finally` sweep stays.
+- **The pre-sweep** (`invalidateWidenedEdgeMintApprovals` before the batch) now runs after every
+  check instead of before them, so a refused resync writes nothing at all. A
+  resync that THROWS after the pre-sweep (in `releaseStoreSync`'s GitHub read) still leaves the
+  sweep's approval deletions behind; that is accepted, as the sweep only narrows (a security
+  sweep), and is the one exception to "nothing written".
+- **The column-backed claim guard is in SQL** (review fix round 1): the resync reads the claims
+  early to report and audit them, but the `products` UPDATE (`col = CASE WHEN <claimed> THEN col
+ELSE ? END`), the schema deactivate/insert and the matching `setting.resync` audit rows
+  (`INSERT … SELECT … WHERE NOT <claimed>`, `unlessClaimed`) re-check the claim in the statement,
+  so a console save that claims a key between that read and the batch wins. Pinned by the
+  "mid-flight" case in `settingsClaims.test.ts`.
+- **Revert screens a catalog** (review fix round 1): a resync does not `compileAll()` a claimed
+  catalog, yet the snapshot records it, so Revert of `config.catalog` runs `compileAll()` first and
+  answers 409 `invalid_catalog` (claim kept, nothing written) when it fails.
+- **The dropped-profile guard counts licences plus the tiers that survive this resync**, where the
+  legacy path counted every stored tier (`countLicensesUsingProfile`). A push that drops tier T and
+  its profile P together (or re-points T away from P) used to be refused and is now applied; the
+  stored tier that referenced P is being removed or re-pointed in the same batch, so the old
+  refusal was spurious.
+
 ## Steps
 
 1. Migration and rehearsal.
@@ -61,12 +142,12 @@ Today every resync overwrites the product name, the licence defaults, web origin
 
 ## Acceptance criteria
 
-- [ ] A console edit to each claimable field survives a following resync (test per field).
-- [ ] A console-only tier or profile survives a resync whose manifest omits it (test).
-- [ ] A resync refused by a referenced-tier guard leaves every row unchanged (test).
-- [ ] Revert restores the snapshot value at once, or says "applies at the next resync" when no snapshot exists (test).
-- [ ] A console claim on a `system = 1` product is refused (test).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] A console edit to each claimable field survives a following resync (test per field).
+- [x] A console-only tier or profile survives a resync whose manifest omits it (test).
+- [x] A resync refused by a referenced-tier guard leaves every row unchanged (test).
+- [x] Revert restores the snapshot value at once, or says "applies at the next resync" when no snapshot exists (test).
+- [x] A console claim on a `system = 1` product is refused (test).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header (GATE GREEN at bf9c53030, after fix round 3: two merges of main, last at 0b9db1430, migration renumbered to 0079, Link repository plan aligned; one timing retry in the turbo test step).
 
 ## Verify
 

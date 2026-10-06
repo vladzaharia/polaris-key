@@ -1526,10 +1526,15 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     expect(await w.mint()).toBe(404);
   });
 
-  it("a push refused half-way still drops the approval its early writes widened", async () => {
+  // ST-01b: the apply is ONE batch, after every check. A push refused by a later check (here an
+  // uncompilable catalog) no longer writes its earlier sections first, so nothing is widened and
+  // the operator's approval stands. (Before ST-01b `services_json` was already written and the
+  // `finally` sweep had to drop the approval.)
+  it("a refused push writes nothing, so it widens nothing and the approval stands", async () => {
     const w = await linked();
     await w.resync([BASE_RECIPE]);
     await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    const before = (await loadProduct(w.env, w.db, "acme"))!.registration;
     const badSchema = JSON.stringify({
       schemaVersion: 1,
       entries: [
@@ -1558,18 +1563,18 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       }).fetchImpl,
     );
     expect(res.ok).toBe(false);
-    // `services_json` was written before the catalog was refused.
-    expect((await loadProduct(w.env, w.db, "acme"))!.registration).toBe("open");
-    expect(await approvalCount(w.db)).toBe(0);
-    expect(await invalidations(w.db)).toHaveLength(1);
+    expect(before).not.toBe("open");
+    expect((await loadProduct(w.env, w.db, "acme"))!.registration).toBe(before);
+    expect(await approvalCount(w.db)).toBe(1);
+    expect(await invalidations(w.db)).toHaveLength(0);
+    expect(await w.mint()).toBe(200);
   });
 
-  // A push can also THROW half-way rather than be refused: the manifest validator does not reject
-  // a duplicated `edgeMint[].id`, so the final batch fails on the `edge_mint_config` primary key —
-  // after `setAutoIssuePolicy` has already written anonymous enrolment. The sweep runs in a
-  // `finally`, so a repo writer cannot skip it this way; otherwise an operator's console revert
-  // would make the approval apply again to a stranger enrolled in between.
-  it("a push that throws after widening still drops the approval; a console revert does not restore it", async () => {
+  // A push can also THROW rather than be refused: the manifest validator does not reject a
+  // duplicated `edgeMint[].id`, so the batch fails on the `edge_mint_config` primary key. Since
+  // ST-01b the anonymous-enrolment write rides in that same batch and rolls back with it: the
+  // product never becomes public and the approval stands. The `finally` sweep still runs.
+  it("a push that throws rolls its widening back with it; the approval stands", async () => {
     const w = await linked();
     await w.resync([BASE_RECIPE]);
     await approveEdgeMintRecipe(w.db, "acme", "applemusic");
@@ -1590,66 +1595,10 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
         ),
       ),
     ).rejects.toThrow(/UNIQUE/);
-    const anon = (await loadProduct(w.env, w.db, "acme"))!;
-    expect(mintIsPublic(anon)).toBe(true);
-    expect(await approvalCount(w.db)).toBe(0);
-    const audited = await invalidations(w.db);
-    expect(audited).toHaveLength(1);
-    expect(audited[0]).toMatchObject({
-      target_id: "applemusic",
-      actor_sub: null,
-    });
-
-    const enrolled = await handleEnroll(
-      mkReq(
-        "POST",
-        { "x-pkey-device": "stranger" },
-        {
-          fingerprint: {
-            components: {
-              machineUuid: "u".repeat(FINGERPRINT_COMPONENT_LENGTH),
-              boardSerial: "b".repeat(FINGERPRINT_COMPONENT_LENGTH),
-              cpuModel: "c".repeat(FINGERPRINT_COMPONENT_LENGTH),
-            },
-            hwid: "ignored",
-          },
-        },
-      ),
-      w.env,
-      w.db,
-      anon,
-      NOW,
-    );
-    expect(enrolled.status).toBe(200);
-    const { token: stranger } = (await enrolled.json()) as { token: string };
-
-    // The operator's obvious fix: turn anonymous enrolment off in the console.
-    await setAutoIssuePolicy(
-      w.db,
-      "acme",
-      JSON.stringify({ enabled: false, tierId: "pro", mode: "anonymous" }),
-      "admin",
-      NOW + 200,
-    );
-    const strangerMint = async () =>
-      (
-        await handleMintToken(
-          mkReq("POST", { authorization: `Bearer ${stranger}` }),
-          w.env,
-          w.db,
-          (await loadProduct(w.env, w.db, "acme"))!,
-          "applemusic",
-          NOW,
-        )
-      ).status;
     expect(mintIsPublic((await loadProduct(w.env, w.db, "acme"))!)).toBe(false);
-    expect(await strangerMint()).toBe(404);
-
-    // A clean push afterwards does not bring it back either.
-    await w.resync([BASE_RECIPE]);
-    expect(await strangerMint()).toBe(404);
-    expect(await w.mint()).toBe(404);
-    expect(await approvalCount(w.db)).toBe(0);
+    expect(await approvalCount(w.db)).toBe(1);
+    expect(await invalidations(w.db)).toHaveLength(0);
+    expect(await w.mint()).toBe(200);
   });
 
   // A `finally` covers a throw, not a Worker that is KILLED after the push's un-batched widening
