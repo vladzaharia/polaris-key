@@ -78,6 +78,20 @@ import {
   STEAM_CI,
   type CiStoreId,
 } from "../../src/core/storefront/ciPlane.js";
+import {
+  FLATHUB_PR,
+  HOMEBREW_PR,
+  PR_PLANE,
+  PR_STORE_IDS,
+  PR_TOOL,
+  SCOOP_PR,
+  WINGET_PR,
+  prNaturalKey,
+  prPathAllowed,
+  prPlaneStore,
+  prVerdict,
+  type PrStoreId,
+} from "../../src/core/storefront/prPlane.js";
 import { fitListing } from "../../src/core/storefront/listing.js";
 import {
   budgetAllows,
@@ -1421,3 +1435,238 @@ for (const f of FEED_ADAPTERS) {
     });
   });
 }
+
+// ── The PR plane (A-18i) ─────────────────────────────────────────────────────────────────────
+
+const PR_SAMPLES: Record<
+  PrStoreId,
+  {
+    argv: string[];
+    identity: Record<string, unknown>;
+    files: string[];
+    key: string;
+  }
+> = {
+  winget: {
+    argv: [
+      "--repo",
+      "microsoft/winget-pkgs",
+      "--package",
+      "Vlad.Dice",
+      "--version",
+      "1.2.0",
+    ],
+    identity: { packageIdentifier: "Vlad.Dice" },
+    key: "pr:Vlad.Dice:1.2.0",
+    files: [
+      "manifests/v/Vlad/Dice/1.2.0/Vlad.Dice.yaml",
+      "manifests/v/Vlad/Dice/1.2.0/Vlad.Dice.installer.yaml",
+      "manifests/v/Vlad/Dice/1.2.0/Vlad.Dice.locale.en-US.yaml",
+      "manifests/v/Vlad/Dice/1.2.0/Vlad.Dice.locale.zh-Hans-CN.yaml",
+    ],
+  },
+  homebrew: {
+    argv: [
+      "--repo",
+      "vlad/homebrew-games",
+      "--cask",
+      "dice",
+      "--version",
+      "1.2.0",
+    ],
+    identity: { homebrewTap: "vlad/homebrew-games", homebrewCask: "dice" },
+    key: "pr:dice:1.2.0",
+    files: ["Casks/dice.rb"],
+  },
+  scoop: {
+    argv: ["--repo", "vlad/scoop-games", "--app", "dice", "--version", "1.2.0"],
+    identity: { scoopBucket: "vlad/scoop-games" },
+    key: "pr:dice:1.2.0",
+    files: ["bucket/dice.json"],
+  },
+  flathub: {
+    argv: ["--repo", "flathub/gg.vlad.Dice", "--version", "1.2.0"],
+    identity: { appId: "gg.vlad.Dice" },
+    key: "pr:gg.vlad.Dice:1.2.0",
+    files: ["gg.vlad.Dice.yml", "gg.vlad.Dice.metainfo.xml"],
+  },
+};
+
+describe("the PR plane (A-18i; S-15 §4.4, §6.3)", () => {
+  it("has one row per PR store id, and every registered adapter's pr is its row", () => {
+    expect(PR_PLANE.map((p) => p.store).sort()).toEqual(
+      [...PR_STORE_IDS].sort(),
+    );
+    for (const a of STOREFRONT_ADAPTERS) {
+      const row = prPlaneStore(a.id);
+      if (a.pr) {
+        expect(a.pr).toBe(row);
+        expect(a.ci, `${a.id} is on one plane`).toBeNull();
+        expect([...a.never.ciTokens].sort()).toEqual(
+          [...row!.neverTokens].sort(),
+        );
+        for (const op of STOREFRONT_OPS) {
+          const s = a.capabilities.ops[op];
+          if (s.mode !== "pr") continue;
+          expect(s.repo, `${a.id}.${op}`).toBe(row!.repo);
+          expect(
+            Object.values(row!.commandOps).some((ops) => ops.includes(op)),
+            `${a.id}.${op} is performed by a PR command`,
+          ).toBe(true);
+        }
+        for (const [command, ops] of Object.entries(row!.commandOps))
+          for (const op of ops)
+            expect(
+              a.capabilities.ops[op as StorefrontOp].mode,
+              `${a.id}: ${command} performs ${op}`,
+            ).toBe("pr");
+      } else expect(row, `${a.id} has a PR_PLANE row but no pr`).toBeNull();
+    }
+  });
+
+  for (const plane of PR_PLANE) {
+    describe(`${plane.store} (${plane.repo})`, () => {
+      const sample = PR_SAMPLES[plane.store];
+      const argv = (command: string) => [command, ...sample.argv];
+
+      it("admits its sample of both commands, the identity bound, and only the github pseudo-tool", () => {
+        expect(plane.list.tool).toBe(PR_TOOL);
+        expect(Object.keys(plane.list.commands).sort()).toEqual([
+          "pull-request",
+          "status",
+        ]);
+        for (const command of ["pull-request", "status"]) {
+          expect(
+            checkCiCommand(plane.list, command, argv(command), sample.identity),
+          ).toBeNull();
+          expect(checkCiCommand(plane.list, command, argv(command), {})).toBe(
+            "identity_mismatch",
+          );
+        }
+        expect(prNaturalKey(plane, "pull-request", argv("pull-request"))).toBe(
+          sample.key,
+        );
+      });
+
+      it("refuses every never-list line and spells no never-token", () => {
+        expect(plane.never.length).toBeGreaterThan(0);
+        for (const line of plane.never)
+          expect(matchCiCommand(plane.list, line), line.join(" ")).toBeNull();
+        const literals = ciLiterals(plane.list).map((t) => t.toLowerCase());
+        for (const token of plane.neverTokens)
+          expect(
+            literals.filter((l) => l.includes(token)),
+            token,
+          ).toEqual([]);
+      });
+
+      it("admits the generator's paths and nothing else", () => {
+        const pr = argv("pull-request");
+        for (const f of sample.files)
+          expect(prPathAllowed(plane, pr, f), f).toBe(true);
+        for (const bad of [
+          "../evil",
+          "/etc/passwd",
+          ".github/workflows/release.yml",
+          `${sample.files[0]}/../../x`,
+          "README.md",
+          ...(sample.files[0]!.includes("1.2.0")
+            ? [sample.files[0]!.replace("1.2.0", "9.9.9")]
+            : []),
+        ])
+          expect(prPathAllowed(plane, pr, bad), bad).toBe(false);
+      });
+
+      it("no value can smuggle an option, a path escape or a shell metacharacter", () => {
+        const rule = plane.list.commands["pull-request"]!;
+        const pr = argv("pull-request");
+        rule.argv.forEach((want, i) => {
+          if (typeof want === "string") return;
+          for (const bad of [
+            "--force",
+            "../../etc",
+            "a;rm -rf /",
+            "$(id)",
+            "a b",
+          ]) {
+            const line = [...pr];
+            line[i] = `${want.prefix ?? ""}${bad}`;
+            expect(
+              checkCiCommand(plane.list, "pull-request", line, sample.identity),
+              `${i} = ${line[i]}`,
+            ).not.toBeNull();
+          }
+        });
+      });
+    });
+  }
+
+  it("never targets the official Homebrew or Scoop organisations, in any case", () => {
+    for (const repo of [
+      "Homebrew/homebrew-cask",
+      "HOMEBREW/homebrew-core",
+      "homebrew/homebrew-x",
+    ])
+      expect(
+        checkCiCommand(
+          HOMEBREW_PR.list,
+          "pull-request",
+          ["pull-request", "--repo", repo, "--cask", "dice", "--version", "1"],
+          {
+            homebrewTap: repo,
+            homebrewCask: "dice",
+          },
+        ),
+        repo,
+      ).not.toBeNull();
+    for (const repo of ["ScoopInstaller/Main", "scoopinstaller/Extras"])
+      expect(
+        checkCiCommand(
+          SCOOP_PR.list,
+          "pull-request",
+          ["pull-request", "--repo", repo, "--app", "dice", "--version", "1"],
+          {
+            scoopBucket: repo,
+          },
+        ),
+        repo,
+      ).not.toBeNull();
+  });
+
+  it("reads review labels as a verdict, never a date", () => {
+    expect(
+      prVerdict(WINGET_PR, {
+        state: "open",
+        merged: false,
+        labels: ["Validation-Domain"],
+      }),
+    ).toBe("validation-issue");
+    expect(
+      prVerdict(WINGET_PR, {
+        state: "open",
+        merged: false,
+        labels: ["Needs-Author-Feedback"],
+      }),
+    ).toBe("needs-author-feedback");
+    expect(
+      prVerdict(WINGET_PR, {
+        state: "open",
+        merged: false,
+        labels: ["Validation-Completed"],
+      }),
+    ).toBe("in-review");
+    expect(
+      prVerdict(HOMEBREW_PR, {
+        state: "open",
+        merged: false,
+        labels: ["Validation-Domain"],
+      }),
+    ).toBe("in-review");
+    expect(
+      prVerdict(SCOOP_PR, { state: "closed", merged: true, labels: [] }),
+    ).toBe("merged");
+    expect(
+      prVerdict(FLATHUB_PR, { state: "closed", merged: false, labels: [] }),
+    ).toBe("closed");
+  });
+});

@@ -344,9 +344,23 @@ Godot only, 30 days by default) and put it in the editor's URL, `https://pkg.plr
 (4.6 and earlier) or `…/t/<token>/store/api/v1` (4.7 and later). GodotEnv takes the same
 tokenised URL.
 
+**Cargo** (1.74 and later): name the feed in `.cargo/config.toml` with a credential provider (Cargo
+refuses an authenticated registry without one), and give Cargo the token for that registry, in
+the environment or with `cargo login`:
+
+```toml
+[registries.acme]
+index = "sparse+https://pkg.plrs.im/cargo/acme/"
+credential-provider = "cargo:token"
+```
+
+```sh
+export CARGO_REGISTRIES_ACME_TOKEN="$PKEY_REGISTRY_TOKEN"
+```
+
 docker, SwiftPM and netrc hold **one credential per registry host**: one machine can hold a token
-for only one product on `pkg.plrs.im` for them. npm, uv, Gradle and Maven keep credentials per URL
-or repository, so they have no such limit. The platform's own feeds stay public and never take the
+for only one product on `pkg.plrs.im` for them. npm, uv, Gradle, Maven and Cargo keep credentials
+per URL, repository or registry, so they have no such limit. The platform's own feeds stay public and never take the
 slot.
 
 ## How the SDKs get there

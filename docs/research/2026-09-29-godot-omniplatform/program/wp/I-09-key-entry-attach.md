@@ -23,7 +23,7 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 ## Owner decision (2026-10-05): licence choice at sign-in
 
-The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a licence for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a license for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
 
 For this package (`plans/I-09.md`, the same-named section):
 
@@ -36,6 +36,17 @@ For this package (`plans/I-09.md`, the same-named section):
 - **Acceptance (additions).**
   - A test that no second auto-issued licence is minted while a usable one exists.
   - A test that `rankAnchorCandidates` lists full licences as `full`, without hiding them.
+
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- `rankAnchorCandidates` marks the device's own candidate `current` and sets `keep` only for a licence outside the candidates; preselection is the current row, else Keep, else the first free row; a higher rank is never preselected over the current licence (`plans/I-04.md` §F.1–§F.2, `plans/I-09.md`).
+- **Account-wide licences** (§F.6): `licenseAccess(db, license)` in `core/anchor.ts`; `authorizeDevice` skips the seat count for an Account-wide licence when the device is signed in to the holding account; `access` on `shapeLicenseSummary` and the library seats (`limit: null`). **The lead confirms the enforcement rule with the owner before this merges.** THREAT-MODEL gains the Account-wide row.
+- A Replace runs `freeAccountDevice()`'s statements and the guarded seat claim in one batch (§F.3).
 
 ## Goal
 

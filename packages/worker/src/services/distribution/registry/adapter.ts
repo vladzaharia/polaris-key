@@ -1,7 +1,7 @@
 /**
  * THE FEED ADAPTER CONTRACT — the one shape every package feed on the registry host implements.
  *
- * A feed (npm, PyPI, Swift, Maven, OCI, Godot; Cargo, Go and NuGet later) is one directory,
+ * A feed (npm, PyPI, Swift, Maven, OCI, Godot, Cargo, Go; NuGet later) is one directory,
  * `registry/<ecosystem>/`, whose `index.ts` exports one `FeedAdapter`. Everything specific to the
  * ecosystem stays behind it: its URL layout, its documents, its negotiation, its quirks. What is
  * shared stays in this directory and is never re-implemented by a feed:

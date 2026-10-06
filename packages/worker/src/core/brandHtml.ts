@@ -118,16 +118,21 @@ function palette(theme: "dark" | "light"): string {
   ].join(";");
 }
 
-function fontFace(weight: 400 | 700): string {
-  return `@font-face{font-family:"Rubik";font-style:normal;font-weight:${weight};font-display:swap;src:url("${BRAND_FONT_PATH}/rubik-latin-${weight}.woff2") format("woff2")}`;
+/**
+ * The brand's variable faces (latin subset): Rubik (wght 300–900) for UI text and JetBrains Mono
+ * (wght 400–600) for codes, UI-KITS.md §2.1. `font-synthesis: none` keeps a browser from faking a
+ * weight the face does not carry.
+ */
+function fontFace(family: string, weights: string, file: string): string {
+  return `@font-face{font-family:"${family}";font-style:normal;font-weight:${weights};font-display:swap;src:url("${BRAND_FONT_PATH}/${file}") format("woff2")}`;
 }
 
 /**
  * The shell's one stylesheet. Constant per build, so its SHA-256 in the policy is constant too.
  */
 export const BRAND_PAGE_CSS = [
-  fontFace(400),
-  fontFace(700),
+  fontFace("Rubik", "300 900", "rubik-var-latin.woff2"),
+  fontFace("JetBrains Mono", "400 600", "jetbrains-mono-var-latin.woff2"),
   `:root{${palette("dark")}}`,
   `@media (prefers-color-scheme: light){:root{${palette("light")}}}`,
   `*{box-sizing:border-box}`,
@@ -162,6 +167,35 @@ export const BRAND_PAGE_CSS = [
   `.button{display:flex;width:100%;align-items:center;justify-content:center;min-height:2.25rem;padding:0 1rem;border:1px solid var(--accent);border-radius:6px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:.875rem;line-height:1.25rem;font-weight:400;text-decoration:none;cursor:pointer}`,
   `.button:hover{filter:brightness(1.1)}`,
   `.actions{margin:1.5rem 0 0}`,
+  // The secondary and destructive buttons, and a vertical button stack (the licence chooser).
+  `.button.secondary{border-color:var(--edge);background:transparent;color:var(--strong)}`,
+  `.button.danger{border-color:var(--danger-edge);background:var(--danger-subtle);color:var(--strong)}`,
+  `.stack{display:grid;gap:.5rem}`,
+  `.small{font-size:.875rem;line-height:1.25rem}`,
+  `.notice{margin:0 0 1rem;padding:.75rem 1rem;border:1px solid var(--rule);border-radius:6px;background:var(--sunken);color:var(--strong)}`,
+  `.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}`,
+  // The licence chooser's rows (I-26): radio cards, the console's RadioCards look.
+  `fieldset.choices{margin:0;padding:0;border:0;min-width:0}`,
+  `ul.choices{display:grid;gap:.5rem;margin:0;padding:0;list-style:none}`,
+  `.choice{display:flex;gap:.75rem;align-items:flex-start;margin:0;padding:.75rem 1rem;border:1px solid var(--edge);border-radius:6px;background:var(--sunken);color:var(--text);font-size:1rem;font-weight:400;cursor:pointer}`,
+  `.choice:has(input:checked){border-color:var(--accent);background:var(--accent-subtle)}`,
+  `.choice input{flex:none;width:1rem;height:1rem;margin:.25rem 0 0;accent-color:var(--accent)}`,
+  `.choice.is-disabled{cursor:default;border-style:dashed}`,
+  `.choice.is-disabled .choice-title{color:var(--muted)}`,
+  `.choice.compact{padding:.5rem .75rem;margin:.5rem 0 0}`,
+  `.choice-body{display:grid;gap:.125rem;min-width:0}`,
+  `.choice-title{display:flex;flex-wrap:wrap;gap:.375rem;align-items:center;color:var(--strong);font-weight:700}`,
+  `.choice-meta{color:var(--muted);font-size:.875rem;line-height:1.25rem}`,
+  `.choice-seats{min-width:0;color:var(--strong);font-size:.875rem;line-height:1.25rem;font-weight:400}`,
+  `.choice-title.tiered{flex-wrap:nowrap;align-items:baseline}`,
+  `.choice-title.tiered .tag{flex:none}`,
+  `.hint{display:block;color:var(--muted);font-size:.75rem;line-height:1rem}`,
+  `.choice-note{color:var(--danger);font-size:.875rem;line-height:1.25rem}`,
+  `.tag{padding:0 .375rem;border:1px solid var(--rule);border-radius:4px;color:var(--muted);font-size:.75rem;line-height:1.125rem;font-weight:400}`,
+  `details.replace{margin:.5rem 0 0;padding:0 0 0 1rem;border-left:2px solid var(--rule)}`,
+  `details.replace summary{color:var(--accent-fg);font-size:.875rem;line-height:1.25rem;cursor:pointer}`,
+  `details.replace .button{margin:.75rem 0 0}`,
+  `ul.choices>li>p.small{margin:.5rem 0 0 1rem}`,
   `a{color:var(--accent-fg)}`,
   `:focus-visible{outline:2px solid var(--focus);outline-offset:2px}`,
   `@media (max-width: 30rem){.card{padding:1.5rem}}`,

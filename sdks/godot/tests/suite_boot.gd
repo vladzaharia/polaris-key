@@ -452,8 +452,10 @@ func _deadline(t: PKeyTestContext) -> void:
 	_capture(sdk, {"view": view, "host": host, "sync_timeout_seconds": 0.3, "allow_offline": false}, first)
 	host.answer({"type": "shell.done"})
 	host.answer({"type": "guard.done", "result": "ok"})
+	# A hang guard, not a speed budget (a deadline that never fires never answers): long enough
+	# that a loaded machine's slow frames still see the 0.3 s deadline fire.
 	var started := Time.get_ticks_msec()
-	while first.is_empty() and Time.get_ticks_msec() - started < 3000:
+	while first.is_empty() and Time.get_ticks_msec() - started < 30000:
 		await (Engine.get_main_loop() as SceneTree).process_frame
 	var took := Time.get_ticks_msec() - started
 	t.check("server: the sync deadline sends sync.timeout (OFFLINE under allow_offline false)", not first.is_empty() and first[0].outcome == PKeyBoot.OFFLINE and took >= 250, "%s after %d ms" % [first, took])
