@@ -69,7 +69,13 @@ import {
   type LicensedDeviceToken,
 } from "./devices.js";
 import { openManagedPayload, resolveMergedPayload } from "./payload.js";
-import { injectAdminPolicy, tighterMax, tighterMin } from "./entitlements.js";
+import {
+  injectAdminPolicy,
+  licenseOwnDeviceLimit,
+  tierDeviceLimit,
+  tighterMax,
+  tighterMin,
+} from "./entitlements.js";
 import { logRefusal, type RefusalReason, type WaitUntil } from "./refusals.js";
 
 export type AuthzError =
@@ -225,18 +231,54 @@ export function tierExpiresAt(
     : null;
 }
 
-function resolveDeviceLimit(
-  entitlements: Record<string, ManagedEntry>,
-  fallback: number,
-): number {
-  const e = entitlements["deviceLimit"];
-  return e && typeof e.value === "number" ? e.value : fallback;
+/** Where a licence's effective seat limit comes from (LX-14a), most specific first. */
+export type DeviceLimitSource = "license" | "tier" | "entitlement" | "product";
+
+export interface DeviceLimitInfo {
+  limit: number;
+  source: DeviceLimitSource;
+  /** The limit the licence would have without its own `device_limit`: what "Use inherited
+   *  limit" falls back to, and the console's placeholder ("Inherits 5 from Pro"). */
+  inherited: { limit: number; source: Exclude<DeviceLimitSource, "license"> };
 }
 
-/** The seat limit `authorizeDevice` enforces on `license`: its resolved `deviceLimit`
- *  entitlement, else the product default. Exported for the identity attach (P1-07), which must
- *  not move more devices onto a licence than this allows, and for the portal's seat meter
- *  (PX-W1), which must show the same "of N" this enforces. */
+/** The seat limit `authorizeDevice` enforces on `license`, with its source. Precedence (LX-14a):
+ *  the licence's own `device_limit`, else the tier's `policy_device_limit`, else a `deviceLimit`
+ *  entitlement merged from a profile, store grant or licence override, else the product
+ *  default. The same composition `resolveEntitlements` performs (`injectAdminPolicy` stamps the
+ *  licence-else-tier value over the merged entitlement), so the number reported here, the number
+ *  enforced and the licence document's `deviceLimit` cannot disagree. */
+export async function licenseDeviceLimitInfo(
+  db: Db,
+  product: Pick<Product, "slug" | "defaultDeviceLimit">,
+  license: LicenseRow,
+  now: number,
+): Promise<DeviceLimitInfo> {
+  const { payload, tier } = await resolveMergedPayload(
+    db,
+    product.slug,
+    license,
+    null,
+    now,
+  );
+  const merged = payload.entitlements["deviceLimit"];
+  const tierLimit = tierDeviceLimit(tier);
+  const inherited: DeviceLimitInfo["inherited"] =
+    tierLimit !== null
+      ? { limit: tierLimit, source: "tier" }
+      : merged && typeof merged.value === "number"
+        ? { limit: merged.value, source: "entitlement" }
+        : { limit: product.defaultDeviceLimit, source: "product" };
+  const own = licenseOwnDeviceLimit(license);
+  return own !== null
+    ? { limit: own, source: "license", inherited }
+    : { ...inherited, inherited };
+}
+
+/** The seat limit `authorizeDevice` enforces on `license` (`licenseDeviceLimitInfo`'s number).
+ *  Exported for the identity attach (P1-07), which must not move more devices onto a licence
+ *  than this allows, and for the portal's seat meter (PX-W1), which must show the same "of N"
+ *  this enforces. */
 export async function licenseDeviceLimit(
   db: Db,
   // Only the slug and the product default are read, so a caller holding the public projection
@@ -245,14 +287,7 @@ export async function licenseDeviceLimit(
   license: LicenseRow,
   now: number,
 ): Promise<number> {
-  const entitlements = await resolveEntitlements(
-    db,
-    product.slug,
-    license,
-    null,
-    now,
-  );
-  return resolveDeviceLimit(entitlements, product.defaultDeviceLimit);
+  return (await licenseDeviceLimitInfo(db, product, license, now)).limit;
 }
 
 /** The fingerprint mode `authorizeDevice` enforces on a licence of tier `tierId`: the tier's

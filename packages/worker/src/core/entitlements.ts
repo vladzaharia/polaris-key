@@ -150,6 +150,22 @@ function parseChannelsJson(json: string | null): string[] {
   }
 }
 
+/** The licence's own seat limit (`licenses.device_limit`, LX-14a), or null to inherit. */
+export function licenseOwnDeviceLimit(
+  license: Pick<LicenseRow, "device_limit">,
+): number | null {
+  const v = license.device_limit;
+  return typeof v === "number" && Number.isInteger(v) && v > 0 ? v : null;
+}
+
+/** The tier's seat limit (`tiers.policy_device_limit`), or null when it sets none. */
+export function tierDeviceLimit(
+  tier: Pick<TierRow, "policy_device_limit"> | null | undefined,
+): number | null {
+  const v = tier?.policy_device_limit;
+  return typeof v === "number" ? v : null;
+}
+
 /**
  * Inject the admin upgrade-channel + version-window policy (from the tier and license rows)
  * as ENFORCED entitlements, so the existing gate governs them with no gate-logic changes.
@@ -197,8 +213,11 @@ export function injectAdminPolicy(
   if (channels.length > 0)
     payload.entitlements["channels"] = enforced(channels);
 
-  if (typeof tier?.policy_device_limit === "number") {
-    payload.entitlements["deviceLimit"] = enforced(tier.policy_device_limit);
+  // LX-14a: the licence's own limit is the most specific value, so it beats the tier's, which
+  // beats any `deviceLimit` entitlement a profile, store grant or override merged in above.
+  const deviceLimit = licenseOwnDeviceLimit(license) ?? tierDeviceLimit(tier);
+  if (deviceLimit !== null) {
+    payload.entitlements["deviceLimit"] = enforced(deviceLimit);
   }
 
   const minVersion = minOf(
