@@ -44,6 +44,7 @@ import { handleRegister } from "./core/register.js";
 import { handleAttest, handleAttestChallenge } from "./core/attestation.js";
 import { dispatchBytesHost, isBytesHost } from "./core/bytesHost.js";
 import { dispatchRegistryHost, isRegistryHost } from "./core/registryHost.js";
+import { dispatchImgHost, isImgHost } from "./core/imgHost.js";
 import { drainRenderQueue, watchRenderEnqueues } from "./core/registryQueue.js";
 
 const PRODUCT_ROUTES = new Set<Route["kind"]>([
@@ -120,6 +121,10 @@ export async function dispatchWith(
       exec,
       REGISTRY_OWNERLESS_ROUTES,
     );
+  // The image host (HA-02) reaches ONLY the hosted-image routes (`core/imgHost.ts`). With
+  // `IMG_ORIGIN` unset (or equal to the bytes or registry host, checked above) this is always
+  // false, and routing is exactly what it was before the image host existed.
+  if (isImgHost(url, env)) return dispatchImgHost(req, env, db, now, exec);
   const route = matchRoute(url.pathname);
   // The portal is one account across every product, so it has no product to dispatch on; when
   // it reaches a product's downloads it asks for that product's hooks (P2b-04: the delivery

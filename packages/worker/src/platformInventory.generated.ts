@@ -126,6 +126,13 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: null,
   },
   {
+    name: "IMG_ORIGIN",
+    kind: "var",
+    area: "delivery",
+    optional: true,
+    editable: null,
+  },
+  {
     name: "CONSOLE_ORIGIN",
     kind: "var",
     area: "delivery",
