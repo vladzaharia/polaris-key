@@ -48,6 +48,24 @@ Waves must finish in well under an hour per work package. Tests are a means, not
 - Reviewers never run the gate. Fix rounds rerun the failing steps plus affected tests only.
 - Integration batches run one gate; CI on `main` is the full matrix, and a deploy waits for it.
 
+## Integration and stalls
+
+Main moves every few minutes. Chasing it is what made waves run for hours, so:
+
+- A builder merges `main` into its branch **at most once**, right before hand-off. It never re-merges
+  after review because main moved.
+- Reviewers never block on merge conflicts with current `main` (see `.claude/agents/pkey-wp-reviewer.md`).
+  Conflicts are the lead's: the lead merges passed branches with `/Users/vlad/Repos/pk-wt/_lead/merge.sh`,
+  which auto-resolves only generated files and stops on anything else. Real conflicts go to **one**
+  integration agent for the whole batch, not back to each builder.
+- A review has **at most one fix round**. If the re-review still blocks, the branch goes back to the
+  lead, not into another loop.
+- Migration numbers are assigned by the lead at merge time. Builders name new files
+  `00XX_<name>.sql` and say so in their report.
+- The lead runs `/Users/vlad/Repos/pk-wt/_lead/stall-watch.sh` in the background whenever agents are
+  running. It reports any agent quiet for 30 minutes and any workflow running past 90; each report is
+  acted on (resume, stop or re-scope), never ignored.
+
 ## Plan mode
 
 Enter plan mode before any wire-touching change — `shared-protocol`, `shared-jws`, `client-core`,
