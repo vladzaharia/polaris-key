@@ -840,8 +840,9 @@ export async function processLadderRetry(
  * cannot crowd every ladder retry out of a run. Each is also held off as a failed pull is
  * (`attempts` up, the next back-off step), so it sorts behind the rows that fell due before it
  * rather than staying the oldest due and filling the pages of every run. The cost: a resync that
- * brings the missing commit waits out that back-off (a day at most), as the planner does for any
- * unchanged ref. Reading is bounded by `RECHECK_MAX_PAGES` pages of `limit` rows.
+ * brings the missing commit waits out that back-off (15 minutes, doubling to about a day; with
+ * the nightly run, two days at worst), as the planner does for any unchanged ref. Reading is
+ * bounded by `RECHECK_MAX_PAGES` pages of `limit` rows.
  */
 export async function recheckHostedAssets(
   env: Pick<Env, "HOSTED_ASSET_QUEUE" | "IMAGES">,

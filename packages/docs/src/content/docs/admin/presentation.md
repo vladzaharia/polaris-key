@@ -23,7 +23,9 @@ Each slot shows:
   `.pkey/distribution` listing), "Uploaded in the console" or "Pushed from CI".
 - **Status.** Ready; Pulling (a first pull is on its way); Updating (the manifest names a new file,
   which is being pulled while the old copy keeps serving); Failed, with the reason; Source gone
-  (the source answered 404 or 410, and the last good copy keeps serving).
+  (the source answered 404 or 410, and the last good copy keeps serving). A slot whose pull
+  failed, or that waits for a commit, is retried with back-off (15 minutes, doubling to about a
+  day; two at worst); a resync inside the back-off waits it out.
 - **Size, dimensions and type**, and a preview from the image host.
 - **Sizes pending**, while the copy still owes its WebP sizes. Sizes are made once, when the file
   arrives; Polaris Key retries them from its stored copy and never pulls the source again for
