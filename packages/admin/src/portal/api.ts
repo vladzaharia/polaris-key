@@ -4,6 +4,11 @@ export interface PortalAccount {
   id: string;
   name: string;
   email: string;
+  /**
+   * The picture in use (PX-W16): a same-origin `/media/avatar/<asset>` URL (256 px; `-96` names
+   * the small one), or null for initials. Absent on an older Worker, which means initials.
+   */
+  avatarUrl?: string | null;
 }
 
 export interface PortalMe {
@@ -430,6 +435,60 @@ export interface PortalDiscoverClaim {
   };
 }
 
+// ── Account → Profile (PX-W16; PORTAL.md §4.30, G32, G33) ──────────────────────────────────
+
+/** A stored picture: same-origin URLs only, WebP or PNG by the browser's `Accept`. */
+export interface PortalAvatar {
+  asset: string;
+  /** 256 px. */
+  url: string;
+  /** 96 px. */
+  url96: string;
+}
+
+/**
+ * Where a profile value came from. `provider` is a sign-in method's import; its `provider` is null
+ * once that method was disconnected (the value stays and follows nothing).
+ */
+export type PortalProfileSource =
+  | { kind: "provider"; linkId: string; provider: string | null }
+  | { kind: "typed" }
+  | { kind: "upload" }
+  | { kind: "initials" };
+
+/** One sign-in method that supplied a name or a picture: the editor's chips and tiles. */
+export interface PortalProfileSourceOption {
+  linkId: string;
+  /** `google`, `apple`, `steam`, later the platform identities. */
+  provider: string;
+  /** The connected identity (an address or a persona), as Sign-in methods shows it. */
+  label: string | null;
+  name: string | null;
+  picture: PortalAvatar | null;
+}
+
+/** `GET /api/me/profile`. */
+export interface PortalProfile {
+  displayName: string | null;
+  displayNameSource: PortalProfileSource | null;
+  explicitName: boolean;
+  /** The picture in use; null shows initials. */
+  picture: PortalAvatar | null;
+  pictureSource: PortalProfileSource | null;
+  explicitPicture: boolean;
+  locale: string | null;
+  sources: PortalProfileSourceOption[];
+}
+
+/** `PATCH /api/me/profile`: every value it sets is an explicit choice that sticks. */
+export interface PortalProfileChange {
+  /** A typed name. */
+  name?: string;
+  /** A sign-in method's name, by the method's id. */
+  nameFrom?: string;
+  picture?: "initials" | { from: string } | { upload: string };
+}
+
 /**
  * The email start's and the resend's one answer (I-07, PX-W4), the same whether or not mail went
  * out. The numbers are optional so an older Worker's bare `{ ok: true }` still reads.
@@ -448,6 +507,11 @@ export class PortalApiError extends Error {
   triesLeft?: number;
   /** Seconds to wait before asking again (a resend asked too soon, PX-W4). */
   retryAfter?: number;
+  /**
+   * The case a refusal names beside its registered code (PX-W16's profile routes: `invalid_name`,
+   * `too_large`, `unsupported_type` …). Copy is chosen from it, never from `message`.
+   */
+  reason?: string;
   constructor(
     public readonly status: number,
     public readonly code?: string,
@@ -472,7 +536,9 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const mutating = init.method != null && init.method !== "GET";
   if (mutating) {
     headers.set(CSRF_HEADER, csrf);
-    if (init.body) headers.set("Content-Type", "application/json");
+    // JSON unless the caller sent bytes with their own type (a picture upload).
+    if (init.body && !headers.has("Content-Type"))
+      headers.set("Content-Type", "application/json");
   }
   let res: Response;
   try {
@@ -490,17 +556,20 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     let message: string | undefined;
     let triesLeft: number | undefined;
     let retryAfter: number | undefined;
+    let reason: string | undefined;
     try {
       const body = (await res.json()) as {
         error?: string;
         message?: string;
         triesLeft?: unknown;
         retryAfter?: unknown;
+        reason?: unknown;
       };
       code = body.error;
       message = body.message;
       if (typeof body.triesLeft === "number") triesLeft = body.triesLeft;
       if (typeof body.retryAfter === "number") retryAfter = body.retryAfter;
+      if (typeof body.reason === "string") reason = body.reason;
     } catch {
       // non-JSON response
     }
@@ -508,6 +577,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (message) error.message = message;
     if (triesLeft !== undefined) error.triesLeft = triesLeft;
     if (retryAfter !== undefined) error.retryAfter = retryAfter;
+    if (reason !== undefined) error.reason = reason;
     throw error;
   }
   const text = await res.text();
@@ -526,6 +596,24 @@ export const portalApi = {
   me: () => call<PortalMe>("/api/me"),
   deleteMe: () =>
     call<{ ok: true; deleted: string }>("/api/me", { method: "DELETE" }),
+  /** Account → Profile (PX-W16): the profile, its sources and what each method supplied. */
+  profile: () => call<{ profile: PortalProfile }>("/api/me/profile"),
+  /** An explicit choice (a typed or picked name; Initials, a method's picture or an upload). */
+  updateProfile: (change: PortalProfileChange) =>
+    call<{ profile: PortalProfile }>("/api/me/profile", {
+      method: "PATCH",
+      body: JSON.stringify(change),
+    }),
+  /**
+   * A picture upload (PNG or JPEG, at most 5 MB; the Worker judges by the bytes, re-encodes and
+   * crops it square). It stays unused until a PATCH picks it.
+   */
+  uploadPicture: (file: Blob) =>
+    call<{ upload: PortalAvatar }>("/api/me/profile/picture", {
+      method: "POST",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: file,
+    }),
   licenses: () => call<{ licenses: PortalLicenseSummary[] }>("/api/licenses"),
   license: (product: string, id: string) =>
     call<PortalLicenseDetail>(`/api/licenses/${enc(product)}/${enc(id)}`),

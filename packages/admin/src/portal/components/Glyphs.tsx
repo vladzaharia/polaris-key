@@ -174,3 +174,20 @@ export function PlatformGlyphs({
     </span>
   );
 }
+
+/**
+ * A sign-in method's mark where one is drawn (Apple, Google, Steam), else null: the source badge
+ * on an avatar, the name chips and the picture tiles (Account → Profile, PX-22).
+ */
+export function ProviderGlyph({
+  provider,
+  className,
+}: {
+  provider: string | null | undefined;
+  className?: string;
+}): React.ReactElement | null {
+  if (provider === "apple") return <AppleGlyph className={className} />;
+  if (provider === "google") return <GoogleGlyph className={className} />;
+  if (provider === "steam") return <SteamGlyph className={className} />;
+  return null;
+}

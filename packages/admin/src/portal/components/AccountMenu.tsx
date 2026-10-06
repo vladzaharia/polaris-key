@@ -14,7 +14,8 @@ import { Avatar } from "./Avatar.js";
 
 /**
  * The account menu (PORTAL.md §3.2): the avatar chip ("Account: <email>"), then Account,
- * Sign-in methods, Appearance and Sign out. Approve a new device waits for G29 and Help for a
+ * Sign-in methods, Appearance and Sign out. The chip and the menu's header show the profile
+ * picture (PX-22, §4.30 rule 5) from the signed-in session, else the initials. Approve a new device waits for G29 and Help for a
  * public help URL; both are left out rather than shown as dead ends.
  *
  * Sign out is a form POST (R1-03): a state change is never a link.
@@ -38,7 +39,11 @@ export function AccountMenu({
             aria-label={`Account: ${label}`}
             className="inline-flex h-11 max-w-[18rem] items-center gap-2 rounded-full border border-border bg-surface-raised p-1 text-sm text-fg-strong hover:bg-hover desk:pr-3"
           >
-            <Avatar name={account.name} email={account.email} />
+            <Avatar
+              name={account.name}
+              email={account.email}
+              picture={account.avatarUrl}
+            />
             <span className="hidden truncate desk:inline">{label}</span>
             <ChevronDown
               aria-hidden
@@ -48,15 +53,23 @@ export function AccountMenu({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-64">
           <DropdownMenuLabel>
-            <div className="flex flex-col gap-0.5">
-              {account.name && account.name !== account.email ? (
-                <span className="text-sm font-bold text-fg-strong">
-                  {account.name}
+            <div className="flex items-center gap-3">
+              <Avatar
+                name={account.name}
+                email={account.email}
+                picture={account.avatarUrl}
+                size={40}
+              />
+              <div className="flex min-w-0 flex-col gap-0.5">
+                {account.name && account.name !== account.email ? (
+                  <span className="truncate text-sm font-bold text-fg-strong">
+                    {account.name}
+                  </span>
+                ) : null}
+                <span className="truncate text-xs font-normal text-fg-muted">
+                  {account.email}
                 </span>
-              ) : null}
-              <span className="truncate text-xs font-normal text-fg-muted">
-                {account.email}
-              </span>
+              </div>
             </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />

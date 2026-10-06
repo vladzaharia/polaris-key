@@ -11,7 +11,7 @@ import { RadioCards } from "../../ui/RadioCards.js";
 import { toast } from "../../ui/toast.js";
 import { cn } from "../../lib/cn.js";
 import type { PortalAccount } from "../api.js";
-import { Avatar } from "../components/Avatar.js";
+import { ProfileCard } from "../components/ProfileCard.js";
 import { SectionCard } from "../components/product/Card.js";
 import { signOutQuietly, useDeleteAccount } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
@@ -23,12 +23,14 @@ import {
 } from "../router.js";
 
 /**
- * Account v1 (PORTAL.md §4.26, PX-07) on today's API: the sign-in email (the Sign-in methods
- * section's scaffold until G27 lists Apple, Google, Steam and passkeys), Appearance, Your data
- * with Delete account behind a typed confirmation, and Sign out. Profile, Connected products and
- * Where you're signed in arrive with G32, I-06 and I-15; the section nav lists only what exists.
+ * Account (PORTAL.md §4.26): Profile first (PX-22, §4.30: name and picture, edited in place), the
+ * sign-in email (the Sign-in methods section's scaffold until G27 lists Apple, Google, Steam and
+ * passkeys), Appearance, Your data with Delete account behind a typed confirmation, and Sign out
+ * (PX-07). Connected products and Where you're signed in arrive with I-06 and I-15; the section
+ * nav lists only what exists.
  */
 const SECTIONS: { id: AccountSection; label: string }[] = [
+  { id: "profile", label: "Profile" },
   { id: "methods", label: "Sign-in methods" },
   { id: "appearance", label: "Appearance" },
   { id: "data", label: "Your data" },
@@ -43,7 +45,7 @@ export function AccountPage({
 }): React.ReactElement {
   useDocumentTitle("Account");
   const [current, setCurrent] = React.useState<AccountSection>(
-    SECTIONS.some((s) => s.id === section) ? section! : "methods",
+    SECTIONS.some((s) => s.id === section) ? section! : "profile",
   );
   // A section deep link scrolls there once, as the page opens; the router scrolls to a section
   // the URL names later (MO-05), so this does not undo its smooth scroll with an instant one.
@@ -132,6 +134,7 @@ export function AccountPage({
           </ul>
         </nav>
         <div className="min-w-0 flex-1 space-y-6">
+          <ProfileCard account={account} />
           <SignInMethods account={account} />
           <Appearance />
           <YourData account={account} />
