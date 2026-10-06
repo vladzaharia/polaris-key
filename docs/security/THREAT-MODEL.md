@@ -6352,6 +6352,11 @@ admin`, which the A-18d register and a CI push never replace.
   Polaris Key never writes to a developer's source. This is the content-risk control S-20 §6.12
   names: an operator can drop an abusive image at once (a manifest-declared one returns at the
   next resync until the manifest stops naming it, or a replacement claims the slot).
+- **A release file's copy is never the console's to delete.** HA-08's `release-file:<sha256>` copy
+  is also held by its `release-artifact` ref, which keeps it serving at the release's download, so
+  a Revert or delete-a-copy of it would report a deletion while the bytes still serve. The route
+  refuses it as not an upload slot (`bad_slot`) and `releaseHostedAsset` refuses any slot that is
+  not one (`missing`), so neither its row nor its refs move.
 - **Amplification is bounded.** One CI push carries at most 32 files (each at most 20 MiB) in a
   16 KiB body; a console upload is one file. Neither fetches anything: the only outbound fetch is
   Revert's one queued pull of a ref a manifest author wrote.

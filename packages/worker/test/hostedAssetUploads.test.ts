@@ -773,6 +773,41 @@ describe("the console's upload, list and delete", () => {
     expect(again.outcomes).toEqual(["ready"]);
   });
 
+  it("never deletes or reverts a release file's copy (HA-08's release-artifact ref keeps it serving)", async () => {
+    const bytes = new TextEncoder().encode("a release file's bytes");
+    const digest = sha(bytes);
+    const slot = `release-file:${digest}`;
+    const url = "https://cdn.example.com/f.zip";
+    expect(
+      await ingest(ctx(upstream({ [url]: bytes })), SLUG, slot, {
+        kind: "pull",
+        url,
+        origin: "release-mirror",
+        sourceKind: "url",
+        expectedSha256: digest,
+        expectedSize: bytes.length,
+      }),
+    ).toMatchObject({ ok: true, sha256: digest });
+    const refs = await refsOf(slot);
+    expect(refs).toHaveLength(1);
+
+    const res = await release(slot);
+    expect(res.status).toBe(400);
+    expect(((await res.json()) as Loose).code).toBe("bad_slot");
+    expect(
+      await releaseHostedAsset({ env, db, now: NOW }, SLUG, slot, "", {
+        sub: "u2",
+        name: "Bo",
+      }),
+    ).toEqual({ outcome: "missing" });
+    expect(await getHostedAsset(db, SLUG, slot)).toMatchObject({
+      origin: "release-mirror",
+      status: "ready",
+      sha256: digest,
+    });
+    expect(await refsOf(slot)).toEqual(refs);
+  });
+
   it("a claim with no manifest source is deleted, not reverted", async () => {
     await upload("listing.header", ICON_C);
     expect(await (await release("listing.header")).json()).toEqual({

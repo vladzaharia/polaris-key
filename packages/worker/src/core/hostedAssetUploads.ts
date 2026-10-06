@@ -388,6 +388,11 @@ export async function releaseHostedAsset(
   actor: IngestActor,
   mirror?: ListingSlotMirror,
 ): Promise<ReleaseOutcome> {
+  // Only an upload slot is the console's to revert or delete. A release file's copy
+  // (`release-file:<sha256>`, HA-08) is also held by its `release-artifact` ref, which keeps it
+  // serving at the release's download, so dropping its row here would "delete" a copy that still
+  // serves. The route refuses such a slot first (`bad_slot`); this is the same rule at the core.
+  if (!isUploadSlot(slot)) return { outcome: "missing" };
   const row = await getHostedAsset(ctx.db, product, slot, locale);
   if (!row) return { outcome: "missing" };
   const refId = hostedAssetRefId(slot, locale);
