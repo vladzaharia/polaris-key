@@ -559,6 +559,25 @@ aws s3api create-multipart-upload --endpoint-url "$ENDPOINT" --bucket "$BUCKET" 
 The GitHub OIDC side needs nothing from the operator: the issuer and its JWKS are GitHub's and
 fixed in code. A product opts in from its own `.pkey/release` (`publishing.trustedPublisher`).
 
+### Hosted-asset pulls: the queue (HA-05)
+
+A link or resync enqueues the pulls its manifest's asset refs owe (`presentation.icon`, the
+listing art) to `pkey-assets-<env>`, which the request Worker itself consumes
+(`src/assetQueue.ts`; notes/S-20 §6.3). Two queues per environment (`<env>` = `prod`, `staging`,
+`dev`), created once before the first deploy that carries the bindings:
+
+```sh
+cd packages/worker
+npx wrangler queues create pkey-assets-<env>
+npx wrangler queues create pkey-assets-dlq-<env>
+```
+
+`wrangler.toml` binds `pkey-assets-<env>` as a producer (`HOSTED_ASSET_QUEUE`) and declares the
+consumer (batch 10, concurrency 4, 3 retries, then `pkey-assets-dlq-<env>`), so a deploy fails
+while either queue is missing. Unbound (a local `wrangler dev`, the registry-client harness),
+nothing is planned or pulled. The nightly maintenance sweep re-enqueues failed pulls, at most 50
+per run.
+
 ### Lazy deltas: the queues, the consumer Worker and the R2 rules (P4-17)
 
 Lazy hot-pair deltas (notes/S-08 §6; RUNBOOK "Lazy deltas") need Workers Paid with Queues
