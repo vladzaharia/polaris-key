@@ -109,8 +109,8 @@
   --animate-pk-overlay-in: pk-overlay-in var(--pk-duration-fast)
     var(--pk-ease-standard);
   --animate-pk-spin: pk-spin 0.7s linear infinite;
-  /* The login card's step change (SIGN-IN.md §3.18 enter): the new step fades in 12 px from the
-     side of travel, forward from the inline end, Back from the inline start. */
+  /* The login card's step change (SIGN-IN.md §3.18 enter, S-23 tokens): the new step fades in
+     `lg` (12 px) from the side of travel, forward from the inline end, Back from the inline start. */
   --animate-pk-step-forward: pk-step-forward var(--pk-duration-base)
     var(--pk-ease-enter) both;
   --animate-pk-step-back: pk-step-back var(--pk-duration-base)
@@ -162,7 +162,7 @@
   @keyframes pk-step-forward {
     from {
       opacity: 0;
-      transform: translateX(12px);
+      transform: translateX(var(--pk-motion-distance-lg));
     }
     to {
       opacity: 1;
@@ -172,7 +172,7 @@
   @keyframes pk-step-back {
     from {
       opacity: 0;
-      transform: translateX(-12px);
+      transform: translateX(calc(-1 * var(--pk-motion-distance-lg)));
     }
     to {
       opacity: 1;

@@ -10,11 +10,12 @@ import { ProductIcon } from "../ProductIcon.js";
  * screens only). Phones: the card goes edge to edge under a 56 px lockup row. No
  * "Polaris Key · key.plrs.im" line under the card.
  *
- * Steps replace each other in place (§3.18): when `stepKey` changes the body's height morphs from
- * the old size to the new one (the Web Animations API, which the strict CSP allows), the new step
- * enters 12 px from the side of travel (`direction`), focus moves to its h1 and the polite live
- * region announces it once. The header and footer stay still. Under reduced motion the brand's
- * durations are 0 ms, so every step swaps instantly.
+ * Steps replace each other in place (§3.18, S-23 tokens): when `stepKey` changes the body's
+ * height morphs from the old size to the new one at `moderate` (the Web Animations API, which the
+ * strict CSP allows), the new step enters `lg` (12 px) from the side of travel (`direction`) at
+ * `base`, focus moves to its h1 and the polite live region announces it once. The header and
+ * footer stay still. Under reduced motion (the OS setting or `data-motion="reduce"`) the brand's
+ * durations are 0 ms, so every step swaps instantly with no fade (S-23 D3).
  */
 export function LoginCard({
   header,
@@ -58,7 +59,7 @@ export function LoginCard({
     const from = lastHeight.current;
     const to = el.offsetHeight;
     lastHeight.current = to;
-    const ms = motionMs("--pk-duration-base");
+    const ms = motionMs("--pk-duration-moderate");
     if (from !== null && from !== to && ms > 0 && el.animate) {
       el.animate([{ height: `${from}px` }, { height: `${to}px` }], {
         duration: ms,
