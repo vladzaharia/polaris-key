@@ -652,6 +652,7 @@ class Feature:
     IDENTITY_DEVICECODE: Final = "identity.devicecode"
     IDENTITY_DEVICELABEL: Final = "identity.devicelabel"
     IDENTITY_TOGGLE: Final = "identity.toggle"
+    IDENTITY_KEYENTRY: Final = "identity.keyentry"
     RELEASE_CHANGELOG: Final = "release.changelog"
     RELEASE_DOWNLOAD: Final = "release.download"
     RELEASE_RECORD: Final = "release.record"
@@ -694,6 +695,7 @@ class Feature:
     UI_BOOT: Final = "ui.boot"
     UI_KIT: Final = "ui.kit"
     UI_KIT_MANAGE: Final = "ui.kit.manage"
+    UI_KIT_KEYENTRY: Final = "ui.kit.keyentry"
     UI_CLI: Final = "ui.cli"
     COMMERCE_RECEIPT: Final = "commerce.receipt"
 
@@ -738,6 +740,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "identity.devicecode",
     "identity.devicelabel",
     "identity.toggle",
+    "identity.keyentry",
     "release.changelog",
     "release.download",
     "release.record",
@@ -780,6 +783,7 @@ FEATURE_VALUES: Tuple[str, ...] = (
     "ui.boot",
     "ui.kit",
     "ui.kit.manage",
+    "ui.kit.keyentry",
     "ui.cli",
     "commerce.receipt",
 )
@@ -1716,6 +1720,7 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "identity.devicecode": CapabilityRow("implemented", "identity", ()),
         "identity.devicelabel": CapabilityRow("implemented", "identity", ()),
         "identity.toggle": CapabilityRow("planned", "identity", ()),
+        "identity.keyentry": CapabilityRow("planned", "identity", ()),
         "release.changelog": CapabilityRow("implemented", "release", ()),
         "release.download": CapabilityRow("implemented", "release", ()),
         "release.record": CapabilityRow("implemented", "release", ()),
@@ -1758,10 +1763,11 @@ CAPABILITIES: Mapping[str, CapabilityRow] = MappingProxyType(
         "ui.boot": CapabilityRow("implemented", "sdk", ()),
         "ui.kit": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.kit.manage": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
+        "ui.kit.keyentry": CapabilityRow("na", "sdk", (CapabilityNa("python", "runtime"),)),
         "ui.cli": CapabilityRow("implemented", "sdk", ()),
         "commerce.receipt": CapabilityRow("implemented", "license", ()),
     }
 )
 
 #: SHA-256 of the canonical table; ``pnpm parity:check`` recomputes it from the manifest.
-CAPABILITY_DIGEST: Final[str] = "408b1c794052c7b5833e43494fda5eff8495b3a8e25af7a4eed1ca1cca62efa2"
+CAPABILITY_DIGEST: Final[str] = "0861ec81c92890118cee2e30b9c07ba53b8a5e4db03bd24fd5880e2267d6ff35"

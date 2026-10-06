@@ -520,6 +520,7 @@ export const Feature = {
   identityDevicecode: "identity.devicecode",
   identityDevicelabel: "identity.devicelabel",
   identityToggle: "identity.toggle",
+  identityKeyentry: "identity.keyentry",
   releaseChangelog: "release.changelog",
   releaseDownload: "release.download",
   releaseRecord: "release.record",
@@ -562,6 +563,7 @@ export const Feature = {
   uiBoot: "ui.boot",
   uiKit: "ui.kit",
   uiKitManage: "ui.kit.manage",
+  uiKitKeyentry: "ui.kit.keyentry",
   uiCli: "ui.cli",
   commerceReceipt: "commerce.receipt",
 } as const;
@@ -607,6 +609,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "identity.devicecode",
   "identity.devicelabel",
   "identity.toggle",
+  "identity.keyentry",
   "release.changelog",
   "release.download",
   "release.record",
@@ -649,6 +652,7 @@ export const FEATURE_VALUES: readonly Feature[] = [
   "ui.boot",
   "ui.kit",
   "ui.kit.manage",
+  "ui.kit.keyentry",
   "ui.cli",
   "commerce.receipt",
 ];
@@ -1504,6 +1508,7 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     na: [],
   },
   "identity.toggle": { status: "planned", service: "identity", na: [] },
+  "identity.keyentry": { status: "planned", service: "identity", na: [] },
   "release.changelog": { status: "implemented", service: "release", na: [] },
   "release.download": { status: "implemented", service: "release", na: [] },
   "release.record": { status: "implemented", service: "release", na: [] },
@@ -1590,10 +1595,15 @@ export const CAPABILITIES: Readonly<Record<Feature, CapabilityRow>> = {
     service: "sdk",
     na: [{ runtime: "node", reason: "runtime" }],
   },
+  "ui.kit.keyentry": {
+    status: "na",
+    service: "sdk",
+    na: [{ runtime: "node", reason: "runtime" }],
+  },
   "ui.cli": { status: "implemented", service: "sdk", na: [] },
   "commerce.receipt": { status: "implemented", service: "license", na: [] },
 };
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
 export const CAPABILITY_DIGEST =
-  "84b638a95e378c82317d8a08ffe4386303b4cfe54964e7ebc53bc6eef7cfbec9";
+  "c2c04bf4807a23ed3fe653bc203503da48977a9746d3a78e65ba241076129bea";

@@ -522,6 +522,7 @@ public object Feature {
     public const val identityDevicecode: String = "identity.devicecode"
     public const val identityDevicelabel: String = "identity.devicelabel"
     public const val identityToggle: String = "identity.toggle"
+    public const val identityKeyentry: String = "identity.keyentry"
     public const val releaseChangelog: String = "release.changelog"
     public const val releaseDownload: String = "release.download"
     public const val releaseRecord: String = "release.record"
@@ -564,6 +565,7 @@ public object Feature {
     public const val uiBoot: String = "ui.boot"
     public const val uiKit: String = "ui.kit"
     public const val uiKitManage: String = "ui.kit.manage"
+    public const val uiKitKeyentry: String = "ui.kit.keyentry"
     public const val uiCli: String = "ui.cli"
     public const val commerceReceipt: String = "commerce.receipt"
 }
@@ -608,6 +610,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "identity.devicecode",
     "identity.devicelabel",
     "identity.toggle",
+    "identity.keyentry",
     "release.changelog",
     "release.download",
     "release.record",
@@ -650,6 +653,7 @@ public val FEATURE_VALUES: List<String> = listOf(
     "ui.boot",
     "ui.kit",
     "ui.kit.manage",
+    "ui.kit.keyentry",
     "ui.cli",
     "commerce.receipt",
 )
@@ -1436,6 +1440,7 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "identity.devicecode" to CapabilityRow("implemented", "identity", listOf()),
     "identity.devicelabel" to CapabilityRow("implemented", "identity", listOf()),
     "identity.toggle" to CapabilityRow("planned", "identity", listOf()),
+    "identity.keyentry" to CapabilityRow("planned", "identity", listOf()),
     "release.changelog" to CapabilityRow("implemented", "release", listOf()),
     "release.download" to CapabilityRow("implemented", "release", listOf()),
     "release.record" to CapabilityRow("implemented", "release", listOf()),
@@ -1478,9 +1483,10 @@ public val CAPABILITIES: Map<String, CapabilityRow> = mapOf(
     "ui.boot" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit" to CapabilityRow("implemented", "sdk", listOf()),
     "ui.kit.manage" to CapabilityRow("implemented", "sdk", listOf()),
+    "ui.kit.keyentry" to CapabilityRow("planned", "sdk", listOf()),
     "ui.cli" to CapabilityRow("na", "sdk", listOf(CapabilityNa("android", "runtime"), CapabilityNa("jvm", "runtime"))),
     "commerce.receipt" to CapabilityRow("implemented", "license", listOf()),
 )
 
 /** SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest. */
-public const val CAPABILITY_DIGEST: String = "96177bfef20c9d1f28efd3b363373bfd89e27d9aa0f2bdecebd547bc7d9f709f"
+public const val CAPABILITY_DIGEST: String = "254d4b114fe4fd02d12dd18a3fd93a6cd1df377b0f3fcf5b4d2225e7cfe413ab"

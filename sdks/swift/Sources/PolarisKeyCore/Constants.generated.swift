@@ -520,6 +520,7 @@ public enum Feature {
     public static let identityDevicecode = "identity.devicecode"
     public static let identityDevicelabel = "identity.devicelabel"
     public static let identityToggle = "identity.toggle"
+    public static let identityKeyentry = "identity.keyentry"
     public static let releaseChangelog = "release.changelog"
     public static let releaseDownload = "release.download"
     public static let releaseRecord = "release.record"
@@ -562,6 +563,7 @@ public enum Feature {
     public static let uiBoot = "ui.boot"
     public static let uiKit = "ui.kit"
     public static let uiKitManage = "ui.kit.manage"
+    public static let uiKitKeyentry = "ui.kit.keyentry"
     public static let uiCli = "ui.cli"
     public static let commerceReceipt = "commerce.receipt"
 }
@@ -606,6 +608,7 @@ public let FEATURE_VALUES: [String] = [
     "identity.devicecode",
     "identity.devicelabel",
     "identity.toggle",
+    "identity.keyentry",
     "release.changelog",
     "release.download",
     "release.record",
@@ -648,6 +651,7 @@ public let FEATURE_VALUES: [String] = [
     "ui.boot",
     "ui.kit",
     "ui.kit.manage",
+    "ui.kit.keyentry",
     "ui.cli",
     "commerce.receipt",
 ]
@@ -1414,6 +1418,7 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "identity.devicecode": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.devicelabel": CapabilityRow(status: "implemented", service: "identity", na: []),
     "identity.toggle": CapabilityRow(status: "planned", service: "identity", na: []),
+    "identity.keyentry": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.record": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1456,9 +1461,10 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "ui.boot": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.kit": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.kit.manage": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.kit.keyentry": CapabilityRow(status: "planned", service: "sdk", na: []),
     "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "commerce.receipt": CapabilityRow(status: "implemented", service: "license", na: []),
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "e4c16b65ac58c8994e1da5644a5719b07589b11fed83d0772eee60a9dc956913"
+public let CAPABILITY_DIGEST = "12b64484096460c0df0aa614ac777f1ac76abf3895bdf38f60ec93047c2d9801"

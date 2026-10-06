@@ -787,8 +787,13 @@
       "title": "Device label sent on device-code sign-in, activation and registration (WIRE-CONTRACT-V4 §12.7.1)",
       "service": "identity",
       "proof": [
-        { "kind": "corpus", "file": "device-label.json" },
-        { "kind": "transcript" }
+        {
+          "kind": "corpus",
+          "file": "device-label.json"
+        },
+        {
+          "kind": "transcript"
+        }
       ],
       "allowedNa": [
         {
@@ -803,8 +808,27 @@
       "family": "devices",
       "title": "Identity off for a product: every sign-in entry fails fast, licences keep working",
       "service": "identity",
-      "proof": [{ "kind": "transcript", "wp": "PX-W17" }],
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "PX-W17"
+        }
+      ],
       "allowedNa": []
+    },
+    {
+      "id": "identity.keyentry",
+      "family": "devices",
+      "title": "Key entry on an Identity product: keyEntries on success, and the key-entry-limit refusal with manageUrl",
+      "service": "identity",
+      "proof": [
+        {
+          "kind": "transcript",
+          "wp": "PX-W9b"
+        }
+      ],
+      "allowedNa": [],
+      "note": "PX-W9 (WIRE-CONTRACT-V4 §12.2): an activation by key on a product with Identity on exposes keyEntries {used, limit} on ok, and the typed key-entry-limit result (keyEntries, manageUrl) when a new device meets the licence's limit with refusals on. Never an auth failure: the client keeps its state and never retries. Pinned by keyentry-limit.json, keyentry-refusals-off.json and keyentry-identity-off.json; client-core's keyEntries table (PX-W9b) pins readKeyEntries. I-09 extends this to license_owned."
     },
     {
       "id": "release.changelog",
@@ -1777,6 +1801,24 @@
           "runtime": "headless",
           "reason": "runtime",
           "why": "A headless SDK ships no UI toolkit; hosts read manageUrl from the activation result (license.manage)."
+        }
+      ]
+    },
+    {
+      "id": "ui.kit.keyentry",
+      "family": "ui",
+      "title": "Key entries: the entries-left line after a key activation, and the key-entry-limit screen (Add it in Polaris Key as a button, or a QR on TV and console)",
+      "service": "sdk",
+      "proof": [
+        {
+          "kind": "snapshot"
+        }
+      ],
+      "allowedNa": [
+        {
+          "runtime": "headless",
+          "reason": "runtime",
+          "why": "A headless SDK ships no UI toolkit; hosts read keyEntries and manageUrl from the activation result (identity.keyentry)."
         }
       ]
     },
