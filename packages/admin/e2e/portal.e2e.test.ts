@@ -231,27 +231,34 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
   }
 });
 
-describe("Discover count (P6, FLOWS P-13): never counts what the page cannot show", () => {
-  it("the Worker counts 4 offers, the page lists none yet: no Discover in either nav, no library line", async () => {
+describe("Discover count (P6, FLOWS P-13): counts only what the page lists", () => {
+  // PX-16 made the Discover page list `GET /api/discover` (`DISCOVER_LISTS_OFFERS` is true), so
+  // the Worker's count shows in both navs and the page lists exactly the offers it counted.
+  it("the Worker counts 4 offers and the page lists them: Discover in either nav, with the count", async () => {
     for (const width of [1440, 390]) {
-      // The fixture's library carries `discoverCount: 4`, as `main`'s Worker does.
+      // The fixture's library carries `discoverCount: 4`, one per offer `GET /api/discover` sends.
       const o = await open("three", "/", { width });
       await h1(o.page, "Your library");
       const nav = o.page.getByRole("navigation", {
         name: width === 390 ? "Phone" : "Main",
       });
       await nav.getByRole("link", { name: /Library/ }).waitFor();
-      expect(await nav.getByRole("link", { name: /Discover/ }).count()).toBe(0);
-      expect(await o.page.getByText(/in Discover/).count()).toBe(0);
+      const discover = nav.getByRole("link", { name: /Discover/ });
+      await discover.waitFor();
+      expect(await discover.count()).toBe(1);
+      // The desktop count is visible; the phone bar's dot carries ", 4 offers" for readers.
+      expect(await discover.textContent()).toContain("4");
       expect(await o.violations()).toEqual([]);
       await o.close();
     }
   });
 
-  it("a typed #/discover is the honest empty state, with the way back", async () => {
+  it("a typed #/discover lists the four offers it counted", async () => {
     const o = await open("three", "/#/discover");
-    await h1(o.page, "Nothing to add right now");
-    await o.page.getByRole("link", { name: "Back to your library" }).waitFor();
+    await h1(o.page, "Discover");
+    for (const name of ["Quill", "Mossgarden", "Lumen RAW", "Pixel Forge SDK"])
+      await o.page.getByRole("article", { name }).waitFor();
+    expect(await o.page.getByRole("article").count()).toBe(4);
     expect(await o.violations()).toEqual([]);
     await o.close();
   });
