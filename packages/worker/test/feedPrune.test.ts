@@ -35,7 +35,8 @@ import {
   pruneAfterStablePublish,
   prunePackages,
   pruneRetentionOf,
-  setPruneRetention,
+  PRUNE_SETTING_KEY,
+  retentionLocked,
   SYSTEM_PRUNE_ACTOR,
   triggersPrune,
 } from "../src/services/release/packages/prune.js";
@@ -52,6 +53,7 @@ import {
 import { stmtSetChannelPolicy } from "../src/services/release/model.js";
 import { markUnreferenced } from "../src/core/blobGc.js";
 import { SETTINGS } from "../src/mount.js";
+import { writeSetting } from "../src/core/settings/write.js";
 
 const P = "acme";
 const hex = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -326,11 +328,34 @@ async function rendered(eco: PackageEcosystem): Promise<string> {
     .join("\n");
 }
 
+/**
+ * The retention switch through `writeSetting()` (ST-04), answering as the route does: `locked` for
+ * the system product, `stale` for a version that is not the one read, else `written`.
+ */
+async function setRetention(
+  product: string,
+  enabled: boolean,
+  expectedVersion: number,
+  by = "admin:u1",
+): Promise<string> {
+  if (retentionLocked(product)) return "locked";
+  const res = await writeSetting(
+    { env: {}, db, registry: SETTINGS },
+    { key: PRUNE_SETTING_KEY, value: enabled, expectedVersion },
+    {
+      actor: { sub: by, name: null, email: null },
+      origin: "console",
+      now: NOW,
+      product,
+      strict: false,
+    },
+  );
+  return res.ok ? "written" : res.reason === "version_conflict" ? "stale" : res.reason;
+}
+
 /** Feed retention is off by default for a tenant product: opt `product` in. */
 async function optIn(product = P): Promise<void> {
-  expect(await setPruneRetention(db, product, true, 0, "admin:u1", NOW)).toBe(
-    "written",
-  );
+  expect(await setRetention(product, true, 0)).toBe("written");
 }
 
 /** The automatic prune after `version` of `eco`'s package was published on `channel`. */
@@ -772,7 +797,7 @@ describe("the automatic prune", () => {
 
     // Opting in (version 0 → 1), then turning it off again, each against the version read.
     await optIn();
-    expect(await setPruneRetention(db, P, false, 0, "admin:u1", NOW)).toBe(
+    expect(await setRetention(P, false, 0)).toBe(
       "stale",
     );
     expect(await pruneRetentionOf(db, P)).toMatchObject({
@@ -781,7 +806,7 @@ describe("the automatic prune", () => {
       version: 1,
       updatedBy: "admin:u1",
     });
-    expect(await setPruneRetention(db, P, false, 1, "admin:u1", NOW)).toBe(
+    expect(await setRetention(P, false, 1)).toBe(
       "written",
     );
     expect(await autoPrune("npm", "1.1.0")).toEqual({ status: "off" });
@@ -797,7 +822,7 @@ describe("the automatic prune", () => {
       updatedBy: null,
     });
     expect(
-      await setPruneRetention(db, SYSTEM_PRODUCT_SLUG, false, 0, "u", NOW),
+      await setRetention(SYSTEM_PRODUCT_SLUG, false, 0, "u"),
     ).toBe("locked");
     // Even a row that says off (written around the API) does not turn it off.
     await seedProduct(db, SYSTEM_PRODUCT_SLUG);

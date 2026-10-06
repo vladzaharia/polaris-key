@@ -63,7 +63,15 @@ import {
 import type { Env } from "../../env.js";
 import type { Db, DbStatement } from "../../db/types.js";
 import type { AdminSession } from "../session.js";
-import { adminJson, err, notFound, readBody } from "../lib/respond.js";
+import {
+  adminJson,
+  err,
+  notFound,
+  readBody,
+  settingRefused,
+} from "../lib/respond.js";
+import { SETTINGS } from "../../mount.js";
+import { writeSetting } from "../../core/settings/write.js";
 import { audit, platformAudit } from "../audit.js";
 import { getProduct, type ProductRow } from "../../repo.js";
 import { parseServices } from "../../core/services.js";
@@ -79,7 +87,8 @@ import { packageCatalog } from "../../services/release/packages/catalog.js";
 import {
   pruneRetentionOf,
   prunePackages,
-  setPruneRetention,
+  PRUNE_SETTING_KEY,
+  retentionLocked,
 } from "../../services/release/packages/prune.js";
 import {
   setPackageDeprecation,
@@ -1168,6 +1177,7 @@ async function getRetention(db: Db, scope: FeedScope): Promise<Response> {
 /** `PUT <base>/retention` `{expectedVersion, prunePrereleases}` — `feed.retention.update`. */
 async function putRetention(
   req: Request,
+  env: Env,
   db: Db,
   session: AdminSession,
   scope: FeedScope,
@@ -1184,39 +1194,50 @@ async function putRetention(
   if (fields.length)
     return err(422, "bad_request", "invalid retention setting", { fields });
   const enabled = body.prunePrereleases as boolean;
-  const outcome = await setPruneRetention(
-    db,
-    owner.slug,
-    enabled,
-    body.expectedVersion as number,
-    `admin:${session.sub}`,
-    now,
-  );
-  if (outcome === "locked")
+  if (retentionLocked(owner.slug))
     return err(
       403,
       "forbidden",
       "the platform's own feeds always prune the builds of main once a version is released",
       { reason: "retention_locked" },
     );
-  if (outcome === "stale")
-    return err(
-      409,
-      "bad_request",
-      "the retention setting changed since you read it",
-      { reason: "version_conflict" },
-    );
-  await audit(
-    db,
-    owner.slug,
-    session,
-    now,
-    "feed.retention.update",
-    { kind: "feed", id: "retention" },
-    enabled
-      ? "Turned on pruning of the builds of main once a version is released"
-      : "Turned off pruning of the builds of main once a version is released",
+  // ST-04: the registry setting `release.packages.prunePrereleases`, through `writeSetting()`
+  // (strict on the version: this route's contract always carried `expectedVersion`).
+  const written = await writeSetting(
+    { env, db, registry: SETTINGS },
+    {
+      key: PRUNE_SETTING_KEY,
+      value: enabled,
+      expectedVersion: body.expectedVersion as number,
+      audit: {
+        action: "feed.retention.update",
+        target: { kind: "feed", id: "retention" },
+        summary: enabled
+          ? "Turned on pruning of the builds of main once a version is released"
+          : "Turned off pruning of the builds of main once a version is released",
+      },
+    },
+    {
+      actor: {
+        sub: session.sub,
+        name: session.name ?? null,
+        email: session.email ?? null,
+      },
+      origin: "console",
+      now,
+      product: owner.row,
+      strict: false,
+    },
   );
+  if (!written.ok)
+    return written.reason === "version_conflict"
+      ? err(
+          409,
+          "bad_request",
+          "the retention setting changed since you read it",
+          { reason: "version_conflict" },
+        )
+      : settingRefused(written);
   return adminJson({
     product: owner.slug,
     ...(await pruneRetentionOf(db, owner.slug)),
@@ -1290,7 +1311,8 @@ export async function handleFeedsAdmin(
     );
   if (rest.length === 1 && rest[0] === "retention") {
     if (method === "GET") return getRetention(db, scope);
-    if (method === "PUT") return putRetention(req, db, session, scope, now);
+    if (method === "PUT")
+      return putRetention(req, env, db, session, scope, now);
     return notAllowed();
   }
   if (rest.length === 1 && rest[0] === "prune") {
