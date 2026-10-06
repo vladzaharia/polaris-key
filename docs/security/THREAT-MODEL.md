@@ -5062,15 +5062,23 @@ no longer accepted.
   fragment is never sent in a request, a `Referer` or a redirect, so the key reaches no server,
   edge log or Worker log. The Worker builds no link with a key in it (`manageUrl` carries none,
   PX-W8); the UI kits add `#key=` only to an `/activate` link (PX-W8).
-- **The portal drops it before anything else runs.** `rewriteActivatePath`
-  (`packages/admin/src/portal/router.ts`) runs before the first render and the first request: it
-  reads `#key=`, or a legacy `?key=` (the fragment wins), and `history.replaceState`s the address
-  to `/#/?activate=<key>[&product=]`, so neither `?key=` nor `#key=` stays in the address bar or
-  the history entry. Signed in, the shell consumes `#/?activate=` as the modal opens (the address
-  becomes `/#/`). Signed out, the key waits in this tab's fragment through sign-in; every sign-in's
-  return URL leaves it out and a sign-in that navigates away keeps it in this tab's
-  `sessionStorage` (`carriedKey.ts`, SIGN-IN.md §3.9). `test/portalRouter.test.ts` and
-  `test/portalActivate.test.tsx` pin both link forms, and that no request URL carries the key.
+- **The portal drops it before the app's first request.** `rewriteActivatePath`
+  (`packages/admin/src/portal/router.ts`) runs before the first render and before the app's first
+  request: it reads `#key=`, or a legacy `?key=` (the fragment wins), and `history.replaceState`s
+  the address to `/#/?activate=<key>[&product=]`, so neither `?key=` nor `#key=` stays in the
+  address bar or the history entry. The shell's own subresource requests (`/assets/*`, fonts,
+  icons) come first, issued by the document before any script runs. Their URLs never carry the
+  key, and a fragment is never in a `Referer`; for the legacy form their `Referer` would carry
+  the `?key=` query, and stays empty only because the shell is served with
+  `Referrer-Policy: no-referrer` (next item). Signed in, the shell consumes `#/?activate=` as the
+  modal opens (the address becomes `/#/`). Signed out, the key waits in this tab's fragment
+  through sign-in; every sign-in's return URL leaves it out and a sign-in that navigates away
+  keeps it in this tab's `sessionStorage` (`carriedKey.ts`, SIGN-IN.md §3.9).
+  `test/portalRouter.test.ts` and `test/portalActivate.test.tsx` pin both link forms, and that no
+  app request URL carries the key. `e2e/portal.e2e.test.ts` opens both forms in Chromium, with
+  the Worker's CSP and Referrer-Policy on the shell, and checks every request the page makes
+  (the document, `/assets/*`, fonts, icons and the API) for the key in its URL or `Referer`; the
+  only request excluded is a legacy link's own navigation, which carries `?key=` by definition.
 - **A legacy `GET /activate?key=…` (a link already out) still works, and the Worker adds nothing
   to it.** It answers with the same SPA shell: `Cache-Control: no-store`,
   `Referrer-Policy: no-referrer`, the key in no response byte or header, and the shell fetched
@@ -5119,6 +5127,32 @@ Other secrets audited in URLs with this change, and left as they are:
 - **`/<p>/identity/auth/device/verify?device_code=`**: a legacy route kept for flows started
   before `/device`; `/device/start` no longer hands the URL out. Removing it is a route change
   (AGENTS.md rule 10), proposed as a follow-up.
+- **The deprecated `/<p>/identity/auth/poll?state=&device=`** (`handleAuthPoll`, `oidc.ts`) puts
+  both halves of the poll pair in one URL. Nothing starts a device-bound flow it can redeem any
+  more: `/auth/start` binds no device, and `/auth/poll` refuses a `/device/start` flow
+  (`viaDeviceCode`), so it never returns a token. Retiring it is a route change (rule 10),
+  proposed as a follow-up.
+- **`/<p>/identity/auth/device?user_code=`**, the RFC 8628 `verification_uri_complete`: a short
+  code a person types or scans, not a bearer. It only opens the confirmation page. Confirming is
+  a CSRF-checked `POST` and then a sign-in, so whoever confirms signs the device in as
+  themselves, which the device shows (P1-06); the token goes only to the device-code holder (the
+  device code is never in a URL), and a confirmed code stops resolving.
+- **The OIDC callbacks' `?code=&state=`** on `/callback` (the portal), `/manage/callback` (the
+  console) and `/<p>/identity/auth/callback` (and Google's `/login/google/callback`): the code is
+  in the URL by the protocol. Every one of these flows uses PKCE S256 with the verifier held in
+  the server's flow record, so a code read from a log is useless without it, and the `state` is
+  single-use. Apple posts its code (`form_post`), never in a URL.
+- **Steam's OpenID callback** (`/login/steam/callback?state=&openid.*=`): the positive
+  assertion rides in the query by the protocol. A logged one cannot be replayed: the `state` is
+  single-use, the callback needs the starting browser's binding cookie, and Steam refuses an
+  `openid.response_nonce` it has already verified. What a log keeps is a SteamID64, a public
+  identifier.
+- **pip and uv's userinfo form** (`https://__token__:<token>@pkg.plrs.im/pypi/<owner>/simple/`,
+  `build/install-from-feeds.md`): the client moves the URL's userinfo into a Basic
+  `Authorization` header, and userinfo is never part of a request line, so the `pkeyr_` token
+  reaches no request line, edge log or Worker log. What remains is client-side: the command
+  line, token included, in shell history, the process list and CI logs. The environment
+  (`UV_INDEX_<NAME>_USERNAME` / `_PASSWORD`) and `~/.netrc` forms avoid it.
 - **Steam's key-activation page** (`activateUrl`, `services/distribution/page/customer.ts`) takes
   a Steam key as `?key=` on Steam's own site. That is Steam's interface and Steam's logs; the
   portal must never put the Steam key in its own address when it builds that link.

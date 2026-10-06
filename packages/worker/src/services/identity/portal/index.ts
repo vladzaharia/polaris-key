@@ -67,9 +67,10 @@ async function servePortalAsset(
   const isShell = !isSafeAssetPath(cleanPath) || !cleanPath.includes(".");
   url.pathname = isShell ? "/index.html" : cleanPath;
   // The shell is the same bytes for every query, and a query can carry a secret: a legacy
-  // `/activate?key=<license key>` link (emailed or printed before the key moved into the
-  // `#key=` fragment). The query is never passed on, so the key reaches no subrequest; the shell is
-  // `no-store` and `Referrer-Policy: no-referrer`, and nothing here echoes or records it.
+  // `/activate?key=<license key>` link (one of the links already out from before the key moved
+  // into the `#key=` fragment). The query is never passed on, so the key reaches no subrequest;
+  // the shell is `no-store` and `Referrer-Policy: no-referrer`, and nothing here echoes or
+  // records it.
   if (isShell) url.search = "";
   const res = await env.ASSETS.fetch(new Request(url, req));
   const headers = new Headers(res.headers);
