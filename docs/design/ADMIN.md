@@ -116,8 +116,10 @@ fixes:**
 - **Signed:** `signed.mark` (the kit gold, artwork only), `signed.solid` (the UI indicator),
   `signed.on`, `signed.border`.
 - **Scales:** a 4 px space grid; radius `xs…xl` (controls `md`, cards `lg`); elevation `0–3`; motion
-  `fast` 120 / `base` 200 / `slow` 320 ms with standard, enter and exit easings (all collapse under
-  reduced motion).
+  `micro` 80 / `fast` 120 / `base` 200 / `moderate` 260 / `slow` 320 / `deliberate` 480 ms with
+  standard, enter, exit, emphasized and spring easings, distances, a stagger and two delays (every
+  duration collapses under reduced motion; [notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) §5, MO-01). The motion
+  patterns are §5.12.
 - **Type:** Rubik **400 and 700 only** (`font-synthesis: none`) and a type scale `xs…5xl` where `sm`
   is the console table and form size. The platform mono stack is used for code.
 - **Marks:** `PolarisMark` (Pinned K and Star Cut, optical cuts by displayed size),
@@ -989,6 +991,34 @@ A pill (a filled, rounded status shape) is the console's "look here". So (owner,
   pill column is the last column, aligned to the end.
 - The layout lint enforces the placement (`right-align/pill-right`); `StatusPill` enforces the
   healthy-state rule for every caller.
+
+### 5.12 Motion
+
+The console uses the one motion system of [notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) (shared with the portal, the
+sign-in card and the UI kits; EXPERIENCE §7.2 maps it onto the journeys). Phase MO builds it:
+MO-02 (the layer: `src/ui/motion/`, `src/motion.css`), MO-04 (navigation), MO-08 (overlays and
+controls), MO-09 (data surfaces), MO-10 (shell), MO-11 (moments and counters).
+
+| Template or element      | Motion                                                                                                                                                                             |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shell (top bar, sidebar) | never moves during navigation; the phone nav drawer slides from its edge                                                                                                           |
+| Route change             | sibling pages fade through (`route`); T2 → T3 drill-downs slide forward, Back slides back (`forward` / `back`, by route depth); the record key flies into the header               |
+| T3 Record tabs           | the indicator morphs, the panel fades through (`tab`)                                                                                                                              |
+| T2 Collection            | filters, sorts, creates and deletes move rows (`list`, at most 30 named rows, then only rows on screen); new rows are tinted, then fade; chips pop; the bulk bar enters and leaves |
+| T1 Overview, Home        | tiles and the attention list stagger on first load; headline numbers count up; meters fill; §0.7 moments celebrate once per product                                                |
+| Dialogs, drawers, menus  | enter and exit from the tokens; drawers slide from the edge; phone dialogs rise as sheets; popovers come from their side                                                           |
+| Loading                  | `PageSkeleton` / `Skeleton` with a 150 ms grace and a sheen; never a spinner or "Loading…" for content                                                                             |
+| Status                   | pill colours ease and the word pops; the word always carries the meaning                                                                                                           |
+| Controls                 | buttons, chips and tiles press (0.98); hover colours at `micro`; focus rings never animate                                                                                         |
+
+**Rules.** Optimistic updates (§5.3) apply the new state first and animate it; a rollback is an
+instant swap plus the inline error, never a shake. Only `transform` and `opacity` animate, except
+the expand region, small colour changes and SVG strokes. A transition that blocks input lasts at
+most `slow` plus `micro`. Typing never animates results (the palette, search-as-you-type tables).
+Under reduced motion (OS or the MO-12 preference) every change is an instant swap. Motion values
+reach the DOM only as stylesheet rules, data attributes and CSSOM properties set by the layer, so
+the CSP (`adminCspParity`, `e2e/csp.e2e.test.ts`) does not change. Every e2e suite runs with
+reduced motion; `e2e/motion.e2e.test.ts` runs with it on (MO-03).
 
 ---
 

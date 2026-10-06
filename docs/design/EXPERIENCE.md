@@ -90,7 +90,7 @@ AS 2.2 or PJ B4.
 - [5. Navigation chrome](#5-navigation-chrome)
 - [6. Tables, lists, forms and settings rows](#6-tables-lists-forms-and-settings-rows)
 - [7. Confirmations, status, pills and toasts](#7-confirmations-status-pills-and-toasts) (and
-  [7.1 Accessibility](#71-accessibility-rules-for-the-journeys))
+  [7.1 Accessibility](#71-accessibility-rules-for-the-journeys), [7.2 Motion](#72-motion))
 - [8. The shared sign-in](#8-the-shared-sign-in)
 - [9. Empty, loading and error states](#9-empty-loading-and-error-states)
 - [10. Consolidation list](#10-consolidation-list)
@@ -628,7 +628,7 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
      no entries left in Tidewater Studio. Add it to your account and the app signs you in
      instead.") and keeps **Add** enabled (Q-5: a warning, not a block);
    - "I bought it with another email" leads to the account-linking path (PORTAL.md §4.11).
-6. **ReturnStep**, "It's yours": one celebration (a star burst under
+6. **ReturnStep**, "It's yours": one celebration (a burst of sparks under
    `prefers-reduced-motion: no-preference`, a static check otherwise), the product row with "In
    your library", **Return to Tidewater Studio**, and "Returning by itself in 3 s · **Stay here**".
    Stay here stops the timer (WCAG 2.2.1); the timer also pauses while focus is inside the card
@@ -707,9 +707,10 @@ Done step.
 ### 0.7 Moments of delight
 
 Each appears **once per product (console) or per account (portal)**, respects
-`prefers-reduced-motion`, and stays quiet afterwards. Motion uses `--pk-duration-slow` and
-`--pk-ease-enter`; the burst is the stationary star scattered, in the section accent, never gold.
-None of them is a pill.
+`prefers-reduced-motion`, and stays quiet afterwards. It is the **success** pattern of §7.2: the
+check draws at `--pk-duration-moderate` and six plain sparks burst in the section accent within
+`--pk-duration-deliberate`, never gold and **never the Polaris mark** (BRAND §7.5: the star never
+moves; S-23 D5). Under reduced motion it is a static check. None of them is a pill.
 
 | Moment                      | App     | What happens                                                                               |
 | --------------------------- | ------- | ------------------------------------------------------------------------------------------ |
@@ -884,7 +885,7 @@ legacy `src/components/ui/*` kit is deleted (SH 0.4, §2). "Density" is a prop o
 | `SignedBadge`                                                                           | `ui/SignedBadge` (existing)                                                                            | Both apps                                                                             | **A gold seal glyph plus the word "Signed" in muted text; never a plated pill** (gold still means signed, BRAND §4.5)                                             |
 | `PersonDrawer`                                                                          | new in `console/components/`                                                                           | Console (from any holder email)                                                       | Every license and device for one email; links I-04's Users page when the email is an account                                                                      |
 | `HealthLine`                                                                            | new in `ui/` (a callout with one fix action)                                                           | License and release Status tabs, Platform Status                                      | Warning or danger callout when there is an issue; **renders nothing when healthy** (Platform Status may show one muted "All checks passed" line, no box, no icon) |
-| `Celebration`                                                                           | new in `ui/` (star burst + one-shot persistence key)                                                   | §0.7 moments                                                                          | Reduced motion renders a static check                                                                                                                             |
+| `Celebration`                                                                           | `ui/motion` (MO-02: check + sparks, one-shot key)                                                      | §0.7 moments                                                                          | Reduced motion renders a static check                                                                                                                             |
 
 Type scale, defined once in `ui` tokens (SH 1.14): `display` 40/30 px (portal Library and Product
 titles only), `title` 24 px (every other h1, both apps), `section` 16–18 px (panel headers), `row` 14
@@ -1031,6 +1032,35 @@ These hold in both apps and are acceptance criteria for the packages that build 
 
 ![Toast](experience/12-console-toast-desktop-dark.png)
 
+### 7.2 Motion
+
+Both apps, the sign-in card and the UI kits use **one motion system**, specified in
+[notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) and built by phase MO. The tokens live in `packages/brand`
+(`--pk-duration-{instant, micro, fast, base, moderate, slow, deliberate}`, `--pk-ease-{standard,
+enter, exit, emphasized, spring}`, `--pk-motion-distance-*`, `--pk-stagger-step`); the patterns live
+in `packages/admin/src/motion.css` and `src/ui/motion/`. This section says where each pattern is
+used; the note owns the numbers.
+
+| Pattern        | Where in these journeys                                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| enter / exit   | every dialog, drawer, popover, menu, tooltip, toast and the palettes (J-1); the drawer slides from its edge, phone sheets rise |
+| morph          | console route changes (fade-through), drill-downs (forward and Back), record tabs, dialog and card steps, the theme switch     |
+| shared-element | Library tile → product hero (P1 step 8), licence row key → licence record (O1)                                                 |
+| stagger-list   | first load of the Library, Overview tiles, the attention list (J-2)                                                            |
+| list           | free a device (P4), deauthorize, create or delete a row, filters and facet chips (O1, O8)                                      |
+| expand         | Remove and Replace inline confirms (`ConfirmPanel`, §7), disclosures, inline notices                                           |
+| success        | the moments of §0.7, once each                                                                                                 |
+| skeleton       | every load (§9); never "Loading…" text                                                                                         |
+| press          | every button, tile and chip; tiles lift under the pointer                                                                      |
+
+**Rules that bind the journeys.** Motion never hides state: the new state is in the DOM first and
+every status is a word. Focus moves when the new state is in place, not when the animation ends.
+The chrome never moves. Typing never animates results. A transition that blocks input lasts at
+most `slow` plus `micro`, because the page takes no input during a View Transition. Under
+`prefers-reduced-motion` (or the Reduce motion preference, MO-12) **every change is an instant
+swap**: no slide, no burst, no shimmer. The CSP stays as it is: motion is stylesheet keyframes and
+`::view-transition-*` rules plus CSSOM properties set by the layer, never `style=""`.
+
 ## 8. The shared sign-in
 
 > **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05)**, the single source of truth for
@@ -1115,7 +1145,7 @@ sign-in email carries the code first and the link second; the copy is §11.1's.
 | Not found             | `EmptyState kind="not-found"`        | One shared description; the suggestion as the primary ("Open DJDL"); product chrome kept                                      |
 | Service off           | `EmptyState kind="service-off"`      | "Turn on <Service> in Settings" with the switch one click away                                                                |
 | Portal library, first | `EmptyState kind="first-run" hero`   | The deliberate hero moment, with Discover offers inline when PX-16 ships                                                      |
-| Loading               | `Skeleton` shaped like the content   | No "Loading…" text beyond the boot screen                                                                                     |
+| Loading               | `Skeleton` shaped like the content   | No "Loading…" text beyond the boot screen; the skeleton pattern of §7.2 (150 ms grace, sheen, none under reduced motion)      |
 | Error                 | `ErrorState` + `errorCopy(err, ctx)` | What happened, the fix, **Try again**, a reference id, Copy details                                                           |
 | Boot                  | `BootScreen`                         | Lockup and spinner; an error becomes the AuthCard state (§8)                                                                  |
 
@@ -1486,6 +1516,12 @@ ST-08, ST-12, SP-02 and UI-KITS.md §4.2, and §8.5 its sequencing.
 
 **Dropped or merged** (§0.8): UX-32 (superseded by Wave 5, SETUP.md §2.14), UX-24 (into LX-14 as Add seats…), UX-28 (into ST-07 and ST-16), the
 old UX-09 editor (into ST-12). UX-26 and UX-30 shrank to what S-18 does not cover.
+
+**Motion (phase MO, [notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) §10)** runs beside these waves, not inside them:
+MO-01 (brand tokens) and MO-02 (the layer) touch no file these packages edit; MO-10 waits for UX-10,
+MO-11 for UX-29 and the `Overview.tsx` packages, MO-12 for UX-10's menus. A UX package that builds a
+pattern of §7.2 (UX-29's countdown, UX-12's attention list, UX-07's routed drawer) uses the MO-02
+layer once it has landed and otherwise leaves the motion to its MO package.
 
 ### 13.4 Sequencing (nothing collides)
 

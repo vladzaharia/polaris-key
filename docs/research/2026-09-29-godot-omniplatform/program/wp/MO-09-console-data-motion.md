@@ -1,0 +1,84 @@
+# MO-09 Console data surfaces: table rows enter, leave and reorder within the 30-row budget, facet chips pop, the bulk-action bar presence, status pills ease and pop, chart fills and counts animate, StatTile and Skeleton get the shimmer (no more `animate-pulse` in `ui/`), RefetchBar, Stepper
+
+| Field       | Value                                                                                           |
+| ----------- | ----------------------------------------------------------------------------------------------- |
+| Phase       | MO: Motion system (notes/S-23) (wave 2: areas)                                                  |
+| Size        | 0.6–1 engineer-weeks                                                                            |
+| Depends on  | [MO-03](MO-03-e2e-motion-determinism.md)                                                        |
+| Unblocks    | [MO-11](MO-11-console-moments-counters.md), [MO-13](MO-13-motion-qa-closeout.md)                |
+| Role        | `pkey-implementer`                                                                              |
+| Plan mode   | no                                                                                              |
+| Gates       | admin unit tests and axe; `test:e2e` and the smoke suite; layout lint at zero; `adminCspParity` |
+| Human input | none                                                                                            |
+| Repo        | `vladzaharia/polaris-key`                                                                       |
+
+## Goal
+
+Data changes are legible: created rows arrive tinted, deleted rows leave, filters and sorts move rows instead of replacing them, pills change colour and word without a jump, numbers and fills move to their values, and loading is a shaped skeleton with a gentle sheen.
+
+## Why
+
+Rows, chips, pills and charts all snap today; 12 `animate-pulse` sites contradict the Skeleton rule (notes/S-23 §4.2–§4.3). The 30-row budget comes from the frame measurements (§3.5). Strips: `console-01`, `console-03`, `console-08`.
+
+## Read first
+
+- `AGENTS.md` (always) and `CLAUDE.md`.
+- [notes/S-23-motion-system.md](../../notes/S-23-motion-system.md): the decisions D1–D10, §5 (tokens), §6 (patterns and rules), §10 (this package's row).
+- The reference implementation: [`prototype/motion/motion.css`](../../prototype/motion/motion.css) and [`motion.js`](../../prototype/motion/motion.js); the flows in [`portal.html`](../../prototype/motion/portal.html) and [`console.html`](../../prototype/motion/console.html); the strips in [`shots/`](../../prototype/motion/shots/).
+- `ui/data-table/{DataTable,FilterBar}.tsx` (`VIRTUALIZE_ABOVE`), `ui/{StatusPill,SignedBadge,Skeleton,loading,Stepper}.tsx`, `ui/charts/{Meter,BarList,Funnel,StatTile,Sparkline}.tsx`.
+
+## Scope
+
+**In:**
+
+- DataTable: client-side filter, sort, create and delete run `viewTransition(…, { type: "list", list: tbody })` (the layer enforces 30 rows, then rows on screen); the virtualised path (> 200 rows) never animates; a created or edited row gets `highlight()`; the bulk-action bar uses `<Presence>`.
+- FilterBar: chips `pk-pop-in` on add, fade on remove; counts are not animated (speed).
+- StatusPill, SignedBadge: `pk-pill` colour transitions; a changed word pops (`pk-pop-in` keyed on the value).
+- Charts: Meter, BarList, Funnel fills move with `transform: scaleX` (`transform-box: fill-box`) instead of snapping the SVG width; StatTile values use `<CountUp>` on first load only; StatTile's loading state is a `pk-skeleton`.
+- Skeleton: the sheen (`pk-skeleton::after`), the 150 ms grace (`pk-skeleton-group`), content fade-in.
+- RefetchBar: the MO-02 `pk-refetch` sweep.
+- Stepper: the connector fills and the current step pops.
+- Remove `animate-pulse` from `ui/` and tighten the motion lint allowlist.
+
+**Out** (and where it belongs instead):
+
+- `animate-pulse` on platform pages and Home (→ MO-10, files in flight).
+- Page-specific counters (→ MO-11).
+
+## Design notes
+
+- `feat/license-delete` edits `DataTable.tsx` and `types.ts`; rebase if it merges first.
+- React keeps keyed row elements, so `match-element` pairs survivors (verify in the smoke suite: a filter must move at least one row, not fade it out and in).
+- Counts in chips and tables update instantly; only headline numbers count up.
+
+## Files it touches
+
+`ui/data-table/{DataTable,FilterBar}.tsx`, `ui/{StatusPill,SignedBadge,Skeleton,loading,Stepper}.tsx`, `ui/charts/*`, tests, `e2e/motion.e2e.test.ts`. In flight: `feat/license-delete` (`DataTable.tsx`).
+
+## Steps
+
+1. List transitions in DataTable with the budget.
+2. Chips, bar, pills.
+3. Charts and StatTile.
+4. Skeleton and RefetchBar; remove `animate-pulse` from `ui/`.
+5. Smoke cases (filter moves rows; 60-row table names ≤ 30); strips.
+
+## Acceptance criteria
+
+- [ ] A filter on a 60-row table names at most 30 rows and moves (not re-enters) surviving rows (smoke suite).
+- [ ] No `animate-pulse` remains under `src/ui/`.
+- [ ] Chart fills animate by transform only (motion lint + test).
+- [ ] Layout lint stays at zero.
+- [ ] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
+- [ ] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
+
+## Verify
+
+```sh
+mise exec node@22 -- pnpm --filter @polaris-key/admin test
+mise exec node@22 -- pnpm --filter @polaris-key/admin build && mise exec node@22 -- pnpm --filter @polaris-key/admin test:e2e
+```
+
+## Hand-off
+
+MO-11 uses `<CountUp>`, `setMeter` and the pill behaviour on the pages. The role agent sets `--set MO-09 in-review` when it hands off. After review, the lead adds the last commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set MO-09 done`.
