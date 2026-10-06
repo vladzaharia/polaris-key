@@ -136,7 +136,8 @@ func fetch(target: Variant, to: String, opts: Dictionary = {}) -> PKeyResult:
 			return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "This update decision is not a binary download.")
 		record = check.record_doc
 		build_id = String(check.decision.get("build", ""))
-		if not (record is Dictionary) and check.decision.get("release") is Dictionary:
+		if (not (record is Dictionary) or (record as Dictionary).is_empty()) and check.decision.get("release") is Dictionary:
+			record = null
 			hash = String(check.decision["release"].get("sha256", ""))
 	elif target is Dictionary:
 		var t: Dictionary = target
