@@ -80,7 +80,8 @@ export function RadioCards<V extends string = string>({
             aria-describedby={o.description ? `${itemId}-desc` : undefined}
             className={cn(
               "group flex items-start gap-3 rounded-lg border border-border bg-surface-raised p-3 text-left",
-              "transition-colors duration-(--pk-duration-fast) ease-standard hover:border-border-strong",
+              // Pressable (src/motion.css): the card presses; its border and fill ease at `micro`.
+              "pk-pressable hover:border-border-strong",
               "focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-page",
               "data-[state=checked]:border-accent data-[state=checked]:bg-accent-subtle",
               "disabled:cursor-not-allowed disabled:opacity-50",
@@ -88,9 +89,9 @@ export function RadioCards<V extends string = string>({
           >
             <span
               aria-hidden
-              className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border border-border-strong group-data-[state=checked]:border-accent"
+              className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border border-border-strong transition-colors duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:border-accent"
             >
-              <span className="size-2 rounded-full bg-accent opacity-0 group-data-[state=checked]:opacity-100" />
+              <span className="size-2 scale-50 rounded-full bg-accent opacity-0 transition-[opacity,scale] duration-(--pk-duration-micro) ease-standard group-data-[state=checked]:scale-100 group-data-[state=checked]:opacity-100" />
             </span>
             <span className="min-w-0">
               <span className="flex items-center gap-1.5 text-sm font-bold text-fg-strong">
