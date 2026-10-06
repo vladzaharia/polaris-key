@@ -34,7 +34,7 @@ function Indicator(): React.ReactElement {
     <span
       aria-hidden
       data-tab-indicator=""
-      className="pk-vt-indicator pointer-events-none absolute inset-x-0 -bottom-0.5 border-b-2 border-accent"
+      className="pk-vt-indicator pointer-events-none absolute inset-x-0 -bottom-[2px] border-b-2 border-accent"
     />
   );
 }
@@ -93,6 +93,8 @@ export function PageTabs({
 }): React.ReactElement {
   const routed = items.every((t) => t.to !== undefined);
   const refs = React.useRef<(HTMLButtonElement | null)[]>([]);
+  /** The tab a running transition is about to select: `value` until its update lands. */
+  const pending = React.useRef<string | null>(null);
 
   if (routed) {
     return (
@@ -116,14 +118,26 @@ export function PageTabs({
   }
 
   // The new tab's state lands inside the transition (flushSync), so the browser captures the
-  // finished panel. Focus has already moved, on the live page: the tab order is unchanged.
+  // finished panel. Focus has already moved, on the live page: the tab order is unchanged. Two keys
+  // inside one transition (ArrowRight, ArrowLeft) are measured against the tab still pending, and
+  // every update selects the latest one, so focus and selection always end on the same tab.
   const select = (next: string): void => {
     if (!onChange) return;
-    if (next === value) {
-      onChange(next);
+    const current = pending.current ?? value;
+    if (next === current) {
+      if (pending.current === null) onChange(next);
       return;
     }
-    viewTransition(() => flushSync(() => onChange(next)), { type: "tab" });
+    pending.current = next;
+    viewTransition(
+      () =>
+        flushSync(() => {
+          const target = pending.current;
+          pending.current = null;
+          if (target !== null) onChange(target);
+        }),
+      { type: "tab" },
+    );
   };
 
   const move = (from: number, delta: number) => {

@@ -57,19 +57,22 @@ function useThumb(
     const from = previous.current;
     previous.current = value;
     if (from === value) return;
+    // No slide this time: stop one still running, so its settle clears `data-moving` and the new
+    // option paints its own background at once.
+    const stop = (): void => running.current?.cancel();
     const box = root.current;
     const el = thumb.current;
     const a = items.current.get(from);
     const b = items.current.get(value);
-    if (!box || !el || !a || !b) return;
-    if (reducedMotion() || typeof el.animate !== "function") return;
+    if (!box || !el || !a || !b) return stop();
+    if (reducedMotion() || typeof el.animate !== "function") return stop();
     const duration = tokenMs("--pk-duration-slow", 320);
-    if (!(duration > 0)) return;
+    if (!(duration > 0)) return stop();
 
     const r = box.getBoundingClientRect();
     const start = (running.current ? el : a).getBoundingClientRect();
     const end = b.getBoundingClientRect();
-    if (!start.width || !end.width) return;
+    if (!start.width || !end.width) return stop();
     running.current?.cancel();
 
     el.style.setProperty(

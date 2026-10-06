@@ -288,6 +288,29 @@ describe("the router: a change of page runs in a View Transition", () => {
     popper.remove();
     await settle();
   });
+
+  it("a navigation while a toast is visible swaps at once; a hidden (stacked) toast does not count", async () => {
+    const started = installFake();
+    render(<Probe />);
+    const toaster = document.createElement("ol");
+    toaster.setAttribute("data-sonner-toaster", "");
+    const toast = document.createElement("li");
+    toast.setAttribute("data-sonner-toast", "");
+    toast.setAttribute("data-visible", "true");
+    toaster.append(toast);
+    document.body.append(toaster);
+    await userEvent.click(screen.getByRole("link", { name: "Tiers" }));
+    await waitFor(() => expect(shown()).toBe("#/p/djdl/license/tiers"));
+    await settle();
+    expect(started).toEqual([]);
+    toast.setAttribute("data-visible", "false");
+    act(() => {
+      window.location.hash = "#/p/djdl/license/licenses";
+    });
+    await waitFor(() => expect(started.map((s) => s.type)).toEqual(["route"]));
+    toaster.remove();
+    await settle();
+  });
 });
 
 describe("the shell keeps its route focus through a transition", () => {
@@ -437,6 +460,26 @@ describe("PageTabs: the indicator morphs and the panel fades through", () => {
     await settle();
   });
 
+  it("two keys inside one transition: focus and selection end on the same tab", async () => {
+    const started = installFake();
+    render(<PanelTabs />);
+    const runs = screen.getByRole("tab", { name: "Runs" });
+    const deploys = screen.getByRole("tab", { name: "Deploys" });
+    runs.focus();
+    // ArrowRight, then ArrowLeft before the first transition's update has landed.
+    fireEvent.keyDown(runs, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(deploys);
+    fireEvent.keyDown(deploys, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(runs);
+    await settle();
+    expect(started.map((s) => s.type)).toEqual(["tab", "tab"]);
+    expect(runs.getAttribute("aria-selected")).toBe("true");
+    expect(deploys.getAttribute("aria-selected")).toBe("false");
+    expect(document.activeElement).toBe(runs);
+    expect(screen.getByRole("tabpanel").textContent).toBe("");
+    expect(screen.getByRole("tabpanel").id).toBe("t-panel-runs");
+  });
+
   it("a dirty panel stays mounted (hidden) across a switch", async () => {
     installFake();
     render(<PanelTabs dirty />);
@@ -558,6 +601,20 @@ describe("SegmentedControl: the checked background slides", () => {
     expect(group.hasAttribute("data-moving")).toBe(true);
     await act(async () => made[0]!.finish());
     expect(group.hasAttribute("data-moving")).toBe(false);
+  });
+
+  it("a change mid-slide that cannot slide stops the slide, so the new option shows its own background", async () => {
+    layOut();
+    const made = stubAnimate();
+    render(<Segmented />);
+    const group = screen.getByRole("radiogroup");
+    await userEvent.click(screen.getByRole("radio", { name: "Month" }));
+    expect(group.hasAttribute("data-moving")).toBe(true);
+    // The preference turns reduced motion on before the slide ends; the next change is instant.
+    html.dataset.motion = "reduce";
+    await userEvent.click(screen.getByRole("radio", { name: "Week" }));
+    expect(made).toHaveLength(1);
+    await waitFor(() => expect(group.hasAttribute("data-moving")).toBe(false));
   });
 
   it("under reduced motion nothing animates", async () => {

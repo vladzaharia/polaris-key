@@ -16,7 +16,7 @@
  *   one, `route` between siblings, `tab` between the tabs of one page or record). The blockers
  *   answer first; the query alone never starts one (filters, sort and paging stay live for the
  *   `list` transitions of the tables, MO-09). Neither does a navigation made while an overlay is on
- *   screen (the palette, a menu, a confirm, the phone navigation, open or still closing): the
+ *   screen (the palette, a menu, a confirm, the phone navigation, open or still closing; a toast): the
  *   snapshots would paint over it (S-23 §3.4), so the page swaps under its exit instead. Under
  *   reduced motion, or without the API, the page swaps at once, exactly as before.
  */
@@ -88,11 +88,17 @@ function replaceHash(hash: string): void {
 
 /**
  * An overlay on screen, open or still running its exit: a modal's scrim (dialogs, sheets, the
- * palette, the phone navigation), a drawer, or popper content (menus, popovers, the product
- * switcher). Tooltips do not count: one closes on the click that navigates.
+ * palette, the phone navigation), a drawer, popper content (menus, popovers, the product
+ * switcher), or a visible toast (sonner's toaster sits over the main column, and the main
+ * region's snapshot would cover it). Tooltips do not count: one closes on the click that
+ * navigates.
  */
 function overlayShown(): boolean {
-  if (document.querySelector(".animate-pk-overlay-in, .pk-overlay, .pk-drawer"))
+  if (
+    document.querySelector(
+      '.animate-pk-overlay-in, .pk-overlay, .pk-drawer, [data-sonner-toast]:not([data-visible="false"])',
+    )
+  )
     return true;
   return [
     ...document.querySelectorAll("[data-radix-popper-content-wrapper] > *"),
