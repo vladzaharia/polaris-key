@@ -147,6 +147,13 @@ copy.
 
 Used for: signing the person in, showing and ending their sessions, and filling their profile.
 
+For each passkey a person adds (I-16), the Worker keeps the credential's public key and id, its
+signature counter, the transports the browser reported, the relying party (`key.plrs.im`), the
+account's random WebAuthn user handle (never the account id), when it was added and last used, and
+for the settings list the authenticator model's AAGUID (when the browser discloses it), whether it
+is synced, and the coarse browser label it was added from. No biometric or private key ever leaves
+the person's device. A pending passkey ceremony keeps only its random challenge for 5 minutes.
+
 ### Not collected
 
 Hostname, OS username, IP-derived geolocation, browsing or file activity, a list of installed
@@ -170,6 +177,7 @@ applications, and any raw hardware serial. None of these are read by any SDK.
 | Account sessions (times, sign-in method, browser label)                                                                                                                                     | `account_sessions`                              | 14 days while live; an ended session is pruned 30 days after it ended; deleted with the account                                                                           |
 | Pending email sign-ins and email gates (the address, the provider identity and profile, the requesting city and country)                                                                    | `SingleUseDO` (the sharded single-use store)    | Until used or expired: 10 minutes for a sign-in, 15 for an email gate                                                                                                     |
 | Provider profile per sign-in method (name, locale, picture reference) and the copied picture                                                                                                | `account_links.profile_json`, R2 `avatars/`     | Until the provider's picture changes (the old copy is removed) or the account is deleted                                                                                  |
+| Passkeys (public key, credential id, counter, transports, user handle, times, AAGUID, synced flag, browser label)                                                                           | `account_passkeys`, `accounts`                  | Until the person removes the passkey or the account is deleted                                                                                                            |
 
 Deauthorizing a device — from the app, the admin panel, or the customer portal — routes
 through `setDeviceStatus()` in `packages/worker/src/repo.ts`, which purges both tables in the
