@@ -22,6 +22,7 @@ import {
 import { normalizeIdentity, type VerifiedIdentity } from "./signIn.js";
 import {
   EMAIL_ISSUER,
+  PASSKEY_ISSUER,
   findLink,
   getAccountRow,
   insertLink,
@@ -214,8 +215,17 @@ export async function unlinkIdentity(
   return { ok: true };
 }
 
-/** Keep the pre-I-05 `portal_*` tables from resurrecting a removed method on a rollback. */
+/** Keep the pre-I-05 `portal_*` tables from resurrecting a removed method on a rollback, and a
+ *  removed passkey's WebAuthn material from outliving its method (I-16). */
 async function mirrorLinkRemoval(db: Db, link: AccountLinkRow): Promise<void> {
+  if (link.issuer_key === PASSKEY_ISSUER) {
+    await db.run(
+      "DELETE FROM account_passkeys WHERE credential_id = ? AND account_id = ?",
+      link.subject,
+      link.account_id,
+    );
+    return;
+  }
   if (link.issuer_key === EMAIL_ISSUER) {
     await db.run(
       "DELETE FROM portal_account_emails WHERE email = ? AND account_id = ?",

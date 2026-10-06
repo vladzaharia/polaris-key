@@ -1,0 +1,15 @@
+-- I-16 (PORTAL.md §4.26, the Passkeys rows): what the account settings show about a passkey so
+-- the person can tell theirs apart, as one JSON object
+-- `{aaguid, deviceType, backedUp, addedFrom}`:
+--
+--   - `aaguid`, the authenticator model the passkey reported at registration (all zeroes when the
+--     browser withheld it; never an attestation certificate, which is not requested);
+--   - `deviceType` (`singleDevice` or `multiDevice`) and `backedUp`, the backup flags of the
+--     authenticator data, refreshed at every sign-in;
+--   - `addedFrom`, the coarse browser and operating-system label of the browser that added it
+--     ("Safari on iOS"; `browserLabel`, never the identification string).
+--
+-- None of it is a credential and none of it is read by verification. Identity owns the table.
+--
+-- ONE statement per file (R11-04).
+ALTER TABLE account_passkeys ADD COLUMN details_json TEXT;

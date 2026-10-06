@@ -12116,6 +12116,112 @@ paths:
             image/gif: { schema: { type: string, format: binary } }
         "400": { $ref: "#/components/responses/CardError" }
         "404": { $ref: "#/components/responses/NotFound" }
+  # ── Passkeys on the login card (I-16, S-16 §5.4 items 7, 14 and 17; PORTAL.md §4.1). The RP id
+  # is the console host (`key.plrs.im`); a ceremony is served only on that origin. Pinned in
+  # `test/routeCoverage.test.ts` (PORTAL_KIND_PATHS).
+  /api/signin/passkey/options:
+    post:
+      operationId: startCardPasskeySignIn
+      tags: [portal]
+      summary: A passkey sign-in challenge for this browser
+      description: >
+        Answers WebAuthn request options for a discoverable-credential sign-in (no
+        `allowCredentials`, so the challenge names no account and the card can use conditional UI)
+        with `userVerification: required` and the console host as `rpId`. The 32-byte challenge is
+        held for 5 minutes in the single-use store, named by a host-only `__Host-pkey_passkey`
+        cookie, so only this browser can complete it, once. 30 requests a minute per client
+        address (with the verify). Platform-level: no product's Identity toggle is read; off only
+        while the portal is off everywhere.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                returnTo:
+                  {
+                    type: string,
+                    description: "A same-origin path to land on afterwards (never under `/manage`).",
+                  }
+      responses:
+        "200":
+          description: The options for `navigator.credentials.get({ publicKey })`.
+          headers:
+            Set-Cookie:
+              description: "`__Host-pkey_passkey=<secret>; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=300`."
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [options, expiresIn]
+                properties:
+                  options:
+                    {
+                      type: object,
+                      additionalProperties: true,
+                      description: "`PublicKeyCredentialRequestOptionsJSON`: `challenge`, `rpId`, `timeout`, `userVerification: required`.",
+                    }
+                  expiresIn: { type: integer, enum: [300] }
+        "400": { $ref: "#/components/responses/CardError" }
+        "404":
+          description: "`auth_method_disabled`: the portal is off, or this is not the console origin."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "405": { $ref: "#/components/responses/CardError" }
+        "429": { $ref: "#/components/responses/CardError" }
+  /api/signin/passkey/verify:
+    post:
+      operationId: verifyCardPasskey
+      tags: [portal]
+      summary: Sign in with the passkey's assertion
+      description: >
+        Takes (consumes) this browser's challenge first, so an answer verifies at most once and a
+        failed try needs a new challenge. Then checks the assertion against the stored passkey: the
+        exact origin (`https://key.plrs.im`), the RP id hash, user presence and user verification,
+        the user handle the passkey was created under, the signature, and the signature counter
+        (one that did not advance while non-zero is refused as a possible cloned authenticator,
+        and recorded). A passkey signs in only to the account it was added to; it never creates an
+        account. Every failure is the same `401 unauthorized`; `unknownCredential: true` says only
+        that no account holds this credential id, so the card can ask the browser to forget it.
+        In app passthrough this only opens the account session: the app consent ("Continue to
+        <App>") still follows the first time.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [response]
+              properties:
+                response:
+                  {
+                    type: object,
+                    additionalProperties: true,
+                    description: "The `PublicKeyCredential.toJSON()` of `navigator.credentials.get` (`AuthenticationResponseJSON`).",
+                  }
+      responses:
+        "200": { $ref: "#/components/responses/CardSignedIn" }
+        "400": { $ref: "#/components/responses/CardError" }
+        "401":
+          description: "`unauthorized`: the passkey did not sign in (any check). `unknownCredential: true` when no account holds the credential id."
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/FlatError"
+                  - type: object
+                    properties:
+                      unknownCredential: { type: boolean, enum: [true] }
+        "403": { $ref: "#/components/responses/CardError" }
+        "404":
+          description: "`auth_method_disabled`: the portal is off, or this is not the console origin."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429": { $ref: "#/components/responses/CardError" }
   # ── Account sessions (I-07, S-16 §5.4 item 7). Session-authenticated by the portal cookie, which
   # names a server-side `account_sessions` row; a cookie whose row is revoked or expired is refused.
   /api/sessions:
@@ -12222,6 +12328,183 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
         "403":
           description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  # ── The account's passkeys (I-16, PORTAL.md §4.26): the settings list, adding and removing.
+  # Session-authenticated by the portal cookie; mutations need the `X-PKey-Portal-CSRF` header.
+  /api/me/passkeys:
+    get:
+      operationId: listAccountPasskeys
+      tags: [portal]
+      summary: The account's passkeys, and whether one can be added
+      description: >
+        Oldest first. `canAdd` is false with a `reason` until the account has a verified primary
+        email (`email_unverified`: passkeys enrol only after email verification) or once it holds
+        20 passkeys (`limit`). The post-sign-in nudge reads it to offer "Add a passkey". Carries no
+        account id.
+      responses:
+        "200":
+          description: The passkeys.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [passkeys, canAdd, reason]
+                properties:
+                  passkeys:
+                    type: array
+                    items: { $ref: "#/components/schemas/AccountPasskey" }
+                  canAdd: { type: boolean }
+                  reason:
+                    type: [string, "null"]
+                    enum: [email_unverified, limit, null]
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+    post:
+      operationId: addAccountPasskey
+      tags: [portal]
+      summary: Add a passkey (the attestation for this session's challenge)
+      description: >
+        Takes this session's registration challenge (single use), re-checks the email rule and the
+        step-up, then verifies the attestation: the exact origin, the RP id hash, user presence and
+        verification, an EdDSA, ES256 or RS256 key, and any attestation statement sent. The
+        passkey and its sign-in method are stored in one batch; a credential id another account
+        holds is refused (`link_conflict`) and never overwritten. Audited, and every verified
+        address is emailed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [response]
+              properties:
+                response:
+                  {
+                    type: object,
+                    additionalProperties: true,
+                    description: "The `PublicKeyCredential.toJSON()` of `navigator.credentials.create` (`RegistrationResponseJSON`).",
+                  }
+      responses:
+        "201":
+          description: Added.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, passkey]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  passkey:
+                    type: object
+                    required: [id, methodId, createdAt]
+                    properties:
+                      id: { type: string }
+                      methodId: { type: string }
+                      createdAt: { type: integer }
+        "400":
+          description: "`signin_expired` (no live challenge for this session) or `bad_request` (the attestation did not verify)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403": { $ref: "#/components/responses/PasskeyRefused" }
+        "409":
+          description: "`link_conflict`: another account holds this credential id."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many passkey changes by this account (10 a minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/passkeys/options:
+    post:
+      operationId: startAccountPasskey
+      tags: [portal]
+      summary: A registration challenge for this session
+      description: >
+        Refused until the account has a verified primary email (`email_unverified`), without a
+        sign-in in the last 5 minutes (`step_up_required`; right after a sign-in, as the nudge
+        runs, it passes), and at 20 passkeys (`limit`). Answers WebAuthn creation options under the
+        account's ONE random user handle (32 bytes, minted on first use, never the account id), the
+        primary email as the user name, `residentKey` and `userVerification` required, no
+        attestation, EdDSA, ES256 and RS256, and the account's passkeys excluded. The challenge is
+        held for 5 minutes, bound to this session.
+      responses:
+        "200":
+          description: The options for `navigator.credentials.create({ publicKey })`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [options, expiresIn]
+                properties:
+                  options:
+                    {
+                      type: object,
+                      additionalProperties: true,
+                      description: "`PublicKeyCredentialCreationOptionsJSON`.",
+                    }
+                  expiresIn: { type: integer, enum: [300] }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403": { $ref: "#/components/responses/PasskeyRefused" }
+        "404":
+          description: "`auth_method_disabled`: this is not the console origin."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many passkey changes by this account (10 a minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/passkeys/{passkeyId}:
+    delete:
+      operationId: removeAccountPasskey
+      tags: [portal]
+      summary: Remove a passkey
+      description: >
+        Needs a sign-in in the last 5 minutes. Removes the passkey's sign-in method through the
+        link engine, whose guard is inside the DELETE, so the account's last way to sign in is never
+        removed (`last_link`), then its WebAuthn material. Audited, and every verified address is
+        emailed.
+      parameters:
+        - {
+            name: passkeyId,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The credential id (base64url), as the list names it.",
+          }
+      responses:
+        "200":
+          description: Removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, enum: [true] }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`last_link`: this passkey is the account's only way to sign in."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many passkey changes by this account (10 a minute).
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -14525,6 +14808,30 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/CardSignedIn" }
+    PasskeyStepUp:
+      description: >
+        `step_up_required` (or `unauthorized` with no session): adding or removing a passkey needs a
+        sign-in no older than `maxAgeSeconds` (300). Sign in again and retry.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/FlatError"
+              - type: object
+                properties:
+                  maxAgeSeconds: { type: integer }
+    PasskeyRefused:
+      description: >
+        `forbidden` with a `reason`: `email_unverified` (passkeys enrol only after the account's
+        email is verified) or `limit` (20 passkeys). Also a missing or wrong CSRF header.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/FlatError"
+              - type: object
+                properties:
+                  reason: { type: string, enum: [email_unverified, limit] }
     CardJoinOffer:
       description: >
         `email_in_use`: the proven address belongs to another Polaris Key account. Nothing was
@@ -15802,6 +16109,49 @@ components:
           properties:
             email: { type: string }
             proven: { type: boolean }
+    AccountPasskey:
+      type: object
+      description: One of the account's passkeys (I-16). Display facts only; never key material.
+      required:
+        [
+          id,
+          methodId,
+          createdAt,
+          lastUsedAt,
+          transports,
+          synced,
+          aaguid,
+          addedFrom,
+        ]
+      properties:
+        id:
+          {
+            type: string,
+            description: "The credential id (base64url): the path segment that removes it.",
+          }
+        methodId:
+          {
+            type: string,
+            description: "Its sign-in method's id, as the sign-in methods list names it.",
+          }
+        createdAt: { type: integer }
+        lastUsedAt: { type: [integer, "null"] }
+        transports: { type: array, items: { type: string } }
+        synced:
+          {
+            type: [boolean, "null"],
+            description: "Synced across the person's devices (a multi-device credential), when known.",
+          }
+        aaguid:
+          {
+            type: [string, "null"],
+            description: "The authenticator model's AAGUID; all zeroes when the browser withheld it.",
+          }
+        addedFrom:
+          {
+            type: [string, "null"],
+            description: "The browser it was added from, for example `Safari on iOS`.",
+          }
     FlatError:
       type: object
       description: >

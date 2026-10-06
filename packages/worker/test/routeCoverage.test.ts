@@ -119,6 +119,12 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // PX-W13 (G28): the sign-in request the card renders, and its app-consent view.
     ["/api/signin/requests/{request}", ["get"]],
     ["/api/signin/requests/{request}/consent", ["get"]],
+    // I-16: passkeys on the login card, and the account's passkeys.
+    ["/api/signin/passkey/options", ["post"]],
+    ["/api/signin/passkey/verify", ["post"]],
+    ["/api/me/passkeys", ["get", "post"]],
+    ["/api/me/passkeys/options", ["post"]],
+    ["/api/me/passkeys/{passkeyId}", ["delete"]],
   ],
 };
 
@@ -682,6 +688,7 @@ function concrete(template: string): string {
     requestId: `dl_${"A".repeat(43)}`,
     request: `rq_${"A".repeat(22)}`,
     licenseId: "lic_1",
+    passkeyId: "A".repeat(43),
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

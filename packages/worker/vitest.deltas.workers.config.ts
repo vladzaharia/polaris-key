@@ -38,7 +38,14 @@ const zstdWasmByPath: Plugin = {
 };
 
 export default defineConfig(async () => {
-  const migrations = await readD1Migrations("./migrations");
+  // The pool orders migrations by `parseInt` of the name's prefix, which reads a builder's
+  // `00XX_` placeholder (the lead numbers new migrations at merge, CLAUDE.md) as 0 and applies it
+  // FIRST, before the tables it alters exist. Filename order, which the Node lane
+  // (`test/helpers.ts`), `scripts/record-deploy.mjs` and `LATEST_MIGRATION` already use, is the
+  // same order for every numbered file and puts a placeholder last.
+  const migrations = (await readD1Migrations("./migrations")).sort((a, b) =>
+    a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
+  );
   return {
     plugins: [
       zstdWasmByPath,

@@ -64,6 +64,7 @@ import {
 import {
   PORTAL_CSRF_HEADER,
   buildPortalClearCookie,
+  portalSessionAuthenticatedAt,
   portalSessionFromRequest,
   type PortalSession,
 } from "./session.js";
@@ -76,6 +77,7 @@ import {
   revokeAllAccountSessions,
 } from "./accountSessions.js";
 import { avatarUrl, handleCardApi, turnstileSiteKey } from "../card/index.js";
+import { handleAccountPasskeys } from "../passkeys/routes.js";
 import { clearDeviceSubjects } from "../../../core/subjectHooks.js";
 import { libraryView, productView } from "./library.js";
 import { signInConsentView, signInRequestView } from "../passthrough/routes.js";
@@ -619,6 +621,8 @@ async function handleCapabilities(
         Boolean(platformOidcConfig(env)),
       magic:
         caps.portalEnabled && caps.magicEnabled && portalEmailConfigured(env),
+      // I-16: passkeys are an account sign-in method, platform-level (no product toggle).
+      passkey: caps.portalEnabled,
     },
     // I-07: the login card renders Cloudflare Turnstile on the email start with this public
     // site key; null when the deploy has Turnstile off (no token is asked for).
@@ -1353,6 +1357,22 @@ export async function handlePortalApi(
     return segments[1] === "lookup"
       ? handleDeviceLoginLookup(req, env, session, body, now)
       : handleDeviceLoginApprove(req, env, db, session, body, now);
+  }
+  // I-16: the account's passkeys (list, add, remove), before the licence-link sweep they never
+  // read. Adding and removing check step-up and the email rule themselves.
+  if (segments[0] === "me" && segments[1] === "passkeys") {
+    return handleAccountPasskeys(
+      req,
+      env,
+      db,
+      {
+        accountId: session.accountId,
+        authenticatedAt: portalSessionAuthenticatedAt(session),
+        sessionIdHash,
+      },
+      segments.slice(2),
+      now,
+    );
   }
   await syncAccountLicenseLinks(db, session.accountId, now);
 

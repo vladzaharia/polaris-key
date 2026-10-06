@@ -57,6 +57,8 @@ are the portal SPA's.
 | `POST /api/signin/confirm-email/join`   | Takes the join offer, once both identities are proven.                      |
 | `POST /api/signin/confirm-email/cancel` | Abandons the sign-in.                                                       |
 | `GET /api/signin/confirm-email/picture` | The provider's picture, proxied for the gate.                               |
+| `POST /api/signin/passkey/options`      | A passkey challenge, bound to this browser.                                 |
+| `POST /api/signin/passkey/verify`       | Signs in with the passkey's answer to that challenge, once.                 |
 | `POST /logout`                          | Ends this browser's session, server-side too.                               |
 
 `POST /api/magic/start` is the older name of the email start and runs the same handler.
@@ -137,7 +139,33 @@ numbers), copied into R2 under `avatars/` with an opaque random key, and served 
 `/media/avatar/<key>`. Account deletion removes them.
 
 After the first sign-in the answer carries `nudge: true` once, for the "add another way to sign
-in" card; it comes back after 30 days while the account still has a single sign-in method.
+in" card; it comes back after 30 days while the account still has a single sign-in method. The
+card's **Add a passkey** row reads `GET /api/me/passkeys` (`canAdd`, below): right after a sign-in
+the session is fresh enough to add one at once.
+
+**Passkeys.** A passkey is an account sign-in method on key.plrs.im (the relying party is the
+console host, `CONSOLE_ORIGIN`; a ceremony is served only on that origin), platform-level and
+independent of any product's Identity toggle. `POST /api/signin/passkey/options` answers WebAuthn
+request options for a discoverable credential (no credential list, so the challenge names no
+account and the card can offer passkeys in the email field's autofill) with user verification
+required, and binds the 32-byte challenge to this browser with a 5-minute `__Host-pkey_passkey`
+cookie naming a record in the single-use store. `POST /api/signin/passkey/verify { "response": … }`
+takes `PublicKeyCredential.toJSON()` from `navigator.credentials.get`. It consumes the challenge
+first, so an answer verifies at most once and a failed try needs a new challenge, then checks the
+exact origin (`https://key.plrs.im`), the RP id hash, user presence and verification, the user
+handle the passkey was created under, the signature, and the signature counter (one that did not
+advance while non-zero is refused as a possible cloned authenticator, and recorded). A passkey
+signs in only to the account it was added to and never creates one. Every failure answers the same
+`401 unauthorized`; `unknownCredential: true` says only that no account holds that credential id,
+so the card can ask the browser to forget it. Both routes share 30 requests a minute per client
+address. In app passthrough a passkey sign-in only opens the account session; the app consent
+(`Continue to <App>`) still follows the first time.
+
+Passkeys enrol only after the account's email is verified (so a passkey is never its only way
+back in), under one random account-level WebAuthn user handle (32 bytes, minted on first use,
+never the account id), so an authenticator keeps one "Polaris Key" entry. Each passkey is also a
+sign-in method in the account's methods (`kind: passkey`), so the never-orphan guard, step-up,
+audit and notices apply to it like any other method.
 
 Every return URL (`returnTo`) must be same-origin and may not target `/manage`, so a magic link,
 a provider return or an OIDC return cannot pivot a visitor into the admin console.
@@ -191,14 +219,15 @@ session's CSRF value (`403` otherwise).
 
   ```json
   {
-    "auth": { "oidc": true, "magic": true },
+    "auth": { "oidc": true, "magic": true, "passkey": true },
     "turnstileSiteKey": null,
     "modules": { "licensing": true, "claim": true, "releases": true }
   }
   ```
 
   `turnstileSiteKey` is the public Cloudflare Turnstile site key the card renders on the email
-  start, or `null` when the deploy has Turnstile off.
+  start, or `null` when the deploy has Turnstile off. `auth.passkey` is true while the portal is on
+  anywhere: passkeys are an account method, never a product's.
 
 - **`GET /api/me`** — account summary (`id`, `name`, `email`, and `avatarUrl`, the copied
   picture's same-origin URL or `null`) plus the CSRF token, after folding in any newly-provable
@@ -210,6 +239,24 @@ session's CSRF value (`403` otherwise).
 /api/sessions/sign-out-everywhere`** ends every one, this browser's included, and clears its
   cookie. It also drops every device's binding to the account through Core's clearing hook,
   releasing a seat only where the sign-in itself bound the device.
+- **`GET /api/me/passkeys`** — the account's passkeys, oldest first: the credential `id`, its
+  sign-in method's `methodId`, when it was added and last used, its `transports`, whether it is
+  `synced` across the person's devices, the authenticator's `aaguid` and the browser it was added
+  from (`addedFrom`, a coarse label). `canAdd` is false with a `reason` until the account has a
+  verified primary email (`email_unverified`) or once it holds 20 passkeys (`limit`).
+  **`POST /api/me/passkeys/options`** starts adding one: refused with `403 forbidden` and that
+  `reason`, or with `401 step_up_required` without a sign-in in the last 5 minutes; otherwise
+  WebAuthn creation options under the account's user handle, the primary email as the user name,
+  resident key and user verification required, no attestation, EdDSA, ES256 or RS256, and the
+  account's passkeys excluded, with the challenge bound to this session for 5 minutes.
+  **`POST /api/me/passkeys { "response": … }`** takes `navigator.credentials.create`'s
+  `toJSON()`, consumes the challenge, re-checks the email rule and the step-up, verifies the
+  attestation (origin, RP id hash, user presence and verification, an allowed key, any attestation
+  statement sent) and stores the passkey and its sign-in method in one batch; a credential id
+  another account holds is refused (`409 link_conflict`) and never overwritten.
+  **`DELETE /api/me/passkeys/<id>`** removes one under the same step-up; removing the account's
+  last way to sign in is refused (`409 last_link`). Adding and removing are audited and emailed
+  to every verified address, and share 10 changes a minute per account.
 - **`DELETE /api/me`** — the account holder erases their own account. Deletes every email,
   identity, and license-link row plus the account row itself in one atomic batch, then writes a
   single tombstone audit entry naming only the opaque `acct_…` id — nothing that still identifies
