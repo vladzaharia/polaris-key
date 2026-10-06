@@ -52,8 +52,8 @@ The portal API serves the storefront: offers with all their paths, a storefront 
 
 ## Corrections (PS-04 builder, verified against the code)
 
-- **Migration name.** `packages/worker/migrations/00XX_storefront_library.sql` (all three tables);
-  the lead assigns the number. `LATEST_MIGRATION` and the data-model page follow it.
+- **Migration name.** `packages/worker/migrations/0096_storefront_library.sql` (all three tables;
+  the lead's number). `LATEST_MIGRATION` and the data-model page follow it.
 - **`DELETE /api/library/<p>` never reaches a licence.** It deletes `library_entries` rows only and
   answers `404` for a product with no entry, so LX-26's `detachLicense` (and its auto-attach block)
   is not on its path: a licence leaves the library only by that detach, unchanged.
@@ -96,8 +96,7 @@ The portal API serves the storefront: offers with all their paths, a storefront 
 - [x] Library shows an entry for an open product and hides it once a licence exists.
 - [x] Analytics tables hold no account id (test).
 - [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
-      (GATE GREEN with the migration numbered; `record-deploy` refuses the `00XX` placeholder by
-      design until the lead assigns the number, as with I-16 and PX-W12.)
+      (GATE GREEN; the migration is 0096, the lead's number.)
 
 ## Verify
 
