@@ -240,6 +240,27 @@ The API is `POST /manage/api/products/<slug>/release/link?dryRun=1` with `{ "rep
 check, then `POST …/release/link` with `{ "repoUrl", "manifestDigest" }`. A refusal's `reason`
 names the check that failed: `product`, `repository`, `app`, `manifest`, `slug` or `policy`.
 
+### The settings backfill
+
+Products registered before claims existed carry console edits that no claim records, and their
+tiers and profiles all read as manifest-owned. The **settings backfill** moves such a product onto
+the claim model once, by one rule: **every field and tier or profile the product's `.pkey/`
+declares takes the manifest's value and loses its console claim**, and every tier or profile the
+manifest does not declare stays, as a console row, so no later resync deletes it. There is no
+per-value review: to keep a console value, commit it to `.pkey/` first. A live break-glass claim,
+the services, compatibility, access, fingerprint and auto-issue ownership markers, and the system
+product's name are left as they are.
+
+It runs from the admin API (`POST /manage/api/products/<slug>/settings/backfill?dryRun=1`, then
+`dryRun=0`; the operator procedure is in the runbook). The dry run classifies every field and row
+as **equal**, **differs** or **not declared**, with the console activity that explains a
+difference, and stores that report; the apply stores its own report, writes one
+`setting.backfill` activity row listing every value it changed, and refuses (409) if a console
+edit lands while it runs or if the manifest moved since the dry run. Both reports stay readable
+(`GET …/settings/backfill`). A second apply changes nothing. Manual products have no manifest
+and are only reported as unlinked; the system product is classified against the root `.pkey/` as
+the last deploy applied it.
+
 ### What deleting a product actually does
 
 **Delete product** is a **tombstone**, not a row deletion — nothing here is a `DELETE FROM`. It:

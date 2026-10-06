@@ -76,13 +76,13 @@ import {
   handleProductScopedResource,
 } from "./handlers/products.js";
 import { handleActivity } from "./handlers/activity.js";
+import { handleProductSettingsBackfill } from "./handlers/settingsBackfill.js";
 import { handleCiPublisher, handleCiTokens } from "./handlers/ciPublishing.js";
 import { handleProductDevices } from "./handlers/devices.js";
 import { handleProductUsers } from "./handlers/users.js";
 import { handleRefusals } from "./handlers/refusals.js";
 import { handleHostedAssets } from "./handlers/hostedAssets.js";
 import { handleTrustPolicy } from "./handlers/trustPolicy.js";
-import { handleProductSettingsBackfill } from "./handlers/settingsBackfill.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
 import { handleBundleMint } from "../core/bundles.js";
 import { handleBlobGcAdmin } from "../core/blobGc.js";
@@ -208,6 +208,22 @@ async function handleProductScoped(
     return notFound();
   }
 
+  // The settings backfill (ST-01c, S-18 §4.14, owner decision D19). CORE, like `claims`: it
+  // moves the product onto ST-01b's claim model once and keeps its reports. Ahead of the
+  // generic `settings/<key>` routes (LX-06, S-18 §4.7), which would read `backfill` as a key.
+  //   POST /products/<slug>/settings/backfill?dryRun=1|0
+  //   GET  /products/<slug>/settings/backfill[/<reportId>]
+  if (resource === "settings" && rest[1] === "backfill")
+    return handleProductSettingsBackfill(
+      req,
+      env,
+      db,
+      session,
+      slug,
+      rest.slice(2),
+      now,
+    );
+
   // Platform-owned per-product resources — they exist for a product running NO service at all,
   // which is why they are not under one:
   //   PUT  /products/<slug>/secrets/<name>
@@ -231,21 +247,6 @@ async function handleProductScoped(
       now,
     );
   }
-
-  // The settings backfill (ST-01c, S-18 §4.14, owner decision D19). CORE, like `claims`: it
-  // moves the product onto ST-01b's claim model once and keeps its reports.
-  //   POST /products/<slug>/settings/backfill?dryRun=1|0
-  //   GET  /products/<slug>/settings/backfill[/<reportId>]
-  if (resource === "settings" && rest[1] === "backfill")
-    return handleProductSettingsBackfill(
-      req,
-      env,
-      db,
-      session,
-      slug,
-      rest.slice(2),
-      now,
-    );
 
   // Trusted publishing (P2-02): the publisher policy and static CI tokens. CORE, like the
   // secrets: the credential store serves Release now and Distribution (P2b-03) later.
