@@ -589,29 +589,28 @@ async function removeMethod(
   const links = await listLinks(db, caller.accountId);
   const link = links.find((l) => l.id === methodId);
   if (!link) return cardJson({ error: "not_found" }, 404);
-  const account = await getAccountRow(db, caller.accountId);
-  const primaryEmail = account?.primary_email ?? null;
-  const refusal = removeRefusal(link, links, primaryEmail);
-  if (refusal === "only_email") {
-    return cardJson(
-      {
-        error: "forbidden",
-        reason: "only_email",
-        message:
-          "This is your account's only email address. Add another one first, then you can remove it.",
-      },
-      403,
-    );
-  }
-  // `last_link` is decided by the guarded DELETE inside `unlinkIdentity`, so two concurrent
-  // removals of the last two methods cannot both pass; step-up is checked there too.
+  // Both guards (`last_link`, `only_email`) and the primary email's promotion are inside the
+  // link engine's guarded batch, so two concurrent removals cannot get past them; step-up is
+  // checked there too.
   const result = await unlinkIdentity(
     { db, env, now, origin: originOf(req) },
     { accountId: caller.accountId, authenticatedAt: caller.authenticatedAt },
     link.id,
+    { emailRule: true },
   );
   if (!result.ok) {
     if (result.error === "step_up_required") return stepUpRequired();
+    if (result.error === "only_email") {
+      return cardJson(
+        {
+          error: "forbidden",
+          reason: "only_email",
+          message:
+            "This is your account's only email address. Add another one first, then you can remove it.",
+        },
+        403,
+      );
+    }
     if (result.error === "last_link") {
       return cardJson(
         {
@@ -622,23 +621,6 @@ async function removeMethod(
       );
     }
     return cardJson({ error: "not_found" }, 404);
-  }
-  // The primary email went: the oldest other address takes its place.
-  if (link.issuer_key === EMAIL_ISSUER && link.subject === primaryEmail) {
-    const next = links.find(
-      (l) => l.issuer_key === EMAIL_ISSUER && l.id !== link.id,
-    );
-    if (next) {
-      await db.run(
-        `UPDATE accounts SET primary_email = ?, primary_email_verified_at = ?, modified_at = ?
-          WHERE id = ? AND primary_email = ?`,
-        next.subject,
-        next.created_at,
-        now,
-        caller.accountId,
-        link.subject,
-      );
-    }
   }
   return cardJson({ ok: true, removed: { id: link.id, kind: link.kind } });
 }

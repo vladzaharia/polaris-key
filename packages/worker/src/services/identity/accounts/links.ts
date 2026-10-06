@@ -11,7 +11,7 @@
  * the proof it collected in the same session.
  */
 
-import type { Db, Env } from "../../../core/platform.js";
+import type { Db, DbStatement, Env } from "../../../core/platform.js";
 import { onAccountEmailVerified } from "../../../core/licenseHolders.js";
 import { portalAudit } from "../portal/repo.js";
 import { sendSecurityNotice } from "../portal/email.js";
@@ -165,17 +165,27 @@ export async function linkIdentity(
 
 export type UnlinkResult =
   | { ok: true }
-  | { ok: false; error: "step_up_required" | "last_link" | "not_found" };
+  | {
+      ok: false;
+      error: "step_up_required" | "last_link" | "only_email" | "not_found";
+    };
 
 /**
  * Disconnect one sign-in method. Refused when it is the account's last (`last_link`): the guard
  * is inside the DELETE, so two concurrent removals of the last two methods cannot both succeed.
- * The matching `portal_*` row goes too, so a Worker rollback never resurrects a removed method.
+ *
+ * With `emailRule` (PX-W12, Account → Sign-in methods), also refused when it is the account's only
+ * email address while that address is the primary email (`only_email`: notices, passkey enrolment
+ * and the licence claim rules need a verified address), guarded in the same DELETE; and removing
+ * the primary address while another exists makes the oldest other address primary in the same
+ * batch. The matching `portal_*` row goes too, so a Worker rollback never resurrects a removed
+ * method.
  */
 export async function unlinkIdentity(
   ctx: AccountContext,
   proof: AccountProof,
   linkId: string,
+  opts: { emailRule?: boolean } = {},
 ): Promise<UnlinkResult> {
   const { db, now } = ctx;
   if (!isFresh(proof, now)) return { ok: false, error: "step_up_required" };
@@ -185,15 +195,58 @@ export async function unlinkIdentity(
     proof.accountId,
   );
   if (!link) return { ok: false, error: "not_found" };
-  const removed = await db.runChanges(
-    `DELETE FROM account_links
-      WHERE id = ? AND account_id = ?
-        AND (SELECT COUNT(*) FROM account_links WHERE account_id = ?) > 1`,
+  const A = proof.accountId;
+  const stmts: DbStatement[] = [
+    opts.emailRule
+      ? {
+          sql: `DELETE FROM account_links
+                 WHERE id = ? AND account_id = ?
+                   AND (SELECT COUNT(*) FROM account_links WHERE account_id = ?) > 1
+                   AND NOT (issuer_key = ?
+                            AND subject IS (SELECT primary_email FROM accounts WHERE id = ?)
+                            AND NOT EXISTS (SELECT 1 FROM account_links o
+                                             WHERE o.account_id = ? AND o.issuer_key = ?
+                                               AND o.id != ?))`,
+          params: [linkId, A, A, EMAIL_ISSUER, A, A, EMAIL_ISSUER, linkId],
+        }
+      : {
+          sql: `DELETE FROM account_links
+                 WHERE id = ? AND account_id = ?
+                   AND (SELECT COUNT(*) FROM account_links WHERE account_id = ?) > 1`,
+          params: [linkId, A, A],
+        },
+  ];
+  if (opts.emailRule && link.issuer_key === EMAIL_ISSUER) {
+    // The primary address went: the oldest other address takes its place, only if it went.
+    stmts.push({
+      sql: `UPDATE accounts SET
+              primary_email = (SELECT subject FROM account_links
+                                WHERE account_id = ? AND issuer_key = ?
+                                ORDER BY created_at, id LIMIT 1),
+              primary_email_verified_at = (SELECT created_at FROM account_links
+                                            WHERE account_id = ? AND issuer_key = ?
+                                            ORDER BY created_at, id LIMIT 1),
+              modified_at = ?
+            WHERE id = ? AND primary_email = ?
+              AND NOT EXISTS (SELECT 1 FROM account_links WHERE id = ?)`,
+      params: [A, EMAIL_ISSUER, A, EMAIL_ISSUER, now, A, link.subject, linkId],
+    });
+  }
+  await db.batch(stmts);
+  const kept = await db.first<{ n: number }>(
+    "SELECT COUNT(*) AS n FROM account_links WHERE id = ?",
     linkId,
-    proof.accountId,
-    proof.accountId,
   );
-  if (removed === 0) return { ok: false, error: "last_link" };
+  if ((kept?.n ?? 0) > 0) {
+    const count = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM account_links WHERE account_id = ?",
+      A,
+    );
+    return {
+      ok: false,
+      error: (count?.n ?? 0) <= 1 ? "last_link" : "only_email",
+    };
+  }
   await mirrorLinkRemoval(db, link);
   await portalAudit(db, {
     accountId: proof.accountId,

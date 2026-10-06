@@ -300,6 +300,31 @@ describe("DELETE /api/me/methods/<id>: never orphan, step-up, audit and notice",
     ]);
   });
 
+  it("never lets two concurrent removals take the last address, and promotes the one left", async () => {
+    const w = await seededWorld();
+    const { d, accountId } = await emailAccount(w);
+    await addSteam(w, accountId);
+    await connectEmail(w, d, "ada@work.example");
+    const ids = (await methods(d)).methods
+      .filter((m) => m.kind === "email")
+      .map((m) => m.id);
+    expect(ids).toHaveLength(2);
+    const [x, y] = await Promise.all(
+      ids.map((id) => d.send("DELETE", `${METHODS}/${id}`)),
+    );
+    expect([x!.status, y!.status].sort()).toEqual([200, 403]);
+    const left = await w.db.all<{ subject: string }>(
+      "SELECT subject FROM account_links WHERE account_id = ? AND kind = 'email'",
+      accountId,
+    );
+    expect(left).toHaveLength(1);
+    const account = await w.db.first<{ primary_email: string }>(
+      "SELECT primary_email FROM accounts WHERE id = ?",
+      accountId,
+    );
+    expect(account?.primary_email).toBe(left[0]!.subject);
+  });
+
   it("answers not_found for another account's method", async () => {
     const w = await seededWorld();
     const { d } = await emailAccount(w);

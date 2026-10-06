@@ -15,11 +15,11 @@ import {
 import { resolveSubject, subjectFor } from "../src/core/accountSubjects.js";
 import {
   ACCOUNT_COLUMNS,
-  LINK_COLUMNS,
   MERGE_UNDO_SECONDS,
-  PASSKEY_COLUMNS,
   pruneAccountMerges,
+  undoMerge,
 } from "../src/services/identity/accounts/mergeUndo.js";
+import type { Db } from "../src/db/types.js";
 
 const LINK = "/api/me/link";
 
@@ -322,7 +322,7 @@ describe("joining needs proof of both accounts in one browser", () => {
     );
   });
 
-  it("blocks absorbing an account that can still undo a join of its own", async () => {
+  it("blocks a join while either account can still undo a join of its own", async () => {
     const w = await seededWorld();
     const b = await emailAccount(w, "b@example.com");
     const a = await emailAccount(w, "a@example.com");
@@ -342,9 +342,52 @@ describe("joining needs proof of both accounts in one browser", () => {
     );
     expect(await exists(w, b.accountId)).toBe(true);
     expect(await exists(w, c.accountId)).toBe(true);
-    // Keeping B instead is fine.
-    expect((await join(a.d, { keep: "started" })).status).toBe(200);
-    expect(await exists(w, c.accountId)).toBe(false);
+    // Keeping B is refused too: undoing B's join would hand C's data and aliases to A. (The
+    // refusal used up the flow; this browser is signed in to C now, so it starts from C.)
+    await proveBoth({ ...c, d: a.d }, b);
+    const kept = await join(a.d);
+    expect(kept.status).toBe(403);
+    expect(await kept.json()).toEqual(
+      expect.objectContaining({ reason: "merge_pending" }),
+    );
+    expect(await exists(w, c.accountId)).toBe(true);
+  });
+
+  it("merges once when two confirms race", async () => {
+    const w = await seededWorld();
+    const b = await emailAccount(w, "b@example.com");
+    const a = await emailAccount(w, "a@example.com");
+    await proveBoth(a, b);
+    const [x, y] = await Promise.all([join(a.d), join(a.d)]);
+    expect([x.status, y.status].sort()).toEqual([200, 400]);
+    expect(
+      await w.db.all(
+        "SELECT id FROM account_merges WHERE survivor_id = ?",
+        b.accountId,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it("shows the started account only while its session is live, and sign-out ends the flow", async () => {
+    const w = await seededWorld();
+    const b = await emailAccount(w, "b@example.com");
+    const a = await emailAccount(w, "a@example.com");
+    await proveBoth(a, b);
+    await w.db.run(
+      "UPDATE account_sessions SET revoked_at = ? WHERE account_id = ?",
+      NOW,
+      a.accountId,
+    );
+    const view = await a.d.send("GET", LINK);
+    expect(((await view.json()) as { flow: unknown }).flow).toBeNull();
+    expect(a.d.jar.has(LINK_FLOW_COOKIE)).toBe(false);
+
+    // Signing out clears the flow's cookie.
+    const c = await emailAccount(w, "c@example.com");
+    await c.d.send("POST", `${LINK}/start`, {});
+    expect(c.d.jar.has(LINK_FLOW_COOKIE)).toBe(true);
+    await c.d.send("POST", "/logout");
+    expect(c.d.jar.has(LINK_FLOW_COOKIE)).toBe(false);
   });
 });
 
@@ -500,7 +543,7 @@ describe("undo within 72 hours", () => {
     expect(await exists(w, a.accountId)).toBe(false);
   });
 
-  it("brings back a method the survivor removed since the join", async () => {
+  it("never brings back a method disconnected since the join", async () => {
     const w = await seededWorld();
     const { a, b, mergeId } = await joined(w);
     const methods = (await (
@@ -513,9 +556,147 @@ describe("undo within 72 hours", () => {
       (await a.d.send("DELETE", `/api/me/methods/${aEmail.id}`)).status,
     ).toBe(200);
     expect(await linksOf(w, b.accountId)).toEqual(["mara@fennick.studio"]);
+    // A's only method is gone: the undo would bring A back with none, so it is refused.
+    const res = await a.d.send("POST", `${LINK}/undo`, { merge: mergeId });
+    expect(res.status).toBe(409);
+    expect(((await res.json()) as { error: string }).error).toBe("last_link");
+    expect(await exists(w, a.accountId)).toBe(false);
+    expect(
+      await w.db.first(
+        "SELECT id FROM account_links WHERE subject = 'a@example.com'",
+      ),
+    ).toBeNull();
+  });
+
+  it("restores only the methods still on the survivor", async () => {
+    const w = await seededWorld();
+    const b = await emailAccount(w, "mara@fennick.studio");
+    const a = await emailAccount(w, "a@example.com");
+    // A also has Steam, removed from the kept account after the join.
+    await w.db.run(
+      `INSERT INTO account_links (id, account_id, issuer_key, tenant_scope, subject, kind,
+                                  email, email_verified, display_name, created_at, last_used_at)
+       VALUES ('lnk_steam_a', ?, 'steam', '', '76561198000000001', 'steam', NULL, 0, 'marafox', ?, ?)`,
+      a.accountId,
+      NOW,
+      NOW,
+    );
+    await proveBoth(a, b);
+    const mergeId = (
+      (await (await join(a.d)).json()) as { merge: { id: string } }
+    ).merge.id;
+    expect(
+      (await a.d.send("DELETE", "/api/me/methods/lnk_steam_a")).status,
+    ).toBe(200);
     const res = await a.d.send("POST", `${LINK}/undo`, { merge: mergeId });
     expect(res.status).toBe(200);
     expect(await linksOf(w, a.accountId)).toEqual(["a@example.com"]);
+    expect(
+      await w.db.first("SELECT id FROM account_links WHERE id = 'lnk_steam_a'"),
+    ).toBeNull();
+  });
+
+  it("refuses atomically when a method goes between the check and the undo (last_link)", async () => {
+    const w = await seededWorld();
+    const { a, b, mergeId } = await joined(w);
+    const own = await w.db.first<{ id: string }>(
+      "SELECT id FROM account_links WHERE account_id = ? AND subject = 'mara@fennick.studio'",
+      b.accountId,
+    );
+    // The removal lands after the undo's own check, right before its batch.
+    const racy = Object.create(w.db) as Db;
+    racy.batch = async (stmts) => {
+      await w.db.run("DELETE FROM account_links WHERE id = ?", own!.id);
+      return w.db.batch(stmts);
+    };
+    const result = await undoMerge(
+      { db: racy, env: w.env, now: NOW, origin: "https://key.plrs.im" },
+      { accountId: b.accountId, authenticatedAt: NOW },
+      mergeId,
+    );
+    expect(result).toEqual({ ok: false, error: "last_link" });
+    expect(await exists(w, a.accountId)).toBe(false);
+    expect(await linksOf(w, b.accountId)).toEqual(["a@example.com"]);
+    // Nothing applied, and the join can still be undone.
+    const row = await w.db.first<{ undone_at: number | null }>(
+      "SELECT undone_at FROM account_merges WHERE id = ?",
+      mergeId,
+    );
+    expect(row?.undone_at).toBeNull();
+  });
+
+  it("revokes the registry tokens the survivor minted on a licence that goes back", async () => {
+    const w = await seededWorld();
+    const b = await emailAccount(w, "mara@fennick.studio");
+    const a = await emailAccount(w, "a@example.com");
+    await seedLicense(w, "acme", "lic-a", a.accountId);
+    const token = (id: string, accountId: string) =>
+      w.db.run(
+        `INSERT INTO registry_tokens (product, token_id, token_hash, hint, label, scopes_json,
+           binding, license_id, created_by, portal_account_id, created_at, expires_at)
+         VALUES ('acme', ?, ?, 'abcd', ?, '["read"]', 'license', 'lic-a', ?, ?, ?, ?)`,
+        id,
+        `h-${id}`,
+        id,
+        `portal:${accountId}`,
+        accountId,
+        NOW,
+        NOW + 86400,
+      );
+    await token("rtok_a", a.accountId); // A's own, before the join.
+    await proveBoth(a, b);
+    const mergeId = (
+      (await (await join(a.d)).json()) as { merge: { id: string } }
+    ).merge.id;
+    await token("rtok_s", b.accountId); // Minted by the kept account during the window.
+    expect(
+      (await a.d.send("POST", `${LINK}/undo`, { merge: mergeId })).status,
+    ).toBe(200);
+    const rows = await w.db.all<{
+      token_id: string;
+      portal_account_id: string;
+      revoked_at: number | null;
+    }>(
+      "SELECT token_id, portal_account_id, revoked_at FROM registry_tokens ORDER BY token_id",
+    );
+    expect(rows).toEqual([
+      { token_id: "rtok_a", portal_account_id: a.accountId, revoked_at: null },
+      { token_id: "rtok_s", portal_account_id: b.accountId, revoked_at: NOW },
+    ]);
+  });
+
+  it("keeps the survivor's passkey user handle while it holds a passkey created under it", async () => {
+    for (const enrolled of [true, false]) {
+      const w = await seededWorld();
+      const b = await emailAccount(w, "mara@fennick.studio");
+      const a = await emailAccount(w, "a@example.com");
+      await w.db.run(
+        "UPDATE accounts SET passkey_user_handle = 'h-a' WHERE id = ?",
+        a.accountId,
+      );
+      await proveBoth(a, b);
+      const mergeId = (
+        (await (await join(a.d)).json()) as { merge: { id: string } }
+      ).merge.id;
+      if (enrolled) {
+        // The kept account added a passkey during the window, under the handle it took.
+        await w.db.run(
+          `INSERT INTO account_passkeys (credential_id, account_id, public_key, rp_id, user_handle,
+                                         created_at)
+           VALUES ('cred-new', ?, 'pk', 'key.plrs.im', 'h-a', ?)`,
+          b.accountId,
+          NOW,
+        );
+      }
+      expect(
+        (await a.d.send("POST", `${LINK}/undo`, { merge: mergeId })).status,
+      ).toBe(200);
+      const handle = await w.db.first<{ passkey_user_handle: string | null }>(
+        "SELECT passkey_user_handle FROM accounts WHERE id = ?",
+        b.accountId,
+      );
+      expect(handle?.passkey_user_handle).toBe(enrolled ? "h-a" : null);
+    }
   });
 
   it("never orphans the survivor (last_link)", async () => {
@@ -566,15 +747,14 @@ describe("undo within 72 hours", () => {
 });
 
 describe("the undo snapshot covers every column it restores", () => {
-  it.each([
-    ["accounts", ACCOUNT_COLUMNS],
-    ["account_links", LINK_COLUMNS],
-    ["account_passkeys", PASSKEY_COLUMNS],
-  ] as const)("%s", async (table, columns) => {
-    const w = await seededWorld();
-    const rows = await w.db.all<{ name: string }>(
-      `SELECT name FROM pragma_table_info('${table}')`,
-    );
-    expect([...columns].sort()).toEqual(rows.map((r) => r.name).sort());
-  });
+  it.each([["accounts", ACCOUNT_COLUMNS]] as const)(
+    "%s",
+    async (table, columns) => {
+      const w = await seededWorld();
+      const rows = await w.db.all<{ name: string }>(
+        `SELECT name FROM pragma_table_info('${table}')`,
+      );
+      expect([...columns].sort()).toEqual(rows.map((r) => r.name).sort());
+    },
+  );
 });

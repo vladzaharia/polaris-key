@@ -5717,27 +5717,37 @@ item 15 (merge takeover) are the threats; the rules below are what the routes ad
   method another account holds is refused (`link_conflict`) and nothing moves.
 - **Disconnect.** The same step-up; the last method is never removed (`last_link`, guarded inside
   the DELETE, so two racing removals cannot orphan the account, a test); the only address cannot
-  go while it is the primary, so notices and passkey enrolment always have a verified address.
+  go while it is the primary, so notices and passkey enrolment always have a verified address
+  (guarded in the same DELETE, with the promotion of the next address in the same batch, a test).
   Every change is audited and emailed to every verified address; an email method is named
   generically in those notices, so no notice hands one of the account's addresses to the others,
   and a removed address is told too.
 - **Join with proof of both, in one browser.** Linking starts from a fresh session and records its
   proof in a server-held flow named by a host-only `__Host-pkey_link` cookie (15 minutes; the
-  dispatcher strips it from product routes like every account-realm cookie). The second proof is
-  only ever the session presenting that cookie, after a real sign-in on the login card, so both
-  proofs come from one browser and neither can be supplied by another party's session (a test). The
-  merge refuses unless both proofs are under 5 minutes old, and the link routes also refuse when
-  either proof's session was signed out. Nothing looks at email addresses: never by email match.
+  dispatcher strips it from product routes like every account-realm cookie, and signing out
+  clears it). The second proof is only ever the session presenting that cookie, after a real
+  sign-in (the login card, or a PX-W14 device approval, which also mints a fresh session), so both
+  proofs come from one browser and neither can be supplied by another party's session (a test).
+  The merge refuses unless both proofs are under 5 minutes old, the link routes also refuse when
+  either proof's session was signed out, and the join screen shows an account's details only
+  while its proof's session is live. The flow is claimed before the merge, so two racing confirms
+  merge once (a test). Nothing looks at email addresses: never by email match.
 - **Undo for 72 hours.** Every join (the login card's offer too) records a snapshot of what moved
   in `account_merges`, in the merge's own batch. The kept account can undo with a fresh sign-in,
   which a person whose method was joined away can always get (their methods sign in to the kept
   account), so a join made with stolen proof of one account is reversible by its owner after the
-  notice. The undo re-creates methods removed since the join when nobody else holds them, so
-  disconnecting the victim's methods after a join does not block the undo; it refuses only when an
-  account would be left with no way to sign in. A join that would absorb an account still able to
-  undo a join of its own is refused (`merge_pending`), so chaining a second join cannot destroy the
-  first one's undo. The snapshot holds the absorbed person's details: it is cleared by the undo,
-  deleted nightly once the window ends, and deleted with the kept account.
+  notice. Only methods still on the kept account go back: a method disconnected since the join (a
+  lost passkey, a compromised provider account) never comes back silently, and the snapshot holds
+  method ids only, never their subjects, addresses or keys. The undo refuses (`last_link`) when an
+  account would be left with no way to sign in; that guard is the first statement of the undo's
+  batch and aborts it, so a removal racing the undo cannot orphan either side (a test). A licence
+  that goes back revokes every registry token the kept account minted on it during the window
+  (F-21, `onLicenseOwnershipEnded`) and clears its devices' bindings; the absorbed account's own
+  tokens move back untouched (a test). A join is refused while EITHER account could still undo a
+  join of its own (`merge_pending`): absorbing that account would destroy its undo, and absorbing
+  into it would hand the second join's data and aliases to the first join's absorbed account on
+  undo. The snapshot holds the absorbed person's details: it is cleared by the undo, deleted
+  nightly once the window ends, and deleted with either account (docs/PRIVACY.md).
 - **Residuals.** Someone with a fresh session for an account can already change it directly
   (connect their own method, disconnect the others, delete it); joining gives them nothing more,
   and the notices to every verified address of both accounts are the detection. Deleting the kept
@@ -5746,9 +5756,12 @@ item 15 (merge takeover) are the threats; the rules below are what the routes ad
   product data a store already re-keyed (`runSubjectMerge`), and developers keep the
   `subject.merged` alias they were told about; the restored account gets a fresh pairwise subject
   where its old one became an alias, so to that developer it is a new person, and no
-  `subject.unmerged` event exists (`subject_events` allows only merged and deleted). A picture the
-  kept account did not use may be swept before an undo (`sweepAvatars`, after a day), and the
-  restored account then shows initials.
+  `subject.unmerged` event exists (`subject_events` allows only merged and deleted). A device
+  activated during the window on one of the absorbed account's licences keeps its seat; its
+  binding to the kept account's subject is cleared with the licence's other bindings at the undo,
+  but a device bound to the kept account's subject on a licence that stays with the kept account
+  is untouched. A picture the kept account did not use may be swept before an undo
+  (`sweepAvatars`, after a day), and the restored account then shows initials.
 
 ### The console's Users page and the relink tool (I-12)
 

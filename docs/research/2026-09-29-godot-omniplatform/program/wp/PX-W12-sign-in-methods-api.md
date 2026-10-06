@@ -74,8 +74,9 @@ Sign-in methods are the account's core ([PORTAL.md §4.26](../../../../design/PO
 cancel|undo`. The two proofs are collected in one browser by a `__Host-pkey_link` flow cookie
   while the session moves to the other account on the login card.
 - **"Block on conflict"** is `link_conflict` for a method another account holds, plus
-  `merge_pending`: an account that can still undo a join of its own is never absorbed, so the undo
-  stays possible. Developers keep the `subject.merged` alias after an undo (`subject_events` has a
+  `merge_pending`: no join involves an account that can still undo a join of its own (either side),
+  so each undo stays possible and exact. An undo restores only the methods still on the kept
+  account (security review: a method disconnected after the join never comes back silently). Developers keep the `subject.merged` alias after an undo (`subject_events` has a
   CHECK that allows only merged and deleted); the restored account gets a fresh pairwise subject
   where its old one became an alias (THREAT-MODEL "Sign-in methods and joining accounts").
 - **Not in G27, left for PX-13:** "Make primary" for an email, a passkey's Rename, and the
@@ -96,6 +97,15 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- portal
 ```
 
 ## Hand-off
+
+Follow-ups from the PX-W12 security review (not blocking):
+
+- The undo batch grows with the account (one statement per licence, registry token and relink;
+  id lists through `json_each`): chunk it for very large accounts.
+- The merge snapshot is read before, and outside, the merge's batch (like the merge's own reads):
+  a row created in between is not in it.
+- After an undo, promote one of the kept account's own verified addresses to primary when its
+  primary was the joined account's.
 
 PX-13 builds `SignInMethods`; PX-15 builds `LinkAccounts`.
 

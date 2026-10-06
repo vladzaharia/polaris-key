@@ -14,13 +14,16 @@
  *
  *   - The absorbed account comes back under its own id, with its own primary email and profile,
  *     and its tombstone goes, so its old session cookies act as it again.
- *   - Its sign-in methods go back. A method removed from the survivor since the join is re-created
- *     from the snapshot when nobody else holds it now, so the person always gets a way back in;
- *     a passkey's WebAuthn material comes back with its method.
+ *   - Its sign-in methods that are still on the survivor go back, passkeys with their WebAuthn
+ *     material. A method disconnected since the join stays disconnected: a lost passkey or a
+ *     compromised provider account that was removed never comes back silently. The snapshot
+ *     therefore holds method ids only, never their subjects, addresses or keys.
  *   - What still sits on the survivor goes back: licences, sessions, pictures, registry tokens,
  *     relink history, consents, terms acceptances and auto-attach blocks. What the survivor had
  *     before the join stays, and so does anything added to it since. A licence the survivor
  *     detached since the join stays floating (it is added again by its key, under the claim rules).
+ *     A licence that goes back revokes every registry token the survivor minted on it during the
+ *     window (F-21, `onLicenseOwnershipEnded`), and its devices' bindings go.
  *   - Details the survivor took from the absorbed account (a name, a picture, a primary email, the
  *     passkey user handle) are cleared again where they are still the absorbed account's values.
  *   - **Developers keep what they were told.** The join told each developer that the absorbed
@@ -40,14 +43,17 @@
  *     the only account, so "from either account" is any session on it, whichever account's
  *     method opened it.
  *   - Never orphan: refused (`last_link`) when either account would be left with no way to sign
- *     in (the survivor removed every method of its own since the join).
+ *     in. The first statement of the undo's batch is the guard (it aborts the batch), so a removal
+ *     racing the undo cannot orphan either side.
  *   - Once only, and only inside the window: the row is claimed by a conditional UPDATE before the
  *     batch, so of two racing undos one applies.
- *   - A join that would make an open undo impossible is refused (`merge_pending` in `merge.ts`):
- *     an account that absorbed another less than 72 hours ago cannot itself be absorbed.
- *   - The snapshot holds the absorbed person's details, so it lives no longer than the window: an
- *     undo clears it, the nightly job deletes rows whose window ended, and deleting the survivor
- *     deletes its rows.
+ *   - A join is refused while either account could still undo a join of its own (`merge_pending`
+ *     in `merge.ts`): absorbing that account would make the undo impossible, and absorbing INTO it
+ *     would hand the second join's data and aliases to the first one's absorbed account on undo.
+ *   - The snapshot holds the absorbed person's details (its account row: email, name, locale,
+ *     profile sources, passkey user handle; its consents and terms acceptances), so it lives no
+ *     longer than the window: an undo clears it, the nightly job deletes rows whose window ended,
+ *     and deleting the survivor deletes its rows (docs/PRIVACY.md).
  */
 
 import {
@@ -56,7 +62,10 @@ import {
   type DbParam,
   type DbStatement,
 } from "../../../core/platform.js";
-import { clearDeviceSubjects } from "../../../core/subjectHooks.js";
+import {
+  clearDeviceSubjects,
+  onLicenseOwnershipEnded,
+} from "../../../core/subjectHooks.js";
 import { sendNotice, securityNoticeRecipients } from "../portal/email.js";
 import { accountsSeparatedNotice } from "../portal/notices.js";
 import { isFresh, type AccountContext, type AccountProof } from "./links.js";
@@ -82,39 +91,6 @@ export const ACCOUNT_COLUMNS = [
   "deleted_at",
   "nudge_shown_at",
   "passkey_user_handle",
-] as const;
-
-/** Every `account_links` column (a test pins it to the table). */
-export const LINK_COLUMNS = [
-  "id",
-  "account_id",
-  "issuer_key",
-  "tenant_scope",
-  "subject",
-  "kind",
-  "email",
-  "email_verified",
-  "display_name",
-  "amr_json",
-  "created_at",
-  "last_used_at",
-  "groups_json",
-  "profile_json",
-  "provider_flag",
-] as const;
-
-/** Every `account_passkeys` column (a test pins it to the table). */
-export const PASSKEY_COLUMNS = [
-  "credential_id",
-  "account_id",
-  "public_key",
-  "sign_count",
-  "transports_json",
-  "rp_id",
-  "user_handle",
-  "created_at",
-  "last_used_at",
-  "details_json",
 ] as const;
 
 /** The survivor's details a join fills in from the absorbed account when the survivor has none. */
@@ -144,8 +120,10 @@ export interface MergeSnapshot {
   absorbed: Row;
   /** The survivor's {@link FILLED_COLUMNS} (and the primary email's verification) before. */
   survivorBefore: Row;
-  links: Row[];
-  passkeys: Row[];
+  /** The ids of the sign-in methods that moved (only what is still on the survivor goes back). */
+  links: string[];
+  /** The credential ids of the passkeys that moved. */
+  passkeys: string[];
   licenses: Array<[string, string]>;
   sessions: string[];
   avatars: string[];
@@ -252,18 +230,14 @@ export async function captureMergeSnapshot(
       ...FILLED_COLUMNS,
       "primary_email_verified_at",
     ]),
-    links: (
-      await db.all<Row>(
-        "SELECT * FROM account_links WHERE account_id = ? ORDER BY created_at, id",
-        A,
-      )
-    ).map((r) => pick(r, LINK_COLUMNS)),
-    passkeys: (
-      await db.all<Row>(
-        "SELECT * FROM account_passkeys WHERE account_id = ? ORDER BY created_at",
-        A,
-      )
-    ).map((r) => pick(r, PASSKEY_COLUMNS)),
+    links: await ids(
+      "SELECT id AS v FROM account_links WHERE account_id = ? ORDER BY created_at, id",
+      A,
+    ),
+    passkeys: await ids(
+      "SELECT credential_id AS v FROM account_passkeys WHERE account_id = ? ORDER BY created_at",
+      A,
+    ),
     licenses: await pairs(
       "SELECT product AS a, id AS b FROM licenses WHERE account_id = ? ORDER BY product, id",
       A,
@@ -403,6 +377,29 @@ export type UndoResult =
       error: "step_up_required" | "not_found" | "last_link";
     };
 
+/**
+ * Whether undoing would orphan an account: the survivor keeps no method outside `moved`, or no
+ * method in `moved` is still on the survivor (the absorbed account would come back with none).
+ */
+async function undoWouldOrphan(
+  db: Db,
+  survivorId: string,
+  moved: string[],
+): Promise<boolean> {
+  const row = await db.first<{ kept: number; back: number }>(
+    `SELECT
+       (SELECT COUNT(*) FROM account_links
+         WHERE account_id = ? AND id NOT IN (SELECT value FROM json_each(?))) AS kept,
+       (SELECT COUNT(*) FROM account_links
+         WHERE account_id = ? AND id IN (SELECT value FROM json_each(?))) AS back`,
+    survivorId,
+    JSON.stringify(moved),
+    survivorId,
+    JSON.stringify(moved),
+  );
+  return !row || row.kept === 0 || row.back === 0;
+}
+
 function insertRow(
   table: string,
   cols: readonly string[],
@@ -459,27 +456,11 @@ export async function undoMerge(
     return { ok: false, error: "not_found" };
   }
 
-  // Never orphan either side.
-  const survivorLinks = await db.all<{ id: string }>(
-    "SELECT id FROM account_links WHERE account_id = ?",
-    S,
-  );
-  const moved = new Set(snap.links.map((l) => String(l.id)));
-  const keptBySurvivor = survivorLinks.filter((l) => !moved.has(l.id)).length;
-  let restorable = 0;
-  for (const link of snap.links) {
-    const held = await db.first<{ id: string; account_id: string }>(
-      `SELECT id, account_id FROM account_links
-        WHERE id = ? OR (issuer_key = ? AND tenant_scope = ? AND subject = ?)`,
-      link.id,
-      link.issuer_key,
-      link.tenant_scope,
-      link.subject,
-    );
-    if (!held || (held.id === link.id && held.account_id === S))
-      restorable += 1;
-  }
-  if (keptBySurvivor === 0 || restorable === 0) {
+  // Never orphan either side (a fast refusal; the guard at the head of the batch is the
+  // authority). A method removed since the join stays removed: only what is still on the
+  // survivor under its own id goes back.
+  const moved = new Set(snap.links);
+  if (await undoWouldOrphan(db, S, [...moved])) {
     return { ok: false, error: "last_link" };
   }
 
@@ -493,6 +474,26 @@ export async function undoMerge(
 
   const stmts: DbStatement[] = [];
   stmts.push(
+    // The never-orphan guard, atomic with the undo: when the survivor would keep no method of
+    // its own, or no moved method is still on it, this inserts a row with a NULL in a NOT NULL
+    // column and the whole batch aborts (a removal racing the undo cannot orphan either side).
+    {
+      sql: `INSERT INTO account_merges (id, survivor_id, absorbed_id, merged_at, undo_until)
+            SELECT ?, NULL, NULL, 0, 0
+             WHERE NOT EXISTS (SELECT 1 FROM account_links
+                                WHERE account_id = ?
+                                  AND id NOT IN (SELECT value FROM json_each(?)))
+                OR NOT EXISTS (SELECT 1 FROM account_links
+                                WHERE account_id = ?
+                                  AND id IN (SELECT value FROM json_each(?)))`,
+      params: [
+        `${mergeId}:guard`,
+        S,
+        JSON.stringify([...moved]),
+        S,
+        JSON.stringify([...moved]),
+      ],
+    },
     // A plain INSERT: the id was checked free above, and a failure must fail the whole batch.
     insertRow(
       "accounts",
@@ -510,33 +511,11 @@ export async function undoMerge(
       params: [A, S, JSON.stringify([...moved])],
     },
   );
-  // A method removed since the join comes back when its key is free (OR IGNORE otherwise).
-  for (const link of snap.links) {
-    stmts.push(
-      insertRow("account_links", LINK_COLUMNS, { ...link, account_id: A }),
-    );
-  }
   stmts.push({
     sql: `UPDATE account_passkeys SET account_id = ?
            WHERE account_id = ? AND credential_id IN (SELECT value FROM json_each(?))`,
-    params: [A, S, JSON.stringify(snap.passkeys.map((p) => p.credential_id))],
+    params: [A, S, JSON.stringify(snap.passkeys)],
   });
-  for (const pk of snap.passkeys) {
-    stmts.push({
-      // Only with its method: a passkey whose link someone else now holds stays theirs.
-      sql: `INSERT OR IGNORE INTO account_passkeys (${PASSKEY_COLUMNS.join(", ")})
-            SELECT ${PASSKEY_COLUMNS.map(() => "?").join(", ")}
-             WHERE EXISTS (SELECT 1 FROM account_links
-                            WHERE issuer_key = 'passkey' AND subject = ? AND account_id = ?)`,
-      params: [
-        ...PASSKEY_COLUMNS.map((c) =>
-          c === "account_id" ? A : (pk[c] ?? null),
-        ),
-        pk.credential_id,
-        A,
-      ],
-    });
-  }
   for (const [product, id] of snap.licenses) {
     stmts.push({
       sql: "UPDATE licenses SET account_id = ? WHERE product = ? AND id = ? AND account_id = ?",
@@ -646,10 +625,20 @@ export async function undoMerge(
                    WHERE id = ? AND primary_email = ?`,
             params: [S, taken],
           }
-        : {
-            sql: `UPDATE accounts SET ${col} = NULL WHERE id = ? AND ${col} = ?`,
-            params: [S, taken],
-          },
+        : col === "passkey_user_handle"
+          ? {
+              // Kept while the survivor holds a passkey created under it during the window (the
+              // moved ones have left by now), so its authenticator keeps one entry.
+              sql: `UPDATE accounts SET passkey_user_handle = NULL
+                     WHERE id = ? AND passkey_user_handle = ?
+                       AND NOT EXISTS (SELECT 1 FROM account_passkeys
+                                        WHERE account_id = ? AND user_handle = ?)`,
+              params: [S, taken, S, taken],
+            }
+          : {
+              sql: `UPDATE accounts SET ${col} = NULL WHERE id = ? AND ${col} = ?`,
+              params: [S, taken],
+            },
     );
   }
   // A subject that moved over whole goes back; an aliased one stays the survivor's alias.
@@ -698,7 +687,36 @@ export async function undoMerge(
       mergeId,
       now,
     );
+    // The guard tripped: a method went between the check above and the batch.
+    if (await undoWouldOrphan(db, S, [...moved])) {
+      return { ok: false, error: "last_link" };
+    }
     throw err;
+  }
+
+  // F-21: a licence that went back stops every registry token the survivor minted on it during
+  // the window (the absorbed account's own tokens moved back above, untouched), and its devices'
+  // bindings to the survivor go; each binds again at its next sign-in.
+  for (const [product, id] of snap.licenses) {
+    const owner = await db.first<{ account_id: string | null }>(
+      "SELECT account_id FROM licenses WHERE product = ? AND id = ?",
+      product,
+      id,
+    );
+    if (owner?.account_id !== A) continue;
+    await onLicenseOwnershipEnded(db, env, {
+      product,
+      licenseId: id,
+      accountId: S,
+      reason: "relinked",
+      now,
+    });
+    await clearDeviceSubjects(
+      db,
+      env,
+      { kind: "license", product, licenseId: id },
+      "merge_undone",
+    );
   }
 
   // Bindings to a subject that changed hands go; each device binds again at its next sign-in.

@@ -23,11 +23,13 @@
  * Joining calls I-05's `mergeAccounts`, which refuses unless BOTH proofs are no older than
  * 5 minutes, and each proof's session must still be live (signing out of either cancels it). The
  * account kept is the other one by default (the existing account the person came to link: its
- * primary email stays, PORTAL.md §4.11), or the started one on request. A join is refused while the
- * account to absorb could still undo a join of its own (`merge_pending`), and it is audited,
+ * primary email stays, PORTAL.md §4.11), or the started one on request. A join is refused while
+ * either account could still undo a join of its own (`merge_pending`), and it is audited,
  * emailed to every verified address of both, and undoable for 72 hours (`accounts/mergeUndo.ts`).
  * The browser's session stays valid either way: an absorbed account's session resolves to the
- * survivor.
+ * survivor. The flow is claimed before the merge, so two racing confirms merge once; an account's
+ * details show on the join screen only while its proof's session is live, and signing out clears
+ * the flow's cookie.
  */
 
 import { hashKey, type Db, type Env } from "../../../core/platform.js";
@@ -355,10 +357,17 @@ async function linkView(
   if (!found) return cardJson({ flow: null, undoable });
   const flow = await absorbCallerProof(env, db, found.ref, found.flow, caller);
   if (!flow) return expired();
+  // An account's details show only while its proof's session is live: once the started account
+  // signed out, the flow is over (and a stranger reaching this browser later sees nothing).
+  if (!(await proofLive(db, flow.started, now))) {
+    await deleteArtefact(env, found.ref).catch(() => undefined);
+    return cardJson({ flow: null, undoable }, 200, [clearFlowCookie()]);
+  }
   const started = await accountCard(db, "started", flow.started, caller, now);
-  const other = flow.other
-    ? await accountCard(db, "other", flow.other, caller, now)
-    : null;
+  const other =
+    flow.other && (await proofLive(db, flow.other, now))
+      ? await accountCard(db, "other", flow.other, caller, now)
+      : null;
   let reason:
     | "sign_in_other"
     | "step_up_required"
@@ -373,8 +382,11 @@ async function linkView(
     !isFresh(asProof(flow.other), now)
   )
     reason = "step_up_required";
-  else if (await hasUndoableMerge(db, flow.started.accountId, now))
-    // The default keeps `other`, absorbing `started`: refused while `started` can still undo.
+  else if (
+    (await hasUndoableMerge(db, flow.started.accountId, now)) ||
+    (await hasUndoableMerge(db, flow.other.accountId, now))
+  )
+    // Refused while either account can still undo a join of its own, whichever is kept.
     reason = "merge_pending";
   const products = flow.other
     ? await db.first<{ n: number }>(
@@ -447,14 +459,27 @@ async function linkConfirm(
   if (stale.length > 0) return stepUpRequired(stale);
   const survivor = keep === "other" ? flow.other : flow.started;
   const absorbed = keep === "other" ? flow.started : flow.other;
+  // One completion only: of two racing confirms, one gets the flow and merges.
+  if (!(await consumeArtefact(env, found.ref))) return expired();
   const merged = await mergeAccounts(
     { db, env, now, origin: originOf(req) },
     { survivor: asProof(survivor), absorbed: asProof(absorbed) },
   );
   if (!merged.ok) {
+    // The flow was used up by this attempt: its cookie goes with every refusal.
+    const gone = [clearFlowCookie()];
     switch (merged.reason) {
       case "step_up_required":
-        return stepUpRequired(["started", "other"]);
+        return cardJson(
+          {
+            error: "step_up_required",
+            message: "Sign in to both accounts again, then join.",
+            maxAgeSeconds: STEP_UP_MAX_AGE_SECONDS,
+            stale: ["started", "other"],
+          },
+          401,
+          gone,
+        );
       case "same_account":
         return cardJson(
           {
@@ -464,6 +489,7 @@ async function linkConfirm(
               "That's the account you started from. Sign in to your other account.",
           },
           400,
+          gone,
         );
       case "merge_pending":
         return cardJson(
@@ -471,9 +497,10 @@ async function linkConfirm(
             error: "forbidden",
             reason: "merge_pending",
             message:
-              "This account was joined with another in the last 72 hours. Keep it instead, or try again once that join can no longer be undone.",
+              "One of these accounts was joined with another in the last 72 hours. Try again once that join can no longer be undone.",
           },
           403,
+          gone,
         );
       default:
         return cardJson(
@@ -483,10 +510,10 @@ async function linkConfirm(
             message: "These accounts can't be joined.",
           },
           403,
+          gone,
         );
     }
   }
-  await consumeArtefact(env, found.ref).catch(() => null);
   return cardJson(
     {
       status: "joined",

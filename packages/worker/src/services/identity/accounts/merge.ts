@@ -20,8 +20,8 @@
  * and the account page's Link an existing account (PX-W12, `portal/link.ts`).
  *
  * PX-W12: every join is undoable for 72 hours (`mergeUndo.ts`). The batch also writes an
- * `account_merges` row with a snapshot of what moved, and an account that absorbed another less
- * than 72 hours ago is never itself absorbed (`merge_pending`), so that undo stays possible.
+ * `account_merges` row with a snapshot of what moved, and no join involves an account that can
+ * still undo a join of its own (`merge_pending`), so each undo stays possible and exact.
  */
 
 import type { DbStatement } from "../../../core/platform.js";
@@ -61,8 +61,8 @@ export type MergeResult =
         | "same_account"
         | "not_found"
         | "account_disabled"
-        /** The account to absorb joined another less than 72 hours ago: absorbing it now would
-         *  make that join impossible to undo. Keep it as the survivor instead, or wait. */
+        /** Either account joined another less than 72 hours ago, and that join can still be
+         *  undone: wait until it no longer can. */
         | "merge_pending";
     };
 
@@ -86,7 +86,13 @@ export async function mergeAccounts(
   }
   const S = survivor.id;
   const A = absorbed.id;
-  if (await hasUndoableMerge(db, A, now)) {
+  // Either side could still undo a join of its own: absorbing A would lose that undo, and
+  // absorbing into S would hand this join's data and aliases to S's earlier absorbed account if
+  // S's join were undone.
+  if (
+    (await hasUndoableMerge(db, A, now)) ||
+    (await hasUndoableMerge(db, S, now))
+  ) {
     return { ok: false, reason: "merge_pending" };
   }
 

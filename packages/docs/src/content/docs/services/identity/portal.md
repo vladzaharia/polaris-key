@@ -313,11 +313,15 @@ url96}}`; it does not change the profile until a `PATCH` puts it to use. An unus
   was proven, what each holds), the result, and `canJoin` with a `reason` (`sign_in_other`,
   `step_up_required`, `merge_pending`). **`POST /api/me/link/confirm {keep?}`** joins them when both
   proofs are under 5 minutes old and both sessions are live, keeping the account linked in
-  (`other`, the default) or the started one; it is refused while the account to absorb could still
-  undo a join of its own (`403 forbidden`, `reason: merge_pending`), and it is audited and emailed
-  to both with the undo window. **`POST /api/me/link/cancel`** forgets the flow. `GET /api/me/link`
+  (`other`, the default) or the started one; it is refused while either account could still undo
+  a join of its own (`403 forbidden`, `reason: merge_pending`), uses up the flow (two racing
+  confirms merge once), and is audited and emailed to both with the undo window. An account's
+  details show on the join screen only while its proof's session is live; signing out clears the
+  flow. **`POST /api/me/link/cancel`** forgets the flow. `GET /api/me/link`
   also lists `undoable` joins, and **`POST /api/me/link/undo {merge}`** (a fresh sign-in to the kept
-  account) separates the two again within 72 hours: methods, licences, sessions and the rest go back,
+  account) separates the two again within 72 hours: the joined account's methods still on the kept
+  account (one disconnected since stays disconnected), its licences, sessions and the rest go back;
+  a licence that goes back revokes the registry tokens the kept account minted on it meanwhile;
   developers keep the alias they were told about, and the joined account gets a fresh pairwise
   subject where its old one became an alias (`404 not_found` once undone or past 72 hours,
   `409 last_link` when an account would be left with no way to sign in).
