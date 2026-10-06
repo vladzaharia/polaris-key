@@ -203,6 +203,43 @@ describe("resolveSyncPrincipal: the binding only, never the licence owner", () =
     ).toEqual({ account_id: null });
   });
 
+  it("a device naming a missing licence fails closed; a blank email is no email; a licence-less device keeps its binding", async () => {
+    const w = await world();
+    // seedLicenseWithKey writes ada@example.com: an assigned (waiting) licence.
+    const { licenseId } = await seedLicenseWithKey(w.db, SLUG);
+    const ada = await account(w.db, "ada@example.com");
+    await insertSignedInDevice(w.db, "dev-1", licenseId, ada.subject);
+    expect(await principalOf(w, "dev-1")).toEqual({
+      product: SLUG,
+      subject: ada.subject,
+    });
+    // An email of only spaces is no email (`isFloatingLicense`): the licence is floating.
+    await w.db.run(
+      "UPDATE licenses SET email = '   ' WHERE product = ? AND id = ?",
+      SLUG,
+      licenseId,
+    );
+    expect(await principalOf(w, "dev-1")).toBeNull();
+    // The device names a licence row that is gone: no principal (fail closed), not "no licence".
+    await w.db.run(
+      "UPDATE devices SET license_id = 'lic_gone' WHERE product = ? AND device_id = ?",
+      SLUG,
+      "dev-1",
+    );
+    expect(await principalOf(w, "dev-1")).toBeNull();
+    // A device with no licence at all (`NO_LICENSE_ID`: License off, or a keyless device of an
+    // `open` registration product) has nothing to be floating: its principal is its binding.
+    await w.db.run(
+      "UPDATE devices SET license_id = '' WHERE product = ? AND device_id = ?",
+      SLUG,
+      "dev-1",
+    );
+    expect(await principalOf(w, "dev-1")).toEqual({
+      product: SLUG,
+      subject: ada.subject,
+    });
+  });
+
   it("an aliased subject resolves to the survivor's; a deleted one, a malformed one and a revoked device to no principal", async () => {
     const w = await world();
     const { licenseId } = await seedLicenseWithKey(w.db, SLUG);

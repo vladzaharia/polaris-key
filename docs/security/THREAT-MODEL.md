@@ -5466,9 +5466,13 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   subject and a device that is not authorized resolve to no principal (`account_required`). Owning
   a device's licence does not make an account its principal; a key-activated device on an owned
   licence has none until someone signs in on it. A device on a floating licence
-  (`account_id IS NULL AND email IS NULL`) has none at all, even with a binding: a floating
-  licence has no account features (S-24, owner 2026-10-06). A licence-less device on a
-  License-off product (`NO_LICENSE_ID`) is not floating. Cloud
+  (`account_id IS NULL` and no email; `isFloatingLicense`, the one helper every caller asks) has
+  none at all, even with a binding: a floating licence has no account features (S-24, owner
+  2026-10-06). A device whose `license_id` names a licence row that does not exist resolves to no
+  principal as well (fail closed). A device that names no licence (`NO_LICENSE_ID`) has no licence
+  to be floating, so the check does not apply and its binding is its principal: that is a device
+  of a License-off product, and equally a keyless device registered on a License-on product whose
+  `registration` is `"open"`. Cloud
   Sync code may not call `subjectFor`, `licenseOwnerSubject` or read an account id (a test scans
   `core/syncAccess.ts` and `services/sync/`); `subjectFor` stays Config's owner fallback (U-03).
 - **One module for the licence question.** `syncAccess` (`core/syncAccess.ts`) answers
