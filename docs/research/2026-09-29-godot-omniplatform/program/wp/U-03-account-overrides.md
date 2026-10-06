@@ -124,6 +124,13 @@ Where the brief and the code disagreed, the code won:
   match too.
 - **The migration is `0103_account_overrides.sql`**, the number the lead assigned (built as
   `00XX_account_overrides.sql`); `LATEST_MIGRATION` names it.
+- **Review round 1 (2026-10-06):** the run's account-row write is a compare-and-set on the row
+  it planned from (a unit's report and audit rows are written only if it applied; a changed row
+  is re-planned, up to three times per call); the lease has a holder, is renewed per product and
+  is cleared only by its holder (`run_lease_holder`); the licence route's freeze check and its
+  config write are one conditional UPDATE; the claim path clears every declared secret key;
+  `deleteProduct` deletes the product's account overrides and report; the RUNBOOK and the console
+  say what decision 4 costs OIDC licences with no account.
 - **Test 8** (the signed corpus is unchanged) is the gate's `pnpm gen:corpus -- --check`: no signed
   shape, claim or fixture changes.
 
@@ -154,6 +161,18 @@ mise exec node@22 -- pnpm gen:corpus -- --check
 ## Hand-off
 
 - U-11a shows account overrides on the Data tab; U-12 exports and deletes them; U-15a writes the operators' migration notice.
+- Follow-ups from the review (2026-10-06), not done here:
+  - **N3:** batch the plan's reads (owners' subjects with `existingSubjectsFor`, their account
+    rows in one query) and check the cost against the production dry run;
+  - **N5:** an `If-Match` (ETag of the stored row) on `PUT …/users/<subject>/overrides`, so the
+    console's compare-and-set covers the operator's whole edit session, not only the server's
+    read-to-write window;
+  - **N9:** bound the nightly inventory per tick (a cursor over products), like the report purge
+    and the column emptying;
+  - **PX-W12's undo gap:** a merge's hook folds the absorbed account's row into the survivor's and
+    deletes it, so an undo cannot give it back. Keep the absorbed row verbatim, still sealed, for
+    the 72-hour undo window (PX-W12's snapshot, or a store-side copy) if an exact undo of operator
+    config is wanted.
 
 The role agent sets `--set U-03 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

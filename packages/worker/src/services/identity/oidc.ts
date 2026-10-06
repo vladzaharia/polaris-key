@@ -1103,6 +1103,9 @@ export async function activateFromIdentity(
       product.slug,
       claimable.id,
     );
+    // Every key the provisioning DECLARES, not just the ones this identity's claims provide, so
+    // a declared key whose claim is absent is cleared from the owner's row (revocation on claim
+    // loss), exactly as the sign-in rewrite does.
     if (frozen && claimable.account_id)
       await applyProvisionedAccountSecrets(
         opts.env,
@@ -1110,7 +1113,8 @@ export async function activateFromIdentity(
         product.slug,
         claimable.account_id,
         provisionedAll.secrets,
-        new Set(Object.keys(provisionedAll.secrets)),
+        provisioningDeclaredKeys(await getProvisioning(db, product.slug))
+          .secrets,
         now,
       );
     await appendAudit(db, {

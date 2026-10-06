@@ -632,3 +632,73 @@ describe("OIDC provisioning after the licence-override migration (U-03; S-19 §8
     expect(await secretOf(runAt)).toBeUndefined();
   });
 });
+
+describe("OIDC claim of an enrolled licence after the migration's run (U-03, N8)", () => {
+  it("clears a declared secret whose claim is absent from the owner's row, keeping an operator's keys", async () => {
+    const db = makeTestDb();
+    const env = makeEnv(new KvMock(), ["djdl"]);
+    env.EMAIL = { send: async () => {} } as unknown as Env["EMAIL"];
+    await seedProduct(db, "djdl", { catalog: DJDL_CATALOG });
+    await seedOidc(db);
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const ada = await signIn(
+      db,
+      { issuerKey: "email", subject: "ada@example.com", kind: "email" },
+      NOW,
+    );
+    if (ada.status !== "signed_in") throw new Error(ada.status);
+    // An anonymous enrolled licence that Ada's account already owns.
+    await db.run(
+      `INSERT INTO licenses (product, id, status, sub, name, email, groups_json, tier_id, activated_at,
+         expires_at, max_offline_days, overrides_json, channels_json, min_version, max_version,
+         origin, account_id, modified_by, modified_at)
+       VALUES ('djdl', 'lic-enrolled', 'active', NULL, NULL, NULL, NULL, NULL, ?, NULL, NULL,
+         '{"config":{},"secrets":{},"entitlements":{}}', NULL, NULL, NULL, 'enroll', ?, NULL, ?)`,
+      NOW,
+      ada.account.id,
+      NOW,
+    );
+    const subject = await subjectFor(db, ada.account.id, "djdl", NOW);
+    await db.run(
+      `INSERT INTO account_overrides (product, subject, payload_json, updated_at, updated_by)
+       VALUES ('djdl', ?, ?, ?, 'signin')`,
+      subject,
+      JSON.stringify({
+        config: {},
+        secrets: {
+          "proxy.subscriptionUrl": {
+            state: "hidden",
+            value: "https://vpn.example.com/stale",
+            updatedAt: NOW,
+          },
+          "operator.key": { state: "hidden", value: "kept", updatedAt: NOW },
+        },
+      }),
+      NOW,
+    );
+    const actor = { sub: "op", name: null, email: null };
+    const runAt = NOW + 31 * 86_400;
+    await setOverrideMigrationPrerequisite(db, "loginCard", true, actor, NOW);
+    await setOverrideMigrationPrerequisite(db, "library", true, actor, NOW);
+    await startOverrideMigrationNotice(db, actor, NOW);
+    expect((await runOverrideMigration(env, db, actor, runAt)).ok).toBe(true);
+
+    // The identity signs in WITHOUT the claim the secret's hook reads, claiming the enrolled row.
+    const r = await activateFromIdentity(
+      db,
+      product,
+      identity({ claims: { sub: "user-123" } }),
+      runAt,
+      { enrolledLicenseId: "lic-enrolled", env },
+    );
+    expect(r).toMatchObject({ licenseId: "lic-enrolled", merged: "claimed" });
+    const row = await db.first<{ payload_json: string }>(
+      "SELECT payload_json FROM account_overrides WHERE product = 'djdl' AND subject = ?",
+      subject,
+    );
+    const secrets = (
+      JSON.parse(row!.payload_json) as { secrets: Record<string, unknown> }
+    ).secrets;
+    expect(Object.keys(secrets)).toEqual(["operator.key"]);
+  });
+});

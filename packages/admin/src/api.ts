@@ -413,6 +413,9 @@ export interface OverrideMigrationProgress {
   completedAt: number | null;
   productsDone: string[];
   productsRemaining: string[];
+  /** Accounts whose row kept changing under the run in this call: their product is retried by the
+   *  next call (absent from a Worker before the review fix). */
+  conflicts?: number;
   written: Record<OverrideMigrationOutcome, number>;
 }
 

@@ -13667,6 +13667,12 @@ paths:
                           moved: { type: integer }
                           collapsed: { type: integer }
                           dropped: { type: integer }
+                      conflicts:
+                        type: integer
+                        description: >
+                          Accounts whose row kept changing between the plan and its
+                          compare-and-set write in this call; their product stays undone and the
+                          next call re-plans it.
                   state:
                     { $ref: "#/components/schemas/AdminOverrideMigrationState" }
         "401": { $ref: "#/components/responses/AdminUnauthorized" }

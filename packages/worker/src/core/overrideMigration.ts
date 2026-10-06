@@ -48,7 +48,7 @@
 
 import { Catalog } from "@polaris-key/catalog";
 import type { ManagedEntry } from "@polaris-key/protocol";
-import type { Db, DbStatement } from "../db/types.js";
+import type { Db, DbParam, DbStatement } from "../db/types.js";
 import type { Env } from "../env.js";
 import { randomId } from "../crypto.js";
 import {
@@ -64,7 +64,6 @@ import { existingSubjectFor, subjectFor } from "./accountSubjects.js";
 import {
   getAccountOverrides,
   parseAccountOverridePayload,
-  stmtPutAccountOverrides,
   type AccountOverridePayload,
 } from "./accountOverrides.js";
 
@@ -122,6 +121,7 @@ interface StateRow {
   run_completed_at: number | null;
   products_done_json: string | null;
   run_lease_until: number | null;
+  run_lease_holder: string | null;
   inventory_json: string | null;
   inventory_computed_at: number | null;
   columns_emptied_at: number | null;
@@ -182,6 +182,15 @@ export function licenseConfigRetired(
 ): boolean {
   return state.runCompletedAt !== null;
 }
+
+/**
+ * {@link licenseConfigFrozen} as a SQL condition that holds while licence config and secrets are
+ * still writable (the run has not started). License's override route writes config and secrets
+ * under it, so its freeze check and its write are one statement: a run that starts between the
+ * route's read and its write makes the write apply to nothing.
+ */
+export const LICENSE_CONFIG_WRITABLE_SQL =
+  "NOT EXISTS (SELECT 1 FROM override_migration WHERE id = 'platform' AND run_started_at IS NOT NULL)";
 
 /** {@link licenseConfigFrozen}, as one indexed read (License's override route). */
 export async function licenseConfigOverridesFrozen(db: Db): Promise<boolean> {
@@ -766,6 +775,32 @@ export interface RunProgress {
   productsRemaining: string[];
   /** This request's work: report rows written, by outcome. */
   written: Record<ReportOutcome, number>;
+  /**
+   * Accounts whose row changed between the plan and its write in this request and were still
+   * changing after every re-plan: their product is left undone, and the next call re-plans it.
+   */
+  conflicts: number;
+}
+
+/** A boolean SQL condition a statement of the run is written under (`landed`). */
+interface Guard {
+  sql: string;
+  params: DbParam[];
+}
+
+/** `INSERT … VALUES (…)` as `INSERT … SELECT … WHERE <guard>` (the statement applies only then). */
+function guarded(stmt: DbStatement, guard: Guard | null): DbStatement {
+  if (!guard) return stmt;
+  const VALUES = /VALUES \(([^)]*)\)\s*$/;
+  if (!VALUES.test(stmt.sql))
+    throw new Error("guarded: the INSERT no longer ends in VALUES (…)");
+  return {
+    sql: stmt.sql.replace(
+      VALUES,
+      (_m, marks: string) => `SELECT ${marks} WHERE ${guard.sql}`,
+    ),
+    params: [...stmt.params, ...guard.params],
+  };
 }
 
 function reportStatement(
@@ -773,26 +808,30 @@ function reportStatement(
   row: OverrideReportRow,
   subject: string | null,
   now: number,
+  guard: Guard | null = null,
 ): DbStatement {
-  return {
-    // OR IGNORE: a resumed run never rewrites a row an earlier request committed.
-    sql: `INSERT OR IGNORE INTO override_migration_report
+  return guarded(
+    {
+      // OR IGNORE: a resumed run never rewrites a row an earlier request committed.
+      sql: `INSERT OR IGNORE INTO override_migration_report
             (product, run_id, license_id, outcome, subject, buyer_email, keys_json, values_json,
              created_at, expires_at)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    params: [
-      row.product,
-      runId,
-      row.licenseId,
-      row.outcome,
-      subject,
-      row.buyerEmail,
-      JSON.stringify(row.keys),
-      JSON.stringify(row.values),
-      now,
-      now + OVERRIDE_MIGRATION_REPORT_DAYS * DAY,
-    ],
-  };
+      params: [
+        row.product,
+        runId,
+        row.licenseId,
+        row.outcome,
+        subject,
+        row.buyerEmail,
+        JSON.stringify(row.keys),
+        JSON.stringify(row.values),
+        now,
+        now + OVERRIDE_MIGRATION_REPORT_DAYS * DAY,
+      ],
+    },
+    guard,
+  );
 }
 
 function keyList(keys: { config: string[]; secrets: string[] }): string {
@@ -807,27 +846,31 @@ function auditFor(
   row: OverrideReportRow,
   subject: string | null,
   now: number,
+  guard: Guard | null = null,
 ): DbStatement {
   const summary =
     row.outcome === "dropped"
       ? `Dropped this license's config and secret overrides at the migration (no account): ${keyList(row.keys)}`
       : `Moved this license's config and secret overrides to ${subject}'s account overrides${row.outcome === "collapsed" ? `; ${row.values.collapsed?.length ?? 0} value(s) lost to another license` : ""}`;
-  return auditStatement({
-    product: row.product,
-    id: randomId("aud"),
-    at: now,
-    actor_sub: actor.sub,
-    actor_name: actor.name,
-    actor_email: actor.email,
-    action:
-      row.outcome === "dropped"
-        ? "license.overrides.dropped"
-        : "license.overrides.migrated",
-    target_kind: "license",
-    target_id: row.licenseId,
-    parent_id: null,
-    summary,
-  });
+  return guarded(
+    auditStatement({
+      product: row.product,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: actor.sub,
+      actor_name: actor.name,
+      actor_email: actor.email,
+      action:
+        row.outcome === "dropped"
+          ? "license.overrides.dropped"
+          : "license.overrides.migrated",
+      target_kind: "license",
+      target_id: row.licenseId,
+      parent_id: null,
+      summary,
+    }),
+    guard,
+  );
 }
 
 /** Seal any secret value still stored in plaintext (a legacy row), so the account row holds none. */
@@ -886,8 +929,100 @@ async function reportedLicences(
   return new Set(rows.map((r) => r.license_id));
 }
 
-/** Apply one product's plan, unit by unit (an account's row with its licences' report and audit
- *  rows, or one dropped licence), never splitting a unit across batches. */
+/** How many times one call re-plans a product whose account rows changed under it. */
+const REPLAN_ATTEMPTS = 3;
+
+/**
+ * The account row write, as a compare-and-set on the row the plan read (`existingJson`, `null` =
+ * no row): an operator's edit, an OIDC sign-in or a merge that lands between the plan and the
+ * write makes it write nothing, and the unit is re-planned on top of that edit.
+ */
+function accountWrite(
+  product: string,
+  subject: string,
+  existingJson: string | null,
+  json: string,
+  now: number,
+): DbStatement {
+  return existingJson === null
+    ? {
+        sql: `INSERT INTO account_overrides (product, subject, payload_json, updated_at, updated_by)
+              SELECT ?, ?, ?, ?, 'migration'
+               WHERE NOT EXISTS (SELECT 1 FROM account_overrides WHERE product = ? AND subject = ?)`,
+        params: [product, subject, json, now, product, subject],
+      }
+    : {
+        sql: `UPDATE account_overrides SET payload_json = ?, updated_at = ?, updated_by = 'migration'
+               WHERE product = ? AND subject = ? AND payload_json = ?`,
+        params: [json, now, product, subject, existingJson],
+      };
+}
+
+/** The unit's write applied: the row holds exactly what it wrote. Its report and audit rows are
+ *  written under this condition, so a unit whose write did not apply leaves no trace. */
+function landed(product: string, subject: string, json: string): Guard {
+  return {
+    sql: "EXISTS (SELECT 1 FROM account_overrides WHERE product = ? AND subject = ? AND payload_json = ?)",
+    params: [product, subject, json],
+  };
+}
+
+interface Unit {
+  stmts: DbStatement[];
+  rows: OverrideReportRow[];
+  /** The compare-and-set, checked after the batch; absent for a dropped licence. */
+  check?: { product: string; subject: string; json: string };
+}
+
+/** Run the units in batches (a unit never split across batches); answers the ones that applied. */
+async function runUnits(db: Db, units: Unit[]): Promise<Unit[]> {
+  const applied: Unit[] = [];
+  let batch: Unit[] = [];
+  const flush = async (): Promise<void> => {
+    if (batch.length === 0) return;
+    const stmts = batch.flatMap((u) => u.stmts);
+    const changes = db.batchChanges
+      ? await db.batchChanges(stmts)
+      : (await db.batch(stmts), null);
+    let at = 0;
+    for (const u of batch) {
+      let ok = true;
+      if (u.check) {
+        ok =
+          changes !== null
+            ? changes[at]! > 0
+            : (
+                await db.first<{ payload_json: string }>(
+                  "SELECT payload_json FROM account_overrides WHERE product = ? AND subject = ?",
+                  u.check.product,
+                  u.check.subject,
+                )
+              )?.payload_json === u.check.json;
+      }
+      if (ok) applied.push(u);
+      at += u.stmts.length;
+    }
+    batch = [];
+  };
+  let size = 0;
+  for (const unit of units) {
+    if (size > 0 && size + unit.stmts.length > BATCH_STATEMENTS) {
+      await flush();
+      size = 0;
+    }
+    batch.push(unit);
+    size += unit.stmts.length;
+  }
+  await flush();
+  return applied;
+}
+
+/**
+ * Apply one product's plan, unit by unit: an account's row with its licences' report and audit
+ * rows (guarded on the row's compare-and-set), or one dropped licence. A unit whose account row
+ * changed under it is re-planned, up to {@link REPLAN_ATTEMPTS} times; the product is marked done
+ * only once every unit applied, so a call that gives up leaves it to the next one.
+ */
 async function applyProduct(
   env: Env,
   db: Db,
@@ -895,58 +1030,71 @@ async function applyProduct(
   runId: string,
   actor: MigrationActor,
   now: number,
-): Promise<Record<ReportOutcome, number>> {
+): Promise<{ written: Record<ReportOutcome, number>; conflicts: number }> {
   const written: Record<ReportOutcome, number> = {
     moved: 0,
     collapsed: 0,
     dropped: 0,
   };
   const catalog = await loadCatalogFor(db, product);
-  const plan = await planProduct(db, product, catalog);
-  const already = await reportedLicences(db, product, runId);
-  const units: DbStatement[][] = [];
-  for (const unit of plan.accounts) {
-    const todo = unit.rows.filter((r) => !already.has(r.licenseId));
-    if (todo.length === 0) continue;
-    const subject =
-      unit.subject ?? (await subjectFor(db, unit.accountId, product, now));
-    const payload = await sealPayload(env, product, catalog, unit.payload);
-    units.push([
-      stmtPutAccountOverrides(product, subject, payload, "migration", now),
-      ...todo.flatMap((r) => [
-        reportStatement(runId, r, subject, now),
-        auditFor(actor, r, subject, now),
-      ]),
-    ]);
-    for (const r of todo) written[r.outcome]++;
-  }
-  for (const r of plan.dropped) {
-    if (already.has(r.licenseId)) continue;
-    units.push([
-      reportStatement(runId, r, null, now),
-      auditFor(actor, r, null, now),
-    ]);
-    written.dropped++;
-  }
-  let batch: DbStatement[] = [];
-  for (const unit of units) {
-    if (batch.length > 0 && batch.length + unit.length > BATCH_STATEMENTS) {
-      await db.batch(batch);
-      batch = [];
+  let conflicts = 0;
+  for (let attempt = 0; attempt < REPLAN_ATTEMPTS; attempt++) {
+    const plan = await planProduct(db, product, catalog);
+    const already = await reportedLicences(db, product, runId);
+    const units: Unit[] = [];
+    for (const unit of plan.accounts) {
+      const todo = unit.rows.filter((r) => !already.has(r.licenseId));
+      if (todo.length === 0) continue;
+      const subject =
+        unit.subject ?? (await subjectFor(db, unit.accountId, product, now));
+      // An owner whose subject the plan did not know has no row (rows exist only for subjects).
+      const existingJson = unit.subject === null ? null : unit.existingJson;
+      const payload = await sealPayload(env, product, catalog, unit.payload);
+      const json = JSON.stringify({
+        config: payload.config,
+        secrets: payload.secrets,
+      });
+      const guard = landed(product, subject, json);
+      units.push({
+        stmts: [
+          accountWrite(product, subject, existingJson, json, now),
+          ...todo.flatMap((r) => [
+            reportStatement(runId, r, subject, now, guard),
+            auditFor(actor, r, subject, now, guard),
+          ]),
+        ],
+        rows: todo,
+        check: { product, subject, json },
+      });
     }
-    batch.push(...unit);
+    for (const r of plan.dropped) {
+      if (already.has(r.licenseId)) continue;
+      units.push({
+        stmts: [
+          reportStatement(runId, r, null, now),
+          auditFor(actor, r, null, now),
+        ],
+        rows: [r],
+      });
+    }
+    const applied = await runUnits(db, units);
+    for (const u of applied) for (const r of u.rows) written[r.outcome]++;
+    conflicts = units.length - applied.length;
+    if (conflicts === 0) break;
   }
-  // The product is done in the same batch as its last unit.
-  batch.push({
-    sql: `UPDATE override_migration
-             SET products_done_json = json_insert(COALESCE(products_done_json, '[]'), '$[#]', ?),
-                 updated_at = ?
-           WHERE id = 'platform' AND run_id = ?
-             AND NOT EXISTS (SELECT 1 FROM json_each(COALESCE(products_done_json, '[]')) WHERE value = ?)`,
-    params: [product, now, runId, product],
-  });
-  await db.batch(batch);
-  return written;
+  if (conflicts > 0) return { written, conflicts };
+  await db.run(
+    `UPDATE override_migration
+        SET products_done_json = json_insert(COALESCE(products_done_json, '[]'), '$[#]', ?),
+            updated_at = ?
+      WHERE id = 'platform' AND run_id = ?
+        AND NOT EXISTS (SELECT 1 FROM json_each(COALESCE(products_done_json, '[]')) WHERE value = ?)`,
+    product,
+    now,
+    runId,
+    product,
+  );
+  return { written, conflicts: 0 };
 }
 
 /**
@@ -960,7 +1108,11 @@ export async function runOverrideMigration(
   db: Db,
   actor: MigrationActor,
   now: number,
-  opts: { maxProducts?: number } = {},
+  opts: {
+    maxProducts?: number;
+    /** Epoch seconds for the lease (tests); defaults to the later of `now` and the wall clock. */
+    clock?: () => number;
+  } = {},
 ): Promise<
   | { ok: true; progress: RunProgress }
   | { ok: false; reason: RunRefusal; runNotBefore?: number | null }
@@ -996,10 +1148,15 @@ export async function runOverrideMigration(
       return { ok: false, reason: "notice_not_started" };
   }
   const runId = state.runId!;
+  // The lease: one holder at a time, renewed before every product, cleared only by its holder.
+  const holder = randomId("ovl");
+  const clock =
+    opts.clock ?? (() => Math.max(now, Math.floor(Date.now() / 1000)));
   const leased = await db.runChanges(
-    `UPDATE override_migration SET run_lease_until = ?
+    `UPDATE override_migration SET run_lease_until = ?, run_lease_holder = ?
       WHERE id = 'platform' AND (run_lease_until IS NULL OR run_lease_until <= ?)`,
-    now + RUN_LEASE_SECONDS,
+    clock() + RUN_LEASE_SECONDS,
+    holder,
     now,
   );
   if (leased === 0) return { ok: false, reason: "run_in_progress" };
@@ -1008,16 +1165,26 @@ export async function runOverrideMigration(
     collapsed: 0,
     dropped: 0,
   };
+  let conflicts = 0;
   try {
     const all = await listAllProductSlugs(db);
     const done = new Set(state.productsDone);
     const remaining = all.filter((s) => !done.has(s));
     const budget = Math.max(1, opts.maxProducts ?? 25);
     for (const product of remaining.slice(0, budget)) {
+      const renewed = await db.runChanges(
+        `UPDATE override_migration SET run_lease_until = ?
+          WHERE id = 'platform' AND run_lease_holder = ?`,
+        clock() + RUN_LEASE_SECONDS,
+        holder,
+      );
+      // Lost the lease (it expired and another request took it): stop; that request continues.
+      if (renewed === 0) break;
       const w = await applyProduct(env, db, product, runId, actor, now);
-      written.moved += w.moved;
-      written.collapsed += w.collapsed;
-      written.dropped += w.dropped;
+      written.moved += w.written.moved;
+      written.collapsed += w.written.collapsed;
+      written.dropped += w.written.dropped;
+      conflicts += w.conflicts;
     }
     state = await readOverrideMigrationState(db);
     const doneNow = new Set(state.productsDone);
@@ -1043,11 +1210,14 @@ export async function runOverrideMigration(
         productsDone: [...doneNow].sort(),
         productsRemaining: left,
         written,
+        conflicts,
       },
     };
   } finally {
     await db.run(
-      "UPDATE override_migration SET run_lease_until = NULL WHERE id = 'platform'",
+      `UPDATE override_migration SET run_lease_until = NULL, run_lease_holder = NULL
+        WHERE id = 'platform' AND run_lease_holder = ?`,
+      holder,
     );
   }
 }

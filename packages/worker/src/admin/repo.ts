@@ -123,6 +123,16 @@ export async function deleteProduct(
       sql: "DELETE FROM account_terms_acceptances WHERE product = ?",
       params: [slug],
     },
+    // U-03: every account's managed config for the product (its subjects are gone above), and the
+    // licence-override migration's report rows, which name the licences' emails.
+    {
+      sql: "DELETE FROM account_overrides WHERE product = ?",
+      params: [slug],
+    },
+    {
+      sql: "DELETE FROM override_migration_report WHERE product = ?",
+      params: [slug],
+    },
     {
       sql: "UPDATE devices SET status = 'deauthorized', subject = NULL WHERE product = ?",
       params: [slug],

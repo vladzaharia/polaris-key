@@ -1306,6 +1306,29 @@ staging or production, and never run `wrangler` against a remote.
    licence to an account during the notice). Platform → Override migration → flag each, or
    `PUT /manage/api/platform/override-migration/prerequisites` with `{"loginCard":true,"library":true}`.
    The notice is refused until both are set.
+
+   **Before the notice: OIDC-provisioned secrets on licences with no account (decision 4).** A
+   product whose Identity provisioning writes a secret from a sign-in claim (djdl's
+   `proxy.subscriptionUrl`) keeps that secret on the licence until the run; from the run on, its
+   only target is the licence owner's account overrides. So **OIDC licences that are not in an
+   account** (no `account_id`: the customer never added the licence in the portal Library, and
+   LX-26's auto-attach never matched a verified email) **stop receiving provisioned secrets**:
+   from the run's start, every sign-in (`updateLicenseOnSignIn`, and `activateFromIdentity`'s
+   claim and new-licence paths in `services/identity/oidc.ts`) removes them from the licence
+   instead of renewing them, and from the run's completion the licence stops delivering any it
+   still holds. A sign-in during the run can strip the secret before the run reaches the product,
+   so such a licence may then be missing from the report: count them from the dry run, before the
+   notice. They are the `dropped` rows whose `keys.secrets` include a key the provisioning
+   declares:
+
+   ```sh
+   jq '[.[] | select(.outcome == "dropped" and (.keys.secrets | index("proxy.subscriptionUrl")))] | length' ovm-dry/report.json
+   ```
+
+   In the console, the product's licence list under Platform → Override migration shows the same
+   licences with their `secretKeys`. Ask those customers to add the licence to their account
+   during the notice: one that does keeps the secret through the owner line.
+
 4. **Start the notice** (`POST …/override-migration/notice`). The run becomes possible 30 days
    later (`runNotBefore`). During the window the inventory is recomputed nightly, so the count to
    be dropped falls as customers attach; the console shows it on every affected product's
@@ -1315,10 +1338,11 @@ staging or production, and never run `wrangler` against a remote.
 5. **Run it** on or after the run date: sign in to the console again (the run needs a sign-in from
    the last 5 minutes), then Platform → Override migration → Run, or
    `POST /manage/api/platform/override-migration/run`, repeated while `progress.done` is false
-   (each call processes up to 25 products). From the first call, `PUT
-…/licenses/<id>/overrides` refuses config and secrets (entitlements stay writable) and the OIDC
-   provisioning writer targets the owner's account overrides. When `done` is true, documents stop
-   reading config and secrets from licences. Each licence touched has an audit row
+   (each call processes up to 25 products). From the first call,
+   `PUT …/licenses/<id>/overrides` refuses config and secrets (entitlements stay writable) and the
+   OIDC provisioning writer targets the owner's account overrides; an OIDC licence with no account
+   stops receiving its provisioned secrets from here on (see before step 4). When `done` is true,
+   documents stop reading config and secrets from licences. Each licence touched has an audit row
    (`license.overrides.migrated` or `license.overrides.dropped`), and the platform activity log
    has the start and the completion.
 6. **The report** (Platform → Override migration → Report, or

@@ -61,6 +61,7 @@ import {
 import { tierExpiresAt } from "../authz.js";
 import { licenseEmail, subjectFor } from "../../../core/accountSubjects.js";
 import {
+  LICENSE_CONFIG_WRITABLE_SQL,
   licenseConfigFrozen,
   licenseConfigRetired,
   readOverrideMigrationState,
@@ -693,34 +694,37 @@ export async function handleLicenses(
     // U-03 step 4 (decision 20): from the migration run's start, config and secrets live on the
     // account override layer. This route keeps entitlements and refuses the rest, naming where
     // they went. Unknown keys still fall through to the catalog's 422 below.
-    if (licenseConfigFrozen(await readOverrideMigrationState(db))) {
-      const moved = updates.filter((u) => {
-        const kind =
-          u && typeof u.key === "string"
-            ? catalog.entryByKey(u.key)?.kind
-            : undefined;
-        return kind === "config" || kind === "secret";
-      });
-      if (moved.length > 0) {
-        const subject = license.account_id
-          ? await subjectFor(db, license.account_id, slug, now)
-          : null;
-        const route = subject
-          ? `/manage/api/products/${slug}/users/${subject}/overrides`
-          : null;
-        return err(
-          400,
-          ErrorCode.BadRequest,
-          subject
-            ? `config and secret overrides moved to the account override layer: edit them on the owner's Users page (PUT ${route})`
-            : "config and secret overrides moved to the account override layer, and this license has no account: managed config for this customer needs an account",
-          {
-            fields: moved.map((u) => u.key),
-            accountOverrides: { subject, route },
-          },
-        );
-      }
-    }
+    const moved = updates.filter((u) => {
+      const kind =
+        u && typeof u.key === "string"
+          ? catalog.entryByKey(u.key)?.kind
+          : undefined;
+      return kind === "config" || kind === "secret";
+    });
+    const frozenRefusal = async (): Promise<Response> => {
+      const subject = license.account_id
+        ? await subjectFor(db, license.account_id, slug, now)
+        : null;
+      const route = subject
+        ? `/manage/api/products/${slug}/users/${subject}/overrides`
+        : null;
+      return err(
+        400,
+        ErrorCode.BadRequest,
+        subject
+          ? `config and secret overrides moved to the account override layer: edit them on the owner's Users page (PUT ${route})`
+          : "config and secret overrides moved to the account override layer, and this license has no account: managed config for this customer needs an account",
+        {
+          fields: moved.map((u) => u.key),
+          accountOverrides: { subject, route },
+        },
+      );
+    };
+    if (
+      moved.length > 0 &&
+      licenseConfigFrozen(await readOverrideMigrationState(db))
+    )
+      return frozenRefusal();
     const result = await applyOverrides(
       env,
       slug,
@@ -733,14 +737,33 @@ export async function handleLicenses(
       return err(422, result.code, "validation failed", {
         fields: result.fields,
       });
-    await patchLicense(
-      db,
-      slug,
-      id,
-      { overrides_json: JSON.stringify(result.payload) },
-      session.sub,
-      now,
-    );
+    if (moved.length > 0) {
+      // The freeze check and the write are one statement: a run that started since the read
+      // above makes this write nothing, and the route answers the freeze instead.
+      const changed = await db.runChanges(
+        `UPDATE licenses SET overrides_json = ?, modified_by = ?, modified_at = ?
+          WHERE product = ? AND id = ? AND ${LICENSE_CONFIG_WRITABLE_SQL}`,
+        JSON.stringify(result.payload),
+        session.sub,
+        now,
+        slug,
+        id,
+      );
+      if (changed === 0) {
+        if (licenseConfigFrozen(await readOverrideMigrationState(db)))
+          return frozenRefusal();
+        return adminNotFound();
+      }
+    } else {
+      await patchLicense(
+        db,
+        slug,
+        id,
+        { overrides_json: JSON.stringify(result.payload) },
+        session.sub,
+        now,
+      );
+    }
     await audit(
       db,
       slug,

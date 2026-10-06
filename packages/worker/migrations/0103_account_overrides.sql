@@ -76,7 +76,8 @@ CREATE INDEX IF NOT EXISTS idx_override_migration_report_subject
 --                run_completed_at, payload.ts stops reading them from the licence (step 5)
 --   products_done_json  the products the run has finished (a JSON array), so a run that stopped
 --                part-way resumes where it left off
---   run_lease_until     a short lease so two run requests never process one product twice
+--   run_lease_until, run_lease_holder  a short lease, renewed per product and cleared only by
+--                       its holder, so two run requests never process one product at once
 --   inventory_json, inventory_computed_at  the daily per-product inventory (counts only)
 --   columns_emptied_at  when the licences' config and secrets columns were emptied, after the
 --                report window (step 5)
@@ -95,6 +96,7 @@ CREATE TABLE IF NOT EXISTS override_migration (
   run_completed_at      INTEGER,
   products_done_json    TEXT,
   run_lease_until       INTEGER,
+  run_lease_holder      TEXT,
   inventory_json        TEXT,
   inventory_computed_at INTEGER,
   columns_emptied_at    INTEGER,

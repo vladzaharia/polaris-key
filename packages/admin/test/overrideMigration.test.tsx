@@ -371,7 +371,7 @@ describe("Platform → Override migration", () => {
         /Unowned licenses' config and secret overrides are dropped/,
       ),
     ).toBeTruthy();
-    expect(within(dialog).getByText(/This can't be undone/)).toBeTruthy();
+    expect(within(dialog).getByText(/no undo in the console/)).toBeTruthy();
     const confirm = () =>
       within(dialog).getByRole("button", { name: "Run migration" });
     expect(disabled(confirm())).toBe(true);

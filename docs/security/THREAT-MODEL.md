@@ -5852,8 +5852,11 @@ values onto it and drops unowned licences'.
   flags the login card (I-07) and the Library (I-11) live in production, and the guard is the
   conditional write itself; the run is refused before the 30-day notice window ends, needs the
   operator's step-up (a sign-in from the last 5 minutes), runs under a lease so two requests never
-  process one product twice, and resumes exactly (report rows are the per-licence progress
-  marker). Every step is in the platform activity log; every licence the run touches has an audit
+  process one product at once (renewed per product, cleared only by its holder), and resumes
+  exactly (report rows are the per-licence progress marker). Its account-row write is a
+  compare-and-set on the row it planned from, with that unit's report and audit rows written only
+  if it applied, so an operator's edit or a sign-in that lands meanwhile is re-planned on, never
+  overwritten. The licence route's freeze check and its write are one statement. Every step is in the platform activity log; every licence the run touches has an audit
   row. Nothing in the Worker starts the run: the nightly job only refreshes the inventory, purges
   the report after 90 days and, after the report window, empties the licences' config and secrets
   columns. Residual: the prerequisites are facts about production that only an operator can
@@ -5867,7 +5870,8 @@ values onto it and drops unowned licences'.
 - **Data the report holds.** A licence's own email (`buyer_email`), key names, non-secret config
   values and the owner's subject, for 90 days, platform admins only. A subject's report rows go
   with its account × product data (the store's `delete`: per-product removal, account deletion,
-  the console's data deletion) and follow it through a merge.
+  the console's data deletion) and follow it through a merge. Deleting a product deletes all of
+  its account overrides and report rows (`deleteProduct`), and deleting a licence its report rows.
 - **Merges never overwrite silently.** The registered store's `merge` keeps the survivor's value
   per key, copies keys only the absorbed account had (secrets copied sealed, never decrypted),
   deletes the absorbed row in the same batch, and lists every collision in the product's activity

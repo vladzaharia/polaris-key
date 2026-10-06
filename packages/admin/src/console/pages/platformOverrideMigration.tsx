@@ -11,7 +11,9 @@
  *   3. the run, once the notice has run its 30 days: typed `migrate`, a sign-in from the last
  *      five minutes, up to 25 products per call ("Continue run" until every product is through).
  *      Owned licences' config and secrets move to their owner's account overrides, unowned
- *      licences' are dropped, and it can't be undone;
+ *      licences' are dropped. There is no undo in the console: for the 90-day report window the
+ *      licences keep their old values (the RUNBOOK's rollback window), then the nightly job
+ *      empties them;
  *   4. the report, kept 90 days, with a CSV download. Secret values are never in it.
  *
  * A dry run shows the report the run would write, for every product or one, and writes nothing.
@@ -465,7 +467,9 @@ function MigrationBody({
         flag both below once they are, then start the notice. At the run, owned
         licenses' config and secret overrides move to their owners' account
         overrides and unowned licenses' are dropped. Entitlement overrides stay
-        on each license.
+        on each license. From the run's start, OIDC licenses that aren't in an
+        account stop receiving provisioned secrets, such as a VPN subscription
+        URL: count them in the dry run before you start the notice.
       </Callout>
       <PrerequisitesSection state={state} gates={gates} />
       <NoticeSection state={state} gates={gates} />
@@ -714,6 +718,15 @@ function ProgressLine({
       {formatCount(w.moved)}, collapsed {formatCount(w.collapsed)} and dropped{" "}
       {formatCount(w.dropped)} {w.dropped === 1 ? "license's" : "licenses'"}{" "}
       overrides.
+      {progress.conflicts ? (
+        <>
+          {" "}
+          {formatCount(progress.conflicts)}{" "}
+          {progress.conflicts === 1 ? "account was" : "accounts were"} edited
+          while the run wrote {progress.conflicts === 1 ? "it" : "them"}:
+          continue the run to retry.
+        </>
+      ) : null}
     </Callout>
   );
 }
@@ -768,7 +781,7 @@ function RunSection({
       <div className="divide-y divide-border">
         <SettingsRow
           label="Status"
-          help="Needs a sign-in from the last 5 minutes. It can't be undone."
+          help={`Needs a sign-in from the last 5 minutes. There's no undo here: for ${state.reportDays} days the licenses keep their old values, which the runbook's rollback uses.`}
           aside={
             run.completedAt !== null ? (
               <span className="text-sm text-fg">
@@ -842,7 +855,7 @@ function RunSection({
           "Owned licenses' config and secret overrides move to their owners' account overrides.",
           "Unowned licenses' config and secret overrides are dropped. Their customers keep their entitlements.",
           "From the first step, license config and secrets are frozen.",
-          `This can't be undone. The report is kept for ${state.reportDays} days.`,
+          `There's no undo in the console. For ${state.reportDays} days the licenses keep their old values (the runbook's rollback window), then they're emptied. The report is kept for ${state.reportDays} days.`,
         ]}
         typedConfirmation={
           policy.typedConfirmation
