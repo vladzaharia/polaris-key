@@ -447,7 +447,10 @@ export interface ObtainEvaluation {
   verdict: ObtainVerdict;
 }
 
-/** Link targets for audience `everyone`: the listing's website, or a store page (`stores[]`). */
+/**
+ * Link targets for audience `everyone`: the listing's website, or a store page (`stores[]`) where a
+ * channel release is reported live (a store link that leads to nothing yet is not a target).
+ */
 async function hasLinkTarget(
   ctx: ObtainContext,
   product: ProductPublic,
@@ -460,7 +463,7 @@ async function hasLinkTarget(
     channel: "stable",
     limit: 1,
   });
-  return (downloads?.stores.length ?? 0) > 0;
+  return downloads?.stores.some((s) => s.live) ?? false;
 }
 
 /** Could anything make this candidate visible? If not, nothing is read for it. */

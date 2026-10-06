@@ -5709,8 +5709,8 @@ storefront's full threat set, notes/S-21 §6.9 S1-S11).
 - **Operators withhold or narrow without changing the policy.** `storefront.polarisKey.listed`
   `unlisted` (or `discover_enabled = 0` until PS-11) hides a product, `offerPaths` drops path kinds
   (the claim follows it), and the deployment switch `storefront.polarisKey.enabled` off hides every
-  listing. The switch reads fail-safe: any stored value other than `on`, or an unreadable store,
-  is off. Audience `everyone` is the one deliberate exception to "only what you can obtain"
+  listing. The switch reads fail-safe: any stored value other than `on` (a cleared value is the
+  default, on), or an unreadable store, is off. Audience `everyone` is the one deliberate exception to "only what you can obtain"
   (level-2 confirmation, PS-02), and it shows a `listed` product as a link only, never an Add.
 
 ### Licensed portal downloads (PX-W3)

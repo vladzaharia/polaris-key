@@ -685,42 +685,51 @@ describe("the obtain-path engine", () => {
     // No website, no store page: nothing to link to.
     await s.db.run("DELETE FROM dist_listing WHERE product = 'teaser'");
     expect(await visible(s, s.anon)).toEqual(["open-util"]);
-    // A store page from the product's downloads counts as a link target (`stores[]`).
-    const withStore: PortalHooksFor = (product, now) => {
-      const hooks = portalHooksFor(s.env, s.db)(product, now);
-      const delivery = hooks.delivery();
-      if (!delivery || product.slug !== "teaser") return hooks;
-      const stores: CustomerDownloads["stores"] = [
-        {
-          id: "steam:steam",
-          kind: "steam",
-          outletId: "steam",
-          platforms: ["windows"],
-          label: "Steam",
-          url: "https://store.steampowered.com/app/480/",
-          deepLink: null,
-          command: null,
-          activateUrl: null,
-          live: true,
-          version: "1.0.0",
-        },
-      ];
-      const d: Delivery = {
-        ...delivery,
-        customerDownloads: async () => ({
-          channel: "stable",
-          releases: [],
-          stores,
-        }),
+    // A store page from the product's downloads counts as a link target (`stores[]`), but only
+    // where a channel release is reported live there.
+    const withStore =
+      (live: boolean): PortalHooksFor =>
+      (product, now) => {
+        const hooks = portalHooksFor(s.env, s.db)(product, now);
+        const delivery = hooks.delivery();
+        if (!delivery || product.slug !== "teaser") return hooks;
+        const stores: CustomerDownloads["stores"] = [
+          {
+            id: "steam:steam",
+            kind: "steam",
+            outletId: "steam",
+            platforms: ["windows"],
+            label: "Steam",
+            url: "https://store.steampowered.com/app/480/",
+            deepLink: null,
+            command: null,
+            activateUrl: null,
+            live,
+            version: live ? "1.0.0" : null,
+          },
+        ];
+        const d: Delivery = {
+          ...delivery,
+          customerDownloads: async () => ({
+            channel: "stable",
+            releases: [],
+            stores,
+          }),
+        };
+        return { ...hooks, delivery: () => d };
       };
-      return { ...hooks, delivery: () => d };
-    };
     expect(
       await obtainPaths(s.env, s.db, s.anon, "teaser", NOW, {
         ...s.opts,
-        hooksFor: withStore,
+        hooksFor: withStore(true),
       }),
     ).toEqual({ visible: true, cta: "link", paths: [] });
+    expect(
+      await obtainPaths(s.env, s.db, s.anon, "teaser", NOW, {
+        ...s.opts,
+        hooksFor: withStore(false),
+      }),
+    ).toBe(HIDDEN);
     // In `auto` mode the audience shows nothing a path does not.
     await website(s.db, "teaser", "https://teaser.example");
     await listing(s.db, "teaser", { storeListed: "auto" });

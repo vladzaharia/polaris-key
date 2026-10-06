@@ -521,7 +521,7 @@ They are the settings `storefront.polarisKey.listed`, `.audience`, `.offerPaths`
   follows it, so a way that is not offered cannot be added.
 - **The deployment switch** `storefront.polarisKey.enabled` (platform scope, on by default) hides
   every listing on the deployment when off; licenses, sign-in and auto-issue keep working. A stored
-  value other than `on` reads as off.
+  value other than `on` reads as off (a cleared value is the default, on).
 - **`discoverEnabled`** and `storeListed` stay in step: `discoverEnabled: false` reads as
   `unlisted`, setting `storeListed` sets `discoverEnabled` to match, and turning Discover back on
   returns an `unlisted` product to `auto`. Products that had Discover off were moved to

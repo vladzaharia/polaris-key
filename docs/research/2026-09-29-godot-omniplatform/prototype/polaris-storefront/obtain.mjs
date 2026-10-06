@@ -4,6 +4,9 @@
 // It is a pure model of "can this signed-in person obtain and use this product?". PS-03 ports
 // it to the Worker (services/identity/portal/store/obtain.ts). The table in selfTest() is the
 // acceptance table for PS-03's unit test; the two must not drift apart.
+// Recorded deviation (see the PS-03 brief): the port returns ONE identity path per product,
+// because `identityTier` returns one grant, so this model's `[group, auto_issue]` for product
+// `x` is `[group]` there.
 //
 //   node obtain.mjs --self-test
 //

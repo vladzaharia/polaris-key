@@ -1370,7 +1370,10 @@ export async function listLibraryEntryProducts(
     );
     return new Set(rows.map((r) => r.product));
   } catch (e) {
-    if (e instanceof Error && /no such table: library_entries/i.test(e.message))
+    if (
+      e instanceof Error &&
+      /no such table: library_entries\b/i.test(e.message)
+    )
       return new Set();
     throw e;
   }
