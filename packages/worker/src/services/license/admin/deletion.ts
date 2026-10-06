@@ -43,6 +43,7 @@ import {
 import { forgetRegistryTokens } from "../../../core/registryTokens.js";
 import {
   idChunks,
+  LicenseDeleteReason,
   type LicenseDelete,
   type LicenseDeleteBlocker,
 } from "../../../core/licenseDelete.js";
@@ -77,7 +78,7 @@ export function bulkDeleteConfirmation(n: number): string {
 }
 
 const UNAVAILABLE: LicenseDeleteBlocker = {
-  code: "unavailable",
+  code: LicenseDeleteReason.Unavailable,
   message: "License deletion is not available on this route.",
 };
 
@@ -99,7 +100,7 @@ export async function deletionVerdicts(
     if (!blockers) reasons.push(UNAVAILABLE);
     if (row.status === "active" && !FLOW_ORIGINS.has(row.origin ?? "admin"))
       reasons.push({
-        code: "issued_active",
+        code: LicenseDeleteReason.IssuedActive,
         message:
           "It is active and was issued by the developer. Disable it first.",
       });
@@ -108,7 +109,7 @@ export async function deletionVerdicts(
     // the refusal the operator chose.
     if (row.status === "disabled" && row.origin === "enroll" && row.enroll_hwid)
       reasons.push({
-        code: "enroll_guard",
+        code: LicenseDeleteReason.EnrollGuard,
         message:
           "It is the machine's free-license record; deleting it would let the machine enroll again.",
       });
@@ -185,7 +186,7 @@ async function freshVerdict(
         allowed: false,
         reasons: [
           {
-            code: "changed",
+            code: LicenseDeleteReason.Changed,
             message: "It changed while it was being deleted. Try again.",
           },
         ],
