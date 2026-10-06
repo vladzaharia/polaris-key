@@ -40,6 +40,7 @@ import {
   TARGETS,
   upperName,
   validateCopy,
+  validateCopyLocale,
   validateEnums,
   validateErrors,
   VALUES_ONLY_ENUMS,
@@ -712,6 +713,37 @@ describe("gen:constants --check", () => {
       "sdks/godot/addons/polaris_key/core/copy_generated.gd",
     );
     expect(rendered.size).toBe(TARGETS.length + COPY_TARGETS.length - 2);
+  });
+});
+
+describe("the translated core packs (plans/UK-02.md D4)", () => {
+  const COPY = SOURCES.copy!;
+  const pack = () => ({
+    ...(JSON.parse(JSON.stringify(COPY)) as CopyDoc),
+    locale: "de",
+    reviewed: false,
+  });
+
+  it("accepts every committed copy.<locale>.json (loadSources checks them all)", () => {
+    expect(() => loadSources()).not.toThrow();
+  });
+
+  it("accepts a pack with English's keys and placeholders", () => {
+    expect(validateCopyLocale(pack(), COPY, "de")).toEqual([]);
+  });
+
+  it("refuses a wrong locale, a missing reviewed flag, a missing key and a changed placeholder", () => {
+    const bad = pack() as CopyDoc & { reviewed?: boolean };
+    bad.locale = "fr";
+    delete bad.reviewed;
+    delete bad.codes.device_limit;
+    bad.fallback = { ...bad.fallback, message: "Fehler ({detail})." };
+    expect(validateCopyLocale(bad, COPY, "de")).toEqual([
+      'locale is "fr", not "de"',
+      "a translated pack states reviewed: true or false",
+      "fallback.message: placeholders {detail} differ from English {code}",
+      'codes: no entry for "device_limit" (copy.en.json)',
+    ]);
   });
 });
 

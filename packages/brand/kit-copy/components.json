@@ -1,0 +1,840 @@
+{
+  "$schema": "./components.schema.json",
+  "$comment": "Each UI-KITS §4.1 component's states and the copy keys each state shows (plans/UK-02.md §3.1). Hand-written. A key is a kit key from en.json or a core.* key from conformance/parity/copy.en.json. `pnpm gen:brand` fails on a key neither defines, and on a component key in en.json that no state lists. family is the ui-matrix.json family that pins the component (UK-02b), or null where no row exists yet. The UK-15 string lint reads this file.",
+  "componentsVersion": 1,
+  "components": {
+    "PolarisKeyGate": {
+      "priority": "must",
+      "family": "gate",
+      "states": {
+        "booting": {
+          "copy": ["gate.checking"]
+        },
+        "needs-activation": {
+          "copy": [
+            "core.gate.needs-activation.title",
+            "core.gate.needs-activation.message"
+          ]
+        },
+        "licensed": {
+          "copy": []
+        },
+        "grace": {
+          "copy": [
+            "core.gate.grace.title",
+            "core.gate.grace.message",
+            "common.reconnect"
+          ]
+        },
+        "blocked": {
+          "copy": ["part.status.blocked"]
+        },
+        "error": {
+          "copy": ["gate.error.title", "common.tryAgain"]
+        }
+      }
+    },
+    "Boot": {
+      "priority": "must",
+      "family": "gate",
+      "states": {
+        "progress": {
+          "copy": [
+            "boot.starting",
+            "boot.syncing",
+            "gate.checking",
+            "boot.deciding",
+            "common.loading",
+            "boot.ready",
+            "a11y.busy"
+          ]
+        },
+        "consent": {
+          "copy": [
+            "boot.consent.title",
+            "boot.consent.body",
+            "boot.consent.bodyMetered",
+            "boot.consent.download",
+            "common.notNow"
+          ]
+        },
+        "fetching": {
+          "copy": ["boot.fetching", "boot.fetchingProgress", "a11y.progress"]
+        },
+        "offline": {
+          "copy": [
+            "boot.offline.title",
+            "boot.offline.body",
+            "boot.offline.playable",
+            "boot.continueOffline",
+            "common.tryAgain"
+          ]
+        },
+        "blocked": {
+          "copy": [
+            "core.gate.version-too-old.title",
+            "core.gate.version-too-old.message",
+            "status.update"
+          ]
+        },
+        "declined": {
+          "copy": [
+            "boot.declined.title",
+            "boot.declined.body",
+            "common.tryAgain"
+          ]
+        },
+        "rolled-back": {
+          "copy": ["boot.rolledBack"]
+        },
+        "error": {
+          "copy": ["gate.error.title", "boot.error.body", "common.tryAgain"]
+        }
+      }
+    },
+    "Welcome": {
+      "priority": "must",
+      "family": "activate",
+      "states": {
+        "default": {
+          "copy": [
+            "welcome.title",
+            "common.byDeveloper",
+            "welcome.lede",
+            "welcome.signIn",
+            "welcome.useKey",
+            "welcome.trial",
+            "welcome.continueFree",
+            "welcome.restore",
+            "welcome.offline",
+            "a11y.productIcon"
+          ]
+        },
+        "busy": {
+          "copy": ["welcome.title", "common.working", "a11y.busy"]
+        },
+        "capability-limited": {
+          "copy": [
+            "welcome.title",
+            "welcome.ledeKeyOnly",
+            "welcome.ledeSignInOnly"
+          ]
+        }
+      }
+    },
+    "SignIn": {
+      "priority": "must",
+      "family": "signIn",
+      "states": {
+        "default": {
+          "copy": [
+            "signIn.title",
+            "signin.methods.ledeApp",
+            "signin.provider.group",
+            "signin.provider.continue",
+            "signin.passkey",
+            "signin.email.continue",
+            "signin.link.deviceCode",
+            "signin.desktop.continue",
+            "signin.choice.keyInstead",
+            "common.cancel"
+          ]
+        },
+        "busy": {
+          "copy": ["signIn.title", "common.working", "a11y.busy"]
+        },
+        "method-error": {
+          "copy": ["signIn.methodError"]
+        },
+        "no-method": {
+          "copy": ["signIn.noMethods", "signin.choice.keyInstead"]
+        }
+      }
+    },
+    "SignInHandoff": {
+      "priority": "must",
+      "family": "signIn",
+      "states": {
+        "starting": {
+          "copy": ["signInHandoff.starting", "a11y.busy"]
+        },
+        "waiting": {
+          "copy": [
+            "signin.handoff.title",
+            "part.code.label",
+            "a11y.code",
+            "a11y.copyCode",
+            "signin.handoff.check",
+            "signin.handoff.url",
+            "a11y.copyAddress",
+            "signin.handoff.expires",
+            "signin.handoff.again",
+            "signin.handoff.waiting",
+            "signin.handoff.useCode",
+            "signInHandoff.scan",
+            "part.qr.scanInstead",
+            "part.qr.enlarge",
+            "a11y.qr",
+            "common.cancel"
+          ]
+        },
+        "link-copied": {
+          "copy": ["signInHandoff.linkCopied"]
+        },
+        "confirm": {
+          "copy": ["signInHandoff.confirm", "signin.handoff.finishing"]
+        },
+        "ok": {
+          "copy": [
+            "signInHandoff.ok",
+            "signin.desktop.toast",
+            "signin.desktop.toastAccount"
+          ]
+        },
+        "denied": {
+          "copy": [
+            "core.codes.sign-in-denied.title",
+            "core.codes.sign-in-denied.message",
+            "signInHandoff.newCode"
+          ]
+        },
+        "expired": {
+          "copy": [
+            "core.codes.sign-in-expired.title",
+            "core.codes.sign-in-expired.message",
+            "signInHandoff.newCode"
+          ]
+        },
+        "cancelled": {
+          "copy": ["signin.handoff.cancelled", "signInHandoff.newCode"]
+        }
+      }
+    },
+    "Activate": {
+      "priority": "must",
+      "family": "activate",
+      "states": {
+        "empty": {
+          "copy": [
+            "activate.title",
+            "activate.lede",
+            "part.keyField.label",
+            "part.keyField.placeholder",
+            "common.paste",
+            "activate.submit"
+          ]
+        },
+        "typing": {
+          "copy": ["part.keyField.label", "activate.submit"]
+        },
+        "parsed": {
+          "copy": ["part.keyField.forProduct", "activate.submit"]
+        },
+        "cut-short": {
+          "copy": ["part.keyField.cutShort"]
+        },
+        "busy": {
+          "copy": ["activate.busy", "a11y.busy"]
+        },
+        "rejected": {
+          "copy": ["part.keyField.malformed", "part.keyField.empty"]
+        },
+        "device-limit": {
+          "copy": [
+            "core.activation.device-limit.title",
+            "core.activation.device-limit.message",
+            "deviceLimit.title"
+          ]
+        },
+        "done": {
+          "copy": [
+            "core.activation.ok.title",
+            "core.activation.ok.message",
+            "part.keyField.verdict"
+          ]
+        }
+      }
+    },
+    "OfflineActivation": {
+      "priority": "must",
+      "family": "activate",
+      "states": {
+        "default": {
+          "copy": [
+            "offlineActivation.title",
+            "offlineActivation.request",
+            "offlineActivation.product",
+            "offlineActivation.copyCode",
+            "offlineActivation.loadHint",
+            "offlineActivation.loadFile",
+            "offlineActivation.paste",
+            "offlineActivation.dropHint",
+            "offlineActivation.submit"
+          ]
+        },
+        "loaded": {
+          "copy": [
+            "offlineActivation.submit",
+            "offlineActivation.codeCopied",
+            "offlineActivation.empty"
+          ]
+        },
+        "rejected-signature": {
+          "copy": [
+            "core.codes.bundle-jws-rejected.title",
+            "core.codes.bundle-jws-rejected.message"
+          ]
+        },
+        "done": {
+          "copy": ["offlineActivation.done"]
+        }
+      }
+    },
+    "DeviceLimit": {
+      "priority": "must",
+      "family": "deviceLimit",
+      "states": {
+        "default": {
+          "copy": [
+            "deviceLimit.title",
+            "deviceLimit.heading",
+            "deviceLimit.lede",
+            "part.seatMeter.caption",
+            "a11y.seatMeter",
+            "signin.replace.meta",
+            "signin.replace.leastRecent",
+            "a11y.formFactor",
+            "deviceLimit.confirmTitle",
+            "deviceLimit.consequence",
+            "deviceLimit.primary",
+            "common.back"
+          ]
+        },
+        "busy": {
+          "copy": ["deviceLimit.primary", "common.working", "a11y.busy"]
+        },
+        "removed": {
+          "copy": ["deviceLimit.removed"]
+        },
+        "failed": {
+          "copy": ["deviceLimit.failed", "common.tryAgain"]
+        },
+        "browser-mode": {
+          "copy": [
+            "deviceLimit.title",
+            "deviceLimit.browser",
+            "deviceLimit.openBrowser",
+            "deviceLimit.scan",
+            "a11y.externalLink",
+            "a11y.qr"
+          ]
+        }
+      }
+    },
+    "LicenseChoice": {
+      "priority": "must",
+      "family": null,
+      "states": {
+        "loading": {
+          "copy": ["signin.choice.title", "common.loading"]
+        },
+        "many": {
+          "copy": [
+            "signin.choice.title",
+            "signin.choice.lede",
+            "signin.choice.group",
+            "signin.choice.meta",
+            "signin.choice.devices",
+            "signin.choice.continue"
+          ]
+        },
+        "one": {
+          "copy": [
+            "signin.choice.title",
+            "signin.choice.lede",
+            "signin.choice.continue"
+          ]
+        },
+        "current": {
+          "copy": ["signin.choice.tag.current"]
+        },
+        "keep": {
+          "copy": ["signin.choice.keep", "signin.choice.keepMeta"]
+        },
+        "new": {
+          "copy": [
+            "signin.choice.ledeNew",
+            "signin.choice.tag.new",
+            "signin.choice.metaNew"
+          ]
+        },
+        "create": {
+          "copy": ["signin.choice.create", "signin.choice.createMeta"]
+        },
+        "all-full": {
+          "copy": [
+            "signin.choice.allFull",
+            "signin.choice.allFullCreate",
+            "signin.choice.tag.full",
+            "signin.choice.noneReplaceable"
+          ]
+        },
+        "account-wide": {
+          "copy": ["signin.choice.accountWide"]
+        },
+        "mixed": {
+          "copy": ["signin.choice.combined"]
+        },
+        "replace-open": {
+          "copy": [
+            "signin.replace.open",
+            "signin.replace.title",
+            "signin.replace.consequence",
+            "signin.replace.confirm",
+            "signin.replace.back"
+          ]
+        },
+        "raced": {
+          "copy": ["signin.choice.raced", "signin.replace.raced"]
+        },
+        "none-keys": {
+          "copy": [
+            "signin.none.title",
+            "signin.none.body",
+            "signin.choice.keyInstead"
+          ]
+        },
+        "none-no-keys": {
+          "copy": [
+            "signin.none.title",
+            "signin.none.body",
+            "signin.none.get",
+            "signin.none.otherAccount"
+          ]
+        }
+      }
+    },
+    "Devices": {
+      "priority": "must",
+      "family": "devices",
+      "states": {
+        "loading": {
+          "copy": ["devices.title", "common.loading"]
+        },
+        "list": {
+          "copy": [
+            "devices.title",
+            "devices.lede",
+            "devices.count",
+            "devices.meta",
+            "part.thisDeviceTitle",
+            "devices.unnamed",
+            "devices.rename",
+            "devices.remove",
+            "a11y.renameDevice",
+            "a11y.removeDevice",
+            "a11y.formFactor"
+          ]
+        },
+        "renaming": {
+          "copy": ["devices.renameLabel", "common.save", "common.cancel"]
+        },
+        "confirming": {
+          "copy": ["devices.removeConfirm", "devices.remove", "common.cancel"]
+        },
+        "empty": {
+          "copy": ["devices.empty"]
+        },
+        "browser-mode": {
+          "copy": ["devices.browser", "devices.manage", "a11y.externalLink"]
+        }
+      }
+    },
+    "UpdatePrompt": {
+      "priority": "must",
+      "family": "update",
+      "states": {
+        "available": {
+          "copy": [
+            "update.title",
+            "update.availableTitle",
+            "update.current",
+            "update.whatsNew",
+            "update.allChanges",
+            "update.critical",
+            "update.later",
+            "update.restartWhenReady",
+            "update.skipVersion",
+            "update.install"
+          ]
+        },
+        "downloading": {
+          "copy": [
+            "update.downloading",
+            "update.timeLeft",
+            "a11y.progress",
+            "update.later",
+            "update.restartWhenReady"
+          ]
+        },
+        "ready": {
+          "copy": [
+            "update.readyTitle",
+            "update.readyBody",
+            "update.restartNow",
+            "update.later"
+          ]
+        },
+        "mandatory": {
+          "copy": [
+            "update.mandatoryTitle",
+            "update.mandatoryBody",
+            "update.install"
+          ]
+        },
+        "blocked": {
+          "copy": ["update.blockedTitle", "update.blockedBody"]
+        },
+        "store": {
+          "copy": [
+            "update.appStore",
+            "update.googlePlay",
+            "update.steam",
+            "update.openStore",
+            "update.testflight",
+            "update.altstore",
+            "update.reload"
+          ]
+        },
+        "platform": {
+          "copy": [
+            "update.availableTitle",
+            "update.platform.steam",
+            "update.platform.itch",
+            "update.platform.store",
+            "update.platform.appInstaller",
+            "update.platform.command",
+            "update.platform.web",
+            "update.platform.package",
+            "update.platform.generic"
+          ]
+        },
+        "revoked-required-content": {
+          "copy": [
+            "core.codes.pack-revoked.title",
+            "update.revokedContent",
+            "update.install"
+          ]
+        },
+        "up-to-date": {
+          "copy": ["update.upToDate", "update.checkNow"]
+        }
+      }
+    },
+    "UpdateProgress": {
+      "priority": "must",
+      "family": "update",
+      "states": {
+        "queued": {
+          "copy": ["updateProgress.contentTitle", "updateProgress.queued"]
+        },
+        "downloading": {
+          "copy": ["updateProgress.downloading", "a11y.progress"]
+        },
+        "installing": {
+          "copy": ["updateProgress.installing"]
+        },
+        "paused": {
+          "copy": ["updateProgress.paused", "updateProgress.resume"]
+        },
+        "failed": {
+          "copy": ["updateProgress.failed", "common.tryAgain"]
+        },
+        "done": {
+          "copy": ["updateProgress.done"]
+        }
+      }
+    },
+    "ReleaseNotes": {
+      "priority": "must",
+      "family": "update",
+      "states": {
+        "loading": {
+          "copy": ["releaseNotes.title", "common.loading"]
+        },
+        "list": {
+          "copy": [
+            "releaseNotes.title",
+            "releaseNotes.version",
+            "releaseNotes.released"
+          ]
+        },
+        "empty": {
+          "copy": ["releaseNotes.empty"]
+        },
+        "error": {
+          "copy": ["releaseNotes.error", "common.tryAgain"]
+        }
+      }
+    },
+    "StatusScreen": {
+      "priority": "must",
+      "family": "gate",
+      "states": {
+        "revoked": {
+          "copy": [
+            "core.gate.revoked.title",
+            "core.gate.revoked.message",
+            "signin.key.differentKey",
+            "common.signOut"
+          ]
+        },
+        "expired": {
+          "copy": [
+            "core.gate.expired.title",
+            "core.gate.expired.message",
+            "status.renew"
+          ]
+        },
+        "version-too-old": {
+          "copy": [
+            "core.gate.version-too-old.title",
+            "core.gate.version-too-old.message",
+            "status.update",
+            "status.allowedRange",
+            "status.allowedMin",
+            "status.allowedMax"
+          ]
+        },
+        "version-too-new": {
+          "copy": [
+            "core.gate.version-too-new.title",
+            "core.gate.version-too-new.message",
+            "status.allowedRange",
+            "status.allowedMax"
+          ]
+        },
+        "channel-not-entitled": {
+          "copy": [
+            "core.gate.channel-not-entitled.title",
+            "core.gate.channel-not-entitled.message",
+            "status.switchChannel",
+            "status.contact"
+          ]
+        }
+      }
+    },
+    "GraceBanner": {
+      "priority": "must",
+      "family": "gate",
+      "states": {
+        "days-left": {
+          "copy": [
+            "grace.daysLeft",
+            "grace.deadline",
+            "common.reconnect",
+            "common.dismiss"
+          ]
+        },
+        "last-day": {
+          "copy": ["grace.lastDay", "common.reconnect"]
+        },
+        "expired": {
+          "copy": ["core.gate.expired.title", "core.gate.expired.message"]
+        }
+      }
+    },
+    "AccountAndLicense": {
+      "priority": "must",
+      "family": "settings",
+      "states": {
+        "loading": {
+          "copy": ["account.title", "common.loading"]
+        },
+        "signed-in": {
+          "copy": [
+            "account.title",
+            "account.tier",
+            "account.holder",
+            "common.manage",
+            "a11y.externalLink",
+            "account.devices",
+            "account.cloudSync",
+            "account.updates",
+            "account.autoUpdate",
+            "account.channel",
+            "update.checkNow",
+            "account.version",
+            "account.managedSettings",
+            "common.signOut",
+            "part.poweredBy"
+          ]
+        },
+        "key-only": {
+          "copy": [
+            "account.title",
+            "account.tier",
+            "account.keyOnly",
+            "account.updates",
+            "common.signOut"
+          ]
+        },
+        "offline": {
+          "copy": ["account.offline", "part.status.grace"]
+        }
+      }
+    },
+    "Settings": {
+      "priority": "must",
+      "family": "settings",
+      "states": {
+        "loading": {
+          "copy": ["settings.title", "common.loading"]
+        },
+        "list": {
+          "copy": [
+            "settings.title",
+            "settings.search",
+            "settings.fromDeveloper",
+            "settings.source.local",
+            "settings.source.env",
+            "settings.source.default",
+            "settings.reset",
+            "settings.advanced",
+            "settings.range",
+            "settings.on",
+            "settings.off",
+            "settings.empty"
+          ]
+        },
+        "dirty": {
+          "copy": ["settings.unsaved", "common.save"]
+        },
+        "saving": {
+          "copy": ["settings.saving", "settings.saved"]
+        },
+        "locked": {
+          "copy": ["settings.setBy", "settings.setByGuardian", "a11y.locked"]
+        },
+        "error": {
+          "copy": ["settings.error", "common.tryAgain"]
+        }
+      }
+    },
+    "Paywall": {
+      "priority": "must",
+      "family": "paywall",
+      "states": {
+        "loading": {
+          "copy": ["common.loading"]
+        },
+        "offers": {
+          "copy": [
+            "paywall.title",
+            "paywall.includes",
+            "paywall.upgrade",
+            "paywall.redeem",
+            "paywall.portal"
+          ]
+        },
+        "purchasing": {
+          "copy": ["paywall.purchasing", "a11y.busy"]
+        },
+        "purchased": {
+          "copy": ["paywall.purchased", "common.done"]
+        },
+        "restore": {
+          "copy": ["paywall.restore"]
+        },
+        "not-available": {
+          "copy": ["paywall.notAvailable"]
+        }
+      }
+    },
+    "EntitlementGate": {
+      "priority": "must",
+      "family": "paywall",
+      "states": {
+        "entitled": {
+          "copy": []
+        },
+        "not-entitled": {
+          "copy": ["entitlement.locked", "entitlement.unlock"]
+        },
+        "loading": {
+          "copy": ["common.loading"]
+        }
+      }
+    },
+    "CloudSyncStatus": {
+      "priority": "should",
+      "family": null,
+      "states": {
+        "synced": {
+          "copy": ["cloudSync.synced"]
+        },
+        "syncing": {
+          "copy": ["cloudSync.syncing"]
+        },
+        "offline": {
+          "copy": ["cloudSync.offline"]
+        },
+        "conflict": {
+          "copy": ["cloudSync.conflict"]
+        },
+        "error": {
+          "copy": ["cloudSync.error", "cloudSync.signIn"]
+        }
+      }
+    },
+    "About": {
+      "priority": "should",
+      "family": null,
+      "states": {
+        "default": {
+          "copy": [
+            "about.title",
+            "about.version",
+            "about.licenses",
+            "about.copyDiagnostics",
+            "about.diagnosticsCopied",
+            "part.poweredBy"
+          ]
+        }
+      }
+    },
+    "ChannelPicker": {
+      "priority": "should",
+      "family": null,
+      "states": {
+        "default": {
+          "copy": ["channel.title"]
+        },
+        "locked": {
+          "copy": ["channel.locked", "a11y.locked"]
+        }
+      }
+    },
+    "Toast": {
+      "priority": "must",
+      "family": "gate",
+      "states": {
+        "info": {
+          "copy": ["toast.updateAvailable", "common.dismiss", "a11y.toastTimer"]
+        },
+        "success": {
+          "copy": ["common.copied"]
+        },
+        "warning": {
+          "copy": ["common.dismiss"]
+        },
+        "error": {
+          "copy": ["common.dismiss"]
+        },
+        "with-progress": {
+          "copy": ["updateProgress.downloading", "toast.undo"]
+        }
+      }
+    }
+  }
+}

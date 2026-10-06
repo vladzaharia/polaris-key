@@ -26,6 +26,10 @@
 //                                       and activationResult, checked key for key against those
 //                                       sources and against the closed placeholder set, and
 //                                       emitted as a separate copy module per SDK (COPY_TARGETS)
+//   conformance/parity/copy.<locale>.json  translated core packs (plans/UK-02.md D4): checked
+//                                       against copy.en.json (keys, placeholders, locale,
+//                                       reviewed) and not emitted here; gen:brand's kit tables
+//                                       carry them
 //   conformance/corpus/v2/*.json        corpusVersion, gateMatrixVersion, fingerprintVersion,
 //                                       stageMatrixVersion, updateMatrixVersion,
 //                                       outletMatrixVersion, planMatrixVersion, and
@@ -277,6 +281,53 @@ export function validateCopy(
   return errors;
 }
 
+/**
+ * A translated core copy pack, `copy.<locale>.json` (plans/UK-02.md D4): the same sections and
+ * keys as copy.en.json, the same placeholder set in every string, a `locale` matching the file
+ * name and an explicit `reviewed`. The schema and validateCopy's placeholder rules apply too.
+ * Translations are not emitted by this generator; the kit tables (gen:brand) carry them.
+ */
+export function validateCopyLocale(
+  doc: CopyDoc & { reviewed?: boolean },
+  en: CopyDoc,
+  locale: string,
+): string[] {
+  const errors: string[] = [];
+  if (doc.locale !== locale)
+    errors.push(`locale is "${doc.locale}", not "${locale}"`);
+  if (typeof doc.reviewed !== "boolean")
+    errors.push("a translated pack states reviewed: true or false");
+  const names = (text: string) =>
+    [...text.matchAll(/\{([^{}]*)\}/g)]
+      .map((m) => m[1]!)
+      .sort()
+      .join(", ");
+  const compare = (where: string, a: CopyEntry, b: CopyEntry | undefined) => {
+    if (!b) return;
+    for (const field of ["title", "message"] as const) {
+      errors.push(...placeholderErrors(`${where}.${field}`, b[field]));
+      if (names(a[field]) !== names(b[field]))
+        errors.push(
+          `${where}.${field}: placeholders {${names(b[field])}} differ from English {${names(a[field])}}`,
+        );
+    }
+  };
+  compare("fallback", en.fallback, doc.fallback);
+  for (const section of ["codes", "gate", "activation"] as const) {
+    errors.push(
+      ...keyErrors(
+        section,
+        doc[section] ?? {},
+        Object.keys(en[section]),
+        "copy.en.json",
+      ),
+    );
+    for (const [k, e] of Object.entries(en[section]))
+      compare(`${section}.${k}`, e, doc[section]?.[k]);
+  }
+  return errors;
+}
+
 function loadValidated<T>(
   root: string,
   file: string,
@@ -509,6 +560,14 @@ export function loadSources(root = ROOT): Sources {
         enums: enums.enums,
       }),
   );
+  // The translated core packs: checked, not emitted (plans/UK-02.md D4).
+  for (const file of readdirSync(join(root, "conformance", "parity")).sort()) {
+    const m = /^copy\.(.+)\.json$/.exec(file);
+    if (!m || m[1] === "en" || m[1] === "schema") continue;
+    loadValidated<CopyDoc>(root, file, "copy.schema.json", (doc) =>
+      validateCopyLocale(doc, copy, m[1]!),
+    );
+  }
   const coverage = [
     ...checkCoverage(errors.codes, scanWorkerSource(readWorkerSource(root))),
     ...checkStageCoverage(

@@ -1086,6 +1086,10 @@ keys (`conformance/parity/copy.en.json`) for refusal codes instead of duplicatin
 `AuthCard`, the Worker's `renderAuthCard()` and the emails read the same catalog (§8 drift: UK-02,
 UX-40, UX-43, UX-44). Placeholders are ICU.
 
+UK-02a (2026-10-05) applied two corrections when it built the catalog: `signin.cli.headless` says
+"this computer", not "this machine" (AGENTS rule 4), and `signin.again` is not a kit key because
+the catalog never repeats a core copy string; surfaces read `core.codes.step_up_required.title`.
+
 | Key                                 | English                                                                                                                                                                                    |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `signin.methods.title`              | Sign in to Polaris Key                                                                                                                                                                     |
@@ -1263,7 +1267,7 @@ UX-40, UX-43, UX-44). Placeholders are ICU.
 | `signin.cli.opening`                | Opening Polaris Key in your browser…                                                                                                                                                       |
 | `signin.cli.ifNotOpened`            | If it didn't open, go to {url}                                                                                                                                                             |
 | `signin.cli.keys`                   | Enter open again · c use a code · Esc cancel                                                                                                                                               |
-| `signin.cli.headless`               | No browser on this machine. Use a code instead:                                                                                                                                            |
+| `signin.cli.headless`               | No browser on this computer. Use a code instead:                                                                                                                                           |
 | `signin.cli.signedIn`               | Signed in as {name} ({email})                                                                                                                                                              |
 | `signin.cli.license`                | {license} · {term} · {device} is device {position} of {limit}                                                                                                                              |
 | `signin.cli.licenseAccount`         | {license} · Account-wide                                                                                                                                                                   |
@@ -1288,7 +1292,7 @@ UX-40, UX-43, UX-44). Placeholders are ICU.
 | `signin.console.notConfigured`      | Admin sign-in isn't set up                                                                                                                                                                 |
 | `signin.expired.title`              | That code or link has expired                                                                                                                                                              |
 | `signin.expired.body`               | Codes and links work once, for 10 minutes.                                                                                                                                                 |
-| `signin.again`                      | Sign in again                                                                                                                                                                              |
+| `signin.again`                      | → `core.codes.step_up_required.title` ("Sign in again"; not a kit key)                                                                                                                     |
 | `signin.identityOff.notice`         | {product} doesn't use Polaris Key sign-in. Open {product} and enter your license key there.                                                                                                |
 | `signin.identityOff.lede`           | Sign in here to see {product} in your library.                                                                                                                                             |
 | `signin.signout.title`              | Sign out of {product} on this device?                                                                                                                                                      |

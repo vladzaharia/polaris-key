@@ -39,6 +39,11 @@
 //   sdks/godot/addons/polaris_key/ui/theme/brand_marks_generated.gd      the kit SVGs the UI kit
 //                                       rasterises at run time when branding is on (the bit-less
 //                                       display-cut Pinned K, the compact "Powered by" badge)
+//   the kit copy tables (scripts/kit-copy.ts, plans/UK-02.md §3.3) from kit-copy/ and the core
+//   copy in conformance/parity/copy.<locale>.json: src/generated/kit-copy/<locale>.json + index.ts,
+//   packages/sdk-node/src/kitCopy.generated.ts, PolarisKeyUI/Resources/Localizable.xcstrings,
+//   sdks/kotlin/ui/src/commonMain/composeResources/values*/strings.xml, the Godot kit's
+//   ui/locale/*.po(t), and polaris_key/ui/{__init__,kit_copy_generated}.py + ui/locale/*.pot
 //
 // `--check` is the drift gate (CI, AGENTS.md's green gate). Like gen:constants, the TypeScript,
 // JSON and CSS outputs are prettier-formatted here so `pnpm lint` and `pnpm format` agree.
@@ -86,6 +91,7 @@ import {
   renderTemplate,
   type KitVariant,
 } from "./kit.js";
+import { KIT_COPY_TARGETS } from "./kit-copy.js";
 
 const PKG = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ROOT = join(PKG, "..", "..");
@@ -1395,6 +1401,8 @@ const TARGETS: Target[] = [
     render: () =>
       readFileSync(join(PKG, "kit", "source", "fonts", name), "utf8"),
   })),
+  // The kit copy catalog (plans/UK-02.md §3.3): web, Node, Swift, Kotlin, Godot and Python tables.
+  ...KIT_COPY_TARGETS,
 ];
 
 export async function renderAll(root = ROOT): Promise<Map<string, string>> {
