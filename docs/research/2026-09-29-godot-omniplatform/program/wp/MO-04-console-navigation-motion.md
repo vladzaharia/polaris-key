@@ -52,6 +52,18 @@ Today a route change remounts the page instantly and tabs snap (notes/S-23 §4.2
 
 `console/router.tsx`, `console/components/PageTabs.tsx`, `ui/SegmentedControl.tsx`, the licence table key cell's class (where it renders: `console/pages/license/LicensesPage.tsx` only if no in-flight branch touches it at start; otherwise defer the key pairing to MO-13), tests, `e2e/motion.e2e.test.ts`. No in-flight branch touches the first three.
 
+## Corrections found while building (2026-10-06)
+
+The code is the fact; these replace the brief where they differ.
+
+- **There is no key column.** The Licenses table's primary cell is the licence **name** (Holder), and the record header's title is that name. The shared pair is therefore the name: the table cell is marked `data-vt-shared="pk-key"` and named for the old snapshot only (the router finds it inside the clicked `<Link>` and passes it as `shared` to `viewTransition`), and the record title carries `pk-vt-key`. Giving every row `pk-vt-key` would name 48 elements `pk-key` during a `forward` transition; a duplicate name aborts the transition. Both ends are `width: fit-content`.
+- **`console/pages/license/LicenseRecord.tsx` is touched too** (not in the list above): the title is wrapped in the `pk-vt-key` span, and its four tab panels carry `pk-vt-tabpanel`. No in-flight branch touched it at start.
+- **A record's route tabs are `tab`, not `forward`.** `/licenses/lic_1` → `/licenses/lic_1/keys` is one level deeper, so depth alone would slide the whole page. The router runs `tab` when both hashes have the same `viewKey` (the page or record, without tab and query; read from `routes.ts`, not edited), and `<Link transition="tab">` (passed by `PageTabs`) covers tabs kept in the query (`ListingPage`, `RolloutsPage`).
+- **The first drill-down into an uncached record shows its skeleton**, so the name has no other end on the new page: it leaves with the list. It flies once the record is cached (the smoke suite checks both). Prefetching the record on row hover would make the first flight work too (proposed follow-up).
+- **SegmentedControl uses the transform-only thumb**, not a View Transition: a snapshot paints above the live page, so a morphing background would cover the labels it passes, and a second `pk-indicator` on a page that also has `PageTabs` would be a duplicate name.
+- **No page transition under an overlay.** A navigation made from the palette, a menu, a confirm or the phone navigation (the overlay open or still running its exit) swaps the page at once under the overlay's exit: the transition's snapshots would paint over it (S-23 §3.4). Tooltips do not count. Covered by a unit test and the smoke suite (palette → Tiers).
+- **Route tabs on the other record pages** (`TierRecord`, `UserRecord`, `PackageRecord`, `FeedPage`, `ListingPage`, `RolloutsPage`) morph their indicator; their panels are not marked `pk-vt-tabpanel` yet, so the panel swaps at once there (proposed for MO-13).
+
 ## Steps
 
 1. Wrap navigation in the router.
@@ -61,10 +73,10 @@ Today a route change remounts the page instantly and tabs snap (notes/S-23 §4.2
 
 ## Acceptance criteria
 
-- [ ] A sibling route change, a drill-down and Back each start a View Transition with `data-vt` `route`, `forward` and `back` (smoke suite).
-- [ ] Focus lands on the new page's `h1` and the live region announces it, as today.
-- [ ] A tab switch morphs the indicator and fades the panel; keyboard tab order is unchanged.
-- [ ] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
+- [x] A sibling route change, a drill-down and Back each start a View Transition with `data-vt` `route`, `forward` and `back` (smoke suite).
+- [x] Focus lands on the new page's `h1` and the live region announces it, as today.
+- [x] A tab switch morphs the indicator and fades the panel; keyboard tab order is unchanged.
+- [x] Under `prefers-reduced-motion: reduce` (and `html[data-motion="reduce"]` once MO-12 lands) every change in scope is an instant swap: no View Transition starts and `document.getAnimations()` is empty after the interaction (checked in the motion smoke suite or a unit test).
 - [ ] The green gate passes (AGENTS.md), including `pnpm --filter @polaris-key/worker test adminCspParity` after the admin build and `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations.
 
 ## Verify
