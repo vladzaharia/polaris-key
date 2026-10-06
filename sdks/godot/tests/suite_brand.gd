@@ -102,6 +102,9 @@ func _kit(t: PKeyTestContext) -> void:
 	t.check("kit: concentric rule", PKeyKitTokens.concentric_radius(28.0, 8.0) == 20.0 and PKeyKitTokens.concentric_radius(10.0, 6.0) == 8.0)
 	t.check("kit: danger solid keeps white", PKeyAccent.contrast("#" + PKeyKitTokens.DANGER_SOLID_DARK.to_html(false), "#ffffff") >= 4.5)
 	t.check("kit: step motion", PKeyKitTokens.MOTION_STEP_MS == 220)
+	# The brand motion tokens (notes/S-23 §5), mirrored from packages/brand by gen:brand.
+	t.check("kit: motion durations", PKeyKitTokens.DURATION_MICRO_MS == 80 and PKeyKitTokens.DURATION_FAST_MS == 120 and PKeyKitTokens.DURATION_BASE_MS == 200 and PKeyKitTokens.DURATION_MODERATE_MS == 260 and PKeyKitTokens.DURATION_SLOW_MS == 320 and PKeyKitTokens.DURATION_DELIBERATE_MS == 480 and PKeyKitTokens.DURATION_SHIMMER_MS == 1600)
+	t.check("kit: motion distances", PKeyKitTokens.MOTION_DISTANCE_XS == 2.0 and PKeyKitTokens.MOTION_DISTANCE_SM == 4.0 and PKeyKitTokens.MOTION_DISTANCE_MD == 8.0 and PKeyKitTokens.MOTION_DISTANCE_LG == 12.0 and PKeyKitTokens.MOTION_DISTANCE_XL == 24.0)
 	# The engine control icons rasterise.
 	for name in PKeyKitIcons.names():
 		var img := Image.new()
