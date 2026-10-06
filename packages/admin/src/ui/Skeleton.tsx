@@ -5,8 +5,14 @@ import { LiveRegion } from "./LiveRegion.js";
 /**
  * Loading placeholders (components.md §5.3). `Skeleton` is one hidden block; `PageSkeleton`
  * draws a template's real layout (T1 dashboard, T2 table, T3 record, T4 form, T5 matrix) so the
- * page does not jump when the data lands, and announces "Loading …" politely (UI-13). The blocks
- * do not pulse: loading motion is the refetch bar, never decoration (BRAND.md §7.5).
+ * page does not jump when the data lands, and announces "Loading …" politely (UI-13).
+ *
+ * The skeleton pattern (notes/S-23 §6.1, D6; MO-09): the blocks never pulse. Each is a
+ * `pk-skeleton`, whose sheen (a transform on `::after`, `shimmer` period) is the one loop besides
+ * the spinner, because it is a loading indicator; a `PageSkeleton` is a `pk-skeleton-group`, so it
+ * appears only after the 150 ms grace (`--pk-delay-skeleton`) and a fast load never flashes it.
+ * The content that replaces it fades in (`pk-content-in`). Under reduced motion the sheen is
+ * hidden and the blocks are static; the grace stays (a delay, not motion).
  */
 export function Skeleton({
   className,
@@ -15,7 +21,7 @@ export function Skeleton({
   return (
     <div
       aria-hidden
-      className={cn("rounded-md bg-hover", className)}
+      className={cn("pk-skeleton rounded-md bg-hover", className)}
       {...props}
     />
   );
@@ -155,7 +161,10 @@ export function PageSkeleton({
 }): React.ReactElement {
   const Body = BODIES[template];
   return (
-    <div data-skeleton={template} className={cn("space-y-6", className)}>
+    <div
+      data-skeleton={template}
+      className={cn("pk-skeleton-group space-y-6", className)}
+    >
       <LiveRegion message={label ? `Loading ${label}…` : "Loading…"} />
       <Body />
     </div>

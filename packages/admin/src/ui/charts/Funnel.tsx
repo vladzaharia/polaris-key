@@ -1,6 +1,7 @@
 import * as React from "react";
 import { formatCount, formatPercent } from "../../lib/format.js";
 import { ChartFrame } from "./ChartTable.js";
+import { FillRect } from "./FillRect.js";
 
 export interface FunnelStep {
   label: string;
@@ -41,14 +42,12 @@ function Bar({
   return (
     <svg aria-hidden width="100%" height="12" className="block">
       <rect width="100%" height="12" rx="2" className="fill-border" />
-      {ratio > 0 ? (
-        <rect
-          width={`${Math.max(ratio * 100, 0.5)}%`}
-          height="12"
-          rx="2"
-          className={danger ? "fill-danger" : "fill-accent"}
-        />
-      ) : null}
+      <FillRect
+        ratio={ratio > 0 ? Math.max(ratio, 0.005) : 0}
+        height={12}
+        rx={2}
+        className={danger ? "fill-danger" : "fill-accent"}
+      />
     </svg>
   );
 }
@@ -56,7 +55,8 @@ function Bar({
 /**
  * The update-health funnel (components.md §6.13, fixes UHL-1): one bar per step scaled to the
  * first step, the step conversion between bars, and the failure counts as separate danger bars.
- * A figure with a caption and the "Show as table" toggle.
+ * A figure with a caption and the "Show as table" toggle. New counts move the bars by transform
+ * (`FillRect`, S-23 §6.1 "meter").
  */
 export function Funnel({
   steps,
