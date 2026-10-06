@@ -9,7 +9,9 @@
  * A DRY RUN unless `--apply`: it prints what would be deleted, per package, with counts and bytes
  * (`bytes` the versions' files, `freed` the part no remaining version, package or product shares,
  * which the blob collector reclaims). With `--apply` the Worker deletes and audits each version
- * (`package.version.prune`) and the output says what went. `--json` prints the Worker's report.
+ * (`package.version.prune`) and the output says what went, what was skipped (a version that
+ * became held between the plan and its deletion, kept) and what failed; any failure makes the
+ * command exit non-zero. `--json` prints the Worker's report.
  */
 
 import { ciClient, type Out, type Sleep } from "./ci.js";
@@ -34,11 +36,14 @@ interface PrunePackage {
   ecosystem: string;
   name: string;
   stable: string;
+  stableReleaseId?: string;
   prune: PruneVersion[];
   kept: { releaseId: string; version: string; reason: string }[];
   bytes: number;
   freedBytes: number;
   failed?: { version: string; error: string }[];
+  /** With `--apply`: planned versions that became held before their deletion, so were kept. */
+  skipped?: { releaseId?: string; version: string; reason: string }[];
 }
 
 export interface PruneReport {
@@ -53,6 +58,8 @@ export interface PruneReport {
     bytes: number;
     freedBytes: number;
     failed: number;
+    /** Versions skipped because they became held (an older Worker leaves it out). */
+    skipped?: number;
   };
   /** Versions were left for another request (the Worker deletes at most 200 per request). */
   more?: boolean;
@@ -100,13 +107,18 @@ export function renderPruneReport(r: PruneReport): string {
         `  - ${v.version}  ${v.files} file${v.files === 1 ? "" : "s"}, ${formatBytes(v.bytes)} (${formatBytes(v.freedBytes)} freed)`,
       );
     for (const k of p.kept) lines.push(`  = ${k.version}  kept (${k.reason})`);
+    for (const s of p.skipped ?? [])
+      lines.push(
+        `  ~ ${s.version}  skipped (${s.reason} since the plan; kept)`,
+      );
     for (const f of p.failed ?? [])
       lines.push(`  ! ${f.version}  failed: ${f.error}`);
   }
   for (const s of r.skipped)
     lines.push(`${s.deliverableId}: skipped (no stable release yet)`);
+  const skipped = r.totals.skipped ?? 0;
   lines.push(
-    `Total: ${verb.toLowerCase()} ${r.totals.versions} version${r.totals.versions === 1 ? "" : "s"}, ${formatBytes(r.totals.bytes)}, of which ${formatBytes(r.totals.freedBytes)} is referenced by nothing else.${r.totals.failed ? ` ${r.totals.failed} failed: run it again.` : ""}`,
+    `Total: ${verb.toLowerCase()} ${r.totals.versions} version${r.totals.versions === 1 ? "" : "s"}, ${formatBytes(r.totals.bytes)}, of which ${formatBytes(r.totals.freedBytes)} is referenced by nothing else.${skipped ? ` ${skipped} skipped: held since the plan, kept.` : ""}${r.totals.failed ? ` ${r.totals.failed} failed: run it again.` : ""}`,
   );
   if (r.dryRun && r.totals.versions > 0)
     lines.push("Run again with --apply to delete them.");
@@ -155,13 +167,18 @@ export async function feedsPrune(
     report = {
       ...next,
       packages: [...report.packages, ...next.packages].filter(
-        (p) => p.prune.length || p.kept.length || p.failed?.length,
+        (p) =>
+          p.prune.length ||
+          p.kept.length ||
+          p.failed?.length ||
+          p.skipped?.length,
       ),
       totals: {
         versions: report.totals.versions + next.totals.versions,
         bytes: report.totals.bytes + next.totals.bytes,
         freedBytes: report.totals.freedBytes + next.totals.freedBytes,
         failed: report.totals.failed + next.totals.failed,
+        skipped: (report.totals.skipped ?? 0) + (next.totals.skipped ?? 0),
       },
     };
   }

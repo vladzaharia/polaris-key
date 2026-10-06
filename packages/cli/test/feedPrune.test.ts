@@ -1,7 +1,8 @@
 /**
  * `pkey feeds prune` (feed retention) against a fake Worker: the request it sends (dry run by
- * default, `apply` only with `--apply`), the report it prints, and a refusal. The real Worker
- * route is exercised by `packages/worker/test/feedPruneRoutes.test.ts`.
+ * default, `apply` only with `--apply`), the report it prints (skipped and failed versions
+ * included), the exit code of an apply with failures, and a refusal. The real Worker route is
+ * exercised by `packages/worker/test/feedPruneRoutes.test.ts`.
  */
 
 import { describe, expect, it } from "vitest";
@@ -47,7 +48,30 @@ function report(dryRun: boolean): PruneReport {
       bytes: 2_500_000,
       freedBytes: 2_500_000,
       failed: 0,
+      skipped: 0,
     },
+  };
+}
+
+/** An applied report where one version became held (skipped) and one failed. */
+function partial(): PruneReport {
+  const r = report(false);
+  return {
+    ...r,
+    packages: [
+      {
+        ...r.packages[0]!,
+        skipped: [
+          {
+            releaseId: "npm.node@0.9.1-main.5",
+            version: "0.9.1-main.5",
+            reason: "pinned",
+          },
+        ],
+        failed: [{ version: "0.9.1-main.6", error: "D1 hiccup" }],
+      },
+    ],
+    totals: { ...r.totals, failed: 1, skipped: 1 },
   };
 }
 
@@ -208,6 +232,84 @@ describe("pkey feeds prune", () => {
     expect(r.err).toContain("403");
   });
 
+  it("--apply lists skipped and failed versions, and exits non-zero when any failed", async () => {
+    const w = fake(() => [200, partial()]);
+    const r = await run(
+      [
+        "feeds",
+        "prune",
+        "--product",
+        "polaris-key",
+        "--apply",
+        "--base-url",
+        BASE,
+      ],
+      w,
+    );
+    expect(r.code).toBe(1);
+    expect(r.out).toContain(
+      "  ~ 0.9.1-main.5  skipped (pinned since the plan; kept)",
+    );
+    expect(r.out).toContain("  ! 0.9.1-main.6  failed: D1 hiccup");
+    expect(r.out).toContain("1 skipped: held since the plan, kept.");
+    expect(r.out).toContain("1 failed: run it again.");
+  });
+
+  it("--apply with skipped versions but no failure exits 0; --json carries skipped", async () => {
+    const ok = partial();
+    ok.packages[0]!.failed = [];
+    ok.totals.failed = 0;
+    const w = fake(() => [200, ok]);
+    const r = await run(
+      [
+        "feeds",
+        "prune",
+        "--product",
+        "polaris-key",
+        "--apply",
+        "--json",
+        "--base-url",
+        BASE,
+      ],
+      w,
+    );
+    expect(r.code, r.err).toBe(0);
+    const out = JSON.parse(r.out) as PruneReport;
+    expect(out.packages[0]!.skipped).toEqual([
+      {
+        releaseId: "npm.node@0.9.1-main.5",
+        version: "0.9.1-main.5",
+        reason: "pinned",
+      },
+    ]);
+    expect(out.totals.skipped).toBe(1);
+  });
+
+  it("folds skipped versions across --apply rounds", async () => {
+    let n = 0;
+    const w = fake(() => {
+      n++;
+      const r = partial();
+      r.packages[0]!.failed = [];
+      return [200, { ...r, totals: { ...r.totals, failed: 0 }, more: n === 1 }];
+    });
+    const r = await run(
+      [
+        "feeds",
+        "prune",
+        "--product",
+        "polaris-key",
+        "--apply",
+        "--json",
+        "--base-url",
+        BASE,
+      ],
+      w,
+    );
+    expect(r.code, r.err).toBe(0);
+    expect((JSON.parse(r.out) as PruneReport).totals.skipped).toBe(2);
+  });
+
   it("formats bytes in decimal units", () => {
     expect(formatBytes(999)).toBe("999 B");
     expect(formatBytes(1500)).toBe("1.5 kB");
@@ -217,7 +319,13 @@ describe("pkey feeds prune", () => {
         ...report(true),
         packages: [],
         skipped: [],
-        totals: { versions: 0, bytes: 0, freedBytes: 0, failed: 0 },
+        totals: {
+          versions: 0,
+          bytes: 0,
+          freedBytes: 0,
+          failed: 0,
+          skipped: 0,
+        },
       }),
     ).not.toContain("--apply");
   });

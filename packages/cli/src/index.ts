@@ -1334,7 +1334,7 @@ async function cmdFeeds(
   if (parsed.positional[0] === "prune") {
     const prunedProduct = flagString(parsed, "product");
     if (!prunedProduct) throw new Error(FEEDS_PRUNE_USAGE);
-    await feedsPrune({
+    const report = await feedsPrune({
       product: prunedProduct,
       deliverable: flagString(parsed, "deliverable"),
       apply: flagBool(parsed, "apply"),
@@ -1346,7 +1346,8 @@ async function cmdFeeds(
       fetchImpl: ci.fetchImpl,
       sleep: ci.sleep,
     });
-    return 0;
+    // An applied prune with failed versions is not done: exit non-zero so CI notices.
+    return report.totals.failed > 0 ? 1 : 0;
   }
   const product = flagString(parsed, "product");
   const channel = flagString(parsed, "channel");
@@ -1779,8 +1780,9 @@ distribution:feeds. Without --keystore it writes the unsigned files and stops.
 
 pkey feeds prune deletes each package's builds of main (X-main.N, PyPI X.devN) below its newest
 stable release, the backfill of the Worker's automatic feed retention. It is a dry run unless
---apply: it prints what would go, per package, with counts and bytes. The token needs
-release:yank, which an operator grants.
+--apply: it prints what would go, per package, with counts and bytes. With --apply it also lists
+any version skipped (held since the plan, so kept) and exits non-zero if any version failed. The
+token needs release:yank, which an operator grants.
 
 pkey feeds setup prints the copy-paste setup for one package feed on the registry host (default
 https://pkg.plrs.im), the same snippets the console's Setup tab shows: strict routing only (the

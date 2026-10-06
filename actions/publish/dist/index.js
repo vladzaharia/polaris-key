@@ -35940,13 +35940,18 @@ function renderPruneReport(r) {
         `  - ${v.version}  ${v.files} file${v.files === 1 ? "" : "s"}, ${formatBytes(v.bytes)} (${formatBytes(v.freedBytes)} freed)`
       );
     for (const k of p.kept) lines3.push(`  = ${k.version}  kept (${k.reason})`);
+    for (const s of p.skipped ?? [])
+      lines3.push(
+        `  ~ ${s.version}  skipped (${s.reason} since the plan; kept)`
+      );
     for (const f of p.failed ?? [])
       lines3.push(`  ! ${f.version}  failed: ${f.error}`);
   }
   for (const s of r.skipped)
     lines3.push(`${s.deliverableId}: skipped (no stable release yet)`);
+  const skipped = r.totals.skipped ?? 0;
   lines3.push(
-    `Total: ${verb.toLowerCase()} ${r.totals.versions} version${r.totals.versions === 1 ? "" : "s"}, ${formatBytes(r.totals.bytes)}, of which ${formatBytes(r.totals.freedBytes)} is referenced by nothing else.${r.totals.failed ? ` ${r.totals.failed} failed: run it again.` : ""}`
+    `Total: ${verb.toLowerCase()} ${r.totals.versions} version${r.totals.versions === 1 ? "" : "s"}, ${formatBytes(r.totals.bytes)}, of which ${formatBytes(r.totals.freedBytes)} is referenced by nothing else.${skipped ? ` ${skipped} skipped: held since the plan, kept.` : ""}${r.totals.failed ? ` ${r.totals.failed} failed: run it again.` : ""}`
   );
   if (r.dryRun && r.totals.versions > 0)
     lines3.push("Run again with --apply to delete them.");
@@ -35987,13 +35992,14 @@ ${FEEDS_PRUNE_USAGE}`);
     report = {
       ...next,
       packages: [...report.packages, ...next.packages].filter(
-        (p) => p.prune.length || p.kept.length || p.failed?.length
+        (p) => p.prune.length || p.kept.length || p.failed?.length || p.skipped?.length
       ),
       totals: {
         versions: report.totals.versions + next.totals.versions,
         bytes: report.totals.bytes + next.totals.bytes,
         freedBytes: report.totals.freedBytes + next.totals.freedBytes,
-        failed: report.totals.failed + next.totals.failed
+        failed: report.totals.failed + next.totals.failed,
+        skipped: (report.totals.skipped ?? 0) + (next.totals.skipped ?? 0)
       }
     };
   }
@@ -38984,7 +38990,7 @@ async function cmdFeeds(parsed, cwd, stdout, stderr, ci) {
   if (parsed.positional[0] === "prune") {
     const prunedProduct = flagString(parsed, "product");
     if (!prunedProduct) throw new Error(FEEDS_PRUNE_USAGE);
-    await feedsPrune({
+    const report = await feedsPrune({
       product: prunedProduct,
       deliverable: flagString(parsed, "deliverable"),
       apply: flagBool(parsed, "apply"),
@@ -38996,7 +39002,7 @@ async function cmdFeeds(parsed, cwd, stdout, stderr, ci) {
       fetchImpl: ci.fetchImpl,
       sleep: ci.sleep
     });
-    return 0;
+    return report.totals.failed > 0 ? 1 : 0;
   }
   const product = flagString(parsed, "product");
   const channel = flagString(parsed, "channel");
@@ -39372,8 +39378,9 @@ distribution:feeds. Without --keystore it writes the unsigned files and stops.
 
 pkey feeds prune deletes each package's builds of main (X-main.N, PyPI X.devN) below its newest
 stable release, the backfill of the Worker's automatic feed retention. It is a dry run unless
---apply: it prints what would go, per package, with counts and bytes. The token needs
-release:yank, which an operator grants.
+--apply: it prints what would go, per package, with counts and bytes. With --apply it also lists
+any version skipped (held since the plan, so kept) and exits non-zero if any version failed. The
+token needs release:yank, which an operator grants.
 
 pkey feeds setup prints the copy-paste setup for one package feed on the registry host (default
 https://pkg.plrs.im), the same snippets the console's Setup tab shows: strict routing only (the
