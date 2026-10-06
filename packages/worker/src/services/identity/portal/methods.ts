@@ -303,8 +303,14 @@ export async function methodsView(
   const addable = await passkeyAddable(db, caller.accountId);
   return {
     methods,
+    // The primary first, then the others oldest first.
     emails: links
       .filter((l) => l.issuer_key === EMAIL_ISSUER)
+      .sort(
+        (a, b) =>
+          Number(b.subject === primaryEmail) -
+            Number(a.subject === primaryEmail) || a.created_at - b.created_at,
+      )
       .map((l) => ({
         methodId: l.id,
         email: l.subject,
