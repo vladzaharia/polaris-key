@@ -8,7 +8,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Toaster } from "../src/components/ui/index.js";
+import { AppToaster } from "../src/ui/toast.js";
 import { Products } from "../src/console/pages/global/Products.js";
 import {
   ALL_ON,
@@ -92,9 +92,10 @@ describe("qk.products() holds one shape for the Products page and the switcher",
       },
     });
     const standalone = render(
-      <Toaster>
+      <>
         <Products />
-      </Toaster>,
+        <AppToaster />
+      </>,
     );
     await waitFor(() =>
       expect(within(standalone.container).getByText("djdl")).toBeTruthy(),

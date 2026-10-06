@@ -55,6 +55,11 @@
       ],
       "note": "Android: :android's AndroidKeystoreStore, the token and device id wrapped by :platform's SecureStore (an AndroidKeyStore AES-256-GCM key, StrongBox where present), the verified cache in a noBackup file; a FileStore's token and device id migrate in, a failed Keystore call throws and status() reports keyring-error, a lost key drops the token and keeps the device id (AndroidKeystoreStoreTest). JVM desktop (UK-40): :core's KeyringStore, Python's KeyringStore ported (the token in the OS keyring, Keychain, Credential Manager or Secret Service through java-keyring, service pkey:<product>; a verified write, else the 0600 file with status() saying keyring-error; file-first reads; a FileStore token moves in), wired by PolarisKeyDesktop; the storage contract runs against the real OS keyring on macOS, Windows and Linux in the kotlin-desktop CI matrix (KeyringStoreTest, PolarisKeyDesktopTest). java-keyring is compileOnly: without it, or with no reachable keyring (a headless Linux session with no Secret Service), the token stays in the 0600 file and supports() reports dependency, as it does for a plain FileStore."
     },
+    "core.copy": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-K01, SDK-PARITY-PASS §5.5."
+    },
     "license.gate": {
       "status": "implemented"
     },
@@ -76,6 +81,11 @@
     "license.reregister": {
       "status": "implemented"
     },
+    "license.refusals": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-K01, SDK-PARITY-PASS §5.5."
+    },
     "config.resolve": {
       "status": "implemented"
     },
@@ -95,6 +105,11 @@
       "status": "implemented",
       "note": "The Kotlin mirror is rendered by tools/gen-mirrors.ts (--lang kotlin); the :config tests compile the committed sample."
     },
+    "config.local": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-K07, SDK-PARITY-PASS §5.5."
+    },
     "devices.fingerprint": {
       "status": "implemented",
       "note": ":core derives fingerprints and device ids from supplied inputs (every fingerprint.json section in :conformance); on Android :android's AndroidFingerprintSource reads ANDROID_ID (else a random anchor kept in the Keystore), Build.MODEL and the RAM bucket, checked against the corpus vectors, ramBuckets and deviceIds (AndroidFingerprintTest)."
@@ -111,6 +126,11 @@
     },
     "devices.report": {
       "status": "implemented"
+    },
+    "telemetry.updates": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-K03, SDK-PARITY-PASS §5.5."
     },
     "devices.attest": {
       "status": "planned",
@@ -140,6 +160,16 @@
     "release.record": {
       "status": "implemented"
     },
+    "release.fetch": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-K13, SDK-PARITY-PASS §5.5."
+    },
+    "release.distribution": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-K13, SDK-PARITY-PASS §5.5."
+    },
     "update.check": {
       "status": "implemented",
       "note": ":update's UpdateClient.check(): GET /<p>/update/version with the token when held, a 403's wire code, updateAvailable by Core's Semver (UpdateClientTest)."
@@ -147,6 +177,11 @@
     "update.feed": {
       "status": "implemented",
       "note": ":core's verifyFeed, feedClaims, reloadFeeds and commitFeed (every feedCases vector, FeedCasesTest); UpdateClient.channelFeed() and decide() run them through runUpdateCheck, and Core keeps the feeds slice and its seq floors (the update-feed-rollback transcript)."
+    },
+    "update.feeds": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-K13, SDK-PARITY-PASS §5.5."
     },
     "update.decide": {
       "status": "implemented",
@@ -167,6 +202,11 @@
     "outlet.detect": {
       "status": "implemented",
       "note": ":core's detectOutlet passes every outlet-matrix.json row in :conformance; on Android :android's AndroidOutletSignalReader turns :platform's InstallSource into android.installSource and android.installerMismatch, and every Android row of the matrix replays through it (AndroidOutletTest). A JVM desktop observes no signal (NoOutletSignals): detection falls to the stamp."
+    },
+    "crash.tags": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-K13, SDK-PARITY-PASS §5.5."
     },
     "packs.record": {
       "status": "implemented",
@@ -298,14 +338,25 @@
       "status": "implemented",
       "note": ":core's bootTransition; every stage-matrix.json row, probe, guard and confirm case in :conformance."
     },
+    "ui.boot": {
+      "status": "planned",
+      "unowned": true,
+      "note": "SP-K06, SDK-PARITY-PASS §5.5."
+    },
     "ui.kit": {
       "status": "implemented",
       "note": "P6-11's :ui (polaris-key-ui, Jetpack Compose + Material 3, Android): PolarisBoot over :core's stage machine, the gate (every terminal state and the grace banner), activation, sign-in with QR, settings, devices, the update banner and prompt and pack progress, each with a StateFlow state holder; neutral over the host's MaterialTheme by default, Polaris Key branding behind PolarisBranding.PolarisKey and the Powered-by badge behind showPoweredBy. Proof: every screen's Roborazzi snapshots (light, dark, 200 % font, phone, tablet; neutral and branded) plus the branding, contrast and TalkBack suites."
     },
+    "ui.cli": {
+      "status": "na",
+      "runtime": ["android", "jvm"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
+    },
     "commerce.receipt": {
       "status": "planned",
-      "unowned": true,
-      "note": "Play Billing is a store edge, not an SDK service; P6-01 is the server side. As in Swift, no work package wires receipts into the Kotlin SDK client."
+      "wp": "LX-20",
+      "note": "Play Billing is a store edge; LX-20 wires Play purchases into the Kotlin SDK client over P6-01's Worker bridge."
     }
   }
 }
