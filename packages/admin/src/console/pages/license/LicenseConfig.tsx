@@ -19,6 +19,22 @@
  *
  * with `mergePayloads`' one exception: a lower `enforced`/`hidden` entry is NOT demoted by a
  * higher `default` one.
+ *
+ * ── The account override migration (U-03) ────────────────────────────────────────────────────
+ *
+ * Config and secret overrides are moving from the licence to the account override (one account
+ * on one product); entitlement (`flag`) overrides stay here. `configOverrides.phase` says where
+ * this licence's live:
+ *
+ * | Phase    | Editor                 | Says                                                     |
+ * | -------- | ---------------------- | -------------------------------------------------------- |
+ * | license  | every key              | nothing                                                  |
+ * | notice   | every key              | the run date: they move to the owner, or are dropped     |
+ * | moving   | entitlements only      | config and secrets are moving (frozen here)              |
+ * | moved    | entitlements only      | config and secrets moved to the owner's account          |
+ *
+ * An unowned licence has no account layer: "No account: managed config for this customer needs
+ * an account", with the portal's sign-up link to send the customer (an offer, never forced).
  */
 
 import * as React from "react";
@@ -27,12 +43,15 @@ import {
   api,
   ApiError,
   type ConfigEntry,
+  type LicenseConfigOverrides,
   type LicenseDetail,
   type ManagementState,
   type OverrideUpdate,
+  type ProductCatalog,
   type RedactedPayload,
 } from "../../../api.js";
 import { mutate } from "../../data/mutations.js";
+import { upcomingRunDate } from "../../data/overrideMigration.js";
 import { qk } from "../../data/queries.js";
 import { queryClient } from "../../data/queryClient.js";
 import { r } from "../../routes.js";
@@ -45,6 +64,7 @@ import {
 } from "../../../schema/index.js";
 import { Button } from "../../../ui/Button.js";
 import { Callout } from "../../../ui/Callout.js";
+import { CopyButton } from "../../../ui/CopyButton.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
@@ -110,6 +130,137 @@ export function resolveInherited(
     if (current) out[entry.key] = current;
   }
   return out;
+}
+
+/** Before U-03 the Worker sent no `configOverrides`: that is phase `license`. */
+const LICENSE_PHASE: LicenseConfigOverrides = {
+  phase: "license",
+  owned: false,
+  ownerSubject: null,
+  runNotBefore: null,
+  signUpUrl: null,
+};
+
+export function configOverridesOf(
+  license: LicenseDetail,
+): LicenseConfigOverrides {
+  return license.configOverrides ?? LICENSE_PHASE;
+}
+
+/** From the run's start, this tab edits entitlements only: config and secrets left the licence. */
+export function entitlementsOnly(co: LicenseConfigOverrides): boolean {
+  return co.phase === "moving" || co.phase === "moved";
+}
+
+/** The catalog this tab edits: every entry, or (`flagsOnly`) the `flag` entries alone. */
+export function licenseEditorCatalog(
+  catalog: ProductCatalog,
+  flagsOnly: boolean,
+): ProductCatalog {
+  return flagsOnly
+    ? { ...catalog, entries: catalog.entries.filter((e) => e.kind === "flag") }
+    : catalog;
+}
+
+/** The portal link the operator can send the customer: shown as text, with a copy button. */
+function SignUpOffer({ url }: { url: string }): React.ReactElement {
+  return (
+    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+      <a
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        className="break-all font-mono text-xs text-accent-fg underline underline-offset-2"
+      >
+        {url}
+      </a>
+      <CopyButton value={url} label="Copy the sign-up link" />
+    </span>
+  );
+}
+
+/** Where this licence's config and secret overrides go, or went (U-03). Nothing in `license`. */
+export function LicenseOverridesNotice({
+  slug,
+  co,
+  now,
+}: {
+  slug: string;
+  co: LicenseConfigOverrides;
+  now?: number;
+}): React.ReactElement | null {
+  if (co.phase === "license") return null;
+  const ownerLink =
+    co.owned && co.ownerSubject ? (
+      <Button size="sm" variant="outline" asChild>
+        <Link to={r.user(slug, co.ownerSubject)}>Open the owner's record</Link>
+      </Button>
+    ) : undefined;
+  const offer = co.signUpUrl ? (
+    <>
+      <p>
+        If the customer wants to keep managed config, send them this link to add
+        the license to a Polaris Key account:
+      </p>
+      <SignUpOffer url={co.signUpUrl} />
+    </>
+  ) : null;
+
+  if (co.phase === "notice") {
+    const date = upcomingRunDate(co.runNotBefore, now);
+    const when = date ? `On ${date}` : "When the migration runs";
+    return co.owned ? (
+      <Callout
+        tone="info"
+        title="Config and secrets move to account overrides"
+        action={ownerLink}
+      >
+        {when}, this license's config and secret overrides move to its owner's
+        account overrides. Entitlements stay on this license.
+      </Callout>
+    ) : (
+      <Callout
+        tone="warning"
+        title="No account: managed config for this customer needs an account"
+      >
+        <p>
+          {when}, these config and secret overrides are dropped. Entitlements
+          stay on this license.
+        </p>
+        {offer}
+      </Callout>
+    );
+  }
+
+  const moving = co.phase === "moving";
+  return co.owned ? (
+    <Callout
+      tone="info"
+      title={
+        moving
+          ? "Config and secrets are moving to account overrides"
+          : "Config and secrets moved to account overrides"
+      }
+      action={ownerLink}
+    >
+      This license's config and secret overrides{" "}
+      {moving ? "are moving" : "moved"} to its owner's account overrides: edit
+      them on the owner's record. Entitlements stay here.
+    </Callout>
+  ) : (
+    <Callout
+      tone="warning"
+      title="No account: managed config for this customer needs an account"
+    >
+      <p>
+        {moving
+          ? "The migration is running: this license's config and secret overrides are dropped, because no account owns it."
+          : "This license's config and secret overrides were dropped by the migration, because no account owns it."}{" "}
+        Entitlements stay here.
+      </p>
+      {offer}
+    </Callout>
+  );
 }
 
 export function LicenseConfig({
@@ -185,7 +336,17 @@ function ConfigEditor({
     queryClient,
   );
 
-  const catalog = catalogQ.data;
+  const co = configOverridesOf(license);
+  const scopedOnly = entitlementsOnly(co);
+  // Keyed on the boolean, not the phase object: a refetch of the licence must not hand the
+  // editor a new catalog (and re-seed it) while the scope is unchanged.
+  const catalog = React.useMemo(
+    () =>
+      catalogQ.data
+        ? licenseEditorCatalog(catalogQ.data, scopedOnly)
+        : undefined,
+    [catalogQ.data, scopedOnly],
+  );
   const inherited = React.useMemo(
     () =>
       catalog
@@ -242,6 +403,7 @@ function ConfigEditor({
 
   return (
     <div className="space-y-4">
+      <LicenseOverridesNotice slug={slug} co={co} />
       {stackQ.isError ? (
         <Callout
           tone="warning"
@@ -260,16 +422,25 @@ function ConfigEditor({
           shown as inherited may be missing that profile's.
         </Callout>
       ) : null}
-      <ManagedPayloadEditor
-        slug={slug}
-        catalog={catalog}
-        payload={license.overrides}
-        inherited={inherited}
-        saving={saving}
-        serverFields={serverFields}
-        submitLabel="Save overrides"
-        onSubmit={submit}
-      />
+      {scopedOnly && catalog.entries.length === 0 ? (
+        <EmptyState
+          kind="first-run"
+          variant="inline"
+          title="No entitlements to override"
+          description="This product's catalog declares no entitlements, so this license has nothing of its own to set."
+        />
+      ) : (
+        <ManagedPayloadEditor
+          slug={slug}
+          catalog={catalog}
+          payload={license.overrides}
+          inherited={inherited}
+          saving={saving}
+          serverFields={serverFields}
+          submitLabel={scopedOnly ? "Save entitlements" : "Save overrides"}
+          onSubmit={submit}
+        />
+      )}
     </div>
   );
 }

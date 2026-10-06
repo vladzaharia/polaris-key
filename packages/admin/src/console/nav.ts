@@ -29,6 +29,7 @@ import {
   Activity,
   AppWindow,
   Archive,
+  ArrowRightLeft,
   Blocks,
   Box,
   Boxes,
@@ -100,7 +101,8 @@ export type GlobalPageId =
   | "platform-deployment"
   | "platform-operations"
   | "platform-stores"
-  | "platform-feeds";
+  | "platform-feeds"
+  | "platform-override-migration";
 
 /** Pages scoped to one product (`#/p/<slug>/…`). */
 export type ProductPageId =
@@ -761,6 +763,18 @@ const PLATFORM_PAGES: NavPage[] = [
         tabs: PACKAGE_TABS,
       },
     },
+  },
+  {
+    // U-03: the one-time move of licence config and secret overrides onto account overrides,
+    // and its report for the 90 days after the run.
+    page: "platform-override-migration",
+    label: "Override migration",
+    path: "platform/override-migration",
+    icon: ArrowRightLeft,
+    docs: "/docs/services/config/",
+    inNav: true,
+    ready: true,
+    group: "platform",
   },
 ];
 

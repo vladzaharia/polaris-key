@@ -195,6 +195,32 @@ describe("Catalog page", () => {
     expect(usage.query).toBe("key=network.timeout");
   });
 
+  it("lists the accounts whose account overrides set the key (U-03)", async () => {
+    bootConfig("#/p/djdl/config/catalog?key=network.timeout", {
+      [`${P}/config/catalog`]: CATALOG,
+      [`${P}/config/catalog/usage`]: {
+        keys: {
+          "network.timeout": {
+            profiles: [],
+            tiers: [],
+            licenses: [],
+            accounts: [{ subject: "ps_AAAAAAAAAAAAAAAAAAAAAA" }],
+          },
+        },
+      },
+    });
+    const drawer = await screen.findByRole("dialog", { name: "Timeout" });
+    const account = await within(drawer).findByRole("link", {
+      name: "ps_AAAAAAAAAAAAAAAAAAAAAA",
+    });
+    expect(account.getAttribute("href")).toBe(
+      "#/p/djdl/users/ps_AAAAAAAAAAAAAAAAAAAAAA",
+    );
+    expect(
+      within(drawer).getByText("Accounts (account overrides)"),
+    ).toBeTruthy();
+  });
+
   it("compares an earlier version with the active one (A-6)", async () => {
     bootConfig("#/p/djdl/config/catalog", {
       [`${P}/config/catalog`]: CATALOG,
@@ -402,6 +428,34 @@ describe("Catalog editor", () => {
     expect(enabled.getAttribute("aria-disabled")).toBeNull();
     await userEvent.click(enabled);
     await waitFor(() => expect(backend.writes()).toHaveLength(1));
+  });
+
+  it("counts an account override that sets a removed key as a reference (U-03)", async () => {
+    await openEditor({
+      [`${P}/config/catalog/usage`]: {
+        keys: {
+          "network.timeout": {
+            profiles: [],
+            tiers: [],
+            licenses: [],
+            accounts: [{ subject: "ps_AAAAAAAAAAAAAAAAAAAAAA" }],
+          },
+        },
+      },
+    });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Remove entry" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Review changes" }),
+    );
+    const drawer = await screen.findByRole("dialog");
+    expect(
+      await within(drawer).findByText(
+        /Breaking: referenced by account ps_AAAAAAAAAAAAAAAAAAAAAA/,
+      ),
+    ).toBeTruthy();
+    expect(within(drawer).getByRole("checkbox")).toBeTruthy();
   });
 
   it("warns that publishing claims a manifest-owned catalog (CAT-3, ST-01b)", async () => {

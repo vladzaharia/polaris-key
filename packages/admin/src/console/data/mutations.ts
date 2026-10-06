@@ -37,6 +37,11 @@ export type WriteMethod =
   | "logout"
   | "patchPlatformSetting"
   | "revertPlatformSetting"
+  | "putOverrideMigrationPrerequisites"
+  | "startOverrideMigrationNotice"
+  | "withdrawOverrideMigrationNotice"
+  | "overrideMigrationDryRun"
+  | "runOverrideMigration"
   | "createManualProduct"
   | "linkRepo"
   | "updateProduct"
@@ -99,6 +104,7 @@ export type WriteMethod =
   | "detachProductUserLicense"
   | "relinkProductUserLicense"
   | "undoRelink"
+  | "putProductUserOverrides"
   | "updateSignInSettings"
   | "resetProductDeviceFingerprint"
   | "mintBundle"
@@ -214,6 +220,17 @@ const users = (slug: string): Target[] => [
   prefix(qk.activity(slug)),
 ];
 
+/**
+ * U-03: a licence override migration write. The page's own state, the platform trail it appends
+ * to, and every product's queries: a notice or a run changes what every licence record's Config
+ * tab, Licenses page and catalog key usage show, and a run writes account overrides.
+ */
+const overrideMigration = (): Target[] => [
+  prefix(qk.overrideMigration()),
+  prefix(qk.platformActivity()),
+  prefix(qk.allProducts()),
+];
+
 /** §5.4 "key mint / revoke": the record, and the list's key counts. */
 const licenseKey = (slug: string, id: string): Target[] => [
   exact(qk.licenses(slug)),
@@ -259,6 +276,30 @@ export const MUTATIONS: MutationTable = {
       exact(qk.platformReservedNames()),
       prefix(qk.platformActivity()),
     ],
+  },
+  putOverrideMigrationPrerequisites: {
+    label: "override migration prerequisites (I-07, I-11 live)",
+    invalidates: () => [
+      prefix(qk.overrideMigration()),
+      prefix(qk.platformActivity()),
+    ],
+  },
+  startOverrideMigrationNotice: {
+    label: "override migration notice start",
+    invalidates: () => overrideMigration(),
+  },
+  withdrawOverrideMigrationNotice: {
+    label: "override migration notice withdraw",
+    invalidates: () => overrideMigration(),
+  },
+  overrideMigrationDryRun: {
+    label: "override migration dry run",
+    invalidates: () => [],
+    why: "A dry run: it reads the licences and writes nothing.",
+  },
+  runOverrideMigration: {
+    label: "override migration run (start or continue)",
+    invalidates: () => overrideMigration(),
   },
   createManualProduct: {
     label: "product create (manual)",
@@ -370,6 +411,16 @@ export const MUTATIONS: MutationTable = {
   undoRelink: {
     label: "user license relink undo",
     invalidates: (slug) => users(slug),
+  },
+  putProductUserOverrides: {
+    label: "user account overrides",
+    // The record (the overrides read sits under it), the trail the write appends to, and which
+    // accounts set each catalog key (the key drawer's "Overridden by").
+    invalidates: (slug, subject) => [
+      prefix(qk.user(slug, subject)),
+      prefix(qk.activity(slug)),
+      prefix(qk.catalog(slug)),
+    ],
   },
   putProductSecret: {
     label: "secret set",

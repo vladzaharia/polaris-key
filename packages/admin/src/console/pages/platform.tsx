@@ -3,8 +3,8 @@
  * loaded when the operator opens the section. Deployment is built here (A-11's identity and deploy
  * history, A-12's platform activity), Settings in `platformSettings.tsx` (4P-1, on A-13),
  * Operations in `platformOperations.tsx` (4P-3, on A-14) and Store connections in
- * `platformStores.tsx` (A-16) and Package feeds in `../areas/feeds/` (F-11, shared with the
- * product scope).
+ * `platformStores.tsx` (A-16), Package feeds in `../areas/feeds/` (F-11, shared with the
+ * product scope) and Override migration in `platformOverrideMigration.tsx` (U-03).
  */
 
 import * as React from "react";
@@ -45,6 +45,7 @@ import type { Route } from "../routes.js";
 import { FeedsArea } from "../areas/feeds/FeedsArea.js";
 import { PLATFORM_SCOPE } from "../areas/feeds/model.js";
 import { Operations } from "./platformOperations.js";
+import { OverrideMigrationPage } from "./platformOverrideMigration.js";
 import {
   AttentionList,
   DashboardTemplate,
@@ -81,6 +82,7 @@ export default function PlatformPages({
   if (page === "platform-settings") return <PlatformSettingsPage />;
   if (page === "platform-operations") return <Operations />;
   if (page === "platform-stores") return <StoreConnections />;
+  if (page === "platform-override-migration") return <OverrideMigrationPage />;
   return null;
 }
 

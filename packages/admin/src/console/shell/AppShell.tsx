@@ -420,7 +420,11 @@ export function routeSkeleton(route: Route): SkeletonTemplate {
     route.page === "platform-operations"
   )
     return "dashboard";
-  if (route.page === "platform-settings") return "form";
+  if (
+    route.page === "platform-settings" ||
+    route.page === "platform-override-migration"
+  )
+    return "form";
   return "table";
 }
 

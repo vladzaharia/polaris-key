@@ -18,6 +18,8 @@ export type EntityRef =
   | { kind: "pack-release"; deliverable: string; id: string }
   /** A device: the routed device drawer (`devices/:id`). */
   | { kind: "device"; id: string }
+  /** A user of the product, by pairwise subject: the Users record (I-12). */
+  | { kind: "user"; id: string; tab?: string }
   /** A catalog key: the catalog searched for that key. */
   | { kind: "catalog-key"; id: string }
   /** An outlet: Outlets & feeds with that outlet open. */
@@ -48,6 +50,8 @@ export function entityHref(slug: string, ref: EntityRef): string {
       });
     case "device":
       return r.device(slug, ref.id);
+    case "user":
+      return r.user(slug, ref.id, ref.tab);
     case "catalog-key":
       return productPage(slug, "catalog", { query: { q: ref.id } });
     case "outlet":

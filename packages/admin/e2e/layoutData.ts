@@ -1367,6 +1367,15 @@ export const LICENSE_DETAIL = {
       "flag.pro": { state: "hidden", value: true, updatedAt: NOW_S },
     },
   },
+  // U-03: the notice's widest callout on the Config tab (no account, with the sign-up link to
+  // offer), over the full editor. Independent of the Platform page's own fixture state.
+  configOverrides: {
+    phase: "notice",
+    owned: false,
+    ownerSubject: null,
+    runNotBefore: NOW_S + 20 * DAY,
+    signUpUrl: "https://keys.example.com/activate?product=djdl",
+  },
   keys: Array.from({ length: 4 }, (_, i) => ({
     hash: `${"abcdef0123456789".repeat(2)}${i}`,
     status: i === 3 ? "revoked" : "active",
@@ -1393,6 +1402,108 @@ export const LICENSE_DETAIL = {
             lastSeen: NOW_S,
           },
   })),
+};
+
+// ── Platform → Override migration (U-03): a run part-way through, so every section draws ─────
+
+const MIGRATION_AT = 1_790_000_000;
+const MIGRATION_STATE = {
+  phase: "running",
+  noticeDays: 30,
+  reportDays: 90,
+  prerequisites: {
+    loginCard: { liveAt: MIGRATION_AT - 50 * 86_400, by: "u1" },
+    library: { liveAt: MIGRATION_AT - 45 * 86_400, by: "u1" },
+  },
+  notice: {
+    startedAt: MIGRATION_AT - 40 * 86_400,
+    by: "u1",
+    runNotBefore: MIGRATION_AT - 10 * 86_400,
+    runAllowed: true,
+  },
+  run: {
+    id: "run_1",
+    startedAt: MIGRATION_AT - 3600,
+    by: "u1",
+    completedAt: null,
+    productsDone: ["djdl"],
+    reportExpiresAt: null,
+    columnsEmptiedAt: null,
+  },
+  inventory: {
+    computedAt: MIGRATION_AT - 7200,
+    products: [
+      {
+        product: "djdl",
+        licences: 4,
+        owned: 3,
+        dropped: 1,
+        collapsingAccounts: 1,
+      },
+      {
+        product: "acme",
+        licences: 2,
+        owned: 0,
+        dropped: 2,
+        collapsingAccounts: 0,
+      },
+    ],
+    totals: { licences: 6, owned: 3, dropped: 3 },
+  },
+};
+const MIGRATION_REPORT = {
+  rows: [
+    {
+      product: "djdl",
+      runId: "run_1",
+      licenseId: "lic_1",
+      outcome: "collapsed",
+      subject: "ps_AAAAAAAAAAAAAAAAAAAAAA",
+      buyerEmail: "ada@example.com",
+      keys: {
+        config: ["network.timeout", "ui.theme"],
+        secrets: ["sentry.dsn"],
+      },
+      values: {
+        collapsed: [
+          {
+            bucket: "config",
+            key: "network.timeout",
+            keptFrom: "lic_2",
+            kept: 60,
+            lost: 30,
+          },
+          { bucket: "secrets", key: "sentry.dsn", keptFrom: "lic_2" },
+        ],
+      },
+      createdAt: MIGRATION_AT - 3600,
+      expiresAt: MIGRATION_AT + 89 * 86_400,
+    },
+    {
+      product: "djdl",
+      runId: "run_1",
+      licenseId: "lic_3",
+      outcome: "dropped",
+      subject: null,
+      buyerEmail: "lab-3@university.example.edu",
+      keys: { config: ["network.timeout"], secrets: [] },
+      values: { config: { "network.timeout": 45 } },
+      createdAt: MIGRATION_AT - 3600,
+      expiresAt: MIGRATION_AT + 89 * 86_400,
+    },
+    {
+      product: "djdl",
+      runId: "run_1",
+      licenseId: "lic_4",
+      outcome: "moved",
+      subject: "ps_BBBBBBBBBBBBBBBBBBBBBB",
+      buyerEmail: null,
+      keys: { config: ["ui.theme"], secrets: [] },
+      values: {},
+      createdAt: MIGRATION_AT - 3600,
+      expiresAt: MIGRATION_AT + 89 * 86_400,
+    },
+  ],
 };
 
 // ── The route table this file contributes ────────────────────────────────────────────────────
@@ -1422,6 +1533,8 @@ export const DATA_ROUTES: Record<string, unknown> = {
   },
   "/manage/api/platform/operations": operations(),
   "/manage/api/platform/settings": view(),
+  "/manage/api/platform/override-migration": { state: MIGRATION_STATE },
+  "/manage/api/platform/override-migration/report": MIGRATION_REPORT,
   "/manage/api/products/kek": KEK,
   [BASE]: { ok: true, stores: STORES },
   [`${BASE}/app-store/apps`]: ASC_APPS,
