@@ -191,7 +191,11 @@ function productTable(entries: readonly SettingDef[]): string {
       describeDefault(e),
       cell(describeMerge(e)),
       e.ownership,
-      e.manifest ? code(e.manifest.path) : "—",
+      e.manifest
+        ? [e.manifest.path, ...(e.manifest.alsoPaths ?? [])]
+            .map((p) => code(p))
+            .join(", ")
+        : "—",
       describeConfirm(e.confirm),
       notes(e),
     ]),

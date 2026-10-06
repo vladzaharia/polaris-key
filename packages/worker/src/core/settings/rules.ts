@@ -284,6 +284,16 @@ function checkEntry(def: SettingDef, out: string[]): void {
     );
   if (def.manifest && !MANIFEST_PATH_RE.test(def.manifest.path))
     out.push(`${at}: manifest.path must be <document>:<dotted path>`);
+  // ST-19b: a second field of the same value is held to the same shape, and names a new field.
+  const also = def.manifest?.alsoPaths ?? [];
+  for (const p of also)
+    if (!MANIFEST_PATH_RE.test(p))
+      out.push(`${at}: manifest.alsoPaths must be <document>:<dotted path>`);
+  if (
+    def.manifest &&
+    new Set([def.manifest.path, ...also]).size !== also.length + 1
+  )
+    out.push(`${at}: manifest.alsoPaths repeats a path`);
   if (def.scope === "platform" && needsManifest)
     out.push(`${at}: platform settings have no manifest`);
 

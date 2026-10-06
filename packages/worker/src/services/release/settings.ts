@@ -26,7 +26,13 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
       allowUnset: true,
       merge: "cascade",
       ownership: "claimable",
-      manifest: { path: "product:product.compatMin" },
+      // One value, two sibling manifest fields (ST-19b): `alsoPaths` lets this entry declare
+      // `compatMax` beside `compatMin` instead of a second entry for the same window. Storage
+      // names `compat_min`; `compat_max` sits beside it and `compat_source` marks both.
+      manifest: {
+        path: "product:product.compatMin",
+        alsoPaths: ["product:product.compatMax"],
+      },
       confirm: { change: "L1" },
       visibleWhen: { service: "release", offBehaviour: "readOnly" },
       wire: ["discovery", "document"],

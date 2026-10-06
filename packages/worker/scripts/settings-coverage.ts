@@ -176,7 +176,9 @@ export function declaredByEntry(e: SettingDef): string[] {
   }
   if (s.kind === "rich") out.push(`table:${s.adapter}`, `rows:${s.adapter}`);
   if (e.varName) out.push(`env:${e.varName}`);
-  if (e.manifest) out.push(manifestTargetId(e.manifest.path));
+  if (e.manifest)
+    for (const p of [e.manifest.path, ...(e.manifest.alsoPaths ?? [])])
+      out.push(manifestTargetId(p));
   return out;
 }
 
@@ -504,11 +506,6 @@ export const PENDING: readonly PendingEntry[] = [
     note: "distribution.transports",
   },
   {
-    target: "manifest:product:product.compatMax",
-    owner: "ST-19b",
-    note: "second field of release.compatWindow",
-  },
-  {
     target: "manifest:product:devices",
     owner: "ST-19b",
     note: "core.registration",
@@ -556,7 +553,7 @@ export const PENDING: readonly PendingEntry[] = [
 ];
 
 /** `PENDING.length`, written down: lower it with every removal; raising it needs a review. */
-export const PENDING_CEILING = 47;
+export const PENDING_CEILING = 46;
 
 export interface CoverageInputs {
   targets: readonly CoverageTarget[];
