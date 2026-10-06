@@ -72,6 +72,16 @@ taken with the recommended option, as the lead delegated.
 - **Fix round 1 (merge with feeds-2).** Main's F-23 and F-31 tests declare six-slug `ServicesMap`
   literals; both gain `sync: { enabled: false }` (ServicesMap is total over `ServiceSlug`). The
   publish action bundle is rebuilt, not hand-merged.
+- **Fix round 2 (merge with main at d12e46cd2, then 4c9a81d5d).** `product.schema.json` keeps both
+  HA-04's `presentation`/asset defs and the `cloudSync` defs. On UX-34's progressive-disclosure
+  form, the user-setting fields are a collapsible **User setting** group (config keys only) beside
+  Validation and Form hints; it opens when the key is a user setting or the `user` block has an
+  issue. Overview keeps UX-20's welcome header plus the Cloud Sync tile. The services test follows
+  UX-22's chain rule: turning on Cloud Sync from all-off turns on Config and Identity with it (one
+  write carrying exactly those three flags), and turning off Identity or Config while Cloud Sync is
+  on lists Cloud Sync in the L1 confirm and sends only the two flipped flags. SP-00's new HTTP
+  transcripts are regenerated (they now carry `sync`). The action bundle and validation-codes page
+  are regenerated, not hand-merged.
 - **Known seams left to U-05** (decided: do not widen this package). The legacy
   `{schemaVersion, catalog:[…]}` schema form validates a top-level `cloudSync` but
   `normalizeCatalog` drops it; the admin-API product register (`schema` body) stores `entries`
