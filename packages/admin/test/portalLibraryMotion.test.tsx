@@ -17,7 +17,11 @@ import { focusManager } from "@tanstack/react-query";
 import type { PortalDiscoverOffer } from "../src/portal/api.js";
 import { DiscoverTile } from "../src/portal/components/DiscoverTile.js";
 import { ProductArt } from "../src/portal/components/ProductArt.js";
-import { useFirstLoadStagger } from "../src/portal/stagger.js";
+import {
+  forgetLoadedPages,
+  useFirstLoad,
+  useFirstLoadStagger,
+} from "../src/portal/stagger.js";
 import {
   DAY,
   fetchedRequests,
@@ -59,6 +63,8 @@ const TWELVE = NAMES.map((n, i) =>
 beforeEach(() => {
   window.history.replaceState(null, "", "/");
   window.localStorage.clear();
+  // Every test stands for a fresh document.
+  forgetLoadedPages();
 });
 
 afterEach(() => {
@@ -155,6 +161,16 @@ describe("useFirstLoadStagger", () => {
     }
   });
 
+  it("never starts while a View Transition is running", () => {
+    document.documentElement.dataset.vt = "back";
+    const { rerender } = render(<StaggerProbe firstLoad />);
+    expect(screen.getByTestId("list").className).toBe("");
+    // Nor once it has ended: the moment has passed.
+    delete document.documentElement.dataset.vt;
+    rerender(<StaggerProbe firstLoad rows={4} />);
+    expect(screen.getByTestId("list").className).toBe("");
+  });
+
   it("comes off at once when nothing animates (reduced motion)", async () => {
     Object.defineProperty(Element.prototype, "getAnimations", {
       configurable: true,
@@ -168,6 +184,37 @@ describe("useFirstLoadStagger", () => {
     } finally {
       delete (Element.prototype as { getAnimations?: unknown }).getAnimations;
     }
+  });
+});
+
+function FirstLoadProbe({
+  page,
+  pending,
+}: {
+  page: string;
+  pending: boolean;
+}): React.ReactElement {
+  return <output>{String(useFirstLoad(page, pending))}</output>;
+}
+
+describe("useFirstLoad", () => {
+  it("is the page's first mount in the document, with its data pending, outside a View Transition", () => {
+    render(<FirstLoadProbe page="library" pending />);
+    expect(screen.getByRole("status").textContent).toBe("true");
+    cleanup();
+    // A second visit, even with its data on the way again (a cache that was dropped).
+    render(<FirstLoadProbe page="library" pending />);
+    expect(screen.getByRole("status").textContent).toBe("false");
+    cleanup();
+    // Another page has its own first load; cached data never staggers.
+    render(<FirstLoadProbe page="discover" pending={false} />);
+    expect(screen.getByRole("status").textContent).toBe("false");
+    cleanup();
+    forgetLoadedPages();
+    // Mounting inside a View Transition (Back from a product, MO-05): never.
+    document.documentElement.dataset.vt = "back";
+    render(<FirstLoadProbe page="library" pending />);
+    expect(screen.getByRole("status").textContent).toBe("false");
   });
 });
 
@@ -226,6 +273,14 @@ describe("the Library staggers on its first load only", () => {
       window.location.hash = "#/";
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     });
+    await twelve();
+    expect(items().className).not.toMatch(/\bpk-stagger\b/);
+  });
+
+  it("does not stagger when the page mounts inside a View Transition (Back from a product)", async () => {
+    document.documentElement.dataset.vt = "back";
+    mockFetch(signedIn(TWELVE));
+    renderPortal();
     await twelve();
     expect(items().className).not.toMatch(/\bpk-stagger\b/);
   });

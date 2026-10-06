@@ -16,7 +16,7 @@ import { portalErrorCopy } from "../errors.js";
 import { addedOfferFromLibrary, mergeAdded } from "../model/discover.js";
 import { withoutHeld } from "../model/owned.js";
 import { href, navigate, setParams, useDocumentTitle } from "../router.js";
-import { useFirstLoadStagger } from "../stagger.js";
+import { useFirstLoad, useFirstLoadStagger } from "../stagger.js";
 
 interface TileError {
   text: string;
@@ -32,7 +32,8 @@ interface TileError {
  * to add, the star and **Back to your library**.
  *
  * Motion (MO-07): the tiles stagger in when the offers first arrive (`stagger.ts`), never on a
- * refetch or a return to the page; a just-added tile's ring pops in (`DiscoverTile`).
+ * refetch, a return to the page or inside a View Transition; a just-added tile's ring pops in
+ * (`DiscoverTile`).
  */
 export function DiscoverPage({
   params,
@@ -43,10 +44,10 @@ export function DiscoverPage({
   const discover = useDiscover();
   const library = useLibraryView();
   const claim = useClaimDiscover();
-  // Offers that arrive while you watch stagger in; cached ones (a return to the page) don't.
-  const [firstLoad] = React.useState(
-    () =>
-      discover.isPending || (params.get("added") !== null && library.isPending),
+  // Only the document's first load staggers: never a return, never inside a View Transition.
+  const firstLoad = useFirstLoad(
+    "discover",
+    discover.isPending || (params.get("added") !== null && library.isPending),
   );
   const stagger = useFirstLoadStagger(firstLoad);
 

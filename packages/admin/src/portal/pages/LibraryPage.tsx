@@ -31,14 +31,15 @@ import {
   readView,
   rememberMode,
 } from "../model/libraryView.js";
-import { useFirstLoadStagger } from "../stagger.js";
+import { useFirstLoad, useFirstLoadStagger } from "../stagger.js";
 
 /**
  * The Library (§4.12–4.15), the default page: one tile per product, never per license.
  * 0 → the empty state; 1 → the hero; 2–7 → large tiles; 8+ → the shelf and the compact grid.
  *
  * Motion (notes/S-23 §6.1; MO-07): the tiles (or the list's rows) stagger in when the library
- * first arrives, never on a refetch, a filter or a return to the page (`stagger.ts`); the
+ * first arrives, never on a refetch, a filter, a return to the page or inside a View Transition
+ * (`stagger.ts`); the
  * Grid/List toggle is one `list` View Transition. The page's own blocks are its `.pk-vt-scope`,
  * so during that transition they hold still while the products' view changes.
  */
@@ -52,8 +53,9 @@ export function LibraryPage({
   useDocumentTitle("Library");
   const lib = useLibrary();
   const count = lib.isPending ? 0 : (lib.products?.length ?? 0);
-  // Cached data (a return to the page) shows at once; data that arrives while you watch staggers.
-  const [firstLoad] = React.useState(() => lib.isPending);
+  // Only the document's first load staggers: never a return (Back from a product), never inside
+  // a View Transition.
+  const firstLoad = useFirstLoad("library", lib.isPending);
 
   return (
     <section className="pk-vt-scope space-y-8">

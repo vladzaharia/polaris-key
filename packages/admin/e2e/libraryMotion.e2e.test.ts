@@ -14,7 +14,7 @@ import type { PortalScenario } from "./portalFixtures.js";
  *
  *   - the first load staggers the tiles (pk-enter on `slow`, 30 ms apart, at most 6 steps =
  *     180 ms), then nothing is left animating and the stagger is off: a search undone brings
- *     tiles back without one;
+ *     tiles back without one, and a return to the Library has none;
  *   - developer art fades in once decoded, on `base`, and its box never moves (no layout shift);
  *   - a tile lifts under the pointer (2 px, its shadow, its art at 1.03) and presses (0.98) for its
  *     own link only, never for its quick action;
@@ -418,6 +418,29 @@ describe("motion on: the Library and Discover under the Worker's CSP", () => {
         );
       await s.close();
     });
+
+  it("a return to the Library never staggers (the tile morph back from a product is MO-05's)", async () => {
+    const s = await open("twelve", "/");
+    const { page } = s;
+    await page.getByRole("article", { name: "Glyphsmith" }).waitFor();
+    await atRest(page);
+    await log(page);
+    await page.evaluate(() => (location.hash = "#/account"));
+    await page.getByRole("heading", { level: 1, name: "Account" }).waitFor();
+    await page.evaluate(() => (location.hash = "#/"));
+    await page.getByRole("article", { name: "Glyphsmith" }).waitFor();
+    await atRest(page);
+    expect(await items(page).getAttribute("class")).not.toMatch(
+      /\bpk-stagger\b/,
+    );
+    expect(
+      (await log(page)).filter(
+        (e) => e.kind === "animation" && e.name === "pk-enter",
+      ),
+    ).toEqual([]);
+    expect(await s.violations()).toEqual([]);
+    await s.close();
+  });
 
   it("developer art fades in once decoded, on base, and never moves its box", async () => {
     const s = await open("three", "/", { holdMedia: true });
