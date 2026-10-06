@@ -106,14 +106,54 @@
   --text-display: 2.5rem;
   --text-display--line-height: 1.1;
   --animate-pk-in: pk-in var(--pk-duration-fast) var(--pk-ease-enter);
+  /* The motion layer's keyframes (src/motion.css, notes/S-23 §6.1; MO-10), as Tailwind utilities
+     on the same tokens and fills, so a component can say `animate-pk-enter` instead of a rule.
+     Enters fill `backwards` (a finished enter leaves nothing behind), exits `forwards` (Radix
+     unmounts on animationend). Every duration is a token, so under reduced motion (the OS setting
+     or html[data-motion="reduce"]) each one is an instant swap. pk-refetch has no alias: motion.css
+     defines `.animate-pk-refetch` itself. */
+  --animate-pk-enter: pk-enter var(--pk-duration-slow) var(--pk-ease-enter)
+    backwards;
+  --animate-pk-exit: pk-exit var(--pk-duration-base) var(--pk-ease-exit)
+    forwards;
+  --animate-pk-fade-in: pk-fade-in var(--pk-duration-base)
+    var(--pk-ease-standard) backwards;
+  --animate-pk-fade-out: pk-fade-out var(--pk-duration-base) var(--pk-ease-exit)
+    forwards;
+  --animate-pk-pop-in: pk-pop-in var(--pk-duration-slow) var(--pk-ease-spring)
+    backwards;
+  --animate-pk-from-top: pk-from-top var(--pk-duration-fast)
+    var(--pk-ease-enter) backwards;
+  --animate-pk-from-bottom: pk-from-bottom var(--pk-duration-fast)
+    var(--pk-ease-enter) backwards;
+  --animate-pk-from-left: pk-from-left var(--pk-duration-fast)
+    var(--pk-ease-enter) backwards;
+  --animate-pk-from-right: pk-from-right var(--pk-duration-fast)
+    var(--pk-ease-enter) backwards;
+  --animate-pk-drawer-in: pk-drawer-in var(--pk-duration-slow)
+    var(--pk-ease-emphasized) backwards;
+  --animate-pk-drawer-out: pk-drawer-out var(--pk-duration-base)
+    var(--pk-ease-exit) forwards;
+  --animate-pk-sheet-in: pk-sheet-in var(--pk-duration-slow)
+    var(--pk-ease-emphasized) backwards;
+  --animate-pk-sheet-out: pk-sheet-out var(--pk-duration-base)
+    var(--pk-ease-exit) forwards;
+  --animate-pk-nav-in: pk-nav-in var(--pk-duration-slow)
+    var(--pk-ease-emphasized) backwards;
+  --animate-pk-nav-out: pk-nav-out var(--pk-duration-base) var(--pk-ease-exit)
+    forwards;
+  /* A loading indicator, so it loops (the skeleton sheen; motion.css stops it under reduced
+     motion on .pk-skeleton). */
+  --animate-pk-shimmer: pk-shimmer var(--pk-duration-shimmer) linear infinite;
   --animate-pk-overlay-in: pk-overlay-in var(--pk-duration-fast)
     var(--pk-ease-standard);
   --animate-pk-spin: pk-spin 0.7s linear infinite;
-  /* Disclosure (sidebar sections): Radix Collapsible measures the content height. */
-  --animate-pk-collapse-down: pk-collapse-down var(--pk-duration-base)
+  /* Disclosure (sidebar sections): Radix Collapsible measures the content height. The expand
+     pattern's timing (S-23 §6.1, `moderate`·`standard`); height is its named exception. */
+  --animate-pk-collapse-down: pk-collapse-down var(--pk-duration-moderate)
     var(--pk-ease-standard);
-  --animate-pk-collapse-up: pk-collapse-up var(--pk-duration-base)
-    var(--pk-ease-standard);
+  --animate-pk-collapse-up: pk-collapse-up var(--pk-duration-moderate)
+    var(--pk-ease-exit);
   @keyframes pk-collapse-down {
     from {
       height: 0;
@@ -256,6 +296,41 @@
     > :last-child
     > [data-variant="ghost"]:not([data-icon]):last-child {
     margin-inline-end: calc(var(--ghost-pad) * -1);
+  }
+}
+
+/*
+ * The phone nav drawer (console/shell/AppShell.tsx; S-23 §4.2, MO-10) slides from the inline
+ * start, where it is anchored (`left-0`): in at `slow`·`emphasized`, out at `base`·`exit`. It keeps
+ * `animate-pk-in`, so motion.css's overlay rules, exit probe and reduced-motion reset apply; the
+ * doubled class outranks motion.css's rise. Edge-anchored, so it may travel its full width
+ * (S-23 §6.5). Keyframes outside @theme so they are emitted whether or not the alias is used.
+ */
+@keyframes pk-nav-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes pk-nav-out {
+  to {
+    transform: translateX(-100%);
+  }
+}
+@layer utilities {
+  .pk-nav-drawer.pk-nav-drawer:not([data-state="closed"]) {
+    animation: pk-nav-in var(--pk-duration-slow) var(--pk-ease-emphasized)
+      backwards;
+  }
+  .pk-nav-drawer.pk-nav-drawer[data-state="closed"] {
+    animation: pk-nav-out var(--pk-duration-base) var(--pk-ease-exit) forwards;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pk-nav-drawer.pk-nav-drawer.pk-nav-drawer {
+      animation: none;
+    }
+  }
+  :root[data-motion="reduce"] .pk-nav-drawer.pk-nav-drawer {
+    animation: none;
   }
 }
 
