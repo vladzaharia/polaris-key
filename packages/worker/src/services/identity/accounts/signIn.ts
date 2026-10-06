@@ -135,7 +135,13 @@ export async function signIn(
   db: Db,
   identity: VerifiedIdentity,
   now: number,
-  opts: { product?: SignInProduct } = {},
+  opts: {
+    product?: SignInProduct;
+    /** Sign in through an existing link only; never offer a join or create an account. A passkey
+     *  (I-16) is enrolled on an account after its email is verified, so one with no link (removed
+     *  a moment ago) is refused rather than starting an account with no email. */
+    linkedOnly?: boolean;
+  } = {},
 ): Promise<SignInResult> {
   const id = normalizeIdentity(identity);
   if (!id) return { status: "refused", reason: "invalid_identity" };
@@ -190,6 +196,8 @@ export async function signIn(
         : null,
     };
   }
+
+  if (opts.linkedOnly) return { status: "refused", reason: "invalid_identity" };
 
   // Never by email match: an address another account uses stops here, writing nothing.
   if (id.email && id.emailVerified) {

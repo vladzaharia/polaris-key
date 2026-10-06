@@ -1,9 +1,9 @@
 /// <reference types="@cloudflare/workers-types" />
 
 // The account realm's cookies (I-07; S-16 §5.4 item 7, "Sessions"): the Polaris Key account
-// session and the two short-lived login-card cookies that bind a sign-in to the browser that
-// started it. All three are host-only on key.plrs.im (`__Host-`, `Path=/`, no `Domain`),
-// `HttpOnly`, `Secure` and `SameSite=Lax`.
+// session and the short-lived login-card cookies that bind a sign-in to the browser that started
+// it (the email flow, the email gate and, since I-16, the passkey challenge). All are host-only on
+// key.plrs.im (`__Host-`, `Path=/`, no `Domain`), `HttpOnly`, `Secure` and `SameSite=Lax`.
 //
 // A host-only `Path=/` cookie is sent by the browser to EVERY path on the host, product routes
 // included; the browser cannot be told otherwise without scoping the portal under a path. So the
@@ -19,12 +19,16 @@ export const ACCOUNT_SESSION_COOKIE = "__Host-pkey_portal";
 export const SIGNIN_FLOW_COOKIE = "__Host-pkey_signin";
 /** The first-provider-sign-in email gate (the interstitial), bound to its browser. */
 export const EMAIL_GATE_COOKIE = "__Host-pkey_gate";
+/** The login card's pending passkey sign-in (I-16): names the WebAuthn challenge this browser
+ *  was given, so the assertion completes only here, once. Same attributes as the other two. */
+export const PASSKEY_FLOW_COOKIE = "__Host-pkey_passkey";
 
 /** Every cookie of the account realm. */
 export const ACCOUNT_REALM_COOKIES: readonly string[] = [
   ACCOUNT_SESSION_COOKIE,
   SIGNIN_FLOW_COOKIE,
   EMAIL_GATE_COOKIE,
+  PASSKEY_FLOW_COOKIE,
 ];
 
 function isAccountCookie(name: string): boolean {

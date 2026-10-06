@@ -46,7 +46,7 @@ export type SingleUseKind =
   | "signin-flow"
   /** A first-provider-sign-in email gate (I-07's interstitial), by the browser's gate secret. */
   | "signin-gate"
-  /** A WebAuthn challenge (I-14). */
+  /** A passkey (WebAuthn) ceremony's challenge (I-16), by its browser's flow secret or its session. */
   | "webauthn-challenge"
   /** An issuer authorization code (I-16). */
   | "auth-code"

@@ -98,6 +98,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   portalProviderStart: "closed",
   portalProviderCallback: "closed",
   appleNotifications: "closed",
+  // I-16: the login card's passkey sign-in (challenge and assertion, per client address) and the
+  // account's passkey changes (per account). Both open a session or add a sign-in method.
+  portalPasskey: "closed",
+  portalPasskeyChange: "closed",
   portalClaimKey: "closed",
   // P2-02: the trusted-publisher exchange mints a `pkeyci_` token from a GitHub OIDC token —
   // per caller IP (every request), and per product (charged only after the token passes the

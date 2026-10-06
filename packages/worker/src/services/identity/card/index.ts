@@ -13,6 +13,8 @@
  *   POST /api/signin/confirm-email/join    take the join offer (proof of both)
  *   POST /api/signin/confirm-email/cancel  abandon the sign-in
  *   GET  /api/signin/confirm-email/picture the provider's picture, proxied for the gate
+ *   POST /api/signin/passkey/options       a passkey challenge for this browser (I-16)
+ *   POST /api/signin/passkey/verify        the passkey's assertion (I-16, `../passkeys/`)
  */
 
 import type { Db, Env } from "../../../core/platform.js";
@@ -23,6 +25,10 @@ import {
 } from "./emailSignIn.js";
 import { handleEmailGate } from "./gate.js";
 import { cardJson } from "./http.js";
+import {
+  handlePasskeySignInOptions,
+  handlePasskeySignInVerify,
+} from "../passkeys/routes.js";
 
 export {
   handleMagicConfirm,
@@ -56,5 +62,9 @@ export async function handleCardApi(
     return handleSigninFlowPoll(req, env, db, now);
   if (first === "confirm-email")
     return handleEmailGate(req, env, db, rest, now);
+  if (first === "passkey" && rest.length === 1 && rest[0] === "options")
+    return handlePasskeySignInOptions(req, env, db, now);
+  if (first === "passkey" && rest.length === 1 && rest[0] === "verify")
+    return handlePasskeySignInVerify(req, env, db, now);
   return cardJson({ error: "not_found" }, 404);
 }

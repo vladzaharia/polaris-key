@@ -46,6 +46,10 @@ export interface AccountLinkRow {
 /** The issuer key of an email sign-in method (its subject is the normalised address). */
 export const EMAIL_ISSUER = "email";
 
+/** The issuer key of a passkey sign-in method (I-16): its subject is the WebAuthn credential id
+ *  (base64url), and its WebAuthn material lives in `account_passkeys` under the same id. */
+export const PASSKEY_ISSUER = "passkey";
+
 /** The issuer-less key every portal identity carried before I-01 (migrations/0059). */
 export const LEGACY_OIDC_ISSUER = "oidc";
 
