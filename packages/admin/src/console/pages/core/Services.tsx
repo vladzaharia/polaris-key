@@ -630,7 +630,7 @@ function PackageFeedsSection({
   // The undo toast outlives this render: it reads the switch's version from here, not a closure.
   const latest = React.useRef(query.data?.packageFeeds);
   latest.current = query.data?.packageFeeds;
-  const enabled = pending ?? query.data?.packageFeeds.enabled ?? false;
+  const enabled = pending ?? query.data?.packageFeeds?.enabled ?? false;
 
   const write = async (on: boolean): Promise<boolean> => {
     setError(null);
