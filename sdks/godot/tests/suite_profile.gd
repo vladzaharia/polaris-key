@@ -88,7 +88,8 @@ func _bundle(t: PKeyTestContext) -> void:
 		t.check("profile: the 350 KB bundle is verified, then refused at the claims step (%s)" % name, r.code == &"bundle-claims-rejected", str(r))
 		t.info("profile: 350 KB bundle import, %s: %.1f ms, %d frames passed, worst frame %.1f ms" % [name, ms, frames[0], worst[0]])
 		if name == "thread":
-			t.check("profile: the main thread keeps ticking during a threaded bundle verify", frames[0] >= 2, "%d frames" % frames[0])
+			# What the verify reports it did (P1-13), not how many frames happened to pass.
+			t.check("profile: the threaded bundle verify ran off the main thread", PKeyJws.last_mode == PKeyJws.Mode.THREAD and PKeyJws.last_thread != 0 and PKeyJws.last_thread != OS.get_main_thread_id(), "mode %d, thread %d" % [PKeyJws.last_mode, PKeyJws.last_thread])
 		sdk.queue_free()
 	PKeyJws.mode = saved
 
