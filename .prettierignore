@@ -30,6 +30,9 @@ docs/design/setup/[0-9]*.html
 # The flows mockups: written by docs/design/flows/_src/build.mjs (edit _src, then rebuild).
 docs/design/flows/[0-9]*.html
 
+# The licence-holder mockups (S-24): written by docs/design/licenses/_src/build.mjs (edit _src, then rebuild).
+docs/design/licenses/[0-9]*.html
+
 # Build caches.
 packages/docs/.astro/
 

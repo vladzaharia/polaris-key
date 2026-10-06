@@ -12,6 +12,10 @@
 | Human input | none                                                                                                                                                                                                                                |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                           |
 
+## S-24 amendment (2026-10-06)
+
+The licences list's **Holder** column and filter, the **Batch** filter and the holder actions on the record (Assign, Send a new key, Reassign, Make floating) are [LX-30](LX-30-console-holder-surfaces.md)'s, and creation is [LX-29](LX-29-new-license-wizard.md)'s wizard; this package's Entitlements and Grants tabs sit beside them ([S-24](../../notes/S-24-licence-holders.md) §8.8).
+
 ## Goal
 
 The console shows and manages the licensing model: Entitlements and Grants tabs on the licence record, comp, trial, suppress, move-grant and move-device actions, tier rank, catalog `combine` and `entitlementKind`, commerce mappings and restore policy, and the licensing (holder) report.

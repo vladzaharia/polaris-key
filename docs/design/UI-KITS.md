@@ -600,7 +600,7 @@ React exports bare names from `@polaris-key/react`. Headless names follow each l
 | **ReleaseNotes**      | The changelog for one or many versions, from `ReleaseClient.changelog()`                                                                                                                                                                                                                                                                         | loading · list · empty · error                                                                                                                | must     |
 | **StatusScreen**      | Blocking states with their fix: revoked ("Use a different key", "Sign out"), expired ("Renew"), version too old ("Update"), too new, channel not entitled                                                                                                                                                                                        | one per state, each with a primary fix                                                                                                        | must     |
 | **GraceBanner**       | Offline grace: deadline and countdown, Reconnect, dismissible per session (the prop doc already promises it, RE)                                                                                                                                                                                                                                 | days left · last day · expired → StatusScreen                                                                                                 | must     |
-| **AccountAndLicense** | The settings pane: product and tier, holder, Manage (portal), Devices, Cloud Sync status, Updates (automatic, channel, check now, version), managed settings, Sign out, Powered-by                                                                                                                                                               | loading · signed in · key-only (no account) · offline                                                                                         | must     |
+| **AccountAndLicense** | The settings pane: product and tier, holder (a floating license shows "Not in an account · Add your name and email", S-24), Manage (portal), Devices, Cloud Sync status, Updates (automatic, channel, check now, version), managed settings, Sign out, Powered-by                                                                                | loading · signed in · key-only (no account) · offline                                                                                         | must     |
 | **Settings**          | Config-catalog-driven settings with typed controls (switch, slider, select, text), categories, search above 12 rows, provenance as text, locked rows "Set by <org>", reset                                                                                                                                                                       | loading · list · dirty · saving · locked · error                                                                                              | must     |
 | **Paywall**           | Entitlement-gated upsell: what a tier adds, purchase or redeem; StoreKit 2 views on Apple, Play Billing on Android, the portal elsewhere                                                                                                                                                                                                         | loading · offers · purchasing · purchased · restore · not available here                                                                      | must     |
 | **EntitlementGate**   | Renders children only when an entitlement holds; otherwise a slot or the Paywall                                                                                                                                                                                                                                                                 | entitled · not entitled · loading                                                                                                             | must     |
@@ -718,6 +718,21 @@ Mockups: [web](ui-kits/shots/web-gate-dark.png), [web 390](ui-kits/shots/web-gat
   cleared on edit.
 - **Device limit is not an error string:** Activate hands off to **DeviceLimit** with the device
   list (RE, SW, KO, GO all lacked this).
+
+**After a key (S-24, 2026-10-06).** [notes/S-24](../research/2026-09-29-godot-omniplatform/notes/S-24-licence-holders.md) §9 adds the **Done** step after a key activation
+(`ActivateDone`; frames [42](sign-in/shots/42-desk-mac-key-done-desktop-dark.png) and
+[47](sign-in/shots/47-kit-key-done-phone-light.png)). The license stays **floating** (no account);
+Done says "<Product> is ready" and shows a quiet **Keep <Product> in your account** card, marked
+Recommended, listing only the reasons the product has (Cloud Sync only when it is on; getting the
+license back; moving it to a new device yourself), with **Add your name and email** as its
+secondary and **Start using <Product>** as the primary. **Add your name and email**
+(`AddToAccount`, frame 43) collects both natively and hands them to the card as sign-in hints
+(SIGN-IN.md §6.6); after the code, the kit keeps the device on its license and attaches it (frame
+44). The key-ownership states (waiting, in an account, owned with refusals on, sent to another email)
+are SIGN-IN.md §3.9's. Every skip reads **Continue without an account**. Three layers as always:
+drop-in inside `SignIn` and the gate, styled `ActivateDone` / `AddToAccount`, headless
+`useActivateDone` / `ActivateDoneModel`. Packages UK-42 (ui-core, elements, React) and UK-43 (native
+kits).
 
 #### SignIn and SignInHandoff
 

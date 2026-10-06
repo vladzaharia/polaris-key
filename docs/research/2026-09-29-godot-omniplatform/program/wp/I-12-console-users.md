@@ -1,16 +1,20 @@
 # I-12 Console per-product Users (every product; sign-in history and settings with Identity on): pairwise subjects only, that product's licences, devices and audit, per-subject export and deletion, reserved Data tab and account override editor, developer relink with step-up and 72-hour undo, sign-in settings
 
-| Field       | Value                                                                                                                                                                            |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                           |
-| Size        | 1–1.4 engineer-weeks                                                                                                                                                             |
-| Depends on  | [I-05](I-05-accounts-core.md)                                                                                                                                                    |
-| Unblocks    | [I-19](I-19-identity-docs.md), [I-20](I-20-layer-2-plan.md), [U-03](U-03-account-overrides.md), [U-12](U-12-privacy-settings-portal.md), [U-11a](U-11a-console-data-settings.md) |
-| Role        | `pkey-implementer`                                                                                                                                                               |
-| Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                                                                         |
-| Gates       | console CSP parity; THREAT-MODEL; rule 10 (OpenAPI + `routeCoverage`); `check:links`; privacy docs                                                                               |
-| Human input | none                                                                                                                                                                             |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                        |
+| Field       | Value                                                                                                                                                                                                                       |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                                      |
+| Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                        |
+| Depends on  | [I-05](I-05-accounts-core.md)                                                                                                                                                                                               |
+| Unblocks    | [I-19](I-19-identity-docs.md), [I-20](I-20-layer-2-plan.md), [U-03](U-03-account-overrides.md), [U-12](U-12-privacy-settings-portal.md), [U-11a](U-11a-console-data-settings.md), [LX-30](LX-30-console-holder-surfaces.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                          |
+| Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                                                                                                                    |
+| Gates       | console CSP parity; THREAT-MODEL; rule 10 (OpenAPI + `routeCoverage`); `check:links`; privacy docs                                                                                                                          |
+| Human input | none                                                                                                                                                                                                                        |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                   |
+
+## S-24 amendment (2026-10-06)
+
+The relink tool also offers **Make floating** (`toAccountId: null` that clears the licence's `name` and `email`; its undo restores them and deletes the auto-attach block LX-26 may have written), and both Reassign and Make floating take a typed confirmation of the licence name or key ending (R7). The console entry points live on the licence record and are built by [LX-30](LX-30-console-holder-surfaces.md) on this tool ([S-24](../../notes/S-24-licence-holders.md) §5.5, D20).
 
 ## Amendments from approved plans (2026-10-05)
 

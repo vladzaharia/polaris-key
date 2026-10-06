@@ -5,12 +5,16 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                               |
 | Size        | 0.1–0.2 engineer-weeks                                                                                                                                                                   |
 | Depends on  | [PX-06](PX-06-activate-modal.md), [PX-W5](PX-W5-rename-newkey-preview.md), [PX-W8](PX-W8-manage-url.md)                                                                                  |
-| Unblocks    | none                                                                                                                                                                                     |
+| Unblocks    | [PX-23](PX-23-portal-floating-keys.md)                                                                                                                                                   |
 | Role        | `pkey-implementer`                                                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                                                       |
 | Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |
 | Human input | none                                                                                                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
+
+## S-24 amendment (2026-10-06)
+
+For a floating key already on devices, the confirm and Done copy ("It's on 2 devices already. They keep working and come with it.") and the licence card's origin wording ("From <Developer>" for a licence a developer assigned) are [PX-23](PX-23-portal-floating-keys.md)'s, which builds on this package; keep the confirm step's copy slots open for them ([S-24](../../notes/S-24-licence-holders.md) §10).
 
 ## Amendments from approved plans (2026-10-05)
 

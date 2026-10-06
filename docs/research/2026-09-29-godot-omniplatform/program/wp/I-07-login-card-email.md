@@ -1,16 +1,16 @@
 # I-07 Login card and email: identifier-first card, email code and magic link, Turnstile, the required first-provider-sign-in interstitial (no code for a provider-verified email), profile import with avatars in R2, account sessions
 
-| Field       | Value                                                                                                                                                                                                 |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                |
-| Size        | 1.2–1.7 engineer-weeks                                                                                                                                                                                |
-| Depends on  | [I-02](I-02-single-use-store.md), [I-05](I-05-accounts-core.md), [I-18](I-18-email-delivery.md)                                                                                                       |
-| Unblocks    | [I-08](I-08-app-passthrough.md), [I-11](I-11-portal-library.md), [I-16](I-16-passkeys.md), [I-17](I-17-pocket-id-migration.md), [PX-W12](PX-W12-sign-in-methods-api.md), [PX-13](PX-13-account-v2.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                                    |
-| Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                                                                                              |
-| Gates       | D1 migration; `TABLE_OWNERS`; THREAT-MODEL; rule 10 (OpenAPI + `routeCoverage`); `test:workerd`; console CSP parity; cross-product session test; CSP parity                                           |
-| Human input | a Turnstile site key and secret per environment (Cloudflare); an R2 bucket or prefix for copied avatars per environment                                                                               |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                             |
+| Field       | Value                                                                                                                                                                                                                                   |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                                                  |
+| Size        | 1.2–1.7 engineer-weeks                                                                                                                                                                                                                  |
+| Depends on  | [I-02](I-02-single-use-store.md), [I-05](I-05-accounts-core.md), [I-18](I-18-email-delivery.md)                                                                                                                                         |
+| Unblocks    | [I-08](I-08-app-passthrough.md), [I-11](I-11-portal-library.md), [I-16](I-16-passkeys.md), [I-17](I-17-pocket-id-migration.md), [PX-W12](PX-W12-sign-in-methods-api.md), [PX-13](PX-13-account-v2.md), [PX-W18](PX-W18-signin-hints.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                      |
+| Plan mode   | no: follows the approved [`plans/I-04.md`](../plans/I-04.md) where it names this package                                                                                                                                                |
+| Gates       | D1 migration; `TABLE_OWNERS`; THREAT-MODEL; rule 10 (OpenAPI + `routeCoverage`); `test:workerd`; console CSP parity; cross-product session test; CSP parity                                                                             |
+| Human input | a Turnstile site key and secret per environment (Cloudflare); an R2 bucket or prefix for copied avatars per environment                                                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                               |
 
 ## Goal
 
