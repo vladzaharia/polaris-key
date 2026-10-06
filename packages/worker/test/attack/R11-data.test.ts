@@ -697,6 +697,10 @@ describe("R11-05 product scoping", () => {
       // (a hash of the account and the picture) and owned by the account, never by a
       // product. An app sees a picture only through the account's consent step.
       "account_avatars",
+      // 00XX (PX-W12) — account joins and their 72-hour undo: one row per join of two accounts,
+      // keyed by the join and owned by the surviving account, never by a product. Read only by
+      // that account's own portal session; no developer route reads it.
+      "account_merges",
       // 0070 (A-18e) — the Play edit lease: one row per (store, app) while a caller holds an edit
       // on that app. An app id belongs to the store account, not a product (the platform service
       // account serves every product pinned to it; A-16's lister is team-wide), and the row holds
