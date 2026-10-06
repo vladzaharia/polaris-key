@@ -146,8 +146,9 @@ describe("the theme menu", () => {
   async function choose(label: "System" | "Dark" | "Light"): Promise<void> {
     await userEvent.click(screen.getByRole("button", { name: /^Theme: / }));
     const menu = await screen.findByRole("menu");
+    const group = within(menu).getByRole("group", { name: "Theme" });
     await userEvent.click(
-      within(menu).getByRole("menuitemradio", {
+      within(group).getByRole("menuitemradio", {
         name: new RegExp(`^${label}`),
       }),
     );
@@ -169,7 +170,8 @@ describe("the theme menu", () => {
       screen.getByRole("button", { name: "Theme: System" }),
     );
     const menu = await screen.findByRole("menu");
-    const items = within(menu).getAllByRole("menuitemradio");
+    const group = within(menu).getByRole("group", { name: "Theme" });
+    const items = within(group).getAllByRole("menuitemradio");
     expect(items.map((i) => i.textContent)).toEqual([
       "SystemLight now",
       "Dark",

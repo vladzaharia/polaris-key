@@ -356,7 +356,7 @@ export function StoreConnections(): React.ReactElement {
       {stores.isPending ? (
         <div
           aria-hidden
-          className="h-64 animate-pulse rounded-lg bg-surface-sunken motion-reduce:animate-none"
+          className="pk-skeleton-group pk-skeleton h-64 rounded-lg"
         />
       ) : current ? (
         <StoreDetail key={current.store} connection={current} />
@@ -408,10 +408,7 @@ function StoreTiles({
               {s?.label ?? STORE_NAMES[store]}
             </span>
             {loading ? (
-              <span
-                aria-hidden
-                className="h-5 w-24 animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none"
-              />
+              <span aria-hidden className="pk-skeleton h-5 w-24 rounded-md" />
             ) : health ? (
               <StatusPill tone={health.tone} size="sm">
                 {health.label}

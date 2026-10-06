@@ -9,7 +9,9 @@ import { Button } from "./Button.js";
  *
  * - **Sizes:** sm 24rem, md 32rem, lg 44rem, xl 60rem.
  * - **Below 640 px** every dialog is a bottom sheet: full width, at most 92dvh, a drag-handle
- *   visual and safe-area padding (responsive classes only; SH-17).
+ *   visual and safe-area padding (responsive classes only; SH-17). It slides up from the bottom
+ *   edge (`slow`·`emphasized`) and back down (`base`·`exit`); a centred dialog rises and falls.
+ *   Under reduced motion both are an instant swap (src/motion.css).
  * - `dismissible={false}` blocks Escape and outside click and removes the close button, for a
  *   dialog that is busy (fixes UI-10).
  * - One footer component, `DialogFooter`.
@@ -402,8 +404,9 @@ export function Dialog({
           }}
           className={cn(
             "fixed z-50 flex flex-col overflow-hidden border border-border bg-surface-overlay text-fg shadow-elevation-3 outline-hidden animate-pk-in",
-            // Phones: a bottom sheet.
-            "inset-x-0 bottom-0 max-h-[92dvh] w-full rounded-t-xl pb-[env(safe-area-inset-bottom)]",
+            // Phones: a bottom sheet that slides up from the bottom edge and back down
+            // (pk-sheet, src/motion.css; S-23 §4.2). At ≥ 640 px it rises like any dialog.
+            "pk-sheet inset-x-0 bottom-0 max-h-[92dvh] w-full rounded-t-xl pb-[env(safe-area-inset-bottom)]",
             // ≥ 640 px: a centred dialog.
             "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[calc(100dvh-2rem)] sm:w-[calc(100vw-2rem)] sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg sm:pb-0",
             SIZE[size],

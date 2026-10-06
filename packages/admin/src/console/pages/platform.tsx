@@ -449,12 +449,15 @@ export function Deployment(): React.ReactElement {
               ]}
             />
           ) : (
-            <div aria-hidden className="space-y-3">
+            <div aria-hidden className="pk-skeleton-group space-y-3">
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
-                  className="h-5 animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none"
-                />
+                  className="grid grid-cols-[8rem_minmax(0,1fr)] gap-4"
+                >
+                  <div className="pk-skeleton h-5 rounded-md" />
+                  <div className="pk-skeleton h-5 w-2/3 rounded-md" />
+                </div>
               ))}
             </div>
           )}
@@ -477,10 +480,14 @@ export function Deployment(): React.ReactElement {
               ))}
             </ul>
           ) : (
-            <div
-              aria-hidden
-              className="h-40 animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none"
-            />
+            <ul aria-hidden className="pk-skeleton-group space-y-2">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <li key={i} className="flex items-center justify-between gap-2">
+                  <span className="pk-skeleton h-4 w-28 rounded-md" />
+                  <span className="pk-skeleton h-5 w-16 rounded-full" />
+                </li>
+              ))}
+            </ul>
           )}
         </Panel>
       }
@@ -545,10 +552,14 @@ function MigrationsPanel({
   return (
     <Panel title="Database">
       {loading || !d ? (
-        <div
-          aria-hidden
-          className="h-32 animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none"
-        />
+        <div aria-hidden className="pk-skeleton-group space-y-3">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="grid grid-cols-[8rem_minmax(0,1fr)] gap-4">
+              <div className="pk-skeleton h-4 rounded-md" />
+              <div className="pk-skeleton h-4 w-1/2 rounded-md" />
+            </div>
+          ))}
+        </div>
       ) : (
         <div className="space-y-4">
           <DescriptionList
@@ -634,10 +645,15 @@ export function ActivityPanel(): React.ReactElement {
   return (
     <Panel title="Platform activity">
       {activity.isPending ? (
-        <div
-          aria-hidden
-          className="h-32 animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none"
-        />
+        <div aria-hidden className="pk-skeleton-group space-y-3">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="pk-skeleton size-6 shrink-0 rounded-full" />
+              <div className="pk-skeleton h-4 flex-1 rounded-md" />
+              <div className="pk-skeleton h-3 w-16 rounded-md" />
+            </div>
+          ))}
+        </div>
       ) : activity.isError && !activity.data ? (
         <ErrorState
           compact

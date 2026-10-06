@@ -105,6 +105,7 @@ async function open(
   const ctx = await browser.newContext({
     viewport: { width: opts.width ?? 1440, height: SHOTS ? 1800 : 900 },
     colorScheme: opts.theme ?? "dark",
+    reducedMotion: "reduce",
   });
   await ctx.addInitScript((theme) => {
     (window as unknown as { __v: string[] }).__v = [];
