@@ -281,7 +281,6 @@
   "signin.code.resend": "新しいコードを送信",
   "signin.code.resendIn": "{time}後に新しいコードを送信",
   "signin.code.resent": "{email}に新しいコードとリンクを送信しました。",
-  "signin.code.wrong": "コードが正しくありません。メールを確認して、もう一度お試しください。",
   "signin.code.triesLeft": "{n, plural, other {残り#回です。}}",
   "signin.code.tooMany": "試行回数が多すぎます。新しいコードを送信してください。",
   "signin.code.expired": "コードの有効期限が切れました。新しいコードを送信してください。",

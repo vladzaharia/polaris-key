@@ -15938,7 +15938,7 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "That code didn't work. Check the email and type it again."
+            "value": "That code isn't right. Check the email and try again."
           }
         },
         "de": {
@@ -15950,7 +15950,7 @@
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "That code didn't work. Check the email and type it again."
+            "value": "That code isn't right. Check the email and try again."
           }
         },
         "es": {
@@ -39069,66 +39069,6 @@
                 }
               }
             }
-          }
-        }
-      }
-    },
-    "signin.code.wrong": {
-      "comment": "Email code step (SIGN-IN.md §3.4).",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "That code isn't right. Check the email and try again."
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dieser Code ist nicht korrekt. Prüfen Sie die E-Mail und versuchen Sie es erneut."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce code est incorrect. Vérifiez l’e-mail et réessayez."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ese código no es correcto. Revisa el correo y vuelve a intentarlo."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Esse código não está correto. Verifique o e-mail e tente novamente."
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Il codice non è corretto. Controlla l'email e riprova."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "コードが正しくありません。メールを確認して、もう一度お試しください。"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "코드가 올바르지 않아요. 이메일을 확인하고 다시 시도하세요."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "验证码不正确。请检查邮件后重试。"
           }
         }
       }

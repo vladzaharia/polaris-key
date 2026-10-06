@@ -1812,11 +1812,6 @@ msgstr "{time} 후 새 코드 보내기"
 msgid "signin.code.resent"
 msgstr "{email} 주소로 새 코드와 링크를 보냈어요."
 
-#. That code isn't right. Check the email and try again.
-#. Email code step (SIGN-IN.md §3.4).
-msgid "signin.code.wrong"
-msgstr "코드가 올바르지 않아요. 이메일을 확인하고 다시 시도하세요."
-
 #. {n, plural, one {# try left.} other {# tries left.}}
 #. Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number.
 #. Plural on {n}.
@@ -3362,7 +3357,7 @@ msgstr "이 로그인은 만료되었어요. 다시 시작하세요."
 msgid "core.codes.invalid_code.title"
 msgstr "잘못된 코드"
 
-#. That code didn't work. Check the email and type it again.
+#. That code isn't right. Check the email and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
 msgstr "그 코드는 작동하지 않았어요. 이메일을 확인하고 다시 입력하세요."

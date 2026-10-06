@@ -661,8 +661,6 @@
     <string name="signin_code_resendIn__macos">%1$s後に新しいコードを送信</string>
     <!-- Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address. Arguments: 1=email. -->
     <string name="signin_code_resent">%1$sに新しいコードとリンクを送信しました。</string>
-    <!-- Email code step (SIGN-IN.md §3.4). -->
-    <string name="signin_code_wrong">コードが正しくありません。メールを確認して、もう一度お試しください。</string>
     <!-- Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number. Arguments: 1=n. -->
     <plurals name="signin_code_triesLeft">
         <item quantity="other">残り%1$d回です。</item>

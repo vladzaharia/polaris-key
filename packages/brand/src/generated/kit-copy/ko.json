@@ -281,7 +281,6 @@
   "signin.code.resend": "새 코드 보내기",
   "signin.code.resendIn": "{time} 후 새 코드 보내기",
   "signin.code.resent": "{email} 주소로 새 코드와 링크를 보냈어요.",
-  "signin.code.wrong": "코드가 올바르지 않아요. 이메일을 확인하고 다시 시도하세요.",
   "signin.code.triesLeft": "{n, plural, other {#번 더 시도할 수 있어요.}}",
   "signin.code.tooMany": "시도 횟수가 너무 많아요. 새 코드를 요청하세요.",
   "signin.code.expired": "코드가 만료됐어요. 새 코드를 요청하세요.",

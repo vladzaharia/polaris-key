@@ -59,7 +59,7 @@ public val COPY_CODES: Map<String, CopyEntry> = mapOf(
     "email_unavailable" to CopyEntry("Email sign-in unavailable", "Email sign-in isn't available right now. Choose another sign-in method."),
     "turnstile_failed" to CopyEntry("Check didn't pass", "The security check didn't pass. Reload the page and try again."),
     "signin_expired" to CopyEntry("Sign-in expired", "This sign-in has expired. Start again."),
-    "invalid_code" to CopyEntry("Wrong code", "That code didn't work. Check the email and type it again."),
+    "invalid_code" to CopyEntry("Wrong code", "That code isn't right. Check the email and try again."),
     "email_in_use" to CopyEntry("Email already in use", "Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email."),
     "terms_required" to CopyEntry("Terms not accepted", "Agree to the terms to continue."),
     "license_owned" to CopyEntry("License in another account", "This {product} license is already in another Polaris Key account. A license never moves by its key."),

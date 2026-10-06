@@ -295,7 +295,6 @@ export type KitCopyKey =
   | "signin.code.resend"
   | "signin.code.resendIn"
   | "signin.code.resent"
-  | "signin.code.wrong"
   | "signin.code.triesLeft"
   | "signin.code.tooMany"
   | "signin.code.expired"

@@ -537,6 +537,12 @@ One component, three entries.
   `^pkey_([a-z0-9-]+)_([A-Za-z0-9_-]{22})$`. "Key for <Product>" shows from the slug alone. Tier and
   terms come from the server preview after Continue (G22, or the signed-out PX-W9 preview), never
   before.
+- **Carrying the key through sign-in (portal on-ramp):** KeyStep's lede is `signin.key.onrampLede`;
+  Continue returns to MethodsStep titled `signin.key.carriedTitle` with `signin.key.carriedLede`
+  and the quiet link `signin.key.withoutKey`, and after sign-in the Activate confirm opens with the
+  key. The key never leaves the browser: no return URL, request body or flow record carries it
+  (email-code sign-in stays in the tab; a provider or single sign-on round trip keeps it in the
+  tab's sessionStorage and restores it once on return).
 - **Verdicts** (UX-05): "That isn't a Polaris Key license key. Ours start with pkey\_." (plus the
   Steam line for the 5×3 Steam shape); "This key is cut short. After <slug>\_ come 22 characters, and
   this has {n}. Copy the whole key again."; "We couldn't find that key. Capital letters matter, and
@@ -1394,7 +1400,7 @@ UX-40, UX-43, UX-44). Placeholders are ICU.
 | `signin.code.resend`                 | Send a new code                                                                                                                                                                            |
 | `signin.code.resendIn`               | Send a new code in {time}                                                                                                                                                                  |
 | `signin.code.resent`                 | We sent a new code and link to {email}.                                                                                                                                                    |
-| `signin.code.wrong`                  | That code isn't right. Check the email and try again.                                                                                                                                      |
+| `signin.code.wrong`                  | That code isn't right. Check the email and try again. (The same sentence is core copy `core.codes.invalid_code.message`; kits reference that key, and the kit catalog does not repeat it.) |
 | `signin.code.triesLeft`              | {n, plural, one {# try left.} other {# tries left.}}                                                                                                                                       |
 | `signin.code.tooMany`                | Too many tries. Send a new code.                                                                                                                                                           |
 | `signin.code.expired`                | That code has expired. Send a new code.                                                                                                                                                    |
@@ -1501,6 +1507,10 @@ UX-40, UX-43, UX-44). Placeholders are ICU.
 | `signin.key.owned`                   | → `core.codes.license_owned.message` (the same words; not a kit key)                                                                                                                       |
 | `signin.key.ownedSignIn`             | Sign in to that account                                                                                                                                                                    |
 | `signin.key.differentKey`            | Use a different key                                                                                                                                                                        |
+| `signin.key.onrampLede`              | Paste the key from your receipt email. Sign in next, and it joins your library.                                                                                                            |
+| `signin.key.carriedTitle`            | Sign in to add {product}                                                                                                                                                                   |
+| `signin.key.carriedLede`             | Your key is ready. Sign in or create an account, and {product} joins your library.                                                                                                         |
+| `signin.key.withoutKey`              | Sign in without the key                                                                                                                                                                    |
 | `signin.return.yours`                | {product} is yours                                                                                                                                                                         |
 | `signin.return.signedIn`             | You're signed in to {app}                                                                                                                                                                  |
 | `signin.return.button`               | Return to {app}                                                                                                                                                                            |

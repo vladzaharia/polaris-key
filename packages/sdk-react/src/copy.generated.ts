@@ -185,7 +185,7 @@ export const COPY_CODES: Readonly<Record<string, CopyEntry>> = {
   },
   invalid_code: {
     title: "Wrong code",
-    message: "That code didn't work. Check the email and type it again.",
+    message: "That code isn't right. Check the email and try again.",
   },
   email_in_use: {
     title: "Email already in use",

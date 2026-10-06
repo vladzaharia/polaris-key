@@ -779,6 +779,13 @@ that already exists.
    refuses a missing or failing token (`403 turnstile_failed`), and an unreachable Cloudflare
    refuses too. The widget itself is rendered by the card's UI, which also needs Cloudflare's
    challenge origin in the portal's CSP (PX-12).
+
+   > **Warning: do not set `TURNSTILE_SECRET_KEY` yet.** The secret, not the site key, is what
+   > switches the check on, and the portal does not render the Turnstile widget until PX-12/PX-21
+   > ship it. With the secret set today, the portal sends no token and **every email sign-in fails
+   > with `403 turnstile_failed`**. Set the site key var if you like; put the secret only once the
+   > widget is live in the portal.
+
 2. **Avatars.** Copied provider pictures live in the environment's `BLOBS` bucket under the
    `avatars/` prefix; no extra binding or bucket is needed. To use a separate bucket instead, it
    would need a binding and a code change.

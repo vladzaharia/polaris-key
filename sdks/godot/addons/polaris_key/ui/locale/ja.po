@@ -1812,11 +1812,6 @@ msgstr "{time}後に新しいコードを送信"
 msgid "signin.code.resent"
 msgstr "{email}に新しいコードとリンクを送信しました。"
 
-#. That code isn't right. Check the email and try again.
-#. Email code step (SIGN-IN.md §3.4).
-msgid "signin.code.wrong"
-msgstr "コードが正しくありません。メールを確認して、もう一度お試しください。"
-
 #. {n, plural, one {# try left.} other {# tries left.}}
 #. Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number.
 #. Plural on {n}.
@@ -3362,7 +3357,7 @@ msgstr "このサインインは期限切れです。最初からやり直して
 msgid "core.codes.invalid_code.title"
 msgstr "コードが正しくありません"
 
-#. That code didn't work. Check the email and type it again.
+#. That code isn't right. Check the email and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
 msgstr "そのコードは使用できませんでした。メールを確認して、もう一度入力してください。"

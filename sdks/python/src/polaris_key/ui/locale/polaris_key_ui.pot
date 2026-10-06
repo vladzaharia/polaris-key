@@ -1816,11 +1816,6 @@ msgstr ""
 msgid "signin.code.resent"
 msgstr ""
 
-#. That code isn't right. Check the email and try again.
-#. Email code step (SIGN-IN.md §3.4).
-msgid "signin.code.wrong"
-msgstr ""
-
 #. {n, plural, one {# try left.} other {# tries left.}}
 #. Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number.
 #. Plural on {n}.
@@ -3371,7 +3366,7 @@ msgstr ""
 msgid "core.codes.invalid_code.title"
 msgstr ""
 
-#. That code didn't work. Check the email and type it again.
+#. That code isn't right. Check the email and try again.
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.invalid_code.message"
 msgstr ""
