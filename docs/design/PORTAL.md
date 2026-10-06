@@ -39,7 +39,8 @@
 > account-wide licenses stay device-limited**, and operators change the numbers. Wherever a
 > license is shown (License card, switcher, Library note, LicenseChoiceStep) the tier is a neutral
 > pill ("Standard") with "0 of 5 devices" or "Account-wide · 1 of 5 devices" beside it. "For
-> life" is **Lifetime**. Both kinds keep their device counter and meter. **Devices**, with
+> life" is **Lifetime**. When an account holds a seat license and an Account-wide license for one
+> product, the seat license hides its device counter and meter (SIGN-IN.md D-54). **Devices**, with
 > **Remove**, shows for both kinds. The Worker reports the kind as `access: "seats" | "account"` (`plans/I-04.md`
 > §F.6).
 
@@ -255,7 +256,8 @@ product page shows the best one (by status precedence, §5.3) with a license swi
 License card ("2 licenses · Pro, Edu"). Per-license sections (Devices, Package access) follow the
 switcher. Each license in the card and the switcher shows its tier as a neutral pill, then "2 of 3
 devices" for a seat license or "Account-wide · 2 of 3 devices" for an Account-wide one (both are
-device-limited; SIGN-IN.md O-11, D-53).
+device-limited; SIGN-IN.md O-11, D-53); seat licenses drop the counter when the product also has
+an Account-wide license (D-54).
 
 ### 3.2 Global elements
 

@@ -1,16 +1,16 @@
 # LX-14 Console licensing: Entitlements and Grants tabs, comp, trial, suppress and move actions, tier rank, catalog `combine` and `entitlementKind`, commerce mappings and restore policy, licensing report
 
-| Field       | Value                                                                                                                                                                                 |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                                                          |
-| Size        | 0.7–1 engineer-weeks                                                                                                                                                                  |
-| Depends on  | [LX-06](LX-06-licensing-settings.md), [LX-09](LX-09-entitlement-resolver.md), [LX-10](LX-10-anchor-choice.md), [LX-11](LX-11-commerce-rework.md), [LX-12](LX-12-licence-lifecycle.md) |
-| Unblocks    | [CM-12](CM-12-console-commerce.md)                                                                                                                                                    |
-| Role        | `pkey-implementer`                                                                                                                                                                    |
-| Plan mode   | no                                                                                                                                                                                    |
-| Gates       | console CSP parity; docsLinks                                                                                                                                                         |
-| Human input | none                                                                                                                                                                                  |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                             |
+| Field       | Value                                                                                                                                                                                                                               |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                                                                                                        |
+| Size        | 0.7–1 engineer-weeks                                                                                                                                                                                                                |
+| Depends on  | [LX-06](LX-06-licensing-settings.md), [LX-09](LX-09-entitlement-resolver.md), [LX-10](LX-10-anchor-choice.md), [LX-11](LX-11-commerce-rework.md), [LX-12](LX-12-licence-lifecycle.md), [LX-14a](LX-14a-per-license-device-limit.md) |
+| Unblocks    | [CM-12](CM-12-console-commerce.md)                                                                                                                                                                                                  |
+| Role        | `pkey-implementer`                                                                                                                                                                                                                  |
+| Plan mode   | no                                                                                                                                                                                                                                  |
+| Gates       | console CSP parity; docsLinks                                                                                                                                                                                                       |
+| Human input | none                                                                                                                                                                                                                                |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                           |
 
 ## Goal
 
@@ -32,35 +32,24 @@ The console shows and manages the licensing model: Entitlements and Grants tabs 
 **In:**
 
 - Tabs, actions, editors, report page; ADMIN.md amendment (remove "stored, not enforced").
-- **One licence's device limit, raised or lowered** (owner, 2026-10-05; SIGN-IN.md D-53): see the
-  section below.
+- **Add seats…**, the temporary per-licence raise (owner, 2026-10-05; SIGN-IN.md D-53): see the
+  section below. The permanent per-licence limit is LX-14a's.
 
 **Out** (and where it belongs instead):
 
 - Portal (→ LX-15).
 
-## One licence's device limit (owner, 2026-10-05)
+## Add seats (owner, 2026-10-05)
 
 The owner decided that account-wide (sign-in, OIDC) licences stay device-limited and that "an
-administrator can change the numbers as needed" (SIGN-IN.md D-53, `plans/I-04.md` §F.6). Today the
-console changes the number only for a whole product (Settings, "Default device limit") or a whole
-tier (TierForm, "Device limit"). For one existing licence the only routes are **Change tier** or a
-`deviceLimit` entitlement override through `PUT …/licenses/<id>/overrides`. That override needs a
-catalog `deviceLimit` flag, loses to a tier that sets a limit (`injectAdminPolicy`), and is never
-shown: the console's seat count reads tier, else product (`console/pages/license/shared.tsx`
-`effectivePolicy`, `LicenseDevices.tsx` `seatLimitOf`). This package closes that gap for every
-licence, seat or Account-wide:
+administrator can change the numbers as needed" (SIGN-IN.md D-53). The permanent per-licence limit
+(**Device limit…**, `licenses.device_limit`, a licence limit beating the tier, the effective limit
+and its source in the console) ships first in [LX-14a](LX-14a-per-license-device-limit.md). This
+package adds the temporary raise on top of it:
 
-- **Device limit…** on the licence record sets or clears a licence-held `deviceLimit` value
-  (raise or lower), audited, with the `overLimit` warning the tier change already shows when the
-  new number is below the active devices (devices are never signed out by it). Under `combined`
-  the licence value wins over the tier default (S-19 C2); under `legacy` it is offered only when
-  the tier sets no limit, and otherwise the sheet points at **Change tier**.
-- **Add seats…** comps a licence-held seat-pack grant with an optional expiry (EXPERIENCE.md §8
-  item 5): a temporary raise on top of the limit.
-- The seat meter, the Effective policy row and the licences list show the **resolved** limit
-  (`licenseDeviceLimit`), never tier-else-product, with its source ("4 · 3 from Pro + 1 comp until
-  4 Nov", "2 · set on this license").
+- **Add seats…** comps a licence-held seat-pack grant with an optional expiry (EXPERIENCE.md O1
+  item 5). The Effective policy row reads "Device limit 4 · 3 set on this license + 1 comp until
+  4 Nov" (or "3 from Pro + 1 comp…"), extending LX-14a's source line.
 
 ## Design notes
 
@@ -75,8 +64,7 @@ licence, seat or Account-wide:
 ## Acceptance criteria
 
 - [ ] Each action writes an audited change (tests).
-- [ ] An operator can raise and lower one existing licence's device limit, including a sign-in
-      (Account-wide) licence, and the console shows the resolved limit (tests).
+- [ ] **Add seats…** comps an audited seat-pack grant and the Effective policy row shows it (tests).
 - [ ] Console CSP parity passes.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 

@@ -141,7 +141,8 @@
   // Row anatomy (SIGN-IN.md §3.6, O-11): title + tag; the tier as a neutral pill with the device
   // counter, or "Account-wide · {used} of {limit} devices"; then "{origin} · {term}"; then the seat
   // meter. Account-wide licenses stay device-limited (owner, 2026-10-05; SIGN-IN.md D-53), so
-  // they keep the counter and meter too. `hideCount` drops both (no frame uses it now).
+  // they keep the counter and meter too. `hideCount` is the mixed rule (D-54): seat rows drop the
+  // counter and meter when the account also holds an Account-wide license for the product.
   const lic = ({
     name,
     tier,
@@ -625,8 +626,9 @@
     foot: footer("Drift Kart", "Pitlane Games"),
   });
 
-  // 22 A seat license and an Account-wide license for one product (owner vocabulary, O-11): both
-  // keep their counter and meter; the Account-wide row reads "Account-wide · 2 of 3 devices" (D-53).
+  // 22 A seat license and an Account-wide license for one product (owner vocabulary, O-11): the
+  // seat license hides its counter and meter (D-54); the Account-wide row reads
+  // "Account-wide · 2 of 3 devices" (D-53).
   F({
     id: "22-choice-account-wide",
     deskHead: appHeader({
@@ -648,7 +650,7 @@
       <h1>Choose a license for this device</h1>
       <p class="lede">Storytime will use it on Mara's iPad.</p>
       <div role="radiogroup" aria-label="Licenses for Storytime" style="display:flex;flex-direction:column;gap:10px">
-      ${lic({ name: "Storytime", tier: "Standard", meta: "Bought on the App Store · Lifetime", used: 1, limit: 5, sel: true })}
+      ${lic({ name: "Storytime", tier: "Standard", meta: "Bought on the App Store · Lifetime", used: 1, limit: 5, hideCount: true, sel: true })}
       ${lic({ name: "Storytime", tier: "Standard", accountWide: true, used: 2, limit: 3, meta: "Created when you signed in · Lifetime" })}
       </div>
       ${btn("primary", "Use this license and continue")}
