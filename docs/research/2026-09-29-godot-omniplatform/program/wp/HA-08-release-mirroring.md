@@ -56,8 +56,8 @@ The code is the fact; these replace the Scope wording where they differ.
   `hosted-asset` ref. The `release-artifact` ref named in Scope (`<release_id>/<artifact_id>`) then
   holds the appended `r2` location, so the location stays an app artifact's on the blob route
   after HA-07 makes `hosted-asset` refs non-app-side. Neither kind is dropped by the collector.
-- **The job state is a new Release table, `release_mirrors`** (migration `00XX_release_mirrors.sql`,
-  the lead numbers it; `TABLE_OWNERS.release`). A synced file with no artifact map has no recorded
+- **The job state is a new Release table, `release_mirrors`** (migration `0097_release_mirrors.sql`,
+  numbered by the lead; `TABLE_OWNERS.release`). A synced file with no artifact map has no recorded
   `sha256`, so per-file back-off cannot live on the per-content `hosted_assets` row. Whether a file
   is owed is read from `release_artifacts.locations_json`, never from the table.
 - **A synced file's `sha256` is filled** from the verified hash when the copy is appended:
