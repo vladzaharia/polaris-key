@@ -6389,7 +6389,7 @@ whether it is in an account, never the account's details (D6).
   licence, a Discover claim, a keyless store or developer licence. The server decides: the licence
   list and detail carry `removable` (an active key AND the product's `license_key_claim_enabled`),
   the portal offers Remove only then, and the DELETE refuses any other licence with `409
-  not_removable` (`reason` `no_active_key` or `key_claim_off`) before the rate limit is charged
+not_removable` (`reason` `no_active_key` or `key_claim_off`) before the rate limit is charged
   or anything is written. Residual, accepted: "removable" proves a key exists, not that the
   person still has it; the dialog says the key is the way back.
 - **Clearing an assigned licence's email is refused** on the console PATCH (`400 bad_request`):
