@@ -161,6 +161,44 @@
       [data-theme="light"] .dim {
         background: rgb(0 0 6 / 0.12);
       }
+
+      .trio {
+        display: flex;
+        gap: 32px;
+        align-items: center;
+      }
+      .sbody {
+        padding: 12px 36px 32px;
+        display: grid;
+        justify-items: center;
+        text-align: center;
+        gap: 10px;
+        min-height: 280px;
+        align-content: center;
+      }
+      .gglyph {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--g-ctl);
+      }
+      /* AdwSpinner-free boot: a determinate GtkProgressBar in the accent. */
+      .gprog {
+        width: 160px;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--g-ctl);
+        overflow: hidden;
+      }
+      .gprog i {
+        display: block;
+        width: 45%;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--kit-accent);
+      }
     </style>
   </head>
   <body>
@@ -305,6 +343,96 @@
               >
                 <span class="gb">Cancel</span
                 ><span class="gb suggested">Activate</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure>
+        <figcaption>
+          linux · boot, status (blocked) and error (offline)
+        </figcaption>
+        <div class="shot" data-shot="states">
+          <div class="trio">
+            <div class="win" style="width: 420px">
+              <div class="hb"></div>
+              <div class="sbody">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="80"
+                ></div>
+                <div class="gprog" style="margin-top: 18px"><i></i></div>
+                <span style="color: var(--g-mute); font-size: 13px"
+                  >Checking your license</span
+                >
+              </div>
+            </div>
+            <div class="win" style="width: 420px">
+              <div class="hb">
+                <span class="close" data-icon="x" data-size="14"></span>
+              </div>
+              <div class="sbody">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="56"
+                ></div>
+                <h1
+                  style="
+                    margin: 8px 0 0;
+                    font: 600 22px/28px var(--pk-font-sans);
+                  "
+                >
+                  Your license has ended
+                </h1>
+                <p style="margin: 0; color: var(--g-mute)">
+                  Tidewater Studio Pro ended on 30 September. Renew to keep
+                  working on your sessions.
+                </p>
+                <div
+                  style="
+                    display: grid;
+                    gap: 10px;
+                    width: 240px;
+                    margin-top: 14px;
+                  "
+                >
+                  <span class="gb pill suggested">Renew</span>
+                  <span class="gb pill">Use a different key</span>
+                </div>
+              </div>
+            </div>
+            <div class="win" style="width: 420px">
+              <div class="hb">
+                <span class="close" data-icon="x" data-size="14"></span>
+              </div>
+              <div class="sbody">
+                <div class="gglyph" data-icon="wifiOff" data-size="24"></div>
+                <h1
+                  style="
+                    margin: 8px 0 0;
+                    font: 600 22px/28px var(--pk-font-sans);
+                  "
+                >
+                  Can’t reach Harbor Audio
+                </h1>
+                <p style="margin: 0; color: var(--g-mute)">
+                  Check your connection. You can keep working offline for 3 more
+                  days.
+                </p>
+                <div
+                  style="
+                    display: grid;
+                    gap: 10px;
+                    width: 240px;
+                    margin-top: 14px;
+                  "
+                >
+                  <span class="gb pill suggested">Try again</span>
+                  <span class="gb pill">Continue offline</span>
+                </div>
               </div>
             </div>
           </div>

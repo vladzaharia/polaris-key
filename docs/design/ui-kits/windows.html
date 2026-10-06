@@ -272,6 +272,57 @@
         outline-offset: 1px;
         box-shadow: 0 0 0 1px var(--w-layer);
       }
+
+      .trio {
+        display: flex;
+        gap: 32px;
+        align-items: center;
+      }
+      .swin {
+        width: 440px;
+        display: grid;
+        grid-template-rows: 40px 1fr;
+      }
+      .swin .content {
+        display: grid;
+        align-content: center;
+        justify-items: center;
+        text-align: center;
+        gap: 10px;
+        min-height: 300px;
+        padding: 28px 32px;
+        border-radius: 0;
+      }
+      .swin .foot {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        width: 100%;
+        margin-top: 18px;
+      }
+      .wglyph {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--w-ctl);
+        box-shadow: inset 0 0 0 1px var(--w-stroke);
+      }
+      /* Fluent ProgressBar: 3 px track, accent fill. */
+      .wprog {
+        width: 160px;
+        height: 3px;
+        border-radius: 2px;
+        background: var(--w-stroke);
+        overflow: hidden;
+      }
+      .wprog i {
+        display: block;
+        width: 45%;
+        height: 100%;
+        background: var(--kit-accent-fg);
+      }
     </style>
   </head>
   <body>
@@ -700,6 +751,95 @@
                     style="display: flex; gap: 6px; align-items: center"
                     ><span data-icon="lock" data-size="14"></span>On</span
                   >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 5. Boot, status, error -->
+      <figure>
+        <figcaption>
+          windows · boot, status (blocked) and error (offline)
+        </figcaption>
+        <div class="shot" data-shot="states">
+          <div class="trio">
+            <div class="win swin">
+              <div class="tb">
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="16"
+                  style="border-radius: 4px; box-shadow: none"
+                ></span
+                >Tidewater Studio<span class="cap-slot"></span>
+              </div>
+              <div class="content">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="72"
+                  style="border-radius: 16px"
+                ></div>
+                <div class="wprog" style="margin-top: 18px"><i></i></div>
+                <span class="wmute" style="font-size: 12px"
+                  >Checking your license</span
+                >
+              </div>
+            </div>
+            <div class="win swin">
+              <div class="tb">
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="16"
+                  style="border-radius: 4px; box-shadow: none"
+                ></span
+                >Tidewater Studio<span class="cap-slot"></span>
+              </div>
+              <div class="content">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="52"
+                  style="border-radius: 12px"
+                ></div>
+                <h1 class="wh" style="margin-top: 8px">
+                  Your license has ended
+                </h1>
+                <p class="wmute" style="margin: 0">
+                  Tidewater Studio Pro ended on 30 September. Renew to keep
+                  working on your sessions.
+                </p>
+                <div class="foot">
+                  <span class="wb">Use a different key</span
+                  ><span class="wb accent">Renew</span>
+                </div>
+              </div>
+            </div>
+            <div class="win swin">
+              <div class="tb">
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="16"
+                  style="border-radius: 4px; box-shadow: none"
+                ></span
+                >Tidewater Studio<span class="cap-slot"></span>
+              </div>
+              <div class="content">
+                <div class="wglyph" data-icon="wifiOff" data-size="22"></div>
+                <h1 class="wh" style="margin-top: 8px">
+                  Can’t reach Harbor Audio
+                </h1>
+                <p class="wmute" style="margin: 0">
+                  Check your connection. You can keep working offline for 3 more
+                  days.
+                </p>
+                <div class="foot">
+                  <span class="wb">Continue offline</span
+                  ><span class="wb accent fluent-focus">Try again</span>
                 </div>
               </div>
             </div>

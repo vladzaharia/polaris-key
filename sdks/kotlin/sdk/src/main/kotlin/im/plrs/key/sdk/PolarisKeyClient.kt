@@ -190,7 +190,7 @@ public class PolarisKeyClient(options: PolarisKeyClientOptions) {
     private val refreshIntervalSeconds = options.refreshIntervalSeconds
 
     /** The capability engine `supports()` reads (P1b-10). One engine for supports, caps and every report. */
-    private val capabilityEngine: Capabilities = Capabilities.sdk()
+    private val capabilityEngine: Capabilities = Capabilities.forStore(core.store)
 
     /** The §5 re-acquire every authenticated path shares (documents and edge-mint alike). */
     private val reacquire: ReacquireFn = { current, source -> reacquireToken(current, source) }

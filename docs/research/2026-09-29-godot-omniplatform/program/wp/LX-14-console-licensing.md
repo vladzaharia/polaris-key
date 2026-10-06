@@ -5,7 +5,7 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                                                          |
 | Size        | 0.7–1 engineer-weeks                                                                                                                                                                  |
 | Depends on  | [LX-06](LX-06-licensing-settings.md), [LX-09](LX-09-entitlement-resolver.md), [LX-10](LX-10-anchor-choice.md), [LX-11](LX-11-commerce-rework.md), [LX-12](LX-12-licence-lifecycle.md) |
-| Unblocks    | none                                                                                                                                                                                  |
+| Unblocks    | [CM-12](CM-12-console-commerce.md)                                                                                                                                                    |
 | Role        | `pkey-implementer`                                                                                                                                                                    |
 | Plan mode   | no                                                                                                                                                                                    |
 | Gates       | console CSP parity; docsLinks                                                                                                                                                         |

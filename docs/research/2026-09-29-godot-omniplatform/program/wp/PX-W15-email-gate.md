@@ -12,6 +12,15 @@
 | Human input | none                                                                                                                                                                                       |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                  |
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- The email gate is already built on `wp/I-07-login-card-email-gate` (`card/gate.ts`). Reconcile with it before building: this package keeps only what that branch does not ship, and its copy follows SIGN-IN.md §3.5.
+
 ## Goal
 
 A first sign-in through a provider passes a server-held email gate: a provider-verified address (Google `email_verified: true`, Apple) confirms at once, otherwise `POST /api/signin/confirm-email` sends a code on the I-02 store and `…/verify` confirms; terms acceptances are stored per account, product and terms version; a confirmed email owned by another account returns `email_in_use` with a link hand-off; no session or app token is issued before the gate passes.

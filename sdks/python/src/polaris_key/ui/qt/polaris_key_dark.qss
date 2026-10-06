@@ -1,0 +1,140 @@
+/*
+ * GENERATED FILE — do not edit by hand.
+ *
+ * Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/gen.ts) from
+ * packages/brand/src/tokens/ and the launch kit copy in packages/brand/kit/.
+ * `pnpm gen:brand -- --check` fails the green gate on any difference. To change a value, edit
+ * its source and regenerate.
+ */
+
+/*
+ * Polaris Key QWidget stylesheet, dark scheme (docs/design/UI-KITS.md §3.2 "Qt"). Object names
+ * select the kit's parts (#pkTitle, #pkPrimary, #pkCard…). The @pk-* placeholders are filled by
+ * polaris_key.ui.qt from the resolved product accent and the platform's kit tokens.
+ */
+
+QWidget {
+  font-family: "Rubik";
+  font-size: 13px;
+  color: #dbe4ff;
+  background: transparent;
+}
+
+QWidget#pkRoot, QDialog#pkRoot {
+  background: #060912;
+}
+
+QFrame#pkCard {
+  background: #0d111b;
+  border: 1px solid #212633;
+  border-radius: @pk-radius-surface@px;
+  padding: @pk-card-pad@px;
+}
+
+QLabel#pkTitle {
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+QLabel#pkBody {
+  color: #dbe4ff;
+}
+
+QLabel#pkMeta {
+  color: #969eb2;
+  font-size: 12px;
+}
+
+QLabel#pkCode {
+  font-family: "JetBrains Mono";
+  font-size: 28px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+QLabel#pkError {
+  color: #f2513f;
+}
+
+QPushButton {
+  min-height: @pk-control-height@px;
+  padding: 0 16px;
+  border: none;
+  border-radius: @pk-radius-control@px;
+  background: #020408;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+QPushButton:hover {
+  background: #212633;
+}
+
+QPushButton:focus {
+  outline: none;
+  border: 2px solid @pk-focus@;
+}
+
+QPushButton:disabled {
+  color: #969eb2;
+}
+
+QPushButton#pkPrimary {
+  background: @pk-accent@;
+  color: @pk-accent-on@;
+}
+
+QPushButton#pkDanger {
+  background: #db3a2b;
+  color: #ffffff;
+}
+
+QPushButton#pkLink {
+  background: transparent;
+  color: @pk-accent-fg@;
+  padding: 0;
+}
+
+QLineEdit {
+  min-height: @pk-control-height@px;
+  padding: 0 12px;
+  border: none;
+  border-radius: @pk-radius-control@px;
+  background: #020408;
+  color: #ffffff;
+  selection-background-color: @pk-accent-subtle@;
+}
+
+QLineEdit:focus {
+  border: 2px solid @pk-focus@;
+}
+
+QLineEdit#pkKey {
+  font-family: "JetBrains Mono";
+}
+
+QProgressBar {
+  min-height: 6px;
+  max-height: 6px;
+  border: none;
+  border-radius: 3px;
+  background: #212633;
+  text-align: center;
+}
+
+QProgressBar::chunk {
+  border-radius: 3px;
+  background: @pk-accent@;
+}
+
+QListView, QTreeView {
+  background: #0d111b;
+  border: 1px solid #212633;
+  border-radius: @pk-radius-surface@px;
+}
+
+QListView::item:selected, QTreeView::item:selected {
+  background: @pk-accent-subtle@;
+  color: #ffffff;
+}

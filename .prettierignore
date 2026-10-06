@@ -12,10 +12,15 @@ packages/worker/test/fixtures/feeds/
 packages/cli/test/fixtures/feeds/
 # F-04 to F-09's package-feed goldens: byte-compared against the rendered registry documents.
 packages/worker/test/fixtures/registry/
+# F-30's Cargo goldens: the raw config.json and index bodies, byte-compared as served.
+packages/worker/test/registry/cargo/golden/
 # P3-09's app-updater feed goldens: byte-compared against the rendered feed bodies.
 packages/worker/test/fixtures/updater-feeds/
 # P5-08's transport goldens (Manifest.json, Gradle, VDF) and Godot's Gradle template, byte-compared.
 packages/cli/test/fixtures/transport/
+# A-18i's PR-plane generator goldens (byte-compared) and the vendored winget 1.12.0 schemas.
+packages/cli/test/fixtures/pr-golden/
+packages/cli/test/fixtures/winget-schema-1.12.0/
 
 # Build caches.
 packages/docs/.astro/

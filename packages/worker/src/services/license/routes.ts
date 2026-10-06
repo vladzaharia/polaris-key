@@ -24,13 +24,13 @@ import { handleEnroll } from "./enroll.js";
 export async function handleLicenseRoutes(
   ctx: ServiceContext,
 ): Promise<Response | null> {
-  const { req, env, db, product, rest, now } = ctx;
+  const { req, env, db, product, rest, now, waitUntil } = ctx;
   if (rest.length !== 1) return null;
   switch (rest[0]) {
     case "activate":
-      return handleActivate(req, env, db, product, now);
+      return handleActivate(req, env, db, product, now, waitUntil);
     case "enroll":
-      return handleEnroll(req, env, db, product, now);
+      return handleEnroll(req, env, db, product, now, waitUntil);
     case "token":
       return handleToken(req, env, db, product, now);
     case "deauthorize":

@@ -112,13 +112,15 @@ func run(t: PKeyTestContext) -> void:
 	r = await PKeyDownload.fetch(lo, server.base_url() + "/f/a", dest, auth, {"expected_size": 10})
 	t.check("download: local-only refuses without a request", not r.ok and r.code == PKeyErrors.LOCAL_ONLY and server.requests.is_empty())
 
-	# One wall-clock deadline: a server that never answers times out, and a part is kept.
+	# One wall-clock deadline: a server that never answers times out, and a part is kept. The
+	# 0.5 s option, not DEFAULT_TIMEOUT (600 s), ends it: at least 0.5 s, and far under 600 s.
+	# The upper bound is that margin, not a speed budget, so a loaded machine still passes.
 	S.write(dest + ".part", body.slice(0, 1000))
 	sup.plan = {"/f/": [{"hang": true}]}
 	var started := Time.get_ticks_msec()
 	r = await PKeyDownload.fetch(tr, server.base_url() + "/f/a", dest, auth, {"expected_size": body.size(), "timeout": 0.5})
 	var took := Time.get_ticks_msec() - started
-	t.check("download: the request's one deadline ends a hung download (timeout) and keeps the part", not r.ok and r.code == PKeyErrors.TIMEOUT and took < 3000 and S.read(dest + ".part").size() == 1000, "%s in %d ms" % [r, took])
+	t.check("download: the request's one deadline ends a hung download (timeout) and keeps the part", not r.ok and r.code == PKeyErrors.TIMEOUT and took >= 450 and took < 60000 and PKeyDownload.DEFAULT_TIMEOUT >= 600.0 and S.read(dest + ".part").size() == 1000, "%s in %d ms" % [r, took])
 
 	sup.free_server()
 	PKeyTestFixtures.remove_tree(dir)

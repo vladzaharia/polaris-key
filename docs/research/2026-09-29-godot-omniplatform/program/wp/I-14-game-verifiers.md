@@ -12,6 +12,15 @@
 | Human input | Steamworks Web API publisher key; a Game Center-enabled app; a Play Games project linked in Play Console; an EOS deployment (live checks only; fixtures otherwise)                                                                          |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                   |
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- The Steam ticket path answers `status: "choose"` exactly as I-13 does, with the same `LicenseChoiceView` and follow-up `choice`.
+
 ## Goal
 
 Players sign in with their platform identity as links on the account: Steam session tickets (with optional ownership grants), Game Center, Play Games and EOS, verified by the Worker; Godot gets iOS and Android shims and `signInWithSteam`; Swift and Kotlin get helpers.

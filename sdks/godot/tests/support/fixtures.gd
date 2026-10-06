@@ -132,6 +132,23 @@ static func options(base_url: String, store: PKeyStore, clock: Array, product :=
 	return o
 
 
+## For complexity checks that hold on a loaded machine: each Callable in `fns` runs `rounds`
+## times, interleaved (fns[0], fns[1], …, fns[0], …), and the fastest run of each is returned in
+## ms. Compare the results with one another (a ratio), never with a fixed number of milliseconds:
+## load slows every run, the fastest run is the one it slowed least, and interleaving puts each
+## function's runs under the same load. An absolute bound belongs only to a hang guard.
+static func fastest_ms(fns: Array, rounds := 3) -> PackedFloat64Array:
+	var best := PackedFloat64Array()
+	best.resize(fns.size())
+	best.fill(INF)
+	for r in rounds:
+		for i in fns.size():
+			var t0 := Time.get_ticks_usec()
+			(fns[i] as Callable).call()
+			best[i] = minf(best[i], (Time.get_ticks_usec() - t0) / 1000.0)
+	return best
+
+
 ## Lets `frames` frames pass.
 static func frames(n: int) -> void:
 	var tree := Engine.get_main_loop() as SceneTree

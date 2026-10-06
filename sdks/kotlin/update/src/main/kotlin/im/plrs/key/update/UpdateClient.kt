@@ -32,6 +32,7 @@ import im.plrs.key.core.DetectionStamp
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.Feature
 import im.plrs.key.core.FetchOutcome
+import im.plrs.key.core.FileStore
 import im.plrs.key.core.HostOutlet
 import im.plrs.key.core.InstalledBuild
 import im.plrs.key.core.JsonText
@@ -81,6 +82,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonElement
+import java.io.File
 
 /** Reads this process's outlet signals (`outlet-matrix.json#/signals`); Android's readers are P6-12's. */
 public fun interface OutletSignalReader {
@@ -123,7 +125,10 @@ public data class UpdateClientOptions @JvmOverloads constructor(
     val platform: String? = null,
     /** The device's `Arch` value. Default: this runtime's. */
     val arch: String? = null,
-    /** The platform installer. Default [JvmInstallDriver] (typed `runtime` N/A); Android's are P6-12's. */
+    /**
+     * The platform installer. Default [JvmInstallDriver], the marker [UpdateClient.install] replaces
+     * with the JVM desktop driver (UK-40); Android's are P6-12's.
+     */
     val installDriver: InstallDriver = JvmInstallDriver,
 )
 
@@ -346,14 +351,44 @@ public class UpdateClient private constructor(
     public suspend fun appcastUrl(channel: String? = null): String = feedUrl(FeedKind.appcast, channel)
 
     /**
-     * Hand a decision to the platform's installer ([UpdateClientOptions.installDriver]). On a JVM
-     * desktop there is none: [JvmInstallDriver] throws the typed `runtime` N/A (registry
-     * `update.driver` jvm), and the host offers [buildUrl] as a download link instead.
+     * Hand a decision to the platform's installer ([UpdateClientOptions.installDriver]). Left at the
+     * default on a JVM desktop, that is [desktopDriver] (UK-40): the installer for this OS and arch,
+     * downloaded, verified against the signed record and opened. On Android the :android module
+     * replaces the default with the flavour's driver.
      */
-    public suspend fun install(check: UpdateCheck): InstallResult = installDriver.install(check)
+    public suspend fun install(check: UpdateCheck): InstallResult {
+        val driver = installDriver
+        val result = driver.install(check)
+        // §3.13: the desktop driver (UK-40) journals nothing itself; the Android drivers do.
+        if (driver is DesktopInstallDriver && result == InstallResult.Started) {
+            check.releaseId?.let { core.updateEvents.record(UpdateEvent.updateApplied, it, fromRelease = core.version) }
+        }
+        return result
+    }
 
-    /** The install driver [install] uses ([UpdateClientOptions.installDriver], else [JvmInstallDriver]). */
-    public val installDriver: InstallDriver get() = configured?.options?.installDriver ?: JvmInstallDriver
+    /**
+     * The install driver [install] uses: [UpdateClientOptions.installDriver]; left at the default
+     * ([JvmInstallDriver]) on a JVM desktop, [desktopDriver].
+     */
+    public val installDriver: InstallDriver get() {
+        val driver = configured?.options?.installDriver ?: JvmInstallDriver
+        return if (driver === JvmInstallDriver && !RuntimeFamily.isAndroid) desktopDriver else driver
+    }
+
+    /**
+     * The JVM desktop driver [install] uses by default: records from [releaseRecord], bytes from
+     * [buildUrl] through [OkHttpArtifactFetch], installers under
+     * `<FileStore.defaultDirectory(product)>/updates/installer`, opened by [SystemInstallerOpener].
+     * PolarisKeyDesktop builds its own over the app's data directory.
+     */
+    public val desktopDriver: DesktopInstallDriver by lazy {
+        DesktopInstallDriver(
+            records = { sha -> releaseRecord(sha).record },
+            buildUrl = { version, build -> buildUrl(version, build) },
+            fetch = OkHttpArtifactFetch(core),
+            dir = File(FileStore.defaultDirectory(core.product), "updates/installer"),
+        )
+    }
 
     // ── Internals ───────────────────────────────────────────────────────────────────────────
 

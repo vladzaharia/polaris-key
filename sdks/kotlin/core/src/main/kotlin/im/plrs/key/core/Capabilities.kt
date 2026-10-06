@@ -113,13 +113,14 @@ public class Capabilities(
     public companion object {
         /**
          * This SDK's detectors. The conditional N/As in `parity.json`: `core.store` on the JVM
-         * (`except jvm:dependency`): a JVM process reaches no OS keyring without a native library,
-         * so the token lives in a 0600 file and `supports(core.store)` says `dependency`; and
+         * (`except jvm:dependency`): the default FileStore keeps the token in a 0600 file, so
+         * `supports(core.store)` says `dependency` unless the client's store is a [KeyringStore]
+         * with a reachable OS keyring ([forStore], UK-40); and
          * `packs.apply.delta` on Android and the JVM (`dependency`) when zstd-jni cannot load.
          */
         public val sdkDetectors: Map<String, CapabilityDetector> = mapOf(
             capabilityDetectorKey(Feature.coreStore, UnsupportedReason.dependency) to {
-                "a JVM process reaches no OS keyring without a native library; the token lives in a 0600 file (keyring-unavailable)"
+                "this client's store keeps the token in a 0600 file, not an OS keyring (use KeyringStore, or PolarisKeyDesktop, with java-keyring)"
             },
             // P6-08: deltas decode through zstd-jni's native libzstd (:packs' LibZstd). Where that
             // library cannot load (an OS or arch it ships no binary for, an Android build without
@@ -149,5 +150,17 @@ public class Capabilities(
 
         /** The engine for this process. */
         public fun sdk(): Capabilities = Capabilities(sdkDetectors)
+
+        /**
+         * The engine for a client over [store] (UK-40): `core.store`'s jvm `dependency` N/A follows
+         * the store. A [KeyringStore] answers from its keyring (null when one is reachable, so
+         * `core.store` is supported); any other store keeps [sdkDetectors]' answer (a FileStore's
+         * token is in a 0600 file).
+         */
+        public fun forStore(store: Store): Capabilities {
+            if (store !is KeyringStore) return sdk()
+            val key = capabilityDetectorKey(Feature.coreStore, UnsupportedReason.dependency)
+            return Capabilities(sdkDetectors + (key to { store.keyringUnavailable() }))
+        }
     }
 }

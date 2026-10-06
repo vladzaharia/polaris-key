@@ -77,6 +77,7 @@ export const SNAP_ADAPTER: StorefrontAdapter = {
     ciTokens: [...SNAP_CI.neverTokens],
   },
   ci: SNAP_CI.list,
+  pr: null,
   listing: adapterListingProfile(STORE_LISTING_COLUMNS.snap),
   confirmation: { phrase: "app-name", label: "Snap Store" },
   audit: { action: "snap", projection: CI_STEP_PROJECTION },
