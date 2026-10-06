@@ -74,9 +74,9 @@ A docs section exists that every kit writes into: the overview, theming and loca
 
 ## Acceptance criteria
 
-- [ ] The section builds and `check:links` passes.
-- [ ] A component page renders baseline images from a kit's committed baseline path.
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] The section builds and `check:links` passes.
+- [x] A component page renders baseline images from a kit's committed baseline path.
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 
