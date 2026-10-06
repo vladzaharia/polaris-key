@@ -123,6 +123,11 @@ jobs:
     needs: [version, npm-pack]
     strategy:
       fail-fast: false
+      # Each leg is a deployment to the shared `package-registry` environment. GitHub creates every
+      # leg's deployment in the same second and occasionally never advances one from `waiting`
+      # (v0.8.28 npm.jws; v0.8.29 npm.node, npm.protocol: no reviewers or timer, so nothing can
+      # release it). A small window keeps the burst of simultaneous deployments down.
+      max-parallel: 3
       matrix:
         package:
           - brand
@@ -352,6 +357,8 @@ jobs:
     needs: [version, kotlin-build]
     strategy:
       fail-fast: false
+      # As the npm matrix: fewer simultaneous deployments to `package-registry`.
+      max-parallel: 3
       matrix:
         artifact:
           - core
