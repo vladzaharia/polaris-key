@@ -1,4 +1,7 @@
 import * as React from "react";
+import { PRODUCT_SLUG_RE } from "@polaris-key/manifest";
+import { MANAGE_FOR_MAX_LENGTH } from "@polaris-key/protocol/license";
+import { carriesKey, MAX_RETURN_LENGTH } from "./model/returnUrl.js";
 
 /**
  * The customer site's router (PORTAL.md §3.3). Hash routing for the signed-in SPA (ADMIN.md lead
@@ -11,7 +14,8 @@ import * as React from "react";
  *   the Activate license modal open and the key filled in. It is never a page. The key comes from
  *   the fragment (`/activate#key=…`), which never reaches a server; the legacy query form
  *   (`/activate?key=…`, in links already out) is still read. Both are dropped from the address
- *   bar before the first render (`rewriteActivatePath`).
+ *   bar before the first render (`rewriteActivatePath`). An app's `product=`, `next=`, `for=`
+ *   and `return=` come along (`activateLinkParams`, PX-17).
  *
  * Query parameters live inside the hash (`#/?view=list&q=fern`). `setParams` rewrites them in
  * place (no history entry per keystroke) and notifies subscribers itself, because
@@ -199,24 +203,68 @@ export function activateLinkKey(hash: string): string | null {
 }
 
 /**
- * `/activate[?product=…]#key=…` → `/#/?activate=…[&product=…]`, in place, with
- * `history.replaceState`. Returns whether it rewrote the URL. Run once, before the first render
- * and before any request, so neither the `#key=` fragment nor a legacy `?key=` query (links
- * already out; the fragment wins when both are there) stays in the address bar or the history
- * entry. The key then lives only in this tab's `#/?activate=`, which the signed-in shell
- * consumes as it opens the modal and every sign-in leaves out of its return URL
- * (`carriedKey.ts`). See THREAT-MODEL.md, "Key-bearing deep links".
+ * What an Activate link may ask for after the add (plans/PX-W8.md Q3): only the device-limit
+ * flow, for a floating license an app refused with `device_limit`.
  */
-export function rewriteActivatePath(loc: Location = window.location): boolean {
-  const path = loc.pathname.replace(/\/+$/, "");
-  if (path !== "/activate") return false;
+export const ACTIVATE_NEXT = ["free-device"] as const;
+export type ActivateNext = (typeof ACTIVATE_NEXT)[number];
+
+/**
+ * The parameters an `/activate` link carries into `#/?activate=…` (PORTAL.md §4.18; the link
+ * shapes are WIRE-CONTRACT-V4 §5.3's, built by the Worker's `manageUrl` and client-core's
+ * `withManageReturn` / `withManageKey`):
+ *
+ * - `activate`: the key, from the `#key=` fragment or a legacy `?key=` (the fragment wins), or
+ *   `""` for a link without one. The key goes here and nowhere else.
+ * - `product`: the product an app sent the person from, when it is a product slug.
+ * - `next`: `free-device` (a floating license at its device limit); anything else is dropped.
+ * - `for`: the coarse device label for the free-device flow, at most 64 characters.
+ * - `return`: where to go after the add, followed only once validated (`model/returnUrl.ts`:
+ *   the login card on this origin, or a target the product declares).
+ *
+ * Every other parameter is dropped, and so is a `for` or `return` that carries a license key:
+ * the hash travels with every sign-in's return URL (`carriedKey.ts`), minus `activate`. Pure.
+ */
+export function activateLinkParams(
+  loc: Pick<Location, "search" | "hash">,
+): Record<string, string> {
   const search = new URLSearchParams(loc.search);
   const params: Record<string, string> = {
     activate: activateLinkKey(loc.hash) ?? search.get("key") ?? "",
   };
   const product = search.get("product");
-  if (product) params.product = product;
-  window.history.replaceState(null, "", `/${href.library(params)}`);
+  if (product && PRODUCT_SLUG_RE.test(product)) params.product = product;
+  const next = search.get("next");
+  if (next && (ACTIVATE_NEXT as readonly string[]).includes(next))
+    params.next = next;
+  const forLabel = (search.get("for") ?? "")
+    .replace(/[\u0000-\u001f\u007f]/g, "")
+    .trim()
+    .slice(0, MANAGE_FOR_MAX_LENGTH);
+  if (forLabel && !carriesKey(forLabel)) params.for = forLabel;
+  const back = search.get("return");
+  if (back && back.length <= MAX_RETURN_LENGTH && !carriesKey(back))
+    params.return = back;
+  return params;
+}
+
+/**
+ * `/activate[?product=…&next=…&for=…&return=…]#key=…` → `/#/?activate=…[&product=……]`, in place,
+ * with `history.replaceState` (`activateLinkParams` says what is kept). Returns whether it
+ * rewrote the URL. Run once, before the first render and before any request, so neither the
+ * `#key=` fragment nor a legacy `?key=` query (links already out; the fragment wins when both are
+ * there) stays in the address bar or the history entry. The key then lives only in this tab's
+ * `#/?activate=`, which the signed-in shell consumes as it opens the modal and every sign-in
+ * leaves out of its return URL (`carriedKey.ts`). See THREAT-MODEL.md, "Key-bearing deep links".
+ */
+export function rewriteActivatePath(loc: Location = window.location): boolean {
+  const path = loc.pathname.replace(/\/+$/, "");
+  if (path !== "/activate") return false;
+  window.history.replaceState(
+    null,
+    "",
+    `/${href.library(activateLinkParams(loc))}`,
+  );
   return true;
 }
 

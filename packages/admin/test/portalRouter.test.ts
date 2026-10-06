@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   activateLinkKey,
+  activateLinkParams,
   href,
   resolveHash,
   rewriteActivatePath,
@@ -141,19 +142,61 @@ describe("the /activate path handler", () => {
     expect(carried()?.get("product")).toBe("mossgarden");
   });
 
-  it("reads the link the SDKs build (client-core `withManageKey`, PX-W8)", () => {
+  it("reads the link the SDKs build (client-core `withManageKey`, PX-W8) and carries next=, for= and return= (PX-17)", () => {
     // `manageUrl` from the Worker, plus `return=` in the query and the key as `#key=`, encoded
     // the way client-core's `manageFormEncode` writes it.
     window.history.replaceState(
       null,
       "",
-      `/activate?product=mossgarden&next=free-device&for=Web&return=myapp%3A%2F%2Fback#key=${KEY}`,
+      `/activate?product=mossgarden&next=free-device&for=macOS+arm64&return=myapp%3A%2F%2Fback#key=${KEY}`,
     );
     expect(rewriteActivatePath()).toBe(true);
     expect(window.location.pathname).toBe("/");
     expect(window.location.search).toBe("");
     expect(carried()?.get("activate")).toBe(KEY);
     expect(carried()?.get("product")).toBe("mossgarden");
+    expect(carried()?.get("next")).toBe("free-device");
+    expect(carried()?.get("for")).toBe("macOS arm64");
+    expect(carried()?.get("return")).toBe("myapp://back");
+    // The key is in `activate` and nowhere else: not the query, not another parameter.
+    const others = [...(carried()?.entries() ?? [])].filter(
+      ([k]) => k !== "activate",
+    );
+    expect(others.map(([, v]) => v).join(" ")).not.toContain("pkey_");
+  });
+
+  it("carries the login card's return (the card's 'You don't have <Product> yet' link)", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/activate?product=mossgarden&return=%2Fsignin%3Frequest%3Drq_0123456789abcdef",
+    );
+    expect(rewriteActivatePath()).toBe(true);
+    expect(carried()?.get("activate")).toBe("");
+    expect(carried()?.get("return")).toBe(
+      "/signin?request=rq_0123456789abcdef",
+    );
+  });
+
+  it("drops what an activate link may not carry", () => {
+    const p = activateLinkParams({
+      search: `?product=Not_A_Slug&next=account&for=${"x".repeat(80)}&return=x&tab=1&key2=y`,
+      hash: "",
+    });
+    expect(p).toEqual({ activate: "", for: "x".repeat(64), return: "x" });
+    // A key in for= or return= never rides along: the hash goes into every sign-in's return URL.
+    expect(
+      activateLinkParams({
+        search: `?for=${KEY}&return=${encodeURIComponent(`myapp://x?k=${KEY}`)}`,
+        hash: "",
+      }),
+    ).toEqual({ activate: "" });
+    expect(
+      activateLinkParams({
+        search: `?return=${"a".repeat(2049)}&for=%00%0A`,
+        hash: "",
+      }),
+    ).toEqual({ activate: "" });
   });
 
   it("prefers the fragment when a link carries both", () => {
