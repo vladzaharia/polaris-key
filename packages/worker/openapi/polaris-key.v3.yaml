@@ -11935,10 +11935,10 @@ paths:
         (or while its account has no confirmed email, or a product's terms version is not yet
         accepted) and redirects here with a 15-minute `__Host-pkey_gate` cookie. No account row and
         no session exist until the gate passes. The view carries the provider's email (an Apple
-        private-relay address included) and whether the provider verified it, the imported profile
-        for adjustment (the picture through `/api/signin/confirm-email/picture`), the product's
-        terms when it requires them, and at the `join_offer` stage the address another account
-        uses. It never carries an account id.
+        private-relay address included) and whether the provider vouches for it (SIGN-IN.md
+        §3.5), the imported profile for adjustment (the picture through
+        `/api/signin/confirm-email/picture`), the product's terms when it requires them, and at
+        the `join_offer` stage the address another account uses. It never carries an account id.
       responses:
         "200":
           description: The gate.

@@ -105,6 +105,7 @@ import {
   type TermsRequirement,
 } from "../accounts/terms.js";
 import { mergeAccounts } from "../accounts/merge.js";
+import { providerVouchesForEmail } from "../providers/vouch.js";
 import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
 import {
   CODE_VERIFY_PER_IP_MINUTE,
@@ -136,6 +137,7 @@ export const GATE_TTL_SECONDS = 15 * 60;
 export const EMAIL_GATE_LANDING = "/?signin=confirm-email";
 
 export type { TermsRequirement };
+export { providerVouchesForEmail };
 
 /** What a provider front door hands the gate. */
 export interface ProviderSignIn {
@@ -257,34 +259,6 @@ function accountDisabledPage(): Response {
   });
 }
 
-/** Google's consumer domains: an address there is Google's own, so `email_verified` is current. */
-const GOOGLE_CONSUMER_DOMAINS: ReadonlySet<string> = new Set([
-  "gmail.com",
-  "googlemail.com",
-]);
-
-/**
- * Whether the provider's own assertion stands in for our code (owner, 2026-10-04; for Google,
- * lead decision 2026-10-06). Apple's verified address always does, a private-relay address
- * included. Google's `email_verified` alone does not: for an address outside Google's own domains
- * it only says Google verified it once (a former employee's company address stays "verified"), so
- * it counts only for `@gmail.com`/`@googlemail.com`, or when the signed `hd` claim names the
- * address's domain (a Workspace account, whose addresses the domain's admin controls). Anything
- * else gets our code, like a typed address. Case-insensitive.
- */
-export function providerVouchesForEmail(
-  identity: Pick<VerifiedIdentity, "kind" | "email" | "emailVerified">,
-  hostedDomain: string | null | undefined,
-): boolean {
-  const email = identity.email?.trim().toLowerCase();
-  if (!email || !identity.emailVerified) return false;
-  if (identity.kind !== "google") return true;
-  const domain = email.slice(email.lastIndexOf("@") + 1);
-  if (GOOGLE_CONSUMER_DOMAINS.has(domain)) return true;
-  const hd = hostedDomain?.trim().toLowerCase();
-  return Boolean(hd) && hd === domain;
-}
-
 /** Whether the account still has to accept `terms` (no row for this version yet). */
 async function needsTerms(
   db: Db,
@@ -311,7 +285,8 @@ export async function beginProviderSignIn(
 ): Promise<Response> {
   // The provider's assertion counts only where it vouches for the address today: everything
   // downstream (the gate's fast path, the link's stored `email_verified`, which feeds the licence
-  // claim rules) sees an address Google does not vouch for as unverified.
+  // claim rules) sees an address Google does not vouch for as unverified. The Google module
+  // already narrowed it; this re-check is a no-op there and covers every other front door.
   const identity: VerifiedIdentity = {
     ...input.identity,
     emailVerified: providerVouchesForEmail(input.identity, input.hostedDomain),

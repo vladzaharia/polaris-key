@@ -31,6 +31,7 @@ import {
   resolveSignInClient,
 } from "../src/services/identity/providers/config.js";
 import { matchRoute } from "../src/router.js";
+import { completeGoogleSignIn } from "../src/services/identity/providers/google.js";
 import {
   insertAccount,
   insertLink,
@@ -200,6 +201,49 @@ describe("Sign in with Google", () => {
       providerVerified: false,
     });
     expect(await h.db.first("SELECT id FROM accounts")).toBeNull();
+  });
+
+  it("narrows email_verified itself: only a Gmail address or one whose domain hd names (PX-W15)", async () => {
+    const h = await makeProviderHarness();
+    const discovered = await discoverProvider("google");
+    const client = {
+      kind: "google" as const,
+      clientId: GOOGLE_CLIENT_ID,
+      clientSecret: "google-secret",
+    };
+    // Any caller of completeGoogleSignIn (the card, a later connect flow) gets the narrowed value.
+    const complete = async (over: Record<string, unknown>) => {
+      h.idToken.google = await h.signGoogle(googleClaims("nonce-1", over));
+      return completeGoogleSignIn(client, discovered, {
+        code: "4/0AQSTgQ-code",
+        iss: "https://accounts.google.com",
+        redirectUri: "https://key.plrs.im/login/google/callback",
+        codeVerifier: "v".repeat(43),
+        nonce: "nonce-1",
+      });
+    };
+    const noHd = await complete({ email: "ada@lumen.example" });
+    expect(noHd.identity).toMatchObject({
+      email: "ada@lumen.example",
+      emailVerified: false,
+    });
+    expect(noHd.hostedDomain).toBeNull();
+    const workspace = await complete({
+      email: "ada@lumen.example",
+      hd: "lumen.example",
+    });
+    expect(workspace.identity.emailVerified).toBe(true);
+    expect(workspace.hostedDomain).toBe("lumen.example");
+    const mismatch = await complete({
+      email: "ada@lumen.example",
+      hd: "other.example",
+    });
+    expect(mismatch.identity.emailVerified).toBe(false);
+    const gmail = await complete({ email: "Ada@Gmail.com" });
+    expect(gmail.identity).toMatchObject({
+      email: "ada@gmail.com",
+      emailVerified: true,
+    });
   });
 
   it("never joins by email match: a verified email another account uses writes nothing", async () => {

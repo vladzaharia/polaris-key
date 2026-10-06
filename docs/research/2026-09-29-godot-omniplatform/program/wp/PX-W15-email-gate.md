@@ -109,10 +109,13 @@ mise exec node@22 -- pnpm --filter @polaris-key/worker test -- portal
   2026-10-06).** A Google address counts as provider-verified, with no code, only when
   `email_verified` is true AND it is `@gmail.com`/`@googlemail.com` or the token's `hd` claim
   equals its domain (Workspace), case-insensitively; otherwise the gate asks for a code as for a
-  typed address. Apple, private relay included, is unchanged. I-06's Google module passes the
-  signed `hd` claim through (`hostedDomain`), and the gate applies the rule to the identity as it
-  enters (`providerVouchesForEmail`), so the Google link also stores such an address as
-  unverified and it claims no licence. This closes the residual THREAT-MODEL recorded; SIGN-IN.md
+  typed address. Apple, private relay included, is unchanged. One predicate,
+  `providerVouchesForEmail` (`providers/vouch.ts`), is applied where Google's answer is made
+  (`completeGoogleSignIn`, so every caller, a later connect flow included, gets the narrowed
+  `emailVerified`) and again as an identity enters the gate (a no-op for Google, covering every
+  other front door). The Google link therefore stores such an address as unverified and it claims
+  no licence. PORTAL.md §4.29 and G31 point to SIGN-IN.md §3.5; the S-16 note carries a dated
+  amendment. This closes the residual THREAT-MODEL recorded; SIGN-IN.md
   §3.5 and §4.6, the OpenAPI operation and the portal page say so. I-07's and I-06's tests that
   relied on a verified non-Gmail Google address now give it a matching `hd`.
 - The tests are `test/portalEmailGate.test.ts` (matched by the Verify filter) beside I-07's

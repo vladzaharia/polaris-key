@@ -30,8 +30,8 @@ export interface ProviderSignInResult {
   identity: VerifiedIdentity;
   profile: ProviderProfile;
   /** Google only: the signed ID token's `hd` claim (the Workspace domain), lower-cased, or `null`.
-   *  The email gate needs it to decide whether Google's `email_verified` stands in for our code
-   *  (PX-W15). Not an identifier and not stored. */
+   *  `identity.emailVerified` is already narrowed by it (`providers/vouch.ts`); the email gate
+   *  re-checks with it (PX-W15). Not an identifier and not stored. */
   hostedDomain?: string | null;
 }
 

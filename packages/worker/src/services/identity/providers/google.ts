@@ -15,6 +15,7 @@ import {
   type DiscoveredProvider,
 } from "./discovery.js";
 import { gatedJson, type ProviderFetch } from "./net.js";
+import { providerVouchesForEmail } from "./vouch.js";
 import {
   cleanAvatarUrl,
   cleanDisplay,
@@ -92,14 +93,23 @@ export async function completeGoogleSignIn(
     typeof claims.email === "string" && claims.email.includes("@")
       ? claims.email.trim().toLowerCase()
       : null;
-  const emailVerified = Boolean(
-    email && providerAssertsVerified(claims.email_verified),
-  );
-  // The Workspace domain, signed in the token: the email gate's Google rule reads it (PX-W15).
+  // The Workspace domain, signed in the token.
   const hostedDomain =
     typeof claims.hd === "string" && claims.hd.trim()
       ? claims.hd.trim().toLowerCase()
       : null;
+  // Google's `email_verified` counts only for a Gmail address or one whose domain `hd` names
+  // (PX-W15; SIGN-IN.md §3.5): every caller gets the narrowed value, never the raw claim.
+  const emailVerified = providerVouchesForEmail(
+    {
+      kind: "google",
+      email,
+      emailVerified: Boolean(
+        email && providerAssertsVerified(claims.email_verified),
+      ),
+    },
+    hostedDomain,
+  );
   return {
     provider: "google",
     hostedDomain,
