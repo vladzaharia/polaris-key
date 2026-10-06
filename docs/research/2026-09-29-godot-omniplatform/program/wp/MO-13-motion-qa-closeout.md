@@ -12,6 +12,42 @@
 | Human input | none                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                                                                                                     |
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`. Each item names the package whose review raised it.
+
+- **Commit real-app strips** ([MO-05](MO-05-portal-navigation-motion.md),
+  [MO-07](MO-07-portal-library-motion.md), [MO-09](MO-09-console-data-motion.md)). Each recorded
+  real-app strips with the S-23 `real-app.ts` method for its review and kept them in scratch.
+  Committing real-app strips of every pattern is this package's (the `PK_MOTION_STRIPS` mode).
+  Re-record them rather than reuse them, since the code has moved on.
+- **`pk-vt-tabpanel` on the other route-tab pages** ([MO-04](MO-04-console-navigation-motion.md)). Only
+  `LicenseRecord.tsx` (and `PageTabs`' own `TabPanel`) mark their panels. `TierRecord`,
+  `UserRecord`, `PackageRecord`, `FeedPage` (`areas/feeds/`), `ListingPage` and `RolloutsPage` morph
+  the indicator but swap the panel at once. Mark each visible panel `pk-vt-tabpanel`, or move the
+  page onto `TabPanel`.
+- **Clip the PageTabs indicator to a scrolled tab strip** ([MO-04](MO-04-console-navigation-motion.md)).
+  The strip scrolls sideways (`pk-scroll overflow-x-auto` in `PageTabs.tsx`), but the
+  `pk-vt-indicator` snapshot paints in the transition's top layer, so on a scrolled strip it can draw
+  outside the strip's visible box. Clip it to the strip with a nested view-transition group where
+  the browser supports one, and otherwise drop the morph while the strip is scrolled.
+- **Prefetch the licence record on row hover and focus** ([MO-04](MO-04-console-navigation-motion.md)).
+  The first drill-down into an uncached record shows its skeleton, so the name (`pk-key`) has no
+  other end and leaves with the list; it flies only once the record is cached. Prefetch the
+  record's query when a Licenses row is hovered or focused (as the sidebar prefetches section chunks
+  on `onMouseEnter` and `onFocus`), so the first flight works too, and update the smoke suite's
+  uncached case.
+- **QA the 30-second polling tables** ([MO-09](MO-09-console-data-motion.md)).
+  `console/pages/platformOperations.tsx` refetches every 30 s (`OPERATIONS_REFRESH_MS`). Check in
+  the real app what each poll does: changed values tint (MO-09's changed-value cue) and moved rows
+  reorder. Confirm an unchanged poll does nothing and a changed one still reads well every 30 s, in
+  both themes and reduced, and record the result in the PR.
+- **Enter-after-survivors for other lists** ([MO-09](MO-09-console-data-motion.md)). A table's
+  entering rows now start after the survivors land (`.pk-vt-table`, MO-09's block in `motion.css`),
+  because rows entering from below the fold crossed survivors that were still moving. Check the
+  other lists whose items enter while others move, and apply the same timing where the crossing
+  shows.
+
 ## Goal
 
 The motion system is proven in the real app, not just the prototypes: every pattern has a strip, every moment meets the frame budget at 4× CPU, and contributors have one page that says how to add motion.

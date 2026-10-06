@@ -12,6 +12,34 @@
 | Human input | none                                                                                                          |
 | Repo        | `vladzaharia/polaris-key`                                                                                     |
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`. Each item names the package whose review raised it.
+
+- **Activity verbs for the holder actions** ([LX-26](LX-26-licence-holders-worker.md)). LX-26 writes
+  two actions that have no phrase in `console/pages/core/activityVerbs.ts`, so they would show as
+  raw codes:
+  - `license.holder.assign`, in the product's console trail (`audit`), when a `PATCH` gives a floating
+    licence an email (`services/license/admin/licenses.ts`);
+  - `account.license.auto_attach_block`, in the account's own history (`portal_audit`), when a
+    removal or a reassignment keeps the licence from re-attaching (`accounts/claim.ts`).
+
+  Add both phrases. The Activity page, and the record's **View in activity**, read only `audit`,
+  so the block row shows only where this package surfaces the account's history for the licence
+  (the record's holder line or its history).
+
+- **Make floating writes the block through `reassignLicense`** ([LX-26](LX-26-licence-holders-worker.md)).
+  `reassignLicense(ctx, { product, licenseId, toAccountId: null, actor, expectedPreviousAccountId })`
+  (`accounts/claim.ts`) already writes `license_auto_attach_blocks` (and its
+  `account.license.auto_attach_block` row) for the account it moves the licence away from, and lifts
+  the block of the account it moves a licence into, so the undo (`reassignLicense` back to
+  `from_account_id`) deletes it. The Worker's Make floating is therefore I-12's relink with
+  `toAccountId: null` (today's relink requires a target subject) plus clearing `name` and `email`,
+  with the undo restoring them. It writes and deletes no block row of its own.
+- **The "In an account" filter is `holder=inAccount`** ([LX-26](LX-26-licence-holders-worker.md)):
+  `assigned` also covers a licence waiting on its email, so LX-26 added a fourth value. An unknown
+  value is `400 bad_request` (`fields: ["holder"]`).
+
 ## Goal
 
 An operator can see who holds each licence (or that it is floating), filter by holder and batch,

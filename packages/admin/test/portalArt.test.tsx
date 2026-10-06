@@ -11,10 +11,14 @@ import {
   iconShape,
   ProductIcon,
 } from "../src/portal/components/ProductIcon.js";
+import { ConfirmStep } from "../src/portal/components/ActivateDialog.js";
+import { FlowCard } from "../src/portal/components/FocusedFlow.js";
 
 /**
  * Product art on the library and the product page: the icon image is its own frame, the card
- * keeps no developer byline, and the status sits on a padded plate over the art.
+ * keeps no developer byline, and the status sits on a padded plate over the art. Wherever the
+ * icon overlaps the art (library card, focused flow, the activate dialog's confirm), a product
+ * without art shows its letter once: on the icon's letter tile, never again on the cover.
  */
 
 const MAC_UA =
@@ -103,5 +107,60 @@ describe("library card", () => {
       name: "Ember Tactics",
     });
     expect(within(healthy).queryByText("Active")).toBeNull();
+  });
+});
+
+describe("an art-less cover never repeats the icon's letter", () => {
+  /** The text of each fallback (cover art first, then the icon's letter tile). */
+  const fallbacks = (root: ParentNode): (string | null)[] =>
+    [...root.querySelectorAll("[data-art='fallback']")].map(
+      (el) => el.textContent,
+    );
+
+  it("on the library card", async () => {
+    const djdl = license({ product: "djdl", productName: "DJDL" });
+    const other = license({ product: "ember", productName: "Ember Tactics" });
+    mockFetch(signedIn([djdl, other]));
+    renderPortal();
+    const card = await screen.findByRole("article", { name: "DJDL" });
+    expect(fallbacks(card)).toEqual(["", "D"]);
+  });
+
+  it("on a focused flow's card", () => {
+    render(
+      <FlowCard
+        slug="orbit-survey"
+        name="Orbit Survey"
+        developer="Parallax Nine"
+        tint={null}
+        iconUrl={null}
+        headerUrl={null}
+      >
+        <p>Your license is on 2 of 2 devices</p>
+      </FlowCard>,
+    );
+    expect(fallbacks(document)).toEqual(["", "O"]);
+  });
+
+  it("on the activate dialog's confirm step", () => {
+    render(
+      <ConfirmStep
+        preview={{
+          verdict: "addable",
+          product: {
+            slug: "mossgarden",
+            name: "Mossgarden",
+            developerName: "Little Fern",
+            iconUrl: null,
+            headerUrl: null,
+          },
+        }}
+        licenseKey="pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4zWq"
+        adding={false}
+        onBack={() => {}}
+        onAdd={() => {}}
+      />,
+    );
+    expect(fallbacks(document)).toEqual(["", "M"]);
   });
 });

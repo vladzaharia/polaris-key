@@ -139,9 +139,10 @@ export interface Env {
    * The hosted-asset pull queue (HA-05; `pkey-assets-<env>`, notes/S-20 §6.3). The main Worker is
    * both producer (a register or resync enqueues the pulls its manifest owes; the nightly sweep
    * re-checks failed ones) and consumer (`queue()` in `src/index.ts`, `core/hostedAssetPulls.ts`):
-   * pulls are I/O-bound, so they need no separate script. Failed deliveries go to
-   * `pkey-assets-dlq-<env>`. OPTIONAL: unbound, nothing is planned or pulled and manifest asset
-   * refs keep today's behaviour.
+   * pulls are I/O-bound, so they need no separate script. Release-file mirrors ride it too
+   * (HA-08, `services/release/mirror.ts`). Failed deliveries go to `pkey-assets-dlq-<env>`.
+   * OPTIONAL: unbound, nothing is planned, pulled or mirrored, manifest asset refs keep today's
+   * behaviour and release files keep serving from GitHub.
    * @inventory binding jobs
    */
   HOSTED_ASSET_QUEUE?: Queue<unknown>;

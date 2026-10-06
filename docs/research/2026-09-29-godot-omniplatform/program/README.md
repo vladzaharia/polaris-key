@@ -268,7 +268,10 @@ execute U-01's plan, except the optional U-14, U-16 and U-17, which get their ow
 Phase PX (customer portal) follows `docs/design/PORTAL.md` §11, approved by the owner on
 2026-10-04. Ids keep the spec's own form, which `check.mjs` accepts as a special case: PX-01…PX-22
 for the front end (§11.1 phase A, §11.3 phase B) and PX-W1…PX-W17 for the Worker additions (§11.2);
-each package's stage names the spec phase. Sizes map S → 0.1–0.2, M → 0.4–0.8 and L → 1–1.6
+each package's stage names the spec phase. Later packages take the next free id in the same form:
+PX-23 and PX-W18 (S-24), and **PX-24** (filed 2026-10-06), the Library's 24-hour "Added just now"
+ring and text (EXPERIENCE §0.7 frame 7), which MO-07 left out as a feature rather than motion.
+Sizes map S → 0.1–0.2, M → 0.4–0.8 and L → 1–1.6
 engineer-weeks. PX-W8, PX-W9, PX-W13 and PX-W17 were planned under I-04 (PORTAL.md's "one contract plan"), but
 each gained its own plan refining I-04, approved on 2026-10-05, so they no longer carry `planRef`;
 PX-W3 has its own plan too. PX-20 is the rolling quality bar: it starts after PX-01 and is

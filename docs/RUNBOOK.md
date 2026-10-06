@@ -1297,6 +1297,45 @@ surface in the cron's aggregate error (`blobRefs:<slug>`, `blobMark`, `blobSweep
   its lock age: stop the collector and escalate. Never shorten or remove the bucket lock to make
   it pass.
 
+## Release-file mirroring (HA-08)
+
+Polaris Key keeps its own copy of every app-release file whose bytes live only on GitHub or at an
+external URL, so downloads are served from R2 and GitHub stays the fallback (notes/S-20 §6.8).
+A truth-store sync (the GitHub `release` webhook), a resync and a descriptor ingest queue the
+files that owe a copy to `pkey-assets-<env>`; the request Worker consumes them
+(`services/release/mirror.ts`). A copy is promoted only when its bytes are GitHub's `digest` and
+the descriptor's `sha256`; then an `r2` location is appended to the file's `locations_json`. No
+signed document, byte URL or client changes, so nothing here needs a client release. Filling a synced file's missing `sha256` (from the verified hash) does change unsigned feeds: a release whose file had no recorded hash becomes eligible for the feeds that need one (Scoop, Flathub, winget, AltStore), which then list it.
+
+A release file's pull may take up to 10 minutes (30 s plus a second per 10 MiB). The consumer runs
+hosted-asset pulls first and starts no mirror once 4 minutes of a batch are spent, so a batch stays
+inside the 15-minute wall clock; a mirror not started is retried a minute later.
+
+- **Backfill:** the nightly maintenance sweep's `releaseMirrors` step queues at most 100 owed
+  files a night, across products, oldest-due first and newest releases first. On the first deploy
+  that is the backfill of every existing release (DJDL: 72 files, 2.67 GiB); afterwards it only
+  retries failed files once their back-off elapses (15 minutes doubling to a day).
+- **Mirror a product now:** `POST /manage/api/products/<slug>/assets/mirror` queues every file the
+  product still owes at once, a failed file's back-off or not (a file whose message is still in
+  flight is skipped, so repeating the request never downloads twice), at most 200 per request, and answers
+  `{queued, owed}`. Repeat until `owed` reaches 0 (`owed` counts the files just queued until their
+  messages are delivered). Audited as `assets.mirror`.
+- **What happened to a file:** `release_mirrors` (one row per queued file: `status` `queued`,
+  `ready` or `failed`, `error`, `attempts`, `next_attempt_at`), the product's audit
+  (`release.mirror` per appended location, `assets.ingest` per pull, refused or not), and
+  `GET /manage/api/products/<slug>/assets`, which lists each copy as a `release-file:<sha256>` slot.
+- **Reason codes:** `digest-mismatch` (the descriptor's `sha256` and GitHub's `digest` disagree:
+  fix the release, never the mirror), `no-digest` (nothing to verify against), `size-mismatch`,
+  `too-large` (over R2's 4.995 GiB single put), `github:404` (the asset is gone), `github:lookup`,
+  `github:rate-limited`, `no-access` (no installation token), `no-source`, and every ingest reason
+  (`sha256-mismatch` for corrupted bytes, `status:<n>`, `timeout`, `network`, `guard:<reason>`).
+  A failed file keeps serving from GitHub.
+- **Stop it:** until HA-10 registers `assets.releases.mirror` (per product) and
+  `assets.hosting.enabled` (platform), mirroring is on for every product that runs Release. Copies
+  already made stay valid either way: their locations are hash-pinned, and both refs that hold a
+  copy (`hosted-asset` for the copy, `release-artifact` for the location) are never dropped by the
+  blob collector.
+
 ## Lazy deltas (P4-17)
 
 When install telemetry shows at least 25 devices (per product, configurable) moving between the

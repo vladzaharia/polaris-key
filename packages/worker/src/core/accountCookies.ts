@@ -22,6 +22,9 @@ export const EMAIL_GATE_COOKIE = "__Host-pkey_gate";
 /** The login card's pending passkey sign-in (I-16): names the WebAuthn challenge this browser
  *  was given, so the assertion completes only here, once. Same attributes as the other two. */
 export const PASSKEY_FLOW_COOKIE = "__Host-pkey_passkey";
+/** Link an existing account (PX-W12): the proofs of both accounts this browser collected, while
+ *  its session moves from one account to the other. Same attributes as the others. */
+export const LINK_FLOW_COOKIE = "__Host-pkey_link";
 
 /** Every cookie of the account realm. */
 export const ACCOUNT_REALM_COOKIES: readonly string[] = [
@@ -29,6 +32,7 @@ export const ACCOUNT_REALM_COOKIES: readonly string[] = [
   SIGNIN_FLOW_COOKIE,
   EMAIL_GATE_COOKIE,
   PASSKEY_FLOW_COOKIE,
+  LINK_FLOW_COOKIE,
 ];
 
 function isAccountCookie(name: string): boolean {

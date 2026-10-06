@@ -14,7 +14,12 @@ export type PortalScenario =
   | "three"
   | "twelve"
   /** Sign-in licences: Quill alone, and Drift Kart held by a Steam key and by signing in. */
-  | "signIn";
+  | "signIn"
+  /**
+   * PX-23's origins (S-24 D21): Tidewater Studio held twice, by a key Mara added to a licence
+   * nobody was named for, and by one Harbor Audio assigned to her ("From Harbor Audio").
+   */
+  | "origins";
 
 type Reply = { status?: number; body: unknown };
 export type Handler = Reply | ((req: Request) => Reply);
@@ -133,6 +138,25 @@ const DRIFT_SIGNIN = lic("drift-kart", "Drift Kart", {
   activeKeyCount: 0,
   deviceCount: 1,
   activatedAt: NOW - 3 * DAY,
+});
+/** PX-23: Tidewater's key licence as the Worker now reports it: a key Mara added. */
+const TIDEWATER_KEY = {
+  ...TIDEWATER,
+  email: "",
+  origin: "key",
+  originStore: null,
+  // Its key can bring it back, so Remove is offered (PX-23 review).
+  removable: true,
+};
+/** PX-23: a second Tidewater licence, which Harbor Audio assigned to Mara's email. */
+const TIDEWATER_FREE = lic("tidewater", "Tidewater Studio", {
+  id: "lic_tidewater-free",
+  tier: "free",
+  deviceCount: 1,
+  activatedAt: NOW - 20 * DAY,
+  origin: "developer",
+  originStore: null,
+  removable: true,
 });
 const SIGN_IN_DEVICE: Record<string, [string, string, string]> = {
   lic_quill: ["quill-tv", "Living room PC", "windows"],
@@ -373,8 +397,15 @@ const ART: Record<
   },
 };
 
-/** The media proxy's answer for `/media/<product>/<icon|header>`, or null (404). */
+/** The media proxy's answer for `/media/<product>/<icon|header>` and account pictures, or null (404). */
 export function portalMedia(pathname: string): Buffer | null {
+  // PX-W16/PX-22: `/media/avatar/<asset>[-96]`, the stored account pictures.
+  const a = pathname.match(/^\/media\/avatar\/([0-9a-f]{64})(-96)?$/);
+  if (a) {
+    const art = AVATAR_ART[a[1]!];
+    const size = a[2] ? 96 : 256;
+    return art ? artPng(size, size, art.bands, art.disc) : null;
+  }
   const m = pathname.match(/^\/media\/([a-z0-9-]+)\/(icon|header)$/);
   const art = m ? ART[m[1]!] : undefined;
   if (!m || !art || (m[2] === "icon" && art.icon === false)) return null;
@@ -826,6 +857,8 @@ function licensesFor(s: PortalScenario) {
       return [NIGHTFALL, TIDEWATER, EMBER, MOSSGARDEN, ...MORE];
     case "signIn":
       return [NIGHTFALL, QUILL_SIGNIN, DRIFT_KEY, DRIFT_SIGNIN];
+    case "origins":
+      return [TIDEWATER_KEY, TIDEWATER_FREE];
     default:
       return [];
   }
@@ -872,6 +905,169 @@ function device(
   };
 }
 
+// ── Account → Profile (PX-W16's `GET|PATCH /api/me/profile`, upload; PX-22) ─────────────────
+
+const asset = (seed: string): string => seed.repeat(64).slice(0, 64);
+const pic = (a: string) => ({
+  asset: a,
+  url: `/media/avatar/${a}`,
+  url96: `/media/avatar/${a}-96`,
+});
+const STEAM_ASSET = asset("5e");
+const GOOGLE_ASSET = asset("6a");
+export const UPLOAD_ASSET = asset("7c");
+/** Stand-in pictures: Steam's fox orange, Google's teal, the upload's violet. */
+const AVATAR_ART: Record<string, { bands: Rgb[]; disc: Rgb }> = {
+  [STEAM_ASSET]: {
+    bands: [
+      [214, 104, 40],
+      [178, 78, 30],
+    ],
+    disc: [250, 232, 210],
+  },
+  [GOOGLE_ASSET]: {
+    bands: [
+      [96, 160, 170],
+      [62, 118, 128],
+    ],
+    disc: [232, 196, 170],
+  },
+  [UPLOAD_ASSET]: {
+    bands: [
+      [92, 64, 170],
+      [60, 40, 120],
+    ],
+    disc: [236, 226, 255],
+  },
+};
+
+const PROFILE_SOURCES = [
+  {
+    linkId: "lnk_steam",
+    provider: "steam",
+    label: "marafox",
+    name: "marafox",
+    picture: pic(STEAM_ASSET),
+  },
+  {
+    linkId: "lnk_google",
+    provider: "google",
+    label: "mara.fennick@gmail.com",
+    name: "Mara Fennick",
+    picture: pic(GOOGLE_ASSET),
+  },
+  {
+    linkId: "lnk_gc",
+    provider: "gamecenter",
+    label: "Mara F.",
+    name: "Mara F.",
+    picture: null,
+  },
+];
+
+type Profile = {
+  displayName: string | null;
+  displayNameSource: Record<string, unknown> | null;
+  explicitName: boolean;
+  picture: ReturnType<typeof pic> | null;
+  pictureSource: Record<string, unknown> | null;
+  explicitPicture: boolean;
+  locale: string | null;
+  sources: typeof PROFILE_SOURCES;
+};
+
+/** Every signed-in scenario: a typed name and Initials chosen, so the chip shows initials. */
+const PROFILE_INITIALS: Profile = {
+  displayName: ACCOUNT.name,
+  displayNameSource: { kind: "typed" },
+  explicitName: true,
+  picture: null,
+  pictureSource: { kind: "initials" },
+  explicitPicture: true,
+  locale: "en-US",
+  sources: PROFILE_SOURCES,
+};
+
+/** Frames 36 and 50: a typed name and the Steam picture, both chosen. */
+export const PROFILE_STEAM: Profile = {
+  ...PROFILE_INITIALS,
+  picture: pic(STEAM_ASSET),
+  pictureSource: { kind: "provider", linkId: "lnk_steam", provider: "steam" },
+};
+
+/**
+ * The profile routes over one profile: GET answers it, PATCH applies an explicit choice the way
+ * the Worker does (`card/profile.ts`), the upload answers a stored asset, and `GET /api/me`
+ * carries the profile's name and picture as the Worker derives them. `patches` records each body.
+ */
+export function profileRoutes(
+  start: Profile = PROFILE_INITIALS,
+  patches: unknown[] = [],
+): Record<string, Handler> {
+  let profile = start;
+  const source = (linkId: string) =>
+    profile.sources.find((o) => o.linkId === linkId)!;
+  return {
+    "/api/me": () => ({
+      body: {
+        account: {
+          ...ACCOUNT,
+          name: profile.displayName ?? ACCOUNT.name,
+          avatarUrl: profile.picture?.url ?? null,
+        },
+        csrf: "csrf",
+      },
+    }),
+    "GET /api/me/profile": () => ({ body: { profile } }),
+    "PATCH /api/me/profile": (req) => {
+      const change = req.postDataJSON() as {
+        name?: string;
+        nameFrom?: string;
+        picture?: "initials" | { from?: string; upload?: string };
+      };
+      patches.push(change);
+      const next = { ...profile };
+      if (change.name !== undefined) {
+        next.displayName = change.name;
+        next.displayNameSource = { kind: "typed" };
+        next.explicitName = true;
+      } else if (change.nameFrom) {
+        const o = source(change.nameFrom);
+        next.displayName = o.name;
+        next.displayNameSource = {
+          kind: "provider",
+          linkId: o.linkId,
+          provider: o.provider,
+        };
+        next.explicitName = true;
+      }
+      const p = change.picture;
+      if (p === "initials") {
+        next.picture = null;
+        next.pictureSource = { kind: "initials" };
+      } else if (p?.from) {
+        const o = source(p.from);
+        next.picture = o.picture;
+        next.pictureSource = {
+          kind: "provider",
+          linkId: o.linkId,
+          provider: o.provider,
+        };
+      } else if (p?.upload) {
+        next.picture = pic(p.upload);
+        next.pictureSource = { kind: "upload" };
+      }
+      if (p) next.explicitPicture = true;
+      profile = next;
+      return { body: { profile } };
+    },
+    "POST /api/me/profile/picture": () => ({
+      status: 201,
+      body: { upload: pic(UPLOAD_ASSET) },
+    }),
+  };
+}
+
 export function portalRoutes(s: PortalScenario): Record<string, Handler> {
   if (s === "signedOut") {
     return {
@@ -893,7 +1089,7 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
       ? []
       : OFFERS.filter((o) => !licenses.some((l) => l.product === o.product));
   const routes: Record<string, Handler> = {
-    "/api/me": { body: { account: ACCOUNT, csrf: "csrf" } },
+    ...profileRoutes(),
     "/api/capabilities": { body: CAPS },
     "/api/licenses": () => ({ body: { licenses } }),
     // One item per product (the first licence listed is the best), like the Worker.
@@ -966,59 +1162,79 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
     ...MORE.filter((l) => l.product !== "quill"),
     QUILL_SIGNIN,
     DRIFT_SIGNIN,
+    TIDEWATER_FREE,
   ];
   // Quill is keyless in every scenario that lists it; only "signIn" gives it a device.
   const quill =
     s === "signIn" ? QUILL_SIGNIN : MORE.find((l) => l.product === "quill")!;
-  for (const l of ALL.map((x) => (x.product === "quill" ? quill : x))) {
-    const own = SIGN_IN_DEVICE[l.id];
-    routes[`/api/licenses/${l.product}/${l.id}`] = () => ({
-      body: {
-        ...l,
-        keys: l.keyCount
-          ? [
-              {
-                hash: "h",
-                status: "active",
-                label: null,
-                createdAt: l.activatedAt,
-                lastUsedAt: null,
-              },
-            ]
-          : [],
-        devices:
-          l.product === "nightfall"
-            ? [
-                device("d1", "Mara's MacBook Pro", "macos", NOW - 2 * 3600),
-                device("d2", "Studio PC", "windows", NOW - DAY),
-                device(
-                  "d3",
-                  "Old laptop",
-                  "windows",
-                  NOW - 200 * DAY,
-                  "deauthorized",
-                ),
-              ].filter((d) => !removed.has(d.deviceId))
-            : own && l.deviceCount
-              ? [device(own[0], own[1], own[2], NOW - 3 * 3600)].filter(
-                  (d) => !removed.has(d.deviceId),
-                )
-              : l.deviceCount
-                ? [
-                    device(
-                      `${l.product}-1`,
-                      "Mara's MacBook Pro",
-                      "macos",
-                      NOW - 3 * 3600,
-                    ),
-                  ]
-                : [],
-      },
-    });
-    routes[`POST /api/releases/${l.product}/rel_142/artifacts/n-mac/token`] = {
-      status: 201,
-      body: { url: "/download/tok" },
+  for (const base of ALL.map((x) => (x.product === "quill" ? quill : x))) {
+    const own = SIGN_IN_DEVICE[base.id];
+    // The scenario's own copy of the licence when it holds one (PX-23's origins), else the base.
+    const current = (): Lic =>
+      licenses.find((x) => x.product === base.product && x.id === base.id) ??
+      base;
+    // PX-23: Remove from my library; it stays out of every later answer (LX-26's block).
+    routes[`DELETE /api/licenses/${base.product}/${base.id}`] = () => {
+      if (!licenses.some((x) => x.product === base.product && x.id === base.id))
+        return { status: 404, body: { error: "not_found" } };
+      licenses = licenses.filter(
+        (x) => !(x.product === base.product && x.id === base.id),
+      );
+      return {
+        body: { ok: true, product: base.product, licenseId: base.id },
+      };
     };
+    routes[`/api/licenses/${base.product}/${base.id}`] = () => {
+      const l = current();
+      return {
+        body: {
+          ...l,
+          keys: l.keyCount
+            ? [
+                {
+                  hash: "h",
+                  status: "active",
+                  label: null,
+                  createdAt: l.activatedAt,
+                  lastUsedAt: null,
+                },
+              ]
+            : [],
+          devices:
+            l.product === "nightfall"
+              ? [
+                  device("d1", "Mara's MacBook Pro", "macos", NOW - 2 * 3600),
+                  device("d2", "Studio PC", "windows", NOW - DAY),
+                  device(
+                    "d3",
+                    "Old laptop",
+                    "windows",
+                    NOW - 200 * DAY,
+                    "deauthorized",
+                  ),
+                ].filter((d) => !removed.has(d.deviceId))
+              : own && l.deviceCount
+                ? [device(own[0], own[1], own[2], NOW - 3 * 3600)].filter(
+                    (d) => !removed.has(d.deviceId),
+                  )
+                : l.deviceCount
+                  ? [
+                      device(
+                        `${l.product}-1`,
+                        "Mara's MacBook Pro",
+                        "macos",
+                        NOW - 3 * 3600,
+                      ),
+                    ]
+                  : [],
+        },
+      };
+    };
+    routes[`POST /api/releases/${base.product}/rel_142/artifacts/n-mac/token`] =
+      {
+        status: 201,
+        body: { url: "/download/tok" },
+      };
   }
   // PX-W6: where each licence came from; Drift Kart's key licence was bought on Steam (store
   // name only, never an order id), so its origin reads "Steam key".

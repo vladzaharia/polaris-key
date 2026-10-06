@@ -42,7 +42,8 @@ import type { AdminSession } from "../../core/adminApi.js";
 import { handleIdentityRoutes } from "./routes.js";
 import { handleIdentityAdmin } from "./admin.js";
 import { authorizeRegistration } from "./registration.js";
-import { IDENTITY_SETTINGS_SLICE } from "./settings.js";
+import { IDENTITY_ROW_SETTINGS, IDENTITY_SETTINGS_SLICE } from "./settings.js";
+import { manifestRowSettingStatements } from "../../core/rowSettings.js";
 // LX-26: registers Identity's licence-holder hooks with Core (`core/licenseHolders.ts`) at load,
 // so License's creation path and every account-email verification reach them.
 import "./accounts/holders.js";
@@ -51,6 +52,13 @@ export const identityService: ServiceDescriptor = {
   slug: "identity",
   /** ST-03: this service's settings registry slice (`settings.ts`). */
   settings: IDENTITY_SETTINGS_SLICE,
+  /**
+   * LX-06: `oidc.syncTierOnSignIn` → the claimable `identity.oidc.syncTierOnSignIn` row, on every
+   * link and resync whatever Identity's enablement, so it is already right when Identity is
+   * turned on (it does nothing while Identity is off). A console claim is never overwritten.
+   */
+  manifestIngestAlways: (parsed, product, now) =>
+    manifestRowSettingStatements(product, IDENTITY_ROW_SETTINGS, parsed, now),
   handle: handleIdentityRoutes,
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleIdentityAdmin(ctx),
@@ -86,9 +94,8 @@ export const identityService: ServiceDescriptor = {
    * `/auth/login` is not advertised, and no longer exists: §R1 removes it as a redundant alias
    * of `/auth/start`.
    *
-   * `/auth/poll` is not advertised either (I-01, S-16 §5.3): no SDK reads it, and it completes
-   * only device-bound flows that nothing starts any more. The route keeps answering until I-13
-   * replaces it with the native redirect token route.
+   * `/auth/poll` is not advertised either (I-01, S-16 §5.3), and no longer exists: no SDK read
+   * it, and it could complete only device-bound flows that nothing starts any more.
    */
   discoveryFragment: async ({ db, product, base }: DiscoveryContext) => {
     const row = await db.first<{ product: string }>(

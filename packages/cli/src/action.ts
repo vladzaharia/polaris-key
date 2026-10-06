@@ -22,6 +22,8 @@ import { baPackage, baUpload } from "./transportAppleBa.js";
 import { padModules, type PadDelivery } from "./transportPlayPad.js";
 import { steamVdf } from "./transportSteam.js";
 import { cmdStorefront } from "./storefronts/command.js";
+import { parseAssetMap, pushAssets, resolveAssetMap } from "./assets.js";
+import path from "node:path";
 
 /** The Action's inputs, in `action.yml` order. */
 export const ACTION_INPUTS = [
@@ -60,6 +62,7 @@ export const ACTION_INPUTS = [
   "storefront",
   "itch-platform",
   "storefront-outlet",
+  "assets",
 ] as const;
 
 /** A-18h: the `storefront` input's steps, onto `pkey storefront …`. */
@@ -181,6 +184,16 @@ export async function runAction(io: ActionIo): Promise<number> {
     const product = input("product");
     const dir = input("dir");
     if (!product) throw new Error("The product input is required.");
+    // HA-06: the `assets` input is a step of its own, and the one step that needs no `dir`.
+    const assets = input("assets");
+    if (assets !== undefined) {
+      if (input("storefront") !== undefined || input("transport") !== undefined)
+        throw new Error(
+          "assets is a step of its own: set it without storefront or transport.",
+        );
+      await runAssetsStep(io, input, product, dir, assets);
+      return 0;
+    }
     if (!dir) throw new Error("The dir input is required.");
     const dryRun = input("dry-run");
     if (dryRun !== undefined && dryRun !== "true" && dryRun !== "false")
@@ -606,6 +619,66 @@ async function runStorefrontStep(
     },
   );
   if (code !== 0) throw new Error(`storefront ${step} failed.`);
+}
+
+/**
+ * HA-06: host the files the `assets` input maps (`<glob>: <slot>[@<locale>]` per line) in their
+ * slots, through one upload ticket and one `POST /<p>/assets` (`pkey assets push`'s library).
+ * Globs resolve against `dir` when it is set, else the workspace. Publish, transport and
+ * storefront inputs are refused, not ignored. A refused file fails the step; a slot the console
+ * claimed or a manifest declares is kept, which does not.
+ */
+async function runAssetsStep(
+  io: ActionIo,
+  input: (name: (typeof ACTION_INPUTS)[number]) => string | undefined,
+  product: string,
+  dir: string | undefined,
+  assets: string,
+): Promise<void> {
+  const wrong = ACTION_INPUTS.filter(
+    (n) =>
+      ![
+        "product",
+        "dir",
+        "base-url",
+        "dry-run",
+        "assets",
+        "deliverable",
+        "transport-report",
+      ].includes(n) && input(n) !== undefined,
+  ) as string[];
+  if (input("deliverable") !== undefined && input("deliverable") !== "app")
+    wrong.push("deliverable");
+  if (input("transport-report") === "false") wrong.push("transport-report");
+  if (wrong.length)
+    throw new Error(
+      `${wrong.join(", ")} ${wrong.length === 1 ? "does" : "do"} not apply to an assets step.`,
+    );
+  const dryRun = input("dry-run");
+  if (dryRun !== undefined && dryRun !== "true" && dryRun !== "false")
+    throw new Error(
+      `dry-run must be true or false (got ${JSON.stringify(dryRun)}).`,
+    );
+  const base = dir ? path.resolve(io.cwd, dir) : io.cwd;
+  const entries = await resolveAssetMap(base, parseAssetMap(assets));
+  const answer = await pushAssets({
+    cwd: io.cwd,
+    product,
+    entries,
+    baseUrl: input("base-url"),
+    dryRun: dryRun === "true",
+    env: io.env,
+    stdout: io.stdout,
+    stderr: io.stderr,
+    fetchImpl: io.fetchImpl,
+    sleep: io.sleep,
+  });
+  if (answer && answer.refused.length > 0)
+    throw new Error(
+      `${answer.refused.length} file${answer.refused.length === 1 ? " was" : "s were"} refused: ${answer.refused
+        .map((r) => `${r.slot} (${r.reason})`)
+        .join(", ")}.`,
+    );
 }
 
 async function writeOutputs(

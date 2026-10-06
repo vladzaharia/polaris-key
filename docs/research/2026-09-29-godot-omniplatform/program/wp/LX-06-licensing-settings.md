@@ -18,6 +18,44 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/LX-01.md`](../plans/LX-01.md):** the §3.2 keys; a derived default for `entitlementModel` (`legacy` for products created before a constant committed here, else `combined`; Q2); no `oidc_config` column; `refundGraceHours` kept, capped at 168 hours, and S-18's A.4 row reworded to say it only delays the revocation (Q3).
 
+## Corrections from the code (LX-06, 2026-10-06)
+
+Where this brief and the plan met the code, the code won:
+
+- **Admin API.** `plans/LX-01.md` §6 says the settings "use ST-05's generic API, so they add no
+  route", but ST-05 is not built and this brief's header carries rule 10. LX-06 therefore builds
+  the first slice of S-18 §4.7's generic API at its final paths, for row-backed claimable keys only:
+  `GET /manage/api/products/{p}/settings/effective[?area=]`, `PATCH` and `DELETE
+…/settings/{key}`. ST-05 widens the same routes to every key; nothing needs an alias.
+- **Storage.** The row-backed store is a new Core module, `core/rowSettings.ts`, beside ST-01b's
+  column-backed `settingsClaims.ts`. ST-04's resolver replaces `readRowSettings` and its
+  `writeSetting()` replaces `writeRowSetting`/`revertRowSetting`.
+- **Manifest side.** License and Identity apply their rows from `manifestIngestAlways`, with the
+  claim guard in SQL. A setting the manifest stops declaring loses its manifest row (omit-clears),
+  so `.pkey/` keeps describing what is in force; a claim is never touched.
+- **Derived default.** Expressed as registry data (`SettingDef.legacyDefault`,
+  `createdBefore` = 2026-10-06T00:00:00Z) so ST-04's resolver applies it without a License hook.
+- **Key and area.** `identity.syncTierOnSignIn` (ST-03's seed) is renamed
+  `identity.oidc.syncTierOnSignIn` per the plan; its name makes it security-widening under the
+  registry's rule 2. The licensing keys keep ST-03's area `license.licensing` (not the plan's
+  `license.policy`, which is the Enrollment/defaults area), because License → Settings renders
+  exactly that area.
+- **`reanchor: onRefresh` and `dunningGraceDays`.** `onRefresh` is left out of the shared
+  vocabulary until LX-21 (the validator, schema and registry refuse it). `dunningGraceDays` is
+  validated and stored from the manifest but stays `pending` (LX-23): the console hides it and the
+  API refuses writes.
+- **Console.** Sign-in's `syncTierOnSignIn` row is on Identity → Sign-in (S-19 §7.13's table);
+  the licensing keys are on the new License → Settings page.
+
+## Lead decisions (review, 2026-10-06)
+
+- **D1.** `COMBINED_ENTITLEMENT_MODEL_SINCE` stays as committed (2026-10-06T00:00Z). LX-09 moves it
+  to its own deploy time, so products registered before LX-09 read `legacy`; that direction is safe
+  because only the displayed default changes until LX-09 reads the setting.
+- **D2.** Accepted: a licensing setting (or `oidc.syncTierOnSignIn`) dropped from `.pkey/` returns
+  to its default, the per-descriptor omit-clears exception of S-18 §4.5 item 1, which now names
+  these keys beside `web.origins` so ST-04 and ST-05 implement the same rule.
+
 ## Goal
 
 S-19's per-product licensing settings (`licensing.entitlementModel`, `entitlementHolder`, `clampGraceToExpiry`, `anchorPolicy`, `reanchor`, `refundGraceHours`, `dunningGraceDays`) are claimable `product_settings` rows in S-18's registry, declarable in the manifest as `licensing.*` (plus `oidc.syncTierOnSignIn`), editable in License → Settings, and served by an admin API.
@@ -70,7 +108,20 @@ mise exec node@22 -- pnpm --filter @polaris-key/manifest test
 
 ## Hand-off
 
-- LX-07 onward read these settings through ST-04's resolver once it exists.
+- LX-07 onward read these settings through ST-04's resolver once it exists (until then through
+  `readLicensingSettings` and `readSyncTierOnSignIn`).
+- LX-09 moves `COMBINED_ENTITLEMENT_MODEL_SINCE` to its own deploy time, so products registered
+  before LX-09 read `legacy` (D1; the same line is in LX-09's brief).
+- ST-05: the resync dry run (`planRepoManifest`) must list row-setting applies and clears, not only
+  the claims it leaves alone (the release service cannot see the License and Identity entries
+  under rule 6, so this goes through the registry).
+- Follow-ups from review (not blocking):
+  - **N2 (ST-04):** Revert and reset delete the row, so its version returns to 0; keep a tombstone
+    row as platform settings do, so a version never goes backwards.
+  - **N4 (ST-07):** an L0 change saves without an Undo, and an L3 level maps to the danger intent
+    without a typed confirmation; the `SettingsRow` v2 confirmation should cover both.
+  - **N5 (ST-04):** the manifest-ingest audit rows use the "Manifest resync" actor and "set from the
+    manifest" label on a first link too; ST-04's `origin` column should tell link from resync.
 
 The role agent sets `--set LX-06 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

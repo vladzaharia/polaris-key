@@ -1,0 +1,75 @@
+---
+/**
+ * A component's states and the copy each one shows, straight from the kit copy catalog
+ * (packages/brand/kit-copy/components.json) with each key's English text and platform variants
+ * from the generated table. An unknown component fails the build, so a page cannot outlive its
+ * catalog entry.
+ */
+import catalog from "../../../../brand/kit-copy/components.json";
+import {
+  KIT_COPY_EN,
+  KIT_COPY_VARIANTS,
+  PLATFORM_LABELS,
+} from "../../lib/kitCopy";
+
+interface Props {
+  /** The component's catalog name, e.g. "Devices". */
+  component: string;
+}
+
+const { component } = Astro.props;
+const entry = (
+  catalog as {
+    components: Record<
+      string,
+      { states: Record<string, { copy: string[] }> }
+    >;
+  }
+).components[component];
+if (entry === undefined) {
+  throw new Error(
+    `ComponentStates: "${component}" is not in packages/brand/kit-copy/components.json`,
+  );
+}
+const en = KIT_COPY_EN as Readonly<Record<string, string>>;
+const variantsOf = (key: string): string[] =>
+  Object.entries(KIT_COPY_VARIANTS[key] ?? {}).map(
+    ([platform, text]) => `${PLATFORM_LABELS[platform] ?? platform}: ${text}`,
+  );
+---
+
+<table class="pk-ui-states">
+  <thead>
+    <tr>
+      <th scope="col">State</th>
+      <th scope="col">Copy keys, with the English text</th>
+    </tr>
+  </thead>
+  <tbody>
+    {
+      Object.entries(entry.states).map(([state, { copy }]) => (
+        <tr>
+          <td>
+            <code>{state}</code>
+          </td>
+          <td>
+            {copy.length === 0 ? (
+              <span class="pk-ui-muted">No copy of its own</span>
+            ) : (
+              <ul class="pk-ui-copy">
+                {copy.map((key) => (
+                  <li>
+                    <code>{key}</code> <span>{en[key] ?? ""}</span>
+                    {variantsOf(key).map((v) => (
+                      <span class="pk-ui-muted"> · {v}</span>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </td>
+        </tr>
+      ))
+    }
+  </tbody>
+</table>

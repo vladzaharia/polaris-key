@@ -81,9 +81,41 @@ Each service resolves its own settings today with different precedence ([S-18 §
   `setPruneRetention()` (the feed route's write) keeps the table's `admin:<sub>` spelling.
 - **Expired claims.** The write path reads an expired break-glass row (`expires_at` passed) as
   no claim, version 0, exactly as the resolver does; a write over it restarts the version at 1.
-- **Not wired here.** `identity.reservedDisplayTerms` and `identity.displayNameApproved` stay
-  `pending: { wp: "ST-04" }`: wiring them needs the manifest validator to take extra terms and
-  an approval (a `shared-manifest` change), which is outside this scope. Proposed follow-up.
+- **Not wired here.** `identity.reservedDisplayTerms` and `identity.displayNameApproved` are
+  `pending: { wp: "PX-W13b" }`: wiring them needs the manifest validator to take extra terms and
+  an approval (a `shared-manifest` change). PX-W13b, registered for it, does that.
+
+### Batch 3 integration (2026-10-06, the one main merge)
+
+- **ST-20 on the one write path.** `writeSetting()` takes `breakGlass` (`{ reason, seconds? }`):
+  on a manifest-authoritative product (the system product always) a console write to a governed
+  key, a claimable key claimed through a `product_settings` row, is refused
+  (`manifest_authoritative`) without it; with it the claim row stores the reason and
+  `expires_at` (at most 7 days, `invalid_break_glass` beyond), and the audit summary may take the
+  outcome (`audit.summary` as a function). A key with a `systemLock` is refused on the system
+  product (`locked`). The mode's reading moved to `core/settings/authority.ts` (re-exported by
+  `settingsClaims.ts`); `decideClaim`, `stmtSetManifestAuthority` and `claimFacts` are gone. The
+  products PATCH (including the mode itself, `core.manifest.authoritative`) and the catalog publish
+  route their break-glass through it; ST-20's apply side (`claimsForApply`,
+  `endBreakGlassStatements`) stays, its column writes now through the column adapters.
+- **LX-06 through `writeSetting()`.** `writeRowSetting` / `revertRowSetting` keep their checks and
+  answers and write through it (a row-backed Revert with the snapshot's value puts a
+  `source = 'manifest'` row back). The inlined `system_product` refusal is gone: the system
+  product and any manifest-authoritative customer product are decided like every other governed
+  key (break-glass). The resolver applies `legacyDefault` (by `products.created_at`) and
+  `systemLock`; `entitlementModelFor` reads `licensing.entitlementModel` through it (the settings
+  registry reaches the portal's consent view from `dispatch.ts`).
+- **ST-19b.** `core.registration`'s adapter and probe were in place; the `.pkey/release` block's
+  column entries got decode-only adapters (`release.github`, `binaryName`, `channelWorkflow`,
+  `betaBranch`, `summaryMarker`, `manualChannels`, `keys`), and the four discovery-carried ones
+  probes that write as the manifest writer does. `linkExisting.ts`'s link is a listed manifest
+  writer.
+- **For batch 4.** `core/settingsBackfill.ts` (ST-01c) is listed as a manifest writer, skipped
+  while absent. PX-W9's `keyEntryLimit(db, product)` maps to
+  `resolveProductSetting(ctx, product, "identity.keyEntry.limit")` (the value, else
+  `KEY_ENTRY_LIMIT_DEFAULT`): the same row, validation and default, plus the platform bound
+  (`identity.keyEntry.limit` at platform scope, `max`) and expired-claim handling; its five callers
+  need the settings context (`env`, `db`, the registry).
 
 ## Steps
 
@@ -127,9 +159,8 @@ mise exec node@22 -- pnpm gen:transcripts -- --check
     compatibility mode each enforce, the guard, and the A-13 route folded in).
   - Fold A-13's platform-settings route into `writeSetting()` (strict), filling `origin` and
     `setting_key` on its `platform_audit` rows.
-- **ST-20**: break-glass claims set `product_settings.expires_at` through a `writeSetting()`
-  option; a row-claimed key on the system product is refused (`manifest_authoritative`) until
-  then, and an expired claim already reads as none on both paths.
+- **ST-20** (done in the batch 3 merge): break-glass claims set `product_settings.expires_at`
+  through `writeSetting()`'s `breakGlass` option; an expired claim reads as none on both paths.
 
 The role agent sets `--set ST-04 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

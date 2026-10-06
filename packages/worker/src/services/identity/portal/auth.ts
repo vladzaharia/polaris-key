@@ -46,6 +46,10 @@ import {
   isSameOriginNavigation,
 } from "../../../core/platform.js";
 import { escapeHtml, renderBrandPage } from "../../../core/brandHtml.js";
+import {
+  LINK_FLOW_COOKIE,
+  clearAccountRealmCookie,
+} from "../../../core/accountCookies.js";
 
 const FLOW_TTL_SECONDS = 600;
 
@@ -532,14 +536,15 @@ export async function handlePortalLogout(
       await revokeSessionByHash(db, await sessionIdHash(env, session.sid), now);
     }
   }
+  const headers = new Headers({
+    location: "/",
+    "set-cookie": buildPortalClearCookie(),
+    "cache-control": "no-store",
+  });
+  // PX-W12: a Link an existing account flow in this browser ends with the session.
+  headers.append("set-cookie", clearAccountRealmCookie(LINK_FLOW_COOKIE));
   return new Response(null, {
     status: 302,
-    headers: portalSecurityHeaders(
-      new Headers({
-        location: "/",
-        "set-cookie": buildPortalClearCookie(),
-        "cache-control": "no-store",
-      }),
-    ),
+    headers: portalSecurityHeaders(headers),
   });
 }

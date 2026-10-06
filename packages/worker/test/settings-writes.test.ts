@@ -71,7 +71,29 @@ const MANIFEST_WRITERS: Readonly<
   "admin/systemProduct.ts": {
     why: "the deploy hook's bootstrap of the system product (S-18 §4.5 item 8)",
   },
+  "services/release/linkExisting.ts": {
+    why: "linking an existing product to its repository: the link records the repository it applies (release.github) and restores it on a refused link",
+    functions: ["linkExistingProduct"],
+  },
+  "core/rowSettings.ts": {
+    why: "the row-backed settings' manifest rows at link and resync (LX-06), claim-guarded in SQL",
+    functions: ["manifestRowSettingStatements"],
+  },
+  "core/settingsClaims.ts": {
+    why: "the end of a break-glass claim at an apply (ST-20): the claim row goes in the apply's batch",
+    functions: ["endBreakGlassStatements"],
+  },
+  // ST-01c (batch 4): the one-time backfill applies the manifest snapshot's values. Listed ahead
+  // of it so the merge is trivial; a module not on this branch yet is skipped (OPTIONAL_WRITERS).
+  "core/settingsBackfill.ts": {
+    why: "ST-01c's one-time backfill of manifest-declared values (S-18 §4.14.2)",
+  },
 };
+
+/** Manifest writers listed ahead of the package that adds them: skipped while absent. */
+const OPTIONAL_WRITERS: ReadonlySet<string> = new Set([
+  "core/settingsBackfill.ts",
+]);
 
 /** Writers kept for tests, by module: no module under `src/` may call them. */
 const FIXTURE_WRITERS: Readonly<Record<string, readonly string[]>> = {
@@ -341,10 +363,12 @@ export async function revertServicesToManifest(db: Db, product: string, at: numb
       ...Object.keys(MANIFEST_WRITERS),
       ...Object.keys(FIXTURE_WRITERS),
     ]) {
+      if (OPTIONAL_WRITERS.has(file) && !FILES.has(file)) continue;
       expect(FILES.has(file), `${file} exists`).toBe(true);
       expect(settingWrites(FILES.get(file)!), file).not.toEqual([]);
     }
     for (const [file, w] of Object.entries(MANIFEST_WRITERS)) {
+      if (OPTIONAL_WRITERS.has(file) && !FILES.has(file)) continue;
       const text = FILES.get(file)!;
       const writing = new Set(
         writeSites(text).map((s) => enclosing(text, s.at)),

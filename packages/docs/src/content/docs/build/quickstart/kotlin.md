@@ -27,4 +27,4 @@ val theme = client.config("ui.theme", JsonPrimitive("dark"))
 draws the boot shell, the gate and the update prompt over the host's `MaterialTheme`.
 
 Next: the full [Kotlin SDK reference](/docs/build/sdks/kotlin/) and the
-[Compose UI kit](/docs/build/sdks/kotlin-ui/).
+[Compose UI kit](/docs/build/ui/frameworks/compose/).

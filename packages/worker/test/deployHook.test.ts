@@ -8,6 +8,9 @@
  *     configuration, never the manifest);
  *   - a rerun changes nothing and never turns back on what an operator switched off;
  *   - an operator-claimed publisher is left exactly as set;
+ *   - ST-20: the answer and the platform activity row list the system product's live break-glass
+ *     claims; one whose field the deployed `.pkey/` changes, or whose 7 days ran out, ends and
+ *     the manifest's value is written;
  *   - the policy: only deploy.yml of the configured repository, in its environment, at a protected
  *     v* tag; a replayed token, a foreign repository, another workflow, a branch, a bad body or a
  *     manifest that is not the system product's are refused; no configuration, no route.
@@ -50,6 +53,10 @@ import {
   getManifestSnapshot,
   manifestFilesSha256,
 } from "../src/core/manifestSnapshot.js";
+import {
+  BREAK_GLASS_MAX_SECONDS,
+  stmtClaim,
+} from "../src/core/settingsClaims.js";
 
 const ROOT = join(
   fileURLToPath(new URL(".", import.meta.url)),
@@ -453,5 +460,94 @@ describe("the deploy hook (F-10 automation)", () => {
 
   it("answers POST only", async () => {
     expect((await hook(await token(), undefined, "GET")).status).toBe(405);
+  });
+});
+
+describe("the deploy summary of break-glass claims (ST-20, S-18 §4.5 items 7–8)", () => {
+  const KEY = "license.defaults.deviceLimit";
+  const REASON = "incident 42: raise the limit while the fix ships";
+
+  /** An operator's break-glass claim on the system product's device limit, set to 9. */
+  async function breakGlass(expiresAt: number): Promise<void> {
+    await db.batch([
+      {
+        sql: "UPDATE products SET default_device_limit = 9 WHERE slug = ?",
+        params: [SYSTEM_PRODUCT_SLUG],
+      },
+      stmtClaim(SYSTEM_PRODUCT_SLUG, KEY, "u1", NOW - 60, REASON, expiresAt),
+    ]);
+  }
+  const deviceLimit = async () =>
+    (await getProduct(db, SYSTEM_PRODUCT_SLUG))!.default_device_limit;
+  const claimRow = () =>
+    db.first<{ expires_at: number }>(
+      "SELECT expires_at FROM product_settings WHERE product = ? AND key = ?",
+      SYSTEM_PRODUCT_SLUG,
+      KEY,
+    );
+  /** The root `.pkey/product`, declaring a device limit of its own. */
+  const withLimit = (n: number) => ({
+    ...FILES,
+    product: `${FILES.product}\nlicensing:\n  defaultDeviceLimit: ${n}\n`,
+  });
+
+  it("lists a live claim (key and expiry only) and keeps it across a deploy that leaves the field alone", async () => {
+    expect((await hook(await token())).status).toBe(200);
+    const expiresAt = NOW - 60 + BREAK_GLASS_MAX_SECONDS;
+    await breakGlass(expiresAt);
+    const res = await hook(await token());
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(JSON.parse(text)).toMatchObject({
+      breakGlass: [{ key: KEY, expiresAt }],
+      breakGlassEnded: [],
+    });
+    // The job log may be readable beyond the operators: no reason, no claimant.
+    expect(text).not.toContain("incident 42");
+    expect(text).not.toContain("u1");
+    expect(await deviceLimit()).toBe(9);
+    expect(await claimRow()).toEqual({ expires_at: expiresAt });
+    // The platform activity row (console-only) names the claim with its reason.
+    const audit = await db.first<{ summary: string }>(
+      "SELECT summary FROM platform_audit WHERE action = 'feed.bootstrap' ORDER BY at DESC, rowid DESC LIMIT 1",
+    );
+    expect(audit?.summary).toContain(
+      `live break-glass claims: ${KEY} until ${new Date(expiresAt * 1000).toISOString()} (${REASON})`,
+    );
+  });
+
+  it("ends the claim at the first deploy whose .pkey/ changes the field, and applies the manifest's value", async () => {
+    expect((await hook(await token())).status).toBe(200);
+    await breakGlass(NOW + BREAK_GLASS_MAX_SECONDS);
+    const res = await hook(await token(), { files: withLimit(7) });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      breakGlass: [],
+      breakGlassEnded: [{ key: KEY, why: "changed" }],
+    });
+    expect(await deviceLimit()).toBe(7);
+    expect(await claimRow()).toBeNull();
+    const ended = await db.first<{ actor_sub: string; summary: string }>(
+      "SELECT actor_sub, summary FROM audit WHERE product = ? AND action = 'setting.breakGlass.end'",
+      SYSTEM_PRODUCT_SLUG,
+    );
+    expect(ended?.actor_sub).toBe("deploy");
+    expect(ended?.summary).toContain(
+      `Break-glass claim on ${KEY} ended: the manifest changed it`,
+    );
+  });
+
+  it("ends an expired claim at the next deploy, and the field returns to the manifest", async () => {
+    expect((await hook(await token())).status).toBe(200);
+    // Claimed 7 days and a minute ago: its 7 days ran out a minute before this deploy.
+    await breakGlass(NOW - 60);
+    const res = await hook(await token());
+    expect(await res.json()).toMatchObject({
+      breakGlass: [],
+      breakGlassEnded: [{ key: KEY, why: "expired" }],
+    });
+    // The root .pkey/ declares no limit: the parser's default.
+    expect(await deviceLimit()).toBe(5);
+    expect(await claimRow()).toBeNull();
   });
 });

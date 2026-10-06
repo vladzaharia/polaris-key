@@ -27,11 +27,13 @@ import { SectionCard } from "./Card.js";
  * describes has a different issue from the one the header shows. With
  * several licenses for the product, a switcher ("2 licenses · Pro, Edu") picks the one this
  * card, Devices and Package access describe; each option names the tier and its short origin
- * ("Pro · Key …3WPLDA", "Standard · Sign-in"). The tier is a neutral pill with the device count
- * beside it ("1 of 5 devices") for every licence; under it the origin and term in plain words
- * ("From signing in · Lifetime", "Steam key · Expires 24 Dec 2026"). Every licence is
- * account-bound, so none is labelled by type (owner decision, 2026-10-05). Get a new key waits
- * for G7.
+ * ("Pro · Key …3WPLDA", "Standard · Sign-in", "Free · From Acme"). The tier is a neutral pill
+ * with the device count beside it ("1 of 5 devices") for every licence. How the licence reached
+ * the person is the **License source** fact beside "Activated", in plain words the Worker's
+ * `origin` decides (PX-23, S-24 D21): "Key ending 3WPLDA" or "Added with a key", "Steam key",
+ * "From Steam", "From <Developer>", "From signing in". The term is not repeated as a meta line:
+ * "Updates included" already says it (owner, 2026-10-06). Every licence is account-bound, so
+ * none is labelled by type (owner decision, 2026-10-05). Get a new key waits for G7.
  */
 export function LicenseCard({
   product,
@@ -94,6 +96,7 @@ export function LicenseCard({
                 {licenseOptionLabel(l, licenseStatus(l, now), {
                   store: storeOf(l.id),
                   keys: l.id === detail?.id ? detail.keys : undefined,
+                  developer: product.presentation.developer,
                 })}
               </option>
             ))}
@@ -143,13 +146,11 @@ function LicenseFacts({
   const status = licenseStatus(detail, now);
   const inUse = detail.devices.filter((d) => d.status === "authorized").length;
   const countLine = licenseCountLine(inUse, seatLimit, showDeviceCount);
-  const origin = licenseOrigin(detail, { keys: detail.keys, store });
-  const term =
-    detail.expiresAt === null
-      ? "Lifetime"
-      : detail.expiresAt <= now
-        ? `Ended ${formatDay(detail.expiresAt)}`
-        : `Expires ${formatDay(detail.expiresAt)}`;
+  const origin = licenseOrigin(detail, {
+    keys: detail.keys,
+    store,
+    developer: product.presentation.developer,
+  });
   const updates =
     detail.expiresAt === null
       ? "Lifetime"
@@ -170,10 +171,6 @@ function LicenseFacts({
         {countLine ? (
           <span className="text-sm text-fg-strong">{countLine}</span>
         ) : null}
-        {/* How the licence came to be, quietly, never as a type (owner, 2026-10-05). */}
-        <p className="w-full text-sm text-fg-muted">
-          {origin} · {term}
-        </p>
       </div>
       {status.kind === "expired" || status.kind === "suspended" ? (
         <p className="rounded-lg border border-danger-border bg-danger-subtle p-3 text-sm text-fg">
@@ -204,6 +201,11 @@ function LicenseFacts({
           <dd className="mt-0.5 text-fg-strong">
             {formatDay(detail.activatedAt)}
           </dd>
+        </div>
+        {/* How the licence reached the person, never a type (owner, 2026-10-05 and 2026-10-06). */}
+        <div>
+          <dt className="text-xs text-fg-muted">License source</dt>
+          <dd className="mt-0.5 text-fg-strong">{origin}</dd>
         </div>
         {detail.maxOfflineDays !== null ? (
           <div>

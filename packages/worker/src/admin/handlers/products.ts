@@ -51,8 +51,9 @@ import { deleteTokenRecord } from "../../kv.js";
 import { deleteProduct, listDevicesByProduct } from "../repo.js";
 import {
   claimsApply,
+  manifestAuthorityOf,
+  MANIFEST_AUTHORITATIVE_KEY,
   revertClaim,
-  systemClaimRefusal,
 } from "../../core/settingsClaims.js";
 import {
   auditValue,
@@ -289,26 +290,46 @@ export async function handleProducts(
         "the system product cannot be renamed",
         { fields: ["name"], reason: "system_product" },
       );
-    // ST-01b (S-18 §4.5 item 8): every other claimable field of the system product is
-    // manifest-authoritative; ST-20 adds its expiring break-glass claims.
-    const systemRefusal = systemClaimRefusal(row);
-    const systemFields = (
-      ["defaultMaxOfflineDays", "defaultDeviceLimit", "adminGroup"] as const
-    ).filter((f) => body[f] !== undefined);
-    if (systemRefusal && systemFields.length > 0)
-      return err(409, ErrorCode.BadRequest, systemRefusal, {
-        fields: systemFields,
-        reason: "manifest_authoritative",
-      });
-    // Owner decision 1 (S-18 D2): the admin group is manifest-only on a repo-linked product. It
-    // is never claimed, so a console value would vanish at the next resync; refusing it says so.
-    if (body.adminGroup !== undefined && claimsApply(row))
+    // Owner decision 1 (S-18 D2): the admin group is manifest-only on a repo-linked product (and
+    // on the system product, whose manifest the deploy hook applies). It is never claimed, so a
+    // console value would vanish at the next apply; refusing it says so.
+    if (body.adminGroup !== undefined && (claimsApply(row) || row.system === 1))
       return err(
         409,
         ErrorCode.BadRequest,
         "the admin group is set by the product's .pkey/product (adminGroup)",
         { fields: ["adminGroup"], reason: "manifest_only" },
       );
+    // ST-20 (S-18 §4.5 item 7, D14): manifest-authoritative mode, an operator setting. Locked on
+    // for the system product by the registry (the system-lock rule); only a repo-linked product
+    // has a manifest to make authoritative.
+    if (body.manifestAuthoritative !== undefined) {
+      if (typeof body.manifestAuthoritative !== "boolean")
+        return err(
+          422,
+          ErrorCode.BadRequest,
+          "manifestAuthoritative must be a boolean",
+          { fields: ["manifestAuthoritative"] },
+        );
+      const authority = await manifestAuthorityOf(db, row);
+      if (
+        authority.locked &&
+        body.manifestAuthoritative !== authority.authoritative
+      )
+        return err(
+          409,
+          ErrorCode.BadRequest,
+          "the system product is always manifest-authoritative: the deploy hook is its only writer",
+          { fields: ["manifestAuthoritative"], reason: "locked" },
+        );
+      if (body.manifestAuthoritative && !authority.locked && !claimsApply(row))
+        return err(
+          409,
+          ErrorCode.BadRequest,
+          "only a repository-linked product has a manifest to make authoritative",
+          { fields: ["manifestAuthoritative"], reason: "not_linked" },
+        );
+    }
     // plans/P3-01.md §2.2: the default offline-day count becomes `graceUntil`, so it takes the
     // bundle mint's rule, an integer from 1 to 365.
     const refused = new WriteChecks()
@@ -351,7 +372,10 @@ export async function handleProducts(
     // ST-04: every field is a registry setting, written through `writeSetting()` in one batch:
     // each gets its own audit row (`product.update`, with before/after and the setting key), and
     // on a repo-linked product each claimable field is claimed for the console (ST-01b, model C),
-    // so the next resync leaves it alone until a Revert. `compatMin`/`compatMax` are NOT accepted
+    // so the next resync leaves it alone until a Revert. ST-20: on a manifest-authoritative
+    // product (the system product always) `writeSetting()` refuses those claims unless the body
+    // carries a break-glass claim (`breakGlass: { reason }`, L2 in the console), which expires in
+    // 7 days at the latest. `compatMin`/`compatMax` are NOT accepted
     // here any more: the window moved to `PATCH …/update/settings` (spec §8). Dropped rather than
     // ignored, so a console cannot appear to save a value this endpoint no longer owns.
     const FIELD_OF: Record<string, string> = {
@@ -359,9 +383,21 @@ export async function handleProducts(
       "license.defaults.maxOfflineDays": "defaultMaxOfflineDays",
       "license.defaults.deviceLimit": "defaultDeviceLimit",
       "core.adminGroup": "adminGroup",
+      [MANIFEST_AUTHORITATIVE_KEY]: "manifestAuthoritative",
     };
-    const describe = (key: string, value: unknown): string =>
-      `Updated product ${slug}: ${FIELD_OF[key]} ${auditValue(value)}`;
+    // One summary per setting; a break-glass claim and the mode keep ST-20's wording.
+    const describe =
+      (key: string, value: unknown) =>
+      ({
+        breakGlass,
+      }: {
+        breakGlass?: { reason: string; expiresAt: number };
+      }): string =>
+        key === MANIFEST_AUTHORITATIVE_KEY
+          ? `Updated product ${slug}; manifest-authoritative mode ${value ? "on" : "off"}`
+          : breakGlass
+            ? `Updated product ${slug}; break-glass claim until ${new Date(breakGlass.expiresAt * 1000).toISOString()} on ${key}: ${breakGlass.reason}`
+            : `Updated product ${slug}: ${FIELD_OF[key]} ${auditValue(value)}`;
     const writes: SettingWrite[] = [];
     const add = (key: string, value: unknown) =>
       writes.push({
@@ -386,6 +422,9 @@ export async function handleProducts(
     if (body.adminGroup === null) add("core.adminGroup", null);
     else if (typeof body.adminGroup === "string")
       add("core.adminGroup", body.adminGroup.trim() || null);
+    // The mode itself: an operator setting, never written for the system product (locked).
+    if (typeof body.manifestAuthoritative === "boolean" && row.system !== 1)
+      add(MANIFEST_AUTHORITATIVE_KEY, body.manifestAuthoritative);
     const written = await writeSettings(
       { env, db, registry: SETTINGS },
       writes,
@@ -399,22 +438,39 @@ export async function handleProducts(
         now,
         product: row,
         // A bespoke route (ST-05 makes it an alias of the generic API): no version in its
-        // contract, and its confirmations are the console's (the claim dialog).
+        // contract, and its confirmations are the console's (the claim and break-glass dialogs).
         strict: false,
+        breakGlass: body.breakGlass,
       },
     );
     if (!written.ok)
       return settingRefused(
         written,
-        written.key && FIELD_OF[written.key]
-          ? [FIELD_OF[written.key]!]
-          : undefined,
+        // ST-20's refusal names every field the save would have claimed.
+        written.reason === "manifest_authoritative"
+          ? writes
+              .map((w) => FIELD_OF[w.key])
+              .filter(
+                (f): f is string =>
+                  f !== undefined &&
+                  f !== "adminGroup" &&
+                  f !== "manifestAuthoritative",
+              )
+          : written.details?.fields
+            ? (written.details.fields as string[])
+            : written.key && FIELD_OF[written.key]
+              ? [FIELD_OF[written.key]!]
+              : undefined,
       );
     const claimed = written.written.filter((w) => w.claimed).map((w) => w.key);
+    const breakGlass = written.written.find((w) => w.breakGlass)?.breakGlass;
     return adminJson({
       ok: true,
       slug,
       ...(claimed.length ? { claimed } : {}),
+      ...(breakGlass
+        ? { breakGlass: { expiresAt: breakGlass.expiresAt } }
+        : {}),
     });
   }
   if (req.method === "DELETE") {

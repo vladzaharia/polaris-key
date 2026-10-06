@@ -1,0 +1,24 @@
+---
+title: "StatusScreen"
+description: "The blocking states, each with its primary fix: revoked, expired, version too old, version too new, and channel not entitled."
+sidebar:
+  order: 18
+---
+
+import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+
+The blocking states, each with its primary fix: revoked, expired, version too old, version too new, and channel not entitled. Each state names what happened and what to do, never a raw code.
+
+## States and copy
+
+<ComponentStates component="StatusScreen" />
+
+## Baselines
+
+<KitBaselines component="StatusScreen" />
+
+## In each kit
+
+No kit documents StatusScreen here yet. Each kit adds its tab when it ships the component: the drop-in,
+the styled part with its slots and restyle hooks, and the headless model.

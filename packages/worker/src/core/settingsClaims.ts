@@ -19,30 +19,57 @@
  *
  * `core.adminGroup` is manifest-only (owner decision 1): never claimable, so it is not listed.
  *
- * The system product (`system = 1`) is manifest-authoritative (S-18 §4.5 item 8). Its expiring
- * break-glass claims are ST-20's; until then every console claim on it is refused
- * (`systemClaimRefusal`).
+ * ST-20 (S-18 §4.5 items 7–8, owner decision D2): MANIFEST-AUTHORITATIVE mode
+ * (`core.manifest.authoritative`). A product in it refuses every console claim except a
+ * BREAK-GLASS claim (`decideClaim`): a reason is required (the console confirms it at L2), and
+ * the row's `expires_at` is the earlier of 7 days or the first apply whose manifest changes that
+ * field (`claimsForApply`). An apply that leaves the field alone does not end the claim, so an
+ * unrelated push or deploy cannot undo an incident fix. The mode is off by default for a customer
+ * product (a `product_settings` row, D14) and on, locked by a registry rule (`systemLock`, the
+ * system-lock rule in `settings/rules.ts`), for the system product (`system = 1`), whose only
+ * writer is the deploy hook: a resync of it from anywhere else is refused
+ * (`SYSTEM_RESYNC_REFUSAL`). Every resync and deploy summary lists the live break-glass claims.
  *
- * ST-04: console claims are WRITTEN by `writeSetting()` (`core/settings/write.ts`), the one write
- * path, which claims a key in the same batch as its value and its audit row. Revert goes through
- * it too (`op: "reset"` with the snapshot's value). What stays here is what the resync and the
- * console views need: which keys are claimed, the claim guard as SQL, and the resync's per-field
- * audit row (now carrying the structured `before_json`/`after_json`/`origin`/`setting_key`).
+ * ST-04: console claims, break-glass ones included, are WRITTEN by `writeSetting()`
+ * (`core/settings/write.ts`), the one write path, which claims a key in the same batch as its value
+ * and its audit row and applies the mode's refusal itself (`core/settings/authority.ts`, re-exported
+ * here). Revert goes through it too (`op: "reset"` with the snapshot's value). What stays here is
+ * what the resync, the deploy hook and the console views need: which keys are claimed, the claim
+ * guard as SQL, the break-glass bookkeeping at an apply, and the resync's per-field audit row (with
+ * the structured `before_json`/`after_json`/`origin`/`setting_key`). Column writes go through the
+ * keys' column adapters, never SQL of this module's own.
  */
 
 import { Catalog } from "@polaris-key/catalog";
 import type { Db, DbStatement } from "../db/types.js";
 import { randomId } from "./platform.js";
 import { getManifestSnapshot } from "./manifestSnapshot.js";
-import { snapshotValue } from "./settings/snapshot.js";
+import { CORE_COLUMN_ADAPTERS } from "./settings/columns.js";
+import { snapshotValue, type SnapshotManifest } from "./settings/snapshot.js";
 import type { SettingOrigin, SqlGuard } from "./settings/types.js";
 import {
+  BREAK_GLASS_MAX_SECONDS,
+  BREAK_GLASS_REASON_MAX,
+  manifestAuthorityOf,
+  manifestAuthoritativeRefusal,
+  MANIFEST_AUTHORITATIVE_KEY,
+  SYSTEM_AUTHORITATIVE,
+} from "./settings/authority.js";
+import {
   auditValue as writeAuditValue,
-  MANIFEST_AUTHORITATIVE_MESSAGE,
   writeSetting,
   type AuditActor,
   type SettingsWriteContext,
 } from "./settings/write.js";
+
+export {
+  BREAK_GLASS_MAX_SECONDS,
+  BREAK_GLASS_REASON_MAX,
+  manifestAuthorityOf,
+  manifestAuthoritativeRefusal,
+  MANIFEST_AUTHORITATIVE_KEY,
+};
+export type { ManifestAuthority } from "./settings/authority.js";
 
 /** The column-backed claimable keys ST-01b introduces (registry keys, ST-03). */
 export const CLAIM_KEYS = [
@@ -77,12 +104,26 @@ export interface ClaimView {
   claimedBy: string;
   claimedAt: number;
   version: number;
+  /**
+   * ST-20: present on a break-glass claim (a manifest-authoritative product): the reason it was
+   * made and when it expires at the latest. An ordinary claim (model C) has neither.
+   */
+  breakGlass?: { reason: string; expiresAt: number };
+}
+
+/** A live break-glass claim (ST-20), as the resync and deploy summaries list it. */
+export interface BreakGlassClaim {
+  key: ClaimKey;
+  claimedBy: string;
+  claimedAt: number;
+  reason: string;
+  expiresAt: number;
 }
 
 /**
  * Whether a console write claims the field at all. Only a repo-linked product has a manifest that
- * could overwrite it: a manual product's values are the console's by construction, and the system
- * product is refused before this is asked (`systemClaimRefusal`).
+ * could overwrite it: a manual product's values are the console's by construction. A
+ * manifest-authoritative product always claims (`writeSetting()`'s break-glass claim).
  */
 export function claimsApply(product: {
   release_source?: string | null;
@@ -90,26 +131,21 @@ export function claimsApply(product: {
   return product.release_source === "github";
 }
 
+// ── Manifest-authoritative mode (ST-20) ────────────────────────────────────────────────
+
 /**
- * The refusal for a console claim on the system product, or `null`. Manifest-authoritative (S-18
- * §4.5 item 8): its settings come from the monorepo's root `.pkey/` with each deploy, and ST-20
- * adds the only console path (time-boxed break-glass claims).
+ * The refusal for a resync of the system product from anywhere but the deploy hook (the GitHub
+ * webhook, the console's Resync and its dry run): the deploy hook is its single writer, applying
+ * the root `.pkey/` at the deployed commit (S-18 §4.5 item 8).
  */
-export function systemClaimRefusal(product: {
+export const SYSTEM_RESYNC_REFUSAL =
+  "the system product is applied by the deploy hook";
+
+/** The resync refusal for `product` (the system product), or `null`. */
+export function systemResyncRefusal(product: {
   system?: number | null;
 }): string | null {
-  return product.system === 1 ? MANIFEST_AUTHORITATIVE_MESSAGE : null;
-}
-
-/** The two product facts a claim decision needs, for handlers that hold a loaded product. */
-export function claimFacts(
-  db: Db,
-  product: string,
-): Promise<{ system: number | null; release_source: string | null } | null> {
-  return db.first<{ system: number | null; release_source: string | null }>(
-    "SELECT system, release_source FROM products WHERE slug = ?",
-    product,
-  );
+  return product.system === 1 ? SYSTEM_RESYNC_REFUSAL : null;
 }
 
 /** The product's live console claims on the column-backed keys. */
@@ -126,14 +162,78 @@ export async function listClaims(
     product,
     now,
   );
+  return claimViews(rows, now);
+}
+
+/** The live claims among `rows` (one product's `product_settings` rows). */
+function claimViews(
+  rows: readonly ProductSettingRow[],
+  now: number,
+): ClaimView[] {
   return rows
-    .filter((r) => isClaimKey(r.key))
+    .filter(
+      (r) =>
+        r.source === "console" &&
+        isClaimKey(r.key) &&
+        (r.expires_at === null || r.expires_at > now),
+    )
     .map((r) => ({
       key: r.key as ClaimKey,
       claimedBy: r.updated_by,
       claimedAt: r.updated_at,
       version: r.version,
+      ...(r.expires_at !== null
+        ? { breakGlass: { reason: r.reason ?? "", expiresAt: r.expires_at } }
+        : {}),
     }));
+}
+
+/**
+ * The console's view of a product's claims and its manifest-authoritative mode, from one read
+ * (the product list builds it for every product).
+ */
+export async function claimsView(
+  db: Db,
+  product: { slug: string; system?: number | null },
+  now: number,
+): Promise<{
+  claims: ClaimView[];
+  manifestAuthoritative: { value: boolean; locked: boolean };
+}> {
+  const rows = await db.all<ProductSettingRow>(
+    "SELECT * FROM product_settings WHERE product = ? ORDER BY key",
+    product.slug,
+  );
+  const locked = product.system === 1;
+  const mode = rows.find((r) => r.key === MANIFEST_AUTHORITATIVE_KEY);
+  return {
+    claims: claimViews(rows, now),
+    manifestAuthoritative: {
+      value: locked ? SYSTEM_AUTHORITATIVE : mode?.value_json === "true",
+      locked,
+    },
+  };
+}
+
+/** The product's live break-glass claims (ST-20). */
+export async function breakGlassClaims(
+  db: Db,
+  product: string,
+  now: number,
+): Promise<BreakGlassClaim[]> {
+  return (await listClaims(db, product, now)).flatMap((c) =>
+    c.breakGlass
+      ? [
+          {
+            key: c.key,
+            claimedBy: c.claimedBy,
+            claimedAt: c.claimedAt,
+            reason: c.breakGlass.reason,
+            expiresAt: c.breakGlass.expiresAt,
+          },
+        ]
+      : [],
+  );
 }
 
 /** The claimed keys as a set (what a resync skips). */
@@ -186,8 +286,9 @@ export function unlessClaimed(
 
 /**
  * Claim `key` for the console: "set to the same value keeps one" (S-18 §4.3): the claim is the
- * write, not the difference. A re-claim bumps `version` and clears any expiry. `writeSetting()`
- * writes the same row in its own batch; this statement is kept for fixtures that plant a claim.
+ * write, not the difference. A re-claim bumps `version` and takes this write's reason and expiry:
+ * `null` for an ordinary claim, the break-glass expiry (ST-20, `decideClaim`) otherwise, so a
+ * second break-glass save restarts its 7 days and an ordinary save makes the claim permanent.
  */
 export function stmtClaim(
   product: string,
@@ -195,16 +296,17 @@ export function stmtClaim(
   by: string,
   now: number,
   reason: string | null = null,
+  expiresAt: number | null = null,
 ): DbStatement {
   return {
     sql: `INSERT INTO product_settings
             (product, key, value_json, source, version, updated_at, updated_by, reason, expires_at)
-          VALUES (?, ?, NULL, 'console', 1, ?, ?, ?, NULL)
+          VALUES (?, ?, NULL, 'console', 1, ?, ?, ?, ?)
           ON CONFLICT(product, key) DO UPDATE SET
             source = 'console', version = product_settings.version + 1,
             updated_at = excluded.updated_at, updated_by = excluded.updated_by,
-            reason = excluded.reason, expires_at = NULL`,
-    params: [product, key, now, by, reason],
+            reason = excluded.reason, expires_at = excluded.expires_at`,
+    params: [product, key, now, by, reason, expiresAt],
   };
 }
 
@@ -229,32 +331,41 @@ export const RESYNC_ACTOR: AuditActor = {
 /** A short, bounded rendering of a setting value for an audit summary. */
 export const auditValue = writeAuditValue;
 
+/** The settings audit actions this module's statements write. */
+type SettingAuditAction =
+  | "setting.resync"
+  | "setting.claim"
+  | "setting.revert"
+  | "setting.update"
+  | "setting.breakGlass.end";
+
 /** The registry key a per-row audit target belongs to (tiers and profiles are rich settings). */
 const ROW_SETTING: Record<"tier" | "profile", string> = {
   tier: "license.tiers",
   profile: "config.profiles",
 };
 
-const ORIGIN_OF: Record<
-  "setting.resync" | "setting.claim" | "setting.revert",
-  SettingOrigin
-> = {
+/** What caused each action (an apply ends a break-glass claim on the system's own account). */
+const ORIGIN_OF: Record<SettingAuditAction, SettingOrigin> = {
   "setting.resync": "resync",
   "setting.claim": "console",
   "setting.revert": "revert",
+  "setting.update": "console",
+  "setting.breakGlass.end": "system",
 };
 
 /**
- * One per-field settings audit row, as a statement for the writer's batch (the resync's, ST-01b).
- * ST-04's structured columns: `setting_key` (the key, or the rich setting a tier or profile row
- * belongs to), `origin` (from the action) and, when given, `before_json` / `after_json` as
- * `{"effective": …}`. The summary still carries before → after for the activity feed.
+ * One per-field settings audit row, as a statement for the writer's batch (the resync's, ST-01b;
+ * the end of a break-glass claim at an apply, ST-20). ST-04's structured columns: `setting_key`
+ * (the key, or the rich setting a tier or profile row belongs to), `origin` (from the action) and,
+ * when given, `before_json` / `after_json` as `{"effective": …}`. The summary still carries
+ * before → after for the activity feed.
  */
 export function stmtSettingAudit(
   product: string,
   now: number,
   actor: AuditActor,
-  action: "setting.resync" | "setting.claim" | "setting.revert",
+  action: SettingAuditAction,
   targetKind: "setting" | "tier" | "profile",
   targetId: string,
   summary: string,
@@ -295,22 +406,25 @@ export type RevertResult =
 
 const NEXT_RESYNC = "applies at the next resync";
 
-function parseSnapshot(json: string): unknown {
+function parseSnapshot(json: string): SnapshotManifest | null {
   try {
-    return JSON.parse(json) as unknown;
+    const parsed = JSON.parse(json) as unknown;
+    return parsed && typeof parsed === "object"
+      ? (parsed as SnapshotManifest)
+      : null;
   } catch {
     return null;
   }
 }
 
 /**
- * The catalog's revert statements (a rich key: `product_schema`, versions never deleted), each
- * ANDing `guard`, or a refusal when the snapshot's catalog fails the screen every catalog write
- * applies. A resync does NOT screen the catalog while it is claimed (it is not installed), yet the
- * snapshot still records it, so a repo writer could otherwise plant a catalog that this Revert
- * would activate unscreened.
+ * The catalog's statements that make `catalog` the active version (a rich key: `product_schema`,
+ * versions never deleted), each ANDing `guard`, or a refusal when it fails the screen every
+ * catalog write applies. A resync does NOT screen the catalog while it is claimed (it is not
+ * installed), yet the snapshot still records it, so a repo writer could otherwise plant a catalog
+ * that a Revert or the end of a break-glass claim would activate unscreened.
  */
-async function catalogRevert(
+async function catalogStatements(
   db: Db,
   product: string,
   catalog: unknown,
@@ -332,7 +446,8 @@ async function catalogRevert(
   );
   if (active?.catalog_json === json) return { statements: () => [] };
   // A new active version, exactly as a resync publishes one: the old rows are kept, the next
-  // number is taken inside the INSERT (over a derived table, so a false guard inserts nothing).
+  // number comes from an inner aggregate and the guard sits on the OUTER select (on the
+  // aggregate's own WHERE it would still answer one row, version 1, and abort the batch).
   return {
     statements: (guard) => [
       {
@@ -352,10 +467,42 @@ async function catalogRevert(
 }
 
 /**
+ * The statements that put the manifest's value for `key` in force (`guard` ANDed into each), with
+ * the value: the column through its adapter (`core/settings/columns.ts`), the catalog as a new
+ * active version. `null` when the manifest carries no usable value; a refusal for a catalog the
+ * screen refuses.
+ */
+async function manifestValueStatements(
+  db: Db,
+  product: string,
+  key: ClaimKey,
+  manifest: SnapshotManifest,
+  now: number,
+  guard: SqlGuard,
+): Promise<
+  { statements: DbStatement[]; value: unknown } | { refusal: string } | null
+> {
+  const value = snapshotValue(key, manifest);
+  if (value === undefined) return null;
+  if (key === "config.catalog") {
+    const plan = await catalogStatements(db, product, value, now);
+    return "refusal" in plan
+      ? plan
+      : { value, statements: plan.statements(guard) };
+  }
+  const adapter = CORE_COLUMN_ADAPTERS[key]!;
+  return {
+    value,
+    statements: adapter.set!({ product, value, at: now, by: "deploy", guard }),
+  };
+}
+
+/**
  * Revert a console claim (S-18 §4.5 item 2) through `writeSetting()`: drop the claim and re-apply
  * the manifest snapshot's value in one batch, with a `setting.revert` audit row (origin
  * `revert`). With no snapshot (linked before ST-01a and not resynced since), only the claim goes
- * and the answer says the value applies at the next resync.
+ * and the answer says the value applies at the next resync. Reverting is allowed on a
+ * manifest-authoritative product: it returns the field to the manifest.
  */
 export async function revertClaim(
   ctx: SettingsWriteContext,
@@ -385,7 +532,7 @@ export async function revertClaim(
   const value = manifest ? snapshotValue(key, manifest) : undefined;
   let statements: ((guard: SqlGuard) => DbStatement[]) | undefined;
   if (key === "config.catalog" && value !== undefined) {
-    const plan = await catalogRevert(db, product.slug, value, now);
+    const plan = await catalogStatements(db, product.slug, value, now);
     // A snapshot value the write path would refuse keeps the claim: dropping it would let the
     // next resync's own screening be the only guard, and leave the key "following" a manifest it
     // cannot.
@@ -425,4 +572,176 @@ export async function revertClaim(
   return applied
     ? { ok: true, applied: true, value }
     : { ok: true, applied: false, message: NEXT_RESYNC };
+}
+
+// ── Break-glass claims at an apply (ST-20) ──────────────────────────────────────────────
+
+/** A break-glass claim an apply ends: its 7 days ran out, or the manifest changed the field. */
+export interface EndedBreakGlass {
+  key: ClaimKey;
+  why: "expired" | "changed";
+  reason: string;
+  expiresAt: number;
+  /** The row's version when read, so a re-claim made since is never deleted. */
+  version: number;
+}
+
+/** The claims an apply of `next` honours, and the break-glass claims it ends (`claimsForApply`). */
+export interface ApplyClaims {
+  /** The keys the apply skips: every ordinary claim and every break-glass claim it keeps. */
+  claimed: Set<ClaimKey>;
+  /** The break-glass claims still live after the apply (what every summary lists). */
+  live: BreakGlassClaim[];
+  /** The break-glass claims the apply ends, in the apply's own batch. */
+  ended: EndedBreakGlass[];
+}
+
+/** The value `manifest` declares for `key`, as comparable JSON; `undefined` when it has none. */
+function declaredValue(
+  manifest: SnapshotManifest,
+  key: ClaimKey,
+): string | undefined {
+  const p = manifest.product ?? {};
+  const value =
+    key === "core.name"
+      ? p.name
+      : key === "license.defaults.maxOfflineDays"
+        ? p.defaultMaxOfflineDays
+        : key === "license.defaults.deviceLimit"
+          ? p.defaultDeviceLimit
+          : key === "core.web.origins"
+            ? // `omitClears`: an undeclared origin list means none.
+              Array.isArray(manifest.webOrigins)
+              ? manifest.webOrigins
+              : []
+            : manifest.catalog;
+  return value === undefined ? undefined : JSON.stringify(value);
+}
+
+/**
+ * The console claims an apply of `next` honours (S-18 §4.5 item 7). An ordinary claim always
+ * holds (model C: Revert is the only way back). A break-glass claim (`expires_at` set) ends at
+ * this apply when its 7 days ran out, or when `next` declares a different value for its field
+ * than the last applied manifest (`product_manifest_snapshot`) did; otherwise it holds, so an
+ * apply that leaves the field alone (an unrelated push or deploy) cannot undo an incident fix.
+ * With no snapshot there is nothing to compare, and the claim holds until it expires.
+ *
+ * Read before the apply's batch; `endBreakGlassStatements` turns `ended` into that batch's first
+ * statements, guarded so a claim made in between is never touched.
+ */
+export async function claimsForApply(
+  db: Db,
+  product: string,
+  next: SnapshotManifest,
+  now: number,
+): Promise<ApplyClaims> {
+  const rows = (
+    await db.all<ProductSettingRow>(
+      "SELECT * FROM product_settings WHERE product = ? AND source = 'console' ORDER BY key",
+      product,
+    )
+  ).filter((r) => isClaimKey(r.key));
+  const snapshot = rows.some((r) => r.expires_at !== null)
+    ? await getManifestSnapshot(db, product)
+    : null;
+  const previous = snapshot ? parseSnapshot(snapshot.manifest_json) : null;
+  const out: ApplyClaims = { claimed: new Set(), live: [], ended: [] };
+  for (const r of rows) {
+    const key = r.key as ClaimKey;
+    if (r.expires_at === null) {
+      out.claimed.add(key);
+      continue;
+    }
+    const base = {
+      key,
+      reason: r.reason ?? "",
+      expiresAt: r.expires_at,
+      version: r.version,
+    };
+    if (r.expires_at <= now) {
+      out.ended.push({ ...base, why: "expired" });
+      continue;
+    }
+    const before = previous ? declaredValue(previous, key) : undefined;
+    const after = declaredValue(next, key);
+    if (before !== undefined && after !== undefined && before !== after) {
+      out.ended.push({ ...base, why: "changed" });
+      continue;
+    }
+    out.claimed.add(key);
+    out.live.push({
+      key,
+      claimedBy: r.updated_by,
+      claimedAt: r.updated_at,
+      reason: r.reason ?? "",
+      expiresAt: r.expires_at,
+    });
+  }
+  return out;
+}
+
+/**
+ * The statements that end `ended` in an apply's batch, placed before the apply's own guarded
+ * writes: the row's delete (only at the version read, so a re-claim made since survives), then,
+ * with `apply`, the column write that puts `apply`'s value in (the deploy hook, which writes no
+ * claimable column of its own), then a `setting.breakGlass.end` audit row. The value write and
+ * the audit row are guarded on no live claim remaining, like every resync write. A resync passes
+ * no `apply`: its own guarded writes apply the field once the row is gone.
+ */
+export async function endBreakGlassStatements(
+  db: Db,
+  product: string,
+  ended: readonly EndedBreakGlass[],
+  opts: {
+    actor: AuditActor;
+    /** The applied commit, named in the audit summary. */
+    sha: string | null;
+    now: number;
+    apply?: SnapshotManifest;
+  },
+): Promise<DbStatement[]> {
+  const { actor, sha, now, apply } = opts;
+  const at = sha ? ` at ${sha.slice(0, 12)}` : "";
+  const out: DbStatement[] = [];
+  for (const e of ended) {
+    out.push({
+      sql: `DELETE FROM product_settings
+              WHERE product = ? AND key = ? AND source = 'console'
+                AND expires_at IS NOT NULL AND version = ?`,
+      params: [product, e.key, e.version],
+    });
+    // The value write, through the key's column adapter (or the catalog's statements), guarded
+    // on no live claim remaining, like every resync write.
+    const plan = apply
+      ? await manifestValueStatements(db, product, e.key, apply, now, {
+          sql: `NOT ${CLAIMED_SQL}`,
+          params: claimGuardParams(product, e.key, now),
+        })
+      : null;
+    if (plan && "statements" in plan) out.push(...plan.statements);
+    const applied = !apply
+      ? ""
+      : plan && "statements" in plan
+        ? `; the manifest's value applies: ${auditValue(plan.value)}`
+        : "; the value stays as set: the manifest declares none this apply can write";
+    out.push(
+      unlessClaimed(
+        stmtSettingAudit(
+          product,
+          now,
+          actor,
+          "setting.breakGlass.end",
+          "setting",
+          e.key,
+          e.why === "expired"
+            ? `Break-glass claim on ${e.key} expired at ${new Date(e.expiresAt * 1000).toISOString()}${applied}`
+            : `Break-glass claim on ${e.key} ended: the manifest changed it${at}${applied}`,
+        ),
+        product,
+        e.key,
+        now,
+      ),
+    );
+  }
+  return out;
 }

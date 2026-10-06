@@ -68,15 +68,25 @@ export {
 
 // ST-01b: the resync skips the settings the console has claimed (`product_settings`), and writes
 // one audit row per setting it changes.
+// ST-20: a break-glass claim (manifest-authoritative mode) ends at the first apply that changes
+// its field, and a resync of the system product is refused (the deploy hook is its writer).
 export {
   auditValue,
   claimedKeys,
   claimGuardParams,
   CLAIMED_SQL,
+  claimsForApply,
+  endBreakGlassStatements,
   RESYNC_ACTOR,
   stmtSettingAudit,
+  systemResyncRefusal,
   unlessClaimed,
+  type BreakGlassClaim,
   type ClaimKey,
+  type EndedBreakGlass,
 } from "./settingsClaims.js";
 export { getManifestSnapshot } from "./manifestSnapshot.js";
+// LX-06: the row-backed claims (`licensing.*`, `identity.oidc.syncTierOnSignIn`) a resync leaves
+// alone; their manifest rows are written by the owning services' `manifestIngestAlways`.
+export { liveRowClaimKeys } from "./rowSettings.js";
 export { parseWebOrigins } from "./cors.js";

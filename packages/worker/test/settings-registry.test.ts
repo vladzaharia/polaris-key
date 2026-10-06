@@ -19,7 +19,9 @@ import {
   checkRegistry,
   deniedCategories,
   DENIED_PLATFORM_NAMES,
+  SYSTEM_LOCKED_KEYS,
 } from "../src/core/settings/rules.js";
+import { CORE_SLICE } from "../src/core/settings/core.js";
 import {
   KEY_ENTRY_LIMIT_DEFAULT,
   KEY_ENTRY_LIMIT_MAX,
@@ -153,6 +155,11 @@ function schemaHasPath(path: string): boolean | "deprecated" {
   return deprecated ? "deprecated" : true;
 }
 
+/** Every manifest field an entry names: `manifest.path`, then `manifest.alsoPaths` (ST-19b). */
+function manifestPaths(e: SettingDef): string[] {
+  return e.manifest ? [e.manifest.path, ...(e.manifest.alsoPaths ?? [])] : [];
+}
+
 function docsPageExists(link: string): boolean {
   const m = /^\/docs\/(.+?)\/?(#.*)?$/.exec(link);
   if (!m) return false;
@@ -267,11 +274,27 @@ describe("the settings registry (ST-03)", () => {
       "reanchor",
       "refundGraceHours",
     ]);
+    // LX-06 made them live, row-backed (`core/rowSettings.ts`); only the billing-retry grace
+    // stays hidden until LX-23 builds it.
     for (const e of licensing) {
       expect(e.ownership).toBe("claimable");
       expect(e.service).toBe("license");
-      expect(e.pending).toEqual({ wp: "LX-06" });
+      expect(e.storage).toEqual({ kind: "scalar" });
+      expect(e.manifest?.path).toBe(`product:${e.key}`);
+      if (e.key === "licensing.dunningGraceDays")
+        expect(e.pending).toEqual({ wp: "LX-23" });
+      else {
+        expect(e.pending).toBeUndefined();
+        expect(e.readers.length).toBeGreaterThan(0);
+      }
     }
+    // plans/LX-01.md §8 Q2: the derived default for the entitlement model.
+    expect(
+      licensing.find((e) => e.key === "licensing.entitlementModel"),
+    ).toMatchObject({
+      defaultValue: "combined",
+      legacyDefault: { value: "legacy" },
+    });
     // S-18 D20 / S-19 model OC: the account is not a settings scope.
     for (const e of SETTINGS.entries) expect("accountMerge" in e).toBe(false);
   });
@@ -385,17 +408,12 @@ describe("the settings registry (ST-03)", () => {
   it("names only canonical manifest spellings (ST-19 registry ↔ manifest parity)", () => {
     const deprecated = new Set(DEPRECATED_SPELLINGS.map(spellingPath));
     for (const e of SETTINGS.entries) {
-      if (!e.manifest) continue;
-      expect(
-        deprecated.has(e.manifest.path),
-        `${e.key} ${e.manifest.path}`,
-      ).toBe(false);
-      // No step of the path is an old spelling either (a pending entry's path may not exist in
-      // the schema yet, but it must not run through a deprecated property).
-      expect(
-        schemaHasPath(e.manifest.path),
-        `${e.key} ${e.manifest.path}`,
-      ).not.toBe("deprecated");
+      for (const path of manifestPaths(e)) {
+        expect(deprecated.has(path), `${e.key} ${path}`).toBe(false);
+        // No step of the path is an old spelling either (a pending entry's path may not exist in
+        // the schema yet, but it must not run through a deprecated property).
+        expect(schemaHasPath(path), `${e.key} ${path}`).not.toBe("deprecated");
+      }
     }
     // The check has teeth: an old spelling is caught.
     expect(schemaHasPath("product:tiers")).toBe("deprecated");
@@ -408,11 +426,12 @@ describe("the settings registry (ST-03)", () => {
       for (const r of e.readers)
         expect(existsSync(join(SRC, r)), `${e.key} reader ${r}`).toBe(true);
       expect(docsPageExists(e.docs), `${e.key} docs ${e.docs}`).toBe(true);
-      if (e.manifest && !e.pending)
-        expect(
-          schemaHasPath(e.manifest.path),
-          `${e.key} ${e.manifest.path} (a canonical spelling, ST-19)`,
-        ).toBe(true);
+      if (!e.pending)
+        for (const path of manifestPaths(e))
+          expect(
+            schemaHasPath(path),
+            `${e.key} ${path} (a canonical spelling, ST-19)`,
+          ).toBe(true);
     }
     expect(OFFLINE_DAYS_MAX).toBe(MAX_OFFLINE_DAYS);
   });
@@ -621,6 +640,27 @@ describe("the registry rules refuse", () => {
         /needs manifest\.path/,
       ],
       [
+        "malformed second manifest field (ST-19b)",
+        "config",
+        product("config.x.y", "config", {
+          ownership: "manifest",
+          manifest: { path: "product:web.origins", alsoPaths: ["web origins"] },
+        }),
+        /manifest\.alsoPaths must be/,
+      ],
+      [
+        "repeated manifest field (ST-19b)",
+        "config",
+        product("config.x.y", "config", {
+          ownership: "manifest",
+          manifest: {
+            path: "product:web.origins",
+            alsoPaths: ["product:web.origins"],
+          },
+        }),
+        /manifest\.alsoPaths repeats a path/,
+      ],
+      [
         "no readers",
         "config",
         product("config.x.y", "config", { readers: [] }),
@@ -654,5 +694,53 @@ describe("the registry rules refuse", () => {
     expect(
       issuesWith("config", [], { namespaces: ["config", "core"] }),
     ).toContainEqual(expect.stringMatching(/"core" is reserved/));
+  });
+});
+
+describe("the system-lock rule (ST-20, S-18 §4.5 item 8)", () => {
+  const KEY = "core.manifest.authoritative";
+  const withCore = (core: readonly SettingDef[]) =>
+    checkRegistry(buildSettingsRegistry(SERVICES.values(), { core }));
+
+  it("locks manifest-authoritative mode on for the system product, in the registry", () => {
+    expect(SYSTEM_LOCKED_KEYS).toEqual({ [KEY]: true });
+    expect(SETTINGS.get(KEY, "product")).toMatchObject({
+      ownership: "operator",
+      defaultValue: false,
+      systemLock: { value: true },
+    });
+  });
+
+  it("refuses a registry whose locked entry lost its lock, changed it, or is gone", () => {
+    const edit = (over: Partial<SettingDef>) =>
+      CORE_SLICE.map((e) => (e.key === KEY ? { ...e, ...over } : e));
+    const locked = `product ${KEY}: the system product's value is locked to true (systemLock)`;
+    expect(withCore(edit({ systemLock: undefined }))).toContain(locked);
+    expect(withCore(edit({ systemLock: { value: false } }))).toContain(locked);
+    expect(withCore(CORE_SLICE.filter((e) => e.key !== KEY))).toContain(
+      `product ${KEY}: locked for the system product, so it must be registered`,
+    );
+  });
+
+  it("refuses a lock on a platform entry, and a lock that does not fit the value", () => {
+    expect(
+      issuesWith("license", [
+        product("license.test.locked", "license", {
+          value: { kind: "boolean" },
+          defaultValue: false,
+          confirm: { on: "L0", off: "L0" },
+          systemLock: { value: "on" },
+        }),
+      ]),
+    ).toContain(
+      "product license.test.locked: systemLock.value does not fit its value spec",
+    );
+    expect(
+      issuesWith("license", [], {
+        platform: [platform("blobs.test.locked", { systemLock: { value: 2 } })],
+      }),
+    ).toContain(
+      "platform blobs.test.locked: systemLock is declared on product entries only",
+    );
   });
 });

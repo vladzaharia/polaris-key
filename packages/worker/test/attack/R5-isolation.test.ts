@@ -799,7 +799,9 @@ describe("REFUTED: KV namespace confusion via crafted state / device_code / toke
     }
   });
 
-  it("a crafted OIDC poll state cannot read another namespace's KV entry", async () => {
+  // The `state`-keyed `/auth/poll` this once drove is retired; the one poll left is keyed by the
+  // device code, so that is the attacker-controlled key here.
+  it("a crafted OIDC poll key cannot read another namespace's KV entry", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const e = env(kv);
@@ -809,16 +811,18 @@ describe("REFUTED: KV namespace confusion via crafted state / device_code / toke
     const tokenHash = await hashKey(token, e.KEY_HASH_PEPPER);
     expect(kv.keys()).toContain(pk(ACME, "token", tokenHash));
 
-    const { handleAuthPoll } =
+    const { handleAuthDevicePoll } =
       await import("../../src/services/identity/oidc.js");
     for (const s of [
       `../token/${tokenHash}`,
       `:token:${tokenHash}`,
       tokenHash,
     ]) {
-      const url = `https://key.plrs.im/${ACME}/auth/poll?state=${encodeURIComponent(s)}&device=dev-1`;
-      const res = await handleAuthPoll(
-        new Request(url) as unknown as Request,
+      const res = await handleAuthDevicePoll(
+        new Request(`https://key.plrs.im/${ACME}/identity/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({ deviceCode: s, deviceId: "dev-1" }),
+        }) as unknown as Request,
         e,
         db,
         acme,

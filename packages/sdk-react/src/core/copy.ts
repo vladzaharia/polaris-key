@@ -196,6 +196,8 @@ const FR: CopyBundle = {
     last_link: "Vous ne pouvez pas retirer votre seule méthode de connexion.",
     step_up_required: "Reconnectez-vous pour confirmer votre identité.",
     not_eligible: "Cette offre n'est plus disponible.",
+    not_removable:
+      "Cette licence ne peut pas être ajoutée de nouveau avec une clé : elle reste dans votre bibliothèque.",
     download_auth_required:
       "Connectez-vous ou activez l'application pour télécharger ceci.",
     delivery_gate_missing:

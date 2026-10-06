@@ -7,7 +7,8 @@
  * (S-24, owner 2026-10-06: a floating licence has no account features). An alias resolves to the
  * survivor (D21), a deleted subject to nothing. Every clearing trigger (sign-out, sign out
  * everywhere, disable, deletion, per-product removal, relink) drops the binding; a plain detach
- * does not, but hides it while the licence is floating. Any re-bind without a sign-in (key
+ * does not, but hides it: removed from an account's library, the licence is floating for that
+ * account's devices (S-24 D19, lead 2026-10-06, PX-23) until the key adds it back. Any re-bind without a sign-in (key
  * re-entry, open re-registration) drops it. `syncAccess` never falls back to the licence owner,
  * and no answer carries an account id.
  */
@@ -23,10 +24,16 @@ import {
 } from "./seed.js";
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
-import { getDevice, setServices, type DeviceRow } from "../src/repo.js";
+import {
+  getDevice,
+  getLicense,
+  setServices,
+  type DeviceRow,
+} from "../src/repo.js";
 import { serializeServices } from "../src/core/services.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import {
+  isFloatingLicense,
   resolveSyncPrincipal,
   setDeviceSubject,
   subjectFor,
@@ -479,7 +486,7 @@ describe("the clearing hook's Cloud Sync cases", () => {
     expect(await bindingOf(w)).toBeNull();
   });
 
-  it("a plain detach does not sign the device out, but the principal is hidden while the licence floats (S-24)", async () => {
+  it("a plain detach does not sign the device out, but the principal is hidden: removed, the licence is floating for that account (S-24 D19)", async () => {
     const w = await world();
     const { ada, licenseId } = await signedInDevice(w);
     expect(
@@ -490,8 +497,13 @@ describe("the clearing hook's Cloud Sync cases", () => {
       }),
     ).toEqual({ ok: true });
     expect(await bindingOf(w)).toBe(ada.subject);
-    // Still email-associated (the seed licence carries an email): the principal stands.
-    expect((await principalOf(w, "dev-1"))?.subject).toBe(ada.subject);
+    // Still email-associated (the seed licence carries an email), so assigned and waiting, not
+    // floating; but LX-26's block marks it removed from Ada's library, and for her devices that
+    // is the same as floating (lead decision, 2026-10-06; PX-23).
+    expect(isFloatingLicense((await getLicense(w.db, SLUG, licenseId))!)).toBe(
+      false,
+    );
+    expect(await principalOf(w, "dev-1")).toBeNull();
     // With no email either, the licence is floating: the binding is kept, the principal hidden.
     await w.db.run(
       "UPDATE licenses SET email = NULL WHERE product = ? AND id = ?",
@@ -499,6 +511,71 @@ describe("the clearing hook's Cloud Sync cases", () => {
       licenseId,
     );
     expect(await bindingOf(w)).toBe(ada.subject);
+    expect(await principalOf(w, "dev-1")).toBeNull();
+  });
+
+  it("re-adding the key lifts the block, and the principal returns with it", async () => {
+    const w = await world();
+    const { ada, licenseId } = await signedInDevice(w);
+    await detachLicense(w.ctx, { accountId: ada.id, product: SLUG, licenseId });
+    expect(await principalOf(w, "dev-1")).toBeNull();
+    // An automatic attach cannot bring it back (the block), so nothing changes.
+    expect(
+      await attachLicense(w.ctx, {
+        accountId: ada.id,
+        product: SLUG,
+        licenseId,
+        via: "email",
+      }),
+    ).toMatchObject({ ok: false, reason: "auto_attach_blocked" });
+    expect(await principalOf(w, "dev-1")).toBeNull();
+    // The person adds the key again: an explicit act.
+    expect(
+      await attachLicense(w.ctx, {
+        accountId: ada.id,
+        product: SLUG,
+        licenseId,
+        via: "key",
+      }),
+    ).toMatchObject({ ok: true, attached: true });
+    expect((await principalOf(w, "dev-1"))?.subject).toBe(ada.subject);
+  });
+
+  it("only the removing account's devices lose it: another account's binding on the licence keeps its principal", async () => {
+    const w = await world();
+    const { ada, licenseId } = await signedInDevice(w);
+    const bo = await account(w.db, "bo@example.com");
+    await insertSignedInDevice(w.db, "dev-bo", licenseId, bo.subject);
+    expect((await principalOf(w, "dev-bo"))?.subject).toBe(bo.subject);
+    await detachLicense(w.ctx, { accountId: ada.id, product: SLUG, licenseId });
+    expect(await principalOf(w, "dev-1")).toBeNull();
+    expect((await principalOf(w, "dev-bo"))?.subject).toBe(bo.subject);
+  });
+
+  it("a merged account's devices follow the survivor's block; a block on a licence the account holds is inert", async () => {
+    const w = await world();
+    const { ada, licenseId } = await signedInDevice(w);
+    // A block row for the account that holds the licence (as a merge can leave behind): inert.
+    await w.db.run(
+      `INSERT INTO license_auto_attach_blocks (product, license_id, account_id, created_at)
+       VALUES (?, ?, ?, ?)`,
+      SLUG,
+      licenseId,
+      ada.id,
+      NOW,
+    );
+    expect((await principalOf(w, "dev-1"))?.subject).toBe(ada.subject);
+    // Removed, then Ada's account is absorbed by Bo's: the merge re-binds dev-1 to Bo's subject
+    // and moves the block to Bo, so the device still has no principal.
+    await detachLicense(w.ctx, { accountId: ada.id, product: SLUG, licenseId });
+    const bo = await account(w.db, "bo@example.com");
+    expect(
+      await mergeAccounts(w.ctx, {
+        survivor: { accountId: bo.id, authenticatedAt: NOW },
+        absorbed: { accountId: ada.id, authenticatedAt: NOW },
+      }),
+    ).toMatchObject({ ok: true });
+    expect(await bindingOf(w)).toBe(bo.subject);
     expect(await principalOf(w, "dev-1")).toBeNull();
   });
 });

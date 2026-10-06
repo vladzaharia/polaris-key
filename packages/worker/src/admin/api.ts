@@ -82,6 +82,7 @@ import { handleProductUsers } from "./handlers/users.js";
 import { handleRefusals } from "./handlers/refusals.js";
 import { handleHostedAssets } from "./handlers/hostedAssets.js";
 import { handleTrustPolicy } from "./handlers/trustPolicy.js";
+import { handleProductSettings } from "./handlers/productSettings.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
 import { handleBundleMint } from "../core/bundles.js";
 import { handleBlobGcAdmin } from "../core/blobGc.js";
@@ -233,6 +234,21 @@ async function handleProductScoped(
     );
   }
 
+  // The product settings API's first slice (LX-06, S-18 §4.7): the row-backed claimable settings
+  // of every service in one store. CORE, like `claims`: a console edit claims, Revert hands back.
+  //   GET /products/<slug>/settings/effective[?area=]
+  //   PATCH|DELETE /products/<slug>/settings/<key>
+  if (resource === "settings")
+    return handleProductSettings(
+      req,
+      env,
+      db,
+      session,
+      product,
+      rest.slice(1),
+      now,
+    );
+
   // Trusted publishing (P2-02): the publisher policy and static CI tokens. CORE, like the
   // secrets: the credential store serves Release now and Distribution (P2b-03) later.
   //   GET|PUT /products/<slug>/ci-publisher
@@ -288,11 +304,15 @@ async function handleProductScoped(
     return handleRefusals(req, db, slug, rest.slice(1), now);
   }
 
-  // HA-05: the product's hosted assets (`core/hostedAssetPulls.ts`). CORE, like `activity`: a
-  // product hosts its presentation icon whether or not it runs Distribution.
-  //   GET /products/<slug>/assets
+  // HA-05, HA-06: the product's hosted assets (`core/hostedAssetPulls.ts`,
+  // `core/hostedAssetUploads.ts`). CORE, like `activity`: a product hosts its presentation icon
+  // whether or not it runs Distribution. HA-08: the operator's "mirror now" for release files
+  // (`services/release/mirror.ts`).
+  //   GET  /products/<slug>/assets
+  //   POST /products/<slug>/assets/mirror
+  //   POST|DELETE /products/<slug>/assets/<slot>[?locale=]
   if (resource === "assets") {
-    return handleHostedAssets(req, db, slug, rest.slice(1));
+    return handleHostedAssets(req, env, db, session, slug, rest.slice(1), now);
   }
 
   // Every device of the product, licensed or not. CORE: a product that issues no licenses (open

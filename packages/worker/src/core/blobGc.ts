@@ -62,6 +62,9 @@
  *                                   drops a replaced copy's refs in the batch that writes the new
  *                                   one (HA-01), and the sweep then reclaims the bytes like any
  *                                   other unreferenced object
+ *   release-artifact (ref id =      never: it holds the `r2` location a release file's mirror
+ *     `<release>/<artifact>`)       appended (HA-08, `services/release/mirror.ts`). Nothing drops
+ *                                   it yet: reclaiming mirrored copies is HA-15's
  *   pack-object (ref id = release)  when the release is a known pack release that is not live,
  *                                   the key is named by no live release (an index may list a file
  *                                   held only by a dead release's ref), and the WHOLE live set was

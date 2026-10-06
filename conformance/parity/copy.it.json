@@ -189,6 +189,10 @@
       "title": "Offerta non disponibile",
       "message": "Questa offerta non è più disponibile per il tuo account. Aggiorna la pagina e riprova."
     },
+    "not_removable": {
+      "title": "Impossibile rimuovere",
+      "message": "Questa licenza non può essere aggiunta di nuovo con una chiave di licenza, quindi resta nella tua libreria."
+    },
     "download_auth_required": {
       "title": "Accedi per scaricare",
       "message": "Accedi o attiva una licenza per scaricare questo contenuto."

@@ -77,14 +77,15 @@ holds that capability today, so every link keeps working. Those pages are noted 
 
 ### Core
 
-| Page               | URL        | What it's for                                                                                                                                                                        |
-| ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Overview**       | (root)     | Setup health at a glance: a "needs attention" strip, a guided checklist, the SDK trust key and trust set, and a starter snippet. See [Products](/docs/admin/products/#setup-health). |
-| **Services**       | `services` | Which services the product runs, and its device-registration policy. See [Services & enablement](/docs/admin/services-enablement/).                                                  |
-| **Devices**        | `devices`  | Every device of the product, including those that hold no license. See [Licenses & devices](/docs/admin/licenses-and-devices/#devices-product-wide).                                 |
-| **Keys & secrets** | `keys`     | Write-only product secrets and the required-secrets checklist. Outlet credentials are here too until they move to Distribution. See [Secrets & keys](/docs/admin/secrets-and-keys/). |
-| **Activity**       | `activity` | The product's audit log. See [Activity](/docs/admin/activity/).                                                                                                                      |
-| **Settings**       | `settings` | Registry fields, per-license defaults, signing-key preparation, and deleting the product. See [Products](/docs/admin/products/).                                                     |
+| Page               | URL            | What it's for                                                                                                                                                                        |
+| ------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Overview**       | (root)         | Setup health at a glance: a "needs attention" strip, a guided checklist, the SDK trust key and trust set, and a starter snippet. See [Products](/docs/admin/products/#setup-health). |
+| **Services**       | `services`     | Which services the product runs, and its device-registration policy. See [Services & enablement](/docs/admin/services-enablement/).                                                  |
+| **Devices**        | `devices`      | Every device of the product, including those that hold no license. See [Licenses & devices](/docs/admin/licenses-and-devices/#devices-product-wide).                                 |
+| **Presentation**   | `presentation` | The images Polaris Key hosts for the product: icon, listing art and store slots, with Upload, Revert and Delete copy. See [Presentation](/docs/admin/presentation/).                 |
+| **Keys & secrets** | `keys`         | Write-only product secrets and the required-secrets checklist. Outlet credentials are here too until they move to Distribution. See [Secrets & keys](/docs/admin/secrets-and-keys/). |
+| **Activity**       | `activity`     | The product's audit log. See [Activity](/docs/admin/activity/).                                                                                                                      |
+| **Settings**       | `settings`     | Registry fields, per-license defaults, signing-key preparation, and deleting the product. See [Products](/docs/admin/products/).                                                     |
 
 ### License
 

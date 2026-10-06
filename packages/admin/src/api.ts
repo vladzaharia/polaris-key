@@ -919,6 +919,56 @@ export interface ProductPresentation {
   accentDark?: string | null;
 }
 
+/**
+ * One hosted-asset slot as the Presentation page reads it (HA-05, HA-06; worker
+ * `admin/handlers/hostedAssets.ts`, `HostedAssetDto`).
+ */
+export interface HostedAssetDto {
+  slot: string;
+  /** `''` is every locale. */
+  locale: string;
+  /** Who filled the slot: `manifest`, `console` (an upload: it claims the slot), `ci`, `release-mirror`. */
+  origin: string;
+  /** Where the original is: `url`, `repo`, `upload`, `ci`, `github-asset`. */
+  sourceKind: string;
+  /** The URL or `<path>@<commit>`; `null` for an upload or a CI push. */
+  sourceRef: string | null;
+  /** `pending` (nothing served yet), `ready`, `failed` or `stale` (the last good copy kept). */
+  status: string;
+  /** The last failure's reason code. */
+  error: string | null;
+  sha256: string | null;
+  size: number | null;
+  contentType: string | null;
+  width: number | null;
+  height: number | null;
+  checkedAt: number | null;
+  modifiedAt: number;
+  /** What the manifest declares for the slot now, or `null`. */
+  wanted: { kind: "url" | "repo"; src: string; sha256?: string } | null;
+  /** The manifest wants a ref the stored copy was not pulled for (a pull is owed). */
+  pullPending: boolean;
+  attempts: number;
+  nextAttemptAt: number | null;
+  /** A ready copy still owes its WebP sizes (retried while the Images binding is bound). */
+  sizesPending: boolean;
+  /** The size ladder's widths. */
+  widths: number[];
+  /** The original on the image host, when it serves it. */
+  url: string | null;
+  /** A ~256 px variant, else the original. */
+  previewUrl: string | null;
+  /** The console may upload to and delete this slot. */
+  uploadable: boolean;
+  /** The slot's byte cap. */
+  maxBytes: number | null;
+}
+
+/** What Revert or delete-a-copy did (`DELETE …/assets/<slot>`). */
+export type HostedAssetOutcome =
+  | { outcome: "reverted"; pulling: boolean }
+  | { outcome: "deleted" };
+
 /** One product's facts for Home's card (`GET /manage/api/summary`; a member per service it runs). */
 export interface ProductSummary {
   license?: { active: number };
@@ -977,6 +1027,12 @@ export interface ProductDetail {
    * until it is reverted). Empty, or absent from an older Worker, when nothing is claimed.
    */
   claims?: ProductClaim[];
+  /**
+   * ST-20: manifest-authoritative mode. On, console edits to manifest-declared settings are
+   * break-glass claims only (a reason, at most 7 days). Locked on for the system product. Absent
+   * from an older Worker.
+   */
+  manifestAuthoritative?: { value: boolean; locked: boolean };
   createdAt: number;
   modifiedAt: number;
 }
@@ -1096,6 +1152,59 @@ export interface SignInSettings {
   appReview48Warning: boolean;
 }
 
+/** A setting's value shape (worker `core/settings/types.ts` `ValueSpec`). */
+export type SettingValueSpec =
+  | { kind: "switch" }
+  | { kind: "boolean" }
+  | { kind: "integer"; unit: string; min: number; max: number }
+  | { kind: "enum"; values: readonly string[] }
+  | { kind: "string"; pattern?: string; maxLength: number }
+  | { kind: "list"; of: SettingValueSpec; max: number }
+  | { kind: "json"; schema: string };
+
+export type SettingConfirmLevel = "L0" | "L1" | "L2" | "L3";
+
+/** The confirm level per direction (worker `SettingConfirm`). */
+export type SettingConfirmSpec =
+  | { up: SettingConfirmLevel; down: SettingConfirmLevel }
+  | { on: SettingConfirmLevel; off: SettingConfirmLevel }
+  | { change: SettingConfirmLevel };
+
+/**
+ * One row-backed product setting with its value in force (LX-06, `GET …/settings/effective`):
+ * `licensing.*` on License → Settings, `identity.oidc.syncTierOnSignIn` on Identity → Sign-in.
+ */
+export interface ProductSetting {
+  key: string;
+  area: string;
+  service: string;
+  label: string;
+  description: string;
+  docs: string;
+  spec: SettingValueSpec;
+  confirm: SettingConfirmSpec;
+  /** A write needs a reason. */
+  critical: boolean;
+  /** `product:<dotted path>` in `.pkey/`. */
+  manifestPath: string | null;
+  visibleWhen: {
+    service?: string;
+    offBehaviour: "hide" | "readOnly" | "visible";
+  } | null;
+  serviceEnabled: boolean;
+  value: unknown;
+  source: "default" | "manifest" | "console";
+  defaultValue: unknown;
+  /** What the last applied manifest declares (Revert's target); absent when it declares nothing. */
+  manifestValue?: unknown;
+  /** The row version, 0 for none: a write's `expectedVersion`. */
+  version: number;
+  /** Epoch seconds. */
+  updatedAt: number | null;
+  updatedBy: string | null;
+  reason: string | null;
+}
+
 /** The column-backed claimable settings (worker `core/settingsClaims.ts` `CLAIM_KEYS`). */
 export type ClaimKey =
   | "core.name"
@@ -1110,6 +1219,20 @@ export interface ProductClaim {
   claimedBy: string;
   claimedAt: number;
   version: number;
+  /**
+   * ST-20: a break-glass claim's reason and latest expiry (epoch seconds). It also ends at the
+   * first resync or deploy that changes the field. Absent on an ordinary claim.
+   */
+  breakGlass?: { reason: string; expiresAt: number };
+}
+
+/** A live break-glass claim, as a resync lists it (ST-20). */
+export interface BreakGlassClaim {
+  key: ClaimKey;
+  claimedBy: string;
+  claimedAt: number;
+  reason: string;
+  expiresAt: number;
 }
 
 /** What Revert to manifest did: re-applied the snapshot now, or left it to the next resync. */
@@ -1179,6 +1302,10 @@ export interface UpdateProductBody {
   defaultDeviceLimit?: number;
   /** `null` (or blank) clears the group (A-3). */
   adminGroup?: string | null;
+  /** ST-20: turn manifest-authoritative mode on or off (a repository-linked product only). */
+  manifestAuthoritative?: boolean;
+  /** ST-20: on a manifest-authoritative product, the claimable fields' break-glass reason. */
+  breakGlass?: { reason: string };
 }
 
 export interface RotateKeyResult {
@@ -1204,6 +1331,10 @@ export interface ResyncResult {
   claimed?: string[];
   /** ST-01b: console rows holding an id the manifest newly declares; kept, manifest row skipped. */
   conflicts?: { path: string; message: string }[];
+  /** ST-20: the live break-glass claims after the resync. */
+  breakGlass?: BreakGlassClaim[];
+  /** ST-20: the break-glass claims it ended (their 7 days ran out, or the manifest changed them). */
+  breakGlassEnded?: { key: ClaimKey; why: "expired" | "changed" }[];
   /** The pack-set re-resolution, when it stored sets or failed (P4-12). */
   packSets?:
     | { ok: true; sets: number }
@@ -1255,6 +1386,8 @@ export interface ResyncPlanResult {
   /** The default-branch commit the manifest was read at. */
   commit: string;
   plan: ManifestPlan;
+  /** ST-20: the break-glass claims the resync would keep (absent when none). */
+  breakGlass?: BreakGlassClaim[];
 }
 
 /** `POST …/release/link`: linked and applied. */
@@ -1371,6 +1504,7 @@ export const CI_SCOPES = [
   "distribution:rollout",
   "distribution:feeds",
   "distribution:listing",
+  "assets:write",
 ] as const;
 
 /** The blob collector's dry run for one product (`GET …/blob-gc`, P4-14). */
@@ -3573,7 +3707,9 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const mutating = init.method != null && init.method !== "GET";
   if (mutating) {
     headers.set(CSRF_HEADER, csrf);
-    if (init.body) headers.set("Content-Type", "application/json");
+    // A JSON body unless the caller sent its own type (HA-06's raw file upload).
+    if (init.body && !headers.has("Content-Type"))
+      headers.set("Content-Type", "application/json");
   }
   const res = await fetch(path, {
     ...init,
@@ -4027,6 +4163,33 @@ const rawApi = {
     ),
   /** The blob collector's dry run: what would be dropped, and when. Read-only. */
   blobGc: (slug: string) => call<BlobGcDryRun>(`${p(slug)}/blob-gc`),
+  /** HA-05, HA-06: every hosted-asset slot of the product (the Presentation page). */
+  hostedAssets: (slug: string) =>
+    call<{ assets: HostedAssetDto[] }>(`${p(slug)}/assets`),
+  /**
+   * HA-06: upload `file` into `slot` (the body is the file itself; the Worker sniffs the type).
+   * The upload claims the slot: a resync and a CI push leave it alone until Revert.
+   */
+  uploadHostedAsset: (
+    slug: string,
+    slot: string,
+    file: Blob,
+    locale?: string,
+  ) =>
+    call<{ asset: HostedAssetDto | null }>(
+      `${p(slug)}/assets/${enc(slot)}${locale ? `?locale=${enc(locale)}` : ""}`,
+      {
+        method: "POST",
+        body: file,
+        headers: { "Content-Type": file.type || "application/octet-stream" },
+      },
+    ),
+  /** HA-06: Revert a console claim to the manifest, or delete the slot's hosted copy. */
+  deleteHostedAsset: (slug: string, slot: string, locale?: string) =>
+    call<HostedAssetOutcome>(
+      `${p(slug)}/assets/${enc(slot)}${locale ? `?locale=${enc(locale)}` : ""}`,
+      { method: "DELETE" },
+    ),
 
   // ── services (per-product enablement) ───────────────────────────────────────
   services: (slug: string) => call<ServicesResponse>(`${p(slug)}/services`),
@@ -4382,14 +4545,20 @@ const rawApi = {
     slug: string,
     catalog: ProductCatalog,
     expectedVersion?: number,
+    /** ST-20: a manifest-authoritative product takes a publish only as a break-glass claim. */
+    breakGlass?: { reason: string },
   ) =>
-    call<{ ok: true; schemaVersion: number }>(`${p(slug)}/config/catalog`, {
+    call<{
+      ok: true;
+      schemaVersion: number;
+      breakGlass?: { expiresAt: number };
+    }>(`${p(slug)}/config/catalog`, {
       method: "PUT",
-      body: JSON.stringify(
-        expectedVersion === undefined
-          ? { catalog }
-          : { catalog, expectedVersion },
-      ),
+      body: JSON.stringify({
+        catalog,
+        ...(expectedVersion === undefined ? {} : { expectedVersion }),
+        ...(breakGlass ? { breakGlass } : {}),
+      }),
     }),
   /** Every published catalog version, newest first (A-6). */
   catalogVersions: (slug: string) =>
@@ -4623,6 +4792,38 @@ const rawApi = {
       `${p(slug)}/identity/sign-in-settings`,
       { method: "PATCH", body: JSON.stringify(patch) },
     ),
+
+  // ── product settings (LX-06: the row-backed slice of S-18 §4.7's settings API) ─────
+  /** The row-backed settings of one settings-hub area, with the value in force. */
+  productSettings: (slug: string, area: string) =>
+    call<{ settings: ProductSetting[] }>(
+      `${p(slug)}/settings/effective?area=${encodeURIComponent(area)}`,
+    ),
+  /** Set a setting in the console: on a repo-linked product this claims it from the manifest. */
+  updateProductSetting: (
+    slug: string,
+    key: string,
+    body: { value: unknown; expectedVersion: number; reason?: string },
+  ) =>
+    call<{ ok: true; claimed: boolean; setting: ProductSetting }>(
+      `${p(slug)}/settings/${encodeURIComponent(key)}`,
+      { method: "PATCH", body: JSON.stringify(body) },
+    ),
+  /** Revert a console setting to the manifest (or to its default on a manual product). */
+  revertProductSetting: (
+    slug: string,
+    key: string,
+    body: { expectedVersion: number },
+  ) =>
+    call<{
+      ok: true;
+      applied: boolean;
+      message?: string;
+      setting: ProductSetting;
+    }>(`${p(slug)}/settings/${encodeURIComponent(key)}`, {
+      method: "DELETE",
+      body: JSON.stringify(body),
+    }),
 
   // ── offline bundles ─────────────────────────────────────────────────────────
   /** Mint one offline activation bundle for an air-gapped device. Re-minting is cheap — the

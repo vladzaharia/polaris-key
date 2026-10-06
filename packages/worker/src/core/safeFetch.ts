@@ -27,8 +27,10 @@
  *
  *   - `redirect: "manual"`; at most `SAFE_FETCH_MAX_REDIRECTS` hops, each re-guarded before it
  *     is dialled. An `Authorization` header goes to the FIRST hop only, never to a `Location`.
- *   - One timeout (`SAFE_FETCH_TIMEOUT_MS` unless the caller sets a shorter one) covering every
- *     hop, the headers and the body.
+ *   - One timeout covering every hop, the headers and the body: `SAFE_FETCH_TIMEOUT_MS`, unless
+ *     the caller sets a shorter one. Only a release file's pull (HA-08, up to R2's 4.995 GiB
+ *     single-put limit) may opt in (`releaseFile`) to a longer one, up to
+ *     `SAFE_FETCH_FILE_TIMEOUT_MS`; every other caller stays clamped at `SAFE_FETCH_TIMEOUT_MS`.
  *   - A byte cap: a declared `Content-Length` over it is refused before the body is read, and the
  *     body the caller receives is counted and errors the moment it passes the cap, whatever the
  *     header said.
@@ -42,6 +44,13 @@
 export const SAFE_FETCH_MAX_REDIRECTS = 3;
 /** The budget for the whole fetch: every hop, the headers and the body. */
 export const SAFE_FETCH_TIMEOUT_MS = 30_000;
+/**
+ * The longest budget a release file's pull may ask for (HA-08, `releaseFile`), which `ingest`
+ * scales with the file's size (`releaseFileTimeoutMs`). One such pull fits a queue consumer's
+ * 15-minute wall clock; `src/assetQueue.ts` starts no mirror once 4 minutes of a batch are spent,
+ * so a whole batch does too. The byte cap still bounds what any one fetch can read.
+ */
+export const SAFE_FETCH_FILE_TIMEOUT_MS = 10 * 60_000;
 /** The longest URL dialled. */
 export const SAFE_FETCH_MAX_URL = 2048;
 
@@ -112,7 +121,8 @@ export class TooLargeError extends Error {
 
 /**
  * `body`, counted: the returned stream errors with `TooLargeError` the moment more than
- * `maxBytes` have passed, and cancels the source.
+ * `maxBytes` have passed, and cancels the source. Lazy (`highWaterMark: 0`): nothing is read from
+ * the source until the consumer reads, so a body refused on its headers alone is never read.
  */
 export function cappedStream(
   body: ReadableStream,
@@ -120,32 +130,35 @@ export function cappedStream(
 ): ReadableStream<Uint8Array> {
   const reader = body.getReader();
   let total = 0;
-  return new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      const r = await reader.read();
-      if (r.done) {
-        controller.close();
-        return;
-      }
-      const v = r.value as unknown;
-      const chunk =
-        v instanceof Uint8Array
-          ? v
-          : ArrayBuffer.isView(v)
-            ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength)
-            : new Uint8Array(v as ArrayBuffer);
-      total += chunk.byteLength;
-      if (total > maxBytes) {
-        await reader.cancel().catch(() => undefined);
-        controller.error(new TooLargeError(maxBytes));
-        return;
-      }
-      controller.enqueue(chunk);
+  return new ReadableStream<Uint8Array>(
+    {
+      async pull(controller) {
+        const r = await reader.read();
+        if (r.done) {
+          controller.close();
+          return;
+        }
+        const v = r.value as unknown;
+        const chunk =
+          v instanceof Uint8Array
+            ? v
+            : ArrayBuffer.isView(v)
+              ? new Uint8Array(v.buffer, v.byteOffset, v.byteLength)
+              : new Uint8Array(v as ArrayBuffer);
+        total += chunk.byteLength;
+        if (total > maxBytes) {
+          await reader.cancel().catch(() => undefined);
+          controller.error(new TooLargeError(maxBytes));
+          return;
+        }
+        controller.enqueue(chunk);
+      },
+      cancel(reason) {
+        return reader.cancel(reason);
+      },
     },
-    cancel(reason) {
-      return reader.cancel(reason);
-    },
-  });
+    { highWaterMark: 0 },
+  );
 }
 
 /** The reason a failed body read maps to: the cap, the timeout, or the network. */
@@ -166,8 +179,13 @@ export type FetchImpl = (
 export interface SafeFetchOptions {
   /** The byte cap on the body (declared and streamed). */
   maxBytes: number;
-  /** At most `SAFE_FETCH_TIMEOUT_MS`; a shorter budget is allowed, a longer one is clamped. */
+  /**
+   * `SAFE_FETCH_TIMEOUT_MS` by default. A shorter budget is allowed; a longer one is clamped to
+   * `SAFE_FETCH_TIMEOUT_MS`, or with `releaseFile` to `SAFE_FETCH_FILE_TIMEOUT_MS`.
+   */
   timeoutMs?: number;
+  /** A release file's pull (HA-08): the only caller allowed a budget past 30 s. */
+  releaseFile?: boolean;
   /** Request headers. `authorization` is sent to the first hop only. */
   headers?: Record<string, string>;
   /** The source's validator from the last pull, sent as `If-None-Match`. */
@@ -227,6 +245,16 @@ function isRedirectStatus(status: number): boolean {
   );
 }
 
+/** The budget a fetch with `opts` gets: the caller's, clamped to the maximum its kind allows. */
+export function safeFetchTimeoutMs(
+  opts: Pick<SafeFetchOptions, "timeoutMs" | "releaseFile">,
+): number {
+  return Math.min(
+    opts.timeoutMs ?? SAFE_FETCH_TIMEOUT_MS,
+    opts.releaseFile ? SAFE_FETCH_FILE_TIMEOUT_MS : SAFE_FETCH_TIMEOUT_MS,
+  );
+}
+
 /** Fetch `url` under the guard, the redirect rule, the timeout and the byte cap. */
 export async function safeFetch(
   url: string,
@@ -234,10 +262,7 @@ export async function safeFetch(
 ): Promise<SafeFetchResult> {
   const hops: string[] = [];
   const fetchImpl = opts.fetchImpl ?? fetch;
-  const timeoutMs = Math.min(
-    opts.timeoutMs ?? SAFE_FETCH_TIMEOUT_MS,
-    SAFE_FETCH_TIMEOUT_MS,
-  );
+  const timeoutMs = safeFetchTimeoutMs(opts);
   const signal = AbortSignal.timeout(timeoutMs);
   let current = url;
   try {

@@ -1439,30 +1439,86 @@ export async function listStorefrontCandidates(
 }
 
 /**
- * The products in the account's library WITHOUT a licence (PS-04's `library_entries`, notes/S-21
+ * The products in the account's library WITHOUT a licence (`library_entries`, PS-04, notes/S-21
  * §6.4): an open product someone added. The storefront never offers or counts one of these, as
- * it never offers a held product. PS-03 reads the table only if present: until PS-04's migration
- * adds it, D1's "no such table" for exactly this table reads as an empty library, and any other
- * error still throws.
+ * it never offers a held product.
  */
 export async function listLibraryEntryProducts(
   db: Db,
   accountId: string,
 ): Promise<Set<string>> {
-  try {
-    const rows = await db.all<{ product: string }>(
-      "SELECT product FROM library_entries WHERE account_id = ?",
+  const rows = await db.all<{ product: string }>(
+    "SELECT product FROM library_entries WHERE account_id = ?",
+    accountId,
+  );
+  return new Set(rows.map((r) => r.product));
+}
+
+/** Why a library entry exists (`library_entries.via`): the `open` obtain path only. */
+export type LibraryEntryVia = "open";
+
+/** One library entry (PS-04): a product in the account's library with no licence behind it. */
+export interface LibraryEntryRow {
+  product: string;
+  via: LibraryEntryVia;
+  added_at: number;
+}
+
+/** The account's library entries, oldest first; or the one for `product` when given. */
+export async function listLibraryEntries(
+  db: Db,
+  accountId: string,
+  product?: string,
+): Promise<LibraryEntryRow[]> {
+  return db.all<LibraryEntryRow>(
+    `SELECT product, via, added_at FROM library_entries
+      WHERE account_id = ? AND (? IS NULL OR product = ?)
+      ORDER BY added_at ASC, product ASC`,
+    accountId,
+    product ?? null,
+    product ?? null,
+  );
+}
+
+/**
+ * Add `product` to the account's library without a licence, reporting whether THIS call wrote the
+ * row. The primary key (account, product) decides a racing double submit: exactly one insert
+ * lands, and the other caller answers the same entry as already added.
+ */
+export async function addLibraryEntry(
+  db: Db,
+  input: {
+    accountId: string;
+    product: string;
+    via: LibraryEntryVia;
+    now: number;
+  },
+): Promise<boolean> {
+  const changes = await db.runChanges(
+    `INSERT INTO library_entries (account_id, product, via, added_at)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(account_id, product) DO NOTHING`,
+    input.accountId,
+    input.product,
+    input.via,
+    input.now,
+  );
+  return changes > 0;
+}
+
+/** Remove the account's library entry for `product`; `false` when there was none. */
+export async function removeLibraryEntry(
+  db: Db,
+  accountId: string,
+  product: string,
+): Promise<boolean> {
+  return (
+    (await db.runChanges(
+      "DELETE FROM library_entries WHERE account_id = ? AND product = ?",
       accountId,
-    );
-    return new Set(rows.map((r) => r.product));
-  } catch (e) {
-    if (
-      e instanceof Error &&
-      /no such table: library_entries\b/i.test(e.message)
-    )
-      return new Set();
-    throw e;
-  }
+      product,
+    )) > 0
+  );
 }
 
 /**
@@ -1497,6 +1553,18 @@ export async function accountHoldsProduct(
 }
 
 /**
+ * The id of the `portal.discover.claim` row for one added licence: derived from the licence, so a
+ * racing double submit inserts it once, and the storefront's activation count (PS-04) finds the
+ * claim behind a licence by primary key.
+ */
+export function discoverClaimAuditId(
+  product: string,
+  licenseId: string,
+): string {
+  return `paud_discover_${product}_${licenseId}`;
+}
+
+/**
  * Record that Discover added `licenseId` to the account (PX-W10, G25: audit `source: discover`),
  * reporting whether THIS call recorded it. The row id is derived from the licence, so of two
  * racing claims for one account and product exactly one inserts it and sees `true`; the other
@@ -1518,7 +1586,7 @@ export async function recordDiscoverClaim(
        (id, account_id, at, action, product, target_kind, target_id, summary)
      VALUES (?, ?, ?, 'portal.discover.claim', ?, 'license', ?, ?)
      ON CONFLICT(id) DO NOTHING`,
-    `paud_discover_${input.product}_${input.licenseId}`,
+    discoverClaimAuditId(input.product, input.licenseId),
     input.accountId,
     input.now,
     input.product,

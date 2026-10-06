@@ -52,6 +52,12 @@ import {
 } from "./resolve.js";
 import { NO_GUARD } from "./columns.js";
 import {
+  BREAK_GLASS_MAX_SECONDS,
+  BREAK_GLASS_REASON_MAX,
+  manifestAuthorityOf,
+  manifestAuthoritativeRefusal,
+} from "./authority.js";
+import {
   SETTING_ORIGINS,
   type ConfirmLevel,
   type SettingDef,
@@ -65,10 +71,6 @@ export interface AuditActor {
   name: string | null;
   email: string | null;
 }
-
-/** The system product's refusal (S-18 §4.5 item 8), shared with `settingsClaims.ts`. */
-export const MANIFEST_AUTHORITATIVE_MESSAGE =
-  "the system product is manifest-authoritative: change the monorepo's .pkey/ instead";
 
 /** One key to write. */
 export interface SettingWrite {
@@ -91,12 +93,28 @@ export interface SettingWrite {
    * into its `WHERE`. writeSetting adds the claim and the audit row around them.
    */
   statements?: (guard: SqlGuard) => DbStatement[];
-  /** The audit row's action, summary and target; defaults name the setting. */
+  /**
+   * The audit row's action, summary and target; defaults name the setting. A summary may be a
+   * function of the write's outcome (a break-glass claim's reason and expiry, ST-20).
+   */
   audit?: {
     action?: string;
-    summary?: string;
+    summary?:
+      | string
+      | ((outcome: {
+          breakGlass?: { reason: string; expiresAt: number };
+        }) => string);
     target?: { kind: string; id: string } | null;
   };
+}
+
+/** A write's audit summary, resolved against its outcome. */
+function summaryOf(
+  w: SettingWrite,
+  outcome: { breakGlass?: { reason: string; expiresAt: number } },
+): string | undefined {
+  const s = w.audit?.summary;
+  return typeof s === "function" ? s(outcome) : s;
 }
 
 export interface WriteOptions {
@@ -118,6 +136,14 @@ export interface WriteOptions {
    * `admin:<sub>`). The audit row always names the actor.
    */
   author?: string;
+  /**
+   * ST-20 (S-18 §4.5 item 7): the request's break-glass claim, `{ reason, seconds? }` as the
+   * request carried it. Needed only on a manifest-authoritative product (the system product
+   * always), where a console write to a governed setting is refused without it; ignored on any
+   * other product. The reason is 1–500 characters; the claim expires after `seconds` (default and
+   * most: 7 days), or sooner at the first apply that changes the field (`claimsForApply`).
+   */
+  breakGlass?: unknown;
 }
 
 /** The `updated_by` a write records. */
@@ -138,6 +164,8 @@ export interface WrittenSetting {
   version: number;
   /** A console claim on a manifest-declared field (the console says "claimed"). */
   claimed: boolean;
+  /** ST-20: the claim is a break-glass one, with its reason and its latest expiry. */
+  breakGlass?: { reason: string; expiresAt: number };
   before: ResolvedSetting;
   /** The value and source the write leaves (predicted before the batch, for the audit row). */
   after: { value: unknown; source: ResolvedSetting["source"] };
@@ -150,6 +178,8 @@ export type WriteRefusalReason =
   | "read_only"
   | "manifest_only"
   | "manifest_authoritative"
+  | "locked"
+  | "invalid_break_glass"
   | "no_writer"
   | "invalid_value"
   | "setting_out_of_bounds"
@@ -276,6 +306,7 @@ function productAuditStmt(
   storedAfter: unknown,
   versionAfter: number,
   when: SqlGuard,
+  breakGlass: { reason: string; expiresAt: number } | null,
 ): DbStatement {
   const target =
     w.audit?.target === undefined
@@ -301,7 +332,7 @@ function productAuditStmt(
             : "setting.reset"),
       target?.kind ?? null,
       target?.id ?? null,
-      w.audit?.summary ??
+      summaryOf(w, breakGlass ? { breakGlass } : {}) ??
         defaultSummary(def, op, opts.origin, before.value, after.value),
       snapshot(def, {
         value: before.value,
@@ -468,10 +499,53 @@ interface ProductPlan {
   op: "set" | "reset";
   before: ResolvedSetting;
   after: WrittenSetting["after"];
-  /** Keep (upsert) a `product_settings` row, drop it, or leave it alone. */
-  row: "upsert" | "delete" | "none";
+  /**
+   * Keep (upsert) the console's `product_settings` row, drop it, put the manifest's value back as
+   * a `source = 'manifest'` row (a row-backed Revert), or leave it alone.
+   */
+  row: "upsert" | "delete" | "manifest" | "none";
   claimed: boolean;
+  /**
+   * Governed by manifest-authoritative mode (ST-20): a claimable key claimed through a
+   * `product_settings` row (a legacy `*_source` marker is the deploy hook's to honour instead).
+   */
+  governed: boolean;
   storedBefore: unknown;
+}
+
+/** A break-glass request, checked: its reason and when its claim expires at the latest. */
+function parseBreakGlass(
+  raw: unknown,
+  now: number,
+): { reason: string; expiresAt: number } | WriteRefusal {
+  const r =
+    raw && typeof raw === "object"
+      ? (raw as { reason?: unknown; seconds?: unknown })
+      : {};
+  const reason = typeof r.reason === "string" ? r.reason.trim() : "";
+  if (reason.length === 0 || reason.length > BREAK_GLASS_REASON_MAX)
+    return refuse(
+      422,
+      "reason_required",
+      `a break-glass claim needs a reason of 1 to ${BREAK_GLASS_REASON_MAX} characters`,
+      undefined,
+      { fields: ["breakGlass.reason"] },
+    );
+  const seconds = r.seconds ?? BREAK_GLASS_MAX_SECONDS;
+  if (
+    typeof seconds !== "number" ||
+    !Number.isSafeInteger(seconds) ||
+    seconds < 1 ||
+    seconds > BREAK_GLASS_MAX_SECONDS
+  )
+    return refuse(
+      422,
+      "invalid_break_glass",
+      `a break-glass claim lasts 1 second to ${BREAK_GLASS_MAX_SECONDS / 86400} days`,
+      undefined,
+      { fields: ["breakGlass.seconds"] },
+    );
+  return { reason, expiresAt: now + seconds };
 }
 
 async function writeProduct(
@@ -568,15 +642,13 @@ async function writeProduct(
       def.storage.kind === "column"
         ? ctx.registry.columnAdapter(def.key)
         : undefined;
-    // The system product is manifest-authoritative (S-18 §4.5 item 8; ST-20 adds break-glass).
-    // A key claimed through a legacy marker (`services_source`, `access_source`, …) keeps its
-    // pre-ST-04 behaviour there: the deploy hook honours the marker itself, and ST-01c lists those
-    // bootstrap-owned claims for the operator, so refusing them here would be a new restriction.
-    if (def.ownership === "claimable" && system && !adapter?.marker)
+    // The system-lock rule (ST-20): a key the registry fixes for the system product is never
+    // written there.
+    if (def.systemLock && system)
       return refuse(
         409,
-        "manifest_authoritative",
-        MANIFEST_AUTHORITATIVE_MESSAGE,
+        "locked",
+        `${def.key} is fixed for the system product: the deploy hook is its only writer`,
         def.key,
       );
     if (def.storage.kind === "column" && !adapter)
@@ -614,8 +686,17 @@ async function writeProduct(
         after = { value: def.defaultValue, source: "default" };
       else after = { value: before.value, source: before.source };
     } else if (def.storage.kind === "scalar") {
-      const r = resolveProductValue(def, await platformLinks(ctx, def));
-      after = { value: r.value, source: r.source };
+      if (w.restore !== undefined)
+        after = { value: w.restore, source: "manifest" };
+      else {
+        const r = resolveProductValue(def, {
+          ...(await platformLinks(ctx, def)),
+          ...(product.created_at !== undefined
+            ? { productCreatedAt: product.created_at }
+            : {}),
+        });
+        after = { value: r.value, source: r.source };
+      }
     } else after = { value: undefined, source: manifestSide };
 
     const refused = commonChecks(def, w, op, before.value, after.value, opts);
@@ -644,11 +725,45 @@ async function writeProduct(
       op,
       before,
       after,
-      row: op === "reset" ? "delete" : keepsRow ? "upsert" : "none",
+      row:
+        op === "reset"
+          ? def.storage.kind === "scalar" && w.restore !== undefined
+            ? "manifest"
+            : "delete"
+          : keepsRow
+            ? "upsert"
+            : "none",
       claimed: op === "set" && linked && def.ownership === "claimable",
+      governed:
+        def.ownership === "claimable" &&
+        !(def.storage.kind === "column" && adapter?.marker),
       storedBefore,
     });
   }
+
+  // Manifest-authoritative mode (ST-20, S-18 §4.5 items 7–8): a console write to a governed key
+  // is refused unless it is a break-glass claim; Revert stays open (it returns the key to the
+  // manifest). Off for most products, so the mode is read only when a governed key is set.
+  let breakGlass: { reason: string; expiresAt: number } | null = null;
+  if (plans.some((p) => p.op === "set" && p.governed)) {
+    const authority = await manifestAuthorityOf(ctx.db, product);
+    if (authority.authoritative) {
+      if (opts.breakGlass === undefined || opts.breakGlass === null)
+        return refuse(
+          409,
+          "manifest_authoritative",
+          manifestAuthoritativeRefusal(product),
+          plans.find((p) => p.op === "set" && p.governed)!.def.key,
+        );
+      const bg = parseBreakGlass(opts.breakGlass, opts.now);
+      if ("ok" in bg) return bg;
+      breakGlass = bg;
+    }
+  }
+  const bgOf = (p: ProductPlan) =>
+    breakGlass && p.op === "set" && p.governed && p.row === "upsert"
+      ? breakGlass
+      : null;
 
   // The batch: anchor audit rows (versions checked), then everything else guarded by the anchor.
   const versionChecks = plans.filter((p) => p.w.expectedVersion !== undefined);
@@ -671,7 +786,7 @@ async function writeProduct(
     params: [slug, ids[0]!],
   };
   const versionAfter = (p: ProductPlan) =>
-    p.row === "upsert"
+    p.row === "upsert" || p.row === "manifest"
       ? p.before.version + 1
       : p.row === "delete"
         ? 0
@@ -691,6 +806,7 @@ async function writeProduct(
       p.op === "set" ? p.w.value : p.after.value,
       versionAfter(p),
       when,
+      bgOf(p),
     ),
   );
   const args = {
@@ -720,11 +836,15 @@ async function writeProduct(
         sql: `DELETE FROM product_settings WHERE product = ? AND key = ? AND (${guard.sql})`,
         params: [slug, p.def.key, ...guard.params],
       });
-    else if (p.row === "upsert")
+    else if (p.row === "upsert" || p.row === "manifest") {
+      // A break-glass claim stores its reason and expiry; any other write clears an expiry, so an
+      // ordinary save makes a claim permanent and a second break-glass save restarts its clock.
+      const bg = bgOf(p);
+      const manifestRow = p.row === "manifest";
       stmts.push({
         sql: `INSERT INTO product_settings
                 (product, key, value_json, source, version, updated_at, updated_by, reason, expires_at)
-              SELECT ?, ?, ?, ?, 1, ?, ?, ?, NULL WHERE (${guard.sql})
+              SELECT ?, ?, ?, ?, 1, ?, ?, ?, ? WHERE (${guard.sql})
               ON CONFLICT(product, key) DO UPDATE SET
                 value_json = excluded.value_json, source = excluded.source,
                 version = CASE
@@ -732,18 +852,25 @@ async function writeProduct(
                    AND product_settings.expires_at <= excluded.updated_at THEN 1
                   ELSE product_settings.version + 1 END,
                 updated_at = excluded.updated_at,
-                updated_by = excluded.updated_by, reason = excluded.reason, expires_at = NULL`,
+                updated_by = excluded.updated_by, reason = excluded.reason,
+                expires_at = excluded.expires_at`,
         params: [
           slug,
           p.def.key,
-          p.def.storage.kind === "scalar" ? JSON.stringify(p.w.value) : null,
-          source,
+          manifestRow
+            ? JSON.stringify(p.w.restore)
+            : p.def.storage.kind === "scalar"
+              ? JSON.stringify(p.w.value)
+              : null,
+          manifestRow ? "manifest" : source,
           opts.now,
           authorOf(opts),
-          p.w.reason ?? null,
+          manifestRow ? null : (bg?.reason ?? p.w.reason ?? null),
+          bg?.expiresAt ?? null,
           ...guard.params,
         ],
       });
+    }
   }
 
   if (
@@ -781,6 +908,7 @@ async function writeProduct(
       op: p.op,
       version: versionAfter(p),
       claimed: p.claimed,
+      ...(bgOf(p) ? { breakGlass: bgOf(p)! } : {}),
       before: p.before,
       after: p.after,
     })),
@@ -890,7 +1018,7 @@ async function writePlatform(
       p.w.audit?.target === undefined
         ? p.def.key
         : (p.w.audit.target?.id ?? null),
-      p.w.audit?.summary ??
+      summaryOf(p.w, {}) ??
         defaultSummary(p.def, p.op, opts.origin, p.before.value, p.after.value),
       snapshot(p.def, {
         value: p.before.value,

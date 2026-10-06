@@ -527,7 +527,6 @@ const IDENTITY_PATHS = [
   "/oidcprod/identity/session/license",
   "/oidcprod/identity/auth/start",
   "/oidcprod/identity/auth/callback",
-  "/oidcprod/identity/auth/poll",
   "/oidcprod/identity/auth/logout",
   "/oidcprod/identity/auth/device/start",
   "/oidcprod/identity/auth/device/verify",
@@ -568,6 +567,20 @@ describe("an OIDC product whose manifest declared it", () => {
       "https://key.plrs.im/oidcprod/identity/auth/callback",
     );
     expect(authorize.searchParams.get("client_id")).toBe("client-oidcprod");
+  });
+
+  // `/auth/poll` put both halves of a `state` + device-id poll in a query string and had no flow
+  // left to complete: it is retired, and answers exactly what a path that never existed does.
+  it("answers the retired /identity/auth/poll with the registry's generic 404", async () => {
+    for (const method of ["GET", "POST"]) {
+      const res = await call(env, db, product, "/oidcprod/identity/auth/poll", {
+        method,
+      });
+      expect(res.status, method).toBe(404);
+      expect(await res.text(), method).toBe(
+        JSON.stringify({ error: { code: "not_found" } }),
+      );
+    }
   });
 
   it("serves the browser-session document at its new URL", async () => {

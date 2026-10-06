@@ -31,10 +31,6 @@ import { Catalog } from "@polaris-key/catalog";
 import { validateCatalogCloudSync } from "@polaris-key/manifest";
 import { ErrorCode } from "../../../core/errors.js";
 import { getActiveSchema } from "../../../core/data.js";
-import {
-  claimFacts,
-  systemClaimRefusal,
-} from "../../../core/settingsClaims.js";
 import { writeSetting } from "../../../core/settings/write.js";
 import {
   catalogRepresentabilityResponse,
@@ -162,14 +158,10 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
       });
     }
     // ST-01b: a console publish claims the whole catalog (`config.catalog`, one claimable unit)
-    // on a repo-linked product, so the next resync leaves it alone; the system product's catalog
-    // is manifest-authoritative and refused until ST-20.
-    const facts = await claimFacts(db, slug);
-    const refusal = facts ? systemClaimRefusal(facts) : null;
-    if (refusal)
-      return err(409, ErrorCode.BadRequest, refusal, {
-        reason: "manifest_authoritative",
-      });
+    // on a repo-linked product, so the next resync leaves it alone. ST-20: a manifest-authoritative
+    // product (the system product always) refuses it unless it is a break-glass claim
+    // (`breakGlass: { reason }`), which expires in 7 days or at the first apply that changes it.
+    // `writeSetting()` decides both, in the same batch as the new active version.
     const version = await nextSchemaVersion(db, slug);
     const published = {
       schemaVersion: version,
@@ -205,7 +197,10 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
         audit: {
           action: "schema.publish",
           target: { kind: "schema", id: String(version) },
-          summary: `Published catalog v${version}`,
+          summary: ({ breakGlass }) =>
+            breakGlass
+              ? `Published catalog v${version} as a break-glass claim until ${new Date(breakGlass.expiresAt * 1000).toISOString()}: ${breakGlass.reason}`
+              : `Published catalog v${version}`,
         },
       },
       {
@@ -218,10 +213,18 @@ async function handleActive(ctx: ConfigAdminContext): Promise<Response> {
         now,
         product: slug,
         strict: false,
+        breakGlass: body.breakGlass,
       },
     );
     if (!written.ok) return settingRefused(written);
-    return adminJson({ ok: true, schemaVersion: version });
+    const breakGlass = written.written[0]?.breakGlass;
+    return adminJson({
+      ok: true,
+      schemaVersion: version,
+      ...(breakGlass
+        ? { breakGlass: { expiresAt: breakGlass.expiresAt } }
+        : {}),
+    });
   }
   return err(405, ErrorCode.BadRequest, "method not allowed");
 }

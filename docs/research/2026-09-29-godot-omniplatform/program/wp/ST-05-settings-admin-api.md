@@ -18,6 +18,20 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/PX-W17.md`](../plans/PX-W17.md):** call `applyServiceTransitions`, and show the dry-run count in the confirm.
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`.
+
+- **Write `storefront.polarisKey.enabled`** ([PS-03](PS-03-obtain-path-engine.md)). PS-03 made
+  `core/storefrontSwitch.ts` the setting's first reader. It is a `platform_settings` row keyed by the
+  registry key itself (`storage: { kind: "scalar" }`, no `storedAs` alias) holding the JSON string
+  `"on"` or `"off"`. No row or a tombstone reads as the default `on`; any other value, or an
+  unreadable store, reads as off. It is not an A-13 store key (`core/platformSettings.ts`), so the
+  A-13 route cannot write it and this generic API is its only writer. Accept only `"on"` and
+  `"off"` (a `switch`, L2 confirmation both ways, per its registry entry in
+  `core/settings/platform.ts`), write the row under that key, reset by deleting it or writing the
+  tombstone, and read it back in a test through `polarisKeyStorefrontEnabled`.
+
 ## Goal
 
 A generic settings admin API reads, writes, reverts and lists settings at any scope through the registry, and the bespoke settings routes become compatibility aliases over it.

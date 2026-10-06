@@ -1286,6 +1286,10 @@
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_not_eligible_message">このオファーはお使いのアカウントでは利用できなくなりました。更新して、もう一度お試しください。</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_removable_title">削除できません</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_removable_message">このライセンスはライセンスキーで追加し直せないため、ライブラリに残ります。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_download_auth_required_title">サインインしてダウンロード</string>
     <!-- Core copy (conformance/parity/copy.en.json, codes). -->
     <string name="core_codes_download_auth_required_message">これをダウンロードするには、サインインするかライセンスをアクティベートしてください。</string>

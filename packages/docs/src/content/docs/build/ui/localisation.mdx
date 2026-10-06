@@ -1,0 +1,113 @@
+---
+title: "Localisation"
+description: "One copy catalog for every kit: the launch locales, how each platform receives its strings, plurals and platform variants, overriding copy, and the right-to-left-safe rule."
+sidebar:
+  order: 3
+---
+
+import CopyVariants from "../../../../components/ui/CopyVariants.astro";
+import LocaleTable from "../../../../components/ui/LocaleTable.astro";
+
+:::note[Status]
+This section documents the UI-kit specification (`docs/design/UI-KITS.md`) the kits are being
+rebuilt to. The catalog and its generated tables below exist, but no kit reads them yet;
+[The kits](/docs/build/ui/#the-kits) says where each kit's current docs are.
+:::
+
+Every visible string in every kit is to come from **one catalog**, so a state will show the same
+words in a React screen, a SwiftUI sheet and a Godot scene, and no kit will carry a string of its
+own.
+
+## One catalog, two namespaces
+
+- **Kit strings** live in `packages/brand/kit-copy/en.json`, in a subset of ICU MessageFormat.
+  Each message carries its English value, its role (title, body, label, button, menu, window
+  title, accessibility, hint) and a note for translators.
+- **Core strings** are the error and gate copy every SDK already shows
+  (`conformance/parity/copy.en.json`). Kit tables carry them under `core.*` keys, and a kit string
+  never repeats one.
+- **Which keys each state shows** is `packages/brand/kit-copy/components.json`; every
+  [component page](/docs/build/ui/components/) lists its states and their keys from it.
+
+`pnpm gen:brand` validates all three and writes every platform's table. `pnpm gen:brand -- --check`
+is the drift gate, so a hand edit to a generated table fails CI.
+
+## Launch locales
+
+The kits launch in English and eight more locales. The counts below are read from the packs when
+the site is built.
+
+<LocaleTable />
+
+The non-English packs were produced against a shared glossary (`packages/brand/kit-copy/glossary.json`)
+that fixes the translation of words such as license, device, product, tier and sign in. They are
+marked `reviewed: false` until a native speaker reviews them. "Polaris Key" and the product's name
+are never translated.
+
+## What each platform receives
+
+Each kit will read a table in its platform's own format. The tables are generated today, ahead of
+the kits that will read them: change the source and run `pnpm gen:brand`.
+
+| For                                       | Generated table                                                                                                             |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Web (the planned ui-core and JS kits)     | `@polaris-key/brand/kit-copy` (`packages/brand/src/generated/kit-copy/`): one JSON table per locale and a `KitCopyKey` type |
+| Node terminal                             | `packages/sdk-node/src/kitCopy.generated.ts`, so `@polaris-key/node` needs no brand dependency                              |
+| Swift                                     | `sdks/swift/Sources/PolarisKeyUI/Resources/Localizable.xcstrings` (a String Catalog with plural and device variations)      |
+| Kotlin                                    | `sdks/kotlin/ui/src/commonMain/composeResources/values*/strings.xml` (Compose Resources, with `<plurals>`)                  |
+| Godot                                     | `sdks/godot/addons/polaris_key/ui/locale/polaris_key_ui.pot` and one `.po` per locale                                       |
+| Python (the planned Qt and terminal kits) | `sdks/python/src/polaris_key/ui/kit_copy_generated.py` and `ui/locale/polaris_key_ui.pot`                                   |
+
+Locale names follow each platform: `pt-BR` is `pt_BR` in gettext and Godot and `pt-rBR` in Compose;
+`zh-Hans` is `zh_Hans` in gettext and Godot and `zh-rCN` in Compose.
+
+## Plurals, selects and arguments
+
+Messages use a small ICU subset: plain arguments from a closed set (`{product}`, `{device}`,
+`{time}`, `{version}` and a few more), and at most one plural or select per message, either a
+plural on an integer argument or the select on the device's form factor. Plurals are never built
+by joining strings:
+
+```text
+devices.count   {count, plural, one {# device} other {# devices}}
+```
+
+The form-factor select is how a kit will say "this iPhone", "this Mac" or "this device" without a
+hard-coded platform word. Each platform table turns plurals and selects into its own mechanism:
+plural and device variations in a String Catalog, `<plurals>` in Compose Resources,
+`msgid_plural` in gettext.
+
+## Platform variants
+
+A key may carry a variant for one platform, and only for the verb or the casing. macOS buttons,
+menu items and window titles are title case ("Install and Relaunch"); everything else, on every
+platform, is sentence case. The string lint (`pnpm ui:lint`) fails any other difference between
+kits.
+
+<CopyVariants />
+
+## Overriding copy
+
+A theme's `copy` will take either a `locale`, which pins the kit to one of the launch locales instead
+of the OS locale, or a partial map of keys per locale. Overrides cover both namespaces and fall
+back key by key: a key you do not override comes from the catalog, and from English when a locale
+lacks it. The syntax for each kit will be on its [framework page](/docs/build/ui/frameworks/).
+
+## Dates, durations and sizes
+
+Kits are to format dates, durations and byte counts with the platform's formatters in the active locale
+("3 days left", "Synced 2 min ago", "38 of 61 MB"), never by hand. Product names come from the
+product identity: the full name in titles, and `shortName` only where the integrator set one.
+
+## Scripts and fonts
+
+Rubik has no CJK, Arabic, Hebrew or Devanagari glyphs, so each kit is to set a fallback chain to
+the system face for those scripts. Line breaking never splits a license key or a sign-in code.
+
+## Right to left
+
+No right-to-left locale ships at launch, so there are no right-to-left baselines and no
+right-to-left QA gate yet. Layouts stay right-to-left safe so that pass is cheap when a locale
+arrives: logical properties (`margin-inline-start`, `leading` and `trailing`, `start` and `end`),
+directional icons flagged as mirrorable, and no hard-coded left or right in layout code.
+`pnpm ui:lint` checks the web kits' CSS and the native kits' sources for it.

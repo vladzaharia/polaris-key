@@ -5421,7 +5421,7 @@
         "design/PORTAL §11.2 PX-W12"
       ],
       "brief": "wp/PX-W12-sign-in-methods-api.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "PX-W13",
@@ -5890,7 +5890,7 @@
       "optional": false,
       "refs": ["design/PORTAL §4.30", "design/PORTAL §11.3 PX-22"],
       "brief": "wp/PX-22-account-profile.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "ST-01a",
@@ -6092,7 +6092,7 @@
         "notes/S-18 §6.2 ST-20"
       ],
       "brief": "wp/ST-20-manifest-authoritative.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "ST-07",
@@ -6402,7 +6402,7 @@
         "wp/ST-06-settings-docs-coverage.md PENDING owners"
       ],
       "brief": "wp/ST-19b-manifest-settings.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "ST-21",
@@ -6666,7 +6666,7 @@
         "notes/S-18 §5.3"
       ],
       "brief": "wp/LX-06-licensing-settings.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LX-07",
@@ -7817,7 +7817,7 @@
       "optional": false,
       "refs": ["notes/S-20 §6.3", "notes/S-20 owner decision 11"],
       "brief": "wp/HA-06-upload-paths.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-07",
@@ -7846,7 +7846,7 @@
         "notes/S-20 §6.8"
       ],
       "brief": "wp/HA-07-serve-hosted-copies.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-08",
@@ -7869,7 +7869,7 @@
         "notes/S-20 owner decision 6"
       ],
       "brief": "wp/HA-08-release-mirroring.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "HA-09",
@@ -8471,7 +8471,7 @@
       "optional": false,
       "refs": ["docs/design/UI-KITS.md §6"],
       "brief": "wp/UK-16-ui-docs-scaffold.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "UK-17",
@@ -9093,7 +9093,7 @@
         "prototype/motion/portal.html"
       ],
       "brief": "wp/MO-06-portal-device-activation-motion.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "MO-07",
@@ -9328,7 +9328,7 @@
         "notes/S-21 §9 PS-04"
       ],
       "brief": "wp/PS-04-storefront-portal-api.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "PS-05",
@@ -9974,7 +9974,7 @@
       "optional": false,
       "refs": ["notes/S-24-licence-holders.md §6.1, §6.3, §7.1, §8.5 (D10)"],
       "brief": "wp/LX-28-bulk-floating-keys.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "LX-29",
@@ -10079,7 +10079,7 @@
         "docs/design/licenses/ frames 80–81"
       ],
       "brief": "wp/PX-23-portal-floating-keys.md",
-      "status": "todo"
+      "status": "done"
     },
     {
       "id": "UK-42",
@@ -10145,6 +10145,28 @@
       "brief": "wp/UK-44-sdk-signin-hints.md",
       "status": "todo",
       "planRef": "PX-W18"
+    },
+    {
+      "id": "PX-24",
+      "title": "Library \"Added just now\": for 24 hours a newly added product carries a ring, the quiet text \"Added just now\" and its download as the tile's lead (EXPERIENCE §0.7, frame 7)",
+      "phase": "PX",
+      "stage": "phase B: new API, S-16, S-17",
+      "lane": "portal",
+      "role": "pkey-implementer",
+      "estimateWeeks": [0.2, 0.4],
+      "deps": ["PX-16", "MO-07"],
+      "planMode": false,
+      "gates": ["portal-e2e", "console-csp-parity"],
+      "humanInputs": [],
+      "repo": "polaris-key",
+      "optional": false,
+      "refs": [
+        "design/EXPERIENCE §0.6 P1 step 7 (frame 7), §0.7",
+        "design/PORTAL §4.13–4.16",
+        "wp/MO-07-portal-library-motion.md, Corrections found while building (2026-10-06)"
+      ],
+      "brief": "wp/PX-24-library-added-just-now.md",
+      "status": "todo"
     }
   ]
 }

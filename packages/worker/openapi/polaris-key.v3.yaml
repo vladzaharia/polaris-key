@@ -1015,6 +1015,115 @@ paths:
                     error: { code: attestation_unavailable }
                     message: Play Integrity answered 500
 
+  /{product}/assets:
+    post:
+      operationId: ciPushHostedAssets
+      tags: [core]
+      summary: Host files CI pushes into presentation and listing slots (CI)
+      description: >
+        HA-06 (notes/S-20 §6.3 "Push from CI"). `pkey assets push` and the publish Action's
+        `assets` input send files that are not on the web (an icon, a header, screenshots, a
+        listing image slot) and Polaris Key hosts a copy. `{ticket?, assets: [{slot, locale?,
+        sha256, size}]}`: 1 to 32 entries, no slot twice in one locale. A slot is
+        `presentation.icon`, `listing.icon`, `listing.header`, `listing.screenshot:<1-16>` or a
+        listing-model image slot (`icon-master`, `play:feature-graphic`,
+        `<store>:screenshot:<class>:<n>`, …); never a pack, the trailer, a release file or a
+        notes image (`unknown_slot`). Each object comes from the caller's own upload `ticket`
+        (P2-02's uploads route accepts `assets:write`), staged at
+        `staging/<product>/<ticketId>/<sha256>`, or is one this product already hosts; either
+        way every byte is read, capped (icon slots 10 MiB, the rest 20 MiB), sniffed (PNG, JPEG,
+        WebP, GIF or AVIF; never SVG) and hashed against `sha256`. Precedence: a console upload
+        claims its slot, then the manifest's source, then CI, so a slot the console claimed or a
+        manifest declares is answered in `kept` and left as it is. A refused file is answered in
+        `refused` with its reason and changes nothing (`retry` is transient). A listing-model
+        slot is also written into the shared listing model with `source = import`. Audited as
+        `assets.push` (and `assets.ingest` per file). Requires a `pkeyci_` token with
+        `assets:write` (opt-in). No CORS. Errors are LEGACY FLAT with a `reason`: `bad_assets`,
+        `unknown_slot`, `object_not_in_ticket`, `staged_object_missing`,
+        `staged_object_mismatch`, `ticket_redeemed`, `bad_body` (400); `invalid_ticket`,
+        `ticket_expired` (403); `no_blob_store` (404).
+      security: [{ ciToken: [] }]
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assets]
+              properties:
+                ticket:
+                  {
+                    type: string,
+                    description: "A `pkeyup_` ticket; needed when any object is not one the product already hosts.",
+                  }
+                assets:
+                  type: array
+                  minItems: 1
+                  maxItems: 32
+                  items:
+                    type: object
+                    required: [slot, sha256, size]
+                    properties:
+                      slot: { type: string }
+                      locale:
+                        {
+                          type: [string, "null"],
+                          description: "A language tag; omitted or `''` is every locale.",
+                        }
+                      sha256: { type: string, pattern: "^[0-9a-f]{64}$" }
+                      size: { type: integer, minimum: 1, maximum: 20971520 }
+      responses:
+        "200":
+          description: Every file's outcome. `ok` is false when any file was refused.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, stored, kept, refused]
+                properties:
+                  ok: { type: boolean }
+                  stored:
+                    type: array
+                    items:
+                      type: object
+                      required: [slot, locale, sha256, size, contentType]
+                      properties:
+                        slot: { type: string }
+                        locale: { type: string }
+                        sha256: { type: string }
+                        size: { type: integer }
+                        contentType: { type: string }
+                        width: { type: [integer, "null"] }
+                        height: { type: [integer, "null"] }
+                  kept:
+                    type: array
+                    items:
+                      type: object
+                      required: [slot, locale, reason]
+                      properties:
+                        slot: { type: string }
+                        locale: { type: string }
+                        reason: { type: string, enum: [console, manifest] }
+                  refused:
+                    type: array
+                    items:
+                      type: object
+                      required: [slot, locale, reason]
+                      properties:
+                        slot: { type: string }
+                        locale: { type: string }
+                        reason:
+                          {
+                            type: string,
+                            description: "`not-an-image`, `too-large`, `sha256-mismatch`, `size-mismatch`, `retry`, …",
+                          }
+        "400": { $ref: "#/components/responses/CiRefusal" }
+        "401": { $ref: "#/components/responses/CiUnauthorized" }
+        "403": { $ref: "#/components/responses/CiForbidden" }
+        "404": { $ref: "#/components/responses/CiRefusal" }
+
   # ── license ───────────────────────────────────────────────────────────────────
   /{product}/license/activate:
     post:
@@ -4269,7 +4378,9 @@ paths:
         AltStore refuses an install whose permissions differ), the legacy app-level `version`,
         `versionDate`, `versionDescription`, `downloadURL` and `size` beside `versions[]`
         (SideStore issue #735), and NO `marketplaceID` (SideStore refuses a source carrying one).
-        Lists the releases the channel serves (beta includes stable) that have the outlet's
+        `iconURL`, `headerURL` and `screenshots` name Polaris Key's hosted copies on the image host
+        (HA-07, the originals) when a copy was pulled for exactly the listing's ref, else the
+        listing's own URLs as before. Lists the releases the channel serves (beta includes stable) that have the outlet's
         build, are live on it, are not yanked and are not held back by a paused, halted or
         partial outlet rollout — the previous release stands in. Download URLs are immutable
         `files/<releaseId>/<name>` URLs on the bytes host when there is one. Exists only while
@@ -4563,8 +4674,10 @@ paths:
         `Content-Security-Policy` is checked by the bytes host before it leaves: `default-src
         'none'`, the one stylesheet by hash, `base-uri`, `form-action` and `frame-ancestors`
         `'none'`, and `sandbox allow-downloads allow-top-navigation-to-custom-protocols` (an
-        opaque origin, no script). `nosniff`, `Referrer-Policy: no-referrer`, no cookie read or
-        set, no CORS, `Vary` on the hints. The same not-found and rate-limit rules as the model.
+        opaque origin, no script). Since HA-07 the header shows the product's hosted icon, and while
+        there is one the policy adds `img-src` naming exactly the image host. `nosniff`,
+        `Referrer-Policy: no-referrer`, no cookie read or set, no CORS, `Vary` on the hints. The
+        same not-found and rate-limit rules as the model.
       parameters:
         - { $ref: "#/components/parameters/Product" }
       responses:
@@ -6960,85 +7073,6 @@ paths:
                   }
                 noIdToken:
                   { value: { error: oidc_error, message: no id_token } }
-  /{product}/identity/auth/poll:
-    get:
-      operationId: authPoll
-      tags: [identity]
-      summary: Poll a browser sign-in flow
-      description: >
-        Polls a sign-in flow by `state` for the device token. Both query parameters are
-        required. Only a flow bound to a device id can complete, and a flow begun by
-        `authDeviceStart` never completes here: it answers `error` and redeems only on
-        `authDevicePoll`, with the secret device code, because `state` rides on the authorize
-        URL the user-code confirmation page hands to anyone holding the public user code.
-        Four terminal-or-not states, all at HTTP 200: `pending` (nothing confirmed yet),
-        `ready` (with the minted `pkeyt_` token), `timeout` (the flow record is gone —
-        including immediately after a `ready`, which deletes it), and `error`. `error`
-        deliberately carries NO reason: an unauthenticated poller learns that it failed, not
-        why.
-      parameters:
-        - { $ref: "#/components/parameters/Product" }
-        - name: state
-          in: query
-          required: true
-          description: The flow id returned by `authStart`.
-          schema: { type: string }
-        - name: device
-          in: query
-          required: true
-          description: The device id the flow was started for. A mismatch answers `error`.
-          schema: { type: string }
-      responses:
-        "200":
-          description: Flow state.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/AuthFlowState" }
-              examples:
-                pending: { value: { status: pending } }
-                ready:
-                  summary: test/oidcEdge.test.ts
-                  value:
-                    status: ready
-                    token: pkeyt_Zk8LqR8nT0sYp2vcEgHj6Bf3QdNwXr7uKmA1sVe9tYo
-                    schemaVersion: 1
-                timeout:
-                  summary: The very next poll after a `ready`
-                  value: { status: timeout }
-                error:
-                  summary: No `reason` field, deliberately (D8)
-                  value: { status: error }
-        "400":
-          description: Missing `state` or `device` — LEGACY FLAT.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-              examples:
-                missing:
-                  {
-                    value:
-                      { error: bad_request, message: missing state/device },
-                  }
-        "429":
-          description: 120 polls per 60 s per client IP AND 40 per 60 s per `state` — LEGACY FLAT.
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/FlatError" }
-              examples:
-                limited:
-                  { value: { error: rate_limited, message: too many requests } }
-    options:
-      operationId: preflightAuthPoll
-      tags: [identity]
-      summary: CORS preflight
-      description: >
-        Browser preflight for a page on one of the product's `web.origins`. Answered
-        before service dispatch, so the result never depends on whether the service
-        behind this path is enabled. See `CorsPreflight`.
-      parameters:
-        - { $ref: "#/components/parameters/Product" }
-      responses:
-        "204": { $ref: "#/components/responses/CorsPreflight" }
   /{product}/identity/auth/logout:
     post:
       operationId: authLogout
@@ -7663,9 +7697,11 @@ paths:
       tags: [identity]
       summary: Poll the device-code flow
       description: >
-        The same four flow states as `authPoll`, requested with a body instead of a query
-        string: `deviceCode` (the spelling `state` is accepted for the same value) and
-        `deviceId`. RFC 8628's error codes are NOT used — `pending` stands in for
+        Four flow states, all at HTTP 200 unless noted: `pending` (nothing confirmed yet),
+        `ready` (with the minted `pkeyt_` token), `timeout` (the flow record is gone,
+        including immediately after a `ready`, which deletes it) and `error`, which
+        deliberately carries no reason. The body names `deviceCode` (the spelling `state` is
+        accepted for the same value) and `deviceId`. RFC 8628's error codes are NOT used — `pending` stands in for
         `authorization_pending`, `timeout` for `expired_token`, `error` for `access_denied`.
 
 
@@ -11177,10 +11213,17 @@ paths:
       summary: The signed-in account's library
       description: >
         One entry per product the portal account holds a licence for (portal-enabled products
-        only): the product's presentation from its `.pkey/distribution` root `listing`, the
-        status of its best licence, that licence's summary with seats, and the support links.
-        Art is only ever a same-origin `/media/…` URL, and only when the media proxy would serve
-        it. Session-authenticated by the portal cookie; `cache-control: no-store`.
+        only, `kind: license`): the product's presentation from its `.pkey/distribution` root
+        `listing`, the status of its best licence, that licence's summary with seats, and the
+        support links. Then, PS-04, one per library entry (`kind: entry`): an open product the
+        account added from the storefront with no licence behind it (`license: null`,
+        `licenseCount: 0`, status always `active`), shown until the account holds any licence
+        for the product. Art is never a developer URL: it is Polaris Key's hosted copy on the
+        image host (`IMG_ORIGIN`, HA-07), the icon at the 128 px and the header at the 1280 px
+        WebP width (or the original when no such width exists). Per slot, without a copy (and for
+        every slot with hosting off or no image host) it is the same-origin `/media/…` proxy URL,
+        and only when the proxy would serve it, else null. Session-authenticated by the portal
+        cookie; `cache-control: no-store`.
       responses:
         "200":
           description: The library.
@@ -11197,8 +11240,8 @@ paths:
                         developerName: Fennick Studio
                         tintColor: "#1f3b5c"
                         website: https://tidewater.example
-                        iconUrl: /media/tidewater/icon?v=3f9a0c2d1e4b5a6c
-                        headerUrl: /media/tidewater/header?v=8b7c6d5e4f3a2b1c
+                        iconUrl: https://img.plrs.im/tidewater/a/a3f1c9e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6/128.webp
+                        headerUrl: https://img.plrs.im/tidewater/a/c7e9a1b3d5f7091b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b/1280.webp
                         support:
                           url: https://tidewater.example/help
                           email: help@tidewater.example
@@ -11223,6 +11266,41 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+  /api/library/{product}:
+    delete:
+      operationId: removePortalLibraryEntry
+      tags: [portal]
+      summary: Remove a library entry
+      description: >
+        PS-04 (notes/S-21 §6.4). Removes the account's library ENTRY for the product (an open
+        product added from the storefront), audited in the account's history; the product is
+        offered again. Entries only: a licence leaves the library only by the existing detach,
+        so a product with no entry answers `404`, whatever licences the account holds for it.
+        Needs the `X-PKey-Portal-CSRF` header.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: Removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, product]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  product: { type: string }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
   /api/products/{product}:
     get:
       operationId: getPortalProduct
@@ -11234,8 +11312,10 @@ paths:
         first (status precedence, then the later expiry), each with its seats, its entitlements
         and its authorized devices; a device past the dormancy window is `dormant` and holds no
         seat. Each licence also carries its `purchase` (G8): a store purchase, the developer, a
-        sign-in or a free auto-issue, with its store grants. `404` when the account holds no licence for the product, or the developer has the
-        portal off for it. Session-authenticated by the portal cookie; `cache-control: no-store`.
+        sign-in or a free auto-issue, with its store grants. A product the library holds as an
+        entry only (PS-04, `kind: entry`) answers with no licences. `404` when the account holds
+        neither a licence nor an entry for the product, or the developer has the portal off for
+        it. Session-authenticated by the portal cookie; `cache-control: no-store`.
       parameters: [{ $ref: "#/components/parameters/Product" }]
       responses:
         "200":
@@ -11252,7 +11332,7 @@ paths:
                     developerName: Fennick Studio
                     tintColor: "#1f3b5c"
                     website: https://tidewater.example
-                    iconUrl: /media/tidewater/icon?v=3f9a0c2d1e4b5a6c
+                    iconUrl: https://img.plrs.im/tidewater/a/a3f1c9e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c4e6b8d0f2a4c6e8b0d2f4a6/256.webp
                     headerUrl: null
                     support:
                       { url: https://tidewater.example/help, email: null }
@@ -11353,7 +11433,7 @@ paths:
                       kind: device
                       appName: Mossgarden
                       developerName: Fennick Studio
-                      iconUrl: /media/mossgarden/icon?v=3f9a0c2d1e4b5a6c
+                      iconUrl: /media/mossgarden/icon?v=5b7d9f1a3c5e7b9d
                       origins: []
                       services: { license: true, cloudSync: false }
                       nameVerified: true
@@ -11424,16 +11504,21 @@ paths:
       tags: [portal]
       summary: The products the signed-in account could add for free
       description: >
-        PX-W10 (docs/design/PORTAL.md §4.16, G24). Every product whose licence policy would
-        auto-issue to this account on the product's first sign-in, evaluated by the same policy
-        function in dry-run mode: nothing is written. A product qualifies through its
-        `oidcDefault` auto-issue rule (`reason: free_with_account`) or a `groupRoleMap` group the
-        account holds at the platform IdP (`reason: group:<group>`). Only products that run
-        License, authenticate against the platform issuer with auto-linking on, and have the
-        portal and Discover (`discoverEnabled`) on are considered; purchase-only and
-        operator-issued products, and products the account already holds, never appear. An
-        account with no platform identity is offered nothing. Every offer carries its reason.
-        Session-authenticated by the portal cookie; `cache-control: no-store`.
+        PX-W10 (docs/design/PORTAL.md §4.16, G24), PS-04 (notes/S-21 §6.3, §6.7). Every product
+        the Polaris Key storefront's obtain-path engine shows this account, evaluated in dry-run
+        mode. Each offer lists every way to add it (`paths`, first path first) and its action
+        (`cta`): `add`, or `link` for an audience-`everyone` listing with nothing to add, which
+        carries its live store pages (`stores`) and its `website`. `reason` and `offer` are the
+        first path's reason and terms, as before PS-04. Paths: `group` (a platform-IdP group
+        mapped in the product's `groupRoleMap`, `reason: group:<group>`, with the operator's
+        `label`), `auto_issue` (the `oidcDefault` auto-issue rule, `reason: free_with_account`),
+        and `open` (License off and every download open, `reason: open`, no terms). In `auto`
+        listing mode (the default) only `group` and `auto_issue` count; `open` and links need
+        `listed`; `unlisted` hides a product. Products the account already holds (a licence or a
+        library entry), and products with the portal off, never appear. The only writes are the
+        storefront's daily impression counts (one per product, account and day, keyed by a daily
+        HMAC, no account id). Session-authenticated by the portal cookie; `cache-control:
+        no-store`.
       responses:
         "200":
           description: The offers, in product-name order (possibly none).
@@ -11450,7 +11535,7 @@ paths:
                         developerName: Fennick Studio
                         tintColor: "#2f5d3a"
                         website: https://mossgarden.example
-                        iconUrl: /media/mossgarden/icon?v=3f9a0c2d1e4b5a6c
+                        iconUrl: https://img.plrs.im/mossgarden/a/5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d/128.webp
                         headerUrl: null
                         support: null
                         platforms: [macos, windows]
@@ -11461,8 +11546,56 @@ paths:
                           expiresAt: null
                           expiryDays: null
                         reason: free_with_account
+                        cta: add
+                        shortDescription: A garden that grows while you work
+                        paths:
+                          - kind: auto_issue
+                            detail: null
+                            label: null
+                            terms:
+                              tier: free
+                              tierLabel: Free
+                              deviceLimit: 5
+                              expiresAt: null
+                              expiryDays: null
+                            action: add
+                            reason: free_with_account
+                        stores: []
         "401":
           description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/discover/{product}:
+    get:
+      operationId: getPortalStorefrontPage
+      tags: [portal]
+      summary: The storefront product page
+      description: >
+        PS-04 (notes/S-21 §6.5). One product the storefront shows this account: the offer's
+        fields as in `GET /api/discover`, plus the listing's `description`, its `screenshots`
+        (same-origin `/media/<product>/screenshot-<n>` URLs, only those the media proxy would
+        serve) and every live store page (`stores`). Unknown, unlisted, ineligible and held
+        products, a product with the portal off, and every product while the storefront is off
+        all answer the same `404 not_found`. Counts one impression per account and day.
+        Rate-limited per account (60 a minute), charged before any lookup.
+        Session-authenticated by the portal cookie; `cache-control: no-store`.
+      parameters: [{ $ref: "#/components/parameters/Product" }]
+      responses:
+        "200":
+          description: The product page.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PortalStorefrontPage" }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "429":
+          description: "`rate_limited`."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -11472,15 +11605,31 @@ paths:
       tags: [portal]
       summary: Add a Discover product to the library
       description: >
-        PX-W10 (G25). Re-evaluates the offer server-side and mints the licence through the
-        auto-issue path itself (the product sign-in's), so it carries exactly the tier, limits
-        and entitlements a first sign-in would give; the licence is linked to the account and
-        audited with `source: discover`. Idempotent per account and product: a repeat, or a
-        racing double submit, answers the same licence with `added: false` and mints nothing.
-        `409 not_eligible` when the product is not (or no longer) offered to this account,
-        including an unknown product. Needs the `X-PKey-Portal-CSRF` header. Rate-limited on the
-        account-wide bucket the activate preview and the key claim share (10 a minute).
+        PX-W10 (G25), PS-04 (notes/S-21 §6.4). Re-evaluates the product server-side and issues
+        through the chosen path (`path`, else the first offered path): `group` and `auto_issue`
+        mint the licence through the auto-issue path itself (the product sign-in's), so it
+        carries exactly the tier, limits and entitlements a first sign-in would give, linked to
+        the account and audited with `source: discover; path: <kind>` (`kind: license`); `open`
+        writes a library entry and no licence (`kind: entry`). Never binds a device. Idempotent
+        per account and product: a repeat, a racing double submit, or a claim for a product the
+        account already holds by any route answers what it holds with `added: false` and
+        creates nothing (never a second licence). `409 not_eligible`, identically, when the
+        product is unknown, unlisted, ineligible or a link, or `path` names a kind not offered.
+        Needs the `X-PKey-Portal-CSRF` header. Rate-limited on the account-wide bucket the
+        activate preview and the key claim share (10 a minute), charged before any lookup.
       parameters: [{ $ref: "#/components/parameters/Product" }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                path:
+                  type: [string, "null"]
+                  description: >
+                    The obtain-path kind to add by (`group`, `auto_issue`, `open`, …); the
+                    first offered path when absent or null. A kind not offered is `409`.
       responses:
         "200":
           description: "The licence, new (`added: true`) or already held (`added: false`)."
@@ -11493,6 +11642,7 @@ paths:
                   value:
                     added: true
                     product: mossgarden
+                    kind: license
                     license:
                       id: lic_3c9d
                       tier: free
@@ -11501,6 +11651,13 @@ paths:
                       usable: true
                       expiresAt: null
                       deviceLimit: 5
+                entry:
+                  summary: An open product, added as a library entry
+                  value:
+                    added: true
+                    product: openutil
+                    kind: entry
+                    entry: { via: open, addedAt: 1790000000 }
         "401":
           description: No portal session.
           content:
@@ -11765,11 +11922,21 @@ paths:
     get:
       operationId: getPortalMedia
       tags: [portal]
-      summary: A product's listing art, served same-origin
+      summary: A product's art, as a redirect to its hosted copy
       description: >
-        The customer portal's media proxy: the product's listing `icon` (`asset` = `icon`, at
-        most 1 MiB) or `header` (`header`, at most 5 MiB) when it is an https URL (or the
-        deprecated `iconUrl` / `headerUrl` it was written as), fetched by the Worker
+        HA-07: while Polaris Key serves hosted copies (an image host is configured and
+        `assets.hosting.enabled` is on), an `icon` or `header` slot with a hosted copy is answered
+        `302` to the image host's stable alias (`https://img…/<product>/icon` or `/header`, which
+        redirects on to the content-addressed copy), with `cache-control: public, max-age=300`;
+        nothing is fetched and `v` is ignored. The portal then names the image host directly, but
+        URLs already handed out and the sign-in card's client record follow the redirect.
+
+        A slot with no hosted copy, every screenshot (the image host has no alias for one), and
+        every slot with hosting off or no image host, is the customer portal's media proxy,
+        exactly as before HA-07: the product's listing `icon` (`asset` = `icon`, at most 1 MiB),
+        `header` (`header`, at most 5 MiB) or the n-th of its https screenshots (`screenshot-<n>`,
+        n below 16, at most 5 MiB each; PS-04, the storefront product page) when it is an https
+        URL (or the deprecated `iconUrl` / `headerUrl` it was written as), fetched by the Worker
         and served from this origin, because the portal's CSP is `img-src 'self' data:`. Public
         (listing art is public store-page metadata). The source must be an https URL on a
         GitHub-hosted name (`github.com`, `*.githubusercontent.com`); redirects are followed by
@@ -11784,8 +11951,12 @@ paths:
             name: asset,
             in: path,
             required: true,
-            schema: { type: string, enum: [icon, header] },
-            description: "Which listing slot: `icon` or `header` (formerly `iconUrl` / `headerUrl`).",
+            schema:
+              {
+                type: string,
+                pattern: "^(icon|header|screenshot-(0|[1-9][0-9]?))$",
+              },
+            description: "Which listing slot: `icon` or `header` (formerly `iconUrl` / `headerUrl`), or `screenshot-<n>` (0 to 15), the n-th https screenshot.",
           }
         - {
             name: v,
@@ -11795,8 +11966,12 @@ paths:
             description: "The source URL's version (the first 16 hex digits of its SHA-256), as `GET /api/library` hands it out. When it is the current one the answer is immutable for a year; otherwise it is cached for five minutes.",
           }
       responses:
+        "302":
+          description: "HA-07: the slot has a hosted copy; to the image host's stable alias for this asset. `cache-control: public, max-age=300`."
+          headers:
+            Location: { schema: { type: string, format: uri } }
         "200":
-          description: "The image. `cache-control: public, max-age=31536000, immutable` with the current `v`, else `public, max-age=300`."
+          description: "The proxied image (a slot with no hosted copy, or the rollback). `cache-control: public, max-age=31536000, immutable` with the current `v`, else `public, max-age=300`."
           content:
             image/png: { schema: { type: string, format: binary } }
             image/jpeg: { schema: { type: string, format: binary } }
@@ -12514,6 +12689,515 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
+  # ── Account → Sign-in methods and Link an existing account (PX-W12, PORTAL.md §4.11, §4.26,
+  # G27). Session-authenticated by the portal cookie; the mutations need the
+  # `X-PKey-Portal-CSRF` header. No answer carries an account id or a provider subject.
+  /api/me/methods:
+    get:
+      operationId: listAccountMethods
+      tags: [portal]
+      summary: The account's sign-in methods, grouped, with what each allows
+      description: >
+        Every sign-in method (`methods`: `id`, `kind`, `group` of `accounts`, `email` or
+        `passkeys`, `label`, the connected identity as `display`, `connectedAt`, `lastUsedAt`,
+        `canRemove` with a `reason` of `last_link` or `only_email`, the provider's `flag`, Apple's
+        Hide My Email `relay`, and `tenantScoped`), then the same email addresses (`emails`, primary
+        first) and passkeys (`passkeys`, I-16's view plus `canRemove`) in their own shapes. Apple,
+        Google and Steam are always listed in `providers` (`connected`, and `available` on this
+        deploy); `passkey` says whether one can be added; `hideMyEmail` is true when the primary
+        email is an Apple private-relay address; `stepUp` says whether this session's sign-in is
+        recent enough (5 minutes) for a change.
+      responses:
+        "200":
+          description: The methods.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  [
+                    methods,
+                    emails,
+                    passkeys,
+                    providers,
+                    passkey,
+                    primaryEmail,
+                    hideMyEmail,
+                    stepUp,
+                  ]
+                properties:
+                  methods:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        [
+                          id,
+                          kind,
+                          group,
+                          label,
+                          display,
+                          connectedAt,
+                          lastUsedAt,
+                          canRemove,
+                          reason,
+                        ]
+                      properties:
+                        id: { type: string }
+                        kind: { type: string }
+                        group:
+                          { type: string, enum: [accounts, email, passkeys] }
+                        label: { type: string }
+                        display: { type: [string, "null"] }
+                        connectedAt: { type: integer }
+                        lastUsedAt: { type: [integer, "null"] }
+                        canRemove: { type: boolean }
+                        reason:
+                          {
+                            type: [string, "null"],
+                            enum: [last_link, only_email, null],
+                          }
+                        flag: { type: [string, "null"] }
+                        relay: { type: boolean }
+                        tenantScoped: { type: boolean }
+                  emails:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        methodId: { type: string }
+                        email: { type: string }
+                        primary: { type: boolean }
+                        connectedAt: { type: integer }
+                        lastUsedAt: { type: [integer, "null"] }
+                        canRemove: { type: boolean }
+                        reason: { type: [string, "null"] }
+                  passkeys:
+                    type: array
+                    items:
+                      allOf:
+                        - { $ref: "#/components/schemas/AccountPasskey" }
+                        - type: object
+                          properties:
+                            canRemove: { type: boolean }
+                            reason: { type: [string, "null"] }
+                  providers:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        kind: { type: string, enum: [google, apple, steam] }
+                        connected: { type: boolean }
+                        available: { type: boolean }
+                  passkey:
+                    type: object
+                    properties:
+                      canAdd: { type: boolean }
+                      reason:
+                        {
+                          type: [string, "null"],
+                          enum: [email_unverified, limit, null],
+                        }
+                  primaryEmail: { type: [string, "null"] }
+                  hideMyEmail: { type: boolean }
+                  stepUp:
+                    type: object
+                    properties:
+                      authenticatedAt: { type: integer }
+                      freshUntil: { type: integer }
+                      fresh: { type: boolean }
+                      maxAgeSeconds: { type: integer }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/methods/{kind}/start:
+    post:
+      operationId: startAccountMethod
+      tags: [portal]
+      summary: Connect a sign-in method
+      description: >
+        Needs a sign-in in the last 5 minutes (`step_up_required` otherwise). `google`, `apple` and
+        `steam` answer `{redirect, expiresIn}`: the provider URL for the browser to open, with a
+        browser-binding cookie; the provider returns to its registered sign-in callback
+        (`/login/<provider>/callback`), which links the identity to this account without signing
+        anyone in and lands on `/#/account/methods?connected=<provider>` or
+        `?error=<code>&method=<provider>` (`link_conflict`, `step_up_required`, `signin_expired`).
+        The provider's email claim is narrowed as a sign-in narrows it, and an address another
+        account uses is never stored as verified. `email` takes `{email}` and sends a 6-digit code,
+        answering the same `code_sent` whatever the address (an address already on this account
+        answers `connected` with `already: true`); `passkey` answers I-16's registration challenge
+        (as `POST /api/me/passkeys/options`), completed by `POST /api/me/passkeys`.
+      parameters:
+        - {
+            name: kind,
+            in: path,
+            required: true,
+            schema:
+              { type: string, enum: [google, apple, steam, email, passkey] },
+          }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  {
+                    type: string,
+                    description: "`email` only: the address to connect.",
+                  }
+      responses:
+        "200":
+          description: "`{redirect, expiresIn}` (a provider), `{status: code_sent, email, expiresIn, codeLength}` or `{status: connected, already: true, email}` (email), or the passkey options."
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: "Missing or wrong CSRF header; for `passkey`, I-16's `forbidden` refusals."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404":
+          description: "`not_found` (an unknown kind) or `auth_method_disabled` (the provider is not configured on this deploy)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "422":
+          description: "`bad_request`: not an email address."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many method changes by this account (10 a minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "503":
+          description: "`email_unavailable` (mail cannot leave) or `unavailable` (the provider cannot be reached)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/methods/email/verify:
+    post:
+      operationId: verifyAccountEmailMethod
+      tags: [portal]
+      summary: Connect an email address with its code
+      description: >
+        The code `POST /api/me/methods/email/start` sent, bound to this session. Once the code is
+        right the address is proven, so an address another Polaris Key account uses is refused
+        (`link_conflict`) and nothing is connected. Otherwise it becomes an email sign-in method
+        (and the primary email of an account that had none), its licences waiting on it come in,
+        and the change is audited and emailed to every verified address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+      responses:
+        "200":
+          description: Already connected.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountMethodConnected" }
+        "201":
+          description: Connected.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccountMethodConnected" }
+        "400":
+          description: "`invalid_code` (with `triesLeft`) or `signin_expired` (no live code for this session)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "409":
+          description: "`link_conflict`: another account uses this address."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many code attempts from this address.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/methods/{methodId}:
+    delete:
+      operationId: removeAccountMethod
+      tags: [portal]
+      summary: Disconnect a sign-in method
+      description: >
+        Needs a sign-in in the last 5 minutes. Goes through the link engine, whose guard is inside
+        the DELETE, so the account's last way to sign in is never removed (`last_link`, also when
+        two removals race). The account's only email address cannot go while it is the primary
+        (`forbidden`, `reason: only_email`); removing the primary while another address exists
+        makes the oldest other address primary. A passkey's WebAuthn material goes with its method.
+        Audited, and emailed to every verified address (an email method is named generically; the
+        removed address is told too).
+      parameters:
+        - {
+            name: methodId,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The method's `id` from the list.",
+          }
+      responses:
+        "200":
+          description: Removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  removed:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      kind: { type: string }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: "`forbidden` with `reason: only_email`, or a missing or wrong CSRF header."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`last_link`: this is the account's only way to sign in."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many method changes by this account (10 a minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/link:
+    get:
+      operationId: getAccountLink
+      tags: [portal]
+      summary: The join screen, and the joins this account can still undo
+      description: >
+        `undoable` lists this account's joins inside their 72 hours (`id`, `mergedAt`,
+        `undoUntil`, and the joined account's own `email` and `name`). `flow` is null without a link
+        flow in this browser; otherwise it records this session as a proof (a second account
+        becomes `other`; the started account signing in again refreshes its own proof) and shows
+        both accounts (`role`, `current`, `name`, `email`, `avatarUrl`, `methods`, `products`, and
+        `proven: {by, at, fresh}`), the result of joining with the default `keep: other`, and
+        `canJoin` with a `reason` (`sign_in_other`, `step_up_required`, `merge_pending`,
+        `unavailable`).
+      responses:
+        "200":
+          description: The view.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [flow, undoable]
+                properties:
+                  flow: { type: [object, "null"], additionalProperties: true }
+                  undoable:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        mergedAt: { type: integer }
+                        undoUntil: { type: integer }
+                        joined:
+                          type: object
+                          properties:
+                            email: { type: [string, "null"] }
+                            name: { type: [string, "null"] }
+        "400":
+          description: "`signin_expired`: the link flow is gone."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/link/start:
+    post:
+      operationId: startAccountLink
+      tags: [portal]
+      summary: Start linking an existing account
+      description: >
+        Needs a sign-in in the last 5 minutes. Records this account's proof in a server-held flow
+        named by a host-only `__Host-pkey_link` cookie (15 minutes). The person then signs in to the
+        other account on the login card (`next`), by any of its methods, and comes back to the join
+        screen. Never by email match.
+      responses:
+        "200":
+          description: Started.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [started] }
+                  expiresAt: { type: integer }
+                  next: { type: string }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many link changes by this account (10 a minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/link/confirm:
+    post:
+      operationId: confirmAccountLink
+      tags: [portal]
+      summary: Join the two accounts, with proof of both
+      description: >
+        Both proofs must come from this browser's link flow, both no older than 5 minutes, and both
+        sessions still live (`step_up_required` with `stale` naming which). `keep` picks the account
+        that stays (`other`, the default: the account linked in, whose primary email stays; or
+        `started`). Refused while either account could still undo a join of its own (`forbidden`,
+        `reason: merge_pending`). The flow is used up by the attempt, so two racing confirms merge
+        once. Everything moves to the account kept (I-05's merge:
+        links, licences, sessions, passkeys, consents, terms acceptances, pictures, registry tokens;
+        per product the kept subject wins and the other becomes an alias), audited, and emailed to
+        every verified address of both with the undo window.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                keep: { type: string, enum: [other, started] }
+      responses:
+        "200":
+          description: Joined.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [joined] }
+                  kept: { type: string, enum: [other, started] }
+                  merge:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      undoUntil: { type: integer }
+        "400":
+          description: "`signin_expired` (no link flow), or `bad_request` with `reason` `sign_in_other` or `same_account`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: "`forbidden` with `reason` `merge_pending` or `unavailable`, or a missing or wrong CSRF header."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many link changes by this account (10 a minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/link/cancel:
+    post:
+      operationId: cancelAccountLink
+      tags: [portal]
+      summary: Forget this browser's link flow
+      responses:
+        "200":
+          description: Cancelled; the link cookie is cleared.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [cancelled] }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  /api/me/link/undo:
+    post:
+      operationId: undoAccountLink
+      tags: [portal]
+      summary: Undo a join within 72 hours
+      description: >
+        Needs a sign-in to the kept account in the last 5 minutes (any of its methods, the joined
+        account's included). The joined account comes back under its own id with those of its
+        methods still on the kept account (one disconnected since stays disconnected), and what
+        still sits on the kept account goes back to it: licences, sessions, passkeys, pictures,
+        registry tokens, consents, terms acceptances. A licence that goes back revokes the registry
+        tokens the kept account minted on it during the window. Developers keep the alias they were
+        told about; the joined account gets a
+        fresh pairwise subject at its next contact where its old one became an alias, and devices
+        whose subject changed hands bind again at their next sign-in. Refused when either account
+        would be left with no way to sign in (`last_link`, checked atomically with the undo). Once
+        only; audited on both and emailed
+        to every verified address of both.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [merge]
+              properties:
+                merge:
+                  {
+                    type: string,
+                    description: "The join's `id` from `undoable`.",
+                  }
+      responses:
+        "200":
+          description: Separated.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [separated] }
+        "401": { $ref: "#/components/responses/PasskeyStepUp" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404":
+          description: "`not_found`: no such join of this account, already undone, or past its 72 hours."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "409":
+          description: "`last_link`: an account would be left with no way to sign in."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "429":
+          description: Too many link changes by this account (10 a minute).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
   # ── Account → Profile (PX-W16, PORTAL.md §4.30, G32, G33). Session-authenticated by the
   # portal cookie; the mutations need the `X-PKey-Portal-CSRF` header.
   /api/me/profile:
@@ -12680,6 +13364,94 @@ paths:
               schema: { $ref: "#/components/schemas/FlatError" }
         "503":
           description: "`unavailable`: no blob store or Images binding on this deployment, or the store refused the write."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+  # ── Remove from my library (PX-23, notes/S-24 D19, PORTAL.md §4.20). Session-authenticated by
+  # the portal cookie; needs the `X-PKey-Portal-CSRF` header. `GET` on the same path (the licence
+  # detail) stays narrative, documented on the docs site.
+  /api/licenses/{product}/{licenseId}:
+    delete:
+      operationId: removePortalLicense
+      tags: [portal]
+      summary: Remove a licence from the library
+      description: >
+        The holder removes one of their licences from their library. The licence leaves the
+        account; it keeps its email, so it waits for an account that verifies that address (with
+        no email it is floating again: anyone with the key can add it). An auto-attach block keeps
+        it out of THIS account: no later request, sign-in or email verification adds it back, only
+        adding its key again. The account's package tokens for it are revoked. Its devices keep
+        running and keep their seats; the ones this account signed in on lose Cloud Sync for it.
+        The detach and the block are audited in the account's history. Only a licence its key can
+        bring back is removable: it needs an active licence key, and the product must let a key
+        add a licence in the portal. `GET /api/licenses` and `GET /api/licenses/{product}/{licenseId}`
+        say so per licence as `removable` (boolean), and the portal offers Remove only when it is
+        `true`; any other licence (a sign-in licence, a Discover claim, a keyless store or
+        developer licence, or any licence while the product turns key claims off) answers `409
+        not_removable` with its `reason`, and nothing is written. `404` for a licence that is not
+        in this account (including one already removed) and on a product whose portal is off.
+        Rate-limited to 10 a minute per account and product, charged after ownership is proven
+        and the licence is found removable.
+      parameters:
+        - { $ref: "#/components/parameters/Product" }
+        - {
+            name: licenseId,
+            in: path,
+            required: true,
+            schema: { type: string },
+            description: "The licence id, as `GET /api/licenses` lists it.",
+          }
+      responses:
+        "200":
+          description: Removed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, product, licenseId]
+                properties:
+                  ok: { type: boolean, enum: [true] }
+                  product: { type: string }
+                  licenseId: { type: string }
+              examples:
+                removed:
+                  value: { ok: true, product: tidewater, licenseId: lic_3c9d }
+        "401":
+          description: No portal session.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "403":
+          description: Missing or wrong CSRF header.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FlatError" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: >
+            `not_removable`: the licence could never be added back, so it stays. `reason` is
+            `no_active_key` (it has no active licence key) or `key_claim_off` (the product turned
+            off adding a licence by its key). Nothing was written.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: "#/components/schemas/FlatError" }
+                  - type: object
+                    properties:
+                      reason:
+                        type: string
+                        enum: [no_active_key, key_claim_off]
+              examples:
+                signInLicense:
+                  value:
+                    {
+                      error: not_removable,
+                      message: "this license could not be added back, so it stays",
+                      reason: no_active_key,
+                    }
+        "429":
+          description: "`rate_limited`."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/FlatError" }
@@ -13033,8 +13805,10 @@ paths:
         its status: `pending` (nothing served yet), `ready`, `failed` (the last pull was refused,
         `error` names why) or `stale` (the source is gone; the last good copy keeps serving).
         `wanted` is what the manifest declares for the slot now, and `pullPending` says a pull of
-        it is still owed, with `attempts` and `nextAttemptAt` for the back-off. Read-only; platform
-        admins only; admin session cookie.
+        it is still owed, with `attempts` and `nextAttemptAt` for the back-off. HA-06 adds
+        `sizesPending` (a ready copy still owes its WebP size ladder while the Images binding is
+        bound), `widths`, the image-host URLs `url` and `previewUrl`, `uploadable` and `maxBytes`;
+        the writes are `…/assets/{slot}`. Platform admins only; admin session cookie.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
       responses:
@@ -13050,6 +13824,175 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/assets/{slot}:
+    post:
+      operationId: uploadAdminHostedAsset
+      tags: [admin]
+      summary: Upload a file into a hosted-asset slot (the console claims the slot)
+      description: >
+        HA-06 (notes/S-20 §6.3 "Upload in the console", owner decision 11). The request body is
+        the file itself, with its `Content-Length`; its `Content-Type` is ignored, because the type
+        is sniffed (PNG, JPEG, WebP, GIF or AVIF; never SVG). `slot` is URL-encoded:
+        `presentation.icon`, `listing.icon`, `listing.header`, `listing.screenshot:<1-16>` or a
+        listing-model image slot. The upload CLAIMS the slot: a resync records what the manifest
+        wants and pulls nothing, a pull in flight yields, and a CI push is answered `kept`, until
+        Revert (`DELETE`). A declared length over the slot's cap (icon slots 10 MiB, the rest
+        20 MiB) is refused before a byte is read; a refused file changes nothing on the slot. A
+        listing-model slot is also written into the shared listing model with `source = admin`.
+        Audited as `assets.ingest`. Platform admins only; admin session cookie and `X-PKey-CSRF`.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: slot, in: path, required: true, schema: { type: string } }
+        - {
+            name: locale,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "A language tag; omitted is every locale.",
+          }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "200":
+          description: The slot's row after the upload.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [asset]
+                properties:
+                  asset: { $ref: "#/components/schemas/AdminHostedAsset" }
+        "400":
+          description: "Not an uploadable slot (`bad_slot`) or locale (`bad_locale`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: "No such product, or no blob store here (`no_blob_store`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "411":
+          description: "No body, or no `Content-Length` (`length_required`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "413":
+          description: "The declared length is over the slot's cap (`too_large`, with `maxBytes`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: >
+            The file was refused (`asset_refused`, with `reason`: `not-an-image`, `too-large`,
+            `size-mismatch`, `retry`, …). The slot is unchanged.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+    delete:
+      operationId: releaseAdminHostedAsset
+      tags: [admin]
+      summary: Revert a console upload to the manifest, or delete a hosted copy
+      description: >
+        HA-06. For a slot the console claimed whose source a manifest still declares: Revert. The
+        console's copy is deleted now, the slot returns to the manifest with no copy served, and
+        the manifest's source is pulled again (`pulling` says the pull was queued). For any other
+        slot: delete-a-copy. The slot's copy and its row are dropped, so the image host stops serving
+        it for this slot at once (the same bytes held by another slot keep serving at the same
+        content-addressed URL); a slot a manifest declares is pulled again at the next resync. A listing-model
+        slot also loses its listing row when that row holds the same bytes. Polaris Key never
+        touches the developer's source. Audited as `assets.revert` or `assets.delete`. Platform
+        admins only; admin session cookie and `X-PKey-CSRF`.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: slot, in: path, required: true, schema: { type: string } }
+        - { name: locale, in: query, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: What happened.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [outcome, pulling]
+                    properties:
+                      outcome: { type: string, const: reverted }
+                      pulling: { type: boolean }
+                  - type: object
+                    required: [outcome]
+                    properties:
+                      outcome: { type: string, const: deleted }
+        "400":
+          description: "Not an uploadable slot (`bad_slot`) or locale (`bad_locale`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product, or nothing hosted in the slot.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: >
+            The slot changed after it was read (`asset_changed`: a Replace from another tab, or a
+            pull, landed first). Nothing was done; reload and decide again.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/assets/mirror:
+    post:
+      operationId: mirrorAdminReleaseFiles
+      tags: [admin]
+      summary: Queue a copy of every release file that still owes one (release-file mirroring)
+      description: >
+        HA-08 (notes/S-20 §6.3, §6.8). Every file of the product's app releases whose bytes live
+        only on GitHub or at an external URL, and that has no `r2` location yet, is queued on
+        `pkey-assets-<env>` at once, a failed file's back-off or not, at most 200 per request; a
+        file whose message is still in flight is skipped, so a repeated request never downloads a
+        file twice. The queue
+        consumer verifies each copy against GitHub's `digest` and the descriptor's `sha256` before
+        it appends an `r2` location; a refusal keeps GitHub serving. `queued` is how many were
+        sent; `owed` is how many files still owe a copy (the ones just queued included, until
+        their messages are delivered). Audited as `assets.mirror`. The nightly maintenance sweep
+        runs the same backfill, bounded per night. Admin session cookie and `X-PKey-CSRF`.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The files were queued.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [queued, owed]
+                properties:
+                  queued: { type: integer, minimum: 0 }
+                  owed: { type: integer, minimum: 0 }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "`mirror_disabled`: mirroring is off for the product (Release is off)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "503":
+          description: "`unavailable`: no blob store or asset queue is bound on this deployment."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   # ── Licences (LX-26: the derived holder; the rest of `…/license/*` is narrative) ──
   /manage/api/products/{product}/license/licenses:
     get:
@@ -13062,8 +14005,9 @@ paths:
         account and whether it has an email (no column): `floating` (neither: whoever holds the key
         uses it) or `assigned` (in an account, or waiting for an account to verify its email). The
         holder's `email` is the licence's own, never the account's. `?holder=` filters: `floating`,
-        `assigned` (in an account or waiting), `waiting`, `inAccount`. Platform admins only; admin
-        session cookie.
+        `assigned` (in an account or waiting), `waiting`, `inAccount`. LX-28: each also carries
+        `batchId` (the batch it was created in, or `null`), and `?batch=` lists one batch's
+        licences. Platform admins only; admin session cookie.
       parameters:
         - { name: product, in: path, required: true, schema: { type: string } }
         - {
@@ -13073,6 +14017,13 @@ paths:
             schema:
               { type: string, enum: [floating, assigned, waiting, inAccount] },
             description: "Only licences in this holder state.",
+          }
+        - {
+            name: batch,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "Only the licences of this batch (LX-28). An unknown id lists none.",
           }
       responses:
         "200":
@@ -13261,6 +14212,331 @@ paths:
               schema: { $ref: "#/components/schemas/AdminError" }
         "422":
           description: "An unknown tier or profile, a bad `deviceLimit`, or a value a signed document cannot carry."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  # ── Licence batches (LX-28: bulk floating keys and Disable unused keys) ──
+  /manage/api/products/{product}/license/batches:
+    get:
+      operationId: listAdminLicenseBatches
+      tags: [admin]
+      summary: The product's licence batches, newest first, with their used counts
+      description: >
+        Every batch of floating licences the product's operators created (LX-28, notes/S-24 §5.6,
+        §6.3), newest first. Each carries its label (not unique), how many licences it created,
+        its tier, who created it (the operator's session subject) and when, and three live counts:
+        `used` (licences a device was ever bound to: a device row names it, whatever its status, or
+        one of its keys was ever presented successfully), `unused` (active licences never used:
+        what Disable unused keys would disable) and `disabled`. Keys are never in a batch read.
+        Platform admins only; admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The batches, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [batches]
+                properties:
+                  batches:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminLicenseBatch" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+    post:
+      operationId: createAdminLicenseBatch
+      tags: [admin]
+      summary: Create up to 500 floating licences in one labelled batch (keys shown once)
+      description: >
+        Creates `count` licences (1 to 500) of one tier, each with its first key, in one labelled
+        batch (LX-28, notes/S-24 §5.6, §7.1, D10). Every licence is floating (no name, no email,
+        no account; a name, an email or profiles are refused), `origin: admin`, and carries the
+        batch's `batchId`. The batch row, the licences, their keys and the `license.batch.create`
+        audit row (label, count, tier) commit together or not at all. The answer carries every key
+        ONCE, `Cache-Control: no-store`: the Worker keeps only each key's peppered hash and can
+        never answer the keys again, so the console builds the CSV from this answer. `expiresAt`
+        absent takes the tier's policy, `null` is never, as on a single create; `deviceLimit` is
+        each licence's own limit (absent or `null` inherits). Platform admins only; admin session
+        cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminLicenseBatchCreate" }
+            examples:
+              steam:
+                {
+                  value: { label: "Steam keys, October", count: 50, tier: pro },
+                }
+      responses:
+        "201":
+          description: Created. The keys are in this answer only.
+          headers:
+            Cache-Control:
+              schema: { type: string, const: no-store }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [batchId, licenses, batch, expiresAt]
+                properties:
+                  batchId: { type: string }
+                  licenses:
+                    type: array
+                    items:
+                      type: object
+                      required: [licenseId, key]
+                      properties:
+                        licenseId: { type: string }
+                        key:
+                          {
+                            type: string,
+                            description: "`pkey_<slug>_…`, shown once.",
+                          }
+                  batch: { $ref: "#/components/schemas/AdminLicenseBatch" }
+                  expiresAt:
+                    type: [integer, "null"]
+                    description: "Every licence's expiry (epoch seconds), `null` for never."
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "A `count` outside 1 to 500, a `label` that is not 1 to 80 characters on one line, a missing or unknown tier, a name, email or profiles, a bad `deviceLimit` or `expiresAt`, or a value a signed document cannot carry (`fields` names them)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/license/batches/{batchId}:
+    get:
+      operationId: getAdminLicenseBatch
+      tags: [admin]
+      summary: One licence batch with its used counts
+      description: >
+        One batch, as the list carries it (LX-28). Its licences are `GET
+        …/license/licenses?batch=<batchId>`. Platform admins only; admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: batchId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The batch.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminLicenseBatch" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product or batch.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/license/batches/{batchId}/disable-unused:
+    post:
+      operationId: disableUnusedAdminLicenseBatch
+      tags: [admin]
+      summary: Disable every licence of a batch that no device was ever bound to
+      description: >
+        Disable unused keys (LX-28, notes/S-24 §5.6, §7.1), for a batch whose keys leaked:
+        disables every ACTIVE licence of the batch no device was ever bound to, in one conditional
+        write, and answers how many. Used licences (a device row names it, whatever its status, or
+        one of its keys was ever presented successfully) and licences outside the batch are
+        untouched; a licence is re-enabled one at a time. Audited `license.batch.disable_unused`
+        with the count. Platform admins only; admin session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: batchId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Done.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [disabled]
+                properties:
+                  disabled:
+                    {
+                      type: integer,
+                      minimum: 0,
+                      description: "How many licences this call disabled.",
+                    }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product or batch.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  # ── Product settings (LX-06: the first slice of S-18 §4.7's generic settings API) ──
+  /manage/api/products/{product}/settings/effective:
+    get:
+      operationId: listAdminProductSettings
+      tags: [admin]
+      summary: The product's row-backed settings, with the value in force and where it came from
+      description: >
+        LX-06 (notes/S-18 §4.7). Every live row-backed claimable product setting of the registry
+        (`licensing.*` and `identity.oidc.syncTierOnSignIn` today; ST-05 widens this to every
+        key), optionally limited to one settings-hub `area` (`license.licensing` is License →
+        Settings). Each carries the registry's label, description, value spec and confirm level,
+        the value in force with its `source` (`default`, `manifest` or `console`), the default
+        this product falls back to (`licensing.entitlementModel` is `legacy` for products
+        registered before 2026-10-06), what the last applied manifest declares (`manifestValue`,
+        Revert's target), and the row `version` a write passes back as `expectedVersion`.
+        Platform admins only; admin session cookie.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - {
+            name: area,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "Only the settings of this settings-hub area, e.g. `license.licensing`.",
+          }
+      responses:
+        "200":
+          description: The settings, in registry order.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [settings]
+                properties:
+                  settings:
+                    type: array
+                    items: { $ref: "#/components/schemas/AdminProductSetting" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: No such product.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/{product}/settings/{key}:
+    patch:
+      operationId: updateAdminProductSetting
+      tags: [admin]
+      summary: Set a product setting in the console, claiming it from the manifest
+      description: >
+        LX-06 (notes/S-18 §4.5 model C, §4.7). Validates `value` against the registry entry and
+        stores it as a console row: on a repo-linked product that claims the setting, and every
+        later resync leaves it alone until Revert (audited `setting.claim`; `setting.update` on a
+        product no manifest feeds). A critical setting needs a `reason`. `expectedVersion` is
+        required (the row version the console read, 0 for none; missing is `422
+        invalid_expected_version`), and a concurrent change is a `409 version_conflict` carrying
+        the current value. `licensing.reanchor: onRefresh` is not a
+        value yet (LX-21), and `licensing.dunningGraceDays` is refused with `setting_pending`
+        until LX-23. The system product is manifest-authoritative (`409 system_product`).
+        Platform admins only; admin session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: key, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdminProductSettingWrite" }
+            examples:
+              holder:
+                value:
+                  {
+                    value: owner,
+                    expectedVersion: 1,
+                    reason: Studio keys are shared,
+                  }
+      responses:
+        "200":
+          description: Saved; the setting as it now reads.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, claimed, setting]
+                properties:
+                  ok: { type: boolean, const: true }
+                  claimed:
+                    type: boolean
+                    description: The write claimed the setting from a repo-linked product's manifest.
+                  setting: { $ref: "#/components/schemas/AdminProductSetting" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: "No such product, or a key this API does not serve (`reason: unknown_setting`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "`version_conflict` (with `current`), `setting_pending` or `system_product`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "`invalid_value`, `reason_required`, `invalid_reason` or `invalid_expected_version`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+    delete:
+      operationId: revertAdminProductSetting
+      tags: [admin]
+      summary: Revert a console setting to the manifest (or to its default)
+      description: >
+        LX-06 (notes/S-18 §4.5 item 2). Drops the console claim and, on a repo-linked product,
+        re-applies the last applied manifest's value at once (`applied: true`); with no manifest
+        snapshot yet the value returns at the next resync (`applied: false`, `message`). On a
+        product no manifest feeds this resets the setting to its default. Audited
+        `setting.revert`. The required `expectedVersion` body field (the version the console read)
+        guards against a concurrent change; missing is `422 invalid_expected_version`. Platform
+        admins only; admin session cookie and CSRF header.
+      parameters:
+        - { name: product, in: path, required: true, schema: { type: string } }
+        - { name: key, in: path, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expectedVersion]
+              properties:
+                expectedVersion: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: Reverted; the setting as it now reads.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, applied, setting]
+                properties:
+                  ok: { type: boolean, const: true }
+                  applied: { type: boolean }
+                  message: { type: string }
+                  setting: { $ref: "#/components/schemas/AdminProductSetting" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "404":
+          description: "No such product, or a key this API does not serve (`reason: unknown_setting`)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "409":
+          description: "`not_claimed`, `version_conflict`, `invalid_manifest_value`, `setting_pending` or `system_product`."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "`invalid_expected_version`: the body names no (or no valid) `expectedVersion`."
           content:
             application/json:
               schema: { $ref: "#/components/schemas/AdminError" }
@@ -15551,55 +16827,165 @@ components:
             format: uri,
             description: "The 128 px WebP variant, or null.",
           }
+    AdminProductSetting:
+      type: object
+      description: >
+        One row-backed product setting (LX-06, `admin/handlers/productSettings.ts`): the registry
+        entry's description and the value in force for this product.
+      required:
+        [
+          key,
+          area,
+          service,
+          label,
+          description,
+          docs,
+          spec,
+          confirm,
+          critical,
+          manifestPath,
+          visibleWhen,
+          serviceEnabled,
+          value,
+          source,
+          defaultValue,
+          version,
+          updatedAt,
+          updatedBy,
+          reason,
+        ]
+      properties:
+        key: { type: string, examples: [licensing.entitlementHolder] }
+        area: { type: string, examples: [license.licensing] }
+        service: { type: string }
+        label: { type: string }
+        description: { type: string }
+        docs: { type: string }
+        spec:
+          type: object
+          description: The registry's value spec (`kind` enum, integer with bounds, boolean, ...).
+          required: [kind]
+          additionalProperties: true
+          properties:
+            kind: { type: string }
+        confirm:
+          type: object
+          description: The confirm level per direction (`up`/`down`, `on`/`off` or `change`).
+          additionalProperties: { type: string, enum: [L0, L1, L2, L3] }
+        critical:
+          type: boolean
+          description: A write needs a reason.
+        manifestPath:
+          {
+            type: [string, "null"],
+            examples: ["product:licensing.entitlementHolder"],
+          }
+        visibleWhen:
+          type: [object, "null"]
+          additionalProperties: true
+        serviceEnabled: { type: boolean }
+        value: {}
+        source: { type: string, enum: [default, manifest, console] }
+        defaultValue: {}
+        manifestValue:
+          description: What the last applied manifest declares; absent when it declares nothing.
+        version:
+          type: integer
+          minimum: 0
+          description: "The row version (0 when there is no row), which a write passes back as `expectedVersion`."
+        updatedAt: { type: [integer, "null"] }
+        updatedBy: { type: [string, "null"] }
+        reason: { type: [string, "null"] }
+    AdminProductSettingWrite:
+      type: object
+      required: [value, expectedVersion]
+      properties:
+        value:
+          description: A value of the setting's spec.
+        expectedVersion: { type: integer, minimum: 0 }
+        reason:
+          type: string
+          maxLength: 500
+          description: Required for critical settings; stored on the row and in the audit summary.
     AdminHostedAssets:
       type: object
       required: [assets]
       properties:
         assets:
           type: array
-          items:
-            type: object
-            required:
-              [
-                slot,
-                locale,
-                origin,
-                sourceKind,
-                status,
-                modifiedAt,
-                pullPending,
-                attempts,
-              ]
-            properties:
-              slot: { type: string }
-              locale: { type: string, description: "`''` is every locale." }
-              origin:
-                { type: string, enum: [manifest, console, ci, release-mirror] }
-              sourceKind:
-                { type: string, enum: [url, repo, upload, ci, github-asset] }
-              sourceRef:
-                {
-                  type: [string, "null"],
-                  description: "The URL, `<path>@<commit>`, or the GitHub asset id.",
-                }
-              status: { type: string, enum: [pending, ready, failed, stale] }
-              error: { type: [string, "null"] }
-              sha256: { type: [string, "null"] }
-              size: { type: [integer, "null"] }
-              contentType: { type: [string, "null"] }
-              width: { type: [integer, "null"] }
-              height: { type: [integer, "null"] }
-              checkedAt: { type: [integer, "null"] }
-              modifiedAt: { type: integer }
-              wanted:
-                type: [object, "null"]
-                properties:
-                  kind: { type: string, enum: [url, repo] }
-                  src: { type: string }
-                  sha256: { type: string }
-              pullPending: { type: boolean }
-              attempts: { type: integer }
-              nextAttemptAt: { type: [integer, "null"] }
+          items: { $ref: "#/components/schemas/AdminHostedAsset" }
+    AdminHostedAsset:
+      type: object
+      required:
+        [
+          slot,
+          locale,
+          origin,
+          sourceKind,
+          status,
+          modifiedAt,
+          pullPending,
+          attempts,
+          sizesPending,
+          widths,
+          uploadable,
+        ]
+      properties:
+        slot: { type: string }
+        locale: { type: string, description: "`''` is every locale." }
+        origin: { type: string, enum: [manifest, console, ci, release-mirror] }
+        sourceKind:
+          { type: string, enum: [url, repo, upload, ci, github-asset] }
+        sourceRef:
+          {
+            type: [string, "null"],
+            description: "The URL, `<path>@<commit>`, or the GitHub asset id.",
+          }
+        status: { type: string, enum: [pending, ready, failed, stale] }
+        error: { type: [string, "null"] }
+        sha256: { type: [string, "null"] }
+        size: { type: [integer, "null"] }
+        contentType: { type: [string, "null"] }
+        width: { type: [integer, "null"] }
+        height: { type: [integer, "null"] }
+        checkedAt: { type: [integer, "null"] }
+        modifiedAt: { type: integer }
+        wanted:
+          type: [object, "null"]
+          properties:
+            kind: { type: string, enum: [url, repo] }
+            src: { type: string }
+            sha256: { type: string }
+        pullPending: { type: boolean }
+        attempts: { type: integer }
+        nextAttemptAt: { type: [integer, "null"] }
+        sizesPending:
+          {
+            type: boolean,
+            description: "A ready copy still owes its WebP size ladder (retried while the Images binding is bound).",
+          }
+        widths:
+          {
+            type: array,
+            items: { type: integer },
+            description: "The size ladder's widths, ascending.",
+          }
+        url:
+          {
+            type: [string, "null"],
+            description: "The original on the image host, when it serves it.",
+          }
+        previewUrl:
+          {
+            type: [string, "null"],
+            description: "A variant at least 256 px wide (else the largest, else the original).",
+          }
+        uploadable:
+          {
+            type: boolean,
+            description: "The console may upload to and delete this slot.",
+          }
+        maxBytes: { type: [integer, "null"] }
     LicenseHolder:
       description: >
         LX-26 (notes/S-24 §5.1, D1): a licence's holder, derived from whether it is in an account
@@ -15643,6 +17029,52 @@ components:
           description: "The owner's pairwise subject (`ps_…`) for this product; `null` when the licence is in no account."
         holder: { $ref: "#/components/schemas/LicenseHolder" }
         origin: { type: string, enum: [admin, oidc, enroll] }
+        batchId:
+          type: [string, "null"]
+          description: "LX-28: the batch the licence was created in; `null` for a licence created on its own."
+    AdminLicenseBatch:
+      type: object
+      description: >
+        A batch of floating licences (LX-28) with its live counts. Never carries a key.
+      required:
+        [id, label, count, tier, createdBy, createdAt, used, unused, disabled]
+      properties:
+        id: { type: string }
+        label: { type: string, description: "1 to 80 characters; not unique." }
+        count:
+          {
+            type: integer,
+            minimum: 1,
+            maximum: 500,
+            description: "How many licences the batch created.",
+          }
+        tier: { type: [string, "null"] }
+        createdBy:
+          { type: string, description: "The operator's session subject." }
+        createdAt: { type: integer, description: Epoch seconds. }
+        used:
+          type: integer
+          minimum: 0
+          description: "Licences a device was ever bound to."
+        unused:
+          type: integer
+          minimum: 0
+          description: "Active licences never used: what Disable unused keys would disable."
+        disabled:
+          { type: integer, minimum: 0, description: "Disabled licences." }
+    AdminLicenseBatchCreate:
+      type: object
+      required: [label, count, tier]
+      properties:
+        label: { type: string, minLength: 1, maxLength: 80 }
+        count: { type: integer, minimum: 1, maximum: 500 }
+        tier: { type: string }
+        deviceLimit: { type: [integer, "null"], minimum: 1 }
+        expiresAt: { type: [integer, "null"] }
+        maxOfflineDays: { type: integer, minimum: 1, maximum: 365 }
+        channels: { type: array, items: { type: string } }
+        minVersion: { type: string }
+        maxVersion: { type: string }
     AdminLicenseCreate:
       type: object
       properties:
@@ -15989,10 +17421,16 @@ components:
         website: { type: [string, "null"] }
         iconUrl:
           type: [string, "null"]
-          description: A same-origin `/media/<product>/icon?v=…` URL, or null.
+          description: >
+            The product's hosted icon on the image host (HA-07), `https://img…/<product>/a/<sha256>`
+            or one of its `/<w>.webp` widths. Without a copy (or with hosting off or no image
+            host), a same-origin `/media/<product>/icon?v=…` proxy URL, or null.
         headerUrl:
           type: [string, "null"]
-          description: A same-origin `/media/<product>/header?v=…` URL, or null.
+          description: >
+            The product's hosted header art on the image host, like `iconUrl`; without a copy (or
+            with hosting off or no image host), a same-origin `/media/<product>/header?v=…` proxy
+            URL, or null.
         support:
           oneOf:
             - type: "null"
@@ -16058,15 +17496,30 @@ components:
             allOf:
               - $ref: "#/components/schemas/PortalPresentation"
               - type: object
-                required: [product, status, license, licenseCount, addedAt]
+                required:
+                  [product, kind, status, license, licenseCount, addedAt]
                 properties:
                   product: { type: string, description: The product slug. }
+                  kind:
+                    type: string
+                    enum: [license, entry]
+                    description: >
+                      `license`: the account holds a licence for the product. `entry` (PS-04): an
+                      open product added from the storefront, no licence behind it.
+                  via:
+                    type: string
+                    enum: [open]
+                    description: "`entry` only: why the entry exists."
                   status: { $ref: "#/components/schemas/PortalStatus" }
-                  license: { $ref: "#/components/schemas/PortalLicenseSeats" }
-                  licenseCount: { type: integer, minimum: 1 }
+                  license:
+                    oneOf:
+                      - $ref: "#/components/schemas/PortalLicenseSeats"
+                      - type: "null"
+                    description: The best licence's summary; `null` for an entry.
+                  licenseCount: { type: integer, minimum: 0 }
                   addedAt:
                     type: [integer, "null"]
-                    description: When the account's first licence for the product was linked.
+                    description: When the account's first licence for the product was linked, or the entry was added.
     PortalPurchase:
       type: object
       description: >
@@ -16128,7 +17581,9 @@ components:
         developerName: { type: [string, "null"] }
         iconUrl:
           type: [string, "null"]
-          description: Same-origin `/media/<product>/icon?v=…`, or null.
+          description: >
+            Same-origin `/media/<product>/icon?v=…`, or null. Since HA-07 that path 302s to the
+            product's hosted icon on the image host, and `v` is the copy's hash prefix.
         origins: { type: array, items: { type: string } }
         services:
           type: object
@@ -16194,26 +17649,111 @@ components:
       properties:
         offers:
           type: array
-          items:
-            allOf:
-              - $ref: "#/components/schemas/PortalPresentation"
-              - type: object
-                required: [product, platforms, offer, reason]
-                properties:
-                  product: { type: string, description: The product slug. }
-                  platforms:
-                    type: array
-                    description: The platforms of the newest app release's builds.
-                    items: { type: string }
-                  offer: { $ref: "#/components/schemas/PortalDiscoverTerms" }
-                  reason:
-                    type: string
-                    pattern: "^(free_with_account|group:.+)$"
-                    description: >
-                      Why the account can add the product, always present (owner decision Q-6):
-                      `free_with_account` (the `oidcDefault` auto-issue rule) or `group:<group>`
-                      (a platform-IdP group mapped in the product's `groupRoleMap`). An open set:
-                      clients show an unknown reason generically.
+          items: { $ref: "#/components/schemas/PortalDiscoverOffer" }
+    PortalDiscoverOffer:
+      allOf:
+        - $ref: "#/components/schemas/PortalPresentation"
+        - type: object
+          required:
+            [
+              product,
+              platforms,
+              offer,
+              reason,
+              cta,
+              paths,
+              shortDescription,
+              stores,
+            ]
+          properties:
+            product: { type: string, description: The product slug. }
+            platforms:
+              type: array
+              description: The platforms of the newest app release's builds.
+              items: { type: string }
+            offer:
+              oneOf:
+                - $ref: "#/components/schemas/PortalDiscoverTerms"
+                - type: "null"
+              description: >
+                The first path's terms; `null` for a link and for a path that issues no
+                licence (`open`).
+            reason:
+              type: [string, "null"]
+              description: >
+                The first path's reason, always present on an `add` offer (owner decision
+                Q-6): `free_with_account` (the `oidcDefault` auto-issue rule),
+                `group:<group>` (a platform-IdP group mapped in the product's
+                `groupRoleMap`) or `open`; `null` for a link. An open set: clients show an
+                unknown reason generically.
+            cta:
+              type: string
+              enum: [add, link]
+              description: >
+                `add`: at least one path. `link`: audience `everyone` with nothing to add;
+                the action is the `website` or a `stores` page, never Add.
+            paths:
+              type: array
+              description: Every way to add the product, in evaluation order; empty for a link.
+              items: { $ref: "#/components/schemas/PortalObtainPath" }
+            shortDescription:
+              type: [string, "null"]
+              description: The listing's `subtitle`.
+            stores:
+              type: array
+              description: A link's live store pages; empty on an `add` offer.
+              items: { $ref: "#/components/schemas/PortalStoreLink" }
+    PortalObtainPath:
+      type: object
+      description: >
+        One reason the account could add the product now (PS-03, notes/S-21 §6.3). Never names
+        an account.
+      required: [kind, detail, label, terms, action, reason]
+      properties:
+        kind:
+          type: string
+          description: "`store_owned`, `group`, `product_idp`, `email_domain`, `auto_issue` or `open` (an open set)."
+        detail:
+          type: [string, "null"]
+          description: The group, store, IdP label or domain; `null` when there is none.
+        label:
+          type: [string, "null"]
+          description: "`group` only: the operator's label for the group (`storefront.polarisKey.groupLabels`)."
+        terms:
+          oneOf:
+            - $ref: "#/components/schemas/PortalDiscoverTerms"
+            - type: "null"
+          description: What adding gives; `null` for a path that issues no licence (`open`).
+        action:
+          type: string
+          description: "`add` (S-22 adds `buy` and `upgrade`)."
+        reason: { type: string, description: The reason code. }
+    PortalStoreLink:
+      type: object
+      description: A store outlet where a release of the stable channel is reported live, with its https page.
+      required: [id, kind, label, url]
+      properties:
+        id: { type: string, description: "`<kind>:<outletId>`." }
+        kind: { type: string }
+        label:
+          {
+            type: string,
+            description: 'A fixed Worker string ("Steam", "App Store", …).',
+          }
+        url: { type: string }
+    PortalStorefrontPage:
+      allOf:
+        - $ref: "#/components/schemas/PortalDiscoverOffer"
+        - type: object
+          required: [description, screenshots]
+          properties:
+            description:
+              type: [string, "null"]
+              description: The listing's `description` (plain text, newlines kept; render it escaped).
+            screenshots:
+              type: array
+              description: Same-origin `/media/<product>/screenshot-<n>?v=…` URLs, in listing order.
+              items: { type: string }
     PortalDiscoverTerms:
       type: object
       description: What adding the product would give, from the same policy that would mint it.
@@ -16284,12 +17824,22 @@ components:
         stepUpRequired: { type: boolean }
     PortalDiscoverClaim:
       type: object
-      required: [added, product, license]
+      required: [added, product, kind]
       properties:
         added:
           type: boolean
-          description: "True when this call minted the licence; false when it was already held."
+          description: "True when this call created the licence or entry; false when it was already held."
         product: { type: string }
+        kind:
+          type: string
+          enum: [license, entry]
+          description: "`license` carries `license`; `entry` (an open product) carries `entry`."
+        entry:
+          type: object
+          required: [via, addedAt]
+          properties:
+            via: { type: string, enum: [open] }
+            addedAt: { type: integer }
         license:
           type: object
           required:
@@ -16306,9 +17856,17 @@ components:
       allOf:
         - $ref: "#/components/schemas/PortalPresentation"
         - type: object
-          required: [product, services, status, addedAt, licenses]
+          required: [product, kind, services, status, addedAt, licenses]
           properties:
             product: { type: string }
+            kind:
+              type: string
+              enum: [license, entry]
+              description: "`entry` (PS-04): the library holds the product as an entry; `licenses` is empty."
+            via:
+              type: string
+              enum: [open]
+              description: "`entry` only."
             services:
               type: object
               description: Each service slug and whether it is on for the product.
@@ -16462,6 +18020,19 @@ components:
           properties:
             email: { type: string }
             proven: { type: boolean }
+    AccountMethodConnected:
+      type: object
+      description: An email sign-in method connected by its code (PX-W12).
+      required: [status, already, email]
+      properties:
+        status: { type: string, enum: [connected] }
+        already: { type: boolean }
+        email: { type: string }
+        method:
+          type: object
+          properties:
+            id: { type: string }
+            kind: { type: string, enum: [email] }
     AccountPasskey:
       type: object
       description: One of the account's passkeys (I-16). Display facts only; never key material.

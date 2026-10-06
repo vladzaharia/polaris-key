@@ -87,6 +87,8 @@ export type Route =
    *  attestation raising the trust level. CORE routes, beside `register`. */
   | { kind: "attestChallenge"; product: string }
   | { kind: "attest"; product: string }
+  /** HA-06: CI pushes a file into a hosted-asset slot (`POST /<p>/assets`, `assets:write`). */
+  | { kind: "assetsPush"; product: string }
   /** A product-scoped request for a service the core router has cut over. `rest` is the path
    *  after `/<product>/<slug>`, already split; `[]` means the bare namespace.
    *
@@ -195,6 +197,10 @@ export function matchRoute(pathname: string): Route {
       return { kind: "attest", product };
     case "/devices/attest/challenge":
       return { kind: "attestChallenge", product };
+    // HA-06: hosted assets are Core's (a product has a presentation icon whatever it runs), so
+    // the CI push is a Core route, not a service's.
+    case "/assets":
+      return { kind: "assetsPush", product };
     // The permanent aliases (§R1). `/<p>/changelog` is NOT among them: unlike these it was never
     // compiled into a shipped binary or a published curl line, so wire v3 moves it to
     // `/<p>/release/changelog` outright.

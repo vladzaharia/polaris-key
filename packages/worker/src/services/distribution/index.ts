@@ -75,6 +75,10 @@ import {
   parseJsonColumn,
 } from "./outlets.js";
 import { DISTRIBUTION_SETTINGS_SLICE } from "./settings.js";
+import {
+  syncManifestListingAssets,
+  type ManifestListingSync,
+} from "./listing/manifestAssets.js";
 
 /**
  * `core/hooks.ts` `outletCapabilities`: the capabilities in force for one of this product's live
@@ -169,8 +173,24 @@ async function scheduled(
       error: `commerce: ${e instanceof Error ? e.message : "tick failed"}`,
     };
   }
+  // HA-07: the manifest's hosted art as listing rows (`listing/manifestAssets.ts`): catches a
+  // slot the manifest stopped declaring (dropped at resync) and anything the pull consumer's own
+  // sync missed. Idempotent and fault-isolated like the rest.
+  let listingArt: ManifestListingSync | { error: string };
+  try {
+    listingArt = await syncManifestListingAssets(
+      ctx.db,
+      ctx.product.slug,
+      ctx.now,
+    );
+  } catch (e) {
+    listingArt = {
+      error: `listing art: ${e instanceof Error ? e.message : "sync failed"}`,
+    };
+  }
   const errors = [
     ...outcomes.filter((o) => o.error).map((o) => `${o.connector}: ${o.error}`),
+    ...("error" in listingArt ? [listingArt.error] : []),
     ...(autoHalt.error ? [autoHalt.error] : []),
     ...("error" in readiness ? [readiness.error] : []),
     ...("error" in commerce
@@ -178,7 +198,7 @@ async function scheduled(
       : commerce.errors.map((e) => `commerce ${e}`)),
   ];
   if (errors.length) throw new Error(errors.join("; "));
-  return { connectors: outcomes, autoHalt, readiness, commerce };
+  return { connectors: outcomes, autoHalt, readiness, commerce, listingArt };
 }
 
 export const distributionService: ServiceDescriptor = {

@@ -148,8 +148,11 @@ export interface ResolvedSetting {
   /** The layer the effective value came from (before any clamp). */
   source: SettingSource;
   chain: ChainStep[];
-  /** A higher scope fixed or bounded the value: the deploy (A-13 ceiling) or the platform. */
-  lockedBy?: "deploy" | "platform";
+  /**
+   * A higher scope fixed or bounded the value: the deploy (A-13 ceiling), the platform, or the
+   * registry for the system product (`systemLock`, ST-20).
+   */
+  lockedBy?: "deploy" | "platform" | "system";
   /** A `policy` entry whose value sat outside the platform bound: what was set, and the bound. */
   clamped?: { requested: unknown; bound: unknown; by: "platform" };
   /** A claimable key whose console claim differs from the last applied manifest (ST-01a). */
@@ -258,6 +261,25 @@ export interface ProductLayers {
   /** The last applied manifest's value (ST-01a's snapshot), for drift. */
   manifestValue?: unknown;
   version?: number;
+  /**
+   * When the product was registered: before an entry's `legacyDefault.createdBefore` the default
+   * step is that legacy value (LX-06, plans/LX-01.md §8 Q2), still with source `default`.
+   */
+  productCreatedAt?: number;
+  /** The product is the system product: an entry's `systemLock` fixes its value (ST-20). */
+  system?: boolean;
+}
+
+/** The default a product starts from: the entry's, or its `legacyDefault` for an older product. */
+export function productDefault(
+  def: SettingDef,
+  createdAt: number | undefined,
+): unknown {
+  return def.legacyDefault &&
+    createdAt !== undefined &&
+    createdAt < def.legacyDefault.createdBefore
+    ? def.legacyDefault.value
+    : def.defaultValue;
 }
 
 /** Resolve one PRODUCT- (or entity-) scope entry from its layers (pure). */
@@ -265,8 +287,16 @@ export function resolveProductValue(
   def: SettingDef,
   layers: ProductLayers,
 ): ResolvedSetting {
+  const legacy =
+    def.legacyDefault &&
+    layers.productCreatedAt !== undefined &&
+    layers.productCreatedAt < def.legacyDefault.createdBefore;
   const chain: ChainStep[] = [
-    { source: "default", from: "default", value: def.defaultValue },
+    {
+      source: "default",
+      from: legacy ? "legacyDefault" : "default",
+      value: productDefault(def, layers.productCreatedAt),
+    },
   ];
   // Live inheritance (D5): the platform entry's deploy and platform layers sit below the
   // product's own. Its default is the product default's twin, so it adds nothing.
@@ -308,6 +338,14 @@ export function resolveProductValue(
     chain,
     version: layers.version ?? 0,
   };
+  // The system-lock rule (ST-20): the registry fixes the value for the system product; no row,
+  // console write or manifest changes it there.
+  if (def.systemLock && layers.system) {
+    out.value = def.systemLock.value;
+    out.source = "derived";
+    out.lockedBy = "system";
+    return out;
+  }
   const clamp = clampToBound(def, top.value, layers);
   if (clamp) {
     out.value = clamp.value;
@@ -450,6 +488,8 @@ export interface ProductFacts {
   slug: string;
   system?: number | null;
   release_source?: string | null;
+  /** When it was registered: picks an entry's `legacyDefault` (LX-06). */
+  created_at?: number;
 }
 
 /** Is the product linked to a repository whose `.pkey/` manifest it follows? */
@@ -628,8 +668,14 @@ export async function resolveProductSettings(
           : undefined,
       stored: layer,
       manifestValue:
-        manifest !== undefined ? snapshotValue(def.key, manifest) : undefined,
+        manifest !== undefined
+          ? snapshotValue(def.key, manifest, def)
+          : undefined,
       version: ps?.version ?? 0,
+      ...(typeof row.created_at === "number"
+        ? { productCreatedAt: row.created_at }
+        : {}),
+      system: row.system === 1,
     });
   });
 }

@@ -2,6 +2,7 @@ import * as React from "react";
 import {
   FileText,
   Link2,
+  CircleMinus,
   MonitorSmartphone,
   MoreHorizontal,
 } from "lucide-react";
@@ -9,22 +10,29 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../../ui/DropdownMenu.js";
 import { toast } from "../../ui/toast.js";
 import { href } from "../router.js";
 
-/** A product's overflow menu ("More for Nightfall", §9.2) on tiles and the product header. */
+/**
+ * A product's overflow menu ("More for Nightfall", §9.2) on tiles and the product header. On the
+ * product page it ends with **Remove from my library** (§4.20, PX-23), which asks first.
+ */
 export function ProductMenu({
   slug,
   name,
   onPage = false,
+  onRemove,
   className,
 }: {
   slug: string;
   name: string;
   /** On the product page: no "Open … page" item. */
   onPage?: boolean;
+  /** Opens the Remove from my library confirmation (the product page only). */
+  onRemove?: () => void;
   className?: string;
 }): React.ReactElement {
   const copyLink = (): void => {
@@ -67,6 +75,15 @@ export function ProductMenu({
           <Link2 aria-hidden />
           Copy link
         </DropdownMenuItem>
+        {onRemove ? (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem destructive onSelect={onRemove}>
+              <CircleMinus aria-hidden />
+              Remove from my library
+            </DropdownMenuItem>
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -6,7 +6,9 @@
  * change (no wire effect: `gen:transcripts --check` stays green).
  *
  * `PROBES` must name every such entry: a new discovery-carried setting fails here until it says
- * how discovery publishes it and which reader enforces it.
+ * how discovery publishes it and which reader enforces it. A manifest-only entry has no console
+ * write: its probe writes the storage as the manifest writer (link, resync) does, and the three
+ * readers must still agree.
  */
 
 import { describe, expect, it } from "vitest";
@@ -21,15 +23,74 @@ import { SERVICES, SETTINGS } from "../src/mount.js";
 import { SERVICE_SLUGS } from "../src/core/services.js";
 import { writeSetting } from "../src/core/settings/write.js";
 import { resolveProductSetting } from "../src/core/settings/resolve.js";
+import { getReleaseConfig } from "../src/services/release/config.js";
+import { parseManualChannels } from "../src/services/release/channels.js";
+import { setServices } from "../src/repo.js";
 
 interface Probe {
   /** A value to write that differs from the seeded product's. */
   value: unknown;
+  /**
+   * A manifest-only entry: write the storage as the manifest writer does (the console cannot).
+   * Absent: the value is written through `writeSetting()`.
+   */
+  seed?(db: Db, slug: string): Promise<void>;
   /** The value as the discovery document publishes it. */
   published(doc: Record<string, any>): unknown;
-  /** The value as the enforcement path reads it (the product the router and documents load). */
-  enforced(product: Product): unknown;
+  /** The value as the enforcement path reads it (the product the router loads, or its rows). */
+  enforced(product: Product, db: Db): unknown;
+  /** The resolver's value in the shape the probe compares (default: as is). */
+  resolved?(value: unknown): unknown;
 }
+
+/** Release and Update on, with the release row link and resync write (`.pkey/release`). */
+async function seedRelease(
+  db: Db,
+  slug: string,
+  row: {
+    owner?: string;
+    repo?: string;
+    binary?: string | null;
+    manual?: string;
+    sparkle?: string | null;
+  },
+): Promise<void> {
+  await setServices(
+    db,
+    slug,
+    JSON.stringify(
+      servicesFrom((s) =>
+        ["license", "config", "release", "update"].includes(s),
+      ),
+    ),
+    "manifest",
+    NOW,
+  );
+  await db.run(
+    `INSERT INTO release_config
+       (product, gh_owner, gh_repo, gh_installation_id, channel_workflow, beta_branch,
+        manual_channels_json, binary_name, install_template, sparkle_ed25519_pub, summary_marker)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+    slug,
+    row.owner ?? "acme-org",
+    row.repo ?? "acme-app",
+    42,
+    "release.yml",
+    "main",
+    row.manual ?? "[]",
+    row.binary ?? null,
+    null,
+    row.sparkle ?? null,
+    "pkey:summary",
+  );
+}
+
+/** The update channels a release row offers (`services/update/index.ts`). */
+const channelsOf = (manualJson: string | null | undefined) => [
+  "stable",
+  "beta",
+  ...parseManualChannels(manualJson).map((c) => c.name),
+];
 
 const servicesFrom = (enabled: (slug: string) => boolean) =>
   Object.fromEntries(SERVICE_SLUGS.map((s) => [s, { enabled: enabled(s) }]));
@@ -69,19 +130,47 @@ const PROBES: Readonly<Record<string, Probe>> = {
     published: (doc) => doc.core.registration,
     enforced: (p) => p.registration,
   },
-};
 
-/**
- * Probes for entries a package building in parallel registers (its probe and column adapter land
- * here first, so the two meet at integration with nothing left to write). Each key names that
- * package; a probe for any other unregistered key fails.
- */
-const AHEAD_OF_REGISTRY: Readonly<Record<string, string>> = {
-  "core.registration": "ST-19b",
+  // ── ST-19b's `.pkey/release` entries: manifest-only, written by link and resync ──────────
+  "release.github": {
+    value: { owner: "acme-org", name: "acme-app" },
+    seed: (db, slug) => seedRelease(db, slug, {}),
+    published: (doc) => doc.services.release.repository,
+    enforced: async (p, db) => {
+      const cfg = await getReleaseConfig(db, p.slug);
+      return { owner: cfg?.gh_owner, name: cfg?.gh_repo };
+    },
+    resolved: (v) => {
+      const r = v as { owner: string; repo: string };
+      return { owner: r.owner, name: r.repo };
+    },
+  },
+  "release.binaryName": {
+    value: "acme-cli",
+    seed: (db, slug) => seedRelease(db, slug, { binary: "acme-cli" }),
+    published: (doc) => doc.services.release.binaryName,
+    enforced: async (p, db) =>
+      (await getReleaseConfig(db, p.slug))?.binary_name ?? p.slug,
+  },
+  "release.manualChannels": {
+    value: ["stable", "beta", "nightly"],
+    seed: (db, slug) =>
+      seedRelease(db, slug, {
+        manual: JSON.stringify([{ name: "nightly", regex: "^v.*-nightly$" }]),
+      }),
+    published: (doc) => doc.services.update.channels,
+    enforced: async (p, db) =>
+      channelsOf((await getReleaseConfig(db, p.slug))?.manual_channels_json),
+    resolved: (v) => channelsOf(JSON.stringify(v)),
+  },
+  "release.sparkleEd25519Pub": {
+    value: "SPARKLEPUB",
+    seed: (db, slug) => seedRelease(db, slug, { sparkle: "SPARKLEPUB" }),
+    published: (doc) => doc.services.update.sparkleEd25519PublicKey,
+    enforced: async (p, db) =>
+      (await getReleaseConfig(db, p.slug))?.sparkle_ed25519_pub,
+  },
 };
-
-const registered = (key: string) =>
-  SETTINGS.entries.some((e) => e.key === key && !e.pending);
 
 /** The resolver's value in the shape the probe compares. */
 function resolvedShape(key: string, value: unknown): unknown {
@@ -136,31 +225,24 @@ describe("discovery and enforcement agree after a write (ST-04)", () => {
       .map((e) => e.key)
       .sort();
     expect(carried.length).toBeGreaterThan(0);
-    expect(carried.filter((k) => !PROBES[k])).toEqual([]);
-    // A probe names a carried entry, or one a parallel package is about to register.
-    expect(
-      Object.keys(PROBES).filter(
-        (k) =>
-          !carried.includes(k) && !(k in AHEAD_OF_REGISTRY && !registered(k)),
-      ),
-    ).toEqual([]);
+    expect(Object.keys(PROBES).sort()).toEqual(carried);
   });
 
   for (const [key, probe] of Object.entries(PROBES))
-    (registered(key) ? it : it.skip)(
-      `${key}: published, resolved and enforced as the written value`,
-      async () => {
-        const db = makeTestDb();
-        const env = makeEnv(new KvMock(), ["acme"]);
-        await seedProduct(db, "acme");
-        await db.run(
-          "UPDATE products SET release_source = 'github' WHERE slug = 'acme'",
-        );
-        const before = await discovery(env, db, "acme");
-        expect(probe.published(before)).not.toEqual(
-          resolvedShape(key, probe.value),
-        );
+    it(`${key}: published, resolved and enforced as the written value`, async () => {
+      const db = makeTestDb();
+      const env = makeEnv(new KvMock(), ["acme"]);
+      await seedProduct(db, "acme");
+      await db.run(
+        "UPDATE products SET release_source = 'github' WHERE slug = 'acme'",
+      );
+      const before = await discovery(env, db, "acme");
+      expect(probe.published(before)).not.toEqual(
+        resolvedShape(key, probe.value),
+      );
 
+      if (probe.seed) await probe.seed(db, "acme");
+      else {
         const res = await writeSetting(
           { env, db, registry: SETTINGS },
           { key, value: probe.value },
@@ -173,28 +255,35 @@ describe("discovery and enforcement agree after a write (ST-04)", () => {
           },
         );
         expect(res.ok, JSON.stringify(res)).toBe(true);
+      }
 
-        const after = await discovery(env, db, "acme");
-        const resolved = await resolveProductSetting(
-          { env, db, registry: SETTINGS },
-          "acme",
-          key,
-        );
-        const enforced = probe.enforced((await loadProduct(env, db, "acme"))!);
-        const expected = resolvedShape(key, probe.value);
-        expect(probe.published(after)).toEqual(expected);
-        expect(resolvedShape(key, resolved!.value)).toEqual(expected);
-        expect(enforced).toEqual(expected);
+      const after = await discovery(env, db, "acme");
+      const resolved = await resolveProductSetting(
+        { env, db, registry: SETTINGS },
+        "acme",
+        key,
+      );
+      const enforced = await probe.enforced(
+        (await loadProduct(env, db, "acme"))!,
+        db,
+      );
+      const expected = resolvedShape(key, probe.value);
+      expect(probe.published(after)).toEqual(expected);
+      expect(
+        probe.resolved
+          ? probe.resolved(resolved!.value)
+          : resolvedShape(key, resolved!.value),
+      ).toEqual(expected);
+      expect(enforced).toEqual(expected);
 
-        // No wire effect: the document's shape is what it was (values only). A service turned on
-        // publishes its own fragment, so `core.services` compares the core and top level only;
-        // `core.endpoints.register` is advertised exactly when registration is not
-        // `requires-license` (`core/discovery.ts`), a member the value decides, not a new shape.
-        const coreShape = (doc: Record<string, any>) =>
-          shape({ ...doc, services: Object.keys(doc.services) })
-            .filter((p) => p !== "core.endpoints.register")
-            .sort();
-        expect(coreShape(after)).toEqual(coreShape(before));
-      },
-    );
+      // No wire effect: the document's shape is what it was (values only). A service turned on
+      // publishes its own fragment, so `core.services` compares the core and top level only;
+      // `core.endpoints.register` is advertised exactly when registration is not
+      // `requires-license` (`core/discovery.ts`), a member the value decides, not a new shape.
+      const coreShape = (doc: Record<string, any>) =>
+        shape({ ...doc, services: Object.keys(doc.services) })
+          .filter((p) => p !== "core.endpoints.register")
+          .sort();
+      expect(coreShape(after)).toEqual(coreShape(before));
+    });
 });

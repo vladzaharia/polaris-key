@@ -1,0 +1,165 @@
+---
+title: "Theming"
+description: "One theme value in every kit: its fields and defaults, where each kit takes it, the accent resolver, the native preset, and bringing your own design system."
+sidebar:
+  order: 2
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import AccentVectors from "../../../../components/ui/AccentVectors.astro";
+import KitPending from "../../../../components/ui/KitPending.astro";
+
+:::note[Status]
+This section documents the UI-kit specification (`docs/design/UI-KITS.md`) the kits are being
+rebuilt to. No kit ships the shared theme API, copy catalog or sign-in form yet;
+[The kits](/docs/build/ui/#the-kits) says where each kit's current docs are.
+:::
+
+Every kit will expose **one theme value** with the same field names, cased for the language
+(`colorScheme` in TypeScript, Swift and Kotlin; `color_scheme` in Python and GDScript). Every field
+is optional. An empty theme is the Polaris Key look in the product's accent.
+
+## The theme
+
+| Field         | Values                                                                           | Default                                              | Meaning                                                                                                                                                    |
+| ------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `preset`      | `"polaris-key"` · `"native"`                                                     | `"polaris-key"`                                      | The base look ([the native preset](#the-native-preset))                                                                                                    |
+| `colorScheme` | `"system"` · `"dark"` · `"light"`                                                | `"system"`; `"dark"` for Godot and TV                | Follows the OS live, and is dark when the OS has no preference. Games follow their own art, so the Godot kit defaults to dark                              |
+| `accent`      | `"product"` · `"core"` · `"service"` · a colour                                  | `"product"`                                          | The product's colour, else one derived from its icon, else ink; `"core"` is Polaris violet. Every value goes through the [resolver](#the-accent-resolver)  |
+| `serviceCues` | boolean                                                                          | `false`                                              | Service glyph tiles on settings group headers; implied by `accent: "service"`                                                                              |
+| `colors`      | a partial map of semantic roles (`surfacePage`, `textStrong`, `danger`, …)       | none                                                 | Per-role overrides, per scheme (`colors.dark`, `colors.light`)                                                                                             |
+| `radius`      | `"sm"` · `"md"` · `"lg"` · a number                                              | `"md"`                                               | The control radius; surfaces scale from it. On the web, `sm` is 6/10, `md` 12/22 and `lg` 16/28 (control/card)                                             |
+| `typography`  | `family`, `display`, `monoFamily`, `scale`                                       | Rubik (`"inherit"` when embedded), the kit mono, 1.0 | `family: "system"` uses the platform face and `"inherit"` the host's; `display` sets a heading face (games); `scale` multiplies on top of the OS text size |
+| `density`     | `"compact"` · `"comfortable"` · `"spacious"`                                     | `"comfortable"`; `"spacious"` for Godot and TV       | Control height and spacing only, never the component                                                                                                       |
+| `motion`      | `"system"` · `"reduced"` · `"none"`                                              | `"system"`                                           | `system` follows the OS reduced-motion setting                                                                                                             |
+| `ambient`     | boolean                                                                          | `true` (`false` under `native`)                      | The product's own icon or art, blurred behind the gate and boot screens                                                                                    |
+| `product`     | `ProductIdentity`                                                                | from the presentation, then the bundle               | [Product identity](/docs/build/ui/#product-identity), including `shortName`, `wordmark` and `deviceCodeUrl`                                                |
+| `copy`        | a partial map of copy keys, or a `locale`                                        | the OS locale                                        | [Localisation](/docs/build/ui/localisation/#overriding-copy)                                                                                               |
+| `poweredBy`   | `false` · `"line"` · `"badge"`                                                   | `false`                                              | The optional "Powered by Polaris Key" line, at the foot of AccountAndLicense and About, or badge, on About                                                 |
+| `platform`    | `"auto"` · `"ios"` · `"android"` · `"macos"` · `"windows"` · `"linux"` · `"web"` | `"auto"`                                             | Web and Qt Quick kits render that platform's variant inside a webview or QML (Electron on Windows gets Fluent, Tauri on macOS gets the Mac sheet)          |
+
+## Where each kit takes it
+
+Each kit fills its tab when it ships this theme API. Until then the tab shows the planned entry
+point and links to the kit's current docs.
+
+<Tabs syncKey="ui-kit">
+  <TabItem label="React">
+    <KitPending kits={["react"]} what="this theme API" />
+
+    **Planned:** `<PolarisKeyProvider theme={…}>`, or the `polarisKeyTheme({ … })` helper.
+    Beyond the theme: the stable `pk-*` class names and `data-part` attributes, all inside the
+    `@layer polaris-key` cascade layer so host CSS wins without `!important`; slots and render
+    props; and `--pk-*` variables scoped to the provider element, never `:root`. React and the web
+    components share one `styles.css` and one `data-part` contract.
+
+  </TabItem>
+  <TabItem label="Web components">
+    <KitPending kits={["elements"]} what="this theme API" />
+
+    **Planned:** `<pk-provider theme='…'>`, `PolarisKey.theme({ … })`, or `--pk-*` custom
+    properties. Beyond the theme: `::part(title)`, `::part(primary)` and the other parts, named
+    slots, `pk-*` DOM events, and the shared `styles.css` adopted into each shadow root.
+
+  </TabItem>
+  <TabItem label="Vue, Svelte, Angular">
+    <KitPending kits={["vue", "svelte", "angular"]} what="this theme API" />
+
+    **Planned:** `providePolarisKey({ theme })` in Vue and Angular, `setPolarisKeyTheme` in
+    Svelte. Each passes the web components' parts and slots through.
+
+  </TabItem>
+  <TabItem label="SwiftUI">
+    <KitPending kits={["swiftui"]} what="this theme API" />
+
+    **Planned:** the `.polarisKeyTheme(PolarisKeyTheme(…))` environment modifier. Beyond the
+    theme: a style protocol per component (`.activateStyle(.myStyle)`), in the manner of
+    `ButtonStyle`, and `@ViewBuilder` slots.
+
+  </TabItem>
+  <TabItem label="UIKit, AppKit">
+    <KitPending kits={["uikit", "appkit"]} what="this theme API" />
+
+    **Planned:** `PolarisKeyUI.theme = …`, or a theme per presenter. Beyond the theme:
+    subclassable hosting controllers.
+
+  </TabItem>
+  <TabItem label="Compose">
+    <KitPending kits={["compose"]} what="this theme API" />
+
+    **Planned:** `PolarisKeyTheme(theme = PolarisKeyTheme(…)) { }`. Beyond the theme:
+    `ActivateDefaults.colors()`, `shapes()` and the other `*Defaults` objects, like Material's
+    `ButtonDefaults`, and composable slot parameters.
+
+  </TabItem>
+  <TabItem label="Godot">
+    <KitPending kits={["godot"]} what="this theme API" />
+
+    **Planned:** `ui_theme_preset`, `ui_accent`, `ui_radius`, `ui_density` and the other `ui_*`
+    options in `polaris_key.tres`, or `PKeyUiTheme.build(theme)`. Beyond the theme: documented
+    theme type variations (`PKeyTitle`, `PKeyPrimary`, …); a per-node `Theme` wins.
+
+  </TabItem>
+  <TabItem label="Qt">
+    <KitPending kits={["qt"]} what="this theme API" />
+
+    **Planned:** `polaris_key.ui.qt.apply_theme(app, Theme(…))`. Beyond the theme: object names
+    (`#pkTitle`, `#pkPrimary`) and dynamic properties for QSS, and the native `QStyle` under the
+    `native` preset.
+
+  </TabItem>
+  <TabItem label="Terminal">
+    <KitPending
+      kits={["terminal-node", "terminal-python"]}
+      what="this theme API"
+    />
+
+    **Planned:** `PolarisKeyTheme` in the CLI adapter's options, `PKEY_THEME=dark` or `light`, and
+    `NO_COLOR`. Beyond the theme: a unicode or ascii symbol set.
+
+  </TabItem>
+</Tabs>
+
+## The accent resolver
+
+One algorithm in `@polaris-key/brand` (`resolveAccent`), ported to Swift, Kotlin, GDScript and
+Python, turns any input colour into the five colours a kit draws with, for each scheme. It adjusts
+OKLCH lightness only:
+
+- **`solid`**, the primary's fill: at least 3:1 on every surface;
+- **`fg`**, accent text and icons: at least 4.5:1 on every surface;
+- **`subtle`**, the tinted fill of a selected row;
+- **`focus`**, the focus ring;
+- **`on`**, the primary's label: at least 4.5:1 on `solid`. It prefers white, so the label is
+  the same in both schemes; only light accents (yellows, oranges, light teals) flip to an ink
+  label, again in both schemes.
+
+When the product supplies no colour, `deriveAccent` picks one from the icon: the most saturated
+colour that covers at least 8 % of the icon's opaque area, or nothing for a near-greyscale icon,
+which falls through to ink. Status colours never change with the accent.
+
+The resolver's output for the specification's examples, read from the shared test vectors every
+port must reproduce exactly (`packages/brand/fixtures/accent-vectors.json`):
+
+<AccentVectors />
+
+## The native preset
+
+`preset: "native"` will keep the structure, flows, copy and spacing and hand the look to the host:
+
+- **Web:** the host's font (`font: inherit`), `Canvas` and `CanvasText` neutrals, the host's accent
+  from `theme.accent`, else its `accent-color`, else the CSS `AccentColor` system colour; radii from
+  the host; no ambient. It never hard-codes a platform blue.
+- **SwiftUI, UIKit and AppKit:** system fonts, the app's `.tint`, system colours and materials,
+  stock button styles.
+- **Compose:** the host's `MaterialTheme`, dynamic colour included, with the status colours mapped
+  to the host scheme's error and a computed warning.
+- **Godot:** derived from the ancestor or project theme.
+- **Qt:** the platform `QStyle` (or the Qt Quick native style), with only spacing and the type
+  hierarchy applied.
+
+## Bring your own design system
+
+There will be no separate kits for host design systems. The brand package will publish presets
+and theme objects for them instead, and each screen can be rendered with host components over the
+headless layer. They are listed on [Recipes](/docs/build/ui/recipes/).

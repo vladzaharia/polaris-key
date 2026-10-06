@@ -43,6 +43,30 @@ A docs section exists that every kit writes into: the overview, theming and loca
 
 - The docs site is gated (rule 11); the repo is the agent-readable source.
 
+**Corrections against the code (UK-16, 2026-10-06).**
+
+- The header's "docs route drift gates (AGENTS rules 10–11)" and UI-KITS.md §6.2's "rules 9–10"
+  do not apply as written: docs pages are not Worker routes. The Worker serves `/docs/*` from the
+  assembled asset root (`packages/worker/src/docs.ts`), so a new page needs no OpenAPI entry and
+  no `routeCoverage` row (rule 10), and no manifest validator rule (rule 9). The drift gates a docs
+  page does touch are `pnpm --filter @polaris-key/docs gen:check` (the generated reference pages,
+  unchanged here), `check:links` (now also checking every `/docs/...` `src`, so a missing baseline
+  image fails it), the committed `docsCsp.generated.ts` with the worker's `docsCspParity` test
+  (the new pages add Starlight's Tabs scripts), and the `docs-slugs.json` manifest with the
+  worker's `docsLinks` test.
+- "Theming with one tab per kit" follows §3.2's rows (React, Web components, Vue/Svelte/Angular,
+  SwiftUI, UIKit/AppKit, Compose, Godot, Qt, Terminal), each a "not filled yet" placeholder with
+  the planned entry point until its kit ships the theme API.
+- The scaffold creates every catalog component's page now (23, from
+  `packages/brand/kit-copy/components.json`) rather than leaving each kit to create them, so kits
+  only add tabs and two kits never race to create one page. Baselines reach the pages by file
+  name, through per-kit literal globs in `packages/docs/src/lib/baselines.ts` that a test holds to
+  ui-qa's `BASELINE_DIRS`. Every globbed file is published, so each kit's pattern is its docs
+  subset (Compose: the branded phone render).
+- `kotlin-ui.mdx` is replaced by `build/ui/frameworks/compose.mdx` (the first page on the
+  framework template, still rendering `sdks/kotlin/ui/README.md`) and an Astro redirect from
+  `/docs/build/sdks/kotlin-ui/`.
+
 ## Steps
 
 1. Build the scope in the order listed.
@@ -50,9 +74,9 @@ A docs section exists that every kit writes into: the overview, theming and loca
 
 ## Acceptance criteria
 
-- [ ] The section builds and `check:links` passes.
-- [ ] A component page renders baseline images from a kit's committed baseline path.
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] The section builds and `check:links` passes.
+- [x] A component page renders baseline images from a kit's committed baseline path.
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 

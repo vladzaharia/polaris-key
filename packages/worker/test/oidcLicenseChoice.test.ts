@@ -25,13 +25,13 @@ import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { loadProduct, type Product } from "../src/core/products.js";
 import {
   authorizeAndMint,
+  deviceFlowKey,
   flowKey,
   handleAuthCallback,
   handleAuthChoose,
   handleAuthDeviceEntry,
   handleAuthDevicePoll,
   handleAuthDeviceStart,
-  handleAuthPoll,
   handleAuthStart,
 } from "../src/services/identity/oidc.js";
 import {
@@ -608,7 +608,9 @@ describe("I-26 browser and state-poll flows", () => {
     expect(await licenseCount()).toBe(before);
   });
 
-  it("state poll: pending while choosing, ready on the pick", async () => {
+  // A device-bound flow without the `viaDeviceCode` marker (written before it existed), polled
+  // through `/device/poll`: the `state`-keyed `/identity/auth/poll` this once used is retired.
+  it("a pre-marker device flow's poll: pending while choosing, ready on the pick", async () => {
     await insertLic({ id: "lic_std", tier: "std", account: accountId });
     const binder = "legacy-binder-value-0123456789abcdef";
     await artefacts(env).put(
@@ -626,20 +628,33 @@ describe("I-26 browser and state-poll flows", () => {
     const before = await licenseCount();
     const cb = await callback("st-1", "the-nonce", binder);
     expect(cb.status).toBe(303);
-    const poll = async () =>
-      (
-        (await (
-          await handleAuthPoll(
-            new Request(
-              `${ORIGIN}/djdl/identity/auth/poll?state=st-1&device=dev-legacy`,
-            ) as unknown as Request,
-            env,
-            db,
-            product,
-            NOW,
-          )
-        ).json()) as { status: string }
-      ).status;
+    const poll = async () => {
+      // Re-seeded per poll, so the interval never answers `slow_down`.
+      await artefacts(env).put(
+        await deviceFlowKey(env, "djdl", "dc-legacy"),
+        JSON.stringify({
+          state: "st-1",
+          deviceId: "dev-legacy",
+          userCode: "BCDF-GHJK",
+          authorizeUrl: "https://id.example/authorize",
+          confirmedAt: NOW,
+        }),
+      );
+      const res = await handleAuthDevicePoll(
+        new Request(`${ORIGIN}/djdl/identity/auth/device/poll`, {
+          method: "POST",
+          body: JSON.stringify({
+            deviceCode: "dc-legacy",
+            deviceId: "dev-legacy",
+          }),
+        }) as unknown as Request,
+        env,
+        db,
+        product,
+        NOW,
+      );
+      return ((await res.json()) as { status: string }).status;
+    };
     expect(await poll()).toBe("pending");
     const page = await readChooser(binder);
     await postChooser(binder, {

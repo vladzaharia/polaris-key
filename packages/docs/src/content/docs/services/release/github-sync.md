@@ -58,6 +58,33 @@ character class (it is later interpolated into a shell script), a channel workfl
 reference must look like a workflow file or numeric id, and so on. A manifest that fails
 validation is rejected in full — nothing partial is ever applied.
 
+## The release block
+
+`.pkey/release` keeps its fields in a `release:` block. The fields below configure the GitHub sync
+itself. Each one is a setting in the [settings reference](/docs/reference/settings/).
+
+The repository is the exception to "the manifest is the edit path". Its stored coordinates come
+from **Settings → Repository**: linking the product records the repository's owner, name and App
+installation (a link that is refused puts the previous ones back). A resync never writes them. `provider` is validated, and
+for the platform's own product it must name the platform repository; otherwise it is not read.
+Every other field below is written at link and rewritten by every resync, so editing the file is
+the only way to change it.
+
+| Field             | What it does                                                                                                                                                                     | When unset                                       |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `provider`        | `{ type: github, owner, repo }`: names the repository releases come from. It is validated, not stored: the stored repository is the one linked under Settings → Repository.      | required                                         |
+| `binaryName`      | The executable's name in artifact file names and in the install script (see [Binary name safety](#binary-name-safety)).                                                          | the repository's name                            |
+| `channelWorkflow` | A workflow file name or numeric id. `beta` is the newest tag a successful run of it built from `betaBranch`, and `pr-<n>` the newest tag it built from that pull request's head. | `beta` and `pr-<n>` fall back to prerelease tags |
+| `betaBranch`      | The branch whose `channelWorkflow` runs make `beta`.                                                                                                                             | `main`                                           |
+| `summaryMarker`   | The marker that fences a release's summary in its notes, `<!-- pkey:summary -->` … `<!-- /pkey:summary -->`. The changelog route and the appcast show the fenced text.           | `pkey:summary`                                   |
+| `manualChannels`  | Named channels beyond `stable` and `beta`, each `{ name, regex }`, matched anchored against release tags. See [Channels and policy](/docs/services/release/channels/).           | none                                             |
+
+The rest of the block is covered elsewhere: `deliverables`, with each channel's `includes`, under
+[Release deliverables](/docs/build/manifest/authoring/#release-deliverables-deliverablesapp-and-the-artifact-map);
+`publishing.trustedPublisher` under [Trusted publishing](/docs/services/release/artifacts/#trusted-publishing);
+`releaseKeys` under [Release records](/docs/services/update/signed-feed/#release-records); and
+`artifactPolicy` and `access` on [Artifacts, changelog & install](/docs/services/release/artifacts/).
+
 ## Installation tokens
 
 Polaris Key authenticates to GitHub as its App, not as a person. An App JWT (signed RS256,
@@ -213,8 +240,16 @@ once. A product not applied since the manifest record existed gets it at the nex
 instead. A tier or profile becomes console-owned when it is created or edited in the console;
 setting only a managed secret's value on a profile does not claim it. A console tier or
 profile that holds the id of a tier or profile the manifest newly declares is kept, and the
-resync reports the conflict. The system product is manifest-authoritative: the console refuses
-claims on it.
+resync reports the conflict.
+
+A product can be **manifest-authoritative** instead (the switch in Settings → Repository): the
+console then refuses claims on the product name, the licence defaults, the web origins and the
+catalog except as expiring break-glass claims, and a resync ends a break-glass claim when it
+changes that field. Tiers, profiles, services and the fingerprint and auto-issue policies are not
+covered yet: a console edit still claims them. The system product is always manifest-authoritative,
+and its only writer is the deploy hook: a push webhook for the platform repository and a console
+Resync of it are refused ("the system product is applied by the deploy hook"). See
+[Manifest-authoritative mode](/docs/admin/products/#manifest-authoritative-mode).
 
 Every check runs before the first write, and the apply is one atomic batch: a refused resync
 changes nothing. Each setting, tier or profile a resync changes gets its own audit row.

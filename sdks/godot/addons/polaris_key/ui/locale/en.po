@@ -3462,6 +3462,16 @@ msgstr "Offer unavailable"
 msgid "core.codes.not_eligible.message"
 msgstr "This offer isn't available to your account anymore. Refresh and try again."
 
+#. Can't remove
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_removable.title"
+msgstr "Can't remove"
+
+#. This license can't be added back with a key, so it stays in your library.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_removable.message"
+msgstr "This license can't be added back with a key, so it stays in your library."
+
 #. Sign in to download
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.download_auth_required.title"

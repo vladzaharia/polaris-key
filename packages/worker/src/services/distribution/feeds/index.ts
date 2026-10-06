@@ -50,6 +50,7 @@ import {
 import { fdroidInputs, registerFdroid, serveFdroidRelay } from "./fdroid.js";
 import { cachedFeedText, feedCacheKey, feedStateStamp } from "./cache.js";
 import { feedListing } from "../listing/feed.js";
+import { feedArt, hostedArtStamp } from "./art.js";
 
 /** The first path segments this module answers (after `/<p>/distribution`). */
 export const FEED_AREAS = [
@@ -211,12 +212,16 @@ export async function handleFeedRoutes(
     origin,
     new URL(req.url).pathname,
     outletParam,
-    await feedStateStamp(
-      ctx.db,
-      ctx.product.slug,
-      readers.catalog,
-      readers.notesPublic,
-    ),
+    [
+      await feedStateStamp(
+        ctx.db,
+        ctx.product.slug,
+        readers.catalog,
+        readers.notesPublic,
+      ),
+      // HA-07: the hosted art a source names (`art.ts`) takes effect at once too.
+      await hostedArtStamp(ctx.env, ctx.db, ctx.product.slug),
+    ].join("."),
   );
   const body = await cachedFeedText(key, async () => {
     const doc = await renderArea(ctx, fctx, area, channel, outletParam);
@@ -246,6 +251,13 @@ async function renderArea(
       const marketplaceId = sel.outlet.identity.marketplaceId;
       if (area === "altstore-pal" && typeof marketplaceId !== "string")
         return null;
+      // A-18b: the shared listing model, falling back to the manifest's listing per field.
+      const listing = await feedListing(
+        fctx.db,
+        product.slug,
+        "altstore",
+        sel.outlet.listing,
+      );
       return renderAltStoreSource({
         flavour: area === "altstore" ? "classic" : "pal",
         sourceUrl: selfUrl(req),
@@ -253,13 +265,9 @@ async function renderArea(
           outletParam ? `.${sel.outlet.id}` : ""
         }`,
         productName: product.name,
-        // A-18b: the shared listing model, falling back to the manifest's listing per field.
-        listing: await feedListing(
-          fctx.db,
-          product.slug,
-          "altstore",
-          sel.outlet.listing,
-        ),
+        listing,
+        // HA-07: the art on Polaris Key's hosted copies (image-host URLs), field by field.
+        art: await feedArt(env, fctx.db, product.slug, listing),
         bundleId:
           typeof sel.outlet.identity.bundleId === "string"
             ? sel.outlet.identity.bundleId

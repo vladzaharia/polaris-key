@@ -43,6 +43,32 @@ The owner accepted manifest-authority for the system product ([S-18 owner decisi
 - An apply that leaves the field alone does not end a claim, so an unrelated deploy cannot undo an incident fix.
 - ST-01b refuses all console claims on `system = 1` until this lands.
 
+### Corrections from the code (builder, 2026-10-06)
+
+- **No migration.** `product_settings.expires_at` already exists (ST-01b's migration 0086) and
+  every claim guard already reads `expires_at > now`, so an expired claim stops counting with no
+  job. The mode itself is a row-backed `product_settings` row (`value_json`).
+- **The lock** is a new registry field, `systemLock: { value }`, plus the system-lock rule in
+  `core/settings/rules.ts` (`SYSTEM_LOCKED_KEYS`): the registry test fails if the entry loses or
+  changes its lock. `manifestAuthorityOf` reads the lock for `system = 1`, never a row.
+- **Single writer, not only the webhook.** After `linkSystemProduct` the system product has
+  `release_source = 'github'`, so the console's Resync (and its dry run) could also apply the
+  monorepo's default-branch head. The refusal ("the system product is applied by the deploy
+  hook") therefore sits in the webhook loop, the console resync route and `resyncRepo` itself.
+- **The deploy hook applies no claimable product field today** (`linkSystemProduct` never wrote
+  the name, licence defaults, web origins or catalog). It now ends a break-glass claim whose field
+  the deployed `.pkey/` changes or whose 7 days ran out and writes the manifest's value for that
+  field only; applying every claimable field there is ST-17's shared plan function (and waits for
+  ST-01c's review of the live values).
+- **Scope of the mode.** It governs the five `product_settings` claim keys (`CLAIM_KEYS`: name,
+  licence defaults, web origins, catalog). Claimable settings still claimed through their older
+  markers (`services_source`, `compat_source`, `access_source`, fingerprint and auto-issue
+  policies, tier and profile rows, the trusted publisher) are not refused by it yet: they move to
+  the one write path with ST-04/ST-05, which should call `decideClaim`.
+- **The deploy summary in the job log** carries each claim's key and expiry only (the log may be
+  readable beyond the operators); the reason and claimant are in the console and the platform
+  activity row. `register-platform.mjs` prints each live claim as a warning annotation.
+
 ## Steps
 
 1. Registry rule and claim expiry.
@@ -51,10 +77,10 @@ The owner accepted manifest-authority for the system product ([S-18 owner decisi
 
 ## Acceptance criteria
 
-- [ ] A break-glass claim expires after 7 days or at the first apply that changes the field, whichever is first (test).
-- [ ] A webhook resync of the system product is refused (test).
-- [ ] The deploy-hook summary lists live claims (test).
-- [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+- [x] A break-glass claim expires after 7 days or at the first apply that changes the field, whichever is first (test).
+- [x] A webhook resync of the system product is refused (test).
+- [x] The deploy-hook summary lists live claims (test).
+- [x] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify
 
@@ -65,7 +91,12 @@ mise exec node@22 -- pnpm --filter @polaris-key/admin test
 
 ## Hand-off
 
-- ST-17's dry run shows break-glass claims.
+- ST-17's dry run shows break-glass claims (the worker's dry run already returns `breakGlass`).
+- ST-04/ST-05: route the older-marker claimables through `decideClaim`, so manifest-authoritative
+  mode refuses them too (services and registration, fingerprint and auto-issue policies, compat
+  window, release access modes, tiers and profiles, trusted publisher).
+- ST-17: the deploy hook applies every declared system-product field (today it applies only a
+  field whose break-glass claim it ends).
 
 The role agent sets `--set ST-20 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

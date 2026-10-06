@@ -12,6 +12,29 @@
 | Human input | owner sign-off on the rollout and the sunset date (set after the email-less count); optional: a Pocket ID admin API key, only if a bulk export is wanted |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                |
 
+## Follow-ups from the 2026-10-06 reviews
+
+Checked against `main` at `148439c4f`. Each item names the package whose review raised it.
+
+- **Migrated users enrol their passkeys again** ([I-16](I-16-passkeys.md)). Pocket ID passkeys are
+  bound to `rp_id = id.plrs.im`; Polaris Key's are bound to the console host (`CONSOLE_ORIGIN`:
+  `key.plrs.im`, staging `key-staging.plrs.im`), so none carries over. A migrated account starts
+  with no passkey. The runbook and the migration's notice say so, and the post-sign-in nudge
+  (`GET /api/me/passkeys` → `canAdd`) offers **Add a passkey** once the email is verified.
+- **The platform `/callback` join offer** ([PX-W15](PX-W15-email-gate.md)). `signInRefusal`
+  (`portal/auth.ts`) still answers a platform-OIDC `join_offer` with a 409 page that sends the
+  person away. SIGN-IN.md D-34 routes it into the email gate's join step (`card/gate.ts`,
+  `email_in_use`, both accounts proven in one session), which is also this package's "conflicting
+  email gets the join offer" criterion. PX-W15 left it until PX-21 renders that step. It moves here
+  or to PX-21 (recorded in both); whichever does it says so in its hand-off, and the other drops
+  it.
+- **The contract phase drops `accounts.terms_json`** ([PX-W15](PX-W15-email-gate.md)). PX-W15 moved
+  terms acceptances to `account_terms_acceptances` (migration 0091). `accounts.terms_json` (I-05's
+  `0068_a_accounts.sql`) stays, neither read nor written, while migrations are expand-only. The
+  contract-phase migration after this package (`plans/I-04.md` §6.1: the `portal_*` tables and
+  `idx_licenses_sub` "stay until a contract-phase migration after I-17") drops it too, with
+  `terms_json` in `AccountRow` (`accounts/repo.ts`).
+
 ## Goal
 
 `provider: platform` end users move from Pocket ID to the Polaris Key account, by claim at each user's next sign-in, and Pocket ID becomes operator-only.

@@ -855,6 +855,40 @@ describe("the top bar", () => {
     expect(within(menu).queryByText(/^Session ends /)).toBeNull();
   });
 
+  it("under 640 px the account menu carries the theme and motion choices the bar hides", async () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query === "(width < 40rem)",
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    boot("#/p/djdl", { services: ALL_ON });
+    await ready();
+    // The theme menu is still rendered; CSS hides it under 640 px (`max-sm:hidden`).
+    expect(
+      screen.getByRole("button", { name: /^Theme: / }).className,
+    ).toContain("max-sm:hidden");
+    await userEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).getByRole("group", { name: "Theme" })).toBeTruthy();
+    expect(within(menu).getByRole("group", { name: "Motion" })).toBeTruthy();
+    await userEvent.click(
+      within(menu).getByRole("menuitemradio", { name: "Light" }),
+    );
+    await waitFor(() =>
+      expect(document.documentElement.dataset.theme).toBe("light"),
+    );
+  });
+
+  it("from 640 px the account menu leaves the theme to its own menu", async () => {
+    boot("#/");
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Account menu" }),
+    );
+    const menu = await screen.findByRole("menu");
+    expect(within(menu).queryByRole("group", { name: "Theme" })).toBeNull();
+  });
+
   it("opens the shortcut sheet with ?", async () => {
     boot("#/p/djdl", { services: ALL_ON });
     await ready();

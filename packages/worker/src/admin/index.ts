@@ -61,7 +61,8 @@ async function serveAdminAsset(
   // shell. Deciding on the resolved pathname was what let the escape above ship CSP-less
   // HTML from the admin origin.
   // The console shows product logos from the image host (HA-02): its policy adds exactly that
-  // origin to `img-src` (`securityHeaders.ts`). The portal's shell is HA-07's.
+  // origin to `img-src` (`securityHeaders.ts`). The portal's shell does the same (HA-07,
+  // `services/identity/portal/index.ts`).
   appSecurityHeaders(headers, { imgOrigin: imgOrigin(env) });
   return new Response(res.body, { status: res.status, headers });
 }

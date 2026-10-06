@@ -40,6 +40,49 @@ export function celebrateOnce(key: string): boolean {
   return true;
 }
 
+/** The check `.pk-check` draws by its dash offset (S-23 §6.2 exception 3). */
+function CheckGlyph({ size }: { size: number }): React.ReactElement {
+  return (
+    <svg
+      className="pk-check"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      focusable="false"
+    >
+      <path d="M5 12.5l4.5 4.5L19 7.5" pathLength={48} />
+    </svg>
+  );
+}
+
+export interface SuccessCheckProps {
+  /** Size of the check in px (default 24). */
+  size?: number;
+  className?: string;
+}
+
+/**
+ * The success check alone, for a success that is not a first time (a device freed, MO-06): it
+ * draws once when it mounts, with no sparks and no moment key, and is static under reduced
+ * motion. A re-render never redraws it (only a new mount does). Decorative, like Celebration: the
+ * success is said in words next to it.
+ */
+export function SuccessCheck({
+  size = 24,
+  className,
+}: SuccessCheckProps): React.ReactElement {
+  return (
+    <span aria-hidden="true" className={cn("pk-celebration", className)}>
+      <CheckGlyph size={size} />
+    </span>
+  );
+}
+
 export interface CelebrationProps {
   /** The moment's stable key, e.g. `first-activation:<account>` or `first-release:<product>`. */
   momentKey: string;
@@ -101,20 +144,7 @@ export function Celebration({
       data-static={animate ? undefined : ""}
       className={cn("pk-celebration", className)}
     >
-      <svg
-        className="pk-check"
-        width={size}
-        height={size}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2.5}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        focusable="false"
-      >
-        <path d="M5 12.5l4.5 4.5L19 7.5" pathLength={48} />
-      </svg>
+      <CheckGlyph size={size} />
       {burst ? (
         <span ref={burstRef} className="pk-burst">
           <i />

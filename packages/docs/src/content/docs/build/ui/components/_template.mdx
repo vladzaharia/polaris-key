@@ -1,0 +1,47 @@
+---
+# The component page template (build/ui/components/). Starlight skips files whose names start
+# with "_", so this file is never published.
+#
+# For a new catalog component: copy this file to <kebab-name>.mdx (SignInHandoff →
+# sign-in-handoff.mdx), set the title to the catalog name, write the description and the lead,
+# set sidebar.order to the component's position in packages/brand/kit-copy/components.json plus
+# four (the section's pages before it take 1 to 4), and put the catalog name in both component
+# props. test/ui.test.ts fails until every catalog component has its page.
+#
+# A kit that ships the component replaces the "In each kit" sentence with a Tabs block (or adds
+# its TabItem to the block another kit started). Use the kit's label from src/lib/uiKits.ts so
+# the tab syncs across pages, and add an "Accessibility" section only for what is specific to
+# this component; the shared rules are on the overview page.
+title: "ComponentName"
+description: "One sentence in the catalog's words: what the component is and what it shows."
+sidebar:
+  order: 99
+---
+
+import { Tabs, TabItem } from "@astrojs/starlight/components";
+import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+
+The lead: what the component is, where it appears, and which flows reach it.
+
+## States and copy
+
+<ComponentStates component="ComponentName" />
+
+## Baselines
+
+<KitBaselines component="ComponentName" />
+
+## In each kit
+
+<Tabs syncKey="ui-kit">
+  <TabItem label="KitLabel">
+    **Drop-in.** The one call or element that shows the component, with its required inputs.
+
+    **Styled part.** The part on its own, its slots, and its restyle hooks (parts, `data-part`,
+    `*Defaults`, theme type variations).
+
+    **Headless.** The model or controller, its state and actions, and the copy keys it exposes.
+
+  </TabItem>
+</Tabs>

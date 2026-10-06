@@ -242,6 +242,16 @@ Two scopes matter:
 leave exactly one authorized device, and two genuinely distinct machines pointed at one
 two-seat license admit a third machine no further (`403 device_limit`).
 
+## Licensing settings
+
+A product's licensing settings decide how these nouns combine: whether a device sees only its own
+licence's entitlements or everything its holder has (`entitlementModel`), whose entitlements those
+are (`entitlementHolder`), which licence a device runs on (`anchorPolicy`, `reanchor`), whether
+offline grace may outlast a licence's expiry (`clampGraceToExpiry`), and how long a refunded grant
+keeps working (`refundGraceHours`). They are declared under `licensing:` in `.pkey/product` (see
+[Licensing settings](/docs/build/manifest/authoring/#licensing-settings-licensing)) and edited on
+**License → Settings**, where a change claims the setting from the manifest until you revert it.
+
 ## Reference
 
 - [D1 data model](/docs/reference/data-model/) — every column of `licenses`, `keys_index`,

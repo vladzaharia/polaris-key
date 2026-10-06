@@ -1,11 +1,14 @@
 /**
  * Release's settings slice (ST-03, notes/S-18 Appendix A.2 `release.*`), contributed through the
- * descriptor (`releaseService.settings`), never imported by Core (rule 6).
+ * descriptor (`releaseService.settings`), never imported by Core (rule 6). The `.pkey/release`
+ * block's own fields (ST-19b) live in `manifestSettings.ts` and are spread in after the
+ * compatibility window.
  */
 
 import { setting } from "../../core/settings/define.js";
 import type { ServiceSettingsSlice } from "../../core/settings/types.js";
 import { RELEASE_COLUMN_ADAPTERS } from "./settingsColumns.js";
+import { RELEASE_MANIFEST_SETTINGS } from "./manifestSettings.js";
 
 const VISIBLE = { service: "release", offBehaviour: "hide" } as const;
 
@@ -29,13 +32,20 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
       allowUnset: true,
       merge: "cascade",
       ownership: "claimable",
-      manifest: { path: "product:product.compatMin" },
+      // One value, two sibling manifest fields (ST-19b): `alsoPaths` lets this entry declare
+      // `compatMax` beside `compatMin` instead of a second entry for the same window. Storage
+      // names `compat_min`; `compat_max` sits beside it and `compat_source` marks both.
+      manifest: {
+        path: "product:product.compatMin",
+        alsoPaths: ["product:product.compatMax"],
+      },
       confirm: { change: "L1" },
       visibleWhen: { service: "release", offBehaviour: "readOnly" },
       wire: ["discovery", "document"],
       readers: ["core/products.ts", "core/discovery.ts", "core/gate.ts"],
       storage: { kind: "column", table: "products", column: "compat_min" },
     }),
+    ...RELEASE_MANIFEST_SETTINGS,
     setting({
       key: "release.artifactPolicy",
       scope: "product",
@@ -81,6 +91,8 @@ export const RELEASE_SETTINGS_SLICE: ServiceSettingsSlice = {
       critical: true,
       confirm: { change: "L2" },
       visibleWhen: VISIBLE,
+      // Update's discovery publishes it as `sparkleEd25519PublicKey` (`update/index.ts`).
+      wire: ["discovery"],
       readers: ["services/release/sparkle.ts", "services/update/feed.ts"],
       storage: {
         kind: "column",

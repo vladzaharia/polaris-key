@@ -229,6 +229,15 @@ after the Done step closes; PX-W8 Q1), so the person adds it there.
 A reassignment's undo restores the previous `account_id`, `name` and `email`, and deletes the
 block row it may have created.
 
+> **Amended 2026-10-06 (D19; lead decision under the owner's delegation).** An explicit **Remove
+> from my library** also clears the Cloud Sync principal of the removing account's devices for that
+> licence. The block row `(product, license_id, account_id)` marks the pair: a device whose binding
+> resolves to that account has no principal for that licence while the block stands. The devices
+> keep running and keep their seats, as the row above says. A later claim of the licence by the
+> same account (`attachLicense` with `via: key | device`) lifts the block, and the rule with it.
+> PX-23 implements the core of it; U-03's account layer applies the same pair (recorded in its
+> brief).
+
 ### 5.6 Revocation
 
 The same in both states, and unchanged: **Disable license** (L1, reversible), **Delete license**
@@ -594,6 +603,29 @@ it says for a floating key and what the licence card says afterwards (frames 80 
   floating license: anyone with the key can add it, and it won't come back to this account by
   itself." (D19).
 
+> **Amended 2026-10-06 (PX-23, as built; lead decisions delegated by the owner).**
+>
+> 1. **D19 and Cloud Sync (§5.5, §5.8).** After an explicit **Remove from my library**, the
+>    removing account's devices lose their Cloud Sync principal for that licence: the effect is
+>    the same as floating for those devices. LX-26's auto-attach block marks the (licence,
+>    account) pair and `resolveSyncPrincipal` reads it; re-adding the key lifts the block and the
+>    principal returns. Other accounts' devices are unaffected, and the binding is kept (a removal
+>    signs nobody out). THREAT-MODEL's U-02 and LX-26 sections carry the same amendment.
+> 2. **The Remove copy says "not in an account", not "floating".** A removed licence keeps its
+>    email (LX-26), so it is assigned and waiting, and customers never read "floating" (D5). The
+>    portal says, for a licence the developer assigned: "It won't be in an account, and it won't
+>    come back to this account by itself. To add it again, use its key."; for a key the person
+>    added to a licence nobody was named for (which does float again): "It won't be in an
+>    account: anyone with the key can add it, and it won't come back to this account by itself."
+>    Remove is the last item of the product header's overflow menu (PORTAL.md §4.20), a
+>    confirmation dialog, through `DELETE /api/licenses/<p>/<id>`.
+> 3. **The origin is a License source fact (owner, 2026-10-06).** The card's origin moved from the
+>    meta line under the tier ("Key ending 3WPLDA · Lifetime") into the facts grid as **License
+>    source**, beside Activated; the term is not repeated, since "Updates included" says it.
+> 4. **Key endings wait for G7.** The Worker keeps keys only as peppered hashes and stores no last
+>    characters yet, so a key the person added reads "Added with a key" and a store key "Steam
+>    key" until a key's ending is kept (PORTAL.md §4.20 lists both forms).
+
 ## 11. Motion summary
 
 Every surface uses S-23's tokens and patterns (FLOWS.md F19): the drawer's step travel and height
@@ -684,6 +716,8 @@ the corpus.
 
 - **Not measured:** the D1 cost of a 500-licence batch (two statements per licence plus audit) and
   of the creation-time association query; LX-28 and LX-26 test both on the emulator.
+  LX-28 (2026-10-06): a batch is four D1 statements whatever the count (the licences and the keys
+  each one `INSERT … SELECT … FROM json_each(?)`), measured at 500 on the emulator; the cap stays 500.
 - **Not built:** the console wizard's step components assume UX-50's `ui/wizard` and MO-02's layer;
   if UX-50 has not merged when LX-29 starts, LX-29 builds on the drawer and stepper the setup
   mockups use and adopts `ui/wizard` when it lands.

@@ -3452,6 +3452,16 @@ msgstr "혜택 사용 불가"
 msgid "core.codes.not_eligible.message"
 msgstr "이 혜택은 더 이상 회원님 계정에서 사용할 수 없어요. 새로고침한 후 다시 시도하세요."
 
+#. Can't remove
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_removable.title"
+msgstr "제거할 수 없음"
+
+#. This license can't be added back with a key, so it stays in your library.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_removable.message"
+msgstr "이 라이선스는 라이선스 키로 다시 추가할 수 없어서 라이브러리에 남아 있어요."
+
 #. Sign in to download
 #. Core copy (conformance/parity/copy.en.json, codes).
 msgid "core.codes.download_auth_required.title"

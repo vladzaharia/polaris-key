@@ -23,6 +23,8 @@ import {
   type PortalMintTokenInput,
   type PortalPackageAccess,
   type PortalProduct,
+  type PortalProfile,
+  type PortalProfileChange,
   type PortalRelease,
 } from "./api.js";
 import { browser } from "./browser.js";
@@ -54,6 +56,7 @@ const qk = {
   portalProduct: (product: string) => ["portal", "product", product] as const,
   portalRegistryTokens: (product: string, license: string) =>
     ["portal", "registryTokens", product, license] as const,
+  portalProfile: () => ["portal", "profile"] as const,
 };
 
 export const portalKeys = {
@@ -66,6 +69,7 @@ export const portalKeys = {
   discover: qk.portalDiscover(),
   downloads: qk.portalDownloads,
   product: qk.portalProduct,
+  profile: qk.portalProfile(),
 };
 
 export function createPortalQueryClient(): QueryClient {
@@ -395,6 +399,110 @@ export function useRemoveDevice(product: string, licenseId: string) {
       void qc.invalidateQueries({ queryKey: portalKeys.licenses });
       void qc.invalidateQueries({ queryKey: portalKeys.library });
       void qc.invalidateQueries({ queryKey: portalKeys.product(product) });
+    },
+  });
+}
+
+/**
+ * Account → Profile (PX-W16, `GET /api/me/profile`), or `null` when this Worker has no such route
+ * (404): the card then shows the session's name and initials without an editor (G32's fallback).
+ */
+export function useProfile(): UseQueryResult<PortalProfile | null> {
+  return useQuery({
+    queryKey: qk.portalProfile(),
+    queryFn: async () => {
+      try {
+        return (await portalApi.profile()).profile;
+      } catch (err) {
+        if (err instanceof PortalApiError && err.status === 404) return null;
+        throw err;
+      }
+    },
+  });
+}
+
+/**
+ * Save an explicit choice. The answer is the whole profile: it replaces the cached one, and the
+ * session's name and picture (the header chip, the account menu) follow from it at once, exactly
+ * as `GET /api/me` derives them (`display_name`, else the name it had; the picture's URL).
+ */
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (change: PortalProfileChange) =>
+      portalApi.updateProfile(change),
+    onSuccess: ({ profile }) => {
+      qc.setQueryData(qk.portalProfile(), profile);
+      qc.setQueryData<PortalMe | null>(qk.portalMe(), (me) =>
+        me
+          ? {
+              ...me,
+              account: {
+                ...me.account,
+                name: profile.displayName ?? me.account.name,
+                avatarUrl: profile.picture?.url ?? null,
+              },
+            }
+          : me,
+      );
+    },
+    onError: (err) => {
+      // The profile changed under the editor (a method removed, an upload collected): re-read it
+      // so the chips and tiles offer what is there now.
+      if (
+        err instanceof PortalApiError &&
+        err.reason &&
+        STALE_PROFILE_REASONS.has(err.reason)
+      )
+        void qc.invalidateQueries({ queryKey: portalKeys.profile });
+    },
+  });
+}
+
+const STALE_PROFILE_REASONS = new Set([
+  "unknown_source",
+  "no_name",
+  "no_picture",
+  "unknown_upload",
+]);
+
+/** Upload a picture: it is kept unused (for a day) until `useUpdateProfile` picks it. */
+export function useUploadPicture() {
+  return useMutation({
+    mutationFn: (file: Blob) => portalApi.uploadPicture(file),
+  });
+}
+
+/**
+ * PX-23: Remove from my library. Every view that lists the licence refreshes. A 404 means it is
+ * not in this account any more (removed from another tab, or moved by the developer): the same
+ * outcome, so it resolves as removed rather than as an error over a stale page. A refusal
+ * (`409 not_removable`) refreshes the licences too, so the page stops offering Remove.
+ */
+export function useRemoveLicense(product: string) {
+  const qc = useQueryClient();
+  const refresh = (licenseId: string): void => {
+    qc.removeQueries({ queryKey: portalKeys.license(product, licenseId) });
+    void qc.invalidateQueries({ queryKey: portalKeys.licenses });
+    void qc.invalidateQueries({ queryKey: portalKeys.library });
+    void qc.invalidateQueries({ queryKey: portalKeys.product(product) });
+    void qc.invalidateQueries({ queryKey: portalKeys.releases });
+    void qc.invalidateQueries({ queryKey: portalKeys.discover });
+  };
+  return useMutation({
+    mutationFn: async (licenseId: string) => {
+      try {
+        return await portalApi.removeLicense(product, licenseId);
+      } catch (err) {
+        if (err instanceof PortalApiError && err.status === 404)
+          return { ok: true as const, product, licenseId };
+        throw err;
+      }
+    },
+    onSuccess: (_res, licenseId) => refresh(licenseId),
+    onError: (err, licenseId) => {
+      if (err instanceof PortalApiError && err.status === 409)
+        refresh(licenseId);
     },
   });
 }

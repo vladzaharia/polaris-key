@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                               |
 | Size        | 0.1–0.2 engineer-weeks                                                                                                                                                                   |
 | Depends on  | [PX-08](PX-08-library-api.md), [PX-W10](PX-W10-discover.md)                                                                                                                              |
-| Unblocks    | [MO-07](MO-07-portal-library-motion.md), [PS-05](PS-05-storefront-portal-ui.md)                                                                                                          |
+| Unblocks    | [MO-07](MO-07-portal-library-motion.md), [PS-05](PS-05-storefront-portal-ui.md), [PX-24](PX-24-library-added-just-now.md)                                                                |
 | Role        | `pkey-implementer`                                                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                                                       |
 | Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |

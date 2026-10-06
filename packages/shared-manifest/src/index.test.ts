@@ -24,6 +24,9 @@ import {
   MAX_MANIFEST_BYTES,
   MAX_MANIFEST_DEPTH,
   normalizeAutoIssue,
+  LICENSING_DUNNING_GRACE_DAYS_MAX,
+  LICENSING_REANCHOR_VALUES,
+  LICENSING_REFUND_GRACE_HOURS_MAX,
   parseManifest,
   parseManifestAppDeliverable,
   parseManifestPackDeliverable,
@@ -124,6 +127,65 @@ describe("manifest contract defaults", () => {
     expect(res.errors.join("\n")).toContain(
       "release.access values must be public, authenticated, or licensed.",
     );
+  });
+});
+
+describe("licensing settings and oidc.syncTierOnSignIn (LX-06)", () => {
+  const parse = (product: Record<string, unknown>) =>
+    parseManifest({
+      product: JSON.stringify({ ...PRODUCT, ...product }),
+      schema: JSON.stringify(catalogWithSecretDelivery()),
+    });
+
+  it("carries only the settings the manifest declares", () => {
+    const res = parse({
+      licensing: {
+        defaultDeviceLimit: 3,
+        entitlementHolder: "owner",
+        clampGraceToExpiry: false,
+        refundGraceHours: 0,
+      },
+      oidc: { provider: "platform", syncTierOnSignIn: "upgradeOnly" },
+    });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    // `refundGraceHours: 0` is declared, not absent: the manifest says "revoke at once".
+    expect(res.manifest.licensing).toEqual({
+      entitlementHolder: "owner",
+      clampGraceToExpiry: false,
+      refundGraceHours: 0,
+    });
+    expect(res.manifest.oidc?.syncTierOnSignIn).toBe("upgradeOnly");
+  });
+
+  it("leaves both absent when nothing is declared", () => {
+    const res = parse({ oidc: { provider: "platform" } });
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.manifest.licensing).toBeUndefined();
+    expect(res.manifest.oidc).not.toHaveProperty("syncTierOnSignIn");
+  });
+
+  it("refuses values outside the shared vocabularies and bounds", () => {
+    const res = validateManifestDocuments({
+      product: {
+        ...PRODUCT,
+        licensing: {
+          reanchor: "onRefresh",
+          refundGraceHours: LICENSING_REFUND_GRACE_HOURS_MAX + 1,
+          dunningGraceDays: LICENSING_DUNNING_GRACE_DAYS_MAX,
+        },
+      },
+      schema: catalogWithSecretDelivery(),
+    });
+    expect(res.errors.map((e) => e.code).sort()).toEqual([
+      "invalid_licensing_reanchor",
+      "invalid_licensing_refund_grace_hours",
+    ]);
+    // The messages name the same bounds the registry reads.
+    const messages = res.errors.map((e) => e.message).join("\n");
+    expect(messages).toContain(`0 to ${LICENSING_REFUND_GRACE_HOURS_MAX}`);
+    expect(messages).toContain(LICENSING_REANCHOR_VALUES.join(" or "));
   });
 });
 

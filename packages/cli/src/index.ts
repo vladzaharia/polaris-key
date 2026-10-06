@@ -78,12 +78,22 @@ import { feedsSetup, FEEDS_SETUP_USAGE } from "./feedSetup.js";
 import { feedsPrune, FEEDS_PRUNE_USAGE } from "./feedPrune.js";
 import { formatImport, listingImport, LISTING_USAGE } from "./listing.js";
 import { listingAssets, LISTING_ASSETS_USAGE } from "./listingAssets.js";
+import { ASSETS_PUSH_USAGE, pushAssets } from "./assets.js";
 import {
   generatedKeyText,
   generateReleaseKey,
   KEYS_USAGE,
 } from "./releaseKeys.js";
 
+export {
+  ASSETS_PUSH_USAGE,
+  parseAssetMap,
+  pushAssets,
+  resolveAssetMap,
+  type AssetEntry,
+  type PushAnswer,
+  type PushAssetsOptions,
+} from "./assets.js";
 export {
   listingAssets,
   LISTING_ASSETS_USAGE,
@@ -481,6 +491,8 @@ export async function runPkey(argv: string[], io: CliIo = {}): Promise<number> {
         return await cmdFeeds(parsed, cwd, stdout, stderr, ci);
       case "listing":
         return await cmdListing(parsed, cwd, stdout, stderr, ci);
+      case "assets":
+        return await cmdAssets(parsed, cwd, stdout, stderr, ci);
       case "transport":
         return await cmdTransport(parsed, cwd, stdout, stderr, ci);
       case "storefront":
@@ -1435,6 +1447,45 @@ async function cmdListingAssets(
   return 0;
 }
 
+/**
+ * `pkey assets push <file> --slot <slot>` (HA-06, `assets.ts`): host a file that is not on the web
+ * in a presentation or listing slot. Exit 1 when the Worker refused it; a slot the console claimed
+ * or a manifest declares is `kept`, which is not a failure.
+ */
+async function cmdAssets(
+  parsed: ParsedArgs,
+  cwd: string,
+  stdout: Pick<NodeJS.WriteStream, "write">,
+  stderr: Pick<NodeJS.WriteStream, "write">,
+  ci: CiIo,
+): Promise<number> {
+  const file = parsed.positional[1];
+  const slot = flagString(parsed, "slot");
+  const product = flagString(parsed, "product");
+  if (
+    parsed.positional[0] !== "push" ||
+    !file ||
+    parsed.positional.length > 2 ||
+    !slot ||
+    !product
+  )
+    throw new Error(ASSETS_PUSH_USAGE);
+  const locale = flagString(parsed, "locale");
+  const answer = await pushAssets({
+    cwd,
+    product,
+    entries: [{ file, slot, ...(locale ? { locale } : {}) }],
+    baseUrl: flagString(parsed, "base-url"),
+    dryRun: flagBool(parsed, "dry-run"),
+    env: ci.env,
+    stdout,
+    stderr,
+    fetchImpl: ci.fetchImpl,
+    sleep: ci.sleep,
+  });
+  return answer && answer.refused.length > 0 ? 1 : 0;
+}
+
 const MANIFEST_USAGE = "Usage: pkey manifest schemas --out <dir>";
 
 /** `pkey manifest schemas --out <dir>` — vendor the `.pkey/` JSON Schemas (`schemas.ts`). */
@@ -1695,6 +1746,7 @@ CI (GitHub Actions with permissions: id-token: write, or PKEY_CI_TOKEN):
               [--wordmark png] [--screenshots dir] [--focal x,y] [--focal-portrait x,y]
               [--background #rrggbb] [--accept store/class/name ...] [--pad store/class/name ...]
               [--locale code] [--upload --product slug [--base-url url] [--dry-run]]
+  pkey assets push file --slot slot [--locale code] --product slug [--base-url url] [--dry-run]
   pkey transport apple-ba package --deliverable packId --release v --from dir [--content-api n]
               [--variant key] [--out dir] [--platforms iOS[,macOS]] [--no-archive] [--no-report]
   pkey transport apple-ba upload --deliverable packId --release v [--dir dir] [--from dir] [--content-api n]
@@ -1804,6 +1856,14 @@ Steam. A screenshot that does not fit gets a crop or pad proposal, used only for
 with --accept or --pad. Everything goes under --out with report.json (the fit report), preview.html
 and one ZIP pack per store. --upload stores the masters, outputs and packs in the listing model
 (the token needs distribution:listing); nothing is pushed to a store. Needs the sharp library.
+
+pkey assets push hosts a file that is not on the web in a slot: presentation.icon, listing.icon,
+listing.header, listing.screenshot:<1-16> or a listing image slot (icon-master,
+play:feature-graphic, ...). Polaris Key hosts a copy and serves it from its image host; PNG, JPEG,
+WebP, GIF or AVIF only (never SVG), up to 10 MiB for icon slots and 20 MiB for the rest. A slot an
+operator uploaded in the console, or one a manifest declares, is kept as it is (console, then
+manifest, then CI). The token needs assets:write, an opt-in scope, and Release must be on (the
+upload ticket comes from its uploads route).
 
 pkey transport packages a published pack release (the --out cache of pkey release publish
 --deliverable <packId>, re-hashed against its record and linted again, so a pack with scripts

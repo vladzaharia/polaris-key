@@ -194,9 +194,10 @@ binding = "DELTA_DLQ"
 queue = "pkey-deltas-dlq-prod"
 # HA-05: the hosted-asset pull queue (core/hostedAssetPulls.ts). This Worker is the producer (a
 # register or resync enqueues the pulls its manifest owes; the nightly sweep re-checks failed ones)
-# AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. A
-# delivery that keeps throwing lands in pkey-assets-dlq-prod; a refused pull is recorded on its
-# row and acknowledged, never retried by the queue.
+# AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. HA-08's
+# release-file mirrors ride the same queue (services/release/mirror.ts). A delivery that keeps
+# throwing lands in pkey-assets-dlq-prod; a refused pull or mirror is recorded on its row and
+# acknowledged, never retried by the queue.
 [[env.prod.queues.producers]]
 binding = "HOSTED_ASSET_QUEUE"
 queue = "pkey-assets-prod"
@@ -305,9 +306,10 @@ binding = "DELTA_DLQ"
 queue = "pkey-deltas-dlq-staging"
 # HA-05: the hosted-asset pull queue (core/hostedAssetPulls.ts). This Worker is the producer (a
 # register or resync enqueues the pulls its manifest owes; the nightly sweep re-checks failed ones)
-# AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. A
-# delivery that keeps throwing lands in pkey-assets-dlq-staging; a refused pull is recorded on its
-# row and acknowledged, never retried by the queue.
+# AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. HA-08's
+# release-file mirrors ride the same queue (services/release/mirror.ts). A delivery that keeps
+# throwing lands in pkey-assets-dlq-staging; a refused pull or mirror is recorded on its row and
+# acknowledged, never retried by the queue.
 [[env.staging.queues.producers]]
 binding = "HOSTED_ASSET_QUEUE"
 queue = "pkey-assets-staging"
@@ -398,9 +400,10 @@ binding = "DELTA_DLQ"
 queue = "pkey-deltas-dlq-dev"
 # HA-05: the hosted-asset pull queue (core/hostedAssetPulls.ts). This Worker is the producer (a
 # register or resync enqueues the pulls its manifest owes; the nightly sweep re-checks failed ones)
-# AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. A
-# delivery that keeps throwing lands in pkey-assets-dlq-dev; a refused pull is recorded on its
-# row and acknowledged, never retried by the queue.
+# AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. HA-08's
+# release-file mirrors ride the same queue (services/release/mirror.ts). A delivery that keeps
+# throwing lands in pkey-assets-dlq-dev; a refused pull or mirror is recorded on its row and
+# acknowledged, never retried by the queue.
 [[env.dev.queues.producers]]
 binding = "HOSTED_ASSET_QUEUE"
 queue = "pkey-assets-dev"

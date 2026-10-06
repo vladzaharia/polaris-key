@@ -43,7 +43,7 @@
  *     signed-in account, with the `link` action (its store pages or website), never Add.
  *
  * A product the account already holds is Library, not storefront: a licence linked to the
- * account (any route), a library entry (PS-04's `library_entries`, read if present), or a licence
+ * account (any route), a library entry (`library_entries`, PS-04), or a licence
  * the account's platform subject already holds there. It is never offered, counted or linked.
  *
  * ── NO ENUMERATION ────────────────────────────────────────────────────────────────────────────

@@ -3,7 +3,7 @@
  * the active-catalog loader used for value validation + redaction.
  */
 
-import { listClaims } from "../../core/settingsClaims.js";
+import { claimsView } from "../../core/settingsClaims.js";
 import { Catalog } from "@polaris-key/catalog";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../env.js";
@@ -172,6 +172,8 @@ export async function licenseSummary(
     // LX-26 (S-24 D1): floating or assigned, derived from the owner pointer and the licence's own
     // email; never the account's details.
     holder: licenseHolder(row),
+    // LX-28: the batch the licence was created in, `null` for a licence created on its own.
+    batchId: row.batch_id ?? null,
     identityProvider: row.sub ? "oidc" : "manual",
     // How the row was minted (`admin`, `oidc`, `enroll`): decides whether it may be deleted.
     origin: row.origin ?? "admin",
@@ -269,7 +271,9 @@ export async function productView(
     adminGroup: p.admin_group,
     // ST-01b: the column-backed settings the console has claimed from the manifest (the resync
     // leaves these alone until a Revert). Empty for a product with no manifest to claim from.
-    claims: await listClaims(db, p.slug, now),
+    // ST-20: each break-glass claim carries its reason and expiry, and `manifestAuthoritative`
+    // is the mode (the console's switch; locked on for the system product).
+    ...(await claimsView(db, p, now)),
     createdAt: p.created_at,
     modifiedAt: p.modified_at,
   };

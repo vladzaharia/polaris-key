@@ -925,11 +925,19 @@ into `dist_listing_assets`. A new opt-in CI scope, `distribution:listing`, buys 
   (`<slot>@<locale>`); a replaced row's ref is dropped in the same batch, so the collector reclaims
   what nothing references.
 - **Nothing is served or pushed.** The route writes rows and refs only. No route serves these
-  objects, and no store receives them until a storefront adapter pushes them under the store
-  gate, after an operator accepts each output in the console. Screenshot crops are proposals,
-  applied only for the images the operator names, because a crop can cut UI.
-- **An operator's image wins.** A row with `source = admin` is never replaced by CI; the register
-  answers it as `kept`.
+  objects: since HA-07 the generic blob route (`GET /<p>/distribution/blobs/sha256/<hex>`, both
+  hosts) refuses a `listing-asset` or `hosted-asset` holder (`blobAccess.ts`,
+  `SERVES_NOTHING_REF_KINDS`). Before HA-07 it counted them as "app-side", so under a `public` app
+  anyone holding the digest could fetch listing art (S-20 §4.6 #2); an object an artifact, feed
+  file or pack also holds is still served under that holder's rule. No store receives them until
+  a storefront adapter pushes them under the store gate, after an operator accepts each output in
+  the console. Screenshot crops are proposals, applied only for the images the operator names,
+  because a crop can cut UI.
+- **An operator's image wins.** A row with `source = admin` (a console upload into a store slot,
+  HA-06) is never replaced by CI; the register answers it as `kept`. Since HA-07 a third source,
+  `manifest`, holds the manifest's hosted art (`listing/manifestAssets.ts`); it never replaces an
+  `admin` or `import` row, and a CI register replaces it like any non-admin row ("Serving hosted
+  copies everywhere (HA-07)").
 - **Red outputs stay local.** The table has no status column, so a stored row would look
   compliant. The CLI registers only `ok` and `warn` outputs; an icon-only fallback, a `title` slot
   with no wordmark, or a file over the store's byte limit is printed as not uploaded.
@@ -965,12 +973,14 @@ writer can push.
   `core/bytesHost.ts`): directives limited to `sandbox` (with at most `allow-downloads` and
   `allow-top-navigation-to-custom-protocols`, so a click can download a file or open an
   `altstore://`/`obtainium://` link; never `allow-scripts`, `allow-same-origin`, `allow-forms`
-  or `allow-popups`), `default-src 'none'`, `style-src` hash sources, `img-src data:`, and
+  or `allow-popups`), `default-src 'none'`, `style-src` hash sources, `img-src` naming only
+  `data:` and (since HA-07, while hosted copies are served) the image host's origin, and
   `'none'` for `frame-ancestors`, `base-uri` and `form-action`; a status of 200, the exact type
   `text/html; charset=utf-8` and no `Content-Disposition`. Anything else becomes the plain
   not-found. The policy is therefore still a sandbox: the document has an opaque origin and runs
   no script, which is the property §3's same-site compensation rests on, and no request leaves it
-  to any host. The page needs no script: platform detection is server-side (UA Client Hints, then
+  to any host but the image host (the product's icon, HA-07), which is cookie-less and serves
+  only public raster images. The page needs no script: platform detection is server-side (UA Client Hints, then
   the User-Agent), and the iPad case (Safari reports a Mac) is a pointer media query.
   `nosniff`, `Referrer-Policy: no-referrer`, the cookie stripping and the HSTS backstop apply as
   to every bytes-host answer. A document route answers no CORS and no preflight.
@@ -980,8 +990,10 @@ writer can push.
   ids, deep links (`altstore://`, `sidestore://`, `altstore-pal://`, `obtainium://`,
   `fdroidrepos://`, `ms-windows-store://`, `steam://`) from Worker-minted feed URLs with
   `encodeURIComponent`, and every `href` passes `safeHref`, which admits only an `https:` URL or
-  one of those schemes. A listing's `website` is kept only as a parsed `https:` URL; its icon and
-  screenshots are not loaded at all (no third-party request). A listing carrying `<script>`,
+  one of those schemes. A listing's `website` is kept only as a parsed `https:` URL. Its
+  screenshots are not loaded at all, and its icon is never loaded from the listing's URL: since
+  HA-07 the header shows the product's hosted copy from the image host, or nothing (no
+  third-party request). A listing carrying `<script>`,
   quotes and a `javascript:` URL is pinned to render inert.
 - **Public only, by the feeds' rules.** The model exists only while the app deliverable's
   delivery access is `public`, and lists releases exactly as the storefront feeds do (P2b-05,
@@ -1210,7 +1222,11 @@ symbol); review catches the rest.
   manifest), cannot touch another product (the slug must be the system product's, checked before
   anything is written), cannot re-enable a service, `packageFeeds` or a feed an operator switched
   off (the bootstrap only creates), and cannot overwrite an operator-claimed publisher or claimed
-  access modes. A per-IP limit (fail closed) bounds unverified calls. Residual: the trust is the
+  access modes. Since ST-20 it is the system product's only manifest writer (a webhook or console
+  resync of it is refused), it ends a break-glass claim whose field the deployed `.pkey/` changes
+  or whose 7 days ran out, writing the manifest's value for that field only, and its answer lists
+  the live break-glass claims by key and expiry (§3 "Manifest-authoritative mode"). A per-IP limit
+  (fail closed) bounds unverified calls. Residual: the trust is the
   deploy job's, which already holds `CLOUDFLARE_API_TOKEN`; a token captured from that job could
   be replayed with a different body within its lifetime only if it was never used, and the job
   uses it at once.
@@ -3238,7 +3254,9 @@ Four controls make that true. The first and the fourth are the ones that matter:
    A flow `/device/start` began is therefore marked (`viaDeviceCode`) and `/identity/auth/poll`
    answers it with the generic `error`; it completes only on `/identity/auth/device/poll`, with
    the device code. (Found in P1-06 review: without this, a user code was enough to race the
-   real device for its token — an R8-01-class theft.)
+   real device for its token — an R8-01-class theft.) Since 2026-10-06 the `state`-keyed
+   `/identity/auth/poll` is retired altogether (Core's generic 404), so `/device/poll` is the
+   only poll; `viaDeviceCode` stays for the callback and the chooser.
 2. **The page never shows the device id.** It shows `deviceName`, or "Unnamed device".
 3. **Confirmation retires the user code.** The index is deleted, and a flow already confirmed
    does not resolve even if a KV read still sees it: nobody can re-render, re-mint the CSRF token
@@ -4123,6 +4141,18 @@ composition root and refuses:
 
 No new data is collected and nothing reaches a device: `wire` only labels which existing channel
 already carries a value.
+
+ST-19b registers the manifest-declared settings ST-06 left pending (the `.pkey/release` block,
+deliverables, channel policy, trusted publisher, release keys, device registration, required
+secret names, provisioning hooks and transports). Each describes today's storage and adds no
+write path. Five are flagged security-widening, so any later generic write needs a reason and at
+least L1: `release.github` (whose releases are served and published; set by Link, never by a
+resync), `release.publishing.trustedPublisher` (which workflow and environment can mint a
+`pkeyci_` token; the console's `PUT …/ci-publisher` also sets the repository and the scopes,
+`release:yank` included), `release.keys` (who can sign an accepted release record),
+`core.registration` (`open` lets any client mint a device token) and `identity.provisioning`
+(what a verified claim grants). All five are in `SECURITY_WIDENING_KEYS`. `core.secrets` is
+`secret`: it names secrets, never holds a value, and stays pending until ST-08 wires it.
 
 ### Self-reported operations (A-14)
 
@@ -5116,15 +5146,17 @@ wrote (docs/design/PORTAL.md G1, G5, G16).
   the portal renders them as text. A developer can misname their own product, not another one: a
   listing is stored per product and shown only on that product's tile.
 - **The media proxy is not a URL fetcher (Portal media proxy).** The request names a product and
-  one of two fixed listing fields (`icon`, `header`); there is no URL, host or path in it. The
+  one fixed listing slot (`icon`, `header`, or since PS-04 `screenshot-<n>`, the n-th https
+  screenshot of the stored listing, n below 16); there is no URL, host or path in it. The
   source must be `https`, on the default port, with no credentials, on a GitHub-hosted name
   (`isAllowedStorageHost`: `github.com`, `*.githubusercontent.com`, the predicate the release
   fetch and the portal download redirect already use). IP literals, `localhost`, a custom domain
   and this deployment's own hosts never match, so a repository cannot point the Worker at itself,
   at another zone on the account, or at an internal address. Redirects are followed by hand, at
   most three, and every hop is checked again. A 5 s budget; a `Content-Length` over the cap
-  (1 MiB icon, 5 MiB header) is refused before the body is read, and the stream is counted and cut
-  at the cap whatever the header said.
+  (1 MiB icon, 5 MiB header and each screenshot) is refused before the body is read, and the
+  stream is counted and cut at the cap whatever the header said. Screenshots add at most 16
+  fetchable sources per product, all under the same allowlist, cap and `portalMedia` budget.
 - **Strict type instead of re-encoding.** The Worker has no image codec, so it does not re-encode.
   Instead the bytes must be a PNG, JPEG, WebP or GIF by magic number; the upstream `Content-Type`
   is ignored; the answer carries the sniffed type, `nosniff`, `default-src 'none'; sandbox` and
@@ -5144,6 +5176,11 @@ wrote (docs/design/PORTAL.md G1, G5, G16).
   learns a customer's IP or `Referer` from a library view. `test/portalLibrary.test.ts` pins the
   proxy rules and the admin package's browser test proves the images load under the portal's
   real policy with no violation.
+- **Since HA-07** the library names Polaris Key's hosted copies on the image host and the portal's
+  `img-src` adds exactly that origin; `/media/<p>/<asset>` 302s to the image host for a slot that
+  has a copy. Everything above still describes the proxy, which now serves a slot with no hosted
+  copy and every slot in the kill switch's rollback, under the same rules ("Serving hosted copies
+  everywhere (HA-07)").
 
 ### The portal's key preview, new keys and device names (PX-W5)
 
@@ -5162,6 +5199,11 @@ CSRF header like every other portal mutation.
   character and the domain of the licence's address (`m•••@proton.me`). Residual: the masked form
   confirms the domain of the buyer's address to whoever holds the key; the design accepts it so
   the buyer can recognise their own address.
+- **The device count (PX-23, 2026-10-06).** For an `addable` licence the preview also says how
+  many authorized devices it is already on (`devices`, a number) and whether the product runs
+  Cloud Sync (`cloudSync`), so Confirm can say the devices come with it. Never a device id, label
+  or platform, and nothing on a refusal. The key holder could learn the same count by activating
+  until the seat limit answers, so it adds no new disclosure.
 - **The preview cannot be a cheaper probe than the add.** Preview and claim are one rate bucket
   (`portalClaimKey`, 10 a minute per account and IP, charged before any lookup), and both act on one
   evaluator (`evaluateKeyClaim`), so the preview never promises an add the claim refuses.
@@ -5286,12 +5328,15 @@ Other secrets audited in URLs with this change, and left as they are:
   by default).
 - **`/<p>/identity/auth/device/verify?device_code=`**: a legacy route kept for flows started
   before `/device`; `/device/start` no longer hands the URL out. Removing it is a route change
-  (AGENTS.md rule 10), proposed as a follow-up.
-- **The deprecated `/<p>/identity/auth/poll?state=&device=`** (`handleAuthPoll`, `oidc.ts`) puts
-  both halves of the poll pair in one URL. Nothing starts a device-bound flow it can redeem any
-  more: `/auth/start` binds no device, and `/auth/poll` refuses a `/device/start` flow
-  (`viaDeviceCode`), so it never returns a token. Retiring it is a route change (rule 10),
-  proposed as a follow-up.
+  (AGENTS.md rule 10) and also drops `endpoints.authDeviceVerify` from the discovery document, a
+  wire shape (plan mode), so it is proposed as a follow-up of its own.
+- **The retired `/<p>/identity/auth/poll?state=&device=`** put both halves of the poll pair in
+  one URL. It could never return a token (`/auth/start` binds no device, and it refused a
+  `/device/start` flow), and nothing called it: no SDK at any release tag, no transcript, no
+  corpus case. It was removed on 2026-10-06 (fix/followups-sweep-1006) with its rate-limit
+  buckets, its CORS row, its OpenAPI path and its `routeCoverage` row; the path now answers
+  Core's generic 404, and a device polls `/identity/auth/device/poll` with the device code in a
+  JSON body.
 - **`/<p>/identity/auth/device?user_code=`**, the RFC 8628 `verification_uri_complete`: a short
   code a person types or scans, not a bearer. It only opens the confirmation page. Confirming is
   a CSRF-checked `POST` and then a sign-in, so whoever confirms signs the device in as
@@ -5695,6 +5740,74 @@ merge and deletion) apply to it unchanged.
   (I-17). AAGUIDs are stored for display only and are not verified (no attestation); a malicious
   authenticator can claim any model, which affects only the label the person sees.
 
+### Sign-in methods and joining accounts (PX-W12)
+
+Account → Sign-in methods and Link an existing account (`services/identity/portal/methods.ts`,
+`portal/link.ts`, `accounts/mergeUndo.ts`; PORTAL.md §4.11, §4.26, §10.2 G27) put I-05's link
+engine and merge behind portal routes. S-16 §5.4 item 3 (account takeover through linking) and
+item 15 (merge takeover) are the threats; the rules below are what the routes add.
+
+- **Connect.** Every connect needs a sign-in no older than 5 minutes, re-checked when the change
+  lands (`linkIdentity`), so a stolen days-old cookie cannot add an attacker's method as a way back
+  in. A provider connect reuses the provider's registered sign-in callback, the single-use flow
+  record and the `SameSite=None` binding cookie (so a callback finishes only in the browser that
+  started it), and the record carries the account and its session row because Apple's form_post
+  sends no Lax session cookie; the callback refuses when that session was signed out or revoked
+  meanwhile, and it never signs anyone in or opens the email gate. The provider's email claim is
+  narrowed exactly as at sign-in (`providerVouchesForEmail`), and an address another account uses
+  is stored unverified, so a connect cannot make one address verified on two accounts (which would
+  hand that address's waiting licences to the wrong account). An email connect sends a code bound
+  to the session that asked, under I-02's send and attempt limits, and answers its start
+  identically whatever the address; whose the address is shows only after the code proved it. A
+  method another account holds is refused (`link_conflict`) and nothing moves.
+- **Disconnect.** The same step-up; the last method is never removed (`last_link`, guarded inside
+  the DELETE, so two racing removals cannot orphan the account, a test); the only address cannot
+  go while it is the primary, so notices and passkey enrolment always have a verified address
+  (guarded in the same DELETE, with the promotion of the next address in the same batch, a test).
+  Every change is audited and emailed to every verified address; an email method is named
+  generically in those notices, so no notice hands one of the account's addresses to the others,
+  and a removed address is told too.
+- **Join with proof of both, in one browser.** Linking starts from a fresh session and records its
+  proof in a server-held flow named by a host-only `__Host-pkey_link` cookie (15 minutes; the
+  dispatcher strips it from product routes like every account-realm cookie, and signing out
+  clears it). The second proof is only ever the session presenting that cookie, after a real
+  sign-in (the login card, or a PX-W14 device approval, which also mints a fresh session), so both
+  proofs come from one browser and neither can be supplied by another party's session (a test).
+  The merge refuses unless both proofs are under 5 minutes old, the link routes also refuse when
+  either proof's session was signed out, and the join screen shows an account's details only
+  while its proof's session is live. The flow is claimed before the merge, so two racing confirms
+  merge once (a test). Nothing looks at email addresses: never by email match.
+- **Undo for 72 hours.** Every join (the login card's offer too) records a snapshot of what moved
+  in `account_merges`, in the merge's own batch. The kept account can undo with a fresh sign-in,
+  which a person whose method was joined away can always get (their methods sign in to the kept
+  account), so a join made with stolen proof of one account is reversible by its owner after the
+  notice. Only methods still on the kept account go back: a method disconnected since the join (a
+  lost passkey, a compromised provider account) never comes back silently, and the snapshot holds
+  method ids only, never their subjects, addresses or keys. The undo refuses (`last_link`) when an
+  account would be left with no way to sign in; that guard is the first statement of the undo's
+  batch and aborts it, so a removal racing the undo cannot orphan either side (a test). A licence
+  that goes back revokes every registry token the kept account minted on it during the window
+  (F-21, `onLicenseOwnershipEnded`) and clears its devices' bindings; the absorbed account's own
+  tokens move back untouched (a test). A join is refused while EITHER account could still undo a
+  join of its own (`merge_pending`): absorbing that account would destroy its undo, and absorbing
+  into it would hand the second join's data and aliases to the first join's absorbed account on
+  undo. The snapshot holds the absorbed person's details: it is cleared by the undo, deleted
+  nightly once the window ends, and deleted with either account (docs/PRIVACY.md).
+- **Residuals.** Someone with a fresh session for an account can already change it directly
+  (connect their own method, disconnect the others, delete it); joining gives them nothing more,
+  and the notices to every verified address of both accounts are the detection. Deleting the kept
+  account inside the window deletes the snapshot, so the joined account cannot be restored
+  afterwards (the deletion is itself step-up gated and emailed). An undo does not split account ×
+  product data a store already re-keyed (`runSubjectMerge`), and developers keep the
+  `subject.merged` alias they were told about; the restored account gets a fresh pairwise subject
+  where its old one became an alias, so to that developer it is a new person, and no
+  `subject.unmerged` event exists (`subject_events` allows only merged and deleted). A device
+  activated during the window on one of the absorbed account's licences keeps its seat; its
+  binding to the kept account's subject is cleared with the licence's other bindings at the undo,
+  but a device bound to the kept account's subject on a licence that stays with the kept account
+  is untouched. A picture the kept account did not use may be swept before an undo
+  (`sweepAvatars`, after a day), and the restored account then shows initials.
+
 ### The console's Users page and the relink tool (I-12)
 
 Every product's console has a Users page (`/manage/api/products/<slug>/users…`,
@@ -5808,10 +5921,21 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   plain detach does not (S-17 §5.8 item 2), though the principal is hidden while the licence is
   floating (S-24). Residual: `POST /<p>/identity/signout` and the sign out everywhere surface are
   I-09's and I-11's; until they land only the hook and the browser logout exercise those reasons.
-  Residual: after a detach and a later first attach by another account, the device keeps the
-  first account's binding (attach is not a clearing trigger). It is hidden only while the licence
-  floats; once the second account owns the licence, the device's principal is the first account
-  until that person signs out or the device re-binds.
+- **Amended 2026-10-06 (PX-23; lead decision on S-24 D19): removed from a library, the licence is
+  floating for that account's devices.** "Remove from my library" (`detachLicense`) keeps the
+  licence's email, so the licence is assigned and waiting, not floating, and before this change the
+  removing account's signed-in devices kept their Cloud Sync principal. Now `resolveSyncPrincipal`
+  also reads LX-26's auto-attach block: while a block for the (licence, account behind the bound
+  subject) pair stands and the licence is not in that account, the device has no principal. Every
+  detach and every developer move away writes that block, so this also closes the earlier
+  residual (after a detach and a later first attach by another account, the device kept the first
+  account's principal; attach is not a clearing trigger): the first account's binding stays
+  hidden. The binding itself is kept (a removal signs nobody out); re-adding the key, or a move
+  back, lifts the block and the principal returns. A block for the account that holds the licence
+  again (a merge can leave one) is inert; a merge moves the absorbed account's blocks to the
+  survivor, and the merged device's binding follows. Other accounts' devices on the licence are
+  unaffected. Tests: `syncPrincipal.test.ts` (detach, re-add, another account, merge and the inert
+  block) and `portalFloatingKeys.test.ts` (through the portal route).
 - **The registry guard** (`test/subjectStores.test.ts`, S-17 §7.1 risk 8). Every D1 table with a
   `subject` column is claimed by a registered store (`registerSubjectStore` with `tables`) or is
   listed as Identity's own with its reason; every Durable Object class is claimed
@@ -5819,16 +5943,17 @@ keeps every subject-keyed store honest (plans/U-01.md §6.1).
   `export`; no claimed table has an `account_id` column. A store added without its hooks fails the
   gate instead of leaving data behind after a merge or a deletion.
 
-### Discover: free offers and "Add to library" (PX-W10, PS-03)
+### Discover: free offers and "Add to library" (PX-W10, PS-03, PS-04)
 
-`GET /api/discover` lists the products whose licence policy would auto-issue to the signed-in
-account and `POST /api/discover/<p>/claim` mints one (docs/design/PORTAL.md §10.2 G24, G25). Both
-sit behind the portal session; the claim also needs the CSRF header. Since PS-03 both run on the
-Polaris Key storefront's obtain-path engine (`services/identity/portal/store/obtain.ts`, notes/S-21
-§6.3): one dry-run evaluation answers whether, and by which paths, an account can add a product.
-Discover serves the engine's identity paths (`group`, `auto_issue`); the `open` path and
-audience-`everyone` link-only listings are evaluated but not served until PS-04 (PS-11 adds the
-storefront's full threat set, notes/S-21 §6.9 S1-S11).
+`GET /api/discover` lists the products the signed-in account could add, `GET /api/discover/<p>` is
+one product's storefront page, `POST /api/discover/<p>/claim` adds one, and `DELETE
+/api/library/<p>` removes a library entry (docs/design/PORTAL.md §10.2 G24, G25; notes/S-21 §6.4,
+§6.5, §6.7). All sit behind the portal session; the mutations also need the CSRF header. All run
+on the Polaris Key storefront's obtain-path engine (`services/identity/portal/store/obtain.ts`,
+notes/S-21 §6.3): one dry-run evaluation answers whether, and by which paths, an account can add a
+product. Since PS-04 Discover serves every path the engine finds (`group`, `auto_issue`, `open`)
+and audience-`everyone` links, and the claim issues through one function, `issueFromPath` (PS-11
+adds the storefront's full threat set, notes/S-21 §6.9 S1-S11).
 
 - **Discover grants nothing a sign-in would not.** The listing and the claim run the product
   sign-in's own policy function (`identityTier`) and the claim mints through its own path
@@ -5841,7 +5966,18 @@ storefront's full threat set, notes/S-21 §6.9 S1-S11).
 - **`open` grants no licence.** The engine's `open` path needs License off for the product and
   Distribution's `delivery().openAccess()` true: every deliverable `public` or `authenticated` with
   no entitlement gate, fail-closed (no `app` row, an unknown mode or a gated pack is not open). It
-  never runs the licence policy and nothing it leads to mints a licence.
+  never runs the licence policy, and its claim writes one `library_entries` row (account, product)
+  and nothing else: no licence, no device, no pairwise subject, no row in the product's `audit`.
+  The entry unlocks nothing: downloads, the registry and every device route still decide by
+  licence and delivery access exactly as before, so an entry is a bookmark the person can remove
+  (`DELETE /api/library/<p>`, entries only; a licence leaves the library only by the existing
+  detach, with its auto-attach block). Account deletion deletes entries, a merge moves them, and
+  product deletion clears them.
+- **No device binding and never a second licence.** No path binds a device: devices bind at
+  their next sign-in or activation, where seat limits apply. A claim for a product the account
+  already holds by any route (a licence, a library entry, a licence its platform subject holds)
+  answers what it holds with `added: false` and issues nothing (the I-26 rule); the held licence
+  is answered only when it is this account's own (I-05).
 - **Group membership is the platform IdP's assertion, as of the last portal sign-in.** The portal
   now keeps the `groups` claim (`account_links.groups_json`, on the link it signed in through). Residual: a group removed
   at the IdP still yields offers until the account signs in to the portal again (the product
@@ -5853,18 +5989,68 @@ storefront's full threat set, notes/S-21 §6.9 S1-S11).
 - **No enumeration.** Unknown, unlisted, ineligible and held products all get the engine's one
   hidden verdict, and only visible products are listed or counted. The claim is not a product
   oracle and not a minting loop: an unknown slug, a product that is not a candidate, a withdrawn
-  offer and a link-only listing all answer the same `409 not_eligible`. The claim is idempotent per
-  account and product (the `idx_licenses_sub` unique index decides a racing double submit; the
-  loser answers the winner's licence), it spends the one per-account bucket the activate preview
-  and the key claim share (`portalClaimKey`, charged before any lookup), and it is audited twice:
-  `portal.discover.claim` in `portal_audit` and `license.create` in the product's `audit`, both
-  with `source: discover`.
+  offer, a link-only listing and a `path` the product does not offer all answer the same `409
+not_eligible`. The storefront page answers the same `404 not_found` for every product the
+  listing would not show, and spends its own per-account budget (`portalStorefrontPage`, 60 a
+  minute) before any lookup. **Residual:** the page and the claim take measurably different time
+  for a product that is a candidate (listed, portal on) and one that is not, which can tell
+  "unlisted" from "listed but not for you"; product slugs are already public (each product's
+  discovery document), the budgets bound the probing, and neither answer names a path, a tier or
+  a person. The claim is idempotent per account and product (`idx_licenses_sub` decides a racing
+  identity double submit, the `library_entries` primary key an `open` one; the loser answers the
+  winner's licence or entry), it spends the one per-account bucket the activate preview and the
+  key claim share (`portalClaimKey`, charged before any lookup), and it is audited:
+  `portal.discover.claim` in `portal_audit` for every path and `license.create` in the product's
+  `audit` for a licence, both with `source: discover; path: <kind>`.
+- **Listing text is the developer's, rendered as text.** The page adds the listing's `subtitle`
+  and `description` (the manifest validator bounds them: one line of at most 200 characters, and
+  4000 characters of prose without control characters but tab and newline) and screenshots,
+  which reach the page only as same-origin `/media/<p>/screenshot-<n>` URLs under the media proxy's
+  rules (the page CSP did not widen). Group labels are the operator's (`storefront.polarisKey.
+groupLabels`, at most 40 characters), read as own properties only. PS-05 renders all of them
+  escaped (A-18 control g).
 - **Operators withhold or narrow without changing the policy.** `storefront.polarisKey.listed`
   `unlisted` (or `discover_enabled = 0` until PS-11) hides a product, `offerPaths` drops path kinds
   (the claim follows it), and the deployment switch `storefront.polarisKey.enabled` off hides every
   listing. The switch reads fail-safe: any stored value other than `on` (a cleared value is the
   default, on), or an unreadable store, is off. Audience `everyone` is the one deliberate exception to "only what you can obtain"
-  (level-2 confirmation, PS-02), and it shows a `listed` product as a link only, never an Add.
+  (level-2 confirmation, PS-02), and it shows a `listed` product as a link only, never an Add:
+  its website and the store pages where a release is reported live, which are public already.
+
+### Storefront analytics (PS-04)
+
+The storefront counts impressions, adds and first activations per product, UTC day and path kind
+(notes/S-21 §6.6, owner decision 12) in `storefront_daily`, for PS-06's console card.
+
+- **Aggregates, no account id.** `storefront_daily` holds counters and nothing else. Impressions
+  are deduplicated per account per day through `storefront_seen(product, day, account_key)`, where
+  `account_key` is HMAC-SHA-256 of the account id under the day's salt, truncated to 128 bits; the
+  salt is HMAC-SHA-256 of a fixed label and the day under `KEY_HASH_PEPPER`, so it is derived, never
+  stored, and a key cannot be recomputed from the database alone. Keys of two days never match,
+  so they do not link one person across days, and the nightly sweep deletes every row older than
+  yesterday. **Residual:** within those two days, whoever holds both the database and the pepper
+  can test whether a known account saw a known product that day. On a deployment without
+  `KEY_HASH_PEPPER` a key would be recomputable from the database alone, so none is made: no
+  `storefront_seen` row is written and no impression is counted there (adds and activations still
+  are). The impressions of one listing are written as one atomic batch.
+- **Only what was shown is counted.** An impression is written after the engine's dry run decided
+  the product is visible to the account, so the counters never name a product the account could
+  not see, and the evaluation itself still writes nothing. A count that fails to write is dropped:
+  counting never fails a listing, a page, a claim or an activation.
+- **Activations write nothing per person.** A first activation is counted when Core's
+  `authorizeDevice` reports a new authorization (`core/authorizationListeners.ts`, after the bind,
+  total, off the response path with `waitUntil`) that is the licence's FIRST device ever (Core's
+  `firstOnLicense`: no other device row names the licence and this device was never bound to it;
+  device rows outlive a deauthorization), on a licence whose `portal.discover.claim` row exists and
+  is at most seven days old. The listener only READS that claim row (when, and by which path) and
+  bumps one counter; it writes no marker or other row about the person. **Residual (accepted):**
+  two devices binding one fresh licence at the same instant can both read first and count twice,
+  and a device moved off a licence leaves no row naming it; the aggregates are a trend, not a
+  ledger. The path kind is read from the claim's own summary, the last marker winning, so a
+  product name that spells the marker cannot choose it. A listener can neither refuse nor change
+  an activation.
+- **Who reads it.** Nothing in PS-04 serves the counters; PS-06's console card shows them to the
+  product's operators as daily totals per path kind.
 
 ### Licensed portal downloads (PX-W3)
 
@@ -6011,7 +6197,13 @@ proxy now fetches through the same guard.
   the front door), never `.local`, `.internal`, `.localhost` or `.home.arpa`. Redirects are
   followed by hand, at most three, and each hop is guarded again **before** it is dialled; an
   `Authorization` header reaches the first hop only, never a `Location`. One 30 s budget covers
-  every hop and the body; a declared `Content-Length` over the slot's cap is refused unread, and
+  every hop and the body. Only a release file's pull (HA-08) opts in to more (`releaseFile`): 30 s
+  plus a second per 10 MiB of the file, at most 10 minutes per message
+  (`SAFE_FETCH_FILE_TIMEOUT_MS`); every other caller stays clamped at 30 s. A queue batch stays
+  inside the consumer's 15-minute wall clock because `src/assetQueue.ts` runs pulls and ladder
+  retries first and starts no mirror once 4 minutes of the batch are spent
+  (`MIRROR_BATCH_BUDGET_MS`), so a batch ends within about 4 + 10 minutes; a mirror not started is
+  retried after a minute. A declared `Content-Length` over the slot's cap is refused unread, and
   the body is counted and cut at the cap whatever the header said. The Worker resolves nothing
   itself, and the edge dials neither IP literals nor RFC 1918 or loopback space from a Worker, so
   the remaining surface is "public hosts the operator named". **Who can name one:** manifest
@@ -6036,7 +6228,9 @@ proxy now fetches through the same guard.
   decides what a response may carry. The Play listing-image read sniffs objects stored before
   this change.
 - **The portal media proxy** keeps its GitHub-only host rule on every hop (`allowHost`) on top of
-  this guard until HA-07 serves hosted copies; its cap, 5 s budget and sniff are unchanged.
+  this guard; its cap, 5 s budget and sniff are unchanged. Since HA-07 it serves only a slot with
+  no hosted copy, and every slot in the kill switch's rollback ("Serving hosted copies everywhere
+  (HA-07)").
 - **Image variants (HA-03, S-20 §6.6).** The Images binding decodes developer-supplied images
   only at ingest (or at HA-05's ladder retry, below), never on a request, so no viewer can make it
   transform anything and the transformation bill is bounded at one per ladder width per new
@@ -6094,8 +6288,9 @@ neither is a ref of another kind: a release file, a pack or a bundle is the byte
 `release-file` hosted copy is refused even when its bytes are a PNG. A variant answers only when
 the original's row lists it in `variants_json` and the same slot holds a ref to the variant's
 object. The tenancy check runs on every request and is never cached, so dropping a slot (or
-HA-06's delete-a-copy) stops the answer at once; only the bytes, named by their hash, are kept in
-the Cache API.
+HA-06's delete-a-copy) stops the answer at once, unless another image slot of the same product
+still holds the same bytes, which keep answering at the same URL; only the bytes, named by their
+hash, are kept in the Cache API.
 
 **Never gated (owner decision 7).** The host builds only ungated `blobs/` keys and carries no auth
 code: anything under `gated/`, anything licensed and anything not hosted is a 404, never a 401.
@@ -6105,7 +6300,7 @@ client IP, 600 a minute, fail open: nothing secret is behind it). A stored objec
 is missing or disagrees with its name is the not-found, as in `blobResponse`.
 
 Residual risk: an operator can host abusive or illegal images, now served from a Polaris Key host.
-The operator terms apply, and HA-06 adds delete-a-copy, which takes effect at the next request.
+The operator terms apply, and HA-06's delete-a-copy (below) takes effect at the next request.
 
 ### The console loads product logos from the image host (console product card)
 
@@ -6121,8 +6316,8 @@ origin, `imgOrigin(env)` from `IMG_ORIGIN` (`img.plrs.im`, `img-staging`, `img-d
 - The source is a bare origin, checked by `cspImageOrigin` (`securityHeaders.ts`) before it is
   written: HTTPS only, except a loopback HTTP host for local development. No wildcard, no path,
   no whitespace or `;`. A malformed `IMG_ORIGIN` leaves the policy unchanged rather than widening
-  it. Only the console shell and its assets get the addition; the JSON API's policy, the portal's
-  shell (HA-07's change) and every other policy are untouched.
+  it. Only the console shell and its assets get the addition; the JSON API's policy and every
+  other policy are untouched. The portal's shell adds the same origin since HA-07 (below).
 - `img-src` grants images only. Nothing the image host serves can run in the console: it serves
   public raster types only (`IMG_HOST_TYPES`), never SVG or HTML, under `default-src 'none';
 sandbox` (the image-host entry above).
@@ -6137,6 +6332,70 @@ sandbox` (the image-host entry above).
 Tests: `test/adminPresentation.test.ts` (the field, the one-statement list read, the shell's
 `img-src` with and without `IMG_ORIGIN`, and the origins `cspImageOrigin` refuses) and
 `test/adminCspParity.test.ts`.
+
+### Serving hosted copies everywhere (HA-07)
+
+**What changed.** Every surface that showed or handed out a developer's image now uses Polaris
+Key's hosted copy on the image host (notes/S-20 §6.8): the portal's library, product page and
+Discover; the portal's `/media/<p>/{icon,header}`; the AltStore and SideStore sources; the
+download page's header; and the PR plane's screenshot URLs (Flathub MetaInfo). Manifest art also
+reaches the store-facing listing model as `source = 'manifest'` rows. Which slot a copy serves,
+and whether it counts, is decided in one place (`core/hostedImages.ts`): exactly the image host's
+own tenancy check (an image slot's stored copy, the product's `hosted-asset` ref to it, a type on
+`IMG_HOST_TYPES`), so no surface names a URL the host would refuse.
+
+- **The portal holds no developer URL, and gains one image source.** Presentation art is an
+  image-host URL built server-side from the copy's hash (`portal/library.ts`); the SPA accepts only
+  that content-addressed shape (or a same-origin `/media/` path) and drops anything else
+  (`model/library.ts` `mediaUrl`). The portal shell and its assets add exactly the image host's
+  origin to `img-src`, through the same `cspImageOrigin` check as the console (a bare HTTPS origin,
+  or nothing). The icon loads with `crossorigin="anonymous"` (no credentials) so the corner-pixel
+  shape test still works; the image host answers `*` and never reads a cookie.
+- **The media route fetches nothing for a hosted slot.** `/media/<p>/<asset>` answers a 302 to the
+  image host's stable alias when that slot has a copy the image host serves. A slot with no such
+  copy is proxied exactly as before HA-07, with every PX-W1 guard unchanged (GitHub-hosted
+  sources only, each redirect hop re-checked, the 5 s budget, the size caps, the magic-number
+  sniff, the sandbox CSP, the `portalMedia` rate limit, the uniform 404). This per-slot fallback
+  exists so a deploy never blanks a product's art: production had no copies yet, because HA-05
+  pulls only on resync. The presentation hands out the matching `/media` proxy URL for such a
+  slot, so no developer host reaches the page. The fallback narrows as products resync, and the
+  proxy's SSRF surface is the one PX-W1 already reviewed. The sign-in card's client record keeps
+  WIRE-CONTRACT-V4 §12.7.2's same-origin `/media/<p>/icon` (with the copy's hash as `v` once
+  there is one), which follows the 302 or is proxied.
+- **The feeds never swap one image for another.** An AltStore source names a hosted copy for a
+  listing field only when the copy was pulled for exactly that field's ref (`pulled_ref`), or an
+  operator claimed the slot (`feeds/art.ts`). An outlet override naming other art, or a ref whose
+  re-pull has not succeeded, keeps the declared URL, as before. Sources name originals, never
+  re-encoded variants. Third-party copies of an old source keep the developer's URL (S-20 §6.8).
+- **The download page loads one image.** Its policy adds `img-src <image host>` only when there is
+  an icon, and the bytes host's document rule (`inertDocumentPolicy`) admits exactly `data:` and
+  that origin in `img-src`, nothing else; the document is still sandboxed and script-free.
+  `download.json` is unchanged.
+- **Manifest listing rows follow precedence.** `listing/manifestAssets.ts` writes `icon-master`,
+  `key-art` and one `screenshot:<class>` master per class from the manifest's copies, each holding a
+  `listing-asset` ref; the product proved possession at ingest. A manifest row never replaces an
+  `admin` or `import` row (every write is guarded by the row's source in SQL, so a racing CI
+  register wins), and it reaches a store only after an operator accepts its bytes, like any CI row.
+- **The blob route no longer serves listing or hosted art (S-20 §4.6 #2).** `listing-asset` and
+  `hosted-asset` refs authorise nothing on `GET /<p>/distribution/blobs/sha256/<hex>`
+  (`SERVES_NOTHING_REF_KINDS`), which makes "Listing asset derivation (A-18d)"'s "No route serves
+  these objects" true. Pre-release screenshots are no longer fetchable by digest from the app's
+  delivery mode; they are public only on the image host, and only once ingested into an image slot.
+- **The kill switch is not a security gate.** `assetHostingEnabled` (`core/assetHosting.ts`, a
+  constant until HA-10's `assets.hosting.enabled`) and a missing `IMG_ORIGIN` restore every
+  surface's pre-HA-07 behaviour, the GitHub-only proxy included; the blob-route fix does not follow
+  it.
+
+Residual risk: the image host's (an operator can host an abusive image; HA-06's delete-a-copy
+removes it at the next request). Tests: `test/portalHostedArt.test.ts`,
+`test/storefrontFeeds.test.ts` ("hosted copies", golden `altstore-stable-hosted.json`),
+`test/downloadPageIcon.test.ts`, `test/listingManifestAssets.test.ts`,
+`test/listingAssetsManifestMigration.test.ts`, `test/distributionDelivery.test.ts` ("never served
+by the blob route"), `test/storefront/prPlane.test.ts`, and the admin package's
+`e2e/portalMedia.e2e.test.ts` (hosted icons load under the portal's real policy; a raw GitHub
+image is still blocked). `test/portalHostedArt.test.ts` also pins the per-slot fallback: no copies
+gives exactly the pre-HA-07 presentation and proxy, an icon copy without a header copy gives the
+hosted icon and the proxied header, and the fallback still refuses an off-allowlist source.
 
 ### Pull on register and resync (HA-05)
 
@@ -6204,6 +6463,146 @@ which the main script consumes (notes/S-20 §6.3, §6.4). Code: `core/hostedAsse
 - **The status read is read-only and platform-admin gated.** `GET
 /manage/api/products/<slug>/assets` returns slot metadata, source refs (URLs and
   `<path>@<commit>`) and reason codes, never bytes or tokens.
+
+### Uploads and CI pushes into hosted-asset slots (HA-06)
+
+Two more ways in to the HA-01 ingest, for files that are not on the web (notes/S-20 §6.3, owner
+decision 11), plus the console's Revert and delete-a-copy. Code: `core/hostedAssetUploads.ts`,
+`admin/handlers/hostedAssets.ts`, `services/distribution/listing/hostedMirror.ts`, the CLI's
+`assets.ts`; tests: `test/hostedAssetUploads.test.ts`.
+
+- **Who can write a slot.** The console (`POST|DELETE /manage/api/products/<slug>/assets/<slot>`):
+  the platform-admin session with CSRF, like every console write, audited with the session's
+  subject (`assets.ingest`, `assets.revert`, `assets.delete`). CI (`POST /<p>/assets`): a `pkeyci_`
+  token holding the new scope `assets:write`, which is **opt-in** (not in `DEFAULT_CI_SCOPES`, so
+  an operator grants it deliberately), never valid for another product, and audited as
+  `ci:<subject>` (`assets.push`, plus `assets.ingest` per file). No end user can name a slot or a
+  file. Only image slots are writable: `presentation.icon`, `listing.icon`, `listing.header`,
+  `listing.screenshot:<1-16>` and the shared listing's store image slots; never a release file
+  (HA-08's), a notes image (HA-16's), a video, a store pack or the trailer link.
+- **The bytes are checked exactly as a pull's are.** Both routes stream into `ingest`: the slot's
+  cap (icon slots 10 MiB, the rest 20 MiB; a declared `Content-Length` over it is refused before a
+  byte is read, and the stream is cut at the cap whatever the header said), the magic-number sniff
+  (PNG, JPEG, WebP, GIF or AVIF; never SVG or HTML; the request's `Content-Type` is ignored), and a
+  SHA-256 over every byte. A console upload has no expected hash; a CI push's declared `sha256` and
+  `size` must match the bytes. A refused file changes nothing on the slot (`recordRefusal:
+false`): bytes that never became the copy cannot mark the copy `failed`.
+- **Possession, unchanged (§3).** A CI push reads each object from the caller's own upload ticket
+  (P2-02's uploads route accepts `assets:write`; the ticket is bound to the token and redeemed once,
+  and given back only after a transient store failure), staged under `staging/<p>/<ticketId>/`, or
+  from `blobs/` only when this product already holds a `hosted-asset` ref to that object. Either
+  way the ingest re-reads and re-hashes every byte before it grants a ref, so a digest alone never
+  earns one, and whether another product stores the same bytes never leaves the module.
+- **A pull's follow-up writes respect a claim.** The consumer's back-off and success bookkeeping
+  after `ingest` (`stmtPullFailed`, including the `repo:no-access` path, and the success update)
+  apply only while the slot is not console-claimed, so an upload that lands mid-pull is never
+  marked failed or held off its ladder retry.
+- **Precedence is enforced atomically.** A console upload claims its slot (`origin = 'console'`);
+  otherwise the manifest's source fills it; otherwise CI. A lower way in names who it yields to
+  (`yieldsTo`): a manifest pull yields to a claim, a CI push to a claim and to any slot a manifest
+  declares. The check runs before any byte is read and again inside the batch that writes the row
+  and its refs (every statement guarded, the row's upsert last), so a console upload landing while
+  a pull or push is in flight is never overwritten, and a lost race writes nothing. A store slot's
+  listing row (`dist_listing_assets`) follows the same rule: a console upload writes `source =
+admin`, which the A-18d register and a CI push never replace.
+- **Revert and delete-a-copy.** Revert (a claim whose source the manifest still names) deletes the
+  console's copy and its refs at once and queues one pull of the manifest's ref (reason
+  `operator`), held to HA-05's queue rules above. Delete-a-copy drops the row and its refs. Both
+  run in one batch guarded on the copy the decision saw (its origin and its `sha256`), so a
+  Replace from another tab or a pull that lands first is never undone (`asset_changed`); a store
+  slot's listing row and ref go only while that row holds the same bytes. The image host's
+  tenancy check is never cached, so the slot's copy stops answering on the next request; the bytes
+  fall to the collector after the age lock and grace. **Delete-a-copy is per slot:** the same bytes
+  held by another slot of the product (the listing icon falls back to the product icon) keep
+  answering at the same content-addressed URL until that slot is deleted or replaced too, and the
+  console says so in the confirmation.
+  Polaris Key never writes to a developer's source. This is the content-risk control S-20 §6.12
+  names: an operator can drop an abusive image at once (a manifest-declared one returns at the
+  next resync until the manifest stops naming it, or a replacement claims the slot).
+- **A release file's copy is never the console's to delete.** HA-08's `release-file:<sha256>` copy
+  is also held by its `release-artifact` ref, which keeps it serving at the release's download, so
+  a Revert or delete-a-copy of it would report a deletion while the bytes still serve. The route
+  refuses it as not an upload slot (`bad_slot`) and `releaseHostedAsset` refuses any slot that is
+  not one (`missing`), so neither its row nor its refs move.
+- **Amplification is bounded.** One CI push carries at most 32 files (each at most 20 MiB) in a
+  16 KiB body; a console upload is one file. Neither fetches anything: the only outbound fetch is
+  Revert's one queued pull of a ref a manifest author wrote.
+- **The console shows only what the image host serves.** The status list adds image-host URLs
+  built server-side from content-addressed hashes (`imgUrl`), the `img-src` source the console
+  product card already added; no developer URL is loaded by the console.
+- **Residual.** An `assets:write` token can replace any CI-pushed copy of its product's unclaimed,
+  undeclared slots with any image whose bytes it holds; it cannot touch an operator's upload or a
+  manifest's slot, and the art it hosts is public by design.
+
+### Release-file mirroring (HA-08)
+
+Every file of an app release whose bytes live only on GitHub (a `github` location, or a legacy row
+with none) or at an `external` URL now gets a copy in the blob store and an `r2` location appended
+to its `locations_json`, so `serveArtifact` serves our bytes first and GitHub stays the fallback
+(notes/S-20 §4.3, §6.3, §6.8, owner decision 6). Code: `services/release/mirror.ts`,
+`services/release/mirrorSwitch.ts`, the legacy download in `services/release/source.ts`,
+`src/assetQueue.ts`, `admin/handlers/hostedAssets.ts`, migration `release_mirrors`; tests:
+`test/releaseMirror.test.ts`, `test-workerd/releaseMirror.test.ts`.
+
+- **No wire change.** The signed release record carries names, roles, hashes and sizes, never
+  locations (`shared-protocol/src/release.ts`), and the feed pins records by hash. Byte URLs on
+  `dl` and the console aliases do not change; only the bytes behind them do, and they are
+  hash-identical (the R2 answer's `ETag` is the SHA-256 the record pins). `edSignature` and every
+  updater hash stay valid. `gen:corpus` and `gen:transcripts` are unchanged. Filling a synced file's missing `sha256` (from the verified hash) does change unsigned feeds: a release whose file had no recorded hash becomes eligible for the feeds that need one (Scoop, Flathub, winget, AltStore), which then list it.
+- **Verify before promote.** The expected hash is the artifact's recorded `sha256` (the
+  descriptor's, or the map's) and GitHub's own `digest` from the asset's metadata; when both exist
+  they must agree, or the file is refused `digest-mismatch` before a byte is read. A file with
+  neither is refused `no-digest`; one whose GitHub size disagrees with the row, or that exceeds
+  R2's 4.995 GiB single put, is refused before the download. The bytes then go through HA-01's
+  `ingest` (streamed, R2 handed the expected SHA-256, so R2 itself refuses anything else): a
+  mismatch stores nothing under the hash's name, writes no ref and no location, records the
+  reason with back-off, and GitHub keeps serving.
+- **Who names a source, unchanged.** The GitHub asset comes from the product's own repository in
+  `release_config` (installation token, `contents: read`) through
+  `GET /repos/{o}/{r}/releases/assets/{id}` with `Accept: application/octet-stream`; the token goes
+  to the API hop only, and the redirect may reach only `api.github.com` and GitHub's storage hosts
+  (`allowHost`), on top of the HA-01 guard. An external URL is the one a release descriptor named,
+  which only CI holding the product's publishing credential or a push to the repository can
+  submit; it goes through the same guard (no `plrs.im`, no private names, at most three re-guarded
+  hops). Mirroring runs on a sync, a resync, a descriptor ingest, the nightly backfill or an
+  operator's request, never on an end user's.
+- **The queue message names a file and nothing else.** It carries the product, the release id
+  and the artifact id; on delivery the consumer re-reads the artifact row, its locations, the
+  release configuration and the asset's metadata. A malformed message is acknowledged and dropped.
+- **Only app releases.** A pack's objects are authorised by the pack's own gate on the blob route,
+  and a package release is r2-located; an app-side copy of either would change who may fetch it,
+  so neither is ever mirrored (the owed query and the consumer both refuse a non-app release).
+  The copy is stored under `blobs/sha256/<hex>`, never `gated/`, and served under the
+  deliverable's own `dist_access` mode exactly as the GitHub-streamed bytes were.
+- **Possession and GC (§3, "The blob store").** The copy is held by its `hosted_assets` row
+  (`release-file:<sha256>`, a `hosted-asset` ref), which `ingest` earns only after reading and
+  hashing every byte; the location is held by a `release-artifact` ref
+  (`<release_id>/<artifact_id>`), written only in the batch that finds this product holding the
+  key. Neither kind is dropped by the collector. The append is one batch guarded on the artifact
+  row being what the consumer read: a descriptor that rewrote `locations_json` meanwhile wins, and
+  the file is queued again by its own ingest. The image host serves neither: a `release-file`
+  slot is not an image slot.
+- **The legacy download** (`/<p>/release/dl/…`, `/<p>/distribution/dl/…`, console host only)
+  serves the copy when the matched asset's GitHub `digest` names a key this product holds a ref
+  to, through `blobResponse` (which checks R2's stored checksum against the digest), with the
+  route's own type and cache policy; otherwise it streams from GitHub as before. The access
+  decision ahead of it is unchanged.
+- **Amplification is bounded.** One sync, resync or ingest queues at most 100 files, the nightly
+  backfill at most 100 across products, an operator request at most 200. Each queued file is held
+  off for one back-off step; a failure backs off exponentially from 15 minutes to a day. Every
+  refusal that needs no bytes (a digest or size disagreement, no digest, too large) is decided
+  from metadata before any download, so a file that can never be copied costs one metadata read
+  per back-off step. A pull is time-bounded by its size, at most 10 minutes per message, and a
+  batch starts no mirror past its 4-minute budget (above); a pull is capped at 4.995 GiB. A
+  repeated "mirror now" skips files whose message is still in flight, so it never downloads a file
+  twice.
+- **Storage cost and the switch.** Owner decision 6 turns mirroring on for every product that
+  runs Release; HA-10 adds `assets.releases.mirror` and the `assets.hosting.enabled` kill switch
+  (`mirrorSwitch.ts` is the one reader). Copies already made stay valid when it is off: their
+  locations are hash-pinned. Quotas (`assets.quota.releaseBytes`) are HA-10's.
+- **The operator action** (`POST /manage/api/products/<slug>/assets/mirror`) is product-admin
+  gated and CSRF-checked by the dispatcher like every mutation, queues work only (no byte moves on
+  the request), and writes an `assets.mirror` audit row.
 
 ### Linking an existing product to a repository (UX-23)
 
@@ -6359,9 +6758,80 @@ whether it is in an account, never the account's details (D6).
   block is written BEFORE the owner pointer moves, so no sweep running between the two can
   re-attach the licence; a move that then fails removes a block it created. Tests
   cover each path.
+- **The portal route and Cloud Sync (PX-23, 2026-10-06).** `DELETE /api/licenses/<p>/<id>` is
+  the person's "Remove from my library": the portal session, the CSRF header, ownership checked
+  before a per-product rate limit (10 a minute), then `detachLicense`, so the route can only take
+  a licence out of the caller's own account and always writes the block. For that account's
+  devices the removed licence is then the same as floating: no Cloud Sync principal while the
+  block stands (U-02's amendment above), so a removal is not a way to keep syncing a licence one
+  no longer holds. The customer copy says "not in an account", never "floating" (S-24 D5): the
+  licence keeps its email.
+- **Only a licence its key can bring back is removable (PX-23 review, lead decision
+  2026-10-06).** After a removal the block refuses every automatic path and Discover counts the
+  product as held, so a licence with no way back would be lost to the person for good: a sign-in
+  licence, a Discover claim, a keyless store or developer licence. The server decides: the licence
+  list and detail carry `removable` (an active key AND the product's `license_key_claim_enabled`),
+  the portal offers Remove only then, and the DELETE refuses any other licence with `409
+not_removable` (`reason` `no_active_key` or `key_claim_off`) before the rate limit is charged
+  or anything is written. Residual, accepted: "removable" proves a key exists, not that the
+  person still has it; the dialog says the key is the way back.
 - **Clearing an assigned licence's email is refused** on the console PATCH (`400 bad_request`):
   removing a holder is the relink tool's Make floating (I-12, LX-30), which takes a step-up, a
   reason and has an undo, rather than an unaudited field edit.
+
+### Bulk floating keys: licence batches and Disable unused keys (LX-28)
+
+`POST /manage/api/products/<slug>/license/batches` creates up to 500 floating licences of one tier
+in one labelled batch (`license_batches`, License-owned; `licenses.batch_id`), and answers every
+key once; `GET …/license/batches[/<id>]` reads a batch with its `used`, `unused` and `disabled`
+counts; `POST …/license/batches/<id>/disable-unused` disables its unused licences
+(`services/license/batches.ts`, `services/license/admin/batches.ts`; notes/S-24 §5.6, §7.1). The
+routes sit on the admin API, behind the admin session, the CSRF header and the
+platform-admin gate (tests pin each refusal: no session, no CSRF header, an operator outside the
+platform-admin group).
+
+- **T-H1: a leaked batch CSV activates strangers' devices.** A batch is the largest key leak
+  surface the platform has: up to 500 working keys in one file, made for resellers and store key
+  pools. Mitigations:
+  - **No server copy.** The Worker stores each key only as its peppered hash in `keys_index`,
+    exactly as a single create does; `license_batches` holds a label, a count, a tier, the
+    operator's session subject and a time, and the audit row (`license.batch.create`) the label,
+    the count and the tier. A test reads every text cell of every table after a 500-key batch
+    and finds no key and no key's random part. A batch's keys can never be downloaded again, so a
+    compromised console session later cannot export an old batch.
+  - **Answered once, never cached or logged.** The create answer is `Cache-Control: no-store`
+    (the admin default, pinned by the tests in both lanes), it is a POST body (no key is ever in
+    a URL, "Key-bearing deep links" above), and `src/` writes no `console.*` (R12's static guard),
+    so the keys reach no log. The CSV is built in the browser from that answer (LX-29), never by
+    the Worker.
+  - **Disable unused keys.** One action disables every ACTIVE licence of the batch that no device
+    was ever bound to: no `devices` row names it (whatever that device's status), and none of its
+    keys was ever presented successfully (`keys_index.last_used_at`, stamped by an activation or a
+    browser key session, which stays when a device later moves to another licence). It is one
+    conditional `UPDATE`, so a licence whose device was bound before the write is never
+    disabled, and it then purges from KV the token of any device bound in the instant around it,
+    as the single disable does. Audited `license.batch.disable_unused` with the count, in the
+    same D1 batch as the `UPDATE`: the audit row is written only while the batch still has the
+    count just read, and the `UPDATE` runs only after it (`changes()`), so the row always records
+    what was disabled and neither commits without the other (tested on better-sqlite3 and D1).
+  - Residual, accepted: a key the thief already activated counts as used and stays active; the
+    operator disables those licences one at a time (or revokes their keys), and the batch read
+    says how many there are. A key added to an account in the portal but never activated binds no
+    device, so it counts as unused and is disabled; its holder sees the licence under Ended and
+    asks the developer, who re-enables it. Guessing a key is not the threat (128 random bits,
+    S-24 §7.1).
+- **All or nothing.** The batch row, every licence, every key and the audit row commit in one D1
+  batch of four statements whatever the count (the licences and the keys are each one
+  `INSERT … SELECT … FROM json_each(?)`), so 500 licences stay far inside D1's per-invocation
+  query limit and a failure leaves nothing behind (an injected failure on the last key is tested
+  on better-sqlite3 and on D1 in the workerd lane). 501 is refused (`422`).
+- **No personal data.** Every batch licence is floating (no name, no email, no account: the holder
+  rule's `isFloatingLicense`); the create refuses a name, an email or profiles rather than
+  dropping them. A label is one line of 1 to 80 characters (C0 and C1 controls, U+2028, U+2029
+  and the bidi controls U+202A to U+202E and U+2066 to U+2069 refused), so it cannot break or
+  reorder the audit summary or the CSV's rows; spreadsheet formula injection from a label
+  is the CSV writer's to neutralise (LX-29). A product deletion keeps its batch rows, as it keeps
+  its audit rows: they name no customer.
 
 ### Passthrough request metadata (PX-W13)
 
@@ -6662,9 +7132,63 @@ from the keyring endpoint.
   console row; a console row holding a new manifest id is kept and reported as a conflict.
   **Residual:** claims make the console the stronger writer for those keys, so a stolen admin
   session (T7) can now pin a value that the repo cannot override until someone reverts it; the
-  claim, its author and the revert are all audited, and the system product refuses console claims
-  outright (manifest-authoritative, S-18 §4.5 item 8) until ST-20's expiring, reason-bearing
-  break-glass claims. Existing rows default to `manifest` until ST-01c's backfill runs.
+  claim, its author and the revert are all audited, and a manifest-authoritative product (below)
+  takes only expiring, reason-bearing break-glass claims. Existing rows default to `manifest`
+  until ST-01c's backfill runs.
+- **Manifest-authoritative mode and break-glass claims (ST-20, notes/S-18 §4.5 items 7–8).** A
+  product setting, `core.manifest.authoritative`, makes `.pkey/` the only writer of its claimable
+  settings: the one write path, `writeSetting()` (ST-04), refuses a console write to them (409
+  `manifest_authoritative`) unless it carries `breakGlass: { reason }` (1–500 characters; L2 in the
+  console), and that claim's `product_settings.expires_at` is at most 7 days out (a shorter
+  `breakGlass.seconds` may be asked for, never a longer one). The products PATCH, the catalog
+  publish and the row-backed settings' `PATCH …/settings/<key>` all write through it. An apply ends it
+  sooner, in the apply's own batch, when the manifest it applies declares a different value for the
+  field than the last applied snapshot did (`claimsForApply`), so committing the fix to `.pkey/`
+  takes the field back; an apply that leaves the field alone keeps the claim, so an unrelated push or
+  deploy cannot undo an incident fix. An expired claim stops counting at once (every claim guard
+  reads `expires_at > now`, no job needed) and its row is removed, audited, at the next apply. The
+  ending is guarded twice: the row is deleted only at the version read (a re-claim made since
+  survives), and the value write and the `setting.breakGlass.end` audit row run only while no live
+  claim remains. Off by default for a customer product (an operator writes it, audited; only a
+  repo-linked product may turn it on). **The system product** is manifest-authoritative by a
+  registry rule, not a row: `systemLock` on the entry, which the registry test requires for every
+  key `SYSTEM_LOCKED_KEYS` names, so no console write or deleted row turns it off (409 `locked`).
+  Its single writer is the deploy hook (§3 "The deploy hook"): a GitHub webhook push to the monorepo,
+  the console's Resync and its dry run are refused ("the system product is applied by the deploy
+  hook", reason `system_product`) before any GitHub read and without a sync-state row, so the
+  manifest applied to it is always the deployed tag's, never the default branch's head. Every resync
+  answer, the console's result panel, `product_sync_state`'s message, the deploy hook's answer and its
+  platform activity row list the live break-glass claims. **Residual:** a stolen admin session (T7)
+  can still make a break-glass claim, but it needs a reason that is audited, it ends within 7 days
+  or at the next apply that changes the field, and every deploy names it in the job log (as a
+  warning). The deploy job's log may be readable beyond the operators, so the hook's answer carries
+  each claim's key and expiry only; the reason and the claimant stay in the console and the
+  platform activity row. The mode governs every claimable setting claimed through a
+  `product_settings` row: the five column-backed claim keys and LX-06's row-backed keys (below).
+  The settings still claimed through their older markers (`services_source`, `compat_source`,
+  `access_source`, the fingerprint and auto-issue policies) and the rich ones (tier and profile
+  rows, the trusted publisher) are not yet refused by it: their markers are the deploy hook's to
+  honour, and ST-05 decides them with the generic API.
+- **Row-backed claimable settings (LX-06, `core/rowSettings.ts`).** The licensing settings
+  (`licensing.*`) and `identity.oidc.syncTierOnSignIn` keep their VALUE in the `product_settings`
+  row (`value_json`): no row means the registry default, `source = 'manifest'` the last applied
+  `.pkey/` value, `source = 'console'` a claim. A push writes them through License's and
+  Identity's `manifestIngestAlways` with the same in-statement claim guard as above (the upsert
+  and its `setting.resync` audit row are `WHERE NOT EXISTS` a live console row), so a claim made
+  mid-resync still wins; a setting the manifest stops declaring loses its manifest row and returns
+  to the default (omit-clears, S-18 §4.5 item 1), never a console row. The console writes them
+  through `GET …/settings/effective`, `PATCH` and `DELETE …/settings/<key>`: platform admin
+  session and CSRF like every admin write; the value is checked against the registry entry
+  server-side; a critical key needs a reason, enforced by the Worker, not the console; every
+  write carries a required `expectedVersion`, compared before the write and again in the write's
+  own `WHERE`; and the write goes through `writeSetting()` (ST-04), whose audit row and claim
+  apply all-or-nothing, so the loser of a race gets a 409 and leaves no row claiming it wrote. A
+  manifest-authoritative product (the system product always) takes a console write only as a
+  break-glass claim (above); Revert stays open. `upgradeOnly`
+  for `identity.oidc.syncTierOnSignIn` would let an identity provider's groups raise a licence's
+  tier, so the registry marks it security-widening (critical, at least L1 to widen, never
+  inherited from platform). Nothing reads it yet: the behaviour behind it, and the licensing
+  model's own threats (T1–T10), are LX-22's to add here when they ship.
 - **The IdP is trusted for `groups`, and `groups` is the entire admin authorization decision.**
 
 ## 4. Adversaries
@@ -6685,21 +7209,21 @@ from the keyring endpoint.
 These deserve their own section because each is treated as trusted somewhere in the code while
 originating outside the trust boundary.
 
-| Input                           | Trusted for                                                                       | Actual origin        | Control                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| ------------------------------- | --------------------------------------------------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OIDC `groups`                   | **Platform admin authority**                                                      | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| OIDC `sub`                      | License identity                                                                  | The IdP              | Admin, portal and the product flow all require it non-empty (R8-05a); an ID token without `sub` is refused with a generic 401. Portal identities are keyed by (issuer, `sub`), never by `sub` alone (I-01).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| OIDC `email`                    | Portal license linking, cross-product                                             | The IdP              | Portal and the product flow both require `email_verified: true`; the product flow stores no email otherwise (R8-05b). Admins may still set `licenses.email` to any unverified string, and portal auto-linking trusts only emails the portal itself verified.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync, read at ONE commit: the default-branch head GitHub resolves from the DB-configured repo (R6-05: no webhook- or caller-supplied ref picks the content; ST-01a), recorded with that commit in `product_manifest_snapshot`. Since ST-01b a resync skips settings, tiers and profiles the console has claimed, writes one audit row per changed setting, and applies in one batch after every check (§3 "Resync as a write path"). The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                      |
-| `.pkey/distribution`            | Outlet store identities, listings, transports (`dist_outlets`, `dist_transports`) | A linked GitHub repo | Applied on resync by Distribution's ingest hook. Its root listing (`dist_listing`) is the portal's product presentation and the media proxy's source: display data only, and art is fetched only from GitHub-hosted https URLs, typed by magic number (PX-W1). Cannot express outlet capabilities (`capabilities_not_manifest_writable`); those are operator-owned, narrow-only and clamped on read (P2b-02). The `appleId` identity must equal the operator's pin on the `asc-api-key` (P5-02f), or the App Store Connect connector is inert; it can no longer pick the app the team key acts on ("Who picks the outlet's app"). Likewise the Play `packageName` must equal the pin on the `google-service-account` (P5-03), or the Google Play connector is inert. |
-| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09). The commerce binding and claim routes are covered (SP-16): both need the device bearer, so a listed page reaches only what its own device token can.                                                                                                                                                                                                                        |
-| `X-PKey-Version` header         | Version and channel gating                                                        | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| `X-PKey-Channel` header         | Channel gating                                                                    | The client           | Normalised per WIRE-CONTRACT-V3 §5.1. It can only add a channel to check, never replace the build-implied one; a malformed value is refused, and an unknown well-formed name must be granted by name (R3-01, R3-13).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `X-PKey-Device` header          | Device identity                                                                   | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Fingerprint components          | Seat/hardware binding                                                             | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| Cached `trustedKeys`            | **Signature verification**                                                        | A user-writable file | Overrides pinned keys.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| CI OIDC claims (GitHub Actions) | **Publishing a product's releases** (a `pkeyci_` token)                           | GitHub, about a run  | Signature, issuer, product-bound audience, expiry and single-use `jti` first. Then all of: numeric `repository_id`/`repository_owner_id` (from GitHub at link, not the manifest), `job_workflow_ref` = this repo's declared workflow at the triggering ref, the declared `environment`, `ref_protected == "true"`, `github-hosted` runner, event in push/release/workflow_dispatch (P2-02).                                                                                                                                                                                                                                                                                                                                                                          |
-| CI distribution reports         | Availability and submission state per release and outlet; key observations        | A CI job (`pkeyci_`) | `distribution:report` (default grant). Validated whole before writing (declared live outlet, known release and build, vocabulary); audited. Can show a wrong state, never ship code, gate bytes or change a key: the operator-owned key inventory only records a CI-observed fingerprint, flagging a mismatch (P2b-03).                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Input                           | Trusted for                                                                       | Actual origin        | Control                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------- | --------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OIDC `groups`                   | **Platform admin authority**                                                      | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| OIDC `sub`                      | License identity                                                                  | The IdP              | Admin, portal and the product flow all require it non-empty (R8-05a); an ID token without `sub` is refused with a generic 401. Portal identities are keyed by (issuer, `sub`), never by `sub` alone (I-01).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| OIDC `email`                    | Portal license linking, cross-product                                             | The IdP              | Portal and the product flow both require `email_verified: true`; the product flow stores no email otherwise (R8-05b). Admins may still set `licenses.email` to any unverified string, and portal auto-linking trusts only emails the portal itself verified.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync, read at ONE commit: the default-branch head GitHub resolves from the DB-configured repo (R6-05: no webhook- or caller-supplied ref picks the content; ST-01a), recorded with that commit in `product_manifest_snapshot`. Since ST-01b a resync skips settings, tiers and profiles the console has claimed, writes one audit row per changed setting, and applies in one batch after every check (§3 "Resync as a write path"). The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                                                                                                               |
+| `.pkey/distribution`            | Outlet store identities, listings, transports (`dist_outlets`, `dist_transports`) | A linked GitHub repo | Applied on resync by Distribution's ingest hook. Its root listing (`dist_listing`) is the portal's product presentation: display data only. Its art is served as Polaris Key's hosted copies from the image host (HA-05 pulls, HA-07 serves); the portal's GitHub-only media proxy, typed by magic number (PX-W1), serves only a slot with no hosted copy and every slot in the kill switch's rollback. Cannot express outlet capabilities (`capabilities_not_manifest_writable`); those are operator-owned, narrow-only and clamped on read (P2b-02). The `appleId` identity must equal the operator's pin on the `asc-api-key` (P5-02f), or the App Store Connect connector is inert; it can no longer pick the app the team key acts on ("Who picks the outlet's app"). Likewise the Play `packageName` must equal the pin on the `google-service-account` (P5-03), or the Google Play connector is inert. |
+| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09). The commerce binding and claim routes are covered (SP-16): both need the device bearer, so a listed page reaches only what its own device token can.                                                                                                                                                                                                                                                                                                                                                                 |
+| `X-PKey-Version` header         | Version and channel gating                                                        | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `X-PKey-Channel` header         | Channel gating                                                                    | The client           | Normalised per WIRE-CONTRACT-V3 §5.1. It can only add a channel to check, never replace the build-implied one; a malformed value is refused, and an unknown well-formed name must be granted by name (R3-01, R3-13).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `X-PKey-Device` header          | Device identity                                                                   | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Fingerprint components          | Seat/hardware binding                                                             | The client           | Server recomputes the hwid (good), but checks it only at activation and never across devices.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Cached `trustedKeys`            | **Signature verification**                                                        | A user-writable file | Overrides pinned keys.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| CI OIDC claims (GitHub Actions) | **Publishing a product's releases** (a `pkeyci_` token)                           | GitHub, about a run  | Signature, issuer, product-bound audience, expiry and single-use `jti` first. Then all of: numeric `repository_id`/`repository_owner_id` (from GitHub at link, not the manifest), `job_workflow_ref` = this repo's declared workflow at the triggering ref, the declared `environment`, `ref_protected == "true"`, `github-hosted` runner, event in push/release/workflow_dispatch (P2-02).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| CI distribution reports         | Availability and submission state per release and outlet; key observations        | A CI job (`pkeyci_`) | `distribution:report` (default grant). Validated whole before writing (declared live outlet, known release and build, vocabulary); audited. Can show a wrong state, never ship code, gate bytes or change a key: the operator-owned key inventory only records a CI-observed fingerprint, flagging a mismatch (P2b-03).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 **CI OIDC claims are only as strong as the repository's own settings.** The policy proves the
 token came from the declared workflow, in the declared environment, on a ref a branch or tag
@@ -6916,7 +7440,7 @@ control, calls a host other than its store's API, writes from a store object wit
 routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to
-`BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a path shape is added to the image host (`matchImgPath`), a type to `IMG_HOST_TYPES`, the image host serves a ref kind other than `hosted-asset`, a non-image slot or anything gated, reads a cookie or a credential, or caches its tenancy check (HA-02); a type is added to
+`BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a path shape is added to the image host (`matchImgPath`), a type to `IMG_HOST_TYPES`, the image host serves a ref kind other than `hosted-asset`, a non-image slot or anything gated, reads a cookie or a credential, or caches its tenancy check (HA-02); release-file mirroring copies a file of anything but an app release, promotes a copy whose bytes were not checked against the recorded `sha256` and GitHub's `digest` (when both exist, both), lets a GitHub asset's pull reach a host other than the API and GitHub's storage, appends a location in any batch but the guarded one, or starts on an end user's request (HA-08); the blob route's `SERVES_NOTHING_REF_KINDS` loses a kind, a document policy's `img-src` admits a source other than `data:` and the image host, a surface hands out a developer URL while hosted copies are served, the `/media` route fetches for a slot that has a servable copy, or its per-slot proxy fallback loses any PX-W1 guard (HA-07); a type is added to
 `REGISTRY_HOST_TYPES`, the PyPI HTML fallback is admitted anywhere but its one flagged route or
 under a looser policy, a registry route answers CORS or a method other than GET, HEAD,
 Swift's `POST …/login`, F-22's four publish writes and F-23's OCI push methods, or
@@ -7020,4 +7544,4 @@ writer stores request data or an untruncated message, or the Operations route ga
 host or a credential; or, for the portal media proxy (PX-W1), it gains a source host beyond
 `isAllowedStorageHost`, takes any part of the source from the request, follows a redirect without
 re-checking it, serves a type it did not sniff (SVG above all), raises a size cap, or the portal
-CSP's `img-src` widens beyond `'self' data:`.
+CSP's `img-src` widens beyond `'self' data:` and the image host's origin (HA-07).

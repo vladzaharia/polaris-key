@@ -45,6 +45,7 @@ import { resolveAndStore, type StoreOutcome } from "./packs/sets.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import type { ManifestAppDeliverable } from "@polaris-key/manifest";
 import { ingestGithubDescriptors, readAppDeliverable } from "./descriptor.js";
+import { enqueueReleaseMirrors } from "./mirror.js";
 
 // ── The platform-facing façade ───────────────────────────────────────────────
 
@@ -282,6 +283,10 @@ export async function syncReleaseStoreReport(
         message: e instanceof Error ? e.message : String(e),
       };
     }
+    // HA-08 (S-20 §6.3): the release files this sync left without a copy of ours, queued to
+    // `pkey-assets-<env>` (the webhook's path and the admin surface's). Best-effort: it never
+    // throws, and a file it does not reach is queued by the next sync or the nightly backfill.
+    await enqueueReleaseMirrors(env, db, product, now);
   }
   return {
     statements: sync.statements.length,

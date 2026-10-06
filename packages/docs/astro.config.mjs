@@ -19,6 +19,13 @@ export default defineConfig({
   site: "https://key.plrs.im",
   base: "/docs",
   trailingSlash: "ignore",
+  // Moved pages. Each key is the old route (without the base); the value is the full new URL,
+  // base included. Astro writes a meta-refresh page at the old path, so old links and console
+  // help links keep working and check:links still sees a target.
+  redirects: {
+    // The Compose kit's page moved into the UI-kit section (docs/design/UI-KITS.md §6.2).
+    "/build/sdks/kotlin-ui": "/docs/build/ui/frameworks/compose/",
+  },
   image: { service: passthroughImageService() },
   build: {
     format: "directory",

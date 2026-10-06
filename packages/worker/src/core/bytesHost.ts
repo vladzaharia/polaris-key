@@ -48,6 +48,8 @@ import { BLOB_CSP, BYTES_HOST_TYPES } from "./blobs.js";
 import { corsPreflight, withCors } from "./cors.js";
 import { loadProductPublic, type ProductPublic } from "./products.js";
 import { isLandingPath, landingResponse } from "./bytesLanding.js";
+import { hostedImageOrigin } from "./hostedImages.js";
+import { cspImageOrigin } from "../securityHeaders.js";
 import {
   buildHooks,
   type DescriptorHooks,
@@ -174,18 +176,35 @@ const DOCUMENT_SANDBOX_TOKENS: ReadonlySet<string> = new Set([
 ]);
 const HASH_SOURCE = /^'sha256-[A-Za-z0-9+/]{43}='$/;
 
+/** What a document policy may name beyond the fixed rule (`inertDocumentPolicy`). */
+export interface DocumentPolicyOptions {
+  /**
+   * The image host's origin (HA-07: the download page shows the product's hosted icon). `img-src`
+   * may then name exactly it, beside `data:`. Written only once `cspImageOrigin` accepts it (a
+   * bare https origin); `null`, absent or anything else admits `data:` alone, as before.
+   */
+  imgOrigin?: string | null;
+}
+
 /**
  * Is `csp` a policy under which an HTML document on this host stays inert? Every directive must
  * be one of these, spelled this way, and the first four must be present:
  *
  *   sandbox [allow-downloads] [allow-top-navigation-to-custom-protocols]
  *   default-src 'none'          frame-ancestors 'none'          base-uri 'none'
- *   form-action 'none'          style-src 'sha256-…'…           img-src data:
+ *   form-action 'none'          style-src 'sha256-…'…           img-src [data:] [<image host>]
  *
- * Anything else — a script source of any kind, `connect-src`, `allow-scripts`, a second policy
- * joined by a comma, a repeated directive — and the answer is refused.
+ * `img-src` names `data:`, the image host's origin (`opts.imgOrigin`, HA-07) or both, each at most
+ * once. The image host serves only public raster images under its own sandbox policy, and an
+ * image runs nothing in a sandboxed, script-free document. Anything else — a script source of any
+ * kind, `connect-src`, `allow-scripts`, any other image source, a second policy joined by a comma,
+ * a repeated directive — and the answer is refused.
  */
-export function inertDocumentPolicy(csp: string | null): boolean {
+export function inertDocumentPolicy(
+  csp: string | null,
+  opts: DocumentPolicyOptions = {},
+): boolean {
+  const imageHost = cspImageOrigin(opts.imgOrigin);
   if (csp === null || csp.includes(",")) return false;
   const seen = new Map<string, string[]>();
   for (const part of csp.split(";")) {
@@ -215,7 +234,14 @@ export function inertDocumentPolicy(csp: string | null): boolean {
           return false;
         break;
       case "img-src":
-        if (values.length !== 1 || values[0] !== "data:") return false;
+        if (
+          !values.length ||
+          new Set(values).size !== values.length ||
+          !values.every(
+            (v) => v === "data:" || (imageHost !== null && v === imageHost),
+          )
+        )
+          return false;
         break;
       default:
         return false;
@@ -235,7 +261,7 @@ export function inertDocumentPolicy(csp: string | null): boolean {
  * `ByteRoute`). Only a 200 (or a body-less 304) of exactly `text/html; charset=utf-8`, with no
  * `Content-Disposition`, under an inert policy.
  */
-function documentPolicy(res: Response): string | null {
+function documentPolicy(res: Response, env: Env): string | null {
   if (res.status !== 200 && res.status !== 304) return null;
   if (res.status === 304 && res.body !== null) return null;
   const type = (res.headers.get("content-type") ?? "")
@@ -244,7 +270,10 @@ function documentPolicy(res: Response): string | null {
   if (res.status === 200 && type !== "text/html;charset=utf-8") return null;
   if (res.headers.has("content-disposition")) return null;
   const csp = res.headers.get("content-security-policy");
-  return inertDocumentPolicy(csp) ? csp : null;
+  // HA-07: the image host may be an image source, only while hosted copies are served.
+  return inertDocumentPolicy(csp, { imgOrigin: hostedImageOrigin(env) })
+    ? csp
+    : null;
 }
 
 /**
@@ -354,7 +383,7 @@ async function answer(
   if (isLandingPath(pathname)) {
     if (req.method !== "GET" && req.method !== "HEAD") return plain(notFound());
     const res = await landingResponse(req, env);
-    const csp = documentPolicy(res);
+    const csp = documentPolicy(res, env);
     if (csp !== null) return { res, documentCsp: csp };
     await res.body?.cancel().catch(() => undefined);
     return plain(notFound());
@@ -418,7 +447,7 @@ async function answerDocument(
     now,
     hooks: buildHooks(registry, product.services, { env, db, product, now }),
   });
-  const csp = res.status < 400 ? documentPolicy(res) : null;
+  const csp = res.status < 400 ? documentPolicy(res, env) : null;
   if (csp !== null) return { res: stripCors(res), documentCsp: csp };
   if (res.status >= 400 && !refusedType(res))
     return { res: stripCors(res), documentCsp: null };

@@ -43,10 +43,61 @@ function parseObject(raw: unknown): Record<string, unknown> | undefined {
   }
 }
 
+/** A `release_config` text column, decoded as the setting's value (NULL or empty: unset). */
+function releaseText(column: string): SettingColumnAdapter {
+  return {
+    table: "release_config",
+    keyColumn: "product",
+    columns: [column],
+    decode: (row) =>
+      typeof row?.[column] === "string" && row[column] !== ""
+        ? row[column]
+        : undefined,
+  };
+}
+
+/** A `release_config` JSON column, decoded as the setting's value. */
+function releaseJson(column: string): SettingColumnAdapter {
+  return {
+    table: "release_config",
+    keyColumn: "product",
+    columns: [column],
+    decode: (row) => {
+      const raw = row?.[column];
+      if (typeof raw !== "string" || raw === "") return undefined;
+      try {
+        return JSON.parse(raw) as unknown;
+      } catch {
+        return undefined;
+      }
+    },
+  };
+}
+
 /** Release's own keys. */
 export const RELEASE_COLUMN_ADAPTERS: Readonly<
   Record<string, SettingColumnAdapter>
 > = {
+  // ST-19b's `.pkey/release` block: manifest-only, written by link and resync (the manifest
+  // writer), decoded here for the resolver. No console writer, so a write is refused.
+  "release.github": {
+    table: "release_config",
+    keyColumn: "product",
+    columns: ["gh_owner", "gh_repo"],
+    decode: (row) =>
+      typeof row?.gh_owner === "string" &&
+      row.gh_owner !== "" &&
+      typeof row.gh_repo === "string" &&
+      row.gh_repo !== ""
+        ? { type: "github", owner: row.gh_owner, repo: row.gh_repo }
+        : undefined,
+  },
+  "release.binaryName": releaseText("binary_name"),
+  "release.channelWorkflow": releaseText("channel_workflow"),
+  "release.betaBranch": releaseText("beta_branch"),
+  "release.summaryMarker": releaseText("summary_marker"),
+  "release.manualChannels": releaseJson("manual_channels_json"),
+  "release.keys": releaseJson("release_keys_json"),
   // Manifest-only (`.pkey/release`): decoded for the resolver; no console write reaches them.
   "release.artifactPolicy": {
     table: "release_config",

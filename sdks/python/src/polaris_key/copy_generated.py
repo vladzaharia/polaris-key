@@ -85,6 +85,7 @@ COPY_CODES: Mapping[str, CopyEntry] = MappingProxyType(
         "last_link": CopyEntry("Can't remove", "This is your account's only sign-in method. Add another one before removing it."),
         "step_up_required": CopyEntry("Confirm it's you", "For your security, sign in again to continue."),
         "not_eligible": CopyEntry("Offer unavailable", "This offer isn't available to your account anymore. Refresh and try again."),
+        "not_removable": CopyEntry("Can't remove", "This license can't be added back with a key, so it stays in your library."),
         "download_auth_required": CopyEntry("Sign in to download", "Sign in or activate a license to download this."),
         "delivery_gate_missing": CopyEntry("Download unavailable", "This download isn't set up yet. Contact the developer."),
         "upstream_rate_limited": CopyEntry("Download busy", "Downloads are busy right now. Try again in a few minutes."),

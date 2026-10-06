@@ -77,6 +77,8 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
   register: [["/{product}/devices/register", ["post"]]],
   attestChallenge: [["/{product}/devices/attest/challenge", ["post"]]],
   attest: [["/{product}/devices/attest", ["post"]]],
+  // HA-06: CI pushes files into hosted-asset slots (`assets:write`).
+  assetsPush: [["/{product}/assets", ["post"]]],
 };
 
 /**
@@ -97,6 +99,9 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // PX-W10 (G24, G25): Discover's offers and "Add to library".
     ["/api/discover", ["get"]],
     ["/api/discover/{product}/claim", ["post"]],
+    // PS-04: the storefront product page, and removing a library entry.
+    ["/api/discover/{product}", ["get"]],
+    ["/api/library/{product}", ["delete"]],
     // I-07: the login card's pre-authentication routes and the account sessions.
     ["/api/signin/email/start", ["post"]],
     ["/api/signin/email/verify", ["post"]],
@@ -128,6 +133,18 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/api/me/passkeys", ["get", "post"]],
     ["/api/me/passkeys/options", ["post"]],
     ["/api/me/passkeys/{passkeyId}", ["delete"]],
+    // PX-23 (S-24 D19): Remove from my library. The licence detail GET stays narrative.
+    ["/api/licenses/{product}/{licenseId}", ["delete"]],
+    // PX-W12 (G27): sign-in methods, and Link an existing account with its 72-hour undo.
+    ["/api/me/methods", ["get"]],
+    ["/api/me/methods/{kind}/start", ["post"]],
+    ["/api/me/methods/email/verify", ["post"]],
+    ["/api/me/methods/{methodId}", ["delete"]],
+    ["/api/me/link", ["get"]],
+    ["/api/me/link/start", ["post"]],
+    ["/api/me/link/confirm", ["post"]],
+    ["/api/me/link/cancel", ["post"]],
+    ["/api/me/link/undo", ["post"]],
   ],
 };
 
@@ -151,12 +168,26 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     ["/manage/api/products/slug-check", ["get"]],
     // HA-05: the hosted-asset status read the console's Presentation page uses.
     ["/manage/api/products/{product}/assets", ["get"]],
+    // HA-06: the Presentation page's upload (claims the slot), Revert and delete-a-copy.
+    ["/manage/api/products/{product}/assets/{slot}", ["post", "delete"]],
+    // HA-08: the operator's "mirror now" for release files.
+    ["/manage/api/products/{product}/assets/mirror", ["post"]],
     // LX-26: the licence reads and writes that carry the derived holder (DELETE stays narrative).
     ["/manage/api/products/{product}/license/licenses", ["get", "post"]],
     [
       "/manage/api/products/{product}/license/licenses/{licenseId}",
       ["get", "patch"],
     ],
+    // LX-28: bulk floating keys, the batch reads and Disable unused keys.
+    ["/manage/api/products/{product}/license/batches", ["get", "post"]],
+    ["/manage/api/products/{product}/license/batches/{batchId}", ["get"]],
+    [
+      "/manage/api/products/{product}/license/batches/{batchId}/disable-unused",
+      ["post"],
+    ],
+    // LX-06: the first slice of S-18 §4.7's generic settings API (row-backed claimable keys).
+    ["/manage/api/products/{product}/settings/effective", ["get"]],
+    ["/manage/api/products/{product}/settings/{key}", ["patch", "delete"]],
   ],
 };
 
@@ -257,7 +288,6 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/identity/session/license", ["post"]],
   ["/{product}/identity/auth/start", ["get"]],
   ["/{product}/identity/auth/callback", ["get"]],
-  ["/{product}/identity/auth/poll", ["get"]],
   ["/{product}/identity/auth/logout", ["post"]],
   ["/{product}/identity/auth/device", ["get", "post"]],
   ["/{product}/identity/auth/device/start", ["post"]],
@@ -651,6 +681,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/feeds/fdroid/{channel}",
   // A-18d: the listing assets register, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/listing/assets",
+  // HA-06: the hosted-asset push, authenticated by a `pkeyci_` bearer.
+  "/{product}/assets",
   // P2b-06: the download page and its alias — HTML on the bytes host, a top-level navigation.
   "/{product}/distribution/download",
   "/{product}",
@@ -697,7 +729,11 @@ function concrete(template: string): string {
     requestId: `dl_${"A".repeat(43)}`,
     request: `rq_${"A".repeat(22)}`,
     licenseId: "lic_1",
+    batchId: "batch_1",
     passkeyId: "A".repeat(43),
+    slot: encodeURIComponent("listing.screenshot:3"),
+    kind: "google",
+    methodId: "lnk_AAAAAAAAAAAA",
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

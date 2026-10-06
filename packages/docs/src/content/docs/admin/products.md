@@ -131,7 +131,9 @@ second run creates nothing and leaves an operator's later feed settings alone. I
 `slug_taken`).
 
 The system product cannot be deleted or renamed (409, `system_product`), and the console keeps it
-out of the product switcher and the Products list.
+out of the product switcher and the Products list. It is always
+[manifest-authoritative](#manifest-authoritative-mode): its only manifest writer is the deploy hook,
+which every production deploy runs with the root `.pkey/` at the deployed commit.
 
 ### The `adminGroup` field is metadata, not a grant
 
@@ -200,8 +202,46 @@ claims it for the console: you confirm first, the row's source badge then reads 
 console**, and resyncs leave it alone. **Revert…** in that badge restores the value from the
 last applied manifest at once, or at the next resync for a product not applied since claims
 arrived. Publishing the catalog claims it the same way, with Revert in the catalog's source
-badge. The admin group is read-only there: change it in `.pkey/product`. The system product
-follows the monorepo's `.pkey/` and refuses console claims.
+badge. The admin group is read-only there: change it in `.pkey/product`.
+
+### Manifest-authoritative mode
+
+A repository-linked product can make its `.pkey/` the only writer of its **display name, licence
+defaults, web origins and catalog**: turn on **Manifest-authoritative** in Settings → Repository
+(you confirm first). Off is the default. While it is on, saving one of those in the console is
+refused unless it is a **break-glass claim**, for an incident that cannot wait for a commit:
+
+- You give a reason (up to 500 characters, kept in the audit log) and confirm a level-2 dialog.
+  The API takes the same write with `breakGlass: { reason }`; without it the answer is 409
+  `manifest_authoritative`.
+- The claim ends after **7 days**, or at the **first resync that changes that field** in
+  `.pkey/`, whichever comes first. The manifest's value then applies. A resync that leaves the
+  field alone keeps the claim, so an unrelated push cannot undo the fix.
+- Saving the setting again makes a new break-glass claim: it needs a new reason, audited like the
+  first, and restarts the 7 days.
+- The setting's row says when its claim ends, and every resync's result lists the live
+  break-glass claims and the ones it ended. Revert to manifest ends one early.
+
+To keep a break-glass value, commit it to `.pkey/`. Settings claimed before you turned the mode on
+stay claimed until you revert them. The other settings `.pkey/` declares — services and
+registration, the fingerprint and auto-issue policies, the compatibility window, the release
+access modes, tiers and profiles, and the trusted publisher — are not yet refused by the mode: a
+console edit still claims them as before. They move to it with the settings work packages ST-04
+and ST-05.
+
+**The system product** is manifest-authoritative always; the switch shows it locked, and the
+settings registry, not a stored value, fixes it (`core.manifest.authoritative`). Its manifest is the
+monorepo's root `.pkey/`, and its only manifest writer is the deploy hook (`POST /webhooks/deploy`,
+called by `deploy.yml` with every production deploy at the deployed commit; see
+[Releasing](/docs/contribute/releasing/)): a push webhook for the platform repository and a console
+Resync of it are refused with "the system product is applied by the deploy hook", and Settings
+offers no Resync for it. Today the deploy hook applies the release configuration, the package
+deliverables, the trusted publisher and each enabled service's manifest rows, plus the value of
+any field whose break-glass claim it ends. It does not yet apply the display name, the licence
+defaults, the web origins, the catalog or the admin group from `.pkey/`; applying every declared
+field is a later settings work package (ST-17). Its break-glass claims (today on the licence defaults: its display name and
+admin group cannot be changed in the console) end after 7 days or at the first deploy that
+changes the field, and each deploy's log names the live ones as warnings.
 
 Every save is checked against the [settings reference](/docs/reference/settings/): the display
 name and the admin group are at most 200 characters, the device limit at most 1,000,000 and the

@@ -3,8 +3,9 @@
  * normalised `ParsedManifest` last applied): what Revert puts back (`settingsClaims.ts`) and what
  * the resolver compares a console claim with to report drift (`resolve.ts`, ST-04).
  *
- * Only the keys a snapshot can answer are listed; any other key answers `undefined` ("no
- * manifest value known"), so neither Revert nor drift ever guesses.
+ * The column-backed claim keys are listed; a row-backed key is found at its entry's manifest path
+ * when the caller passes the entry; any other key answers `undefined` ("no manifest value
+ * known"), so neither Revert nor drift ever guesses.
  */
 
 /** The fields of a stored snapshot the claimable keys read. */
@@ -26,7 +27,11 @@ function intAtLeast(v: unknown, min: number): v is number {
  * `key`'s value in `manifest`, or `undefined` when the snapshot carries no usable one. The checks
  * are the write path's own (a blank name, a non-integer limit is not a value).
  */
-export function snapshotValue(key: string, manifest: unknown): unknown {
+export function snapshotValue(
+  key: string,
+  manifest: unknown,
+  def?: { manifest?: { path: string } },
+): unknown {
   if (!manifest || typeof manifest !== "object") return undefined;
   const m = manifest as SnapshotManifest;
   const p = m.product ?? {};
@@ -50,6 +55,27 @@ export function snapshotValue(key: string, manifest: unknown): unknown {
     case "config.catalog":
       return m.catalog && typeof m.catalog === "object" ? m.catalog : undefined;
     default:
-      return undefined;
+      return def ? valueAtPath(manifest, def) : undefined;
   }
+}
+
+/**
+ * A row-backed key's value in the snapshot: the parsed product document keeps the manifest's own
+ * paths (`licensing.<name>`, `oidc.syncTierOnSignIn`), so `product:<dotted path>` walks it (the
+ * same walk as LX-06's `manifestValueAt`).
+ */
+function valueAtPath(
+  manifest: object,
+  def: { manifest?: { path: string } },
+): unknown {
+  const path = def.manifest?.path;
+  if (!path?.startsWith("product:")) return undefined;
+  let node: unknown = manifest;
+  for (const seg of path.slice("product:".length).split(".")) {
+    if (!node || typeof node !== "object" || Array.isArray(node))
+      return undefined;
+    if (!Object.prototype.hasOwnProperty.call(node, seg)) return undefined;
+    node = (node as Record<string, unknown>)[seg];
+  }
+  return node;
 }

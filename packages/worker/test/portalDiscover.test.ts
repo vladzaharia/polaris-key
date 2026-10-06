@@ -432,18 +432,30 @@ describe("GET /api/discover (G24)", () => {
     ]);
   });
 
-  it("writes nothing: the whole database is identical before and after the listing", async () => {
+  it("writes nothing but its impression counts: every other table is identical before and after the listing", async () => {
     const env = portalEnv();
+    // Impressions are counted only with the pepper (no recomputable dedupe keys without it).
+    env.KEY_HASH_PEPPER = "test-pepper";
     const db = makeTestDb();
     await freeProduct(db, "mossgarden");
     await groupProduct(db, "aperture", "aperture-beta");
     const who = await platformAccount(env, db, ["aperture-beta"]);
 
+    // PS-04 (notes/S-21 §6.6): the route counts what it showed, in the two analytics tables
+    // alone; the evaluation itself stays a dry run (the refusing-database test above).
+    const ANALYTICS = ["storefront_daily", "storefront_seen"];
+    const without = (d: Record<string, unknown[]>) =>
+      Object.fromEntries(
+        Object.entries(d).filter(([t]) => !ANALYTICS.includes(t)),
+      );
     const before = await dump(db);
     const { status, body } = await list(env, db, who);
     expect(status).toBe(200);
     expect(body.offers).toHaveLength(2);
-    expect(await dump(db)).toEqual(before);
+    const after = await dump(db);
+    expect(without(after)).toEqual(without(before));
+    expect(after.storefront_daily).toHaveLength(2);
+    expect(after.storefront_seen).toHaveLength(2);
     expect(await getLicenseBySub(db, "mossgarden", SUB)).toBeNull();
   });
 
@@ -555,6 +567,42 @@ describe("GET /api/discover (G24)", () => {
 });
 
 describe("POST /api/discover/<p>/claim (G25)", () => {
+  it("a Discover claim has no key, so it is never removable from the library (PX-23)", async () => {
+    const env = portalEnv();
+    const db = makeTestDb();
+    await freeProduct(db, "mossgarden");
+    const who = await platformAccount(env, db);
+    const { body } = await claim(env, db, who, "mossgarden");
+    const id = body.license.id as string;
+    const detail = await call(
+      env,
+      db,
+      "GET",
+      `/api/licenses/mossgarden/${id}`,
+      who,
+    );
+    expect(detail.body).toMatchObject({ id, removable: false });
+    const refused = await call(
+      env,
+      db,
+      "DELETE",
+      `/api/licenses/mossgarden/${id}`,
+      who,
+    );
+    expect(refused).toMatchObject({
+      status: 409,
+      body: { error: "not_removable", reason: "no_active_key" },
+    });
+    // Still held, and nothing blocks it.
+    expect(
+      (await call(env, db, "GET", "/api/products/mossgarden", who)).body
+        .licenses[0].id,
+    ).toBe(id);
+    expect(await db.all("SELECT * FROM license_auto_attach_blocks")).toEqual(
+      [],
+    );
+  });
+
   it("mints, links into the library, and audits with source discover", async () => {
     const env = portalEnv();
     const db = makeTestDb();

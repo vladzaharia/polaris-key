@@ -546,7 +546,7 @@ describe("the prototype's acceptance table (obtain.mjs --self-test)", () => {
     expect(v.paths.map((p) => p.kind)).toEqual(["group"]);
   });
 
-  it("an open product's path issues no licence (PS-04 adds the library entry)", async () => {
+  it("an open product's path issues no licence: the claim adds a library entry", async () => {
     const s = await prototypeStorefront();
     expect(
       await obtainPaths(s.env, s.db, s.anon, "open-util", NOW, s.opts),
@@ -563,11 +563,20 @@ describe("the prototype's acceptance table (obtain.mjs --self-test)", () => {
         },
       ],
     });
-    // Discover's claim serves the identity paths only until PS-04: it mints nothing here.
-    expect((await claim(s.env, s.db, s.anon, "open-util")).status).toBe(409);
+    // PS-04: the claim writes the library entry and mints nothing.
+    expect(await claim(s.env, s.db, s.anon, "open-util")).toMatchObject({
+      status: 200,
+      body: { added: true, product: "open-util", kind: "entry" },
+    });
     expect(
       await s.db.all("SELECT id FROM licenses WHERE product = 'open-util'"),
     ).toEqual([]);
+    expect(
+      await s.db.all(
+        "SELECT via FROM library_entries WHERE account_id = ? AND product = 'open-util'",
+        s.anon,
+      ),
+    ).toEqual([{ via: "open" }]);
   });
 
   it("audience everyone with no path is a link, never an Add, and cannot be claimed", async () => {
@@ -797,19 +806,9 @@ describe("the obtain-path engine", () => {
     expect(await visible(s, s.member)).not.toContain("domain-app");
   });
 
-  it("a library entry hides the product once PS-04's table exists; without it nothing breaks", async () => {
+  it("a library entry hides the product (PS-04's library_entries)", async () => {
     const s = await prototypeStorefront();
     expect(await visible(s, s.anon)).toContain("open-util");
-    // PS-04's `library_entries` (notes/S-21 §6.4), created here as that migration will.
-    await s.db.run(
-      `CREATE TABLE library_entries (
-         account_id TEXT NOT NULL,
-         product    TEXT NOT NULL,
-         via        TEXT NOT NULL CHECK (via IN ('open')),
-         added_at   INTEGER NOT NULL,
-         PRIMARY KEY (account_id, product)
-       )`,
-    );
     await s.db.run(
       "INSERT INTO library_entries (account_id, product, via, added_at) VALUES (?, 'open-util', 'open', ?)",
       s.anon,

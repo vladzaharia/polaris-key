@@ -16,11 +16,21 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | Method | Path | Service | Summary |
 | --- | --- | --- | --- |
 | GET | `/manage/api/github/repositories` | admin | The repositories the Polaris Key GitHub App can read |
+| POST | `/manage/api/products/{product}/assets/{slot}` | admin | Upload a file into a hosted-asset slot (the console claims the slot) |
+| DELETE | `/manage/api/products/{product}/assets/{slot}` | admin | Revert a console upload to the manifest, or delete a hosted copy |
+| POST | `/manage/api/products/{product}/assets/mirror` | admin | Queue a copy of every release file that still owes one (release-file mirroring) |
 | GET | `/manage/api/products/{product}/assets` | admin | The product's hosted assets, their sources and pull status |
+| POST | `/manage/api/products/{product}/license/batches/{batchId}/disable-unused` | admin | Disable every licence of a batch that no device was ever bound to |
+| GET | `/manage/api/products/{product}/license/batches/{batchId}` | admin | One licence batch with its used counts |
+| GET | `/manage/api/products/{product}/license/batches` | admin | The product's licence batches, newest first, with their used counts |
+| POST | `/manage/api/products/{product}/license/batches` | admin | Create up to 500 floating licences in one labelled batch (keys shown once) |
 | GET | `/manage/api/products/{product}/license/licenses/{licenseId}` | admin | One licence, with its holder, keys, devices and overrides |
 | PATCH | `/manage/api/products/{product}/license/licenses/{licenseId}` | admin | Change a licence's terms or holder |
 | GET | `/manage/api/products/{product}/license/licenses` | admin | The product's licences, each with its derived holder, optionally filtered by holder |
 | POST | `/manage/api/products/{product}/license/licenses` | admin | Create a licence and mint its first key (shown once) |
+| PATCH | `/manage/api/products/{product}/settings/{key}` | admin | Set a product setting in the console, claiming it from the manifest |
+| DELETE | `/manage/api/products/{product}/settings/{key}` | admin | Revert a console setting to the manifest (or to its default) |
+| GET | `/manage/api/products/{product}/settings/effective` | admin | The product's row-backed settings, with the value in force and where it came from |
 | POST | `/manage/api/products/link-repo` | admin | Create a product from a repository's `.pkey/`, or dry-run it |
 | GET | `/manage/api/products/slug-check` | admin | Is a slug free for a new product |
 | GET | `/manage/api/products` | admin | Every registered product, as the console's registry, Home and switcher read it |
@@ -43,6 +53,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/.well-known/jwks.json` | core | Product signing keys (JWKS) |
 | GET | `/{product}/.well-known/polaris-trust.jws` | core | Signed trust manifest (pkey-trust+jws) |
 | GET | `/{product}/.well-known/polaris.json` | core | Product discovery document |
+| POST | `/{product}/assets` | core | Host files CI pushes into presentation and listing slots (CI) |
 | GET | `/{product}/devices/{deviceId}` | core | Read one device (self-service scope) |
 | PATCH | `/{product}/devices/{deviceId}` | core | Rename a device |
 | DELETE | `/{product}/devices/{deviceId}` | core | Deauthorize a device |
@@ -94,7 +105,6 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | GET | `/{product}/identity/auth/device` | identity | The RFC 8628 user-code page (entry form, or confirmation for `?user_code=`) |
 | POST | `/{product}/identity/auth/device` | identity | Look a typed code up, or confirm it (CSRF from the confirmation page) |
 | POST | `/{product}/identity/auth/logout` | identity | End the browser session |
-| GET | `/{product}/identity/auth/poll` | identity | Poll a browser sign-in flow |
 | GET | `/{product}/identity/auth/start` | identity | Begin browser OIDC (PKCE) — 302 to the IdP |
 | POST | `/{product}/identity/session/license` | identity | Mint a browser session from a license key |
 | GET | `/{product}/identity/session` | identity | The browser session's fused document |
@@ -118,8 +128,20 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/api/device-login/lookup` | portal | See what is asking to sign in, before deciding |
 | POST | `/api/device-login/start` | portal | Ask to sign in on this device by approving it from another one |
 | POST | `/api/discover/{product}/claim` | portal | Add a Discover product to the library |
+| GET | `/api/discover/{product}` | portal | The storefront product page |
 | GET | `/api/discover` | portal | The products the signed-in account could add for free |
+| DELETE | `/api/library/{product}` | portal | Remove a library entry |
 | GET | `/api/library` | portal | The signed-in account's library |
+| DELETE | `/api/licenses/{product}/{licenseId}` | portal | Remove a licence from the library |
+| POST | `/api/me/link/cancel` | portal | Forget this browser's link flow |
+| POST | `/api/me/link/confirm` | portal | Join the two accounts, with proof of both |
+| POST | `/api/me/link/start` | portal | Start linking an existing account |
+| POST | `/api/me/link/undo` | portal | Undo a join within 72 hours |
+| GET | `/api/me/link` | portal | The join screen, and the joins this account can still undo |
+| POST | `/api/me/methods/{kind}/start` | portal | Connect a sign-in method |
+| DELETE | `/api/me/methods/{methodId}` | portal | Disconnect a sign-in method |
+| POST | `/api/me/methods/email/verify` | portal | Connect an email address with its code |
+| GET | `/api/me/methods` | portal | The account's sign-in methods, grouped, with what each allows |
 | DELETE | `/api/me/passkeys/{passkeyId}` | portal | Remove a passkey |
 | POST | `/api/me/passkeys/options` | portal | A registration challenge for this session |
 | GET | `/api/me/passkeys` | portal | The account's passkeys, and whether one can be added |
@@ -145,7 +167,7 @@ rows answer only on the registry host, `pkg.plrs.im`, and are shown with it.
 | POST | `/api/signin/passkey/verify` | portal | Sign in with the passkey's assertion |
 | GET | `/api/signin/requests/{request}/consent` | portal | What the app gets if the signed-in person continues (app consent) |
 | GET | `/api/signin/requests/{request}` | portal | One app sign-in request, as the sign-in card renders it |
-| GET | `/media/{product}/{asset}` | portal | A product's listing art, served same-origin |
+| GET | `/media/{product}/{asset}` | portal | A product's art, as a redirect to its hosted copy |
 | GET | `/media/avatar/{asset}` | portal | An account picture, re-encoded and served same-origin |
 | GET | `https://pkg.plrs.im/` | registry | The registry host's landing page (registry host only) |
 | HEAD | `https://pkg.plrs.im/` | registry | The registry host's landing page, headers only (registry host only) |

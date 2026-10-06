@@ -104,6 +104,34 @@ export const CORE_SLICE: readonly SettingDef[] = [
     storage: { kind: "column", table: "products", column: "web_origins_json" },
   }),
   setting({
+    key: "core.manifest.authoritative",
+    scope: "product",
+    service: "core",
+    area: "general",
+    label: "Manifest-authoritative",
+    description:
+      "The product's .pkey/ is the only writer of its display name, licence defaults, web origins, catalog and licensing settings: a console edit to one is refused unless it is a break-glass claim, which needs a reason and expires after 7 days or at the first resync or deploy that changes that field, whichever comes first. Settings claimed through their older markers (services, the compatibility window, update access, the device policies) are not refused yet. Off by default; always on, and locked, for the system product.",
+    keywords: ["break-glass", "gitops", "claims", "lock", "single writer"],
+    docs: "/docs/admin/products/",
+    value: { kind: "boolean" },
+    defaultValue: false,
+    merge: "cascade",
+    ownership: "operator",
+    confirm: { on: "L1", off: "L1" },
+    // S-18 §4.5 item 8: the system product's settings come from the monorepo's root .pkey/ with
+    // each deploy, so no row can turn this off there (the system-lock rule, `rules.ts`).
+    systemLock: { value: true },
+    readers: [
+      // ST-04: the one write path decides it (`authority.ts`), for every route that claims.
+      "core/settings/authority.ts",
+      "core/settings/write.ts",
+      "core/settingsClaims.ts",
+      "admin/handlers/products.ts",
+    ],
+    storage: { kind: "scalar" },
+    since: "ST-20",
+  }),
+  setting({
     key: "core.services",
     scope: "product",
     service: "core",
@@ -123,6 +151,81 @@ export const CORE_SLICE: readonly SettingDef[] = [
     wire: ["discovery"],
     readers: ["core/services.ts", "core/registry.ts", "core/discovery.ts"],
     storage: { kind: "column", table: "products", column: "services_json" },
+  }),
+  // ST-19b: `.pkey/product`'s `devices.registration`. It shares `services_json` with
+  // `core.services` (the blob's `registration` key, `core/services.ts`): the console's Services
+  // page writes it (`core/servicesAdmin.ts`, its own Save action) and that write claims the blob
+  // through `services_source`, so it is claimable like the enablement beside it.
+  setting({
+    key: "core.registration",
+    scope: "product",
+    service: "core",
+    area: "services",
+    label: "Device registration",
+    description:
+      "Who may mint a device token: open, requires-identity or requires-license. Unset follows the services: requires-license with License on, else requires-identity with Identity on, else open. Opening it lets any client register a device.",
+    keywords: ["devices.registration", "register", "device token", "open"],
+    docs: "/docs/services/core/device-principal/",
+    value: {
+      kind: "enum",
+      values: ["open", "requires-identity", "requires-license"],
+    },
+    defaultValue: null,
+    allowUnset: true,
+    merge: "cascade",
+    ownership: "claimable",
+    manifest: { path: "product:devices.registration" },
+    securityWidening: true,
+    widensWhen: "any",
+    critical: true,
+    confirm: { change: "L1" },
+    wire: ["discovery", "refusal"],
+    readers: [
+      "core/services.ts",
+      "core/register.ts",
+      "core/discovery.ts",
+      "core/servicesAdmin.ts",
+    ],
+    storage: { kind: "column", table: "products", column: "services_json" },
+    since: "ST-19b",
+  }),
+  // ST-19b: `.pkey/product`'s `secrets.required`, names only. A manifest names a secret and never
+  // carries its value: an operator sets each value on Keys & secrets, sealed in `product_secrets`,
+  // and only its presence is shown. No Worker file reads `secrets.required` yet (the validator
+  // collects it for `pkey validate`; the console's setup check derives the required names from
+  // `oidc` and `edgeMint`), so the entry is pending on ST-08 with no readers and storage `none`.
+  // ST-08, which owns the `table:product_secrets` PENDING entry, extends this entry with that
+  // table and its readers rather than registering a second one.
+  setting({
+    key: "core.secrets",
+    scope: "product",
+    service: "core",
+    area: "keys",
+    label: "Required secrets",
+    description:
+      "The names of the sealed secrets this product needs an operator to set (a custom OIDC client's secret, an edge-mint signing key). The manifest names them, never their values; each value is set on Keys & secrets and only its presence is ever shown.",
+    keywords: [
+      "secrets.required",
+      "product secrets",
+      "sealed",
+      "missing secrets",
+    ],
+    docs: "/docs/admin/secrets-and-keys/",
+    value: {
+      kind: "json",
+      schema:
+        "secrets.required: uppercase names or { name } (product.schema.json)",
+    },
+    defaultValue: null,
+    allowUnset: true,
+    merge: "cascade",
+    ownership: "manifest",
+    manifest: { path: "product:secrets.required" },
+    sensitivity: "secret",
+    confirm: { change: "L0" },
+    storage: { kind: "none" },
+    since: "ST-19b",
+    pending: { wp: "ST-08" },
   }),
   setting({
     key: "core.presentation",

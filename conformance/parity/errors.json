@@ -217,7 +217,7 @@
       "code": "signin_expired",
       "kind": "wire",
       "service": "identity",
-      "description": "400 from the login card: this browser's email sign-in or email gate is gone (used, expired, cancelled, or started in another browser). Its cookie is cleared; start again (I-07)."
+      "description": "400 from the login card: this browser's email sign-in, email gate or passkey request (signing in, or adding a passkey) is gone (used, expired, cancelled, or started in another browser); start again (I-07, I-16). The flow's cookie is cleared, except where a newer flow may have replaced it: a lost race or a double click leaves it alone (PX-W4)."
     },
     {
       "code": "invalid_code",
@@ -253,25 +253,31 @@
       "code": "link_conflict",
       "kind": "wire",
       "service": "identity",
-      "description": "409: the sign-in method is already attached to another Polaris Key account. One link belongs to exactly one account; nothing moves, and the caller offers to sign in to that account or to join the two with proof of both (S-16 §5.1; I-05's link engine, surfaced by the portal's sign-in methods, I-11)."
+      "description": "409: the sign-in method is already attached to another Polaris Key account. One link belongs to exactly one account; nothing moves, and the caller offers to sign in to that account or to join the two with proof of both (S-16 §5.1; I-05's link engine, surfaced by the portal's sign-in methods and account linking, PX-W12)."
     },
     {
       "code": "last_link",
       "kind": "wire",
       "service": "identity",
-      "description": "409: removing this sign-in method would leave the account with none, and an account is never orphaned (S-16 §5.1; I-05's link engine, surfaced by the portal's sign-in methods, I-11)."
+      "description": "409: removing this sign-in method (a provider link or a passkey) would leave the account with none, and an account is never orphaned (S-16 §5.1; I-05's link engine, surfaced by the portal's sign-in methods, I-11, passkeys, I-16, and account linking, PX-W12)."
     },
     {
       "code": "step_up_required",
       "kind": "wire",
       "service": "identity",
-      "description": "401 from the customer portal's POST /api/licenses/<p>/<id>/keys: minting a new licence key needs a sign-in at most `maxAgeSeconds` old; sign in again and retry."
+      "description": "401 from the customer portal: minting a new licence key (POST /api/licenses/<p>/<id>/keys), adding or removing a passkey, connecting or disconnecting a sign-in method, linking or unlinking accounts (PX-W12) needs a sign-in at most `maxAgeSeconds` old; sign in again and retry."
     },
     {
       "code": "not_eligible",
       "kind": "wire",
       "service": "identity",
       "description": "409 from the customer portal's POST /api/discover/<p>/claim: the product's auto-issue policy no longer offers it to this account (the offer was withdrawn or changed since it was listed), or it was never a Discover offer. Nothing was minted; refresh GET /api/discover."
+    },
+    {
+      "code": "not_removable",
+      "kind": "wire",
+      "service": "identity",
+      "description": "409 from the customer portal's DELETE /api/licenses/<p>/<id> (Remove from my library, PX-23): the licence could never be added back, so it is not removed. `reason` is `no_active_key` (no active licence key: a sign-in licence, a Discover claim, a keyless store or developer licence) or `key_claim_off` (the product turned off adding a licence by its key). Nothing was written; the licence list and detail say `removable: false` for it."
     },
     {
       "code": "download_auth_required",

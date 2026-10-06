@@ -10,7 +10,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../../ui/DropdownMenu.js";
+import { useMediaQuery } from "../../ui/data-table/DataTable.js";
 import { Kbd } from "./bits.js";
+import { AppearanceMenuItems } from "./ThemeMenu.js";
 import { r } from "../routes.js";
 import { Link } from "../router.js";
 
@@ -20,6 +22,12 @@ export function versionChipLabel(v: PlatformIdentity): string {
   if (!build) return "Development build";
   return v.environment ? `${build} · ${v.environment}` : build;
 }
+
+/**
+ * Tailwind's `max-sm` (under 640 px): the top bar hides its theme menu there (`TopBar`), and this
+ * menu carries the theme and motion choices instead.
+ */
+export const NARROW_BAR_QUERY = "(width < 40rem)";
 
 /** "18:40" in the viewer's locale and clock (ADMIN.md §5.9). */
 export function formatSessionEnd(epochSeconds: number): string {
@@ -34,7 +42,8 @@ export function formatSessionEnd(epochSeconds: number): string {
  * the session is a hard 8 h, so the time is worth knowing before a long edit), the running build
  * (a chip linking to Platform → Deployment, so the version is one click from every page; notes/S-13
  * §9.1), the shortcut sheet, the docs home and Sign out. The theme lives in its own menu beside
- * this one.
+ * this one, except under 640 px, where the bar has no room for it and this menu carries the theme
+ * and motion choices.
  */
 export function UserMenu({
   me,
@@ -47,6 +56,7 @@ export function UserMenu({
   onShortcuts: () => void;
   onSignOut: () => void;
 }): React.ReactElement {
+  const narrow = useMediaQuery(NARROW_BAR_QUERY);
   const initials = me.name
     .split(/\s+/)
     .map((s) => s[0])
@@ -100,6 +110,12 @@ export function UserMenu({
             Docs home
           </a>
         </DropdownMenuItem>
+        {narrow ? (
+          <>
+            <DropdownMenuSeparator />
+            <AppearanceMenuItems />
+          </>
+        ) : null}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onSignOut}>
           <LogOut aria-hidden />

@@ -9,6 +9,7 @@ import {
   deviceOsName,
   licenseOrigin,
   licenseStatus,
+  mediaUrl,
   shortOrigin,
   platformsOnlyNote,
   quickAction,
@@ -174,6 +175,64 @@ describe("status model (§5.3), first match wins", () => {
     expect(shortOrigin(keyless)).toBeNull();
     for (const o of [signIn, key, keyless])
       expect(licenseOrigin(o)).not.toMatch(/Account-wide/);
+  });
+
+  it("follows the Worker's origin when it sends one (PX-23, S-24 D21)", () => {
+    const last = [{ last4: "3WPLDA" }];
+    const dev = { developer: "Little Fern" };
+    // A licence the developer assigned reads From <Developer>, though it has a key.
+    const assigned = license({ product: "a", origin: "developer" });
+    expect(licenseOrigin(assigned, { ...dev, keys: last })).toBe(
+      "From Little Fern",
+    );
+    expect(licenseOrigin(assigned)).toBe("From the developer");
+    expect(licenseOrigin(assigned, { developer: "  " })).toBe(
+      "From the developer",
+    );
+    expect(shortOrigin(assigned, dev)).toBe("From Little Fern");
+    expect(shortOrigin(assigned)).toBeNull();
+    // A key the person added.
+    const added = license({ product: "a", origin: "key" });
+    expect(licenseOrigin(added, { keys: last })).toBe("Key ending 3WPLDA");
+    expect(licenseOrigin(added)).toBe("Added with a key");
+    // The store comes with the origin; the product view's store is only a fallback.
+    const steamKey = license({
+      product: "a",
+      origin: "store-key",
+      originStore: "steam",
+    });
+    expect(licenseOrigin(steamKey, { keys: last })).toBe(
+      "Steam key ending 3WPLDA",
+    );
+    expect(shortOrigin(steamKey)).toBe("Steam key");
+    const appStore = license({
+      product: "a",
+      keyCount: 0,
+      origin: "store",
+      originStore: "app-store",
+    });
+    expect(licenseOrigin(appStore)).toBe("From the App Store");
+    const signIn = license({ product: "a", keyCount: 0, origin: "signin" });
+    expect(licenseOrigin(signIn, dev)).toBe("From signing in");
+    // A store origin with no store named reads by its other facts, never " key" or "From ".
+    expect(
+      licenseOrigin(license({ product: "a", origin: "store-key" }), {
+        keys: last,
+      }),
+    ).toBe("Key ending 3WPLDA");
+    expect(shortOrigin(license({ product: "a", origin: "store-key" }))).toBe(
+      "Key",
+    );
+    expect(
+      licenseOrigin(
+        license({ product: "a", keyCount: 0, origin: "store" }),
+        dev,
+      ),
+    ).toBe("From Little Fern");
+    // An origin this build does not know reads by the older facts.
+    expect(licenseOrigin(license({ product: "a", origin: "gift" }))).toBe(
+      "Added with a key",
+    );
   });
 
   it("the best license is the most favourable, then the newest", () => {
@@ -481,6 +540,35 @@ describe("the server-side library (PX-W1: G1, G5, G16)", () => {
     ]);
     expect(p!.presentation.iconUrl).toBeNull();
     expect(p!.presentation.headerUrl).toBeNull();
+  });
+
+  it("takes a hosted copy on the image host (HA-07): the content-addressed shape only", () => {
+    const sha = "a".repeat(64);
+    const icon = `https://img.plrs.im/x/a/${sha}/128.webp`;
+    const header = `https://img.plrs.im/x/a/${sha}`;
+    const [p] = build([lic()], [], NOW_S, [
+      item({ iconUrl: icon, headerUrl: header }),
+    ]);
+    expect(p!.presentation.iconUrl).toBe(icon);
+    expect(p!.presentation.headerUrl).toBe(header);
+    // A local image host over loopback HTTP, for development.
+    expect(mediaUrl(`http://localhost:8788/x/a/${sha}`)).toBe(
+      `http://localhost:8788/x/a/${sha}`,
+    );
+    for (const refused of [
+      "https://cdn.example/icon.png",
+      `http://img.plrs.im/x/a/${sha}`,
+      `https://img.plrs.im:8443/x/a/${sha}`,
+      `https://u:p@img.plrs.im/x/a/${sha}`,
+      `https://img.plrs.im/x/a/${sha}?v=1`,
+      `https://img.plrs.im/x/a/${sha}#f`,
+      `https://img.plrs.im/x/a/${sha.toUpperCase()}`,
+      `https://img.plrs.im/x/a/${sha}/128.png`,
+      `https://img.plrs.im/x/icon`,
+      `javascript:alert(1)`,
+      `data:image/png;base64,AAAA`,
+    ])
+      expect(mediaUrl(refused), refused).toBeNull();
   });
 
   it("a full licence is 'Device limit reached', and its action frees a device", () => {

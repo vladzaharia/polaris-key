@@ -35,7 +35,8 @@ const TILE: Record<number, string> = {
 };
 
 /**
- * The product icon: the listing icon through the media proxy (G1), else tint and letter.
+ * The product icon: the product's hosted icon on the image host (HA-07; the same-origin media
+ * proxy in HA-10's rollback, G1), else tint and letter.
  *
  * An icon image is drawn edge to edge at the size, with no background, border, ring or padding
  * of ours: the developer's own shape is the frame, so a shaped icon (a macOS squircle with
@@ -59,7 +60,7 @@ export function ProductIcon({
   slug: string;
   name: string;
   tint: string | null;
-  /** A same-origin `/media/…` URL, or null for the fallback. */
+  /** An image-host URL (or a same-origin `/media/…` one), or null for the fallback. */
   src?: string | null;
   size: 20 | 24 | 40 | 48 | 64 | 112;
   /** Over art: a drop shadow on the image, elevation on the tile. */
@@ -78,6 +79,9 @@ export function ProductIcon({
         alt=""
         aria-hidden
         data-art="image"
+        // The image host answers `Access-Control-Allow-Origin: *`, so an anonymous CORS load (no
+        // credentials) lets `iconShape` read its corner pixel, as the console's logo does.
+        crossOrigin="anonymous"
         decoding="async"
         onError={() => setFailed(true)}
         onLoad={(e) => setShape(iconShape(e.currentTarget))}

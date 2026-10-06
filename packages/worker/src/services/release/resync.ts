@@ -21,9 +21,12 @@ import { Catalog } from "@polaris-key/catalog";
 import type { Db, DbStatement, Env } from "../../core/platform.js";
 import {
   auditValue,
-  claimedKeys,
   claimGuardParams,
   CLAIMED_SQL,
+  claimsForApply,
+  endBreakGlassStatements,
+  systemResyncRefusal,
+  type BreakGlassClaim,
   countLicensesUsingTier,
   getActiveSchema,
   getManifestSnapshot,
@@ -33,6 +36,7 @@ import {
   isSealedEnvelope,
   listProfiles,
   listTiers,
+  liveRowClaimKeys,
   nextSchemaVersion,
   parsePayload,
   parseWebOrigins,
@@ -75,6 +79,7 @@ import { releaseStoreSync } from "./sync.js";
 import { bumpReleaseGeneration } from "./ghCache.js";
 import { manifestDeliverableStatements } from "./deliverables.js";
 import { resolveAndStore, type StoreOutcome } from "./packs/sets.js";
+import { enqueueReleaseMirrors } from "./mirror.js";
 import { releaseKeysForSync } from "./records.js";
 import { parseServices, serializeServices } from "../../core/services.js";
 import type { ManifestIngest } from "../../core/registry.js";
@@ -130,6 +135,17 @@ export type ResyncResult =
        * when none.
        */
       warnings?: AssetWarning[];
+      /**
+       * ST-20 (S-18 §4.5 item 7): the live break-glass claims after this resync (a
+       * manifest-authoritative product's time-boxed console claims; each is also in `claimed`).
+       * Every resync summary lists them. Absent when none.
+       */
+      breakGlass?: BreakGlassClaim[];
+      /**
+       * ST-20: the break-glass claims this resync ended, because their 7 days ran out or the
+       * manifest changed the field; the manifest's value applied. Absent when none.
+       */
+      breakGlassEnded?: { key: ClaimKey; why: "expired" | "changed" }[];
     }
   | { ok: false; error: string; errors?: string[] };
 
@@ -144,6 +160,11 @@ export function resyncNotes(result: Extract<ResyncResult, { ok: true }>): {
   const lines = [
     ...(result.refused ?? []).map((r) => `${r.code}: ${r.message}`),
     ...(result.conflicts ?? []).map((c) => `conflict ${c.path}: ${c.message}`),
+    // ST-20: every resync summary lists the live break-glass claims (not errors: no note row).
+    ...(result.breakGlass ?? []).map(
+      (b) =>
+        `break-glass claim on ${b.key} until ${new Date(b.expiresAt * 1000).toISOString()}`,
+    ),
   ];
   const notes = [
     ...(result.refused ?? []),
@@ -187,6 +208,13 @@ export async function resyncRepo(
   fetchImpl: FetchImpl = fetch,
   ingest?: ManifestIngest,
 ): Promise<ResyncResult> {
+  // ST-20 (S-18 §4.5 item 8): the system product has one writer, the deploy hook, which applies
+  // the root `.pkey/` at the deployed commit. A webhook push or a console resync would apply the
+  // default branch's head instead, so two deploys of one commit could differ: refused, before any
+  // GitHub read or write.
+  const system = await getProduct(db, slug);
+  const refusal = system ? systemResyncRefusal(system) : null;
+  if (refusal) return { ok: false, error: refusal };
   let result: ResyncResult;
   let dropped: string[];
   try {
@@ -271,7 +299,10 @@ async function applyRepoManifest(
   // The incoming catalog, built once (see `screenCatalog`): screened here when it changed and the
   // console has not claimed it, and asked by the profile carry-forward below (R2) which keys are
   // still managed secrets.
-  const claims = await claimedKeys(db, slug, now);
+  // ST-20: a break-glass claim whose field this manifest changes (or whose 7 days ran out) ends
+  // in this apply's batch, so it is not in `claims` and the field applies like any other.
+  const applyClaims = await claimsForApply(db, slug, manifest, now);
+  const claims = applyClaims.claimed;
   const nextCatalogJson = JSON.stringify(manifest.catalog);
   const activeSchema = await getActiveSchema(db, slug);
   const catalogClaimed = claims.has("config.catalog");
@@ -322,7 +353,9 @@ async function applyRepoManifest(
   const nextProfileIds = new Set(manifest.profiles.map((p) => p.id));
   const nextTierIds = new Set(manifest.tiers.map((t) => t.id));
   const refused: { code: string; path: string; message: string }[] = [];
-  const claimed: string[] = [];
+  // LX-06: row-backed settings the console has claimed. The owning services' ingest hooks skip
+  // them in SQL; they are named here so the result says what was left alone.
+  const claimed: string[] = await liveRowClaimKeys(db, slug, now);
   const conflicts: { path: string; message: string }[] = [];
   const skip = (
     kind: "tier" | "profile",
@@ -406,7 +439,13 @@ async function applyRepoManifest(
 
   // ── the writes: ONE batch ───────────────────────────────────────────────────
   const updated: string[] = [];
-  const stmts: DbStatement[] = [];
+  // The ended break-glass claims go first, so every claim guard below already sees them gone.
+  const stmts: DbStatement[] = await endBreakGlassStatements(
+    db,
+    slug,
+    applyClaims.ended,
+    { actor: RESYNC_ACTOR, sha: appliedSha, now },
+  );
   const audits: DbStatement[] = [];
   const auditSetting = (
     key: string,
@@ -908,6 +947,9 @@ async function applyRepoManifest(
   // ...and may change a pack's binding or channels, or the store's app releases (P4-12). A
   // failed resolution clears the sets and is answered; it never fails the resync.
   if (rel) packSets = await resolveAndStore(db, slug, now);
+  // HA-08 (S-20 §6.3): the release files the store's rows left without a copy of ours, queued
+  // after the batch and best-effort (`enqueueReleaseMirrors` never throws).
+  if (rel) await enqueueReleaseMirrors(env, db, slug, now);
 
   // HA-05 (notes/S-20 §6.4): the hosted-asset pulls this manifest owes, enqueued AFTER the batch
   // (a new slot's row references the product) and best-effort (`syncHostedAssets` never throws).
@@ -930,6 +972,15 @@ async function applyRepoManifest(
     ...(conflicts.length > 0 ? { conflicts } : {}),
     ...(packSets && (!packSets.ok || packSets.sets > 0) ? { packSets } : {}),
     ...(assets.warnings.length > 0 ? { warnings: assets.warnings } : {}),
+    ...(applyClaims.live.length > 0 ? { breakGlass: applyClaims.live } : {}),
+    ...(applyClaims.ended.length > 0
+      ? {
+          breakGlassEnded: applyClaims.ended.map((e) => ({
+            key: e.key,
+            why: e.why,
+          })),
+        }
+      : {}),
   };
 }
 

@@ -205,6 +205,65 @@ export interface ManifestOidc {
   clientSecretSecret: string;
   redirectUris: string[];
   groupRoleMap: Record<string, unknown>;
+  /**
+   * `oidc.syncTierOnSignIn` (S-19 §7.5, LX-06): whether a sign-in may move a licence to the tier
+   * the provider's groups map to. Present only when declared; the Worker stores it as the
+   * claimable `identity.oidc.syncTierOnSignIn` setting.
+   */
+  syncTierOnSignIn?: OidcSyncTierOnSignIn;
+}
+
+// ── S-19 §7.13's per-product licensing settings (LX-06, plans/LX-01.md §3.2) ─────────────────
+//
+// Each is a claimable `product_settings` row in the Worker's settings registry: the manifest
+// seeds it, a console edit claims it, and Revert returns it to the manifest. The vocabularies and
+// bounds live here, once, so the validator, the JSON Schema test and the registry entries
+// (`worker/src/services/license/licensingSettings.ts`) use the same values.
+
+/** `licensing.entitlementModel`: today's per-licence model, or S-19's combined model (OC). */
+export const LICENSING_ENTITLEMENT_MODELS = ["legacy", "combined"] as const;
+/** `licensing.entitlementHolder`: whose entitlements a device sees (S-19 decision 4). */
+export const LICENSING_ENTITLEMENT_HOLDERS = ["device", "owner"] as const;
+/** `licensing.anchorPolicy`: which of a holder's licences a device runs on (S-19 §7.5). */
+export const LICENSING_ANCHOR_POLICIES = [
+  "rank-first",
+  "most-free-seats",
+  "oldest",
+] as const;
+/**
+ * `licensing.reanchor`: when a device may move to a better anchor. S-19 §7.5 also names
+ * `onRefresh`, which is refused until LX-21 builds it; it joins this list then.
+ */
+export const LICENSING_REANCHOR_VALUES = ["never", "onActivation"] as const;
+/** `licensing.refundGraceHours`: at most a week (plans/LX-01.md §8 Q3); 0 revokes at once. */
+export const LICENSING_REFUND_GRACE_HOURS_MAX = 168;
+/** `licensing.dunningGraceDays`: at most 30 days of billing-retry grace (plans/LX-01.md §3.2). */
+export const LICENSING_DUNNING_GRACE_DAYS_MAX = 30;
+/** `oidc.syncTierOnSignIn`: never, or only towards a higher-ranked tier. */
+export const OIDC_SYNC_TIER_ON_SIGN_IN_VALUES = ["off", "upgradeOnly"] as const;
+
+export type LicensingEntitlementModel =
+  (typeof LICENSING_ENTITLEMENT_MODELS)[number];
+export type LicensingEntitlementHolder =
+  (typeof LICENSING_ENTITLEMENT_HOLDERS)[number];
+export type LicensingAnchorPolicy = (typeof LICENSING_ANCHOR_POLICIES)[number];
+export type LicensingReanchor = (typeof LICENSING_REANCHOR_VALUES)[number];
+export type OidcSyncTierOnSignIn =
+  (typeof OIDC_SYNC_TIER_ON_SIGN_IN_VALUES)[number];
+
+/**
+ * The `licensing:` block's settings, as declared: a member is present only when the manifest
+ * declares it, so the Worker can tell "the manifest says the default" from "the manifest says
+ * nothing" (an undeclared setting falls back to the registry default).
+ */
+export interface ManifestLicensingSettings {
+  entitlementModel?: LicensingEntitlementModel;
+  entitlementHolder?: LicensingEntitlementHolder;
+  clampGraceToExpiry?: boolean;
+  anchorPolicy?: LicensingAnchorPolicy;
+  reanchor?: LicensingReanchor;
+  refundGraceHours?: number;
+  dunningGraceDays?: number;
 }
 
 /** A product-declared companion-application probe the client answers present/absent. */
@@ -512,6 +571,12 @@ export interface ParsedManifest {
   provisioning: ManifestProvisioning[];
   fingerprint?: ManifestFingerprint;
   autoIssue?: ManifestAutoIssue;
+  /**
+   * The `licensing:` block's settings (LX-06): present only when it declares at least one. The
+   * Worker's registry entries name them by path (`product:licensing.<name>`), and Revert reads
+   * them back from the stored snapshot of this object.
+   */
+  licensing?: ManifestLicensingSettings;
   release?: ManifestRelease;
   edgeMint: ManifestEdgeMint[];
   /**
@@ -1477,6 +1542,7 @@ function validateDocuments(
       );
     }
   }
+  validateLicensingSettings(licensing, errors);
 
   if (schemaAlwaysRequired || modules.includes("config")) {
     if (requireSchema(errors, manifest.schema)) {
@@ -1773,6 +1839,19 @@ function validateDocuments(
           "/oidc/provider",
           "invalid_oidc_provider",
           "oidc.provider must be platform or custom.",
+        );
+      }
+      // LX-06: the claimable `identity.oidc.syncTierOnSignIn` setting (plans/LX-01.md §3.2).
+      if (
+        oidc.syncTierOnSignIn !== undefined &&
+        !isOneOf(oidc.syncTierOnSignIn, OIDC_SYNC_TIER_ON_SIGN_IN_VALUES)
+      ) {
+        add(
+          errors,
+          "product",
+          "/oidc/syncTierOnSignIn",
+          "invalid_oidc_sync_tier_on_sign_in",
+          "oidc.syncTierOnSignIn must be off or upgradeOnly.",
         );
       }
       if (provider === "custom") {
@@ -4429,7 +4508,11 @@ export function parseManifest(
       redirectUris: arrayAt(oidcRoot, "redirectUris")?.filter(isString) ?? [],
       groupRoleMap: asRecord(oidcRoot.groupRoleMap),
     };
+    if (isOneOf(oidcRoot.syncTierOnSignIn, OIDC_SYNC_TIER_ON_SIGN_IN_VALUES))
+      parsed.oidc.syncTierOnSignIn = oidcRoot.syncTierOnSignIn;
   }
+  const licensingSettings = normalizeLicensingSettings(licensing);
+  if (licensingSettings) parsed.licensing = licensingSettings;
   if (releaseDoc) parsed.release = normalizeRelease(releaseDoc);
   if (
     validation.enabledModules.includes("distribution") ||
@@ -5636,6 +5719,126 @@ function secretUrlTemplateProblem(value: unknown): string | null {
     return "must not place the {claim} placeholder in the host";
   }
   return null;
+}
+
+/** An integer in `[min, max]`. */
+function integerIn(v: unknown, min: number, max: number): boolean {
+  return typeof v === "number" && Number.isInteger(v) && v >= min && v <= max;
+}
+
+/**
+ * LX-06 (plans/LX-01.md §3.1, §3.2): S-19's per-product licensing settings, one rule per field.
+ * Every field is optional; an undeclared one keeps the registry default. Each `add` is written
+ * out with literal arguments so the generated validation-codes page lists it.
+ */
+function validateLicensingSettings(
+  licensing: Record<string, unknown>,
+  errors: ValidationMessage[],
+): void {
+  const declared = (field: string): boolean => licensing[field] !== undefined;
+  if (
+    declared("entitlementModel") &&
+    !isOneOf(licensing.entitlementModel, LICENSING_ENTITLEMENT_MODELS)
+  )
+    add(
+      errors,
+      "product",
+      "/licensing/entitlementModel",
+      "invalid_licensing_entitlement_model",
+      "licensing.entitlementModel must be legacy or combined.",
+    );
+  if (
+    declared("entitlementHolder") &&
+    !isOneOf(licensing.entitlementHolder, LICENSING_ENTITLEMENT_HOLDERS)
+  )
+    add(
+      errors,
+      "product",
+      "/licensing/entitlementHolder",
+      "invalid_licensing_entitlement_holder",
+      "licensing.entitlementHolder must be device or owner.",
+    );
+  if (
+    declared("clampGraceToExpiry") &&
+    typeof licensing.clampGraceToExpiry !== "boolean"
+  )
+    add(
+      errors,
+      "product",
+      "/licensing/clampGraceToExpiry",
+      "invalid_licensing_clamp_grace_to_expiry",
+      "licensing.clampGraceToExpiry must be true or false.",
+    );
+  if (
+    declared("anchorPolicy") &&
+    !isOneOf(licensing.anchorPolicy, LICENSING_ANCHOR_POLICIES)
+  )
+    add(
+      errors,
+      "product",
+      "/licensing/anchorPolicy",
+      "invalid_licensing_anchor_policy",
+      "licensing.anchorPolicy must be rank-first, most-free-seats or oldest.",
+    );
+  if (
+    declared("reanchor") &&
+    !isOneOf(licensing.reanchor, LICENSING_REANCHOR_VALUES)
+  )
+    add(
+      errors,
+      "product",
+      "/licensing/reanchor",
+      "invalid_licensing_reanchor",
+      "licensing.reanchor must be never or onActivation (onRefresh is not available yet).",
+    );
+  if (
+    declared("refundGraceHours") &&
+    !integerIn(licensing.refundGraceHours, 0, LICENSING_REFUND_GRACE_HOURS_MAX)
+  )
+    add(
+      errors,
+      "product",
+      "/licensing/refundGraceHours",
+      "invalid_licensing_refund_grace_hours",
+      "licensing.refundGraceHours must be an integer from 0 to 168.",
+    );
+  if (
+    declared("dunningGraceDays") &&
+    !integerIn(licensing.dunningGraceDays, 0, LICENSING_DUNNING_GRACE_DAYS_MAX)
+  )
+    add(
+      errors,
+      "product",
+      "/licensing/dunningGraceDays",
+      "invalid_licensing_dunning_grace_days",
+      "licensing.dunningGraceDays must be an integer from 0 to 30.",
+    );
+}
+
+/** The `licensing:` block's declared settings, validated above; `undefined` when none. */
+function normalizeLicensingSettings(
+  licensing: Record<string, unknown>,
+): ManifestLicensingSettings | undefined {
+  const out: ManifestLicensingSettings = {};
+  if (isOneOf(licensing.entitlementModel, LICENSING_ENTITLEMENT_MODELS))
+    out.entitlementModel = licensing.entitlementModel;
+  if (isOneOf(licensing.entitlementHolder, LICENSING_ENTITLEMENT_HOLDERS))
+    out.entitlementHolder = licensing.entitlementHolder;
+  if (typeof licensing.clampGraceToExpiry === "boolean")
+    out.clampGraceToExpiry = licensing.clampGraceToExpiry;
+  if (isOneOf(licensing.anchorPolicy, LICENSING_ANCHOR_POLICIES))
+    out.anchorPolicy = licensing.anchorPolicy;
+  if (isOneOf(licensing.reanchor, LICENSING_REANCHOR_VALUES))
+    out.reanchor = licensing.reanchor;
+  if (
+    integerIn(licensing.refundGraceHours, 0, LICENSING_REFUND_GRACE_HOURS_MAX)
+  )
+    out.refundGraceHours = licensing.refundGraceHours as number;
+  if (
+    integerIn(licensing.dunningGraceDays, 0, LICENSING_DUNNING_GRACE_DAYS_MAX)
+  )
+    out.dunningGraceDays = licensing.dunningGraceDays as number;
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 function positiveInteger(v: unknown): boolean {

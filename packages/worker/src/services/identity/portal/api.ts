@@ -1,4 +1,5 @@
 import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
+import type { SettingsRegistry } from "../../../core/settings/registry.js";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
@@ -78,15 +79,32 @@ import {
 } from "./accountSessions.js";
 import { avatarUrl, handleCardApi, turnstileSiteKey } from "../card/index.js";
 import { handleAccountPasskeys } from "../passkeys/routes.js";
+import {
+  LINK_FLOW_COOKIE,
+  clearAccountRealmCookie,
+} from "../../../core/accountCookies.js";
+import { handleAccountMethods } from "./methods.js";
+import { handleAccountLink } from "./link.js";
 import { clearDeviceSubjects } from "../../../core/subjectHooks.js";
-import { libraryView, productView } from "./library.js";
+import {
+  handleLibraryEntryRemove,
+  libraryView,
+  productView,
+} from "./library.js";
 import { signInConsentView, signInRequestView } from "../passthrough/routes.js";
 import {
   handleActivatePreview,
   handleClaimKey,
   handleDeviceRename,
   handleKeyReissue,
+  handleLicenseRemove,
 } from "./selfService.js";
+import {
+  licenseStores,
+  notRemovableReason,
+  portalLicenseOrigin,
+  storeKey,
+} from "./origin.js";
 import {
   portalEmailConfigured,
   sendNotice,
@@ -100,6 +118,7 @@ import {
   discoverCount,
   handleDiscover,
   handleDiscoverClaim,
+  handleStorefrontPage,
 } from "./discover.js";
 import {
   DEVICE_LOGIN_APPROVE_LIMIT,
@@ -188,38 +207,76 @@ function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
   };
 }
 
+/**
+ * One licence as the portal lists it. `origin` and `originStore` say how it reached the person
+ * (PX-23, `origin.ts`); `store` is the store of an active purchase on it, which the caller reads
+ * through License's provenance hook ({@link licenseStores}), `null` when there is none or no hook.
+ */
 export async function shapeLicenseSummary(
   db: Db,
   row: PortalLicenseRow,
   now: number,
+  store: string | null = null,
 ): Promise<Record<string, unknown>> {
   const keys = await listVisibleKeys(db, row.product, row.id);
   const devices = await listVisibleDevices(db, row.product, row.id);
   // `channels`, `minVersion`, `maxVersion` and `entitlements` come from the licence document's
   // own resolution, not the licence row's columns (LX-04, S-19 G14; see `entitlements.ts`).
   const grants = await licenseGrants(db, row, now);
+  const activeKeyCount = keys.filter((k) => k.status === "active").length;
+  const settings = await getPortalProductSettings(db, row.product);
   return {
     ...licenseBase(row),
+    ...portalLicenseOrigin({
+      origin: row.origin ?? null,
+      sub: row.sub,
+      email: row.email,
+      keyCount: keys.length,
+      store,
+    }),
     channels: grants.channels,
     minVersion: grants.minVersion,
     maxVersion: grants.maxVersion,
     usable: licenseUsable(row, now),
     keyCount: keys.length,
-    activeKeyCount: keys.filter((k) => k.status === "active").length,
+    activeKeyCount,
     deviceCount: devices.filter((d) => d.status === "authorized").length,
     entitlements: grants.entitlements,
+    // PX-23: Remove from my library is offered only for a licence its key can bring back.
+    removable:
+      notRemovableReason(
+        activeKeyCount,
+        settings.license_key_claim_enabled === 1,
+      ) === null,
   };
+}
+
+/** {@link shapeLicenseSummary} with the licence's store read through the provenance hook. */
+export async function shapeLicenseSummaryWithStore(
+  db: Db,
+  row: PortalLicenseRow,
+  now: number,
+  hooksFor: PortalHooksFor | undefined,
+): Promise<Record<string, unknown>> {
+  const stores = await licenseStores(db, [row], hooksFor, now);
+  return shapeLicenseSummary(
+    db,
+    row,
+    now,
+    stores.get(storeKey(row.product, row.id)) ?? null,
+  );
 }
 
 async function shapeLicenseDetail(
   db: Db,
   row: PortalLicenseRow,
   now: number,
+  hooksFor: PortalHooksFor | undefined,
 ): Promise<Record<string, unknown>> {
   const keys = await listVisibleKeys(db, row.product, row.id);
   const devices = await listVisibleDevices(db, row.product, row.id);
   return {
-    ...(await shapeLicenseSummary(db, row, now)),
+    ...(await shapeLicenseSummaryWithStore(db, row, now, hooksFor)),
     keys: keys.map((key) => ({
       hash: key.key_hash,
       status: key.status,
@@ -641,17 +698,30 @@ async function handleLicenses(
   session: PortalSession,
   rest: string[],
   now: number,
+  hooksFor: PortalHooksFor | undefined,
 ): Promise<Response> {
   await syncAccountLicenseLinks(db, session.accountId, now);
   const [product, licenseId] = rest;
   if (!product) {
     const rows = await listPortalLicenses(db, session.accountId);
-    const filtered = [];
+    const shown: PortalLicenseRow[] = [];
     for (const row of rows) {
       const settings = await getPortalProductSettings(db, row.product);
       if (settings.portal_enabled !== 1) continue;
-      filtered.push(await shapeLicenseSummary(db, row, now));
+      shown.push(row);
     }
+    // One provenance read per product for the origins' store (PX-23).
+    const stores = await licenseStores(db, shown, hooksFor, now);
+    const filtered = [];
+    for (const row of shown)
+      filtered.push(
+        await shapeLicenseSummary(
+          db,
+          row,
+          now,
+          stores.get(storeKey(row.product, row.id)) ?? null,
+        ),
+      );
     return portalJson({ licenses: filtered });
   }
   if (!licenseId) return notFound();
@@ -660,7 +730,7 @@ async function handleLicenses(
   const settings = await getPortalProductSettings(db, product);
   if (settings.portal_enabled !== 1) return notFound();
   return portalJson({
-    ...(await shapeLicenseDetail(db, row, now)),
+    ...(await shapeLicenseDetail(db, row, now, hooksFor)),
     // PX-W5 (G7): whether "Get a new key" is offered for this licence — the product's opt-in.
     canGetNewKey: settings.key_reissue_enabled === 1 && row.status === "active",
   });
@@ -1214,9 +1284,12 @@ async function handleSessions(
       summary: `Signed out everywhere (${ended} sessions, ${devices.cleared} devices)`,
       now,
     });
-    return portalJson({ ok: true, ended, devices: devices.cleared }, 200, {
+    const out = portalJson({ ok: true, ended, devices: devices.cleared }, 200, {
       "set-cookie": buildPortalClearCookie(),
     });
+    // PX-W12: a Link an existing account flow in this browser ends with the session.
+    out.headers.append("set-cookie", clearAccountRealmCookie(LINK_FLOW_COOKIE));
+    return out;
   }
   if (rest.length === 1 && rest[0]) {
     if (req.method !== "DELETE") return err(405, "method_not_allowed");
@@ -1231,11 +1304,17 @@ async function handleSessions(
       now,
     });
     const current = id === currentIdHash;
-    return portalJson(
+    const out = portalJson(
       { ok: true, current },
       200,
       current ? { "set-cookie": buildPortalClearCookie() } : undefined,
     );
+    if (current)
+      out.headers.append(
+        "set-cookie",
+        clearAccountRealmCookie(LINK_FLOW_COOKIE),
+      );
+    return out;
   }
   return notFound();
 }
@@ -1265,6 +1344,8 @@ export async function handlePortalApi(
   now: number,
   /** One product's descriptor hooks (`dispatch.ts`); without them no download is offered. */
   hooksFor?: PortalHooksFor,
+  /** The settings registry (ST-04): what the app-consent view resolves product settings from. */
+  settings?: SettingsRegistry,
 ): Promise<Response> {
   let p = path.startsWith("/api") ? path.slice(4) : path;
   if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
@@ -1375,6 +1456,21 @@ export async function handlePortalApi(
       now,
     );
   }
+  // PX-W12 (G27): sign-in methods (list, connect, disconnect) and Link an existing account (join,
+  // undo). Each change checks step-up, the never-orphan guard and its own rate limit.
+  if (
+    segments[0] === "me" &&
+    (segments[1] === "methods" || segments[1] === "link")
+  ) {
+    const caller = {
+      accountId: session.accountId,
+      authenticatedAt: portalSessionAuthenticatedAt(session),
+      sessionIdHash,
+    };
+    return segments[1] === "methods"
+      ? handleAccountMethods(req, env, db, caller, segments.slice(2), now)
+      : handleAccountLink(req, env, db, caller, segments.slice(2), now);
+  }
   await syncAccountLicenseLinks(db, session.accountId, now);
 
   const [head, ...rest] = segments;
@@ -1401,6 +1497,7 @@ export async function handlePortalApi(
       rest[1],
       session.accountId,
       now,
+      settings,
     );
     return view.status === 200 ? portalJson(view.body) : notFound();
   }
@@ -1469,9 +1566,20 @@ export async function handlePortalApi(
       now,
       hooksFor,
     );
-  if (head === "licenses") return handleLicenses(db, session, rest, now);
+  // PX-23 (S-24 D19): Remove from my library. The licence leaves the account and stays out.
+  if (
+    head === "licenses" &&
+    rest[0] &&
+    rest[1] &&
+    rest.length === 2 &&
+    req.method === "DELETE"
+  ) {
+    return handleLicenseRemove(req, env, db, session, rest[0], rest[1], now);
+  }
+  if (head === "licenses")
+    return handleLicenses(db, session, rest, now, hooksFor);
   if (head === "claim" && rest[0] === "license-key") {
-    return handleClaimKey(req, env, db, session, now);
+    return handleClaimKey(req, env, db, session, now, hooksFor);
   }
   if (head === "activate" && rest[0] === "preview" && rest.length === 1) {
     return handleActivatePreview(req, env, db, session, now, hooksFor);
@@ -1481,7 +1589,7 @@ export async function handlePortalApi(
   // PX-W1: the library and the product page (`library.ts`). Reads only.
   if (head === "library" && rest.length === 0) {
     if (req.method !== "GET") return err(405, "method_not_allowed");
-    const view = await libraryView(db, session.accountId, now, hooksFor);
+    const view = await libraryView(env, db, session.accountId, now, hooksFor);
     return portalJson({
       ...view,
       // PX-W10: the Discover count in the nav (§4.16); the offers themselves are `GET /api/discover`.
@@ -1492,12 +1600,21 @@ export async function handlePortalApi(
         session.accountId,
         now,
         new Set(view.products.map((p) => String(p.product))),
+        hooksFor,
       ),
     });
   }
-  // PX-W10 (G24, G25): Discover's offers and "Add to library" (`discover.ts`).
+  // PS-04: remove a library ENTRY (an open product added from the storefront); never a licence.
+  if (head === "library" && rest.length === 1 && rest[0]) {
+    return handleLibraryEntryRemove(req, db, session.accountId, rest[0], now);
+  }
+  // PX-W10 (G24, G25), PS-04: Discover's offers, the storefront product page and "Add to
+  // library" (`discover.ts`).
   if (head === "discover" && rest.length === 0) {
     return handleDiscover(req, env, db, session, now, hooksFor);
+  }
+  if (head === "discover" && rest.length === 1 && rest[0]) {
+    return handleStorefrontPage(req, env, db, session, rest[0], now, hooksFor);
   }
   if (
     head === "discover" &&
@@ -1505,11 +1622,12 @@ export async function handlePortalApi(
     rest[0] &&
     rest[1] === "claim"
   ) {
-    return handleDiscoverClaim(req, env, db, session, rest[0], now);
+    return handleDiscoverClaim(req, env, db, session, rest[0], now, hooksFor);
   }
   if (head === "products" && rest.length === 1 && rest[0]) {
     if (req.method !== "GET") return err(405, "method_not_allowed");
     const view = await productView(
+      env,
       db,
       session.accountId,
       rest[0],
