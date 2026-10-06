@@ -103,8 +103,10 @@ export function Drawer({
           onInteractOutside={(e) => {
             if (!dismissible) e.preventDefault();
           }}
+          // The panel slides in from its edge and back out (src/motion.css `.pk-drawer`; S-23 §6.1).
+          data-drawer-side={side}
           className={cn(
-            "fixed inset-0 z-50 flex flex-col bg-surface-overlay text-fg outline-hidden animate-pk-in",
+            "pk-drawer fixed inset-0 z-50 flex flex-col bg-surface-overlay text-fg outline-hidden",
             "pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]",
             "lg:inset-y-0 lg:w-full lg:shadow-elevation-3",
             side === "end"

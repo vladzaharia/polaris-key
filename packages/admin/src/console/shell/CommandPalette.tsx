@@ -77,6 +77,10 @@ function openInNewTab(href: string): void {
  * `⌘↵` opens a page in a new tab; a live region announces the result count. On a phone it fills
  * the screen.
  *
+ * Motion (MO-08, S-23 §6.1): the panel and scrim enter and exit through src/motion.css (keyed on
+ * `animate-pk-in` / `animate-pk-overlay-in`); the result list never animates while typing (no
+ * stagger, no list transition), and the selection highlight eases between rows at `micro`.
+ *
  * `items` are rows a caller adds to the sources' own; a row whose id a source already offers is
  * dropped, so the shell's navigation and product rows never show twice.
  */
@@ -200,7 +204,7 @@ export function CommandPalette({
                         key={valueOf(g.heading, item)}
                         value={valueOf(g.heading, item)}
                         onSelect={() => run(item)}
-                        className="flex cursor-pointer items-center gap-2.5 rounded-sm px-2 py-2 text-sm data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong"
+                        className="flex cursor-pointer items-center gap-2.5 rounded-sm px-2 py-2 text-sm transition-colors duration-(--pk-duration-micro) ease-standard data-[selected=true]:bg-accent-subtle data-[selected=true]:text-fg-strong"
                       >
                         <span className="text-fg-muted">{item.icon}</span>
                         <span className="min-w-0 truncate">{item.label}</span>
