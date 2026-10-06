@@ -69,7 +69,14 @@ import {
   type LicensedDeviceToken,
 } from "./devices.js";
 import { openManagedPayload, resolveMergedPayload } from "./payload.js";
-import { injectAdminPolicy, tighterMax, tighterMin } from "./entitlements.js";
+import {
+  injectAdminPolicy,
+  licenseOwnDeviceLimit,
+  tierDeviceLimit,
+  tighterMax,
+  tighterMin,
+} from "./entitlements.js";
+import { logRefusal, type RefusalReason, type WaitUntil } from "./refusals.js";
 
 export type AuthzError =
   | { error: "unauthorized" }
@@ -224,18 +231,54 @@ export function tierExpiresAt(
     : null;
 }
 
-function resolveDeviceLimit(
-  entitlements: Record<string, ManagedEntry>,
-  fallback: number,
-): number {
-  const e = entitlements["deviceLimit"];
-  return e && typeof e.value === "number" ? e.value : fallback;
+/** Where a licence's effective seat limit comes from (LX-14a), most specific first. */
+export type DeviceLimitSource = "license" | "tier" | "entitlement" | "product";
+
+export interface DeviceLimitInfo {
+  limit: number;
+  source: DeviceLimitSource;
+  /** The limit the licence would have without its own `device_limit`: what "Use inherited
+   *  limit" falls back to, and the console's placeholder ("Inherits 5 from Pro"). */
+  inherited: { limit: number; source: Exclude<DeviceLimitSource, "license"> };
 }
 
-/** The seat limit `authorizeDevice` enforces on `license`: its resolved `deviceLimit`
- *  entitlement, else the product default. Exported for the identity attach (P1-07), which must
- *  not move more devices onto a licence than this allows, and for the portal's seat meter
- *  (PX-W1), which must show the same "of N" this enforces. */
+/** The seat limit `authorizeDevice` enforces on `license`, with its source. Precedence (LX-14a):
+ *  the licence's own `device_limit`, else the tier's `policy_device_limit`, else a `deviceLimit`
+ *  entitlement merged from a profile, store grant or licence override, else the product
+ *  default. The same composition `resolveEntitlements` performs (`injectAdminPolicy` stamps the
+ *  licence-else-tier value over the merged entitlement), so the number reported here, the number
+ *  enforced and the licence document's `deviceLimit` cannot disagree. */
+export async function licenseDeviceLimitInfo(
+  db: Db,
+  product: Pick<Product, "slug" | "defaultDeviceLimit">,
+  license: LicenseRow,
+  now: number,
+): Promise<DeviceLimitInfo> {
+  const { payload, tier } = await resolveMergedPayload(
+    db,
+    product.slug,
+    license,
+    null,
+    now,
+  );
+  const merged = payload.entitlements["deviceLimit"];
+  const tierLimit = tierDeviceLimit(tier);
+  const inherited: DeviceLimitInfo["inherited"] =
+    tierLimit !== null
+      ? { limit: tierLimit, source: "tier" }
+      : merged && typeof merged.value === "number"
+        ? { limit: merged.value, source: "entitlement" }
+        : { limit: product.defaultDeviceLimit, source: "product" };
+  const own = licenseOwnDeviceLimit(license);
+  return own !== null
+    ? { limit: own, source: "license", inherited }
+    : { ...inherited, inherited };
+}
+
+/** The seat limit `authorizeDevice` enforces on `license` (`licenseDeviceLimitInfo`'s number).
+ *  Exported for the identity attach (P1-07), which must not move more devices onto a licence
+ *  than this allows, and for the portal's seat meter (PX-W1), which must show the same "of N"
+ *  this enforces. */
 export async function licenseDeviceLimit(
   db: Db,
   // Only the slug and the product default are read, so a caller holding the public projection
@@ -244,14 +287,7 @@ export async function licenseDeviceLimit(
   license: LicenseRow,
   now: number,
 ): Promise<number> {
-  const entitlements = await resolveEntitlements(
-    db,
-    product.slug,
-    license,
-    null,
-    now,
-  );
-  return resolveDeviceLimit(entitlements, product.defaultDeviceLimit);
+  return (await licenseDeviceLimitInfo(db, product, license, now)).limit;
 }
 
 /** The fingerprint mode `authorizeDevice` enforces on a licence of tier `tierId`: the tier's
@@ -287,21 +323,52 @@ export async function authorizeDevice(
     sdkVersion?: string | null;
     /** Validated hardware components, when the client supplied any. */
     fingerprint?: PresentedFingerprint | null;
+    /** PX-W13 §8 Q2: the normalised device label; seeds `devices.label` while it is NULL. */
+    label?: string | null;
     /** I-05: how this activation binds the device (`devices.bound_by`). */
     boundBy?: DeviceBoundBy;
     /** I-05: the pairwise subject of an ACCOUNT sign-in activating this device. Key entry, enrol
      *  and every licence-only path never pass it (plans/I-04.md §6.2). */
     subject?: string | null;
+    /** UX-15: the request's `waitUntil`, so the refusal log is written after the answer. Absent,
+     *  the (total, never-throwing) write runs inline before the refusal is returned. */
+    waitUntil?: WaitUntil;
   } = {},
 ): Promise<{ token: string; device: DeviceRow } | AuthzError> {
-  if (!licenseUsable(license, now)) return { error: "unauthorized" };
+  // UX-15: every refusal below is logged (`core/refusals.ts`) for the console's licence Status
+  // health line, the Refusing devices facet and the attention model. Logging never changes the
+  // error returned, and with a `waitUntil` it is not on the response path at all.
+  const refuse = async <E extends AuthzError>(
+    reason: RefusalReason,
+    error: E,
+  ): Promise<E> => {
+    await logRefusal(
+      db,
+      {
+        product: product.slug,
+        licenseId: license.id,
+        deviceId,
+        reason,
+        at: now,
+        platform: opts.platform ?? null,
+        arch: opts.arch ?? null,
+        userAgent: opts.userAgent ?? null,
+      },
+      opts.waitUntil,
+    );
+    return error;
+  };
+
+  if (!licenseUsable(license, now))
+    return refuse("license_unusable", { error: "unauthorized" });
 
   const mode = await tierFingerprintMode(db, product, license.tier_id);
   const presented = opts.fingerprint ?? null;
 
   // `strict` is the only mode that makes a fingerprint mandatory, so clients that predate
   // fingerprinting keep working everywhere else (recorded `unverified` by `bindDevice`).
-  if (mode === "strict" && !presented) return { error: "fingerprint_required" };
+  if (mode === "strict" && !presented)
+    return refuse("fingerprint_required", { error: "fingerprint_required" });
 
   // Core owns the hardware reconciliation and the device-row bookkeeping it implies: retiring
   // a swapped binding, and coalescing a re-registered machine's stale device id. It runs
@@ -317,7 +384,7 @@ export async function authorizeDevice(
     now,
     { mode, presented },
   );
-  if ("error" in reconciled) return reconciled;
+  if ("error" in reconciled) return refuse("hardware_mismatch", reconciled);
   const { isNewAuthorization } = reconciled;
   if (isNewAuthorization) {
     // The seat limit is an ENTITLEMENT, resolved through the same pipeline the license
@@ -347,7 +414,11 @@ export async function authorizeDevice(
       seatActiveSince(now),
     );
     if (limit <= 0 || count >= limit) {
-      return { error: "device_limit", limit, deviceCount: count };
+      return refuse("device_limit", {
+        error: "device_limit",
+        limit,
+        deviceCount: count,
+      });
     }
     if (
       !(await claimDeviceSeat(
@@ -359,7 +430,7 @@ export async function authorizeDevice(
         now,
       ))
     ) {
-      return {
+      return refuse("device_limit", {
         error: "device_limit",
         limit,
         deviceCount: await countActiveDevices(
@@ -368,7 +439,7 @@ export async function authorizeDevice(
           license.id,
           seatActiveSince(now),
         ),
-      };
+      });
     }
   }
 

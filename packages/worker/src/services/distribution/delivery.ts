@@ -16,7 +16,8 @@
  *   - `reportedAvailability` (P4-14): every stored availability row, what the collector counts as
  *     "an outlet lists it". `availability` also applies P4-14's readiness hold (`readiness.ts`).
  *   - `accessMode` (P2b-04): `dist_access` — the ONE delivery-access answer the byte routes, the
- *     appcast and the portal read.
+ *     appcast and the portal read. `openAccess` (PS-03): whether every deliverable reads `public`
+ *     or `authenticated` with no gate — Identity's storefront engine's `open` obtain path.
  *   - `entitlement` (P4-02): a deliverable's delivery gate, the `entitlement` of its OWN
  *     `dist_access` row (never inherited from `app`) — what Release's publish routes hold a pack
  *     publish to (plans/P4-01.md decision 35).
@@ -50,7 +51,7 @@ import {
 } from "../../core/hooks.js";
 import { bytesHostname } from "../../core/bytesHost.js";
 import type { Env } from "../../core/platform.js";
-import { accessModeOf, entitlementOf } from "./access.js";
+import { accessModeOf, entitlementOf, openAccessOf } from "./access.js";
 import { getRollout, listRollouts, rolloutRecord } from "./rollouts.js";
 import { availabilityFor, inventory, submissionsFor } from "./availability.js";
 import { getListing, listOutlets, parseJsonColumn } from "./outlets.js";
@@ -154,6 +155,9 @@ export function delivery(ctx: HookContext): Delivery {
     },
 
     accessMode: (deliverable: string) => accessModeOf(db, slug, deliverable),
+
+    // PS-03: every deliverable downloadable without a licence (Identity's `open` obtain path).
+    openAccess: () => openAccessOf(db, slug),
 
     // P6-02: the store identities Core's attest route verifies against. Apple: the bundle id of
     // every live App Store and TestFlight outlet (a sideload outlet's build is re-signed under

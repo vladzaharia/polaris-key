@@ -40,6 +40,11 @@
  */
 
 import { ErrorCode } from "../../../core/errors.js";
+import {
+  checkDisplayName,
+  type ReservedDisplayNamesMode,
+} from "@polaris-key/manifest";
+import { reservedDisplayNamesMode } from "../../../core/reservedDisplayNames.js";
 import type { ServiceContext } from "../../../core/registry.js";
 import type { AdminSession } from "../../../core/adminApi.js";
 import { adminJson, audit, err, readBody } from "../../../core/adminApi.js";
@@ -93,6 +98,35 @@ import {
 } from "./store.js";
 
 type AdminCtx = ServiceContext & { session: AdminSession };
+
+/**
+ * PX-W13: the display-name problems of the named fields (`@polaris-key/manifest`
+ * `checkDisplayName`). Text with a control, zero-width or bidi code point is always a problem; a
+ * reserved name only when the platform enforces `identity.reservedDisplayNames`. The system
+ * product is exempt from the reserved check.
+ */
+function displayNameProblems(
+  slug: string,
+  reserved: ReservedDisplayNamesMode,
+  fields: Record<string, unknown>,
+): { field: string; message: string }[] {
+  const out: { field: string; message: string }[] = [];
+  for (const [field, v] of Object.entries(fields)) {
+    if (typeof v !== "string" || v === "") continue;
+    const verdict = checkDisplayName(v, { slug });
+    if (verdict === "invalid")
+      out.push({
+        field,
+        message: `${field} must not hold control, zero-width or bidirectional-formatting characters, or start or end with a space`,
+      });
+    else if (verdict === "reserved" && reserved === "error")
+      out.push({
+        field,
+        message: `${field} uses a reserved platform or store name; an app may not present itself as one`,
+      });
+  }
+  return out;
+}
 
 /** The stores an override may name: every listing column and the two feeds that read the model. */
 export const OVERRIDE_STORES: readonly string[] = [
@@ -229,7 +263,17 @@ async function putListing(ctx: AdminCtx): Promise<Response> {
   const app = body.app === undefined ? {} : body.app;
   if (!isRecord(app))
     return invalid([{ field: "app", message: "app must be an object" }]);
-  const problems = appProblems(app, existing === null);
+  // PX-W13 (plans/PX-W13.md §3, S-18 model C): a console listing claim writes the names an app
+  // can be presented by, so the manifest's display-name rules run here too, with the platform's
+  // severity for a reserved name.
+  const reserved = await reservedDisplayNamesMode(ctx.env, db);
+  const problems = [
+    ...appProblems(app, existing === null),
+    ...displayNameProblems(slug, reserved, {
+      name: app.name,
+      developerName: app.developerName,
+    }),
+  ];
   const locales = body.locales === undefined ? {} : body.locales;
   if (!isRecord(locales))
     return invalid([
@@ -252,6 +296,11 @@ async function putListing(ctx: AdminCtx): Promise<Response> {
       continue;
     }
     problems.push(...localeTextProblems(locale, patch));
+    problems.push(
+      ...displayNameProblems(slug, reserved, {
+        [`locales.${locale}.name`]: patch.name,
+      }),
+    );
   }
   if (body.precedence !== undefined)
     problems.push(...precedenceProblems(body.precedence));

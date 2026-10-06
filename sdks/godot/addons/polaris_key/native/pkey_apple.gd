@@ -11,7 +11,9 @@ extends Node
 ##
 ## Without the native class every call answers the typed unsupported result (PKeyResult with
 ## `code == &"unsupported"`, PARITY §2.2): `detail.reason` is `runtime` off iOS and `dependency`
-## on an iOS build without the xcframework. Background Assets also answers `version` below
+## on an iOS build without the xcframework. The Keychain calls also run on macOS (SP-27), through
+## the desktop build (sdks/godot/native/macos/build_apple.sh, libpkey_apple.dylib), where they
+## answer `dependency` without it; every other call stays iOS-only there. Background Assets also answers `version` below
 ## iOS 26.4 and `outlet` in a build without the Background Assets extension (a sideload IPA).
 ##
 ##   var apple := PKeyApple.shared()                  # one per process, polled by the tree
@@ -44,7 +46,7 @@ const NATIVE_CLASS := "PolarisKeyApple"
 ## The AppDistributor deadline (OUTLET_PLATFORM_DATA.deadlineMs; notes/S-06 rule 5).
 const DISTRIBUTOR_DEADLINE := 2.0
 
-## The platform this answers for ("" means PKeyHeaders.platform()). Tests set it.
+## The platform this answers for ("" means PKeyHeaders.update_platform()). Tests set it.
 var platform := ""
 ## The native object to call instead of the GDExtension class: anything with
 ## `cmd(json: String) -> String` (tests).
@@ -128,7 +130,7 @@ static func reset_launch() -> void:
 
 
 func _platform() -> String:
-	return platform if platform != "" else PKeyHeaders.platform()
+	return platform if platform != "" else PKeyHeaders.update_platform()
 
 
 func _native_present() -> bool:
@@ -136,36 +138,48 @@ func _native_present() -> bool:
 
 
 ## "" when the plugin can answer here, else the unsupported reason: `runtime` off iOS,
-## `dependency` on iOS without the GDExtension.
-func unsupported_reason() -> String:
-	if native == null and _platform() != PKeyConstants.Platform.IOS:
+## `dependency` on iOS without the GDExtension. `feature` core.store (the Keychain calls) also
+## runs on macOS.
+func unsupported_reason(feature := "") -> String:
+	if native == null and not _runs_here(feature):
 		return PKeyConstants.UnsupportedReason.RUNTIME
 	if not _native_present():
 		return PKeyConstants.UnsupportedReason.DEPENDENCY
 	return ""
 
 
+func _runs_here(feature: String) -> bool:
+	var p := _platform()
+	return p == PKeyConstants.Platform.IOS or (p == PKeyConstants.Platform.MACOS and feature == PKeyConstants.Feature.CORE_STORE)
+
+
 func is_available() -> bool:
 	return unsupported_reason() == ""
+
+
+## Whether the Keychain calls can run here: iOS or macOS with the GDExtension.
+func keychain_available() -> bool:
+	return unsupported_reason(PKeyConstants.Feature.CORE_STORE) == ""
 
 
 ## PKeyResult.success() when the plugin works here, else the typed unsupported result for
 ## `feature`.
 func availability(feature := PKeyConstants.Feature.OUTLET_DETECT) -> PKeyResult:
-	var why := unsupported_reason()
+	var why := unsupported_reason(feature)
 	if why == PKeyConstants.UnsupportedReason.RUNTIME:
 		return PKeyResult.unsupported(feature, why, "The Apple platform plugin runs on iOS, not %s." % (_platform() if _platform() != "" else "this platform"))
 	if why == PKeyConstants.UnsupportedReason.DEPENDENCY:
-		return PKeyResult.unsupported(feature, why, "The PolarisKeyApple GDExtension (pkey_apple.xcframework) is not in this build.")
+		var lib := "libpkey_apple.dylib" if _platform() == PKeyConstants.Platform.MACOS else "pkey_apple.xcframework"
+		return PKeyResult.unsupported(feature, why, "The PolarisKeyApple GDExtension (%s) is not in this build." % lib)
 	return PKeyResult.success()
 
 
 # ── Raw calls ────────────────────────────────────────────────────────────────────────────────
 
 ## One synchronous request: the native reply as a Dictionary, or {ok: false, unsupported: true,
-## reason} without the plugin.
-func call_sync(q: Dictionary) -> Dictionary:
-	var why := unsupported_reason()
+## reason} without the plugin. `feature` widens where it may run (core.store: macOS too).
+func call_sync(q: Dictionary, feature := "") -> Dictionary:
+	var why := unsupported_reason(feature)
 	if why != "":
 		return {"ok": false, "unsupported": true, "reason": why}
 	var raw = native.call("cmd", JSON.stringify(q)) if native != null else ClassDB.class_call_static(native_class, "cmd", JSON.stringify(q))
@@ -301,18 +315,29 @@ func listen() -> PKeyResult:
 	return await _async(PKeyConstants.Feature.COMMERCE_RECEIPT, {"op": "listen"})
 
 
-## A Keychain value of service `pkey:<product>`: detail.value, null when absent.
-func keychain_get(product: String, account: String) -> PKeyResult:
-	return _wrap(PKeyConstants.Feature.CORE_STORE, call_sync({"op": "kc_get", "product": product, "account": account}), PKeyErrors.STORE_FAILED)
+## The login keychain (macOS desktop, SP-27): the `keychain` argument of the Keychain calls.
+const LOGIN_KEYCHAIN := "login"
 
 
-## Store a Keychain value (AfterFirstUnlockThisDeviceOnly, no access group).
-func keychain_set(product: String, account: String, value: String) -> PKeyResult:
-	return _wrap(PKeyConstants.Feature.CORE_STORE, call_sync({"op": "kc_set", "product": product, "account": account, "value": value}), PKeyErrors.STORE_FAILED)
+## A Keychain value of service `pkey:<product>`: detail.value, null when absent. `keychain` ""
+## is the data-protection keychain (iOS); LOGIN_KEYCHAIN the macOS login keychain.
+func keychain_get(product: String, account: String, keychain := "") -> PKeyResult:
+	return _keychain_call({"op": "kc_get", "product": product, "account": account}, keychain)
 
 
-func keychain_delete(product: String, account: String) -> PKeyResult:
-	return _wrap(PKeyConstants.Feature.CORE_STORE, call_sync({"op": "kc_delete", "product": product, "account": account}), PKeyErrors.STORE_FAILED)
+## Store a Keychain value (data protection: AfterFirstUnlockThisDeviceOnly, no access group).
+func keychain_set(product: String, account: String, value: String, keychain := "") -> PKeyResult:
+	return _keychain_call({"op": "kc_set", "product": product, "account": account, "value": value}, keychain)
+
+
+func keychain_delete(product: String, account: String, keychain := "") -> PKeyResult:
+	return _keychain_call({"op": "kc_delete", "product": product, "account": account}, keychain)
+
+
+func _keychain_call(q: Dictionary, keychain: String) -> PKeyResult:
+	if keychain != "":
+		q["keychain"] = keychain
+	return _wrap(PKeyConstants.Feature.CORE_STORE, call_sync(q, PKeyConstants.Feature.CORE_STORE), PKeyErrors.STORE_FAILED)
 
 
 ## A pack's status: detail {status: [flags], version, localVersion, downloadSize}.

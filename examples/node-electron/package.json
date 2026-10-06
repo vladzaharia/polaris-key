@@ -1,0 +1,22 @@
+{
+  "name": "polaris-key-example-node-electron",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "esbuild src/main.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/main.js && esbuild src/preload.ts --bundle --platform=browser --format=cjs --external:electron --outfile=dist/preload.js && esbuild src/renderer.tsx --bundle --outfile=dist/renderer.js",
+    "start": "npm run build && electron ."
+  },
+  "dependencies": {
+    "@polaris-key/node": "^0.0.0",
+    "@polaris-key/react": "^0.0.0",
+    "electron-updater": "^6.6.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "esbuild": "^0.28.1"
+  }
+}

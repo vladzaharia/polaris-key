@@ -60,6 +60,8 @@ export type Route =
   | { kind: "portalSpa" }
   | { kind: "portalApi" }
   | { kind: "portalLogin" }
+  /** I-06: the login card's platform providers, `/login/<provider>[/callback|/notifications]`. */
+  | { kind: "portalProviderSignIn" }
   | { kind: "portalCallback" }
   | { kind: "portalLogout" }
   | { kind: "portalMagicVerify" }
@@ -129,8 +131,11 @@ export function matchRoute(pathname: string): Route {
   if (path === "/docs" || path.startsWith("/docs/")) return { kind: "docs" };
 
   // Root customer portal. These are reserved before product slugs.
-  // `/activate?key=…` is the printable path form of the Activate license deep link (PORTAL.md
-  // §3.3): the SPA shell rewrites it to `#/?activate=…` before its first render.
+  // `/activate` is the Activate license deep link (PORTAL.md §3.3). The key rides in the fragment
+  // (`/activate#key=…`), so it never reaches this Worker; the SPA shell rewrites it to
+  // `#/?activate=…` before its first render. A legacy `/activate?key=…` (a link already out)
+  // gets the same shell, never a redirect: the request is already logged, and a redirect would
+  // only echo the key back in a `Location` header (THREAT-MODEL.md, "Key-bearing deep links").
   if (
     path === "/" ||
     path === "/index.html" ||
@@ -139,6 +144,10 @@ export function matchRoute(pathname: string): Route {
   )
     return { kind: "portalSpa" };
   if (path === "/login") return { kind: "portalLogin" };
+  // I-06: `/login/<provider>`, its callback and Apple's notifications (`login` is a reserved
+  // slug). The provider and step are validated by the handler; any other shape under `/login/`
+  // is its not-found page, never a product route.
+  if (path.startsWith("/login/")) return { kind: "portalProviderSignIn" };
   if (path === "/callback") return { kind: "portalCallback" };
   if (path === "/logout") return { kind: "portalLogout" };
   if (path === "/magic/verify") return { kind: "portalMagicVerify" };

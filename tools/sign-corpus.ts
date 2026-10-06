@@ -16,8 +16,9 @@
 //                           from `res://` in the editor and in an exported pack). Every file
 //                           is written into every target in `CORPUS_TARGETS`.
 //
-// Nine files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
-// pack families included), `gate-matrix.json` (§5), `fingerprint.json` (the hardware-hash
+// Eleven files and one directory: `cases.json` (signed vectors, the v4 feed, release-record and
+// pack families included), `gate-matrix.json` (§5, with SP-00's `entitlementRows` family),
+// `fingerprint.json` (the hardware-hash
 // formulas), `stage-matrix.json` (the boot stage machine of `@polaris-key/client-core/stages`,
 // client boot behaviour outside the wire contract, read by
 // conformance/runners/node/stageMatrix.test.ts and the Python, Swift and Godot runners; version
@@ -25,7 +26,11 @@
 // client metadata header values, §5.2), `config-matrix.json` (config resolution and environment
 // values, §2.2.1), `update-matrix.json` (the update decision, plans/P3-01.md §2.8),
 // `outlet-matrix.json` (outlet kinds, capabilities and detection, plans/P3-01.md §2.9),
-// `plan-matrix.json` (the pack plan, plans/P4-01.md) and `content/` (the content corpus:
+// `plan-matrix.json` (the pack plan, plans/P4-01.md), `feed-url-matrix.json` (the app-updater
+// feed URLs out of discovery's `update.endpoints`, plans/SP-00.md D5), `sync-scenarios.json` (the
+// Cloud Sync client scenario corpus, literal data from tools/sync-scenarios.ts, plans/U-01.md
+// §4.1, U-18), `device-label.json` (the device label every SDK sends as `deviceName`,
+// WIRE-CONTRACT-V4 §12.7.1, plans/PX-W13.md §4) and `content/` (the content corpus:
 // `cases.json` plus `blobs/`, plans/P4-01.md §4.4, P4-04).
 //
 // `corpus/v1` (wire contract v2) is GONE: its fifteen gate-matrix rows were inlined into
@@ -58,6 +63,10 @@ import {
   importSigningKey,
 } from "@polaris-key/jws";
 import { ED25519_TORSION_SUBGROUP, ed25519 } from "@noble/curves/ed25519.js";
+import { isUsable, licenseState } from "@polaris-key/client-core/gate";
+import { CHANNEL_ALIASES } from "@polaris-key/protocol/core";
+import type { ManagedEntry } from "@polaris-key/protocol/core";
+import type { LicenseDoc } from "@polaris-key/protocol/license";
 import { format } from "prettier";
 import {
   CONTENT_CASES_NAME,
@@ -72,6 +81,7 @@ import {
   type ContentSet,
   type RefJson,
 } from "./gen-content-corpus.js";
+import { buildSyncScenarios } from "./sync-scenarios.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -267,6 +277,9 @@ const V2_CONFIG_MATRIX_OUT = join(V2_DIR, "config-matrix.json");
 const V2_UPDATE_MATRIX_OUT = join(V2_DIR, "update-matrix.json");
 const V2_OUTLET_MATRIX_OUT = join(V2_DIR, "outlet-matrix.json");
 const V2_PLAN_MATRIX_OUT = join(V2_DIR, "plan-matrix.json");
+const V2_FEED_URL_MATRIX_OUT = join(V2_DIR, "feed-url-matrix.json");
+const V2_SYNC_SCENARIOS_OUT = join(V2_DIR, "sync-scenarios.json");
+const V2_DEVICE_LABEL_OUT = join(V2_DIR, "device-label.json");
 /** Every directory that receives the corpus: the source, then each generator-owned mirror. */
 const CORPUS_TARGETS = [V2_DIR, SWIFT_V2_RESOURCES, GODOT_V2_RESOURCES];
 
@@ -2452,11 +2465,12 @@ function gateMatrixV2(): {
   gateMatrixVersion: number;
   description: string;
   rows: unknown[];
+  entitlementRows: EntitlementRow[];
 } {
   return {
     gateMatrixVersion: 2,
     description:
-      'Cross-SDK gate decision matrix for wire contract v3 §5. Each row carries the build-gate inputs (version/channel/compat window/entitlements) AND the license-state inputs, paired with the single expected decision. The first fourteen rows are corpus v1\'s matrix, carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` (every v1 product was licensed) and `hasToken` → `activation: "token" | null` — and inlined here when corpus v1 was deleted, so a v3 gate that changes any decision v2 made goes red here; a fifteenth carried row, the pre-R3-01 dev-build bypass, was retired by P0-04 and its successor row appended. The next rows pin what v1 could not express: `not-applicable` for a product that does not enable the license service (D-08), `activation: "bundle"` for an air-gapped install (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint. `expect.reason` names the build-gate hint that was derived, which on the activation-precedes-blocked row is deliberately NOT the status. The channel rows that follow pin the channel vocabulary of §5.1 (P0-04): header normalisation, the `staging`/`beta` alias, the `pr` family, manual names, `dev`, and the build-implied channel. Times are epoch SECONDS. ManagedEntry values use the {state, value, updatedAt} shape.',
+      'Cross-SDK gate decision matrix for wire contract v3 §5. Each row carries the build-gate inputs (version/channel/compat window/entitlements) AND the license-state inputs, paired with the single expected decision. The first fourteen rows are corpus v1\'s matrix, carried verbatim under the smallest possible shim — `licenseServiceEnabled: true` (every v1 product was licensed) and `hasToken` → `activation: "token" | null` — and inlined here when corpus v1 was deleted, so a v3 gate that changes any decision v2 made goes red here; a fifteenth carried row, the pre-R3-01 dev-build bypass, was retired by P0-04 and its successor row appended. The next rows pin what v1 could not express: `not-applicable` for a product that does not enable the license service (D-08), `activation: "bundle"` for an air-gapped install (§7), and the ONE ordering v3 changed — the activation guard runs BEFORE the unsigned `blocked` hint. `expect.reason` names the build-gate hint that was derived, which on the activation-precedes-blocked row is deliberately NOT the status. The channel rows that follow pin the channel vocabulary of §5.1 (P0-04): header normalisation, the `staging`/`beta` alias, the `pr` family, manual names, `dev`, and the build-implied channel. Times are epoch SECONDS. ManagedEntry values use the {state, value, updatedAt} shape. `entitlementRows` (SP-00, plans/SP-00.md D4) is a separate family over the same `gate` and `license` inputs, so a runner evaluates the status exactly as for `rows`: `entitlement.entry` is what the cached licence document carries at `entitlements[entitlement.key]` (null when it carries nothing, and always null without a document), and `expect.isEntitled` is `isUsable(status) && entry.value === true` — the entitlement answer follows the gate, so a revoked, expired or unactivated licence entitles nothing even while its cached document still says `true` (S-19 G11). The documents are today\'s licence shape (S-19 `legacy` mode): no new member and no per-entry expiry.',
     rows: [
       ...carriedRows(),
       {
@@ -2533,7 +2547,167 @@ function gateMatrixV2(): {
       },
       ...channelRows(),
     ],
+    entitlementRows: entitlementRows(),
   };
+}
+
+// ── gate-matrix v2 `entitlementRows` (SP-00, plans/SP-00.md §4 and D4) ───────
+// `isEntitled(key)` answers from the gate, not from the cached document alone: an SDK that reads
+// `doc.entitlements[key].value` without asking the gate keeps entitling a revoked or expired
+// licence (S-19 G11). Each row is evaluated here through client-core's own `licenseState` and
+// `isUsable`, so a hand-authored `expect` that disagrees with the reference gate fails the run.
+
+interface EntitlementRow {
+  name: string;
+  gate: typeof PASSING_GATE;
+  license: {
+    licenseServiceEnabled: boolean;
+    activation: "token" | "bundle" | null;
+    now: number;
+    issuedAt?: number;
+    expiresAt?: number;
+    graceUntil?: number;
+    lastSyncUnauthorized?: boolean;
+    lastVerifiedAt?: number;
+  };
+  entitlement: { key: string; entry: ManagedEntry | null };
+  expect: { status: string; isEntitled: boolean };
+}
+
+/** The entitlement every G11 row asks about: a DLC flag the admin enforces `true`. */
+const DLC_ENFORCED_TRUE: ManagedEntry = {
+  state: "enforced",
+  value: true,
+  updatedAt: 1699990000,
+};
+
+function entitlementRows(): EntitlementRow[] {
+  const dlc = { key: "dlc", entry: DLC_ENFORCED_TRUE };
+  const rows: EntitlementRow[] = [
+    {
+      name: "ok — dlc enforced true is entitled",
+      gate: PASSING_GATE,
+      license: {
+        licenseServiceEnabled: true,
+        activation: "token",
+        ...MATRIX_DOC,
+        now: 1500,
+        lastVerifiedAt: 1490,
+      },
+      entitlement: dlc,
+      expect: { status: "ok", isEntitled: true },
+    },
+    {
+      name: "grace — dlc enforced true is still entitled past expiresAt, inside graceUntil",
+      gate: PASSING_GATE,
+      license: {
+        licenseServiceEnabled: true,
+        activation: "token",
+        ...MATRIX_DOC,
+        now: 5000,
+      },
+      entitlement: dlc,
+      expect: { status: "grace", isEntitled: true },
+    },
+    {
+      name: "expired — dlc enforced true in a document past graceUntil is not entitled",
+      gate: PASSING_GATE,
+      license: {
+        licenseServiceEnabled: true,
+        activation: "token",
+        ...MATRIX_DOC,
+        now: 2593001,
+      },
+      entitlement: dlc,
+      expect: { status: "expired", isEntitled: false },
+    },
+    {
+      name: "revoked — hard 401 on the last sync: dlc enforced true in the cached document is not entitled (G11)",
+      gate: PASSING_GATE,
+      license: {
+        licenseServiceEnabled: true,
+        activation: "token",
+        ...MATRIX_DOC,
+        now: 1500,
+        lastSyncUnauthorized: true,
+      },
+      entitlement: dlc,
+      expect: { status: "revoked", isEntitled: false },
+    },
+    {
+      name: "needs-activation — an unactivated device is not entitled even with a cached dlc document",
+      gate: PASSING_GATE,
+      license: {
+        licenseServiceEnabled: true,
+        activation: null,
+        ...MATRIX_DOC,
+        now: 1500,
+      },
+      entitlement: dlc,
+      expect: { status: "needs-activation", isEntitled: false },
+    },
+    {
+      name: "not-applicable — usable, but no document means no entitlement",
+      gate: PASSING_GATE,
+      license: {
+        licenseServiceEnabled: false,
+        activation: null,
+        now: 1500,
+      },
+      entitlement: { key: "dlc", entry: null },
+      expect: { status: "not-applicable", isEntitled: false },
+    },
+  ];
+  for (const row of rows) assertEntitlementRow(row);
+  if (new Set(rows.map((r) => r.name)).size !== rows.length)
+    throw new Error("gate-matrix entitlementRows has two rows with one name");
+  return rows;
+}
+
+/** The row's status through client-core's gate, and `isEntitled` through `isUsable`. */
+function assertEntitlementRow(row: EntitlementRow): void {
+  const l = row.license;
+  const hasDoc =
+    l.issuedAt !== undefined &&
+    l.expiresAt !== undefined &&
+    l.graceUntil !== undefined;
+  if (!hasDoc && row.entitlement.entry !== null)
+    throw new Error(`${row.name}: an entry without a cached document`);
+  const doc: LicenseDoc | null = hasDoc
+    ? {
+        aud: AUD_V3,
+        iss: ISSUER_V3,
+        licenseId: "lic_matrix",
+        deviceId: "dev_matrix",
+        issuedAt: l.issuedAt as number,
+        expiresAt: l.expiresAt as number,
+        graceUntil: l.graceUntil as number,
+        entitlements:
+          row.entitlement.entry === null
+            ? {}
+            : { [row.entitlement.key]: row.entitlement.entry },
+      }
+    : null;
+  // PASSING_GATE derives no build-gate hint, so nothing is `blocked`.
+  const state = licenseState({
+    licenseServiceEnabled: l.licenseServiceEnabled,
+    activation: l.activation,
+    doc,
+    now: l.now,
+    lastSyncUnauthorized: l.lastSyncUnauthorized,
+    lastVerifiedAt: l.lastVerifiedAt,
+  });
+  if (state.status !== row.expect.status)
+    throw new Error(
+      `${row.name}: client-core's gate says ${state.status}, the row says ${row.expect.status}`,
+    );
+  const entitled =
+    isUsable(state.status) &&
+    doc?.entitlements[row.entitlement.key]?.value === true;
+  if (entitled !== row.expect.isEntitled)
+    throw new Error(
+      `${row.name}: isUsable(status) && value === true is ${entitled}, the row says ${row.expect.isEntitled}`,
+    );
 }
 
 // ── stage-matrix v1 (client boot behaviour, outside the wire contract) ───────
@@ -4812,17 +4986,17 @@ const PLATFORM_CASES: HeaderCase[] = [
     expect: null,
   },
   {
-    id: "swift-visionos",
+    id: "swift-godot-visionos",
     description:
-      "Swift's os(visionOS): no value until a spelling and a case add one.",
+      "Swift's os(visionOS) and Godot OS.get_name() on visionOS (headersVersion 2: no value before).",
     raw: "visionOS",
-    expect: null,
+    expect: "visionos",
   },
   {
     id: "swift-tvos",
-    description: "Swift's os(tvOS): no value.",
+    description: "Swift's os(tvOS) (headersVersion 2: no value before).",
     raw: "tvOS",
-    expect: null,
+    expect: "tvos",
   },
   {
     id: "swift-legacy-unknown",
@@ -4854,6 +5028,30 @@ const PLATFORM_CASES: HeaderCase[] = [
     description: "The lookup reads the table's own entries only.",
     raw: "__proto__",
     expect: null,
+  },
+  {
+    id: "canonical-tvos",
+    description: "The canonical value maps to itself.",
+    raw: "tvos",
+    expect: "tvos",
+  },
+  {
+    id: "canonical-visionos",
+    description: "The canonical value maps to itself.",
+    raw: "visionos",
+    expect: "visionos",
+  },
+  {
+    id: "canonical-watchos",
+    description: "The canonical value maps to itself.",
+    raw: "watchos",
+    expect: "watchos",
+  },
+  {
+    id: "swift-watchos",
+    description: "Swift's os(watchOS) token.",
+    raw: "watchOS",
+    expect: "watchos",
   },
 ];
 
@@ -5120,12 +5318,242 @@ function buildHeadersCorpus(): unknown {
   );
   checkHeaderSection("archCases", ARCH_CASES, readParityEnum("arch"));
   return {
-    headersVersion: 1,
+    headersVersion: 2,
     description:
       "Client metadata header values (WIRE-CONTRACT-V3 §5.2). Each row is one spelling an OS or runtime reports (`raw`) and its canonical `X-PKey-Platform` (`platformCases`) or `X-PKey-Arch` (`archCases`) value. A runner looks `raw` up after ASCII case folding (A-Z only, never a locale-dependent lowercase), with no trimming, reading the table's own entries only. `expect: null` means the spelling has no value: an SDK omits the header rather than inventing one, and the Worker stores `raw` as sent (nothing, for an empty `raw`). The rows are the tables: `PLATFORM_SPELLINGS` and `ARCH_SPELLINGS` (`@polaris-key/protocol/core`, generated into every SDK) hold exactly the folded `raw` of the non-null rows, and every runner asserts that its table equals the map derived from them. Append-only: a new spelling (a row plus a table entry) keeps `headersVersion`; a changed row, or a change to folding or lookup, bumps it.",
     platformCases: PLATFORM_CASES,
     archCases: ARCH_CASES,
   };
+}
+
+// ── Device labels (device-label.json) ────────────────────────────────────────
+// WIRE-CONTRACT-V4 §12.7.1 (plans/PX-W13.md §2.1, §4): the one normalisation every SDK applies to
+// the label it sends as `deviceName`, and the Worker applies on receipt. Every row's `expect` is
+// checked against the generator-local reference below, which imports nothing from client-core or
+// shared-protocol (a golden corpus that shares code with the implementation it checks cannot
+// catch a bug in it). Strings are written with every non-ASCII code point escaped, so no bidi
+// override or zero-width character sits literally in a committed file.
+
+interface DeviceLabelCase {
+  id: string;
+  description: string;
+  raw: string;
+  expect: string | null;
+}
+
+const A63 = "A".repeat(63);
+const A64 = "A".repeat(64);
+
+const DEVICE_LABEL_CASES: DeviceLabelCase[] = [
+  {
+    id: "ascii-plain",
+    description: "An ordinary ASCII label is unchanged.",
+    raw: "Living room TV",
+    expect: "Living room TV",
+  },
+  {
+    id: "trim-and-collapse",
+    description: "Runs of spaces collapse to one; both ends are trimmed.",
+    raw: "  Living   room  TV  ",
+    expect: "Living room TV",
+  },
+  {
+    id: "tab-newline-crlf",
+    description:
+      "Step 1: tab, line feed, vertical tab, form feed and carriage return become spaces, then collapse.",
+    raw: "Living\troom\n\u000b\u000cTV\r\n",
+    expect: "Living room TV",
+  },
+  {
+    id: "c0-controls",
+    description:
+      "Step 2: the C0 controls outside step 1 (here SOH, BEL and ESC) are deleted, not spaced. No row holds U+0000: a Godot String cannot.",
+    raw: "Living\u0001room\u0007T\u001bV",
+    expect: "LivingroomTV",
+  },
+  {
+    id: "del-and-c1",
+    description:
+      "Step 2: DEL and the C1 controls are deleted; NEL (U+0085) is whitespace and becomes a space first.",
+    raw: "Den\u007f\u0080\u0085PC\u009f",
+    expect: "Den PC",
+  },
+  {
+    id: "nbsp-ideographic-space",
+    description: "Step 1: NBSP and the ideographic space become spaces.",
+    raw: "Living\u00a0room\u3000TV",
+    expect: "Living room TV",
+  },
+  {
+    id: "line-paragraph-separators",
+    description: "Step 1: U+2028 and U+2029 become spaces.",
+    raw: "Living\u2028room\u2029TV",
+    expect: "Living room TV",
+  },
+  {
+    id: "arabic-letter-mark",
+    description: "Step 2: the Arabic letter mark (U+061C) is deleted.",
+    raw: "TV\u061c",
+    expect: "TV",
+  },
+  {
+    id: "zero-width-and-marks",
+    description:
+      "Step 2: zero-width space, non-joiner and joiner, and the LRM and RLM marks (U+200B-200F) are deleted.",
+    raw: "Li\u200bving\u200c \u200dTV\u200e\u200f",
+    expect: "Living TV",
+  },
+  {
+    id: "rlo-spoof",
+    description:
+      "Step 2: a right-to-left override that would render the tail reversed (`exe.png`) is deleted, so the label reads in logical order.",
+    raw: "Living room TV\u202egnp.exe",
+    expect: "Living room TVgnp.exe",
+  },
+  {
+    id: "bidi-embeddings",
+    description:
+      "Step 2: the bidi embeddings, pop and overrides (U+202A-202E) are deleted.",
+    raw: "\u202aA\u202bB\u202cC\u202dD\u202e",
+    expect: "ABCD",
+  },
+  {
+    id: "invisible-operators",
+    description:
+      "Step 2: the word joiner and the invisible operators (U+2060-2064) are deleted.",
+    raw: "A\u2060B\u2061C\u2062D\u2063E\u2064",
+    expect: "ABCDE",
+  },
+  {
+    id: "bidi-isolates",
+    description: "Step 2: the bidi isolates (U+2066-2069) are deleted.",
+    raw: "\u2066A\u2067B\u2068C\u2069",
+    expect: "ABC",
+  },
+  {
+    id: "byte-order-mark",
+    description: "Step 2: a byte order mark (U+FEFF) is deleted.",
+    raw: "\ufeffDeck",
+    expect: "Deck",
+  },
+  {
+    id: "non-latin-kept",
+    description:
+      "Letters, punctuation and symbols outside the two lists are kept as they are.",
+    raw: "Gästezimmer-PC · 客厅",
+    expect: "Gästezimmer-PC · 客厅",
+  },
+  {
+    id: "no-unicode-normalisation",
+    description:
+      "There is no NFC step: a decomposed e and combining acute accent stay two code points.",
+    raw: "Cafe\u0301",
+    expect: "Cafe\u0301",
+  },
+  {
+    id: "length-64-kept",
+    description: "Exactly 64 code points: kept whole.",
+    raw: A64,
+    expect: A64,
+  },
+  {
+    id: "length-65-cut",
+    description: "65 code points: cut to the first 64.",
+    raw: `${A64}B`,
+    expect: A64,
+  },
+  {
+    id: "astral-at-boundary-kept",
+    description:
+      "An astral emoji as the 64th code point is kept whole: the limit counts code points (64 here), not UTF-16 units (65).",
+    raw: `${A63}\u{1f3ae}B`,
+    expect: `${A63}\u{1f3ae}`,
+  },
+  {
+    id: "astral-past-boundary-cut",
+    description:
+      "An astral emoji as the 65th code point is cut whole, never split into a lone surrogate.",
+    raw: `${A64}\u{1f3ae}`,
+    expect: A64,
+  },
+  {
+    id: "cut-exposes-space",
+    description:
+      "Step 4 trims a trailing space the cut exposes: the 64th code point is a space.",
+    raw: `${A63} B`,
+    expect: A63,
+  },
+  {
+    id: "length-after-cleaning",
+    description:
+      "The limit applies after steps 1-3: deleted code points and collapsed spaces do not count.",
+    raw: `\u200b${"A ".repeat(40)}`,
+    expect: "A ".repeat(32).trimEnd(),
+  },
+  {
+    id: "all-whitespace-absent",
+    description: "Only whitespace: nothing is left, so the label is absent.",
+    raw: " \t\n\u3000 ",
+    expect: null,
+  },
+  {
+    id: "only-stripped-absent",
+    description: "Only deleted code points: the label is absent.",
+    raw: "\u200b\u202e\u0001",
+    expect: null,
+  },
+  {
+    id: "empty-absent",
+    description: "The empty string is no label.",
+    raw: "",
+    expect: null,
+  },
+];
+
+/** The generator's own §12.7.1 reference, written with regular expressions on purpose. */
+function refDeviceLabel(raw: string): string | null {
+  const spaced = raw.replace(
+    /[\u0009-\u000d\u0085\u00a0\u2028\u2029\u3000]/gu,
+    " ",
+  );
+  const stripped = spaced.replace(
+    // eslint-disable-next-line no-control-regex
+    /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]/gu,
+    "",
+  );
+  const collapsed = stripped.replace(/ +/g, " ").replace(/^ | $/g, "");
+  const cut = Array.from(collapsed).slice(0, 64).join("").replace(/ $/, "");
+  return cut === "" ? null : cut;
+}
+
+function buildDeviceLabelCorpus(): unknown {
+  const ids = new Set<string>();
+  for (const row of DEVICE_LABEL_CASES) {
+    if (ids.has(row.id)) throw new Error(`deviceLabel: duplicate id ${row.id}`);
+    ids.add(row.id);
+    const got = refDeviceLabel(row.raw);
+    if (got !== row.expect)
+      throw new Error(
+        `deviceLabel ${row.id}: reference gives ${JSON.stringify(got)}, row says ${JSON.stringify(row.expect)}`,
+      );
+    // A row is its own fixed point: normalising a normalised label changes nothing.
+    if (row.expect !== null && refDeviceLabel(row.expect) !== row.expect)
+      throw new Error(`deviceLabel ${row.id}: expect is not a fixed point`);
+  }
+  return {
+    deviceLabelVersion: 1,
+    description:
+      "Device labels (WIRE-CONTRACT-V4 section 12.7.1, plans/PX-W13.md section 2.1). Every SDK normalises the label it sends as `deviceName` (device-code sign-in, licence activation, registration), and the Worker normalises it again on receipt: (1) map U+0009-000D, U+0085, U+00A0, U+2028, U+2029 and U+3000 to U+0020; (2) delete U+0000-001F, U+007F-009F, U+061C, U+200B-200F, U+202A-202E, U+2060-2064, U+2066-2069 and U+FEFF; (3) collapse runs of U+0020 to one and trim both ends; (4) keep at most 64 code points (`DEVICE_LABEL_MAX_CODEPOINTS`; code points, never UTF-16 units) and trim a trailing space the cut exposes; (5) an empty result is no label: `expect: null`, the member is omitted and the Worker stores NULL. No Unicode normalisation; nothing is ever rejected. Each runner asserts its `normalizeDeviceLabel` maps every `raw` to `expect`. Non-ASCII code points are written escaped. Append-only: a new row keeps `deviceLabelVersion`; a changed row or rule bumps it.",
+    cases: DEVICE_LABEL_CASES,
+  };
+}
+
+/** JSON with every non-ASCII UTF-16 unit escaped (`\uXXXX`, astral as a surrogate pair). */
+function asciiJson(value: unknown): string {
+  return JSON.stringify(value).replace(
+    /[\u007f-\uffff]/g,
+    (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`,
+  );
 }
 
 // ── Config resolution (config-matrix.json) ───────────────────────────────────
@@ -19556,6 +19984,339 @@ async function buildContent(): Promise<{
   return { cases: built.cases, planMatrix: built.planMatrix };
 }
 
+// ── `feed-url-matrix.json` v1 (SP-00, plans/SP-00.md §4 and D5) ─────────────────────────────
+// The app-updater feed URL a native updater is handed, built from discovery's `update.endpoints`
+// rather than string-built by the caller. The templates are the Worker's own: the `everything`
+// product of `packages/worker/test/fixtures/discovery-golden.json`, which discoveryGolden.test.ts
+// holds byte-equal to what `updateService.discoveryFragment` serves
+// (packages/worker/src/services/update/index.ts). (The transcripts' discovery fixture runs with
+// Update off, so it carries no `update.endpoints`.) Reading the golden makes a Worker change to a
+// template go stale here under `--check`.
+//
+// The expansion is the one the SDKs already ship (sdk-node `appcastUrlFrom`; Godot
+// `PKeyDiscovery.appcast_url_from`, `PKeyUpdate._expand` and `PKeyUpdater.feed_url`, P3-10):
+//
+//   * channel: absent means `stable`; an alias is rewritten through CHANNEL_ALIASES first
+//     (`staging` → `beta`, `latest` → `stable`). Validating a channel NAME is the caller's job
+//     (gate-matrix's channel rows); this pins the expansion only.
+//   * every `{channel}`, `{velopackChannel}` and `{buildId}` is replaced by the value encoded
+//     as encodeURIComponent (UTF-8, unreserved `A-Za-z0-9-_.!~*'()` kept), in that order —
+//     an encoded value cannot contain `{`, so no substitution sees another's output.
+//   * `appcast` takes `endpoints.appcast` (the stable feed) and, for any other channel, makes
+//     the channel a PATH segment before `/appcast.xml` — the stable feed's sibling.
+//   * `velopack` with a `velopackChannel` is the releases file; without one it is the feed
+//     DIRECTORY Velopack's UpdateManager is opened on (the template up to `releases.`, which
+//     UpdateManager appends itself).
+//   * `zsync` needs a `buildId` (the AppImage build's artifact-map id).
+//   * a kind whose template the endpoints do not carry is `{unsupported: "product"}`.
+
+const DISCOVERY_GOLDEN = join(
+  HERE,
+  "..",
+  "packages",
+  "worker",
+  "test",
+  "fixtures",
+  "discovery-golden.json",
+);
+
+/** Feed kind → the `update.endpoints` key it reads. */
+const FEED_URL_KINDS = {
+  appcast: "appcast",
+  winsparkle: "winsparkle",
+  velopack: "velopack",
+  appInstaller: "appInstaller",
+  zsync: "zsync",
+} as const;
+type FeedUrlKind = keyof typeof FEED_URL_KINDS;
+
+/** The keys P3-09 added after `feed` (discoveryGolden.test.ts's header names them). */
+const APP_UPDATER_ENDPOINTS = [
+  "winsparkle",
+  "velopack",
+  "appInstaller",
+  "zsync",
+] as const;
+
+interface FeedUrlInput {
+  kind: FeedUrlKind;
+  channel?: string;
+  velopackChannel?: string;
+  buildId?: string;
+}
+type FeedUrlExpect = { url: string } | { unsupported: "product" };
+
+/** The reference expansion (see the section comment). */
+function refFeedUrl(
+  endpoints: Record<string, string>,
+  input: FeedUrlInput,
+): FeedUrlExpect {
+  const template = endpoints[FEED_URL_KINDS[input.kind]];
+  if (typeof template !== "string" || template === "")
+    return { unsupported: "product" };
+  const requested = input.channel ?? "stable";
+  const channel =
+    (CHANNEL_ALIASES as Record<string, string>)[requested] ?? requested;
+  if (input.kind === "appcast") {
+    if (channel === "stable") return { url: template };
+    const at = template.search(/[?#]/);
+    const path = at < 0 ? template : template.slice(0, at);
+    const tail = at < 0 ? "" : template.slice(at);
+    if (!path.endsWith("/appcast.xml")) return { url: template };
+    return {
+      url: `${path.slice(0, -"/appcast.xml".length)}/${encodeURIComponent(channel)}/appcast.xml${tail}`,
+    };
+  }
+  let t = template;
+  if (input.kind === "velopack" && input.velopackChannel === undefined) {
+    const at = t.indexOf("releases.");
+    if (at < 0)
+      throw new Error("feed-url-matrix: a velopack template without releases.");
+    t = t.slice(0, at);
+  }
+  if (input.kind === "zsync" && input.buildId === undefined)
+    throw new Error("feed-url-matrix: a zsync row needs a buildId");
+  t = t.split("{channel}").join(encodeURIComponent(channel));
+  if (input.velopackChannel !== undefined)
+    t = t
+      .split("{velopackChannel}")
+      .join(encodeURIComponent(input.velopackChannel));
+  if (input.buildId !== undefined)
+    t = t.split("{buildId}").join(encodeURIComponent(input.buildId));
+  if (/[{}]/.test(t))
+    throw new Error(`feed-url-matrix: an unexpanded placeholder in ${t}`);
+  return { url: t };
+}
+
+function buildFeedUrlMatrixV1(): unknown {
+  const golden = JSON.parse(readFileSync(DISCOVERY_GOLDEN, "utf8")) as {
+    everything: { services: { update: { endpoints: Record<string, string> } } };
+  };
+  const everything = golden.everything.services.update.endpoints;
+  for (const key of [...Object.values(FEED_URL_KINDS), "channelAppcast"])
+    if (typeof everything[key] !== "string")
+      throw new Error(
+        `feed-url-matrix: the golden has no update.endpoints.${key}`,
+      );
+  // The same Worker before P3-09: the four app-updater templates are absent.
+  const withoutAppUpdaterFeeds = Object.fromEntries(
+    Object.entries(everything).filter(
+      ([k]) => !(APP_UPDATER_ENDPOINTS as readonly string[]).includes(k),
+    ),
+  );
+  const endpointSets: Record<string, Record<string, string>> = {
+    everything,
+    withoutAppUpdaterFeeds,
+    // A product with Update off advertises no endpoints (`{"enabled": false}`).
+    updateOff: {},
+  };
+  const B = "https://key.plrs.im/full/update";
+  const ENC = "qa%20build%2F%C3%BC~*";
+  const row = (
+    name: string,
+    endpoints: string,
+    input: FeedUrlInput,
+    expect: FeedUrlExpect,
+  ) => ({ name, endpoints, input, expect });
+  const no = { unsupported: "product" } as const;
+  const rows = [
+    row(
+      "appcast — no channel is the stable feed",
+      "everything",
+      { kind: "appcast" },
+      { url: `${B}/appcast.xml` },
+    ),
+    row(
+      "appcast — stable",
+      "everything",
+      { kind: "appcast", channel: "stable" },
+      { url: `${B}/appcast.xml` },
+    ),
+    row(
+      "appcast — beta is a path segment",
+      "everything",
+      { kind: "appcast", channel: "beta" },
+      { url: `${B}/beta/appcast.xml` },
+    ),
+    row(
+      "appcast — staging is the beta alias",
+      "everything",
+      { kind: "appcast", channel: "staging" },
+      { url: `${B}/beta/appcast.xml` },
+    ),
+    row(
+      "appcast — latest is the stable alias",
+      "everything",
+      { kind: "appcast", channel: "latest" },
+      { url: `${B}/appcast.xml` },
+    ),
+    row(
+      "appcast — a manual channel",
+      "everything",
+      { kind: "appcast", channel: "nightly" },
+      { url: `${B}/nightly/appcast.xml` },
+    ),
+    row(
+      "appcast — a channel is percent-encoded",
+      "everything",
+      { kind: "appcast", channel: "qa build/ü~*" },
+      { url: `${B}/${ENC}/appcast.xml` },
+    ),
+    row(
+      "winsparkle — no channel is stable",
+      "everything",
+      { kind: "winsparkle" },
+      { url: `${B}/stable/winsparkle.xml` },
+    ),
+    row(
+      "winsparkle — beta",
+      "everything",
+      { kind: "winsparkle", channel: "beta" },
+      { url: `${B}/beta/winsparkle.xml` },
+    ),
+    row(
+      "winsparkle — staging is the beta alias",
+      "everything",
+      { kind: "winsparkle", channel: "staging" },
+      { url: `${B}/beta/winsparkle.xml` },
+    ),
+    row(
+      "winsparkle — a channel is percent-encoded",
+      "everything",
+      { kind: "winsparkle", channel: "qa build/ü~*" },
+      { url: `${B}/${ENC}/winsparkle.xml` },
+    ),
+    row(
+      "velopack — beta, win-x64 releases file",
+      "everything",
+      { kind: "velopack", channel: "beta", velopackChannel: "win-x64" },
+      { url: `${B}/beta/velopack/releases.win-x64.json` },
+    ),
+    row(
+      "velopack — staging is the beta alias",
+      "everything",
+      { kind: "velopack", channel: "staging", velopackChannel: "linux" },
+      { url: `${B}/beta/velopack/releases.linux.json` },
+    ),
+    row(
+      "velopack — no velopackChannel is the UpdateManager feed directory",
+      "everything",
+      { kind: "velopack", channel: "stable" },
+      { url: `${B}/stable/velopack/` },
+    ),
+    row(
+      "velopack — a velopackChannel is percent-encoded",
+      "everything",
+      { kind: "velopack", channel: "stable", velopackChannel: "win x64" },
+      { url: `${B}/stable/velopack/releases.win%20x64.json` },
+    ),
+    row(
+      "appInstaller — stable",
+      "everything",
+      { kind: "appInstaller", channel: "stable" },
+      { url: `${B}/stable/app.appinstaller` },
+    ),
+    row(
+      "appInstaller — latest is the stable alias",
+      "everything",
+      { kind: "appInstaller", channel: "latest" },
+      { url: `${B}/stable/app.appinstaller` },
+    ),
+    row(
+      "appInstaller — a pr channel",
+      "everything",
+      { kind: "appInstaller", channel: "pr-42" },
+      { url: `${B}/pr-42/app.appinstaller` },
+    ),
+    row(
+      "zsync — beta build",
+      "everything",
+      { kind: "zsync", channel: "beta", buildId: "linux-x64.appimage" },
+      { url: `${B}/beta/linux-x64.appimage.AppImage.zsync` },
+    ),
+    row(
+      "zsync — no channel is stable",
+      "everything",
+      { kind: "zsync", buildId: "linux-arm64" },
+      { url: `${B}/stable/linux-arm64.AppImage.zsync` },
+    ),
+    row(
+      "zsync — a channel is percent-encoded",
+      "everything",
+      { kind: "zsync", channel: "qa build/ü~*", buildId: "linux-arm64" },
+      { url: `${B}/${ENC}/linux-arm64.AppImage.zsync` },
+    ),
+    row(
+      "appcast — a Worker before P3-09 still serves it",
+      "withoutAppUpdaterFeeds",
+      { kind: "appcast", channel: "beta" },
+      { url: `${B}/beta/appcast.xml` },
+    ),
+    row(
+      "winsparkle — unsupported without the template",
+      "withoutAppUpdaterFeeds",
+      { kind: "winsparkle", channel: "beta" },
+      no,
+    ),
+    row(
+      "velopack — unsupported without the template",
+      "withoutAppUpdaterFeeds",
+      { kind: "velopack", channel: "beta", velopackChannel: "win" },
+      no,
+    ),
+    row(
+      "appInstaller — unsupported without the template",
+      "withoutAppUpdaterFeeds",
+      { kind: "appInstaller" },
+      no,
+    ),
+    row(
+      "zsync — unsupported without the template",
+      "withoutAppUpdaterFeeds",
+      { kind: "zsync", buildId: "linux-arm64" },
+      no,
+    ),
+    row(
+      "appcast — unsupported with Update off",
+      "updateOff",
+      { kind: "appcast" },
+      no,
+    ),
+    row(
+      "winsparkle — unsupported with Update off",
+      "updateOff",
+      { kind: "winsparkle", channel: "beta" },
+      no,
+    ),
+  ];
+  const names = new Set<string>();
+  const kinds = new Set<string>();
+  for (const r of rows) {
+    if (names.has(r.name))
+      throw new Error(`feed-url-matrix: two rows named ${r.name}`);
+    names.add(r.name);
+    kinds.add(r.input.kind);
+    const set = endpointSets[r.endpoints];
+    if (!set)
+      throw new Error(`feed-url-matrix: ${r.name} names no endpoint set`);
+    const got = refFeedUrl(set, r.input);
+    if (JSON.stringify(got) !== JSON.stringify(r.expect))
+      throw new Error(
+        `feed-url-matrix: ${r.name} expands to ${JSON.stringify(got)}, the row says ${JSON.stringify(r.expect)}`,
+      );
+  }
+  for (const k of Object.keys(FEED_URL_KINDS))
+    if (!kinds.has(k)) throw new Error(`feed-url-matrix: no row for ${k}`);
+  return {
+    feedUrlMatrixVersion: 1,
+    description:
+      "App-updater feed URLs from discovery's `update.endpoints` (plans/SP-00.md D5; proof of `update.feeds`). `endpointSets` holds the Worker's templates — `everything` is the `everything` product of the Worker's byte-checked discovery golden, `withoutAppUpdaterFeeds` the same Worker before P3-09 added `winsparkle`, `velopack`, `appInstaller` and `zsync`, and `updateOff` a product with Update off — and `kinds` maps each feed kind to the endpoints key it reads. Each row names an endpoint set and an input `{kind, channel?, velopackChannel?, buildId?}`; `expect` is `{url}`, or `{unsupported: \"product\"}` when the set carries no template for the kind. The expansion: an absent channel is `stable`, and an alias is rewritten through CHANNEL_ALIASES (`staging` → `beta`, `latest` → `stable`) first; `{channel}`, `{velopackChannel}` and `{buildId}` are each replaced by the value encoded as encodeURIComponent. `appcast` reads `endpoints.appcast` (the stable feed) and, for any other channel, inserts the channel as a path segment before `/appcast.xml`. `velopack` without a `velopackChannel` is the feed directory Velopack's UpdateManager opens (the template up to `releases.`). A `zsync` input always carries a `buildId`. Channel-name validity is not pinned here (gate-matrix's channel rows pin it): the percent-encoded rows use a value outside the channel alphabet only to pin the encoding.",
+    kinds: FEED_URL_KINDS,
+    endpointSets,
+    rows,
+  };
+}
+
 /** Reconcile one generated/source file against its on-disk copy. In `--check` mode a drift
  *  is fatal (returns true so the caller can exit 1); otherwise it's written. */
 function reconcile(path: string, content: string, check: boolean): boolean {
@@ -19607,7 +20368,7 @@ async function main(): Promise<void> {
   });
 
   // ── corpus v2 (wire contract v3) ───────────────────────────────────────────
-  // Nine files and the `content/` directory in one place so a runner can point at `corpus/v2/`
+  // Ten files and the `content/` directory in one place so a runner can point at `corpus/v2/`
   // and find everything it needs, and so `--check` guards the whole set. The `fingerprint.json` formulas are
   // unchanged across the wire revisions (`fingerprintVersion` stays 1) and deliberately NOT
   // rebranded — the `pkey-hw:`/`pkey-device:` prefixes are hash domains baked into every
@@ -19630,6 +20391,10 @@ async function main(): Promise<void> {
   const v2ConfigMatrix = await format(JSON.stringify(buildConfigMatrix()), {
     parser: "json",
   });
+  // §12.7.1 (PX-W13): the device label every SDK sends and the Worker stores. Unsigned, ASCII-only.
+  const v2DeviceLabel = await format(asciiJson(buildDeviceLabelCorpus()), {
+    parser: "json",
+  });
   // Wire contract v4's two decision tables (plans/P3-01.md §4.6, §4.7): unsigned client
   // behaviour, recomputed by the generator's reference implementations, mirrored like the rest.
   // `buildV2` above has built the record vectors their rows pin.
@@ -19639,6 +20404,10 @@ async function main(): Promise<void> {
   const v2OutletMatrix = await format(JSON.stringify(buildOutletMatrixV1()), {
     parser: "json",
   });
+  // SP-00 (plans/SP-00.md D5): the app-updater feed URLs out of discovery's `update.endpoints`.
+  const v2FeedUrlMatrix = await format(JSON.stringify(buildFeedUrlMatrixV1()), {
+    parser: "json",
+  });
   // plans/P4-01.md §4.1–§4.5 (P4-04): the content corpus and `plan-matrix.json`, rebuilt from
   // the committed inputs after `buildV2` has signed the pack records they join by hash.
   const content = await buildContent();
@@ -19646,6 +20415,11 @@ async function main(): Promise<void> {
     parser: "json",
   });
   const planMatrix = await format(JSON.stringify(content.planMatrix), {
+    parser: "json",
+  });
+  // plans/U-01.md §4.1 (U-18): the Cloud Sync client scenario corpus. Literal data with its own
+  // self-check (tools/sync-scenarios.ts); unsigned, mirrored like the rest.
+  const syncScenarios = await format(JSON.stringify(buildSyncScenarios()), {
     parser: "json",
   });
 
@@ -19661,6 +20435,9 @@ async function main(): Promise<void> {
     [basename(V2_UPDATE_MATRIX_OUT), v2UpdateMatrix],
     [basename(V2_OUTLET_MATRIX_OUT), v2OutletMatrix],
     [basename(V2_PLAN_MATRIX_OUT), planMatrix],
+    [basename(V2_FEED_URL_MATRIX_OUT), v2FeedUrlMatrix],
+    [basename(V2_SYNC_SCENARIOS_OUT), syncScenarios],
+    [basename(V2_DEVICE_LABEL_OUT), v2DeviceLabel],
   ]);
   let stale = false;
   // `content/` is source-only (§4.1): its cases are reconciled in the source tree alone, its

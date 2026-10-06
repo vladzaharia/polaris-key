@@ -31,6 +31,11 @@
  *  10. THE EDIT LEASE (A-18e): an adapter whose store has ONE shared, invalidating edit per account
  *      (`capabilities.limits.openEditsPerAccount`: Play) races its lease: a poll tick during a
  *      provisioning edit neither invalidates it nor runs, and the edit still commits.
+ *  11. FIRST-PARTY (PS-01; notes/S-21 §6.1, THREAT-MODEL S9): a `first-party` op is declared only
+ *      by an adapter with no credential and no gate (and so no spec pin and no `api` op); every
+ *      one names a registered handler; each handler, run with `fetch` replaced by a thrower, sends
+ *      nothing, writes no audit row for a read and exactly one for a write, and a typed op
+ *      refuses without the confirmation.
  *
  * A NEW STOREFRONT ALSO ADDS its rows to `SPEC_FIXTURES`, `CLIENTS` and `TYPED_SAMPLES` below (and
  * to `LEASE_RACES` when it declares a shared edit): without them the suite fails, by design.
@@ -39,7 +44,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { OUTLET_KINDS } from "@polaris-key/manifest";
 import {
   READ_OPS,
@@ -78,9 +83,30 @@ import {
   STEAM_CI,
   type CiStoreId,
 } from "../../src/core/storefront/ciPlane.js";
+import {
+  FLATHUB_PR,
+  HOMEBREW_PR,
+  PR_PLANE,
+  PR_STORE_IDS,
+  PR_TOOL,
+  SCOOP_PR,
+  WINGET_PR,
+  prNaturalKey,
+  prPathAllowed,
+  prPlaneStore,
+  prVerdict,
+  type PrStoreId,
+} from "../../src/core/storefront/prPlane.js";
 import { fitListing } from "../../src/core/storefront/listing.js";
 import {
+  firstPartyHandler,
+  type FirstPartyAuditEntry,
+  type FirstPartyPorts,
+} from "../../src/core/storefront/firstParty.js";
+import { APP_STORE_ADAPTER } from "../../src/core/storefront/stores/appStore.js";
+import {
   budgetAllows,
+  type BudgetMeter,
   pollBudget,
   readRate,
   storeMeter,
@@ -117,6 +143,7 @@ import {
   poll as playPoll,
   SLUG as PLAY_SLUG,
 } from "../playWorld.js";
+import { SteamClient } from "../../src/core/steam/client.js";
 import {
   FEED_ADAPTERS,
   feedCapabilityView,
@@ -154,6 +181,13 @@ const SPEC_FIXTURES: Partial<Record<StorefrontId, SpecFixture>> = {
   "microsoft-store": JSON.parse(
     readFileSync(
       join(HERE, "..", "fixtures", "msstore", "operations.json"),
+      "utf8",
+    ),
+  ) as SpecFixture,
+  // A-18g: the hand-written Steamworks Web API write list (no machine-readable spec exists).
+  steam: JSON.parse(
+    readFileSync(
+      join(HERE, "..", "fixtures", "steam", "webapi-writes.json"),
       "utf8",
     ),
   ) as SpecFixture,
@@ -237,6 +271,71 @@ const CLIENTS: Partial<Record<StorefrontId, () => CountingClient>> = {
     });
     return c;
   },
+  steam: () => {
+    const c: CountingClient = {
+      tokens: 0,
+      sends: 0,
+      request: (method, path, body) =>
+        client.request(
+          method as "POST",
+          path,
+          (body ?? {}) as Record<string, string>,
+        ),
+    };
+    const client = new SteamClient({
+      key: async () => {
+        c.tokens++;
+        return "k";
+      },
+      fetchImpl: async () => {
+        c.sends++;
+        return new Response("{}", { status: 200 });
+      },
+    });
+    return c;
+  },
+};
+
+/**
+ * A client per adapter whose rate declares `stopOn403`, wired to a real meter and to a vendor that
+ * answers every send with 403 (conformance item 8: the first 403 stops every later call).
+ */
+const STOP_ON_403_CLIENTS: Partial<
+  Record<StorefrontId, (meter: BudgetMeter) => CountingClient>
+> = {
+  steam: (meter) => {
+    const c: CountingClient = {
+      tokens: 0,
+      sends: 0,
+      request: (method, path, body) =>
+        client.request(
+          method as "GET",
+          path,
+          (body ?? {}) as Record<string, string>,
+        ),
+    };
+    const client = new SteamClient({
+      key: async () => {
+        c.tokens++;
+        return "k";
+      },
+      budget: {
+        stopped: async () => (await meter.read(NOW))?.stopped === true,
+        spend: () => meter.spend(NOW),
+        stop: () => meter.stop(NOW),
+      },
+      fetchImpl: async () => {
+        c.sends++;
+        return new Response("{}", { status: 403 });
+      },
+    });
+    return c;
+  },
+};
+
+/** One read each `stopOn403` adapter's gate admits (the 403 probe). */
+const STOP_ON_403_READ: Partial<Record<StorefrontId, string>> = {
+  steam: "/ISteamApps/GetPartnerAppListForWebAPIKey/v2/",
 };
 
 /** A typed write per op, with whatever else the rule needs asserted (never the confirmation). */
@@ -530,6 +629,50 @@ const SESSION: AdminSession = {
   csrf: "c",
   exp: NOW + 3600,
 };
+
+/**
+ * Item 11's declaration rules, as problems (empty when the adapter keeps them). A function, so a
+ * test can show that a fake first-party op on an adapter with a credential fails the suite.
+ */
+function firstPartyProblems(a: StorefrontAdapter): string[] {
+  const ops = STOREFRONT_OPS.filter(
+    (op) => a.capabilities.ops[op].mode === "first-party",
+  );
+  if (ops.length === 0) return [];
+  const problems: string[] = [];
+  if (a.credential !== null)
+    problems.push(`${a.id} declares first-party ops but holds a credential`);
+  if (a.gate !== null)
+    problems.push(`${a.id} declares first-party ops but has a vendor gate`);
+  if (a.specPin !== undefined)
+    problems.push(`${a.id} declares first-party ops but pins a vendor spec`);
+  if (a.pr !== null)
+    problems.push(`${a.id} declares first-party ops but has a PR plane`);
+  for (const op of STOREFRONT_OPS) {
+    const s = a.capabilities.ops[op];
+    if (s.mode === "api" || s.mode === "ci" || s.mode === "pr")
+      problems.push(`${a.id} mixes first-party with a vendor ${s.mode} op`);
+    if (s.mode === "first-party" && !firstPartyHandler(s.handler))
+      problems.push(`${a.id}.${op} names no handler (${s.handler})`);
+  }
+  return problems;
+}
+
+/** Ports that record every call and answer a token value; nothing else is reachable. */
+function recordingPorts() {
+  const calls: string[] = [];
+  const audits: FirstPartyAuditEntry[] = [];
+  const ports: FirstPartyPorts = {
+    readListing: async () => (calls.push("readListing"), { listing: true }),
+    writeListing: async (_p, part) => (calls.push(`writeListing:${part}`), {}),
+    setListing: async () => (calls.push("setListing"), {}),
+    status: async () => (calls.push("status"), { state: "auto" }),
+    audit: async (e) => {
+      audits.push(e);
+    },
+  };
+  return { ports, calls, audits };
+}
 
 // ── The storefront adapters ──────────────────────────────────────────────────────────────────
 
@@ -974,6 +1117,31 @@ for (const a of STOREFRONT_ADAPTERS) {
         expect(budgetAllows(stopped, "operator")).toBe(false);
         expect(await readRate(env, a.id, "", k, NOW + 31)).toBeNull();
       });
+
+      it("a store that rate-limits on 403 stops every later call at the first one, before a key is opened", async () => {
+        if (!a.capabilities.rate.stopOn403) return;
+        const make = STOP_ON_403_CLIENTS[a.id];
+        const read = STOP_ON_403_READ[a.id];
+        expect(make, `add ${a.id} to STOP_ON_403_CLIENTS`).toBeDefined();
+        expect(read, `add ${a.id} to STOP_ON_403_READ`).toBeDefined();
+        const env = makeEnv(new KvMock(), []);
+        const meter = storeMeter(env, a.id, "", { source: "platform" });
+        const first = make!(meter);
+        await expect(
+          first.request("GET", read!, undefined),
+        ).rejects.toMatchObject({
+          status: 403,
+        });
+        expect(first.sends).toBe(1);
+        expect((await meter.read(NOW))?.stopped).toBe(true);
+        // Another caller, another client: nothing opened, nothing sent while the stop holds.
+        const next = make!(meter);
+        await expect(
+          next.request("GET", read!, undefined),
+        ).rejects.toBeDefined();
+        expect(next.tokens).toBe(0);
+        expect(next.sends).toBe(0);
+      });
     });
 
     // 9 ─────────────────────────────────────────────────────────────────────────────────────
@@ -1059,6 +1227,68 @@ for (const a of STOREFRONT_ADAPTERS) {
       });
     });
 
+    // 11 ────────────────────────────────────────────────────────────────────────────────────
+    describe("11. first-party", () => {
+      const firstPartyOps = STOREFRONT_OPS.filter(
+        (op) => a.capabilities.ops[op].mode === "first-party",
+      );
+      afterEach(() => {
+        vi.unstubAllGlobals();
+      });
+
+      it("declares first-party ops only with no credential, no gate and a handler for each", () => {
+        expect(firstPartyProblems(a)).toEqual([]);
+      });
+
+      it("runs every first-party handler without a network call; reads audit nothing, writes once", async () => {
+        if (firstPartyOps.length === 0) return;
+        const fetch = vi.fn(async () => {
+          throw new Error("a first-party handler reached the network");
+        });
+        vi.stubGlobal("fetch", fetch);
+        for (const op of firstPartyOps) {
+          const s = a.capabilities.ops[op];
+          if (s.mode !== "first-party") continue;
+          const h = firstPartyHandler(s.handler)!;
+          if (READ_OPS.includes(op)) expect(h.writes, op).toBe(false);
+          const { ports, audits } = recordingPorts();
+          await h.run({
+            product: "diceroll",
+            input: {},
+            typedConfirmation: true,
+            ports,
+          });
+          if (!h.writes) expect(audits, op).toEqual([]);
+          else {
+            expect(audits.length, op).toBe(1);
+            expect(audits[0]).toMatchObject({ op, product: "diceroll" });
+          }
+        }
+        expect(fetch).not.toHaveBeenCalled();
+      });
+
+      it("a typed first-party op refuses without the confirmation and touches nothing", async () => {
+        for (const op of TYPED_OPS) {
+          const s = a.capabilities.ops[op];
+          if (s.mode !== "first-party") continue;
+          const { ports, calls, audits } = recordingPorts();
+          let reason: string | null = null;
+          try {
+            await firstPartyHandler(s.handler)!.run({
+              product: "diceroll",
+              input: {},
+              ports,
+            });
+          } catch (e) {
+            reason = e instanceof StoreWriteDenied ? e.reason : String(e);
+          }
+          expect(reason, op).toBe("typed_confirmation_required");
+          expect(calls).toEqual([]);
+          expect(audits).toEqual([]);
+        }
+      });
+    });
+
     // 10 ────────────────────────────────────────────────────────────────────────────────────
     describe("10. the edit lease", () => {
       it("a store with a shared edit races its lease: a poll tick during a provisioning edit neither invalidates it nor runs", async () => {
@@ -1075,6 +1305,56 @@ for (const a of STOREFRONT_ADAPTERS) {
     });
   });
 }
+
+describe("the first-party branch (PS-01) catches a vendor adapter declaring first-party", () => {
+  it("a fake first-party op on an adapter with a credential and a gate fails the suite", () => {
+    const fake: StorefrontAdapter = {
+      ...APP_STORE_ADAPTER,
+      capabilities: {
+        ...APP_STORE_ADAPTER.capabilities,
+        ops: {
+          ...APP_STORE_ADAPTER.capabilities.ops,
+          status: {
+            mode: "first-party",
+            plane: "worker",
+            handler: "polaris-key.status",
+          },
+        },
+      },
+    };
+    expect(fake.credential).not.toBeNull();
+    const problems = firstPartyProblems(fake);
+    expect(problems).toContain(
+      "app-store declares first-party ops but holds a credential",
+    );
+    expect(problems).toContain(
+      "app-store declares first-party ops but has a vendor gate",
+    );
+  });
+
+  it("a first-party op naming no handler fails the suite", () => {
+    const fake: StorefrontAdapter = {
+      ...APP_STORE_ADAPTER,
+      credential: null,
+      gate: null,
+      specPin: undefined,
+      capabilities: {
+        ...APP_STORE_ADAPTER.capabilities,
+        ops: Object.fromEntries(
+          STOREFRONT_OPS.map((op) => [
+            op,
+            op === "status"
+              ? { mode: "first-party", plane: "worker", handler: "nope.status" }
+              : { mode: "unsupported", reason: "not part of this fake store" },
+          ]),
+        ) as StorefrontAdapter["capabilities"]["ops"],
+      },
+    };
+    expect(firstPartyProblems(fake)).toEqual([
+      "app-store.status names no handler (nope.status)",
+    ]);
+  });
+});
 
 // ── The CI plane (A-18h): every store's command allow-list ───────────────────────────────────
 
@@ -1421,3 +1701,238 @@ for (const f of FEED_ADAPTERS) {
     });
   });
 }
+
+// ── The PR plane (A-18i) ─────────────────────────────────────────────────────────────────────
+
+const PR_SAMPLES: Record<
+  PrStoreId,
+  {
+    argv: string[];
+    identity: Record<string, unknown>;
+    files: string[];
+    key: string;
+  }
+> = {
+  winget: {
+    argv: [
+      "--repo",
+      "microsoft/winget-pkgs",
+      "--package",
+      "Vlad.Dice",
+      "--version",
+      "1.2.0",
+    ],
+    identity: { packageIdentifier: "Vlad.Dice" },
+    key: "pr:Vlad.Dice:1.2.0",
+    files: [
+      "manifests/v/Vlad/Dice/1.2.0/Vlad.Dice.yaml",
+      "manifests/v/Vlad/Dice/1.2.0/Vlad.Dice.installer.yaml",
+      "manifests/v/Vlad/Dice/1.2.0/Vlad.Dice.locale.en-US.yaml",
+      "manifests/v/Vlad/Dice/1.2.0/Vlad.Dice.locale.zh-Hans-CN.yaml",
+    ],
+  },
+  homebrew: {
+    argv: [
+      "--repo",
+      "vlad/homebrew-games",
+      "--cask",
+      "dice",
+      "--version",
+      "1.2.0",
+    ],
+    identity: { homebrewTap: "vlad/homebrew-games", homebrewCask: "dice" },
+    key: "pr:dice:1.2.0",
+    files: ["Casks/dice.rb"],
+  },
+  scoop: {
+    argv: ["--repo", "vlad/scoop-games", "--app", "dice", "--version", "1.2.0"],
+    identity: { scoopBucket: "vlad/scoop-games" },
+    key: "pr:dice:1.2.0",
+    files: ["bucket/dice.json"],
+  },
+  flathub: {
+    argv: ["--repo", "flathub/gg.vlad.Dice", "--version", "1.2.0"],
+    identity: { appId: "gg.vlad.Dice" },
+    key: "pr:gg.vlad.Dice:1.2.0",
+    files: ["gg.vlad.Dice.yml", "gg.vlad.Dice.metainfo.xml"],
+  },
+};
+
+describe("the PR plane (A-18i; S-15 §4.4, §6.3)", () => {
+  it("has one row per PR store id, and every registered adapter's pr is its row", () => {
+    expect(PR_PLANE.map((p) => p.store).sort()).toEqual(
+      [...PR_STORE_IDS].sort(),
+    );
+    for (const a of STOREFRONT_ADAPTERS) {
+      const row = prPlaneStore(a.id);
+      if (a.pr) {
+        expect(a.pr).toBe(row);
+        expect(a.ci, `${a.id} is on one plane`).toBeNull();
+        expect([...a.never.ciTokens].sort()).toEqual(
+          [...row!.neverTokens].sort(),
+        );
+        for (const op of STOREFRONT_OPS) {
+          const s = a.capabilities.ops[op];
+          if (s.mode !== "pr") continue;
+          expect(s.repo, `${a.id}.${op}`).toBe(row!.repo);
+          expect(
+            Object.values(row!.commandOps).some((ops) => ops.includes(op)),
+            `${a.id}.${op} is performed by a PR command`,
+          ).toBe(true);
+        }
+        for (const [command, ops] of Object.entries(row!.commandOps))
+          for (const op of ops)
+            expect(
+              a.capabilities.ops[op as StorefrontOp].mode,
+              `${a.id}: ${command} performs ${op}`,
+            ).toBe("pr");
+      } else expect(row, `${a.id} has a PR_PLANE row but no pr`).toBeNull();
+    }
+  });
+
+  for (const plane of PR_PLANE) {
+    describe(`${plane.store} (${plane.repo})`, () => {
+      const sample = PR_SAMPLES[plane.store];
+      const argv = (command: string) => [command, ...sample.argv];
+
+      it("admits its sample of both commands, the identity bound, and only the github pseudo-tool", () => {
+        expect(plane.list.tool).toBe(PR_TOOL);
+        expect(Object.keys(plane.list.commands).sort()).toEqual([
+          "pull-request",
+          "status",
+        ]);
+        for (const command of ["pull-request", "status"]) {
+          expect(
+            checkCiCommand(plane.list, command, argv(command), sample.identity),
+          ).toBeNull();
+          expect(checkCiCommand(plane.list, command, argv(command), {})).toBe(
+            "identity_mismatch",
+          );
+        }
+        expect(prNaturalKey(plane, "pull-request", argv("pull-request"))).toBe(
+          sample.key,
+        );
+      });
+
+      it("refuses every never-list line and spells no never-token", () => {
+        expect(plane.never.length).toBeGreaterThan(0);
+        for (const line of plane.never)
+          expect(matchCiCommand(plane.list, line), line.join(" ")).toBeNull();
+        const literals = ciLiterals(plane.list).map((t) => t.toLowerCase());
+        for (const token of plane.neverTokens)
+          expect(
+            literals.filter((l) => l.includes(token)),
+            token,
+          ).toEqual([]);
+      });
+
+      it("admits the generator's paths and nothing else", () => {
+        const pr = argv("pull-request");
+        for (const f of sample.files)
+          expect(prPathAllowed(plane, pr, f), f).toBe(true);
+        for (const bad of [
+          "../evil",
+          "/etc/passwd",
+          ".github/workflows/release.yml",
+          `${sample.files[0]}/../../x`,
+          "README.md",
+          ...(sample.files[0]!.includes("1.2.0")
+            ? [sample.files[0]!.replace("1.2.0", "9.9.9")]
+            : []),
+        ])
+          expect(prPathAllowed(plane, pr, bad), bad).toBe(false);
+      });
+
+      it("no value can smuggle an option, a path escape or a shell metacharacter", () => {
+        const rule = plane.list.commands["pull-request"]!;
+        const pr = argv("pull-request");
+        rule.argv.forEach((want, i) => {
+          if (typeof want === "string") return;
+          for (const bad of [
+            "--force",
+            "../../etc",
+            "a;rm -rf /",
+            "$(id)",
+            "a b",
+          ]) {
+            const line = [...pr];
+            line[i] = `${want.prefix ?? ""}${bad}`;
+            expect(
+              checkCiCommand(plane.list, "pull-request", line, sample.identity),
+              `${i} = ${line[i]}`,
+            ).not.toBeNull();
+          }
+        });
+      });
+    });
+  }
+
+  it("never targets the official Homebrew or Scoop organisations, in any case", () => {
+    for (const repo of [
+      "Homebrew/homebrew-cask",
+      "HOMEBREW/homebrew-core",
+      "homebrew/homebrew-x",
+    ])
+      expect(
+        checkCiCommand(
+          HOMEBREW_PR.list,
+          "pull-request",
+          ["pull-request", "--repo", repo, "--cask", "dice", "--version", "1"],
+          {
+            homebrewTap: repo,
+            homebrewCask: "dice",
+          },
+        ),
+        repo,
+      ).not.toBeNull();
+    for (const repo of ["ScoopInstaller/Main", "scoopinstaller/Extras"])
+      expect(
+        checkCiCommand(
+          SCOOP_PR.list,
+          "pull-request",
+          ["pull-request", "--repo", repo, "--app", "dice", "--version", "1"],
+          {
+            scoopBucket: repo,
+          },
+        ),
+        repo,
+      ).not.toBeNull();
+  });
+
+  it("reads review labels as a verdict, never a date", () => {
+    expect(
+      prVerdict(WINGET_PR, {
+        state: "open",
+        merged: false,
+        labels: ["Validation-Domain"],
+      }),
+    ).toBe("validation-issue");
+    expect(
+      prVerdict(WINGET_PR, {
+        state: "open",
+        merged: false,
+        labels: ["Needs-Author-Feedback"],
+      }),
+    ).toBe("needs-author-feedback");
+    expect(
+      prVerdict(WINGET_PR, {
+        state: "open",
+        merged: false,
+        labels: ["Validation-Completed"],
+      }),
+    ).toBe("in-review");
+    expect(
+      prVerdict(HOMEBREW_PR, {
+        state: "open",
+        merged: false,
+        labels: ["Validation-Domain"],
+      }),
+    ).toBe("in-review");
+    expect(
+      prVerdict(SCOOP_PR, { state: "closed", merged: true, labels: [] }),
+    ).toBe("merged");
+    expect(
+      prVerdict(FLATHUB_PR, { state: "closed", merged: false, labels: [] }),
+    ).toBe("closed");
+  });
+});

@@ -45,6 +45,7 @@ import {
   PACKAGE_ECOSYSTEMS,
   PACKAGE_FILE_TYPES,
   PACKAGE_METADATA_KEYS,
+  goMajorProblem,
   isPackageEcosystem,
   isPackageName,
   maxPackageFiles,
@@ -56,6 +57,7 @@ import {
   type ReleaseRecordDoc,
 } from "@polaris-key/protocol/release";
 import { MAX_BUILD_EMBEDS, MAX_CONTENT_PINS } from "@polaris-key/protocol/core";
+import { PRODUCT_SLUG_RE } from "./productSlug.js";
 import {
   VOCAB_TOKEN_PATTERN,
   type AppContent,
@@ -522,7 +524,9 @@ export function descriptorToRecord(
 
 // ── Field rules (mirrored as patterns in release-descriptor.schema.json) ─────
 
-const SLUG_RE = /^[a-z0-9-]{1,64}$/;
+// A product slug takes the one shape (P0-14) but not the reservations: a descriptor names an
+// existing product.
+const SLUG_RE = PRODUCT_SLUG_RE;
 const DELIVERABLE_RE = /^[a-z][a-z0-9-]*(\.[a-z0-9-]+)*$/;
 const VERSION_RE = /^[0-9A-Za-z][0-9A-Za-z.+-]{0,63}$/;
 const SEMVER_RE =
@@ -1438,12 +1442,29 @@ function validatePackageDescriptor(
       `package.name must be a ${eco} package name.`,
     );
   if (typeof d.version === "string") {
-    if ((eco === "npm" || eco === "swift") && !SEMVER_RE.test(d.version))
+    if (
+      (eco === "npm" || eco === "swift" || eco === "cargo") &&
+      !SEMVER_RE.test(d.version)
+    )
       err(
         "/version",
         "invalid_descriptor",
         `a ${eco} package version is a semantic version.`,
       );
+    if (eco === "go") {
+      // Go adds its `v`: release 1.4.0 is module version v1.4.0. Build metadata is refused (Go
+      // reserves `+incompatible`, which is never published here).
+      if (!SEMVER_RE.test(d.version) || d.version.includes("+"))
+        err(
+          "/version",
+          "invalid_descriptor",
+          "a Go module version is a semantic version without the v (Go adds it) and without build metadata.",
+        );
+      else if (isPackageName(eco, pkg.name)) {
+        const major = goMajorProblem(pkg.name, d.version);
+        if (major !== null) err("/version", "invalid_descriptor", major);
+      }
+    }
     if (eco === "oci" && !OCI_TAG_RE.test(d.version))
       err(
         "/version",
@@ -1624,8 +1645,13 @@ function validatePackageDescriptor(
               : eco === "oci"
                 ? count("oci-manifest") + count("oci-index") >= 1 ||
                   "at least one oci-manifest or oci-index"
-                : (count("godot-zip") === 1 && count("godot-icon") <= 1) ||
-                  "exactly one godot-zip and at most one godot-icon";
+                : eco === "cargo"
+                  ? count("crate") === 1 || "exactly one crate"
+                  : eco === "go"
+                    ? (count("go-zip") === 1 && count("go-mod") === 1) ||
+                      "exactly one go-zip and exactly one go-mod"
+                    : (count("godot-zip") === 1 && count("godot-icon") <= 1) ||
+                      "exactly one godot-zip and at most one godot-icon";
     if (composition !== true && types.length === files.length)
       err(
         "/package/files",

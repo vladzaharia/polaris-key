@@ -128,6 +128,7 @@ describe("the payload URL on workerd (P4-18)", () => {
             distribution: { enabled: true },
             update: { enabled: true },
             identity: { enabled: false },
+            sync: { enabled: false },
           },
         }),
         "manifest",

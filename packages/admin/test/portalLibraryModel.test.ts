@@ -5,7 +5,11 @@ import {
   buildLibrary,
   coverageNote,
   detectDevice,
+  deviceFamily,
+  deviceOsName,
+  licenseOrigin,
   licenseStatus,
+  shortOrigin,
   platformsOnlyNote,
   quickAction,
   readPresentation,
@@ -109,7 +113,7 @@ describe("status model (§5.3), first match wins", () => {
     expect(s.note).not.toMatch(/of/);
   });
 
-  it("an OIDC license with no key is a signed-in app", () => {
+  it("an OIDC license with no key reads by its quiet origin, tier first, never a type", () => {
     const s = licenseStatus(
       license({
         product: "a",
@@ -121,9 +125,55 @@ describe("status model (§5.3), first match wins", () => {
     );
     expect(s).toMatchObject({
       kind: "signedInApp",
+      label: "From signing in",
+      note: "Standard · From signing in · 1 device",
       tone: "neutral",
       attention: false,
     });
+    const pro = licenseStatus(
+      license({
+        product: "a",
+        tier: "pro",
+        identityProvider: "oidc",
+        keyCount: 0,
+        activeKeyCount: 0,
+      }),
+      NOW_S,
+    );
+    expect(pro.note).toBe("Pro · From signing in · 1 device");
+  });
+
+  it("words a licence's origin in plain words, naming the store with the key", () => {
+    const key = license({ product: "a" });
+    const signIn = license({
+      product: "a",
+      identityProvider: "oidc",
+      keyCount: 0,
+      activeKeyCount: 0,
+    });
+    const keyless = license({ product: "a", keyCount: 0, activeKeyCount: 0 });
+    const last = [{ last4: "3WPLDA" }];
+    expect(licenseOrigin(signIn)).toBe("From signing in");
+    expect(licenseOrigin(key)).toBe("Added with a key");
+    expect(licenseOrigin(key, { keys: last })).toBe("Key ending 3WPLDA");
+    expect(licenseOrigin(key, { store: "steam" })).toBe("Steam key");
+    expect(licenseOrigin(key, { store: "steam", keys: last })).toBe(
+      "Steam key ending 3WPLDA",
+    );
+    expect(licenseOrigin(keyless, { store: "steam" })).toBe("From Steam");
+    expect(licenseOrigin(signIn, { store: "app-store" })).toBe(
+      "From the App Store",
+    );
+    expect(licenseOrigin(keyless)).toBe("From the developer");
+    expect(shortOrigin(signIn)).toBe("Sign-in");
+    expect(shortOrigin(key, { keys: last })).toBe("Key …3WPLDA");
+    expect(shortOrigin(key, { store: "steam", keys: last })).toBe(
+      "Steam key …3WPLDA",
+    );
+    expect(shortOrigin(keyless, { store: "steam" })).toBe("Steam");
+    expect(shortOrigin(keyless)).toBeNull();
+    for (const o of [signIn, key, keyless])
+      expect(licenseOrigin(o)).not.toMatch(/Account-wide/);
   });
 
   it("the best license is the most favourable, then the newest", () => {
@@ -444,12 +494,12 @@ describe("the server-side library (PX-W1: G1, G5, G16)", () => {
       attention: true,
     });
     expect(quickAction(p!, MAC, ph)).toMatchObject({
-      label: "Free up a device",
+      label: "Free a device",
       href: "#/p/x/devices",
     });
     const [att] = attentionItems([p!], (s) => `#/p/${s}/devices`);
     expect(att!.action).toEqual({
-      label: "Free up a device",
+      label: "Free a device",
       href: "#/p/x/devices",
       external: false,
     });
@@ -636,5 +686,25 @@ describe("PX-08: store-aware quick actions (§5.4)", () => {
     );
     expect(p.stores).toEqual([]);
     expect(quickAction(p, PHONE, ph)).toMatchObject({ label: "View details" });
+  });
+});
+
+describe("deviceFamily and deviceOsName (SP-08)", () => {
+  it("keeps the header-only Apple values for the device row, off the download vocabulary", () => {
+    expect(deviceFamily("tvos")).toBe("tvos");
+    expect(deviceFamily("visionOS")).toBe("visionos");
+    expect(deviceFamily("watchos")).toBe("watchos");
+    expect(deviceFamily("iPadOS")).toBe("ios");
+    expect(deviceFamily("macos")).toBe("macos");
+    expect(deviceFamily("freebsd")).toBeNull();
+    expect(deviceFamily(null)).toBeNull();
+  });
+
+  it("names the OS a device row shows", () => {
+    expect(deviceOsName("tvos")).toBe("Apple TV");
+    expect(deviceOsName("visionos")).toBe("Apple Vision Pro");
+    expect(deviceOsName("watchos")).toBe("Apple Watch");
+    expect(deviceOsName("ios")).toBe("iPhone");
+    expect(deviceOsName("unknown")).toBeNull();
   });
 });

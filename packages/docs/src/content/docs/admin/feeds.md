@@ -22,7 +22,7 @@ Both scopes are for platform admins only, like the rest of the console.
 
 ## The overview
 
-One row per ecosystem: npm, PyPI, Docker / OCI, Swift, Maven / Gradle and Godot. Each row shows
+One row per ecosystem: npm, PyPI, Docker / OCI, Swift, Maven / Gradle, Godot and Cargo. Each row shows
 the feed's status, its packages and versions, the last publish, its access mode and its registry
 URL with a copy button. The summary strip counts the feeds enabled, the packages, the versions and
 the last publish.
@@ -58,8 +58,9 @@ More actions, which queues a fresh render of the feed's index documents.
   `.npmrc`, `.yarnrc.yml` and `bunfig.toml` scope lines; a uv explicit index, a Poetry explicit
   source and a pip command (with the warning never to use `--extra-index-url`); SwiftPM's whole
   `registries.json` (the scope's registry and the signing policy); a Gradle `exclusiveContent`
-  block and a Maven `<repository>`; `docker pull` by the fully qualified reference; or the Godot
-  editor's URLs per editor version and the GodotEnv index. Every snippet routes only the feed's
+  block and a Maven `<repository>`; `docker pull` by the fully qualified reference; the Godot
+  editor's URLs per editor version and the GodotEnv index; or Cargo's `[registries]` entry and a
+  dependency with `registry =`. Every snippet routes only the feed's
   own names to it. The same snippets come from `pkey feeds setup` (below), byte for byte. When the feed is not
   public, the setup is the authenticated one, naming the token as `PKEY_REGISTRY_TOKEN`.
 - **Settings**: see below.
@@ -72,19 +73,19 @@ Every section saves on its own, through its own Save bar, with the version of th
 read. If someone saved in between, the save is refused (409) and the page shows the current
 settings; nothing is overwritten. A feed with no settings yet gets them on its first save.
 
-| Section                 | What it sets                                                                                                                                                                                                                                                                       |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| General                 | Whether the feed answers. Switching it off asks first: every client then gets not-found within 30 seconds.                                                                                                                                                                         |
-| Access                  | Who may install: Public, Token, Licensed or Entitled (see [Access](#access)). Leaving Public asks first. Entitled lists the feed's packages that have no delivery gate.                                                                                                            |
-| Namespace               | The names the feed may hold, one row per namespace field the ecosystem's ingest rules declare: an npm or Swift scope, PyPI names and prefixes, Maven group prefixes, a Godot publisher. OCI repositories always sit under the owner. A feed cannot be enabled without a namespace. |
-| Limits                  | The largest package ingest accepts, at most the platform's ceiling for the ecosystem.                                                                                                                                                                                              |
-| Yank policy             | What a yank does to clients in this protocol. Maven only: **Hide yanked versions**, which leaves a yanked version out of `maven-metadata.xml`.                                                                                                                                     |
-| Upstream                | None, the only option: a feed never proxies or mirrors another registry, so a name it does not hold answers not-found.                                                                                                                                                             |
-| Simple API              | PyPI only: **HTML pages**, whether a client that cannot take PEP 691 JSON gets the inert PEP 503 HTML page (on) or 406 (off).                                                                                                                                                      |
-| Signing and identifiers | Swift only: **Require signed releases** (ingest refuses an unsigned release; always on for the platform's own packages) and **Repository URLs**, one `identity url` per line, which `GET /identifiers?url=` answers from.                                                          |
-| Retention               | OCI only: **Untagged manifests**, the days an image manifest no tag points at may be kept. It is stored only: nothing removes untagged manifests yet, so every one is kept whatever it holds. A published version is never removed.                                                |
-| Asset listing           | Godot only: the asset library category, support level, license and oldest editor every addon of the feed is listed with.                                                                                                                                                           |
-| Platform policy         | Platform scope only: whether the ecosystem is served at all, and its size ceiling, for every product. Switching an ecosystem off is a danger confirmation.                                                                                                                         |
+| Section                 | What it sets                                                                                                                                                                                                                                                                                                                                         |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| General                 | Whether the feed answers. Switching it off asks first: every client then gets not-found within 30 seconds.                                                                                                                                                                                                                                           |
+| Access                  | Who may install: Public, Token, Licensed or Entitled (see [Access](#access)). Leaving Public asks first. Entitled lists the feed's packages that have no delivery gate.                                                                                                                                                                              |
+| Namespace               | The names the feed may hold, one row per namespace field the ecosystem's ingest rules declare: an npm or Swift scope, PyPI names and prefixes, Maven group prefixes, a Godot publisher, Go module prefixes. OCI repositories and Cargo crates always sit under the owner. A feed cannot be enabled without a namespace.                              |
+| Limits                  | The largest package ingest accepts, at most the platform's ceiling for the ecosystem.                                                                                                                                                                                                                                                                |
+| Yank policy             | What a yank does to clients in this protocol. Maven only: **Hide yanked versions**, which leaves a yanked version out of `maven-metadata.xml`.                                                                                                                                                                                                       |
+| Upstream                | None, the only option: a feed never proxies or mirrors another registry, so a name it does not hold answers not-found.                                                                                                                                                                                                                               |
+| Simple API              | PyPI only: **HTML pages**, whether a client that cannot take PEP 691 JSON gets the inert PEP 503 HTML page (on) or 406 (off).                                                                                                                                                                                                                        |
+| Signing and identifiers | Swift only: **Require signed releases** (ingest refuses an unsigned release; always on for the platform's own packages) and **Repository URLs**, one `identity url` per line, which `GET /identifiers?url=` answers from.                                                                                                                            |
+| Retention               | OCI only: **Untagged manifests**, the days an image manifest no tag points at may be kept. It is stored only: nothing removes untagged manifests yet, so every one is kept whatever it holds. A published version is never removed, except by feed retention's prune of builds of main (see [Retention: builds of main](#retention-builds-of-main)). |
+| Asset listing           | Godot only: the asset library category, support level, license and oldest editor every addon of the feed is listed with.                                                                                                                                                                                                                             |
+| Platform policy         | Platform scope only: whether the ecosystem is served at all, and its size ceiling, for every product. Switching an ecosystem off is a danger confirmation.                                                                                                                                                                                           |
 
 ### Access
 
@@ -119,6 +120,18 @@ token is read-only, reaches only the Godot feed, lasts 30 days by default and tr
 editor's URL, because the editor sends no credentials. The token is shown once, with every
 enabled feed's setup already holding it; Polaris Key stores only its hash.
 
+**Access** chooses **Read** or **Read and publish**. A publish token lets a native client publish
+to the feeds it names (npm, PyPI, Swift and Maven; see
+[Publishing with native clients](/docs/services/distribution/package-feeds/#publishing-with-native-clients)),
+and `docker push` to the owner's OCI repositories when it names the OCI feed (a pushed version tag
+publishes a release; see
+[Pushing with docker push](/docs/services/distribution/package-feeds/#oci-images)):
+it is always bound to this product, never a Godot editor URL, names its feeds explicitly, and
+lasts 1 to 30 days (7 by default). It is meant for an operator's own machine; in CI, publish with
+the job's OIDC token (`pkey auth github-oidc`) so the repository holds no publish secret. The
+token list shows "read and publish" beside such a token's id, and a version it published names
+the token and the client on the package record.
+
 Revoking a token is a danger confirmation and takes effect within 30 seconds. **Revoke all** (under
 More actions) revokes every active token of the owner, including those licensees minted.
 
@@ -138,7 +151,8 @@ A package's page has three tabs: **Versions**, **Setup** (the feed's setup for t
 latest version) and **History** (the package's own audit rows).
 
 Each version shows its tags, when it was published and how — a trusted-publisher run with a link to
-the run, a static CI token by id, or the console — its size, each file's digests (SHA-256, and the
+the run, a static CI token by id, a registry token by id, or the console, each marked "docker
+push" when it came through a native push — its size, each file's digests (SHA-256, and the
 SHA-512, SHA-1 and MD5 the Worker computes for npm and Maven) with a copy button each, and its
 state: **Live**, **Yanked** or **Deprecated**, with the reason or message.
 
@@ -154,8 +168,24 @@ The row actions follow the protocol, and only what the protocol has a state for 
 | Godot     | Yes: leaves the asset listings                                            | No                                                            |
 
 A yank needs a reason and is a danger confirmation; unyank, deprecate (with a message) and lifting a
-deprecation are caution confirmations. There is no delete: a version number is unique forever, so a
-yanked version can never be published again.
+deprecation are caution confirmations. There is no delete action. A version number is unique
+forever, so a yanked version can never be published again.
+
+### Retention: builds of main
+
+Feed retention is the one thing that deletes versions. When a version is published on `stable`,
+the package's builds of main below it are pruned: `X-main.N`, or Python's `X.devN`, for every X
+at or below the released version. Stable and beta versions stay, and so do builds of a newer
+version and any version a channel points at. Each pruned version is audited as
+`package.version.prune` with its size, and it leaves a tombstone, so the number is still never
+published again. The bytes are reclaimed by the blob collector once no remaining version,
+package or product references them. It is off by default for a product, which opts in through
+`PUT …/retention` (`release.packages.prunePrereleases`). The platform's own feeds always prune
+and cannot turn it off. A yanked or deprecated stable release never sets the ceiling.
+`POST …/prune` is the backfill for versions released before this existed, or before the product
+opted in. It runs as a dry run unless `apply` is true, and so does `pkey feeds prune`. A version
+a channel or another row took hold of between the plan and the deletion is kept and listed as
+skipped.
 
 ## Setup from the CLI
 
@@ -194,6 +224,9 @@ rest of the console's API.
 | POST   | `…/versions/<version>/{yank,unyank,deprecate,undeprecate}` | the same                                                   | `package.version.*`                      |
 | POST   | `/<eco>/rebuild`                                           | `/<eco>/rebuild`                                           | `feed.rebuild`                           |
 | GET    | `/<eco>/activity`                                          | `/<eco>/activity`                                          | —                                        |
+| GET    | `/retention`: the owner's retention setting                | `/retention`                                               | —                                        |
+| PUT    | `/retention` (refused: the system product is locked on)    | `/retention` (`{expectedVersion, prunePrereleases}`)       | `feed.retention.update`                  |
+| POST   | `/prune` (`{apply?, deliverable?}`, a dry run by default)  | `/prune`                                                   | `package.version.prune` (each version)   |
 | POST   | `/bootstrap`                                               | —                                                          | `feed.bootstrap` (platform activity)     |
 | GET    | `/tokens[?license=<id>]`                                   | the same                                                   | —                                        |
 | POST   | `/tokens`                                                  | the same                                                   | `registry_token.create`                  |

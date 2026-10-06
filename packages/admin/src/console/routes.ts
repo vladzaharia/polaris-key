@@ -423,6 +423,10 @@ export const r = {
     productPage(slug, "devices", { query }),
   device: (slug: string, deviceId: string) =>
     productPage(slug, "devices", { id: deviceId }),
+  users: (slug: string, query?: QueryInit) =>
+    productPage(slug, "users", { query }),
+  user: (slug: string, subject: string, tab?: string) =>
+    productPage(slug, "users", { id: subject, tab }),
   keys: (slug: string) => productPage(slug, "keys"),
   activity: (slug: string, query?: QueryInit) =>
     productPage(slug, "activity", { query }),
@@ -457,6 +461,11 @@ export const r = {
     productPage(slug, "matrix", { query }),
   rollouts: (slug: string) => productPage(slug, "rollouts"),
   outlets: (slug: string) => productPage(slug, "outlets"),
+  /** A-18j: `?flow=1&step=…&stores=…` opens "Add to storefronts"; `?store=` pre-scopes it. */
+  storefronts: (slug: string, query?: QueryInit) =>
+    productPage(slug, "storefronts", { query }),
+  listing: (slug: string, query?: QueryInit) =>
+    productPage(slug, "listing", { query }),
   appStore: (slug: string, query?: QueryInit) =>
     productPage(slug, "app-store", { query }),
   commerce: (slug: string) => productPage(slug, "commerce"),
@@ -475,6 +484,7 @@ export const r = {
   feed: (slug: string) => productPage(slug, "feed"),
   portal: (slug: string) => productPage(slug, "portal"),
   signIn: (slug: string) => productPage(slug, "sign-in"),
+  syncData: (slug: string) => productPage(slug, "sync-data"),
 };
 
 // ── Route facts ────────────────────────────────────────────────────────────────────────────────

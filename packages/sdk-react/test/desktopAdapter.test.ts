@@ -198,7 +198,9 @@ describe("DesktopAdapter — submitKey", () => {
     await expect(adapter.submitKey("k")).rejects.toMatchObject({
       code: "sign-in-failed",
     });
-    expect(adapter.snapshot().error.license?.message).toMatch(/device limit/i);
+    expect(adapter.snapshot().error.license?.message).toMatch(
+      /already on all its devices/i,
+    );
     adapter.dispose();
   });
 
@@ -212,9 +214,41 @@ describe("DesktopAdapter — submitKey", () => {
     await expect(adapter.submitKey("k")).rejects.toMatchObject({
       code: "sign-in-failed",
     });
-    expect(adapter.snapshot().error.license?.message).toMatch(/not accepted/i);
+    expect(adapter.snapshot().error.license?.message).toMatch(
+      /license key wasn't accepted/i,
+    );
     adapter.dispose();
   });
+
+  it.each([
+    [{ kind: "refused", code: "license_owned" }, "refused", "license_owned"],
+    [
+      { kind: "refused", code: "enroll_claimed" },
+      "enrollClaimed",
+      "enroll_claimed",
+    ],
+    [
+      { kind: "fingerprint-required" },
+      "fingerprintRequired",
+      "fingerprint_required",
+    ],
+    // Code-less: a 429, a 5xx or a transport failure on the host, so never "offline".
+    [{ kind: "error", message: "boom" }, "error", "server"],
+  ])(
+    "a v4 host's %j is classified by code, never as the device limit",
+    async (result, kind, code) => {
+      const bridge = makeFakeBridge(emptyBridgeState());
+      bridge.submitKey = vi.fn(async () => result as BridgeActivation);
+      const adapter = desktopAdapter({ bridge, now: () => NOW_SEC });
+      await ready(adapter);
+      const err = await adapter.submitKey("k").catch((e: unknown) => e);
+      expect(err).toMatchObject({ activation: { kind, code } });
+      if ("message" in result)
+        expect(err).toMatchObject({ activation: { message: result.message } });
+      expect((err as Error).message).not.toMatch(/all its devices/i);
+      adapter.dispose();
+    },
+  );
 
   it("refuses key entry outright when the license service is off", async () => {
     const adapter = desktopAdapter({
@@ -241,6 +275,7 @@ function emptyCaps() {
     distribution: { enabled: false },
     update: { enabled: false },
     identity: { enabled: false },
+    sync: { enabled: false },
   };
 }
 
@@ -402,5 +437,107 @@ describe("DesktopAdapter — config read APIs", () => {
 describe("resolveBridge", () => {
   it("returns null when neither explicit nor global is present", () => {
     expect(resolveBridge()).toBeNull();
+  });
+});
+
+// @pkey-feature config.mint commerce.receipt
+describe("DesktopAdapter — bridge v4 verbs are gated on the host's protocol version", () => {
+  function hostAt(version: number | undefined) {
+    const calls: string[] = [];
+    const base = makeFakeBridge(okBridgeState());
+    const bridge: PolarisBridge = {
+      ...base,
+      ...(version === undefined ? {} : { version }),
+      async invoke(service: string, method: string) {
+        calls.push(`${service}.${method}`);
+        if (service === "config" && method === "mint")
+          return { token: "edge", expiresAt: NOW_SEC + 60 };
+        if (service === "commerce" && method === "binding")
+          return { bindingId: "b1", products: [] };
+        if (service === "commerce" && method === "claim")
+          return { kind: "error", message: "nope" };
+        if (service === "core" && method === "discovery") return { v: 1 };
+        if (service === "core" && method === "storeStatus")
+          return { backend: "keyring" };
+        if (service === "devices" && method === "id") return "DEV1";
+        throw new Error(`unexpected ${service}.${method}`);
+      },
+    };
+    if (version === undefined) delete (bridge as { version?: number }).version;
+    const adapter = new DesktopAdapter({ bridge, now: () => NOW_SEC });
+    return { adapter, calls };
+  }
+
+  const verbs: [string, (a: DesktopAdapter) => Promise<unknown>][] = [
+    ["mintToken", (a) => a.mintToken("r1")],
+    ["commerceBinding", (a) => a.commerceBinding()],
+    [
+      "commerceClaim",
+      (a) => a.commerceClaim("steam", { ticket: "t" } as never),
+    ],
+  ];
+
+  for (const v of [3, undefined]) {
+    it.each(verbs)(
+      `a v${v ?? "1 (absent)"} host refuses %s typed, without invoking`,
+      async (_name, call) => {
+        const { adapter, calls } = hostAt(v);
+        await ready(adapter);
+        await expect(call(adapter)).rejects.toMatchObject({
+          name: "UnsupportedError",
+          code: "unsupported",
+          reason: "version",
+        });
+        expect(calls).toEqual([]);
+      },
+    );
+  }
+
+  it("a v3 host answers the nullable v4 reads with null, without invoking", async () => {
+    const { adapter, calls } = hostAt(3);
+    await ready(adapter);
+    expect(await adapter.discovery()).toBeNull();
+    expect(await adapter.storeStatus()).toBeNull();
+    expect(await adapter.offlineDeviceId()).toBeNull();
+    expect(calls).toEqual([]);
+  });
+
+  it("a v3 host's supports()/caps() report the v4 features as a version N/A", async () => {
+    const { adapter } = hostAt(3);
+    await ready(adapter);
+    for (const f of ["config.mint", "commerce.receipt", "config.local"]) {
+      expect(adapter.supports(f)).toMatchObject({
+        supported: false,
+        reason: "version",
+      });
+      expect(adapter.caps()).not.toContain(f);
+    }
+  });
+
+  it("a v4 host gets every v4 verb through invoke", async () => {
+    const { adapter, calls } = hostAt(4);
+    await ready(adapter);
+    expect(await adapter.mintToken("r1")).toEqual({
+      token: "edge",
+      expiresAt: NOW_SEC + 60,
+    });
+    expect(await adapter.commerceBinding()).toEqual({
+      bindingId: "b1",
+      products: [],
+    });
+    expect(
+      await adapter.commerceClaim("steam", { ticket: "t" } as never),
+    ).toMatchObject({ kind: "error" });
+    expect(await adapter.discovery()).toEqual({ v: 1 });
+    expect(await adapter.storeStatus()).toEqual({ backend: "keyring" });
+    expect(await adapter.offlineDeviceId()).toBe("DEV1");
+    expect(calls).toEqual([
+      "config.mint",
+      "commerce.binding",
+      "commerce.claim",
+      "core.discovery",
+      "core.storeStatus",
+      "devices.id",
+    ]);
   });
 });

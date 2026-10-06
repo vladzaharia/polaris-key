@@ -7,7 +7,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "../../components/ui/index.js";
+} from "../../ui/DropdownMenu.js";
 import type { PortalAccount } from "../api.js";
 import { href } from "../router.js";
 import { Avatar } from "./Avatar.js";
@@ -25,18 +25,21 @@ export function AccountMenu({
   account: PortalAccount;
 }): React.ReactElement {
   const formRef = React.useRef<HTMLFormElement>(null);
-  const email = account.email || account.name;
+  // The person's name when we have one (profile import, a provider), else their email.
+  const name = account.name?.trim();
+  const label =
+    name && name !== account.email ? name : account.email || name || "Account";
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            aria-label={`Account: ${email}`}
+            aria-label={`Account: ${label}`}
             className="inline-flex h-11 max-w-[18rem] items-center gap-2 rounded-full border border-border bg-surface-raised p-1 text-sm text-fg-strong hover:bg-hover desk:pr-3"
           >
             <Avatar name={account.name} email={account.email} />
-            <span className="hidden truncate desk:inline">{email}</span>
+            <span className="hidden truncate desk:inline">{label}</span>
             <ChevronDown
               aria-hidden
               className="hidden size-4 shrink-0 text-fg-muted desk:inline"

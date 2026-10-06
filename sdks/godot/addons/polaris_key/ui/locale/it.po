@@ -1,0 +1,4763 @@
+# GENERATED FILE — do not edit by hand.
+#
+# Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/kit-copy.ts) from
+# packages/brand/kit-copy/ (en.json and the eight locale packs) and the core copy in
+# conformance/parity/copy.<locale>.json. `pnpm gen:brand -- --check` fails the green gate on any
+# difference. To change a string, edit its source and regenerate.
+#
+# The kit copy as gettext (Godot kit, it). msgid is the catalog key; arguments are {name}. A
+# formFactor select is msgctxt <case> (the bare msgid is "other"); a platform variant is
+# msgctxt <platform>.
+msgid ""
+msgstr ""
+"Project-Id-Version: polaris-key-ui\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: it\n"
+"Plural-Forms: nplurals=3; plural=(n == 1) ? 0 : (n != 0 && n % 1000000 == 0) ? 1 : 2;\n"
+
+#. Cancel
+#. Shared verb used across the kit's screens.
+msgid "common.cancel"
+msgstr "Annulla"
+
+#. Close
+#. Shared verb used across the kit's screens.
+msgid "common.close"
+msgstr "Chiudi"
+
+#. Back
+#. Shared verb used across the kit's screens. Returns to the previous step.
+msgid "common.back"
+msgstr "Indietro"
+
+#. Continue
+#. Shared verb used across the kit's screens.
+msgid "common.continue"
+msgstr "Continua"
+
+#. Done
+#. Shared verb used across the kit's screens.
+msgid "common.done"
+msgstr "Fine"
+
+#. Save
+#. Shared verb used across the kit's screens.
+msgid "common.save"
+msgstr "Salva"
+
+#. Not now
+#. Shared verb used across the kit's screens. Dismisses an offer without doing it.
+msgid "common.notNow"
+msgstr "Non ora"
+
+#. macos: Not Now
+msgctxt "macos"
+msgid "common.notNow"
+msgstr "Non ora"
+
+#. Later
+#. Shared verb used across the kit's screens. Postpones an action.
+msgid "common.later"
+msgstr "Più tardi"
+
+#. Try again
+#. Shared verb used across the kit's screens. Repeats the action that failed.
+msgid "common.tryAgain"
+msgstr "Riprova"
+
+#. macos: Try Again
+msgctxt "macos"
+msgid "common.tryAgain"
+msgstr "Riprova"
+
+#. Copy
+#. Shared verb used across the kit's screens. Copies a code or link to the clipboard.
+msgid "common.copy"
+msgstr "Copia"
+
+#. Copied
+#. Confirmation shown briefly after something is copied to the clipboard.
+msgid "common.copied"
+msgstr "Copiato"
+
+#. Paste
+#. Shared verb used across the kit's screens. Pastes from the clipboard into a field.
+msgid "common.paste"
+msgstr "Incolla"
+
+#. Working…
+#. Busy label on a button or screen while an action runs.
+msgid "common.working"
+msgstr "In corso…"
+
+#. Loading…
+#. Shown while a screen loads.
+msgid "common.loading"
+msgstr "Caricamento…"
+
+#. Sign out
+#. Shared verb used across the kit's screens. Signs this device out of the product.
+msgid "common.signOut"
+msgstr "Esci"
+
+#. macos: Sign Out
+msgctxt "macos"
+msgid "common.signOut"
+msgstr "Esci"
+
+#. Manage
+#. Shared verb used across the kit's screens. Opens the person's Polaris Key account in the browser.
+msgid "common.manage"
+msgstr "Gestisci"
+
+#. Reconnect
+#. Shared verb used across the kit's screens. Tries to reach the licensing service again.
+msgid "common.reconnect"
+msgstr "Riconnetti"
+
+#. Dismiss
+#. Shared verb used across the kit's screens. Hides a banner or toast.
+msgid "common.dismiss"
+msgstr "Ignora"
+
+#. by {developer}
+#. Shown under the product name on the welcome screen. Arguments: {developer} = the developer's name (never translated).
+msgid "common.byDeveloper"
+msgstr "di {developer}"
+
+#. {formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}
+#. The current device, used inside sentences. Each case is the platform's own word. Arguments: {formFactor} = the device's form factor; each case is a whole phrase.
+msgid "part.thisDevice"
+msgstr "questo dispositivo"
+
+#. formFactor iphone: this iPhone
+msgctxt "iphone"
+msgid "part.thisDevice"
+msgstr "questo iPhone"
+
+#. formFactor ipad: this iPad
+msgctxt "ipad"
+msgid "part.thisDevice"
+msgstr "questo iPad"
+
+#. formFactor mac: this Mac
+msgctxt "mac"
+msgid "part.thisDevice"
+msgstr "questo Mac"
+
+#. formFactor phone: this phone
+msgctxt "phone"
+msgid "part.thisDevice"
+msgstr "questo telefono"
+
+#. formFactor tablet: this tablet
+msgctxt "tablet"
+msgid "part.thisDevice"
+msgstr "questo tablet"
+
+#. formFactor computer: this computer
+msgctxt "computer"
+msgid "part.thisDevice"
+msgstr "questo computer"
+
+#. formFactor tv: this TV
+msgctxt "tv"
+msgid "part.thisDevice"
+msgstr "questa TV"
+
+#. {formFactor, select, iphone {This iPhone} ipad {This iPad} mac {This Mac} phone {This phone} tablet {This tablet} computer {This computer} tv {This TV} other {This device}}
+#. The current device as a tag in a device list. Each case is the platform's own word, capitalized as a label. Arguments: {formFactor} = the device's form factor; each case is a whole phrase.
+msgid "part.thisDeviceTitle"
+msgstr "Questo dispositivo"
+
+#. formFactor iphone: This iPhone
+msgctxt "iphone"
+msgid "part.thisDeviceTitle"
+msgstr "Questo iPhone"
+
+#. formFactor ipad: This iPad
+msgctxt "ipad"
+msgid "part.thisDeviceTitle"
+msgstr "Questo iPad"
+
+#. formFactor mac: This Mac
+msgctxt "mac"
+msgid "part.thisDeviceTitle"
+msgstr "Questo Mac"
+
+#. formFactor phone: This phone
+msgctxt "phone"
+msgid "part.thisDeviceTitle"
+msgstr "Questo telefono"
+
+#. formFactor tablet: This tablet
+msgctxt "tablet"
+msgid "part.thisDeviceTitle"
+msgstr "Questo tablet"
+
+#. formFactor computer: This computer
+msgctxt "computer"
+msgid "part.thisDeviceTitle"
+msgstr "Questo computer"
+
+#. formFactor tv: This TV
+msgctxt "tv"
+msgid "part.thisDeviceTitle"
+msgstr "Questa TV"
+
+#. License key
+#. Visible label of the license key field.
+msgid "part.keyField.label"
+msgstr "Chiave di licenza"
+
+#. Paste your key
+#. Placeholder inside the empty license key field. Carries no information the label lacks.
+msgid "part.keyField.placeholder"
+msgstr "Incolla la tua chiave"
+
+#. Key for {product}
+#. Shown under the key field as soon as the key's prefix names the product, before the server answers. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "part.keyField.forProduct"
+msgstr "Chiave per {product}"
+
+#. {product} {tier} · {term}
+#. Shown under the key field after the server accepts the key. Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated); {term} = the license term (one of the signin.term.* strings).
+msgid "part.keyField.verdict"
+msgstr "{product} {tier} · {term}"
+
+#. This key is cut short: after {prefix} it has {used} of {limit, plural, one {# character} other {# characters}}.
+#. Inline error when a pasted key is missing its end. {used} and {limit} count characters here, not devices. Arguments: {prefix} = the start of a license key, such as pkey_tidewater_; {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number.
+#. Plural on {limit}.
+msgid "part.keyField.cutShort"
+msgid_plural "part.keyField.cutShort"
+msgstr[0] "Questa chiave è incompleta: dopo {prefix} ha {used} di {limit} carattere."
+msgstr[1] "Questa chiave è incompleta: dopo {prefix} ha {used} di {limit} di caratteri."
+msgstr[2] "Questa chiave è incompleta: dopo {prefix} ha {used} di {limit} caratteri."
+
+#. That doesn't look like a license key. Keys start with pkey_.
+#. Inline error when the field holds something that is not a key. pkey_ is literal.
+msgid "part.keyField.malformed"
+msgstr "Non sembra una chiave di licenza. Le chiavi iniziano con pkey_."
+
+#. Enter a license key first.
+#. Inline error when Activate is pressed with an empty field.
+msgid "part.keyField.empty"
+msgstr "Inserisci prima una chiave di licenza."
+
+#. Sign-in code
+#. Label above the user code a person types on another device.
+msgid "part.code.label"
+msgstr "Codice di accesso"
+
+#. Show larger
+#. Opens a larger view of the QR code.
+msgid "part.qr.enlarge"
+msgstr "Ingrandisci"
+
+#. macos: Show Larger
+msgctxt "macos"
+msgid "part.qr.enlarge"
+msgstr "Ingrandisci"
+
+#. Scan with your phone instead
+#. Shows the QR code on narrow layouts.
+msgid "part.qr.scanInstead"
+msgstr "Scansiona con il telefono"
+
+#. macos: Scan with Your Phone Instead
+msgctxt "macos"
+msgid "part.qr.scanInstead"
+msgstr "Scansiona con il telefono"
+
+#. {used} of {limit} in use
+#. Caption under the seat meter. {used} and {limit} are numbers of devices. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number.
+msgid "part.seatMeter.caption"
+msgstr "{used} di {limit} in uso"
+
+#. Powered by Polaris Key
+#. Optional footer line. Polaris Key is never translated.
+msgid "part.poweredBy"
+msgstr "Con tecnologia Polaris Key"
+
+#. Active
+#. Status pill: the license works.
+msgid "part.status.ok"
+msgstr "Attiva"
+
+#. Offline
+#. Status pill: offline grace period.
+msgid "part.status.grace"
+msgstr "Offline"
+
+#. Expired
+#. Status pill: the license expired.
+msgid "part.status.expired"
+msgstr "Scaduta"
+
+#. Revoked
+#. Status pill: the license was revoked.
+msgid "part.status.revoked"
+msgstr "Revocata"
+
+#. Inactive
+#. Status pill: the device is not activated yet.
+msgid "part.status.inactive"
+msgstr "Non attivo"
+
+#. Blocked
+#. Status pill: this version or channel is blocked.
+msgid "part.status.blocked"
+msgstr "Bloccato"
+
+#. Not required
+#. Status pill: the product needs no license.
+msgid "part.status.notApplicable"
+msgstr "Non necessaria"
+
+#. Close dialog
+#. Screen reader label; never shown. Names an icon-only close control.
+msgid "a11y.closeDialog"
+msgstr "Chiudi finestra"
+
+#. In progress
+#. Screen reader label; never shown. Names the busy indicator.
+msgid "a11y.busy"
+msgstr "In corso"
+
+#. Copy code
+#. Screen reader label; never shown. Names the icon-only copy control beside a code.
+msgid "a11y.copyCode"
+msgstr "Copia codice"
+
+#. Copy the address
+#. Screen reader label; never shown. Names the icon-only copy control beside a web address.
+msgid "a11y.copyAddress"
+msgstr "Copia l'indirizzo"
+
+#. Opens in your browser
+#. Screen reader label; never shown. Added to links that leave the app.
+msgid "a11y.externalLink"
+msgstr "Si apre nel browser"
+
+#. QR code that opens the sign-in page
+#. Screen reader label; never shown. Describes the QR code.
+msgid "a11y.qr"
+msgstr "Codice QR che apre la pagina di accesso"
+
+#. Sign-in code {code}
+#. Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
+msgid "a11y.code"
+msgstr "Codice di accesso {code}"
+
+#. {used} of {limit, plural, one {# device} other {# devices}} in use
+#. Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number.
+#. Plural on {limit}.
+msgid "a11y.seatMeter"
+msgid_plural "a11y.seatMeter"
+msgstr[0] "{used} di {limit} dispositivo in uso"
+msgstr[1] "{used} di {limit} di dispositivi in uso"
+msgstr[2] "{used} di {limit} dispositivi in uso"
+
+#. {product} icon
+#. Screen reader label; never shown. Names the product icon. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "a11y.productIcon"
+msgstr "Icona di {product}"
+
+#. Locked
+#. Screen reader label; never shown. Added to a setting someone else controls.
+msgid "a11y.locked"
+msgstr "Bloccato"
+
+#. {size} of {total} downloaded
+#. Screen reader label; never shown. Describes a download progress bar. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”).
+msgid "a11y.progress"
+msgstr "{size} di {total} scaricati"
+
+#. {formFactor, select, iphone {iPhone} ipad {iPad} mac {Mac} phone {Phone} tablet {Tablet} computer {Computer} tv {TV} other {Device}}
+#. Screen reader label; never shown. Names a device's icon by its form factor. Arguments: {formFactor} = the device's form factor; each case is a whole phrase.
+msgid "a11y.formFactor"
+msgstr "Dispositivo"
+
+#. formFactor iphone: iPhone
+msgctxt "iphone"
+msgid "a11y.formFactor"
+msgstr "iPhone"
+
+#. formFactor ipad: iPad
+msgctxt "ipad"
+msgid "a11y.formFactor"
+msgstr "iPad"
+
+#. formFactor mac: Mac
+msgctxt "mac"
+msgid "a11y.formFactor"
+msgstr "Mac"
+
+#. formFactor phone: Phone
+msgctxt "phone"
+msgid "a11y.formFactor"
+msgstr "Telefono"
+
+#. formFactor tablet: Tablet
+msgctxt "tablet"
+msgid "a11y.formFactor"
+msgstr "Tablet"
+
+#. formFactor computer: Computer
+msgctxt "computer"
+msgid "a11y.formFactor"
+msgstr "Computer"
+
+#. formFactor tv: TV
+msgctxt "tv"
+msgid "a11y.formFactor"
+msgstr "TV"
+
+#. Closes in {time}
+#. Screen reader label; never shown. Describes a toast's visible timer. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”).
+msgid "a11y.toastTimer"
+msgstr "Si chiude tra {time}"
+
+#. Selected
+#. Screen reader label; never shown. State of the selected row in a list.
+msgid "a11y.selected"
+msgstr "Selezionato"
+
+#. Rename {device}
+#. Screen reader label; never shown. Names the rename control on a device row. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "a11y.renameDevice"
+msgstr "Rinomina {device}"
+
+#. Remove {device}
+#. Screen reader label; never shown. Names the remove control on a device row. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "a11y.removeDevice"
+msgstr "Rimuovi {device}"
+
+#. Checking your license…
+#. PolarisKeyGate and Boot: shown while the license is checked at start.
+msgid "gate.checking"
+msgstr "Verifica della licenza…"
+
+#. {product} couldn't start
+#. PolarisKeyGate and Boot: title of the error screen; the message comes from the error's core copy. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "gate.error.title"
+msgstr "Impossibile avviare {product}"
+
+#. Starting…
+#. Boot screen, shown while the product starts.
+msgid "boot.starting"
+msgstr "Avvio…"
+
+#. Checking for updates…
+#. Boot screen, shown while the product starts.
+msgid "boot.syncing"
+msgstr "Ricerca aggiornamenti…"
+
+#. Looking for a newer version…
+#. Boot screen, shown while the product starts.
+msgid "boot.deciding"
+msgstr "Ricerca di una versione più recente…"
+
+#. Downloading content…
+#. Boot screen, shown while the product starts.
+msgid "boot.fetching"
+msgstr "Download dei contenuti…"
+
+#. Downloading content · {size} of {total}
+#. Boot screen, shown while the product starts. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”).
+msgid "boot.fetchingProgress"
+msgstr "Download dei contenuti · {size} di {total}"
+
+#. Ready
+#. Boot screen, shown while the product starts. Shown for a moment before the product opens.
+msgid "boot.ready"
+msgstr "Pronto"
+
+#. You're offline
+#. Boot screen, shown while the product starts. The product cannot start without a connection.
+msgid "boot.offline.title"
+msgstr "Sei offline"
+
+#. Connect to the internet and try again.
+#. Boot screen, shown while the product starts.
+msgid "boot.offline.body"
+msgstr "Connettiti a internet e riprova."
+
+#. Some content couldn't be downloaded. You can keep going with what's installed, or connect and try again.
+#. Boot screen, shown while the product starts. Optional content is missing but the product can start.
+msgid "boot.offline.playable"
+msgstr "Non è stato possibile scaricare alcuni contenuti. Puoi continuare con quelli installati oppure connetterti e riprovare."
+
+#. Continue offline
+#. Boot screen, shown while the product starts. Starts with the content already installed.
+msgid "boot.continueOffline"
+msgstr "Continua offline"
+
+#. godot: Play offline
+msgctxt "godot"
+msgid "boot.continueOffline"
+msgstr "Continua offline"
+
+#. macos: Continue Offline
+msgctxt "macos"
+msgid "boot.continueOffline"
+msgstr "Continua offline"
+
+#. Content not downloaded
+#. Boot screen, shown while the product starts. The person declined a required download.
+msgid "boot.declined.title"
+msgstr "Contenuti non scaricati"
+
+#. {product} needs this content to start. Download it when you're ready.
+#. Boot screen, shown while the product starts. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "boot.declined.body"
+msgstr "{product} ha bisogno di questi contenuti per avviarsi. Scaricali quando vuoi."
+
+#. The last update didn't start, so the previous version was restored.
+#. Boot screen, shown while the product starts. Shown once after an automatic rollback.
+msgid "boot.rolledBack"
+msgstr "L'ultimo aggiornamento non si è avviato, quindi è stata ripristinata la versione precedente."
+
+#. Download content?
+#. Boot screen, shown while the product starts. Asks before a large or metered download.
+msgid "boot.consent.title"
+msgstr "Scaricare i contenuti?"
+
+#. {product} needs {size} of new content.
+#. Boot screen, shown while the product starts. Arguments: {product} = the product's name from ProductIdentity (never translated); {size} = a byte size already formatted by the platform (“38 MB”).
+msgid "boot.consent.body"
+msgstr "{product} ha bisogno di {size} di nuovi contenuti."
+
+#. {product} needs {size} of new content, and you're on a metered connection.
+#. Boot screen, shown while the product starts. A metered connection is one that charges by data used. Arguments: {product} = the product's name from ProductIdentity (never translated); {size} = a byte size already formatted by the platform (“38 MB”).
+msgid "boot.consent.bodyMetered"
+msgstr "{product} ha bisogno di {size} di nuovi contenuti e stai usando una connessione a consumo."
+
+#. Download
+#. Boot screen, shown while the product starts.
+msgid "boot.consent.download"
+msgstr "Scarica"
+
+#. {product} couldn't finish starting ({code}).
+#. Boot screen, shown while the product starts. Generic start failure when no core copy applies. Arguments: {product} = the product's name from ProductIdentity (never translated); {code} = a code shown to the person (a user code or an error code); never split or translated.
+msgid "boot.error.body"
+msgstr "Impossibile completare l'avvio di {product} ({code})."
+
+#. Welcome to {product}
+#. Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "welcome.title"
+msgstr "Ti diamo il benvenuto in {product}"
+
+#. Sign in or use a license key to continue.
+#. Welcome screen, the gate's first screen.
+msgid "welcome.lede"
+msgstr "Accedi o usa una chiave di licenza per continuare."
+
+#. Enter a license key to continue.
+#. Welcome screen, the gate's first screen. Shown when the product only takes license keys.
+msgid "welcome.ledeKeyOnly"
+msgstr "Inserisci una chiave di licenza per continuare."
+
+#. Sign in to use {product}.
+#. Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "welcome.ledeSignInOnly"
+msgstr "Accedi per usare {product}."
+
+#. Sign in
+#. Welcome screen, the gate's first screen. Primary button.
+msgid "welcome.signIn"
+msgstr "Accedi"
+
+#. macos: Sign In
+msgctxt "macos"
+msgid "welcome.signIn"
+msgstr "Accedi"
+
+#. Use a license key
+#. Welcome screen, the gate's first screen. Secondary button; reveals the key field.
+msgid "welcome.useKey"
+msgstr "Usa una chiave di licenza"
+
+#. macos: Use a License Key
+msgctxt "macos"
+msgid "welcome.useKey"
+msgstr "Usa una chiave di licenza"
+
+#. Start a free trial
+#. Welcome screen, the gate's first screen. Quiet link in the extras row.
+msgid "welcome.trial"
+msgstr "Inizia una prova gratuita"
+
+#. macos: Start a Free Trial
+msgctxt "macos"
+msgid "welcome.trial"
+msgstr "Inizia una prova gratuita"
+
+#. Continue free
+#. Welcome screen, the gate's first screen. Quiet link in the extras row; starts the free tier.
+msgid "welcome.continueFree"
+msgstr "Continua gratis"
+
+#. macos: Continue Free
+msgctxt "macos"
+msgid "welcome.continueFree"
+msgstr "Continua gratis"
+
+#. Restore purchase
+#. Welcome screen, the gate's first screen. Quiet link in the extras row.
+msgid "welcome.restore"
+msgstr "Ripristina acquisto"
+
+#. macos: Restore Purchase
+msgctxt "macos"
+msgid "welcome.restore"
+msgstr "Ripristina acquisto"
+
+#. Activate offline
+#. Welcome screen, the gate's first screen. Quiet link in the extras row; opens offline activation.
+msgid "welcome.offline"
+msgstr "Attiva offline"
+
+#. macos: Activate Offline
+msgctxt "macos"
+msgid "welcome.offline"
+msgstr "Attiva offline"
+
+#. Sign in to {product}
+#. SignIn method sheet title in an app. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signIn.title"
+msgstr "Accedi a {product}"
+
+#. No sign-in method is available for {product}. Use a license key instead.
+#. SignIn: shown when the build enables no sign-in method. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signIn.noMethods"
+msgstr "Nessun metodo di accesso disponibile per {product}. Usa invece una chiave di licenza."
+
+#. {method} sign-in didn't finish. Try another way.
+#. SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…).
+msgid "signIn.methodError"
+msgstr "L'accesso con {method} non è stato completato. Prova in un altro modo."
+
+#. Getting a sign-in code…
+#. SignInHandoff: sign-in continues on another device or in the browser.
+msgid "signInHandoff.starting"
+msgstr "Richiesta di un codice di accesso…"
+
+#. Scan the code with your phone, or go to {url} and enter this code.
+#. SignInHandoff: sign-in continues on another device or in the browser. TV and console layout. Arguments: {url} = a web address, shown as is.
+msgid "signInHandoff.scan"
+msgstr "Scansiona il codice con il telefono oppure vai su {url} e inserisci questo codice."
+
+#. Link copied
+#. SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link.
+msgid "signInHandoff.linkCopied"
+msgstr "Link copiato"
+
+#. Choose Continue to {product} on the sign-in page to finish.
+#. SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signInHandoff.confirm"
+msgstr "Per finire, scegli Continua su {product} nella pagina di accesso."
+
+#. Signed in
+#. SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues.
+msgid "signInHandoff.ok"
+msgstr "Accesso effettuato"
+
+#. Get a new code
+#. SignInHandoff: sign-in continues on another device or in the browser. After the code expired or was refused.
+msgid "signInHandoff.newCode"
+msgstr "Ottieni un nuovo codice"
+
+#. macos: Get a New Code
+msgctxt "macos"
+msgid "signInHandoff.newCode"
+msgstr "Ottieni un nuovo codice"
+
+#. Enter your license key
+#. Activate: license key entry.
+msgid "activate.title"
+msgstr "Inserisci la tua chiave di licenza"
+
+#. You'll find it in your purchase email.
+#. Activate: license key entry.
+msgid "activate.lede"
+msgstr "La trovi nell'email di acquisto."
+
+#. Activate license
+#. Activate: license key entry. Submits the key.
+msgid "activate.submit"
+msgstr "Attiva licenza"
+
+#. macos: Activate License
+msgctxt "macos"
+msgid "activate.submit"
+msgstr "Attiva licenza"
+
+#. Activating…
+#. Activate: license key entry.
+msgid "activate.busy"
+msgstr "Attivazione…"
+
+#. Offline activation
+#. OfflineActivation: activation by exchanging a request code and a response file.
+msgid "offlineActivation.title"
+msgstr "Attivazione offline"
+
+#. Send this request code to whoever gave you your license.
+#. OfflineActivation: activation by exchanging a request code and a response file.
+msgid "offlineActivation.request"
+msgstr "Invia questo codice di richiesta a chi ti ha fornito la licenza."
+
+#. Product: {product}
+#. OfflineActivation: activation by exchanging a request code and a response file. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "offlineActivation.product"
+msgstr "Prodotto: {product}"
+
+#. Copy code
+#. OfflineActivation: activation by exchanging a request code and a response file.
+msgid "offlineActivation.copyCode"
+msgstr "Copia codice"
+
+#. macos: Copy Code
+msgctxt "macos"
+msgid "offlineActivation.copyCode"
+msgstr "Copia codice"
+
+#. Code copied
+#. OfflineActivation: activation by exchanging a request code and a response file.
+msgid "offlineActivation.codeCopied"
+msgstr "Codice copiato"
+
+#. Then load the activation file you get back, or paste its text.
+#. OfflineActivation: activation by exchanging a request code and a response file.
+msgid "offlineActivation.loadHint"
+msgstr "Poi carica il file di attivazione che ricevi o incollane il testo."
+
+#. Load file…
+#. OfflineActivation: activation by exchanging a request code and a response file. Opens a file picker.
+msgid "offlineActivation.loadFile"
+msgstr "Carica file…"
+
+#. macos: Load File…
+msgctxt "macos"
+msgid "offlineActivation.loadFile"
+msgstr "Carica file…"
+
+#. Paste the activation text here
+#. OfflineActivation: activation by exchanging a request code and a response file. Placeholder of the paste box.
+msgid "offlineActivation.paste"
+msgstr "Incolla qui il testo di attivazione"
+
+#. Activate from file
+#. OfflineActivation: activation by exchanging a request code and a response file.
+msgid "offlineActivation.submit"
+msgstr "Attiva da file"
+
+#. macos: Activate from File
+msgctxt "macos"
+msgid "offlineActivation.submit"
+msgstr "Attiva da file"
+
+#. You can also drop the file onto this window.
+#. OfflineActivation: activation by exchanging a request code and a response file.
+msgid "offlineActivation.dropHint"
+msgstr "Puoi anche trascinare il file in questa finestra."
+
+#. Activated from the offline file.
+#. OfflineActivation: activation by exchanging a request code and a response file.
+msgid "offlineActivation.done"
+msgstr "Attivato dal file offline."
+
+#. Load or paste an activation file first.
+#. OfflineActivation: activation by exchanging a request code and a response file. Inline error.
+msgid "offlineActivation.empty"
+msgstr "Prima carica o incolla un file di attivazione."
+
+#. Replace a device
+#. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Screen title.
+msgid "deviceLimit.title"
+msgstr "Sostituisci un dispositivo"
+
+#. Your license is on {used} of {limit, plural, one {# device} other {# devices}}
+#. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number.
+#. Plural on {limit}.
+msgid "deviceLimit.heading"
+msgid_plural "deviceLimit.heading"
+msgstr[0] "La tua licenza è su {used} di {limit} dispositivo"
+msgstr[1] "La tua licenza è su {used} di {limit} di dispositivi"
+msgstr[2] "La tua licenza è su {used} di {limit} dispositivi"
+
+#. To use it on {formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}, replace one. You can add it back later.
+#. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {formFactor} = the device's form factor; each case is a whole phrase.
+msgid "deviceLimit.lede"
+msgstr "Per usarla su questo dispositivo, sostituiscine uno. Potrai aggiungerlo di nuovo in seguito."
+
+#. formFactor iphone: To use it on this iPhone, replace one. You can add it back later.
+msgctxt "iphone"
+msgid "deviceLimit.lede"
+msgstr "Per usarla su questo iPhone, sostituiscine uno. Potrai aggiungerlo di nuovo in seguito."
+
+#. formFactor ipad: To use it on this iPad, replace one. You can add it back later.
+msgctxt "ipad"
+msgid "deviceLimit.lede"
+msgstr "Per usarla su questo iPad, sostituiscine uno. Potrai aggiungerlo di nuovo in seguito."
+
+#. formFactor mac: To use it on this Mac, replace one. You can add it back later.
+msgctxt "mac"
+msgid "deviceLimit.lede"
+msgstr "Per usarla su questo Mac, sostituiscine uno. Potrai aggiungerlo di nuovo in seguito."
+
+#. formFactor phone: To use it on this phone, replace one. You can add it back later.
+msgctxt "phone"
+msgid "deviceLimit.lede"
+msgstr "Per usarla su questo telefono, sostituiscine uno. Potrai aggiungerlo di nuovo in seguito."
+
+#. formFactor tablet: To use it on this tablet, replace one. You can add it back later.
+msgctxt "tablet"
+msgid "deviceLimit.lede"
+msgstr "Per usarla su questo tablet, sostituiscine uno. Potrai aggiungerlo di nuovo in seguito."
+
+#. formFactor computer: To use it on this computer, replace one. You can add it back later.
+msgctxt "computer"
+msgid "deviceLimit.lede"
+msgstr "Per usarla su questo computer, sostituiscine uno. Potrai aggiungerlo di nuovo in seguito."
+
+#. formFactor tv: To use it on this TV, replace one. You can add it back later.
+msgctxt "tv"
+msgid "deviceLimit.lede"
+msgstr "Per usarla su questa TV, sostituiscine uno. Potrai aggiungerlo di nuovo in seguito."
+
+#. Replace {device}?
+#. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block under the selected device. On macOS the kit wraps {device} in curly quotes. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "deviceLimit.confirmTitle"
+msgstr "Sostituire {device}?"
+
+#. {device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.
+#. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
+msgid "deviceLimit.consequence"
+msgstr "{device} esce da {product} e {thisDevice} ne prende il posto. {device} potrà accedere di nuovo in seguito se si libera un posto. Ti invieremo un'email al riguardo."
+
+#. Replace and continue
+#. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button.
+msgid "deviceLimit.primary"
+msgstr "Sostituisci e continua"
+
+#. macos: Replace and Continue
+msgctxt "macos"
+msgid "deviceLimit.primary"
+msgstr "Sostituisci e continua"
+
+#. {device} was replaced. {product} is continuing.
+#. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated).
+msgid "deviceLimit.removed"
+msgstr "{device} è stato sostituito. {product} continua."
+
+#. {device} couldn't be replaced. Try again.
+#. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "deviceLimit.failed"
+msgstr "Impossibile sostituire {device}. Riprova."
+
+#. Replace a device in your browser. {product} continues when you're done.
+#. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode: the device list is only in the browser. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "deviceLimit.browser"
+msgstr "Sostituisci un dispositivo nel browser. {product} continua quando hai finito."
+
+#. Open in browser
+#. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode.
+msgid "deviceLimit.openBrowser"
+msgstr "Apri nel browser"
+
+#. macos: Open in Browser
+msgctxt "macos"
+msgid "deviceLimit.openBrowser"
+msgstr "Apri nel browser"
+
+#. Scan the code to replace a device on your phone.
+#. DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode on TV and console.
+msgid "deviceLimit.scan"
+msgstr "Scansiona il codice per sostituire un dispositivo dal telefono."
+
+#. Your devices
+#. Devices: the list of devices using the license.
+msgid "devices.title"
+msgstr "I tuoi dispositivi"
+
+#. Devices using this license.
+#. Devices: the list of devices using the license.
+msgid "devices.lede"
+msgstr "Dispositivi che usano questa licenza."
+
+#. {platform} · last seen {when}
+#. Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”).
+msgid "devices.meta"
+msgstr "{platform} · visto l'ultima volta {when}"
+
+#. {count, plural, one {# device} other {# devices}}
+#. Devices: the list of devices using the license. Arguments: {count} = a number of items.
+#. Plural on {count}.
+msgid "devices.count"
+msgid_plural "devices.count"
+msgstr[0] "{count} dispositivo"
+msgstr[1] "{count} di dispositivi"
+msgstr[2] "{count} dispositivi"
+
+#. Unnamed device
+#. Devices: the list of devices using the license. A device with no name.
+msgid "devices.unnamed"
+msgstr "Dispositivo senza nome"
+
+#. Rename
+#. Devices: the list of devices using the license.
+msgid "devices.rename"
+msgstr "Rinomina"
+
+#. Device name
+#. Devices: the list of devices using the license. Label of the inline rename field.
+msgid "devices.renameLabel"
+msgstr "Nome del dispositivo"
+
+#. Remove
+#. Devices: the list of devices using the license.
+msgid "devices.remove"
+msgstr "Rimuovi"
+
+#. Remove {device}? It signs out of {product}.
+#. Devices: the list of devices using the license. Inline confirm. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated).
+msgid "devices.removeConfirm"
+msgstr "Rimuovere {device}? Uscirà da {product}."
+
+#. No devices are using this license yet.
+#. Devices: the list of devices using the license.
+msgid "devices.empty"
+msgstr "Nessun dispositivo usa ancora questa licenza."
+
+#. Manage your devices in your browser.
+#. Devices: the list of devices using the license. Browser mode.
+msgid "devices.browser"
+msgstr "Gestisci i tuoi dispositivi nel browser."
+
+#. Manage devices
+#. Devices: the list of devices using the license. Browser mode; opens the account in the browser.
+msgid "devices.manage"
+msgstr "Gestisci dispositivi"
+
+#. macos: Manage Devices
+msgctxt "macos"
+msgid "devices.manage"
+msgstr "Gestisci dispositivi"
+
+#. {product} {version}
+#. UpdatePrompt: an app update. Title: the product and the new version. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1.
+msgid "update.title"
+msgstr "{product} {version}"
+
+#. An update is available
+#. UpdatePrompt: an app update. Used when the version is unknown.
+msgid "update.availableTitle"
+msgstr "È disponibile un aggiornamento"
+
+#. You have {version} · {size} download
+#. UpdatePrompt: an app update. Arguments: {version} = a version string such as 2.4.1; {size} = a byte size already formatted by the platform (“38 MB”).
+msgid "update.current"
+msgstr "Hai la versione {version} · download di {size}"
+
+#. What's new
+#. UpdatePrompt: an app update. Label over the release notes.
+msgid "update.whatsNew"
+msgstr "Novità"
+
+#. All changes in {version}
+#. UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1.
+msgid "update.allChanges"
+msgstr "Tutte le modifiche della versione {version}"
+
+#. macos: All Changes in {version}
+msgctxt "macos"
+msgid "update.allChanges"
+msgstr "Tutte le modifiche della versione {version}"
+
+#. Later
+#. UpdatePrompt: an app update. Dismisses the prompt.
+msgid "update.later"
+msgstr "Più tardi"
+
+#. macos: Remind Me Later
+msgctxt "macos"
+msgid "update.later"
+msgstr "Più tardi"
+
+#. Restart when ready
+#. UpdatePrompt: an app update. Queues the restart after the download.
+msgid "update.restartWhenReady"
+msgstr "Riavvia quando è pronto"
+
+#. macos: Install and Relaunch
+msgctxt "macos"
+msgid "update.restartWhenReady"
+msgstr "Riavvia quando è pronto"
+
+#. Restart now
+#. UpdatePrompt: an app update. The update is downloaded.
+msgid "update.restartNow"
+msgstr "Riavvia ora"
+
+#. macos: Restart Now
+msgctxt "macos"
+msgid "update.restartNow"
+msgstr "Riavvia ora"
+
+#. Skip this version
+#. UpdatePrompt: an app update.
+msgid "update.skipVersion"
+msgstr "Salta questa versione"
+
+#. macos: Skip This Version
+msgctxt "macos"
+msgid "update.skipVersion"
+msgstr "Salta questa versione"
+
+#. Update now
+#. UpdatePrompt: an app update.
+msgid "update.install"
+msgstr "Aggiorna ora"
+
+#. macos: Update Now
+msgctxt "macos"
+msgid "update.install"
+msgstr "Aggiorna ora"
+
+#. Downloading · {size} of {total}
+#. UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”).
+msgid "update.downloading"
+msgstr "Download · {size} di {total}"
+
+#. About {time} left
+#. UpdatePrompt: an app update. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”).
+msgid "update.timeLeft"
+msgstr "Circa {time} rimanenti"
+
+#. {product} {version} is ready
+#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1.
+msgid "update.readyTitle"
+msgstr "{product} {version} è pronto"
+
+#. Restart {product} to finish updating.
+#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "update.readyBody"
+msgstr "Riavvia {product} per completare l'aggiornamento."
+
+#. Update to keep using {product}
+#. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "update.mandatoryTitle"
+msgstr "Aggiorna per continuare a usare {product}"
+
+#. This version is below the minimum supported version. Update to keep using {product}.
+#. UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "update.mandatoryBody"
+msgstr "Questa versione è precedente alla versione minima supportata. Aggiorna per continuare a usare {product}."
+
+#. This version is no longer supported
+#. UpdatePrompt: an app update. No update is available yet.
+msgid "update.blockedTitle"
+msgstr "Questa versione non è più supportata"
+
+#. No update is available here yet. You can keep using {product} for now.
+#. UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "update.blockedBody"
+msgstr "Qui non è ancora disponibile alcun aggiornamento. Per ora puoi continuare a usare {product}."
+
+#. This update includes an important security fix.
+#. UpdatePrompt: an app update.
+msgid "update.critical"
+msgstr "Questo aggiornamento include un'importante correzione di sicurezza."
+
+#. Update on the App Store
+#. UpdatePrompt: an app update. App Store outlet.
+msgid "update.appStore"
+msgstr "Aggiorna su App Store"
+
+#. Update on Google Play
+#. UpdatePrompt: an app update. Google Play outlet.
+msgid "update.googlePlay"
+msgstr "Aggiorna su Google Play"
+
+#. Get it on Steam
+#. UpdatePrompt: an app update. Steam outlet.
+msgid "update.steam"
+msgstr "Scarica su Steam"
+
+#. macos: Get It on Steam
+msgctxt "macos"
+msgid "update.steam"
+msgstr "Scarica su Steam"
+
+#. Open {store}
+#. UpdatePrompt: an app update. Other store outlets. Arguments: {store} = a store's name (App Store, Google Play, Steam).
+msgid "update.openStore"
+msgstr "Apri {store}"
+
+#. Open TestFlight
+#. UpdatePrompt: an app update. TestFlight outlet.
+msgid "update.testflight"
+msgstr "Apri TestFlight"
+
+#. Open AltStore
+#. UpdatePrompt: an app update. AltStore outlet.
+msgid "update.altstore"
+msgstr "Apri AltStore"
+
+#. Reload
+#. UpdatePrompt: an app update. Web outlet.
+msgid "update.reload"
+msgstr "Ricarica"
+
+#. Steam installs it. Restart Steam if it hasn't arrived.
+#. UpdatePrompt: an app update. Platform-managed update.
+msgid "update.platform.steam"
+msgstr "Lo installa Steam. Riavvia Steam se non è ancora arrivato."
+
+#. The itch app installs it.
+#. UpdatePrompt: an app update. Platform-managed update.
+msgid "update.platform.itch"
+msgstr "Lo installa l'app itch."
+
+#. Your software center installs it.
+#. UpdatePrompt: an app update. Platform-managed update (Linux).
+msgid "update.platform.store"
+msgstr "Lo installa il tuo centro software."
+
+#. Windows installs it the next time {product} starts.
+#. UpdatePrompt: an app update. Platform-managed update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "update.platform.appInstaller"
+msgstr "Windows lo installa al prossimo avvio di {product}."
+
+#. Run {command} to install it.
+#. UpdatePrompt: an app update. Package-manager update (winget, brew). Arguments: {command} = a terminal command, shown as is.
+msgid "update.platform.command"
+msgstr "Esegui {command} per installarlo."
+
+#. Reload the page to get it.
+#. UpdatePrompt: an app update. Web update.
+msgid "update.platform.web"
+msgstr "Ricarica la pagina per ottenerlo."
+
+#. Your package manager installs it.
+#. UpdatePrompt: an app update. Platform-managed update.
+msgid "update.platform.package"
+msgstr "Lo installa il tuo gestore di pacchetti."
+
+#. It installs through the store or platform you got {product} from.
+#. UpdatePrompt: an app update. Platform-managed update. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "update.platform.generic"
+msgstr "Si installa tramite lo store o la piattaforma da cui hai ottenuto {product}."
+
+#. Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going.
+#. UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "update.revokedContent"
+msgstr "Alcuni contenuti di {product} sono stati ritirati e non possono essere usati. Aggiorna {product} per continuare."
+
+#. You're up to date
+#. UpdatePrompt: an app update.
+msgid "update.upToDate"
+msgstr "Hai la versione più recente"
+
+#. Check for updates
+#. UpdatePrompt: an app update. Menu item and settings button.
+msgid "update.checkNow"
+msgstr "Controlla aggiornamenti"
+
+#. macos: Check for Updates…
+msgctxt "macos"
+msgid "update.checkNow"
+msgstr "Controlla aggiornamenti"
+
+#. Downloading content
+#. UpdateProgress: compact progress for an app update or a content pack.
+msgid "updateProgress.contentTitle"
+msgstr "Download dei contenuti"
+
+#. Waiting to download
+#. UpdateProgress: compact progress for an app update or a content pack.
+msgid "updateProgress.queued"
+msgstr "In attesa del download"
+
+#. {size} of {total} · {time} left
+#. UpdateProgress: compact progress for an app update or a content pack. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”); {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”).
+msgid "updateProgress.downloading"
+msgstr "{size} di {total} · {time} rimanenti"
+
+#. Installing…
+#. UpdateProgress: compact progress for an app update or a content pack.
+msgid "updateProgress.installing"
+msgstr "Installazione…"
+
+#. Paused · waiting for Wi-Fi
+#. UpdateProgress: compact progress for an app update or a content pack. Paused on a metered connection.
+msgid "updateProgress.paused"
+msgstr "In pausa · in attesa del Wi-Fi"
+
+#. Couldn't download
+#. UpdateProgress: compact progress for an app update or a content pack.
+msgid "updateProgress.failed"
+msgstr "Download non riuscito"
+
+#. Up to date
+#. UpdateProgress: compact progress for an app update or a content pack.
+msgid "updateProgress.done"
+msgstr "Aggiornato"
+
+#. Download now
+#. UpdateProgress: compact progress for an app update or a content pack. Resumes a paused download.
+msgid "updateProgress.resume"
+msgstr "Scarica ora"
+
+#. macos: Download Now
+msgctxt "macos"
+msgid "updateProgress.resume"
+msgstr "Scarica ora"
+
+#. What's new in {product}
+#. ReleaseNotes: the changelog. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "releaseNotes.title"
+msgstr "Novità di {product}"
+
+#. Version {version}
+#. ReleaseNotes: the changelog. Arguments: {version} = a version string such as 2.4.1.
+msgid "releaseNotes.version"
+msgstr "Versione {version}"
+
+#. Released {date}
+#. ReleaseNotes: the changelog. Arguments: {date} = a date already formatted by the platform.
+msgid "releaseNotes.released"
+msgstr "Rilasciata il {date}"
+
+#. No release notes yet.
+#. ReleaseNotes: the changelog.
+msgid "releaseNotes.empty"
+msgstr "Ancora nessuna nota di rilascio."
+
+#. Release notes couldn't be loaded.
+#. ReleaseNotes: the changelog.
+msgid "releaseNotes.error"
+msgstr "Impossibile caricare le note di rilascio."
+
+#. Renew
+#. StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Expired license.
+msgid "status.renew"
+msgstr "Rinnova"
+
+#. Update
+#. StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version too old.
+msgid "status.update"
+msgstr "Aggiorna"
+
+#. Switch channel
+#. StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Channel not included.
+msgid "status.switchChannel"
+msgstr "Cambia canale"
+
+#. macos: Switch Channel
+msgctxt "macos"
+msgid "status.switchChannel"
+msgstr "Cambia canale"
+
+#. Allowed versions: {min} to {max}
+#. StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version.
+msgid "status.allowedRange"
+msgstr "Versioni consentite: da {min} a {max}"
+
+#. Allowed versions: {min} or later
+#. StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {min} = the lowest allowed value or version.
+msgid "status.allowedMin"
+msgstr "Versioni consentite: {min} o successive"
+
+#. Allowed versions: up to {max}
+#. StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {max} = the highest allowed value or version.
+msgid "status.allowedMax"
+msgstr "Versioni consentite: fino a {max}"
+
+#. Contact {developer}
+#. StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Arguments: {developer} = the developer's name (never translated).
+msgid "status.contact"
+msgstr "Contatta {developer}"
+
+#. Offline · {days, plural, one {# day} other {# days}} left to reconnect
+#. GraceBanner: the product works offline for a limited time. Arguments: {days} = a number of days.
+#. Plural on {days}.
+msgid "grace.daysLeft"
+msgid_plural "grace.daysLeft"
+msgstr[0] "Offline · {days} giorno rimasto per riconnetterti"
+msgstr[1] "Offline · {days} di giorni rimasti per riconnetterti"
+msgstr[2] "Offline · {days} giorni rimasti per riconnetterti"
+
+#. Offline · reconnect today to keep using {product}
+#. GraceBanner: the product works offline for a limited time. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "grace.lastDay"
+msgstr "Offline · riconnettiti oggi per continuare a usare {product}"
+
+#. Reconnect by {date}
+#. GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform.
+msgid "grace.deadline"
+msgstr "Riconnettiti entro il {date}"
+
+#. Account and license
+#. AccountAndLicense: the settings pane for the license and account.
+msgid "account.title"
+msgstr "Account e licenza"
+
+#. {tier} license
+#. AccountAndLicense: the settings pane for the license and account. Arguments: {tier} = the tier's name (never translated).
+msgid "account.tier"
+msgstr "Licenza {tier}"
+
+#. Signed in as {name}
+#. AccountAndLicense: the settings pane for the license and account. The account signed in on this device. Arguments: {name} = the person's display name.
+msgid "account.holder"
+msgstr "Accesso effettuato come {name}"
+
+#. Activated with a license key
+#. AccountAndLicense: the settings pane for the license and account. No account is signed in on this device.
+msgid "account.keyOnly"
+msgstr "Attivato con una chiave di licenza"
+
+#. Devices
+#. AccountAndLicense: the settings pane for the license and account. Row label.
+msgid "account.devices"
+msgstr "Dispositivi"
+
+#. Cloud Sync
+#. AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term.
+msgid "account.cloudSync"
+msgstr "Sincronizzazione cloud"
+
+#. Updates
+#. AccountAndLicense: the settings pane for the license and account. Group header.
+msgid "account.updates"
+msgstr "Aggiornamenti"
+
+#. Update automatically
+#. AccountAndLicense: the settings pane for the license and account. Switch label.
+msgid "account.autoUpdate"
+msgstr "Aggiorna automaticamente"
+
+#. Release channel
+#. AccountAndLicense: the settings pane for the license and account. Row label.
+msgid "account.channel"
+msgstr "Canale di rilascio"
+
+#. Version {version}
+#. AccountAndLicense: the settings pane for the license and account. Arguments: {version} = a version string such as 2.4.1.
+msgid "account.version"
+msgstr "Versione {version}"
+
+#. Managed settings
+#. AccountAndLicense: the settings pane for the license and account. Row label.
+msgid "account.managedSettings"
+msgstr "Impostazioni gestite"
+
+#. Offline · showing the last saved details
+#. AccountAndLicense: the settings pane for the license and account.
+msgid "account.offline"
+msgstr "Offline · vengono mostrati gli ultimi dati salvati"
+
+#. Settings
+#. Settings: settings delivered by the developer.
+msgid "settings.title"
+msgstr "Impostazioni"
+
+#. Search settings
+#. Settings: settings delivered by the developer. Search field placeholder.
+msgid "settings.search"
+msgstr "Cerca nelle impostazioni"
+
+#. There are no settings to show.
+#. Settings: settings delivered by the developer.
+msgid "settings.empty"
+msgstr "Non ci sono impostazioni da mostrare."
+
+#. From {developer}
+#. Settings: settings delivered by the developer. Group header for the developer's defaults. Arguments: {developer} = the developer's name (never translated).
+msgid "settings.fromDeveloper"
+msgstr "Da {developer}"
+
+#. Set by {org}
+#. Settings: settings delivered by the developer. A locked row. Arguments: {org} = the organization that set a value.
+msgid "settings.setBy"
+msgstr "Impostato da {org}"
+
+#. Set by your parent or guardian
+#. Settings: settings delivered by the developer. A locked row on consoles.
+msgid "settings.setByGuardian"
+msgstr "Impostato da un genitore o tutore"
+
+#. Changed by you
+#. Settings: settings delivered by the developer. Where a value comes from.
+msgid "settings.source.local"
+msgstr "Modificato da te"
+
+#. Set by the environment
+#. Settings: settings delivered by the developer. Where a value comes from.
+msgid "settings.source.env"
+msgstr "Impostato dall'ambiente"
+
+#. Default
+#. Settings: settings delivered by the developer. Where a value comes from.
+msgid "settings.source.default"
+msgstr "Predefinito"
+
+#. Reset to default
+#. Settings: settings delivered by the developer.
+msgid "settings.reset"
+msgstr "Ripristina predefinito"
+
+#. macos: Reset to Default
+msgctxt "macos"
+msgid "settings.reset"
+msgstr "Ripristina predefinito"
+
+#. Show advanced settings
+#. Settings: settings delivered by the developer.
+msgid "settings.advanced"
+msgstr "Mostra impostazioni avanzate"
+
+#. macos: Show Advanced Settings
+msgctxt "macos"
+msgid "settings.advanced"
+msgstr "Mostra impostazioni avanzate"
+
+#. Saving…
+#. Settings: settings delivered by the developer.
+msgid "settings.saving"
+msgstr "Salvataggio…"
+
+#. Saved
+#. Settings: settings delivered by the developer.
+msgid "settings.saved"
+msgstr "Salvato"
+
+#. Unsaved changes
+#. Settings: settings delivered by the developer.
+msgid "settings.unsaved"
+msgstr "Modifiche non salvate"
+
+#. Settings couldn't be saved. Try again.
+#. Settings: settings delivered by the developer.
+msgid "settings.error"
+msgstr "Impossibile salvare le impostazioni. Riprova."
+
+#. Between {min} and {max}
+#. Settings: settings delivered by the developer. Allowed range of a number. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version.
+msgid "settings.range"
+msgstr "Tra {min} e {max}"
+
+#. On
+#. Settings: settings delivered by the developer. A switch's value shown as text.
+msgid "settings.on"
+msgstr "Attivo"
+
+#. Off
+#. Settings: settings delivered by the developer. A switch's value shown as text.
+msgid "settings.off"
+msgstr "Disattivo"
+
+#. Get more with {product} {tier}
+#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
+msgid "paywall.title"
+msgstr "Ottieni di più con {product} {tier}"
+
+#. {tier} includes
+#. Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated).
+msgid "paywall.includes"
+msgstr "{tier} include"
+
+#. Upgrade to {tier}
+#. Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated).
+msgid "paywall.upgrade"
+msgstr "Passa a {tier}"
+
+#. Redeem a code
+#. Paywall: what a tier adds, and how to get it.
+msgid "paywall.redeem"
+msgstr "Riscatta un codice"
+
+#. macos: Redeem a Code
+msgctxt "macos"
+msgid "paywall.redeem"
+msgstr "Riscatta un codice"
+
+#. Restore purchases
+#. Paywall: what a tier adds, and how to get it.
+msgid "paywall.restore"
+msgstr "Ripristina acquisti"
+
+#. macos: Restore Purchases
+msgctxt "macos"
+msgid "paywall.restore"
+msgstr "Ripristina acquisti"
+
+#. Completing purchase…
+#. Paywall: what a tier adds, and how to get it.
+msgid "paywall.purchasing"
+msgstr "Completamento dell'acquisto…"
+
+#. {tier} is unlocked
+#. Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated).
+msgid "paywall.purchased"
+msgstr "{tier} è sbloccato"
+
+#. Purchases aren't available in this version of {product}.
+#. Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "paywall.notAvailable"
+msgstr "Gli acquisti non sono disponibili in questa versione di {product}."
+
+#. Buy in your browser
+#. Paywall: what a tier adds, and how to get it.
+msgid "paywall.portal"
+msgstr "Acquista nel browser"
+
+#. macos: Buy in Your Browser
+msgctxt "macos"
+msgid "paywall.portal"
+msgstr "Acquista nel browser"
+
+#. This feature needs {tier}.
+#. EntitlementGate: shown in place of a locked feature. Arguments: {tier} = the tier's name (never translated).
+msgid "entitlement.locked"
+msgstr "Questa funzione richiede {tier}."
+
+#. Unlock
+#. EntitlementGate: opens the paywall.
+msgid "entitlement.unlock"
+msgstr "Sblocca"
+
+#. Synced {time}
+#. CloudSyncStatus: a small sync status. {time} is relative, like “2 min ago”. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”).
+msgid "cloudSync.synced"
+msgstr "Sincronizzato {time}"
+
+#. Syncing…
+#. CloudSyncStatus: a small sync status.
+msgid "cloudSync.syncing"
+msgstr "Sincronizzazione…"
+
+#. Offline · changes sync when you reconnect
+#. CloudSyncStatus: a small sync status.
+msgid "cloudSync.offline"
+msgstr "Offline · le modifiche verranno sincronizzate quando ti riconnetti"
+
+#. Some changes conflict. Review them.
+#. CloudSyncStatus: a small sync status.
+msgid "cloudSync.conflict"
+msgstr "Alcune modifiche sono in conflitto. Controllale."
+
+#. Couldn't sync. Try again later.
+#. CloudSyncStatus: a small sync status.
+msgid "cloudSync.error"
+msgstr "Impossibile sincronizzare. Riprova più tardi."
+
+#. Sign in to sync
+#. CloudSyncStatus: a small sync status. Cloud Sync needs an account.
+msgid "cloudSync.signIn"
+msgstr "Accedi per sincronizzare"
+
+#. macos: Sign In to Sync
+msgctxt "macos"
+msgid "cloudSync.signIn"
+msgstr "Accedi per sincronizzare"
+
+#. About {product}
+#. About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "about.title"
+msgstr "Informazioni su {product}"
+
+#. Version {version}
+#. About: product and build information. Arguments: {version} = a version string such as 2.4.1.
+msgid "about.version"
+msgstr "Versione {version}"
+
+#. Open-source licenses
+#. About: product and build information. Opens the open-source notices.
+msgid "about.licenses"
+msgstr "Licenze open source"
+
+#. macos: Open-Source Licenses
+msgctxt "macos"
+msgid "about.licenses"
+msgstr "Licenze open source"
+
+#. Copy diagnostics
+#. About: product and build information.
+msgid "about.copyDiagnostics"
+msgstr "Copia diagnostica"
+
+#. macos: Copy Diagnostics
+msgctxt "macos"
+msgid "about.copyDiagnostics"
+msgstr "Copia diagnostica"
+
+#. Diagnostics copied
+#. About: product and build information.
+msgid "about.diagnosticsCopied"
+msgstr "Diagnostica copiata"
+
+#. Release channel
+#. ChannelPicker: the release channel choice.
+msgid "channel.title"
+msgstr "Canale di rilascio"
+
+#. {store} sets the release channel.
+#. ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam).
+msgid "channel.locked"
+msgstr "Il canale di rilascio è impostato da {store}."
+
+#. Undo
+#. Toast action.
+msgid "toast.undo"
+msgstr "Annulla"
+
+#. {product} {version} is available
+#. Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1.
+msgid "toast.updateAvailable"
+msgstr "{product} {version} è disponibile"
+
+#. Sign in to Polaris Key
+#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3).
+msgid "signin.methods.title"
+msgstr "Accedi a Polaris Key"
+
+#. Sign in
+#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3).
+msgid "signin.methods.titleApp"
+msgstr "Accedi"
+
+#. Use the email you bought {product} with.
+#. Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.methods.ledeApp"
+msgstr "Usa l'email con cui hai acquistato {product}."
+
+#. Email
+#. Hosted sign-in card, email field (SIGN-IN.md §3.3).
+msgid "signin.email.label"
+msgstr "Email"
+
+#. Enter a full email address, like name@example.com.
+#. Hosted sign-in card, email field (SIGN-IN.md §3.3).
+msgid "signin.email.invalid"
+msgstr "Inserisci un indirizzo email completo, ad esempio nome@example.com."
+
+#. Continue
+#. Hosted sign-in card (SIGN-IN.md).
+msgid "signin.continue"
+msgstr "Continua"
+
+#. or
+#. Hosted sign-in card (SIGN-IN.md).
+msgid "signin.or"
+msgstr "oppure"
+
+#. Or continue with
+#. Sign-in provider buttons (SIGN-IN.md §3.3).
+msgid "signin.provider.group"
+msgstr "Oppure continua con"
+
+#. Continue with {provider}
+#. Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam).
+msgid "signin.provider.continue"
+msgstr "Continua con {provider}"
+
+#. Connect {provider}
+#. Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam).
+msgid "signin.provider.connect"
+msgstr "Collega {provider}"
+
+#. Sign in with a passkey
+#. Hosted sign-in card (SIGN-IN.md).
+msgid "signin.passkey"
+msgstr "Accedi con una passkey"
+
+#. macos: Sign In with a Passkey
+msgctxt "macos"
+msgid "signin.passkey"
+msgstr "Accedi con una passkey"
+
+#. Continue with email
+#. Hosted sign-in card, email field (SIGN-IN.md §3.3).
+msgid "signin.email.continue"
+msgstr "Continua con l'email"
+
+#. macos: Continue with Email
+msgctxt "macos"
+msgid "signin.email.continue"
+msgstr "Continua con l'email"
+
+#. Have a license key?
+#. Links at the foot of the sign-in card (SIGN-IN.md §3.3).
+msgid "signin.link.key"
+msgstr "Hai una chiave di licenza?"
+
+#. macos: Have a License Key?
+msgctxt "macos"
+msgid "signin.link.key"
+msgstr "Hai una chiave di licenza?"
+
+#. Sign in with another device
+#. Links at the foot of the sign-in card (SIGN-IN.md §3.3).
+msgid "signin.link.anotherDevice"
+msgstr "Accedi con un altro dispositivo"
+
+#. macos: Sign In with Another Device
+msgctxt "macos"
+msgid "signin.link.anotherDevice"
+msgstr "Accedi con un altro dispositivo"
+
+#. Sign in on your phone or computer
+#. Links at the foot of the sign-in card (SIGN-IN.md §3.3).
+msgid "signin.link.deviceCode"
+msgstr "Accedi dal telefono o dal computer"
+
+#. macos: Sign In on Your Phone or Computer
+msgctxt "macos"
+msgid "signin.link.deviceCode"
+msgstr "Accedi dal telefono o dal computer"
+
+#. {app} wants you to sign in
+#. Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.header.app"
+msgstr "{app} ti chiede di accedere"
+
+#. {product} · {developer}
+#. Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated).
+msgid "signin.header.context"
+msgstr "{product} · {developer}"
+
+#. Your license, downloads and devices
+#. Header of the sign-in card when an app asks (SIGN-IN.md §3.1).
+msgid "signin.header.contextLine"
+msgstr "La tua licenza, i download e i dispositivi"
+
+#. Code on the screen · {code} · Check it matches the screen
+#. Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
+msgid "signin.header.codePanel"
+msgstr "Codice sullo schermo · {code} · Verifica che corrisponda a quello sullo schermo"
+
+#. Polaris Key signs you in for {app}. {developer} never sees your codes or passkeys.
+#. Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated).
+msgid "signin.footer"
+msgstr "Polaris Key gestisce il tuo accesso a {app}. {developer} non vede mai i tuoi codici o le tue passkey."
+
+#. Sign-in is turned off for {product}. Contact {developer}.
+#. Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated).
+msgid "signin.off.product"
+msgstr "L'accesso è disattivato per {product}. Contatta {developer}."
+
+#. Sign-in is unavailable. Try again later.
+#. Sign-in is turned off (SIGN-IN.md §4.12).
+msgid "signin.off.any"
+msgstr "L'accesso non è disponibile. Riprova più tardi."
+
+#. Too many codes. Try again in {minutes} minutes.
+#. Hosted sign-in card (SIGN-IN.md). Arguments: {minutes} = a number of minutes.
+msgid "signin.rateLimited"
+msgstr "Troppi codici. Riprova tra {minutes} minuti."
+
+#. We can't send email right now. Try another way to sign in.
+#. Hosted sign-in card (SIGN-IN.md).
+msgid "signin.emailDown"
+msgstr "Al momento non possiamo inviare email. Prova un altro modo per accedere."
+
+#. Can't reach Polaris Key
+#. The card can't reach the service.
+msgid "signin.network.title"
+msgstr "Impossibile raggiungere Polaris Key"
+
+#. Try again
+#. Hosted sign-in card (SIGN-IN.md).
+msgid "signin.retry"
+msgstr "Riprova"
+
+#. macos: Try Again
+msgctxt "macos"
+msgid "signin.retry"
+msgstr "Riprova"
+
+#. Check your email
+#. Email code step (SIGN-IN.md §3.4).
+msgid "signin.code.title"
+msgstr "Controlla la tua email"
+
+#. We sent a code and a sign-in link to {email}. Both work for 10 minutes.
+#. Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address.
+msgid "signin.code.sent"
+msgstr "Abbiamo inviato un codice e un link di accesso a {email}. Entrambi valgono 10 minuti."
+
+#. Or open the link in the email. Keep this tab open.
+#. Email code step (SIGN-IN.md §3.4).
+msgid "signin.code.link"
+msgstr "Oppure apri il link nell'email. Tieni aperta questa scheda."
+
+#. Send a new code
+#. Email code step (SIGN-IN.md §3.4).
+msgid "signin.code.resend"
+msgstr "Invia un nuovo codice"
+
+#. macos: Send a New Code
+msgctxt "macos"
+msgid "signin.code.resend"
+msgstr "Invia un nuovo codice"
+
+#. Send a new code in {time}
+#. Email code step (SIGN-IN.md §3.4). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”).
+msgid "signin.code.resendIn"
+msgstr "Invia un nuovo codice tra {time}"
+
+#. macos: Send a New Code in {time}
+msgctxt "macos"
+msgid "signin.code.resendIn"
+msgstr "Invia un nuovo codice tra {time}"
+
+#. We sent a new code and link to {email}.
+#. Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address.
+msgid "signin.code.resent"
+msgstr "Abbiamo inviato un nuovo codice e un nuovo link a {email}."
+
+#. {n, plural, one {# try left.} other {# tries left.}}
+#. Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number.
+#. Plural on {n}.
+msgid "signin.code.triesLeft"
+msgid_plural "signin.code.triesLeft"
+msgstr[0] "Ancora {n} tentativo."
+msgstr[1] "Ancora {n} di tentativi."
+msgstr[2] "Ancora {n} tentativi."
+
+#. Too many tries. Send a new code.
+#. Email code step (SIGN-IN.md §3.4).
+msgid "signin.code.tooMany"
+msgstr "Troppi tentativi. Invia un nuovo codice."
+
+#. That code has expired. Send a new code.
+#. Email code step (SIGN-IN.md §3.4).
+msgid "signin.code.expired"
+msgstr "Il codice è scaduto. Invia un nuovo codice."
+
+#. Use a different email
+#. Email code step (SIGN-IN.md §3.4).
+msgid "signin.code.differentEmail"
+msgstr "Usa un'altra email"
+
+#. macos: Use a Different Email
+msgctxt "macos"
+msgid "signin.code.differentEmail"
+msgstr "Usa un'altra email"
+
+#. Your Polaris Key code: {code}
+#. Sign-in email subject (SIGN-IN.md §3.15). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated.
+msgid "signin.email.subject"
+msgstr "Il tuo codice Polaris Key: {code}"
+
+#. Or sign in with the button. The code and the link work once, for 10 minutes.
+#. Sign-in email body (SIGN-IN.md §3.15).
+msgid "signin.email.body"
+msgstr "Oppure accedi con il pulsante. Il codice e il link funzionano una sola volta, per 10 minuti."
+
+#. Confirm sign-in, requested at {time} from {place}
+#. Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”); {place} = an approximate place (city, country).
+msgid "signin.confirmLink.title"
+msgstr "Conferma l'accesso richiesto alle {time} da {place}"
+
+#. The device that asked signs in, not this one.
+#. Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4).
+msgid "signin.confirmLink.note"
+msgstr "Accederà il dispositivo che ha fatto la richiesta, non questo."
+
+#. Sign-in confirmed. Go back to the device where you started. It signs in by itself.
+#. Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4).
+msgid "signin.confirmLink.done"
+msgstr "Accesso confermato. Torna al dispositivo da cui hai iniziato: accederà da solo."
+
+#. Welcome back, {name}
+#. Returning person hint (SIGN-IN.md §3.4). Arguments: {name} = the person's display name.
+msgid "signin.hint.welcome"
+msgstr "Bentornato, {name}"
+
+#. You usually sign in with {method}
+#. Returning person hint (SIGN-IN.md §3.4). Arguments: {method} = a sign-in method's name (Apple, Google, passkey…).
+msgid "signin.hint.usual"
+msgstr "Di solito accedi con {method}"
+
+#. Other ways to sign in
+#. Returning person hint (SIGN-IN.md §3.4).
+msgid "signin.hint.other"
+msgstr "Altri modi per accedere"
+
+#. macos: Other Ways to Sign In
+msgctxt "macos"
+msgid "signin.hint.other"
+msgstr "Altri modi per accedere"
+
+#. Create your account
+#. Create account step (SIGN-IN.md §3.4).
+msgid "signin.register.title"
+msgstr "Crea il tuo account"
+
+#. {email} is verified
+#. Create account step (SIGN-IN.md §3.4). Arguments: {email} = an email address.
+msgid "signin.register.verified"
+msgstr "{email} è verificata"
+
+#. Create account and continue
+#. Create account step (SIGN-IN.md §3.4).
+msgid "signin.register.submit"
+msgstr "Crea account e continua"
+
+#. macos: Create Account and Continue
+msgctxt "macos"
+msgid "signin.register.submit"
+msgstr "Crea account e continua"
+
+#. Signed in with {provider} · {identity}
+#. Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam); {identity} = the provider account's handle or email.
+msgid "signin.gate.strip"
+msgstr "Accesso effettuato con {provider} · {identity}"
+
+#. Confirm your email
+#. Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5).
+msgid "signin.gate.title"
+msgstr "Conferma la tua email"
+
+#. One step before {app}. We send sign-in codes, receipts and security notices here.
+#. Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.gate.ledeApp"
+msgstr "Un ultimo passaggio prima di {app}. Qui inviamo codici di accesso, ricevute e avvisi di sicurezza."
+
+#. Steam doesn't share an email. Add one so you can get back in without Steam.
+#. Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5).
+msgid "signin.gate.steam"
+msgstr "Steam non condivide un indirizzo email. Aggiungine uno per poter rientrare senza Steam."
+
+#. Verify and continue
+#. Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5).
+msgid "signin.gate.verify"
+msgstr "Verifica e continua"
+
+#. macos: Verify and Continue
+msgctxt "macos"
+msgid "signin.gate.verify"
+msgstr "Verifica e continua"
+
+#. Send code
+#. Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5).
+msgid "signin.gate.sendCode"
+msgstr "Invia codice"
+
+#. macos: Send Code
+msgctxt "macos"
+msgid "signin.gate.sendCode"
+msgstr "Invia codice"
+
+#. Cancel sign-in
+#. Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5).
+msgid "signin.gate.cancel"
+msgstr "Annulla accesso"
+
+#. macos: Cancel Sign-In
+msgctxt "macos"
+msgid "signin.gate.cancel"
+msgstr "Annulla accesso"
+
+#. Join into one account
+#. Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5).
+msgid "signin.gate.join"
+msgstr "Unisci in un solo account"
+
+#. macos: Join into One Account
+msgctxt "macos"
+msgid "signin.gate.join"
+msgstr "Unisci in un solo account"
+
+#. Name and picture from {provider}.
+#. Profile import (SIGN-IN.md §3.5). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam).
+msgid "signin.profile.source"
+msgstr "Nome e immagine da {provider}."
+
+#. Apple doesn't share a picture. Add one
+#. Profile import (SIGN-IN.md §3.5).
+msgid "signin.profile.applePicture"
+msgstr "Apple non condivide un'immagine. Aggiungine una"
+
+#. macos: Apple Doesn't Share a Picture. Add One
+msgctxt "macos"
+msgid "signin.profile.applePicture"
+msgstr "Apple non condivide un'immagine. Aggiungine una"
+
+#. Choose a license for this device
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.title"
+msgstr "Scegli una licenza per questo dispositivo"
+
+#. {product} will use it on {device}.
+#. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "signin.choice.lede"
+msgstr "{product} la userà su {device}."
+
+#. {product} will use it in this browser.
+#. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.choice.ledeBrowser"
+msgstr "{product} la userà in questo browser."
+
+#. You don't have a {product} license yet. {developer} gives you this one.
+#. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated).
+msgid "signin.choice.ledeNew"
+msgstr "Non hai ancora una licenza di {product}. {developer} ti offre questa."
+
+#. Licenses for {product}
+#. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.choice.group"
+msgstr "Licenze per {product}"
+
+#. {origin} · {term}
+#. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {origin} = where the license came from (one of the signin.choice.origin.* strings); {term} = the license term (one of the signin.term.* strings).
+msgid "signin.choice.meta"
+msgstr "{origin} · {term}"
+
+#. {used} of {limit, plural, one {# device} other {# devices}}
+#. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number.
+#. Plural on {limit}.
+msgid "signin.choice.devices"
+msgid_plural "signin.choice.devices"
+msgstr[0] "{used} di {limit} dispositivo"
+msgstr[1] "{used} di {limit} di dispositivi"
+msgstr[2] "{used} di {limit} dispositivi"
+
+#. Created when you continue
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.metaNew"
+msgstr "Creata quando continui"
+
+#. Lifetime
+#. A license's term, shown in license rows (SIGN-IN.md §3.6).
+msgid "signin.term.lifetime"
+msgstr "A vita"
+
+#. Until {date}
+#. A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform.
+msgid "signin.term.until"
+msgstr "Fino al {date}"
+
+#. Yearly, until {date}
+#. A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform.
+msgid "signin.term.yearlyUntil"
+msgstr "Annuale, fino al {date}"
+
+#. From signing in
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).
+msgid "signin.choice.origin.signIn"
+msgstr "Dall'accesso"
+
+#. Key ending {last6}
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is.
+msgid "signin.choice.origin.key"
+msgstr "Chiave che termina con {last6}"
+
+#. Added with a key
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).
+msgid "signin.choice.origin.keyAdded"
+msgstr "Aggiunta con una chiave"
+
+#. {store} key ending {last6}
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is.
+msgid "signin.choice.origin.storeKey"
+msgstr "Chiave {store} che termina con {last6}"
+
+#. {store} key
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store).
+msgid "signin.choice.origin.storeKeyAdded"
+msgstr "Chiave {store}"
+
+#. From {store}
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). A store license with no key. Arguments: {store} = a store's name (Steam, App Store).
+msgid "signin.choice.origin.store"
+msgstr "Da {store}"
+
+#. From {developer}
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {developer} = the developer's name (never translated).
+msgid "signin.choice.origin.developer"
+msgstr "Da {developer}"
+
+#. Free
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).
+msgid "signin.choice.origin.free"
+msgstr "Gratuita"
+
+#. Gift
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label).
+msgid "signin.choice.origin.gift"
+msgstr "Regalo"
+
+#. Included with {org}
+#. Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {org} = the organization that provides the license.
+msgid "signin.choice.origin.org"
+msgstr "Inclusa con {org}"
+
+#. {tier} · Sign-in
+#. The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated).
+msgid "signin.choice.picker.signIn"
+msgstr "{tier} · Accesso"
+
+#. {tier} · Key …{last6}
+#. The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {last6} = the license key's last six characters, shown as is.
+msgid "signin.choice.picker.key"
+msgstr "{tier} · Chiave …{last6}"
+
+#. {tier} · {store} key …{last6}
+#. The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is.
+msgid "signin.choice.picker.storeKey"
+msgstr "{tier} · Chiave {store} …{last6}"
+
+#. {tier} · {store}
+#. The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store).
+msgid "signin.choice.picker.store"
+msgstr "{tier} · {store}"
+
+#. On this device
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.tag.current"
+msgstr "Su questo dispositivo"
+
+#. New
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.tag.new"
+msgstr "Nuova"
+
+#. No free devices
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.tag.full"
+msgstr "Nessun dispositivo libero"
+
+#. Keep the license this device uses
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.keep"
+msgstr "Mantieni la licenza usata da questo dispositivo"
+
+#. macos: Keep the License This Device Uses
+msgctxt "macos"
+msgid "signin.choice.keep"
+msgstr "Mantieni la licenza usata da questo dispositivo"
+
+#. {product} keeps running as it does now.
+#. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.choice.keepMeta"
+msgstr "{product} continua a funzionare come ora."
+
+#. Create a new free license
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.create"
+msgstr "Crea una nuova licenza gratuita"
+
+#. macos: Create a New Free License
+msgctxt "macos"
+msgid "signin.choice.create"
+msgstr "Crea una nuova licenza gratuita"
+
+#. A separate license · created when you continue
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.createMeta"
+msgstr "Una licenza separata · creata quando continui"
+
+#. Your licenses are on all their devices. Replace a device to use one here.
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.allFull"
+msgstr "Le tue licenze sono in uso su tutti i dispositivi consentiti. Sostituisci un dispositivo per usarne una qui."
+
+#. Your licenses are on all their devices. Replace a device, or create a new free license.
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.allFullCreate"
+msgstr "Le tue licenze sono in uso su tutti i dispositivi consentiti. Sostituisci un dispositivo o crea una nuova licenza gratuita."
+
+#. {developer} manages devices for these licenses. Ask {developer} to free one, or use another license.
+#. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated).
+msgid "signin.choice.noneReplaceable"
+msgstr "{developer} gestisce i dispositivi di queste licenze. Chiedi a {developer} di liberarne uno o usa un'altra licenza."
+
+#. Your other {product} items still apply.
+#. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.choice.combined"
+msgstr "Gli altri tuoi elementi di {product} restano validi."
+
+#. {developer} manages devices for this license.
+#. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated).
+msgid "signin.choice.portalOff"
+msgstr "{developer} gestisce i dispositivi di questa licenza."
+
+#. Use a license key instead
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.keyInstead"
+msgstr "Usa invece una chiave di licenza"
+
+#. macos: Use a License Key Instead
+msgctxt "macos"
+msgid "signin.choice.keyInstead"
+msgstr "Usa invece una chiave di licenza"
+
+#. Free a device
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.freeDevice"
+msgstr "Libera un dispositivo"
+
+#. macos: Free a Device
+msgctxt "macos"
+msgid "signin.choice.freeDevice"
+msgstr "Libera un dispositivo"
+
+#. Use this license and continue
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.continue"
+msgstr "Usa questa licenza e continua"
+
+#. macos: Use This License and Continue
+msgctxt "macos"
+msgid "signin.choice.continue"
+msgstr "Usa questa licenza e continua"
+
+#. That seat was just taken. Choose again.
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.raced"
+msgstr "Quel posto è appena stato occupato. Scegli di nuovo."
+
+#. The code on {device} expired. Get a new code there and scan it again.
+#. Choose a license for this device (SIGN-IN.md §3.6). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "signin.choice.codeExpired"
+msgstr "Il codice su {device} è scaduto. Ottieni lì un nuovo codice e scansionalo di nuovo."
+
+#. No {product} license in this account
+#. No license in this account (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.none.title"
+msgstr "Nessuna licenza di {product} in questo account"
+
+#. Bought it with another email? Sign in with that account instead.
+#. No license in this account (SIGN-IN.md §3.6).
+msgid "signin.none.body"
+msgstr "L'hai acquistato con un'altra email? Accedi invece con quell'account."
+
+#. Get {product}
+#. No license in this account (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.none.get"
+msgstr "Ottieni {product}"
+
+#. Use another account
+#. No license in this account (SIGN-IN.md §3.6).
+msgid "signin.none.otherAccount"
+msgstr "Usa un altro account"
+
+#. macos: Use Another Account
+msgctxt "macos"
+msgid "signin.none.otherAccount"
+msgstr "Usa un altro account"
+
+#. Replace a device
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
+msgid "signin.replace.open"
+msgstr "Sostituisci un dispositivo"
+
+#. macos: Replace a Device
+msgctxt "macos"
+msgid "signin.replace.open"
+msgstr "Sostituisci un dispositivo"
+
+#. Choose a device to sign out. {thisDevice} takes its seat.
+#. Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice).
+msgid "signin.replace.lede"
+msgstr "Scegli un dispositivo da disconnettere. {thisDevice} ne prende il posto."
+
+#. Replace…
+#. Replace a device in a system dialog (SIGN-IN.md §3.7).
+msgid "signin.replace.openSystem"
+msgstr "Sostituisci…"
+
+#. {platform} · last used {when}
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”).
+msgid "signin.replace.meta"
+msgstr "{platform} · usato l'ultima volta {when}"
+
+#. Least recent
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
+msgid "signin.replace.leastRecent"
+msgstr "Meno recente"
+
+#. Active now
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
+msgid "signin.replace.activeNow"
+msgstr "Attivo ora"
+
+#. This browser
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
+msgid "signin.replace.thisBrowser"
+msgstr "Questo browser"
+
+#. Replace {device}?
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "signin.replace.title"
+msgstr "Sostituire {device}?"
+
+#. {device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”).
+msgid "signin.replace.consequence"
+msgstr "{device} esce da {product} e {thisDevice} ne prende il posto. {device} potrà accedere di nuovo in seguito se si libera un posto. Ti invieremo un'email al riguardo."
+
+#. {device} is in use right now.
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "signin.replace.inUse"
+msgstr "{device} è in uso in questo momento."
+
+#. Replace and continue
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
+msgid "signin.replace.confirm"
+msgstr "Sostituisci e continua"
+
+#. macos: Replace and Continue
+msgctxt "macos"
+msgid "signin.replace.confirm"
+msgstr "Sostituisci e continua"
+
+#. Back
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
+msgid "signin.replace.back"
+msgstr "Indietro"
+
+#. That device was already removed. Choose again.
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
+msgid "signin.replace.gone"
+msgstr "Quel dispositivo è già stato rimosso. Scegli di nuovo."
+
+#. Too many device changes. Try again in {seconds, plural, one {# second} other {# seconds}}.
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {seconds} = a number of seconds.
+#. Plural on {seconds}.
+msgid "signin.replace.rateLimited"
+msgid_plural "signin.replace.rateLimited"
+msgstr[0] "Troppe modifiche ai dispositivi. Riprova tra {seconds} secondo."
+msgstr[1] "Troppe modifiche ai dispositivi. Riprova tra {seconds} di secondi."
+msgstr[2] "Troppe modifiche ai dispositivi. Riprova tra {seconds} secondi."
+
+#. Someone took that seat first. Choose again.
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
+msgid "signin.replace.raced"
+msgstr "Qualcun altro ha occupato prima quel posto. Scegli di nuovo."
+
+#. {device} was removed, but someone took the seat first. Choose again.
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "signin.replace.racedAfterFree"
+msgstr "{device} è stato rimosso, ma qualcun altro ha occupato prima il posto. Scegli di nuovo."
+
+#. Continue to {app} as {name}?
+#. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated); {name} = the person's display name.
+msgid "signin.consent.title"
+msgstr "Continuare su {app} come {name}?"
+
+#. License for this device
+#. Consent step before returning to the app (SIGN-IN.md §3.8).
+msgid "signin.consent.license"
+msgstr "Licenza per questo dispositivo"
+
+#. {license} · {term} · {device} becomes device {position} of {limit}
+#. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number.
+msgid "signin.consent.licenseLine"
+msgstr "{license} · {term} · {device} diventa il dispositivo {position} di {limit}"
+
+#. {license} · replaces {device}
+#. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "signin.consent.replaces"
+msgstr "{license} · sostituisce {device}"
+
+#. You'll choose a license in {app}.
+#. Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.consent.licenseInApp"
+msgstr "Sceglierai una licenza in {app}."
+
+#. Change
+#. Consent step before returning to the app (SIGN-IN.md §3.8).
+msgid "signin.consent.change"
+msgstr "Cambia"
+
+#. Continue to {app}
+#. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.consent.continue"
+msgstr "Continua su {app}"
+
+#. {app} will also get
+#. Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.consent.alsoGets"
+msgstr "{app} riceverà anche"
+
+#. Your profile and email
+#. Consent step before returning to the app (SIGN-IN.md §3.8).
+msgid "signin.consent.profile"
+msgstr "Il tuo profilo e la tua email"
+
+#. It gets its own id for you, and won't see your other products or how you sign in.
+#. Consent step before returning to the app (SIGN-IN.md §3.8).
+msgid "signin.consent.pairwise"
+msgstr "Riceve un identificativo dedicato per te e non vedrà gli altri tuoi prodotti né come accedi."
+
+#. Not you?
+#. Hosted sign-in card (SIGN-IN.md).
+msgid "signin.notYou"
+msgstr "Non sei tu?"
+
+#. macos: Not You?
+msgctxt "macos"
+msgid "signin.notYou"
+msgstr "Non sei tu?"
+
+#. Cancel
+#. Hosted sign-in card (SIGN-IN.md).
+msgid "signin.cancel"
+msgstr "Annulla"
+
+#. Add {product} to your account
+#. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.addTitle"
+msgstr "Aggiungi {product} al tuo account"
+
+#. Add and use on this device
+#. License key step (SIGN-IN.md §3.9).
+msgid "signin.key.addAndUse"
+msgstr "Aggiungi e usa su questo dispositivo"
+
+#. macos: Add and Use on This Device
+msgctxt "macos"
+msgid "signin.key.addAndUse"
+msgstr "Aggiungi e usa su questo dispositivo"
+
+#. Keep {product} in an account
+#. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.keep"
+msgstr "Conserva {product} in un account"
+
+#. macos: Keep {product} in an Account
+msgctxt "macos"
+msgid "signin.key.keep"
+msgstr "Conserva {product} in un account"
+
+#. {left} of {limit} key entries left · This will be entry {n}
+#. License key step (SIGN-IN.md §3.9). Arguments: {left} = how many are left, as a number; {limit} = the license's device limit, as a number; {n} = a number.
+msgid "signin.key.entries"
+msgstr "{left} di {limit} inserimenti della chiave rimasti · Questo sarà l'inserimento {n}"
+
+#. {left, plural, one {# key entry left} other {# key entries left}}
+#. License key step (SIGN-IN.md §3.9). Arguments: {left} = how many are left, as a number.
+#. Plural on {left}.
+msgid "signin.key.entriesLeftShort"
+msgid_plural "signin.key.entriesLeftShort"
+msgstr[0] "{left} inserimento della chiave rimasto"
+msgstr[1] "{left} di inserimenti della chiave rimasti"
+msgstr[2] "{left} inserimenti della chiave rimasti"
+
+#. This key has no entries left in {product}. Add it to your account and {product} signs you in instead.
+#. License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.key.noEntries"
+msgstr "Questa chiave non ha più inserimenti disponibili in {product}. Aggiungila al tuo account e {product} ti farà accedere in quel modo."
+
+#. Skip for now
+#. License key step (SIGN-IN.md §3.9).
+msgid "signin.key.skip"
+msgstr "Salta per ora"
+
+#. macos: Skip for Now
+msgctxt "macos"
+msgid "signin.key.skip"
+msgstr "Salta per ora"
+
+#. Sign in to that account
+#. License key step (SIGN-IN.md §3.9).
+msgid "signin.key.ownedSignIn"
+msgstr "Accedi a quell'account"
+
+#. macos: Sign In to That Account
+msgctxt "macos"
+msgid "signin.key.ownedSignIn"
+msgstr "Accedi a quell'account"
+
+#. Use a different key
+#. License key step (SIGN-IN.md §3.9).
+msgid "signin.key.differentKey"
+msgstr "Usa una chiave diversa"
+
+#. macos: Use a Different Key
+msgctxt "macos"
+msgid "signin.key.differentKey"
+msgstr "Usa una chiave diversa"
+
+#. {product} is yours
+#. Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.return.yours"
+msgstr "{product} è tuo"
+
+#. You're signed in to {app}
+#. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.return.signedIn"
+msgstr "Hai effettuato l'accesso a {app}"
+
+#. Return to {app}
+#. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.return.button"
+msgstr "Torna a {app}"
+
+#. Returning by itself in {s} s
+#. Return step (SIGN-IN.md §3.10). Arguments: {s} = a number of seconds.
+msgid "signin.return.timer"
+msgstr "Ritorno automatico tra {s} s"
+
+#. Stay here
+#. Return step (SIGN-IN.md §3.10).
+msgid "signin.return.stay"
+msgstr "Resta qui"
+
+#. macos: Stay Here
+msgctxt "macos"
+msgid "signin.return.stay"
+msgstr "Resta qui"
+
+#. Start using {product}
+#. Last step of the in-app sign-in form (SIGN-IN.md §3.10). Arguments: {product} = the product's name (never translated).
+msgid "signin.done.start"
+msgstr "Inizia a usare {product}"
+
+#. macos: Start Using {product}
+msgctxt "macos"
+msgid "signin.done.start"
+msgstr "Inizia a usare {product}"
+
+#. Sign in to finish on {device}
+#. Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "signin.device.title"
+msgstr "Accedi per completare su {device}"
+
+#. Use your phone or computer here. {device} continues by itself when you're done.
+#. Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "signin.device.lede"
+msgstr "Usa qui il telefono o il computer. {device} continua da solo quando hai finito."
+
+#. Didn't start this yourself? Cancel it. Someone may be trying to use your account.
+#. Device code approval on a phone or computer (SIGN-IN.md §3.11).
+msgid "signin.device.cancel"
+msgstr "Non sei stato tu ad avviare questa operazione? Annullala. Qualcuno potrebbe tentare di usare il tuo account."
+
+#. {app} is signed in on {device}
+#. Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {app} = the requesting app's name (never translated); {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "signin.device.done"
+msgstr "{app} ha effettuato l'accesso su {device}"
+
+#. Look at {device}: it continues by itself.
+#. Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "signin.device.doneLede"
+msgstr "Guarda {device}: continua da solo."
+
+#. Sign the TV out
+#. Device code approval on a phone or computer (SIGN-IN.md §3.11).
+msgid "signin.device.signOut"
+msgstr "Disconnetti la TV"
+
+#. macos: Sign the TV Out
+msgctxt "macos"
+msgid "signin.device.signOut"
+msgstr "Disconnetti la TV"
+
+#. Finish in your browser
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
+msgid "signin.handoff.title"
+msgstr "Completa nel browser"
+
+#. Check the code there matches this one.
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
+msgid "signin.handoff.check"
+msgstr "Verifica che il codice lì corrisponda a questo."
+
+#. Or go to {url}
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {url} = a web address, shown as is.
+msgid "signin.handoff.url"
+msgstr "Oppure vai su {url}"
+
+#. Code expires in {time}
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”).
+msgid "signin.handoff.expires"
+msgstr "Il codice scade tra {time}"
+
+#. Open browser again
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
+msgid "signin.handoff.again"
+msgstr "Apri di nuovo il browser"
+
+#. macos: Open Browser Again
+msgctxt "macos"
+msgid "signin.handoff.again"
+msgstr "Apri di nuovo il browser"
+
+#. Sign-in was cancelled. Get a new code
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
+msgid "signin.handoff.cancelled"
+msgstr "L'accesso è stato annullato. Ottieni un nuovo codice"
+
+#. Continue in browser
+#. Desktop app after sign-in (SIGN-IN.md §3.17).
+msgid "signin.desktop.continue"
+msgstr "Continua nel browser"
+
+#. macos: Continue in Browser
+msgctxt "macos"
+msgid "signin.desktop.continue"
+msgstr "Continua nel browser"
+
+#. Signed in as {name} · {tier} license
+#. Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {name} = the person's display name; {tier} = the tier's name (never translated).
+msgid "signin.desktop.toast"
+msgstr "Accesso effettuato come {name} · licenza {tier}"
+
+#. You're signed in
+#. Desktop app after sign-in (SIGN-IN.md §3.17).
+msgid "signin.desktop.notifyTitle"
+msgstr "Accesso effettuato"
+
+#. {app} is ready.
+#. Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.desktop.notifyBody"
+msgstr "{app} è pronto."
+
+#. Choose a license · {app} is ready to finish signing in.
+#. Desktop system notification when the app needs a license choice to finish (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.desktop.notifyChoose"
+msgstr "Scegli una licenza · {app} è pronto a completare l'accesso."
+
+#. Sign in…
+#. App menu item that opens sign-in (SIGN-IN.md §3.17).
+msgid "signin.menu.signIn"
+msgstr "Accedi…"
+
+#. macos: Sign In…
+msgctxt "macos"
+msgid "signin.menu.signIn"
+msgstr "Accedi…"
+
+#. We opened Polaris Key in your browser. Sign in there and {app} continues by itself.
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.handoff.browserBody"
+msgstr "Abbiamo aperto Polaris Key nel browser. Accedi lì e {app} continuerà da solo."
+
+#. Waiting for your browser…
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
+msgid "signin.handoff.waiting"
+msgstr "In attesa del browser…"
+
+#. Finishing sign-in…
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
+msgid "signin.handoff.finishing"
+msgstr "Completamento dell'accesso…"
+
+#. Use a code instead
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
+msgid "signin.handoff.useCode"
+msgstr "Usa invece un codice"
+
+#. macos: Use a Code Instead
+msgctxt "macos"
+msgid "signin.handoff.useCode"
+msgstr "Usa invece un codice"
+
+#. Use browser sign-in
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
+msgid "signin.handoff.useBrowser"
+msgstr "Accedi dal browser"
+
+#. macos: Use Browser Sign-In
+msgctxt "macos"
+msgid "signin.handoff.useBrowser"
+msgstr "Accedi dal browser"
+
+#. We couldn't open your browser
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
+msgid "signin.handoff.noBrowser"
+msgstr "Impossibile aprire il browser"
+
+#. Open this link in a browser on this computer, or use a code instead.
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
+msgid "signin.handoff.noBrowserBody"
+msgstr "Apri questo link in un browser su questo computer oppure usa un codice."
+
+#. Copy link
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
+msgid "signin.handoff.copyLink"
+msgstr "Copia link"
+
+#. macos: Copy Link
+msgctxt "macos"
+msgid "signin.handoff.copyLink"
+msgstr "Copia link"
+
+#. This sign-in took too long.
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
+msgid "signin.handoff.tooLong"
+msgstr "Questo accesso ha richiesto troppo tempo."
+
+#. Sign in with a code
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
+msgid "signin.handoff.codeTitle"
+msgstr "Accedi con un codice"
+
+#. On any phone or computer, go to {url} and enter this code.
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {url} = a web address, shown as is.
+msgid "signin.handoff.codeBody"
+msgstr "Su un telefono o computer qualsiasi, vai su {url} e inserisci questo codice."
+
+#. Open browser
+#. App waiting while sign-in runs in the browser (SIGN-IN.md §3.17).
+msgid "signin.handoff.openBrowser"
+msgstr "Apri browser"
+
+#. macos: Open Browser
+msgctxt "macos"
+msgid "signin.handoff.openBrowser"
+msgstr "Apri browser"
+
+#. You can close this tab and return to {app}.
+#. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.return.closeTab"
+msgstr "Puoi chiudere questa scheda e tornare a {app}."
+
+#. Go back to {app} to choose a license. You can close this tab.
+#. Return step when the license is chosen in the app (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.return.chooseInApp"
+msgstr "Torna a {app} per scegliere una licenza. Puoi chiudere questa scheda."
+
+#. You're signed in
+#. Return step, short form (SIGN-IN.md §3.10).
+msgid "signin.return.signedInShort"
+msgstr "Hai effettuato l'accesso"
+
+#. Sign-in was cancelled in {app}. Start again from {app}.
+#. Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated).
+msgid "signin.return.cancelled"
+msgstr "L'accesso è stato annullato in {app}. Ricomincia da {app}."
+
+#. Open your library
+#. Return step (SIGN-IN.md §3.10).
+msgid "signin.return.library"
+msgstr "Apri la tua libreria"
+
+#. macos: Open Your Library
+msgctxt "macos"
+msgid "signin.return.library"
+msgstr "Apri la tua libreria"
+
+#. A device is free on this license now.
+#. Choose a license for this device (SIGN-IN.md §3.6).
+msgid "signin.choice.freed"
+msgstr "Ora c'è un dispositivo libero su questa licenza."
+
+#. Opens Polaris Key in your browser
+#. Replace a device, inline in the license choice (SIGN-IN.md §3.7).
+msgid "signin.replace.opensBrowser"
+msgstr "Apre Polaris Key nel browser"
+
+#. Opening Polaris Key in your browser…
+#. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
+msgid "signin.cli.opening"
+msgstr "Apertura di Polaris Key nel browser…"
+
+#. If it didn't open, go to {url}
+#. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {url} = a web address, shown as is.
+msgid "signin.cli.ifNotOpened"
+msgstr "Se non si è aperto, vai su {url}"
+
+#. Enter open again · c use a code · Esc cancel
+#. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
+msgid "signin.cli.keys"
+msgstr "Invio riapri · c usa un codice · Esc annulla"
+
+#. No browser on this computer. Use a code instead:
+#. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
+msgid "signin.cli.headless"
+msgstr "Nessun browser su questo computer. Usa invece un codice:"
+
+#. Signed in as {name} ({email})
+#. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {name} = the person's display name; {email} = an email address.
+msgid "signin.cli.signedIn"
+msgstr "Accesso effettuato come {name} ({email})"
+
+#. {license} · {term} · {device} is device {position} of {limit}
+#. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number.
+msgid "signin.cli.license"
+msgstr "{license} · {term} · {device} è il dispositivo {position} di {limit}"
+
+#. You can close the browser tab.
+#. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting.
+msgid "signin.cli.closeTab"
+msgstr "Puoi chiudere la scheda del browser."
+
+#. Sign out of {product} on this device? (y/N)
+#. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.cli.logoutConfirm"
+msgstr "Uscire da {product} su questo dispositivo? (y/N)"
+
+#. Run {command} to sign in again.
+#. Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {command} = a terminal command, shown as is.
+msgid "signin.cli.signInAgain"
+msgstr "Esegui {command} per accedere di nuovo."
+
+#. Sign in with another device
+#. Sign in with another device (SIGN-IN.md §3.11).
+msgid "signin.approve.title"
+msgstr "Accedi con un altro dispositivo"
+
+#. Works for {time}
+#. Sign in with another device (SIGN-IN.md §3.11). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”).
+msgid "signin.approve.works"
+msgstr "Valido per {time}"
+
+#. Waiting for you to approve it on the other device…
+#. Sign in with another device (SIGN-IN.md §3.11).
+msgid "signin.approve.waiting"
+msgstr "In attesa della tua approvazione sull'altro dispositivo…"
+
+#. Approve a new device?
+#. Sign in with another device (SIGN-IN.md §3.11).
+msgid "signin.approve.ask"
+msgstr "Approvare un nuovo dispositivo?"
+
+#. Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Key or a developer will ever ask you for this.
+#. Sign in with another device (SIGN-IN.md §3.11).
+msgid "signin.approve.warning"
+msgstr "Approva solo se hai avviato tu questa operazione, su un dispositivo che hai davanti. Nessuno di Polaris Key o di uno sviluppatore te lo chiederà mai."
+
+#. Approve and sign it in
+#. Sign in with another device (SIGN-IN.md §3.11).
+msgid "signin.approve.approve"
+msgstr "Approva e fai accedere"
+
+#. macos: Approve and Sign It In
+msgctxt "macos"
+msgid "signin.approve.approve"
+msgstr "Approva e fai accedere"
+
+#. Deny
+#. Sign in with another device (SIGN-IN.md §3.11).
+msgid "signin.approve.deny"
+msgstr "Rifiuta"
+
+#. That request was denied. Use another way to sign in.
+#. Sign in with another device (SIGN-IN.md §3.11).
+msgid "signin.approve.denied"
+msgstr "La richiesta è stata rifiutata. Usa un altro modo per accedere."
+
+#. That code expired. Get a new code.
+#. Sign in with another device (SIGN-IN.md §3.11).
+msgid "signin.approve.expired"
+msgstr "Il codice è scaduto. Ottieni un nuovo codice."
+
+#. Sign in to the console
+#. Console operator sign-in (SIGN-IN.md §3.12).
+msgid "signin.console.title"
+msgstr "Accedi alla console"
+
+#. Next: {idp} at {host}
+#. Console operator sign-in (SIGN-IN.md §3.12). Arguments: {idp} = the identity provider's name; {host} = a host name.
+msgid "signin.console.next"
+msgstr "Avanti: {idp} su {host}"
+
+#. You're signed out
+#. Console operator sign-in (SIGN-IN.md §3.12).
+msgid "signin.console.signedOut"
+msgstr "Sei uscito"
+
+#. Your session ended
+#. Console operator sign-in (SIGN-IN.md §3.12).
+msgid "signin.console.sessionEnded"
+msgstr "La sessione è terminata"
+
+#. Sign in again to carry on. Your unsaved changes stay in this tab.
+#. Console operator sign-in (SIGN-IN.md §3.12).
+msgid "signin.console.sessionEndedBody"
+msgstr "Accedi di nuovo per continuare. Le modifiche non salvate restano in questa scheda."
+
+#. {email} isn't in the operators group.
+#. Console operator sign-in (SIGN-IN.md §3.12). Arguments: {email} = an email address.
+msgid "signin.console.notOperator"
+msgstr "{email} non fa parte del gruppo degli operatori."
+
+#. Admin sign-in isn't set up
+#. Console operator sign-in (SIGN-IN.md §3.12).
+msgid "signin.console.notConfigured"
+msgstr "L'accesso amministratore non è configurato"
+
+#. That code or link has expired
+#. Expired code or link page (SIGN-IN.md §4.12).
+msgid "signin.expired.title"
+msgstr "Il codice o il link è scaduto"
+
+#. Codes and links work once, for 10 minutes.
+#. Expired code or link page (SIGN-IN.md §4.12).
+msgid "signin.expired.body"
+msgstr "Codici e link funzionano una sola volta, per 10 minuti."
+
+#. Sign in again
+#. Expired code or link page (SIGN-IN.md §4.12).
+msgid "signin.again"
+msgstr "Accedi di nuovo"
+
+#. macos: Sign In Again
+msgctxt "macos"
+msgid "signin.again"
+msgstr "Accedi di nuovo"
+
+#. {product} doesn't use Polaris Key sign-in. Open {product} and enter your license key there.
+#. The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.identityOff.notice"
+msgstr "{product} non usa l'accesso Polaris Key. Apri {product} e inserisci lì la tua chiave di licenza."
+
+#. Sign in here to see {product} in your library.
+#. The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.identityOff.lede"
+msgstr "Accedi qui per vedere {product} nella tua libreria."
+
+#. Sign out of {product} on this device?
+#. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.signout.title"
+msgstr "Uscire da {product} su questo dispositivo?"
+
+#. {product} stops using your {tier} license here and frees its seat.
+#. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated).
+msgid "signin.signout.released"
+msgstr "{product} smette di usare qui la tua licenza {tier} e ne libera il posto."
+
+#. {n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}
+#. Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number.
+#. Plural on {n}.
+msgid "signin.signout.unsynced"
+msgid_plural "signin.signout.unsynced"
+msgstr[0] "{n} modifica non è ancora sincronizzata."
+msgstr[1] "{n} di modifiche non sono ancora sincronizzate."
+msgstr[2] "{n} modifiche non sono ancora sincronizzate."
+
+#. Wait for sync
+#. Sign-out confirmation (SIGN-IN.md §4.9).
+msgid "signin.signout.waitSync"
+msgstr "Attendi la sincronizzazione"
+
+#. macos: Wait for Sync
+msgctxt "macos"
+msgid "signin.signout.waitSync"
+msgstr "Attendi la sincronizzazione"
+
+#. You were signed out
+#. Session ended (SIGN-IN.md §4.10).
+msgid "signin.session.toastTitle"
+msgstr "Sei stato disconnesso"
+
+#. Sign in again to carry on where you were.
+#. Session ended (SIGN-IN.md §4.10).
+msgid "signin.session.toastBody"
+msgstr "Accedi di nuovo per riprendere da dove eri rimasto."
+
+#. Your sign-in ended. Sign in again to keep using {product}.
+#. Session ended (SIGN-IN.md §4.10). Arguments: {product} = the product's name from ProductIdentity (never translated).
+msgid "signin.session.kitEnded"
+msgstr "Il tuo accesso è terminato. Accedi di nuovo per continuare a usare {product}."
+
+#. Manage sign-in methods in Polaris Key
+#. Sign-in provider buttons (SIGN-IN.md §3.3).
+msgid "signin.provider.manage"
+msgstr "Gestisci i metodi di accesso in Polaris Key"
+
+#. macos: Manage Sign-In Methods in Polaris Key
+msgctxt "macos"
+msgid "signin.provider.manage"
+msgstr "Gestisci i metodi di accesso in Polaris Key"
+
+#. Change picture
+#. Profile import (SIGN-IN.md §3.5).
+msgid "signin.profile.changePicture"
+msgstr "Cambia immagine"
+
+#. macos: Change Picture
+msgctxt "macos"
+msgid "signin.profile.changePicture"
+msgstr "Cambia immagine"
+
+#. {product} signed out on {device}
+#. Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”.
+msgid "signin.mail.replaced.subject"
+msgstr "{product} è uscito su {device}"
+
+#. {device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Key and check your devices.
+#. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform.
+msgid "signin.mail.replaced.body"
+msgstr "{device} è stato sostituito da {newDevice} quando hai effettuato l'accesso a {product} il {date}. Potrà accedere di nuovo in seguito se si libera un posto. Se non sei stato tu, apri Polaris Key e controlla i tuoi dispositivi."
+
+#. A new device signed in to your Polaris Key account
+#. Security email (SIGN-IN.md §3.15).
+msgid "signin.mail.newDevice.subject"
+msgstr "Un nuovo dispositivo ha effettuato l'accesso al tuo account Polaris Key"
+
+#. {device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Key under Where you're signed in.
+#. Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country).
+msgid "signin.mail.newDevice.body"
+msgstr "{device} ha effettuato l'accesso il {date} da {place}. Se non sei stato tu, disconnettilo in Polaris Key nella sezione Dove hai effettuato l'accesso."
+
+#. Open Polaris Key
+#. Security email (SIGN-IN.md §3.15).
+msgid "signin.mail.open"
+msgstr "Apri Polaris Key"
+
+#. 6-digit code
+#. Email code step (SIGN-IN.md §3.4).
+msgid "signin.code.label"
+msgstr "Codice a 6 cifre"
+
+#. Something went wrong
+#. Core copy (conformance/parity/copy.en.json, fallback).
+msgid "core.fallback.title"
+msgstr "Si è verificato un problema"
+
+#. Something went wrong ({code}). Try again.
+#. Core copy (conformance/parity/copy.en.json, fallback).
+msgid "core.fallback.message"
+msgstr "Si è verificato un problema ({code}). Riprova."
+
+#. Not signed in
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unauthorized.title"
+msgstr "Accesso non effettuato"
+
+#. This device isn't signed in, or its license is no longer valid. Sign in or activate again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unauthorized.message"
+msgstr "Questo dispositivo non ha effettuato l'accesso oppure la sua licenza non è più valida. Accedi o attiva di nuovo."
+
+#. Not found
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_found.title"
+msgstr "Non trovato"
+
+#. That wasn't found. It may have been removed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_found.message"
+msgstr "Elemento non trovato. Potrebbe essere stato rimosso."
+
+#. Request refused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bad_request.title"
+msgstr "Richiesta rifiutata"
+
+#. The request wasn't valid. Update the app, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bad_request.message"
+msgstr "La richiesta non era valida. Aggiorna l'app e riprova."
+
+#. Not allowed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.forbidden.title"
+msgstr "Non consentito"
+
+#. You don't have permission to do that.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.forbidden.message"
+msgstr "Non hai l'autorizzazione per farlo."
+
+#. Device check needed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.attestation_required.title"
+msgstr "Verifica del dispositivo necessaria"
+
+#. This needs a verified device. Let the app check this device, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.attestation_required.message"
+msgstr "Serve un dispositivo verificato. Consenti all'app di verificare questo dispositivo e riprova."
+
+#. Device check failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.attestation_rejected.title"
+msgstr "Verifica del dispositivo non riuscita"
+
+#. This device couldn't be verified. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.attestation_rejected.message"
+msgstr "Impossibile verificare questo dispositivo. Riprova."
+
+#. Device check unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.attestation_unavailable.title"
+msgstr "Verifica del dispositivo non disponibile"
+
+#. Device verification isn't available for this app right now. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.attestation_unavailable.message"
+msgstr "La verifica del dispositivo non è disponibile per questa app al momento. Riprova tra qualche minuto."
+
+#. Too many attempts
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.rate_limited.title"
+msgstr "Troppi tentativi"
+
+#. Too many attempts. Wait a moment and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.rate_limited.message"
+msgstr "Troppi tentativi. Attendi un momento e riprova."
+
+#. Too large
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.body_too_large.title"
+msgstr "Troppo grande"
+
+#. That is too large to send.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.body_too_large.message"
+msgstr "È troppo grande per essere inviato."
+
+#. Request refused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.method_not_allowed.title"
+msgstr "Richiesta rifiutata"
+
+#. The request wasn't valid. Update the app, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.method_not_allowed.message"
+msgstr "La richiesta non era valida. Aggiorna l'app e riprova."
+
+#. Service not set up
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.misconfigured.title"
+msgstr "Servizio non configurato"
+
+#. This service isn't set up correctly. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.misconfigured.message"
+msgstr "Questo servizio non è configurato correttamente. Contatta lo sviluppatore."
+
+#. Registration closed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.registration_closed.title"
+msgstr "Registrazione chiusa"
+
+#. New devices can't register right now. Activate with a license key or sign in.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.registration_closed.message"
+msgstr "Al momento non è possibile registrare nuovi dispositivi. Attiva con una chiave di licenza o accedi."
+
+#. Value not accepted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.value_not_representable.title"
+msgstr "Valore non accettato"
+
+#. A value couldn't be saved. Change it and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.value_not_representable.message"
+msgstr "Impossibile salvare un valore. Modificalo e riprova."
+
+#. Service problem
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.document_not_representable.title"
+msgstr "Problema del servizio"
+
+#. The service couldn't prepare your settings. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.document_not_representable.message"
+msgstr "Il servizio non è riuscito a preparare le tue impostazioni. Contatta lo sviluppatore."
+
+#. Device limit reached
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_limit.title"
+msgstr "Limite di dispositivi raggiunto"
+
+#. This license is already on all its devices. Replace a device to use it here.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_limit.message"
+msgstr "Questa licenza è già in uso su tutti i dispositivi consentiti. Sostituisci un dispositivo per usarla qui."
+
+#. License disabled
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_disabled.title"
+msgstr "Licenza disattivata"
+
+#. This license has been disabled. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_disabled.message"
+msgstr "Questa licenza è stata disattivata. Contatta lo sviluppatore."
+
+#. License expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_expired.title"
+msgstr "Licenza scaduta"
+
+#. This license has expired. Renew it to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_expired.message"
+msgstr "Questa licenza è scaduta. Rinnovala per continuare."
+
+#. Not included
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_entitled.title"
+msgstr "Non incluso"
+
+#. Your license doesn't include this.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_entitled.message"
+msgstr "La tua licenza non include questa funzione."
+
+#. Update required
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.version_blocked.title"
+msgstr "Aggiornamento necessario"
+
+#. This version can't be used with your license. Update the app to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.version_blocked.message"
+msgstr "Questa versione non può essere usata con la tua licenza. Aggiorna l'app per continuare."
+
+#. Channel not included
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.channel_not_allowed.title"
+msgstr "Canale non incluso"
+
+#. Your license doesn't include this release channel.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.channel_not_allowed.message"
+msgstr "La tua licenza non include questo canale di rilascio."
+
+#. Device changed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.hardware_mismatch.title"
+msgstr "Dispositivo cambiato"
+
+#. This device's hardware changed. Activate again to use your license here.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.hardware_mismatch.message"
+msgstr "L'hardware di questo dispositivo è cambiato. Attiva di nuovo per usare qui la tua licenza."
+
+#. Device check failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.fingerprint_required.title"
+msgstr "Verifica del dispositivo non riuscita"
+
+#. This license needs a hardware fingerprint, which couldn't be read on this device.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.fingerprint_required.message"
+msgstr "Questa licenza richiede un'impronta hardware, che non è stato possibile leggere su questo dispositivo."
+
+#. No free license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.enroll_disabled.title"
+msgstr "Nessuna licenza gratuita"
+
+#. This app doesn't offer a free license. Enter a license key or sign in.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.enroll_disabled.message"
+msgstr "Questa app non offre una licenza gratuita. Inserisci una chiave di licenza o accedi."
+
+#. Sign in to continue
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.enroll_claimed.title"
+msgstr "Accedi per continuare"
+
+#. This device's free license belongs to an account now. Sign in to use it.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.enroll_claimed.message"
+msgstr "La licenza gratuita di questo dispositivo ora appartiene a un account. Accedi per usarla."
+
+#. Couldn't get a free license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.enroll_failed.title"
+msgstr "Impossibile ottenere una licenza gratuita"
+
+#. A free license couldn't be issued. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.enroll_failed.message"
+msgstr "Impossibile emettere una licenza gratuita. Riprova tra qualche minuto."
+
+#. Set by your organization
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.managed_by_admin.title"
+msgstr "Impostato dalla tua organizzazione"
+
+#. This setting is managed by your organization and can't be changed here.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.managed_by_admin.message"
+msgstr "Questa impostazione è gestita dalla tua organizzazione e non può essere modificata qui."
+
+#. Settings unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.catalog_unavailable.title"
+msgstr "Impostazioni non disponibili"
+
+#. Settings can't be loaded right now. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.catalog_unavailable.message"
+msgstr "Al momento non è possibile caricare le impostazioni. Riprova tra qualche minuto."
+
+#. License no longer valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_unusable.title"
+msgstr "Licenza non più valida"
+
+#. Your license is no longer valid, so settings can't be loaded. Sign in or activate again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_unusable.message"
+msgstr "La tua licenza non è più valida, quindi non è possibile caricare le impostazioni. Accedi o attiva di nuovo."
+
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.disabled.title"
+msgstr "Accesso non disponibile"
+
+#. Sign-in isn't turned on for this app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.disabled.message"
+msgstr "L'accesso non è attivo per questa app."
+
+#. Sign-in failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.oidc_error.title"
+msgstr "Accesso non riuscito"
+
+#. Sign-in didn't finish. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.oidc_error.message"
+msgstr "L'accesso non è stato completato. Riprova."
+
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unavailable.title"
+msgstr "Accesso non disponibile"
+
+#. Sign-in isn't available right now. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unavailable.message"
+msgstr "L'accesso non è disponibile al momento. Riprova tra qualche minuto."
+
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.identity_disabled.title"
+msgstr "Accesso non disponibile"
+
+#. Sign-in through this app is turned off. Your installs and licenses keep working.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.identity_disabled.message"
+msgstr "L'accesso tramite questa app è disattivato. Le tue installazioni e licenze continuano a funzionare."
+
+#. Sign-in method unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.auth_method_disabled.title"
+msgstr "Metodo di accesso non disponibile"
+
+#. That sign-in method is turned off. Choose another one.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.auth_method_disabled.message"
+msgstr "Questo metodo di accesso è disattivato. Scegline un altro."
+
+#. Email sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.email_unavailable.title"
+msgstr "Accesso via email non disponibile"
+
+#. Email sign-in isn't available right now. Choose another sign-in method.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.email_unavailable.message"
+msgstr "L'accesso via email non è disponibile al momento. Scegli un altro metodo di accesso."
+
+#. Check didn't pass
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.turnstile_failed.title"
+msgstr "Verifica non superata"
+
+#. The security check didn't pass. Reload the page and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.turnstile_failed.message"
+msgstr "La verifica di sicurezza non è stata superata. Ricarica la pagina e riprova."
+
+#. Sign-in expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.signin_expired.title"
+msgstr "Accesso scaduto"
+
+#. This sign-in has expired. Start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.signin_expired.message"
+msgstr "Questo accesso è scaduto. Ricomincia."
+
+#. Wrong code
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_code.title"
+msgstr "Codice errato"
+
+#. That code isn't right. Check the email and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid_code.message"
+msgstr "Quel codice non ha funzionato. Controlla l'email e digitalo di nuovo."
+
+#. Email already in use
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.email_in_use.title"
+msgstr "Email già in uso"
+
+#. Another Polaris Key account already uses this email. Join this sign-in to that account, or use a different email.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.email_in_use.message"
+msgstr "Un altro account Polaris Key usa già questa email. Unisci questo accesso a quell'account oppure usa un'altra email."
+
+#. Terms not accepted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.terms_required.title"
+msgstr "Condizioni non accettate"
+
+#. Agree to the terms to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.terms_required.message"
+msgstr "Accetta le condizioni per continuare."
+
+#. License in another account
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_owned.title"
+msgstr "Licenza in un altro account"
+
+#. This {product} license is already in another Polaris Key account. A license never moves by its key.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.license_owned.message"
+msgstr "Questa licenza di {product} è già in un altro account Polaris Key. Una licenza non si sposta mai tramite la sua chiave."
+
+#. Email not verified
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.email_mismatch.title"
+msgstr "Email non verificata"
+
+#. This license belongs to an email address your account hasn't verified. Add and verify that email, then try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.email_mismatch.message"
+msgstr "Questa licenza appartiene a un indirizzo email che il tuo account non ha verificato. Aggiungi e verifica quell'email, poi riprova."
+
+#. Already linked
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.link_conflict.title"
+msgstr "Già collegato"
+
+#. That sign-in method belongs to another Polaris Key account. Sign in to that account, or join the two accounts.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.link_conflict.message"
+msgstr "Questo metodo di accesso appartiene a un altro account Polaris Key. Accedi a quell'account o unisci i due account."
+
+#. Can't remove
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.last_link.title"
+msgstr "Impossibile rimuovere"
+
+#. This is your account's only sign-in method. Add another one before removing it.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.last_link.message"
+msgstr "Questo è l'unico metodo di accesso del tuo account. Aggiungine un altro prima di rimuoverlo."
+
+#. Confirm it's you
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.step_up_required.title"
+msgstr "Conferma la tua identità"
+
+#. For your security, sign in again to continue.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.step_up_required.message"
+msgstr "Per la tua sicurezza, accedi di nuovo per continuare."
+
+#. Offer unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_eligible.title"
+msgstr "Offerta non disponibile"
+
+#. This offer isn't available to your account anymore. Refresh and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not_eligible.message"
+msgstr "Questa offerta non è più disponibile per il tuo account. Aggiorna la pagina e riprova."
+
+#. Sign in to download
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.download_auth_required.title"
+msgstr "Accedi per scaricare"
+
+#. Sign in or activate a license to download this.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.download_auth_required.message"
+msgstr "Accedi o attiva una licenza per scaricare questo contenuto."
+
+#. Download unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.delivery_gate_missing.title"
+msgstr "Download non disponibile"
+
+#. This download isn't set up yet. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.delivery_gate_missing.message"
+msgstr "Questo download non è ancora configurato. Contatta lo sviluppatore."
+
+#. Download busy
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upstream_rate_limited.title"
+msgstr "Download occupato"
+
+#. Downloads are busy right now. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.upstream_rate_limited.message"
+msgstr "I download sono sovraccarichi al momento. Riprova tra qualche minuto."
+
+#. Service not set up
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.server_misconfigured.title"
+msgstr "Servizio non configurato"
+
+#. This service isn't set up correctly. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.server_misconfigured.message"
+msgstr "Questo servizio non è configurato correttamente. Contatta lo sviluppatore."
+
+#. Download failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.internal_error.title"
+msgstr "Download non riuscito"
+
+#. The download server had a problem. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.internal_error.message"
+msgstr "Il server di download ha avuto un problema. Riprova tra qualche minuto."
+
+#. Release refused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.release_record_rejected.title"
+msgstr "Release rifiutata"
+
+#. The release wasn't published because a check failed. The publish log names the check.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.release_record_rejected.message"
+msgstr "La release non è stata pubblicata perché un controllo non è riuscito. Il log di pubblicazione indica quale."
+
+#. Release skipped
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.release_tag_is_pack_release.title"
+msgstr "Release saltata"
+
+#. A release was skipped because its tag matches a content pack release. Rename the tag.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.release_tag_is_pack_release.message"
+msgstr "Una release è stata saltata perché il suo tag corrisponde a una release di un pacchetto di contenuti. Rinomina il tag."
+
+#. Image not updated
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.title"
+msgstr "Immagine non aggiornata"
+
+#. An image could not be fetched from its source. The previous copy is still shown, and it will be retried automatically.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.asset_unreachable.message"
+msgstr "Non è stato possibile recuperare un'immagine dalla sua origine. Viene ancora mostrata la copia precedente e il tentativo verrà ripetuto automaticamente."
+
+#. Update check unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.feed_not_composable.title"
+msgstr "Controllo aggiornamenti non disponibile"
+
+#. Updates can't be checked right now. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.feed_not_composable.message"
+msgstr "Al momento non è possibile controllare gli aggiornamenti. Riprova tra qualche minuto."
+
+#. Not available
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.service-unavailable.title"
+msgstr "Non disponibile"
+
+#. This app doesn't use this service.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.service-unavailable.message"
+msgstr "Questa app non usa questo servizio."
+
+#. Not available
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.service-disabled.title"
+msgstr "Non disponibile"
+
+#. This service is turned off for this app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.service-disabled.message"
+msgstr "Questo servizio è disattivato per questa app."
+
+#. Offline mode
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.local-only.title"
+msgstr "Modalità offline"
+
+#. This app is running offline, so it didn't connect.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.local-only.message"
+msgstr "Questa app è in modalità offline, quindi non si è connessa."
+
+#. Insecure connection
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.insecure-base-url.title"
+msgstr "Connessione non sicura"
+
+#. The app refused an insecure connection. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.insecure-base-url.message"
+msgstr "L'app ha rifiutato una connessione non sicura. Contatta lo sviluppatore."
+
+#. Activation file not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bundle-jws-rejected.title"
+msgstr "File di attivazione non valido"
+
+#. The activation file's signature isn't valid.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bundle-jws-rejected.message"
+msgstr "La firma del file di attivazione non è valida."
+
+#. Activation file not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bundle-claims-rejected.title"
+msgstr "File di attivazione non valido"
+
+#. The activation file is for another product or device, or it has expired.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bundle-claims-rejected.message"
+msgstr "Il file di attivazione è per un altro prodotto o dispositivo, oppure è scaduto."
+
+#. Activation file not trusted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bundle-trust-rejected.title"
+msgstr "File di attivazione non attendibile"
+
+#. The activation file is signed by a key this app doesn't trust.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bundle-trust-rejected.message"
+msgstr "Il file di attivazione è firmato con una chiave che questa app non considera attendibile."
+
+#. Activation file not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.inner-doc-rejected.title"
+msgstr "File di attivazione non valido"
+
+#. The license inside the activation file isn't valid.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.inner-doc-rejected.message"
+msgstr "La licenza contenuta nel file di attivazione non è valida."
+
+#. Activation file not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bundle.title"
+msgstr "File di attivazione non valido"
+
+#. The activation file couldn't be read.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bundle.message"
+msgstr "Impossibile leggere il file di attivazione."
+
+#. Connection problem
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.transport.title"
+msgstr "Problema di connessione"
+
+#. Check your connection and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.transport.message"
+msgstr "Controlla la connessione e riprova."
+
+#. Can't connect
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.network.title"
+msgstr "Impossibile connettersi"
+
+#. Can't reach Polaris Key. Check your connection and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.network.message"
+msgstr "Impossibile raggiungere Polaris Key. Controlla la connessione e riprova."
+
+#. Couldn't refresh
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.refresh-failed.title"
+msgstr "Impossibile aggiornare"
+
+#. Your license and settings couldn't be refreshed. Check your connection and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.refresh-failed.message"
+msgstr "Impossibile aggiornare la tua licenza e le impostazioni. Controlla la connessione e riprova."
+
+#. Couldn't check your license
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-failed.title"
+msgstr "Impossibile verificare la licenza"
+
+#. Your license couldn't be checked, so the app can't start. Check your connection and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sync-failed.message"
+msgstr "Impossibile verificare la tua licenza, quindi l'app non può avviarsi. Controlla la connessione e riprova."
+
+#. Content missing
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.fetch-failed.title"
+msgstr "Contenuto mancante"
+
+#. Required content couldn't be downloaded, so the app can't start. Check your connection and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.fetch-failed.message"
+msgstr "Impossibile scaricare i contenuti necessari, quindi l'app non può avviarsi. Controlla la connessione e riprova."
+
+#. App problem
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bridge-missing.title"
+msgstr "Problema dell'app"
+
+#. The app's licensing bridge is missing. Reinstall the app or contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bridge-missing.message"
+msgstr "Manca il modulo di licenza dell'app. Reinstalla l'app o contatta lo sviluppatore."
+
+#. Something went wrong
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unknown.title"
+msgstr "Si è verificato un problema"
+
+#. Something went wrong. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unknown.message"
+msgstr "Si è verificato un problema. Riprova."
+
+#. Not included
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.release-refused.title"
+msgstr "Non incluso"
+
+#. Your license doesn't include this release.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.release-refused.message"
+msgstr "La tua licenza non include questa release."
+
+#. Activation file not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bundle-rejected.title"
+msgstr "File di attivazione non valido"
+
+#. The activation file was refused.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bundle-rejected.message"
+msgstr "Il file di attivazione è stato rifiutato."
+
+#. Not available here
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bundle-import-unsupported.title"
+msgstr "Non disponibile qui"
+
+#. Offline activation isn't available here.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bundle-import-unsupported.message"
+msgstr "L'attivazione offline non è disponibile qui."
+
+#. Not available here
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.report-unsupported.title"
+msgstr "Non disponibile qui"
+
+#. Device reports aren't available here.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.report-unsupported.message"
+msgstr "I report del dispositivo non sono disponibili qui."
+
+#. Not available here
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-management-unsupported.title"
+msgstr "Non disponibile qui"
+
+#. Devices can't be managed from here. Manage them in your account.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device-management-unsupported.message"
+msgstr "I dispositivi non possono essere gestiti da qui. Gestiscili nel tuo account."
+
+#. Couldn't load devices
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_list_failed.title"
+msgstr "Impossibile caricare i dispositivi"
+
+#. Your devices couldn't be loaded. Check your connection and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_list_failed.message"
+msgstr "Impossibile caricare i tuoi dispositivi. Controlla la connessione e riprova."
+
+#. Couldn't rename
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_rename_failed.title"
+msgstr "Impossibile rinominare"
+
+#. The device couldn't be renamed. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_rename_failed.message"
+msgstr "Impossibile rinominare il dispositivo. Riprova."
+
+#. Couldn't remove device
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_deauthorize_failed.title"
+msgstr "Impossibile rimuovere il dispositivo"
+
+#. The device couldn't be removed. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.device_deauthorize_failed.message"
+msgstr "Impossibile rimuovere il dispositivo. Riprova."
+
+#. Not available here
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.key-entry-unsupported.title"
+msgstr "Non disponibile qui"
+
+#. License keys can't be entered here. Sign in instead.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.key-entry-unsupported.message"
+msgstr "Qui non è possibile inserire chiavi di licenza. Accedi invece."
+
+#. Sign-in failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign-in-failed.title"
+msgstr "Accesso non riuscito"
+
+#. Sign-in didn't finish. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign-in-failed.message"
+msgstr "L'accesso non è stato completato. Riprova."
+
+#. Sign-out failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign-out-failed.title"
+msgstr "Uscita non riuscita"
+
+#. Sign-out didn't finish. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign-out-failed.message"
+msgstr "L'uscita non è stata completata. Riprova."
+
+#. Unexpected answer
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bad_response.title"
+msgstr "Risposta inattesa"
+
+#. The service sent an answer the app couldn't use. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.bad_response.message"
+msgstr "Il servizio ha inviato una risposta che l'app non può usare. Riprova."
+
+#. Can't connect
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.network-error.title"
+msgstr "Impossibile connettersi"
+
+#. Can't reach Polaris Key. Check your connection and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.network-error.message"
+msgstr "Impossibile raggiungere Polaris Key. Controlla la connessione e riprova."
+
+#. Service problem
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.server-error.title"
+msgstr "Problema del servizio"
+
+#. The service had a problem. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.server-error.message"
+msgstr "Il servizio ha avuto un problema. Riprova tra qualche minuto."
+
+#. Sign-in cancelled
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.cancelled.title"
+msgstr "Accesso annullato"
+
+#. Sign-in was cancelled.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.cancelled.message"
+msgstr "L'accesso è stato annullato."
+
+#. Code expired
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign-in-expired.title"
+msgstr "Codice scaduto"
+
+#. The code expired before sign-in finished. Start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign-in-expired.message"
+msgstr "Il codice è scaduto prima del completamento dell'accesso. Ricomincia."
+
+#. Sign-in declined
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign-in-denied.title"
+msgstr "Accesso rifiutato"
+
+#. Sign-in was declined. Start again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign-in-denied.message"
+msgstr "L'accesso è stato rifiutato. Ricomincia."
+
+#. Sign-in unavailable
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign-in-unavailable.title"
+msgstr "Accesso non disponibile"
+
+#. Sign-in isn't available right now. Try again in a few minutes.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.sign-in-unavailable.message"
+msgstr "L'accesso non è disponibile al momento. Riprova tra qualche minuto."
+
+#. App not set up
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid-options.title"
+msgstr "App non configurata"
+
+#. The app's licensing isn't set up correctly. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid-options.message"
+msgstr "La gestione delle licenze dell'app non è configurata correttamente. Contatta lo sviluppatore."
+
+#. App not set up
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not-configured.title"
+msgstr "App non configurata"
+
+#. The app's licensing isn't set up yet. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.not-configured.message"
+msgstr "La gestione delle licenze dell'app non è ancora configurata. Contatta lo sviluppatore."
+
+#. Not available here
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported.title"
+msgstr "Non disponibile qui"
+
+#. This isn't available here.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.unsupported.message"
+msgstr "Non è disponibile qui."
+
+#. Timed out
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.timeout.title"
+msgstr "Tempo scaduto"
+
+#. The service took too long to answer. Check your connection and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.timeout.message"
+msgstr "Il servizio ha impiegato troppo tempo a rispondere. Controlla la connessione e riprova."
+
+#. Unexpected answer
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.response-too-large.title"
+msgstr "Risposta inattesa"
+
+#. The service sent an answer the app couldn't use. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.response-too-large.message"
+msgstr "Il servizio ha inviato una risposta che l'app non può usare. Riprova."
+
+#. Connection problem
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.too-many-redirects.title"
+msgstr "Problema di connessione"
+
+#. The connection was redirected too many times. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.too-many-redirects.message"
+msgstr "La connessione è stata reindirizzata troppe volte. Riprova."
+
+#. Insecure connection
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.insecure-redirect.title"
+msgstr "Connessione non sicura"
+
+#. The app refused an insecure redirect.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.insecure-redirect.message"
+msgstr "L'app ha rifiutato un reindirizzamento non sicuro."
+
+#. Service problem
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.http-error.title"
+msgstr "Problema del servizio"
+
+#. The service answered with an error. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.http-error.message"
+msgstr "Il servizio ha risposto con un errore. Riprova."
+
+#. Unexpected answer
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid-response.title"
+msgstr "Risposta inattesa"
+
+#. The service sent an answer the app couldn't use. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.invalid-response.message"
+msgstr "Il servizio ha inviato una risposta che l'app non può usare. Riprova."
+
+#. Storage problem
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.store-failed.title"
+msgstr "Problema di archiviazione"
+
+#. The app couldn't read or save its license on this device. Check that the app can write its data folder.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.store-failed.message"
+msgstr "L'app non è riuscita a leggere o salvare la licenza su questo dispositivo. Verifica che l'app possa scrivere nella sua cartella dati."
+
+#. Platform problem
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.platform-error.title"
+msgstr "Problema della piattaforma"
+
+#. The platform reported an error. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.platform-error.message"
+msgstr "La piattaforma ha segnalato un errore. Riprova."
+
+#. Not activated
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.no-token.title"
+msgstr "Non attivato"
+
+#. This device isn't activated yet. Activate it or sign in.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.no-token.message"
+msgstr "Questo dispositivo non è ancora attivato. Attivalo o accedi."
+
+#. Not available
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.mint-unavailable.title"
+msgstr "Non disponibile"
+
+#. This isn't available for this app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.mint-unavailable.message"
+msgstr "Non è disponibile per questa app."
+
+#. Update check failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.feed-rejected.title"
+msgstr "Controllo aggiornamenti non riuscito"
+
+#. The update information couldn't be verified, so nothing was installed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.feed-rejected.message"
+msgstr "Impossibile verificare le informazioni sull'aggiornamento, quindi non è stato installato nulla."
+
+#. Update check failed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.feed-rollback.title"
+msgstr "Controllo aggiornamenti non riuscito"
+
+#. The update information was older than what this device already has, so it was refused.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.feed-rollback.message"
+msgstr "Le informazioni sull'aggiornamento erano più vecchie di quelle già presenti su questo dispositivo, quindi sono state rifiutate."
+
+#. Update not verified
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.record-rejected.title"
+msgstr "Aggiornamento non verificato"
+
+#. The update couldn't be verified, so it wasn't installed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.record-rejected.message"
+msgstr "Impossibile verificare l'aggiornamento, quindi non è stato installato."
+
+#. Update not verified
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.record-mismatch.title"
+msgstr "Aggiornamento non verificato"
+
+#. The update didn't match what was published, so it wasn't installed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.record-mismatch.message"
+msgstr "L'aggiornamento non corrispondeva a quanto pubblicato, quindi non è stato installato."
+
+#. Download corrupted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.payload-mismatch.title"
+msgstr "Download danneggiato"
+
+#. The update didn't download correctly, so it wasn't installed. Try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.payload-mismatch.message"
+msgstr "L'aggiornamento non è stato scaricato correttamente, quindi non è stato installato. Riprova."
+
+#. Can't update here
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.swap-refused.title"
+msgstr "Impossibile aggiornare qui"
+
+#. This installation can't update itself. Update it the way you installed it.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.swap-refused.message"
+msgstr "Questa installazione non può aggiornarsi da sola. Aggiornala nello stesso modo in cui l'hai installata."
+
+#. Update not finished
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.swap-failed.title"
+msgstr "Aggiornamento non completato"
+
+#. The update couldn't be applied. It will be tried again next launch.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.swap-failed.message"
+msgstr "Impossibile applicare l'aggiornamento. Verrà riprovato al prossimo avvio."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.files-index-invalid.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.files-index-invalid.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content refused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.files-unsafe-path.title"
+msgstr "Contenuto rifiutato"
+
+#. Some content was refused because it contains an unsafe file path.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.files-unsafe-path.message"
+msgstr "Alcuni contenuti sono stati rifiutati perché contengono un percorso di file non sicuro."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.files-duplicate-path.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.files-duplicate-path.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.files-case-collision.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.files-case-collision.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.files-path-conflict.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.files-path-conflict.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.files-layout-mismatch.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.files-layout-mismatch.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. App build problem
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.content-stamp-invalid.title"
+msgstr "Problema della build dell'app"
+
+#. This build's content information isn't valid. Reinstall the app or contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.content-stamp-invalid.message"
+msgstr "Le informazioni sui contenuti di questa build non sono valide. Reinstalla l'app o contatta lo sviluppatore."
+
+#. Download corrupted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.full-corrupt.title"
+msgstr "Download danneggiato"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.full-corrupt.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Download corrupted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.delta-artifact-mismatch.title"
+msgstr "Download danneggiato"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.delta-artifact-mismatch.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content changed
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.delta-base-mismatch.title"
+msgstr "Contenuto cambiato"
+
+#. Installed content changed on this device, so a full download is needed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.delta-base-mismatch.message"
+msgstr "I contenuti installati su questo dispositivo sono cambiati, quindi serve un download completo."
+
+#. Update not applied
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.delta-apply-failed.title"
+msgstr "Aggiornamento non applicato"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.delta-apply-failed.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Download corrupted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.file-corrupt.title"
+msgstr "Download danneggiato"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.file-corrupt.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content missing
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.file-source-missing.title"
+msgstr "Contenuto mancante"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.file-source-missing.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Download corrupted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.payload-hash-mismatch.title"
+msgstr "Download danneggiato"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.payload-hash-mismatch.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-ref-mismatch.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-ref-mismatch.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-bad-length.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-bad-length.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-bad-magic.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-bad-magic.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not supported
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-unsupported-version.title"
+msgstr "Contenuto non supportato"
+
+#. This content needs a newer version of the app. Update the app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-unsupported-version.message"
+msgstr "Questo contenuto richiede una versione più recente dell'app. Aggiorna l'app."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-bad-record-size.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-bad-record-size.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-bad-flags.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-bad-flags.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-reserved-nonzero.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-reserved-nonzero.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-zero-length.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-zero-length.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-bad-clen.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-bad-clen.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-bad-bundle-ref.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-bad-bundle-ref.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-bad-bundle-range.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-bad-bundle-range.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-size-mismatch.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-size-mismatch.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-payload-mismatch.title"
+msgstr "Contenuto non valido"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunks-payload-mismatch.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Download interrupted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunk-bundle-truncated.title"
+msgstr "Download interrotto"
+
+#. A download was cut short. Check your connection and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunk-bundle-truncated.message"
+msgstr "Un download è stato interrotto. Controlla la connessione e riprova."
+
+#. Download corrupted
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunk-corrupt.title"
+msgstr "Download danneggiato"
+
+#. Some content couldn't be installed. It will be downloaded again next time.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.chunk-corrupt.message"
+msgstr "Impossibile installare alcuni contenuti. Verranno scaricati di nuovo la prossima volta."
+
+#. Can't download here
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.plan-transport-unsupported.title"
+msgstr "Impossibile scaricare qui"
+
+#. This content can't be downloaded on this platform.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.plan-transport-unsupported.message"
+msgstr "Questo contenuto non può essere scaricato su questa piattaforma."
+
+#. Not enough space
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.plan-insufficient-disk.title"
+msgstr "Spazio insufficiente"
+
+#. There isn't enough free space for this content. Free up some space and try again.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.plan-insufficient-disk.message"
+msgstr "Non c'è abbastanza spazio libero per questo contenuto. Libera un po' di spazio e riprova."
+
+#. Can't install content
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.plan-no-strategy.title"
+msgstr "Impossibile installare il contenuto"
+
+#. This content can't be installed on this device.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.plan-no-strategy.message"
+msgstr "Questo contenuto non può essere installato su questo dispositivo."
+
+#. Content not available
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-no-variant.title"
+msgstr "Contenuto non disponibile"
+
+#. This content isn't available for this device.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-no-variant.message"
+msgstr "Questo contenuto non è disponibile per questo dispositivo."
+
+#. Content not supported
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-type-unsupported.title"
+msgstr "Contenuto non supportato"
+
+#. This content needs a newer version of the app. Update the app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-type-unsupported.message"
+msgstr "Questo contenuto richiede una versione più recente dell'app. Aggiorna l'app."
+
+#. Content not valid
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-type-check-failed.title"
+msgstr "Contenuto non valido"
+
+#. Some content failed its check and wasn't installed.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-type-check-failed.message"
+msgstr "Alcuni contenuti non hanno superato il controllo e non sono stati installati."
+
+#. Content not available
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-not-pinned.title"
+msgstr "Contenuto non disponibile"
+
+#. This content isn't part of this version of the app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-not-pinned.message"
+msgstr "Questo contenuto non fa parte di questa versione dell'app."
+
+#. Not included
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-not-entitled.title"
+msgstr "Non incluso"
+
+#. Your license doesn't include this content.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-not-entitled.message"
+msgstr "La tua licenza non include questo contenuto."
+
+#. Storage problem
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-state-unreadable.title"
+msgstr "Problema di archiviazione"
+
+#. Installed content couldn't be read, so nothing new was installed. Restart the app.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-state-unreadable.message"
+msgstr "Impossibile leggere i contenuti installati, quindi non è stato installato nulla di nuovo. Riavvia l'app."
+
+#. Content refused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pck-directory-refused.title"
+msgstr "Contenuto rifiutato"
+
+#. Some content was refused because it contains files a content pack may not hold.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pck-directory-refused.message"
+msgstr "Alcuni contenuti sono stati rifiutati perché contengono file non ammessi in un pacchetto di contenuti."
+
+#. Content not supported
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pck-engine-mismatch.title"
+msgstr "Contenuto non supportato"
+
+#. This content needs a different version of the game. Update the game.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pck-engine-mismatch.message"
+msgstr "Questo contenuto richiede una versione diversa del gioco. Aggiorna il gioco."
+
+#. Content restored
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-rolled-back.title"
+msgstr "Contenuto ripristinato"
+
+#. The last content update didn't start, so the previous version was restored.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-rolled-back.message"
+msgstr "L'ultimo aggiornamento dei contenuti non si è avviato, quindi è stata ripristinata la versione precedente."
+
+#. Content withdrawn
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-revoked.title"
+msgstr "Contenuto ritirato"
+
+#. This content was withdrawn by its developer and can't be used.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-revoked.message"
+msgstr "Questo contenuto è stato ritirato dal suo sviluppatore e non può essere usato."
+
+#. Content refused
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-not-data-only.title"
+msgstr "Contenuto rifiutato"
+
+#. Some content was refused because it contains files a data pack may not hold.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.pack-not-data-only.message"
+msgstr "Alcuni contenuti sono stati rifiutati perché contengono file non ammessi in un pacchetto di dati."
+
+#. App build problem
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.marker-rejected.title"
+msgstr "Problema della build dell'app"
+
+#. This build's built-in content isn't valid. Reinstall the app or contact the developer.
+#. Core copy (conformance/parity/copy.en.json, codes).
+msgid "core.codes.marker-rejected.message"
+msgstr "I contenuti integrati di questa build non sono validi. Reinstalla l'app o contatta lo sviluppatore."
+
+#. License active
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.ok.title"
+msgstr "Licenza attiva"
+
+#. Your license is active.
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.ok.message"
+msgstr "La tua licenza è attiva."
+
+#. Offline grace
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.grace.title"
+msgstr "Periodo di tolleranza offline"
+
+#. The licensing service can't be reached. You can keep using the app until the grace period ends.
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.grace.message"
+msgstr "Impossibile raggiungere il servizio di licenze. Puoi continuare a usare l'app fino al termine del periodo di tolleranza."
+
+#. License expired
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.expired.title"
+msgstr "Licenza scaduta"
+
+#. Your license has expired. Connect to the internet or renew it to continue.
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.expired.message"
+msgstr "La tua licenza è scaduta. Connettiti a internet o rinnovala per continuare."
+
+#. Signed out
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.revoked.title"
+msgstr "Disconnesso"
+
+#. This device was signed out. Sign in or activate again to continue.
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.revoked.message"
+msgstr "Questo dispositivo è stato disconnesso. Accedi o attiva di nuovo per continuare."
+
+#. Activate
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.needs-activation.title"
+msgstr "Attiva"
+
+#. Enter a license key or sign in to continue.
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.needs-activation.message"
+msgstr "Inserisci una chiave di licenza o accedi per continuare."
+
+#. Update required
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.version-too-old.title"
+msgstr "Aggiornamento necessario"
+
+#. This version is no longer supported. Update the app to continue.
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.version-too-old.message"
+msgstr "Questa versione non è più supportata. Aggiorna l'app per continuare."
+
+#. Not available on this license
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.version-too-new.title"
+msgstr "Non disponibile con questa licenza"
+
+#. This build is newer than your license allows.
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.version-too-new.message"
+msgstr "Questa build è più recente di quanto consentito dalla tua licenza."
+
+#. Channel not included
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.channel-not-entitled.title"
+msgstr "Canale non incluso"
+
+#. Your license doesn't include this release channel.
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.channel-not-entitled.message"
+msgstr "La tua licenza non include questo canale di rilascio."
+
+#. No license needed
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.not-applicable.title"
+msgstr "Nessuna licenza necessaria"
+
+#. This app doesn't need a license.
+#. Core copy (conformance/parity/copy.en.json, gate).
+msgid "core.gate.not-applicable.message"
+msgstr "Questa app non richiede una licenza."
+
+#. Activated
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.ok.title"
+msgstr "Attivato"
+
+#. Your license is active on this device.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.ok.message"
+msgstr "La tua licenza è attiva su questo dispositivo."
+
+#. Device limit reached
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.device-limit.title"
+msgstr "Limite di dispositivi raggiunto"
+
+#. This license is already on all its devices. Replace a device to use it here.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.device-limit.message"
+msgstr "Questa licenza è già in uso su tutti i dispositivi consentiti. Sostituisci un dispositivo per usarla qui."
+
+#. Device check failed
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.fingerprint-required.title"
+msgstr "Verifica del dispositivo non riuscita"
+
+#. This license needs a hardware fingerprint, which couldn't be read on this device.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.fingerprint-required.message"
+msgstr "Questa licenza richiede un'impronta hardware, che non è stato possibile leggere su questo dispositivo."
+
+#. Device changed
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.hardware-mismatch.title"
+msgstr "Dispositivo cambiato"
+
+#. This device's hardware changed. Activate again to use your license here.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.hardware-mismatch.message"
+msgstr "L'hardware di questo dispositivo è cambiato. Attiva di nuovo per usare qui la tua licenza."
+
+#. Sign in to continue
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.enroll-claimed.title"
+msgstr "Accedi per continuare"
+
+#. This device's free license belongs to an account now. Sign in to use it.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.enroll-claimed.message"
+msgstr "La licenza gratuita di questo dispositivo ora appartiene a un account. Accedi per usarla."
+
+#. License disabled
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.license-disabled.title"
+msgstr "Licenza disattivata"
+
+#. This license has been disabled. Contact the developer.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.license-disabled.message"
+msgstr "Questa licenza è stata disattivata. Contatta lo sviluppatore."
+
+#. License expired
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.license-expired.title"
+msgstr "Licenza scaduta"
+
+#. This license has expired. Renew it to continue.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.license-expired.message"
+msgstr "Questa licenza è scaduta. Rinnovala per continuare."
+
+#. Device check needed
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.attestation-required.title"
+msgstr "Verifica del dispositivo necessaria"
+
+#. This license needs a verified device. Let the app check this device, then try again.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.attestation-required.message"
+msgstr "Questa licenza richiede un dispositivo verificato. Consenti all'app di verificare questo dispositivo e riprova."
+
+#. Too many attempts
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.rate-limited.title"
+msgstr "Troppi tentativi"
+
+#. Too many attempts. Wait a moment and try again.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.rate-limited.message"
+msgstr "Troppi tentativi. Attendi un momento e riprova."
+
+#. Key not accepted
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.unauthorized.title"
+msgstr "Chiave non accettata"
+
+#. That license key wasn't accepted. Check it and try again.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.unauthorized.message"
+msgstr "La chiave di licenza non è stata accettata. Controllala e riprova."
+
+#. No free license
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.enroll-disabled.title"
+msgstr "Nessuna licenza gratuita"
+
+#. This app doesn't offer a free license. Enter a license key or sign in.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.enroll-disabled.message"
+msgstr "Questa app non offre una licenza gratuita. Inserisci una chiave di licenza o accedi."
+
+#. Activation refused
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.refused.title"
+msgstr "Attivazione rifiutata"
+
+#. Activation was refused ({code}).
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.refused.message"
+msgstr "L'attivazione è stata rifiutata ({code})."
+
+#. Activation failed
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.error.title"
+msgstr "Attivazione non riuscita"
+
+#. Activation didn't finish. Check your connection and try again.
+#. Core copy (conformance/parity/copy.en.json, activation).
+msgid "core.activation.error.message"
+msgstr "L'attivazione non è stata completata. Controlla la connessione e riprova."

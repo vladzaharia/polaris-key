@@ -21,15 +21,15 @@ export interface ActionPolicy {
   /** The confirm dialog's intent (`none` for L0: no dialog). */
   intent: ConfirmIntent;
   /**
-   * L3: the operator types a value (the slug, the kid, "reseal", "delete", the store app's name)
-   * to confirm.
+   * L3: the operator types a value (the slug, the kid, "reseal", "delete", the store app's name,
+   * or `delete <id>`) to confirm.
    */
   typedConfirmation: boolean;
   /**
    * What is typed, for L3 actions. `appName` is the app's name as App Store Connect shows it; the
    * console does not know it, so the dialog supplies its own input and the Worker compares it.
    */
-  typed?: "slug" | "kid" | "reseal" | "delete" | "appName";
+  typed?: "slug" | "kid" | "reseal" | "delete" | "appName" | "deleteId";
 }
 
 /** Every action named in §5.2, by stable id. */
@@ -56,6 +56,8 @@ export const ACTION_LEVELS = {
   "channel.promote": 1,
   "channel.pin": 1,
   "manifest.revert": 1,
+  // ST-01b: saving a manifest-declared value claims it for the console.
+  "setting.claim": 1,
   "service.disable": 1,
   "repo.resync": 1,
   "sentry.dismiss": 1,
@@ -94,9 +96,15 @@ export const ACTION_LEVELS = {
   // Store connections (A-16)
   "storeApp.assign": 1,
   "storeApp.release": 1,
+  // Users (I-12): an undo puts a licence back on the subject it was relinked from.
+  "user.undoRelink": 1,
 
   // L2 · irreversible or broad
   "key.revoke": 2,
+  // Users (I-12): a detach leaves the licence floating and out of the person's library; a relink
+  // moves it to another person of this product (step-up, reason, notices, 72-hour undo).
+  "user.detachLicense": 2,
+  "user.relink": 2,
   "device.deauthorize": 2,
   "sentry.confirm": 2,
   "release.yank": 2,
@@ -124,6 +132,12 @@ export const ACTION_LEVELS = {
   "signing.breakGlassActivate": 3,
   "kek.reseal": 3,
   "portalAccount.delete": 3,
+  // Users (I-12): the subject's data of this product (config overrides, Cloud Sync) is gone for
+  // good. The subject, its licences and the account stay.
+  "user.deleteData": 3,
+  // Owner request (2026-10-05): deleting a licence removes it, its keys and its devices for good;
+  // typed `delete <id>` (a bulk deletion types `delete <n> licenses`). The Worker compares.
+  "license.delete": 3,
   // A-17a (owner decision, 2026-10-04): releasing a held App Store version is typed. The Worker
   // compares `confirm` with the app's name in App Store Connect.
   "connector.releaseVersion": 3,
@@ -174,6 +188,8 @@ const TYPED: Partial<Record<ActionId, ActionPolicy["typed"]>> = {
   "signing.breakGlassActivate": "kid",
   "kek.reseal": "reseal",
   "portalAccount.delete": "delete",
+  "user.deleteData": "delete",
+  "license.delete": "deleteId",
   "connector.releaseVersion": "appName",
   "connector.phasedComplete": "appName",
   "connector.iapAvailability": "appName",

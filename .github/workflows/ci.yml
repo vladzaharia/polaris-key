@@ -53,6 +53,14 @@ jobs:
       # enums, feature ids, versions) must match its sources, and conformance/parity/errors.json
       # must list every wire code the Worker's source emits (tools/gen-sdk-constants.ts).
       - run: pnpm gen:constants -- --check
+      # Platform-inventory drift (ST-02): every Env member in packages/worker/src/env.ts carries an
+      # @inventory tag, src/platformInventory.generated.ts matches them, wrangler.toml names every
+      # var and secret (secrets in its required-secrets comment) and declares nothing Env lacks.
+      - run: pnpm gen:platform-inventory -- --check
+      # Settings drift (ST-06): the settings reference page and the console's settings search index
+      # are generated from the settings registry; the worker suite's settings-coverage test is the
+      # other half (every *_source column, settings table, Env member and manifest field has a home).
+      - run: pnpm gen:settings -- --check
       # Brand-token drift: @polaris-key/brand's generated outputs (tokens.css, the Tailwind v4 theme,
       # tokens.json, the TS constants and kit templates, the Godot and Swift token files) must match
       # packages/brand/src/tokens/ and the launch-kit copy (packages/brand/scripts/gen.ts).
@@ -167,15 +175,77 @@ jobs:
           cache: pnpm
       - run: >-
           pnpm install --frozen-lockfile --filter=@polaris-key/conformance-browser...
-          --filter=@polaris-key/conformance-node... --filter=@polaris-key/admin...
-          --filter=@polaris-key/worker...
+          --filter=@polaris-key/conformance-node...
       - run: pnpm --filter @polaris-key/conformance-browser exec playwright install --with-deps chromium
       - run: pnpm exec turbo run build --filter=@polaris-key/conformance-browser...
       - run: pnpm --filter @polaris-key/conformance-browser test
-      # The console's overlays under the Worker's exact CSP (style-src 'self'): zero violations and
-      # a real scroll lock behind every dialog, menu and drawer (packages/admin/e2e).
-      - run: pnpm exec turbo run build --filter=@polaris-key/admin... --filter=@polaris-key/brand
+
+  # The console and the customer portal in real Chromium under the Worker's exact CSP
+  # (packages/admin/e2e): the console's overlays (zero violations, a real scroll lock behind every
+  # dialog, menu and drawer) and the portal quality bar (PX-20, PORTAL.md §8-§9): every shipped §4
+  # state in both themes at 1440 and 390 px with zero CSP and axe violations, one h1, no horizontal
+  # scroll at 360 px and its visual baseline. It runs in Playwright's own image because the
+  # committed linux baselines are rendered there (packages/admin/scripts/portal-baselines.sh); on
+  # a failure the actual and diff images are uploaded.
+  console:
+    name: Console and portal (Chromium, CSP, axe, visual)
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      # The e2e harness imports the Worker's own security headers and media proxy, so the Worker's
+      # dependencies install and build too (core/devices.ts imports @polaris-key/client-core,
+      # whose entry is its built dist).
+      - run: >-
+          pnpm install --frozen-lockfile --filter=@polaris-key/admin...
+          --filter=@polaris-key/worker...
+      - run: >-
+          pnpm exec turbo run build --filter=@polaris-key/admin... --filter=@polaris-key/brand
+          --filter=@polaris-key/worker^...
       - run: pnpm --filter @polaris-key/admin test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: portal-visual-diff
+          path: packages/admin/e2e/__baselines__/portal/.out
+          if-no-files-found: ignore
+
+  # UK-15: the UI-kit visual QA lane (UI-KITS.md §7). The modernity lint over the mockup boards
+  # (both themes) and any kit stylesheets, the string lint against the copy catalogs, the per-kit
+  # source lints, the side-by-side report and the lint's own browser suites (a seeded violation
+  # per rule). In Playwright's image, like the console job, so the Chromium build is pinned. The
+  # web kits add their component pages here as they land (UK-04, UK-05); the native kits run
+  # their own equivalents in their lanes.
+  ui-kits:
+    name: UI kits (modernity lint, string lint, report)
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.63.0-noble
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter=@polaris-key/ui-qa...
+      - run: pnpm ui:lint
+      - run: pnpm ui:report
+      - run: pnpm --filter @polaris-key/ui-qa test:e2e
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ui-kits-report
+          path: |
+            packages/ui-qa/.out
+            docs/design/ui-kits/shots
+          if-no-files-found: ignore
 
   # P1b-05 Part D: the same runner in Firefox 155.0, the build bundled with playwright 1.63.0 (the
   # engine S-04 measured), in Playwright's own image, which already carries that browser. Firefox
@@ -246,6 +316,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+      # Per-kit modernity lint (UI-KITS.md §7.3, UK-15): the qt source rules of
+      # packages/ui-qa/rules/kit-rules.json. Zero dependencies, so plain Node runs it; it fails on any
+      # hit beyond the debt ledger (packages/ui-qa/rules/kit-debt.json) and on stale debt.
+      - name: UI kit source lint (qt)
+        run: node packages/ui-qa/bin/kit-lint.mjs --kit=qt
       - name: Create venv + install (editable, dev extras)
         working-directory: sdks/python
         run: |
@@ -268,6 +343,11 @@ jobs:
       # Echo the toolchain so a future runner-image bump fails loudly and legibly rather
       # than looking like a source error.
       - run: swift --version
+      # Per-kit modernity lint (UI-KITS.md §7.3, UK-15): the swiftui source rules of
+      # packages/ui-qa/rules/kit-rules.json. Zero dependencies, so plain Node runs it; it fails on any
+      # hit beyond the debt ledger (packages/ui-qa/rules/kit-debt.json) and on stale debt.
+      - name: UI kit source lint (swiftui)
+        run: node packages/ui-qa/bin/kit-lint.mjs --kit=swiftui
       - run: swift test --package-path sdks/swift
       # P4-07: packs (PolarisKeyPacks, linking libzstd) and the update client that carries
       # `update.packs` build for iOS without Sparkle, whose product is conditioned to macOS.
@@ -330,6 +410,16 @@ jobs:
           for scheme in PolarisKeyPlatform PolarisKeyPlatformC; do
             xcodebuild -scheme "$scheme" -destination 'generic/platform=iOS' \
               CODE_SIGNING_ALLOWED=NO SWIFT_TREAT_WARNINGS_AS_ERRORS=YES -quiet build
+          done
+      - name: Mac Catalyst build of every library
+        working-directory: sdks/swift
+        # SP-S16: Catalyst takes the iOS branches (identifierForVendor, no Sparkle: the Sparkle
+        # product is conditioned on .macOS and every Sparkle file is #if os(macOS)).
+        run: |
+          for scheme in PolarisKeyCore PolarisKeyLicense PolarisKeyConfig PolarisKeyRelease PolarisKeyIdentity \
+            PolarisKeyPacks PolarisKeyUpdate PolarisKeyUI PolarisKey PolarisKeyPlatform; do
+            xcodebuild -scheme "$scheme" -destination 'generic/platform=macOS,variant=Mac Catalyst' \
+              CODE_SIGNING_ALLOWED=NO -quiet build
           done
       - name: hosted StoreKit / Keychain tests (iOS simulator)
         # XcodeGen 2.45.4, the release asset checked against its SHA-256.
@@ -412,7 +502,7 @@ jobs:
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon -Ppkey.jvmOnly=true :core:test :license:test :config:test :identity:test
-          :release:test :update:test :packs:test :sdk:test :conformance:test checkModuleBoundaries
+          :release:test :update:test :packs:test :sdk:test :conformance:test :sample-cli:test checkModuleBoundaries
           :core:publishCorePublicationToLocalRepository :license:publishLicensePublicationToLocalRepository
           :config:publishConfigPublicationToLocalRepository :identity:publishIdentityPublicationToLocalRepository
           :release:publishReleasePublicationToLocalRepository :update:publishUpdatePublicationToLocalRepository
@@ -424,6 +514,78 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: kotlin-reports
+          path: |
+            sdks/kotlin/*/build/reports/
+
+  # UK-40 (SP-K12): the Kotlin SDK's JVM desktop parity on the three desktop OSes. The keyring store's
+  # storage contract runs against the REAL OS keyring (PKEY_KEYRING_TESTS=1): the login Keychain on
+  # macOS, Credential Manager on Windows, and Secret Service on Linux through gnome-keyring in a
+  # dbus-run-session, unlocked headless; a Linux session whose Secret Service is unreachable or
+  # refuses skips that one test and prints the recorded `core.store` jvm `dependency` N/A. macOS and
+  # Linux run the :core, :update and :sdk suites whole; Windows runs the desktop suites (the keyring
+  # store, the install driver and its fetch, the slots, the desktop entry point, capabilities). Every run
+  # passes --no-build-cache so a :core:test result restored from setup-java's Gradle cache can never
+  # stand in for the real-keyring contract (core also declares PKEY_KEYRING_TESTS a Test input).
+  kotlin-desktop:
+    name: Kotlin SDK JVM desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    env:
+      PKEY_KEYRING_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - name: Secret Service (gnome-keyring) for the headless session
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y gnome-keyring dbus-x11
+      - name: JVM desktop suites (Linux, Secret Service)
+        if: runner.os == 'Linux'
+        working-directory: sdks/kotlin
+        run: >-
+          dbus-run-session -- bash -c 'printf pkey | gnome-keyring-daemon --unlock --components=secrets >/dev/null;
+          ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test :update:test :sdk:test'
+      - name: JVM desktop suites (macOS, login Keychain)
+        if: runner.os == 'macOS'
+        working-directory: sdks/kotlin
+        run: ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true :core:test :update:test :sdk:test
+      - name: JVM desktop suites (Windows, Credential Manager)
+        if: runner.os == 'Windows'
+        working-directory: sdks/kotlin
+        run: >-
+          ./gradlew --no-daemon --no-build-cache -Ppkey.jvmOnly=true
+          :core:test --tests 'im.plrs.key.core.KeyringStoreTest' --tests 'im.plrs.key.core.CapabilitiesTest'
+          :update:test --tests 'im.plrs.key.update.DesktopInstallDriverTest' --tests 'im.plrs.key.update.DirUpdateSlotsTest'
+          --tests 'im.plrs.key.update.BootGuardTest'
+          :sdk:test --tests 'im.plrs.key.sdk.PolarisKeyDesktopTest'
+      - name: The real-keyring contract ran (or recorded its Linux N/A)
+        working-directory: sdks/kotlin
+        run: |
+          python3 - <<'PY'
+          import os, sys, xml.etree.ElementTree as ET
+          root = ET.parse("core/build/test-results/test/TEST-im.plrs.key.core.KeyringStoreTest.xml").getroot()
+          case = next(c for c in root.iter("testcase") if c.get("name") == "theContractHoldsOnTheRealOsKeyring")
+          if case.find("skipped") is not None:
+              if os.environ["RUNNER_OS"] != "Linux":
+                  sys.exit("the real-keyring contract must run on " + os.environ["RUNNER_OS"])
+              print("recorded N/A: core.store jvm dependency (no usable Secret Service in this session)")
+          else:
+              print("the real-keyring contract ran on " + os.environ["RUNNER_OS"])
+          PY
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: kotlin-desktop-reports-${{ matrix.os }}
           path: |
             sdks/kotlin/*/build/reports/
 
@@ -461,6 +623,11 @@ jobs:
           distribution: temurin
           java-version: "17"
           cache: gradle
+      # Per-kit modernity lint (UI-KITS.md §7.3, UK-15): the compose source rules of
+      # packages/ui-qa/rules/kit-rules.json. Zero dependencies, so plain Node runs it; it fails on any
+      # hit beyond the debt ledger (packages/ui-qa/rules/kit-debt.json) and on stale debt.
+      - name: UI kit source lint (compose)
+        run: node packages/ui-qa/bin/kit-lint.mjs --kit=compose
       - name: Android SDK packages
         run: |
           SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
@@ -474,14 +641,14 @@ jobs:
         run: >-
           ./gradlew --no-daemon :platform:testPlayDebugUnitTest :platform:testDirectDebugUnitTest
           :godot:testPlayDebugUnitTest :godot:testDirectDebugUnitTest :ui:verifyRoborazziDebug
-          :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest
+          :android:testPlayDebugUnitTest :android:testDirectDebugUnitTest :billing:testDebugUnitTest
       - name: Lint and assembleRelease (play and direct)
         working-directory: sdks/kotlin
         run: >-
           ./gradlew --no-daemon :platform:lintPlayRelease :platform:lintDirectRelease
           :godot:lintPlayRelease :godot:lintDirectRelease :android:lintPlayRelease :android:lintDirectRelease
           :platform:assembleRelease :godot:assembleRelease :android:assembleRelease :boundary:assembleRelease
-          :ui:lintRelease :ui:assembleRelease
+          :ui:lintRelease :ui:assembleRelease :billing:lintRelease :billing:assembleRelease
       - name: Flavour boundary
         run: sdks/kotlin/tools/check_flavours.sh
       - name: Module boundaries (:core has no Android dependency, :platform no SDK module, only :android sees both)
@@ -584,6 +751,11 @@ jobs:
       # .gitattributes pins sdks/godot to LF as well.
       - run: git config --global core.autocrlf false
       - uses: actions/checkout@v7
+      # Per-kit modernity lint (UI-KITS.md §7.3, UK-15): the godot source rules (engine dialogs,
+      # CheckBox, hard-coded alignment, colour literals outside the theme). The runtime half, every
+      # engine control icon themed, is tests/support/ui_lint.gd (suite ui_lint).
+      - name: UI kit source lint (godot)
+        run: node packages/ui-qa/bin/kit-lint.mjs --kit=godot
       - uses: actions/cache@v4
         with:
           path: ~/.cache/pkey-godot/${{ matrix.godot }}

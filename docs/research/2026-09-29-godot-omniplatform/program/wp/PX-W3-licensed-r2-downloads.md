@@ -5,7 +5,7 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                            |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                             |
 | Depends on  | [PX-W2](PX-W2-downloads-stores.md)                                                                                                 |
-| Unblocks    | [PX-09](PX-09-get-it-complete.md), [HA-09](HA-09-portal-mirrored-downloads.md)                                                     |
+| Unblocks    | [PX-09](PX-09-get-it-complete.md), [SP-09](SP-09-velopack-auth-redirect.md), [HA-09](HA-09-portal-mirrored-downloads.md)           |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                              |
 | Plan mode   | yes: executes the approved [`plans/PX-W3.md`](../plans/PX-W3.md) (approved 2026-10-05)                                             |
 | Gates       | the PORTAL.md §11 green gate; plan mode; THREAT-MODEL; rule 10 (OpenAPI + `routeCoverage`); `typecheck:workerd` and `test:workerd` |
@@ -17,6 +17,46 @@
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/PX-W3.md`](../plans/PX-W3.md):** approved on 2026-10-05 with every recommendation accepted: a ticketed bytes-host URL (Q1), 120 s multi-use and bound to one file (Q2), a dedicated `DOWNLOAD_TICKET_KEY` pair (Q3, provisioned per environment by the owner), the portal's licence-only rule for `attested` products (Q4 (a), with a THREAT-MODEL row), the revocation residual accepted (Q5), no IP binding (Q6), private GitHub files left out (Q7). No migration; an OpenAPI parameter instead of a new route; a glossary entry for "download ticket". The plan supersedes the draft on branch `wp/PX-W3-licensed-downloads-plan` (`72676b8e`), which must not be merged.
+
+## Corrections and decisions from implementation (2026-10-05)
+
+Recorded by the implementer; the code is the fact where this brief or the plan read otherwise.
+
+- **Key material.** The header's "signing key pair" means the secret `DOWNLOAD_TICKET_KEY` plus
+  its rotation slot `DOWNLOAD_TICKET_KEY_PREVIOUS`, not an asymmetric pair. Both are already
+  provisioned as base64 strings by the owner; the Worker uses the string as HMAC material, as it
+  does `REGISTRY_TOKEN_KEY`, and the `kid` is the first 6 bytes of SHA-256 over that string.
+- **Verify signature.** `verifyDownloadTicket(env, ticket, {host, product, releaseId, name,
+sha256}, now)` as planned; the host is compared normalized (case, trailing dot).
+- **Licence vocabulary.** `licenses.status` is `active | disabled`; "revoked" and "suspended" in
+  the plan's acceptance list are both `disabled`. The revocation test covers disabled, expired and
+  detached licences.
+- **Inventory.** ST-02 landed on main while this package was in review: `SECRET_NAMES` is now
+  generated from the `@inventory secret` tags in `env.ts` (`pnpm gen:platform-inventory`), so the
+  two secrets carry `@inventory secret keyring` there and the hand-added `SECRET_NAMES` entries
+  were dropped at the merge. They keep their notes on the console's Platform → Secrets list
+  (`packages/admin/src/console/pages/platformSettings.tsx`).
+- **Redemption order.** The ticket is minted before the single-use token is spent, so a failure
+  (for example the key deleted between mint and click) leaves the user's token usable.
+- **`downloadTarget`** returns `{kind: "redirect", url} | {kind: "ticket", base} | null`, built
+  on main's order (fix/portal-download-404): a `public` file redirects to its bytes-host URL
+  (`bytesHostTarget`), any file to its GitHub storage URL only when `gate.repositoryPublic()`, and
+  otherwise a non-public file gets the ticket branch, which requires the delivery URL on the bytes
+  host itself (not merely an allowed redirect host), the file's SHA-256 and download tickets
+  configured.
+- **Q7 reopened and decided (lead, at the merge with main, 2026-10-05): licensed files in a
+  PRIVATE GitHub repository go through the ticket path.** The plan left them out only because
+  covering them reordered `downloadTarget`; main has since made that reorder itself, and the
+  bytes host already streams a private repository's assets through Release's installation token
+  for whoever clears the `files` route. So the same ticket, bound to the same name and SHA-256,
+  serves them with no further code; the `releaseArtifact` rate limit bounds the GitHub quota a
+  ticket holder can spend. Without `DOWNLOAD_TICKET_KEY` they stay `not_hosted`, as main's test
+  pins. A test (`portalLicensedDownloads.test.ts`, "private GitHub repository (Q7)") covers both
+  visibilities. THREAT-MODEL, DEPLOYMENT, RUNBOOK and the portal docs page say so.
+- **Ticket logging.** THREAT-MODEL no longer claims a ticket is never logged: Workers Logs
+  (`[observability.logs]`) record request URLs, `?ticket=` included, for the ticket's 120 s life.
+- **Q4 (a)** needs no code: neither `accountMayDownload` nor the ticketed byte route consults the
+  device trust policy. A test pins it.
 
 ## Goal
 
@@ -61,11 +101,11 @@ Today the portal can only hand out tokens for artifacts reachable elsewhere ([PO
 
 ## Acceptance criteria
 
-- [ ] `plans/PX-W3.md` is approved and merged before implementation.
-- [ ] THREAT-MODEL rows for the chosen design, with tests for expiry and revoked licences.
-- [ ] OpenAPI and `routeCoverage` cover any new route.
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] `plans/PX-W3.md` is approved and merged before implementation.
+- [x] THREAT-MODEL rows for the chosen design, with tests for expiry and revoked licences.
+- [x] OpenAPI and `routeCoverage` cover any new route.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 

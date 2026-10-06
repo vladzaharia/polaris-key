@@ -20,6 +20,7 @@
 // deadline, and gets the same treatment when the network simply fails. Putting that in one
 // place is what keeps a new service from shipping a call with no timeout on it (R4-08).
 
+import { resolveDeviceLabel } from "./deviceLabel.js";
 import { arch, platform } from "node:os";
 import type { TrustSet } from "@polaris-key/jws";
 import {
@@ -44,6 +45,7 @@ import {
 import { ErrorCode, Feature, SdkId } from "../constants.generated.js";
 import { SDK_VERSION } from "../version.js";
 import { KeyringStore } from "./store.js";
+import { resolveAppVersion } from "./appVersion.js";
 import { defaultDirBases, resolveDirs, type ProductDirs } from "./dirs.js";
 import {
   DEFAULT_SERVICES,
@@ -101,8 +103,10 @@ export interface CoreOptions {
   productSlug: string;
   /** MUST be `https:` — or `http://localhost` / `http://127.0.0.1` for local development. */
   baseUrl?: string;
-  /** The HOST APPLICATION's version, sent as `X-PKey-Version` and gated on by the server. */
-  version: string;
+  /** The HOST APPLICATION's version, sent as `X-PKey-Version` and gated on by the server.
+   *  Omitted: Electron's `app.getVersion()`, else the nearest `package.json` above the entry
+   *  script, with a warning when neither is found (SDK parity pass, SP-N17). */
+  version?: string;
   /** Release channel; derived from `version` when omitted. */
   channel?: string;
   /** Pinned trust set (kid → raw Ed25519 pubkey base64url). The ONLY root: keys learned from
@@ -140,6 +144,12 @@ export interface CoreOptions {
    * release-enabled product gets the right answer with no round trip at all.
    */
   expectedServices?: ServiceSlug[];
+  /**
+   * This device's label (WIRE-CONTRACT-V4 §12.7.1): what the sign-in page and the customer's
+   * device list call it. Omitted, the platform default (the hostname, without `.local`, `.lan` or
+   * `.home`); `""` sends none. Sent on device-code sign-in, activation and registration.
+   */
+  deviceName?: string;
 }
 
 /** The status taxonomy every signed-document GET collapses to (§5). One shape for both
@@ -177,6 +187,7 @@ export class CoreContext {
 
   private readonly fetchImpl?: typeof fetch;
   private readonly expectedServices?: ServiceSlug[];
+  private readonly deviceNameOption?: string;
   private discovered: ServicesMap | null = null;
   private deviceIdValue = "";
 
@@ -190,9 +201,10 @@ export class CoreContext {
 
   constructor(opts: CoreOptions & { localOnly?: boolean }) {
     this.product = opts.productSlug;
+    this.deviceNameOption = opts.deviceName;
     this.baseUrl = normalizeBaseUrl(opts.baseUrl ?? DEFAULT_BASE);
-    this.version = opts.version;
-    this.channel = opts.channel ?? channelForVersion(opts.version);
+    this.version = opts.version ?? resolveAppVersion();
+    this.channel = opts.channel ?? channelForVersion(this.version);
     this.pinnedTrust = { ...opts.trust.pinnedKeys };
     this.trustRefreshEnabled = opts.trustRefresh !== false;
     this.dirs = resolveDirs(opts.productSlug, opts);
@@ -210,6 +222,12 @@ export class CoreContext {
 
   async init(): Promise<void> {
     this.deviceIdValue = await this.store.getDeviceId();
+  }
+
+  /** The label to send (§12.7.1): `override`, else the `deviceName` option, else the platform
+   *  default; `null` sends none. */
+  deviceLabel(override?: string): string | null {
+    return resolveDeviceLabel(override, this.deviceNameOption);
   }
 
   get deviceId(): string {

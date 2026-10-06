@@ -15,7 +15,7 @@ The [Distribution service](/docs/services/distribution/) reads it; nothing else 
 | **distribution** | `distribution.{json,yaml,yml}` | never         | `dist_outlets` + `dist_transports` |
 
 **No file is fine.** With Distribution enabled and no document, the product has one implicit
-outlet, `direct`, served by `pkey-cdn` — so a product that only ships its own downloads needs
+outlet, the Polaris Key outlet (`direct`), served by `pkey-cdn` — so a product that only ships its own downloads needs
 nothing here. A document with no `outlets` block means the same; `outlets: {}` declares none.
 
 The document is validated whenever it is present (even with Distribution off), by `pkey
@@ -94,23 +94,23 @@ what they had.
 Each kind reads only its own fields; any other key on the entry is ignored. Every field is
 optional. A bad value is `invalid_outlet_identity`.
 
-| Kind                       | Fields                                                                                                                                    |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `direct`                   | `platforms` (distinct release platforms), `homebrewCask` (a cask token), `homebrewFormula` (a formula name), `scoop` (`{bin, shortcuts}`) |
-| `app-store`                | `appleId` (numeric), `bundleId` (reverse-DNS)                                                                                             |
-| `testflight`               | `appleId`, `bundleId`, `publicLink` (the public link's join code)                                                                         |
-| `altstore`                 | `artifact`, `bundleId`                                                                                                                    |
-| `altstore-pal`             | `artifact`, `bundleId`, `marketplaceId`                                                                                                   |
-| `play`, `play-testing`     | `packageName` (Android package), `tracks` (channel → Play track)                                                                          |
-| `obtainium`, `fdroid-repo` | `artifact`, `packageName`                                                                                                                 |
-| `ms-store`                 | `productId` (12 characters), `packageFamilyName`, `flights` (channel → package flight)                                                    |
-| `app-installer`            | `packageFamilyName`, `publisher` (the MSIX Publisher, a certificate subject DN starting `CN=`), `updateSettings`                          |
-| `steam`                    | `appId` (numeric), `branches` (channel → Steam branch)                                                                                    |
-| `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)                                                                                |
-| `flathub`                  | `appId` (a Flatpak id such as `gg.vlad.Diceroll`)                                                                                         |
-| `snap`                     | `name`, `channels` (channel → snap channel, `[<track>/]<risk>[/<branch>]`)                                                                |
-| `winget`                   | `packageIdentifier` (such as `Vlad.Diceroll`)                                                                                             |
-| `web`                      | none                                                                                                                                      |
+| Kind                       | Fields                                                                                                                                                                                                   |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `direct`                   | `platforms` (distinct release platforms), `homebrewCask` (a cask token), `homebrewFormula` (a formula name), `homebrewTap` (your own tap), `scoop` (`{bin, shortcuts}`), `scoopBucket` (your own bucket) |
+| `app-store`                | `appleId` (numeric), `bundleId` (reverse-DNS)                                                                                                                                                            |
+| `testflight`               | `appleId`, `bundleId`, `publicLink` (the public link's join code)                                                                                                                                        |
+| `altstore`                 | `artifact`, `bundleId`                                                                                                                                                                                   |
+| `altstore-pal`             | `artifact`, `bundleId`, `marketplaceId`                                                                                                                                                                  |
+| `play`, `play-testing`     | `packageName` (Android package), `tracks` (channel → Play track)                                                                                                                                         |
+| `obtainium`, `fdroid-repo` | `artifact`, `packageName`                                                                                                                                                                                |
+| `ms-store`                 | `productId` (12 characters), `packageFamilyName`, `flights` (channel → package flight)                                                                                                                   |
+| `app-installer`            | `packageFamilyName`, `publisher` (the MSIX Publisher, a certificate subject DN starting `CN=`), `updateSettings`                                                                                         |
+| `steam`                    | `appId` (numeric), `branches` (channel → Steam branch)                                                                                                                                                   |
+| `itch`                     | `target` (the butler `user/game` slug), `gameId` (numeric)                                                                                                                                               |
+| `flathub`                  | `appId` (a Flatpak id such as `gg.vlad.Diceroll`)                                                                                                                                                        |
+| `snap`                     | `name`, `channels` (channel → snap channel, `[<track>/]<risk>[/<branch>]`)                                                                                                                               |
+| `winget`                   | `packageIdentifier` (such as `Vlad.Diceroll`)                                                                                                                                                            |
+| `web`                      | none                                                                                                                                                                                                     |
 
 - **`publicLink`** is the code after `/join/` in a public TestFlight link: 1–32 letters and
   digits. The signed update feed turns it into the outlet's `listingUrl`
@@ -153,6 +153,12 @@ detection, notes/S-06 rule 4): `itch.gameId` (the receipt's numeric `game.id` �
 not it), `packageFamilyName`, `direct.homebrewCask`, and `direct.homebrewFormula` (a formula
 name such as `diceroll` or `diceroll@2`: lower-case letters, digits, `.`, `@`, `+`, `_` and `-`,
 for a command-line build whose executable resolves under `Cellar/<formula>/`).
+
+`direct.homebrewTap` and `direct.scoopBucket` (optional) are your **own** tap and bucket on
+GitHub, where `pkey storefront homebrew pr` and `pkey storefront scoop pr` open pull requests
+([Pull-request steps](/docs/build/ci/#pull-request-steps-winget-homebrew-scoop-and-flathub)): a
+tap is `<owner>/homebrew-<name>` and a bucket `<owner>/<repo>`, and neither may belong to the
+`Homebrew` or `ScoopInstaller` organisation.
 
 `direct.scoop` (optional) is what the [Scoop manifest](/docs/services/distribution/feeds/#scoop)
 installs: `bin`, a relative path inside the Windows archive or a list of up to 16, which Scoop
@@ -199,18 +205,41 @@ is served or derived for it ([Pack transports](/docs/services/distribution/deliv
 
 Store-page metadata, every field optional: `name`, `subtitle`, `category`, `developerName`
 (one line each, at most 200 characters), `description` (at most 4000, newlines allowed),
-`iconUrl`, `headerUrl`, `website` (https URLs), `screenshots` (up to 16 https URLs) and
-`tintColor` (`#rrggbb`), plus the two support links the customer portal shows: `supportUrl` (an
-https URL) and `supportEmail` (one address, at most 254 characters). An outlet may carry its own
-`listing`, merged over the document's for that outlet. A malformed listing is `invalid_listing`.
+`website` (an https URL) and `tintColor` (`#rrggbb`), plus the two support links the customer
+portal shows: `supportUrl` (an https URL) and `supportEmail` (one address, at most 254
+characters). An outlet may carry its own `listing`, merged over the document's for that outlet.
+A malformed listing is `invalid_listing`.
+
+The art is `icon`, `header` and `screenshots` (up to 16). Each is an **asset ref**: an https URL
+or a path in the product's repository, optionally `{ src, sha256 }`, with the rules in
+[Presentation](/docs/build/manifest/authoring/#presentation-presentation). A malformed ref is
+`invalid_asset_ref`. When the listing declares no `icon`, the product's `presentation.icon` is
+used.
+
+`iconUrl` and `headerUrl` are the older spellings of `icon` and `header`. They still validate
+(https URLs only) and mean the same thing, with a warning, `listing_url_field_deprecated`.
+Declaring a field and its older spelling together is an error, `listing_field_conflict`.
+
+```yaml
+listing:
+  name: Acme
+  icon: .pkey/art/icon.png
+  header:
+    {
+      src: https://cdn.acme.example/header.webp,
+      sha256: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08,
+    }
+  screenshots: [.pkey/art/shot-1.png, .pkey/art/shot-2.png]
+```
 
 The **document's** listing (not an outlet's) is also the product's presentation in the customer
-portal: `name`, `developerName`, `tintColor`, `website`, the support links, and `iconUrl` and
-`headerUrl` as art. The portal never loads that art from the developer's host: it serves it
+portal: `name`, `developerName`, `tintColor`, `website`, the support links, and `icon` and
+`header` as art. The portal never loads that art from the developer's host: it serves it
 same-origin through its media proxy (`/media/<product>/icon` and `/media/<product>/header`), which
 fetches only from GitHub-hosted URLs (`github.com`, `*.githubusercontent.com`), only PNG, JPEG,
-WebP or GIF, and at most 1 MB for the icon and 5 MB for the header. Art hosted anywhere else is
-not shown; the portal falls back to the product's initial on its tint.
+WebP or GIF, and at most 1 MB for the icon and 5 MB for the header. Art hosted anywhere else,
+and art given as a repo path, is not shown there; the portal falls back to the product's initial
+on its tint.
 
 ## Capabilities are not here
 

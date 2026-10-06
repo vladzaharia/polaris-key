@@ -3,7 +3,9 @@ import {
   compileLinearPattern,
   MAX_PATTERN_INPUT,
   MAX_PATTERN_REPEAT,
+  MAX_PATTERN_PROGRAM,
   MAX_PATTERN_SOURCE,
+  patternWork,
   UnsupportedPatternError,
 } from "./regex.js";
 
@@ -160,34 +162,63 @@ describe("compileLinearPattern — refuses what it cannot match linearly", () =>
 });
 
 describe("compileLinearPattern — ReDoS (R10-09 knock-on)", () => {
-  /** Milliseconds to test `pattern` against `n` copies of `char`. */
-  function time(source: string, char: string, n: number): number {
+  // Counted work (`patternWork.steps`, every NFA instruction `test` visits), never a clock, so
+  // load cannot move these checks. A backtracking engine needs about 2^n steps for the bombs
+  // below (`(x+x+)+y` took 57 s at 34 characters under one); this one must stay within a fixed
+  // number of steps per input character.
+
+  /** NFA steps to test `source` against `n` copies of `char`. */
+  function steps(source: string, char: string, n: number): number {
     const re = compileLinearPattern(source);
     const input = char.repeat(n);
-    const t0 = Date.now();
+    const before = patternWork.steps;
     re.test(input);
-    return Date.now() - t0;
+    return patternWork.steps - before;
+  }
+
+  /** Per input position the closure and the step each visit an instruction a bounded number of
+   *  times (each `split` pushes two), so no pattern the compiler accepts can cost more than this
+   *  per character. Exponential backtracking blows through it within a few dozen characters. */
+  const CEILING_PER_CHAR = 8 * MAX_PATTERN_PROGRAM;
+
+  /** Linear: 10x the input costs at most 11x the steps (quadratic would be 100x, n log n 14x),
+   *  and every length stays under the per-character ceiling. */
+  function expectLinear(source: string, char: string): void {
+    const small = steps(source, char, 400);
+    const large = steps(source, char, 4000);
+    expect(small).toBeGreaterThan(0);
+    expect(large).toBeLessThanOrEqual(small * 11);
+    for (const n of [28, 34, 40, 4000])
+      expect(steps(source, char, n)).toBeLessThanOrEqual(
+        CEILING_PER_CHAR * (n + 1),
+      );
   }
 
   it("`(x+x+)+y` — 8 chars, measured at 57s/34 chars under a backtracking engine", () => {
     // Every one of these is exponential for `RegExp`; the last is ~10^1200 steps.
-    expect(time("(x+x+)+y", "x", 34)).toBeLessThan(250);
-    expect(time("(x+x+)+y", "x", 40)).toBeLessThan(250);
-    expect(time("(x+x+)+y", "x", 4000)).toBeLessThan(250);
-  }, 30_000);
+    expectLinear("(x+x+)+y", "x");
+    // Under Ajv each extra character doubled the runtime (28 -> 40 was 4096x); here it is the
+    // same cost per character.
+    expect(steps("(x+x+)+y", "x", 40)).toBeLessThanOrEqual(
+      2 * steps("(x+x+)+y", "x", 28),
+    );
+  });
 
   it("`(a|a)*` — the ambiguous-alternation bomb star-height analysis misses", () => {
-    expect(time("^(a|a)*b$", "a", 40)).toBeLessThan(250);
-    expect(time("^(a|a)*b$", "a", 4000)).toBeLessThan(250);
-  }, 30_000);
+    expectLinear("^(a|a)*b$", "a");
+    // +12 characters must not multiply the cost by 4096.
+    expect(steps("^(a|a)*b$", "a", 42)).toBeLessThanOrEqual(
+      2 * steps("^(a|a)*b$", "a", 30),
+    );
+  });
 
   it("`a*a*a*a*b` — polynomial rather than exponential, still capped", () => {
-    expect(time("^a*a*a*a*b$", "a", 4000)).toBeLessThan(250);
-  }, 30_000);
+    expectLinear("^a*a*a*a*b$", "a");
+  });
 
   it("`(a+)+$` against a non-matching tail", () => {
-    expect(time("^(a+)+$", "a", 4000)).toBeLessThan(250);
-  }, 30_000);
+    expectLinear("^(a+)+$", "a");
+  });
 
   it("caps the matched input and fails closed past the cap", () => {
     const re = compileLinearPattern("^a*$");
@@ -196,9 +227,16 @@ describe("compileLinearPattern — ReDoS (R10-09 knock-on)", () => {
     expect(re.test("a".repeat(MAX_PATTERN_INPUT + 1))).toBe(false);
   });
 
-  it("stays linear: 10x the input costs far less than 10^2 the time", () => {
-    const small = Math.max(time("^(x+x+)+y$", "x", 400), 1);
-    const large = time("^(x+x+)+y$", "x", 4000);
-    expect(large).toBeLessThan(small * 100);
-  }, 30_000);
+  it("stays linear: 10x the input costs 10x the steps, not 10^2", () => {
+    expectLinear("^(x+x+)+y$", "x");
+    // Each extra character costs the same at 4,000 as at 400: a constant rate, not a growing one.
+    const rate = (a: number, b: number) =>
+      (steps("^(x+x+)+y$", "x", b) - steps("^(x+x+)+y$", "x", a)) / (b - a);
+    expect(rate(400, 4000)).toBeLessThanOrEqual(rate(40, 400) * 1.05);
+  });
+
+  it("past the input cap no step is taken at all", () => {
+    expect(steps("^[a-z]*$", "a", MAX_PATTERN_INPUT + 1)).toBe(0);
+    expect(steps("^[a-z]*$", "a", 200_000)).toBe(0);
+  });
 });

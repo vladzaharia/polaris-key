@@ -40,6 +40,8 @@ export function LibraryHero({
         tint={pres.tint}
         src={pres.headerUrl}
         variant="banner"
+        // No cover: a bare tint field; the icon beside the name already shows the letter.
+        letter={false}
         className="aspect-video desk:aspect-auto desk:min-h-[26rem]"
       />
       <div className="flex flex-col gap-5 p-6 desk:p-9">
@@ -82,11 +84,9 @@ export function LibraryHero({
           <dt className="text-fg-muted">Devices</dt>
           <dd className="space-y-2 text-fg-strong">
             <span className="block">
-              {product.status.kind === "signedInApp"
-                ? "Any device"
-                : `${devicesText(product.deviceCount, product.seats?.limit)} in use`}
+              {`${devicesText(product.deviceCount, product.seats?.limit)} in use`}
             </span>
-            {product.seats && product.status.kind !== "signedInApp" ? (
+            {product.seats ? (
               <SeatMeter
                 inUse={product.seats.inUse}
                 limit={product.seats.limit}

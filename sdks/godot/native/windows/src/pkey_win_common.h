@@ -1,5 +1,6 @@
 // Shared helpers for the Windows GDExtension (P5-07): one DLL, pkey_win.dll, holding
-// PKeyVelopackNative, PKeyWinSparkleNative and PKeyStoreContextNative (notes/S-11 §4.5, §8).
+// PKeyVelopackNative, PKeyWinSparkleNative and PKeyStoreContextNative (notes/S-11 §4.5, §8), and
+// PKeyWinCredentialNative (SP-27, the desktop keyring store's Credential Manager calls).
 //
 // Every callback reaches GDScript as `native_event(event, detail)` on the main thread through
 // call_deferred: WinSparkle and Velopack call back on their own threads, StoreContext's blocking
@@ -68,6 +69,7 @@ inline bool resolve(HMODULE module, const char *name, F &fn) {
 void register_velopack();
 void register_winsparkle();
 void register_storecontext();
+void register_credman();
 void winsparkle_shutdown();
 
 }  // namespace pkey_win

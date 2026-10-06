@@ -93,6 +93,15 @@ func active() -> bool:
 	return not env.inert()
 
 
+## A gated download (SDK parity §3.10): `call` once, and when it answers 403
+## `attestation_required`, attest and retry once through PKeyCore.with_attestation. A coroutine.
+func with_attestation(call: Callable) -> PKeyResult:
+	var c := core()
+	if c == null:
+		return await call.call()
+	return await c.with_attestation(call)
+
+
 func transport() -> PKeyTransport:
 	var c := core()
 	return c.transport if c != null else null
@@ -302,40 +311,24 @@ func _configure_bridge(b: PKeyNativeBridge) -> void:
 
 
 ## The feed a native updater reads, from this session's discovery (P3-09's routes) for this
-## build's channel; "" without discovery.
-func feed_url(name: String) -> String:
-	var c := core()
-	if c == null or c.discovery_manifest == null:
-		return ""
-	match name:
-		"sparkle":
-			return PKeyDiscovery.appcast_url_from(c.discovery_manifest, c.channel, PKeyHeaders.arch())
-		"winsparkle":
-			var t := PKeyUpdate._endpoint(c.discovery_manifest, "update", "winsparkle")
-			return PKeyUpdate._expand(c, t, "channel", c.channel) if t != "" else ""
-		"velopack":
-			var t := PKeyUpdate._endpoint(c.discovery_manifest, "update", "velopack")
-			var at := t.find("releases.")
-			if t == "" or at < 0:
-				return ""
-			return PKeyUpdate._expand(c, t.substr(0, at), "channel", c.channel)
-	return ""
+## build's channel: PolarisKey.update.feed_url (PKeyUpdate.feed_url_for) as a plain URL, "" where
+## that answers unsupported or invalid-options. `name` is a bridge name (`sparkle` is the appcast
+## for this build's arch) or a feed kind (PKeyUpdate.FEED_KINDS); `opts` as feed_url's.
+func feed_url(name: String, opts := {}) -> String:
+	var kind := name
+	var o: Dictionary = opts.duplicate()
+	if name == "sparkle":
+		kind = "appcast"
+		if not o.has("arch"):
+			o["arch"] = PKeyHeaders.arch()
+	var r := PKeyUpdate.feed_url_for(core(), kind, o)
+	return String(r.detail["url"]) if r.ok else ""
 
 
-## The download URL of build `build_id` of release `version`: discovery's
-## `distribution.endpoints.builds`, else `release.endpoints.builds` (never the R2-only `blobs`
-## route, plans/P3-01.md §2.4), with `{selector}` and `{buildId}` percent-encoded; "" without one.
+## The download URL of build `build_id` of release `version` (PKeyRelease.builds_url, the same
+## URL PolarisKey.release.fetch() downloads from); "" without one.
 func build_url(version: String, build_id: String) -> String:
-	var c := core()
-	if c == null or c.discovery_manifest == null or version == "" or build_id == "":
-		return ""
-	var t := PKeyUpdate._endpoint(c.discovery_manifest, "distribution", "builds")
-	if t == "":
-		t = PKeyUpdate._endpoint(c.discovery_manifest, "release", "builds")
-	if t == "":
-		return ""
-	t = t.replace("{selector}", PKeyUri.component(version))
-	return PKeyUpdate._expand(c, t, "buildId", build_id)
+	return PKeyRelease.builds_url(core(), version, build_id)
 
 
 ## The adapter's `ctx` for `decision` (see PKeyOutletAdapter).
@@ -407,6 +400,7 @@ func install_apk(check: PKeyUpdateCheck) -> PKeyApplyResult:
 		"timeout": download_timeout,
 		"space_ok": space_ok,
 		"progress": func(got: int, total: int) -> void: download_progress.emit(got, total),
+		"with_attestation": with_attestation,
 	})
 	if r.ok:
 		var st := slots.load_state()

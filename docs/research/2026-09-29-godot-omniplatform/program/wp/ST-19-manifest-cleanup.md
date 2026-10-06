@@ -1,16 +1,16 @@
 # ST-19 Manifest cleanup: duplicate spellings deprecated with warnings, registry ↔ manifest parity test
 
-| Field       | Value                                                                                |
-| ----------- | ------------------------------------------------------------------------------------ |
-| Phase       | ST: Settings architecture (S-18) (phase 4: manifest round trip)                      |
-| Size        | 0.5–0.7 engineer-weeks                                                               |
-| Depends on  | [ST-03](ST-03-settings-registry.md)                                                  |
-| Unblocks    | none                                                                                 |
-| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                |
-| Plan mode   | yes: the plan [`plans/ST-19.md`](../plans/ST-19.md) needs human approval before code |
-| Gates       | plan mode; rule 9 (validator rule, mutation table, JSON schema); CLI bundle          |
-| Human input | plan approval (`plans/ST-19.md`)                                                     |
-| Repo        | `vladzaharia/polaris-key`                                                            |
+| Field       | Value                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------- |
+| Phase       | ST: Settings architecture (S-18) (phase 4: manifest round trip)                                                       |
+| Size        | 0.5–0.7 engineer-weeks                                                                                                |
+| Depends on  | [ST-03](ST-03-settings-registry.md)                                                                                   |
+| Unblocks    | [ST-18](ST-18-promote-export.md), [ST-19b](ST-19b-manifest-settings.md)                                               |
+| Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                 |
+| Plan mode   | yes: executes the approved [`plans/ST-19.md`](../plans/ST-19.md) (2026-10-06); nothing beyond it                      |
+| Gates       | plan mode; rule 9 (validator rule, mutation table, JSON schema); CLI bundle; `gen:settings --check`; docs `gen:check` |
+| Human input | none (plan approved 2026-10-06)                                                                                       |
+| Repo        | `vladzaharia/polaris-key`                                                                                             |
 
 ## Goal
 
@@ -28,40 +28,85 @@ Duplicate manifest spellings are deprecated with warnings, and a parity test kee
 
 ## Scope
 
-**In:**
+**In** (exactly [`plans/ST-19.md`](../plans/ST-19.md) §3–§6 as amended by its owner decisions):
 
-- Warnings for each duplicate spelling; rule 9 mutation entries; registry ↔ manifest parity test.
+- The `DEPRECATED_SPELLINGS` table (`packages/shared-manifest/src/spellings.ts`) and the two
+  warnings `deprecated_spelling` and `conflicting_spelling` for the 18 rows of plan §3.1, legacy
+  `modules:` names included (Q4); today's precedence kept (Q3).
+- Rule 9: one mutation entry per row, a table-driven test, `"deprecated": true` in the schemas.
+- Canonical layout (Q2): `product:` + `licensing:` + `release:`; tier `profileId` (Q2b). Registry
+  `manifest.path`s moved to the canonical spellings; the parity and coverage test changes of plan
+  §3.5; 11 `PENDING` entries removed, 10 renamed, and the 21 that remain change owner to ST-19b.
+- `pkey init` writes `profileId:` and `entries:`; `loadManifest` warns when two files exist for one
+  document (Q5, CLI only); the monorepo `.pkey/schema.yaml` uses `entries: []`; docs and the
+  `authoring-pkey-manifests` skill updated.
 
 **Out** (and where it belongs instead):
 
-- Turning warnings into errors (a later decision).
+- Turning warnings into errors (a later decision; plan §7 step 3).
+- Registering the manifest-declared settings that are not spellings (→ ST-19b).
+- Showing warnings at link and resync (→ ST-17, Q6).
 
 ## Design notes
 
 - Plan mode because it changes the manifest contract: the plan names every validator rule and mutation entry.
+- No wire, corpus, transcript or SDK change; no manifest that validates today stops validating.
 
 ## Steps
 
-1. Plan.
-2. Warnings.
-3. Parity test.
+1. Plan (approved 2026-10-06).
+2. Spelling table, warnings, schemas and mutation entries.
+3. Registry paths, parity and coverage changes, `PENDING` moves.
+4. CLI scaffold and two-files warning, monorepo `.pkey/schema.yaml`, docs and skill.
 
 ## Acceptance criteria
 
-- [ ] `pkey validate` warns on `djdl` and passes on the monorepo `.pkey/`.
-- [ ] Rule 9 entries exist for each warning.
+- [x] `pkey validate` warns on `djdl` and prints no warning on the monorepo `.pkey/`.
+- [x] No registry `manifest.path` names a deprecated spelling; no `PENDING` entry is owned by ST-19.
+- [x] Rule 9 entries exist for each warning.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+
+## Implementation notes (2026-10-06, verified against the code)
+
+Where the build refined the plan, the code is the fact:
+
+- **One table entry per spelling, grouped by plan row.** `DEPRECATED_SPELLINGS` has 50 entries
+  that carry the plan's §3.1 row in `row` (rows 2–4, 7–9, 12, 14–18 have more than one pointer).
+  Besides the plan's fields, an entry has `canonicalPointer` (the JSON pointer that decides "both
+  are set", possibly in another document), `present` (value, array or object, matching the
+  reader), `shadowedBy` (row 3–4's root spelling loses to `product.<field>`),
+  `unreadWhenWrapped` (a root release field next to `release:`) and `checkedElsewhere`.
+- **Row 14 is one entry per root release-body field** (`/provider`, `/binaryName`, …), so a field
+  left at the root beside the `release:` wrapper (silently ignored today) is reported: on its own
+  the message says "and is ignored"; with the wrapped copy present it is `conflicting_spelling`.
+  Row 17's `/release/edgeMint` says "ignored" the same way.
+- **Row 16 has no warning of its own** (`code: null`, `checkedElsewhere`), exactly as plan §3.2
+  says: P2-04 kept the body spelling valid and both-at-once is already `conflicting_versioning`.
+  The schemas still mark it `deprecated` (description without the warning sentence).
+- **The `products/djdl` fixture warns on rows 1–5 and 11**, not 1–6: it declares no profiles.
+  The real `vladzaharia/djdl` repo warns on rows 1–6 (checked read-only with the built CLI).
+- **The emit sites are literal per document** (`spellings.ts` has its own `add`), so the docs
+  generator lists them; `packages/docs/scripts/gen-reference.mjs` now scans `spellings.ts` too.
+- **Docs beyond the plan's list**: `start/quickstart.md` and `build/web-cors.md` showed the flat
+  product and the unwrapped `ghOwner` release body in their examples; both now show the canonical
+  layout. CLI test fixtures that used `catalog` (`publishFixture.ts`, `packFixtures.ts`,
+  `publish.test.ts`) moved to `entries`, because publish prints validator warnings.
+- `PENDING_CEILING` 59 → 48.
 
 ## Verify
 
 ```sh
 mise exec node@22 -- pnpm --filter @polaris-key/manifest test
 mise exec node@22 -- pnpm --filter @polaris-key/cli test
+mise exec node@22 -- pnpm --filter @polaris-key/worker test settings
+mise exec node@22 -- pnpm gen:settings -- --check
+mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 ```
 
 ## Hand-off
 
-- None.
+- ST-19b registers the 21 remaining manifest-declared settings.
+- After merge, outside this repo: move `vladzaharia/djdl` and `storyrime` `.pkey/` to the canonical spellings.
 
 The role agent sets `--set ST-19 in-review` when it hands off. After review, the lead adds the last
 commit of the PR:

@@ -1,7 +1,7 @@
 {
   "name": "@polaris-key/brand",
   "version": "0.0.0",
-  "description": "The Polaris Key design system: brand tokens (CSS, Tailwind v4, TS, JSON, GDScript, Swift, Kotlin), Rubik web fonts, the Pinned K and Star Cut marks, lockups (including the generated Polaris Key Delivery lockups) and \"Powered by\" badges, and the launch-kit assets.",
+  "description": "The Polaris Key design system: brand and UI-kit tokens (CSS, Tailwind v4, TS, JSON, GDScript, Swift, Kotlin, Python, C#), the product accent resolver, variable Rubik and JetBrains Mono fonts, the Pinned K and Star Cut marks, lockups (including the generated Polaris Key Delivery lockups) and \"Powered by\" badges, and the launch-kit assets.",
   "license": "MIT",
   "type": "module",
   "sideEffects": [
@@ -26,8 +26,18 @@
       "types": "./dist/color.d.ts",
       "default": "./dist/color.js"
     },
+    "./kit-copy": {
+      "types": "./dist/generated/kit-copy/index.d.ts",
+      "default": "./dist/generated/kit-copy/index.js"
+    },
+    "./accent": {
+      "types": "./dist/accent.d.ts",
+      "default": "./dist/accent.js"
+    },
     "./tokens.css": "./css/tokens.css",
     "./theme.css": "./css/theme.css",
+    "./kit.css": "./css/kit.css",
+    "./accent-vectors.json": "./fixtures/accent-vectors.json",
     "./fonts.css": "./fonts/fonts.css",
     "./fonts/*": "./fonts/*",
     "./tokens.json": "./tokens.json",
@@ -47,6 +57,7 @@
     "dist",
     "!dist/preview",
     "css",
+    "fixtures",
     "fonts",
     "kit",
     "lockups",
@@ -79,6 +90,7 @@
     "@types/node": "^22.14.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
+    "ajv": "^8.20.0",
     "prettier": "^3.5.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

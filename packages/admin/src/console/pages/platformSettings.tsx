@@ -1,12 +1,17 @@
 /**
  * Platform → Settings (notes/S-13 §9.1, chunk 4P-1; T4). The instance-wide settings page:
  *
- * - **Background jobs**: the four runtime-editable settings of the A-13 registry (`LAZY_DELTAS`,
+ * - **Background jobs**: the four background-job settings of the A-13 registry (`LAZY_DELTAS`,
  *   `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`), each its own save scope with its
  *   effective value and where it came from (`SourceBadge`: code default, deploy var, set in
  *   console). A deploy-time `off` on a kill switch is a hard off: the row is locked and says why.
  *   Every write carries `expectedVersion`; a 409 shows a reload-and-retry flow. Confirm levels
  *   come from the registry (`confirm`), per direction of change (ADMIN.md §5.2).
+ * - **Identity & access**: the reserved display-name severity (`IDENTITY_RESERVED_DISPLAY_NAMES`,
+ *   PX-W13) as an editable row, then the deploy-time identity values.
+ * - **Licensing**: the reserved entitlement-name severity (`LICENSING_RESERVED_NAMES`, S-19 §7.4,
+ *   LX-05) and, read-only, every registered product whose catalog declares a reserved name and
+ *   whether the declaration is compatible (`GET /platform/reserved-names`).
  * - The read-only inventory: identity and access, delivery, email and the code limits, all
  *   deploy-time.
  * - **Keyring**: the KEK keyring's state, read-only (`GET /products/kek`), plus the KEK
@@ -23,10 +28,12 @@ import {
   ApiError,
   type PlatformActivityItem,
   type PlatformConfirmLevel,
+  type PlatformChoiceSetting,
   type PlatformCursor,
   type PlatformDeployValue,
   type PlatformIntegerSetting,
   type PlatformKekStatus,
+  type PlatformReservedNames,
   type PlatformSetting,
   type PlatformSettingsView,
   type PlatformSwitchSetting,
@@ -48,7 +55,8 @@ import { ErrorState } from "../../ui/ErrorState.js";
 import { Form, FormField, useAdminForm } from "../../ui/form.js";
 import { NumberInput, numberRangeError } from "../../ui/NumberInput.js";
 import { SaveBar } from "../../ui/SaveBar.js";
-import { PageSkeleton } from "../../ui/Skeleton.js";
+import { SegmentedControl } from "../../ui/SegmentedControl.js";
+import { PageSkeleton, Skeleton } from "../../ui/Skeleton.js";
 import { SourceBadge } from "../../ui/SourceBadge.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { Switch } from "../../ui/Switch.js";
@@ -72,6 +80,10 @@ export function fetchPlatformKek(): Promise<PlatformKekStatus> {
   return api.platformKek();
 }
 
+export function fetchPlatformReservedNames(): Promise<PlatformReservedNames> {
+  return api.platformReservedNames();
+}
+
 const MIB = 1_048_576;
 
 // ── Values and confirm levels ────────────────────────────────────────────────────────────────
@@ -84,6 +96,10 @@ export function formatSettingValue(
   if (setting.kind === "switch") {
     return value === "on" ? "On" : value === "off" ? "Off" : String(value);
   }
+  if (setting.kind === "choice")
+    return (
+      setting.options.find((o) => o.value === value)?.label ?? String(value)
+    );
   if (typeof value !== "number") return String(value);
   if (setting.unit === "days")
     return `${formatCount(value)} ${value === 1 ? "day" : "days"}`;
@@ -99,6 +115,7 @@ export function confirmLevel(
   if (before === after) return "L0";
   if (setting.kind === "switch")
     return after === "on" ? setting.confirm.on : setting.confirm.off;
+  if (setting.kind === "choice") return setting.confirm[String(after)] ?? "L1";
   return Number(after) > Number(before)
     ? setting.confirm.raise
     : setting.confirm.lower;
@@ -124,6 +141,10 @@ function parsedDeployValue(
   if (setting.kind === "switch") {
     const v = raw.toLowerCase();
     return v === "on" || v === "off" ? v : undefined;
+  }
+  if (setting.kind === "choice") {
+    const v = raw.toLowerCase();
+    return setting.options.some((o) => o.value === v) ? v : undefined;
   }
   const n = Number(raw);
   return Number.isFinite(n) && n > 0 ? n : undefined;
@@ -181,6 +202,25 @@ function consequencesOf(
         "The bucket's 180-day age lock still bounds every deletion.",
         reach,
       ];
+    case "LICENSING_RESERVED_NAMES":
+      return after === "error"
+        ? [
+            "A manifest or catalog whose flag declares a reserved name with an incompatible type is refused at link, resync and console publish.",
+            "A product listed below as incompatible fails its next resync until its catalog is fixed. Signed documents do not change.",
+            reach,
+          ]
+        : [
+            "Incompatible reserved-name declarations are accepted again, with a warning.",
+            reach,
+          ];
+    case "IDENTITY_RESERVED_DISPLAY_NAMES":
+      return after === "error"
+        ? [
+            "A product or listing name that uses a platform or store name is refused at link, resync and console listing edits.",
+            "A product whose current name is reserved fails its next resync until it is renamed. The sign-in card already shows such a name as the product slug.",
+            reach,
+          ]
+        : ["Reserved display names are accepted again, with a warning.", reach];
     case "LAZY_DELTA_MAX_BYTES":
       return [
         `The delta consumer encodes payloads up to ${next} on either side of a pair (was ${before}).`,
@@ -205,6 +245,7 @@ function isConflict(error: unknown): boolean {
 
 const SECTIONS = [
   { id: "platform-jobs", title: "Background jobs" },
+  { id: "platform-licensing", title: "Licensing" },
   { id: "platform-identity", title: "Identity & access" },
   { id: "platform-delivery", title: "Delivery" },
   { id: "platform-email", title: "Email" },
@@ -217,6 +258,8 @@ const SECTIONS = [
 const WARNING_TITLES: Record<string, string> = {
   console_oidc_shared: "The console shares the customer sign-in client",
   kek_id_set: "PLATFORM_KEK_ID is set",
+  kek_keyring_unusable: "The KEK keyring does not load",
+  kek_legacy_open_only: "PLATFORM_KEK is kept as a legacy key",
   portal_session_secret_unset: "Portal sessions share the admin secret",
 };
 
@@ -261,11 +304,14 @@ export function PlatformSettingsPage(): React.ReactElement {
   const deploy = new Map(view.deployTime.map((d) => [d.name, d]));
   const secrets = new Map(view.secrets.map((s) => [s.name, s.set]));
   const kekWarning = view.warnings.find((w) => w.code === "kek_id_set");
+  // PX-W13: the editable identity settings (the reserved display-name severity) live here too.
+  const identitySettings = view.settings.filter((s) => s.area === "identity");
   const showIdentity =
+    identitySettings.length > 0 ||
     IDENTITY_VARS.some((n) => deploy.has(n)) ||
     view.constants.some((c) => c.name === "ADMIN_SESSION_TTL_SECONDS");
   const showDelivery = DELIVERY_VARS.some((n) => deploy.has(n));
-  const showEmail = deploy.has("PORTAL_EMAIL_FROM");
+  const showEmail = EMAIL_VARS.some((n) => deploy.has(n));
   const showLimits = view.constants.some(
     (c) => c.name !== "ADMIN_SESSION_TTL_SECONDS",
   );
@@ -310,32 +356,35 @@ export function PlatformSettingsPage(): React.ReactElement {
             </Callout>
           </div>
         ) : null}
-        {view.settings.map((s) =>
-          s.kind === "switch" ? (
-            <SwitchSettingRow
+        {view.settings
+          .filter((s) => s.area === "background-jobs")
+          .map((s) => (
+            <EditableRow
               key={s.key}
               setting={s}
               storeAvailable={view.storeAvailable}
               propagationSeconds={view.propagationSeconds}
             />
-          ) : (
-            <IntegerSettingRow
-              key={s.key}
-              setting={s}
-              storeAvailable={view.storeAvailable}
-              propagationSeconds={view.propagationSeconds}
-            />
-          ),
-        )}
+          ))}
       </SettingsSection>
+
+      <LicensingSection view={view} />
 
       {/* A section none of whose values this deployment reports is left out, not drawn empty. */}
       {showIdentity ? (
         <SettingsSection
           id="platform-identity"
           title="Identity & access"
-          description="Deploy-time: a console session can never widen its own access."
+          description="Reserved display names save on their own; everything else is deploy-time, and a console session can never widen its own access."
         >
+          {identitySettings.map((s) => (
+            <EditableRow
+              key={s.key}
+              setting={s}
+              storeAvailable={view.storeAvailable}
+              propagationSeconds={view.propagationSeconds}
+            />
+          ))}
           {IDENTITY_VARS.map((n) => (
             <DeployRow key={n} item={deploy.get(n)} />
           ))}
@@ -357,7 +406,9 @@ export function PlatformSettingsPage(): React.ReactElement {
           title="Email"
           description="The email binding's allowed senders still restrict it."
         >
-          <DeployRow item={deploy.get("PORTAL_EMAIL_FROM")} />
+          {EMAIL_VARS.map((n) => (
+            <DeployRow key={n} item={deploy.get(n)} />
+          ))}
         </SettingsSection>
       ) : null}
 
@@ -602,7 +653,9 @@ function ChangeDialog({
     ? `Revert ${setting.label.toLowerCase()}?`
     : setting.kind === "switch"
       ? `${verb} ${setting.label.toLowerCase()}?`
-      : `Change ${setting.label.toLowerCase()} to ${next}?`;
+      : setting.kind === "choice"
+        ? `Set ${setting.label.toLowerCase()} to ${next.toLowerCase()}?`
+        : `Change ${setting.label.toLowerCase()} to ${next}?`;
   return (
     <ConfirmDialog
       open
@@ -617,7 +670,9 @@ function ChangeDialog({
           ? `Revert to ${next}`
           : setting.kind === "switch"
             ? `${verb} ${setting.label.toLowerCase()}`
-            : `Save ${next}`
+            : setting.kind === "choice"
+              ? `Set to ${next.toLowerCase()}`
+              : `Save ${next}`
       }
       typedConfirmation={
         pending.level === "L3"
@@ -857,6 +912,230 @@ function SwitchSettingRow({
   );
 }
 
+/** One editable setting, by kind. */
+function EditableRow(props: RowProps<PlatformSetting>): React.ReactElement {
+  const { setting } = props;
+  if (setting.kind === "switch")
+    return <SwitchSettingRow {...props} setting={setting} />;
+  if (setting.kind === "choice")
+    return <ChoiceSettingRow {...props} setting={setting} />;
+  return <IntegerSettingRow {...props} setting={setting} />;
+}
+
+function ChoiceSettingRow({
+  setting,
+  storeAvailable,
+  propagationSeconds,
+}: RowProps<PlatformChoiceSetting>): React.ReactElement {
+  const writes = useSettingWrites(setting, propagationSeconds);
+  const [busy, setBusy] = React.useState(false);
+  const id = `platform-setting-${setting.key}`;
+  const run = (p: Promise<void>) => {
+    setBusy(true);
+    p.catch(() => undefined).finally(() => setBusy(false));
+  };
+  return (
+    <SettingsRow
+      label={setting.label}
+      htmlFor={id}
+      help={<SettingHelp setting={setting} />}
+      source={
+        <SettingSource
+          setting={setting}
+          onRevert={() => run(writes.revert())}
+        />
+      }
+      footer={
+        <>
+          <RowNotes setting={setting} />
+          <ConflictNote
+            setting={setting}
+            state={writes.conflict}
+            reloading={writes.reloading}
+            onReload={() => void writes.reload()}
+            onDismiss={writes.clearConflict}
+          />
+          {writes.dialog}
+        </>
+      }
+    >
+      <RevertButton
+        setting={setting}
+        disabled={!storeAvailable || busy}
+        onRevert={() => run(writes.revert())}
+      />
+      <SegmentedControl
+        id={id}
+        size="sm"
+        aria-label={setting.label}
+        options={setting.options}
+        value={setting.value}
+        disabled={!storeAvailable || busy}
+        onChange={(v) => {
+          if (v !== setting.value) run(writes.change(v));
+        }}
+      />
+    </SettingsRow>
+  );
+}
+
+// ── Licensing ────────────────────────────────────────────────────────────────────────────────
+
+const RESERVED_TYPE_WORDS: Record<string, string> = {
+  string: "string",
+  integer: "integer",
+  "string-array": "array of strings",
+};
+
+/**
+ * Platform → Settings → Licensing (S-19 §7.4, LX-05): the reserved-names severity, the reserved
+ * keys with the rule the platform applies, and every registered product that declares one.
+ */
+function LicensingSection({
+  view,
+}: {
+  view: PlatformSettingsView;
+}): React.ReactElement {
+  const report = useQuery(
+    {
+      queryKey: qk.platformReservedNames(),
+      queryFn: fetchPlatformReservedNames,
+    },
+    queryClient,
+  );
+  const settings = view.settings.filter((s) => s.area === "licensing");
+  const data = report.data;
+  return (
+    <SettingsSection
+      id="platform-licensing"
+      title="Licensing"
+      description="A product's catalog flag may declare a system key the platform sets itself. A compatible declaration is always valid; this decides what happens to an incompatible one."
+    >
+      {settings.map((s) => (
+        <EditableRow
+          key={s.key}
+          setting={s}
+          storeAvailable={view.storeAvailable}
+          propagationSeconds={view.propagationSeconds}
+        />
+      ))}
+      {report.isPending ? (
+        <div className="space-y-2 px-5 py-4" aria-busy>
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-16 w-full" />
+        </div>
+      ) : !data ? (
+        <div className="px-5 py-4">
+          <ErrorState
+            error={report.error}
+            onRetry={() => void report.refetch()}
+          />
+        </div>
+      ) : (
+        <>
+          <SettingsRow
+            label="Reserved keys"
+            help={
+              <>
+                A declaration must keep the key&apos;s type and may only narrow
+                it. Names under{" "}
+                {data.prefixes.map((p, i) => (
+                  <React.Fragment key={p}>
+                    {i > 0
+                      ? i === data.prefixes.length - 1
+                        ? " and "
+                        : ", "
+                      : null}
+                    <code className="font-mono">{p}</code>
+                  </React.Fragment>
+                ))}{" "}
+                are reserved for future system keys.
+              </>
+            }
+            align="block"
+          >
+            <ul className="divide-y divide-border" aria-label="Reserved keys">
+              {data.keys.map((k) => (
+                <li
+                  key={k.key}
+                  className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2"
+                >
+                  <span>
+                    <code className="font-mono text-xs text-fg-strong">
+                      {k.key}
+                    </code>{" "}
+                    <span className="text-xs text-fg-muted">
+                      {RESERVED_TYPE_WORDS[k.type] ?? k.type}
+                    </span>
+                  </span>
+                  <span className="text-right text-xs text-fg-muted">
+                    {k.rule}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </SettingsRow>
+          {data.products.length === 0 ? (
+            <div className="px-5 py-4">
+              <EmptyState
+                kind="first-run"
+                variant="inline"
+                title="No product declares a reserved name"
+                description="Registered products whose catalog declares one are listed here with whether each declaration is compatible."
+              />
+            </div>
+          ) : (
+            data.products.map((p) => (
+              <ReservedNamesProductRow key={p.slug} product={p} />
+            ))
+          )}
+        </>
+      )}
+    </SettingsSection>
+  );
+}
+
+function ReservedNamesProductRow({
+  product,
+}: {
+  product: PlatformReservedNames["products"][number];
+}): React.ReactElement {
+  const bad = product.declarations.filter((d) => !d.compatible);
+  return (
+    <SettingsRow
+      label={product.name}
+      help={
+        <>
+          <span className="block font-mono text-xs">
+            {product.slug} · catalog v{product.catalogVersion}
+          </span>
+          <ul
+            className="mt-1 space-y-1"
+            aria-label={`${product.name} declarations`}
+          >
+            {product.declarations.map((d) => (
+              <li key={d.key}>
+                <code className="font-mono text-xs">{d.key}</code>
+                {d.compatible
+                  ? " · compatible"
+                  : ` · ${d.problem ?? "incompatible"}`}
+              </li>
+            ))}
+          </ul>
+        </>
+      }
+    >
+      {bad.length > 0 ? (
+        <StatusPill tone="warning">
+          {bad.length === 1 ? "1 incompatible" : `${bad.length} incompatible`}
+        </StatusPill>
+      ) : (
+        <span className="text-fg-muted">Compatible</span>
+      )}
+    </SettingsRow>
+  );
+}
+
 interface IntegerDraft extends Record<string, unknown> {
   value: number | null;
 }
@@ -990,9 +1269,17 @@ const DELIVERY_VARS = [
   "PKEY_ENVIRONMENT",
   "CONSOLE_ORIGIN",
   "BLOB_ORIGIN",
+  "PKG_ORIGIN",
+  "IMG_ORIGIN",
   "BLOBS_BUCKET_NAME",
   "R2_ACCOUNT_ID",
   "GITHUB_APP_ID",
+];
+const EMAIL_VARS = [
+  "EMAIL_SENDER_ADDRESS",
+  "PORTAL_EMAIL_FROM",
+  "EMAIL_PRODUCT_DAILY_CAP",
+  "EMAIL_APPLE_RELAY",
 ];
 
 const DEPLOY_LABELS: Record<
@@ -1060,8 +1347,33 @@ const DEPLOY_LABELS: Record<
     unset: "Not set: repositories cannot be linked",
   },
   PORTAL_EMAIL_FROM: {
-    label: "Portal sender",
-    help: "The From address of the portal's magic-link email.",
+    label: "Legacy sender",
+    help: "Older sender setting. Only its address is read, and only while the sender address is not set.",
+    unset: "Not set",
+  },
+  EMAIL_SENDER_ADDRESS: {
+    label: "Sender address",
+    help: "The one address sign-in and account mail is sent from.",
+    unset: "Not set: mail is sent from noreply@plrs.im",
+  },
+  EMAIL_PRODUCT_DAILY_CAP: {
+    label: "Daily cap per product",
+    help: "The most passthrough sign-in emails one product sends in a day. A product's own cap wins.",
+    unset: "Not set: 500",
+  },
+  EMAIL_APPLE_RELAY: {
+    label: "Apple private relay",
+    help: "Registered once the sender is registered with Apple's private email relay; until then relay recipients are refused.",
+    unset: "Not registered",
+  },
+  PKG_ORIGIN: {
+    label: "Registry host",
+    help: "The origin that serves package feeds. Requests there reach only registry routes.",
+    unset: "Not set",
+  },
+  IMG_ORIGIN: {
+    label: "Image host",
+    help: "The origin that serves products' public hosted images. Requests there reach only image routes.",
     unset: "Not set",
   },
 };
@@ -1222,7 +1534,7 @@ const KEK_GROUPS: Record<string, string> = {
   secrets: "Product secrets",
   outletCredentials: "Outlet credentials",
   managed: "Managed secret values",
-  platform: "Store connection credentials",
+  platformCredentials: "Store connection credentials",
 };
 
 function KeyringSection({
@@ -1290,8 +1602,10 @@ function KeyringSection({
         </ul>
       </SettingsRow>
       {kek.isPending ? (
-        <div className="px-5 py-4" aria-hidden>
-          <div className="h-24 animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none" />
+        <div className="pk-skeleton-group space-y-3 px-5 py-4" aria-hidden>
+          <div className="pk-skeleton h-5 w-48 rounded-md" />
+          <div className="pk-skeleton h-4 w-full rounded-md" />
+          <div className="pk-skeleton h-4 w-2/3 rounded-md" />
         </div>
       ) : !k ? (
         <div className="px-5 py-4">
@@ -1318,6 +1632,7 @@ function KeyringSection({
             <ul className="space-y-1.5" aria-label="Keys in the ring">
               {[...new Set([...k.kids, ...perKid.keys()])].map((kid) => {
                 const inRing = k.kids.includes(kid);
+                const legacyOnly = k.legacy?.kid === kid && k.legacy.openOnly;
                 return (
                   <li
                     key={kid}
@@ -1331,6 +1646,10 @@ function KeyringSection({
                       {kid === k.active ? (
                         <StatusPill tone="success" size="sm">
                           Active
+                        </StatusPill>
+                      ) : legacyOnly ? (
+                        <StatusPill tone="warning" size="sm">
+                          Legacy, open only
                         </StatusPill>
                       ) : inRing ? (
                         <StatusPill tone="neutral" size="sm">
@@ -1364,6 +1683,7 @@ function KeyringSection({
               </StatusPill>
             )}
           </SettingsRow>
+          {k.legacy ? <LegacyKeyRow legacy={k.legacy} /> : null}
           {groups.length > 0 ? (
             <SettingsRow label="Sealed values" align="block">
               <ul className="space-y-1.5">
@@ -1386,6 +1706,62 @@ function KeyringSection({
         </>
       )}
     </SettingsSection>
+  );
+}
+
+/**
+ * The legacy `PLATFORM_KEK` beside `PLATFORM_KEK_KEYS`: what is still sealed under it, and
+ * whether `PLATFORM_KEK` can be deleted yet. The sweep moves the stored values; sealed Worker
+ * secrets are re-sealed by hand, so they are named.
+ */
+function LegacyKeyRow({
+  legacy,
+}: {
+  legacy: NonNullable<PlatformKekStatus["legacy"]>;
+}): React.ReactElement {
+  return (
+    <SettingsRow label="Legacy key" align="block">
+      <div className="space-y-2">
+        <p className="text-sm text-fg-muted">
+          {legacy.openOnly ? (
+            <>
+              PLATFORM_KEK is kept in the ring as{" "}
+              <span className="font-mono text-xs text-fg">{legacy.kid}</span>,
+              open only: nothing new is sealed under it.
+            </>
+          ) : (
+            <>
+              PLATFORM_KEK is a copy of the ring&apos;s{" "}
+              <span className="font-mono text-xs text-fg">{legacy.kid}</span>{" "}
+              key.
+            </>
+          )}
+        </p>
+        {legacy.safeToDelete ? (
+          <StatusPill tone="success">Safe to delete PLATFORM_KEK</StatusPill>
+        ) : legacy.remaining > 0 ? (
+          <StatusPill tone="warning">
+            {formatCount(legacy.remaining)} still under {legacy.kid}
+          </StatusPill>
+        ) : (
+          <StatusPill tone="warning">
+            Worker secrets still under {legacy.kid}
+          </StatusPill>
+        )}
+        {legacy.workerSecrets.length > 0 ? (
+          <p className="text-sm text-fg-muted">
+            Re-seal and set again before deleting it:{" "}
+            {legacy.workerSecrets.map((name, i) => (
+              <React.Fragment key={name}>
+                {i > 0 ? ", " : null}
+                <span className="font-mono text-xs text-fg">{name}</span>
+              </React.Fragment>
+            ))}
+            .
+          </p>
+        ) : null}
+      </div>
+    </SettingsRow>
   );
 }
 
@@ -1420,7 +1796,9 @@ function PresenceItem({
 // ── Secrets ──────────────────────────────────────────────────────────────────────────────────
 
 const SECRET_NOTES: Record<string, { what: string; unset?: string }> = {
-  PLATFORM_KEK: { what: "Single platform KEK (legacy form of the ring)" },
+  PLATFORM_KEK: {
+    what: "Single platform KEK (legacy form of the ring; open only beside PLATFORM_KEK_KEYS)",
+  },
   PLATFORM_KEK_KEYS: { what: "Platform KEK ring" },
   KEY_HASH_PEPPER: { what: "Pepper for license key and token hashes" },
   ADMIN_SESSION_SECRET: { what: "Console session signing" },
@@ -1444,6 +1822,15 @@ const SECRET_NOTES: Record<string, { what: string; unset?: string }> = {
   R2_PARENT_SECRET_ACCESS_KEY: {
     what: "R2 parent secret access key",
     unset: "Trusted publishing is off",
+  },
+  DOWNLOAD_TICKET_KEY: {
+    what: "Portal download ticket signing",
+    unset:
+      "Licensed builds served from the bytes host cannot be downloaded from the portal",
+  },
+  DOWNLOAD_TICKET_KEY_PREVIOUS: {
+    what: "Previous download ticket key, during a rotation",
+    unset: "No rotation in progress",
   },
 };
 
@@ -1578,10 +1965,14 @@ function HistorySection({
     <SettingsSection id="platform-history" title="History">
       <div className="px-5 py-4">
         {history.isPending ? (
-          <div
-            aria-hidden
-            className="h-24 animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none"
-          />
+          <div aria-hidden className="pk-skeleton-group space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-4">
+                <div className="pk-skeleton h-4 w-24 rounded-md" />
+                <div className="pk-skeleton h-4 flex-1 rounded-md" />
+              </div>
+            ))}
+          </div>
         ) : history.isError && !first ? (
           <ErrorState
             compact

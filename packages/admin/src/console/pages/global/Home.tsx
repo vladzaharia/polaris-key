@@ -1,22 +1,25 @@
 import * as React from "react";
-import { Github, Plus, Search } from "lucide-react";
-import type { ProductDetail, ServiceSlug } from "../../../api.js";
+import { ArrowRight, Github, Plus } from "lucide-react";
+import type {
+  ProductDetail,
+  ProductSummary,
+  ServiceSlug,
+} from "../../../api.js";
 import { formatCount, fromSeconds } from "../../../lib/format.js";
-import { label, PROVIDER_LABELS } from "../../../lib/labels.js";
 import { releaseSourceOf } from "../../../lib/products.js";
 import { SERVICE_TABLE } from "../../../services.generated.js";
 import { Button } from "../../../ui/Button.js";
 import { StatTile } from "../../../ui/charts/StatTile.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { ErrorState } from "../../../ui/ErrorState.js";
-import { Input } from "../../../ui/Input.js";
-import { Select } from "../../../ui/Select.js";
+import { ProductLogo } from "../../../ui/ProductLogo.js";
 import { ServiceGlyph, serviceLabel } from "../../../ui/ServiceBadge.js";
+import { Skeleton } from "../../../ui/Skeleton.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
 import { Timestamp } from "../../../ui/Timestamp.js";
 import { PageHeader } from "../../components/PageHeader.js";
-import { useProducts } from "../../data/hooks.js";
-import { codecs, Link, useSearchParam } from "../../router.js";
+import { useMe, useProducts, useSummary } from "../../data/hooks.js";
+import { Link } from "../../router.js";
 import { r } from "../../routes.js";
 import {
   AttentionList,
@@ -24,17 +27,17 @@ import {
   Panel,
   type AttentionItem,
 } from "../../templates/Dashboard.js";
-import { attentionAcross, type ProductAttention } from "./attention.js";
+import {
+  attentionAcross,
+  type AttentionTone,
+  type ProductAttention,
+} from "./attention.js";
 
-const SORTS = ["recent", "name", "attention"] as const;
-type HomeSort = (typeof SORTS)[number];
-const SORT_LABELS: Record<HomeSort, string> = {
-  recent: "Recently changed",
-  name: "Name",
-  attention: "Needs attention",
-};
-const sortCodec = codecs.oneOf(SORTS, "recent");
-const qCodec = codecs.string();
+/** Home shows the most recently changed products; Products is the whole registry (EXPERIENCE C17). */
+export const HOME_PRODUCT_LIMIT = 6;
+
+/** A card lists at most this many rows: past it, three rows and the rest as glyph links. */
+export const LEDGER_MAX_ROWS = 4;
 
 /** The services a product runs, in the service table's canonical order. */
 export function runningServices(p: ProductDetail): ServiceSlug[] {
@@ -54,57 +57,91 @@ export function runsSentence(services: ServiceSlug[]): string {
   return `Runs ${list}`;
 }
 
-/** Does a product match a Home filter (name or slug, case-insensitive)? */
-export function matchesProduct(p: ProductDetail, q: string): boolean {
-  const needle = q.trim().toLowerCase();
-  if (!needle) return true;
-  return (
-    p.slug.toLowerCase().includes(needle) ||
-    (p.name ?? "").toLowerCase().includes(needle)
-  );
-}
-
-function sortProducts(
+/** Newest change first, then by name: the products Home shows, capped at `limit`. */
+export function recentProducts(
   products: ProductDetail[],
-  sort: HomeSort,
-  counts: Map<string, number>,
+  limit: number = HOME_PRODUCT_LIMIT,
 ): ProductDetail[] {
   const byName = (a: ProductDetail, b: ProductDetail) =>
     (a.name || a.slug).localeCompare(b.name || b.slug);
-  return [...products].sort((a, b) => {
-    if (sort === "name") return byName(a, b);
-    if (sort === "attention") {
-      return (
-        (counts.get(b.slug) ?? 0) - (counts.get(a.slug) ?? 0) || byName(a, b)
-      );
-    }
-    return (b.modifiedAt ?? 0) - (a.modifiedAt ?? 0) || byName(a, b);
-  });
+  return [...products]
+    .sort((a, b) => (b.modifiedAt ?? 0) - (a.modifiedAt ?? 0) || byName(a, b))
+    .slice(0, limit);
 }
 
 /**
- * Home (ADMIN.md §6.1, T1): "what needs me across all products?". Fixes DSH-1 to DSH-7: no
- * constant tiles (every figure is live), the list refreshes with the registry query (SH-1), the
- * product name is the link and "Open" is explicit (no hover-only card), no schema jargon, one
- * name for the registry ("Products"), the first-run state opens the wizard, and the cards can be
- * filtered and sorted (both in the URL) and show what each product runs and whether it is healthy.
+ * Which services get a row and which collapse into the last row's glyph links. Up to
+ * `LEDGER_MAX_ROWS` services each get a row. Past that, three rows (services with an issue first,
+ * then the service table's order) and the rest as links; the rows keep the table's order.
+ */
+export function ledgerRows(
+  services: ServiceSlug[],
+  withIssues: ReadonlySet<ServiceSlug>,
+): { rows: ServiceSlug[]; more: ServiceSlug[] } {
+  if (services.length <= LEDGER_MAX_ROWS) return { rows: services, more: [] };
+  const ordered = [
+    ...services.filter((s) => withIssues.has(s)),
+    ...services.filter((s) => !withIssues.has(s)),
+  ];
+  const picked = new Set(ordered.slice(0, LEDGER_MAX_ROWS - 1));
+  return {
+    rows: services.filter((s) => picked.has(s)),
+    more: services.filter((s) => !picked.has(s)),
+  };
+}
+
+/** Each service's landing page (`nav.ts`): where its row and its glyph link go. */
+const SERVICE_HOME: Record<ServiceSlug, (slug: string) => string> = {
+  license: (slug) => r.licenses(slug),
+  config: (slug) => r.catalog(slug),
+  release: (slug) => r.releases(slug),
+  distribution: (slug) => r.matrix(slug),
+  update: (slug) => r.feed(slug),
+  identity: (slug) => r.portal(slug),
+  sync: (slug) => r.syncData(slug),
+};
+
+const TONE_RANK: Record<AttentionTone, number> = {
+  danger: 3,
+  warning: 2,
+  info: 1,
+};
+
+function worstTone(items: ProductAttention[]): AttentionTone {
+  return items.reduce<AttentionTone>(
+    (t, a) => (TONE_RANK[a.tone] > TONE_RANK[t] ? a.tone : t),
+    "info",
+  );
+}
+
+/**
+ * Home (ADMIN.md §6.1, T1): "what needs me across all products?". The Needs attention list
+ * (every open item, each with its one fix), the fleet figures, and the most recently changed
+ * products as cards that carry the product's logo and its services (owner request 2026-10-06,
+ * docs/design/console-product-card/). The whole registry, with search, sort and facets, is the
+ * Products page (EXPERIENCE C17). Healthy is silence: no "Setup complete" tile or pill (C2).
  *
  * Recent activity across products needs A-2b (a platform-wide feed); without it the panel is
  * omitted rather than faked.
  */
 export function Home(): React.ReactElement {
   const products = useProducts();
-  const [q, setQ] = useSearchParam("q", qCodec);
-  const [sort, setSort] = useSearchParam("sort", sortCodec);
+  const me = useMe();
+  const summary = useSummary();
 
   const list = React.useMemo(() => products.data ?? [], [products.data]);
   const attention = React.useMemo(() => attentionAcross(list), [list]);
-  const counts = React.useMemo(() => {
-    const m = new Map<string, number>();
+  const byProduct = React.useMemo(() => {
+    const m = new Map<string, ProductAttention[]>();
     for (const a of attention)
-      m.set(a.product.slug, (m.get(a.product.slug) ?? 0) + 1);
+      m.set(a.product.slug, [...(m.get(a.product.slug) ?? []), a]);
     return m;
   }, [attention]);
+  const schemaVersions = React.useMemo(
+    () =>
+      new Map((me.data?.products ?? []).map((p) => [p.slug, p.schemaVersion])),
+    [me.data],
+  );
 
   const loading = products.isPending;
   const failed = products.isError && !products.data;
@@ -120,7 +157,10 @@ export function Home(): React.ReactElement {
         products.dataUpdatedAt
           ? {
               updatedAt: products.dataUpdatedAt,
-              onRefresh: () => void products.refetch(),
+              onRefresh: () => {
+                void products.refetch();
+                void summary.refetch();
+              },
               refreshing: products.isFetching,
             }
           : undefined
@@ -188,13 +228,8 @@ export function Home(): React.ReactElement {
     );
   }
 
-  const healthy = list.filter((p) => !counts.get(p.slug)).length;
   const linked = list.filter((p) => releaseSourceOf(p) === "github").length;
-  const shown = sortProducts(
-    list.filter((p) => matchesProduct(p, q)),
-    sort,
-    counts,
-  );
+  const shown = recentProducts(list);
 
   const items: AttentionItem[] = attention.map((a: ProductAttention) => ({
     id: a.id,
@@ -227,17 +262,12 @@ export function Home(): React.ReactElement {
           <StatTile
             label="Need attention"
             loading={loading}
-            value={formatCount(counts.size)}
+            value={formatCount(byProduct.size)}
             secondary={
               attention.length > 0
                 ? `${formatCount(attention.length)} open ${attention.length === 1 ? "item" : "items"}`
                 : undefined
             }
-          />
-          <StatTile
-            label="Setup complete"
-            loading={loading}
-            value={`${formatCount(healthy)} of ${formatCount(list.length)}`}
           />
           <StatTile
             label="Linked to a repository"
@@ -248,56 +278,44 @@ export function Home(): React.ReactElement {
       }
     >
       <Panel
-        title="All products"
+        title="Recent products"
         action={
-          <div className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-2 sm:flex sm:w-auto">
-            <Input
-              aria-label="Filter products"
-              placeholder="Filter products"
-              prefix={<Search aria-hidden className="size-4" />}
-              clearable
-              value={q}
-              onValueChange={setQ}
-              className="w-full sm:w-56"
-            />
-            <Select
-              aria-label="Sort products"
-              value={sort}
-              onChange={(v) => setSort((v ?? "recent") as HomeSort)}
-              options={SORTS.map((s) => ({ value: s, label: SORT_LABELS[s] }))}
-              className="w-36 sm:w-44"
-            />
-          </div>
+          <Link
+            to={r.products()}
+            className="inline-flex items-center gap-1 text-sm text-accent-fg underline-offset-4 hover:underline"
+          >
+            All products
+            <ArrowRight aria-hidden className="size-3.5" />
+          </Link>
         }
       >
         {loading ? (
           <ul
             aria-label="Products"
             aria-busy
-            className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+            className="pk-skeleton-group grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
           >
             {[0, 1, 2].map((i) => (
               <li
                 key={i}
-                className="h-28 animate-pulse rounded-lg border border-border bg-surface-sunken motion-reduce:animate-none"
+                className="pk-skeleton h-40 rounded-lg border border-border"
               />
             ))}
           </ul>
-        ) : shown.length === 0 ? (
-          <EmptyState
-            kind="no-results"
-            title="No products match"
-            filters={`name or slug: ${q}`}
-            onClearFilters={() => setQ("")}
-          />
         ) : (
           <ul
             aria-label="Products"
             className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
           >
             {shown.map((p) => (
-              <li key={p.slug}>
-                <ProductCard product={p} attention={counts.get(p.slug) ?? 0} />
+              <li key={p.slug} className="flex min-w-0">
+                <ProductCard
+                  product={p}
+                  attention={byProduct.get(p.slug) ?? []}
+                  schemaVersion={schemaVersions.get(p.slug)}
+                  facts={summary.data?.products[p.slug]}
+                  factsLoading={summary.isPending}
+                />
               </li>
             ))}
           </ul>
@@ -307,40 +325,135 @@ export function Home(): React.ReactElement {
   );
 }
 
+/** The services whose fact comes from the summary read (Config's rides `/me`). */
+const SUMMARY_FACTS: ReadonlySet<ServiceSlug> = new Set([
+  "license",
+  "release",
+  "distribution",
+  "identity",
+]);
+
+const plural = (n: number, one: string, many: string) =>
+  `${formatCount(n)} ${n === 1 ? one : many}`;
+
+/** One service's fact on the card, or `null` when it has none to show. */
+function serviceFact(
+  service: ServiceSlug,
+  schemaVersion: number | undefined,
+  facts: ProductSummary | undefined,
+): React.ReactNode {
+  switch (service) {
+    case "config":
+      // Schema vN rides `/me`, which the shell has already loaded (`getActiveSchema`).
+      if (schemaVersion === undefined) return null;
+      return schemaVersion > 0 ? `Schema v${schemaVersion}` : "No catalog";
+    case "license":
+      return facts?.license
+        ? `${formatCount(facts.license.active)} active`
+        : null;
+    case "release":
+      if (!facts || !("release" in facts)) return null;
+      return facts.release ? (
+        <>
+          <span className="font-mono text-xs text-fg">
+            {facts.release.version}
+          </span>{" "}
+          · {facts.release.channel}
+        </>
+      ) : (
+        "No releases"
+      );
+    case "distribution":
+      return facts?.distribution
+        ? plural(facts.distribution.storefronts, "storefront", "storefronts")
+        : null;
+    case "identity":
+      return facts?.identity
+        ? plural(facts.identity.users, "user", "users")
+        : null;
+    default:
+      // Update has no fact; Cloud Sync has none until U-05 stores its usage.
+      return null;
+  }
+}
+
+/** A pill naming the issue, or counting several. */
+function IssuePill({
+  items,
+  many,
+}: {
+  items: ProductAttention[];
+  many: (n: number) => string;
+}): React.ReactElement {
+  return (
+    <StatusPill tone={worstTone(items)} size="sm">
+      {items.length === 1 ? items[0]!.short : many(items.length)}
+    </StatusPill>
+  );
+}
+
 /**
- * One product on Home. The name is the one link (DSH-3); its hit area stretches over the whole
- * card (a pseudo-element), so a click anywhere opens the product without a second "Open" link.
+ * One product on Home, as a ledger (docs/design/console-product-card/, direction B).
  *
- * Pills mean attention (owner, 2026-10-04): a product that needs something carries one pill, at
- * the right edge of the card header; a healthy product carries none. The service glyphs moved up
- * into the row the healthy pill used to take, beside the source and the last change.
+ * The header holds the logo, the name and the slug. The name is the card's one link to the
+ * product: its hit area stretches over the card (`::after`), so a click anywhere opens Overview.
+ * Each service the product runs is a row below: its glyph and label, and either its one fact at
+ * the right edge or, when it needs something, a pill naming the problem. A row is a link (to the
+ * fix when it carries a pill, to the service's page otherwise) that sits above the stretched name
+ * link as a sibling, never nested in it. Past four services, three rows and the rest as glyph
+ * links. An issue that belongs to the product itself (a signing key, its setup), or to a service
+ * collapsed into the glyph links, is a pill in the header. Healthy draws nothing (ADMIN.md §5.11).
+ *
+ * Focus on the name rings the whole card; focus on a service rings only that link.
  */
-function ProductCard({
+export function ProductCard({
   product: p,
   attention,
+  schemaVersion,
+  facts,
+  factsLoading = false,
 }: {
   product: ProductDetail;
-  attention: number;
+  attention: ProductAttention[];
+  schemaVersion?: number;
+  /** This product's summary facts (`GET /summary`); absent while loading or when it failed. */
+  facts?: ProductSummary;
+  factsLoading?: boolean;
 }): React.ReactElement {
   const services = runningServices(p);
+  const running = new Set(services);
   const name = p.name || p.slug;
+  const issuesOf = new Map<ServiceSlug, ProductAttention[]>();
+  const productIssues: ProductAttention[] = [];
+  for (const a of attention) {
+    if (a.service && running.has(a.service))
+      issuesOf.set(a.service, [...(issuesOf.get(a.service) ?? []), a]);
+    else productIssues.push(a);
+  }
+  const { rows, more } = ledgerRows(services, new Set(issuesOf.keys()));
+  // Services with issues take the rows first, but past three of them the rest collapse into the
+  // glyph links: their issues move to the header pill, so no issue is ever hidden.
+  for (const s of more) productIssues.push(...(issuesOf.get(s) ?? []));
+  const syncedAt = p.setup?.sync?.lastSyncedAt;
+  const synced =
+    releaseSourceOf(p) === "github" && typeof syncedAt === "number";
+
   return (
     <article
       aria-label={name}
-      className="relative flex h-full flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4 hover:border-border-strong has-[a:focus-visible]:ring-2 has-[a:focus-visible]:ring-focus"
+      className="relative flex w-full min-w-0 flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4 hover:border-border-strong light:shadow-elevation-1 has-[a[data-card-link]:focus-visible]:ring-2 has-[a[data-card-link]:focus-visible]:ring-focus has-[a[data-card-link]:focus-visible]:ring-offset-2 has-[a[data-card-link]:focus-visible]:ring-offset-background"
     >
-      <div
-        data-card-header=""
-        className="flex items-start justify-between gap-2"
-      >
-        <div className="min-w-0">
+      <div data-card-header="" className="flex items-start gap-3">
+        <ProductLogo name={name} presentation={p.presentation} size={40} />
+        <div className="min-w-0 flex-1">
           <h3
-            className="truncate text-base font-bold text-fg-strong"
+            className="line-clamp-2 break-words text-base font-semibold text-fg-strong"
             title={name}
           >
             <Link
               to={r.overview(p.slug)}
-              className="underline-offset-4 outline-hidden after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:underline focus-visible:ring-0"
+              data-card-link=""
+              className="underline-offset-4 outline-hidden after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:underline focus-visible:ring-0 focus-visible:ring-offset-0"
             >
               {name}
             </Link>
@@ -352,35 +465,87 @@ function ProductCard({
             {p.slug}
           </p>
         </div>
-        {attention > 0 ? (
-          <StatusPill tone="warning" size="sm">
-            {attention === 1
-              ? "1 needs attention"
-              : `${attention} need attention`}
-          </StatusPill>
+        {productIssues.length > 0 ? (
+          <IssuePill
+            items={productIssues}
+            many={(n) => `${n} need attention`}
+          />
         ) : null}
       </div>
-      {/* The service glyphs take the row the healthy "Setup complete" pill used to hold. */}
-      <div className="mt-auto flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <span className="flex items-center gap-1.5">
-          {services.map((s) => (
-            <ServiceGlyph key={s} id={s} />
-          ))}
-          <span
-            className={services.length ? "sr-only" : "text-xs text-fg-muted"}
-          >
-            {runsSentence(services)}
-          </span>
-        </span>
-        <span className="text-xs text-fg-muted">
-          {label(PROVIDER_LABELS, releaseSourceOf(p))}
-          {Number.isFinite(p.modifiedAt) ? (
-            <>
-              {" · "}Changed <Timestamp at={fromSeconds(p.modifiedAt)} />
-            </>
+      {services.length === 0 ? (
+        <p className="border-t border-border pt-3 text-sm text-fg-muted">
+          No services
+        </p>
+      ) : (
+        <ul
+          aria-label="Services"
+          aria-busy={factsLoading || undefined}
+          className="flex flex-col border-t border-border pt-2"
+        >
+          {rows.map((s) => {
+            const issues = issuesOf.get(s) ?? [];
+            const fact = serviceFact(s, schemaVersion, facts);
+            const pending = factsLoading && SUMMARY_FACTS.has(s);
+            return (
+              <li key={s} className="-mx-2">
+                <Link
+                  to={
+                    issues.length
+                      ? issues[0]!.action.href
+                      : SERVICE_HOME[s](p.slug)
+                  }
+                  data-service-row={s}
+                  className="relative z-[1] grid h-8 grid-cols-[1rem_minmax(0,1fr)_auto] items-center gap-2 rounded-md px-2 text-sm hover:bg-surface-sunken max-sm:h-11"
+                >
+                  <ServiceGlyph id={s} />
+                  <span className="truncate text-fg">{serviceLabel(s)}</span>
+                  {issues.length > 0 ? (
+                    <IssuePill items={issues} many={(n) => `${n} issues`} />
+                  ) : pending ? (
+                    <Skeleton data-fact-skeleton="" className="h-3 w-16" />
+                  ) : fact ? (
+                    <span className="whitespace-nowrap text-fg-muted tabular-nums">
+                      {fact}
+                    </span>
+                  ) : (
+                    <span />
+                  )}
+                </Link>
+              </li>
+            );
+          })}
+          {more.length > 0 ? (
+            <li className="-mx-1 flex h-8 items-center gap-1 max-sm:h-11">
+              {more.map((s) => (
+                <Link
+                  key={s}
+                  to={SERVICE_HOME[s](p.slug)}
+                  data-service={s}
+                  aria-label={serviceLabel(s)}
+                  title={serviceLabel(s)}
+                  className="relative z-[1] grid size-7 place-items-center rounded-md hover:bg-accent-subtle max-sm:size-11"
+                >
+                  <ServiceGlyph id={s} />
+                </Link>
+              ))}
+              <span className="ml-auto pr-1 text-xs text-fg-muted">
+                {more.length} more
+              </span>
+            </li>
           ) : null}
-        </span>
-      </div>
+        </ul>
+      )}
+      <p className="mt-auto text-xs text-fg-muted">
+        {synced ? (
+          <>
+            Synced <Timestamp at={fromSeconds(syncedAt)} />
+          </>
+        ) : Number.isFinite(p.modifiedAt) ? (
+          <>
+            Changed <Timestamp at={fromSeconds(p.modifiedAt)} />
+          </>
+        ) : null}
+      </p>
     </article>
   );
 }

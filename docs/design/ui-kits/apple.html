@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>UI kits · Apple: iPad, visionOS, tvOS, watchOS (SwiftUI)</title>
+    <link rel="stylesheet" href="shared.css" />
+    <script src="shared.js"></script>
+    <style>
+      /* The Apple platforms beyond iPhone (UI-KITS §1.4, §8 critique round 1): iPad at regular
+         width (11-inch, 1180 × 820 pt landscape), a visionOS window in a room, tvOS at 1280 × 720
+         (the 1920 × 1080 canvas at two thirds) with the focus engine, and a watchOS glance at
+         46 mm (208 × 248 pt). Same product, same accent, same copy as the iPhone board. */
+      .glass {
+        background: rgb(255 255 255 / 0.1);
+        backdrop-filter: blur(24px) saturate(1.8);
+        -webkit-backdrop-filter: blur(24px) saturate(1.8);
+        box-shadow:
+          inset 0 1px 0.5px rgb(255 255 255 / 0.3),
+          inset 0 -0.5px 0.5px rgb(255 255 255 / 0.08);
+        color: var(--pk-text-strong);
+      }
+      [data-theme="light"] .glass {
+        background: rgb(255 255 255 / 0.5);
+        box-shadow:
+          inset 0 1px 0.5px rgb(255 255 255 / 0.95),
+          inset 0 -0.5px 0.5px rgb(0 0 0 / 0.04);
+      }
+      .glass.prominent {
+        background: var(--kit-accent);
+        color: #fff;
+        box-shadow:
+          inset 0 1px 0.5px rgb(255 255 255 / 0.4),
+          inset 0 -1px 1px rgb(0 0 0 / 0.08),
+          0 2px 8px rgb(0 0 0 / 0.12);
+      }
+      .cap {
+        height: 52px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font: 500 17px/1 var(--pk-font-sans);
+      }
+      .ttl {
+        font: 600 28px/34px var(--pk-font-sans);
+        color: var(--pk-text-strong);
+        margin: 0;
+        text-wrap: balance;
+      }
+      .sub {
+        color: var(--pk-text-muted);
+        margin: 0;
+        font-size: 17px;
+        line-height: 22px;
+        text-wrap: pretty;
+      }
+      .link {
+        color: var(--kit-accent-fg);
+        font: 500 15px/44px var(--pk-font-sans);
+      }
+
+      /* ── iPad ─────────────────────────────────────────────────────────────────────────── */
+      .ipad {
+        width: 1212px;
+        height: 852px;
+        padding: 16px;
+        border-radius: 40px;
+        background: #1b1c20;
+        box-shadow:
+          0 0 0 1px #3a3b40 inset,
+          0 30px 60px -20px rgb(0 0 0 / 0.5);
+      }
+      [data-theme="light"] .ipad {
+        background: #d9dbe2;
+        box-shadow:
+          0 0 0 1px #c3c6cf inset,
+          0 30px 60px -20px rgb(6 9 18 / 0.25);
+      }
+      .ipad .screen {
+        position: relative;
+        width: 1180px;
+        height: 820px;
+        border-radius: 26px;
+        overflow: hidden;
+        background: #000;
+        isolation: isolate;
+        color: var(--pk-text-strong);
+      }
+      [data-theme="light"] .ipad .screen {
+        background: #f2f2f7;
+      }
+      .ipad .bar {
+        position: absolute;
+        top: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
+        height: 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0 24px;
+        font:
+          600 15px/1 -apple-system,
+          system-ui;
+        z-index: 40;
+      }
+      .amb {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background:
+          radial-gradient(40% 50% at 30% 30%, #0f6f7a, transparent 70%),
+          radial-gradient(30% 40% at 70% 22%, #c9a35c, transparent 72%),
+          radial-gradient(50% 60% at 50% 60%, #1aa594, transparent 75%);
+        opacity: 0.45;
+        filter: blur(30px) saturate(1.2);
+      }
+      [data-theme="light"] .amb {
+        opacity: 0.22;
+      }
+      .ipad .dimmer {
+        position: absolute;
+        inset: 0;
+        background: rgb(0 0 0 / 0.32);
+        z-index: 5;
+      }
+      [data-theme="light"] .ipad .dimmer {
+        background: rgb(0 0 0 / 0.18);
+      }
+      .formsheet {
+        position: absolute;
+        inset-inline-start: 50%;
+        top: 92px;
+        translate: -50% 0;
+        width: 580px;
+        border-radius: 34px;
+        padding: 18px 28px 30px;
+        z-index: 10;
+        background: rgb(28 30 36 / 0.82);
+        backdrop-filter: blur(30px) saturate(1.6);
+        box-shadow:
+          inset 0 1px 0.5px rgb(255 255 255 / 0.22),
+          0 30px 70px rgb(0 0 0 / 0.45);
+      }
+      /* A control on a blurred sheet is a flat fill, never a second backdrop-filter (§7.3). */
+      .formsheet .glass {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+      [data-theme="light"] .formsheet {
+        background: rgb(249 249 251 / 0.97);
+        box-shadow:
+          inset 0 1px 0.5px #fff,
+          0 30px 70px rgb(6 9 18 / 0.2);
+      }
+      .sbar {
+        display: grid;
+        grid-template-columns: 44px 1fr 44px;
+        align-items: center;
+        margin-bottom: 18px;
+      }
+      .sbar .mid {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font: 600 17px/1 var(--pk-font-sans);
+      }
+      .circ {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+      }
+      .fld {
+        background: rgb(120 120 128 / 0.2);
+        border-radius: 22px;
+        min-height: 56px;
+        display: flex;
+        align-items: center;
+        padding: 10px 8px 10px 18px;
+        gap: 10px;
+      }
+      [data-theme="light"] .fld {
+        background: #fff;
+      }
+      .fld .mono {
+        flex: 1;
+        font-size: 16px;
+      }
+      .flabel {
+        font-size: 13px;
+        line-height: 18px;
+        color: var(--pk-text-subtle);
+        margin: 0 4px 8px;
+      }
+
+      /* ── visionOS ─────────────────────────────────────────────────────────────────────── */
+      .room {
+        width: 1280px;
+        height: 800px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 12px;
+        isolation: isolate;
+        background:
+          radial-gradient(60% 40% at 50% 100%, #3b3127, transparent 70%),
+          linear-gradient(#2c3138, #1a1d21 60%, #2b241d);
+      }
+      [data-theme="light"] .room {
+        background:
+          radial-gradient(60% 40% at 50% 100%, #d8c6ae, transparent 70%),
+          linear-gradient(#e9eef2, #d3dae0 60%, #cdb79c);
+      }
+      .room .window-light {
+        position: absolute;
+        inset-inline-start: 6%;
+        top: 8%;
+        width: 26%;
+        height: 58%;
+        border-radius: 6px;
+        background: linear-gradient(#cfe3f2, #9ab9cf);
+        opacity: 0.35;
+        filter: blur(2px);
+      }
+      .vwin {
+        position: absolute;
+        inset-inline-start: 50%;
+        top: 92px;
+        translate: -50% 0;
+        width: 860px;
+        height: 560px;
+        border-radius: 46px;
+        background: rgb(128 128 128 / 0.3);
+        backdrop-filter: blur(40px) saturate(1.5);
+        box-shadow:
+          inset 0 1px 1px rgb(255 255 255 / 0.35),
+          inset 0 -1px 1px rgb(255 255 255 / 0.1),
+          0 40px 80px rgb(0 0 0 / 0.35);
+        color: #fff;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        overflow: hidden;
+      }
+      /* visionOS glass keeps white type in a bright room: the material darkens, never the text. */
+      [data-theme="light"] .vwin,
+      [data-theme="light"] .ornament {
+        background: rgb(64 64 70 / 0.5);
+      }
+      .vwin .art {
+        position: relative;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(
+            70% 60% at 40% 30%,
+            rgb(26 165 148 / 0.55),
+            transparent 70%
+          ),
+          radial-gradient(
+            50% 40% at 70% 20%,
+            rgb(201 163 92 / 0.45),
+            transparent 70%
+          );
+      }
+      .vwin .pane {
+        padding: 56px 48px;
+        display: grid;
+        align-content: center;
+        gap: 14px;
+      }
+      .vwin .ttl,
+      .vwin .sub {
+        color: #fff;
+      }
+      .vwin .sub {
+        opacity: 0.78;
+      }
+      .vcap {
+        height: 56px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font: 500 19px/1 var(--pk-font-sans);
+        background: rgb(255 255 255 / 0.12);
+        color: #fff;
+      }
+      .vcap.prominent {
+        background: var(--kit-accent);
+      }
+      .vcap.hover {
+        background: rgb(255 255 255 / 0.24);
+        box-shadow: 0 0 0 1px rgb(255 255 255 / 0.25) inset;
+      }
+      .grabber {
+        position: absolute;
+        inset-inline-start: 50%;
+        top: 668px;
+        translate: -50% 0;
+        width: 120px;
+        height: 10px;
+        border-radius: 5px;
+        background: rgb(255 255 255 / 0.55);
+      }
+      [data-theme="light"] .grabber {
+        background: rgb(30 30 30 / 0.35);
+      }
+      .ornament {
+        position: absolute;
+        inset-inline-start: 50%;
+        top: 612px;
+        translate: -50% 0;
+        height: 56px;
+        padding: 0 10px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: rgb(128 128 128 / 0.32);
+        backdrop-filter: blur(30px);
+        box-shadow: inset 0 1px 1px rgb(255 255 255 / 0.3);
+        color: #fff;
+        font: 500 15px/1 var(--pk-font-sans);
+      }
+      .ornament span {
+        padding: 10px 14px;
+        border-radius: 999px;
+      }
+      .ornament span.on {
+        background: rgb(255 255 255 / 0.18);
+      }
+
+      /* ── tvOS ─────────────────────────────────────────────────────────────────────────── */
+      .tv {
+        width: 1280px;
+        height: 720px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 12px;
+        isolation: isolate;
+        background: #08090c;
+        color: #fff;
+      }
+      [data-theme="light"] .tv {
+        background: #eceef2;
+        color: #0b1220;
+      }
+      .tv .amb {
+        opacity: 0.4;
+      }
+      .tv .wrap {
+        position: absolute;
+        inset: 60px 80px;
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 80px;
+        align-items: center;
+      }
+      .tv h1 {
+        font: 600 48px/56px var(--pk-font-sans);
+        margin: 0;
+      }
+      .tv p {
+        font: 400 24px/32px var(--pk-font-sans);
+        margin: 0;
+        color: color-mix(in oklab, currentColor 70%, transparent);
+      }
+      .tv .steps {
+        display: grid;
+        gap: 18px;
+        margin-top: 30px;
+        font: 400 24px/32px var(--pk-font-sans);
+      }
+      .tv .steps b {
+        font-weight: 500;
+      }
+      .tv .code {
+        font: 600 64px/1 var(--pk-font-mono);
+        letter-spacing: 0.08em;
+      }
+      .tv .qrc {
+        width: 360px;
+        height: 360px;
+        border-radius: 32px;
+        background: #fff;
+        display: grid;
+        place-items: center;
+        box-shadow: 0 20px 50px rgb(0 0 0 / 0.35);
+      }
+      .tvbtn {
+        height: 72px;
+        padding: 0 40px;
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        font: 500 26px/1 var(--pk-font-sans);
+        background: rgb(255 255 255 / 0.12);
+      }
+      [data-theme="light"] .tvbtn {
+        background: rgb(11 18 32 / 0.08);
+      }
+      /* The focus engine: the focused control lifts, scales and takes a white plate. */
+      .tvbtn.focus {
+        background: #fff;
+        color: #0b1220;
+        scale: 1.08;
+        box-shadow: 0 18px 40px rgb(0 0 0 / 0.45);
+      }
+      [data-theme="light"] .tvbtn.focus {
+        background: #fff;
+        box-shadow: 0 18px 40px rgb(11 18 32 / 0.25);
+      }
+
+      /* ── watchOS ──────────────────────────────────────────────────────────────────────── */
+      .watches {
+        display: flex;
+        gap: 48px;
+        padding: 24px;
+      }
+      .watch {
+        width: 236px;
+        height: 284px;
+        padding: 14px;
+        border-radius: 64px;
+        background: #26272b;
+        box-shadow: 0 0 0 2px #3c3d42 inset;
+      }
+      [data-theme="light"] .watch {
+        background: #c9ccd3;
+        box-shadow: 0 0 0 2px #b4b8c1 inset;
+      }
+      .wscreen {
+        width: 208px;
+        height: 256px;
+        border-radius: 52px;
+        background: #000;
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+        padding: 30px 16px 16px;
+        font-size: 15px;
+        line-height: 19px;
+      }
+      .wscreen .time {
+        position: absolute;
+        top: 10px;
+        inset-inline-end: 22px;
+        font:
+          600 15px/1 -apple-system,
+          system-ui;
+        color: rgb(255 255 255 / 0.85);
+      }
+      .wscreen .name {
+        font: 600 17px/21px var(--pk-font-sans);
+      }
+      .wscreen .muted {
+        color: rgb(255 255 255 / 0.62);
+      }
+      .wcap {
+        height: 44px;
+        border-radius: 22px;
+        display: grid;
+        place-items: center;
+        font: 500 16px/1 var(--pk-font-sans);
+        background: rgb(255 255 255 / 0.14);
+      }
+      .wcap.prominent {
+        background: var(--kit-accent);
+      }
+      .wseat {
+        display: flex;
+        gap: 3px;
+        margin-top: 6px;
+      }
+      .wseat i {
+        flex: 1;
+        height: 5px;
+        border-radius: 3px;
+        background: rgb(255 255 255 / 0.85);
+      }
+      .wseat i.off {
+        background: rgb(255 255 255 / 0.2);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="board">
+      <!-- 1. iPad, regular width -->
+      <figure>
+        <figcaption>
+          ipad · regular width (11-inch landscape): the gate and the activate
+          form sheet
+        </figcaption>
+        <div class="ipad" data-shot="ipad">
+          <div class="screen">
+            <div class="bar"><span>9:41 Mon 5 Oct</span><span>100%</span></div>
+            <div class="amb"></div>
+            <div
+              style="
+                position: absolute;
+                inset: 0;
+                display: grid;
+                place-items: center;
+                text-align: center;
+              "
+            >
+              <div
+                style="
+                  display: grid;
+                  justify-items: center;
+                  gap: 12px;
+                  width: 480px;
+                "
+              >
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="128"
+                  style="border-radius: 29px"
+                ></div>
+                <h1
+                  class="ttl"
+                  style="font-size: 34px; line-height: 40px; margin-top: 18px"
+                >
+                  Welcome to Tidewater Studio
+                </h1>
+                <span style="font-size: 13px; color: var(--pk-text-subtle)"
+                  >by Harbor Audio</span
+                >
+                <p class="sub">Sign in or add your license to start.</p>
+                <div
+                  style="
+                    display: grid;
+                    gap: 12px;
+                    width: 380px;
+                    margin-top: 18px;
+                  "
+                >
+                  <div class="glass prominent cap">Sign in</div>
+                  <div class="glass cap">Use a license key</div>
+                </div>
+              </div>
+            </div>
+            <div class="dimmer"></div>
+            <div class="formsheet">
+              <div class="sbar">
+                <span
+                  class="glass circ"
+                  data-icon="x"
+                  data-size="20"
+                  aria-label="Cancel"
+                ></span>
+                <span class="mid"
+                  ><span
+                    class="k-appicon"
+                    data-art="tidewater"
+                    data-size="28"
+                    style="border-radius: 7px"
+                  ></span
+                  >Tidewater Studio</span
+                >
+                <span
+                  class="glass prominent circ"
+                  data-icon="check"
+                  data-size="20"
+                  aria-label="Activate"
+                ></span>
+              </div>
+              <h2 class="ttl" style="margin: 0 4px 6px">Add your license</h2>
+              <p
+                class="sub"
+                style="margin: 0 4px 22px; font-size: 15px; line-height: 20px"
+              >
+                Your key is in the purchase email from Harbor Audio.
+              </p>
+              <div class="flabel">License key</div>
+              <div class="fld">
+                <span class="mono"
+                  ><span class="k-key"
+                    ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                    ><span>3WPLDA</span></span
+                  ></span
+                >
+              </div>
+              <div
+                class="k-verdict"
+                style="margin: 10px 4px 0; font-size: 15px"
+              >
+                <span data-icon="checkCircle" data-size="16"></span>
+                <span
+                  ><b style="font-weight: 600; color: var(--pk-text-strong)"
+                    >Tidewater Studio Pro</b
+                  >&#8201;·&#8201;Lifetime&#8201;·&#8201;3 devices</span
+                >
+              </div>
+              <div style="display: flex; gap: 12px; margin-top: 28px">
+                <div class="glass cap" style="flex: 1">Cancel</div>
+                <div class="glass prominent cap" style="flex: 1">Activate</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 2. visionOS -->
+      <figure>
+        <figcaption>
+          visionos · the welcome window in a room (glass is always the system
+          material; the gaze-hover state on "Use a license key")
+        </figcaption>
+        <div class="room" data-shot="visionos">
+          <div class="window-light"></div>
+          <div class="vwin">
+            <div class="art">
+              <div
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="168"
+                style="border-radius: 50%"
+              ></div>
+            </div>
+            <div class="pane">
+              <h1 class="ttl" style="font-size: 34px; line-height: 40px">
+                Welcome to Tidewater Studio
+              </h1>
+              <span style="font-size: 15px; opacity: 0.66"
+                >by Harbor Audio</span
+              >
+              <p class="sub" style="font-size: 19px; line-height: 25px">
+                Sign in or add your license to start.
+              </p>
+              <div style="display: grid; gap: 12px; margin-top: 18px">
+                <div class="vcap prominent">Sign in</div>
+                <div class="vcap hover">Use a license key</div>
+              </div>
+            </div>
+          </div>
+          <div class="ornament">
+            <span class="on">Welcome</span><span>Restore purchase</span
+            ><span>Activate offline</span>
+          </div>
+          <div class="grabber"></div>
+        </div>
+      </figure>
+
+      <!-- 3. tvOS -->
+      <figure>
+        <figcaption>
+          tvos · sign in on another device (device code; the focus engine lifts
+          the focused control) · 1920 × 1080 at two thirds
+        </figcaption>
+        <div class="tv" data-shot="tvos">
+          <div class="amb"></div>
+          <div class="wrap">
+            <div>
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 20px;
+                  margin-bottom: 36px;
+                "
+              >
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="72"
+                  style="border-radius: 16px"
+                ></div>
+                <span style="font: 500 26px/1 var(--pk-font-sans)"
+                  >Tidewater Studio</span
+                >
+              </div>
+              <h1>Sign in on your phone</h1>
+              <div class="steps">
+                <span
+                  >1. Scan the code, or go to <b>tidewater.app/link</b></span
+                >
+                <span
+                  >2. Enter
+                  <span class="code" style="font-size: 30px"
+                    >WDJB-MJHT</span
+                  ></span
+                >
+                <span>3. Sign in to your Harbor Audio account</span>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 28px;
+                  margin-top: 52px;
+                  align-items: center;
+                "
+              >
+                <span class="tvbtn focus">Use a license key</span>
+                <span class="tvbtn">Cancel</span>
+              </div>
+            </div>
+            <div style="display: grid; gap: 18px; justify-items: center">
+              <div class="qrc" data-qr="11" data-size="320"></div>
+              <span
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 10px;
+                  font: 400 20px/1 var(--pk-font-sans);
+                  opacity: 0.7;
+                "
+                ><span data-countdown="0.72" data-size="22"></span>Code expires
+                in 9:12</span
+              >
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 4. watchOS glance -->
+      <figure>
+        <figcaption>
+          watchos · glance: licence status, and sign-in handed to iPhone (46 mm)
+        </figcaption>
+        <div class="watches" data-shot="watch">
+          <div class="watch">
+            <div class="wscreen">
+              <span class="time">9:41</span>
+              <div style="display: flex; gap: 8px; align-items: center">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="30"
+                  style="border-radius: 50%"
+                ></div>
+                <span class="name">Tidewater</span>
+              </div>
+              <div
+                style="
+                  margin-top: 14px;
+                  font: 500 16px/20px var(--pk-font-sans);
+                "
+              >
+                Pro · Lifetime
+              </div>
+              <div class="muted">mara@fennick.studio</div>
+              <div style="margin-top: 14px" class="muted">Devices</div>
+              <div class="wseat"><i></i><i></i><i class="off"></i></div>
+              <div class="muted" style="margin-top: 4px; font-size: 13px">
+                2 of 3 in use
+              </div>
+            </div>
+          </div>
+          <div class="watch">
+            <div class="wscreen" style="text-align: center">
+              <span class="time">9:41</span>
+              <div
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="44"
+                style="border-radius: 50%; margin: 4px auto 10px"
+              ></div>
+              <div class="name">Sign in on iPhone</div>
+              <div
+                class="muted"
+                style="margin-top: 6px; font-size: 14px; line-height: 18px"
+              >
+                Open Tidewater Studio on your iPhone to finish.
+              </div>
+              <div class="wcap prominent" style="margin-top: 16px">
+                Open on iPhone
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+    </main>
+  </body>
+</html>

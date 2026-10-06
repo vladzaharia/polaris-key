@@ -42,14 +42,37 @@ import type { AdminSession } from "../../core/adminApi.js";
 import { handleIdentityRoutes } from "./routes.js";
 import { handleIdentityAdmin } from "./admin.js";
 import { authorizeRegistration } from "./registration.js";
+import { IDENTITY_SETTINGS_SLICE } from "./settings.js";
+// LX-26: registers Identity's licence-holder hooks with Core (`core/licenseHolders.ts`) at load,
+// so License's creation path and every account-email verification reach them.
+import "./accounts/holders.js";
 
 export const identityService: ServiceDescriptor = {
   slug: "identity",
+  /** ST-03: this service's settings registry slice (`settings.ts`). */
+  settings: IDENTITY_SETTINGS_SLICE,
   handle: handleIdentityRoutes,
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleIdentityAdmin(ctx),
   authorizeRegistration: (ctx: RegistrationAuthContext) =>
     authorizeRegistration(ctx),
+  /**
+   * Licence deletion (`core/licenseDelete.ts`): the portal's links to the deleted licence go, so
+   * no account's library keeps a card for a licence that no longer exists, and so do its I-12
+   * relink rows (nothing is left to undo; the `audit` rows keep the history).
+   */
+  licenseDelete: {
+    statements: ({ product, licenseId }) => [
+      {
+        sql: "DELETE FROM portal_license_links WHERE product = ? AND license_id = ?",
+        params: [product, licenseId],
+      },
+      {
+        sql: "DELETE FROM license_relinks WHERE product = ? AND license_id = ?",
+        params: [product, licenseId],
+      },
+    ],
+  },
   /**
    * Identity's slice of `/.well-known/polaris.json` (design spec §4.3): the sign-in URLs and the
    * session surface a client needs, at their canonical `/identity/…` spellings.

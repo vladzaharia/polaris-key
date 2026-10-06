@@ -5,12 +5,16 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase W: Worker additions)                                                                                                                             |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                                                                                              |
 | Depends on  | [I-04](I-04-account-contract-plan.md), [LX-05](LX-05-reserved-names-warn.md)                                                                                                                        |
-| Unblocks    | [PX-14](PX-14-passthrough-header.md), [SP-11](SP-11-presentation-accent.md)                                                                                                                         |
+| Unblocks    | [I-08](I-08-app-passthrough.md), [PX-14](PX-14-passthrough-header.md), [SP-11](SP-11-presentation-accent.md), [PX-W18](PX-W18-signin-hints.md)                                                      |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                                                               |
 | Plan mode   | yes: executes the approved [`plans/PX-W13.md`](../plans/PX-W13.md) (approved 2026-10-05), which fills the G28 gap in [`plans/I-04.md`](../plans/I-04.md)                                            |
 | Gates       | the PORTAL.md §11 green gate; plan mode; corpus and transcripts (`gen:corpus -- --check`, `gen:transcripts -- --check`); THREAT-MODEL; every SDK's replayer; `typecheck:workerd` and `test:workerd` |
 | Human input | none                                                                                                                                                                                                |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                           |
+
+## S-24 amendment (2026-10-06)
+
+Keep room in the request record for three optional members that [PX-W18](PX-W18-signin-hints.md) adds under its own plan: `loginHint`, `nameHint` and `purpose: "signin" | "attach"`. This package does not accept them ([S-24](../../notes/S-24-licence-holders.md) §6.4, D15).
 
 ## Amendments from approved plans (2026-10-05)
 
@@ -18,6 +22,77 @@ The owner approved the plans below on 2026-10-05. These amendments win over the 
 
 - **[`plans/PX-W13.md`](../plans/PX-W13.md):** this plan replaces "no separate plan" and was approved on 2026-10-05 with every recommendation accepted, except Q4, which the owner amended. `deviceName` stays the wire name (Q1); the label is also sent on `license/activate` and `register` (Q2); PX-W13 ships the §5 SDK and UI-kit label work itself (Q3); consent re-asks only on a change of claims or services (Q5); `account_product_grants` keeps its name and new surfaces say "app consent" (Q6).
 - **Owner (2026-10-05):** reserved display names **warn first, then enforce**: `reserved_display_name` ships behind the platform switch `identity.reservedDisplayNames` (default `warn`), reusing LX-05's validator warning path (new dependency LX-05). PX-W13 flips it to `error` after the S-19 decision-15 window (two minor releases or 60 days, whichever is later). It is not a hard error from day one.
+
+## Corrections and decisions from the implementation (2026-10-05)
+
+The code is the fact where it differs from `plans/PX-W13.md`; the lead's delegated decisions are
+recorded here.
+
+- **Request store.** The plan says "artefact KV". Since I-02 the artefact store is the sharded
+  single-use Durable Object (`core/singleUse.ts`), so handles are a new single-use kind,
+  `signin-request`, addressed by the handle's peppered hash.
+- **404 shape.** The plan says a nested `PolarisErrorBody`. Every portal route answers the flat
+  `{error, message?}` the portal SPA reads, so the two passthrough routes do too (`not_found`).
+- **The handle on the legacy page.** Until PX-14 turns the confirmation page into a 303 to
+  `/signin?request=…`, the page carries the handle as `data-request` on its form. It sets the
+  `__Host-pk_req` binder only when the browser has none.
+- **Device label step 4.** The plan's steps cut to 64 code points after the trim; a cut can expose
+  a trailing space, which is trimmed too (corpus row `cut-exposes-space`, WIRE-CONTRACT-V4 §12.7.1).
+- **No U+0000 in a corpus row.** Godot's JSON parser turns `\u0000` into U+FFFD (a Godot `String`
+  cannot hold NUL), so the C0 rows use U+0001 instead. The rule still deletes U+0000.
+- **The name skeleton** is NFKD with combining marks dropped (a superset of the plan's NFKC: it
+  also folds accents), and the reserved check also matches a multi-word term written as one word
+  (`PolarisKey`, `GooglePlay`). Longest terms are reported first.
+- **Console listing claims.** The plan names `core/storefront/listingModel.ts`, but the A-18a
+  boundary test lets the adapter layer import only adapter code, so the display-name rules run in
+  the claim handler that calls it (`services/distribution/listing/admin.ts`), with the platform's
+  severity. ST-04's `writeSetting()` hook does not exist yet; ST-04 wires it.
+- **Registry entries.** The live switch is `identity.reservedDisplayNames` (stored as
+  `IDENTITY_RESERVED_DISPLAY_NAMES`, a deploy var too, `warn` by default, up L1 / down L0), shown
+  as an editable row under Identity & access in Platform → Settings.
+  `identity.displayNameApproved` (product, operator-only) and `identity.reservedDisplayTerms`
+  (platform list) are registered `pending: ST-04`: neither can be read until ST-04's resolver
+  lands, so the approval action is ST-04's (with PX-14 for the card).
+- **Consent data.** `anchor` is the best usable licence in the portal's own order until I-09's
+  rank-first steps and LX-10's `chooseAnchor` land; `more` is 0 because the entitlement model is
+  `legacy` until LX-06. Both live in one module, `services/identity/passthrough/anchor.ts`
+  (licensing is under review, S-19). `person.avatarUrl` is null until profile import serves
+  avatars. Cloud Sync reads the service slot `sync`, which U-05 adds.
+- **React parity.** The plan says "N/A only", but React also runs as the desktop bridge, so the
+  parity gate needs it covered: `identity.devicelabel` is `implemented` with a `web` exception
+  (like `identity.devicecode`); the main process's Node SDK sends the label. Since SP-R02's
+  browser bearer engine (`BearerSession`) registers and activates from the page, it sends a label
+  only when the host names one (`browserAdapter({ deviceName })` or per call): a browser has no
+  platform name, so the default is none.
+- **Swift UI kit.** `PolarisKeyUI` has no device-code sign-in view (`ui.kit` is planned and
+  unowned), so there is nowhere to show the label line; the prompt carries `deviceName` for hosts.
+- **Godot opt-out.** An exported `String` cannot be null, so Godot's opt-out is
+  `PKeyOptions.send_device_name = false`; `device_name` empty means the platform default, and a
+  per-call name always wins.
+- **Validator run over `products/*`** (both modes): `djdl` and the repo's `.pkey/` (the system
+  product `polaris-key`, exempt) report no display-name finding.
+- **Migration** `0087_app_consent_scope.sql` (renumbered from `0074`, then `0078`, after main took `0074`–`0078`, then from `0079` at integration after main took `0079`–`0086`); `account_product_grants`
+  keeps its name (Q6), and a merge carries `scope_hash` with the consent.
+- **Seeding a cleared label (for PX-W5).** Activation and registration fill `devices.label` only
+  while it is NULL. A console "clear" stores NULL, so the next activation seeds the reported
+  label again; a rename (any non-NULL value) always wins. PX-W5's "rename wins" holds; a
+  "cleared stays cleared" rule would need its own marker.
+
+## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
+
+The owner decided on 2026-10-05 that every in-app sign-in step happens in **one form whose body
+morphs in place** (no stacked sheets), that the license is chosen **inside the app** when it can
+show it, that the presentation is configurable with native controls kept, that there are **two
+equal ways to integrate** (the hosted card, and the kit form with headless primitives), and that
+the web flow is one continuous, animated card. The wire is
+[`plans/I-04.md`](../plans/I-04.md) §G (a pending sign-in grant, `licenseChoice: "app" | "card"`);
+the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) §2.4, §3.17, §3.18, §4.16 and
+D-78–D-93. Where this brief differs, they win. **No device-wire version change**
+(`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2; no corpus file). New UI copy uses
+the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
+every row, no "Account-wide"). For this package:
+
+- The pushed request `POST /<p>/identity/request` (§2.5) carries `licenseChoice` (`"app" | "card"`, default `"card"`) and echoes the effective value in its response. I-08 adds the member when it builds on this route (I-04 §G.2); this package only keeps room for it in the request record.
 
 ## Goal
 
@@ -61,11 +136,11 @@ The "<App> wants you to sign in" header must be trustworthy ([PORTAL.md §4.7](.
 
 ## Acceptance criteria
 
-- [ ] The card reads presentation only through the `request` handle (test: display query parameters are ignored).
-- [ ] A reserved-name test refuses a spoofed app name.
-- [ ] Corpus and transcripts are regenerated and every SDK sends `deviceLabel` (parity).
-- [ ] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green.
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] The card reads presentation only through the `request` handle (test: display query parameters are ignored): `packages/worker/test/passthrough.test.ts` "ignores every display query parameter".
+- [x] A reserved-name test refuses a spoofed app name: `packages/shared-manifest/src/displayName.test.ts` ("refuses a spoofed app name when the platform enforces it") and `packages/worker/test/linkRepo.test.ts`.
+- [x] Corpus and transcripts are regenerated and every SDK sends `deviceLabel` (parity): `device-label.json`, `devicecode-label`, `devicecode-default` and the re-recorded device-code, activation and registration transcripts; `identity.devicelabel` implemented in Node, Python, Swift, Godot and Kotlin, and React except `web`.
+- [x] `pnpm --filter @polaris-key/worker typecheck:workerd` and `test:workerd` pass; `gen:transcripts -- --check` stays green (the gate).
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header (the gate, with the Kotlin JVM and UI suites run separately).
 
 ## Verify
 

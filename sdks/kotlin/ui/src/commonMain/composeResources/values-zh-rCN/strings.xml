@@ -1,0 +1,1804 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  GENERATED FILE — do not edit by hand.
+
+  Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/kit-copy.ts) from
+  packages/brand/kit-copy/ (en.json and the eight locale packs) and the core copy in
+  conformance/parity/copy.<locale>.json. `pnpm gen:brand -- --check` fails the green gate on any
+  difference. To change a string, edit its source and regenerate.
+
+  The kit copy for locale zh-Hans (Compose Multiplatform resources). Names are the catalog key with
+  "." and "-" as "_". A formFactor select is <name>__<case> (the bare name is "other"); a platform
+  variant is <name>__<platform>. Inert until UK-09 makes :ui a KMP module.
+-->
+<resources>
+    <!-- Shared verb used across the kit's screens. -->
+    <string name="common_cancel">取消</string>
+    <!-- Shared verb used across the kit's screens. -->
+    <string name="common_close">关闭</string>
+    <!-- Shared verb used across the kit's screens. Returns to the previous step. -->
+    <string name="common_back">返回</string>
+    <!-- Shared verb used across the kit's screens. -->
+    <string name="common_continue">继续</string>
+    <!-- Shared verb used across the kit's screens. -->
+    <string name="common_done">完成</string>
+    <!-- Shared verb used across the kit's screens. -->
+    <string name="common_save">保存</string>
+    <!-- Shared verb used across the kit's screens. Dismisses an offer without doing it. -->
+    <string name="common_notNow">以后再说</string>
+    <string name="common_notNow__macos">以后再说</string>
+    <!-- Shared verb used across the kit's screens. Postpones an action. -->
+    <string name="common_later">稍后</string>
+    <!-- Shared verb used across the kit's screens. Repeats the action that failed. -->
+    <string name="common_tryAgain">重试</string>
+    <string name="common_tryAgain__macos">重试</string>
+    <!-- Shared verb used across the kit's screens. Copies a code or link to the clipboard. -->
+    <string name="common_copy">复制</string>
+    <!-- Confirmation shown briefly after something is copied to the clipboard. -->
+    <string name="common_copied">已复制</string>
+    <!-- Shared verb used across the kit's screens. Pastes from the clipboard into a field. -->
+    <string name="common_paste">粘贴</string>
+    <!-- Busy label on a button or screen while an action runs. -->
+    <string name="common_working">正在处理…</string>
+    <!-- Shown while a screen loads. -->
+    <string name="common_loading">正在加载…</string>
+    <!-- Shared verb used across the kit's screens. Signs this device out of the product. -->
+    <string name="common_signOut">退出登录</string>
+    <string name="common_signOut__macos">退出登录</string>
+    <!-- Shared verb used across the kit's screens. Opens the person's Polaris Key account in the browser. -->
+    <string name="common_manage">管理</string>
+    <!-- Shared verb used across the kit's screens. Tries to reach the licensing service again. -->
+    <string name="common_reconnect">重新连接</string>
+    <!-- Shared verb used across the kit's screens. Hides a banner or toast. -->
+    <string name="common_dismiss">忽略</string>
+    <!-- Shown under the product name on the welcome screen. Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="common_byDeveloper">开发者：%1$s</string>
+    <!-- The current device, used inside sentences. Each case is the platform's own word. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
+    <string name="part_thisDevice">这台设备</string>
+    <string name="part_thisDevice__iphone">这台iPhone</string>
+    <string name="part_thisDevice__ipad">这台iPad</string>
+    <string name="part_thisDevice__mac">这台Mac</string>
+    <string name="part_thisDevice__phone">这部手机</string>
+    <string name="part_thisDevice__tablet">这台平板电脑</string>
+    <string name="part_thisDevice__computer">这台电脑</string>
+    <string name="part_thisDevice__tv">这台电视</string>
+    <!-- The current device as a tag in a device list. Each case is the platform's own word, capitalized as a label. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
+    <string name="part_thisDeviceTitle">此设备</string>
+    <string name="part_thisDeviceTitle__iphone">此iPhone</string>
+    <string name="part_thisDeviceTitle__ipad">此iPad</string>
+    <string name="part_thisDeviceTitle__mac">此Mac</string>
+    <string name="part_thisDeviceTitle__phone">此手机</string>
+    <string name="part_thisDeviceTitle__tablet">此平板电脑</string>
+    <string name="part_thisDeviceTitle__computer">此电脑</string>
+    <string name="part_thisDeviceTitle__tv">此电视</string>
+    <!-- Visible label of the license key field. -->
+    <string name="part_keyField_label">许可证密钥</string>
+    <!-- Placeholder inside the empty license key field. Carries no information the label lacks. -->
+    <string name="part_keyField_placeholder">粘贴你的密钥</string>
+    <!-- Shown under the key field as soon as the key's prefix names the product, before the server answers. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="part_keyField_forProduct">%1$s的密钥</string>
+    <!-- Shown under the key field after the server accepts the key. Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated); {term} = the license term (one of the signin.term.* strings). Arguments: 1=product, 2=tier, 3=term. -->
+    <string name="part_keyField_verdict">%1$s %2$s · %3$s</string>
+    <!-- Inline error when a pasted key is missing its end. {used} and {limit} count characters here, not devices. Arguments: {prefix} = the start of a license key, such as pkey_tidewater_; {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=prefix, 2=used, 3=limit. -->
+    <plurals name="part_keyField_cutShort">
+        <item quantity="other">此密钥不完整：%1$s之后只有%2$s个字符，应有%3$d个字符。</item>
+    </plurals>
+    <!-- Inline error when the field holds something that is not a key. pkey_ is literal. -->
+    <string name="part_keyField_malformed">这看起来不像许可证密钥。密钥以pkey_开头。</string>
+    <!-- Inline error when Activate is pressed with an empty field. -->
+    <string name="part_keyField_empty">请先输入许可证密钥。</string>
+    <!-- Label above the user code a person types on another device. -->
+    <string name="part_code_label">登录码</string>
+    <!-- Opens a larger view of the QR code. -->
+    <string name="part_qr_enlarge">放大显示</string>
+    <string name="part_qr_enlarge__macos">放大显示</string>
+    <!-- Shows the QR code on narrow layouts. -->
+    <string name="part_qr_scanInstead">改用手机扫描</string>
+    <string name="part_qr_scanInstead__macos">改用手机扫描</string>
+    <!-- Caption under the seat meter. {used} and {limit} are numbers of devices. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
+    <string name="part_seatMeter_caption">已使用%1$s/%2$s</string>
+    <!-- Optional footer line. Polaris Key is never translated. -->
+    <string name="part_poweredBy">由Polaris Key提供支持</string>
+    <!-- Status pill: the license works. -->
+    <string name="part_status_ok">有效</string>
+    <!-- Status pill: offline grace period. -->
+    <string name="part_status_grace">离线</string>
+    <!-- Status pill: the license expired. -->
+    <string name="part_status_expired">已过期</string>
+    <!-- Status pill: the license was revoked. -->
+    <string name="part_status_revoked">已吊销</string>
+    <!-- Status pill: the device is not activated yet. -->
+    <string name="part_status_inactive">未激活</string>
+    <!-- Status pill: this version or channel is blocked. -->
+    <string name="part_status_blocked">已阻止</string>
+    <!-- Status pill: the product needs no license. -->
+    <string name="part_status_notApplicable">无需许可证</string>
+    <!-- Screen reader label; never shown. Names an icon-only close control. -->
+    <string name="a11y_closeDialog">关闭对话框</string>
+    <!-- Screen reader label; never shown. Names the busy indicator. -->
+    <string name="a11y_busy">正在进行</string>
+    <!-- Screen reader label; never shown. Names the icon-only copy control beside a code. -->
+    <string name="a11y_copyCode">复制代码</string>
+    <!-- Screen reader label; never shown. Names the icon-only copy control beside a web address. -->
+    <string name="a11y_copyAddress">复制地址</string>
+    <!-- Screen reader label; never shown. Added to links that leave the app. -->
+    <string name="a11y_externalLink">在浏览器中打开</string>
+    <!-- Screen reader label; never shown. Describes the QR code. -->
+    <string name="a11y_qr">用于打开登录页面的二维码</string>
+    <!-- Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
+    <string name="a11y_code">登录码%1$s</string>
+    <!-- Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
+    <plurals name="a11y_seatMeter">
+        <item quantity="other">已使用%1$s台，共%2$d台设备</item>
+    </plurals>
+    <!-- Screen reader label; never shown. Names the product icon. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="a11y_productIcon">%1$s图标</string>
+    <!-- Screen reader label; never shown. Added to a setting someone else controls. -->
+    <string name="a11y_locked">已锁定</string>
+    <!-- Screen reader label; never shown. Describes a download progress bar. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”). Arguments: 1=size, 2=total. -->
+    <string name="a11y_progress">已下载%1$s，共%2$s</string>
+    <!-- Screen reader label; never shown. Names a device's icon by its form factor. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
+    <string name="a11y_formFactor">设备</string>
+    <string name="a11y_formFactor__iphone">iPhone</string>
+    <string name="a11y_formFactor__ipad">iPad</string>
+    <string name="a11y_formFactor__mac">Mac</string>
+    <string name="a11y_formFactor__phone">手机</string>
+    <string name="a11y_formFactor__tablet">平板电脑</string>
+    <string name="a11y_formFactor__computer">电脑</string>
+    <string name="a11y_formFactor__tv">电视</string>
+    <!-- Screen reader label; never shown. Describes a toast's visible timer. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
+    <string name="a11y_toastTimer">%1$s后关闭</string>
+    <!-- Screen reader label; never shown. State of the selected row in a list. -->
+    <string name="a11y_selected">已选择</string>
+    <!-- Screen reader label; never shown. Names the rename control on a device row. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="a11y_renameDevice">重命名%1$s</string>
+    <!-- Screen reader label; never shown. Names the remove control on a device row. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="a11y_removeDevice">移除%1$s</string>
+    <!-- PolarisKeyGate and Boot: shown while the license is checked at start. -->
+    <string name="gate_checking">正在检查你的许可证…</string>
+    <!-- PolarisKeyGate and Boot: title of the error screen; the message comes from the error's core copy. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="gate_error_title">%1$s无法启动</string>
+    <!-- Boot screen, shown while the product starts. -->
+    <string name="boot_starting">正在启动…</string>
+    <!-- Boot screen, shown while the product starts. -->
+    <string name="boot_syncing">正在检查更新…</string>
+    <!-- Boot screen, shown while the product starts. -->
+    <string name="boot_deciding">正在查找新版本…</string>
+    <!-- Boot screen, shown while the product starts. -->
+    <string name="boot_fetching">正在下载内容…</string>
+    <!-- Boot screen, shown while the product starts. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”). Arguments: 1=size, 2=total. -->
+    <string name="boot_fetchingProgress">正在下载内容 · %1$s/%2$s</string>
+    <!-- Boot screen, shown while the product starts. Shown for a moment before the product opens. -->
+    <string name="boot_ready">就绪</string>
+    <!-- Boot screen, shown while the product starts. The product cannot start without a connection. -->
+    <string name="boot_offline_title">你已离线</string>
+    <!-- Boot screen, shown while the product starts. -->
+    <string name="boot_offline_body">请连接互联网后重试。</string>
+    <!-- Boot screen, shown while the product starts. Optional content is missing but the product can start. -->
+    <string name="boot_offline_playable">部分内容无法下载。你可以使用已安装的内容继续，或连接网络后重试。</string>
+    <!-- Boot screen, shown while the product starts. Starts with the content already installed. -->
+    <string name="boot_continueOffline">离线继续</string>
+    <string name="boot_continueOffline__godot">离线继续</string>
+    <string name="boot_continueOffline__macos">离线继续</string>
+    <!-- Boot screen, shown while the product starts. The person declined a required download. -->
+    <string name="boot_declined_title">内容未下载</string>
+    <!-- Boot screen, shown while the product starts. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="boot_declined_body">%1$s需要此内容才能启动。准备好后再下载。</string>
+    <!-- Boot screen, shown while the product starts. Shown once after an automatic rollback. -->
+    <string name="boot_rolledBack">上次更新未能启动，已恢复到之前的版本。</string>
+    <!-- Boot screen, shown while the product starts. Asks before a large or metered download. -->
+    <string name="boot_consent_title">要下载内容吗？</string>
+    <!-- Boot screen, shown while the product starts. Arguments: {product} = the product's name from ProductIdentity (never translated); {size} = a byte size already formatted by the platform (“38 MB”). Arguments: 1=product, 2=size. -->
+    <string name="boot_consent_body">%1$s需要%2$s的新内容。</string>
+    <!-- Boot screen, shown while the product starts. A metered connection is one that charges by data used. Arguments: {product} = the product's name from ProductIdentity (never translated); {size} = a byte size already formatted by the platform (“38 MB”). Arguments: 1=product, 2=size. -->
+    <string name="boot_consent_bodyMetered">%1$s需要%2$s的新内容，而你正在使用按流量计费的网络。</string>
+    <!-- Boot screen, shown while the product starts. -->
+    <string name="boot_consent_download">下载</string>
+    <!-- Boot screen, shown while the product starts. Generic start failure when no core copy applies. Arguments: {product} = the product's name from ProductIdentity (never translated); {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=product, 2=code. -->
+    <string name="boot_error_body">%1$s未能完成启动（%2$s）。</string>
+    <!-- Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="welcome_title">欢迎使用%1$s</string>
+    <!-- Welcome screen, the gate's first screen. -->
+    <string name="welcome_lede">登录或使用许可证密钥以继续。</string>
+    <!-- Welcome screen, the gate's first screen. Shown when the product only takes license keys. -->
+    <string name="welcome_ledeKeyOnly">输入许可证密钥以继续。</string>
+    <!-- Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="welcome_ledeSignInOnly">登录以使用%1$s。</string>
+    <!-- Welcome screen, the gate's first screen. Primary button. -->
+    <string name="welcome_signIn">登录</string>
+    <string name="welcome_signIn__macos">登录</string>
+    <!-- Welcome screen, the gate's first screen. Secondary button; reveals the key field. -->
+    <string name="welcome_useKey">使用许可证密钥</string>
+    <string name="welcome_useKey__macos">使用许可证密钥</string>
+    <!-- Welcome screen, the gate's first screen. Quiet link in the extras row. -->
+    <string name="welcome_trial">开始免费试用</string>
+    <string name="welcome_trial__macos">开始免费试用</string>
+    <!-- Welcome screen, the gate's first screen. Quiet link in the extras row; starts the free tier. -->
+    <string name="welcome_continueFree">免费继续使用</string>
+    <string name="welcome_continueFree__macos">免费继续使用</string>
+    <!-- Welcome screen, the gate's first screen. Quiet link in the extras row. -->
+    <string name="welcome_restore">恢复购买</string>
+    <string name="welcome_restore__macos">恢复购买</string>
+    <!-- Welcome screen, the gate's first screen. Quiet link in the extras row; opens offline activation. -->
+    <string name="welcome_offline">离线激活</string>
+    <string name="welcome_offline__macos">离线激活</string>
+    <!-- SignIn method sheet title in an app. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signIn_title">登录%1$s</string>
+    <!-- SignIn: shown when the build enables no sign-in method. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signIn_noMethods">%1$s没有可用的登录方式。请改用许可证密钥。</string>
+    <!-- SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…). Arguments: 1=method. -->
+    <string name="signIn_methodError">%1$s登录未完成。请换一种方式。</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. -->
+    <string name="signInHandoff_starting">正在获取登录码…</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. TV and console layout. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
+    <string name="signInHandoff_scan">用手机扫描二维码，或前往%1$s并输入此代码。</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link. -->
+    <string name="signInHandoff_linkCopied">链接已复制</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signInHandoff_confirm">在登录页面上选择“继续使用%1$s”以完成登录。</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues. -->
+    <string name="signInHandoff_ok">已登录</string>
+    <!-- SignInHandoff: sign-in continues on another device or in the browser. After the code expired or was refused. -->
+    <string name="signInHandoff_newCode">获取新代码</string>
+    <string name="signInHandoff_newCode__macos">获取新代码</string>
+    <!-- Activate: license key entry. -->
+    <string name="activate_title">输入你的许可证密钥</string>
+    <!-- Activate: license key entry. -->
+    <string name="activate_lede">你可以在购买确认邮件中找到它。</string>
+    <!-- Activate: license key entry. Submits the key. -->
+    <string name="activate_submit">激活许可证</string>
+    <string name="activate_submit__macos">激活许可证</string>
+    <!-- Activate: license key entry. -->
+    <string name="activate_busy">正在激活…</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_title">离线激活</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_request">将此请求代码发送给向你提供许可证的人。</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="offlineActivation_product">产品：%1$s</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_copyCode">复制代码</string>
+    <string name="offlineActivation_copyCode__macos">复制代码</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_codeCopied">代码已复制</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_loadHint">然后载入你收到的激活文件，或粘贴其文本。</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. Opens a file picker. -->
+    <string name="offlineActivation_loadFile">载入文件…</string>
+    <string name="offlineActivation_loadFile__macos">载入文件…</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. Placeholder of the paste box. -->
+    <string name="offlineActivation_paste">在此粘贴激活文本</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_submit">从文件激活</string>
+    <string name="offlineActivation_submit__macos">从文件激活</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_dropHint">你也可以将文件拖放到此窗口。</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. -->
+    <string name="offlineActivation_done">已通过离线文件激活。</string>
+    <!-- OfflineActivation: activation by exchanging a request code and a response file. Inline error. -->
+    <string name="offlineActivation_empty">请先载入或粘贴激活文件。</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Screen title. -->
+    <string name="deviceLimit_title">替换设备</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
+    <plurals name="deviceLimit_heading">
+        <item quantity="other">你的许可证已用于%1$s台设备，上限为%2$d台设备</item>
+    </plurals>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {formFactor} = the device's form factor; each case is a whole phrase. -->
+    <string name="deviceLimit_lede">要在这台设备上使用，请替换其中一台设备。你之后可以再将其添加回来。</string>
+    <string name="deviceLimit_lede__iphone">要在这台iPhone上使用，请替换其中一台设备。你之后可以再将其添加回来。</string>
+    <string name="deviceLimit_lede__ipad">要在这台iPad上使用，请替换其中一台设备。你之后可以再将其添加回来。</string>
+    <string name="deviceLimit_lede__mac">要在这台Mac上使用，请替换其中一台设备。你之后可以再将其添加回来。</string>
+    <string name="deviceLimit_lede__phone">要在这部手机上使用，请替换其中一台设备。你之后可以再将其添加回来。</string>
+    <string name="deviceLimit_lede__tablet">要在这台平板电脑上使用，请替换其中一台设备。你之后可以再将其添加回来。</string>
+    <string name="deviceLimit_lede__computer">要在这台电脑上使用，请替换其中一台设备。你之后可以再将其添加回来。</string>
+    <string name="deviceLimit_lede__tv">要在这台电视上使用，请替换其中一台设备。你之后可以再将其添加回来。</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block under the selected device. On macOS the kit wraps {device} in curly quotes. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="deviceLimit_confirmTitle">替换%1$s？</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
+    <string name="deviceLimit_consequence">%1$s将退出登录%2$s，%3$s将占用它的席位。如有空余席位，%1$s之后可以重新登录。我们会通过电子邮件通知你。</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button. -->
+    <string name="deviceLimit_primary">替换并继续</string>
+    <string name="deviceLimit_primary__macos">替换并继续</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated). Arguments: 1=device, 2=product. -->
+    <string name="deviceLimit_removed">%1$s已被替换。%2$s正在继续。</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="deviceLimit_failed">无法替换%1$s。请重试。</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode: the device list is only in the browser. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="deviceLimit_browser">请在浏览器中替换设备。完成后%1$s会继续。</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode. -->
+    <string name="deviceLimit_openBrowser">在浏览器中打开</string>
+    <string name="deviceLimit_openBrowser__macos">在浏览器中打开</string>
+    <!-- DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode on TV and console. -->
+    <string name="deviceLimit_scan">扫描二维码，在手机上替换设备。</string>
+    <!-- Devices: the list of devices using the license. -->
+    <string name="devices_title">你的设备</string>
+    <!-- Devices: the list of devices using the license. -->
+    <string name="devices_lede">正在使用此许可证的设备。</string>
+    <!-- Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
+    <string name="devices_meta">%1$s · 上次在线：%2$s</string>
+    <!-- Devices: the list of devices using the license. Arguments: {count} = a number of items. Arguments: 1=count. -->
+    <plurals name="devices_count">
+        <item quantity="other">%1$d台设备</item>
+    </plurals>
+    <!-- Devices: the list of devices using the license. A device with no name. -->
+    <string name="devices_unnamed">未命名设备</string>
+    <!-- Devices: the list of devices using the license. -->
+    <string name="devices_rename">重命名</string>
+    <!-- Devices: the list of devices using the license. Label of the inline rename field. -->
+    <string name="devices_renameLabel">设备名称</string>
+    <!-- Devices: the list of devices using the license. -->
+    <string name="devices_remove">移除</string>
+    <!-- Devices: the list of devices using the license. Inline confirm. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated). Arguments: 1=device, 2=product. -->
+    <string name="devices_removeConfirm">移除%1$s？它将退出登录%2$s。</string>
+    <!-- Devices: the list of devices using the license. -->
+    <string name="devices_empty">还没有设备在使用此许可证。</string>
+    <!-- Devices: the list of devices using the license. Browser mode. -->
+    <string name="devices_browser">在浏览器中管理你的设备。</string>
+    <!-- Devices: the list of devices using the license. Browser mode; opens the account in the browser. -->
+    <string name="devices_manage">管理设备</string>
+    <string name="devices_manage__macos">管理设备</string>
+    <!-- UpdatePrompt: an app update. Title: the product and the new version. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
+    <string name="update_title">%1$s %2$s</string>
+    <!-- UpdatePrompt: an app update. Used when the version is unknown. -->
+    <string name="update_availableTitle">有可用的更新</string>
+    <!-- UpdatePrompt: an app update. Arguments: {version} = a version string such as 2.4.1; {size} = a byte size already formatted by the platform (“38 MB”). Arguments: 1=version, 2=size. -->
+    <string name="update_current">当前版本：%1$s · 下载大小：%2$s</string>
+    <!-- UpdatePrompt: an app update. Label over the release notes. -->
+    <string name="update_whatsNew">新功能</string>
+    <!-- UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
+    <string name="update_allChanges">%1$s的所有更改</string>
+    <string name="update_allChanges__macos">%1$s的所有更改</string>
+    <!-- UpdatePrompt: an app update. Dismisses the prompt. -->
+    <string name="update_later">稍后</string>
+    <string name="update_later__macos">稍后</string>
+    <!-- UpdatePrompt: an app update. Queues the restart after the download. -->
+    <string name="update_restartWhenReady">准备就绪后重启</string>
+    <string name="update_restartWhenReady__macos">准备就绪后重启</string>
+    <!-- UpdatePrompt: an app update. The update is downloaded. -->
+    <string name="update_restartNow">立即重启</string>
+    <string name="update_restartNow__macos">立即重启</string>
+    <!-- UpdatePrompt: an app update. -->
+    <string name="update_skipVersion">跳过此版本</string>
+    <string name="update_skipVersion__macos">跳过此版本</string>
+    <!-- UpdatePrompt: an app update. -->
+    <string name="update_install">立即更新</string>
+    <string name="update_install__macos">立即更新</string>
+    <!-- UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”). Arguments: 1=size, 2=total. -->
+    <string name="update_downloading">正在下载 · %1$s/%2$s</string>
+    <!-- UpdatePrompt: an app update. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
+    <string name="update_timeLeft">大约还剩%1$s</string>
+    <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
+    <string name="update_readyTitle">%1$s %2$s已就绪</string>
+    <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="update_readyBody">重启%1$s以完成更新。</string>
+    <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="update_mandatoryTitle">更新以继续使用%1$s</string>
+    <!-- UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="update_mandatoryBody">此版本低于最低支持版本。请更新以继续使用%1$s。</string>
+    <!-- UpdatePrompt: an app update. No update is available yet. -->
+    <string name="update_blockedTitle">此版本已不再受支持</string>
+    <!-- UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="update_blockedBody">此处暂无可用的更新。你目前仍可继续使用%1$s。</string>
+    <!-- UpdatePrompt: an app update. -->
+    <string name="update_critical">此更新包含一项重要的安全修复。</string>
+    <!-- UpdatePrompt: an app update. App Store outlet. -->
+    <string name="update_appStore">在App Store中更新</string>
+    <!-- UpdatePrompt: an app update. Google Play outlet. -->
+    <string name="update_googlePlay">在Google Play中更新</string>
+    <!-- UpdatePrompt: an app update. Steam outlet. -->
+    <string name="update_steam">在Steam上获取</string>
+    <string name="update_steam__macos">在Steam上获取</string>
+    <!-- UpdatePrompt: an app update. Other store outlets. Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
+    <string name="update_openStore">打开%1$s</string>
+    <!-- UpdatePrompt: an app update. TestFlight outlet. -->
+    <string name="update_testflight">打开TestFlight</string>
+    <!-- UpdatePrompt: an app update. AltStore outlet. -->
+    <string name="update_altstore">打开AltStore</string>
+    <!-- UpdatePrompt: an app update. Web outlet. -->
+    <string name="update_reload">重新加载</string>
+    <!-- UpdatePrompt: an app update. Platform-managed update. -->
+    <string name="update_platform_steam">由Steam安装。如果更新尚未出现，请重启Steam。</string>
+    <!-- UpdatePrompt: an app update. Platform-managed update. -->
+    <string name="update_platform_itch">由itch应用安装。</string>
+    <!-- UpdatePrompt: an app update. Platform-managed update (Linux). -->
+    <string name="update_platform_store">由你的软件中心安装。</string>
+    <!-- UpdatePrompt: an app update. Platform-managed update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="update_platform_appInstaller">Windows会在%1$s下次启动时安装更新。</string>
+    <!-- UpdatePrompt: an app update. Package-manager update (winget, brew). Arguments: {command} = a terminal command, shown as is. Arguments: 1=command. -->
+    <string name="update_platform_command">运行%1$s进行安装。</string>
+    <!-- UpdatePrompt: an app update. Web update. -->
+    <string name="update_platform_web">重新加载页面以获取更新。</string>
+    <!-- UpdatePrompt: an app update. Platform-managed update. -->
+    <string name="update_platform_package">由你的软件包管理器安装。</string>
+    <!-- UpdatePrompt: an app update. Platform-managed update. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="update_platform_generic">通过你获取%1$s的商店或平台安装。</string>
+    <!-- UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="update_revokedContent">%1$s的部分内容已被撤回，无法使用。请更新%1$s以继续。</string>
+    <!-- UpdatePrompt: an app update. -->
+    <string name="update_upToDate">已是最新版本</string>
+    <!-- UpdatePrompt: an app update. Menu item and settings button. -->
+    <string name="update_checkNow">检查更新</string>
+    <string name="update_checkNow__macos">检查更新</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. -->
+    <string name="updateProgress_contentTitle">正在下载内容</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. -->
+    <string name="updateProgress_queued">等待下载</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”); {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=size, 2=total, 3=time. -->
+    <string name="updateProgress_downloading">%1$s/%2$s · 剩余%3$s</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. -->
+    <string name="updateProgress_installing">正在安装…</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. Paused on a metered connection. -->
+    <string name="updateProgress_paused">已暂停 · 正在等待Wi-Fi</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. -->
+    <string name="updateProgress_failed">无法下载</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. -->
+    <string name="updateProgress_done">已是最新</string>
+    <!-- UpdateProgress: compact progress for an app update or a content pack. Resumes a paused download. -->
+    <string name="updateProgress_resume">立即下载</string>
+    <string name="updateProgress_resume__macos">立即下载</string>
+    <!-- ReleaseNotes: the changelog. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="releaseNotes_title">%1$s的新功能</string>
+    <!-- ReleaseNotes: the changelog. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
+    <string name="releaseNotes_version">版本%1$s</string>
+    <!-- ReleaseNotes: the changelog. Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
+    <string name="releaseNotes_released">发布于%1$s</string>
+    <!-- ReleaseNotes: the changelog. -->
+    <string name="releaseNotes_empty">暂无版本说明。</string>
+    <!-- ReleaseNotes: the changelog. -->
+    <string name="releaseNotes_error">无法加载版本说明。</string>
+    <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Expired license. -->
+    <string name="status_renew">续订</string>
+    <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version too old. -->
+    <string name="status_update">更新</string>
+    <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Channel not included. -->
+    <string name="status_switchChannel">切换渠道</string>
+    <string name="status_switchChannel__macos">切换渠道</string>
+    <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version. Arguments: 1=min, 2=max. -->
+    <string name="status_allowedRange">允许的版本：%1$s至%2$s</string>
+    <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {min} = the lowest allowed value or version. Arguments: 1=min. -->
+    <string name="status_allowedMin">允许的版本：%1$s或更高</string>
+    <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {max} = the highest allowed value or version. Arguments: 1=max. -->
+    <string name="status_allowedMax">允许的版本：最高%1$s</string>
+    <!-- StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="status_contact">联系%1$s</string>
+    <!-- GraceBanner: the product works offline for a limited time. Arguments: {days} = a number of days. Arguments: 1=days. -->
+    <plurals name="grace_daysLeft">
+        <item quantity="other">离线 · 还剩%1$d天可重新连接</item>
+    </plurals>
+    <!-- GraceBanner: the product works offline for a limited time. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="grace_lastDay">离线 · 请在今天重新连接以继续使用%1$s</string>
+    <!-- GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
+    <string name="grace_deadline">请在%1$s前重新连接</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. -->
+    <string name="account_title">账户与许可证</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="account_tier">%1$s许可证</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. The account signed in on this device. Arguments: {name} = the person's display name. Arguments: 1=name. -->
+    <string name="account_holder">已登录为%1$s</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. No account is signed in on this device. -->
+    <string name="account_keyOnly">已通过许可证密钥激活</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
+    <string name="account_devices">设备</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term. -->
+    <string name="account_cloudSync">云同步</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Group header. -->
+    <string name="account_updates">更新</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Switch label. -->
+    <string name="account_autoUpdate">自动更新</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
+    <string name="account_channel">发布渠道</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
+    <string name="account_version">版本%1$s</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. Row label. -->
+    <string name="account_managedSettings">受管理的设置</string>
+    <!-- AccountAndLicense: the settings pane for the license and account. -->
+    <string name="account_offline">离线 · 显示上次保存的信息</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_title">设置</string>
+    <!-- Settings: settings delivered by the developer. Search field placeholder. -->
+    <string name="settings_search">搜索设置</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_empty">没有可显示的设置。</string>
+    <!-- Settings: settings delivered by the developer. Group header for the developer's defaults. Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="settings_fromDeveloper">来自%1$s</string>
+    <!-- Settings: settings delivered by the developer. A locked row. Arguments: {org} = the organization that set a value. Arguments: 1=org. -->
+    <string name="settings_setBy">由%1$s设置</string>
+    <!-- Settings: settings delivered by the developer. A locked row on consoles. -->
+    <string name="settings_setByGuardian">由你的父母或监护人设置</string>
+    <!-- Settings: settings delivered by the developer. Where a value comes from. -->
+    <string name="settings_source_local">由你更改</string>
+    <!-- Settings: settings delivered by the developer. Where a value comes from. -->
+    <string name="settings_source_env">由环境设置</string>
+    <!-- Settings: settings delivered by the developer. Where a value comes from. -->
+    <string name="settings_source_default">默认</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_reset">恢复默认</string>
+    <string name="settings_reset__macos">恢复默认</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_advanced">显示高级设置</string>
+    <string name="settings_advanced__macos">显示高级设置</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_saving">正在保存…</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_saved">已保存</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_unsaved">有未保存的更改</string>
+    <!-- Settings: settings delivered by the developer. -->
+    <string name="settings_error">无法保存设置。请重试。</string>
+    <!-- Settings: settings delivered by the developer. Allowed range of a number. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version. Arguments: 1=min, 2=max. -->
+    <string name="settings_range">介于%1$s和%2$s之间</string>
+    <!-- Settings: settings delivered by the developer. A switch's value shown as text. -->
+    <string name="settings_on">开</string>
+    <!-- Settings: settings delivered by the developer. A switch's value shown as text. -->
+    <string name="settings_off">关</string>
+    <!-- Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated). Arguments: 1=product, 2=tier. -->
+    <string name="paywall_title">通过%1$s %2$s获得更多功能</string>
+    <!-- Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="paywall_includes">%1$s包括</string>
+    <!-- Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="paywall_upgrade">升级到%1$s</string>
+    <!-- Paywall: what a tier adds, and how to get it. -->
+    <string name="paywall_redeem">兑换代码</string>
+    <string name="paywall_redeem__macos">兑换代码</string>
+    <!-- Paywall: what a tier adds, and how to get it. -->
+    <string name="paywall_restore">恢复购买</string>
+    <string name="paywall_restore__macos">恢复购买</string>
+    <!-- Paywall: what a tier adds, and how to get it. -->
+    <string name="paywall_purchasing">正在完成购买…</string>
+    <!-- Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="paywall_purchased">%1$s已解锁</string>
+    <!-- Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="paywall_notAvailable">此版本的%1$s不支持购买。</string>
+    <!-- Paywall: what a tier adds, and how to get it. -->
+    <string name="paywall_portal">在浏览器中购买</string>
+    <string name="paywall_portal__macos">在浏览器中购买</string>
+    <!-- EntitlementGate: shown in place of a locked feature. Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="entitlement_locked">此功能需要%1$s。</string>
+    <!-- EntitlementGate: opens the paywall. -->
+    <string name="entitlement_unlock">解锁</string>
+    <!-- CloudSyncStatus: a small sync status. {time} is relative, like “2 min ago”. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
+    <string name="cloudSync_synced">%1$s已同步</string>
+    <!-- CloudSyncStatus: a small sync status. -->
+    <string name="cloudSync_syncing">正在同步…</string>
+    <!-- CloudSyncStatus: a small sync status. -->
+    <string name="cloudSync_offline">离线 · 重新连接后将同步更改</string>
+    <!-- CloudSyncStatus: a small sync status. -->
+    <string name="cloudSync_conflict">部分更改存在冲突。请检查。</string>
+    <!-- CloudSyncStatus: a small sync status. -->
+    <string name="cloudSync_error">无法同步。请稍后重试。</string>
+    <!-- CloudSyncStatus: a small sync status. Cloud Sync needs an account. -->
+    <string name="cloudSync_signIn">登录以同步</string>
+    <string name="cloudSync_signIn__macos">登录以同步</string>
+    <!-- About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="about_title">关于%1$s</string>
+    <!-- About: product and build information. Arguments: {version} = a version string such as 2.4.1. Arguments: 1=version. -->
+    <string name="about_version">版本%1$s</string>
+    <!-- About: product and build information. Opens the open-source notices. -->
+    <string name="about_licenses">开源许可证</string>
+    <string name="about_licenses__macos">开源许可证</string>
+    <!-- About: product and build information. -->
+    <string name="about_copyDiagnostics">复制诊断信息</string>
+    <string name="about_copyDiagnostics__macos">复制诊断信息</string>
+    <!-- About: product and build information. -->
+    <string name="about_diagnosticsCopied">诊断信息已复制</string>
+    <!-- ChannelPicker: the release channel choice. -->
+    <string name="channel_title">发布渠道</string>
+    <!-- ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam). Arguments: 1=store. -->
+    <string name="channel_locked">发布渠道由%1$s设置。</string>
+    <!-- Toast action. -->
+    <string name="toast_undo">撤销</string>
+    <!-- Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1. Arguments: 1=product, 2=version. -->
+    <string name="toast_updateAvailable">%1$s %2$s现已推出</string>
+    <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
+    <string name="signin_methods_title">登录Polaris Key</string>
+    <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). -->
+    <string name="signin_methods_titleApp">登录</string>
+    <!-- Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_methods_ledeApp">使用你购买%1$s时所用的电子邮件。</string>
+    <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
+    <string name="signin_email_label">电子邮件</string>
+    <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
+    <string name="signin_email_invalid">请输入完整的电子邮件地址，例如name@example.com。</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). -->
+    <string name="signin_continue">继续</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). -->
+    <string name="signin_or">或</string>
+    <!-- Sign-in provider buttons (SIGN-IN.md §3.3). -->
+    <string name="signin_provider_group">或使用以下方式继续</string>
+    <!-- Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam). Arguments: 1=provider. -->
+    <string name="signin_provider_continue">通过%1$s继续</string>
+    <!-- Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam). Arguments: 1=provider. -->
+    <string name="signin_provider_connect">关联%1$s</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). -->
+    <string name="signin_passkey">使用通行密钥登录</string>
+    <string name="signin_passkey__macos">使用通行密钥登录</string>
+    <!-- Hosted sign-in card, email field (SIGN-IN.md §3.3). -->
+    <string name="signin_email_continue">使用电子邮件继续</string>
+    <string name="signin_email_continue__macos">使用电子邮件继续</string>
+    <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
+    <string name="signin_link_key">有许可证密钥？</string>
+    <string name="signin_link_key__macos">有许可证密钥？</string>
+    <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
+    <string name="signin_link_anotherDevice">使用其他设备登录</string>
+    <string name="signin_link_anotherDevice__macos">使用其他设备登录</string>
+    <!-- Links at the foot of the sign-in card (SIGN-IN.md §3.3). -->
+    <string name="signin_link_deviceCode">在手机或电脑上登录</string>
+    <string name="signin_link_deviceCode__macos">在手机或电脑上登录</string>
+    <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_header_app">%1$s请求你登录</string>
+    <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
+    <string name="signin_header_context">%1$s · %2$s</string>
+    <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). -->
+    <string name="signin_header_contextLine">你的许可证、下载和设备</string>
+    <!-- Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
+    <string name="signin_header_codePanel">屏幕上的代码 · %1$s · 请确认与屏幕上的一致</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated). Arguments: 1=app, 2=developer. -->
+    <string name="signin_footer">Polaris Key为%1$s提供登录服务。%2$s永远不会看到你的验证码或通行密钥。</string>
+    <!-- Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
+    <string name="signin_off_product">%1$s已关闭登录功能。请联系%2$s。</string>
+    <!-- Sign-in is turned off (SIGN-IN.md §4.12). -->
+    <string name="signin_off_any">登录暂不可用。请稍后重试。</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). Arguments: {minutes} = a number of minutes. Arguments: 1=minutes. -->
+    <string name="signin_rateLimited">验证码请求过多。请在%1$s分钟后重试。</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). -->
+    <string name="signin_emailDown">我们目前无法发送电子邮件。请换一种方式登录。</string>
+    <!-- The card can't reach the service. -->
+    <string name="signin_network_title">无法连接到Polaris Key</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). -->
+    <string name="signin_retry">重试</string>
+    <string name="signin_retry__macos">重试</string>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_title">查收你的电子邮件</string>
+    <!-- Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address. Arguments: 1=email. -->
+    <string name="signin_code_sent">我们已向%1$s发送验证码和登录链接。两者均在10分钟内有效。</string>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_link">或打开邮件中的链接。请保持此标签页打开。</string>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_resend">发送新验证码</string>
+    <string name="signin_code_resend__macos">发送新验证码</string>
+    <!-- Email code step (SIGN-IN.md §3.4). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
+    <string name="signin_code_resendIn">%1$s后可发送新验证码</string>
+    <string name="signin_code_resendIn__macos">%1$s后可发送新验证码</string>
+    <!-- Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address. Arguments: 1=email. -->
+    <string name="signin_code_resent">我们已向%1$s发送新的验证码和链接。</string>
+    <!-- Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number. Arguments: 1=n. -->
+    <plurals name="signin_code_triesLeft">
+        <item quantity="other">还可尝试%1$d次。</item>
+    </plurals>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_tooMany">尝试次数过多。请发送新验证码。</string>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_expired">验证码已过期。请发送新验证码。</string>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_differentEmail">使用其他电子邮件</string>
+    <string name="signin_code_differentEmail__macos">使用其他电子邮件</string>
+    <!-- Sign-in email subject (SIGN-IN.md §3.15). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated. Arguments: 1=code. -->
+    <string name="signin_email_subject">你的Polaris Key验证码：%1$s</string>
+    <!-- Sign-in email body (SIGN-IN.md §3.15). -->
+    <string name="signin_email_body">或点击按钮登录。验证码和链接仅可使用一次，10分钟内有效。</string>
+    <!-- Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”); {place} = an approximate place (city, country). Arguments: 1=time, 2=place. -->
+    <string name="signin_confirmLink_title">确认于%1$s从%2$s发起的登录请求</string>
+    <!-- Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4). -->
+    <string name="signin_confirmLink_note">登录的是发起请求的设备，而不是这台设备。</string>
+    <!-- Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4). -->
+    <string name="signin_confirmLink_done">登录已确认。请回到你开始登录的设备，它会自动完成登录。</string>
+    <!-- Returning person hint (SIGN-IN.md §3.4). Arguments: {name} = the person's display name. Arguments: 1=name. -->
+    <string name="signin_hint_welcome">欢迎回来，%1$s</string>
+    <!-- Returning person hint (SIGN-IN.md §3.4). Arguments: {method} = a sign-in method's name (Apple, Google, passkey…). Arguments: 1=method. -->
+    <string name="signin_hint_usual">你通常使用%1$s登录</string>
+    <!-- Returning person hint (SIGN-IN.md §3.4). -->
+    <string name="signin_hint_other">其他登录方式</string>
+    <string name="signin_hint_other__macos">其他登录方式</string>
+    <!-- Create account step (SIGN-IN.md §3.4). -->
+    <string name="signin_register_title">创建你的账户</string>
+    <!-- Create account step (SIGN-IN.md §3.4). Arguments: {email} = an email address. Arguments: 1=email. -->
+    <string name="signin_register_verified">%1$s已验证</string>
+    <!-- Create account step (SIGN-IN.md §3.4). -->
+    <string name="signin_register_submit">创建账户并继续</string>
+    <string name="signin_register_submit__macos">创建账户并继续</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam); {identity} = the provider account's handle or email. Arguments: 1=provider, 2=identity. -->
+    <string name="signin_gate_strip">已通过%1$s登录 · %2$s</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_title">确认你的电子邮件</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_gate_ledeApp">进入%1$s前还需一步。我们会将登录验证码、收据和安全通知发送到这里。</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_steam">Steam不提供电子邮件。请添加一个，以便不通过Steam也能重新登录。</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_verify">验证并继续</string>
+    <string name="signin_gate_verify__macos">验证并继续</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_sendCode">发送验证码</string>
+    <string name="signin_gate_sendCode__macos">发送验证码</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_cancel">取消登录</string>
+    <string name="signin_gate_cancel__macos">取消登录</string>
+    <!-- Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). -->
+    <string name="signin_gate_join">合并为一个账户</string>
+    <string name="signin_gate_join__macos">合并为一个账户</string>
+    <!-- Profile import (SIGN-IN.md §3.5). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam). Arguments: 1=provider. -->
+    <string name="signin_profile_source">名称和头像来自%1$s。</string>
+    <!-- Profile import (SIGN-IN.md §3.5). -->
+    <string name="signin_profile_applePicture">Apple不提供头像。添加一个</string>
+    <string name="signin_profile_applePicture__macos">Apple不提供头像。添加一个</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_title">为这台设备选择许可证</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
+    <string name="signin_choice_lede">%1$s将在%2$s上使用它。</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_choice_ledeBrowser">%1$s将在此浏览器中使用它。</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated). Arguments: 1=product, 2=developer. -->
+    <string name="signin_choice_ledeNew">你还没有%1$s许可证。%2$s为你提供了这个许可证。</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_choice_group">%1$s的许可证</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {origin} = where the license came from (one of the signin.choice.origin.* strings); {term} = the license term (one of the signin.term.* strings). Arguments: 1=origin, 2=term. -->
+    <string name="signin_choice_meta">%1$s · %2$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number. Arguments: 1=used, 2=limit. -->
+    <plurals name="signin_choice_devices">
+        <item quantity="other">%1$s/%2$d台设备</item>
+    </plurals>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_metaNew">继续后创建</string>
+    <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). -->
+    <string name="signin_term_lifetime">永久</string>
+    <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
+    <string name="signin_term_until">有效期至%1$s</string>
+    <!-- A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform. Arguments: 1=date. -->
+    <string name="signin_term_yearlyUntil">按年订阅，有效期至%1$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_signIn">通过登录获得</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is. Arguments: 1=last6. -->
+    <string name="signin_choice_origin_key">尾号为%1$s的密钥</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_keyAdded">通过密钥添加</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is. Arguments: 1=store, 2=last6. -->
+    <string name="signin_choice_origin_storeKey">尾号为%2$s的%1$s密钥</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store). Arguments: 1=store. -->
+    <string name="signin_choice_origin_storeKeyAdded">%1$s密钥</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). A store license with no key. Arguments: {store} = a store's name (Steam, App Store). Arguments: 1=store. -->
+    <string name="signin_choice_origin_store">来自%1$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="signin_choice_origin_developer">来自%1$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_free">免费</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). -->
+    <string name="signin_choice_origin_gift">礼物</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, "{origin} · {term}" (owner, 2026-10-05: no license-type label). Arguments: {org} = the organization that provides the license. Arguments: 1=org. -->
+    <string name="signin_choice_origin_org">包含在%1$s中</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated). Arguments: 1=tier. -->
+    <string name="signin_choice_picker_signIn">%1$s · 登录</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {last6} = the license key's last six characters, shown as is. Arguments: 1=tier, 2=last6. -->
+    <string name="signin_choice_picker_key">%1$s · 密钥 …%2$s</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is. Arguments: 1=tier, 2=store, 3=last6. -->
+    <string name="signin_choice_picker_storeKey">%1$s · %2$s密钥 …%3$s</string>
+    <!-- The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store). Arguments: 1=tier, 2=store. -->
+    <string name="signin_choice_picker_store">%1$s · %2$s</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_tag_current">在此设备上</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_tag_new">新</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_tag_full">无空余设备</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_keep">保留此设备当前使用的许可证</string>
+    <string name="signin_choice_keep__macos">保留此设备当前使用的许可证</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_choice_keepMeta">%1$s将保持现状继续运行。</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_create">创建新的免费许可证</string>
+    <string name="signin_choice_create__macos">创建新的免费许可证</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_createMeta">独立的许可证 · 继续后创建</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_allFull">你的许可证已用满所有设备。替换一台设备即可在此使用。</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_allFullCreate">你的许可证已用满所有设备。请替换一台设备，或创建新的免费许可证。</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="signin_choice_noneReplaceable">%1$s负责管理这些许可证的设备。请让%1$s释放一台设备，或使用其他许可证。</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_choice_combined">你的其他%1$s项目仍然有效。</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated). Arguments: 1=developer. -->
+    <string name="signin_choice_portalOff">%1$s负责管理此许可证的设备。</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_keyInstead">改用许可证密钥</string>
+    <string name="signin_choice_keyInstead__macos">改用许可证密钥</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_freeDevice">释放设备</string>
+    <string name="signin_choice_freeDevice__macos">释放设备</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_continue">使用此许可证并继续</string>
+    <string name="signin_choice_continue__macos">使用此许可证并继续</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_raced">该席位刚刚被占用。请重新选择。</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_choice_codeExpired">%1$s上的代码已过期。请在那台设备上获取新代码并重新扫描。</string>
+    <!-- No license in this account (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_none_title">此账户中没有%1$s许可证</string>
+    <!-- No license in this account (SIGN-IN.md §3.6). -->
+    <string name="signin_none_body">用其他电子邮件购买的？请改用那个账户登录。</string>
+    <!-- No license in this account (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_none_get">获取%1$s</string>
+    <!-- No license in this account (SIGN-IN.md §3.6). -->
+    <string name="signin_none_otherAccount">使用其他账户</string>
+    <string name="signin_none_otherAccount__macos">使用其他账户</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_open">替换设备</string>
+    <string name="signin_replace_open__macos">替换设备</string>
+    <!-- Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice). Arguments: 1=thisDevice. -->
+    <string name="signin_replace_lede">选择要退出登录的设备。%1$s将占用其席位。</string>
+    <!-- Replace a device in a system dialog (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_openSystem">替换…</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”). Arguments: 1=platform, 2=when. -->
+    <string name="signin_replace_meta">%1$s · 上次使用：%2$s</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_leastRecent">最久未使用</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_activeNow">当前活跃</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_thisBrowser">此浏览器</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_replace_title">替换%1$s？</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”). Arguments: 1=device, 2=product, 3=thisDevice. -->
+    <string name="signin_replace_consequence">%1$s将退出登录%2$s，%3$s将占用它的席位。如有空余席位，%1$s之后可以重新登录。我们会通过电子邮件通知你。</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_replace_inUse">%1$s正在使用中。</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_confirm">替换并继续</string>
+    <string name="signin_replace_confirm__macos">替换并继续</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_back">返回</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_gone">该设备已被移除。请重新选择。</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {seconds} = a number of seconds. Arguments: 1=seconds. -->
+    <plurals name="signin_replace_rateLimited">
+        <item quantity="other">设备更改次数过多。请在%1$d秒后重试。</item>
+    </plurals>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_raced">有人先占用了该席位。请重新选择。</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_replace_racedAfterFree">%1$s已移除，但有人先占用了该席位。请重新选择。</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated); {name} = the person's display name. Arguments: 1=app, 2=name. -->
+    <string name="signin_consent_title">以%2$s的身份继续使用%1$s？</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
+    <string name="signin_consent_license">此设备的许可证</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
+    <string name="signin_consent_licenseLine">%1$s · %2$s · %3$s将成为第%4$s台设备（共%5$s台）</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=license, 2=device. -->
+    <string name="signin_consent_replaces">%1$s · 替换%2$s</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_consent_licenseInApp">你将在%1$s中选择许可证。</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
+    <string name="signin_consent_change">更改</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_consent_continue">继续使用%1$s</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_consent_alsoGets">%1$s还将获得</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
+    <string name="signin_consent_profile">你的个人资料和电子邮件</string>
+    <!-- Consent step before returning to the app (SIGN-IN.md §3.8). -->
+    <string name="signin_consent_pairwise">它会获得一个专属于你的独立ID，且无法看到你的其他产品或你的登录方式。</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). -->
+    <string name="signin_notYou">不是你？</string>
+    <string name="signin_notYou__macos">不是你？</string>
+    <!-- Hosted sign-in card (SIGN-IN.md). -->
+    <string name="signin_cancel">取消</string>
+    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_addTitle">将%1$s添加到你的账户</string>
+    <!-- License key step (SIGN-IN.md §3.9). -->
+    <string name="signin_key_addAndUse">添加并在此设备上使用</string>
+    <string name="signin_key_addAndUse__macos">添加并在此设备上使用</string>
+    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_keep">将%1$s保存在账户中</string>
+    <string name="signin_key_keep__macos">将%1$s保存在账户中</string>
+    <!-- License key step (SIGN-IN.md §3.9). Arguments: {left} = how many are left, as a number; {limit} = the license's device limit, as a number; {n} = a number. Arguments: 1=left, 2=limit, 3=n. -->
+    <string name="signin_key_entries">还剩%1$s/%2$s次密钥输入机会 · 这将是第%3$s次</string>
+    <!-- License key step (SIGN-IN.md §3.9). Arguments: {left} = how many are left, as a number. Arguments: 1=left. -->
+    <plurals name="signin_key_entriesLeftShort">
+        <item quantity="other">还剩%1$d次密钥输入机会</item>
+    </plurals>
+    <!-- License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_key_noEntries">此密钥在%1$s中已没有剩余的输入次数。将它添加到你的账户后，%1$s会改为让你登录。</string>
+    <!-- License key step (SIGN-IN.md §3.9). -->
+    <string name="signin_key_skip">暂时跳过</string>
+    <string name="signin_key_skip__macos">暂时跳过</string>
+    <!-- License key step (SIGN-IN.md §3.9). -->
+    <string name="signin_key_ownedSignIn">登录那个账户</string>
+    <string name="signin_key_ownedSignIn__macos">登录那个账户</string>
+    <!-- License key step (SIGN-IN.md §3.9). -->
+    <string name="signin_key_differentKey">使用其他密钥</string>
+    <string name="signin_key_differentKey__macos">使用其他密钥</string>
+    <!-- Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_return_yours">%1$s已归你所有</string>
+    <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_return_signedIn">你已登录%1$s</string>
+    <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_return_button">返回%1$s</string>
+    <!-- Return step (SIGN-IN.md §3.10). Arguments: {s} = a number of seconds. Arguments: 1=s. -->
+    <string name="signin_return_timer">%1$s秒后自动返回</string>
+    <!-- Return step (SIGN-IN.md §3.10). -->
+    <string name="signin_return_stay">留在此页</string>
+    <string name="signin_return_stay__macos">留在此页</string>
+    <!-- Last step of the in-app sign-in form (SIGN-IN.md §3.10). Arguments: {product} = the product's name (never translated). Arguments: 1=product. -->
+    <string name="signin_done_start">开始使用%1$s</string>
+    <string name="signin_done_start__macos">开始使用%1$s</string>
+    <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_device_title">登录以在%1$s上完成</string>
+    <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_device_lede">在这里使用你的手机或电脑。完成后%1$s会自动继续。</string>
+    <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). -->
+    <string name="signin_device_cancel">不是你本人发起的？请取消。可能有人正试图使用你的账户。</string>
+    <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {app} = the requesting app's name (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=app, 2=device. -->
+    <string name="signin_device_done">%1$s已在%2$s上登录</string>
+    <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=device. -->
+    <string name="signin_device_doneLede">请查看%1$s：它会自动继续。</string>
+    <!-- Device code approval on a phone or computer (SIGN-IN.md §3.11). -->
+    <string name="signin_device_signOut">让电视退出登录</string>
+    <string name="signin_device_signOut__macos">让电视退出登录</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_title">在浏览器中完成</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_check">请确认那里的代码与此代码一致。</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
+    <string name="signin_handoff_url">或前往%1$s</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
+    <string name="signin_handoff_expires">代码将在%1$s后过期</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_again">再次打开浏览器</string>
+    <string name="signin_handoff_again__macos">再次打开浏览器</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_cancelled">登录已取消。获取新代码</string>
+    <!-- Desktop app after sign-in (SIGN-IN.md §3.17). -->
+    <string name="signin_desktop_continue">在浏览器中继续</string>
+    <string name="signin_desktop_continue__macos">在浏览器中继续</string>
+    <!-- Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {name} = the person's display name; {tier} = the tier's name (never translated). Arguments: 1=name, 2=tier. -->
+    <string name="signin_desktop_toast">已登录为%1$s · %2$s许可证</string>
+    <!-- Desktop app after sign-in (SIGN-IN.md §3.17). -->
+    <string name="signin_desktop_notifyTitle">你已登录</string>
+    <!-- Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_desktop_notifyBody">%1$s已就绪。</string>
+    <!-- Desktop system notification when the app needs a license choice to finish (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_desktop_notifyChoose">选择许可证 · %1$s已准备好完成登录。</string>
+    <!-- App menu item that opens sign-in (SIGN-IN.md §3.17). -->
+    <string name="signin_menu_signIn">登录…</string>
+    <string name="signin_menu_signIn__macos">登录…</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_handoff_browserBody">我们已在你的浏览器中打开Polaris Key。在那里登录后，%1$s会自动继续。</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_waiting">正在等待你的浏览器…</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_finishing">正在完成登录…</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_useCode">改用代码</string>
+    <string name="signin_handoff_useCode__macos">改用代码</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_useBrowser">使用浏览器登录</string>
+    <string name="signin_handoff_useBrowser__macos">使用浏览器登录</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_noBrowser">无法打开你的浏览器</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_noBrowserBody">请在这台电脑的浏览器中打开此链接，或改用代码。</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_copyLink">复制链接</string>
+    <string name="signin_handoff_copyLink__macos">复制链接</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_tooLong">此次登录耗时过长。</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_codeTitle">使用代码登录</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
+    <string name="signin_handoff_codeBody">在任意手机或电脑上前往%1$s并输入此代码。</string>
+    <!-- App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). -->
+    <string name="signin_handoff_openBrowser">打开浏览器</string>
+    <string name="signin_handoff_openBrowser__macos">打开浏览器</string>
+    <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_return_closeTab">你可以关闭此标签页并返回%1$s。</string>
+    <!-- Return step when the license is chosen in the app (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_return_chooseInApp">返回%1$s选择许可证。你可以关闭此标签页。</string>
+    <!-- Return step, short form (SIGN-IN.md §3.10). -->
+    <string name="signin_return_signedInShort">你已登录</string>
+    <!-- Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated). Arguments: 1=app. -->
+    <string name="signin_return_cancelled">已在%1$s中取消登录。请从%1$s重新开始。</string>
+    <!-- Return step (SIGN-IN.md §3.10). -->
+    <string name="signin_return_library">打开你的资料库</string>
+    <string name="signin_return_library__macos">打开你的资料库</string>
+    <!-- Choose a license for this device (SIGN-IN.md §3.6). -->
+    <string name="signin_choice_freed">此许可证现在有一台空余设备。</string>
+    <!-- Replace a device, inline in the license choice (SIGN-IN.md §3.7). -->
+    <string name="signin_replace_opensBrowser">在浏览器中打开Polaris Key</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
+    <string name="signin_cli_opening">正在浏览器中打开Polaris Key…</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {url} = a web address, shown as is. Arguments: 1=url. -->
+    <string name="signin_cli_ifNotOpened">如果未打开，请前往%1$s</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
+    <string name="signin_cli_keys">Enter 再次打开 · c 使用代码 · Esc 取消</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
+    <string name="signin_cli_headless">这台电脑上没有浏览器。请改用代码：</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {name} = the person's display name; {email} = an email address. Arguments: 1=name, 2=email. -->
+    <string name="signin_cli_signedIn">已登录为%1$s（%2$s）</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number. Arguments: 1=license, 2=term, 3=device, 4=position, 5=limit. -->
+    <string name="signin_cli_license">%1$s · %2$s · %3$s是第%4$s台设备（共%5$s台）</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. -->
+    <string name="signin_cli_closeTab">你可以关闭浏览器标签页。</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_cli_logoutConfirm">要在此设备上退出登录%1$s吗？(y/N)</string>
+    <!-- Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {command} = a terminal command, shown as is. Arguments: 1=command. -->
+    <string name="signin_cli_signInAgain">运行%1$s以重新登录。</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_title">使用其他设备登录</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”). Arguments: 1=time. -->
+    <string name="signin_approve_works">%1$s内有效</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_waiting">正在等待你在另一台设备上批准…</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_ask">要批准新设备吗？</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_warning">仅当是你本人在面前的设备上发起时才批准。Polaris Key或任何开发者都不会向你索要此信息。</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_approve">批准并登录</string>
+    <string name="signin_approve_approve__macos">批准并登录</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_deny">拒绝</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_denied">该请求已被拒绝。请换一种方式登录。</string>
+    <!-- Sign in with another device (SIGN-IN.md §3.11). -->
+    <string name="signin_approve_expired">该代码已过期。请获取新代码。</string>
+    <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
+    <string name="signin_console_title">登录控制台</string>
+    <!-- Console operator sign-in (SIGN-IN.md §3.12). Arguments: {idp} = the identity provider's name; {host} = a host name. Arguments: 1=idp, 2=host. -->
+    <string name="signin_console_next">下一步：%2$s上的%1$s</string>
+    <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
+    <string name="signin_console_signedOut">你已退出登录</string>
+    <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
+    <string name="signin_console_sessionEnded">你的会话已结束</string>
+    <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
+    <string name="signin_console_sessionEndedBody">请重新登录以继续。未保存的更改会保留在此标签页中。</string>
+    <!-- Console operator sign-in (SIGN-IN.md §3.12). Arguments: {email} = an email address. Arguments: 1=email. -->
+    <string name="signin_console_notOperator">%1$s不在操作员组中。</string>
+    <!-- Console operator sign-in (SIGN-IN.md §3.12). -->
+    <string name="signin_console_notConfigured">管理员登录尚未设置</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). -->
+    <string name="signin_expired_title">该验证码或链接已过期</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). -->
+    <string name="signin_expired_body">验证码和链接仅可使用一次，10分钟内有效。</string>
+    <!-- Expired code or link page (SIGN-IN.md §4.12). -->
+    <string name="signin_again">重新登录</string>
+    <string name="signin_again__macos">重新登录</string>
+    <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_identityOff_notice">%1$s不使用Polaris Key登录。请打开%1$s并在其中输入你的许可证密钥。</string>
+    <!-- The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_identityOff_lede">在此登录即可在你的资料库中看到%1$s。</string>
+    <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_signout_title">要在此设备上退出登录%1$s吗？</string>
+    <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated). Arguments: 1=product, 2=tier. -->
+    <string name="signin_signout_released">%1$s将停止在此使用你的%2$s许可证，并释放其席位。</string>
+    <!-- Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number. Arguments: 1=n. -->
+    <plurals name="signin_signout_unsynced">
+        <item quantity="other">%1$d项更改尚未同步。</item>
+    </plurals>
+    <!-- Sign-out confirmation (SIGN-IN.md §4.9). -->
+    <string name="signin_signout_waitSync">等待同步</string>
+    <string name="signin_signout_waitSync__macos">等待同步</string>
+    <!-- Session ended (SIGN-IN.md §4.10). -->
+    <string name="signin_session_toastTitle">你已被退出登录</string>
+    <!-- Session ended (SIGN-IN.md §4.10). -->
+    <string name="signin_session_toastBody">请重新登录，从上次离开的地方继续。</string>
+    <!-- Session ended (SIGN-IN.md §4.10). Arguments: {product} = the product's name from ProductIdentity (never translated). Arguments: 1=product. -->
+    <string name="signin_session_kitEnded">你的登录已结束。请重新登录以继续使用%1$s。</string>
+    <!-- Sign-in provider buttons (SIGN-IN.md §3.3). -->
+    <string name="signin_provider_manage">在Polaris Key中管理登录方式</string>
+    <string name="signin_provider_manage__macos">在Polaris Key中管理登录方式</string>
+    <!-- Profile import (SIGN-IN.md §3.5). -->
+    <string name="signin_profile_changePicture">更换头像</string>
+    <string name="signin_profile_changePicture__macos">更换头像</string>
+    <!-- Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”. Arguments: 1=product, 2=device. -->
+    <string name="signin_mail_replaced_subject">%1$s已在%2$s上退出登录</string>
+    <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform. Arguments: 1=device, 2=newDevice, 3=product, 4=date. -->
+    <string name="signin_mail_replaced_body">你于%4$s登录%3$s时，%1$s被%2$s替换。如有空余席位，它之后可以重新登录。如果这不是你本人操作，请打开Polaris Key检查你的设备。</string>
+    <!-- Security email (SIGN-IN.md §3.15). -->
+    <string name="signin_mail_newDevice_subject">有新设备登录了你的Polaris Key账户</string>
+    <!-- Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country). Arguments: 1=device, 2=date, 3=place. -->
+    <string name="signin_mail_newDevice_body">%1$s于%2$s从%3$s登录。如果这不是你本人操作，请在Polaris Key的“你的登录位置”中将其退出登录。</string>
+    <!-- Security email (SIGN-IN.md §3.15). -->
+    <string name="signin_mail_open">打开Polaris Key</string>
+    <!-- Email code step (SIGN-IN.md §3.4). -->
+    <string name="signin_code_label">6位验证码</string>
+    <!-- Core copy (conformance/parity/copy.en.json, fallback). -->
+    <string name="core_fallback_title">出现问题</string>
+    <!-- Core copy (conformance/parity/copy.en.json, fallback). Arguments: 1=code. -->
+    <string name="core_fallback_message">出现问题（%1$s）。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_title">未登录</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unauthorized_message">此设备未登录，或其许可证已失效。请重新登录或激活。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_found_title">未找到</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_found_message">未找到该内容，它可能已被移除。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bad_request_title">请求被拒绝</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bad_request_message">请求无效。请更新应用后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_forbidden_title">不允许</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_forbidden_message">你无权执行此操作。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attestation_required_title">需要设备验证</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attestation_required_message">此操作需要经过验证的设备。请允许应用验证此设备，然后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attestation_rejected_title">设备验证失败</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attestation_rejected_message">无法验证此设备。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attestation_unavailable_title">设备验证不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_attestation_unavailable_message">此应用目前无法进行设备验证。请几分钟后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_rate_limited_title">尝试次数过多</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_rate_limited_message">尝试次数过多。请稍等片刻后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_body_too_large_title">内容过大</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_body_too_large_message">内容过大，无法发送。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_method_not_allowed_title">请求被拒绝</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_method_not_allowed_message">请求无效。请更新应用后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_misconfigured_title">服务未设置</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_misconfigured_message">此服务未正确设置。请联系开发者。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_registration_closed_title">注册已关闭</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_registration_closed_message">目前无法注册新设备。请使用许可证密钥激活或登录。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_value_not_representable_title">值不被接受</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_value_not_representable_message">某个值无法保存。请修改后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_document_not_representable_title">服务出现问题</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_document_not_representable_message">服务无法准备你的设置。请联系开发者。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_limit_title">已达到设备上限</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_limit_message">此许可证已用满所有设备。请替换一台设备以在此使用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_disabled_title">许可证已停用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_disabled_message">此许可证已被停用。请联系开发者。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_expired_title">许可证已过期</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_expired_message">此许可证已过期。请续订以继续使用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_entitled_title">未包含</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_entitled_message">你的许可证不包含此内容。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_version_blocked_title">需要更新</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_version_blocked_message">此版本无法与你的许可证一起使用。请更新应用以继续。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_channel_not_allowed_title">渠道未包含</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_channel_not_allowed_message">你的许可证不包含此发布渠道。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_hardware_mismatch_title">设备已更改</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_hardware_mismatch_message">此设备的硬件已更改。请重新激活以在此使用你的许可证。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_fingerprint_required_title">设备验证失败</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_fingerprint_required_message">此许可证需要硬件指纹，但无法在此设备上读取。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_enroll_disabled_title">无免费许可证</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_enroll_disabled_message">此应用不提供免费许可证。请输入许可证密钥或登录。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_enroll_claimed_title">登录以继续</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_enroll_claimed_message">此设备的免费许可证现已归属于某个账户。请登录以使用它。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_enroll_failed_title">无法获取免费许可证</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_enroll_failed_message">无法发放免费许可证。请几分钟后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_managed_by_admin_title">由你的组织设置</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_managed_by_admin_message">此设置由你的组织管理，无法在此更改。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_catalog_unavailable_title">设置不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_catalog_unavailable_message">目前无法加载设置。请几分钟后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_unusable_title">许可证已失效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_unusable_message">你的许可证已失效，因此无法加载设置。请重新登录或激活。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_disabled_title">登录不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_disabled_message">此应用未开启登录功能。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_oidc_error_title">登录失败</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_oidc_error_message">登录未完成。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unavailable_title">登录不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unavailable_message">登录目前不可用。请几分钟后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_identity_disabled_title">登录不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_identity_disabled_message">已关闭通过此应用登录。你的安装和许可证仍可正常使用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_auth_method_disabled_title">登录方式不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_auth_method_disabled_message">该登录方式已关闭。请选择其他方式。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_unavailable_title">电子邮件登录不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_unavailable_message">电子邮件登录目前不可用。请选择其他登录方式。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_turnstile_failed_title">验证未通过</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_turnstile_failed_message">安全验证未通过。请重新加载页面后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signin_expired_title">登录已过期</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_signin_expired_message">此次登录已过期。请重新开始。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_code_title">验证码错误</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_code_message">该验证码无效。请检查电子邮件后重新输入。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_in_use_title">电子邮件已被使用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_in_use_message">另一个Polaris Key账户已在使用此电子邮件。请将此次登录合并到该账户，或使用其他电子邮件。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_terms_required_title">未接受条款</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_terms_required_message">请同意条款以继续。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_license_owned_title">许可证在另一个账户中</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). Arguments: 1=product. -->
+    <string name="core_codes_license_owned_message">此%1$s许可证已在另一个Polaris Key账户中。许可证不会通过密钥转移。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_mismatch_title">电子邮件未验证</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_email_mismatch_message">此许可证属于你的账户尚未验证的电子邮件地址。请添加并验证该电子邮件，然后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_link_conflict_title">已被关联</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_link_conflict_message">该登录方式属于另一个Polaris Key账户。请登录那个账户，或将两个账户合并。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_last_link_title">无法移除</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_last_link_message">这是你账户唯一的登录方式。请先添加其他登录方式再移除它。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_step_up_required_title">确认是你本人</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_step_up_required_message">为了你的安全，请重新登录以继续。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_eligible_title">优惠不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_eligible_message">此优惠已不再适用于你的账户。请刷新后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_download_auth_required_title">登录以下载</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_download_auth_required_message">请登录或激活许可证以下载此内容。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delivery_gate_missing_title">下载不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delivery_gate_missing_message">此下载尚未设置。请联系开发者。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upstream_rate_limited_title">下载繁忙</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_upstream_rate_limited_message">下载服务目前繁忙。请几分钟后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_server_misconfigured_title">服务未设置</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_server_misconfigured_message">此服务未正确设置。请联系开发者。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_internal_error_title">下载失败</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_internal_error_message">下载服务器出现问题。请几分钟后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_release_record_rejected_title">版本被拒绝</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_release_record_rejected_message">由于某项检查未通过，此版本未发布。发布日志中写明了该检查。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_release_tag_is_pack_release_title">版本已跳过</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_release_tag_is_pack_release_message">由于标签与某个内容包版本相同，此版本已被跳过。请重命名该标签。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_asset_unreachable_title">图片未更新</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_asset_unreachable_message">无法从来源获取图片。仍显示之前的副本，并将自动重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_feed_not_composable_title">无法检查更新</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_feed_not_composable_message">目前无法检查更新。请几分钟后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_service_unavailable_title">不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_service_unavailable_message">此应用不使用此服务。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_service_disabled_title">不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_service_disabled_message">此应用已关闭此服务。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_only_title">离线模式</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_local_only_message">此应用正以离线模式运行，因此未连接。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_insecure_base_url_title">连接不安全</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_insecure_base_url_message">应用拒绝了不安全的连接。请联系开发者。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_jws_rejected_title">激活文件无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_jws_rejected_message">激活文件的签名无效。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_claims_rejected_title">激活文件无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_claims_rejected_message">激活文件适用于其他产品或设备，或已过期。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_trust_rejected_title">激活文件不受信任</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_trust_rejected_message">激活文件使用了此应用不信任的密钥签名。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_inner_doc_rejected_title">激活文件无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_inner_doc_rejected_message">激活文件中的许可证无效。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_title">激活文件无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_message">无法读取激活文件。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_transport_title">连接出现问题</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_transport_message">请检查网络连接后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_network_title">无法连接</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_network_message">无法连接到Polaris Key。请检查网络连接后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_refresh_failed_title">无法刷新</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_refresh_failed_message">无法刷新你的许可证和设置。请检查网络连接后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_failed_title">无法检查你的许可证</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sync_failed_message">无法检查你的许可证，因此应用无法启动。请检查网络连接后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_fetch_failed_title">内容缺失</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_fetch_failed_message">无法下载必需的内容，因此应用无法启动。请检查网络连接后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bridge_missing_title">应用出现问题</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bridge_missing_message">应用的许可桥接组件缺失。请重新安装应用或联系开发者。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unknown_title">出现问题</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unknown_message">出现问题。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_release_refused_title">未包含</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_release_refused_message">你的许可证不包含此版本。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_rejected_title">激活文件无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_rejected_message">激活文件被拒绝。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_import_unsupported_title">此处不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bundle_import_unsupported_message">此处不支持离线激活。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_report_unsupported_title">此处不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_report_unsupported_message">此处不支持设备报告。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_management_unsupported_title">此处不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_management_unsupported_message">无法在此管理设备。请在你的账户中管理。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_list_failed_title">无法加载设备</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_list_failed_message">无法加载你的设备。请检查网络连接后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_rename_failed_title">无法重命名</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_rename_failed_message">无法重命名该设备。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_deauthorize_failed_title">无法移除设备</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_device_deauthorize_failed_message">无法移除该设备。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_unsupported_title">此处不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_key_entry_unsupported_message">无法在此输入许可证密钥。请改为登录。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_failed_title">登录失败</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_failed_message">登录未完成。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_out_failed_title">退出登录失败</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_out_failed_message">退出登录未完成。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bad_response_title">意外的响应</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_bad_response_message">服务返回了应用无法使用的响应。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_network_error_title">无法连接</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_network_error_message">无法连接到Polaris Key。请检查网络连接后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_server_error_title">服务出现问题</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_server_error_message">服务出现问题。请几分钟后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_cancelled_title">登录已取消</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_cancelled_message">登录已取消。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_expired_title">代码已过期</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_expired_message">代码在登录完成前已过期。请重新开始。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_denied_title">登录被拒绝</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_denied_message">登录被拒绝。请重新开始。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_unavailable_title">登录不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_sign_in_unavailable_message">登录目前不可用。请几分钟后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_options_title">应用未设置</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_options_message">应用的许可功能未正确设置。请联系开发者。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_configured_title">应用未设置</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_not_configured_message">应用的许可功能尚未设置。请联系开发者。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_title">此处不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_unsupported_message">此处不支持此功能。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_timeout_title">已超时</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_timeout_message">服务响应时间过长。请检查网络连接后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_response_too_large_title">意外的响应</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_response_too_large_message">服务返回了应用无法使用的响应。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_too_many_redirects_title">连接出现问题</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_too_many_redirects_message">连接被重定向的次数过多。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_insecure_redirect_title">连接不安全</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_insecure_redirect_message">应用拒绝了不安全的重定向。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_http_error_title">服务出现问题</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_http_error_message">服务返回了错误。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_response_title">意外的响应</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_invalid_response_message">服务返回了应用无法使用的响应。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_store_failed_title">存储出现问题</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_store_failed_message">应用无法在此设备上读取或保存其许可证。请确认应用可以写入其数据文件夹。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_error_title">平台出现问题</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_platform_error_message">平台报告了一个错误。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_no_token_title">未激活</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_no_token_message">此设备尚未激活。请激活或登录。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_mint_unavailable_title">不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_mint_unavailable_message">此功能不适用于此应用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_feed_rejected_title">更新检查失败</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_feed_rejected_message">无法验证更新信息，因此未安装任何内容。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_feed_rollback_title">更新检查失败</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_feed_rollback_message">更新信息比此设备上已有的信息旧，因此被拒绝。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_record_rejected_title">更新未通过验证</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_record_rejected_message">无法验证此更新，因此未安装。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_record_mismatch_title">更新未通过验证</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_record_mismatch_message">此更新与发布的内容不一致，因此未安装。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_payload_mismatch_title">下载已损坏</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_payload_mismatch_message">更新未能正确下载，因此未安装。请重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_swap_refused_title">无法在此更新</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_swap_refused_message">此安装无法自行更新。请通过你安装它的方式进行更新。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_swap_failed_title">更新未完成</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_swap_failed_message">无法应用此更新。将在下次启动时重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_index_invalid_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_index_invalid_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_unsafe_path_title">内容被拒绝</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_unsafe_path_message">部分内容包含不安全的文件路径，因此被拒绝。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_duplicate_path_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_duplicate_path_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_case_collision_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_case_collision_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_path_conflict_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_path_conflict_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_layout_mismatch_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_files_layout_mismatch_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_content_stamp_invalid_title">应用版本出现问题</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_content_stamp_invalid_message">此版本的内容信息无效。请重新安装应用或联系开发者。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_full_corrupt_title">下载已损坏</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_full_corrupt_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delta_artifact_mismatch_title">下载已损坏</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delta_artifact_mismatch_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delta_base_mismatch_title">内容已更改</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delta_base_mismatch_message">此设备上已安装的内容已更改，因此需要完整下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delta_apply_failed_title">更新未应用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_delta_apply_failed_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_corrupt_title">下载已损坏</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_corrupt_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_source_missing_title">内容缺失</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_file_source_missing_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_payload_hash_mismatch_title">下载已损坏</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_payload_hash_mismatch_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_ref_mismatch_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_ref_mismatch_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_length_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_length_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_magic_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_magic_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_unsupported_version_title">内容不受支持</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_unsupported_version_message">此内容需要更新版本的应用。请更新应用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_record_size_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_record_size_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_flags_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_flags_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_reserved_nonzero_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_reserved_nonzero_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_zero_length_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_zero_length_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_clen_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_clen_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_bundle_ref_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_bundle_ref_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_bundle_range_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_bad_bundle_range_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_size_mismatch_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_size_mismatch_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_payload_mismatch_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunks_payload_mismatch_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunk_bundle_truncated_title">下载中断</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunk_bundle_truncated_message">下载被中断。请检查网络连接后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunk_corrupt_title">下载已损坏</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_chunk_corrupt_message">部分内容无法安装。下次将重新下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_plan_transport_unsupported_title">无法在此下载</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_plan_transport_unsupported_message">此内容无法在此平台上下载。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_plan_insufficient_disk_title">空间不足</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_plan_insufficient_disk_message">可用空间不足，无法存放此内容。请释放一些空间后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_plan_no_strategy_title">无法安装内容</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_plan_no_strategy_message">此内容无法安装在此设备上。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_no_variant_title">内容不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_no_variant_message">此内容不适用于此设备。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_type_unsupported_title">内容不受支持</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_type_unsupported_message">此内容需要更新版本的应用。请更新应用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_type_check_failed_title">内容无效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_type_check_failed_message">部分内容未通过检查，未被安装。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_not_pinned_title">内容不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_not_pinned_message">此内容不属于此版本的应用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_not_entitled_title">未包含</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_not_entitled_message">你的许可证不包含此内容。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_state_unreadable_title">存储出现问题</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_state_unreadable_message">无法读取已安装的内容，因此未安装任何新内容。请重启应用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pck_directory_refused_title">内容被拒绝</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pck_directory_refused_message">部分内容包含内容包不允许包含的文件，因此被拒绝。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pck_engine_mismatch_title">内容不受支持</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pck_engine_mismatch_message">此内容需要其他版本的游戏。请更新游戏。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_rolled_back_title">内容已恢复</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_rolled_back_message">上次内容更新未能启动，已恢复到之前的版本。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_revoked_title">内容已撤回</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_revoked_message">此内容已被其开发者撤回，无法使用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_not_data_only_title">内容被拒绝</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_pack_not_data_only_message">部分内容包含数据包不允许包含的文件，因此被拒绝。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_marker_rejected_title">应用版本出现问题</string>
+    <!-- Core copy (conformance/parity/copy.en.json, codes). -->
+    <string name="core_codes_marker_rejected_message">此版本的内置内容无效。请重新安装应用或联系开发者。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_ok_title">许可证有效</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_ok_message">你的许可证有效。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_grace_title">离线宽限期</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_grace_message">无法连接许可服务。在宽限期结束前，你可以继续使用此应用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_expired_title">许可证已过期</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_expired_message">你的许可证已过期。请连接互联网或续订以继续使用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_revoked_title">已退出登录</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_revoked_message">此设备已退出登录。请重新登录或激活以继续。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_needs_activation_title">激活</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_needs_activation_message">请输入许可证密钥或登录以继续。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_version_too_old_title">需要更新</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_version_too_old_message">此版本已不再受支持。请更新应用以继续。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_version_too_new_title">此许可证不可用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_version_too_new_message">此版本比你的许可证允许的版本更新。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_channel_not_entitled_title">渠道未包含</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_channel_not_entitled_message">你的许可证不包含此发布渠道。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_not_applicable_title">无需许可证</string>
+    <!-- Core copy (conformance/parity/copy.en.json, gate). -->
+    <string name="core_gate_not_applicable_message">此应用无需许可证。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_ok_title">已激活</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_ok_message">你的许可证已在此设备上激活。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_device_limit_title">已达到设备上限</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_device_limit_message">此许可证已用满所有设备。请替换一台设备以在此使用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_fingerprint_required_title">设备验证失败</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_fingerprint_required_message">此许可证需要硬件指纹，但无法在此设备上读取。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_hardware_mismatch_title">设备已更改</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_hardware_mismatch_message">此设备的硬件已更改。请重新激活以在此使用你的许可证。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_enroll_claimed_title">登录以继续</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_enroll_claimed_message">此设备的免费许可证现已归属于某个账户。请登录以使用它。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_disabled_title">许可证已停用</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_disabled_message">此许可证已被停用。请联系开发者。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_expired_title">许可证已过期</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_license_expired_message">此许可证已过期。请续订以继续使用。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_attestation_required_title">需要设备验证</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_attestation_required_message">此许可证需要经过验证的设备。请允许应用验证此设备，然后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_rate_limited_title">尝试次数过多</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_rate_limited_message">尝试次数过多。请稍等片刻后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_unauthorized_title">密钥未被接受</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_unauthorized_message">该许可证密钥未被接受。请检查后重试。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_enroll_disabled_title">无免费许可证</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_enroll_disabled_message">此应用不提供免费许可证。请输入许可证密钥或登录。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_refused_title">激活被拒绝</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). Arguments: 1=code. -->
+    <string name="core_activation_refused_message">激活被拒绝（%1$s）。</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_error_title">激活失败</string>
+    <!-- Core copy (conformance/parity/copy.en.json, activation). -->
+    <string name="core_activation_error_message">激活未完成。请检查网络连接后重试。</string>
+</resources>

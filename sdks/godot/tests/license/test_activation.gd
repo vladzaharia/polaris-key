@@ -35,17 +35,23 @@ func _cases() -> Array:
 			func(r): return r.limit == 2 and r.device_count == 1 and r.message == "device limit reached"],
 		["403 device_limit nested with the counts on top", S.json(403, {"error": {"code": "device_limit"}, "limit": 5, "deviceCount": 5}), PKeyActivationResult.KIND_DEVICE_LIMIT, &"device_limit",
 			func(r): return r.limit == 5 and r.device_count == 5],
-		["403 with no code", S.json(403, {}), PKeyActivationResult.KIND_DEVICE_LIMIT, &"device_limit", func(r): return r.limit == null and r.device_count == null],
+		["403 with no code is never device-limit", S.json(403, {}), PKeyActivationResult.KIND_REFUSED, &"forbidden", func(r): return r.limit == null and r.device_count == null],
+		["403 license_expired", S.json(403, {"error": "license_expired"}), PKeyActivationResult.KIND_LICENSE_EXPIRED, &"license_expired", null],
+		["403 attestation_required nested", S.json(403, {"error": {"code": "attestation_required", "message": "this operation requires an attested device"}}), PKeyActivationResult.KIND_ATTESTATION_REQUIRED, &"attestation_required", null],
+		["403 registration_closed -> refused with its code", S.json(403, {"error": "registration_closed"}), PKeyActivationResult.KIND_REFUSED, &"registration_closed", null],
+		["403 an unknown future code -> refused with its code", S.json(403, {"error": "key_entry_limit", "limit": 3}), PKeyActivationResult.KIND_REFUSED, &"key_entry_limit", func(r): return r.limit == null],
+		["400 bad_request -> refused", S.json(400, {"error": "bad_request"}), PKeyActivationResult.KIND_REFUSED, &"bad_request", null],
+		["400 without a code -> error", {"status": 400}, PKeyActivationResult.KIND_ERROR, &"http-error", null],
 		["403 fingerprint_required flat", S.json(403, {"error": "fingerprint_required", "message": "this tier requires a hardware fingerprint"}), PKeyActivationResult.KIND_FINGERPRINT_REQUIRED, &"fingerprint_required", null],
 		["403 fingerprint_required nested", S.json(403, {"error": {"code": "fingerprint_required"}}), PKeyActivationResult.KIND_FINGERPRINT_REQUIRED, &"fingerprint_required", null],
 		["403 license_disabled", S.json(403, {"error": "license_disabled"}), PKeyActivationResult.KIND_LICENSE_DISABLED, &"license_disabled", null],
-		["403 another code", S.json(403, {"error": {"code": "forbidden"}}), PKeyActivationResult.KIND_ERROR, &"forbidden", null],
+		["403 another code", S.json(403, {"error": {"code": "forbidden"}}), PKeyActivationResult.KIND_REFUSED, &"forbidden", null],
 		["409 hardware_mismatch flat", S.json(409, {"error": "hardware_mismatch", "message": "hardware changed; re-activation required", "drift": 2, "changed": ["primaryMac", "cpuModel"]}), PKeyActivationResult.KIND_HARDWARE_MISMATCH, &"hardware_mismatch",
 			func(r): return r.drift == 2 and r.changed == ["primaryMac", "cpuModel"]],
 		["409 hardware_mismatch nested", S.json(409, {"error": {"code": "hardware_mismatch", "drift": 1, "changed": ["machineModel", 7]}}), PKeyActivationResult.KIND_HARDWARE_MISMATCH, &"hardware_mismatch",
 			func(r): return r.drift == 1 and r.changed == ["machineModel"]],
 		["429", S.json(429, {"error": "rate_limited", "message": "too many activation attempts"}), PKeyActivationResult.KIND_RATE_LIMITED, &"rate_limited", null],
-		["404 on activate", S.json(404, {"error": {"code": "not_found"}}), PKeyActivationResult.KIND_ERROR, &"not_found", null],
+		["404 on activate", S.json(404, {"error": {"code": "not_found"}}), PKeyActivationResult.KIND_REFUSED, &"not_found", null],
 		["500", S.json(500, {"error": "internal_error"}), PKeyActivationResult.KIND_ERROR, &"internal_error", null],
 		["502 without a body", {"status": 502, "body": "bad gateway"}, PKeyActivationResult.KIND_ERROR, &"http-error", null],
 		["200 without a token", S.json(200, {"schemaVersion": 1}), PKeyActivationResult.KIND_ERROR, &"invalid-response", null],
@@ -88,17 +94,21 @@ func _ok_and_shape(t: PKeyTestContext) -> void:
 		t.check("activation: the X-PKey headers ride along", req["headers"].get("x-pkey-device") == h.F["device_id"] and req["headers"].get("x-pkey-version") == h.F["version"] and req["headers"].has("x-pkey-channel") and req["headers"].has("x-pkey-sdk"))
 		var body := PKeyJson.parse(S.body_text(req))
 		var expected_fp := PKeyFingerprint.hash_components(h.F["product"], host.host["expected"])
-		t.check("activation: the body is the hashed fingerprint", body["ok"] and body["value"] == {"fingerprint": expected_fp}, S.body_text(req))
+		# PX-W13 §8 Q2: the device label rides along on activation.
+		t.check("activation: the body is the hashed fingerprint and the device label", body["ok"] and body["value"] == {"fingerprint": expected_fp, "deviceName": "Test Device"}, S.body_text(req))
 	var docs: Array = h.requests("GET", "/license/document")
 	t.check("activation: the forced sync ran with the new token before returning", docs.size() == 1 and S.bearer(docs[0]) == TOKEN and not docs[0]["headers"].has("if-none-match"))
 	t.check("activation: the licence is ok once activation returns", sdk.license.status()["status"] == "ok" and sdk.license.is_licensed() and sdk.license.activation() == &"token", "%s after %s" % [sdk.license.status(), synced])
 	t.check("activation: state_changed reported ok", states.has("ok"), str(states))
 	sdk.queue_free()
 
-	# Fingerprinting off: no body and no content type, byte-identical to having nothing to send.
+	# Fingerprinting and the label off: no body and no content type, byte-identical to having
+	# nothing to send.
 	h.server.requests.clear()
 	h.plan["/license/activate"] = [S.json(401, {"error": "unauthorized"})]
-	var off = await h.sdk(PKeyMemoryStore.new(h.F["device_id"]), PackedStringArray(), func(o: PKeyOptions): o.fingerprint_enabled = false)
+	var off = await h.sdk(PKeyMemoryStore.new(h.F["device_id"]), PackedStringArray(), func(o: PKeyOptions):
+		o.fingerprint_enabled = false
+		o.send_device_name = false)
 	await off.license.activate_with_key(KEY)
 	reqs = h.requests("POST", "/license/activate")
 	t.check("activation: fingerprint_enabled = false sends no body", reqs.size() == 1 and (reqs[0]["body"] as PackedByteArray).is_empty() and not reqs[0]["headers"].has("content-type"))
@@ -154,7 +164,8 @@ func _refusals(t: PKeyTestContext) -> void:
 	t.check("enroll: on web nothing is sent", h.requests("POST", "/license/enroll").is_empty())
 	r = await web.license.activate_with_key(KEY)
 	var reqs: Array = h.requests("POST", "/license/activate")
-	t.check("activation: on web the key still goes, without a fingerprint body", r.kind == PKeyActivationResult.KIND_UNAUTHORIZED and reqs.size() == 1 and (reqs[0]["body"] as PackedByteArray).is_empty())
+	var web_body := PKeyJson.parse(S.body_text(reqs[0])) if reqs.size() == 1 else {"ok": false}
+	t.check("activation: on web the key still goes, without a fingerprint (the label only)", r.kind == PKeyActivationResult.KIND_UNAUTHORIZED and reqs.size() == 1 and web_body["ok"] and web_body["value"] == {"deviceName": "Test Device"}, S.body_text(reqs[0]) if reqs.size() == 1 else "")
 	web.queue_free()
 
 	h.server.requests.clear()

@@ -1,4 +1,5 @@
 import * as React from "react";
+import { flushSync } from "react-dom";
 import {
   flexRender,
   getCoreRowModel,
@@ -31,6 +32,13 @@ import { ErrorState } from "../ErrorState.js";
 import { announce, LiveRegion } from "../LiveRegion.js";
 import { Popover } from "../Popover.js";
 import { Skeleton } from "../Skeleton.js";
+import {
+  highlight,
+  Presence,
+  reducedMotion,
+  viewTransition,
+  viewTransitionsSupported,
+} from "../motion/index.js";
 import { csvValue, downloadCsv, toCsv } from "./csv.js";
 import { FilterBar, type FilterBarFacet } from "./FilterBar.js";
 import {
@@ -265,6 +273,48 @@ function alignClass(align: "start" | "center" | "end" | undefined): string {
       : "text-left";
 }
 
+// ── List motion (notes/S-23 §6.1 "list", §6.2 rule 4; MO-09) ────────────────────────────────────
+
+/** A list change may run as a View Transition: the API exists and motion is not reduced. */
+function listMotionOn(): boolean {
+  return viewTransitionsSupported() && !reducedMotion();
+}
+
+/** The same row ids in the same order. */
+function sameRowIds<T>(a: T[], b: T[], id: (row: T) => string): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((row, i) => id(row) === id(b[i]!));
+}
+
+/** What a row shows (its columns' values), to tell an edited row from a refetched one. */
+function rowPrint<T>(row: T, index: number, columns: DataColumn<T>[]): string {
+  return columns
+    .map((c) =>
+      c.meta?.csv ? c.meta.csv(row) : csvValue(columnValue(c, row, index)),
+    )
+    .join("\u0001");
+}
+
+/**
+ * The ids of the rows in `next` that were created (absent from `prev`) or edited (a column shows
+ * something else), for `highlight()`. A refetch that changes nothing returns none.
+ */
+export function changedRowIds<T>(
+  prev: T[],
+  next: T[],
+  getRowId: (row: T) => string,
+  columns: DataColumn<T>[],
+): string[] {
+  const before = new Map(
+    prev.map((row, i) => [getRowId(row), rowPrint(row, i, columns)]),
+  );
+  return next.flatMap((row, i) => {
+    const id = getRowId(row);
+    const was = before.get(id);
+    return was === undefined || was !== rowPrint(row, i, columns) ? [id] : [];
+  });
+}
+
 // ── The table ──────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -280,11 +330,19 @@ function alignClass(align: "start" | "center" | "end" | undefined): string {
  * - **Server paging**: in `cursor` mode (and `offset` with a `total`), `data` is what the server
  *   returned for the current state; the table does not search, filter or sort it again.
  * - Column visibility and density are viewer preferences in localStorage, never in the URL.
+ * - **Motion** (notes/S-23 §6.1 "list"; MO-09): in client mode, up to VIRTUALIZE_ABOVE rows, a
+ *   facet, chip or sort change (from the table, a page's own control or Back) and a refetch that
+ *   adds, removes or reorders rows run as one `list` View Transition over the body (the layer
+ *   names at most LIST_BUDGET rows, then only the rows on screen). React keeps keyed rows, so a
+ *   surviving row moves rather than leaving and coming back. Typing in search never animates;
+ *   the virtualised path never animates; a created or edited row is tinted (`highlight()`). The
+ *   bulk-action bar enters and exits through `<Presence>`. Under reduced motion every change is
+ *   an instant swap.
  */
 export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const {
     id,
-    data,
+    data: incoming,
     columns,
     getRowId,
     caption,
@@ -369,30 +427,152 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     pagination.mode === "cursor" ||
     (pagination.mode === "offset" && pagination.total !== undefined);
 
+  // What the rows show: the data and the view of it (search, facets, sort, page). In client mode,
+  // when the rows would move (a facet or sort change, wherever it came from: a chip, a page's own
+  // tile, Back; or a refetch that adds, removes or reorders rows), the old view is held for the
+  // frame a `list` View Transition needs to capture it, and the new one is rendered inside the
+  // transition (S-23 §6.3; query-string changes are `list`, never `route`). Everything else lands
+  // in the same render: typing in search, paging, a refetch that changes nothing or edits in
+  // place, the first load, server paging, a list over VIRTUALIZE_ABOVE, reduced motion.
+  const viewKey = JSON.stringify([state.filters, state.sort]);
+  const current = {
+    data: incoming,
+    q: state.q,
+    filters: state.filters,
+    sort: state.sort,
+    offset: state.offset ?? 0,
+    key: viewKey,
+  };
+  const [held, setHeld] = React.useState(current);
+  const listMotion =
+    !serverSide &&
+    incoming.length <= VIRTUALIZE_ABOVE &&
+    held.data.length <= VIRTUALIZE_ABOVE;
+  const stale =
+    held.data !== incoming ||
+    held.key !== viewKey ||
+    held.q !== current.q ||
+    held.offset !== current.offset;
+  const rowsMove =
+    incoming.length > 0 &&
+    (held.key !== viewKey ||
+      (held.data !== incoming &&
+        held.data.length > 0 &&
+        !sameRowIds(held.data, incoming, getRowId)));
+  const moving = stale && listMotion && rowsMove && listMotionOn();
+  if (stale && !moving) setHeld(current);
+  const data = moving ? held.data : incoming;
+  /** The view the rows are drawn with (the held one while a transition captures it). */
+  const view: TableState = moving
+    ? {
+        ...state,
+        q: held.q,
+        filters: held.filters,
+        sort: held.sort,
+        offset: held.offset,
+      }
+    : state;
+  /** The newest data and view, for a transition whose update runs a frame later. */
+  const latest = React.useRef(current);
+  latest.current = current;
+  /** A list transition has started and not yet rendered the new rows. */
+  const pending = React.useRef(false);
+  /** The list whose rows move: the table body, or the cards list on a narrow screen. */
+  const listRef = React.useRef<HTMLElement | null>(null);
+  const setList = React.useCallback((el: HTMLElement | null) => {
+    listRef.current = el;
+  }, []);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  /** The rows last committed, to find the created and edited ones. */
+  const committed = React.useRef(data);
+  /** Has the table shown loaded data before (so a new row is a created one, not the first load)? */
+  const loadedOnce = React.useRef(false);
+
+  // A held view: start the transition. Created rows arrive, deleted and filtered-out rows leave,
+  // the rest move. A table wider than its scroller (one that can scroll sideways, scrolled or
+  // not) never animates: a row's snapshot is not clipped by the scroller.
+  React.useLayoutEffect(() => {
+    if (!moving || pending.current) return;
+    const scroller = scrollRef.current;
+    if (
+      !listRef.current ||
+      (scroller !== null && scroller.scrollWidth > scroller.clientWidth + 1)
+    ) {
+      setHeld(latest.current);
+      return;
+    }
+    pending.current = true;
+    const land = (): void => {
+      if (!pending.current) return;
+      pending.current = false;
+      flushSync(() => setHeld(latest.current));
+    };
+    const handle = viewTransition(land, {
+      type: "list",
+      list: listRef.current,
+    });
+    // If the browser never ran the update (it always should), the rows still land.
+    void handle.finished.then(() => {
+      if (!pending.current) return;
+      pending.current = false;
+      setHeld(latest.current);
+    });
+  });
+
+  // Tint the created and edited rows once they are in the DOM (a delay, not motion: it stays
+  // under reduced motion, S-23 §6.6). Not on the first load, and never for a filter or sort.
+  React.useLayoutEffect(() => {
+    const prev = committed.current;
+    committed.current = data;
+    const list = listRef.current;
+    if (prev === data || !listMotion || !loadedOnce.current || !list) return;
+    const want = new Set(changedRowIds(prev, data, getRowId, columns));
+    if (want.size === 0) return;
+    for (const el of Array.from(
+      list.querySelectorAll<HTMLElement>("[data-row-id]"),
+    ))
+      if (want.has(el.dataset.rowId ?? "")) highlight(el);
+    // Only a new `data` tints; the rest is read as it is now.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
+
+  React.useEffect(() => {
+    if (!loading && !error) loadedOnce.current = true;
+  });
+
   // Search and facets (client side unless the server pages).
   const filteredData = React.useMemo(
     () =>
       serverSide
         ? data
-        : filterRows(data, columns, state, facets, search?.columns),
-    [serverSide, data, columns, state, facets, search?.columns],
+        : filterRows(data, columns, view, facets, search?.columns),
+    [serverSide, data, columns, view, facets, search?.columns],
   );
 
   const isFiltered =
-    state.q.trim() !== "" ||
-    Object.values(state.filters).some((v) => v.length > 0);
+    view.q.trim() !== "" ||
+    Object.values(view.filters).some((v) => v.length > 0);
 
   // Selection.
   const [rowSelection, setRowSelection] = React.useState<
     Record<string, boolean>
   >({});
   const [allMatching, setAllMatching] = React.useState(false);
+  /** The bulk-action bar is on screen (open, or still leaving). */
+  const [bulkMounted, setBulkMounted] = React.useState(false);
+  const bulkLast = React.useRef<{
+    rows: T[];
+    count: number;
+    allMatching: boolean;
+  }>({ rows: [], count: 0, allMatching: false });
+  /** Rows have replaced a skeleton in this table (so they fade in once). */
+  const [sawSkeleton, setSawSkeleton] = React.useState(false);
 
   // Stable references: react-table memoizes its row models on these, and a fresh array every
   // render would recompute the sorted model on every render.
   const sorting: SortingState = React.useMemo(
-    () => state.sort.map((s) => ({ id: s.id, desc: s.desc })),
-    [state.sort],
+    () => view.sort.map((s) => ({ id: s.id, desc: s.desc })),
+    [view.sort],
   );
   const columnVisibility: VisibilityState = React.useMemo(
     () => Object.fromEntries(hidden.map((h) => [h, false])),
@@ -435,7 +615,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   }, [presentIds]);
 
   const allRows = table.getRowModel().rows;
-  const offset = state.offset ?? 0;
+  const offset = view.offset ?? 0;
   const pageRows =
     pagination.mode === "offset" && pagination.total === undefined
       ? allRows.slice(offset, offset + pagination.pageSize)
@@ -449,7 +629,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const selectedCount = selectedRows.length;
 
   // Live row count after a filter change (not on first render).
-  const filterKey = `${state.q}\u0000${JSON.stringify(state.filters)}`;
+  const filterKey = `${view.q}\u0000${JSON.stringify(view.filters)}`;
   const firstFilter = React.useRef(true);
   React.useEffect(() => {
     if (firstFilter.current) {
@@ -465,7 +645,6 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   // Virtualization (client mode, many rows).
   const virtual =
     pagination.mode === "client" && pageRows.length > VIRTUALIZE_ABOVE;
-  const scrollRef = React.useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer<HTMLDivElement, HTMLTableRowElement>({
     count: virtual ? pageRows.length : 0,
     getScrollElement: () => scrollRef.current,
@@ -545,6 +724,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       : content;
   };
 
+  // Every body cell is vertically centred (test/ui/tableCells.test.tsx guards it).
   const cellClass = (col: Column<T, unknown>): string => {
     const meta = col.columnDef.meta;
     return cn(
@@ -574,15 +754,19 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         onClick={followRow}
         className={cn(
           rowHeight,
-          "border-b border-border bg-surface-raised text-sm text-fg outline-hidden",
+          // The line under a row is its cells' (border-separate), so a row's View Transition
+          // snapshot carries it and it moves with the row (S-23 §6.1 "list"; MO-09).
+          "bg-surface-raised text-sm text-fg outline-hidden [&>td]:border-b [&>td]:border-border",
           "hover:bg-surface-overlay focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus",
           "data-[selected]:bg-accent-subtle",
+          // highlight(): a created or edited row's tint wins over the row's own surface.
+          "[&.pk-row-highlight]:bg-accent-subtle",
           rowHref && "cursor-pointer",
           extraClass,
         )}
       >
         {selection ? (
-          <td className="sticky left-0 z-[1] w-10 bg-inherit px-3">
+          <td className="sticky left-0 z-[1] w-10 bg-inherit px-3 align-middle">
             <TriCheckbox
               checked={selected}
               onChange={(v) => row.toggleSelected(v)}
@@ -599,7 +783,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           </td>
         ))}
         {rowActions ? (
-          <td className="w-12 px-2 text-right">
+          <td className="w-12 px-2 text-right align-middle">
             <RowMenu label={label} items={rowActions(row.original)} />
           </td>
         ) : null}
@@ -656,7 +840,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     const base = filterRows(
       data,
       columns,
-      state,
+      view,
       facets,
       search?.columns,
       facet.id,
@@ -678,7 +862,12 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
         ...o,
         count: counts ? (counts.get(o.value) ?? 0) : undefined,
       })),
+      // The controls (the menu's checkboxes, a chip's remove button) work on the live selection,
+      // so changes made while a transition holds the old view build on each other instead of on
+      // a stale copy; only the chips are drawn from the held view, since the chip row moves the
+      // table and must change inside the transition, not a frame before it.
       selected: state.filters[f.id] ?? [],
+      chips: view.filters[f.id] ?? [],
       onChange: (next) =>
         update({ filters: { ...state.filters, [f.id]: next } }),
     };
@@ -705,53 +894,73 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     downloadCsv(`${id}.csv`, tableCsv(sorted, visibleDefs));
   };
 
-  const toolbar =
-    selectedCount > 0 && selection ? (
-      <div className="flex min-h-10 flex-wrap items-center gap-2 rounded-md border border-border bg-accent-subtle px-3 py-1.5">
-        <span className="text-sm font-bold text-fg-strong tabular-nums">
-          {allMatching && pagination.mode === "cursor" && pagination.total
-            ? `All ${formatCount(pagination.total)} selected`
-            : `${formatCount(selectedCount)} selected`}
-        </span>
-        {pagination.mode === "cursor" &&
-        pagination.total !== undefined &&
-        !allMatching &&
-        table.getIsAllRowsSelected() &&
-        pagination.total > data.length ? (
-          <Button variant="link" size="xs" onClick={() => setAllMatching(true)}>
-            Select all {formatCount(pagination.total)} matching
-          </Button>
-        ) : null}
-        <span aria-hidden className="text-fg-subtle">
-          ·
-        </span>
-        {selection.bulkActions.map((a) => (
-          <Button
-            key={a.label}
-            size="sm"
-            variant={a.tone === "danger" ? "danger" : "outline"}
-            onClick={() =>
-              a.onSelect(
-                selectedRows.map((r) => r.original),
-                { allMatching },
-              )
-            }
-          >
-            {a.label}
-          </Button>
-        ))}
-        <Button
-          size="sm"
-          variant="ghost"
-          className="ml-auto"
-          onClick={() => {
-            setAllMatching(false);
-            setRowSelection({});
-          }}
-        >
-          Clear selection
+  // The bulk-action bar enters and exits through <Presence> (S-23 §6.1 "enter"/"exit"). While it
+  // leaves, it keeps the selection it had (inert), and the filter bar returns once it has gone.
+  const bulkOpen = selectedCount > 0 && Boolean(selection);
+  if (bulkOpen && !bulkMounted) setBulkMounted(true);
+  const bulkLive = {
+    rows: selectedRows.map((r) => r.original),
+    count: selectedCount,
+    allMatching,
+  };
+  if (bulkOpen) bulkLast.current = bulkLive;
+  const bulk = bulkOpen ? bulkLive : bulkLast.current;
+
+  const bulkBar = selection ? (
+    <div
+      inert={!bulkOpen || undefined}
+      className="pk-transient flex min-h-10 flex-wrap items-center gap-2 rounded-md border border-border bg-accent-subtle px-3 py-1.5"
+    >
+      <span className="text-sm font-bold text-fg-strong tabular-nums">
+        {bulk.allMatching && pagination.mode === "cursor" && pagination.total
+          ? `All ${formatCount(pagination.total)} selected`
+          : `${formatCount(bulk.count)} selected`}
+      </span>
+      {bulkOpen &&
+      pagination.mode === "cursor" &&
+      pagination.total !== undefined &&
+      !allMatching &&
+      table.getIsAllRowsSelected() &&
+      pagination.total > data.length ? (
+        <Button variant="link" size="xs" onClick={() => setAllMatching(true)}>
+          Select all {formatCount(pagination.total)} matching
         </Button>
-      </div>
+      ) : null}
+      <span aria-hidden className="text-fg-subtle">
+        ·
+      </span>
+      {selection.bulkActions.map((a) => (
+        <Button
+          key={a.label}
+          size="sm"
+          variant={a.tone === "danger" ? "danger" : "outline"}
+          disabledReason={a.disabledReason?.(bulk.rows)}
+          onClick={() =>
+            a.onSelect(bulk.rows, { allMatching: bulk.allMatching })
+          }
+        >
+          {a.label}
+        </Button>
+      ))}
+      <Button
+        size="sm"
+        variant="ghost"
+        className="ml-auto"
+        onClick={() => {
+          setAllMatching(false);
+          setRowSelection({});
+        }}
+      >
+        Clear selection
+      </Button>
+    </div>
+  ) : null;
+
+  const toolbar =
+    bulkMounted && bulkBar ? (
+      <Presence open={bulkOpen} onExited={() => setBulkMounted(false)}>
+        {bulkBar}
+      </Presence>
     ) : (
       <FilterBar
         search={
@@ -858,6 +1067,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   );
 
   const showSkeleton = loading && data.length === 0 && !error;
+  if (showSkeleton && !sawSkeleton) setSawSkeleton(true);
   const noResults = !loading && !error && pageRows.length === 0;
   // First run: nothing exists yet and nothing is filtered. The empty state stands alone, with no
   // toolbar, header row or table border around it.
@@ -867,7 +1077,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
     <EmptyState
       kind="no-results"
       title={`No ${caption.toLowerCase()} match these filters`}
-      filters={describeFilters(state, facets)}
+      filters={describeFilters(view, facets)}
       onClearFilters={clearFilters}
     />
   ) : (
@@ -884,7 +1094,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
       <tr
         key={`sk-${i}`}
         aria-hidden
-        className={cn(rowHeight, "border-b border-border")}
+        className={cn(rowHeight, "[&>td]:border-b [&>td]:border-border")}
       >
         {selection ? <td className="w-10 px-3" /> : null}
         {visibleColumns.map((c) => (
@@ -931,10 +1141,10 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   const headerSome = table.getIsSomeRowsSelected();
 
   const tableEl = (
-    <table className="w-full border-collapse text-sm">
+    <table className="w-full border-separate [border-spacing:0] text-sm">
       <caption className="sr-only">{caption}</caption>
       <thead className="sticky top-0 z-[2] bg-surface-raised">
-        <tr className="border-b border-border">
+        <tr className="[&>th]:border-b [&>th]:border-border">
           {selection ? (
             <th
               scope="col"
@@ -951,7 +1161,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           {(table.getHeaderGroups()[0]?.headers ?? []).map((header) => {
             const col = header.column;
             const meta = col.columnDef.meta;
-            const sortRule = state.sort.find((s) => s.id === col.id);
+            const sortRule = view.sort.find((s) => s.id === col.id);
             const dir = sortRule ? (sortRule.desc ? "desc" : "asc") : false;
             const canSort = col.getCanSort();
             const label = header.isPlaceholder
@@ -1000,12 +1210,25 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
           ) : null}
         </tr>
       </thead>
-      <tbody>{body}</tbody>
+      {/* Keyed on the skeleton, so the rows that replace it mount fresh and fade in once
+          (S-23 §6.1 "skeleton"); the skeleton itself waits out the 150 ms grace. */}
+      <tbody
+        key={showSkeleton ? "skeleton" : "rows"}
+        ref={setList}
+        className={cn(
+          "pk-vt-table",
+          showSkeleton
+            ? "pk-skeleton-group"
+            : sawSkeleton && !error && "pk-content-in",
+        )}
+      >
+        {body}
+      </tbody>
     </table>
   );
 
   const cards = (
-    <ul aria-label={caption} className="space-y-2">
+    <ul ref={setList} aria-label={caption} className="pk-vt-table space-y-2">
       {pageRows.map((row) => {
         const label = labelOf(row.original);
         const cells = row.getVisibleCells();
@@ -1023,7 +1246,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
             data-selected={row.getIsSelected() || undefined}
             onClick={followRow}
             className={cn(
-              "rounded-lg border border-border bg-surface-raised p-3 data-[selected]:bg-accent-subtle",
+              "rounded-lg border border-border bg-surface-raised p-3 data-[selected]:bg-accent-subtle [&.pk-row-highlight]:bg-accent-subtle",
               rowHref && "cursor-pointer",
             )}
           >
@@ -1174,7 +1397,7 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   }
 
   const hasToolbar =
-    (selectedCount > 0 && selection) ||
+    (bulkMounted && selection) ||
     Boolean(search) ||
     facets.length > 0 ||
     Boolean(toolbarActions) ||
@@ -1184,24 +1407,28 @@ export function DataTable<T>(props: DataTableProps<T>): React.ReactElement {
   return (
     <div className={cn("space-y-3", className)} data-table-id={id}>
       {hasToolbar ? toolbar : null}
-      {/* The keyboard handler serves j/k/Enter/x on the rows inside; it is not itself a control. */}
-      {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
-      <div onKeyDown={onKeyDown}>
-        {isMobileCards && !error && !showSkeleton && !noResults ? (
-          cards
-        ) : (
-          <div
-            ref={scrollRef}
-            className={cn(
-              "relative overflow-auto rounded-lg border border-border bg-surface-raised pk-scroll",
-              virtual && "max-h-[70vh]",
-            )}
-          >
-            {tableEl}
-          </div>
-        )}
+      {/* pk-vt-scope: during a list transition the card and the footer move with the rows instead
+          of jumping (S-23 §3.4 item 2); the toolbar above is part of the page and swaps at once. */}
+      <div className="pk-vt-scope space-y-3">
+        {/* The keyboard handler serves j/k/Enter/x on the rows inside; it is not itself a control. */}
+        {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
+        <div onKeyDown={onKeyDown}>
+          {isMobileCards && !error && !showSkeleton && !noResults ? (
+            cards
+          ) : (
+            <div
+              ref={scrollRef}
+              className={cn(
+                "relative overflow-auto rounded-lg border border-border bg-surface-raised pk-scroll",
+                virtual && "max-h-[70vh]",
+              )}
+            >
+              {tableEl}
+            </div>
+          )}
+        </div>
+        {footer}
       </div>
-      {footer}
       <LiveRegion
         message={showSkeleton ? `Loading ${caption.toLowerCase()}…` : ""}
       />

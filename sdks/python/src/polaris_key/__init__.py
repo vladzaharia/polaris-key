@@ -4,41 +4,73 @@ Core plus one sub-client per service, mirroring ``@polaris-key/node``::
 
     from polaris_key import PolarisKeyClient
 
-    client = PolarisKeyClient.create(product_slug="djdl", version="1.2.0", trust=PINS)
+    client = polaris_key.create(product_slug="djdl", version="1.2.0", trust=PINS)  # + discovery
     client.status()                      # the licence gate
     client.config.get_config("ui.theme") # layered settings
     client.devices.register()            # keyless device mint (§6)
     client.release.changelog()           # the truth store
     client.update.check()                # the feed over it
     client.update.decide()               # wire v4: the signed feed, the pinned record, the decision
+    client.boot(on_stage=print)          # or the whole start-up in one call
 
 Every subpackage is importable on its own, so a config-only daemon can
 ``from polaris_key.config import ConfigClient`` without pulling the licence module:
 
-    ``polaris_key.core``     device principal, credential, trust, cache, clock floor, sync,
-                         telemetry, offline bundles, the boot stage machine, and the
-                         frozen wire crypto
-    ``polaris_key.license``  activation + the gate
-    ``polaris_key.config``   the signed config document + layered resolution
-    ``polaris_key.devices``  registration, the roster, fingerprint/facts/device-id, the stores
-    ``polaris_key.identity`` device-code sign-in (RFC 8628)
-    ``polaris_key.release``  changelog / install script / artifact URLs
-    ``polaris_key.update``   version check, the Sparkle appcast URL, and wire v4's signed
-                         update decision (``decide()``, ``feed()``, ``release_record()``)
-    ``polaris_key.local``    the transportless profile
+    ``polaris_key.core``         device principal, credential, trust, cache, clock floor, sync,
+                             telemetry (with the update-health journal), offline bundles, the
+                             boot stage machine, the event bus, and the frozen wire crypto
+    ``polaris_key.license``      activation (typed outcomes) + the gate + entitlements
+    ``polaris_key.config``       the signed config document, layered resolution, ``config.set``
+    ``polaris_key.devices``      registration, the roster, fingerprint/facts/device-id, the stores
+    ``polaris_key.identity``     device-code sign-in (RFC 8628), ``sign_in_with_browser()``
+    ``polaris_key.release``      changelog, install script, verified ``fetch()``
+    ``polaris_key.distribution`` the ``download.json`` model
+    ``polaris_key.update``       version check, updater feed URLs, wire v4's signed decision,
+                             install drivers, the boot guard and ``update.packs``
+    ``polaris_key.commerce``     store purchase claims (Steam, Play, App Store)
+    ``polaris_key.copy``         localised messages
+    ``polaris_key.aio``          ``AsyncClient`` over the same core
+    ``polaris_key.cli``          the CLI verb set for argparse, click and typer
+    ``polaris_key.local``        the transportless profile
 
 This SDK verifies the SAME cross-language conformance corpus (``conformance/corpus/v2``)
-byte-for-byte as the Node, React and Swift SDKs. The normative source is
-``docs/security/WIRE-CONTRACT-V3.md``.
+byte-for-byte as the Node, React, Swift, Kotlin and Godot SDKs. The normative sources are
+``docs/security/WIRE-CONTRACT-V3.md`` (device, licence, config) and
+``docs/security/WIRE-CONTRACT-V4.md`` (the signed update and pack layer).
 """
 
 from __future__ import annotations
 
 from ._version import DIST_NAME, SDK_NAME, SDK_VERSION, __version__
 from .client import DeviceInfo, PolarisKeyClient, SyncState
-from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
+from .boot import ActivationOutcome, BootOutcome
+from .aio import AsyncClient, AsyncPolarisKeyClient
+from .update.bootguard import BootGuard, BootGuardOutcome
+
+#: ``polaris_key.create(**opts)`` — the one-call constructor: build, ``init()`` and (unless
+#: ``expected_services`` is pinned) discover. See :meth:`PolarisKeyClient.create`.
+create = PolarisKeyClient.create
+from .commerce import (
+    ClaimAttestationRequired,
+    ClaimNotOwned,
+    ClaimOk,
+    ClaimRefused,
+    ClaimResult,
+    CommerceBinding,
+    CommerceClient,
+    CommerceProduct,
+)
+from .config.client import DEFAULT_ENV_PREFIX, ConfigClient, ConfigSetting
+from .core.events import EVENT_KINDS, Event, EventBus
 from .config.mint import MintedToken
-from .identity.client import IdentityClient, SignInPoll, SignInPrompt, SignInResult
+from .identity.client import (
+    IdentityClient,
+    SignedInIdentity,
+    SignInPoll,
+    SignInPrompt,
+    SignInResult,
+)
+from . import copy, qr
 # Generated constants (`pnpm gen:constants`, tools/gen-sdk-constants.ts), imported wholesale through
 # the generated ``__all__`` so a constant the generator gains reaches the package root unedited.
 from . import constants_generated as _constants_generated
@@ -67,6 +99,14 @@ from .core.context import (
     normalize_base_url,
 )
 from .core.errors import InsecureBaseUrlError, PolarisError
+from .core.manage import (
+    MANAGE_URL_MAX_LENGTH,
+    is_manage_url,
+    manage_form_encode,
+    read_manage_url,
+    with_manage_key,
+    with_manage_return,
+)
 from .core.jws import TrustSet, VerifiedJws, sign_jws, verify_jws
 from .core.models import (
     CLOCK_SKEW_SECONDS,
@@ -210,11 +250,17 @@ from .discovery import (
     discover_product,
     services_from_list,
 )
-from .license.client import LicenseClient
+from .license.client import LicenseClient, LicenseInfo
 from .license.endpoints import (
     ActivationDeviceLimit,
     ActivationEnrollDisabled,
     ActivationError,
+    ActivationEnrollClaimed,
+    ActivationLicenseDisabled,
+    ActivationLicenseExpired,
+    ActivationAttestationRequired,
+    ActivationRateLimited,
+    ActivationRefused,
     ActivationFingerprintRequired,
     ActivationHardwareMismatch,
     ActivationOk,
@@ -222,7 +268,8 @@ from .license.endpoints import (
     ActivationUnauthorized,
 )
 from .license.gate import LicenseState, is_usable, license_state
-from .release.client import ChangelogEntry, ReleaseClient
+from .release.client import ChangelogEntry, FetchedFile, ReleaseClient
+from .distribution import DistributionClient, DownloadModel, DownloadPlatform
 from .update.client import (
     FeedCheck,
     ReleaseRecordCheck,
@@ -242,8 +289,22 @@ __all__ = [
     # client metadata header values (WIRE-CONTRACT-V3 §5.2)
     "canonical_platform",
     "canonical_arch",
+    # refusal links (PX-W8)
+    "MANAGE_URL_MAX_LENGTH",
+    "is_manage_url",
+    "manage_form_encode",
+    "read_manage_url",
+    "with_manage_key",
+    "with_manage_return",
     # facade
     "PolarisKeyClient",
+    "BootOutcome",
+    "ActivationOutcome",
+    "BootGuard",
+    "BootGuardOutcome",
+    "create",
+    "AsyncPolarisKeyClient",
+    "AsyncClient",
     # supports() and typed "unsupported here" (P1b-10)
     "Support",
     "Supported",
@@ -253,14 +314,34 @@ __all__ = [
     "DeviceInfo",
     # sub-clients
     "LicenseClient",
+    "LicenseInfo",
     "ConfigClient",
+    "ConfigSetting",
+    "Event",
+    "EventBus",
+    "EVENT_KINDS",
     "DevicesClient",
     "IdentityClient",
     "SignInPrompt",
     "SignInPoll",
     "SignInResult",
+    "SignedInIdentity",
+    "qr",
+    "copy",
     "MintedToken",
     "ReleaseClient",
+    "FetchedFile",
+    "DistributionClient",
+    "DownloadModel",
+    "DownloadPlatform",
+    "CommerceClient",
+    "CommerceBinding",
+    "CommerceProduct",
+    "ClaimResult",
+    "ClaimOk",
+    "ClaimNotOwned",
+    "ClaimAttestationRequired",
+    "ClaimRefused",
     "UpdateClient",
     "CoreContext",
     "CacheManager",
@@ -327,6 +408,12 @@ __all__ = [
     "ActivationHardwareMismatch",
     "ActivationEnrollDisabled",
     "ActivationError",
+    "ActivationEnrollClaimed",
+    "ActivationLicenseDisabled",
+    "ActivationLicenseExpired",
+    "ActivationAttestationRequired",
+    "ActivationRateLimited",
+    "ActivationRefused",
     # devices
     "AccountDevice",
     "RegisterResult",

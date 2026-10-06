@@ -918,13 +918,15 @@ describe("products that are skipped", () => {
           distribution: { enabled: false },
           update: { enabled: false },
           identity: { enabled: false },
+          sync: { enabled: false },
         },
       }),
       "manifest",
       NOW,
     );
     const report = await poll(w);
-    expect(report.results[SLUG]).toEqual({});
+    // Distribution's poll never ran (F-22: only Release's native-upload sweep did).
+    expect(report.results[SLUG]).not.toHaveProperty("distribution");
     expect(w.fake.requests).toEqual([]);
     expect(w.fake.tokenRequests).toEqual([]);
   });

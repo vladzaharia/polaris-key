@@ -25,7 +25,7 @@ and what binary it installs next.
 
 | #    | Asset                                                                                                                                        | Where it lives                                                                                        | Loss impact                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ---- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A1   | **`PLATFORM_KEK`**                                                                                                                           | Worker secret                                                                                         | Decrypts every tenant's signing key and every product secret. Total platform compromise. Cannot be rotated today (see A9).                                                                                                                                                                                                                                                                                                                                                      |
+| A1   | **`PLATFORM_KEK`**                                                                                                                           | Worker secret                                                                                         | Decrypts every tenant's signing key and every product secret. Total platform compromise. Rotatable without downtime through the keyring, even when nobody holds the current key (§3, "The platform KEK keyring").                                                                                                                                                                                                                                                               |
 | A2   | **Per-product Ed25519 signing keys**                                                                                                         | `product_keys.enc_private_json`, sealed under A1                                                      | Forge any config doc, entitlement, or secret for that product. **Unrevocable for already-provisioned clients** — see §6.                                                                                                                                                                                                                                                                                                                                                        |
 | A3   | **The release channel**                                                                                                                      | GitHub App key, webhook secret, `release_config`                                                      | Ship arbitrary code to every installed client. Equal to A1 in practical severity.                                                                                                                                                                                                                                                                                                                                                                                               |
 | A4   | **`ADMIN_SESSION_SECRET`**                                                                                                                   | Worker secret                                                                                         | Forge admin sessions → reach A2, A3, A5, A6 through the API.                                                                                                                                                                                                                                                                                                                                                                                                                    |
@@ -1001,22 +1001,24 @@ writer can push.
   test pins a ten-outlet product). Release notes are repo-writer text and the cache keeps only a
   finished answer, so the notes summary reads at most the first 8,192 characters and uses only
   linear-time patterns (no lazy body between the `pkey:summary` markers, no `\s` at a line
-  start); a test pins 20,000-character adversarial notes finishing in well under a second.
+  start); a test pins 20,000-character adversarial notes to at most 2,048 backtracking steps per
+  character read, counted by replaying every native regex run (never timed, so load cannot fail
+  it), where the earlier single pattern passes 50 million steps at 1,000 characters.
 - **Residual.** The page is rendered from what CI and the operator recorded: a CI report can make
   a store link appear (a `live` claim) or a self-hosted release disappear, as for the feeds
   above; a wrong listing is the repo writer's own text, shown escaped. A visitor reaching the
   page through a stale link sees a release up to five minutes old. QR codes carry the same URLs
   the links do; one too long for the encoder (an Obtainium app config) is simply not drawn.
 
-### The registry host and package feeds (F-02 to F-11)
+### The registry host and package feeds (F-02 to F-11, F-30)
 
 **What it is.** `pkg.plrs.im` (with `pkg-staging` and `pkg-dev`) is the same Worker on a third
 custom domain, beside the console (`key.plrs.im`) and the bytes host (`dl.plrs.im`). It serves
-package feeds to registry clients: npm, PyPI, SwiftPM, Maven and Gradle, OCI and Godot (plans/F-01.md
-§6). `PKG_ORIGIN` names it, and `core/registryHost.ts` confines it to `mount.ts`
+package feeds to registry clients: npm, PyPI, SwiftPM, Maven and Gradle, OCI, Godot, Cargo and Go
+(plans/F-01.md §6). `PKG_ORIGIN` names it, and `core/registryHost.ts` confines it to `mount.ts`
 `REGISTRY_ROUTES`, a static landing page at `/` and OCI's fixed `/v2/` root. F-02 ships the host
 and the framework, F-03 the tables and ingest, F-04 to F-09 one feed each (npm, PyPI, Swift,
-Maven, OCI, Godot) and F-11 the console's Feeds pages; each part is below. Tests: `test/registryHost.test.ts`, `test/registryFeeds.test.ts`,
+Maven, OCI, Godot), F-11 the console's Feeds pages, F-30 the Cargo feed and F-31 the Go module proxy (tier 3); each part is below. Tests: `test/registryHost.test.ts`, `test/registryFeeds.test.ts`,
 `test/feedAdapters.test.ts` (the adapter conformance suite), `test/registryDrain.test.ts`,
 `test-workerd/registry.test.ts`, and the curl client of `registry-clients.yml`.
 
@@ -1031,7 +1033,7 @@ separate them, exactly as for the bytes host. Its compensations, against `dl.plr
 | `sandbox` CSP with no sources on every answer | `BLOB_CSP`                                             | `REGISTRY_CSP` (the same value)                                                     |
 | `Cross-Origin-Resource-Policy: same-origin`   | no                                                     | yes                                                                                 |
 | CORS                                          | the product's `web.origins`, via `core/cors.ts`        | **none**: route headers dropped, `OPTIONS` is 405                                   |
-| Methods                                       | per route                                              | `GET` and `HEAD` only (405 otherwise)                                               |
+| Methods                                       | per route                                              | `GET` and `HEAD`; Swift's login and F-22's publish writes (405 otherwise)           |
 | Errors and throws                             | flat JSON; JSON 500                                    | flat JSON, `problem+json` (Swift) or OCI error JSON; JSON 500                       |
 | Service off for the owner                     | the not-found                                          | the not-found, and the feed ladder below answers it too                             |
 | The one HTML answer                           | `/` and the download page, under `inertDocumentPolicy` | `/`, and the PyPI simple page on its one flagged route, under `inertDocumentPolicy` |
@@ -1129,13 +1131,16 @@ render's keys and types are ones the host admits. A new feed that skips any of t
 which turns the review of a new ecosystem into reviewing its own protocol code rather than
 re-checking the shared gate.
 
-**Every route is built by `feedRoute`.** `registry/serve.ts` `feedRoute` is the only way to
-build a registry route: its handler runs the route's read-only lookup (`resolve`, e.g. a package
+**Every read route is built by `feedRoute`.** `registry/serve.ts` `feedRoute` is the only way to
+build a registry read route: its handler runs the route's read-only lookup (`resolve`, e.g. a package
 name to its deliverable), then `serveFeedRead` (the access ladder, then the Cache API, then the
 route's work), then an optional `finish` that sees every answer after the ladder (OCI's API
 version header, Swift's `Content-Version` and `Accept` checks). `test/registryHost.test.ts`
-requires the `feedRoute` mark on every `REGISTRY_ROUTES` entry, so a hand-written handler that
-skips the ladder fails the build. The mark stops accidents, not malice (a route could copy the
+requires one of three marks on every `REGISTRY_ROUTES` entry: `FEED_READ_ROUTE` (set by
+`feedRoute`) on every read route, `FEED_AUTH_ROUTE` on F-21's one credential route (`swift.login`,
+`POST`), and `FEED_PUBLISH_ROUTE` on F-22's four publish routes (`service: "release"`, one write
+method each); any other non-read route fails it, so a hand-written handler that skips the ladder
+fails the build. The mark stops accidents, not malice (a route could copy the
 symbol); review catches the rest.
 
 **How a package version gets in (F-03), and what keeps it out of everything else.**
@@ -1156,9 +1161,11 @@ symbol); review catches the rest.
   protocol-fixed names (npm tarballs, Swift archives, Maven files) immutable for clients that
   cache by name, and Swift's trust-on-first-use safe.
 - **Dependency confusion.** A feed takes only names in its operator-set namespace (npm and Swift
-  scope, Maven group prefixes, PyPI names and prefixes, the Godot publisher), enforced at ingest
+  scope, Maven group prefixes, PyPI names and prefixes, the Godot publisher, Go module prefixes;
+  OCI and Cargo names sit under the owner, and Cargo takes a crate only for a dependency naming
+  the registry), enforced at ingest
   (`package-namespace`); an ecosystem with no configured feed takes nothing. Names collide after
-  each ecosystem's normalisation (PEP 503; case-insensitive npm, Swift, Maven), in the manifest
+  each ecosystem's normalisation (PEP 503; case-insensitive npm, Swift, Maven, Go), in the manifest
   (`package_name_collision`) and in the key. `upstream` is pinned to `none` by a CHECK, so no feed
   proxies a public registry. The residual risk is that no public name is claimed on npmjs or Maven
   Central (owner decision Q2: account-level claims only), which the setup docs warn about.
@@ -1297,6 +1304,51 @@ package stricter than its feed is left out of every list. The per-package docume
 fresh: a stored render whose stamp (package rows plus feed settings) differs from D1 is rendered
 again before it is served, so a yank is never hidden behind a stale document.
 
+**The Cargo feed (F-30).** A read-only sparse index (`services/distribution/registry/cargo/`;
+tests: `test/registry/cargo.test.ts`, the conformance suite, the Cargo rows of
+`registry-clients.yml`): `config.json`, one JSON-lines index file per crate and the `dl` downloads.
+Adding it was a review trigger; it adds no type to `REGISTRY_HOST_TYPES` (both documents are
+`application/json`, crates `application/octet-stream` attachments), no write route and no new
+credential path.
+
+- **No publish API.** `config.json` carries no `api`, so `cargo publish`, `cargo yank` and
+  `cargo owner` have nothing to call; a crate enters only through `pkey release publish` and
+  Release's ingest, like every package. Cargo's bare `Authorization: <token>` is the ladder's
+  existing `raw` credential, judged like any other registry token.
+- **Index content is tenant input, re-shaped.** The index lines are rendered from the metadata the
+  CLI extracted from the crate's normalised `Cargo.toml`; the Worker never unpacks a crate. Each
+  dependency, feature and string is re-checked and bounded in the renderer (a malformed entry is
+  dropped) and the lines leave only as JSON. A dependency's `registry` is copied from the
+  publisher's own manifest: a crate can name another registry for its dependencies, which Cargo
+  then contacts for that crate. That is Cargo's own model (crates.io crates can do the same) and
+  is visible in the lockfile; this feed never proxies or vouches for another registry.
+- **Bytes are what was published.** `dl` is `files/<sha256>/<crate>-<version>.crate`: served only
+  when the hash, the crate name and the version all match one published version of the owner's
+  crate and the owner holds the blob's reference (`hasRef`). Cargo verifies every download
+  against the line's `cksum`; like PyPI's fragment hashes, that is integrity against the index,
+  not authenticity beyond TLS.
+- **Yank is not a recall.** A yanked version keeps its line (`yanked: true`) and its download, so
+  existing lockfiles build; a new resolution skips it (Cargo's semantics, the PEP 592 residual).
+- **Platform switch.** Migration `0076_cargo_registry_policy.sql` seeds Cargo's
+  `dist_registry_policy` row (on, 50 MiB); a missing row would read as off.
+- **Private feeds.** A non-public feed answers `config.json` 401; the admitted answer says
+  `auth-required: true`, so Cargo sends the token on every request, never as a URL. A crate
+  stricter than its public feed is refused (401) to a client the feed admits anonymously.
+
+**The Go module proxy (F-31).** A GOPROXY at `/go/<owner>/`: `@v/list`, `@latest` and `.info`
+are rendered JSON or opaque bytes (the list leaves as `application/octet-stream`, never `text/*`),
+and `.mod` and `.zip` are the release's own blobs by SHA-256 (attachments, immutable). The Worker
+never unzips: the publishing CLI splits the go.mod out of the module zip and records both go.sum
+`h1:` hashes; the go command recomputes them from the served bytes and pins them in go.sum.
+Module paths are matched exactly after the go command's case decoding (an upper-case letter in a
+URL, or a dangling `!`, matches nothing), and a v2+ module's `/vN` suffix must agree with its
+version at publish. A path the feed does not hold is the plain 404, which is what makes the go
+command fall through to the next GOPROXY entry; the setup tells clients to name the feed's
+prefixes in GONOSUMDB, so these modules never reach the public checksum database, and never in
+GOPRIVATE (which would bypass the proxy). Go has no proxy-side authenticity beyond TLS and
+go.sum's trust-on-first-use, the same as any private GOPROXY. The go command sends `.netrc`
+credentials over https only. The host never serves a `go-import` `<meta>` page.
+
 **The Feeds console and its admin API (F-11).** `/manage/api/platform/feeds/*` and
 `/manage/api/products/<slug>/distribution/feeds/*` (`admin/handlers/feeds.ts`) sit behind the
 same session, CSRF, limiter and platform-admin gates as every admin route (403 otherwise; there
@@ -1310,9 +1362,76 @@ F-21 every access mode can be set: leaving `public` is an L1 confirmation that n
 clients will get, and the system product's feeds change only from the platform scope. A version verb the protocol
 has no state for is refused (`unsupported_by_ecosystem`) rather than recorded as a console-only
 fiction; the verbs that apply run Release's own yank, unyank and deprecation (the same batch,
-render enqueue and pack-set invalidation as Release's routes). There is no delete. A write drops
+render enqueue and pack-set invalidation as Release's routes). There is no per-version delete;
+the only deletion is feed retention's (below), and only of builds of main. A write drops
 its isolate's cached registry settings; other isolates follow within the 30-second TTL. Tests:
 `test/adminFeeds.test.ts`.
+
+### Feed retention: pruning builds of main (owner request 2026-10-06)
+
+**What it is.** `services/release/packages/prune.ts` deletes a package's `main`-channel
+prereleases once a version at or above them is released. When version V is published on
+`stable`, it deletes semver `X-main.N` and PEP 440 `X.devN` with X ≤ V. This is the one place a
+package version is ever deleted. The lead made the decisions under delegated owner authority,
+and the operations are in RUNBOOK "Feed retention".
+
+**Deletion authority: who can trigger it.**
+
+| Trigger                            | Who                                                                                                                      | Scope                                                  | Audited as              |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ | ----------------------- |
+| a stable publish (automatic)       | whoever may publish (`release:publish`, a trusted publisher, a `publish` registry token), only once the product opted in | that package, below the version just published         | `system:feed-retention` |
+| `POST /<p>/release/packages/prune` | a `pkeyci_` token of that product with `release:yank` (operator-granted, opt-in); another product's token is 401         | the product's packages, below each one's newest stable | `ci:<subject>`          |
+| `POST …/feeds/prune` (admin)       | a platform-admin console session (403 otherwise)                                                                         | the scope's owner's packages                           | `admin:<sub>`           |
+| `PUT …/feeds/retention` (admin)    | the same; refused for the system product                                                                                 | the setting only                                       | `feed.retention.update` |
+
+**Off by default.** `release.packages.prunePrereleases` is off for a tenant product: nothing is
+deleted automatically until a platform admin opts the product in (`PUT …/feeds/retention`, an L1
+confirmation, audited). Only the reserved system product (`polaris-key`) is on by default, and it
+is locked on.
+
+A publisher therefore gains no new power. The automatic prune only removes builds of main below
+a version the publisher was already allowed to publish as the stable release, and the
+publisher's own publish triggers it. A publisher cannot choose what goes. A forged or mistaken
+stable publish already moves `latest`, which is the larger harm, and it prunes only builds of
+main, which are disposable by design. Nothing a client sends selects a version to delete: the
+candidates are computed from D1. The backfill routes take only `apply` and an optional
+deliverable id.
+
+**What it can never touch.** A stable or beta version, a prerelease of a version newer than V,
+another package, another product, or a version that a channel policy points at or that any
+other row names (a revocation, a pack pin or hold, a download token). Those are reported as
+`kept`; one that became held between the plan and its batch is reported as `skipped` and kept,
+never dropped silently. Only a final release on the channel named exactly `stable` triggers a
+prune. A beta (prerelease tag) never does. Only a LIVE stable release is a ceiling: a yanked or
+deprecated stable, even a far newer one, never pulls builds of main into the prune. A build of
+main published on any channel but `main` is never a candidate, and only the exact spellings
+`X-main.N` and PEP 440 `X.devN` (ASCII digits, nothing after) are.
+
+**Unique forever survives.** Each pruned version leaves a tombstone (`release_package_prunes`).
+Ingest refuses to republish it (`package-version-taken`), so a pruned npm tarball name, Swift
+archive or Maven file can never come back with different bytes under the same coordinates.
+
+**Bytes and refcount.** The prune drops only the version's own `artifact` refs, in the same batch
+as its rows. It never deletes an object. The blob collector reclaims an object only when no ref
+from any product of any kind holds it, after the grace period and the bucket lock. So a
+content-addressed blob that a remaining version, another package, another product, a pack or an
+OCI push shares is never lost. The byte routes serve only keys the product still references
+(`hasRef`), which leaves the shared bytes of kept versions intact.
+
+**Audit.** Every deletion is one audit row in the same batch (`package.version.prune`: package,
+version, actor, file count, bytes, bytes no longer referenced; `parent_id` the stable release
+that set the ceiling) plus its tombstone row. The bytes no longer referenced are counted per
+batch against the refs left after it, so a run the cap or a failure cuts short never claims a
+blob that an undeleted version still holds. A failure
+of the automatic prune is audited (`package.prune.failed`, the Worker has no console log), never thrown at the
+publish.
+
+**Residual.** The immutable byte URLs of a pruned version can still be answered by a data centre
+whose Cache API already holds them, until that copy is evicted. The Worker cannot purge other
+data centres, and the bytes stay in R2 until the collector takes them. A pinned lockfile of a
+build of main stops installing once it is pruned. That is the intended effect, and the
+install-from-feeds page tells adopters to pin stable or beta releases. Tests:
+`test/feedPrune.test.ts`, `test/feedPruneRoutes.test.ts`.
 
 ### Registry credentials (F-20, F-21)
 
@@ -1329,7 +1448,9 @@ which sends no credentials, carries a narrow URL token in its configured URL. Te
 **A new bearer asset.** A token is 256 random bits, stored only as an HMAC under
 `KEY_HASH_PEPPER` (a global unique index), shown once, never logged or echoed; the list shows the
 last four characters. Every token expires, at most 365 days out (default 90, 30 for a URL token,
-Q6), and is bound to one owner. Scope is `read`; `publish` is refused until F-22 and F-23. At most
+Q6), and is bound to one owner. Scope is `read`, or `publish` (F-22 and F-23, below: it implies
+`read`, is owner-bound and header-presented only, names its publish ecosystems, and lives at most
+30 days). At most
 10 live tokens per licence and 500 per owner. A deleted product's tokens stop at once (the lookup
 joins `products.status`, and the deletion batch revokes them); an erased portal account's tokens
 are revoked in the erasure batch (`account_deleted`); a disabled or expired licence's tokens stop
@@ -1373,7 +1494,8 @@ re-runs the ladder, so a revoked token or a tightened feed stops it within 30 s 
 `/v2/token` grants a scope only when the ladder admits the caller for that repository; anonymous
 callers get anonymous tokens for public repositories only; refusals are 401 for anyone without a
 valid credential, whether the owner exists, is disabled or is private, so the endpoint is no
-oracle. `push`, `delete` and `registry:catalog:*` are refused. With `REGISTRY_TOKEN_KEY` unset,
+oracle. `push` is granted only to a publisher (see "Native OCI push" below); `delete`, `*` and
+`registry:catalog:*` are refused. With `REGISTRY_TOKEN_KEY` unset,
 `/v2/token` is 503 and `/v2/` stays the plain 200; once set, `/v2/` challenges a request without a
 valid pull token (Q1).
 
@@ -1392,6 +1514,141 @@ reads that bypass the Cache API) fails open. A refusal is a native 429.
 **One credential per host.** docker, SwiftPM and netrc hold one credential per registry host, so
 one machine can hold a token for only one owner on `pkg.plrs.im` (Q2, accepted and documented).
 Platform feeds stay public, so they never take the slot.
+
+### Native-client publish (F-22)
+
+**What it is.** Release's write routes on `pkg.plrs.im` (`services/release/packages/native/`):
+`PUT /npm/<owner>/<name>` (`npm publish`, pnpm, Yarn, Bun), `POST /pypi/<owner>/legacy/` (twine's
+legacy upload), `PUT /swift/<owner>/<scope>/<name>/<version>` (`swift package-registry publish`)
+and `PUT /maven/<owner>/…` (Maven and Gradle deploys). Each request is translated into the release
+descriptor `pkey release publish` sends and ingested through F-03's path, so every ingest rule
+(declared deliverable, namespace, ceiling, unique forever, Swift signing, no snapshots) applies
+unchanged. Tests: `test/registryPublish.test.ts` (with golden releases under
+`test/fixtures/registry/native/`), the publish rows of `registry-clients.yml`.
+
+**A publish secret where CI used to need none.** Trusted publishing exists so a repository holds
+no long-lived publish secret; a native client needs a credential it can send. The design keeps
+that property for CI and bounds it everywhere else:
+
+- **In CI, the credential is the 30-minute `pkeyci_`** `pkey auth github-oidc` exchanges for the
+  job's OIDC token (the same principal, publisher policy and `release:publish` scope as
+  `pkey release publish`). Nothing long-lived is stored; the docs and the console say so.
+- **A `pkeyr_` publish token** is the owner's own: owner-bound only (never a licence), header
+  only (never a Godot URL token), narrowed to explicitly named publish ecosystems (npm, PyPI,
+  Swift, Maven, and OCI for F-23's `docker push`; never "every feed", never Godot), and short-lived: 1 to 30 days, 7 by
+  default, against the read token's 365. It is minted only by a platform admin in the console
+  (audited `registry_token.create`, naming "publish"), revocable within the 30-second resolution
+  window like every token, and its plaintext is shown once. Residual: a publish token pasted into
+  a CI secret is a long-lived-ish secret again (at most 30 days); a leak can publish new versions
+  (never replace one) under the owner's namespace until revoked, and every such version names the
+  token on its package record and in the audit.
+- **Never on the platform's own feeds.** The system product's (`polaris-key`) SDK feeds are
+  published only by `publish-sdks.yml`, in lockstep with the server (F-10 owner ruling), because
+  versions are unique forever and one hand-published version would block the pipeline's next
+  publish of it: `mintRegistryToken` refuses a publish token for the system product
+  (`system_feeds_pipeline_only`), the console offers no publish option on the platform scope, and
+  `authorizeRegistryPublish` answers `403` to every native publish to it, whatever the credential
+  (a system-product `pkeyci_` with `release:publish` included).
+- **Everything else is refused before the body is read**: no credential, another owner's, a pull
+  or URL token is the native `401`; a read-only, licence-bound or narrowed-away token, or a CI
+  token without `release:publish`, is `403`. A licence holder can therefore never publish.
+
+**Bytes through the Worker.** A native client sends the package in its request, so unlike the CLI
+path the bytes transit the Worker: each request is capped at 32 MiB (`Content-Length` first, then
+counted), held once in memory, hashed and staged by the Worker itself under
+`staging/<owner>/<session>/` with R2 checking the SHA-256 (no client ever gets a staging
+credential), then promoted through `core/blobs.ts` `promote`. npm's `dist.integrity`/`shasum`,
+twine's `sha256_digest`/`md5_digest` and Maven's checksum sidecars must match the bytes received,
+so a corrupted upload is refused rather than served. The `registryPublish` budget (per token, 600
+a minute, fail closed) bounds storage writes.
+
+**The one place the Worker reads inside a package.** SwiftPM fetches `Package.swift` from the
+registry, and a native publish sends only the archive, so `swiftArchive.ts` reads the manifests
+out of the zip: only the central directory and entries named `Package.swift` /
+`Package@swift-<v>.swift` at the root or in the single top-level directory, at most 32, stored or
+deflated, unencrypted, at most 1 MiB each declared AND inflated (the inflater is cancelled past
+the cap, so a zip bomb costs at most 1 MiB per entry), CRC-checked; ZIP64 and split archives are
+refused. Every other byte of the archive is opaque. The manifests served are the archive's own
+bytes, which SwiftPM checksums (and, signed, carry their signatures), so this departs from the
+F-06 rule "never re-extracted from the archive" for native publishes only, without serving
+anything a client would not find in the archive it verifies. npm, twine and Maven need no read
+inside a package: their metadata arrives as JSON, form fields or a POM (parsed as text, bounded).
+
+**Multi-request versions.** twine and Maven send a version as several requests, and a version
+never gains files after it is published, so its files gather in an upload session
+(`release_native_uploads`, Release's) owned by the uploading token alone: another token's upload
+of the same version is refused while it is open, a staged file is never replaced by other bytes,
+and every refusal is checked per file by a dry run of the version as gathered, so the client is
+told. A session publishes on Maven's `maven-metadata.xml`, ten seconds after twine's last upload
+(held back while any request of the same token on the feed is in flight), or by the cron after
+ten idle minutes; a failure then is recorded on the row and audited (`release.publish.failed`).
+Residual: twine's "published" is eventual (the client is answered before the version exists).
+
+**Host rules unchanged.** The publish routes carry `FEED_PUBLISH_ROUTE`, name `service:
+"release"`, declare exactly one write method each, and are matched from the path before any
+owner loads, like Swift's login; every other write stays `405`. Their answers pass the same
+type allowlist, cookie stripping, sandbox CSP and no-CORS rules. A feed that is off, an unknown
+owner and Distribution off all answer the host's one not-found before any credential is judged.
+
+Review triggers (§9): a publish token longer than 30 days or not owner-bound; any read inside a
+package beyond Swift manifests; a raised native body cap; a write method on the host beyond these
+routes and Swift's login.
+
+### Native OCI push (F-23)
+
+**What it is.** `docker push` (and `podman`, `crane`, `oras`) to an owner's OCI feed: the
+distribution spec's blob upload state machine over R2 multipart
+(`services/release/packages/ociUpload.ts`, adapted from cloudflare/serverless-registry, Apache-2.0)
+and the manifest `PUT` (`ociPush.ts`). The routes are RELEASE's (`FEED_PUSH_ROUTE`, `service:
+"release"`): a manifest pushed under a version tag becomes a package release through Release's
+own package ingest, the same rows, refusals and audit as a ticket publish. Tests:
+`test/registryPush.test.ts`, the workerd lane's push (`test-workerd/registryOci.test.ts`), and the
+`oci-push-*` rows of `registry-clients.yml` (docker, crane, the conformance suite's push
+workflow).
+
+**Who may push.** Only a request bearing an OCI token from `/v2/token` whose `push` claim names the
+repository, and whose subject still resolves, through the 30-second cache, to a publisher of the
+owner (`registryPublisher`): an owner-bound header `pkeyr_` holding `publish` and naming the OCI
+ecosystem (a publish token always names its ecosystems, F-22's mint rule), or a `pkeyci_` holding
+`release:publish`. Never for the system product, whose feeds the deploy pipeline alone publishes. A licence-bound or URL token never
+publishes; another owner's credential never does. `/v2/token` grants `push` only to such a
+publisher and only for a declared package deliverable, so a push never creates a repository
+(rule 5). The push routes check the token before anything else: an unauthorised caller gets the
+same 401 Bearer challenge (`scope="repository:<owner>/<repo>:pull,push"`) for a repository that
+exists and one that does not. A revoked publisher stops within 30 s although its push token lives
+300 s. Budget: `registryOciPush` (per push subject, fail closed).
+
+**Earning a blob ref: a third way.** An upload's hash is known only when it finishes, so its staged
+bytes (under `staging/<owner>/oci-upload-<uuid>/`) cannot be named by it. Core's `landUpload`
+copies them to `blobs/sha256/<hex>` through `putVerified` (R2 itself checks the SHA-256; verify
+before lock holds), and when the key already exists (another tenant's object) earns the ref only
+after confirming THIS upload's bytes hash to it (`verifyStaged`, streamed), so a tenant cannot
+claim another's object by naming its digest; no answer tells whether the object already existed.
+The ref is `oci-push` (possession, ref id the deliverable): it lets the owner's later manifest
+name the object, and it serves nothing on the bytes host (`blobAccess.ts` ignores it as a holder,
+so an untagged upload never falls back to the app's access mode). A cross-repository mount is
+granted only for an object the owner already holds. A manifest may name only objects the owner
+holds, at the size declared.
+
+**Read-after-write.** An object pushed to a repository and not yet in a version is served by
+digest from that repository only, privately (`no-store`), under the feed's own access ladder; it
+never appears in a tag. On a public feed that means a pushed-but-unpublished layer is readable by
+anyone who knows its digest, which is OCI's model (and what the conformance suite requires); the
+publisher chose to push it to a public feed.
+
+**Versions never move; nothing is deleted.** A tag pushed is a version and goes through the
+ingest's unique-forever rule; channel tags (`latest`, `stable`, `beta`, `pr-<n>`, manual channels)
+are refused, so a push can never repoint a moving tag. `DELETE` is 405. Cancelling an upload only
+aborts its multipart upload and removes its own staging objects.
+
+**Abuse bounds.** Each request is bounded by the zone's body limit (100 MB); a body without
+`Content-Length` (docker's chunked layer `PATCH`) is never held whole: R2 needs every stream's
+length, so it is read in pieces of 16 MiB, each appended to the upload as soon as it is full, and
+the isolate holds one piece at a time (a manifest, at most 4 MiB, is the only body read whole). Chunks append only in order (`Content-Range`), the upload state
+is compare-and-swapped on its R2 etag, each blob is held to the feed's per-blob ceiling, a manifest
+to 4 MiB and a tag push's walk to 256 manifests. Abandoned uploads expire with the staging prefix
+(one day) and R2's incomplete-multipart rule. Untagged objects are kept (nothing removes them yet;
+`retainUntaggedDays` is a stored setting, a follow-up for the collector).
 
 ### App-updater feeds (P3-09)
 
@@ -1466,8 +1723,11 @@ gained two read-only methods, `feedSelection` (P2b-05's selection, offered to Up
   selection (`velopackCandidates`) and the same SHA-1 check over the stored bytes. So a yank or
   halt removes a package from the route on the next request. A caller refused the feed is refused
   the route with the same answer, an unknown name included. `Location` is always our own delivery
-  URL, which checks the delivery access again on its own. Under a non-public delivery a client that
-  drops `Authorization` on the redirect is refused at the second hop, which fails closed.
+  URL, which checks the delivery access again on its own. Under a non-public delivery the route
+  mints a download ticket only after both checks: the feed's access decision, then the bytes
+  route's own per-file decision with the caller's bearer (the release's stored version, pinned).
+  So a client that drops `Authorization` on the redirect, as Velopack does, still succeeds, and
+  the route widens nothing (SP-09, "Licensed portal downloads" below).
 - **Residual.** The `deltaFrom`, the App Installer identity and update settings, and the build
   format that picks WinSparkle's installer arguments are CI or manifest claims. A wrong value makes
   an updater fail or fall back to the full package. It never changes which bytes are served,
@@ -1643,12 +1903,61 @@ narrowest Play permissions, the Partner Center Manager role, a dedicated Steam p
 the operator's to configure and cannot be verified by the Worker. For App Store Connect the owner
 chose to keep the Admin team key (2026-10-04), so the write gate of A-17a (below) is the control.
 
+### The live credential check (UX-69)
+
+**What it is.** A connect form sends an UNSAVED credential once to a check route, and the Worker
+tries it against the store before anything is saved (SETUP.md D42):
+`POST /manage/api/platform/store-connections/<store>[/credentials/<slot>]/check` for the team keys
+(App Store Connect, Play, Partner Center, Steam), and
+`POST /manage/api/products/<slug>/distribution/storefronts/<id>/ci-secrets/<name>/check` for the
+CI secrets a storefront needs (itch.io's `BUTLER_API_KEY`, the snapcraft export-login, winget's
+GitHub token), which Polaris Key never keeps. Both are platform-admin only, behind the session,
+CSRF and admin rate limit like every console route.
+
+**Assets.** The pasted value itself, for the length of one request; the store's quota.
+
+**Controls.**
+
+- **Transient by type.** A store key becomes a `TransientOutletCredential`
+  (`core/outletCredentials.ts`): validated by the kind's own validator, its value in a private
+  field read only through `reveal()`, its `toJSON`, string form and `inspect` rendering the kind and
+  display metadata only. `outletCredentialReach.test.ts` keeps the maker to the store-connections
+  handler and `reveal()` and the `transient…Token` minters to Distribution and the token helpers.
+  Nothing on the path seals, caches (no token memo, no sealed KV slot), writes or audits;
+  `credentialCheck.test.ts` proves no credential row, KV key or audit row survives a check.
+- **One read, never a write.** Each check is one or two GETs (plus the OAuth token exchange's POST
+  for Google and Entra) to the store's fixed origin with `redirect: "manual"` and capped bodies:
+  App Store Connect `GET /v1/apps` through `AscClient` (so A-17a's write gate stands in front of
+  it, and no user, key, certificate or device endpoint is touched), Play Reporting `apps:search`,
+  Partner Center `GET /v1.0/my/applications`, Steam `GetPartnerAppListForWebAPIKey`, itch.io
+  `/profile` and `/profile/games`, the Snap dashboard's `tokens/whoami`, GitHub `/user` and
+  `/repos/<login>/winget-pkgs`. No retries: a 429 is answered "check again".
+- **Never a value out.** The response is a `CredentialCheck` composed by the Worker: a verdict, a
+  reason, sentences, and facts the store reported about the account (a team's issuer id, an app
+  count, a username, scopes, an expiry). Store error bodies are never copied; at most an enum-like
+  token is read (`invalid_grant`, an AADSTS number, Google's `SERVICE_DISABLED`, a Snap
+  `error_list` code) and mapped to text. Nothing is logged.
+- **Rate-limited per operator**, 20 checks in 10 minutes across every store (`credentialCheck`,
+  failing closed), counted after the format check and before any store call.
+
+**Residual risk.** The check is an oracle for whether a credential works, available to a
+platform admin, who can already store and use any credential; the limit bounds a loop, not the
+power. A pasted value transits the admin's browser and the Worker's memory for one request, which
+is what saving it through the console already implies; the Worker-secret route (the Sync Worker
+secrets workflow) remains for keys that must never pass through a browser. The Snap check binds an
+Ubuntu One discharge in the Worker to make the one `whoami` call, as `snapcraft` does; the
+macaroons are not kept. A check proves a read, not a write: a key that reads apps may still lack a
+write permission a later step needs, which that step reports. "Saved only after a pass" is the connect form's rule, not the server's: the
+store-connections `PUT` does not require a prior check, so an API caller (a platform admin) can
+still store an unchecked key, as before UX-69; the apps listing's health columns then show
+whether it works.
+
 ### Storefront adapters: the common layer (A-18a)
 
 **What it is.** Every storefront is one `StorefrontAdapter` (`core/storefront/adapter.ts`), the
 same base the package feeds' `FeedAdapter` extends (`core/adapters/contract.ts`, notes/S-15 §6). An
-adapter declares its operations (`api` behind the gate, `ci`, `pr`, `deep-link` or `unsupported`
-with a reason), its rate limits, its listing profile, its never-list and its typed-confirmation
+adapter declares its operations (`api` behind the gate, `ci`, `pr`, `deep-link`, `first-party`
+on Polaris Key's own tables, or `unsupported` with a reason), its rate limits, its listing profile, its never-list and its typed-confirmation
 phrase; what is shared it cannot bypass: the **store-agnostic write gate** (`gate.ts`, the engine;
 `match/{jsonapi,json,form,multipart}.ts`, one body matcher per wire style;
 `rules/<store>.ts`, one rule table per adapter, classified against a pinned vendor spec), the
@@ -1686,6 +1995,17 @@ line.
   engine; A-17a's `hookOrigin` rule, generalised).
 - **(g) Imported listing text is data**: rendered escaped in the console, never as HTML (A-18b,
   A-18c, A-18j).
+- **(h) A first-party adapter never reaches a vendor** (PS-01; notes/S-21 §6.1 and threat S9).
+  The `polaris-key` adapter (`stores/polarisKey.ts`) is the portal's own storefront: its ops are
+  `first-party` (`{mode, plane: "worker", handler}`) and run against Polaris Key's tables through
+  the ports of `firstParty.ts`. Conformance item 11 requires that only an adapter with no
+  credential, no gate and no spec pin declares a `first-party` op, and that it mixes in no `api`,
+  `ci` or `pr` op; that every one names a registered handler; that each handler, run with `fetch`
+  replaced by a thrower, sends nothing, writes no audit row for a read and exactly one for a
+  write; and that the typed op (`submit`, which lists the product) refuses without the typed
+  confirmation, as the gate does for a vendor. A test shows a fake first-party op on an adapter
+  with a credential fails the suite. The handlers' real reads and writes (PS-02, PS-03, PS-06)
+  plug in as ports and inherit these checks.
 
 **Boundaries.** `core/adapters/` imports nothing; `core/storefront/` imports no service, and its
 declaration modules import only the adapter layer, so the CLI's copy is generated
@@ -1848,6 +2168,94 @@ later is refused (deny-by-default) but goes unclassified until the docs-drift re
 Microsoft fetches a redirecting `packageUrl`, whether a Developer role suffices and the real
 `Retry-After` values are [U] for A-18k. The Partner Center deep-link shapes are undocumented.
 
+### Storefront adapter: Steam (A-18g)
+
+**What it is.** The Steam storefront adapter (`core/storefront/stores/steam.ts`, rule table
+`core/storefront/rules/steam.ts` with the deny groups in `rules/steamDenied.ts`), calling through
+its own gated client (`core/steam/client.ts`) with the product's `steam-publisher-key` or the A-16
+group key `steam.publisher-key`, opened through `openSteamPublisherKey` (`commerce/steam.ts`, the
+same pin checks as A-16's lister) under the audited use `steam:storefront`. Distribution's console
+routes (`services/distribution/storefronts/steam/`) serve the plan, the reads, a named-branch
+release, the generated asset pack (A-18d's `pack:steam`), the store-page copy card and the per-app
+checklist. Steam has no listing API, so everything about the store page is a deep link; depots go
+up from CI only (`STEAM_CI`, A-18h, attached as the adapter's `ci`).
+
+**Asset at risk.** A11c's publisher key: reads, `SetAppBuildLive` and ownership checks for every
+app of the group it is scoped to, and through the Web API also leaderboards, inventories,
+micro-transactions, game-server login tokens and player data.
+
+**Controls.**
+
+- **Three reads and one write, before the key.** The client consults the gate before the key thunk
+  and before the budget: a refused request opens no key and sends nothing. Reads pass only on
+  `GetPartnerAppListForWebAPIKey/v2`, `GetAppBuilds/v1` and `GetAppBetas/v1` (the engine's new
+  optional `reads` predicate), so a write method spelt as a `GET` cannot stand in for a write the
+  table refuses. Player, ownership, financial and login-token paths are `forbidden` for every
+  method (`personal_data`). Paths must be `/<Interface>/<Method>/v<N>/`; the host is fixed
+  (`partner.steam-api.com`).
+- **The one write is a named branch.** `SetAppBuildLive/v2` with `appid`, `buildid`, `betakey` and
+  an optional `description`, nothing else (no `steamid`). **`betakey=public` (or `default`, any
+  case) is refused whatever the confirmation** (owner decision 5): the public-branch release is a
+  deep link to App Admin until A-18k shows the group-scoped key may do it; the follow-up flips the
+  check to typed confirmation (phrase: Steam's app name), never plain. The console route refuses
+  `public` before any key or call, with the link.
+- **No machine-readable spec**, so a hand-written list of every `POST` of the 33 Web API interfaces
+  (plus the two state-changing `GET`s), pinned by date and SHA-256 (`STEAM_SPEC_PIN`; fixture
+  `test/fixtures/steam/webapi-writes.json`): each entry is allowed or denied exactly once, and
+  editing it without re-pinning fails CI. Deny groups: deletes, players, payments, credentials
+  (game-server accounts), game data, workshop and cloud content, unneeded `POST` queries.
+- **The first 403 stops everything.** Steam rate-limits the connecting IP on 403s and that IP is
+  the Worker's shared egress, so the budget meter (100,000 calls a day per key) stops every call on
+  that key's slot until the window ends at the first 403, and is consulted before every send.
+- **Natural key, ledger, audit.** A branch move is one `performStoreWrite` step: `GetAppBetas`
+  showing the build on that branch answers `existing` with nothing sent; the confirmation is a
+  re-read, never Steam's answer; one ledger row and one audit entry
+  (`distribution.steam.branch.set_live`). The builds read drops the creator's account id.
+- **Checklist ticks are operator assertions**, stored per product and app id in Distribution's
+  connector settings, shown as unverified, audited on every change. The copy card is listing data,
+  rendered escaped (control (g)). The asset pack is served through the gated blob path only when
+  the product holds a reference to it.
+- **Never.** Partner users and permissions, app credits, pricing and branch or depot deletion have
+  no Web API for partners, and no operation reaches them; every delete the Web API does have is
+  denied.
+
+**Residual risk.** The key rides in the query string of a read (Steam's design), so it reaches
+Steam's logs; no error Polaris Key raises carries a URL. The response shapes of `GetAppBuilds` and
+`GetAppBetas` are undocumented and parsed defensively; A-18k confirms them. The Steamworks
+deep-link shapes are undocumented. A 403 caused by one product stops Steam calls for every product
+on the same group key until the window ends (by design: the alternative is the IP penalty).
+
+### The console storefront flow and the slot board (A-18j)
+
+**What it is.** Distribution → Storefronts (Add to storefronts), Distribution → Listing and Store
+connections' Set up (`services/distribution/storefronts/`, `packages/admin/src/console/areas/
+storefronts/`). Admin routes under `…/distribution/storefronts`, platform admins only, behind the
+session, CSRF and rate-limit gates of `admin/api.ts`.
+
+**Controls**, each pinned by `test/storefrontFlow.test.ts` and `test/storefrontSlots.test.ts`:
+
+- **No new write path to a store.** A step either names an existing reviewed route (A-17b, A-17c,
+  A-16), checked to be under `/manage/api/` when the plan is built and again in the console client,
+  or runs a flow runtime that calls A-18e's and A-18f's functions, each a `performStoreWrite`
+  behind the store's gate. The flow adds no gate rule and no `DELETE`.
+- **Typed confirmation** for submit, release and price on every store: the route compares the typed
+  name with the store-reported name (`typedConfirmationRefusal`) before the runtime runs; a store
+  that did not report a name refuses. Microsoft compares again in A-18f's commit.
+- **`Idempotency-Key`** on every runtime step and push (428 without); a deep-linked step's state is
+  one ledger row (`plane = 'deep-link'`), flipped to done only by the store's own read or an
+  operator assertion where the declaration says `operator-assertion`; each flip is audited.
+- **Nothing pushed unseen.** A push sends only accepted listing assets: acceptance is the digest the
+  operator saw (`accepted_sha256`, migration 0072), so new bytes from CI need a new acceptance; an
+  accept for bytes that changed since the preview answers 409.
+- **The preview serves images only.** `slots/image` types the bytes by their magic number (PNG,
+  JPEG, WebP), refuses anything else with 415, and answers with `nosniff`, `inline` and a
+  `default-src 'none'; sandbox` CSP, so a stored object cannot become a page on the console origin.
+- **Imported and listing text is data**, rendered escaped (control (g) above).
+
+**Residual risk.** A platform admin's session can run every step it can see; the typed name and the
+plan's consequences are the only friction, as for A-17g. Google Play's release and rollout stay on
+P5-03's untyped controls (A-18e's proposed follow-up).
+
 ### The CI plane: storefront command allow-lists and report-back (A-18h)
 
 **What it is.** itch.io and the Snap Store take builds only through vendor CLIs whose credentials
@@ -1897,6 +2305,62 @@ never sees the file). The check reads KeyValues keys and values quoted or unquot
 comments, reads backslashes both ways a parser may, and refuses a script that uses `#include` or
 `#base`, since an included file is never checked. Steam itself also refuses `setlive` on
 `default`.
+
+### The PR plane: winget, the own Homebrew tap and Scoop bucket, Flathub (A-18i)
+
+**What it is.** winget, a product's own Homebrew tap, its own Scoop bucket and its Flathub app
+repository are written only through files in a GitHub repository (notes/S-15 §4.4). Their
+adapters (`core/storefront/stores/{winget,homebrew,scoop,flathub}.ts`) run on the PR plane:
+`core/storefront/prPlane.ts` declares, per store, the repository, a `pull-request` and a `status`
+command for the pseudo-tool `github` (the CLI's own client, never a spawned binary), the path
+templates a pull request may write, the natural key and the review labels. The CLI reads a
+generated copy (`ciPlane.generated.ts`, `prStores`) and runs `pkey storefront <store> pr|status`.
+
+| Store      | Repository                           | A PR may write                                                     | Never                                                                   |
+| ---------- | ------------------------------------ | ------------------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `winget`   | `microsoft/winget-pkgs`, from a fork | `manifests/<p>/<Pub>/<Pkg>/<v>/<id>{,.installer,.locale.<l>}.yaml` | another repository; merge, close, delete a branch                       |
+| `homebrew` | the identity's `homebrewTap`         | `Casks/<homebrewCask>.rb`                                          | `homebrew/cask` or any `Homebrew` organisation repo                     |
+| `scoop`    | the identity's `scoopBucket`         | `bucket/<app>.json`                                                | a `ScoopInstaller` bucket                                               |
+| `flathub`  | `flathub/<identity appId>`           | `<appId>.{yml,yaml,json}`, `<appId>.metainfo.xml`                  | `flathub/flathub` (the first submission is a person's); closing the app |
+
+**New CI secret (owner decision 7).** `PKEY_PR_TOKEN`, a GitHub token held as a CI environment
+secret and never in the Worker: fine-grained, `contents:write` and `pull_requests:write` on the
+own tap and bucket only; for winget a classic `public_repo` token only if A-18k shows a
+fine-grained one cannot open the PR (a classic token reaches every public repository the account
+can write, so it lives in its own GitHub environment with required reviewers); for Flathub the
+maintainer's token on `flathub/<appId>`. The Worker never calls GitHub and never sees the token.
+
+**Controls.**
+
+- **Two checks, neither trusting the other.** The CLI refuses a step whose argv is not the store's
+  `pull-request` command for the outlet identity, or that would write any path outside the
+  store's templates, before anything reaches GitHub; the Worker re-checks both when the step is
+  reported (`POST /<p>/distribution/report`, `type: "store-step"`): the repository against the
+  identity, every reported file path against the templates (no `..`, no leading `/`), the pull
+  request's URL against the argv's repository. A refused report writes nothing.
+- **Repositories bound to the identity.** The tap and bucket patterns (`HOMEBREW_TAP_PATTERN`,
+  `SCOOP_BUCKET_PATTERN` in `@polaris-key/manifest`) refuse the `Homebrew` and `ScoopInstaller`
+  organisations in any case, so a manifest cannot even declare an official repository; winget's is
+  a literal; Flathub's is `flathub/` plus the identity's app id.
+- **Additive writes only.** The client (`packages/cli/src/storefronts/github.ts`) forks, commits on
+  a `pkey/…` branch, moves that branch only to a descendant (`force: false`) and opens a pull
+  request. It has no merge, close, delete or force call; every winget version is reviewed by a
+  moderator and a tap or bucket PR is merged by a person or the repository's own automation.
+- **The natural key** (S-15 §6.3): an open or merged PR for (package, version) is the step; the CLI
+  reports it `existing: true` and writes nothing, so a re-run never opens a second PR.
+- **The token stays in CI.** Read from the environment, sent only to `api.github.com`, never in
+  argv, a report body, the ledger or a log line; the ledger keeps each file's path and SHA-256,
+  never its content.
+- **The inputs read** (`GET /<p>/distribution/pr/<store>`, `distribution:report`) answers only while
+  the app's delivery access is public (a PR-plane manifest sends strangers to the bytes, as the
+  feeds do), and holds no secret.
+
+**Residual risk.** A workflow that calls GitHub directly with the same token bypasses both checks;
+the token's own scope (fine-grained, two repositories) is the backstop, and the classic winget
+token is the widest credential the program asks for. A compromised Polaris Key account can change
+the outlet identity's tap or bucket to another repository the token can write; the token's scope
+bounds that too. The Flathub update PR rewrites the URLs of the app manifest's `extra-data`
+sources; its review is the app repository's own.
 
 ### App Store Connect writes: the write gate, the ledger and the budget (A-17a)
 
@@ -2047,6 +2511,64 @@ check. Two concurrent requests under one Idempotency-Key can both proceed (the `
 Apple's own duplicate refusal bound the harm). The 429 response shape has not been observed
 (A-17h).
 
+### Apple listing push: the widened App Store surface (A-18m)
+
+**What changed (S-15 owner decisions 1 and 2, 2026-10-04; a `core/storefront/rules/*` review
+trigger).** `ASC_WRITE_ALLOW` gains, all with a plain confirmation: the version localization's
+`description`, `keywords`, `marketingUrl` and `supportUrl` (beside A-17d's `whatsNew` and
+`promotionalText`); `POST`/`PATCH appInfoLocalizations` with `locale`, `name`, `subtitle` and
+`privacyPolicyUrl` only (never `privacyPolicyText` or `privacyChoicesUrl`); `POST appScreenshotSets`
+of three display types (`APP_IPHONE_67`, `APP_IPAD_PRO_3GEN_129`, `APP_DESKTOP`) on a version
+localization only (never a custom product page's or an experiment's); `POST appScreenshots`
+(a file name with an image extension, a size within 32 MiB); and `PATCH appScreenshots` with
+`uploaded: true` and an MD5 `sourceFileChecksum` only. These five operations left the deny
+classification (`uploads`, `listingOutsideSurface`), whose reasons were reworded; every spec write
+is still classified exactly once. Still denied: every `DELETE` (screenshots, sets, localizations),
+and the set's membership `PATCH …/relationships/appScreenshots`, which replaces the set and so
+drops screenshots. The handlers are `connectors/asc/listingPush.ts` (`listing/text`,
+`listing/screenshots`).
+
+**New outbound action: Apple's upload operations.** A reserved screenshot's bytes are PUT to the
+presigned URLs Apple answers the reserve with. That PUT is not an App Store Connect API operation, so
+it is gated by its own rule, `ASC_SCREENSHOT_UPLOAD` on the store-agnostic upload matcher, through
+`checkAscUpload` (`rules/appStore.ts`), called by `core/asc/upload.ts` for every operation before a
+byte is read: method `PUT` only; `https` on a host under `apple.com`, the default port, no
+credentials in the URL (`isAscUploadUrl`); PNG or JPEG of at most 32 MiB, as the blob store's record
+says (the type sniffed from the stored bytes, never from a request). The operations must cover the
+file exactly, in order. The PUT carries **no `Authorization`** (the URL is its own credential), never
+forwards an `Authorization`, `Cookie`, `Host` or `Proxy-` header Apple's answer might ask for, takes
+`Content-Type` only when it names the file's own type, does not follow redirects, and never puts the
+presigned URL in an error message or a ledger row.
+
+**Controls** (`test/ascWriteGate.test.ts`, `test/ascListingPush.test.ts`,
+`test/storefront/conformance.test.ts`):
+
+- **(a) Only the listing, only from the model.** The text pushed is the shared listing model's App
+  Store projection in one locale (`projection.ts`): a value over Apple's limits refuses the push
+  before anything is sent; keywords are packed whole under 100 bytes. Listing URLs must be
+  `http(s)` without credentials (a gate value check).
+- **(b) Only listing assets, only from the blob store** (decision 2). Screenshots are the stored
+  `app-store:screenshot:<class>:<n>` rows; a binary has no rule, and `uploadBuild` stays
+  `unsupported` (conformance item 3).
+- **(c) Never a delete.** A screenshot already in the set that the listing lacks is counted and left
+  (`otherScreenshots`, with the App Store Connect deep link). The never-list check of the
+  conformance suite still passes over the widened table.
+- **(d) Pinned app, ledger, audit.** As A-17d: the version is re-read with `include=app`, the app
+  info is listed under the pinned app, every check runs before the first write, one
+  `store_operations` row and one `distribution.asc.listing.*` audit row per write; natural keys are
+  the localization in that locale and the screenshot's checksum (or its file name, which carries
+  the SHA-256) within its set.
+
+**Attack tree: stolen admin session.** It can now also rewrite the App Store listing's text and add
+screenshots for a version being prepared, which App Review still sees before anything ships. It
+cannot remove a screenshot, send bytes anywhere but an `apple.com` host, or send the ASC bearer
+token with a PUT.
+
+**Residual risk.** The upload host rule trusts every `apple.com` host Apple names: a reserve answer
+that named another Apple host would receive a screenshot (never a token). The `apple.com` host
+pattern of the upload operations is inferred from Apple's documentation and is verified live by
+A-18k.
+
 ### Store connectors: App Store Connect (P5-02)
 
 **What it is.** `services/distribution/connectors/asc/` keeps a product's App Store and TestFlight
@@ -2175,8 +2697,8 @@ signed with a distribution certificate the key cannot create or export, and App 
 every App Store version. A thief could pause or complete a phased release, release a held
 version early, open a public TestFlight link, change metadata, or upload a build signed with
 certificates they already hold. Mitigations: the key is custodied by P5-01 (sealed, platform-admin
-writes only, every open audited); the connector itself never uploads and never submits for
-review; App Store Connect's own activity log is the second record; rotate by revoking the key in
+writes only, every open audited); the connector itself never uploads a build and never submits for
+review on its own (A-18m's listing push uploads only the listing's screenshots, from the blob store); App Store Connect's own activity log is the second record; rotate by revoking the key in
 Users and Access and PUTting a new one (the version marker drops cached tokens). Least privilege
 (App Manager, not Admin; a separate Developer-role key for CI uploads) is the operator's choice,
 documented in `services/distribution/app-store-connect.md`.
@@ -2578,6 +3100,13 @@ the flag and the store, never a token.
   the account's own (`ownersteamid` = `steamid`: a Family Sharing borrower gets nothing) and not a
   timed trial.
 
+**Licence merges (LX-03).** When an identity sign-in retires an anonymous enrolled licence into
+the identity's licence, the retired licence's grants and purchases move to the survivor and its
+binding becomes an alias of the survivor (`dist_purchase_binding_aliases`, read before
+`dist_purchase_bindings`), in the same batch as the device move. A restore under the old binding
+therefore reaches the survivor, and "first licence wins" below then names the survivor. Nothing
+else writes an alias; see the R1-07 migrate bullet for the attach case.
+
 **Cross-licence claims.** Every purchase is bound before it is made: the licence's binding UUID
 (random, not the licence id, not PII) is handed to the store as Apple's `appAccountToken`, Play's
 `obfuscatedAccountId` or the Steam ticket identity. A claim grants only when the STORE's record
@@ -2616,6 +3145,16 @@ Apple outlet only if also sold there — is applied by the SDK (`PolarisKey.comm
 from the binding route's product list), not by the Worker: delivery requests carry no outlet, so
 the Worker cannot tell an Apple build's download from another's. A modified client can ignore the
 rule; that is a store-policy matter, not an entitlement bypass (the player paid for the flag).
+
+**Browser pages (SP-16).** The binding and claim routes are in `core/cors.ts`'s covered paths, so
+a bearer-mode page served from one of the product's own `web.origins` can call them with `fetch`;
+every other origin gets no `Access-Control-*` header and a bare 204 preflight (a workerd test
+checks both). This widens reach only to the product's own origins and only for a caller that
+already holds a device token: both routes require the `pkeyt_` bearer, which is never ambient,
+and `Access-Control-Allow-Credentials` is never sent, so a listed page gains nothing a native
+build with the same token lacks, and an unlisted page cannot read either response at all. A
+page still cannot forge a purchase: the claim's payload is re-read from the store as above. The
+two store hooks stay uncovered (server-to-server only).
 
 **Lost or late signals.** Apple redelivers a notification answered non-2xx for days, Pub/Sub
 redelivers with backoff, and the hooks answer 503 on a store outage for exactly that reason. Play
@@ -2776,16 +3315,38 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
   claim is offered (`attachable`) only while every authorized device on the starter's row,
   dormant ones included, fits the device limit the row will carry after the claim (the victim's
   mapped tier and provisioned overrides).
-- **Migrate** (the victim already has a license): `moveDevices` re-points _every_ device on the
-  starter's anonymous license at the victim's license, with `seat_no = NULL` and without
-  `authorizeDevice`. Bounded since P1-07 review: the attach is offered (`attachable`) only while
-  every authorized device on the starter's license (dormant ones too, since `moveDevices` moves
-  them and a moved dormant device comes back without claiming a seat) plus the seat-holding
-  devices on the victim's license fit the device limit the victim's license will carry after the
-  activation. The activation rewrites that license's tier and overrides to the victim's current
-  group-mapped tier and provisioning before the mint, so the bound is measured on that, not on
-  a larger tier the license still stores from an earlier sign-in or an admin `deviceLimit`
-  override the same write discards.
+- **Migrate** (the victim already has a license): the merge re-points _every_ device on the
+  starter's anonymous license at the victim's license, without `authorizeDevice`. Bounded since
+  P1-07 review: the attach is offered (`attachable`) only while every authorized device on the
+  starter's license (dormant ones too, since the merge moves them and a moved dormant device
+  comes back without claiming a seat) plus the seat-holding devices on the victim's license fit
+  the device limit the victim's license will carry after the activation. Since LX-02 (S-19 G7,
+  decision 12) the activation's sign-in write keeps that license's own `tier_id` and
+  `expires_at` and rewrites only the override keys the product's provisioning declares, so the
+  bound is measured on the stored tier plus the surgically merged overrides (an operator's
+  `deviceLimit` override survives and counts), not on a larger tier the victim's groups map to
+  now. The strict-fingerprint refusal below likewise reads the destination's stored tier on a
+  migrate, and the identity's mapped tier on a claim.
+  Since LX-03 the move itself is seat-checked against the same limit (`planDeviceMove`,
+  `repo.ts`): the destination's dormant seats are released, the move is refused
+  (`device-limit`, nothing written) when the moving devices plus the destination's seat-holders
+  exceed it, and every moved authorized device takes a free ordinal of the destination, so
+  `idx_devices_seat` arbitrates a concurrent activation (the merge batch then fails whole and is
+  planned again). The offer is no longer the only guard.
+- **What the migrate carries (LX-03).** The same batch moves the starter's store purchases onto
+  the victim's license (`core/licenseMerge.ts`: License re-keys `license_store_grants`,
+  Distribution re-keys `dist_purchases` and records the starter's purchase binding in
+  `dist_purchase_binding_aliases`, so it resolves to the victim's license). This gives the
+  starter nothing it did not already have: its devices are already on the victim's license and
+  see the victim's flags; the carried purchases add the starter's own flags to the victim's
+  license, a gift to the victim. A later purchase under the aliased binding grants the victim's
+  license, the residual the commerce bridge already accepts ("anyone who learns a licence's
+  binding can make a purchase that grants THAT licence"). The aliased binding cannot pull a
+  purchase off any other license: "first licence wins" still holds for every purchase not
+  recorded for the retired license, and the merge itself needs the claimable anonymous license
+  and a usable identity license as before. Without Core's merge collector on the request
+  (`ServiceContext.licenseMerge`, built by `dispatchService`) the migrate is refused rather than
+  run without carrying.
 - **On both arms**, then, the attach cannot take the victim past their device limit. It can
   still fill the victim's free seats with the starter's devices, so the victim's own next device
   then gets `device_limit` until the owner removes them. The bound is a read before the merge,
@@ -2801,10 +3362,13 @@ plain R1-07 poll, which authorizes one starter device on the victim's license th
 PoCs: `R8-oidc.test.ts` › `OPEN (R1-07 / R8-03, P1-07 claim)` and `OPEN (R1-07 / R8-03, P1-07
 migrate)` assert the gap; `P1-07 (R1-07 bound)`, `P1-07 (R1-07 bound, dormant devices)` and the three `P1-07 (R1-07 bound,
 claim)` / `P1-07 (R1-07 bound, migrate)` tests (dormant devices on a claim, the identity's tier
-rather than the enroll tier, the mapped tier rather than a stale stored one) assert the
-seat-limit refusal, and `P1-07
-(R1-07, claim on a strict tier)` and `P1-07 (R1-07, migrate on a strict tier)` assert that nothing
-merges when the mint would be refused. Binding the
+rather than the enroll tier, the destination's stored tier rather than a larger mapped one, an
+operator `deviceLimit` override that survives sign-in) assert the seat-limit refusal, and
+`P1-07 (R1-07, claim on a strict tier)`, `P1-07 (R1-07, migrate on a strict tier)` and `P1-07
+(R1-07, migrate onto a strict stored tier)` assert that nothing merges when the mint would be
+refused. `licenseMerge.test.ts` and `enroll.test.ts` (`LX-03: …`) assert the seat-checked
+move, the refusal in one piece, and that grants, purchases and the binding follow the merge.
+Binding the
 callback to the confirming browser (below) closes all of it, because the device-code holder is
 then again the person who signed in.
 
@@ -2825,6 +3389,44 @@ confirm. Fix direction, unowned: bind a `viaDeviceCode` flow's callback to the b
 confirmed it — e.g. a `__Host-` `SameSite=Lax` cookie set on the confirmation `303` and required
 by `handleAuthCallback` — which closes R1-07 for device-code flows and makes the `Origin: null`
 question moot.
+
+**The licence chooser's binder (I-26, 2026-10-05).** On a `provider: platform` product, a person
+whose Polaris Key account already owns a usable licence for the product is no longer auto-issued
+a second `sub`-keyed licence: the callback mints nothing and sends the browser to "Choose a
+licence for this device" (`/<p>/identity/auth/choose`). That page lists **purchased** licences,
+so under R1-07 it would hand the phisher a stronger prize than the free licence above: the
+victim, signing in through a forwarded authorize URL, could bind their paid licence to the
+starter's device. The chooser therefore applies the fix direction above, for this path only:
+
+- the browser that starts (`/auth/start`) or confirms (the device page's POST `303`) a platform
+  product's flow receives `__Host-pk_lcb` (HttpOnly, Secure, SameSite=Lax, Path=/, 600 s), and the
+  flow stores the cookie's peppered hash;
+- when the chooser would apply, `handleAuthCallback` requires that cookie. A browser without it
+  (the victim's, in R1-07) gets a generic "Start again on your device" page, the flow is dropped,
+  and **nothing is minted** — there is no fallback to the old auto-issue;
+- the chooser's `GET` and `POST` find the flow only through that cookie (the page and its URL
+  never carry `state`), each render carries a fresh single-use token, the `POST` must be
+  same-origin, and every choice is re-checked server-side (the licence is still the account's,
+  or the identity's own, and still takes this device). A choice is audited
+  (`identity.signin.license_chosen`);
+- **Replace a device** frees a seat with the portal's own `freeAccountDevice`: account ownership
+  (the account the verified `sub` is linked to, held server-side on the flow), the shared
+  `portalDeviceDisconnect` budget, the `portal.device.disconnect` audit row ("to sign in
+  <label>") and the security email to every verified address. Nothing is written before the
+  explicit "Replace and continue".
+
+Residual (open, owned by I-08 / PX-W13): the cookie binds the browser that _started or confirmed_
+the flow, not the person who owns the device. In the plain R1-07 pattern the starter confirms
+with curl and holds the cookie, so the victim's callback is refused. In the
+`verificationUriComplete` variant, though, the starter sends the victim the confirmation link:
+the victim confirms **in their own browser**, receives the binder, signs in, and is shown the
+chooser — and could bind one of their purchased licenses to the starter's device. The only speed
+bump is the device label, which the chooser and the confirmation page show (marked "Named by the
+device" on the chooser) but which is client-supplied `deviceName` text the starter chooses.
+Closing it needs the device-code holder and the browser bound together, which is I-08's login
+card with PX-W13's `__Host-pk_req` binder. Flows outside the trigger (no linked account, no
+usable license, `provider: custom`) keep the R1-07 behaviour described above. Pinned by
+`test/oidcLicenseChoice.test.ts` (› "I-26 browser binder").
 
 **Unchanged.** The legacy `/identity/auth/device/verify?device_code=` page stays for flows in
 flight across the deploy. Confirmation on both routes is one function: the Fetch Metadata /
@@ -3407,15 +4009,15 @@ privilege level.
 
 ### Platform settings and operations: the runtime settings store (A-13)
 
-A-13 makes four deploy settings editable from the console without a deploy, through
+A-13 makes four deploy settings (and, since LX-05, a fifth) editable from the console without a deploy, through
 `platform_settings` (migration 0056) and `GET`/`PATCH`/`DELETE /manage/api/platform/settings`
 behind the same gates as the rest of the Platform section (session, `PLATFORM_ADMIN_GROUP`, the
 per-subject limiter, CSRF on mutations, and `handlePlatform`'s second platform-admin check). There
 is no new privilege level and no outbound call.
 
 - **What is editable is a closed list in code.** `PLATFORM_SETTINGS` (`core/platformSettings.ts`)
-  declares `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE` and `BLOB_GC_GRACE_DAYS`, and
-  nothing else: a D1 row with any other key is ignored, and a value outside an entry's validator
+  declares `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES`, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS` and
+  `LICENSING_RESERVED_NAMES` (below), and nothing else: a D1 row with any other key is ignored, and a value outside an entry's validator
   is never applied (the resolver falls through to `[vars]` or the code default). Each is a
   background job's kill switch or tunable. The worst a hostile session can do with them is waste
   delta CPU (bounded by each product's daily cap and the 32 MiB ceiling, which the size cap can
@@ -3424,6 +4026,25 @@ is no new privilege level and no outbound call.
   180-day R2 age lock still bounds every deletion, and the collector deletes only unreferenced
   objects; see "Readiness holds, pack gates and the blob collector"). None changes what a device
   is offered or what is signed.
+- **`LICENSING_RESERVED_NAMES` (LX-05, S-19 §7.4) is a validation severity, not a gate.** It is
+  `warn` or `error` (`runtime` precedence, default `warn`) and decides only whether a product
+  catalog flag that declares a reserved entitlement name (`channels`, `deviceLimit`, `app.*`,
+  `license.*`, `pkey.*`) with an incompatible type is accepted with a warning or refused at link,
+  resync, the platform deploy hook and the console catalog writes. A hostile session that sets
+  `warn` gains nothing: the policy injection in `core/entitlements.ts` overwrites every system
+  key after the profile and override merge in both modes, so no declaration can change a seat
+  limit, a channel set or a version window a device is signed. Setting `error` can only make a
+  product's next resync fail (an availability nuisance the operator sees on Platform → Settings
+  → Licensing, which lists every incompatible declaration); it is confirmed (L1) and audited.
+  The report route `GET /manage/api/platform/reserved-names` is read-only and returns catalog
+  keys and product names, nothing secret.
+- **`IDENTITY_RESERVED_DISPLAY_NAMES` (PX-W13, `identity.reservedDisplayNames`) is a validation
+  severity too.** `warn` (the default) or `error` decides only whether a product or listing name
+  that uses a platform or store name (`reserved_display_name`) is accepted with a warning or
+  refused at link, resync, the deploy hook and console listing edits. A hostile session that sets
+  `warn` gains nothing on the sign-in card: the card's render-time check shows such a name as the
+  product slug in the neutral frame in both modes (see "Passthrough request metadata"). Setting
+  `error` can only make a product's next resync fail; it is confirmed (L1) and audited.
 - **Why nothing else may join it (AT-2).** Whoever takes the admin plane already reaches A2, A3,
   A5 and A6 through the API for as long as the session lasts. A runtime knob that _widens_ what a
   session can do (a longer session TTL, a raised rate limit, a looser `OIDC_ISSUER_ALLOWLIST`, a
@@ -3450,13 +4071,58 @@ is no new privilege level and no outbound call.
 - **The inventory never reveals a secret.** `GET …/settings` reports deploy-time values that are
   not credentials (the environment, the admin group name, the IdP issuer and client id, the
   parsed issuer allowlist, the origins, the bucket, the account and GitHub App ids, kid names)
-  and every secret as `{ name, set }` only: never a value, a length, a prefix or a hash. It warns
+  and every secret as `{ name, set }` only: never a value, a length, a prefix or a hash. Since
+  ST-02 both lists are generated from the `@inventory var|secret` tags on `Env` (`env.ts` →
+  `platformInventory.generated.ts`) rather than hand-kept, so a new member cannot be left out,
+  and a member cannot be added untagged (`pnpm gen:platform-inventory -- --check`). The tag is
+  now what keeps a value out of the response: `test/platformInventory.test.ts` refuses a
+  credential-shaped name (`*_SECRET`, `*_KEY`, `*_KEYS`, `*_PEPPER`, `*PRIVATE_KEY`, the store
+  credentials, `PLATFORM_KEK`) tagged anything but `secret`. It warns
   when the console still borrows the platform IdP client (`ADMIN_OIDC_*` unset, I-03), when
   `PLATFORM_KEK_ID` is set, and when `PORTAL_SESSION_SECRET` is unset (the portal then signs with
   `ADMIN_SESSION_SECRET`).
 - **Propagation.** Each isolate caches the table for 30 s; the cron handler and the lazy-delta
   consumer re-read it at the start of each invocation. A setting that must take effect instantly
   does not belong in this store.
+
+### Platform settings and operations: the settings registry (ST-03, AT-2 amended)
+
+ST-03 adds one registry of every platform, product and service setting
+(`packages/worker/src/core/settings/`, notes/S-18 §4.2): Core's types and rules, the platform slice
+(`settings/platform.ts`), Core's product slice (`settings/core.ts`), and one slice per service
+contributed through its descriptor (`ServiceDescriptor.settings`), assembled once in `mount.ts`. It
+is data: it reads and writes no value and adds no route. A-13's four keys moved into the platform
+slice under registry keys (`deltas.lazy.mode`, `deltas.lazy.maxBytes`, `blobs.gc.mode`,
+`blobs.gc.graceDays`) with their old names as aliases; their `platform_settings` rows keep the old
+names and `PLATFORM_SETTINGS` is now derived from the slice, so the A-13 store, its route and every
+control above are unchanged. Entries registered ahead of the package that wires them carry
+`pending` and are not editable anywhere.
+
+The registry widens what the console will eventually be able to change (the resolver and generic
+API are ST-04 and ST-05), so AT-2 is amended here: one stolen admin session must not be able to
+widen access across the platform, or make itself permanent, through a setting.
+`test/settings-registry.test.ts` runs `checkRegistry` (`settings/rules.ts`) over the real
+composition root and refuses:
+
+- **at platform scope**, anything that names an origin, the privilege root, the admin IdP, a
+  security gate, key material, a session length, a rate limit, retention or a bucket (S-13 §8.2's
+  names, plus categories matched against every word of the key, its aliases and its `[vars]`
+  name), and any `securityWidening` entry;
+- **at product scope**, a security-widening setting (web origins, an OIDC issuer, trust policy,
+  redirect paths, a role map, access modes, the Sparkle key) that is not `critical` (reason
+  required), that `inherits` from platform (so one platform write cannot widen every product), or
+  whose widening direction needs less than L1; known keys and name patterns must carry the flag;
+- a product session length that could be lengthened: sessions are shorten-only, bounded `max` at
+  the code constant;
+- a `policy` bound on the restrictive side (an entry whose higher values widen access may only be
+  bounded `max` or locked);
+- a product entry that shares a key with a platform-only entry, or disagrees with the platform
+  default or bound it is linked to;
+- a slice that writes outside its own namespace or declares another owner (rule 6), and any
+  `accountMerge` (the account is not a settings scope, S-19 model OC).
+
+No new data is collected and nothing reaches a device: `wire` only labels which existing channel
+already carries a value.
 
 ### Self-reported operations (A-14)
 
@@ -3482,8 +4148,8 @@ credential and no outbound host.**
   dead-letter queue `pkey-deltas-dlq-<env>` as a producer so the Operations page can call
   `metrics()`; Cloudflare offers no read-only queue binding. A source check
   (`test/platformOperations.test.ts`) asserts no file calls `.send` or `.sendBatch` on it and
-  that only `env.ts`, `core/operations.ts` (which hands it straight to `queueStatus`) and the
-  binding-presence list name it. The residual risk, accepted: code running in the request Worker
+  that only `env.ts`, `core/operations.ts` (which hands it straight to `queueStatus`), the
+  binding-presence list and the generated platform inventory (ST-02, one data row) name it. The residual risk, accepted: code running in the request Worker
   could enqueue junk into a queue that has no consumer and whose messages expire after 4 days.
   It reaches no device and no signed document.
 - **Probes are bounded.** Each binding probe has a 3-second limit and is fault-isolated, so a
@@ -4126,6 +4792,167 @@ The Godot SDK reaches Android through `polaris-key-platform` (sdks/kotlin) and t
   (notes/S-06 §7): it gates In-App Updates (a forged Play claim only reaches Play's own API, which
   then refuses) and never authorises anything on the server.
 
+### Node/Electron install drivers, PolarisBridge host and SafeStorageStore (SP-N09/N10/N11)
+
+`@polaris-key/node` hands a verified `binary` decision to an install driver
+(`packages/sdk-node/src/update/drivers/`), gives an Electron renderer a proxy over the client
+(`src/electron/main.ts`, `renderer.ts`, `preload.ts`) and keeps the token in Electron's
+`safeStorage` (`src/electron/safeStorage.ts`). The drivers install new code, the bridge is a
+privilege boundary, and the store holds the bearer. No driver holds a private key. In every case
+the signed update decision (P3-01) is the authority: a driver whose own feed offers any other
+version answers `unsupported` (`version`) and installs nothing.
+
+- **What verifies the bytes, per driver.**
+  - `seaSelfReplaceDriver` downloads through `release.fetch`, which checks the size and SHA-256
+    against the payload artifact of the signed release record before the file is renamed into
+    place. Nothing unverified runs. A payload whose name is an archive or an installer is
+    refused (`product`), and a process that is not a single-executable build is refused
+    (`runtime`), so the driver never replaces Node itself.
+  - `electronUpdaterDriver` lets electron-updater download through the host's own provider. It
+    then hashes the downloaded file and requires that SHA-256 to match an artifact of the decided
+    build in the signed release record (`payload-mismatch` otherwise). electron-updater's own
+    checks (sha512, the Windows publisher name) still run underneath. The record check is on by
+    default; a host that passes `verifyAgainstRecord: false` falls back to electron-updater's
+    feed-level integrity.
+  - `velopackDriver` checks only that the Velopack feed offers the decided version. The bytes are
+    verified by Velopack's own SHA-1/SHA-256 from that feed, so, as with the Godot Velopack path
+    (P5-07), integrity is the feed's: TLS to the Worker and the Worker's selection over verified
+    release records. Authenticode on Update.exe is the owner's. The driver does not compare the
+    package against the release record.
+- **SEA rename and rollback.** The driver writes `<exe>.new` beside the executable, renames the
+  running image to `<exe>.previous` and renames `<exe>.new` into its place. A failed second
+  rename restores the first. The boot guard's `rollback()` puts `<exe>.previous` back after
+  `MAX_FAILED_BOOTS` unconfirmed launches, and only when `<exe>.previous.json` names the version
+  being rolled back to. Residuals:
+  - the install directory must be writable by the user, so anyone who can write there can swap
+    `<exe>.new` between the verify and the rename, or plant `<exe>.previous` and its marker;
+  - the rollback does not re-verify `<exe>.previous`;
+  - both need write access to the directory that already holds the executable, which is
+    equivalent to replacing it. A host that installs into a protected directory should use an
+    installer-based driver instead.
+- **The bridge's trust boundary.** `exposePolarisBridge` registers `ipcMain` handlers that any
+  renderer loaded with the preload can call: state reads, `refresh`, sign-in, `submitKey`,
+  `signOut`, `importBundle`, `fetchSchema` and an `invoke` allowlist (`DEFAULT_INVOKE_VERBS`:
+  device list, rename, deauthorize and report, update check and decide, release changelog,
+  install URL and download URL).
+  - `invoke` answers only the allowlist plus the host's own `invoke.extra` verbs, looked up with
+    `Object.hasOwn`, so a prototype key never resolves. Arguments are type-checked before they
+    reach the client.
+  - The device code of a sign-in stays in the main process; the renderer holds a random flow id
+    that expires with the code. The token, the keyring and the cache never cross the boundary.
+    `BridgeState` carries the verified documents and the sync bookkeeping only.
+  - Refusals cross as `{code, message}` envelopes built from the copy catalog, never a raw
+    server body.
+  - `allowSender` is **optional, and the default accepts every frame**. A host that loads remote
+    content, an iframe, or a second window with the same preload exposes every verb above to
+    that content, including `devices.deauthorize` and `signOut`. Hosts should pass an
+    `allowSender` that pins the app's own origin (the README and tests show
+    `senderFrame.url.startsWith("app://")`), and attach the preload only to windows they trust.
+    The bridge cannot install code: no verb reaches a driver's `install`.
+- **SafeStorageStore degradation.** The token is encrypted with `safeStorage` (Keychain, DPAPI,
+  libsecret or KWallet) into a 0600 `token.enc` file opened with `O_NOFOLLOW`. Every weaker state
+  is reported by `status()`, never silent (P1b-09):
+  - encryption unavailable (before `app.whenReady()`, or no secret store) puts the token in a
+    plain 0600 `token` file and reports `keyring-unavailable`;
+  - Linux `basic_text` is Chromium's hard-coded key, which is obfuscation, not encryption. It is
+    reported as `keyring-unavailable`, with that detail;
+  - a token that no longer decrypts (the OS key was reset) reads as null and reports
+    `keyring-error`; the next activation writes a fresh one.
+  - at most one of `token.enc` and `token` exists after a write. In the two plain-equivalent
+    states the token is as safe as the user's home directory, the same residual as `FileStore`.
+
+### JVM desktop keyring store and installer driver (UK-40)
+
+The Kotlin SDK's JVM desktop path (`PolarisKeyDesktop`) adds an OS keyring token store
+(`KeyringStore`, `sdks/kotlin/core/.../Keyring.kt`) and a driver that downloads and opens a
+binary update (`DesktopInstallDriver` over `OkHttpArtifactFetch`, `sdks/kotlin/update/`). The
+driver installs new code, so its trust anchor is the point of this section.
+
+- **Trust anchor.** The driver acts only on a release record that `UpdateClient.releaseRecord`
+  has verified under the pinned release keys (`verifyReleaseRecord`). The expected size and
+  SHA-256 come from that record's `payload` artifact, never from the feed or the download
+  response, and the downloaded `.part` must match both before anything opens it; a mismatch is
+  `payload-mismatch`, the partial is removed and nothing runs. The URL only says where to fetch.
+- **Where installers land.** The record's artifact name is reduced to a safe basename
+  (`safeName`: no directory part, no leading dot, `[A-Za-z0-9._-]` only), and installers are
+  downloaded into an app-private directory created 0700. The verified file is handed to
+  `open` (macOS), `rundll32 shell32.dll,ShellExec_RunDLL` (Windows, so no `cmd` parsing of the
+  path) or `xdg-open` (Linux), except an AppImage, which is made owner-executable and run
+  directly. Arguments are passed as a list, never through a shell.
+- **The bearer and redirects.** `OkHttpArtifactFetch` follows redirects itself. The bearer goes
+  only to the control plane's own origin (scheme, host and port), is dropped as soon as a hop
+  changes origin and never comes back on a later hop, and plain http to a non-loopback host is
+  refused (`insecure-redirect`), on the first URL as on any redirect. Redirects are capped
+  (`too-many-redirects`).
+- **No publisher check.** The driver checks no code signature or publisher of its own. The OS
+  installer's checks (Gatekeeper and notarisation on macOS, Authenticode and SmartScreen on
+  Windows, the package's signature on Linux where the format has one; an AppImage has none) are
+  the residual. A malicious installer published under the product's own release key is the
+  release key's compromise (AT-3) and outside this model.
+- **Token store fallback (a deliberate difference).** The token lives in the OS keyring
+  (Keychain, Credential Manager or Secret Service) under service `pkey:<product>`. A write that
+  cannot be verified by reading it back, or a host with no reachable keyring (java-keyring
+  absent, a headless Linux session with no Secret Service), falls back to the 0600 token file,
+  and `status()` surfaces it as `keyring-error` or `keyring-unavailable`; it is never silent.
+  This follows the Python SDK's `KeyringStore` (finding R4-11) and departs on purpose from the
+  Apple and Android stores above, where the token is never written to a file instead: a desktop
+  JVM has no store the SDK can rely on everywhere, and the 0600 file is the same protection the
+  file store gave before. A keyring read that throws while no token file exists returns no token
+  (the host may activate again) and `status()` reports `keyring-error`, as in Python. The device
+  id and the verified cache stay in their 0600 files; neither is a secret.
+
+### Godot desktop keyring store (SP-27)
+
+The Godot SDK's desktop builds (macOS, Windows, Linux) move the `pkeyt_` token out of the 0600
+token file into the OS keyring (`PKeyKeyringStore`,
+`sdks/godot/addons/polaris_key/core/store/keyring_store.gd`). It ports UK-40's `KeyringStore`
+rule for rule (service `pkey:<product>`, account `device-token`, verified writes, file-first
+reads, migration from the file store), so the shared rules are UK-40's **Token store fallback**
+bullet above. What is new are the per-OS protection choices.
+
+- **macOS: the login keychain, not the data-protection keychain.** The token is a
+  generic-password item in the file-based login keychain (`Keychain.login` in
+  `sdks/swift/Sources/PolarisKeyPlatform/SecureStore.swift`), never synchronizable. The
+  data-protection keychain the Apple store (P5-05) uses needs a `keychain-access-groups`
+  entitlement, and so a provisioning profile, which an unsigned, ad hoc or plain Developer ID
+  build does not have (-34018). The cost: the item carries no accessibility class (the login
+  keychain has none), so it is readable whenever the login keychain is unlocked, and it can
+  travel with a copied or migrated login keychain. Its ACL trusts the app that created it; another
+  app reading it gets the OS prompt, which the user can approve. An unsigned or ad hoc build's
+  identity is weak, so a rebuilt binary may prompt, and the ACL is no stronger than the user's
+  answer.
+- **Windows: `CRED_PERSIST_LOCAL_MACHINE`.** The credential is a generic credential laid out as
+  python-keyring's `WinVaultKeyring` writes it (`native/windows/credman/pkey_credman.cpp`), but
+  persisted LOCAL_MACHINE where python-keyring uses ENTERPRISE: it never roams to other machines
+  with a roaming profile, which a device-bound token should not do. It is DPAPI-protected under
+  the user's logon and readable by any process running as that user, as python-keyring's is. The
+  plaintext copy is zeroed after `CredWriteW`.
+- **Linux: `secret-tool` on PATH.** The Secret Service is reached by running `secret-tool`
+  (libsecret-tools), found by searching `PATH` (`keyring_linux.gd`), not through a GDExtension.
+  The secret goes to `store` on stdin, never on the command line, so it does not show in the
+  process list; `lookup` returns it on stdout. Each call has a 10 s deadline, after which the
+  process is killed and the call fails, so a locked collection waiting on its unlock prompt
+  cannot hang the game. Residual: whoever controls the user's `PATH` can substitute
+  `secret-tool` and read the token, but that attacker already runs code as the user and could read the Secret Service directly. Any process of the same user on the
+  session bus can read the item, as with every Secret Service client.
+- **One keyring entry per product across SDKs.** Python's, Kotlin's and Godot's desktop builds
+  of one product name the same item (service `pkey:<product>`, account `device-token`), while each
+  build keeps its own device id in its own 0600 file. So a token written by one build can be read
+  by another that has a different device id. That widens nothing beyond the same OS user (who can
+  already read every entry), but it means one build's activation overwrites another's token, and
+  a build that reads a token issued for another device id gets it refused by the server and
+  activates again. It is a nuisance, not an escalation; the token never leaves the user's keyring
+  to do it.
+- **Fallback to the 0600 file, surfaced.** When the keyring piece is missing (no
+  `libpkey_apple.dylib` or `pkey_win.dll`, no `secret-tool` or session bus, an engine older than
+  Godot 4.5 on Linux, whose `OS.execute_with_pipe` does not deliver stdin, or
+  `PKEY_DESKTOP_KEYRING=0`) or a write cannot be verified, the token stays in the 0600 token file,
+  the same protection the file store gave before. It is never silent: `status()` reports
+  `backend: file` with `keyring-unavailable` or `keyring-error`, and every keyring failure emits
+  `failed`, which `PKeyCore` forwards as `store_error`. As in UK-40, this departs on purpose from
+  the Apple and Android stores, which never write the token to a file. The device id and the
+  verified cache stay in their 0600 files; neither is a secret.
+
 ### Platform pack transports (P5-08)
 
 Apple-hosted Background Assets, Play Asset Delivery and Steam depots move pack bytes that Polaris
@@ -4359,15 +5186,175 @@ CSRF header like every other portal mutation.
   control or format characters (no bidirectional overrides that make one name render as another);
   owner-only, rate limited in the product's shard, audited. They are rendered as text everywhere.
 
-### Key-bearing deep links: `/activate?key=` (PX-01)
+### Key-bearing deep links: `/activate#key=` (PX-01, fix/keys-out-of-logs)
 
-`/activate?key=<license key>` (an app at its entry limit, an email, a printed card) puts a whole
-key in a server-visible query string: it reaches edge and Worker request logs, and when the visitor
-is signed out it rides along in the OIDC `return_to` and the magic link's return URL. Accepted by
-the design (PORTAL.md §4.18); mitigated by `Referrer-Policy: no-referrer` on every page (the key
-never leaves in a `Referer`), by the SPA moving it into the hash (`#/?activate=`) on load, and by a
-key alone only ever adding a licence through the claim rules (no ownership move, verified-email
-gate, one rate bucket with the preview). Revisit when PX-17 or PX-W8 adds `manageUrl`.
+The Activate license deep link (an app at its entry limit, an email, a printed card) opens the
+Library with the modal filled in. Asset: the licence key, a bearer credential (A7; whoever holds it
+activates seats and adds the licence through the claim rules). As first built (PX-01) it carried
+the key as a query, `/activate?key=<license key>`, so the key was in every record of the request
+URL: Workers Logs (`[observability.logs] invocation_logs = true` records each invocation's URL),
+Cloudflare's edge logs, any proxy or analytics that reads URLs, and the browser's history. That is
+no longer accepted.
+
+- **The key rides in the fragment.** The link is `/activate[?product=<slug>]#key=<key>`. A
+  fragment is never sent in a request, a `Referer` or a redirect, so the key reaches no server,
+  edge log or Worker log. The Worker builds no link with a key in it (`manageUrl` carries none,
+  PX-W8); the UI kits add `#key=` only to an `/activate` link (PX-W8).
+- **The portal drops it before the app's first request.** `rewriteActivatePath`
+  (`packages/admin/src/portal/router.ts`) runs before the first render and before the app's first
+  request: it reads `#key=`, or a legacy `?key=` (the fragment wins), and `history.replaceState`s
+  the address to `/#/?activate=<key>[&product=…]`, so neither `?key=` nor `#key=` stays in the
+  address bar or the history entry. The shell's own subresource requests (`/assets/*`, fonts,
+  icons) come first, issued by the document before any script runs. Their URLs never carry the
+  key, and a fragment is never in a `Referer`; for the legacy form their `Referer` would carry
+  the `?key=` query, and stays empty only because the shell is served with
+  `Referrer-Policy: no-referrer` (next item). Signed in, the shell consumes `#/?activate=` as the
+  modal opens (the address becomes `/#/`). Signed out, the key waits in this tab's fragment
+  through sign-in; every sign-in's return URL leaves it out and a sign-in that navigates away
+  keeps it in this tab's `sessionStorage` (`carriedKey.ts`, SIGN-IN.md §3.9).
+  `test/portalRouter.test.ts` and `test/portalActivate.test.tsx` pin both link forms, and that no
+  app request URL carries the key. `e2e/portal.e2e.test.ts` opens both forms in Chromium, with
+  the Worker's CSP and Referrer-Policy on the shell, and checks every request the page makes
+  (the document, `/assets/*`, fonts, icons and the API) for the key in its URL or `Referer`; the
+  only request excluded is a legacy link's own navigation, which carries `?key=` by definition.
+- **What else the link carries, and where it may send the person (PX-17).** The rewrite keeps the
+  app's `product=` (a product slug), `next=free-device` (no other value), `for=` (control
+  characters stripped, then cut to 64 characters) and `return=`, and drops every other parameter
+  (`activateLinkParams`). A `#/?activate=` hash written by hand goes through the same rule
+  (`activateContext`) before the signed-in shell uses it. The key goes into `activate=` and
+  nowhere else. A `for=` or `return=` that carries a key is dropped, and `for=` is checked before
+  the cut, so a key the cut would split is still found. "Carries a key" (`carriesKey`,
+  `model/returnUrl.ts`) means the key shape as written or after percent-decoding, repeated for a
+  value encoded more than once; a value that will not decode counts as carrying one.
+  Every sign-in's return URL (`returnUrl()`, `carriedKey.ts`) empties `activate=` and drops any
+  other parameter, in the hash or the query, whose name or value carries a key, however it got
+  there; a path that carries one is replaced by `/`. The emptied `activate=` reopens the modal
+  after sign-in for a link without a key. `return=` is followed only after the add, and only to
+  the login card on this origin (`/signin?…`) or to an origin or app scheme the product declares
+  (PX-10's `allowedReturn`). A crafted link must not send someone to a download, a sign-out or any
+  other page of the origin by itself. `cardReturn` and `allowedReturn` both refuse a value that
+  carries a key. `next=free-device` hands over the license id, `for=` and the key-free `return=`;
+  the free-device flow checks that `return=` against the declared targets itself.
+  `test/portalRouter.test.ts`, `test/portalReturnUrl.test.ts` and
+  `test/portalActivateLink.test.tsx` pin this, including encoded keys, a key past the `for=` cut,
+  hand-written hashes and the sign-in return URL. `e2e/portal.e2e.test.ts` drives both hand-offs
+  in Chromium with the key in no request line or `Referer`.
+- **A legacy `GET /activate?key=…` (a link already out) still works, and the Worker adds nothing
+  to it.** It answers with the same SPA shell: `Cache-Control: no-store`,
+  `Referrer-Policy: no-referrer`, the key in no response byte or header, and the shell fetched
+  from `ASSETS` without the query, so the key reaches no subrequest. It is deliberately **not** a
+  redirect. The request that brought the key is already in the invocation log, the edge log and
+  any proxy's, and no answer can take it back. A `302` to `/activate#key=…` would echo the key in
+  a `Location` header (one more place to capture it) for a round trip's cost, and one that drops
+  the key would break the link. The SPA's in-place rewrite gives the address bar and the history
+  entry what a redirect would. `packages/worker/test/keysOutOfLogs.test.ts` pins this.
+- **Nothing in the Worker writes a URL down.** `src/` has no `console.*` (R12's static guard;
+  `keysOutOfLogs.test.ts` also proves no console call on the deep link and on an accepted and a
+  refused activation), no error reporter, and no `audit`, `portal_audit` or `license_refusals`
+  row records a request URL, path or query; the release gateway's edge-cache keys are built from
+  chosen fields, never `req.url`. So no redaction helper is needed. The one record of a legacy
+  link's key is the platform's: that request's invocation log and Cloudflare's own request logs.
+
+Residuals:
+
+- **A legacy link's key stays in Workers Logs for the retention period.** An operator who wants
+  even that gone can set `invocation_logs = false` (losing every invocation record), or add a zone
+  URL-rewrite rule that drops the query of `/activate` before the Worker runs: the browser keeps
+  its address, so the SPA still reads the key. Neither is done here (an operator decision).
+- **A fragment is still kept by the browser.** The opened address, key included, can be written
+  to the browser's history (and history sync) at navigation, before any script runs, and restored
+  by session restore. Accepted: it is the person's own browser holding the person's own key.
+  Signed out, the key also sits in the current entry's `#/?activate=` until sign-in completes.
+- **A key alone adds only through the claim rules:** no ownership move, the verified-email gate,
+  and one rate bucket with the preview (PX-W5, I-05).
+
+Other secrets audited in URLs with this change, and left as they are:
+
+- **Device tokens and licence keys on the device wire** travel only in `Authorization: Bearer`
+  headers or JSON bodies, in every SDK; no SDK route puts either in a query or a path.
+- **`/magic/verify?token=`** (I-02): the sign-in link's token, in the email by design. The `GET`
+  is a landing page that consumes nothing, the token is single-use and lives 10 minutes, and
+  anywhere but the browser that asked it only confirms that browser's sign-in (I-07), so a token
+  read from a log cannot sign its reader in. A fragment form would need script on a script-free
+  page.
+- **`/download/<token>` and the bytes host's `?ticket=`** (PX-W3; the Velopack package route
+  too): a single-use redemption token and a two-minute, one-file ticket that a browser or an
+  updater download has to carry in its URL (a `302` cannot add a header). Both are useless once
+  spent or expired.
+- **Godot registry URL tokens** (`/godot/<owner>/t/<token>/…`): accepted above under "Godot URL
+  tokens" (the editor sends no `Authorization`; the token is read-only, Godot-only and 30 days
+  by default).
+- **`/<p>/identity/auth/device/verify?device_code=`**: a legacy route kept for flows started
+  before `/device`; `/device/start` no longer hands the URL out. Removing it is a route change
+  (AGENTS.md rule 10), proposed as a follow-up.
+- **The deprecated `/<p>/identity/auth/poll?state=&device=`** (`handleAuthPoll`, `oidc.ts`) puts
+  both halves of the poll pair in one URL. Nothing starts a device-bound flow it can redeem any
+  more: `/auth/start` binds no device, and `/auth/poll` refuses a `/device/start` flow
+  (`viaDeviceCode`), so it never returns a token. Retiring it is a route change (rule 10),
+  proposed as a follow-up.
+- **`/<p>/identity/auth/device?user_code=`**, the RFC 8628 `verification_uri_complete`: a short
+  code a person types or scans, not a bearer. It only opens the confirmation page. Confirming is
+  a CSRF-checked `POST` and then a sign-in, so whoever confirms signs the device in as
+  themselves, which the device shows (P1-06); the token goes only to the device-code holder (the
+  device code is never in a URL), and a confirmed code stops resolving.
+- **The OIDC callbacks' `?code=&state=`** on `/callback` (the portal), `/manage/callback` (the
+  console) and `/<p>/identity/auth/callback` (and Google's `/login/google/callback`): the code is
+  in the URL by the protocol. Every one of these flows uses PKCE S256 with the verifier held in
+  the server's flow record, so a code read from a log is useless without it, and the `state` is
+  single-use. Apple posts its code (`form_post`), never in a URL.
+- **Steam's OpenID callback** (`/login/steam/callback?state=&openid.*=`): the positive
+  assertion rides in the query by the protocol. A logged one cannot be replayed: the `state` is
+  single-use, the callback needs the starting browser's binding cookie, and Steam refuses an
+  `openid.response_nonce` it has already verified. What a log keeps is a SteamID64, a public
+  identifier.
+- **pip and uv's userinfo form** (`https://__token__:<token>@pkg.plrs.im/pypi/<owner>/simple/`,
+  `build/install-from-feeds.md`): the client moves the URL's userinfo into a Basic
+  `Authorization` header, and userinfo is never part of a request line, so the `pkeyr_` token
+  reaches no request line, edge log or Worker log. What remains is client-side: the command
+  line, token included, in shell history, the process list and CI logs. The environment
+  (`UV_INDEX_<NAME>_USERNAME` / `_PASSWORD`) and `~/.netrc` forms avoid it.
+- **Steam's key-activation page** (`activateUrl`, `services/distribution/page/customer.ts`) takes
+  a Steam key as `?key=` on Steam's own site. That is Steam's interface and Steam's logs; the
+  portal must never put the Steam key in its own address when it builds that link.
+
+### Refusal links: `manageUrl` and the `#key=` fragment (PX-W8)
+
+A `device_limit` or `key_entry_limit` refusal carries `manageUrl`, a portal link an app offers as
+**Replace a device** (WIRE-CONTRACT-V4 §5.3). The Worker builds it, and the link itself never names
+the key, an account, a holder, a hostname, a device id or an IP. The licence id (on an attached
+licence) and a coarse `for` label (`macOS arm64`) are the only identifiers in it. Asset: the
+licence key, a bearer credential (whoever holds it can activate seats and add the licence through
+the claim rules), so A7 and, through the claim, the buyer's account (A6).
+
+- **The key never rides in a query string.** On an `/activate` link the UI kits (React, Swift,
+  Kotlin, Godot) add the key the person just typed as the fragment `#key=`, so the portal's page
+  can fill it in. A fragment never reaches a server, an edge log, a `Referer` or the OIDC
+  `return_to`. The query only ever gains `return=` (an app URL the portal checks against the
+  product's declared return targets). The `free-device` route of an attached licence never gets
+  the key at all.
+- **A fragment is still kept by the browser.** The opened URL, key included, lands in the
+  browser's history and in history sync to the person's other devices, and can be restored by a
+  session restore. Residual, accepted: it is the person's own browser, holding the person's own
+  key, which they just typed on the same machine. The required mitigation is in place: the portal
+  reads `#key=` once on load and drops it with `history.replaceState` before any other work, so
+  the history entry and any later share of the address bar hold no key ("Key-bearing deep links"
+  above, fix/keys-out-of-logs).
+- **A QR code never carries the key.** Where a joypad is the only input (tvOS, Android TV, a
+  console or joypad-only Godot) the link is drawn as a QR code on a screen others can see, and
+  anyone in the room can scan it into their own phone's history. So the QR form is built without
+  `#key=` in every kit (Swift `presentation: .qr`, Kotlin `manageQrUrl`, Godot
+  `manage_link(..., for_qr)`); the phone opens `/activate` with an empty field and the person types
+  or pastes the key there (plans/PX-W8.md Q2). The QR still holds the licence id (attached
+  licence) and the `for` label, which alone add or move nothing.
+- **The CLIs leave the key out too.** `pkey` (Node) and the Python CLI print the served link
+  without `#key=`: a terminal scrollback is a log.
+- **Untrusted input from the server.** Every SDK keeps `manageUrl` only if it is `https` (or
+  `http` to loopback), has a host and no userinfo, whitespace or control characters, and fits in
+  2048 characters; anything else is dropped, never repaired, and the link opens only on a user
+  action. Residual: the hand-written parsers (Godot, Kotlin, Swift) can disagree with
+  client-core's `new URL()` on odd but valid inputs (dot segments, percent normalisation); the
+  links come only from the Worker, so the disagreement decides at most whether a key fragment is
+  offered on a non-`/activate` path of the portal origin, never where the link points.
 
 ### Portal emails: security notices and "Email me the download" (PX-W7)
 
@@ -4419,8 +5406,11 @@ rules and item 16's tenant-scoped lookup are enforced in the same code.
   removals cannot orphan the account). **Never by email match:** an unknown identity whose
   provider-verified email another account already uses is a join offer that writes nothing; the
   login card (I-07) joins only after the person proves the other account in the same session.
-  Residual: until I-07 the portal answers such a sign-in with a page that names nobody and asks
-  the person to sign in to the existing account first.
+  Since I-07 every provider sign-in (I-06's Google, Apple and Steam included) reaches that
+  offer only through the email gate (`card/gate.ts`): the address is proven first (by the
+  provider's verified claim or a code), the offer names nothing before that, and joining needs
+  proof of the other account in the same browser (a code to its email method or a fresh
+  session for it).
 - **Merge takeover (item 15).** `mergeAccounts` needs a live sign-in to EACH account, both fresh
   (5 minutes); one stale proof refuses the whole merge. Links, licences, sessions, grants,
   passkeys and registry tokens move in one atomic batch; the absorbed account becomes a tombstone
@@ -4463,34 +5453,1116 @@ rules and item 16's tenant-scoped lookup are enforced in the same code.
   not-yet-settled loser inline, so the scheduled catch-up (which copies a portal link onto a
   floating licence) can never hand it to that loser.
 
-### Discover: free offers and "Add to library" (PX-W10)
+### Login card (I-07)
+
+The login card is the one place a Polaris Key account's credentials are entered
+(`services/identity/card/`, S-16 §5.4 items 4, 7 and 14; PORTAL.md §4.1, §4.4, §4.29, §4.30).
+
+- **Email enumeration (item 4).** The email start never looks the address up and answers the same
+  bytes for a known, an unknown, a locked-out, an over-limit and a suppressed address (a test
+  compares them byte for byte); only "mail cannot leave at all" (`503 email_unavailable`) differs,
+  and it names no one. Whose an address is becomes visible only after a code or a provider proved
+  the address (the gate's join offer), so the card cannot be used to test addresses.
+- **Code guessing and mail bombing (item 4).** I-02's limits in the platform scope: 6 digits, 10
+  minutes, 5 wrong attempts per code, a 15-minute lockout after 10 wrong attempts in an hour
+  (answered like success), 5 sends an hour and 20 a day per recipient, 10 an hour per client
+  address and 30 per network, 8 starts a minute per address. Cloudflare Turnstile guards the start
+  when the deploy sets `TURNSTILE_SECRET_KEY`, verified server-side and failing closed (Cloudflare
+  unreachable refuses). Residual: until the owner sets the Turnstile keys (RUNBOOK "Login card"),
+  the limits alone stand between the card and a scripted sender.
+- **Send a new code (PX-W4).** `POST /api/signin/email/resend` asks for no new Turnstile token,
+  so it must not turn one solved challenge into a mail cannon. It can only mail the address the
+  flow was started for (the address is read from the server-held flow, never the request), waits
+  60 seconds after the last code, and stops at 5 emails per flow, start included: one Turnstile
+  pass buys at most one hour's per-recipient budget, and every I-02 send limit still applies on
+  top. Its answers are the start's bytes whether or not mail went out; its other answers (wait,
+  too many for this flow, expired) describe this browser's own flow and never the address. The
+  flow is retired with an atomic consume before the new one opens, so the previous code and link
+  die with it and two racing resends mail once. The flow cookie is `SameSite=Lax`, so a cross-site
+  `POST` arrives without it and resends nothing. Each new code starts with a fresh 5 attempts, so
+  the per-code cap alone would allow 25 guesses per flow; I-02's recipient lockout bounds it
+  instead: 10 wrong attempts in an hour, across codes, stop new codes to that address for 15
+  minutes (answered like a send), so resending cannot buy more guesses than the lockout allows.
+- **Magic-link relay and prefetch (item 14).** A link and a code are bound to the browser that
+  asked, by a host-only `__Host-pkey_signin` cookie naming the flow; the link's token is 192 bits
+  and only its peppered hash is a store key. Opening the link (`GET`) consumes nothing, so a mail
+  scanner cannot burn it; its button `POST`s. Opened on another device it shows "Confirm sign-in,
+  requested at <time> from <place>" and confirming only lets the asking browser finish: a link
+  phished out of a victim signs in the attacker's own flow at most, never the device that opened
+  it. A code and the link complete one flow once (atomic consume).
+- **The email gate and the join offer (owner decisions, 2026-10-04).** No account row and no
+  session exist until the gate passes; its record is server-held and named by a host-only
+  `__Host-pkey_gate` cookie, so another browser cannot drive it. A provider-asserted verified
+  address (Apple's; Google's only for a Gmail address or a matching Workspace `hd`, PX-W15 below)
+  is trusted as the provider's statement, which is the same trust I-06 places in that provider's
+  ID token; anything else needs our code. An address
+  another account uses stops the gate with an offer and writes nothing. Joining needs both
+  identities proven in the one session: the gate proves the provider identity, and the other
+  account is proven by a fresh (5-minute) account session in this browser or by the gate's code
+  only when the address is an active email sign-in method of that account (a code to an address
+  that is merely another account's primary email proves nothing). Linking and merging then run
+  I-05's `linkIdentity` and `mergeAccounts`, with their own freshness checks and notices. Account
+  creation is one atomic batch on the links' UNIQUE key, so a race leaves nothing behind.
+- **Sessions (item 7).** The account cookie stays signed (realm-tagged) and also names a
+  server-side `account_sessions` row by a random id whose peppered hash is the key; a revoked,
+  expired or missing row refuses the cookie, so sign-out (server-side too), ending one session
+  and "sign out everywhere" are real, and a table dump is not a set of cookies. All three account
+  cookies are host-only on key.plrs.im (`__Host-`, `Path=/`), `HttpOnly`, `Secure`,
+  `SameSite=Lax`. Because a host-only cookie still reaches every path on the host, the dispatcher
+  removes the account realm's cookies from every product route's request and drops any
+  `Set-Cookie` for them from its response (a test plants and reads through a product route), so
+  product code can neither read nor plant the account session.
+- **Profile import and avatars.** Provider names and locales are untrusted display data: names
+  lose control, bidirectional and zero-width characters and are cut to 64 characters, locales
+  must look like BCP 47, nothing is rendered as markup. Pictures: see "Account pictures (PX-W16)"
+  below, which replaced I-07's own fetcher and its stored-as-fetched residual.
+
+### Login-card providers: Google, Apple and Steam (I-06)
+
+The login card signs people in with Google, Apple and Steam through Polaris's own platform
+clients (S-16 §5.2): one Google OAuth client, one Apple Services ID and one Steam Web API key per
+environment, under `/login/<provider>` (`services/identity/providers/`). They are account sign-in
+methods, never behind a product's Identity toggle. S-16 §5.4 item 2 (broker confusion) is I-06's.
+
+- **Broker confusion and audience (item 2).** `verifyProviderIdToken` takes the audience as a
+  required argument and refuses an empty one, so there is no "any audience" mode: a login-card
+  token must name exactly the platform client id (Google) or the Polaris Services ID (Apple), a
+  multi-audience token must carry that client as `azp`, and a present `azp` must equal it. A token
+  Apple or Google minted for a developer's bundle id (I-13's native sign-in) is therefore refused
+  on the card, and I-13 will pass the bundle id, so a card token is refused there. A provider is
+  offered only when all of its values are set and its sealed secret opens, so a missing client id
+  never reaches audience checking. Steam (OpenID 2.0) has no audience; its equivalents are an
+  exact `openid.return_to` (our origin, our path and this flow's `state`) among the signed fields,
+  `op_endpoint` = Steam's, and Steam's own `check_authentication` verdict, never the redirect's
+  parameters alone. Every `openid.*` key (and `state`) must appear exactly once and the body sent
+  to `check_authentication` is rebuilt from those single values, so a repeated `claimed_id` placed
+  before Steam's genuine one cannot make the local checks and Steam's verdict look at two
+  different identities (an account-takeover shape found in review).
+- **Mix-up (RFC 9207).** Each provider has its own callback path and a flow records the provider
+  it was started for; a `state` is never redeemed on another provider's callback. Where the
+  provider advertises `authorization_response_iss_parameter_supported` (Google), `iss` is required
+  on the authorization response, and a present `iss` must equal the issuer in any case.
+- **Discovery is data (SSRF).** The discovery document is fetched from the provider's fixed
+  issuer, its `issuer` must match exactly, and every URL it names (authorize, token, JWKS), like
+  every other outbound provider call, passes one door (`providers/net.ts`): `https:` only, no
+  credentials, the default port, no private, loopback or link-local literal, and a per-provider
+  host allowlist. Redirects are never followed and bodies are capped at 64 KB, so a poisoned
+  document cannot aim the token POST (which carries the client secret) or the key fetch elsewhere.
+- **Login CSRF without a Lax cookie.** Apple answers with a cross-site `form_post`, on which a
+  `SameSite=Lax` cookie is not sent, so the flow is found by its `state` alone, server-side, in
+  the single-use store (peppered hash, ten minutes, consumed atomically by the first callback,
+  burned by a cancel or failure). It is still bound to the browser that started it: start sets
+  `__Host-pkey_signin` (random, `SameSite=None; Secure; HttpOnly`, ten minutes), whose hash the
+  flow holds, and a callback without the matching cookie is refused. The cookie opens nothing by
+  itself. Residual: a browser that blocks `SameSite=None` cookies on a cross-site top-level POST
+  cannot finish Apple sign-in and is told to start again.
+- **Credential custody.** The Google client secret, the Apple `.p8` and the Steam Web API key are
+  Worker secrets holding `keyvault.seal` blobs bound to `pkey:v2:_platform:signin-provider-secret:<id>`,
+  a slot no product slug can spell under a kind of its own; a copy of the Worker secret without
+  the KEK is inert. The `.p8` only ever leaves as a five-minute ES256 client secret.
+- **Upstream tokens.** ID tokens are verified once (signature against the provider JWKS, issuer,
+  audience, `azp`, `nonce`, `iat` within the ID-token age) and never stored; the access and refresh
+  tokens a token endpoint also returns are dropped unread. Apple's first-consent `user` field is
+  unsigned, so it is only a display suggestion; the email always comes from the signed token.
+- **Verified email.** `emailVerified` is true only when the provider asserted it in the signed
+  token (`email_verified` `true`, or Apple's `"true"`); Steam supplies no email. The card never
+  joins by email match (I-05); I-07's interstitial decides what an unverified or absent email needs.
+- **Apple server-to-server notifications.** `POST /login/apple/notifications` accepts only a JWT
+  signed by Apple, issued by Apple, addressed to the Services ID and at most seven days old (Apple
+  retries). Events flag the link (`account_links.provider_flag`: `consent_revoked`,
+  `account_deleted`, `email_disabled`) and are audited; they never delete it, since removing a
+  method stays the person's own step-up action with its last-method guard. A replayed event only
+  re-applies an idempotent flag. `account_deleted` is final; a fresh Apple sign-in clears
+  `consent_revoked`, and `email-enabled` clears `email_disabled`.
+- **Abuse.** Start, callback and notifications are rate limited per caller IP in their own
+  buckets (`portalProviderStart`, `portalProviderCallback`, `appleNotifications`), all failing
+  closed.
+
+### The email gate: G31's checks and terms acceptances (PX-W15)
+
+PORTAL.md §10.2 G31 on top of I-07's gate (`services/identity/card/gate.ts`, the "Login card"
+section above): the provider rule checked end to end through I-06's callbacks, nothing issued
+before the gate passes, and terms acceptances kept per account, product and version
+(`account_terms_acceptances`, `accounts/terms.ts`).
+
+- **Unverified provider emails.** Only a provider's signed assertion skips our code, and only
+  where it vouches for the address today (`providerVouchesForEmail`): Apple's (always sent, a
+  private-relay address included), and Google's `email_verified: true` only for `@gmail.com` /
+  `@googlemail.com` or when the signed `hd` claim equals the address's domain (a Workspace
+  account, whose addresses the domain's admin controls). A Google address with
+  `email_verified: false` or outside that rule, every typed address and every Steam sign-in (no
+  email at all) get a 6-digit code on I-02's store, bound to this gate's record (`flowId`), so a
+  code sent for one gate cannot pass another. The rule is applied to the identity as it enters the
+  gate, so the provider link stores such an address as unverified too: an address our code proved
+  is verified on the email method only (tests).
+- **Apple relay addresses.** A `…@privaterelay.appleid.com` address is accepted as Apple verified
+  it and can be the account's primary email. It reaches the person only through Apple's relay,
+  which accepts mail only from registered senders (`EMAIL_APPLE_RELAY`, I-02 above), and it does
+  not match a purchase made with the person's real address; the step marks it (`relay: true`) and
+  offers "Use my real email", which then needs a code (test).
+- **Takeover through a claimed email.** The confirmed address becomes a verified account email,
+  and verified emails attach unclaimed email-bound licences (`syncAccountLicenseLinks`). The gate
+  therefore never accepts an address on anyone's word but the provider's signed token or our code,
+  never creates a second account for an address another account uses, and answers `email_in_use`
+  only after the address was proven, so the gate cannot be used to test addresses. Joining needs
+  proof of the other account in the same browser (I-07). Closed (lead decision under the owner's
+  delegation, 2026-10-06): Google's `email_verified` for an address outside Google's own domains
+  says only that Google verified it once, not that the person still controls it (a former
+  employee's company address). Such an address now needs our code unless the token's `hd` claim
+  names its domain, and the Google link never stores it as verified, so it cannot claim licences
+  bought with it (tests: Gmail and matching `hd` pass without a code; no `hd` and a mismatched
+  `hd` get one).
+- **Nothing before the pass.** The gate cookie (`__Host-pkey_gate`) authenticates nothing: until
+  the pass no session cookie is set, no `account_sessions` row exists, no account row exists for
+  a new identity, and every session-gated route (the account, its sessions, app consent for a
+  passthrough request, device approval) answers 401 to that browser, at every step: opened, terms
+  refused, code out, wrong code, join offer and refused join, and a terms-only gate on an existing
+  account (tests). The pass is the one response that sets the session cookie and hands back the
+  passthrough `request`, so no app token can be minted against an account whose gate is open.
+- **Terms acceptances.** One row per (account, product, version), written once: a repeat
+  acceptance keeps the first time and URL, and a new version adds a row beside the earlier ones,
+  so the record of what the person agreed to survives the next version. The gate asks again while
+  the current version has no row, and an old version never passes a gate opened for a new one.
+  A merge moves the absorbed account's rows to the survivor (the survivor's own row stands for a
+  version both accepted); account deletion and product deletion erase them (tests).
+
+### Passkeys on key.plrs.im (I-16)
+
+Passkeys are an account sign-in method on the console host (`services/identity/passkeys/`, over
+`@simplewebauthn/server`; S-16 §5.4 items 7, 14 and 17; PORTAL.md §4.1, §4.26). Each passkey is
+an `account_passkeys` row (COSE public key, signature counter, transports, RP id, user handle)
+twinned with an `account_links` row (`issuer_key = 'passkey'`, subject = the credential id), so
+the link engine's rules (one account per method, the never-orphan guard, step-up, audit, notices,
+merge and deletion) apply to it unchanged.
+
+- **Phishing and look-alike origins (item 14).** The relying party is the console host
+  (`CONSOLE_ORIGIN`, `key.plrs.im`), and a ceremony is served only on that origin, so no other host
+  of ours can mint a challenge a key.plrs.im passkey would answer. Both verifications pin the exact
+  origin (`https://key.plrs.im`: no subdomain, no `http:`, no port) and the SHA-256 of the RP id in
+  the authenticator data, so an assertion a browser makes for a look-alike site is refused here
+  (tests for a sibling subdomain, the parent domain, `http:` and a foreign RP id). The browser
+  itself refuses to use a key.plrs.im passkey anywhere else, which is the phishing resistance;
+  the server checks make it independent of the browser.
+- **Replay (item 8's single-use rule).** A sign-in challenge is 32 random bytes in I-02's
+  single-use store for 5 minutes, named by a host-only `__Host-pkey_passkey` cookie (so it
+  completes only in the browser that asked) and TAKEN by an atomic consume before anything is
+  verified: an answer verifies at most once, a failed try needs a new challenge, and of two racing
+  submissions of one answer exactly one signs in (the workerd test races them on the real Durable
+  Object). An old answer to a new challenge fails the challenge comparison. A registration
+  challenge is bound to the account session that asked, consumed the same way. The account realm's
+  cookie rules cover the new cookie: the dispatcher strips it from every product route.
+- **What the assertion must prove.** User presence AND user verification (biometric or device
+  PIN) at registration and sign-in: a passkey is a whole sign-in, never a second factor. The user
+  handle must come back and equal the one the credential was created under (a discoverable sign-in
+  names no account up front). The signature must verify under the stored key. Algorithms: EdDSA,
+  ES256, RS256. No attestation is requested; a statement an authenticator sends anyway is still
+  verified. A passkey signs in only through its existing link (`signIn` with `linkedOnly`), so it
+  never creates an account, even in the instant after its method was removed.
+- **Cloned authenticators.** A signature counter that did not advance while either side is
+  non-zero refuses the sign-in (WebAuthn §7.2 step 22) and writes `account.passkey.counter_regressed`
+  to the account's audit trail. The library compares counters BEFORE it checks the signature, so
+  it is handed 0 and the same rule runs on the counter of an assertion whose signature is proven:
+  a forgery cannot plant a false clone alarm (a test). The counter update is a compare-and-set,
+  so of two assertions racing on one counter value at most one is accepted. Synced passkeys
+  report 0 and are unaffected; cloning them is the sync provider's account security.
+- **Enrolment and the account as a target (item 17; S-16 §5.1 recovery).** A passkey is added only
+  once the account has a verified primary email (so it is never the only way back in), only with
+  a sign-in no older than 5 minutes (re-checked when the answer arrives), is audited
+  (`account.link.add`) and emailed to every verified address, and an account holds at most 20.
+  Removal needs the same step-up and goes through `unlinkIdentity`, whose guard is inside the
+  DELETE, so the last sign-in method is never removed (`last_link`); the generic unlink also
+  deletes the passkey's WebAuthn material. A credential id is stored with a plain INSERT in one
+  batch with its link: an authenticator can choose its own ids, so a credential id another account
+  holds fails the batch (`link_conflict`) and can never overwrite that account's key.
+- **Correlation.** The WebAuthn user handle is 32 random bytes per account
+  (`accounts.passkey_user_handle`), never the account id and derived from nothing; the user name
+  the authenticator shows is the person's own primary email. One handle per account means one
+  "Polaris Key" entry per authenticator. Nothing about passkeys reaches a developer: they are
+  account methods, and a passkey sign-in on the card is the platform's, never a product's.
+- **Enumeration.** The sign-in challenge names no account (no credential list). Every failed
+  verification (unknown credential, wrong RP id or user handle, a bad signature, origin,
+  challenge or flags, a counter that did not advance) answers one `401 unauthorized` body;
+  `unknownCredential: true` says only that no account holds that credential id (so the card can
+  ask the browser to forget it), which reveals nothing about any account. A malformed request
+  (`400 bad_request`) or a missing, used or expired challenge (`400 signin_expired`) is refused
+  before any passkey is looked up, so it says nothing about one. A disabled account answers
+  `403 forbidden` only after the passkey's own signature verified, so only the holder of that
+  passkey learns it. Both card routes share 30 requests a minute per client address and fail
+  closed; account changes are limited to 10 a minute per account.
+- **Residuals.** Whoever holds an unlocked device with a synced passkey, or the sync account
+  behind it, can sign in as the person: that is the authenticator's security, as for any passkey
+  site. Pocket ID passkeys (`rp_id = id.plrs.im`) cannot carry over; migrated users enrol again
+  (I-17). AAGUIDs are stored for display only and are not verified (no attestation); a malicious
+  authenticator can claim any model, which affects only the label the person sees.
+
+### The console's Users page and the relink tool (I-12)
+
+Every product's console has a Users page (`/manage/api/products/<slug>/users…`,
+`admin/handlers/users.ts`, queries in `services/identity/accounts/productUsers.ts`). It is Core,
+not Identity: the account is platform-level, so a product with Identity off lists its licence
+owners too. S-16 §5.4 items 9 (no recovery desk: the developer's relink is the recovery path)
+and 12 (cross-tenant correlation) are the deltas.
+
+- **Cross-tenant correlation (item 12).** A row is keyed by this product's pairwise subject, and
+  every query carries the product. Every field a response carries is named in `productUsers.ts`;
+  none is the account id, a link, or another product's licence, session or datum (tests read
+  every route for product A and B of one account and find neither the account id nor B's
+  subject, licence or data). Search matches a subject prefix, an exact licence id or a buyer
+  email prefix, never the account's primary email, so the page is not an "is this person a
+  Polaris Key user" oracle. The account email is shown only with the person's consent for this
+  product (`account_product_grants.claims_json` holds `email`; D19). A subject minted only for a
+  support code stays unlisted until it holds a licence, a signed-in device or a sign-in.
+- **Relink (item 9).** The target is named only by a subject of THIS product (`target_not_found`
+  otherwise; never an email, never another product's subject). The operator needs an interactive
+  sign-in no older than 5 minutes (`session.authAt`, set from the ID token's `auth_time` when the
+  IdP sends one, else the callback time; `isSteppedUp`); `/manage/login?stepUp=1` sends
+  `prompt=login` and `max_age=0`, and the callback refuses a step-up whose `auth_time` is already
+  stale. A reason (1 to 500 characters) is mandatory. Both accounts are emailed at their verified
+  addresses BEFORE the owner pointer moves; the move is a conditional reassign (a concurrent change
+  answers `conflict` and nothing is recorded), it is audited with before and after, and the
+  `license_relinks` row (0072) keeps the reason, the actor and a 72-hour undo. The undo needs the
+  same step-up and a reason, and works only while the licence still sits on the target account (a
+  later relink, a detach or a deletion closes it). More than `RELINK_DAILY_ALERT_COUNT` (5) relinks
+  by one operator in 24 hours raises `identity.relink.alert` in the platform audit trail. An
+  account deletion clears the relink row's account ids, so an undo then leaves the licence
+  floating rather than resurrecting a deleted owner.
+- **What a developer can never do.** Disable, sign out, merge or delete an account, or touch its
+  links: no route exists. Per-subject data deletion runs the subject-store registry's deletes
+  (config overrides, Cloud Sync) and leaves the subject, its licences and the account.
+- **Residuals.** An IdP that ignores `prompt=login` AND sends no `auth_time` lets a silent SSO
+  count as a fresh sign-in (the callback time stands in); the console's IdP client (I-03) should be
+  configured to honour both. A
+  developer who already holds a buyer email can still find that buyer's row by it: the email is
+  the developer's own record. The step-up window is enforced server-side; the console's own check
+  only decides whether to offer the form or "Sign in again".
+
+### Identity as a per-product service (PX-W17)
+
+One account per person; a product's `identity` toggle gates only sign-in through that product
+(plans/PX-W17.md, WIRE-CONTRACT-V4 §12.8).
+
+- **Cross-product correlation (item 12), the control.** `test/accountIdBoundary.test.ts` proves
+  the I-05 rule for every developer surface PX-W17 adds or touches: no non-portal OpenAPI schema
+  declares an `accountId`/`account_id` property, and with one account owning a licence in two
+  products, every product-scoped console GET that shows the product, licences, devices or
+  activity, every device route, the signed licence document and the subject feed carry neither
+  the account id nor the other product's subject. The console shows `ownerSubject` on licences and
+  `subject` on devices, pairwise ids only.
+- **S-19 T1's precondition: no signed-in device on an Identity-off product.** LX-09's holder
+  resolver trusts `devices.subject` without reading the toggle, so the column must never be set
+  on such a product. Controls: the transition hook (`core/servicesTransitions.ts`) clears every
+  binding of the product on every write of `services_json` that leaves Identity off — the console
+  PATCH and revert and the manifest resync — idempotently, so a straggler written by a racing
+  sign-in heals at the next write; and the bind guard (`assertIdentityBindable`, called by
+  `setDeviceSubject`, `bindDevice` and `registerDeviceBinding`) throws before any write while the
+  toggle is off. The clear releases no seat and deauthorizes nothing, so turning Identity off
+  cannot be used to free seats; it is audited (`services.identity_disabled`) with the count, and
+  the console's dry run (`PATCH …/services?dryRun=1`) shows that count before the operator
+  confirms. Residual: a sign-in that passed the guard and is mid-flight when the toggle flips can
+  leave one binding until the next services write or resync.
+- **The `identity_disabled` redirect.** A person's navigation to an app-sign-in entry of an
+  Identity-off product gets `303` to the portal's card. It discloses only what discovery already
+  publishes (`identity: {enabled:false}`); an unknown product keeps its 404, and every device and
+  JSON caller keeps the registry's `404 not_found` (and `registration_closed`), so the JSON API
+  still cannot tell "off" from "absent". The sniffing (`Sec-Fetch-Mode: navigate`, or an `Accept`
+  listing `text/html`) can only widen the answer to a redirect to a fixed same-origin path built
+  from the product slug, never to a caller-chosen URL.
+
+### The Cloud Sync principal and the subject store registry (U-02)
+
+Cloud Sync (S-17) is the first service a device writes account data to, so a wrong principal is a
+cross-account or cross-tenant leak (S-17 §7.1 risk 1). U-02 adds Core's answer and the guard that
+keeps every subject-keyed store honest (plans/U-01.md §6.1).
+
+- **The principal is the binding, never the licence owner.** `resolveSyncPrincipal(device)`
+  (`core/accountSubjects.ts`) reads `devices.subject` from the D1 row `validateDeviceToken`
+  returned, never the KV mirror or anything the request carried, and checks it once against
+  `account_product_subjects`: an alias resolves to the survivor (D21), a deleted or malformed
+  subject and a device that is not authorized resolve to no principal (`account_required`). Owning
+  a device's licence does not make an account its principal; a key-activated device on an owned
+  licence has none until someone signs in on it. A device on a floating licence
+  (`account_id IS NULL` and no email; `isFloatingLicense`, the one helper every caller asks) has
+  none at all, even with a binding: a floating licence has no account features (S-24, owner
+  2026-10-06). A device whose `license_id` names a licence row that does not exist resolves to no
+  principal as well (fail closed). A device that names no licence (`NO_LICENSE_ID`) has no licence
+  to be floating, so the check does not apply and its binding is its principal: that is a device
+  of a License-off product, and equally a keyless device registered on a License-on product whose
+  `registration` is `"open"`. Cloud
+  Sync code may not call `subjectFor`, `licenseOwnerSubject` or read an account id (a test scans
+  `core/syncAccess.ts` and `services/sync/`); `subjectFor` stays Config's owner fallback (U-03).
+- **One module for the licence question.** `syncAccess` (`core/syncAccess.ts`) answers
+  `requireLicense`, `requiresFlag` and the `byTier` tier from the anchor licence alone (`legacy`
+  mode) until LX-09 replaces its body with `resolveDeviceEntitlements`; it never reads the owner
+  pointer and its answer carries the pairwise subject only. A licence-less or unusable anchor
+  leaves the principal (reads stay allowed) with an empty entitlement set.
+- **No inherited binding.** Any re-bind without a sign-in (licence key re-entry, enrolment, open
+  re-registration) mints a new credential and drops the binding; only an account sign-in through
+  Identity writes one. Otherwise anyone who knows an authorized device id on an `open`
+  registration product (or holds the licence key) could re-bind it and get a token whose Cloud
+  Sync principal is the signed-in victim's subject. Before U-02 a device id that once carried a
+  sign-in, then was revoked or moved to another licence by key, also got the old account back.
+  The browser session's logout now runs the clearing hook (`signout`) before it deauthorizes the
+  row.
+- **Every trigger clears it.** Sign-out, sign out everywhere, account disable and deletion,
+  per-product removal and a relink of the device's licence clear the binding (one test each); a
+  plain detach does not (S-17 §5.8 item 2), though the principal is hidden while the licence is
+  floating (S-24). Residual: `POST /<p>/identity/signout` and the sign out everywhere surface are
+  I-09's and I-11's; until they land only the hook and the browser logout exercise those reasons.
+  Residual: after a detach and a later first attach by another account, the device keeps the
+  first account's binding (attach is not a clearing trigger). It is hidden only while the licence
+  floats; once the second account owns the licence, the device's principal is the first account
+  until that person signs out or the device re-binds.
+- **The registry guard** (`test/subjectStores.test.ts`, S-17 §7.1 risk 8). Every D1 table with a
+  `subject` column is claimed by a registered store (`registerSubjectStore` with `tables`) or is
+  listed as Identity's own with its reason; every Durable Object class is claimed
+  (`durableObjects`) or listed as not named by subject; every store has `merge`, `delete` and
+  `export`; no claimed table has an `account_id` column. A store added without its hooks fails the
+  gate instead of leaving data behind after a merge or a deletion.
+
+### Discover: free offers and "Add to library" (PX-W10, PS-03)
 
 `GET /api/discover` lists the products whose licence policy would auto-issue to the signed-in
 account and `POST /api/discover/<p>/claim` mints one (docs/design/PORTAL.md §10.2 G24, G25). Both
-sit behind the portal session; the claim also needs the CSRF header.
+sit behind the portal session; the claim also needs the CSRF header. Since PS-03 both run on the
+Polaris Key storefront's obtain-path engine (`services/identity/portal/store/obtain.ts`, notes/S-21
+§6.3): one dry-run evaluation answers whether, and by which paths, an account can add a product.
+Discover serves the engine's identity paths (`group`, `auto_issue`); the `open` path and
+audience-`everyone` link-only listings are evaluated but not served until PS-04 (PS-11 adds the
+storefront's full threat set, notes/S-21 §6.9 S1-S11).
 
 - **Discover grants nothing a sign-in would not.** The listing and the claim run the product
   sign-in's own policy function (`identityTier`) and the claim mints through its own path
   (`activateFromIdentity`), for the subject the account holds at the platform IdP. Anything the
-  claim can mint, the same person could already get by signing in to the product. Only products on
-  the platform issuer with auto-linking on are candidates, the same predicate the link sweep uses
-  (R5-01/R5-02), so a tenant-controlled issuer can neither be offered nor collide with a platform
-  subject.
+  claim can mint, the same person could already get by signing in to the product. The identity
+  paths run only on products on the platform issuer with auto-linking on, the same predicate the
+  link sweep uses (R5-01/R5-02), so a tenant-controlled issuer can neither be offered nor collide
+  with a platform subject. `identityTier` returns one grant, so a product has at most one identity
+  path, and it names the tier the claim would mint.
+- **`open` grants no licence.** The engine's `open` path needs License off for the product and
+  Distribution's `delivery().openAccess()` true: every deliverable `public` or `authenticated` with
+  no entitlement gate, fail-closed (no `app` row, an unknown mode or a gated pack is not open). It
+  never runs the licence policy and nothing it leads to mints a licence.
 - **Group membership is the platform IdP's assertion, as of the last portal sign-in.** The portal
   now keeps the `groups` claim (`account_links.groups_json`, on the link it signed in through). Residual: a group removed
   at the IdP still yields offers until the account signs in to the portal again (the product
   sign-in reads it fresh). The window is the portal session's lifetime, and a product that must
   revoke on group removal does so through the licence, not through Discover.
-- **The listing writes nothing.** It is a dry run (a test runs it against a database that refuses
-  every write), so browsing Discover cannot mint, link or audit anything.
-- **The claim is not a product oracle and not a minting loop.** An unknown slug, a product that is
-  not a candidate, and a withdrawn offer all answer the same `409 not_eligible`. The claim is
-  idempotent per account and product (the `idx_licenses_sub` unique index decides a racing double
-  submit; the loser answers the winner's licence), it spends the one per-account bucket the
-  activate preview and the key claim share (`portalClaimKey`, charged before any lookup), and it is
-  audited twice: `portal.discover.claim` in `portal_audit` and `license.create` in the product's
-  `audit`, both with `source: discover`.
-- **Developers can withhold an offer without changing the policy** (`discover_enabled = 0`).
+- **The listing writes nothing.** The engine is a dry run (tests run it, every path included,
+  against a database that refuses every write and compare the whole database before and after), so
+  browsing Discover cannot mint, link or audit anything.
+- **No enumeration.** Unknown, unlisted, ineligible and held products all get the engine's one
+  hidden verdict, and only visible products are listed or counted. The claim is not a product
+  oracle and not a minting loop: an unknown slug, a product that is not a candidate, a withdrawn
+  offer and a link-only listing all answer the same `409 not_eligible`. The claim is idempotent per
+  account and product (the `idx_licenses_sub` unique index decides a racing double submit; the
+  loser answers the winner's licence), it spends the one per-account bucket the activate preview
+  and the key claim share (`portalClaimKey`, charged before any lookup), and it is audited twice:
+  `portal.discover.claim` in `portal_audit` and `license.create` in the product's `audit`, both
+  with `source: discover`.
+- **Operators withhold or narrow without changing the policy.** `storefront.polarisKey.listed`
+  `unlisted` (or `discover_enabled = 0` until PS-11) hides a product, `offerPaths` drops path kinds
+  (the claim follows it), and the deployment switch `storefront.polarisKey.enabled` off hides every
+  listing. The switch reads fail-safe: any stored value other than `on` (a cleared value is the
+  default, on), or an unreadable store, is off. Audience `everyone` is the one deliberate exception to "only what you can obtain"
+  (level-2 confirmation, PS-02), and it shows a `listed` product as a link only, never an Add.
+
+### Licensed portal downloads (PX-W3)
+
+A licensed file held on R2, or in a private GitHub repository that the bytes host streams through
+Release's installation token, now downloads from the customer portal (docs/design/PORTAL.md §10.2
+G3, plans/PX-W3.md; the private-repository case is Q7, taken in at the merge with the bytes-host-
+first `downloadTarget`). `GET /download/<token>` re-runs every check it already ran (portal and
+releases on, account active, an owned licence, the deliverable's access through
+`accountMayDownload`, the single-use token), then 302s to the file's canonical bytes-host URL with
+a **download ticket** appended: `v1.<kid>.<exp>.<mac>`, an HMAC-SHA256 under `DOWNLOAD_TICKET_KEY`
+over the label `pkey-download-ticket/1`, the bytes host, product, release id, file name, SHA-256
+and expiry (`core/downloadTicket.ts`). The `files` byte route accepts it in place of a device
+bearer, on the bytes host only. No table, no migration, no new route. With the key unset nothing
+is minted and a presented ticket verifies against nothing, so deleting it is the kill switch.
+
+- **Token leakage.** The portal token is unchanged: 300 s, single use (a conditional `UPDATE`,
+  R9-05b), bound to the account that minted it and re-checked at redemption.
+- **Ticket leakage.** A ticket opens one file, by content, for at most 120 s. It carries no
+  account id and no subject (I-04 §6.2), so a leaked one names nobody. The Worker writes no
+  console log of its own (R12), but Workers Logs (`[observability.logs]` in `wrangler.toml`)
+  record each request's URL, `?ticket=` included, so a ticket does reach Cloudflare's invocation
+  logs; anyone who can read them could reuse it for the rest of its 120 s life, and not after. The 302 carries `referrer-policy: no-referrer` and
+  `cache-control: no-store`; the byte answer is `private, no-store, no-transform`, so no shared
+  cache keeps it under the ticketed URL.
+- **Replay window.** A ticket may be reused until `exp`, so `Range`, resume and `HEAD` work. After
+  `exp` it is refused like a missing credential. A transfer already in progress when `exp` passes
+  may finish; a new request may not. A verifier also refuses any `exp` more than 120 s ahead of
+  its own clock, so even a ticket signed with a leaked key cannot be long-lived.
+- **Hotlinking.** Bounded by `exp`, by `no-referrer`, and by the `releaseArtifact` per-IP rate
+  limit, which runs before the ticket is checked. For a file held in a private GitHub repository
+  that same limit bounds how much of the product's installation quota a ticket holder can spend
+  (the bytes host's GitHub leg, unchanged from a device download). The ticket is not bound to the client IP (Q6):
+  dual-stack browsers, CGNAT and iCloud Private Relay change it mid-download, and the window is
+  short.
+- **Revocation between mint and download.** Re-checked at token redemption: a licence disabled,
+  expired or detached before redemption gets the redemption's `404`
+  (`test/portalLicensedDownloads.test.ts`). **Residual (accepted, Q5):** a licence revoked within
+  the 120 s after redemption can still fetch that one file with the ticket already issued. A
+  re-check on the bytes route would need an account reference in the ticket and a new Core hook;
+  revisit once LX-09's holder cache makes it cheap.
+- **Key compromise.** Whoever holds `DOWNLOAD_TICKET_KEY` can mint a ticket for any file of any
+  product on this deployment, each valid for 120 s. The key is a dedicated Worker secret, not
+  derived from `PLATFORM_KEK` (Q3), so the bytes host stays KEK-free (P2-05). Rotation moves the
+  current key to `DOWNLOAD_TICKET_KEY_PREVIOUS`; the `kid` fingerprints the key itself, so tickets
+  minted just before a rotation keep verifying until they expire, and the previous key can be
+  deleted two minutes after every Worker instance serves the new one (docs/RUNBOOK.md).
+- **Origin isolation.** Tickets work on the bytes host only; the console host ignores `?ticket=`,
+  so customer bytes never come from the origin that holds the portal SPA and its `__Host-`
+  cookies (§3, P2-01). The byte answer keeps the sandbox CSP, `nosniff`, no cookies and a forced
+  `attachment`. `hasRef` tenancy and the `gated/` refusal still apply: a ticket never serves a
+  `gated/` key, and the `build`, `blob`, `dl` and `payload` targets ignore it.
+- **An invalid ticket is an absent one.** A bad, expired or mismatched ticket gets exactly the
+  no-credential answer (`401 download_auth_required` flat, or `401 unauthorized` wire for
+  `entitled`), with no ticket-specific code, so a probe learns nothing about the key or the
+  binding. The MAC is checked with `crypto.subtle.verify`.
+- **Attested-trust products (Q4 (a)).** A browser cannot attest, and device trust does not apply
+  to portal downloads (the licence-only rule `entitledAccess.ts` already states, and the rule
+  GitHub-hosted licensed files have followed since R6-12). A product whose trust policy enforces
+  `gatedDelivery: attested` therefore serves its licensed ticketed files to an owning, signed-in
+  customer through the portal. The policy keeps gating devices; an operator who reads it as
+  covering browsers needs a follow-up that withholds both the GitHub and the ticketed branch.
+- **SP-09: the Velopack package route is a second minter.** Under a non-public delivery,
+  `GET /<p>/update/<channel>/velopack/<FileName>` appends a ticket to its `302` for a package the
+  feed lists, after the feed's access decision and the `files` route's own per-file decision with
+  the caller's device bearer (`accessRefusal` over the release's stored version, pinned). It mints
+  only for a file that bearer could fetch from the bytes route at that moment, so it widens
+  nothing; device trust (`gatedDelivery`) is part of that decision, unlike the portal's.
+  - **Leak scope:** a leaked `Location` opens that one file, to anyone, for at most 120 s. It
+    never contains the bearer, is never logged (R12) and never cached (`private, no-store`,
+    `no-referrer`). Public delivery mints nothing and is unchanged.
+  - **Revocation residual (accepted, plans/SP-09.md Q5):** at most 120 s after the route's check.
+  - **Hosts:** a ticket is minted only for a URL on the bytes host, and works only there.
+  - **Key loss or kill switch:** with `DOWNLOAD_TICKET_KEY` or `BLOB_ORIGIN` unset the route
+    answers the bare URL, today's behaviour, whose second hop refuses an anonymous client.
+  - **Not covered:** an `.appinstaller` `Uri` and a `.zsync` control file are fetched without a
+    bearer and cached for days, too long for a ticket; they stay public-delivery features.
+
+### Signing in with another device (PX-W14)
+
+A device with no session asks to be signed in (`POST /api/device-login/start`), a signed-in device
+approves it by its 8-letter code (`POST /api/device-login/lookup`, then `…/approve`), and the new
+device's poll (`GET /api/device-login/<id>`) is answered with a portal session for the approver's
+account (docs/design/PORTAL.md §4.23, §4.24, G29). The approval is a credential handed across
+devices, so the threat is **phishing**: an attacker starts a request on their own device and talks
+the account holder into approving it ("read me the code", "scan this to claim your prize").
+
+- **Short expiry and single use.** A request and its code live 5 minutes in the atomic single-use
+  store (I-02), expired by the store itself. A decision consumes the code in one atomic step and
+  then moves the request out of `pending` with a compare-and-set, so two racing approvals cannot
+  both land; the poll that sees the decision consumes the request before minting the session, so
+  exactly one browser is signed in per approval. The `ifAbsent` code index means two live requests
+  never share a code.
+- **Never auto-approved.** Only `approve` with an explicit `decision: "approve"` approves; there is
+  no default, `lookup` reads only, and the QR code opens the approve screen with the code filled in,
+  never an approval. The design's approve screen (§4.24) carries the warning "Only approve if you
+  started this yourself, on a device in front of you".
+- **The place is shown.** The request records the asking browser and OS and its coarse place
+  (Cloudflare's edge geolocation, which the client cannot set); `lookup` shows them next to the
+  approver's own country, and the security notice names them.
+- **Step-up for a new location.** Approving a request whose country is not the approver's, or
+  where either is unknown (Tor, an unlocated address), needs a sign-in no older than 5 minutes
+  (the account-links step-up). A phisher in another country therefore also needs the victim to
+  sign in again on the spot, which is one more prompt to notice. Denying never needs it. The rule
+  is one function (`isNewLocation`) so I-15's sign-in history can replace a country comparison.
+  **Residual:** a phisher in the victim's own country (or behind a VPN exiting there) meets no
+  step-up; the warning, the shown device and the notice are the defence.
+- **An approval is not a sign-in.** The approved device's session carries the approver's sign-in
+  time as its own (`iat`, which every portal step-up reads), never the time of the approval, and
+  never later than now; a request record without it fails closed to a time past the step-up
+  window. So a same-country approval that needed no step-up yields a session that is no fresher
+  than the approver's: it cannot approve another device from a new place, add or remove a
+  sign-in method (the account-links step-up), or get a new key (G7) without signing in itself.
+  Without this rule the residual above would be a two-hop bypass: a same-country approval, then
+  the new "fresh" session approves any device anywhere or links the attacker's own sign-in
+  method.
+- **Bound to the browser that started it.** `start` sets an `HttpOnly`, `SameSite=Strict`,
+  `__Host-` binding cookie whose peppered hash the request holds; a poll without it is answered
+  exactly like an expired request, so a poll handle seen in a log or over a shoulder signs nobody
+  in. The handle itself is 32 random bytes and, like the code, is stored only as a peppered hash
+  (R12-04).
+- **Guessing codes.** A code is 20^8 (about 34.5 bits) and lives 5 minutes. Lookup and approve
+  need a session and share 10 calls a minute per account, whatever client or address they come
+  from (fail closed), so an account guesses at most 50 codes in a code's lifetime. A correct guess would sign the stranger's device
+  in to the guesser's own account, not the other way round. Starts are bounded per client network
+  (10 per 10 minutes) and polls likewise (60 a minute).
+- **Audited and emailed.** `portal.device_login.approve` / `.deny` and `portal.login.device` in
+  `portal_audit`, and an approval refused for want of a step-up leaves
+  `portal.device_login.step_up_required`, the trace of someone being talked into approving a
+  device elsewhere; an approval sends "A new device signed in" to every verified address on the
+  account, with "Wasn't you? Secure your account".
+
+### The outbound fetcher and hosted-asset ingest (HA-01)
+
+`core/safeFetch.ts` is the one guarded fetcher for URLs someone other than Polaris Key wrote, and
+`core/hostedAssets.ts` is the one ingest that turns such a URL, an upload or a CI push into a copy
+in the blob store (notes/S-20 §6.3, §6.12). HA-01 adds no route: the pulls are started by later
+packages (HA-05 register and resync, HA-06 uploads, HA-08 release mirroring), and the portal media
+proxy now fetches through the same guard.
+
+- **New outbound fetcher (S-20 §6.12).** Any public `https` host may be named, with no host
+  allowlist, so the guard is what bounds it: `https` only, port 443, no userinfo, at most 2048
+  characters, no IP literal, no single-label host, never `plrs.im` or any `*.plrs.im` (without
+  `global_fetch_strictly_public` a fetch to our own custom domain is routed to origin and bypasses
+  the front door), never `.local`, `.internal`, `.localhost` or `.home.arpa`. Redirects are
+  followed by hand, at most three, and each hop is guarded again **before** it is dialled; an
+  `Authorization` header reaches the first hop only, never a `Location`. One 30 s budget covers
+  every hop and the body; a declared `Content-Length` over the slot's cap is refused unread, and
+  the body is counted and cut at the cap whatever the header said. The Worker resolves nothing
+  itself, and the edge dials neither IP literals nor RFC 1918 or loopback space from a Worker, so
+  the remaining surface is "public hosts the operator named". **Who can name one:** manifest
+  authors and product operators of that product, never an end user's request. Every pull,
+  refused or not, writes an `assets.ingest` audit row. `test/safeFetch.test.ts` runs the S-20
+  reference puller's guard table case for case and the redirect-to-a-denied-host refusal.
+- **Content risk.** The type comes from the magic number, never from the source's
+  `Content-Type`: image slots take PNG, JPEG, WebP, GIF or AVIF; video slots MP4; nothing ever
+  sniffs as SVG or HTML (`core/sniff.ts` has no branch that could answer either). Per-slot caps
+  are code constants (icon 10 MiB, header and screenshots 20 MiB, notes images 5 MiB, video
+  512 MiB, release files R2's 4.995 GiB single-put limit), not settings (S-18 §5.6).
+- **Possession, unchanged (§3, "The blob store").** A product earns a `hosted-asset` ref only to
+  bytes it delivered: the ingest reads and hashes every byte even when the object is already
+  stored, an expected hash is checked against the bytes and never used to skip the read, and
+  whether another product already stored them never leaves the module. A streamed ingest (video,
+  release files) needs the expected SHA-256 and length up front, and R2 refuses the put if the
+  bytes miss it. A replaced copy's refs are dropped in the batch that writes the new one, and the
+  collector reclaims the bytes after the lock and the grace period; a failed re-pull keeps the
+  last good copy.
+- **Every put now stores a `Content-Type` (S-20 §4.6 #1).** `putVerified` (and so `promote`)
+  stores the sniffed type, never a declared one; it is metadata only, since `blobResponse` still
+  decides what a response may carry. The Play listing-image read sniffs objects stored before
+  this change.
+- **The portal media proxy** keeps its GitHub-only host rule on every hop (`allowHost`) on top of
+  this guard until HA-07 serves hosted copies; its cap, 5 s budget and sniff are unchanged.
+- **Image variants (HA-03, S-20 §6.6).** The Images binding decodes developer-supplied images
+  only at ingest (or at HA-05's ladder retry, below), never on a request, so no viewer can make it
+  transform anything and the transformation bill is bounded at one per ladder width per new
+  original and ladder family within a product: a re-ingest of the same bytes, and the same bytes
+  in another slot of the family (`presentation.icon` and `listing.icon`), reuse the variants
+  already built, and the dimensions too. The reuse never crosses products, so a product never
+  learns, from a missing transformation or a shared ladder, that another product holds the same
+  bytes. The ladders and widths are code constants, a width above the original's is never
+  requested (`fit: "scale-down"`), and each output is capped at the slot's byte cap and must sniff
+  as WebP or the whole ladder is dropped. Variants are content-addressed objects of Polaris Key's
+  own making, held by each slot's own `hosted-asset` refs (`<slot>@<locale>`) beside the original
+  and dropped with it in the same batch; a slot reusing another's ladder gets refs of its own, so
+  either slot can be replaced or removed without the other losing its sizes. Without the binding,
+  on error 9422 (quota) or on any binding error the ladder is empty and the ingest still succeeds:
+  a degraded binding costs sizes, never a copy, and while the binding is bound the empty ladder is
+  retried from the stored copy (HA-05, "Owed ladders").
+
+### The image host (HA-02)
+
+**What it is.** `img.plrs.im` (with `img-staging` and `img-dev`) is the same Worker on a fourth
+custom domain, beside the console, the bytes host and the registry host (notes/S-20 §6.5, owner
+decision 2). `IMG_ORIGIN` names it, and `core/imgHost.ts` confines it to five path shapes, all
+Core's own: `/<p>/a/<sha256>` (an original), `/<p>/a/<sha256>/<w>.webp` (a width variant) and the
+stable aliases `/<p>/icon`, `/<p>/header` and `/<p>/screenshots/<n>`, which 302 to the current
+content-addressed URL. Everything else, the console, the portal, `/docs`, discovery, every byte
+route and every registry route, is the plain not-found. No new bucket and no new secret: it reads
+the same `BLOBS` bucket under `blobs/`. Tests: `test/imgHost.test.ts`,
+`test-workerd/imgHost.test.ts`, and `test/routeCoverage.test.ts`'s `IMG_PATHS`.
+
+**Same-site exposure.** The host is a `*.plrs.im` sibling of the console, so `SameSite` does not
+separate them. Its compensations are the bytes host's, kept and narrowed:
+
+| Compensation                              | `img.plrs.im`                                                                                 |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Only an allowlist of paths answers        | the five shapes above (`matchImgPath`, strict: lowercase hex, no trailing slash, no encoding) |
+| No cookie read; `Set-Cookie` stripped     | yes: no code on the host reads a request header but `If-None-Match` and the client IP         |
+| `nosniff`, `Referrer-Policy: no-referrer` | yes, on every answer, the not-found, 405, 429 and the JSON 500 included                       |
+| CSP on every answer                       | `default-src 'none'; sandbox` (`IMG_CSP`)                                                     |
+| Types                                     | `IMG_HOST_TYPES` = PNG, JPEG, WebP, GIF, AVIF, from the sniffed `hosted_assets.content_type`  |
+| CORS                                      | `Access-Control-Allow-Origin: *`, never credentials; a route's own `Access-Control-*` dropped |
+| `Cross-Origin-Resource-Policy`            | `cross-origin`: public images, embeddable by any page, email or store                         |
+| Methods                                   | `GET` and `HEAD`; anything else on an image path is 405                                       |
+
+The two deliberate differences from `dl.plrs.im`, reviewed here: `Access-Control-Allow-Origin: *`
+and `Cross-Origin-Resource-Policy: cross-origin`. Both are safe only because nothing on this host
+is private: no answer depends on a credential, no cookie is read, and every byte served is a
+product's public presentation image. A raster image cannot carry script; SVG, HTML, XML and
+`text/*` are never served at any status, and an image a browser opens as a document still runs
+under the sandbox with an opaque origin.
+
+**Tenancy.** An original answers only when `<p>` holds a `hosted-asset` ref to
+`blobs/sha256/<hex>` through a `hosted_assets` row of an IMAGE slot (`slotClass(slot).accept ===
+"image"`) whose sniffed type is on `IMG_HOST_TYPES`. Another product's ref is never enough, and
+neither is a ref of another kind: a release file, a pack or a bundle is the bytes host's, and a
+`release-file` hosted copy is refused even when its bytes are a PNG. A variant answers only when
+the original's row lists it in `variants_json` and the same slot holds a ref to the variant's
+object. The tenancy check runs on every request and is never cached, so dropping a slot (or
+HA-06's delete-a-copy) stops the answer at once; only the bytes, named by their hash, are kept in
+the Cache API.
+
+**Never gated (owner decision 7).** The host builds only ungated `blobs/` keys and carries no auth
+code: anything under `gated/`, anything licensed and anything not hosted is a 404, never a 401.
+
+**Cost.** A cache miss reads R2 and is charged to the `imgHost` rate-limit bucket (per product and
+client IP, 600 a minute, fail open: nothing secret is behind it). A stored object whose checksum
+is missing or disagrees with its name is the not-found, as in `blobResponse`.
+
+Residual risk: an operator can host abusive or illegal images, now served from a Polaris Key host.
+The operator terms apply, and HA-06 adds delete-a-copy, which takes effect at the next request.
+
+### The console loads product logos from the image host (console product card)
+
+**What changed.** Home's product cards and the Products table show each product's hosted icon
+(owner request 2026-10-06). The registry read (`GET /manage/api/products`) carries
+`presentation.icon`: image-host URLs of the product's hosted `presentation.icon` copy, else its
+`listing.icon` copy, built by `imgUrl` (`admin/lib/presentation.ts`). The console shell's
+`Content-Security-Policy` therefore adds **exactly one** source to `img-src`: the image host's
+origin, `imgOrigin(env)` from `IMG_ORIGIN` (`img.plrs.im`, `img-staging`, `img-dev`).
+
+**Why this stays narrow.**
+
+- The source is a bare origin, checked by `cspImageOrigin` (`securityHeaders.ts`) before it is
+  written: HTTPS only, except a loopback HTTP host for local development. No wildcard, no path,
+  no whitespace or `;`. A malformed `IMG_ORIGIN` leaves the policy unchanged rather than widening
+  it. Only the console shell and its assets get the addition; the JSON API's policy, the portal's
+  shell (HA-07's change) and every other policy are untouched.
+- `img-src` grants images only. Nothing the image host serves can run in the console: it serves
+  public raster types only (`IMG_HOST_TYPES`), never SVG or HTML, under `default-src 'none';
+sandbox` (the image-host entry above).
+- The URLs are built server-side from content-addressed hashes the product holds. No developer
+  URL reaches the console, and no request to the image host carries the console's cookie: the
+  host is a different origin, and the logo images load with `crossorigin="anonymous"`, so no
+  credentials are sent. That also lets the console read one corner pixel (`iconShape`) to mask
+  full-bleed square icons.
+- A product's logo is the operator's own content; an abusive image is the residual risk the
+  image-host entry already names, and HA-06's delete-a-copy removes it.
+
+Tests: `test/adminPresentation.test.ts` (the field, the one-statement list read, the shell's
+`img-src` with and without `IMG_ORIGIN`, and the origins `cspImageOrigin` refuses) and
+`test/adminCspParity.test.ts`.
+
+### Pull on register and resync (HA-05)
+
+A link or resync now plans pulls for the manifest's asset refs (`presentation.icon`, the
+listing's `icon`, `header` and `screenshots[]`) and sends them to the queue `pkey-assets-<env>`,
+which the main script consumes (notes/S-20 §6.3, §6.4). Code: `core/hostedAssetPulls.ts`,
+`src/assetQueue.ts`, `services/release/assetSource.ts`, `admin/handlers/hostedAssets.ts`; tests:
+`test/hostedAssetPulls.test.ts`.
+
+- **Who names a source, unchanged.** Only a manifest author (a push to `.pkey/` on the default
+  branch, read at the pinned commit) names what is pulled. A pull runs at link, resync or the
+  nightly re-check, never on an end user's request. Every pull goes through the HA-01 guard and
+  ingest, so the guard, caps, sniff and possession rules above apply to it unchanged.
+- **The queue message is not trusted for anything that matters.** It carries the product, the
+  slot, the wanted ref, and for a repo path the commit and the blob SHA. On delivery the consumer
+  re-reads the row and drops the message unless the row still wants that exact ref and is not
+  console-claimed. The URL is re-derived from the stored ref and re-validated (https and length;
+  a repo path with no `.` or `..` segment). For a repo path the repository coordinates and the
+  installation come from `release_config`, never from the message or the manifest. A malformed
+  message is acknowledged and dropped. A ladder retry message is held to the same rule (below).
+- **One more read with the installation token.** The consumer reads a repo path at a commit
+  through the Contents API with the raw media type, and the planner lists the path's directory to
+  read its git blob SHA. Both read the product's own repository with the R5-03 release token
+  (repo-scoped, `contents: read`) and its sealed cache. The token goes in `ingest`'s
+  `authorization` header, which `safeFetch` sends to the first hop only, so a redirect never
+  carries it. This is how a **private** repository's art gets served: Polaris Key hosts a copy of
+  a file the manifest author named, as the release path already reads release assets.
+- **Amplification is bounded.** A manifest declares at most 18 slots (an icon, a listing icon, a
+  header and 16 screenshots). An unchanged ref enqueues nothing. A repo path at a new commit costs
+  one directory listing per directory, and a pull only when its blob changed. Each enqueue holds
+  the slot off for one back-off step, so repeated resyncs do not stack pulls. A failed pull backs
+  off exponentially per slot, from 15 minutes up to a 24-hour cap. The nightly re-check enqueues
+  at most 50 pulls and ladder retries per run between them. A refused pull is recorded and
+  acknowledged, never retried by the queue. Only a throw (D1 unavailable) is retried, three times,
+  and then goes to `pkey-assets-dlq-<env>`.
+- **Owed ladders are retried from the stored copy, never re-pulled.** A ready copy in a ladder
+  slot whose `variants_json` is `[]` although its width admits a rung (or is unknown) owes its
+  ladder (`ladderOwedSql`): the ingest's ladder failed (9422, a binding or store error) or ran
+  without the binding. Only while the Images binding is bound, and only when no pull is owed (a
+  pull's ingest builds the ladder itself), the planner and the nightly re-check send a ladder
+  message carrying the product, the slot, the locale and the original's SHA-256. The consumer
+  re-validates it, re-reads the row and drops it unless the row still holds that hash with an
+  empty ladder; `rebuildLadder` then reuses the product's own ladder for the same bytes and family
+  if one exists, or reads the original back from `blobs/sha256/<hex>`, checks R2's stored checksum
+  and a fresh SHA-256 of the bytes against the name, and transforms it as an ingest would. It
+  grants no new original ref and touches no source: its only writes are the slot's own variant
+  refs, the row's `variants_json` and dimensions, and an `assets.variants` audit row, in one batch
+  guarded on that same condition (a width learned by `.info()` is recorded even when the build then
+  fails, on the same condition, so no retry asks again). Each retry costs one R2 read of at most
+  the slot's cap, one `.info()` call when the copy's width is still unknown, and at most one
+  transformation per rung; a width already known to admit no rung costs nothing and settles the
+  copy. A new copy installed in the slot by any ingest (a pull, a console upload, a CI push)
+  starts with a clean back-off. The back-off is the pulls' (the ingest's failure counts as
+  the first attempt; 15 minutes doubling to 24 hours), and the 50-per-night budget is shared, so
+  a month's exhausted transformations cost one failed attempt per owed slot per back-off step.
+  Without the binding, for slots without a ladder family, and for a copy narrower than its
+  family's smallest rung, nothing is retried: the original serves alone.
+- **It never blocks a register.** Planning and enqueueing are best-effort and swallow every
+  failure. A failing source is reported to the resync as the warning `asset_unreachable`, never as
+  an error, and the last good copy keeps serving (`stale` after a 404 or 410, `failed` otherwise).
+- **A console claim wins.** A planned pull never overwrites a slot an operator uploaded
+  (`origin = 'console'`, HA-06). A slot the manifest stops declaring loses its row and its refs,
+  and the collector reclaims the bytes after the age lock, so URLs already in caches keep working
+  until then.
+- **The status read is read-only and platform-admin gated.** `GET
+/manage/api/products/<slug>/assets` returns slot metadata, source refs (URLs and
+  `<path>@<commit>`) and reason codes, never bytes or tokens.
+
+### Linking an existing product to a repository (UX-23)
+
+**What changes hands.** `POST /manage/api/products/<slug>/release/link` turns a manual product
+into a repository-linked one: from then on whoever can push `.pkey/` to the repository's default
+branch writes everything a resync writes (catalog, tiers, profiles, sign-in provider, edge-mint
+recipes, release settings, the manifest-owned trusted publisher). That is the same authority a
+product created from its repository has, granted to an existing product. Code:
+`services/release/linkExisting.ts`; tests: `test/linkExisting.test.ts`.
+
+**Who can do it.** The console session with CSRF, behind the platform-admin gate, like resync. The
+repository is not trusted for its own identity: the App installation must exist on it, and its
+`.pkey/product` must name this product's slug, so a link cannot attach a product to a repository
+that describes another product. The system product is refused (the deploy hook is its only
+writer), and an already-linked product is refused (no re-pointing to another repository here).
+
+**Nothing is applied that the operator did not see.** The dry run (`?dryRun=1`) writes nothing and
+returns the plan and a SHA-256 digest of the `.pkey/` files it read. The link refuses (409) unless
+the files GitHub serves at link time have the same digest, so a push between the check and the
+click cannot slip a different manifest in. The window left is the one every resync has: the
+second fetch inside `resyncRepo`, milliseconds later.
+
+**Every resync gate still runs, before the first write.** The issuer allowlist (R9-01: a custom
+issuer that differs from the stored one is refused unless allowlisted), the binary-name class
+(R6-01), catalog compilation, and the tier and profile references are checked before the
+coordinates are written; the apply itself is `resyncRepo`, so the ownership rules (`admin`-owned
+services, policies, compat window, access modes and publisher stay), the edge-mint approval sweep
+(P0-12) and the profile secret carry-forward (R2) apply unchanged. A refusal from the apply puts
+`release_source` and the coordinates back; what a refused resync already wrote stays, as for any
+resync, and the checks above make that reachable only by a push landing inside that window. The
+signing key is never touched.
+
+### The New Product probes: repository picker, create dry run, slug check (UX-72)
+
+**What is new.** Three read-only routes back the New Product wizard (FLOWS.md §3.11 W22 to W24):
+`GET /manage/api/github/repositories` (the repositories the GitHub App can read), the create dry
+run `POST /manage/api/products/link-repo?dryRun=1`, and `GET /manage/api/products/slug-check`.
+None of them writes to D1 or KV. Code: `admin/handlers/github.ts`, `services/release/githubApp.ts`
+(the listing and probe half), `services/release/linkRepo.ts` (`prepareCreate`, `checkSlug`);
+tests: `test/createProbes.test.ts`.
+
+**Two new installation-token uses, both outside the release read path.** Neither is the R5-03
+release token, and neither goes through its sealed KV cache (R12-03):
+
+- **Listing token.** `metadata: read` across one installation, minted per request to list that
+  installation's repositories. It reads names, languages, push times and default branches, and no
+  content.
+- **Probe token.** `contents: read` (plus `metadata: read`), narrowed with `repositories` to the
+  repositories on the page being shown (at most 100), minted per installation per page to ask
+  whether each has a `.pkey/` directory.
+
+Both are minted per request and dropped when it ends. They are never cached, sealed or persisted,
+and never returned to the browser. A suspended installation is skipped, since GitHub refuses it a
+token. An installation whose token or listing fails is reported with `repositoryCount: null` and
+`listingError`, and the other installations still list. The create dry run reuses the existing
+release-path `getInstallationToken`, which has the same caching as UX-23's link dry run.
+
+**Private repository names.** The picker lists private repositories, so W22 is limited to
+platform admins (F16), the same gate as both create paths. Its inventory and each page's probe
+result are held only in the isolate's memory for 60 s, so a re-render does not re-list GitHub. They
+are never written to KV or D1, never shared across isolates, and gone when the isolate is.
+
+**The slug check is open to any signed-in operator.** It answers only whether a slug is
+`available`, `taken`, `reserved` or `invalid`, with a free suggestion. Whether a product exists is
+already public: `/<slug>/.well-known/polaris.json` answers for every product. Each call is at most
+two indexed prefix reads of the registry and sits behind the session-keyed `adminApi` limiter
+(600 requests per 60 s; it fails open on a limiter outage, as for every console route), so it adds no enumeration beyond discovery and no new load path.
+
+### The refusal log (UX-15)
+
+`authorizeDevice` (`core/authz.ts`) now records each refused activation in `license_refusals`
+(`core/refusals.ts`): product, licence, time, reason, a device label and a SHA-256 prefix of the
+device id. Only the platform-admin session reads it (`GET /manage/api/products/<slug>/refusals`).
+
+- **The label is customer-influenced text.** It is the device's stored name, else the reported
+  platform and architecture, else the User-Agent, so whoever runs the client chooses it. It is
+  stripped of control, format, separator, private-use and surrogate characters (no bidirectional
+  override can make one label render as another), whitespace-collapsed and cut to 64 characters
+  before it is written, and the console renders it as text.
+- **A refused caller cannot grow the table without bound.** Activation is already rate limited
+  per IP (30 a minute per product), a write is folded into the previous row when the same device
+  was refused for the same reason on the same licence in the last minute, and the nightly sweep
+  deletes rows older than 30 days, per product and in bounded passes. Residual: a holder of one
+  valid key rotating device ids can still write about one row per id per minute within the IP
+  limit; the cost is bounded by the 30-day retention.
+- **No new oracle.** The device's answer is decided before the write and is unchanged by it: the
+  write is handed to `waitUntil` where the request has one (the licence activate and enroll
+  routes) and otherwise runs inline, wrapped so that a failure is dropped. No public response
+  carries anything from the table.
+- **No raw identifier is copied.** The device id is stored only as a truncated hash; the licence
+  holder's name and email are not stored here at all.
+
+### Licence administration: the per-licence device limit (LX-14a)
+
+`licenses.device_limit` (0084) lets an operator set one licence's seat limit, seat or
+Account-wide alike, through `PATCH /manage/api/products/<slug>/license/licenses/<id>`
+`deviceLimit`. It beats the tier's limit, any `deviceLimit` entitlement and the product default
+(`core/authz.ts` `licenseDeviceLimitInfo`, `core/entitlements.ts` `injectAdminPolicy`).
+
+- **An operator with licence write can raise one licence's seats past its tier.** That is the
+  feature (SIGN-IN.md D-53); it needs the same product-admin session as a tier change or an
+  override, and every change is audited as `license.device_limit.set` with the old and new values
+  ("inherit" for NULL). No manifest push, sign-in or device request writes the column: OIDC
+  sign-in's licence write names its columns and leaves this one alone, and a store grant or
+  profile can no longer outvote it.
+- **The value is validated twice.** The handler refuses anything but a positive integer or
+  `null` (`422`), and the column's CHECK refuses zero and negatives at the database.
+- **Lowering it never deauthorizes.** Like a tier downgrade, the new limit applies at the next
+  activation; existing devices keep their seats and the response reports `overLimit`.
+- **No wire change.** The signed licence document carries the resolved number in its existing
+  `deviceLimit` entitlement, so a client cannot tell (or forge) where the number came from.
+
+### Licence holders: association by email and the auto-attach block (LX-26)
+
+A licence is floating (no account, no email) or assigned (in an account, or waiting for an account
+to verify its email), derived from `licenses.account_id` and `licenses.email` by one rule
+(`isFloatingLicense`, notes/S-24 D1). An assigned licence joins the account that verified its email
+automatically: in the create request when an account already did (D3), when an address becomes
+verified (Core's `onAccountEmailVerified` hook, which Identity implements and registers), and on
+the portal's per-request link sweep. The holder a read reports is the licence's own email and
+whether it is in an account, never the account's details (D6).
+
+- **T-H2: an operator learns whether a person has a Polaris Key account.** An operator who can
+  create licences could type addresses and watch the answer. Mitigations: the create answer has
+  the same shape whether or not an account exists (D4; a test compares the member names of both
+  answers); Identity's account lookup (`accountsVerifyingEmail`) runs on every create with an
+  email, before anything decides whether to attach, so an unknown address, a product with
+  auto-link off and an owned licence cost the same read; the console's copy is conditional ("when
+  they sign in with that email, it's in their library", LX-30). Residual, accepted (S-24 §7.3):
+  AFTER association the holder reads "in an account" (`inAccount: true`, and the pre-existing
+  `ownerSubject`), which the developer could already infer from its own Users page (I-12, pairwise
+  subject). So creating a licence for an address does tell the operator, after the fact, that the
+  address belongs to a verified account. The holder never carries the account id or any detail of
+  the account, and nothing is attached on an address no account verified (no placeholder
+  accounts, D2).
+- **T-H3 (unchanged): a tenant asserts a victim's email to pull a licence into their account.**
+  Every automatic attach reads only addresses the platform verified (`verifiedAccountEmails`), the
+  hook re-checks that the address is verified on the account before attaching anything, and only
+  on products whose auto-link resolves on (custom issuers default off, R5-01).
+- **T-H4: a removed licence returns to the account.** Before LX-26 "Remove from my library"
+  cleared the owner but kept the licence's email, so the next portal request attached it again
+  (S-24 H5). Now `detachLicense` (and a developer's move away, `reassignLicense`) writes a row in
+  `license_auto_attach_blocks` (Core-owned; audited `account.license.auto_attach_block` in
+  `portal_audit`), and every AUTOMATIC attach skips a blocked (licence, account) pair: both halves
+  of the link sweep (email and OIDC subject), the email hook, and the association at creation or
+  on an operator's email edit (`attachLicense` refuses `via: email | oidc` with
+  `auto_attach_blocked`). Only an explicit act brings it back and lifts the block: the person
+  adding the key (or the device's licence after the confirm screen), or the licence moving back
+  into the account (a reassignment's undo). The block is per account: another account that
+  verifies the email still gets the licence. An account merge moves the absorbed account's blocks
+  to the survivor (the survivor inherits the absorbed account's verified addresses, so it must
+  inherit its refusals too); an account, licence or product deletion removes the rows. The
+  block is written BEFORE the owner pointer moves, so no sweep running between the two can
+  re-attach the licence; a move that then fails removes a block it created. Tests
+  cover each path.
+- **Clearing an assigned licence's email is refused** on the console PATCH (`400 bad_request`):
+  removing a holder is the relink tool's Make floating (I-12, LX-30), which takes a step-up, a
+  reason and has an undo, rather than an unaudited field edit.
+
+### Passthrough request metadata (PX-W13)
+
+The sign-in card behind "<App> wants you to sign in" (docs/design/PORTAL.md §4.7, G28) shows the
+app's name, developer, icon and origin, and on a device-code sign-in the device's label and the
+user code. WIRE-CONTRACT-V4 §12.7 is the normative form; plans/PX-W13.md §6 is the long form. It
+closes S-16 §5.4 items 13 and 14 (app impersonation on the card, and spoofed device names).
+
+- **Spoofed app names.** `@polaris-key/manifest`'s `checkDisplayName` refuses `product.name`,
+  `listing.name` and `listing.developerName` text that holds a control, zero-width or bidi code
+  point or starts or ends with whitespace (`invalid_display_text`, always an error), and reports
+  a name that contains a reserved term (`reserved_display_name`). The terms are Polaris Key,
+  plrs, Apple, App Store, Google, Google Play, Steam, Valve, Epic Games, Microsoft, Xbox,
+  PlayStation, Nintendo and itch.io. A name is compared as a skeleton: NFKD with marks dropped,
+  lowercased, Cyrillic and Greek look-alikes and `0`, `1`, `rn`, `vv` folded, split on anything
+  that is not a letter or digit, and matched as whole words or as a multi-word term written as one
+  word. The same function runs at ingest (link, resync, deploy hook), on console listing edits,
+  and again when the card renders. A failing app name renders as the product slug with
+  `nameVerified: false`, and a failing developer name is dropped. The render-time check also
+  covers names written before the rule existed and names accepted in `warn` mode. The system
+  product `polaris-key` is exempt from the reserved check, never from the text check. Residual:
+  the confusable map is a heuristic. A look-alike outside it ("Stéäm" with an unlisted
+  homoglyph) reaches the card as written until the list grows, and the platform can add terms
+  later (`identity.reservedDisplayTerms`, registered for ST-04).
+- **Label injection.** A device reports its own label (`deviceName`), so the card frames it as
+  "reported by the device", never as a verified fact. §12.7.1 deletes bidi overrides, isolates and
+  zero-width characters and folds whitespace controls before the label is stored, in every SDK
+  and again in the Worker, and caps it at 64 code points; the legacy confirmation page escapes it
+  as HTML. A label can still say anything printable ("Your bank"); it is display data and no
+  decision reads it. Activation and registration store it only while the device row has none, so
+  a reported label can never overwrite the owner's rename. OS device names are personal data;
+  they are shown to the person, the licence owner and the console, as `devices.label` already
+  was.
+- **The request handle.** `rq_` and 128 random bits, stored under its peppered hash in the
+  single-use store for 10 minutes, and bound to the browser that created it by the
+  `__Host-pk_req` binder (HttpOnly, Secure, SameSite=Lax; its hash is in the record). A handle
+  leaked by a screenshot or a shared URL is useless in another browser: every refusal answers the
+  same `404 not_found`. The record holds the product, the kind, the label, the user code, the
+  origin and a flow reference, and nothing beyond the user code that the device already shows. It
+  holds neither the device code nor `state`. There is no public creation route. Residual: whoever
+  holds both the binder cookie and the handle sees the user code, which they could already see on
+  the confirmation page.
+- **Display-parameter spoofing.** The card's reads (`GET /api/signin/requests/:handle` and
+  `/consent`) and `GET /api/capabilities` read no display query parameter: `appName`, `name`,
+  `icon`, `developer`, `origin` and `device` are ignored, and a test pins it
+  (`packages/worker/test/passthrough.test.ts`). The origin shown is the product's registered one.
+- **App consent.** `GET …/consent` needs the account session and the binder. It writes nothing:
+  the licence line is a dry run, and `scope_hash` (migration 0079) is written by I-08's Continue.
+  `person` (the account's name and email) is shown only to that account's own browser.
+
+### Licence deletion (owner request, 2026-10-05)
+
+A platform admin can delete a licence outright (`DELETE /manage/api/products/<slug>/license/licenses/<id>`,
+bulk `POST …/license/deletions`, the cleanup list `GET …/license/deletions/candidates`;
+`services/license/admin/deletion.ts`, `core/licenseDelete.ts`). Before this a licence could only
+be disabled.
+
+- **Only behind the platform-admin session, CSRF and a typed confirmation.** The routes sit on
+  the admin API, so the session, the CSRF header and the product-admin gate run first (a test
+  pins the 403s). The Worker compares the typed string itself (`delete <id>`, or
+  `delete <n> licenses` for at most 100 at once), so a forged or replayed console request without
+  it changes nothing.
+- **Commerce history is never deleted.** A licence with store grants or recorded store purchases,
+  in any state, is refused. The owners' refusals are also sub-selects guarding every statement of
+  the batch and its audit row, so a purchase recorded between the check and the batch leaves the
+  licence untouched. `dist_purchases` and `license_store_grants` are never deleted.
+- **Refusals the operator chose are not lifted in bulk.** An active developer-issued licence must
+  be disabled first. A disabled auto-issued licence still bound to its machine (`enroll_hwid`) is
+  refused (`enroll_guard`): deleting it would let that machine enroll for another free licence.
+  Residual: deleting a disabled **sign-in** licence lets its holder sign in for a new one. The
+  cleanup list does not list disabled licences on their own (only sign-in duplicates of an
+  account that keeps a usable licence), and the console warns about the reissue on the record's
+  and the bulk confirmation.
+- **The cascade is complete and atomic.** One batch per licence removes every row keyed by it
+  (a test walks `sqlite_master` and fails on an unclaimed `license_id` table), and the devices'
+  bearer tokens are purged from KV after the batch commits, so the devices stop authenticating
+  at once. Residual: a licence-bound registry token can keep resolving on another isolate for up
+  to the resolution cache's 30 seconds, as with a revocation.
+- **History stays, identity does not leak.** The licence's audit rows are kept; the deletion
+  writes one `license.delete` row (written only while the licence still exists, so a racing
+  double delete audits once) naming tier, origin, the account's pairwise subject (never the
+  global account id) and the device count.
+
+### Account pictures: profile import, re-encoding and uploads (PX-W16)
+
+Account → Profile and the pictures behind it (PORTAL.md §4.30, G32, G33):
+`services/identity/card/avatars.ts`, `card/profile.ts`, `portal/profile.ts`; routes
+`GET /media/avatar/<asset>`, `GET|PATCH /api/me/profile`, `POST /api/me/profile/picture` and the
+gate's `GET /api/signin/confirm-email/picture`; table `account_avatars`; tests
+`test/identityCardProfile.test.ts`, `test/portalProfile.test.ts`, `test-workerd/avatars.test.ts`
+and the console's `e2e/portalAvatar.e2e.test.ts`.
+
+- **SSRF on the provider fetch.** There is one outbound fetcher, `core/safeFetch.ts` (HA-01's
+  guard: https, port 443, no userinfo, no IP literal, never `plrs.im`, never a private-only
+  suffix). This route narrows it with its own `allowHost`, checked on the first URL and on every
+  redirect hop before it is dialled: Google's `lh3`–`lh6.googleusercontent.com` and Steam's
+  `avatars[.akamai|.cloudflare].steamstatic.com`. Five seconds, 2 MiB counted while reading,
+  three hops. **Who names the URL:** the provider, in its own answer (Google's verified ID token,
+  Steam's Web API over our key); a visitor cannot shape it, and a URL naming any other host is
+  never fetched (tests: an off-list host is refused without being dialled, and an allowlisted host
+  redirecting elsewhere is refused at the hop).
+- **Image-parser bugs and active content.** Bytes a provider or a person supplied are never
+  parsed by the Worker beyond a magic-number sniff (`core/sniff.ts`, which cannot answer SVG or
+  HTML): provider pictures must be PNG, JPEG, WebP or GIF, uploads PNG or JPEG. They are decoded
+  and re-encoded by the Cloudflare Images binding, outside the isolate, into WebP and PNG at 256
+  and 96 px (`fit: cover`, one frame), and only the encoder's output is stored; the original is
+  never kept. WebP and PNG output always discards metadata, so EXIF, GPS and comments in an upload
+  are gone. The encoder's output is itself sniffed and capped (512 KiB a rendition) before it is
+  stored. The media route serves a rendition only when its bytes sniff as the WebP or PNG its name
+  says, with `nosniff`, `default-src 'none'; sandbox` and `Content-Disposition: inline`, so the
+  response can only ever be an image; a test plants script-bearing SVG under a rendition key and
+  gets the 404. Without the binding nothing is copied (initials); a picture is never stored as
+  fetched. The gate's preview is fetched and re-encoded the same way and stored nowhere.
+- **CSP.** The portal keeps `img-src 'self'`: every picture is same-origin. The console's browser
+  test loads proxied avatars with zero violations and shows the provider's own host blocked.
+- **Cost of the gate's preview.** `GET /api/signin/confirm-email/picture` fetches and re-encodes
+  on every request (nothing is stored before the gate passes), so it is limited to 20 per gate
+  over the gate's 15 minutes and 30 a minute per client address (`429 rate_limited`). Both fail
+  open, like the other cost budgets: obtaining a gate already takes a provider sign-in.
+- **Storage abuse.** Uploads are rate-limited per account (10 an hour, counted before a byte is
+  read, failing closed), capped at 5 MB declared or counted, and at most three uploads not in use
+  are kept per account (older ones are deleted at once). Provider copies are re-fetched only when
+  the provider's URL changes. A picture nothing uses (`accounts.avatar_key`, a link's
+  `profile_json.avatarKey`) is deleted at once when replaced, and the nightly sweep deletes the
+  rest after a day, at most 200 a night.
+- **Privacy of the URL.** The asset id is an HMAC under `KEY_HASH_PEPPER` of the account and the
+  source picture's SHA-256: stable per picture (content-addressed, so a URL never changes under a
+  page) but not computable from a public provider picture, and it names nobody. Without the pepper
+  (`hashKey`'s fallback) it is a plain SHA-256 of the same string, which still needs the internal
+  account id, so a public picture alone does not give it. The route is public, as a
+  capability URL: anyone holding it sees the picture, which is display data the person shows in
+  the portal and, through the consent step, to apps. Responses are `private, max-age=86400`, so
+  no shared cache keeps a deleted account's picture, and revalidation of a deleted picture is a
+  404, not a 304.
+- **Deletion with the account.** `avatars/` has no R2 age lock (unlike `blobs/`, the reason
+  avatars are not hosted assets), so deletion is immediate: `deleteAccount` deletes every
+  rendition of every asset the account owns or uses, then the rows. An object the store refuses
+  to delete keeps a row with its clock at zero, which the next sweep retries once the account's
+  rows are gone. A merge moves the absorbed account's rows to the survivor.
+- **Untrusted display data.** Names and locales from providers, and typed names, are made safe
+  as in "Login card (I-07)" above; `PATCH` accepts only this account's sign-in methods and uploads
+  (a test tries another account's).
+- **Residual.** The nightly sweep re-checks each asset just before deleting it, and deletes the
+  row only if it is still unused, so a profile edit that picks a day-old upload keeps it. A claim
+  landing in the milliseconds between that check and the object delete (a PATCH or a
+  byte-identical re-store) keeps its row but loses the objects; the person sees initials until
+  the picture next changes. The Images binding is a Cloudflare dependency: while it is unbound or
+  failing, new pictures are not copied (no fallback to storing originals).
+
+### The platform KEK keyring and the legacy open-only key (R2-09)
+
+A1 is a keyring, not a single key (`src/keyvault.ts`). `PLATFORM_KEK_KEYS` maps kids to 32-byte
+AES-256-GCM keys, `PLATFORM_KEK_ACTIVE` names the one every new seal uses, and each blob carries
+the kid it was sealed under: `open` uses exactly that kid's key and refuses an unknown one. The
+AAD (`pkey:v2:<product>:<kind>:<id>`) leaves the kid out, so a re-seal keeps the slot binding.
+The re-seal sweep (`POST /manage/api/products/kek`: platform admin, CSRF-checked) moves every
+stored value to the active kid with a compare-and-swap, and verifies the new envelope opens to
+the same plaintext before it writes.
+
+**The legacy key.** Worker secrets are write-only, so an environment whose `PLATFORM_KEK` was
+never escrowed cannot copy it into a ring. With both `PLATFORM_KEK` and `PLATFORM_KEK_KEYS` set,
+the Worker adds `PLATFORM_KEK` to the ring under its legacy kid (`PLATFORM_KEK_ID`, else
+`default`), for opening only. The operator procedure is RUNBOOK "Rotating when the old KEK is
+unknown". Controls:
+
+- **It never seals.** `PLATFORM_KEK_ACTIVE` must name a `PLATFORM_KEK_KEYS` entry, checked before
+  the legacy key joins, and the legacy key is imported without the `encrypt` usage, so no path
+  can seal under it.
+- **No silent choice.** The same kid in both shapes with different bytes refuses to load the ring
+  (fail closed: `503` on the keyring endpoint, every product route 404s) instead of picking one.
+  A precedence rule would orphan one set of blobs, chosen by a rule an operator mid-rotation is
+  unlikely to know. Equal keys, compared as decoded bytes, are accepted.
+- **No key material in diagnostics.** The configuration error (also raised on Platform →
+  Settings as `kek_keyring_unusable`), the `kek_legacy_open_only` warning, the endpoint's
+  `legacy` block and the console name kids and counts only. The sealed `SIGNIN_*` Worker
+  secrets are reported by name when their envelope names the legacy kid; the kid is read from
+  the envelope and nothing is opened.
+- **A bounded life.** The `kek_legacy_open_only` warning stays while `PLATFORM_KEK` is the only
+  source of its kid (not for a same-bytes copy of a `PLATFORM_KEK_KEYS` entry), and the endpoint
+  reports `legacy.remaining` (stored values under the legacy kid), `legacy.workerSecrets` and
+  `safeToDelete`, the gate for deleting it.
+
+**Residual risk.** (1) Re-sealing does not erase old ciphertext: D1 backups and Time Travel from
+before the sweep still hold blobs under the old key, so whoever holds that key and such a dump
+reads them. If the old key may have leaked, this is the KEK compromise case (RUNBOOK,
+containment): the rotation runs the same steps, and every product signing key sealed under the
+old key is rotated as well. (2) Deleting `PLATFORM_KEK` while a value is still under it makes
+that value dark (its product 404s, or a sign-in provider leaves the login card). `safeToDelete`
+is the gate, and the operator applies it; the Worker cannot stop a `wrangler secret delete`.
+(3) The legacy key adds no new writer: whoever can set Worker secrets could already replace the
+whole ring. (4) A `PLATFORM_KEK` left beside a ring re-admits the key it holds for opening,
+under the legacy kid, even after that kid is retired from `PLATFORM_KEK_KEYS`. The kid stays
+open-capable until `PLATFORM_KEK` is deleted, and while it does, an early retirement reads
+`unopenable: 0`, so the re-check cannot catch it. The RUNBOOK's retirement step therefore
+deletes `PLATFORM_KEK` in the same `wrangler secret bulk` call that drops the kid ("Rotating
+PLATFORM_KEK", step 8), or, if that was missed, deletes it only once `legacy.safeToDelete` is
+true. In the KEK compromise case this matters more: while
+`PLATFORM_KEK` holds the leaked key, that key still opens, so whoever holds it and can write to
+D1 can plant a value the Worker accepts. The containment steps (RUNBOOK, "KEK compromise
+(containment)") delete `PLATFORM_KEK`, and containment is not complete until `legacy` is gone
+from the keyring endpoint.
 
 ### Boundaries that are weaker than they look
 
@@ -4543,6 +6615,56 @@ sit behind the portal session; the claim also needs the CSRF header.
   yet (an operator's own console edit, or a push killed before its post-write sweep) lasts until
   the next push or console edit drops the approval — the per-mint check refuses while it lasts,
   but anonymous enrolments or sign-ins it allows in the meantime are issued, and fall under (1).
+- **Which commit's `.pkey/` is applied, and the record of it (R6-05, ST-01a).** A push to ANY
+  branch touching `.pkey/` triggers a resync, but the push only triggers it: `resyncRepo` and
+  `linkRepo` ask GitHub for the DB-configured repository's default-branch head
+  (`GET /repos/{o}/{r}/commits/HEAD`, `Accept: application/vnd.github.sha`) and read every
+  document `?ref=<that sha>` (`services/release/manifestFetch.ts`). The ref is a value GitHub
+  just returned for the repository's own default branch, never the webhook's `after` nor anything
+  in a request, so branch protection and required review on `.pkey/` still bound what is applied;
+  pinning also removes the window in which a push landing between two Contents reads mixed
+  documents from two commits. A failed or malformed head answer fails the apply closed, with no
+  unpinned fallback. The webhook's `after` is still stored, as `product_sync_state.commit_sha`,
+  and shown only as "Triggered by push". Every apply (link, resync, and the system product's
+  deploy hook, which records the deploy's own `PKEY_GIT_SHA`) writes one
+  `product_manifest_snapshot` row in the apply's batch: the applied commit, a SHA-256 over the raw
+  documents and the parsed manifest. Manifests name secrets but never carry values, so the row
+  holds no secret material; it is latest-only and, like every product-scoped table, references
+  the product without `ON DELETE` (R11-01). The snapshot
+  records what was applied and never decides it. **Residual:** the backfill (ST-01c) may fetch at
+  the webhook-supplied `commit_sha` to corroborate an old row; that read is compare-only, never
+  applied, and the row it writes says so.
+- **Resync as a write path, and console claims (ST-01b, notes/S-18 §4.5).** A repo push changes
+  product settings: the name, the licence defaults (which set `graceUntil` and the activation
+  seat count), the web origins (the CORS allow-list), the admin group, the catalog, tiers and
+  profiles. Three controls bound it. (1) **Visibility**: every setting or tier/profile row a resync
+  changes gets its own `setting.resync` audit row (before → after) in the apply's batch, so a
+  silent revert of a console edit is no longer possible and a hostile push is attributable to the
+  applied commit. (2) **Claims**: a console write to a claimable setting (`core.name`,
+  `license.defaults.*`, `core.web.origins`, `config.catalog`) upserts a `source = 'console'` row in
+  `product_settings`, and a console create or edit of a tier or profile marks that row `console`;
+  every later resync skips them. The guard is in each write statement, not only in the resync's
+  early read of the claims: the five column writes keep the column while a live `product_settings`
+  claim exists (`CASE WHEN EXISTS …`), the catalog deactivate/insert and their audit rows carry
+  `NOT EXISTS`, and tiers and profiles carry `WHERE source = 'manifest'`, so a console edit that
+  claims a key while a push is between its GitHub reads and its batch is never overwritten.
+  Revert deletes the claim and re-applies the last snapshot (ST-01a), audited as
+  `setting.revert`; a reverted catalog is screened with `compileAll()` first (409
+  `invalid_catalog`, claim kept), because a resync does not screen a claimed catalog yet still
+  records it in the snapshot, so Revert would otherwise be an unscreened path to `product_schema`
+  and to unbounded `pattern` complexity. `core.adminGroup` is manifest-only: the console refuses it on a linked
+  product rather than storing a value the next push would silently replace. (3) **No half-applied
+  refusal**: every check (OIDC issuer, publisher lookup, catalog compile, binary name, the
+  referenced-tier and referenced-profile guards) runs before the first write and the apply is ONE
+  `db.batch`, so a refused or throwing push writes nothing — including the `services_json` and
+  `auto_issue_json` widenings P0-12's post-write sweep used to clean up after. A push still
+  deletes a manifest-sourced tier or profile it dropped when nothing references it, and never a
+  console row; a console row holding a new manifest id is kept and reported as a conflict.
+  **Residual:** claims make the console the stronger writer for those keys, so a stolen admin
+  session (T7) can now pin a value that the repo cannot override until someone reverts it; the
+  claim, its author and the revert are all audited, and the system product refuses console claims
+  outright (manifest-authoritative, S-18 §4.5 item 8) until ST-20's expiring, reason-bearing
+  break-glass claims. Existing rows default to `manifest` until ST-01c's backfill runs.
 - **The IdP is trusted for `groups`, and `groups` is the entire admin authorization decision.**
 
 ## 4. Adversaries
@@ -4568,9 +6690,9 @@ originating outside the trust boundary.
 | OIDC `groups`                   | **Platform admin authority**                                                      | The IdP              | Any IdP feature that lets a user influence group membership grants platform admin. A single claim string is the entire decision.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | OIDC `sub`                      | License identity                                                                  | The IdP              | Admin, portal and the product flow all require it non-empty (R8-05a); an ID token without `sub` is refused with a generic 401. Portal identities are keyed by (issuer, `sub`), never by `sub` alone (I-01).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | OIDC `email`                    | Portal license linking, cross-product                                             | The IdP              | Portal and the product flow both require `email_verified: true`; the product flow stores no email otherwise (R8-05b). Admins may still set `licenses.email` to any unverified string, and portal auto-linking trusts only emails the portal itself verified.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync. The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `.pkey/` manifest               | Tiers, OIDC issuer, artifact policy, admin group, binary name                     | A linked GitHub repo | Applied on webhook-triggered resync, read at ONE commit: the default-branch head GitHub resolves from the DB-configured repo (R6-05: no webhook- or caller-supplied ref picks the content; ST-01a), recorded with that commit in `product_manifest_snapshot`. Since ST-01b a resync skips settings, tiers and profiles the console has claimed, writes one audit row per changed setting, and applies in one batch after every check (§3 "Resync as a write path"). The repo effectively writes its own security policy — except edge-mint recipes, which are inert until an operator approves them column for column and sign only with an operator-marked `edge-mint` secret. Its tag regexes are length-capped only: R10-09.                                      |
 | `.pkey/distribution`            | Outlet store identities, listings, transports (`dist_outlets`, `dist_transports`) | A linked GitHub repo | Applied on resync by Distribution's ingest hook. Its root listing (`dist_listing`) is the portal's product presentation and the media proxy's source: display data only, and art is fetched only from GitHub-hosted https URLs, typed by magic number (PX-W1). Cannot express outlet capabilities (`capabilities_not_manifest_writable`); those are operator-owned, narrow-only and clamped on read (P2b-02). The `appleId` identity must equal the operator's pin on the `asc-api-key` (P5-02f), or the App Store Connect connector is inert; it can no longer pick the app the team key acts on ("Who picks the outlet's app"). Likewise the Play `packageName` must equal the pin on the `google-service-account` (P5-03), or the Google Play connector is inert. |
-| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09).                                                                                                                                                                                                                                                                                                                                                                             |
+| `web.origins` (`.pkey/product`) | Which browser origins may read a product's device-facing responses (CORS)         | A linked GitHub repo | Exact origins only (no wildcard, `null`, path or non-loopback `http`), capped at 16, re-checked when the row is read. Never `Allow-Credentials`, so a listed page gains nothing a non-browser client lacks. Applied in dispatch after the handler, so the edge cache stays origin-free. The console, portal, docs, webhook and cookie-bearing identity routes never answer CORS (R1-09). The commerce binding and claim routes are covered (SP-16): both need the device bearer, so a listed page reaches only what its own device token can.                                                                                                                                                                                                                        |
 | `X-PKey-Version` header         | Version and channel gating                                                        | The client           | A `0.0.0-dev*` version skips the version window and channel checks only when the licence is granted `dev` or the product sets `allowDevBuilds`, which no caller sets today (R3-01). Otherwise the version implies a channel per WIRE-CONTRACT-V3 §5.1 and is gated like any build.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `X-PKey-Channel` header         | Channel gating                                                                    | The client           | Normalised per WIRE-CONTRACT-V3 §5.1. It can only add a channel to check, never replace the build-implied one; a malformed value is refused, and an unknown well-formed name must be granted by name (R3-01, R3-13).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `X-PKey-Device` header          | Device identity                                                                   | The client           | Entirely client-asserted; not bound to the fingerprint.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -4619,7 +6741,14 @@ Stated honestly, so nobody builds on a false assumption:
 
 **It does stop:** using the product with no license at all _against the server_; obtaining product
 secrets or edge-mint tokens without a valid device token; exceeding seat limits by ordinary,
-non-concurrent use; continuing to work after revocation _if the client contacts the server again_.
+non-concurrent use; continuing to work after revocation _if the client contacts the server again_;
+outliving a time-limited licence by signing in again. Until LX-02 (S-19 G7) an OIDC sign-in on an
+existing licence reset `expires_at` to `now + policy_expiry_days` and its tier to the first mapped
+group's, so a trial renewed on every sign-in, and replaced the whole `overrides_json`, so an
+operator's restriction (a `deviceLimit` cut, a revoked flag) was undone by the next sign-in. The
+sign-in write now sets only `name`, `email` and `groups_json` and rewrites only the override keys
+the product's provisioning declares, as a compare-and-set on the column it merged from (tests:
+`oidc.test.ts` › `OIDC sign-in on an existing licence (LX-02)`).
 
 **It does not stop casual license sharing.** This was claimed here in the first draft and it is
 wrong. A user can copy `~/.config/<product>/managed.json` to another machine, or simply hand-write
@@ -4691,6 +6820,11 @@ Obtain admin authority
 ├── Be granted `groups` by the IdP ───────► any IdP group-membership weakness
 └── XSS on the platform origin ───────────► unauthenticated raw-HTML endpoints without CSP
 ```
+
+Holding the admin plane must not let the session widen itself or every product at once through a
+setting: the settings registry keeps every widening knob deploy-time at platform scope, and product
+security settings are `critical`, at least L1 to widen, and never inherited from platform
+("Platform settings and operations: the settings registry", ST-03).
 
 ### AT-3 — Ship malicious code to every installed client
 
@@ -4782,13 +6916,24 @@ control, calls a host other than its store's API, writes from a store object wit
 routes writes a `dist_keys` entry (P2b-03); a service gains a `manifestIngestAlways` hook, or Distribution's writes more
 than the `app` delivery-access row (it runs whatever the service's enablement); turning a
 service on starts running an ingest; a byte route is added to `BYTE_ROUTES`, a type to
-`BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a type is added to
+`BYTES_HOST_TYPES`, or anything else is hosted on a `plrs.im` sibling; a path shape is added to the image host (`matchImgPath`), a type to `IMG_HOST_TYPES`, the image host serves a ref kind other than `hosted-asset`, a non-image slot or anything gated, reads a cookie or a credential, or caches its tenancy check (HA-02); a type is added to
 `REGISTRY_HOST_TYPES`, the PyPI HTML fallback is admitted anywhere but its one flagged route or
-under a looser policy, a registry route answers CORS or a method other than GET, HEAD and
-Swift's `POST …/login`, or `authorizeFeedRead` moves after the cache lookup (F-02); a new registry
+under a looser policy, a registry route answers CORS or a method other than GET, HEAD,
+Swift's `POST …/login`, F-22's four publish writes and F-23's OCI push methods, or
+`authorizeFeedRead` moves after the cache lookup (F-02); feed retention deletes anything but a
+build of main below a stable release, gains a trigger, lets a request name the versions it
+deletes, deletes a blob-store object itself, stops leaving its tombstone, or turns on by default for a tenant product (2026-10-06); a push route that is not Release's, a push
+credential other than an owner-bound `publish` token or a `release:publish` CI token, a push that
+creates a repository or moves a channel tag, or an `oci-push` ref that serves anything beyond its
+repository's digest reads (F-23); a new registry
 principal kind, a registry token accepted in a URL outside Godot, any increase of
 `REGISTRY_TOKEN_TTL_SECONDS` or of the OCI pull token's lifetime, or a credentialed registry
-answer reaching the Cache API (F-21); the bucket-lock duration
+answer reaching the Cache API (F-21); a Node install driver (SP-N09) installs
+without the signed decision's version match, `electronUpdaterDriver`'s record check stops being
+the default, a PolarisBridge verb (SP-N10) is added to `DEFAULT_INVOKE_VERBS` or reaches an
+install, or `SafeStorageStore` (SP-N11) gains a degraded state `status()` does not report; a publish token longer than 30 days, not owner-bound or
+reaching Godot, any read inside a package beyond Swift manifests, or a raised native
+publish body cap (F-22); the bucket-lock duration
 changes; the admin authorization model changes; the wire contract
 version increments; any new field is added to `AdminSession` or `PortalSession` (see the
 domain-separation note in the audit report — the two realms share HMAC key material by default);
@@ -4821,17 +6966,20 @@ out of a deny list such as `rules/appStoreDenied.ts`, a rule's attributes, relat
 checks or confirmation level loosened), a storefront adapter is added to `STOREFRONT_ADAPTERS`, a
 new vendor spec pin is adopted (`ASC_SPEC_PIN` or another adapter's `specPin`), a CI command
 allow-list (`core/storefront/ciPlane.ts`, the `ci.ts` check) gains or loosens a command, a pattern
-or an identity binding, a CI-plane step starts running without report-back, the store-step ingest
+or an identity binding, the PR plane (`core/storefront/prPlane.ts`) gains a repository, a command
+or a path template or loosens one, the CLI's GitHub client (`storefronts/github.ts`) gains a call
+that merges, closes, deletes or force-pushes, a CI-plane step starts running without report-back, the store-step ingest
 stops re-checking the command, an adapter
 declares `api` for `uploadBuild` or empties a never-list category, a check of
 `test/storefront/conformance.test.ts` is relaxed, anything but `core/asc/client.ts` sends a request
-to App Store Connect, anything but `msstore/write.ts` sends a non-GET request to a Microsoft Store
+to App Store Connect (and anything but `core/asc/upload.ts`, gated by `checkAscUpload`, PUTs to an
+upload operation; `isAscUploadUrl` or `ASC_SCREENSHOT_UPLOAD` loosened, A-18m), anything but `msstore/write.ts` sends a non-GET request to a Microsoft Store
 API or a SAS upload, Microsoft's hand-written operation list (`test/fixtures/msstore/operations.json`)
 is edited or its `MSSTORE_SPEC_PIN` re-dated (the docs-drift review: re-read every page it names and
 re-classify every write), or a field joins a store's audit projection (A-17a, A-18a, A-18f); a platform store credential (A-16) is added, used
 without the product's platform pin matching at setup, token and open, cached in a way a hit can
 skip the pin, allowed to fall through from a mis-pinned own credential, or written or opened by a
-file outside its allowlists; the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
+file outside its allowlists; the sign-in card starts reading a display value from anywhere but the server-side client record, a passthrough request handle becomes creatable by a public route, readable without its binder, longer-lived than the sign-in flow, or holds a credential, a server decision starts reading the device label, or a term leaves `RESERVED_DISPLAY_TERMS` (PX-W13); the device trust level starts being carried in a signed document or token, an operation trusts `attested` without going through `trustRefusal`, the trust policy becomes writable by anything but the platform-admin `trust-policy` resource, the App Attest root stops being the pinned constant, or a path other than a token rotation keeps the level across a new device token (P6-02); or a new way to obtain a device token or licence without an
 operator-issued key is added, or a check on one is made conditional on product state (it must be
 folded into `mintIsPublic` or into the edge-mint approval's recorded state — `productWidening` in
 `core/edgeMintApproval.ts`, which the ingest sweep and the `0025_b` backfill follow); or, for
@@ -4860,7 +7008,12 @@ reporting a binding's resource id or any secret-derived value, a route updates o
 `PLATFORM_SETTINGS`, a setting's precedence changes from `ceiling` to `runtime`, a registry
 entry's bounds widen (`LAZY_DELTA_MAX_BYTES` above the measured 32 MiB ceiling, or a grace below
 one day), the settings inventory starts reporting anything about a secret beyond its presence,
+an `Env` member's `@inventory` tag changes from `secret` to `var` (ST-02),
 or a path reads one of the four settings from the raw `[vars]` instead of through the resolver;
+or, for the settings registry (ST-03), an entry is added or loses `pending`, an entry's ownership,
+`securityWidening`, `critical`, `inherits`, `policyBound` or confirm levels change, a rule in
+`core/settings/rules.ts` is relaxed or a name leaves its deny-list, or a slice is contributed by
+anything but a service descriptor;
 or, for self-reported operations (A-14), the `DELTA_DLQ` binding is used for anything but
 `metrics()`, a request path starts persisting free-text error capture, a job-run or heartbeat
 writer stores request data or an untruncated message, or the Operations route gains an outbound

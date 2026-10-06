@@ -1,6 +1,6 @@
 # Polaris Wire Contract v4
 
-**Status:** Normative. Supersedes `WIRE-CONTRACT-V3.md`, the way v3 superseded v2. v3 remains the record; everything v3 said that v4 does not change is restated here, so this document can be read on its own. Amended for packs v1 by `plans/P4-01.md` (§2.5.1, §2.5.2, §2.6, §2.7, §3.7, §11.3, §11.4), inside v4: no new `typ`, no feed field, `PROTOCOL_VERSION` stays 4. Amended for chunk indexes by `plans/P4-10.md` (§2.5.1, §2.6, §3.1, §8, §9, §10, §11.4), also inside v4. Amended for content-key delegation by `plans/P4-19.md` (§1, §2, §2.4.1, §2.5, §2.5.3, §2.5.4, §2.8, §3.4, §3.5, §8, §9, §10), also inside v4: no new `typ`, claim, feed member or selector key.
+**Status:** Normative. Supersedes `WIRE-CONTRACT-V3.md`, the way v3 superseded v2. v3 remains the record; everything v3 said that v4 does not change is restated here, so this document can be read on its own. Amended for packs v1 by `plans/P4-01.md` (§2.5.1, §2.5.2, §2.6, §2.7, §3.7, §11.3, §11.4), inside v4: no new `typ`, no feed field, `PROTOCOL_VERSION` stays 4. Amended for chunk indexes by `plans/P4-10.md` (§2.5.1, §2.6, §3.1, §8, §9, §10, §11.4), also inside v4. Amended for content-key delegation by `plans/P4-19.md` (§1, §2, §2.4.1, §2.5, §2.5.3, §2.5.4, §2.8, §3.4, §3.5, §8, §9, §10), also inside v4: no new `typ`, claim, feed member or selector key. Amended for passthrough request metadata by `plans/PX-W13.md` (§5.4, §8, §12.7), also inside v4: no new `typ`, claim or signed shape, and `corpusVersion` stays 2.
 **PROTOCOL_VERSION:** `4` (`@polaris-key/protocol` `core.PROTOCOL_VERSION`).
 **Scope:** Everything that crosses the wire or the disk boundary between the Polaris Worker, the CI that signs releases, and the client SDKs (Node, React, Python, Swift, Godot, Kotlin): JWS envelope and its strictness, the six signed artifacts, trust distribution, the pinned release keys, device principal, offline bundles, verified cache, the monotonic clock floor and the feed `seq` floor. Server-internal behavior (D1 shapes, admin API) is out of scope except where it produces signed artifacts.
 **Conformance:** `conformance/corpus/v2/` pins every rule marked **[C]** byte-for-byte across all implementations, within the representation limits declared in §10. `pnpm gen:corpus -- --check` is the drift gate. The v4 plan is `docs/research/2026-09-29-godot-omniplatform/program/plans/P3-01.md`; its §2–§4 are the long form of §1–§4 and §11 here.
@@ -728,11 +728,12 @@ architecture it was built for. For example:
 
 - an x86_64 build under Rosetta 2 or Windows-on-Arm emulation sends `x86_64`;
 - a Mac Catalyst build sends `macos`;
-- an iPad app running on a Mac or on visionOS sends `ios`.
+- an iPad app running on a Mac or on visionOS sends `ios`;
+- a native visionOS build sends `visionos`.
 
 | Header               | Value                                                                                                                    |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `X-PKey-Platform`    | `macos`, `ios` (iPadOS too), `android`, `windows`, `linux`, `web`                                                        |
+| `X-PKey-Platform`    | `macos`, `ios` (iPadOS too), `tvos`, `visionos`, `watchos`, `android`, `windows`, `linux`, `web`                         |
 | `X-PKey-Arch`        | `arm64`, `x86_64`, `armv7`, `wasm32`                                                                                     |
 | `X-PKey-SDK`         | the SDK id: `node`, `react`, `python`, `swift`, `godot`; a later SDK registers its id in `conformance/parity/enums.json` |
 | `X-PKey-SDK-Version` | the SDK's package version (unchanged)                                                                                    |
@@ -758,6 +759,67 @@ architecture it was built for. For example:
 4. A `POST /<p>/devices/report` body that carries `platform`, `arch` or `sdk` uses the same
    values. The `engine` object that an engine SDK adds carries an `id` of the form
    `<engine>-<major>.<minor>`, in lowercase ASCII, such as `godot-4.7`.
+5. **Header vocabulary and update vocabulary** (`plans/SP-08.md`). `tvos`, `visionos` and
+   `watchos` are header values only. The build and update vocabularies keep six values:
+   `RELEASE_PLATFORMS`, `OUTLET_PLATFORMS.unknown`, the feed's `?platform=` and
+   `targets[].platform`. An SDK's _update platform_ is its header value when that value is in
+   its mirror of `OUTLET_PLATFORMS.unknown`, and no value otherwise. With no value, the SDK takes
+   today's path for a platform without a canonical value: Swift throws `not_configured` unless
+   `UpdateClientOptions.platform` is set, Python unless `update.platform` is set, and Godot
+   uses `""`. A later package that ships tvOS or visionOS builds widens both vocabularies.
+
+### 5.3 Refusal links (`manageUrl`) [C]
+
+Pinned by `license-device-limit.json` (transcript) and the `readManageUrl`, `withManageReturn` and
+`withManageKey` table that every SDK repeats (client-core `test/manage.test.ts`).
+
+A seat refusal carries a link to the customer portal, so an app can offer **Replace a device**
+instead of a dead end. It is one optional member of an unsigned flat refusal body. No signed
+document, claim, header or error code changes, and `PROTOCOL_VERSION` stays 4.
+
+| Refusal (403)     | Routes                                                                                         | Link                                                                                |
+| ----------------- | ---------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `device_limit`    | `POST /<p>/license/activate`, `POST /<p>/license/enroll`, `POST /<p>/identity/session/license` | attached licence: `<portal>/#/p/<slug>/free-device?license=<id>[&for=<label>]`      |
+|                   |                                                                                                | floating licence: `<portal>/activate?product=<slug>&next=free-device[&for=<label>]` |
+| `key_entry_limit` | the Identity key-entry routes (I-09)                                                           | `<portal>/activate?product=<slug>`                                                  |
+
+1. **Shape.** `manageUrl` is an absolute `https` URL of at most `MANAGE_URL_MAX_LENGTH` (2048)
+   characters on the portal origin: `CONSOLE_ORIGIN`, else the request's own origin. The body keeps
+   `limit` and `deviceCount` beside it. An attached licence is one with an account; the licence
+   named is the device's anchor licence.
+2. **Presence.** The Worker emits it only while the product's customer portal is on, and omits it
+   otherwise. A client treats its absence as "no link" and shows the refusal as before.
+3. **Never in the link.** The licence key, an account id, a subject or holder hint, a hostname, a
+   device id or an IP. `for` is a coarse `"<Platform> <arch>"` label built from the §5.2 headers
+   (for example `macOS arm64`), at most `MANAGE_FOR_MAX_LENGTH` (64) characters, omitted without
+   metadata. It is display text only.
+4. **Client validation.** A client keeps the member (top level, else nested under `error`) only if
+   it is an absolute `https` URL, or `http` to `localhost`, `127.0.0.1` or `[::1]`, written
+   `<scheme>://` with a host, no `@` (userinfo) or `\` in the authority, no whitespace or control
+   characters, and within the length limit. Anything else is dropped, never repaired. Every SDK
+   applies this rule itself rather than trusting a platform URL parser, which may be laxer.
+5. **What a client may add.** Only two things, each spelled with the
+   `application/x-www-form-urlencoded` byte serializer:
+   - `return=<app URL>`: into the query inside the fragment when the fragment holds a portal
+     route (`#/…`), otherwise into the URL's query, replacing an earlier `return`. The portal
+     accepts it only against the product's declared return targets.
+   - `#key=<key>`, on an `/activate` link only, and only when the link opens in a browser on the
+     same device (a button). A fragment never reaches a server or a log, but the browser keeps it
+     in history, so the portal page drops it with `history.replaceState` once read (PX-17). A
+     link drawn as a QR code never carries the key: anyone who can see the screen can scan it,
+     so the phone's `/activate` page asks for the key instead (THREAT-MODEL.md, PX-W8).
+6. **Not an auth failure.** A client never wipes state, retries or opens the link on its own; it
+   offers the link behind a user action (a button, or a QR code where a joypad is the only input).
+
+### 5.4 The device label is display data [C]
+
+Pinned by `device-label.json`.
+
+`deviceName` on `POST /<p>/identity/auth/device/start`, `POST /<p>/license/activate` and
+`POST /<p>/devices/register` is the device label (§12.7.1): what the sign-in page, the customer
+portal and the console call the device. No server decision reads it, and no signed document
+carries it. Every SDK normalises it before sending and the Worker normalises it again on receipt;
+neither ever rejects one.
 
 ## 6. Device principal
 
@@ -775,15 +837,15 @@ component is read on the device, omitted when unreadable (never substituted), an
 `base64url(sha256("pkey-hw:<product>:<component>:<raw>"))[0..22]` (`fingerprintVersion` 1).
 The Worker drops unknown names, recomputes `hwid`, and matches component-wise.
 
-| Component              | macOS                             | Windows                                 | Linux                            | iOS                   |
-| ---------------------- | --------------------------------- | --------------------------------------- | -------------------------------- | --------------------- |
-| `machineUuid` (anchor) | `IOPlatformUUID`                  | registry `MachineGuid`                  | rule 2                           | `identifierForVendor` |
-| `boardSerial`          | `IOPlatformSerialNumber`          | `Win32_BaseBoard.SerialNumber` (rule 1) | not read                         | not read              |
-| `cpuModel`             | CPU brand `:` logical cores       | same                                    | same                             | not read              |
-| `primaryMac`           | lowest non-internal, non-zero MAC | same                                    | same                             | not read              |
-| `bootVolumeUuid`       | boot volume UUID                  | `vol C:` serial                         | `findmnt -no UUID /`             | not read              |
-| `ramBucket`            | rule 3                            | rule 3                                  | rule 3                           | rule 3                |
-| `machineModel`         | `hw.model`                        | `Win32_ComputerSystem.Model` (rule 1)   | `/sys/class/dmi/id/product_name` | `hw.machine`          |
+| Component              | macOS                             | Windows                                 | Linux                            | iOS, iPadOS, tvOS, visionOS, watchOS |
+| ---------------------- | --------------------------------- | --------------------------------------- | -------------------------------- | ------------------------------------ |
+| `machineUuid` (anchor) | `IOPlatformUUID`                  | registry `MachineGuid`                  | rule 2                           | `identifierForVendor`                |
+| `boardSerial`          | `IOPlatformSerialNumber`          | `Win32_BaseBoard.SerialNumber` (rule 1) | not read                         | not read                             |
+| `cpuModel`             | CPU brand `:` logical cores       | same                                    | same                             | not read                             |
+| `primaryMac`           | lowest non-internal, non-zero MAC | same                                    | same                             | not read                             |
+| `bootVolumeUuid`       | boot volume UUID                  | `vol C:` serial                         | `findmnt -no UUID /`             | not read                             |
+| `ramBucket`            | rule 3                            | rule 3                                  | rule 3                           | rule 3                               |
+| `machineModel`         | `hw.model`                        | `Win32_ComputerSystem.Model` (rule 1)   | `/sys/class/dmi/id/product_name` | `hw.machine`                         |
 
 The table is informative except where it cites a rule. `cpuModel` and `primaryMac` are read
 differently by different SDKs today; only stability within one SDK is promised for them.
@@ -867,12 +929,16 @@ Amendment A1 (see the design spec) withdrew the interim `plrs` rebrand, so the v
 | Delta-menu limits        | `MAX_FEED_DELTAS` = 64 entries per feed; `MAX_FEED_DELTAS_PER_TARGET` = 4 per target payload (§2.4.2)                                                                                                                                        | —                                                         |
 | `packSetId`              | lowercase hex SHA-256 of the UTF-8 lines `<packId> <recordSha256>\n`, sorted by pack-id bytes; null for an invalid pack id, a release not 64 lowercase hex, or a pack listed twice (`plans/P4-01.md` §2.9)                                   | —                                                         |
 | Variant key              | a variant's `axis=value` pairs sorted by axis-name bytes, joined with `;`; the empty string for `{}` (`variantKey`)                                                                                                                          | —                                                         |
+| Request handle           | `rq_` + 22 base64url characters, `REQUEST_HANDLE_PATTERN` `^rq_[A-Za-z0-9_-]{22}$`; lives `REQUEST_HANDLE_TTL_SECONDS` = 600 (§12.7.2; `@polaris-key/protocol/identity`)                                                                     | —                                                         |
+| Device label             | `deviceName`, at most `DEVICE_LABEL_MAX_CODEPOINTS` = 64 code points after §12.7.1; display data only (§5.4)                                                                                                                                 | —                                                         |
 
 `pkey-config+jws` and `pkey-trust+jws` are the v2 type strings reused for v3's config document and trust manifest; the document _shapes_ changed in v3, the type strings did not.
 
+The outlet kind `direct` is presented as Polaris Key: the console, the download page and the docs label it "Polaris Key", while the identifier stays `direct` in every signed document, the corpus and every SDK (a prose change, not a contract change).
+
 ## 9. Rollout & versioning
 
-v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 4` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 1` (§5.2), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 4, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
+v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 4` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 2` (§5.2; SP-08 turned the `visionOS` and `tvOS` rows from no value into canonical values), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 4, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
 
 ## 10. Divergence & hardening ledger
 
@@ -980,3 +1046,136 @@ Version 3 (`plans/P4-01.md` §2.10) adds the pack rows. A new option, `essential
 `plan(input)` picks how to install a pack release: `noop`, `platform`, `delta`, `chunk`, `file` or `full`, by the cost `bytes + requests × PLAN_REQUEST_WEIGHT` (16 384) among the candidates the host's capabilities, memory budget and free disk allow, listing the others as `fallbacks`; `full` costs its `requests` (1 for a container, 2 for a tree, whose index it needs). Its refusals, `plan-transport-unsupported`, `plan-insufficient-disk` and `plan-no-strategy`, are verdicts it returns, never throws. `selectVariant` picks the variant: usable, its `requires.engine` absent or the host's, every axis it declares in the host's preference lists, the lowest tuple of preference indexes over the axis names in byte order; none is `pack-no-variant`. `planTarget` maps a variant and its files index onto the planner's input, dropping what a v1 SDK cannot use (an unknown codec, layout, format, scope, or an index above `MAX_FILES_INDEX_BYTES`). `planTarget`'s fourth argument, the parsed chunk index, maps `chunks` to `{indexBytes: chunks.bytes, records}` only for a usable `container` whose `chunks.format` is `pkey-chunks/1`, codec usable, `size` ≤ `MAX_CHUNK_INDEX_BYTES`, the index bound to the payload and no record's `len` above `MAX_CHUNK_BYTES`; otherwise `chunks` is null (`plans/P4-10.md` §2.5). A device fetches the target index before planning only when `chunks` is usable, `chunk` is in its strategies and it stores a seed index. A chunk run is one single-range request with `If-Range: "<bundle sha256>"`; for `Range: bytes=o-e` the `206` must say `bytes o-e/<size>`, and a `206` clipped at the object's end makes the records past it `chunk-bundle-truncated`; any other answer fails the strategy. `plan-matrix.json` (`planMatrixVersion` 2) pins 28 planner rows (A7's 23, rebuilt on the content set where they are real, two tree rows and P4-10's three `plan-real-chunk-*` rows), 11 variant cases and 22 target cases (eight with `chunkIndex`), each recomputed by the generator's reference; chunk targets stay inline, so the planner never parses an index. `plans/P4-01.md` §2.9 and §4.5 are the long form.
 
 **Feed-offered deltas** (`plans/P4-29.md` §2.4). `withFeedDeltas(variant, deltas) → {variant, feedIds}` merges the feed's menu (§2.4.2) into the planner's input: when `deltas` is non-null, the variant is usable, its layout is `container` and the menu has a key equal to `variant.payload.sha256`, each entry of that key is appended, in feed order, to a copy of `variant.deltas` as a `payload` delta, unless its `artifact.sha256` equals an existing delta id (a record delta wins); otherwise the variant is returned unchanged. `feedIds` lists the appended artifact hashes. `planTarget` and `plan` are then unchanged, so a feed delta is a candidate only when `delta` is in `caps.strategies`, its method is in `caps.patchMethods`, its `from` is installed, `memBytes ≤ caps.memBudget` and the disk check passes, and record deltas keep the lower `ord`: CI wins a cost tie. `applyDelta` is unchanged: the artifact against the entry (`delta-artifact-mismatch`), the base against `from` (`delta-base-mismatch`), §2.6's window against `memBytes`, and the output against the **record's** `payload` (`delta-apply-failed`). The engine reads the menu of the most recently committed feed of the canonical channel, fresh or stale, and tries **at most one feed-offered delta per install**: once one fails (a fetch error, a 404 or any verdict above) the remaining `feedIds` are skipped, while record deltas, `chunk`, `file` and `full` continue. `plan-matrix.json#feedDeltaCases` pins the merge and the plan (`withFeedDeltas` → `planTarget` → `plan`, compared by canonical JSON); `content/cases.json#feedDeltaApplyCases` pins the target-hash check.
+
+### 11.5 The Cloud Sync client state machine (`sync-scenarios.json`)
+
+Client behaviour beside the Cloud Sync routes (`plans/U-01.md` §2.3, §2.4, §4.1; S-17 §5.4–§5.6). `sync-scenarios.json` (`syncScenariosVersion` 1) is literal data written by `tools/sync-scenarios.ts`, not computed by an implementation; `@polaris-key/client-core/cloud-sync` is its first implementation and every SDK replays it with a fake clock, a fake transport that answers from the scenario's `respond` steps, and a `clientId` source that returns `init.clientIds` in order.
+
+- **Partitions.** The journal holds one partition per subject (`clientId`, `nextMutationId`, `cursor`, `pending`, `held`, the cloud snapshot) and the unbound `local` partition (one value per setting with its `editedHlc`). Nothing written in one partition is sent under another. Reads are optimistic: the active partition's snapshot with its pending operations and debounced drafts applied by the key's policy (`max`/`min` keep the extreme, `merge` applies member ops), falling through to the rest of the resolution chain (`from: "document"`) when there is no value, when the stored value fails the key's schema (`settingState.invalid`), or when the current document marks the key `enforced` or `hidden`.
+- **Edits.** `setConfig`/`clearConfig` refuse a key without a `user` block (`setting-unknown`) or a locked key (`setting-locked`), journalling nothing; otherwise they stamp the HLC at the call and (re)start a 2,000 ms per-key debounce. At commit (timer, `flush`, sign-in, sign-out or relaunch, keys in byte order) a signed-out device writes the local partition; a signed-in one appends `set`/`clear`, or for a `merge` key one `setMember`/`removeMember` per changed member (members in byte order) against the view without the draft. `mutationId`s come from `nextMutationId` at append time. A `revision` record `put` is not debounced; while a push carrying that record is in flight, later puts replace one held value (rule 3), and an unsent queued put is coalesced in place.
+- **HLC.** Physical part `now + offsetMs`; a tick takes `(p, 0)` when `p` exceeds the last physical part, else increments the counter. `offsetMs = serverNow − now` from every `200`. An op stamped before the install's first `200` is marked `preContact`; while uncontacted, the first request is a pull, and if its offset exceeds 300,000 ms every pre-contact stamp (journal, local partition, drafts, and the last HLC) is shifted by the offset before any push.
+- **Requests.** One at a time: a pull (`GET /<p>/sync?cursor=&clientId=`) while uncontacted or after `cursor_expired` (cursor 0), else a push of up to 100 pending operations in `mutationId` order, else a pull when one is wanted (start, sign-in, back online, `more`). A request-level failure (transport, `400`, `413`, `429`, `5xx`) changes nothing and waits for the next trigger; a `401` blocks (`status.reason: "unauthorized"`) until `refresh` (a successful licence or config document fetch); `409 client_mismatch` regenerates the `clientId`, renumbers the pending operations from 1 and resends; `410 cursor_expired` keeps the journal, resets the cursor and pulls a snapshot before pushing again.
+- **Results.** Every processed result removes its mutation (rule 1). `ok` updates the snapshot (`renamedTo` names the server key; `dropped` changes nothing and reports `origin: "migration"`). A setting `conflict` takes the server copy and enqueues nothing (Q6). A record `conflict` takes the server copy and enqueues a new mutation on the server's version only for a held edit or a keep-local hook (rule 2). `rejected` emits `{type: "rejected", mutationId, code}`. A cursor-0 answer replaces the snapshot; `changes`, `tombstones`, `cursor` and `aliases` are then applied. Value changes emit `{type: "change", keys, origin}` grouped by origin (`local`, `remote`, `merge`, `migration`), keys in byte order; a key whose moved first-sign-in operation was resolved in that response reports `merge`.
+- **Sign-in and sign-out.** Sign-in moves every local-partition setting into the subject's partition as ordinary operations marked `moved` (keeping `editedHlc` and `preContact`) and empties the local partition in the same write. Sign-out commits drafts, flushes for up to 5,000 ms when online, then emits `{type: "signedOut", reason, unsynced}` (and `unsyncedData` when operations remain and were not discarded); under `onSignOut: clear` it wipes the snapshot and resets the cursor, keeping the pending operations in that partition. `403 account_required` (then `blocked` with `signInOffered`) and a response naming another subject are handled the same way with no flush. A signed-out partition expires 30 days after sign-out, checked at sign-in and at start. Cloud Sync never writes licence state, cached documents or `lastSyncUnauthorized`.
+
+## 12. Accounts and Identity
+
+There is one Polaris Key account per person, platform-wide; it is never a per-product toggle. A
+product's `identity` service toggle gates only sign-in _through that product_
+(`plans/I-04.md` §2.1). Nothing in this section is signed and nothing here enters the licence
+document: `PROTOCOL_VERSION` stays 4. §12.2 to §12.6 are reserved for I-08 (the passthrough
+sign-in, Continue, callback binding and `authorize`) and I-09 (key entry, the account contract,
+refusals) and are written when they land. §12.7 is PX-W13's passthrough request metadata and
+§12.8 is PX-W17's Identity-off behaviour.
+
+### 12.1 What the toggle scopes
+
+| Surface                                                                                                                                                                                                            | Scope                            |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- |
+| The account, its links, the login card, Library, Discover, Activate License, portal licence attach, pairwise subjects (`ps_…`) and the licence owner's subject, the account override layer, the console Users page | **Platform-wide**, every product |
+| Passthrough sign-in through the product (device code, web redirect, native redirect, exchange); "Continue to <App>" grants; `attach`, `subject`, `signout`; the identity fragment's account members                | **Identity toggle on**           |
+| Key-entry counting and its refusals; the Users page's sign-in columns; layer 2                                                                                                                                     | **Identity toggle on**           |
+| Cloud Sync: `requires: [config, identity]`; principal `devices.subject` only                                                                                                                                       | **Identity and Cloud Sync on**   |
+
+A developer-facing surface names an account only by its pairwise subject for that product, never
+by the global account id (S-16 §5.1).
+
+### 12.7 Passthrough request metadata
+
+These are the Identity service's browser-facing shapes: same-origin portal JSON and the device
+label the SDKs send. None of them is signed, and none changes a signed document. The types live
+in `@polaris-key/protocol/identity`. The long form is `plans/PX-W13.md` §2. The card behind
+"<App> wants you to sign in" (PORTAL.md §4.7, G28) must be trustworthy, so it reads the app's
+presentation from a server-side client record through an opaque request handle, never from
+display query parameters.
+
+#### 12.7.1 The device label [C]
+
+Pinned by `device-label.json` (`deviceLabelVersion` 1). The wire name is `deviceName`; the stored
+and rendered value is the device label. Each SDK applies these steps before sending, and the
+Worker applies them on receipt:
+
+1. Map U+0009–000D, U+0085, U+00A0, U+2028, U+2029 and U+3000 to U+0020.
+2. Delete U+0000–001F, U+007F–009F, U+061C, U+200B–200F, U+202A–202E, U+2060–2064, U+2066–2069
+   and U+FEFF. This removes bidi overrides and zero-width characters.
+3. Collapse runs of U+0020 to one, then trim.
+4. Keep at most 64 code points (`DEVICE_LABEL_MAX_CODEPOINTS`), counting code points rather than
+   UTF-16 units, and trim a trailing U+0020 the cut exposes.
+5. If the result is empty, the label is absent: the SDK omits the member, and the Worker stores
+   NULL.
+
+There is no Unicode normalisation step, because Godot has no normaliser. Nothing is rejected.
+No corpus row holds U+0000, because a Godot `String` cannot; the rule still deletes it.
+
+When the host passes no label, the SDK sends a platform default: Node `os.hostname()` and
+Python `platform.node()` without a trailing `.local`, `.lan` or `.home`; Swift
+`Host.current().localizedName` on macOS and `UIDevice.current.name` on the iOS family; Kotlin
+`Settings.Global.DEVICE_NAME`, else `Build.MODEL`, on Android and the JVM host name elsewhere;
+Godot the device model, else the OS name. React sends none: a browser has no device name. A host
+overrides the default in its configuration or per call, and opts out with an empty string (Godot:
+`PKeyOptions.send_device_name = false`).
+
+`POST /<p>/identity/auth/device/start` answers `deviceName`: the stored label, or `null`. An
+older Worker omits the member, and an SDK then shows the label it sent. `license/activate` and
+`devices/register` store the label only while the device row has none, so a console or portal
+rename always wins.
+
+#### 12.7.2 Client record and request handle
+
+- **Client record.** `{product, kind, appName, developerName, iconUrl, origins, services,
+nameVerified}`, with `kind` one of `web`, `native` and `device`. `appName` and
+  `developerName` come from the product's listing, `iconUrl` is the same-origin
+  `/media/<product>/icon`, `origins` are the registered `web.origins`, and `services` is
+  `{license, cloudSync}`. A render-time check of the display-name rules replaces a failing app
+  name with the product slug and sets `nameVerified: false`.
+- **Request handle.** `rq_` and 16 random bytes in base64url, stored under its peppered hash for
+  600 s, and bound to the browser that created it. The binder lives in the `__Host-pk_req` cookie
+  (HttpOnly, Secure, SameSite=Lax, Path=/), and its hash lives in the record. The record holds the
+  product, the kind, the label, the user code, the origin and a flow reference. The device-code
+  confirmation page creates handles. There is no public creation route.
+- **`GET /api/signin/requests/:handle`** answers `{request, client, deviceLabel, userCode,
+expiresAt}` to the binding browser, with `cache-control: no-store`. An unknown, expired or
+  unbound handle answers `404 not_found`, and so does a handle for a product whose Identity toggle
+  is off. No display query parameter is read: `appName`, `name`, `icon`, `developer`, `origin`
+  and `device` are all ignored.
+
+#### 12.7.3 App consent
+
+`GET /api/signin/requests/:handle/consent` needs the account session and the binder. It answers
+`{request, person, items, scopeHash, firstTime, changed}`:
+
+- `items` lists, in order:
+  - the licence line `{kind: "license", anchor, more}`. `anchor` is a dry-run choice that writes
+    nothing, and `more` is 0 under `licensing.entitlementModel: legacy`;
+  - `{kind: "cloudSync"}`, only when the product runs Cloud Sync;
+  - `{kind: "profile", claims: ["name", "picture", "email"]}`.
+- `scopeHash` is the lowercase hex SHA-256 of the canonical JSON `{"claims":[…],"services":[…],"v":1}`,
+  with both arrays sorted.
+- `firstTime` and `changed` compare `scopeHash` with `account_product_grants.scope_hash`. Only a
+  change of claims or services asks again. "App consent" is that table's name for the concept; it
+  is not S-19's grants.
+
+### 12.8 A product with Identity off
+
+1. Device and JSON routes under `/<p>/identity/*` answer the registry's nested
+   `404 {"error":{"code":"not_found"}}`. An SDK reports it as `service-unavailable`
+   (`service-disabled` in React), keeping its device token and licence state.
+2. `POST /<p>/devices/register` keeps its single `registration_closed` body: the JSON API never
+   tells "Identity is off" from "absent".
+3. A **navigation** — `GET` or `HEAD` with `Sec-Fetch-Mode: navigate`, or an `Accept` header that
+   lists `text/html` with a non-zero quality — to `/<p>/identity/<entry>`, where `<entry>` is one
+   of `authorize`, `auth/start`, `auth/device` or `auth/device/verify`
+   (`IDENTITY_NAVIGATION_ENTRIES`), answers
+   `303 Location: <origin>/signin?product=<slug>&error=identity_disabled` with
+   `Cache-Control: no-store`. A `*/*` or JSON `Accept` is never a navigation. The redirect runs
+   in Core before dispatch, so no Identity code runs; I-21 appends `oauth/authorize`.
+4. The portal's passthrough context answers `403 {"error":{"code":"identity_disabled"}}`
+   (`IDENTITY_DISABLED_ERROR_PARAM` in `@polaris-key/protocol/identity`).
+5. Licences still attach to accounts (Activate License, Discover, verified email), and an owned
+   licence's key still activates a device. No device of the product carries a sign-in binding:
+   turning Identity off clears every binding (no seat is released, documents are unchanged), and
+   the Worker refuses to write one while the toggle is off.
+
+This discloses nothing new: discovery already publishes `identity: {enabled:false}` for every
+existing product, and an unknown slug keeps its 404. The transcript `identity-disabled.json`
+pins rules 1 and 5 for the SDKs; the Worker suite (`test/identityPerProduct.test.ts`) pins 2 to 4.

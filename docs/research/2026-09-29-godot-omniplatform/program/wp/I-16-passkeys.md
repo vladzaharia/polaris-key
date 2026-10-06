@@ -43,6 +43,38 @@ Passkeys are the main defence of a high-value shared account and are phishing-re
 - Must run under workerd.
 - Pocket ID passkeys (`rp_id = id.plrs.im`) cannot carry over; migrated users enrol again (I-17).
 
+## Corrections against the code (I-16 builder, 2026-10-06)
+
+- **`account_passkeys` already exists** (I-05's `0068_a_accounts.sql`, with every column the
+  scope names) and `TABLE_OWNERS` already lists it under Identity. The migration gate is two
+  one-statement `ALTER`s instead: `accounts.passkey_user_handle` (the ONE random account-level
+  handle, minted on first use and kept, so an abandoned first ceremony does not leave a second
+  "Polaris Key" entry) and `account_passkeys.details_json` (AAGUID, backup flags, the browser it
+  was added from, for the settings list): `0094_a_accounts_passkey_user_handle.sql` and
+  `0094_b_account_passkeys_details.sql` (numbers assigned by the lead).
+- **Each passkey is also a sign-in method** (`account_links`, `issuer_key = 'passkey'`, subject
+  = the credential id, as S-16 §5.1's link list names it). The last-method guard, step-up, audit,
+  notices, the nudge's method count, merge and deletion therefore apply unchanged; the link
+  engine's error is `last_link` (registered in `errors.json`), not PX-W12's `last_method`.
+- **Step-up** is the existing rule: a sign-in no older than 5 minutes (`STEP_UP_MAX_AGE_SECONDS`;
+  a passkey sign-in counts). Right after a sign-in, as the nudge runs, adding a passkey passes.
+- **Card integration is the Worker half.** The card's passkey button and conditional UI are
+  PX-12's and the settings rows PX-13's (both depend on this package). I-16 delivers the routes
+  (`/api/signin/passkey/options|verify`, `/api/me/passkeys[/options|/<id>]`), `auth.passkey` in
+  `GET /api/capabilities`, and the nudge hook: the sign-in answer's existing `nudge` plus
+  `GET /api/me/passkeys` → `canAdd` / `reason` for the nudge card's "Add a passkey" row.
+- **RP id** is the console host from `CONSOLE_ORIGIN` (`key.plrs.im` in production,
+  `key-staging.plrs.im` on staging), not a constant, and a ceremony is served only on that origin.
+- **Dependency.** `@simplewebauthn/server` is pinned at 13.3.3 (the last 13.x; 14.x adds a
+  post-quantum ASN.1 module the Worker does not need).
+- **The workerd lane** ordered migrations by `parseInt` of the prefix, so an unnumbered
+  placeholder that alters a table ran before the table existed. It now sorts by filename, as the
+  Node lane, `record-deploy` and `LATEST_MIGRATION` do (identical for numbered files). While the
+  migrations were unnumbered, `test/recordDeploy.test.ts` (its migration-name check refuses a
+  placeholder by design) and `test/checkRepresentable.test.ts` (real `wrangler d1 migrations
+apply`, which also orders by the leading number) failed; with the lead's numbers (0094) both
+  pass.
+
 ## Steps
 
 1. Table and ceremonies under workerd.

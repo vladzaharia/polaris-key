@@ -66,7 +66,7 @@ public enum PolarisBrand {
     public static let badgeMinStacked: (width: Double, height: Double) = (288, 336)
 
     /// Section ids: core plus every service slug.
-    public static let serviceIds: [String] = ["core", "license", "config", "release", "distribution", "update", "identity"]
+    public static let serviceIds: [String] = ["core", "license", "config", "release", "distribution", "update", "identity", "sync"]
 
     /// The dark theme (default).
     public enum Dark {
@@ -156,6 +156,7 @@ public enum PolarisBrand {
             "distribution": BrandAccent(solid: BrandColor(hex: 0x39d075), fg: BrandColor(hex: 0x39d075), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x0c211e), bit: BrandColor(hex: 0x39d075)),
             "update": BrandAccent(solid: BrandColor(hex: 0xfe8001), fg: BrandColor(hex: 0xfe8001), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x241710), bit: BrandColor(hex: 0xfe8001)),
             "identity": BrandAccent(solid: BrandColor(hex: 0xd77df2), fg: BrandColor(hex: 0xd77df2), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x1f172d), bit: BrandColor(hex: 0xd77df2)),
+            "sync": BrandAccent(solid: BrandColor(hex: 0x14f8e1), fg: BrandColor(hex: 0x14f8e1), on: BrandColor(hex: 0x060912), subtle: BrandColor(hex: 0x08262b), bit: BrandColor(hex: 0x14f8e1)),
     ]
 
     private static let accentsLight: [String: BrandAccent] = [
@@ -166,6 +167,7 @@ public enum PolarisBrand {
             "distribution": BrandAccent(solid: BrandColor(hex: 0x05773b), fg: BrandColor(hex: 0x05773b), on: BrandColor(hex: 0xffffff), subtle: BrandColor(hex: 0xdeebeb), bit: BrandColor(hex: 0x05773b)),
             "update": BrandAccent(solid: BrandColor(hex: 0xb95800), fg: BrandColor(hex: 0xaa5000), on: BrandColor(hex: 0xffffff), subtle: BrandColor(hex: 0xf0e8e6), bit: BrandColor(hex: 0xb95800)),
             "identity": BrandAccent(solid: BrandColor(hex: 0x9e34ae), fg: BrandColor(hex: 0x9e34ae), on: BrandColor(hex: 0xffffff), subtle: BrandColor(hex: 0xede4f7), bit: BrandColor(hex: 0x9e34ae)),
+            "sync": BrandAccent(solid: BrandColor(hex: 0x086260), fg: BrandColor(hex: 0x086260), on: BrandColor(hex: 0xffffff), subtle: BrandColor(hex: 0xdee9ef), bit: BrandColor(hex: 0x086260)),
     ]
 
     /// A section's accent. Unknown ids answer the core (platform) violet.

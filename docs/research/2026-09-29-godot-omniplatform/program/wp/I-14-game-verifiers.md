@@ -12,6 +12,31 @@
 | Human input | Steamworks Web API publisher key; a Game Center-enabled app; a Play Games project linked in Play Console; an EOS deployment (live checks only; fixtures otherwise)                                                                          |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                   |
 
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- The Steam ticket path answers `status: "choose"` exactly as I-13 does, with the same `LicenseChoiceView` and follow-up `choice`.
+
+## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
+
+The owner decided on 2026-10-05 that every in-app sign-in step happens in **one form whose body
+morphs in place** (no stacked sheets), that the license is chosen **inside the app** when it can
+show it, that the presentation is configurable with native controls kept, that there are **two
+equal ways to integrate** (the hosted card, and the kit form with headless primitives), and that
+the web flow is one continuous, animated card. The wire is
+[`plans/I-04.md`](../plans/I-04.md) §G (a pending sign-in grant, `licenseChoice: "app" | "card"`);
+the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) §2.4, §3.17, §3.18, §4.16 and
+D-78–D-93. Where this brief differs, they win. **No device-wire version change**
+(`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2; no corpus file). New UI copy uses
+the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
+every row, no "Account-wide"). For this package:
+
+- Steam, Game Center, Play Games and EOS ride I-13's exchange, so they inherit `licenseChoice` (default `"app"`) and the `choose` answer with a grant (I-04 §G.4). Godot's Steam build signs in with the ticket and shows step 3 in the in-game form (SIGN-IN.md frame 39).
+
 ## Goal
 
 Players sign in with their platform identity as links on the account: Steam session tickets (with optional ownership grants), Game Center, Play Games and EOS, verified by the Worker; Godot gets iOS and Android shims and `signInWithSteam`; Swift and Kotlin get helpers.

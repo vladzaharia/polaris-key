@@ -33,7 +33,7 @@ var reader: Callable = func(name: String) -> Variant:
 
 ## The layer for this process: the mode from PKeyOptions, the build and platform it runs on,
 ## and the user arguments. `is_debug`, `platform` and `user_args` are injectable for tests.
-static func for_process(mode: int, p_prefix: String, is_debug := OS.is_debug_build(), platform := PKeyHeaders.platform(), user_args := OS.get_cmdline_user_args()) -> PKeyConfigEnv:
+static func for_process(mode: int, p_prefix: String, is_debug := OS.is_debug_build(), platform := PKeyHeaders.update_platform(), user_args := OS.get_cmdline_user_args()) -> PKeyConfigEnv:
 	var e := PKeyConfigEnv.new()
 	e.prefix = p_prefix if p_prefix != "" else PKeyConfigResolve.DEFAULT_ENV_PREFIX
 	e.enabled = layer_enabled(mode, is_debug, platform)

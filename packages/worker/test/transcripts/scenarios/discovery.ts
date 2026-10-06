@@ -22,6 +22,7 @@ const DEFAULT_MAP = {
   distribution: false,
   update: false,
   identity: false,
+  sync: false,
 };
 
 export const discoveryCapabilities: Scenario = {

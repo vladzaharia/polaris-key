@@ -19,6 +19,7 @@ export const ALL_ON: Enablement = {
   distribution: { enabled: true },
   update: { enabled: true },
   identity: { enabled: true },
+  sync: { enabled: true },
 };
 
 export const NONE: Enablement = Object.fromEntries(
@@ -180,6 +181,8 @@ export function boot(hash: string, opts: BootOptions = {}): FetchLog {
         ),
       ),
     },
+    // Home's product-card facts: none unless a suite scripts them.
+    "/manage/api/summary": { products: {} },
     "/manage/api/products/djdl/devices": { devices: [], nextCursor: null },
     "/manage/api/products/djdl/devices/summary": {
       total: 0,

@@ -201,6 +201,7 @@ dependencies {
 | `polaris-key-godot-play`, `polaris-key-godot-direct`         | the Godot Android plugin binding over the platform AAR of the same flavour                                             |
 | `polaris-key-android-play`, `polaris-key-android-direct`     | the Kotlin SDK's Android glue, one per flavour: `polaris-key-sdk` wired to the platform AAR of the same flavour        |
 | `polaris-key-ui`                                             | the Jetpack Compose UI kit over `polaris-key-sdk`                                                                      |
+| `polaris-key-billing`                                        | Play Billing purchases and restores as licence flags (`PolarisPlayBilling`), over `polaris-key-sdk`                    |
 
 Pick one platform flavour per build: the two are a policy boundary, because Play forbids
 self-update. Maven builds use a repository with a fatal checksum policy:
@@ -344,9 +345,23 @@ Godot only, 30 days by default) and put it in the editor's URL, `https://pkg.plr
 (4.6 and earlier) or `…/t/<token>/store/api/v1` (4.7 and later). GodotEnv takes the same
 tokenised URL.
 
+**Cargo** (1.74 and later): name the feed in `.cargo/config.toml` with a credential provider (Cargo
+refuses an authenticated registry without one), and give Cargo the token for that registry, in
+the environment or with `cargo login`:
+
+```toml
+[registries.acme]
+index = "sparse+https://pkg.plrs.im/cargo/acme/"
+credential-provider = "cargo:token"
+```
+
+```sh
+export CARGO_REGISTRIES_ACME_TOKEN="$PKEY_REGISTRY_TOKEN"
+```
+
 docker, SwiftPM and netrc hold **one credential per registry host**: one machine can hold a token
-for only one product on `pkg.plrs.im` for them. npm, uv, Gradle and Maven keep credentials per URL
-or repository, so they have no such limit. The platform's own feeds stay public and never take the
+for only one product on `pkg.plrs.im` for them. npm, uv, Gradle, Maven and Cargo keep credentials
+per URL, repository or registry, so they have no such limit. The platform's own feeds stay public and never take the
 slot.
 
 ## How the SDKs get there
@@ -364,3 +379,30 @@ package shows the version just published. The whole flow is on
 | ---------------- | ------------------------------------------ | ----------------------------------------- |
 | a push to `main` | `<next>-main.<N>` (Python `<next>.dev<N>`) | `main`                                    |
 | a `v*` tag       | the tag's version (`v0.9.0` → `0.9.0`)     | `stable`, or `beta` for a pre-release tag |
+
+### Builds of main are pruned once released
+
+Each build of `main` is a prerelease of the next version, so it stops being useful once that
+version ships. When a version is published on `stable`, the platform's own feeds **prune** the
+package's builds of main below it: `<next>-main.<N>` (Python `<next>.dev<N>`) for every `<next>` at or below the
+released version. Stable and beta versions are never touched. Neither are builds of a newer
+version, nor any other package. Once `0.9.1` is released, `0.9.1-main.4` and `0.9.0-main.2` are
+gone and `0.9.2-main.1` stays.
+
+A pruned version leaves every listing: npm's `versions` and `time`, PyPI's simple index, Swift's
+release list, `maven-metadata.xml`, the image's tags, Godot's lists, the Cargo index and the Go
+module list. Fetching it answers the ecosystem's not-found. npm's `main` dist-tag moves to the
+newest build of main that is left; when none is left, the tag disappears and never names a pruned
+version. A lockfile that pins a pruned build of main no longer installs. Pin a stable or beta
+release instead: those are never pruned. A pruned version can never be published again, because
+versions stay unique forever.
+
+A product's own feeds follow the same rule once the product opts in through the setting
+`release.packages.prunePrereleases`, which is off by default. An operator turns it on through
+the Feeds admin API: `PUT /manage/api/products/<slug>/distribution/feeds/retention` with
+`{"expectedVersion": <n>, "prunePrereleases": true}`. The platform's own feeds always prune. A
+yanked or deprecated stable release never sets the ceiling: only a live one does.
+Versions released before this rule existed, or before the product opted in, are cleaned up by the
+backfill, `pkey feeds prune --product <slug>`. It is a dry run unless `--apply` is given, and the
+token needs `release:yank`. With `--apply` it exits non-zero if any version failed; running it
+again finishes the rest.

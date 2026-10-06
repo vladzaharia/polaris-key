@@ -4,7 +4,8 @@
  * The publish route accepts a catalog when `new Catalog(doc).compileAll()` succeeds and every key
  * is representable as a member name (`catalogKeyIssue`). The editor runs the same two checks from
  * `@polaris-key/catalog`, plus the structural rules a malformed draft would otherwise only meet as
- * a server 422: an `entries` array, a key per entry, a known kind, no duplicate keys. Each problem
+ * a server 422: an `entries` array, a key per entry, a known kind, no duplicate keys, and a valid
+ * `user` block (`userSettingIssues`, the rules the publish route runs). Each problem
  * carries the entry it belongs to, so the form marks the entry and the JSON mode puts a lint
  * marker on its line.
  */
@@ -13,6 +14,7 @@ import {
   catalogKeyIssue,
   describeRepresentabilityIssue,
   prepareSchema,
+  userSettingIssues,
 } from "@polaris-key/catalog";
 import type { CodeDiagnostic } from "../ui/CodeEditor.js";
 
@@ -82,6 +84,13 @@ export function catalogIssues(doc: unknown): CatalogIssue[] {
     }
     const schema = schemaIssue(raw.schema);
     if (schema) issues.push({ ...at, field: "schema", message: schema });
+    // A user setting's block (Cloud Sync rules 1–5): the same check the publish route runs.
+    for (const u of userSettingIssues(raw))
+      issues.push({
+        ...at,
+        field: u.at === "schema" ? "schema" : "user",
+        message: u.message,
+      });
   });
   const keyIssue = catalogKeyIssue(doc);
   if (keyIssue) {

@@ -151,6 +151,31 @@ describe("renderFeedSetup", () => {
     );
   });
 
+  it("sets GOPROXY with GONOSUMDB, never GOPRIVATE, and a .netrc entry for a token (F-31)", () => {
+    const go = renderFeedSetup(
+      "go",
+      ctx({
+        namespace: { modulePrefixes: ["go.acme.dev"] },
+        credential: { kind: "token", value: "pkeyr_abcdefgh" },
+      }),
+    );
+    const proxy = go.find((s) => s.id === "goproxy")!;
+    expect(proxy.code).toContain(
+      "go env -w GOPROXY=https://pkg.plrs.im/go/acme,https://proxy.golang.org,direct",
+    );
+    expect(proxy.code).toContain("go env -w GONOSUMDB=go.acme.dev");
+    expect(proxy.code).not.toContain("GOPRIVATE");
+    expect(proxy.warning).toMatch(/GOPRIVATE/);
+    const netrc = go.find((s) => s.id === "netrc")!;
+    expect(netrc.filename).toBe("~/.netrc");
+    expect(netrc.code).toBe(
+      "machine pkg.plrs.im\nlogin __token__\npassword pkeyr_abcdefgh",
+    );
+    expect(go.find((s) => s.id === "go-get")!.code).toBe(
+      "go get go.acme.dev/<module>@latest",
+    );
+  });
+
   it("warns pip users off --extra-index-url", () => {
     const pip = renderFeedSetup("pypi", ctx()).find((s) => s.id === "pip")!;
     expect(pip.warning).toMatch(/--extra-index-url/);
@@ -177,7 +202,7 @@ describe("renderFeedSetup", () => {
   });
 
   it("refuses inputs a snippet could not carry safely", () => {
-    expect(feedSetupProblem("cargo", ctx())).toMatch(/unknown ecosystem/);
+    expect(feedSetupProblem("cpan", ctx())).toMatch(/unknown ecosystem/);
     expect(feedSetupProblem("npm", ctx({ owner: "Acme Corp" }))).toMatch(
       /not a slug/,
     );

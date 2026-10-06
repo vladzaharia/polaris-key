@@ -7,6 +7,7 @@
  * NOTE: these tests assert the CURRENT (vulnerable) behaviour so they fail loudly when a
  * fix lands. Read them as "this is what an attacker can do today".
  */
+import { issuePortalSessionRow } from "../portalSessionRow.js";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -67,7 +68,11 @@ import {
 } from "../../src/services/update/appcast.js";
 import { applyOverrides } from "../../src/admin/lib/overrides.js";
 import { Catalog } from "@polaris-key/catalog";
-import { handlePortalApi, handlePortalDownload } from "../portalHarness.js";
+import {
+  handlePortalApi,
+  handlePortalDownload,
+  seedRepositoryVisibility,
+} from "../portalHarness.js";
 import { handlePortalLogin } from "../../src/services/identity/portal/auth.js";
 import { getOrCreateAccountByEmail } from "../../src/services/identity/portal/repo.js";
 import {
@@ -76,6 +81,7 @@ import {
   issuePortalSession,
 } from "../../src/services/identity/portal/session.js";
 import { artefacts } from "../singleUseMock.js";
+import { withDefaultHead } from "../githubHead.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SLUG = "djdl";
@@ -205,7 +211,7 @@ function pkeyFetch(files: Record<string, string>): {
     }
     return new Response("not found", { status: 404 }) as unknown as Response;
   };
-  return { fetchImpl, files };
+  return { fetchImpl: withDefaultHead(fetchImpl), files };
 }
 
 /** A `.pkey/product` for slug `acme`, optionally naming a repo-chosen custom IdP. */
@@ -346,7 +352,7 @@ function recordingFetchImpl(releases: unknown[] = []): {
     }
     return new Response(JSON.stringify({ workflow_runs: [] }), { status: 200 });
   };
-  return { fetchImpl, calls };
+  return { fetchImpl: withDefaultHead(fetchImpl), calls };
 }
 
 /** Swallow the 500 that `handleRelease` produces when a lookup misses (see R9-14). */
@@ -1018,8 +1024,9 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
     db: Db,
   ): Promise<{ cookie: string; csrf: string }> {
     const account = await getOrCreateAccountByEmail(db, "ada@example.com", NOW);
-    const { token, session } = await issuePortalSession(
+    const { token, session } = await issuePortalSessionRow(
       env,
+      db,
       {
         accountId: account.id,
         email: account.primary_email,
@@ -1126,7 +1133,10 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
       path,
       NOW,
     );
-    expect(minted.status).toBe(404);
+    // The caller owns the product, so the refusal names its reason (nothing here can serve the
+    // file) instead of a bare 404; either way no token is written and nothing redirects.
+    expect(minted.status).toBe(409);
+    expect(await minted.json()).toMatchObject({ error: "not_hosted" });
     expect(
       await db.first("SELECT 1 FROM release_download_tokens LIMIT 1"),
     ).toBeNull();
@@ -1134,6 +1144,8 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
     // And a token minted BEFORE the artifact was repointed — the real shape of this attack,
     // since `source_url` is rewritten by a sync — is refused at redemption too.
     await seedArtifact2(db, "https://ok.githubusercontent.com/djdl.dmg");
+    // A public repository, so the allowlisted URL is servable when the token is minted.
+    await seedRepositoryVisibility(env, db, SLUG, "public");
     const token = await mintDownloadUrl(env, db, "rel_2", "art_2");
     await db.run(
       "UPDATE release_artifacts SET source_url = ? WHERE artifact_id = ?",
@@ -1162,6 +1174,8 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
       db,
       "https://github.com/acme/djdl/releases/download/v1.2.3/djdl.dmg",
     );
+    // A stored GitHub URL reaches a browser only from a public repository.
+    await seedRepositoryVisibility(env, db, SLUG, "public");
 
     const token = await mintDownloadUrl(env, db);
     const res = await handlePortalDownload(
@@ -1190,6 +1204,7 @@ describe("R9-05 /download/<token> open redirect + single-use race", () => {
     // An allowlisted host, so this test exercises the single-use race rather than stopping at
     // the host check the tests above cover.
     await seedArtifact(db, "https://objects.githubusercontent.com/djdl.dmg");
+    await seedRepositoryVisibility(env, db, SLUG, "public");
     const token = await mintDownloadUrl(env, db);
 
     // Model real D1 write latency: the `used_at` UPDATE lands one turn late. Any

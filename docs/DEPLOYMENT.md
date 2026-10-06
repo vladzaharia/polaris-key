@@ -66,8 +66,9 @@ These steps are browser/provider tasks. Complete them before deploying.
 
 1. Confirm the `plrs.im` zone is active in the `Polaris` Cloudflare account.
 2. Confirm `key.plrs.im` is available for a Worker custom domain, and so are the bytes hosts
-   (`dl.plrs.im`, `dl-staging.plrs.im`, `dl-dev.plrs.im`) and the registry hosts
-   (`pkg.plrs.im`, `pkg-staging.plrs.im`, `pkg-dev.plrs.im`, F-02). `wrangler deploy` attaches
+   (`dl.plrs.im`, `dl-staging.plrs.im`, `dl-dev.plrs.im`), the registry hosts
+   (`pkg.plrs.im`, `pkg-staging.plrs.im`, `pkg-dev.plrs.im`, F-02) and the image hosts
+   (`img.plrs.im`, `img-staging.plrs.im`, `img-dev.plrs.im`, HA-02). `wrangler deploy` attaches
    each `custom_domain = true` route in `wrangler.toml` and creates its DNS record and
    certificate; a name that already has a DNS record outside the Worker must be cleared first.
 3. Onboard the auth sending subdomain `auth.plrs.im` on Cloudflare Email Sending, add its
@@ -417,6 +418,30 @@ curl -s https://key.plrs.im/<slug>/.well-known/polaris.json | grep -o '"builds":
 # "builds":"https://dl.plrs.im/<slug>/release/builds/{selector}/{buildId}"
 ```
 
+### Licensed portal downloads: `DOWNLOAD_TICKET_KEY` (PX-W3)
+
+Licensed builds served by the bytes host (held on R2, or in a private GitHub repository the
+bytes host streams through the installation token) download from the customer portal through a
+**download ticket**:
+the portal's `/download/<token>` redemption 302s to the file's bytes-host URL with
+`?ticket=<t>`, and the bytes host accepts the ticket in place of a device token
+(plans/PX-W3.md). The ticket is an HMAC under a dedicated Worker secret. Set it per environment,
+in dev, then staging, then prod:
+
+```sh
+cd packages/worker
+openssl rand -base64 32 | npx wrangler secret put DOWNLOAD_TICKET_KEY --env <env>
+```
+
+No code change is needed: the next request reads it. Until it is set, every file answers exactly
+as before (licensed files with no public GitHub URL read `not_hosted` in the portal and the bytes host ignores
+`?ticket=`), so the Worker can ship first. Deleting the secret is the kill switch: live tickets
+stop verifying at once. `DOWNLOAD_TICKET_KEY_PREVIOUS` exists only during a rotation (RUNBOOK,
+"Rotating `DOWNLOAD_TICKET_KEY`"). Check it from outside after setting it, with a licensed
+product and a signed-in portal account that owns it: the portal's "Get it" button for an R2-held
+build should 302 to `https://dl.plrs.im/<slug>/distribution/files/<releaseId>/<name>?ticket=v1.…`
+and the file should download; the same URL without `?ticket=` answers `401`.
+
 ### Registry host and feeds (F-02)
 
 The package feeds (plans/F-01.md §6) answer on a THIRD custom domain of the same Worker, the
@@ -438,7 +463,8 @@ compensation (no cookies, `nosniff`, a `sandbox` CSP, JSON errors), adds
 - Rendered index documents live in the same `BLOBS` bucket under `registry/`. **That prefix gets
   no age lock and no lifecycle rule**: it is rewritten on every publish, yank and channel move,
   and an object lost there is re-rendered on read. Never add `registry/` to the lock rules
-  above.
+  above. The same goes for `avatars/` (account pictures, PX-W16): a deleted account's pictures
+  must be deleted at once, not 180 days later.
 - Optional: a WAF rate-limiting rule for the host (for example, per IP on `pkg.plrs.im/*`).
   Registry clients fetch many small documents, so set the threshold well above a cold
   `npm install`.
@@ -475,6 +501,50 @@ curl -sI https://pkg.plrs.im/ | grep -iE '^(HTTP|content-type|set-cookie)'
 # HTTP/2 200, content-type: text/html; charset=utf-8, and no set-cookie line
 curl -s -o /dev/null -w '%{http_code}\n' -X OPTIONS https://pkg.plrs.im/npm/x/y
 # 405 (no preflight is ever answered)
+```
+
+### Image host (HA-02)
+
+A product's public hosted images (notes/S-20 §6.5) answer on a FOURTH custom domain of the same
+Worker, the **image host**, confined by `packages/worker/src/core/imgHost.ts` to five path shapes:
+`/<product>/a/<sha256>` and `/<product>/a/<sha256>/<w>.webp` (content-addressed, immutable) and
+the stable aliases `/<product>/icon`, `/<product>/header` and `/<product>/screenshots/<n>` (a 302
+to the current copy, cached for five minutes). It serves raster images only (PNG, JPEG, WebP, GIF,
+AVIF), inline, with `Access-Control-Allow-Origin: *`, `Cross-Origin-Resource-Policy:
+cross-origin`, `nosniff`, `Content-Security-Policy: default-src 'none'; sandbox`, and no cookie
+in or out. Declared in `wrangler.toml`, beside `dl…` and `pkg…`:
+
+| Env     | Route (`custom_domain = true`) | `IMG_ORIGIN` in `[env.<env>.vars]` |
+| ------- | ------------------------------ | ---------------------------------- |
+| prod    | `img.plrs.im`                  | `https://img.plrs.im`              |
+| staging | `img-staging.plrs.im`          | `https://img-staging.plrs.im`      |
+| dev     | `img-dev.plrs.im`              | `https://img-dev.plrs.im`          |
+
+- No owner input: the `plrs.im` zone is in the account, and the deploy attaches each route and
+  creates its DNS record and certificate. No new bucket, queue or secret; the host reads the
+  same `BLOBS` bucket under `blobs/`, which keeps its age lock.
+- `vars` is not inheritable, so each environment carries its own `IMG_ORIGIN`. An `img` route
+  without it would hand the whole console to the sibling; `test/imgHost.test.ts` checks every
+  committed environment, and an `IMG_ORIGIN` equal to `BLOB_ORIGIN` or `PKG_ORIGIN` is refused
+  (the host is then off).
+- An image is served only when the product holds a hosted copy of it (`hosted_assets`, HA-01).
+  Until HA-05 and HA-06 start hosting copies, every image path answers the not-found.
+- Optional: a WAF rate-limiting rule for the host. The Worker already limits R2 reads on cache
+  misses per product and IP (`imgHost`, 600 a minute, fail open).
+
+After the next deploy, check the host from outside:
+
+```sh
+curl -sI https://img.plrs.im/manage | grep -iE '^(HTTP|content-security-policy|access-control-allow-origin|set-cookie)'
+# HTTP/2 404, content-security-policy: default-src 'none'; sandbox,
+# access-control-allow-origin: *, and no set-cookie line
+curl -sI https://img.plrs.im./manage | head -1
+# HTTP/2 404 (the fully-qualified form is the image host too)
+curl -sI https://img.plrs.im/<slug>/icon | grep -iE '^(HTTP|location|cache-control)'
+# HTTP/2 302 to https://img.plrs.im/<slug>/a/<sha256>, cache-control: public, max-age=300
+# (HTTP/2 404 while the product hosts no icon)
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://img.plrs.im/<slug>/icon
+# 405
 ```
 
 ### Trusted publishing: the R2 parent token (P2-02)
@@ -534,6 +604,26 @@ aws s3api create-multipart-upload --endpoint-url "$ENDPOINT" --bucket "$BUCKET" 
 
 The GitHub OIDC side needs nothing from the operator: the issuer and its JWKS are GitHub's and
 fixed in code. A product opts in from its own `.pkey/release` (`publishing.trustedPublisher`).
+
+### Hosted-asset pulls: the queue (HA-05)
+
+A link or resync enqueues the pulls its manifest's asset refs owe (`presentation.icon`, the
+listing art) to `pkey-assets-<env>`, which the request Worker itself consumes
+(`src/assetQueue.ts`; notes/S-20 §6.3). Two queues per environment (`<env>` = `prod`, `staging`,
+`dev`), created once before the first deploy that carries the bindings:
+
+```sh
+cd packages/worker
+npx wrangler queues create pkey-assets-<env>
+npx wrangler queues create pkey-assets-dlq-<env>
+```
+
+`wrangler.toml` binds `pkey-assets-<env>` as a producer (`HOSTED_ASSET_QUEUE`) and declares the
+consumer (batch 10, concurrency 4, 3 retries, then `pkey-assets-dlq-<env>`), so a deploy fails
+while either queue is missing. Unbound (a local `wrangler dev`, the registry-client harness),
+nothing is planned or pulled. The nightly maintenance sweep re-enqueues failed pulls and, while
+the Images binding is bound, ladder retries for ready copies whose variants an ingest could not
+build (rebuilt from the stored copy, never re-pulled), at most 50 per run between them.
 
 ### Lazy deltas: the queues, the consumer Worker and the R2 rules (P4-17)
 
@@ -619,7 +709,18 @@ npx wrangler secret put PLATFORM_OIDC_CLIENT_SECRET --env prod
 npx wrangler secret put GITHUB_APP_ID --env prod
 npx wrangler secret put GITHUB_APP_PRIVATE_KEY --env prod
 npx wrangler secret put GITHUB_WEBHOOK_SECRET --env prod
+openssl rand -base64 32 | npx wrangler secret put DOWNLOAD_TICKET_KEY --env prod   # PX-W3, §3
 ```
+
+The KEK has two shapes (RUNBOOK "The platform KEK keyring"): `PLATFORM_KEK` alone, as above, or
+the rotation-capable keyring `PLATFORM_KEK_KEYS` + `PLATFORM_KEK_ACTIVE`, set together in one
+`wrangler secret bulk`. Never set `PLATFORM_KEK_ID`. Both shapes at once is a transitional
+state: `PLATFORM_KEK` is then the legacy key, open-only, kept until the re-seal sweep has moved
+every value off it (RUNBOOK "Rotating when the old KEK is unknown").
+
+Escrow the KEK off-platform as soon as it is set (a password manager plus an offline copy).
+Worker secrets are write-only: an environment whose KEK nobody holds can still rotate to a new
+one, but the old key itself can never be read back.
 
 Set the console client's three secrets (§2, PocketID) in **one** call, so no deployed version
 sees half of them. Each `wrangler secret put` deploys a new version, and while only some are
@@ -948,6 +1049,9 @@ Validate portal email:
   `content-security-policy: sandbox; …` and no `set-cookie`; `OPTIONS` on any path answers 405.
 - `PKG_ORIGIN` is set in every deployed environment's `[env.<env>.vars]`, and no R2 lock or
   lifecycle rule covers `registry/`.
+- `https://img.plrs.im/manage` and `https://img.plrs.im./manage` answer 404 with
+  `content-security-policy: default-src 'none'; sandbox`, `access-control-allow-origin: *` and no
+  `set-cookie`; `IMG_ORIGIN` is set in every deployed environment's `[env.<env>.vars]`.
 - Email Service binding `EMAIL` is present in prod and can send as `noreply@plrs.im`.
 - GitHub App webhooks validate with `GITHUB_WEBHOOK_SECRET`.
 - DJDL is linked through `.pkey/`, not seeded.
@@ -985,7 +1089,15 @@ Validate portal email:
 
 `PLATFORM_KEK must decode to exactly 32 bytes`.
 
-- Regenerate with `openssl rand -base64 32` and set `PLATFORM_KEK` again.
+- On first setup only: regenerate with `openssl rand -base64 32` and set `PLATFORM_KEK` again.
+  On an environment that already holds sealed values a new key orphans every one of them;
+  rotate instead (RUNBOOK "Rotating PLATFORM_KEK").
+
+`PLATFORM_KEK and PLATFORM_KEK_KEYS both define kid … with different keys; refusing to choose`.
+
+- `PLATFORM_KEK` sits beside the keyring as the legacy key, and `PLATFORM_KEK_KEYS` has an entry
+  under the same kid with other bytes. Give the new key its own kid in `PLATFORM_KEK_KEYS`
+  (RUNBOOK "Rotating when the old KEK is unknown"); never change `PLATFORM_KEK_ID` to dodge it.
 
 GitHub repo-link says the app is not installed.
 

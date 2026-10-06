@@ -10,6 +10,7 @@
 
 package im.plrs.key.ui
 
+import android.content.res.Configuration
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,6 +44,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.heading
@@ -55,6 +58,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.LicenseStatus
+import im.plrs.key.core.ManageLink
 import im.plrs.key.license.ActivationResult
 import im.plrs.key.sdk.PolarisKeyClient
 import kotlinx.coroutines.CancellationException
@@ -92,7 +96,36 @@ public data class PolarisActivationUi(
     val key: String = "",
     val busy: Boolean = false,
     val error: PolarisActivationError? = null,
+    /**
+     * PX-W8: the portal link "Replace a device" opens after a device-limit refusal, or null. It
+     * already carries the app's return URL and, on an `/activate` link, the key as a fragment.
+     * Never an auth failure: the screen only offers it.
+     */
+    val manageUrl: String? = null,
+    /**
+     * The same link without the key, which the Android TV QR code carries: a code on a shared
+     * screen can be scanned by anyone in the room, so it never holds the bearer key (the phone's
+     * `/activate` page asks for it instead). See docs/security/THREAT-MODEL.md.
+     */
+    val manageQrUrl: String? = null,
 )
+
+/**
+ * The link the gate offers for a refused activation (PX-W8): the served `manageUrl` with the key
+ * fragment (on an `/activate` link only, and never when [forQr]) and [returnUrl] added, or null
+ * when there is none.
+ */
+public fun offeredManageUrl(
+    result: ActivationResult,
+    key: String,
+    returnUrl: String? = null,
+    forQr: Boolean = false,
+): String? {
+    val served = (result as? ActivationResult.DeviceLimit)?.manageUrl ?: return null
+    if (!ManageLink.isValid(served)) return null
+    val withKey = if (forQr) served else ManageLink.withKey(served, key)
+    return if (returnUrl.isNullOrEmpty()) withKey else ManageLink.withReturn(withKey, returnUrl)
+}
 
 /** The SDK calls the gate makes. [PolarisKeyClient.gateActions] adapts the umbrella client. */
 public interface PolarisGateActions {
@@ -105,6 +138,9 @@ public interface PolarisGateActions {
     /** A Core sync pass, for Retry and Reconnect. */
     public suspend fun sync() {}
 
+    /** Keyless enrolment ("Continue free"); answers `EnrollDisabled` unless the host offers it. */
+    public suspend fun enroll(): ActivationResult = ActivationResult.EnrollDisabled
+
     /** Licence-state changes the SDK pushes (a sync that changed the document). */
     public val changes: Flow<LicenseState> get() = emptyFlow()
 }
@@ -115,6 +151,7 @@ public fun PolarisKeyClient.gateActions(): PolarisGateActions {
     return object : PolarisGateActions {
         override suspend fun status(): LicenseState = client.status()
         override suspend fun activate(key: String): ActivationResult = client.activate(key)
+        override suspend fun enroll(): ActivationResult = client.enroll()
         override suspend fun sync() {
             client.sync()
         }
@@ -132,6 +169,8 @@ public class PolarisGateState(
     private val scope: CoroutineScope,
     private val clock: () -> Long = { System.currentTimeMillis() / 1000 },
     initial: LicenseState? = null,
+    /** Where the portal sends the person back once a seat is free (a declared return target). */
+    private val returnUrl: String? = null,
 ) {
     private val _gate = MutableStateFlow(PolarisGateUi(license = initial, nowSeconds = clock()))
     private val _activation = MutableStateFlow(PolarisActivationUi())
@@ -167,7 +206,7 @@ public class PolarisGateState(
     }
 
     public fun onKeyChange(key: String) {
-        _activation.update { it.copy(key = key, error = null) }
+        _activation.update { it.copy(key = key, error = null, manageUrl = null, manageQrUrl = null) }
     }
 
     /** Activate with the key in the form. */
@@ -179,8 +218,33 @@ public class PolarisGateState(
         }
         if (_activation.value.busy) return
         scope.launch {
-            _activation.update { it.copy(busy = true, error = null) }
+            _activation.update { it.copy(busy = true, error = null, manageUrl = null, manageQrUrl = null) }
             val result = guarded { actions.activate(key) } ?: ActivationResult.Error("activation threw")
+            if (result is ActivationResult.Ok) {
+                _activation.value = PolarisActivationUi()
+            } else {
+                _activation.update {
+                    it.copy(
+                        busy = false,
+                        error = PolarisActivationError.Refused(result),
+                        manageUrl = offeredManageUrl(result, key, returnUrl),
+                        manageQrUrl = offeredManageUrl(result, key, returnUrl, forQr = true),
+                    )
+                }
+            }
+            reload()
+        }
+    }
+
+    /**
+     * "Continue free": keyless enrolment; a refusal lands on the activation form like an
+     * activation's. The kit's button for it belongs to the UI-kit program (UK-*); hosts call this.
+     */
+    public fun continueFree() {
+        if (_activation.value.busy) return
+        scope.launch {
+            _activation.update { it.copy(busy = true, error = null) }
+            val result = guarded { actions.enroll() } ?: ActivationResult.Error("enrolment threw")
             if (result is ActivationResult.Ok) {
                 _activation.value = PolarisActivationUi()
             } else {
@@ -215,10 +279,12 @@ public fun PolarisGate(
 ) {
     val gate by state.gate.collectAsState()
     val activation by state.activation.collectAsState()
+    val uiMode = LocalConfiguration.current.uiMode and Configuration.UI_MODE_TYPE_MASK
     PolarisGateScreen(
         gate = gate,
         activation = activation,
         modifier = modifier,
+        manageAsQr = uiMode == Configuration.UI_MODE_TYPE_TELEVISION,
         onKeyChange = state::onKeyChange,
         onActivate = state::activate,
         onSignIn = onSignIn,
@@ -249,6 +315,7 @@ public fun PolarisGateScreen(
     onActivate: () -> Unit = {},
     onSignIn: (() -> Unit)? = null,
     onRetry: () -> Unit = {},
+    manageAsQr: Boolean = false,
     content: @Composable () -> Unit = {},
 ) {
     val copy = PolarisTheme.copy
@@ -272,6 +339,7 @@ public fun PolarisGateScreen(
                 onActivate = onActivate,
                 onSignIn = onSignIn,
                 notice = if (license?.status == LicenseStatus.revoked) copy.gateMessage(LicenseStatus.revoked) else null,
+                manageAsQr = manageAsQr,
             )
             GateScreen.Message -> {
                 val status = license?.status ?: LicenseStatus.expired
@@ -291,6 +359,9 @@ public fun PolarisGateScreen(
 /**
  * The activation screen: a welcome, the sign-in button (when [onSignIn] is given), and the licence
  * key field with its Activate button. [notice] (a revoked licence's message) sits above the form.
+ * After a device-limit refusal that carries a portal link, "Replace a device" opens it: a button,
+ * or a QR code when [manageAsQr] (Android TV, where the link is opened on a phone). Activate again
+ * is the "Try again".
  */
 @Composable
 public fun PolarisActivationScreen(
@@ -300,6 +371,8 @@ public fun PolarisActivationScreen(
     onActivate: () -> Unit = {},
     onSignIn: (() -> Unit)? = null,
     notice: PolarisMessageCopy? = null,
+    manageAsQr: Boolean = false,
+    onOpenManage: ((String) -> Unit)? = null,
 ) {
     val copy = PolarisTheme.copy
     PolarisScreen(modifier = modifier) {
@@ -357,6 +430,24 @@ public fun PolarisActivationScreen(
             PolarisSecondaryButton(text = if (ui.busy) copy.activating else copy.activate, onClick = onActivate, enabled = !ui.busy)
         } else {
             PolarisPrimaryButton(text = if (ui.busy) copy.activating else copy.activate, onClick = onActivate, busy = ui.busy)
+        }
+        // The QR code carries the key-free link: a code on a shared screen never holds the key.
+        val manage = if (manageAsQr) ui.manageQrUrl else ui.manageUrl
+        if (manage != null) {
+            Spacer(Modifier.height(16.dp))
+            if (manageAsQr) {
+                PolarisQrCode(
+                    content = manage,
+                    contentDescription = copy.freeDeviceQrDescription,
+                    modifier = Modifier.widthIn(max = 200.dp).fillMaxWidth(0.6f),
+                )
+                Spacer(Modifier.height(12.dp))
+                PolarisBody(copy.freeDeviceScan)
+            } else {
+                val uriHandler = LocalUriHandler.current
+                val open = onOpenManage ?: { uri: String -> uriHandler.openUri(uri) }
+                PolarisSecondaryButton(text = copy.freeDevice, onClick = { open(manage) }, enabled = !ui.busy)
+            }
         }
     }
 }

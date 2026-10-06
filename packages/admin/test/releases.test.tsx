@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type {
+  ActivityPage,
   DistributionMatrix,
   ProductDetail,
   ReleaseChannelsResponse,
@@ -19,6 +20,7 @@ import {
 
 const product = vi.fn<(slug: string) => Promise<{ product: ProductDetail }>>();
 const resyncProduct = vi.fn<(slug: string) => Promise<ResyncResult>>();
+const planResync = vi.fn();
 const releaseHealth =
   vi.fn<(slug: string) => Promise<{ health: ReleaseHealth }>>();
 const releases = vi.fn<(slug: string) => Promise<ReleaseStoreResponse>>();
@@ -28,11 +30,16 @@ const updateReleaseChannel = vi.fn();
 const yankRelease = vi.fn();
 const unyankRelease = vi.fn();
 const distributionMatrix = vi.fn<() => Promise<DistributionMatrix>>();
+const ciPublisher = vi.fn();
+const ciTokens = vi.fn();
+const activity = vi.fn<(...a: unknown[]) => Promise<ActivityPage>>();
+const rolloutAction = vi.fn();
 vi.mock("../src/api.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../src/api.js")>()),
   api: {
     product: (slug: string) => product(slug),
     resyncProduct: (slug: string) => resyncProduct(slug),
+    planResync: (slug: string) => planResync(slug),
     releaseHealth: (slug: string) => releaseHealth(slug),
     releases: (slug: string) => releases(slug),
     releaseChannels: (slug: string) => releaseChannels(slug),
@@ -40,6 +47,10 @@ vi.mock("../src/api.js", async (importOriginal) => ({
     yankRelease: (...a: unknown[]) => yankRelease(...a),
     unyankRelease: (...a: unknown[]) => unyankRelease(...a),
     distributionMatrix: () => distributionMatrix(),
+    ciPublisher: (slug: string) => ciPublisher(slug),
+    ciTokens: (slug: string) => ciTokens(slug),
+    activity: (...a: unknown[]) => activity(...a),
+    rolloutAction: (...a: unknown[]) => rolloutAction(...a),
   },
 }));
 
@@ -65,6 +76,7 @@ const PRODUCT: ProductDetail = {
     distribution: { enabled: true },
     update: { enabled: true },
     identity: { enabled: true },
+    sync: { enabled: false },
   },
   setup: {
     sync: {
@@ -175,6 +187,7 @@ beforeEach(() => {
   for (const f of [
     product,
     resyncProduct,
+    planResync,
     releaseHealth,
     releases,
     releaseChannels,
@@ -182,8 +195,14 @@ beforeEach(() => {
     yankRelease,
     unyankRelease,
     distributionMatrix,
+    ciPublisher,
+    ciTokens,
+    activity,
+    rolloutAction,
   ])
     f.mockReset();
+  ciPublisher.mockResolvedValue({ ok: true, policy: null });
+  ciTokens.mockResolvedValue({ ok: true, tokens: [] });
   product.mockResolvedValue({ product: PRODUCT });
   releaseHealth.mockResolvedValue({ health: HEALTH });
   releases.mockResolvedValue(STORE);
@@ -192,6 +211,8 @@ beforeEach(() => {
   updateReleaseChannel.mockResolvedValue({ ok: true });
   yankRelease.mockResolvedValue({ ok: true });
   unyankRelease.mockResolvedValue({ ok: true });
+  activity.mockResolvedValue({ items: [], nextCursor: null });
+  rolloutAction.mockResolvedValue({ ok: true });
 });
 afterEach(cleanup);
 
@@ -261,13 +282,15 @@ describe("Releases page (T2, ADMIN.md §6.3.1)", () => {
     expect(await rowOf("0.4.2")).toBeTruthy();
   });
 
-  it("says what fills the store when it is empty (first run)", async () => {
+  it("guides the first release instead of an empty table (first run, EXPERIENCE.md S2)", async () => {
     releases.mockResolvedValue({ releases: [], channels: [], floors: [] });
     mountList();
-    expect(await screen.findByText("No releases yet")).toBeTruthy();
     expect(
-      screen.getByText(/the linked repository publishes one/),
+      await screen.findByRole("heading", { name: "Ship your first release" }),
     ).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(await screen.findByText("Polaris Key app installed")).toBeTruthy();
+    expect(screen.getByText("Waiting for the first release…")).toBeTruthy();
   });
 
   it("round-trips its filters through the URL, with a no-results state that clears them", async () => {
@@ -301,6 +324,24 @@ describe("Releases page (T2, ADMIN.md §6.3.1)", () => {
         },
       ],
     });
+    planResync.mockResolvedValue({
+      ok: true,
+      dryRun: true,
+      slug: "djdl",
+      repository: "acme/djdl",
+      commit: "0123456789abcdef",
+      plan: {
+        apply: [
+          {
+            area: "catalog",
+            summary: "Publishes a new catalog version: adds run.mode",
+          },
+        ],
+        skipClaimed: [],
+        delete: [],
+        conflicts: [],
+      },
+    });
     mountList();
     await rowOf("0.4.2");
     await userEvent.click(
@@ -308,7 +349,9 @@ describe("Releases page (T2, ADMIN.md §6.3.1)", () => {
     );
     const dialog = await screen.findByRole("alertdialog");
     expect(
-      within(dialog).getByText(/re-applied from the manifest/),
+      await within(dialog).findByText(
+        "Publishes a new catalog version: adds run.mode",
+      ),
     ).toBeTruthy();
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Resync from repo" }),
@@ -319,6 +362,9 @@ describe("Releases page (T2, ADMIN.md §6.3.1)", () => {
     expect(
       await within(drawer).findByText("Updated: catalog, channels."),
     ).toBeTruthy();
+    // The panel takes focus inside the drawer once the confirm has gone (UX-78).
+    const panel = within(drawer).getByTestId("resync-result");
+    await waitFor(() => expect(document.activeElement).toBe(panel));
     expect(
       within(drawer).getByText(/the release key is a product key/),
     ).toBeTruthy();
@@ -595,11 +641,22 @@ describe("Release record (T3, ADMIN.md §6.3.2)", () => {
     );
   }
 
-  it("heads the record with version, where it is live, its signer and the GitHub release", async () => {
+  it("heads the record with version, its signer and the GitHub release, and opens on Status (C22)", async () => {
     mountRecord("v0.4.2");
     const h1 = await screen.findByRole("heading", { level: 1 });
     expect(h1.textContent).toBe("0.4.2");
-    expect(await screen.findByText("Live on stable, beta")).toBeTruthy();
+    // Where it is live is the Status tab's, not a healthy-state pill in the title (§7).
+    const live = await screen.findByRole("region", { name: "Where it’s live" });
+    expect(await within(live).findByText("stable channel")).toBeTruthy();
+    expect(within(live).getByText("beta channel")).toBeTruthy();
+    expect(within(live).getAllByText("Every platform but iOS")).toHaveLength(2);
+    expect(screen.queryByText(/^Live on/)).toBeNull();
+    const status = screen.getByRole("link", { name: "Status" });
+    expect(status.getAttribute("aria-current")).toBe("page");
+    // Status is the record's own URL (the router accepts no `/status` segment).
+    expect(status.getAttribute("href")).toBe(
+      "#/p/djdl/release/releases/v0.4.2",
+    );
     expect(screen.getAllByText(RELEASE_KID).length).toBeGreaterThan(0);
     expect(
       screen.getByRole("link", { name: /GitHub release/ }).getAttribute("href"),
@@ -663,7 +720,7 @@ describe("Release record (T3, ADMIN.md §6.3.2)", () => {
   });
 
   it("lists a legacy release's synced files with their bytes on GitHub", async () => {
-    mountRecord("v0.3.0");
+    mountRecord("v0.3.0", "builds");
     expect(await screen.findByText(/No builds declared/)).toBeTruthy();
     expect(screen.getByText("diceroll-macos.zip")).toBeTruthy();
     expect(screen.getByText("GitHub (synced)")).toBeTruthy();
@@ -747,8 +804,337 @@ describe("Release record (T3, ADMIN.md §6.3.2)", () => {
   });
 
   it("passes axe", async () => {
-    const { container } = mountRecord("v0.4.1");
+    const { container } = mountRecord("v0.4.1", "builds");
     await screen.findByRole("region", { name: "Build macos-universal" });
     await expectNoAxeViolations(container);
+  });
+});
+
+/** A rollout of v0.4.2 in the matrix. */
+function rollout(
+  outletId: string,
+  over: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    deliverableId: "app",
+    outletId,
+    channel: "stable",
+    releaseId: "v0.4.2",
+    rolloutBp: 2000,
+    state: "active",
+    mirrored: false,
+    source: "admin",
+    startedAt: 1,
+    updatedAt: Math.floor(Date.now() / 1000) - 38 * 60,
+    updatedBy: "admin:u1",
+    controls: ["pause", "halt", "complete"],
+    ...over,
+  };
+}
+
+/** The fixture matrix with these rollouts of v0.4.2, one cell per outlet. */
+function matrixWith(
+  rollouts: Record<string, unknown>[],
+  extraOutlets: { outletId: string; kind: string }[] = [],
+): DistributionMatrix {
+  const outlets = [
+    ...MATRIX.outlets,
+    ...extraOutlets.map((o) => ({
+      ...o,
+      transport: "store",
+      derives: false,
+      supported: true,
+    })),
+  ];
+  return {
+    ...MATRIX,
+    outlets,
+    cells: outlets.map((o) => ({
+      releaseId: "v0.4.2",
+      outletId: o.outletId,
+      availability: "live",
+      records: [],
+      submission: null,
+      rollouts: rollouts.filter((x) => x.outletId === o.outletId),
+    })),
+  } as unknown as DistributionMatrix;
+}
+
+const AUTO_HALT_SUMMARY =
+  "Halted the app rollout of v0.4.2 on direct/stable: revert rate 4.1% (3 of 73 devices) > 2.0% in the last 24 h (source: auto-halt)";
+
+describe("Release record Status (UX-08, EXPERIENCE.md O2)", () => {
+  function mountStatus(id = "v0.4.2") {
+    return mountAt(
+      `#/p/djdl/release/releases/${id}`,
+      <ReleaseRecord slug="djdl" id={id} tab={undefined} />,
+    );
+  }
+
+  it("says where it is live: each rollout's share, each channel, and the previous release", async () => {
+    mountStatus();
+    const live = await screen.findByRole("region", { name: "Where it’s live" });
+    expect(await within(live).findByText("Polaris Key · stable")).toBeTruthy();
+    expect(within(live).getByText("25 %")).toBeTruthy();
+    expect(
+      within(live).getByRole("link", { name: "0.4.1" }).getAttribute("href"),
+    ).toBe("#/p/djdl/release/releases/v0.4.1");
+    // Healthy is silence: no status line.
+    expect(screen.queryByText(/^Halted on/)).toBeNull();
+  });
+
+  it("names an auto-halt, its reason from the audit row, and links the evidence", async () => {
+    distributionMatrix.mockResolvedValue(
+      matrixWith([
+        rollout("direct", {
+          state: "halted",
+          rolloutBp: 1000,
+          source: "auto-halt",
+          updatedBy: "system:auto-halt",
+          controls: ["resume"],
+        }),
+      ]),
+    );
+    activity.mockResolvedValue({
+      items: [
+        {
+          id: "aud_1",
+          at: 1,
+          actor: {
+            sub: "system:auto-halt",
+            name: "Auto-halt (update telemetry)",
+            email: "",
+          },
+          action: "distribution.rollout.halt",
+          target: { kind: "rollout", id: "app:direct:stable" },
+          summary: AUTO_HALT_SUMMARY,
+        },
+      ],
+      nextCursor: null,
+    });
+    mountStatus();
+    expect(
+      await screen.findByText(
+        /^Halted on Polaris Key by auto-halt, 38 min\. ago$/,
+      ),
+    ).toBeTruthy();
+    expect(
+      await screen.findByText(
+        "Revert rate 4.1% (3 of 73 devices) > 2.0% in the last 24 h",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Open Health" }).getAttribute("href"),
+    ).toBe("#/p/djdl/distribution/health");
+    expect(activity.mock.calls[0]![3]).toEqual({
+      action: "distribution.rollout.halt",
+      targetKind: "rollout",
+    });
+    const live = screen.getByRole("region", { name: "Where it’s live" });
+    expect(within(live).getByText("10 % · halted")).toBeTruthy();
+  });
+
+  it("names a manual halt by its operator and links the rollout's activity", async () => {
+    distributionMatrix.mockResolvedValue(
+      matrixWith([
+        rollout("direct", { state: "halted", controls: ["resume"] }),
+      ]),
+    );
+    activity.mockResolvedValue({
+      items: [
+        {
+          id: "aud_2",
+          at: 1,
+          actor: { sub: "u1", name: "Vlad", email: "v@example.test" },
+          action: "distribution.rollout.halt",
+          target: { kind: "rollout", id: "app:direct:stable" },
+          summary: "Halted the app rollout of v0.4.2 on direct/stable",
+        },
+      ],
+      nextCursor: null,
+    });
+    mountStatus();
+    expect(
+      await screen.findByText(/^Halted on Polaris Key by Vlad, 38 min\. ago$/),
+    ).toBeTruthy();
+    expect(
+      screen
+        .getByRole("link", { name: "View in activity" })
+        .getAttribute("href"),
+    ).toBe("#/p/djdl/activity?kind=rollout&target=app%3Adirect%3Astable");
+  });
+
+  it("halts every haltable rollout in one danger confirm; an already-halted or store outlet is a disabled row", async () => {
+    distributionMatrix.mockResolvedValue(
+      matrixWith(
+        [
+          rollout("direct", { state: "halted", controls: ["resume"] }),
+          rollout("play"),
+          rollout("asc", {
+            mirrored: true,
+            source: "asc",
+            rolloutBp: 500,
+            controls: [],
+          }),
+        ],
+        [{ outletId: "asc", kind: "app-store" }],
+      ),
+    );
+    mountStatus();
+    await screen.findByText("Google Play · stable");
+    const halt = await screen.findByRole("button", {
+      name: "Halt everywhere…",
+    });
+    await waitFor(() => expect(halt.getAttribute("aria-disabled")).toBeNull());
+    await userEvent.click(halt);
+    const dialog = await screen.findByRole("alertdialog", {
+      name: "Halt 0.4.2 everywhere?",
+    });
+    expect(
+      within(dialog).getByText(
+        "Devices that haven't updated stay on 0.4.1. Devices already on 0.4.2 keep it.",
+      ),
+    ).toBeTruthy();
+    const rows = within(dialog).getAllByRole("listitem");
+    const direct = rows.find((x) => x.textContent?.includes("Polaris Key"))!;
+    expect(direct.getAttribute("aria-disabled")).toBe("true");
+    expect(within(direct).getByText("Already halted")).toBeTruthy();
+    expect(within(direct).queryByRole("checkbox")).toBeNull();
+    const store = rows.find((x) => x.textContent?.includes("App Store"))!;
+    expect(store.getAttribute("aria-disabled")).toBe("true");
+    expect(
+      within(store).getByText("Halt it in App Store Connect"),
+    ).toBeTruthy();
+    const play = within(dialog).getByRole("checkbox", {
+      name: "Google Play · stable",
+    });
+    expect(play.getAttribute("aria-checked")).toBe("true");
+    // Focus starts on Cancel.
+    expect(document.activeElement?.textContent).toBe("Cancel");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Halt 1 rollout" }),
+    );
+    await waitFor(() => expect(rolloutAction).toHaveBeenCalledTimes(1));
+    expect(rolloutAction).toHaveBeenCalledWith(
+      "djdl",
+      "play",
+      "stable",
+      "halt",
+      {
+        deliverable: "app",
+        releaseId: "v0.4.2",
+      },
+    );
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  });
+
+  it("keeps the dialog open and names the outlets a partial halt refused", async () => {
+    distributionMatrix.mockResolvedValue(
+      matrixWith([rollout("direct"), rollout("play")]),
+    );
+    rolloutAction.mockImplementation(async (_s: string, outlet: string) => {
+      if (outlet === "play") throw new Error("the rollout changed");
+      return { ok: true };
+    });
+    mountStatus();
+    const halt = await screen.findByRole("button", {
+      name: "Halt everywhere…",
+    });
+    await waitFor(() => expect(halt.getAttribute("aria-disabled")).toBeNull());
+    await userEvent.click(halt);
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Halt 2 rollouts" }),
+    );
+    expect(
+      await within(dialog).findByText("Google Play · stable was not halted"),
+    ).toBeTruthy();
+    expect(rolloutAction).toHaveBeenCalledTimes(2);
+  });
+
+  it("disables Halt everywhere with the reason when nothing can be halted", async () => {
+    distributionMatrix.mockResolvedValue(
+      matrixWith([
+        rollout("direct", { state: "halted", controls: ["resume"] }),
+      ]),
+    );
+    mountStatus();
+    await screen.findByText("20 % · halted");
+    const halt = screen.getByRole("button", { name: "Halt everywhere…" });
+    expect(halt.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("rolls back by pinning the channel to the previous release, through the pin confirm", async () => {
+    mountStatus();
+    await screen.findByText("Polaris Key · stable");
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Roll back…" })[0]!,
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Roll back 0.4.2",
+    });
+    // Each choice says what happens to devices already on 0.4.2.
+    expect(
+      within(dialog).getByText(
+        "stable stops offering 0.4.2; devices that haven't updated get 0.4.1. Devices already on 0.4.2 keep it.",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(dialog).getByRole("radio", { name: /Pin stable to 0\.4\.1/ }),
+    ).toBeTruthy();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Pin…" }));
+    const confirm = await screen.findByRole("alertdialog", {
+      name: "Pin stable to 0.4.1",
+    });
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Pin stable" }),
+    );
+    await waitFor(() =>
+      expect(updateReleaseChannel).toHaveBeenCalledWith("djdl", "stable", {
+        deliverable: "app",
+        pointer: "v0.4.1",
+        pinned: true,
+      }),
+    );
+  });
+
+  it("offers the rollback floor when the channel has one, and yank as the last resort", async () => {
+    mountStatus();
+    await screen.findByText("Polaris Key · stable");
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Roll back…" })[0]!,
+    );
+    const dialog = await screen.findByRole("dialog", {
+      name: "Roll back 0.4.2",
+    });
+    await userEvent.click(
+      within(dialog).getByRole("radio", { name: /Yank 0\.4\.2/ }),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Yank…" }),
+    );
+    expect(
+      await screen.findByRole("alertdialog", { name: "Yank 0.4.2" }),
+    ).toBeTruthy();
+  });
+
+  it("disables Roll back on a yanked release", async () => {
+    mountStatus("v0.4.0");
+    await screen.findByText("Yanked: corrupts saves on Android");
+    expect(
+      screen
+        .getAllByRole("button", { name: "Roll back…" })[0]!
+        .getAttribute("aria-disabled"),
+    ).toBe("true");
+  });
+
+  it("passes axe, with the Halt everywhere confirm open", async () => {
+    const { container } = mountStatus();
+    await screen.findByText("Polaris Key · stable");
+    await expectNoAxeViolations(container);
+    const halt = screen.getByRole("button", { name: "Halt everywhere…" });
+    await userEvent.click(halt);
+    const dialog = await screen.findByRole("alertdialog");
+    await expectNoAxeViolations(dialog);
   });
 });

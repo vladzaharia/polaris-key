@@ -170,9 +170,29 @@ describe("catalog validation under workerd (R10-01 regression)", () => {
         },
       ],
     } as never);
-    const started = Date.now();
-    expect(catalog.validateKeyValue("redos", "x".repeat(41)).ok).toBe(false);
-    expect(Date.now() - started).toBeLessThan(1000);
+    // Counted, not timed: workerd's clock advances only across I/O, so a Date.now() bound here
+    // measured nothing. Every native regex run is recorded instead (`test`, `replace`, `split`
+    // and `match` all reach `exec` once it is wrapped): the pattern must never reach the
+    // backtracking engine. The linear matcher's own steps are counted in
+    // packages/shared-catalog/src/regex.test.ts.
+    const exec = RegExp.prototype.exec;
+    const native: string[] = [];
+    RegExp.prototype.exec = function (this: RegExp, input: string) {
+      native.push(this.source);
+      return exec.call(this, input);
+    };
+    let ok = true;
+    try {
+      ok = catalog.validateKeyValue("redos", "x".repeat(41)).ok;
+      // Positive control: a native run made here is seen inside the isolate, so an empty result
+      // below means none carried the pattern, not that the recorder saw nothing.
+      /pkey-control/.test("pkey-control");
+    } finally {
+      RegExp.prototype.exec = exec;
+    }
+    expect(native).toContain("pkey-control");
+    expect(ok).toBe(false);
+    expect(native.filter((source) => source.includes("x+x+"))).toEqual([]);
   });
 });
 

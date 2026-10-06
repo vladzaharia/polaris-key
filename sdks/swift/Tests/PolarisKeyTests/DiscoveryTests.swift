@@ -77,7 +77,7 @@ final class DiscoveryTests: XCTestCase {
             doc.servicesMap,
             [
                 .license: true, .config: true, .release: false, .distribution: false, .update: true,
-                .identity: false,
+                .identity: false, .sync: false,
             ])
         XCTAssertEqual(
             doc.services[.license]?.endpoints["document"],
@@ -106,7 +106,7 @@ final class DiscoveryTests: XCTestCase {
             doc.servicesMap,
             [
                 .license: true, .config: false, .release: false, .distribution: false,
-                .update: false, .identity: false,
+                .update: false, .identity: false, .sync: false,
             ])
     }
 

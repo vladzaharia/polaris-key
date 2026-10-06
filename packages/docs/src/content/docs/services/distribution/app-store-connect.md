@@ -17,8 +17,9 @@ App Store Connect API with the product's API key and keeps three things current:
 - the states of **Background Asset** versions (Apple-hosted asset packs), kept as connector
   objects until a pack release claims them.
 
-It never uploads a build or an asset pack, and it never submits anything for review. Those stay
-with CI and Apple's tools. Its setup controls can also prepare a new app: server notifications,
+It never uploads a build or an asset pack, and it never submits anything for review on its own.
+Builds stay with CI and Apple's tools; the only files it uploads are the listing's screenshots, when
+you push them ([Pushing the listing](#pushing-the-listing)). Its setup controls can also prepare a new app: server notifications,
 TestFlight groups and testers, and the free price and availability defaults (see
 [Setting up the app](#setting-up-the-app)).
 
@@ -329,6 +330,35 @@ version (`build_not_ready`, `build_expired`), and a version needs a build before
 (`no_build`). When Apple refuses, the answer is `store_refused` with Apple's status and its error
 code (`appleCode`, such as `ENTITY_ERROR.ATTRIBUTE.INVALID`), never its message. Each write is
 audited as `distribution.asc.<step>` with Apple's state before and after kept on the operation.
+
+## Pushing the listing
+
+The [shared listing](/docs/admin/storefront-listing/) reaches App Store Connect from the console
+API, under the same prefix, with the same `Idempotency-Key`, pinned-app and audit rules as
+Distribute. Both writes are a plain confirmation.
+
+| `POST`                | Body                                                                             | Sends to App Store Connect                                                                                                                                                                                                    |
+| --------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `listing/text`        | `{ versionId, locale }`                                                          | the listing's App Store fit in that locale: description, keywords, marketing and support URLs and promotional text into the version's localization; name, subtitle and privacy policy URL into the editable app information's |
+| `listing/screenshots` | `{ versionId, locale, sizeClass }` (`phone-portrait`, `tablet`, `desktop-16x10`) | the stored App Store screenshots of that size class into the localization's iPhone 6.9″, iPad 13″ or Mac screenshot set: reserve, upload, commit                                                                              |
+
+**The text is the listing's, unchanged.** Keywords are packed the listing's way (whole keywords,
+comma-joined, within 100 bytes; the ones left out come back as `warnings`). A value over one of
+Apple's limits refuses the whole push with `listing_does_not_fit` and the fields, and nothing is
+sent: edit the listing, never the push. What's New is not part of it: it is the release's, set by
+`distribute/version-localization`. The name, subtitle and privacy policy URL need app information
+App Store Connect still lets you edit, which exists while a version is being prepared
+(`app_info_not_editable` otherwise). Each localization is one step: an existing one in that locale is
+updated, a missing one is created, and one that already says the same is left (`existing`).
+
+**Screenshots come from the blob store**, as `pkey listing assets` stored them
+(`app-store:screenshot:<class>:<n>`, in order, the locale's own if it has any, else the ones for
+every locale). Each is PNG or JPEG without alpha, at most 32 MiB, and a set holds at most 10. The
+version needs a localization in that locale first (`localization_missing`: push the text first). A
+screenshot the set already holds (same checksum) is not uploaded again. **Nothing is ever deleted
+or reordered**: screenshots the set holds that the listing does not are left in place and counted
+in `otherScreenshots`, and `manage` links to the version in App Store Connect to remove or reorder
+them by hand.
 
 The preflight reads presence only: it never returns the App Review contact, the demo account or its
 password. It cannot check App Privacy, which has no API. When the product maps App Store products

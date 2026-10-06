@@ -11,6 +11,12 @@
 // promote it to active, re-seal every row through the admin sweep, then retire the old key —
 // with the platform serving throughout. See docs/RUNBOOK.md § "Rotating PLATFORM_KEK".
 //
+// A deployment whose current KEK nobody holds (Worker secrets are write-only) can still rotate:
+// with PLATFORM_KEK_KEYS set, a PLATFORM_KEK left in place joins the ring as the LEGACY key,
+// open-only, under its own kid. New seals use the active key; the sweep moves every legacy
+// blob across; then PLATFORM_KEK is deleted. See docs/RUNBOOK.md § "Rotating when the old KEK
+// is unknown".
+//
 // `open` still fails CLOSED on a missing/unusable keyring, an unknown `kekId`, or any
 // auth-tag mismatch — it NEVER returns a wrong or partial plaintext.
 
@@ -70,7 +76,9 @@ function b64Decode(s: string): Uint8Array {
  * opened as a `product-secret` even if it is copied into `product_secrets` under the same name,
  * because the AAD differs and AES-GCM refuses it. A `platform-credential` (A-16 — a team-level
  * store key held in `platform_credentials`) is sealed with the product slot `_platform`, which no
- * product slug can spell, under its own kind.
+ * product slug can spell, under its own kind. A `signin-provider-secret` (I-06 — the login card's
+ * Google client secret, Apple `.p8` and Steam Web API key, held as sealed Worker secrets) uses the
+ * same `_platform` slot under its own kind.
  */
 export interface SealContext {
   product: string;
@@ -78,7 +86,8 @@ export interface SealContext {
     | "signing-key"
     | "product-secret"
     | "outlet-credential"
-    | "platform-credential";
+    | "platform-credential"
+    | "signin-provider-secret";
   id: string;
 }
 
@@ -100,6 +109,46 @@ interface Keyring {
   active: string;
   /** Every kid `open` will accept, active included. */
   keys: Map<string, CryptoKey>;
+  /** Set only when BOTH shapes are configured: see `LegacyKey`. */
+  legacy: LegacyKey | null;
+}
+
+/**
+ * The legacy `PLATFORM_KEK` as it sits inside a `PLATFORM_KEK_KEYS` ring. Present only when both
+ * are set; absent (not `null`-valued) in either single shape, so those describe exactly as they
+ * always have.
+ *
+ *  - `openOnly: true`  — the kid exists in the ring ONLY because of `PLATFORM_KEK`. It opens the
+ *                        blobs that carry it and is never sealed under (it is imported without
+ *                        the `encrypt` usage, on top of `PLATFORM_KEK_ACTIVE` having to name a
+ *                        `PLATFORM_KEK_KEYS` entry). Delete `PLATFORM_KEK` once nothing is
+ *                        sealed under the kid.
+ *  - `openOnly: false` — `PLATFORM_KEK_KEYS` holds the same kid with the same bytes, so
+ *                        `PLATFORM_KEK` is a redundant copy; deleting it changes nothing.
+ */
+export interface LegacyKey {
+  kid: string;
+  openOnly: boolean;
+}
+
+/** What `resolveKeyring` reads out of the environment, still as raw base64. */
+interface RawKeyring {
+  active: string;
+  /** The ring `seal` may use: `PLATFORM_KEK_KEYS`, or the legacy single key on its own. */
+  raw: Record<string, string>;
+  /** True when `raw` IS the legacy single key (only `PLATFORM_KEK` is configured). */
+  single: boolean;
+  /** Both shapes configured: `PLATFORM_KEK` and its kid, to be added for opening only. */
+  openOnly: { kid: string; b64: string } | null;
+}
+
+/** The kid blobs sealed under the legacy `PLATFORM_KEK` carry: `PLATFORM_KEK_ID`, else
+ *  `"default"`. A kid NAME, never key material. */
+export function legacyKekId(env: Env): string {
+  return typeof env.PLATFORM_KEK_ID === "string" &&
+    env.PLATFORM_KEK_ID.length > 0
+    ? env.PLATFORM_KEK_ID
+    : LEGACY_KEK_ID;
 }
 
 /**
@@ -112,14 +161,15 @@ interface Keyring {
  *   keyring: PLATFORM_KEK_KEYS = {"k1":"<base64>","k2":"<base64>"}, PLATFORM_KEK_ACTIVE = "k2"
  *   legacy:  PLATFORM_KEK = "<base64>"   (+ optional PLATFORM_KEK_ID, default "default")
  *
+ * With BOTH set, the ring is `PLATFORM_KEK_KEYS` plus `PLATFORM_KEK` under its legacy kid for
+ * opening only (`LegacyKey`). That is the rotation path for a deployment whose current KEK nobody
+ * holds: the new key goes in the ring, the unknown one stays where it is, and the sweep moves
+ * every blob across.
+ *
  * Fails CLOSED on every malformed shape rather than falling back to the other one: a keyring
  * that half-parses must never silently degrade into "seal under the legacy key".
  */
-function resolveKeyring(env: Env): {
-  active: string;
-  raw: Record<string, string>;
-  legacy: boolean;
-} {
+function resolveKeyring(env: Env): RawKeyring {
   const json = env.PLATFORM_KEK_KEYS;
   if (typeof json === "string" && json.length > 0) {
     let parsed: unknown;
@@ -137,7 +187,12 @@ function resolveKeyring(env: Env): {
         "PLATFORM_KEK_KEYS must be a JSON object of kid -> base64 KEK",
       );
     }
-    const raw: Record<string, string> = {};
+    // Null-prototype, and every lookup below is an own-property check: a kid such as
+    // `constructor`, `toString` or `__proto__` must never resolve to something inherited.
+    const raw: Record<string, string> = Object.create(null) as Record<
+      string,
+      string
+    >;
     for (const [kid, value] of Object.entries(parsed)) {
       if (kid.length === 0 || typeof value !== "string" || value.length === 0) {
         throw new Error(
@@ -149,11 +204,18 @@ function resolveKeyring(env: Env): {
     if (Object.keys(raw).length === 0) {
       throw new Error("PLATFORM_KEK_KEYS is empty");
     }
+    // Checked against PLATFORM_KEK_KEYS alone, BEFORE the legacy key joins: the active kid must
+    // be a ring entry, so naming the legacy kid here fails closed instead of sealing under it.
     const active = env.PLATFORM_KEK_ACTIVE;
-    if (typeof active !== "string" || !(active in raw)) {
+    if (typeof active !== "string" || !Object.hasOwn(raw, active)) {
       throw new Error("PLATFORM_KEK_ACTIVE is not in PLATFORM_KEK_KEYS");
     }
-    return { active, raw, legacy: false };
+    const legacy = env.PLATFORM_KEK;
+    const openOnly =
+      typeof legacy === "string" && legacy.length > 0
+        ? { kid: legacyKekId(env), b64: legacy }
+        : null;
+    return { active, raw, single: false, openOnly };
   }
 
   // Legacy single-KEK shape. Keeps the "default" kid so blobs written before the keyring
@@ -162,25 +224,48 @@ function resolveKeyring(env: Env): {
   if (typeof single !== "string" || single.length === 0) {
     throw new Error("PLATFORM_KEK is not configured");
   }
-  const kid =
-    typeof env.PLATFORM_KEK_ID === "string" && env.PLATFORM_KEK_ID.length > 0
-      ? env.PLATFORM_KEK_ID
-      : LEGACY_KEK_ID;
-  return { active: kid, raw: { [kid]: single }, legacy: true };
+  const kid = legacyKekId(env);
+  return { active: kid, raw: { [kid]: single }, single: true, openOnly: null };
 }
 
 /** Per-isolate memo, keyed by the literal secret material, so a secret change picked up by a
  *  fresh isolate needs no restart hook and a stale ring can never outlive its configuration. */
 let cachedRing: { fingerprint: string; ring: Keyring } | null = null;
 
+/** Equal key bytes, compared without an early exit. */
+function sameBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i]! ^ b[i]!;
+  return diff === 0;
+}
+
+function importKek(
+  keyBytes: Uint8Array,
+  usages: ("encrypt" | "decrypt")[],
+): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    "raw",
+    toArrayBuffer(keyBytes),
+    { name: "AES-GCM" },
+    false,
+    usages,
+  );
+}
+
 /**
  * Import every KEK in the ring as a raw AES-256-GCM key. Each entry must be base64 of exactly
  * 32 bytes; anything else throws rather than silently deriving a different KEK from malformed
  * deployment input.
+ *
+ * With both shapes set, `PLATFORM_KEK` joins under its legacy kid with the `decrypt` usage only.
+ * If `PLATFORM_KEK_KEYS` already holds that kid, the bytes must match: two different keys under
+ * one kid is a configuration error, and the ring refuses to load rather than pick one. The error
+ * names the kid and never the key material.
  */
 async function loadKeyring(env: Env): Promise<Keyring> {
-  const { active, raw, legacy } = resolveKeyring(env);
-  const fingerprint = JSON.stringify([active, raw]);
+  const { active, raw, single, openOnly } = resolveKeyring(env);
+  const fingerprint = JSON.stringify([active, raw, openOnly]);
   if (cachedRing?.fingerprint === fingerprint) return cachedRing.ring;
 
   const keys = new Map<string, CryptoKey>();
@@ -188,40 +273,63 @@ async function loadKeyring(env: Env): Promise<Keyring> {
     const keyBytes = b64Decode(b64);
     if (keyBytes.length !== 32) {
       throw new Error(
-        legacy
+        single
           ? "PLATFORM_KEK must decode to exactly 32 bytes"
           : `PLATFORM_KEK_KEYS entry ${kid} must decode to exactly 32 bytes`,
       );
     }
-    keys.set(
-      kid,
-      await crypto.subtle.importKey(
-        "raw",
-        toArrayBuffer(keyBytes),
-        { name: "AES-GCM" },
-        false,
-        ["encrypt", "decrypt"],
-      ),
-    );
+    keys.set(kid, await importKek(keyBytes, ["encrypt", "decrypt"]));
   }
-  const ring: Keyring = { active, keys };
+
+  let legacy: LegacyKey | null = null;
+  if (openOnly) {
+    const keyBytes = b64Decode(openOnly.b64);
+    if (keyBytes.length !== 32) {
+      throw new Error("PLATFORM_KEK must decode to exactly 32 bytes");
+    }
+    const inRing = Object.hasOwn(raw, openOnly.kid)
+      ? raw[openOnly.kid]
+      : undefined;
+    if (inRing !== undefined) {
+      if (!sameBytes(keyBytes, b64Decode(inRing))) {
+        throw new Error(
+          `PLATFORM_KEK and PLATFORM_KEK_KEYS both define kid ${openOnly.kid} with different keys; ` +
+            `refusing to choose. Give the new key in PLATFORM_KEK_KEYS a kid of its own ` +
+            `(blobs sealed under PLATFORM_KEK carry ${openOnly.kid}), or delete PLATFORM_KEK ` +
+            `if PLATFORM_KEK_KEYS already holds the right key`,
+        );
+      }
+      legacy = { kid: openOnly.kid, openOnly: false };
+    } else {
+      keys.set(openOnly.kid, await importKek(keyBytes, ["decrypt"]));
+      legacy = { kid: openOnly.kid, openOnly: true };
+    }
+  }
+
+  const ring: Keyring = { active, keys, legacy };
   cachedRing = { fingerprint, ring };
   return ring;
 }
 
-/** The ring as an operator needs to see it: the kid new seals use, and every kid that can be
- *  opened. THROWS on an unusable keyring, so "what is configured?" can never be answered
- *  wrongly — a mid-rotation operator gets the parse error instead of a plausible fiction. */
+/** The ring as an operator needs to see it: the kid new seals use, every kid that can be
+ *  opened, and — only when `PLATFORM_KEK` sits alongside `PLATFORM_KEK_KEYS` — the legacy key.
+ *  THROWS on an unusable keyring, so "what is configured?" can never be answered wrongly — a
+ *  mid-rotation operator gets the parse error instead of a plausible fiction. */
 export async function describeKeyring(
   env: Env,
-): Promise<{ active: string; kids: string[] }> {
-  const { active, keys } = await loadKeyring(env);
-  return { active, kids: [...keys.keys()] };
+): Promise<{ active: string; kids: string[]; legacy?: LegacyKey }> {
+  const { active, keys, legacy } = await loadKeyring(env);
+  return {
+    active,
+    kids: [...keys.keys()],
+    ...(legacy ? { legacy } : {}),
+  };
 }
 
 /** Envelope-encrypt `plaintext` under the ACTIVE platform KEK. Returns `JSON.stringify(Sealed)`.
  *  THROWS if the keyring is missing or unusable (a product can never persist key material
- *  un-sealed), and never seals under a secondary key — secondaries are read-only by design. */
+ *  un-sealed), and never seals under a secondary key — secondaries are read-only by design, and
+ *  the legacy `PLATFORM_KEK` in a `PLATFORM_KEK_KEYS` ring cannot even encrypt. */
 export async function seal(
   env: Env,
   plaintext: string,

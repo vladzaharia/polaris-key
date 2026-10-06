@@ -14,6 +14,7 @@ import {
   type ManagedEntry,
 } from "@polaris-key/protocol/core";
 import {
+  isUsable,
   licenseState,
   listUserEntries,
   resolveSource,
@@ -139,6 +140,19 @@ export function projectState(
   };
 }
 
+/** The same snapshot with a new override map: the effective `config` re-resolved over the
+ *  unchanged documents (a local `config.set` never re-verifies anything). */
+export function withOverrides(
+  s: PolarisState,
+  localOverrides: Record<string, JSONValue>,
+): PolarisState {
+  return {
+    ...s,
+    localOverrides,
+    config: resolveConfig(s.configEntries, localOverrides),
+  };
+}
+
 export function currentDeviceFromState(s: PolarisState): DeviceInfo | null {
   if (!s.currentDeviceId) return null;
   const out: DeviceInfo = {
@@ -176,9 +190,24 @@ export function listUserConfig(state: PolarisState): UserConfigEntry[] {
   return listUserEntries(ctxFor(state.configEntries, state.localOverrides));
 }
 
-/** Read an entitlement boolean off a snapshot. */
+/** Read an entitlement boolean off a snapshot. False whenever the gate is not usable (S-19
+ *  G11, SDK-PARITY-PASS §3.3): a revoked, expired or blocked licence still carries its last
+ *  verified grants, and none of them may unlock anything. A product without the license service
+ *  is `not-applicable` (usable) but grants nothing, because entitlements ride the licence. */
 export function readEntitled(state: PolarisState, name: string): boolean {
-  return state.entitlements[name] === true;
+  return isUsable(state.status) && state.entitlements[name] === true;
+}
+
+/** The raw entitlement value (non-boolean grants: a number, a list), or `undefined` when it is
+ *  absent or the gate is not usable (§3.3). */
+export function readEntitlementValue(
+  state: PolarisState,
+  name: string,
+): JSONValue | undefined {
+  if (!isUsable(state.status)) return undefined;
+  return Object.prototype.hasOwnProperty.call(state.entitlements, name)
+    ? state.entitlements[name]
+    : undefined;
 }
 
 /** The channels the licence grants, off a snapshot: the `channels` entitlement's string values

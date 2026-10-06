@@ -88,6 +88,12 @@ const CONFIG_ENV_NEVER := 2
 ## Send a hashed hardware fingerprint when registering (PolarisKey.devices). Off: the server
 ## records the device `unverified` (a `strict` tier refuses it). Raw values never leave the device.
 @export var fingerprint_enabled := true
+## The device label the sign-in page and the customer's device list show (WIRE-CONTRACT-V4
+## §12.7.1): sent on device-code sign-in, activation and registration. Empty: the device's model
+## where the OS reports one, else the OS name.
+@export var device_name := ""
+## Off: send no device label at all (a per-call name to `begin_sign_in` still goes).
+@export var send_device_name := true
 ## Product-declared companion-app probes answered in the device report, each a Dictionary
 ## {id, label?, macos?, windows?, linux?} naming a path to test on that OS. Nothing else is ever
 ## enumerated.
@@ -96,8 +102,20 @@ const CONFIG_ENV_NEVER := 2
 ## (PolarisKey.devices.attest() on a Play install). Empty: the one the Worker's attestation
 ## challenge carries (`play.cloudProjectNumber`, set by the operator). Digits only.
 @export var play_cloud_project_number := ""
+## Attest and retry (SDK parity §3.10): when an edge-mint, a gated download or a commerce claim
+## answers 403 `attestation_required`, run PolarisKey.devices.attest() once and retry once. Only
+## iOS and Android store installs can attest; elsewhere the refusal comes back unchanged. Off: the
+## caller always gets the refusal.
+@export var auto_attest := true
 
 @export_group("Config")
+## Persist the player's settings by default (SDK parity §3.11): when the game has not installed its
+## own override store, PolarisKey.config keeps the local layer in a PKeyConfigFileStore at
+## `settings_path`, so a PKeySettingsPanel change survives a restart. Off: an in-memory layer
+## (the game installs its own store with config.set_override_store()).
+@export var persist_settings := true
+## Where the default settings store lives (a ConfigFile; your own settings.cfg works too).
+@export var settings_path := "user://pkey_settings.cfg"
 ## The config environment layer (`PKEY_CONFIG_*` variables and `--pkey-config key=value`
 ## arguments). Auto: on in debug builds and on desktop, off in release builds on mobile and web.
 @export_enum("Auto", "Always", "Never") var config_env_layer := CONFIG_ENV_AUTO

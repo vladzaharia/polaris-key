@@ -201,8 +201,17 @@ const STATE_PILL: Record<
   deprecated: { tone: "warning", label: "Deprecated" },
 };
 
+/** F-22: how each native client is named on a version's source line. */
+const CLIENT_LABEL: Record<string, string> = {
+  npm: "npm publish",
+  twine: "twine upload",
+  swift: "swift package-registry publish",
+  maven: "Maven/Gradle deploy",
+};
+
 function sourceLine(v: FeedPackageVersion): React.ReactNode {
   const s = v.source;
+  const via = s.via === "oci-push" ? " · docker push" : "";
   if (s.kind === "oidc")
     return (
       <>
@@ -220,6 +229,7 @@ function sourceLine(v: FeedPackageVersion): React.ReactNode {
             </a>
           </>
         ) : null}
+        {via}
       </>
     );
   if (s.kind === "static")
@@ -227,6 +237,17 @@ function sourceLine(v: FeedPackageVersion): React.ReactNode {
       <>
         CI token
         {s.tokenId ? <span className="font-mono"> {s.tokenId}</span> : null}
+        {s.client ? ` · ${CLIENT_LABEL[s.client] ?? s.client}` : null}
+        {via}
+      </>
+    );
+  if (s.kind === "registry")
+    return (
+      <>
+        Registry token
+        {s.tokenId ? <span className="font-mono"> {s.tokenId}</span> : null}
+        {s.client ? ` · ${CLIENT_LABEL[s.client] ?? s.client}` : null}
+        {via}
       </>
     );
   if (s.kind === "console") return "The console";
@@ -426,7 +447,7 @@ function VersionsTab({
           <EmptyState
             kind="first-run"
             title="No versions published yet"
-            description="A version appears here when CI publishes it with pkey release publish. Versions are never deleted: a yanked number cannot be published again."
+            description="A version appears here when CI publishes it with pkey release publish. A published version is never removed, except by feed retention's prune of builds of main; a yanked number cannot be published again."
           />
         }
       />

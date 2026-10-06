@@ -6,8 +6,9 @@ import { LiveRegion } from "../../ui/LiveRegion.js";
 import { Kbd } from "../../ui/Kbd.js";
 import { cn } from "../../lib/cn.js";
 import type { LibraryProduct } from "../model/library.js";
+import { requestHeadingFocus } from "../focus.js";
 import { matches } from "../model/libraryView.js";
-import { href, navigate } from "../router.js";
+import { focusPageHeading, href, navigate, resolveHash } from "../router.js";
 import { ProductIcon } from "./ProductIcon.js";
 
 /**
@@ -40,6 +41,12 @@ function pushRecent(slug: string): void {
   }
 }
 
+/** Is the product's page the one showing? */
+function onProduct(slug: string): boolean {
+  const { route } = resolveHash(window.location.hash);
+  return route.kind === "product" && route.product === slug;
+}
+
 export function JumpPalette({
   open,
   onOpenChange,
@@ -56,6 +63,8 @@ export function JumpPalette({
     if (!open) setQuery("");
   }, [open]);
 
+  /** A product was chosen: closing must not hand focus back to the opener (below). */
+  const jumped = React.useRef(false);
   const found = products.filter((p) => matches(p, query));
   const top = query.trim() ? found[0] : undefined;
   const recent = query.trim()
@@ -64,10 +73,25 @@ export function JumpPalette({
         .map((s) => products.find((p) => p.slug === s))
         .filter((p): p is LibraryProduct => Boolean(p));
 
+  /*
+   * Focus lands on the product's `h1` (FLOWS.md P-14, PORTAL.md §9.4), not on `body`: the
+   * product page takes the request once its heading exists. Already on that product, the page
+   * does not mount again, so the heading is focused here, after the palette has closed, without
+   * scrolling away from the section a "Manage devices" jump scrolls to.
+   *
+   * Motion (MO-05): the palette exits through motion.css (its `animate-pk-in` content and
+   * `animate-pk-overlay-in` scrim; MO-02) and the page swaps underneath it. The router starts no
+   * View Transition while a dialog is on screen (one would lift the page above the scrim), and
+   * the results never animate while typing: filtering only re-renders the list.
+   */
   const go = (p: LibraryProduct, section?: "devices"): void => {
     pushRecent(p.slug);
+    jumped.current = true;
+    const here = onProduct(p.slug);
+    if (!here) requestHeadingFocus(p.slug);
     onOpenChange(false);
     navigate(href.product(p.slug, section));
+    if (here) focusPageHeading();
   };
 
   const item =
@@ -81,6 +105,12 @@ export function JumpPalette({
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 animate-pk-overlay-in" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
+          onCloseAutoFocus={(e) => {
+            // After a jump, focus belongs to the product's heading, not the trigger.
+            if (!jumped.current) return;
+            jumped.current = false;
+            e.preventDefault();
+          }}
           className={cn(
             "fixed inset-0 z-50 flex flex-col overflow-hidden bg-surface-overlay text-fg shadow-elevation-3 animate-pk-in",
             "desk:inset-auto desk:left-1/2 desk:top-[12vh] desk:w-[calc(100vw-2rem)] desk:max-w-[40rem] desk:-translate-x-1/2 desk:rounded-xl desk:border desk:border-border",

@@ -13,14 +13,30 @@
       "status": "implemented",
       "note": "Verification is client-core's, which the Node SDK consumes directly; the Node runner drives it on Node 22 and again on the engines.node floor (CI node-floor)."
     },
-    "core.cache": { "status": "implemented" },
-    "core.bundle": { "status": "implemented" },
-    "core.discover": { "status": "implemented" },
-    "core.sync": { "status": "implemented" },
-    "core.local": { "status": "implemented" },
-    "core.headers": { "status": "implemented" },
-    "core.errors": { "status": "implemented" },
-    "core.caps": { "status": "implemented" },
+    "core.cache": {
+      "status": "implemented"
+    },
+    "core.bundle": {
+      "status": "implemented"
+    },
+    "core.discover": {
+      "status": "implemented"
+    },
+    "core.sync": {
+      "status": "implemented"
+    },
+    "core.local": {
+      "status": "implemented"
+    },
+    "core.headers": {
+      "status": "implemented"
+    },
+    "core.errors": {
+      "status": "implemented"
+    },
+    "core.caps": {
+      "status": "implemented"
+    },
     "core.store": {
       "status": "implemented",
       "except": [
@@ -29,29 +45,84 @@
           "reason": "dependency",
           "note": "When @napi-rs/keyring cannot load (a single-executable build, no Secret Service) the token is in a 0600 file; supports() reports dependency (P1b-10)."
         }
-      ]
+      ],
+      "note": "KeyringStore by default; an Electron main process uses SafeStorageStore (@polaris-key/node/electron), whose status() reports keyring-unavailable when safeStorage cannot encrypt or falls back to basic_text, and keyring-error when the stored token no longer decrypts (SP-N11)."
     },
-    "license.gate": { "status": "implemented" },
-    "license.activate": { "status": "implemented" },
-    "license.enroll": { "status": "implemented" },
-    "license.deactivate": { "status": "implemented" },
-    "license.entitlements": { "status": "implemented" },
-    "license.channels": { "status": "implemented" },
-    "license.reregister": { "status": "implemented" },
-    "config.resolve": { "status": "implemented" },
-    "config.list": { "status": "implemented" },
-    "config.secret": { "status": "implemented" },
-    "config.schema": { "status": "implemented" },
-    "config.mint": { "status": "implemented" },
+    "core.copy": {
+      "status": "implemented",
+      "note": "copy.message/title/activation over src/copy.generated.ts (pnpm gen:constants, from conformance/parity/copy.en.json): the error-code, gate and activation tables, COPY_FALLBACK naming an unknown code; registerCopy adds a locale that falls back to the generated English per key."
+    },
+    "license.gate": {
+      "status": "implemented"
+    },
+    "license.activate": {
+      "status": "implemented"
+    },
+    "license.enroll": {
+      "status": "implemented"
+    },
+    "license.deactivate": {
+      "status": "implemented"
+    },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
+    "license.entitlements": {
+      "status": "implemented"
+    },
+    "license.channels": {
+      "status": "implemented"
+    },
+    "license.reregister": {
+      "status": "implemented"
+    },
+    "license.refusals": {
+      "status": "implemented",
+      "note": "activationRefusal maps every refusal by its body code (activateWithKey, enroll, token): each kind carries the wire code, an unknown 4xx is refused{code}."
+    },
+    "config.resolve": {
+      "status": "implemented"
+    },
+    "config.list": {
+      "status": "implemented"
+    },
+    "config.secret": {
+      "status": "implemented"
+    },
+    "config.schema": {
+      "status": "implemented"
+    },
+    "config.mint": {
+      "status": "implemented"
+    },
     "config.mirror": {
       "status": "implemented",
       "note": "The TypeScript mirror is rendered by tools/gen-mirrors.ts."
     },
-    "devices.fingerprint": { "status": "implemented" },
-    "devices.facts": { "status": "implemented" },
-    "devices.register": { "status": "implemented" },
-    "devices.manage": { "status": "implemented" },
-    "devices.report": { "status": "implemented" },
+    "config.local": {
+      "status": "implemented",
+      "note": "client.config.set/clear/setting and onConfigChange: persisted in the state directory, validated against the catalog type, refused for an admin-managed key, with per-key and wildcard change events (SP-N13)."
+    },
+    "devices.fingerprint": {
+      "status": "implemented"
+    },
+    "devices.facts": {
+      "status": "implemented"
+    },
+    "devices.register": {
+      "status": "implemented"
+    },
+    "devices.manage": {
+      "status": "implemented"
+    },
+    "devices.report": {
+      "status": "implemented"
+    },
+    "telemetry.updates": {
+      "status": "implemented",
+      "note": "The update-health journal (<stateDir>/update-events.json) rides devices/report as updates: at most 16 per report, oldest first, dropped once a 200 delivered them."
+    },
     "devices.attest": {
       "status": "na",
       "runtime": "node",
@@ -60,20 +131,48 @@
     },
     "identity.oidc": {
       "status": "planned",
-      "unowned": true,
-      "note": "No browser sign-in in the Node SDK, and no work package ports it."
+      "wp": "I-15",
+      "note": "Browser redirect sign-in for native hosts waits on I-15's redirect token route (wire item W4); /identity/auth/poll is deprecated and never used. The interim is identity.signInWithBrowser(): device code opened in the system browser (SDK parity pass §3.12)."
     },
-    "identity.devicecode": { "status": "implemented" },
-    "release.changelog": { "status": "implemented" },
-    "release.download": { "status": "implemented" },
+    "identity.devicecode": {
+      "status": "implemented"
+    },
+    "identity.devicelabel": {
+      "status": "implemented",
+      "note": "PX-W13: the label (client-core normalizeDeviceLabel, the deviceName option, os.hostname() without .local/.lan/.home by default) on beginSignIn, activateWithKey and register; SignInPrompt.deviceName is the Worker's echo."
+    },
+    "identity.toggle": {
+      "status": "planned",
+      "wp": "I-10a"
+    },
+    "release.changelog": {
+      "status": "implemented"
+    },
+    "release.download": {
+      "status": "implemented"
+    },
     "release.record": {
       "status": "implemented",
       "note": "client.update.releaseRecord(hash) and decide() over client-core's verifyReleaseRecord: hash before signature, pinned release keys only; persisted in the releaseRecords cache slice while a committed feed pins it."
     },
-    "update.check": { "status": "implemented" },
+    "release.fetch": {
+      "status": "implemented",
+      "note": "client.release.fetch(target, {to}): discovery builds route, device bearer and metadata headers, <to>.part resumed with Range and If-Range on the payload SHA-256, size and SHA-256 checked against the verified record before the rename."
+    },
+    "release.distribution": {
+      "status": "implemented",
+      "note": "client.distribution.downloadModel() and thisPlatform(): the public download model, no bearer."
+    },
+    "update.check": {
+      "status": "implemented"
+    },
     "update.feed": {
       "status": "implemented",
       "note": "client.update.feed() and decide() over client-core's verifyFeed; the feeds cache slice is keyed by the canonical channel and re-verified on load, so each seq floor survives a restart."
+    },
+    "update.feeds": {
+      "status": "implemented",
+      "note": "client.update.feedUrl(kind): appcast, winsparkle, velopack (the feed directory without a Velopack channel), appInstaller and zsync from discovery update.endpoints, a channel alias rewritten first; a missing template is the typed unsupported (product)."
     },
     "update.decide": {
       "status": "implemented",
@@ -84,18 +183,20 @@
       "note": "client-core decideUpdate with content (feedContent, selectPackRows, prestage, the content blocks and boot required for revoked required content); client.update.decide() builds content from the content stamp, the pack state, the variant preferences and the stored revocations (runUpdateCheck steps 10-14)."
     },
     "update.driver": {
-      "status": "planned",
-      "unowned": true,
-      "note": "Only appcastUrl() today; the Velopack, electron-updater or single-executable hand-off has no work package (P3-04 excludes it)."
+      "status": "implemented",
+      "note": "client.update.install(decision) answers an InstallOutcome (restartRequired, handedOff, storeOpened, unsupported{reason}) through the configured driver: electronUpdaterDriver (the found version must equal the signed decision's and the downloaded file must hash to an artifact of its record), velopackDriver (the discovery Velopack feed), seaSelfReplaceDriver (release.fetch-verified bytes, <exe>.previous kept as the boot guard's rollback) and storeLinkDriver, under @polaris-key/node/update/drivers/*; none imports its updater (SP-N09)."
     },
     "update.bootguard": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
+      "status": "implemented",
+      "note": "client.update.markBootAttempt() / confirmBoot() over client-core's bootGuardAction: slots in <stateDir>/boot-guard.json, a rollback through the install driver's hook (else boot_rolled_back with code no-previous and the version kept as skipVersion), update_confirmed / update_reverted / boot_rolled_back in the update-health journal (SP-N06)."
     },
     "outlet.detect": {
       "status": "implemented",
-      "note": "client-core's detectOutlet over this process's signals (src/update/outlet.ts readOutletSignals: environment, executable and script path conventions, isSea, Electron's mas and windowsStore, product-named markers); the update client detects when the host names no outlet. Windows SignatureKind needs WinRT and is not read."
+      "note": "client-core's detectOutlet over this process's signals (src/update/outlet.ts readOutletSignals: environment, executable and script path conventions, isSea, Electron's mas and windowsStore, product-named markers); the update client detects when the host names no outlet. The P1-11 build stamp (.polaris_key/build.json) is autoloaded when the host passes none; Windows SignatureKind is read on request through PowerShell's WinRT projection (readWindowsSignatureKind, SP-N15)."
+    },
+    "crash.tags": {
+      "status": "implemented",
+      "note": "client.crashTags() / crashTagsFor(): release <deliverable>@<version>[+<build>], environment the channel, pkey.outlet the outlet, as the Worker Sentry hook parses them."
     },
     "packs.record": {
       "status": "implemented",
@@ -149,7 +250,9 @@
       "status": "implemented",
       "note": "client.update.packs.registerHandler; files.tree (hot: versioned directory plus pointer swap), data.json and l10n.table built in; check(staged) refuses a staged payload with pack-type-check-failed before it commits (P4-16); custom.<name> through registerHandler."
     },
-    "packs.provides": { "status": "implemented" },
+    "packs.provides": {
+      "status": "implemented"
+    },
     "packs.type.godot.zip": {
       "status": "na",
       "runtime": ["node"],
@@ -186,25 +289,44 @@
     },
     "packs.transport.steam": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-28",
       "note": "P5-08 covers Godot only; Node desktop hosts have no Steam-depot transport owner."
     },
     "packs.transport.msix": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-29",
       "note": "No work package owns the MSIX optional-package transport (P5-08 Out)."
     },
     "packs.transport.flatpak": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-29",
       "note": "No work package owns the Flatpak extension transport (P5-08 Out)."
     },
-    "ui.stages": { "status": "implemented" },
-    "ui.kit": { "status": "na", "runtime": "headless", "reason": "runtime" },
+    "ui.stages": {
+      "status": "implemented",
+      "note": "BOOT_STAGES, bootTransition, bootGuardAction and the rest re-exported from client-core; client.boot({onStage}) drives the machine end to end and client.ensureActivated() runs its first three stages (SP-N05)."
+    },
+    "ui.boot": {
+      "status": "implemented",
+      "note": "client.boot(): discovery, the keyless registration when the product is open and no token is held, the sync pass, then the client-core stage machine to its outcome (SP-N05)."
+    },
+    "ui.kit": {
+      "status": "na",
+      "runtime": "headless",
+      "reason": "runtime"
+    },
+    "ui.kit.manage": {
+      "status": "na",
+      "runtime": "headless",
+      "reason": "runtime"
+    },
+    "ui.cli": {
+      "status": "implemented",
+      "note": "@polaris-key/node/cli: status, activate, enroll, deactivate, register, sign-in, devices and the rest of CLI_VERBS for commander and yargs; one test per verb (SP-N14)."
+    },
     "commerce.receipt": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+      "status": "implemented",
+      "note": "client.commerce: binding(), claim(store, payload) and the store helpers claimSteam(ticketHex, dlcAppId), claimAppStore(jws), claimPlay(productId, token). No store SDK dependency: the host passes what its store handed it (SDK parity pass §3.9, SP-N04)."
     }
   }
 }

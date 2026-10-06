@@ -53,6 +53,7 @@ const ON: ServicesMap = {
   distribution: { enabled: true },
   update: { enabled: false },
   identity: { enabled: false },
+  sync: { enabled: false },
 };
 
 let db: Db;
@@ -216,10 +217,18 @@ describe("registry tokens: the store (§6.1)", () => {
     expect((await m({ expiresInDays: 365 })).ok).toBe(true);
     expect((await m({ label: "" })).ok).toBe(false);
     expect((await m({ label: "x".repeat(65) })).ok).toBe(false);
-    expect((await m({ ecosystems: ["cargo"] })).ok).toBe(false);
+    expect((await m({ ecosystems: ["nuget"] })).ok).toBe(false);
     expect((await m({ ecosystems: [] })).ok).toBe(false);
-    // `publish` is reserved for F-22 and F-23.
+    // F-22: `publish` must name its publish ecosystems (registryPublish.test.ts has the rest);
+    // it implies `read` (F-23's push tokens are the same scope, naming OCI).
     expect((await m({ scopes: ["publish"] })).ok).toBe(false);
+    const pub = await m({ scopes: ["publish"], ecosystems: ["npm"] });
+    expect(pub.ok && pub.view.scopes).toEqual(["publish", "read"]);
+    expect((await m({ scopes: ["publish"], ecosystems: ["oci"] })).ok).toBe(
+      true,
+    );
+    expect((await m({ scopes: ["delete"] })).ok).toBe(false);
+    expect((await m({ scopes: ["write"] })).ok).toBe(false);
     const url = await m({ presentation: "url", ecosystems: ["npm"] });
     expect(url.ok && url.view.ecosystems).toEqual(["godot"]);
     expect(url.ok && url.view.expiresAt).toBe(now + 30 * 86_400);

@@ -287,7 +287,7 @@ describe("PolarisLogin a11y — keyboard + labels + alerts", () => {
     fireEvent.submit(input.closest("form") as HTMLFormElement);
     const alert = await waitFor(() => within(container).getByRole("alert"));
     // The clearer, code-derived message is surfaced.
-    expect(alert.textContent).toMatch(/not accepted/i);
+    expect(alert.textContent).toMatch(/license key wasn't accepted/i);
     // aria-invalid + aria-describedby point the input at the alert.
     expect(input.getAttribute("aria-invalid")).toBe("true");
     expect(input.getAttribute("aria-describedby")).toBe(alert.id);

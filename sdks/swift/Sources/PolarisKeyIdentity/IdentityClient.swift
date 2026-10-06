@@ -43,10 +43,14 @@ public struct SignInPrompt: Sendable, Equatable {
     public let interval: Int
     /// When the code expires on THIS client's clock (epoch seconds).
     public let expiresAt: Int
+    /// The label the sign-in page shows (WIRE-CONTRACT-V4 §12.7.1): the Worker's echo, else (an
+    /// older Worker) the label sent; `nil` when there is none.
+    public let deviceName: String?
 
     public init(
         deviceCode: String, userCode: String, verificationUri: String,
-        verificationUriComplete: String, expiresIn: Int, interval: Int, expiresAt: Int
+        verificationUriComplete: String, expiresIn: Int, interval: Int, expiresAt: Int,
+        deviceName: String? = nil
     ) {
         self.deviceCode = deviceCode
         self.userCode = userCode
@@ -55,6 +59,7 @@ public struct SignInPrompt: Sendable, Equatable {
         self.expiresIn = expiresIn
         self.interval = interval
         self.expiresAt = expiresAt
+        self.deviceName = deviceName
     }
 }
 
@@ -63,7 +68,8 @@ extension SignInPrompt: CustomStringConvertible, CustomDebugStringConvertible, C
         "SignInPrompt(deviceCode: \(redactedCredential), userCode: \(userCode), "
             + "verificationUri: \(verificationUri), "
             + "verificationUriComplete: \(verificationUriComplete), expiresIn: \(expiresIn), "
-            + "interval: \(interval), expiresAt: \(expiresAt))"
+            + "interval: \(interval), expiresAt: \(expiresAt), "
+            + "deviceName: \(deviceName ?? "nil"))"
     }
     public var debugDescription: String { description }
     public var customMirror: Mirror {
@@ -73,7 +79,7 @@ extension SignInPrompt: CustomStringConvertible, CustomDebugStringConvertible, C
                 "deviceCode": redactedCredential, "userCode": userCode,
                 "verificationUri": verificationUri,
                 "verificationUriComplete": verificationUriComplete, "expiresIn": expiresIn,
-                "interval": interval, "expiresAt": expiresAt,
+                "interval": interval, "expiresAt": expiresAt, "deviceName": deviceName as Any,
             ], displayStyle: .struct)
     }
 }
@@ -81,14 +87,44 @@ extension SignInPrompt: CustomStringConvertible, CustomDebugStringConvertible, C
 /// What a redacted credential prints as.
 let redactedCredential = "[redacted]"
 
+/// The signed-in identity the Worker shows the device: a name and a verified e-mail, never the
+/// subject or other claims.
+public struct SignInIdentity: Sendable, Equatable, Decodable {
+    public let name: String?
+    public let email: String?
+
+    public init(name: String? = nil, email: String? = nil) {
+        self.name = name
+        self.email = email
+    }
+}
+
+/// What a completed sign-in carries (P1-06's residual, P1-07).
+public struct SignInReady: Sendable, Equatable {
+    /// Who the device is now signed in as, when the Worker said (device-code flows).
+    public let identity: SignInIdentity?
+    /// `claimed` or `migrated` when the device's anonymous enrolled licence was attached to the
+    /// account on the player's opt-in; nil when nothing was attached.
+    public let attached: String?
+
+    public init(identity: SignInIdentity? = nil, attached: String? = nil) {
+        self.identity = identity
+        self.attached = attached
+    }
+}
+
 /// One poll's answer.
 public enum SignInPoll: Sendable, Equatable {
     /// The player has not finished yet.
     case pending
     /// Polled too fast: wait `interval` seconds before the next poll (RFC 8628 §3.5).
     case slowDown(interval: Int)
+    /// Only with `confirmIdentity`: the flow is held at the signed-in identity so the device can
+    /// show it ("Is this you?") and the player can accept it (`acceptSignIn`). `attachable` is
+    /// true when this device holds an anonymous enrolled licence the account could take over.
+    case confirm(identity: SignInIdentity, attachable: Bool)
     /// Signed in: the device token is stored and the post-acquisition sync has run.
-    case ready
+    case ready(SignInReady)
     /// The code expired (or the server no longer knows it). Begin again.
     case expired
     /// The sign-in failed or was refused. Begin again.
@@ -97,9 +133,16 @@ public enum SignInPoll: Sendable, Equatable {
 
 /// How `waitForSignIn` ended. Cancellation throws `CancellationError` instead.
 public enum SignInResult: Sendable, Equatable {
-    case ready
+    case ready(SignInReady)
+    /// Only with `confirmIdentity`: show the identity, then `acceptSignIn` or cancel.
+    case confirm(identity: SignInIdentity, attachable: Bool)
     case expired
     case error(message: String)
+
+    public var isReady: Bool {
+        if case .ready = self { return true }
+        return false
+    }
 }
 
 /// Raised after a sign-in mints a credential; the facade syncs.
@@ -130,8 +173,10 @@ public final class IdentityClient: Sendable {
     public static let networkError = "network-error"
     public static let serverError = "server-error"
 
-    private let core: CoreContext
+    let core: CoreContext
     private let onAcquired: SignInAcquiredListener?
+    /// The facade's sign-out (`installSignOut`).
+    let signOutHook = LockedValue<(@Sendable () async throws -> Void)?>(nil)
     private let sleep: @Sendable (Double) async throws -> Void
 
     /// - Parameter sleep: how `waitForSignIn` waits between polls. Defaults to `Task.sleep`, which
@@ -164,9 +209,10 @@ public final class IdentityClient: Sendable {
     public func beginSignIn(deviceName: String? = nil) async throws -> SignInPrompt {
         try await core.requireService(.identity, feature: Feature.identityDevicecode)
         var body: [String: String] = ["deviceId": await core.deviceId]
-        if let name = deviceName?.trimmingCharacters(in: .whitespacesAndNewlines), !name.isEmpty {
-            body["deviceName"] = name
-        }
+        // §12.7.1: the per-call name, else `CoreOptions.deviceName`, else the platform default,
+        // normalised exactly as the Worker will store it. `""` sends none.
+        let label = await core.deviceLabel(deviceName)
+        if let label { body["deviceName"] = label }
         let response = try await post("identity/auth/device/start", body)
         guard response.status == 200 else {
             throw PolarisError(
@@ -185,7 +231,9 @@ public final class IdentityClient: Sendable {
         return SignInPrompt(
             deviceCode: b.deviceCode, userCode: b.userCode, verificationUri: b.verificationUri,
             verificationUriComplete: b.verificationUriComplete, expiresIn: expiresIn,
-            interval: interval, expiresAt: await core.now() + expiresIn)
+            interval: interval, expiresAt: await core.now() + expiresIn,
+            // The echo is what the page shows; an older Worker sends none, so show what was sent.
+            deviceName: b.echoed ? b.deviceName : label)
     }
 
     /// Poll once. On `.ready` the token is stored and the post-acquisition sync has completed
@@ -194,17 +242,36 @@ public final class IdentityClient: Sendable {
     /// Throws `PolarisError(network-error)` when the request never got an answer and
     /// `PolarisError(server-error)` on a 5xx — neither says anything about the sign-in, so neither
     /// is folded into a status. `waitForSignIn` rides both out.
-    public func pollSignIn(_ prompt: SignInPrompt) async throws -> SignInPoll {
-        try await poll(prompt, current: prompt.interval)
+    ///
+    /// P1-07's opt-in: with `confirmIdentity` the Worker holds the flow at the signed-in identity
+    /// (`.confirm`) instead of completing it; the decision is then sent as `attachLicense` (with
+    /// the device's bearer, which names the anonymous enrolled licence to attach). Without either,
+    /// the poll completes exactly as before: the identity's own licence, nothing attached.
+    public func pollSignIn(
+        _ prompt: SignInPrompt, confirmIdentity: Bool = false, attachLicense: Bool? = nil
+    ) async throws -> SignInPoll {
+        try await poll(
+            prompt, current: prompt.interval, confirmIdentity: confirmIdentity,
+            attachLicense: attachLicense)
     }
 
     /// One poll, where an interval-less `slow_down` lengthens `current` — the interval the caller
     /// is pacing at — rather than the prompt's original one.
-    private func poll(_ prompt: SignInPrompt, current: Int) async throws -> SignInPoll {
+    private func poll(
+        _ prompt: SignInPrompt, current: Int, confirmIdentity: Bool = false,
+        attachLicense: Bool? = nil
+    ) async throws -> SignInPoll {
         try await core.requireService(.identity, feature: Feature.identityDevicecode)
-        let response = try await post(
-            "identity/auth/device/poll",
-            ["deviceCode": prompt.deviceCode, "deviceId": await core.deviceId])
+        var ask: [String: JSONValue] = [
+            "deviceCode": .string(prompt.deviceCode), "deviceId": .string(await core.deviceId),
+        ]
+        var bearer: String?
+        if confirmIdentity || attachLicense != nil { ask["confirmIdentity"] = .bool(true) }
+        if let attachLicense {
+            ask["attachLicense"] = .bool(attachLicense)
+            if attachLicense { bearer = await core.token }
+        }
+        let response = try await post("identity/auth/device/poll", ask, bearer: bearer)
         if response.status >= 500 {
             throw PolarisError(
                 code: IdentityClient.serverError,
@@ -226,13 +293,16 @@ public final class IdentityClient: Sendable {
             return .pending
         case "timeout":
             return .expired
+        case "confirm":
+            return .confirm(
+                identity: body?.identity ?? SignInIdentity(), attachable: body?.attachable ?? false)
         case "ready":
             guard let token = body?.token, !token.isEmpty else {
                 return .error(message: "ready without a token.")
             }
             try await core.setToken(token, source: .signin)
             await onAcquired?()
-            return .ready
+            return .ready(SignInReady(identity: body?.identity, attached: body?.attached))
         default:
             return .error(message: "device sign-in failed.")
         }
@@ -243,7 +313,27 @@ public final class IdentityClient: Sendable {
     /// transient failure is retried at the SAME interval. Returns `.expired` once the prompt's
     /// `expiresAt` has passed, without asking the server. Cancelling the task stops polling and
     /// throws `CancellationError`.
-    public func waitForSignIn(_ prompt: SignInPrompt) async throws -> SignInResult {
+    ///
+    /// With `confirmIdentity` the wait ends at `.confirm` once the player signed in; show the
+    /// identity and call `acceptSignIn(_:attachLicense:)` (or drop the prompt to cancel).
+    public func waitForSignIn(_ prompt: SignInPrompt, confirmIdentity: Bool = false) async throws
+        -> SignInResult
+    {
+        try await wait(prompt, confirmIdentity: confirmIdentity, attachLicense: nil)
+    }
+
+    /// The player accepted the identity a `.confirm` showed: complete the sign-in, attaching this
+    /// device's anonymous enrolled licence to the account when `attachLicense` (and only when the
+    /// confirm said it was `attachable`). Paced like `waitForSignIn`.
+    public func acceptSignIn(_ prompt: SignInPrompt, attachLicense: Bool) async throws
+        -> SignInResult
+    {
+        try await wait(prompt, confirmIdentity: true, attachLicense: attachLicense)
+    }
+
+    private func wait(_ prompt: SignInPrompt, confirmIdentity: Bool, attachLicense: Bool?)
+        async throws -> SignInResult
+    {
         try await core.requireService(.identity, feature: Feature.identityDevicecode)
         var interval = prompt.interval
         while true {
@@ -254,7 +344,9 @@ public final class IdentityClient: Sendable {
             if await core.now() >= prompt.expiresAt { return .expired }
             let poll: SignInPoll
             do {
-                poll = try await self.poll(prompt, current: interval)
+                poll = try await self.poll(
+                    prompt, current: interval, confirmIdentity: confirmIdentity,
+                    attachLicense: attachLicense)
             } catch let error as PolarisError
                 where error.code == IdentityClient.networkError
                 || error.code == IdentityClient.serverError
@@ -266,8 +358,10 @@ public final class IdentityClient: Sendable {
                 continue
             case .slowDown(let next):
                 interval = max(interval, next)
-            case .ready:
-                return .ready
+            case .ready(let ready):
+                return .ready(ready)
+            case .confirm(let identity, let attachable):
+                return .confirm(identity: identity, attachable: attachable)
             case .expired:
                 return .expired
             case .error(let message):
@@ -278,11 +372,18 @@ public final class IdentityClient: Sendable {
 
     // ── Internals ────────────────────────────────────────────────────────────────────────
     private func post(_ path: String, _ body: [String: String]) async throws -> PolarisResponse {
-        let data = try JSONEncoder().encode(body)
+        try await post(path, body.mapValues(JSONValue.string), bearer: nil)
+    }
+
+    private func post(_ path: String, _ body: [String: JSONValue], bearer: String?) async throws
+        -> PolarisResponse
+    {
+        let data = try JSONEncoder().encode(JSONValue.object(body))
+        var headers = ["content-type": "application/json"]
+        if let bearer { headers["authorization"] = "Bearer \(bearer)" }
         do {
             return try await core.request(
-                core.endpoints.url(path), method: "POST",
-                headers: ["content-type": "application/json"], body: data)
+                core.endpoints.url(path), method: "POST", headers: headers, body: data)
         } catch let error as PolarisError where error.code == PolarisError.localOnly {
             throw error
         } catch {
@@ -306,12 +407,35 @@ private struct StartBody: Decodable {
     /// Doubles, so a fractional answer rounds up instead of failing to decode.
     let expiresIn: Double
     let interval: Double
+    /// PX-W13: the stored label; `echoed` is false when the member is absent (an older Worker).
+    let deviceName: String?
+    let echoed: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case deviceCode, userCode, verificationUri, verificationUriComplete, expiresIn, interval
+        case deviceName
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        deviceCode = try c.decode(String.self, forKey: .deviceCode)
+        userCode = try c.decode(String.self, forKey: .userCode)
+        verificationUri = try c.decode(String.self, forKey: .verificationUri)
+        verificationUriComplete = try c.decode(String.self, forKey: .verificationUriComplete)
+        expiresIn = try c.decode(Double.self, forKey: .expiresIn)
+        interval = try c.decode(Double.self, forKey: .interval)
+        echoed = c.contains(.deviceName)
+        deviceName = try? c.decodeIfPresent(String.self, forKey: .deviceName)
+    }
 }
 
 private struct PollBody: Decodable {
     let status: String?
     let interval: Double?
     let token: String?
+    let identity: SignInIdentity?
+    let attached: String?
+    let attachable: Bool?
 }
 
 private struct FlatError: Decodable { let error: String }

@@ -61,9 +61,9 @@ human steps, and confirm by read that the branch the operator set is live.
 
 ## Acceptance criteria
 
-- [ ] The conformance suite passes for Steam, including the denied public branch and the 403 stop.
-- [ ] The copy card and asset pack render from fixtures; checklist ticks persist and audit.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] The conformance suite passes for Steam, including the denied public branch and the 403 stop.
+- [x] The copy card and asset pack render from fixtures; checklist ticks persist and audit.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 
@@ -77,3 +77,25 @@ A-18k decides the public-branch rule. A-18j renders Steam's plan ("store page: l
 
 The role agent sets `--set A-18g in-review` when it hands off. After review, the lead adds the last
 commit of the PR: `node docs/research/2026-09-29-godot-omniplatform/program/check.mjs --set A-18g done`.
+
+## Corrections from the code (A-18g, 2026-10-04)
+
+Where the brief and the code disagreed, the code won:
+
+- **`uploadBuild` is declared `ci`, and the adapter's `ci` is A-18h's `STEAM_CI`.** A-18h landed
+  first, and the conformance suite requires every registered adapter with a CI-plane row to carry
+  that row's list (and its `neverTokens` as `never.ciTokens`). Nothing new runs: depot uploads stay
+  out of scope, this only declares the existing `steamcmd` allow-list on the adapter. The CLI's
+  generated copy (`ciPlane.generated.ts`) was regenerated.
+- **The gate engine gained an optional `reads` predicate** (`core/storefront/gate.ts`). Every Steam
+  Web API method is an ordinary path, so without it a write method sent as a `GET` would pass the
+  engine's read rule; Steam admits exactly its three reads.
+- **The publisher key opens through `openSteamPublisherKey`** (extracted from A-16's
+  `commerce/steam.ts`, behaviour unchanged), under the audited use `steam:storefront`, inside the
+  gated client's key thunk.
+- **The checklist lives in Distribution's connector settings** (`steam-setup`, as A-17c's App Store
+  portal checklist does), keyed by app id: no migration.
+- **Routes:** `…/distribution/storefronts/steam[/apps|builds|pack|checklist|branches/<b>/live]`,
+  narrative-only console API like the rest of Distribution's admin surface. A-18j renders them.
+- **The 403 stop is a conformance item** (8, for every adapter whose rate declares `stopOn403`),
+  besides the Steam test.

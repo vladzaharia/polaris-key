@@ -10,48 +10,84 @@ authority can see, which today is every product that exists. This page covers re
 what its lifecycle actions actually do server-side, and the setup-health checklist the
 [Overview page](/docs/admin/console-tour/#core) and Home are built from.
 
-The registry is a table: each product's name (a link to its Overview; a click anywhere on the row
-follows it), slug, the services it runs, whether its setup is complete, where it comes from
+The registry is a table: each product's logo and name (a link to its Overview; a click anywhere on
+the row follows it), slug, the services it runs, whether its setup is complete, where it comes from
 (GitHub or manual) and when it last changed. Search, the Setup and Source filters, and the sort
 live in the URL, so a filtered view can be bookmarked or shared.
 
 **Home** (`#/`) is the cross-product view of the same registry: a **Needs attention** list (every
 product's open setup items, each with the one link that fixes it), live figures (products,
-products needing attention, setup complete, repository-linked) and a card per product with the
-services it runs. Its filter and sort are in the URL too.
+products needing attention, repository-linked) and a card for each of the six most recently changed
+products, with **All products** opening this table. A card shows the product's logo, its name and
+slug, and one row per service it runs. Each row links to that service's page and shows one fact:
+the active licenses, the latest release and its channel, the storefronts, the catalog's schema
+version or the users. When a service needs something, its row shows what instead, and links to
+the fix. A product with more than four services lists three rows (those that need something
+first) and links to the rest by their icons. An issue that belongs to the product itself, such as
+a missing signing key, is a pill beside its name. A healthy card shows no status at all.
+
+The logo is the product's hosted icon: the copy Polaris Key keeps of the `presentation.icon` in
+`.pkey/product`, or of the store listing's icon. Until a copy exists, or when it cannot load, the
+card shows the name's first letter on a plain tile. A failed re-fetch keeps showing the last good
+copy.
 
 ## Registering a product
 
-**New product** opens a full-page wizard at `#/products/new`. You choose the source first
-(**Link a GitHub repository** or **Start manually**; `?via=github|manual` preselects it), then
-fill one step at a time. The step is in the URL (`?step=…`) and the draft is kept for the tab, so
-a refresh loses nothing; leaving with a draft asks first. A **Review** step comes before anything
-is created. The result names the new product's signing `kid` and public key, with a copy button —
-give the public key to your SDK trust configuration and release tooling (it is also in the
-product's JWKS); the private key never leaves the platform, sealed under `PLATFORM_KEK` from the
-moment it's minted. **Open product** takes you to its Overview.
+**New product** opens one screen at `#/products/new`. **Start from** picks the source:
+**Nothing** or **A GitHub repository** (`?via=manual|github` preselects it). There are no steps
+and no review page: fill the fields and press **Enter** or the button to create. The draft is
+kept for the tab, so a refresh loses nothing; leaving with a draft asks first.
 
-### Manual
+A refusal stays on the screen, in plain words, with its fix beside it. A refusal about one field
+sits on that field and moves focus there, such as a taken slug or a repository the GitHub App
+can't read. Anything else goes in a callout above the button, such as a manifest the server
+would not accept. Nothing is created until every check passes.
 
-For early experiments, before release syncing, OIDC or provisioning matter. The steps are
-**Basics** (a slug, an optional display name and the metadata-only admin group), **Catalog** (an
-optional config catalog in JSON or YAML — publish one later from Catalog if you skip it) and
-**Defaults** (the per-license offline days and device limit; blank uses the platform default). The
-compatibility window is not asked for: it lives in
-[Update → Feed](/docs/admin/console-tour/#update). The worker mints an Ed25519 signing key and an active catalog (empty if none was
-supplied) in one batch — **a product can never exist without a usable signing key**. No release
-row and no edge-mint row are created; this path has no GitHub coordinates to hang them on.
+There is no result page. A new product opens on its **Overview**, which shows "_Name_ is ready"
+once, with the new signing `kid` and a button that copies its public key. Give the public key to
+your SDK trust configuration and release tooling; it is also in the product's JWKS. The private
+key never leaves the platform: it is sealed under `PLATFORM_KEK` from the moment it's minted.
+Dismiss the welcome, refresh, or come back later and Overview shows its ordinary setup.
 
-### From GitHub
+### Starting from nothing
 
-The path onboarding actually uses. You give a repository URL; the linked GitHub App reads its
-`.pkey/` directory, validates the manifest, and registers the product from it — services,
-tiers, profiles, OIDC configuration, release coordinates, edge-mint recipes, all of it. A refused
-manifest is listed problem by problem on the Review step, so you can fix them in one commit. The
-result lists **remaining secrets**: names the manifest declared but that have no value yet (an
-OIDC client secret, an edge-mint signing key), with a **Set missing secrets** button into
-[Secrets & keys](/docs/admin/secrets-and-keys/) — they're write-only and never echoed back.
-This is also the path DJDL uses in production; see [Operating: the KEK
+For early experiments, before release syncing, OIDC or provisioning matter. Type the **Name**
+first. The **Slug** follows it (lowercase letters, digits and hyphens) until you edit it, and it is
+checked against the registry as you type. A taken slug says so and offers a free one to take
+with one click (**Use tonebox-app**). A reserved or malformed slug is refused before anything is
+sent. The slug is permanent: it is used in keys and URLs.
+
+**Advanced: license defaults** holds the per-license offline grace (1 to 365 days) and device
+limit. Leave either blank to use the platform default. A config catalog, the compatibility window
+([Update → Feed](/docs/admin/console-tour/#update)) and everything else are set up later from
+Overview. The worker mints an Ed25519 signing key and an empty active catalog in one batch:
+**a product can never exist without a usable signing key**. No release row and no edge-mint row
+are created, because this path has no GitHub coordinates to hang them on.
+
+### From a GitHub repository
+
+This is the path onboarding uses. Give the repository as `owner/repo` or its GitHub URL and press
+**Link repository**. The linked GitHub App reads the `.pkey/` directory on the default branch,
+validates the manifest, and registers the product from it: name, slug, services, tiers, profiles,
+OIDC configuration, release coordinates, edge-mint recipes, all of it. The name and slug come from
+`.pkey/product`, so the screen does not ask for them.
+
+When the link is refused, the screen shows what to do next:
+
+- **The GitHub App isn't installed on the repository, or the repository is private.** The message
+  sits on the Repository field, with **Install the GitHub App** beside it. Install the Polaris Key
+  GitHub App on the repository, then link again.
+- **The manifest has problems.** The callout lists each problem with its file and path, so you can
+  fix them all in one commit. Push the fix and press **Check again** to link again.
+- **The manifest's slug is taken, reserved or malformed.** Change `product.slug` in
+  `.pkey/product`, push, then press **Check again**. Linking registers new products only: if the
+  slug is taken because this repository is already registered, open that product and resync it
+  instead (see [What resync actually re-applies](#what-resync-actually-re-applies)).
+
+Overview's welcome lists any **remaining secrets**. These are names the manifest declared that
+have no value yet, such as an OIDC client secret or an edge-mint signing key. A **Set _n_ missing
+secrets** link goes to [Secrets & keys](/docs/admin/secrets-and-keys/). Secrets are write-only
+and never echoed back. This is also the path DJDL uses in production; see [Operating: the KEK
 keyring](/docs/admin/kek/) → _Product operations_ for its specific checklist.
 
 ### Reserved slugs
@@ -63,9 +99,15 @@ refuse the same list:
 `docs` · `manage` · `api` · `assets` · `login` · `logout` · `callback` · `magic` · `download` ·
 `webhooks` · `well-known` · `media` · `activate` · `avatar`
 
-The link-repo path gets this for free from manifest validation (`reserved_slug` — see
-[Manifest validation codes](/docs/reference/validation-codes/)); manual create checks the same
-list explicitly.
+The admin API's own one-segment actions under `/manage/api/products/` are reserved the same way,
+because a product slugged like one would have its console record shadowed: `kek` · `link-repo` ·
+`slug-check`.
+
+The shape is one rule too: lowercase letters, digits and hyphens, 1–64 characters, starting with a
+letter or digit (`^[a-z0-9][a-z0-9-]{0,63}$`). The manifest validator (so `pkey validate`,
+link-repo and resync), the slug check and manual create all apply the same shape and lists from
+`@polaris-key/manifest`, and refuse with the same codes (`invalid_slug`, `reserved_slug` — see
+[Manifest validation codes](/docs/reference/validation-codes/)).
 
 ### The system product
 
@@ -93,7 +135,7 @@ out of the product switcher and the Products list.
 
 ### The `adminGroup` field is metadata, not a grant
 
-The wizard's Basics step, and Settings, carry an "Admin group" field labeled _metadata only_. It's recorded
+Settings carries an "Admin group" field labeled _metadata only_ (New product does not ask for it). It's recorded
 on the product row and shown back to you, and it authorizes **nothing**: there is no
 per-product admin tier. The console authorizes every request on the platform-wide
 `PLATFORM_ADMIN_GROUP` alone (see [Operating: the KEK keyring](/docs/admin/kek/) → _Secrets_).
@@ -119,22 +161,26 @@ Resync re-reads `schema`, `product` and `release` from the linked repo's **defau
 never a caller-supplied ref, so the manifest applied to production can't be a function of an
 unreviewed branch — and re-applies each in place:
 
-- Product metadata (name, compat window, defaults) is overwritten unconditionally.
-- The catalog gets a new active `schemaVersion` **only when its content actually changed**.
+- Product metadata (name, licence defaults, web origins) is written unless the console has
+  claimed that field; the admin group is manifest-only and always follows the manifest. The
+  compatibility window follows the ownership rule below.
+- The catalog gets a new active `schemaVersion` **only when its content actually changed**, and
+  never once a console publish has claimed it.
 - `release_config` is updated in place; the release truth store re-syncs in the same batch.
-- `oidc_config`, `tiers`, `provisioning_config` and `edge_mint_config` are replaced from the
-  manifest — these have no live-admin override, so the manifest is always the last word for
-  them.
-- `profiles` are replaced from the manifest too, **except for their secret values**. A manifest
+- `oidc_config`, `provisioning_config` and `edge_mint_config` are replaced from the manifest —
+  these have no live-admin override, so the manifest is always the last word for them.
+- `tiers` and `profiles` are applied per row: a row created or edited in the console is left
+  alone, and a manifest row the manifest drops is removed when nothing references it.
+- Manifest-owned `profiles` follow the manifest, **except for their secret values**. A manifest
   can't carry a secret value, so the secrets an operator set on a profile in the console are
   carried forward, still sealed, onto every profile the manifest still lists. The pushed catalog
   decides what counts: a value is carried only while its key is still a `secret` entry, or a
   `config` entry flagged `secret: true`, in the catalog this push brings, and only if it is
   stored sealed. A key the new catalog drops or stops calling secret loses its value, and a
   plaintext value is never carried. A key the manifest's own profile payload declares wins, and
-  a profile the manifest drops is removed, secrets and all. Every other value on a profile
-  (plain config values and flags) follows the manifest, so set those in `.pkey/product` rather
-  than in the console.
+  a profile the manifest drops is removed, secrets and all. Setting a plain config value or a
+  flag on a profile in the console claims that profile for the console, so later resyncs leave
+  it alone.
 - Dropping a tier or profile from the manifest is refused (409) while a license still
   references it.
 - **Services enablement and the fingerprint/auto-issue policies follow the ownership rule**:
@@ -142,9 +188,57 @@ unreviewed branch — and re-applies each in place:
   operator edits one of those live (claiming it as `admin`-owned), a resync no longer touches it
   — see [Services & enablement](/docs/admin/services-enablement/#manifest-vs-admin-ownership).
 
-A resync is one D1 transaction: either everything above lands together, or a validation failure
-(a bad catalog, an OIDC issuer change that fails the platform's own gate) leaves the product
-exactly as it was.
+A resync is one D1 transaction, and every check runs before it: either everything above lands
+together, or a refusal (a bad catalog, an OIDC issuer change that fails the platform's own gate,
+a dropped tier a license still uses) leaves the product exactly as it was. Each setting, tier or
+profile it changes gets its own audit row.
+
+### Claimed settings
+
+On a repository-linked product, saving the display name or a licence default in Settings
+claims it for the console: you confirm first, the row's source badge then reads **Set in
+console**, and resyncs leave it alone. **Revert…** in that badge restores the value from the
+last applied manifest at once, or at the next resync for a product not applied since claims
+arrived. Publishing the catalog claims it the same way, with Revert in the catalog's source
+badge. The admin group is read-only there: change it in `.pkey/product`. The system product
+follows the monorepo's `.pkey/` and refuses console claims.
+
+### Linking a repository to an existing product
+
+A product created from nothing (or before its repository had a `.pkey/`) can be handed over to
+its manifest later: **Settings → Repository → Link repository…**, or **Link a repository** on the
+Releases page before the first release. Both open the same drawer, and it works in two steps.
+
+1. **Check.** Type `owner/repo` or the repository's GitHub URL. The console runs the link's checks
+   and marks each one: the repository parses, the Polaris Key GitHub App can read it, the
+   `.pkey/` manifest validates, and its `product.slug` is this product's slug. It also runs the
+   checks a resync would otherwise hit halfway: an OIDC issuer change outside the platform's
+   allowlist, an unsafe binary name, a catalog the validator refuses. Nothing is written. A
+   passing check lists what the link will do:
+   - **Applies**: the values and rows the manifest writes (name and defaults, a new catalog
+     version, tiers, profiles, release settings, the trusted publisher, and so on);
+   - **Stays (set in the console)**: values the manifest declares but an operator already set
+     here (services, the compatibility window, the fingerprint and auto-issue policies, release
+     access, a trusted publisher saved in Keys & secrets). The ownership rule above applies from
+     the first apply;
+   - **Removes**: tiers, profiles, catalog keys, token recipes and so on that the product has and
+     the manifest does not declare;
+   - **Blocks the link**: a tier or profile the manifest drops while licenses still use it. Add it
+     to the manifest or move the licenses, then check again.
+2. **Link repository.** The console sends back a digest of the manifest it checked. If someone
+   pushed to `.pkey/` in between, the link is refused (`409`) and asks for a fresh check, so the
+   manifest applied is always the one you read. Otherwise the product's source becomes the
+   repository and the manifest is applied by the same code as **Resync from repo**. The signing
+   key is not touched. Secrets the manifest names but cannot carry are listed for you to set in
+   [Secrets & keys](/docs/admin/secrets-and-keys/).
+
+The link is recorded in Activity as _linked the product to a repository_. After it, every push to
+the default branch re-applies `.pkey/`, exactly as for a product created from its repository. The
+platform's own product cannot be linked here: the deploy hook links it.
+
+The API is `POST /manage/api/products/<slug>/release/link?dryRun=1` with `{ "repoUrl" }` for the
+check, then `POST …/release/link` with `{ "repoUrl", "manifestDigest" }`. A refusal's `reason`
+names the check that failed: `product`, `repository`, `app`, `manifest`, `slug` or `policy`.
 
 ### What deleting a product actually does
 

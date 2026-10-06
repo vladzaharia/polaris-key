@@ -137,9 +137,8 @@ describe("device limit, focused flow (§4.25, PX-10)", () => {
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     // No nav: only the way back to the app.
     expect(screen.queryByRole("navigation", { name: "Main" })).toBeNull();
-    const back = screen.getByRole("link", {
-      name: "Back to Orbit Survey without changes",
-    });
+    // An app sent the person (a declared `return=`): only then is it "Back to Orbit Survey".
+    const back = screen.getByRole("link", { name: "Back to Orbit Survey" });
     expect(back.getAttribute("href")).toBe("orbitsurvey://retry");
     expect(screen.getByText("Mara’s Steam Deck")).toBeTruthy();
     expect(
@@ -150,22 +149,25 @@ describe("device limit, focused flow (§4.25, PX-10)", () => {
     expect(radios).toHaveLength(2);
     const work = screen.getByRole("radio", { name: /Work laptop/ });
     expect(work.getAttribute("aria-checked")).toBe("true");
-    expect(within(work).getByText("Least recent")).toBeTruthy();
+    // "Least recent" is text in the meta, never a pill (FLOWS.md P-6).
+    expect(within(work).getByText(/· least\srecent$/)).toBeTruthy();
+    expect(within(work).queryByText("Least recent")).toBeNull();
     expect(await axeViolations()).toEqual([]);
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Remove Work laptop and continue" }),
+      screen.getByRole("button", { name: "Remove Work laptop" }),
     );
     const done = await screen.findByRole("heading", {
       level: 1,
       name: "Work laptop was removed",
     });
     await waitFor(() => expect(document.activeElement).toBe(done));
-    expect(
-      screen
-        .getByRole("link", { name: "Return to Orbit Survey" })
-        .getAttribute("href"),
-    ).toBe("orbitsurvey://retry");
+    // The header's way back and the done step's primary both go to the app.
+    const backs = screen.getAllByRole("link", { name: "Back to Orbit Survey" });
+    expect(backs).toHaveLength(2);
+    for (const b of backs)
+      expect(b.getAttribute("href")).toBe("orbitsurvey://retry");
+    expect(screen.getByText("Try again")).toBeTruthy();
     expect(fetchedRequests()).toContain(
       "DELETE /api/licenses/orbit-survey/lic_orbit-survey/devices/work",
     );
@@ -177,10 +179,15 @@ describe("device limit, focused flow (§4.25, PX-10)", () => {
       "#/p/orbit-survey/free-device?return=https%3A%2F%2Fevil.example%2Fsteal",
     );
     renderPortal();
+    // No app sent the person: nothing says "Back to Orbit Survey" or "press Try again".
     const back = await screen.findByRole("link", {
-      name: "Back to Orbit Survey",
+      name: "See Orbit Survey in your library",
     });
     expect(back.getAttribute("href")).toBe("#/p/orbit-survey");
+    expect(
+      screen.queryByRole("link", { name: /Back to Orbit Survey/ }),
+    ).toBeNull();
+    expect(screen.queryByText(/Try again/)).toBeNull();
     expect(document.body.innerHTML).not.toContain("evil.example");
     expect(
       screen.getByRole("link", { name: "Cancel" }).getAttribute("href"),
@@ -204,11 +211,58 @@ describe("device limit, focused flow (§4.25, PX-10)", () => {
       name: "Your license has a free device",
     });
     expect(screen.queryByRole("radio")).toBeNull();
+    const backs = screen.getAllByRole("link", { name: "Back to Orbit Survey" });
+    expect(backs.map((b) => b.getAttribute("href"))).toEqual([
+      "https://orbit.example/play",
+      "https://orbit.example/play",
+    ]);
+    expect(screen.getByText("Try again")).toBeTruthy();
+  });
+
+  it("without return=, the done copy never sends the person back to an app", async () => {
+    let removed = false;
+    mockFetch(
+      signedIn([orbit], {
+        "/api/products/orbit-survey": () =>
+          removed
+            ? product({
+                status: "active",
+                licenses: [{ ...product().licenses[0]!, activeSeatCount: 1 }],
+              })
+            : product(),
+        "DELETE /api/licenses/orbit-survey/lic_orbit-survey/devices/work":
+          () => {
+            removed = true;
+            return { ok: true, deviceId: "work" };
+          },
+      }),
+    );
+    go("#/p/orbit-survey/free-device");
+    renderPortal();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Your license is on 2 of 2 devices",
+    });
+    expect(screen.queryByText(/Try again/)).toBeNull();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Work laptop" }),
+    );
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Work laptop was removed",
+    });
+    expect(
+      screen.getByText("Orbit Survey now has a free device."),
+    ).toBeTruthy();
+    expect(screen.queryByText(/Try again/)).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: /Back to Orbit Survey/ }),
+    ).toBeNull();
     expect(
       screen
-        .getByRole("link", { name: "Return to Orbit Survey" })
+        .getByRole("link", { name: "See your devices" })
         .getAttribute("href"),
-    ).toBe("https://orbit.example/play");
+    ).toBe("#/p/orbit-survey/devices");
   });
 
   it("a product not in the library is the not-found page, inside the flow", async () => {

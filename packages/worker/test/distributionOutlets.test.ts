@@ -51,6 +51,7 @@ import { OUTLET_CAPABILITY_DEFAULTS } from "@polaris-key/protocol/distribution";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { withDefaultHead } from "./githubHead.js";
 
 const SLUG = "dice";
 const INGEST = manifestIngestFor(SERVICES);
@@ -74,7 +75,7 @@ function contents(text: string): Response {
 
 /** A GitHub stub serving `.pkey/` files from `files` (path → body); everything else 404s. */
 function github(files: Record<string, string>): FetchImpl {
-  return async (input) => {
+  return withDefaultHead(async (input) => {
     const url = String(input);
     if (url.includes("/installation"))
       return new Response(JSON.stringify({ id: 4242 }), { status: 200 });
@@ -87,7 +88,7 @@ function github(files: Record<string, string>): FetchImpl {
     }
     if (url.includes("/releases")) return new Response("[]", { status: 200 });
     return new Response("not found", { status: 404 });
-  };
+  });
 }
 
 const PRODUCT = (modules?: Record<string, unknown>) =>
@@ -561,6 +562,7 @@ describe("enablement gates the ingest and the hook", () => {
       distribution: { enabled: true },
       update: { enabled: false },
       identity: { enabled: false },
+      sync: { enabled: false },
     };
     const out = manifestIngestStatements(
       registry,
@@ -597,6 +599,7 @@ describe("enablement gates the ingest and the hook", () => {
       distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
+      sync: { enabled: false },
     };
     const out = manifestIngestStatements(
       registry,

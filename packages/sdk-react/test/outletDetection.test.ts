@@ -120,6 +120,7 @@ describe("BrowserAdapter — the detected outlet is the default", () => {
     update: ConstructorParameters<typeof BrowserAdapter>[0]["update"],
   ): BrowserAdapter =>
     new BrowserAdapter({
+      auth: "cookie",
       productSlug: "djdl",
       fetchImpl: (async () =>
         new Response(null, { status: 404 })) as unknown as typeof fetch,

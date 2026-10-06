@@ -113,10 +113,14 @@ Source: kit README ("Powered by badges"), Brand-Guide p.3.
 
 ### 1.6 Type
 
-Rubik Bold for the wordmark and headings; Rubik Regular for the secondary phrase and body. The kit
-ships only these two weights, so the system has no medium or semibold, and `tokens.css` sets
-`font-synthesis: none` so a browser never fakes one. All logo text in the kit SVGs is outlined;
-the web fonts are for UI text only.
+Rubik ships as **one variable face** (wght 300–900; `fonts/ttf/Rubik-Variable.ttf`, Rubik[wght]
+2.300, with latin and latin-ext WOFF2 subsets), replacing the kit's two static weights (UI-KITS.md
+§2.1, owner decisions 2026-10-05). UI uses three weights: **400** for body and row titles, **500**
+for labels and buttons, **600** for headings. **700** is the wordmark's (the kit's outlined Rubik
+Bold) and a game wordmark fallback's only. `tokens.css` sets `font-synthesis: none` so a browser
+never fakes a weight or a slant. All logo text in the kit SVGs is outlined; the web fonts are for UI
+text only. The kit's static `Rubik-Regular.ttf` and `Rubik-Bold.ttf` stay in `kit/source/fonts/` as
+launch-kit originals (the Delivery wordmark is set from Rubik Bold).
 
 ### 1.7 Alt text
 
@@ -174,7 +178,7 @@ data-theme="light" on <html>             → light  (whatever the OS says)
 - Tailwind: `theme.css` defines `dark:` and `light:` variants with the same precedence (attribute,
   then system, then dark). Because the tokens already swap, most components need neither variant.
 - **Full light parity**: every token has a light value, and the contrast suite tests both themes.
-- **Sections**: `data-service="core|license|config|release|distribution|update|identity"` on, or
+- **Sections**: `data-service="core|license|config|release|distribution|update|identity|sync"` on, or
   inside, the themed element re-points `--pk-accent*` and `--pk-section-bit`. No attribute means
   core.
 
@@ -257,18 +261,23 @@ exact kit gold.
 
 ### 4.6 Scales
 
-| Group     | Tokens                                                                                                                                      |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Space     | `--pk-space-{0,0_5,1,1_5,2,3,4,5,6,8,10,12,16,20,24}` on a 4 px grid (Tailwind `--spacing: 0.25rem`, so `p-4` = `--pk-space-4`)             |
-| Radius    | `none 0`, `xs 2px`, `sm 4px`, `md 6px` (controls), `lg 10px` (cards), `xl 18px` (the badge frame's `rx`), `full`                            |
-| Elevation | `--pk-elevation-{0..3}`: page-ground-ink shadows, stronger in light; on dark the surface step does the layering                             |
-| Motion    | `--pk-duration-{instant 0, fast 120ms, base 200ms, slow 320ms}`; `--pk-ease-{standard, enter, exit}`                                        |
-| Type      | `--pk-font-sans` (Rubik), `--pk-font-mono` (system); `--pk-font-size-*` / `--pk-line-height-*` for `xs 12/16 … 5xl 48`; weights 400 and 700 |
+| Group     | Tokens                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Space     | `--pk-space-{0,0_5,1,1_5,2,3,4,5,6,8,10,12,16,20,24}` on a 4 px grid (Tailwind `--spacing: 0.25rem`, so `p-4` = `--pk-space-4`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Radius    | `none 0`, `xs 2px`, `sm 4px`, `md 6px` (controls), `lg 10px` (cards), `xl 18px` (the badge frame's `rx`), `full`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| Elevation | `--pk-elevation-{0..3}`: page-ground-ink shadows, stronger in light; on dark the surface step does the layering                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Motion    | Durations `--pk-duration-{instant 0, micro 80ms, fast 120ms, base 200ms, moderate 260ms, slow 320ms, deliberate 480ms, shimmer 1600ms}`; easings `--pk-ease-{standard, enter, exit, emphasized, spring}` (`spring` is a `linear()` curve with a 4 % overshoot, `standard` where `linear()` is unsupported); distances `--pk-motion-distance-{xs 2px, sm 4px, md 8px, lg 12px, xl 24px}`; scales `--pk-motion-scale-{press 0.98, enter 0.98, pop 0.9}`; `--pk-stagger-step` 30ms, `--pk-stagger-max` 6; delays `--pk-delay-{skeleton 150ms, highlight 1600ms}` (not motion: never collapsed). §7.5 and notes/S-23 §5 |
+| Type      | `--pk-font-sans` (variable Rubik), `--pk-font-mono` (JetBrains Mono); `--pk-font-size-*` / `--pk-line-height-*` for `xs 12/16 … 5xl 48`; `--pk-font-weight-{regular 400, medium 500, semibold 600, bold 700}`                                                                                                                                                                                                                                                                                                                                                                                                       |
+| UI kits   | `--pk-kit-*` in `kit.css` (component measures, the per-platform type scale, highlight, scrim, the danger solid): [UI-KITS.md §2.1](UI-KITS.md#21-generated-never-hand-copied)                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
-**Monospace** is the platform stack (`ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
-"Liberation Mono", monospace`): zero bytes to ship, the face each platform's developers already
-read code in, and the same answer native consumers get from their system monospace. **Figures** in
-tables use Rubik with `font-variant-numeric: tabular-nums` (Rubik ships `tnum`), not monospace.
+**Monospace** is **JetBrains Mono** (SIL OFL 1.1; variable, wght 400–600, about 30 KB as a latin
+WOFF2), the kit mono for keys, user codes, hashes and code, so a key reads the same on every OS
+(UI-KITS.md §2.1, owner decisions 2026-10-05). The platform stack (`ui-monospace, SFMono-Regular,
+"SF Mono", Menlo, Consolas, "Liberation Mono", monospace`) follows it in `--pk-font-mono`.
+`fonts.css` also declares **metric-matched fallback faces** ("Rubik Fallback" on Arial, "JetBrains
+Mono Fallback" on Menlo or Courier New, with `size-adjust` and ascent and descent overrides), named
+second in each stack, so a page does not shift when the web font arrives. **Figures** in tables use
+Rubik with `font-variant-numeric: tabular-nums` (Rubik ships `tnum`), not monospace.
 
 ---
 
@@ -318,6 +327,7 @@ and strong text all clear 4.5:1 on it).
 | **Distribution** | Star Cut | green      | `#39d075` (8.9)                | `#05773b` (4.9)   | `#05773b` (4.9) | orange        |
 | **Update**       | Star Cut | tangerine  | `#fe8001` (7.1)                | `#b95800` (4.1)   | `#aa5000` (4.7) | green         |
 | **Identity**     | Pinned K | orchid     | `#d77df2` (6.9)                | `#9e34ae` (5.1)   | `#9e34ae` (5.1) | rose          |
+| **Cloud Sync**   | Pinned K | teal       | `#14f8e1` (13.3)               | `#086260` (6.2)   | `#086260` (6.2) | (new, U-04)   |
 
 `on` is `#060912` on every dark solid (5.1–14.3:1) and on the light chartreuse and cyan solids
 (5.2–5.3:1); `#ffffff` on the other light solids (4.7–5.9:1). The full set (subtle values, bit colours) is in
@@ -327,7 +337,8 @@ OKLCH design values (dark solid / light solid): violet = the kit's; chartreuse `
 `0.60 0.15 123`; yellow `0.85 0.175 90` / `0.54 0.11 86` (fg `0.525`); cyan
 `0.82 0.145 214` / `0.60 0.105 214` (fg `0.515`); green `0.76 0.18 152` / `0.50 0.13 152`;
 tangerine `0.73 0.185 53` / `0.57 0.15 51` (fg `0.535`); orchid `0.73 0.185 318` /
-`0.53 0.20 322`. Warning: `0.68 0.135 80` (border `0.52`) / `0.47 0.105 67` (border `0.56`).
+`0.53 0.20 322`; teal `0.88 0.155 183` / `0.45 0.075 192` (U-04: `tune-accents`' optimum over
+the palette's remaining gaps, 19.0 / 19.3 ΔE00 from the nearest accent, the Release cyan). Warning: `0.68 0.135 80` (border `0.52`) / `0.47 0.105 67` (border `0.56`).
 
 Config, Update (light), Release and the warning status were chosen by
 `packages/brand/scripts/tune-accents.ts`, a reproducible grid search: among values that pass every
@@ -427,8 +438,8 @@ Rules:
 4. **The star never changes colour, rotates or animates.** Only the bit's fill moves.
 5. **Smooth, reduced-motion-aware transitions.** The bit eases between section colours over
    `--pk-duration-base` with `--pk-ease-standard` (class `polaris-section-bit`, in tokens.css).
-   Under `prefers-reduced-motion: reduce` the transition is removed and every duration token is
-   0 ms, so the change is instant.
+   Under `prefers-reduced-motion: reduce` (or `data-motion="reduce"` on `<html>`) the transition
+   is removed and every duration token is 0 ms, so the change is instant.
 6. **Mono stays mono**: under a one-ink theme the bit is the same ink as everything else.
 7. **CSP-safe markup.** No renderer emits an inline `style`; the live bit is coloured by the
    `polaris-live-bit` class in tokens.css, so lockup `innerHTML` is safe under a `style-src`
@@ -476,13 +487,16 @@ consistent with the ¼-glyph rule for the outward edges).
 
 ### 7.1 Which mark
 
-| Surface                                                                                                                                         | Mark                                                       | Favicon / PWA identity            |
-| ----------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | --------------------------------- |
-| Admin console, customer portal, docs site, Worker pages on key.plrs.im, emails                                                                  | Pinned K                                                   | `web/key/`                        |
-| Delivery surfaces: dl.plrs.im (and dl-staging, dl-dev), updater prompts, feed pages, the Distribution and Update console sections' empty states | Star Cut                                                   | `web/update/` (on the bytes host) |
-| Console header (service sections, including Distribution/Update; core pages show no bit)                                                        | Pinned K with the section bit                              | `web/key/`                        |
-| SDK UI (gate, activation, sign-in)                                                                                                              | Pinned K                                                   | n/a                               |
-| SDK updater UI (update available, downloading)                                                                                                  | Star Cut as identity only, never as the progress indicator | n/a                               |
+| Surface                                                                                                                                         | Mark                                                                  | Favicon / PWA identity            |
+| ----------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- | --------------------------------- |
+| Admin console, customer portal, docs site, Worker pages on key.plrs.im, emails                                                                  | Pinned K                                                              | `web/key/`                        |
+| Delivery surfaces: dl.plrs.im (and dl-staging, dl-dev), updater prompts, feed pages, the Distribution and Update console sections' empty states | Star Cut                                                              | `web/update/` (on the bytes host) |
+| Console header (service sections, including Distribution/Update; core pages show no bit)                                                        | Pinned K with the section bit                                         | `web/key/`                        |
+| SDK UI kits (every screen)                                                                                                                      | None: the product's identity ([UI-KITS.md §1.6](UI-KITS.md#16-marks)) | n/a                               |
+
+SDK UI kit screens show **no Polaris Key mark**; the Pinned K appears only inside the optional
+Powered-by line or badge, and the Star Cut not at all (UI-KITS.md §1.6, superseding this table's
+former "SDK UI" and "SDK updater UI" rows, 2026-10-05).
 
 Install only one identity's manifest per origin (kit README). Copy the relevant `web/<identity>/`
 directory, adapt `head-snippet.html`, and set the manifest's `id`, `start_url` and `scope`.
@@ -491,7 +505,7 @@ directory, adapt `head-snippet.html`, and set the manifest's `id`, `start_url` a
 
 - **Where:** in a product built on Polaris Key: its about/credits screen, its licence or account
   screen, the Godot credits (`games/powered-by-credit-*`), a partner page. In an SDK's drop-in UI
-  it is optional and off by default (§12.1). On Polaris Key's own
+  it is optional and off by default ([UI-KITS.md §1.6](UI-KITS.md#16-marks)). On Polaris Key's own
   surfaces (console, docs, dl.plrs.im) the platform speaks in its own voice and the badge does
   **not** appear.
 - **Which:** compact for app UI, horizontal for web footers and credits, stacked for square
@@ -512,13 +526,34 @@ The ring is violet in every section and both themes (≥ 3:1 everywhere).
 
 ### 7.5 Motion
 
-- Use only the duration and easing tokens. They collapse to 0 ms under reduced motion, so a
-  component animating through them needs no extra code.
-- Motion is functional: state changes (open/close, expand, the section bit, toasts). No ambient,
-  looping or decorative motion; no parallax.
+The one motion system for the console, the portal, the sign-in card and the UI kits is
+[notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md): the tokens
+of §4.6 (S-23 §5) and nine named patterns (enter, exit, morph, expand, shared-element,
+stagger-list, success, skeleton, press; S-23 §6).
+
+- **Motion is functional and expressive within the tokens**: state changes (open and close,
+  expand, the section bit, toasts), navigation (route, tab and step transitions), and the brief
+  success moments of [EXPERIENCE §0.7](EXPERIENCE.md#07-moments-of-delight), which burst plain
+  sparks in the section accent once per moment at `deliberate`, never the mark.
+- **Use only the motion tokens**: durations, easings, distances, scales, the stagger and the
+  delays. Every duration and the stagger step collapse to 0 ms under reduced motion, so a
+  component animating through them needs no extra code. There is no `quick` step: exits use
+  `fast`.
+- **Only loading indicators loop**: the spinner and the skeleton shimmer (period `shimmer`). No
+  ambient or decorative motion; no parallax.
+- **Nothing that blocks input runs longer than `slow` plus `micro`**; success bursts, count-ups and
+  highlight fades (`deliberate`) never block input. Animate transform and opacity only, with
+  S-23's three named exceptions (the expand pattern's grid rows, colour on small elements, SVG
+  stroke draws).
+- **Reduced motion swaps instantly** (S-23 D3): under `prefers-reduced-motion: reduce` or the
+  in-app preference (`data-motion="reduce"` on `<html>`), tokens.css sets every
+  `--pk-duration-*` and `--pk-stagger-step` to 0 ms, and no View Transition, shimmer or burst
+  runs. The delays (`--pk-delay-skeleton`, `--pk-delay-highlight`) are not motion and stay: a
+  skeleton still waits 150 ms, a new row keeps its tint for 1.6 s. The spinner keeps turning: it
+  is a loading indicator, not decoration (S-23 §6.6).
 - **The star never animates, rotates, pulses, twinkles or orbits**, anywhere: not in a loader, not
-  in an empty state, not on hover. Loading indicators are neutral (a bar or a ring in
-  `text-subtle`), never the mark.
+  in an empty state, not on hover, not in a success moment. Loading indicators are neutral (a bar
+  or a ring in `text-subtle`), never the mark.
 
 ### 7.6 Console density and layout (data-heavy tables)
 
@@ -635,7 +670,8 @@ is nothing to browse. It never lists owners, packages or versions.
    a title it is decorative.
 4. Controls are labelled with visible text; an icon-only control needs an accessible name and a
    24 × 24 px minimum target (44 × 44 on touch).
-5. Reduced motion is honoured globally through the duration tokens; the section bit stops easing.
+5. Reduced motion (the OS setting or `data-motion="reduce"`) is honoured globally through the
+   duration tokens: every change swaps instantly and the section bit stops easing (§7.5).
 6. Respect the OS theme by default; the override is a user choice, persisted, and never forced.
 7. Do not set body text below 14 px; never use `text-subtle` for content a user must read to
    complete a task.
@@ -721,49 +757,40 @@ so `data-service` carries the same ids this package keys its accents by.
 
 - **Godot** (`PKeyBrand`, generated): `PKeyBrand.Dark.SURFACE_PAGE`, `PKeyBrand.Light.TEXT_MUTED`,
   `PKeyBrand.service_accent("config", dark)`, `section_bit()`, `optical_cut(size)`,
-  `bit_visible(size)`, the badge minimums and the kit primitives. Use the 16 px editor glyphs from
+  `bit_visible(size)`, the badge minimums and the kit primitives; the kit tokens (`PKeyKitTokens`),
+  the engine control icons (`PKeyKitIcons`), the variable fonts as MSDF `FontFile`s and the accent
+  resolver (`PKeyAccent`). The kit's look is the Polaris Key default, dark by default; the former
+  "neutral" builder becomes the `native` preset (UI-KITS.md §3.4; the kit moves over in UK-11). Use the 16 px editor glyphs from
   `games/` for editor-scale icons; pick cuts by the control's logical size. The addon carries
   copies in `sdks/godot/addons/polaris_key/brand/` (written by `pnpm gen:brand`, never imported:
   the bit-less 16 px Pinned K glyphs, which the setup dock's tab shows on 4.6+, and the
   `games/powered-by-credit-*` screens and compact "Powered by" badges for a game's credits).
 - **SwiftUI** (`PolarisBrand`, generated, in `PolarisKeyUI`): `PolarisBrand.Dark.surfacePage.color`,
   `PolarisBrand.accent(for: "license", dark: true).fg`, `opticalCut(for:)`, the badge minimums
-  (`badgeMinCompact`, …). Points are CSS-pixel equivalents for the optical-cut rule; follow
-  `colorScheme` for the theme. The gate is native by default and reads these only under
-  `.polarisKeyBranding(.polarisKey)` (see the 2026-10-04 owner decision), through
-  `PolarisPalette.brand(for:)` (core violet, dark or light from the environment) and
-  `PolarisTheme` (accent, palette, typography, logo and badge overrides). `PolarisKeyUI` bundles
-  the kit's Rubik TTFs unchanged with `OFL.txt` (registered per process, on first branded use),
+  (`badgeMinCompact`, …), and the kit tokens (`PolarisKit.IOS`, `PolarisKit.MacOS`,
+  `KitTokens.generated.swift`) and the accent resolver (`PolarisAccent`). Points are CSS-pixel
+  equivalents for the optical-cut rule; follow `colorScheme` for the theme. The Polaris Key look
+  is the kit's default and `native` the opt-out preset (UI-KITS.md §3.4, superseding the
+  2026-10-04 "native by default" decision; the kit moves over in UK-07). `PolarisKeyUI` bundles
+  the kit's Rubik TTFs and the variable Rubik and JetBrains Mono unchanged with their OFL texts
+  (registered per process, on first branded use),
   the bit-less Pinned K PNGs and the "Powered by" badge PNGs; `sdks/swift/tools/sync-brand-assets.sh`
   copies them and `BrandThemeTests` checks them byte for byte against `kit/`. The badge is opt-in
   (`PolarisTheme(poweredBy:)`).
-- Both are regenerated by `pnpm gen:brand` and drift-checked by `pnpm gen:brand -- --check`.
+- **Kotlin (Compose)** (`PolarisBrandTokens`, `PolarisKitTokens`, `PolarisAccent`), **Python**
+  (`polaris_key.ui`: tokens, the ANSI tables, the Qt theme and stylesheets, the fonts, the accent
+  resolver), the **Node CLI** (`packages/sdk-node/src/cli/tokens.generated.ts`) and the **Godot
+  .NET facade** (`PKeyBrand.generated.cs`) are generated the same way (UI-KITS.md §2.1).
+- All are regenerated by `pnpm gen:brand` and drift-checked by `pnpm gen:brand -- --check`.
 
-### 12.1 SDK UI: branding is the integrator's choice (owner decision 2026-10-04)
+### 12.1 SDK UI
 
-An SDK's drop-in UI runs inside someone else's product, so it does not wear the Polaris Key brand
-unless the integrator asks:
-
-- **Neutral by default.** The scenes follow the host's own theme and font and carry no Polaris Key
-  colour, type or mark. They add only structure: a type hierarchy derived from the host's font
-  size, padded cards, and centring.
-- **Opt-in branding, one option.** In Godot, `PKeyOptions.ui_branding = "polaris-key"` (or
-  `PKeyUiTheme.branding`) switches to the design system: `PKeyUiTheme` builds
-  `pkey_brand_dark.tres` / `pkey_brand_light.tres` from `PKeyBrand` (semantic surfaces and text,
-  the platform violet or the integrator's `ui_accent`, the focus ring of §7.4, no gold), with the
-  kit's Rubik as text `FontFile` resources (`ui/theme/fonts/`, written by `pnpm gen:brand` with
-  the OFL beside them), and shows the Pinned K's display cut, without the terminal bit, above the
-  gate card and on the boot screen (`PKeyBrandMarks`, generated from the kit SVGs). An
-  integrator's own Theme (`ui_theme`, or one set on a scene) wins over both looks.
-- **"Powered by" is optional and off by default** (`ui_powered_by`). When on, the gate, boot and
-  settings scenes end with the compact transparent badge for the ground (dark or light), at its
-  minimum of 232 × 88 or larger, never cropped (§1.5, §7.2).
-- **Centred.** Every scene centres its content at a comfortable maximum width with a 16 px gutter,
-  from a phone in portrait to 4K and under every stretch mode.
-
-The `brand` suite fails when a committed theme drifts from its builder, when the neutral look
-carries a brand colour or font, when the brand look uses a colour that is not a token or any gold,
-or when the options do not reach a scene; the `ui` suite checks the centring at five window sizes in the neutral look and both brand looks.
+**Superseded (2026-10-05) by [UI-KITS.md](UI-KITS.md)**, the single spec for every UI an SDK
+ships. In short: the **Polaris Key look is the default** of every kit, in the **product's** accent
+(the registered presentation, else derived from the icon, else ink; never Polaris violet by
+default); **`native`** is the opt-out preset that hands the look to the host; **Powered by** stays
+optional and off by default; kit screens show no Polaris Key mark (UI-KITS §1.6). The tokens every
+kit reads, the accent resolver and the drift gate are UI-KITS §2 and §3.3.
 
 ---
 
@@ -828,7 +855,9 @@ or when the options do not reach a scene; the `ui` suite checks the centring at 
 
 ## Owner decisions (2026-10-04)
 
-- **SDK UI is native by default; Polaris Key branding is opt-in.** The SDK UI kits (the SwiftUI
+- ~~**SDK UI is native by default; Polaris Key branding is opt-in.**~~ **Superseded (2026-10-05)
+  by [UI-KITS.md](UI-KITS.md):** the Polaris Key look is the kit default and `native` the opt-out
+  preset. Original text: The SDK UI kits (the SwiftUI
   `PolarisKeyUI` first) render natively and neutrally out of the box: system fonts, the host app's
   tint and system colours, no Polaris Key marks or palette. An integrator opts in to the brand
   (the generated tokens, the bundled Rubik, the core accent and the bit-less Pinned K) with one
@@ -836,11 +865,12 @@ or when the options do not reach a scene; the `ui` suite checks the centring at 
   on this page applies unchanged.
 - **The "Powered by Polaris Key" badge is optional and off by default** in the SDK UI, in both
   modes; an integrator turns it on explicitly, and it then follows §1.5 and §7.2.
-- **Every SDK UI view is centred and polished**: content centred horizontally and, for
+- **Every SDK UI view is centred and polished** (stays; extended by UI-KITS.md §1.5): content centred horizontally and, for
   full-screen states, vertically; a comfortable maximum width on iPad and desktop rather than edge
   to edge; balanced padding, a clear type hierarchy, Dynamic Type at every size, consistent corner
   radii and native materials where they fit.
-- **React: SDK UI branding is optional.** The React SDK's built-in screens (gate,
+- ~~**React: SDK UI branding is optional.**~~ **Superseded (2026-10-05) by
+  [UI-KITS.md](UI-KITS.md)** (see the first bullet). Original text: The React SDK's built-in screens (gate,
   activation, sign-in, offline grace, update prompts, settings, devices) are **neutral by
   default**: a greyscale, host-friendly theme that inherits the app's font and shows no Polaris
   Key mark, name or badge. Integrators opt in to this design system with one option

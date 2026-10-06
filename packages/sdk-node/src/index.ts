@@ -58,9 +58,25 @@ export {
   LicenseClient,
   type ActivationResult,
   type LicenseClientOptions,
+  type LicenseInfo,
 } from "./license/client.js";
+export { activationRefusal } from "./license/endpoints.js";
+// The error copy catalog (SDK parity pass §3.2): one sentence and title per code.
+export {
+  copy,
+  registerCopy,
+  setCopyLocale,
+  type CopyEntry,
+} from "./core/copy.js";
+export {
+  PolarisEventEmitter,
+  type PolarisEventName,
+  type PolarisEvents,
+} from "./core/events.js";
 export {
   ConfigClient,
+  type ConfigChange,
+  type ConfigSetting,
   type ConfigClientOptions,
   type ConfigSource,
   type MintedToken,
@@ -68,6 +84,11 @@ export {
 } from "./config/client.js";
 export {
   IdentityClient,
+  openInBrowser,
+  type AttachOptIn,
+  type CurrentIdentity,
+  type ShownIdentity,
+  type SignInWithBrowserOptions,
   type SignInPoll,
   type SignInPrompt,
   type SignInResult,
@@ -100,6 +121,30 @@ export {
 } from "./devices/facts.js";
 export { ReleaseClient, type ChangelogEntry } from "./release/client.js";
 export {
+  type FetchTarget,
+  type ReleaseFetchOptions,
+  type ReleaseFetchResult,
+} from "./release/fetch.js";
+export {
+  DistributionClient,
+  pickPlatform,
+  type DownloadAction,
+  type DownloadBuild,
+  type DownloadModel,
+  type DownloadPlatformGroup,
+  type ThisPlatform,
+} from "./distribution/client.js";
+// QR codes for device-code sign-in (§3.12).
+export { qr, encodeQr, qrRows, type QrCode } from "./qr/index.js";
+export {
+  CommerceClient,
+  type BindingResult,
+  type ClaimResult,
+  type CommerceProduct,
+  type CommerceRefusal,
+  type CommerceStore,
+} from "./commerce/client.js";
+export {
   UpdateClient,
   UpdateError,
   type FeedCheck,
@@ -107,7 +152,75 @@ export {
   type UpdateClientOptions,
   type UpdateDecideOptions,
   type VersionCheck,
+  type FeedKind,
+  type FeedUrl,
 } from "./update/client.js";
+// The boot stage machine (`ui.stages`, client-core) and the one-call boot over it (§3.4).
+export {
+  BOOT_EMIT_TYPES,
+  BOOT_EVENT_TYPES,
+  BOOT_GUARD_ACTIONS,
+  BOOT_OK_SECONDS,
+  BOOT_OUTCOMES,
+  BOOT_STAGES,
+  MAX_FAILED_BOOTS,
+  bootConfirmation,
+  bootGuardAction,
+  bootTransition,
+  initialBootState,
+  type BootEmit,
+  type BootEvent,
+  type BootOptions,
+  type BootStage,
+  type BootState,
+  type BootTransition,
+} from "@polaris-key/client-core";
+export {
+  ensureActivated,
+  runBoot,
+  type BootOutcome,
+  type BootStep,
+  type ClientBootOptions,
+  type EnsureActivatedResult,
+} from "./boot.js";
+export {
+  BootGuard,
+  type BootAttempt,
+  type BootGuardOptions,
+  type BootSlots,
+} from "./update/bootguard.js";
+// Install drivers (§3.16): the interface here, the adapters under ./update/drivers/*.
+export type {
+  InstallContext,
+  InstallDriver,
+  InstallOptions,
+  InstallOutcome,
+  InstallableDecision,
+} from "./update/drivers/types.js";
+// Server-side licence verification and crash tags (§2.1, §3.14).
+export {
+  crashTagsFor,
+  verifyLicenseDocument,
+  type CrashTags,
+  type VerifiedLicense,
+  type VerifyLicenseDocumentOptions,
+} from "./server.js";
+// The update-health journal (SDK parity pass §3.13, P6-03).
+export {
+  MAX_UPDATE_EVENTS_PER_REPORT,
+  UpdateJournal,
+  type UpdateEventEntry,
+  type UpdateEventInput,
+} from "./update/journal.js";
+export { type SnapshotExtras } from "./core/telemetry.js";
+// The build stamp and Windows SignatureKind (SP-N15), and version autoload (SP-N17).
+export {
+  loadBuildStamp,
+  readWindowsSignatureKind,
+  SIGNATURE_KINDS,
+  type BuildStamp,
+} from "./update/stamp.js";
+export { resolveAppVersion } from "./core/appVersion.js";
 // Outlet detection (plans/P3-01.md §2.9): this runtime's readers, and client-core's mapping.
 export {
   processOutletEnvironment,
@@ -193,6 +306,14 @@ export {
 // The one error type the transport/orchestration layers throw. Its `.code` carries the wire
 // error code, the §7 bundle refusal step, `local-only`, or `service-unavailable`.
 export { PolarisError } from "@polaris-key/client-core";
+// The refusal link (PX-W8): read `manageUrl` off a refusal body, and add the app's return URL or
+// (on an `/activate` link) the key fragment to it.
+export {
+  isManageUrl,
+  readManageUrl,
+  withManageKey,
+  withManageReturn,
+} from "@polaris-key/client-core";
 // Typed "unsupported here" (PARITY §2.2, P1b-10): `client.supports(feature)` answers a `Support`;
 // a call into an unsupported feature throws `UnsupportedError` (code `unsupported`) with the same
 // `feature`, `reason` and `detail`.

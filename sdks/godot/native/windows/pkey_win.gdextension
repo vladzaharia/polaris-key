@@ -1,5 +1,6 @@
-; PKeyVelopackNative, PKeyWinSparkleNative, PKeyStoreContextNative (P5-07): the Windows plugins in
-; one DLL. build.ps1 -Install copies this file, pkey_win.dll, velopack_libc.dll, WinSparkle.dll and
+; PKeyVelopackNative, PKeyWinSparkleNative, PKeyStoreContextNative (P5-07) and
+; PKeyWinCredentialNative (SP-27, Credential Manager for the desktop keyring store): the Windows
+; plugins in one DLL. build.ps1 -Install copies this file, pkey_win.dll, velopack_libc.dll, WinSparkle.dll and
 ; pkey_velopack_shim.exe into res://addons/polaris_key/native/bin/.
 ;
 ; [dependencies] puts the two updater DLLs and the Velopack launcher shim beside the exported

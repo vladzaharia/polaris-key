@@ -13,7 +13,7 @@ import {
   type DeviceInHand,
   type LibraryProduct,
 } from "./model/library.js";
-import { discoverCountFrom } from "./model/owned.js";
+import { navDiscoverCount } from "./model/discover.js";
 
 /**
  * The library as products (PX-08): `GET /api/library` lists them, with their status, seats,
@@ -23,7 +23,10 @@ import { discoverCountFrom } from "./model/owned.js";
  */
 export function useLibrary(): {
   products: LibraryProduct[] | undefined;
-  /** Offers in Discover (G24), or `null` while the Worker can't list them. */
+  /**
+   * Offers in Discover (G24), or `null` while the Worker can't list them or the Discover page
+   * can't show them (`model/discover.ts`).
+   */
   discoverCount: number | null;
   isPending: boolean;
   error: unknown;
@@ -60,7 +63,7 @@ export function useLibrary(): {
   const licensesPending = licenses.isPending && licenses.fetchStatus !== "idle";
   return {
     products,
-    discoverCount: discoverCountFrom(library.data?.discoverCount),
+    discoverCount: navDiscoverCount(library.data?.discoverCount),
     isPending:
       library.isPending ||
       caps.isPending ||

@@ -1,0 +1,2410 @@
+{
+  "$schema": "./kit-copy.schema.json",
+  "$comment": "The kit copy catalog (plans/UK-02.md §3.1): every string a Polaris Key UI kit shows that is not core copy. Hand-written ICU MessageFormat subset (plain arguments, at most one plural on an integer argument, select only on formFactor). Error and gate copy is never repeated here: it lives in conformance/parity/copy.en.json and every generated kit table carries it under core.* keys. `pnpm gen:brand` validates this file, the eight locale packs and components.json, and writes the per-platform tables; `pnpm gen:brand -- --check` is the drift gate. US spelling (license); the signin.* namespace is docs/design/SIGN-IN.md §5.2.",
+  "kitCopyVersion": 1,
+  "locale": "en",
+  "messages": {
+    "common.cancel": {
+      "value": "Cancel",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens."
+    },
+    "common.close": {
+      "value": "Close",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens."
+    },
+    "common.back": {
+      "value": "Back",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens. Returns to the previous step."
+    },
+    "common.continue": {
+      "value": "Continue",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens."
+    },
+    "common.done": {
+      "value": "Done",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens."
+    },
+    "common.save": {
+      "value": "Save",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens."
+    },
+    "common.notNow": {
+      "value": "Not now",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens. Dismisses an offer without doing it."
+    },
+    "common.later": {
+      "value": "Later",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens. Postpones an action."
+    },
+    "common.tryAgain": {
+      "value": "Try again",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens. Repeats the action that failed."
+    },
+    "common.copy": {
+      "value": "Copy",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens. Copies a code or link to the clipboard."
+    },
+    "common.copied": {
+      "value": "Copied",
+      "role": "label",
+      "note": "Confirmation shown briefly after something is copied to the clipboard."
+    },
+    "common.paste": {
+      "value": "Paste",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens. Pastes from the clipboard into a field."
+    },
+    "common.working": {
+      "value": "Working…",
+      "role": "label",
+      "note": "Busy label on a button or screen while an action runs."
+    },
+    "common.loading": {
+      "value": "Loading…",
+      "role": "label",
+      "note": "Shown while a screen loads."
+    },
+    "common.signOut": {
+      "value": "Sign out",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens. Signs this device out of the product."
+    },
+    "common.manage": {
+      "value": "Manage",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens. Opens the person's Polaris Key account in the browser."
+    },
+    "common.reconnect": {
+      "value": "Reconnect",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens. Tries to reach the licensing service again."
+    },
+    "common.dismiss": {
+      "value": "Dismiss",
+      "role": "button",
+      "note": "Shared verb used across the kit's screens. Hides a banner or toast."
+    },
+    "common.byDeveloper": {
+      "value": "by {developer}",
+      "role": "body",
+      "note": "Shown under the product name on the welcome screen. Arguments: {developer} = the developer's name (never translated)."
+    },
+    "part.thisDevice": {
+      "value": "{formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}",
+      "role": "label",
+      "note": "The current device, used inside sentences. Each case is the platform's own word. Arguments: {formFactor} = the device's form factor; each case is a whole phrase."
+    },
+    "part.thisDeviceTitle": {
+      "value": "{formFactor, select, iphone {This iPhone} ipad {This iPad} mac {This Mac} phone {This phone} tablet {This tablet} computer {This computer} tv {This TV} other {This device}}",
+      "role": "label",
+      "note": "The current device as a tag in a device list. Each case is the platform's own word, capitalized as a label. Arguments: {formFactor} = the device's form factor; each case is a whole phrase."
+    },
+    "part.keyField.label": {
+      "value": "License key",
+      "role": "label",
+      "note": "Visible label of the license key field."
+    },
+    "part.keyField.placeholder": {
+      "value": "Paste your key",
+      "role": "hint",
+      "note": "Placeholder inside the empty license key field. Carries no information the label lacks."
+    },
+    "part.keyField.forProduct": {
+      "value": "Key for {product}",
+      "role": "hint",
+      "note": "Shown under the key field as soon as the key's prefix names the product, before the server answers. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "part.keyField.verdict": {
+      "value": "{product} {tier} · {term}",
+      "role": "body",
+      "note": "Shown under the key field after the server accepts the key. Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated); {term} = the license term (one of the signin.term.* strings)."
+    },
+    "part.keyField.cutShort": {
+      "value": "This key is cut short: after {prefix} it has {used} of {limit, plural, one {# character} other {# characters}}.",
+      "role": "body",
+      "note": "Inline error when a pasted key is missing its end. {used} and {limit} count characters here, not devices. Arguments: {prefix} = the start of a license key, such as pkey_tidewater_; {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number."
+    },
+    "part.keyField.malformed": {
+      "value": "That doesn't look like a license key. Keys start with pkey_.",
+      "role": "body",
+      "note": "Inline error when the field holds something that is not a key. pkey_ is literal."
+    },
+    "part.keyField.empty": {
+      "value": "Enter a license key first.",
+      "role": "body",
+      "note": "Inline error when Activate is pressed with an empty field."
+    },
+    "part.code.label": {
+      "value": "Sign-in code",
+      "role": "label",
+      "note": "Label above the user code a person types on another device."
+    },
+    "part.qr.enlarge": {
+      "value": "Show larger",
+      "role": "button",
+      "note": "Opens a larger view of the QR code."
+    },
+    "part.qr.scanInstead": {
+      "value": "Scan with your phone instead",
+      "role": "button",
+      "note": "Shows the QR code on narrow layouts."
+    },
+    "part.seatMeter.caption": {
+      "value": "{used} of {limit} in use",
+      "role": "label",
+      "note": "Caption under the seat meter. {used} and {limit} are numbers of devices. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number."
+    },
+    "part.poweredBy": {
+      "value": "Powered by Polaris Key",
+      "role": "label",
+      "note": "Optional footer line. Polaris Key is never translated."
+    },
+    "part.status.ok": {
+      "value": "Active",
+      "role": "label",
+      "note": "Status pill: the license works."
+    },
+    "part.status.grace": {
+      "value": "Offline",
+      "role": "label",
+      "note": "Status pill: offline grace period."
+    },
+    "part.status.expired": {
+      "value": "Expired",
+      "role": "label",
+      "note": "Status pill: the license expired."
+    },
+    "part.status.revoked": {
+      "value": "Revoked",
+      "role": "label",
+      "note": "Status pill: the license was revoked."
+    },
+    "part.status.inactive": {
+      "value": "Inactive",
+      "role": "label",
+      "note": "Status pill: the device is not activated yet."
+    },
+    "part.status.blocked": {
+      "value": "Blocked",
+      "role": "label",
+      "note": "Status pill: this version or channel is blocked."
+    },
+    "part.status.notApplicable": {
+      "value": "Not required",
+      "role": "label",
+      "note": "Status pill: the product needs no license."
+    },
+    "a11y.closeDialog": {
+      "value": "Close dialog",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Names an icon-only close control."
+    },
+    "a11y.busy": {
+      "value": "In progress",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Names the busy indicator."
+    },
+    "a11y.copyCode": {
+      "value": "Copy code",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Names the icon-only copy control beside a code."
+    },
+    "a11y.copyAddress": {
+      "value": "Copy the address",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Names the icon-only copy control beside a web address."
+    },
+    "a11y.externalLink": {
+      "value": "Opens in your browser",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Added to links that leave the app."
+    },
+    "a11y.qr": {
+      "value": "QR code that opens the sign-in page",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Describes the QR code."
+    },
+    "a11y.code": {
+      "value": "Sign-in code {code}",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Reads the code; the kit spells it out character by character. Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated."
+    },
+    "a11y.seatMeter": {
+      "value": "{used} of {limit, plural, one {# device} other {# devices}} in use",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Describes the seat meter. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number."
+    },
+    "a11y.productIcon": {
+      "value": "{product} icon",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Names the product icon. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "a11y.locked": {
+      "value": "Locked",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Added to a setting someone else controls."
+    },
+    "a11y.progress": {
+      "value": "{size} of {total} downloaded",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Describes a download progress bar. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”)."
+    },
+    "a11y.formFactor": {
+      "value": "{formFactor, select, iphone {iPhone} ipad {iPad} mac {Mac} phone {Phone} tablet {Tablet} computer {Computer} tv {TV} other {Device}}",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Names a device's icon by its form factor. Arguments: {formFactor} = the device's form factor; each case is a whole phrase."
+    },
+    "a11y.toastTimer": {
+      "value": "Closes in {time}",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Describes a toast's visible timer. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”)."
+    },
+    "a11y.selected": {
+      "value": "Selected",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. State of the selected row in a list."
+    },
+    "a11y.renameDevice": {
+      "value": "Rename {device}",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Names the rename control on a device row. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "a11y.removeDevice": {
+      "value": "Remove {device}",
+      "role": "a11y",
+      "note": "Screen reader label; never shown. Names the remove control on a device row. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "gate.checking": {
+      "value": "Checking your license…",
+      "role": "label",
+      "note": "PolarisKeyGate and Boot: shown while the license is checked at start."
+    },
+    "gate.error.title": {
+      "value": "{product} couldn't start",
+      "role": "title",
+      "note": "PolarisKeyGate and Boot: title of the error screen; the message comes from the error's core copy. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "boot.starting": {
+      "value": "Starting…",
+      "role": "label",
+      "note": "Boot screen, shown while the product starts."
+    },
+    "boot.syncing": {
+      "value": "Checking for updates…",
+      "role": "label",
+      "note": "Boot screen, shown while the product starts."
+    },
+    "boot.deciding": {
+      "value": "Looking for a newer version…",
+      "role": "label",
+      "note": "Boot screen, shown while the product starts."
+    },
+    "boot.fetching": {
+      "value": "Downloading content…",
+      "role": "label",
+      "note": "Boot screen, shown while the product starts."
+    },
+    "boot.fetchingProgress": {
+      "value": "Downloading content · {size} of {total}",
+      "role": "label",
+      "note": "Boot screen, shown while the product starts. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”)."
+    },
+    "boot.ready": {
+      "value": "Ready",
+      "role": "label",
+      "note": "Boot screen, shown while the product starts. Shown for a moment before the product opens."
+    },
+    "boot.offline.title": {
+      "value": "You're offline",
+      "role": "title",
+      "note": "Boot screen, shown while the product starts. The product cannot start without a connection."
+    },
+    "boot.offline.body": {
+      "value": "Connect to the internet and try again.",
+      "role": "body",
+      "note": "Boot screen, shown while the product starts."
+    },
+    "boot.offline.playable": {
+      "value": "Some content couldn't be downloaded. You can keep going with what's installed, or connect and try again.",
+      "role": "body",
+      "note": "Boot screen, shown while the product starts. Optional content is missing but the product can start."
+    },
+    "boot.continueOffline": {
+      "value": "Continue offline",
+      "role": "button",
+      "note": "Boot screen, shown while the product starts. Starts with the content already installed.",
+      "variants": {
+        "godot": "Play offline"
+      }
+    },
+    "boot.declined.title": {
+      "value": "Content not downloaded",
+      "role": "title",
+      "note": "Boot screen, shown while the product starts. The person declined a required download."
+    },
+    "boot.declined.body": {
+      "value": "{product} needs this content to start. Download it when you're ready.",
+      "role": "body",
+      "note": "Boot screen, shown while the product starts. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "boot.rolledBack": {
+      "value": "The last update didn't start, so the previous version was restored.",
+      "role": "body",
+      "note": "Boot screen, shown while the product starts. Shown once after an automatic rollback."
+    },
+    "boot.consent.title": {
+      "value": "Download content?",
+      "role": "title",
+      "note": "Boot screen, shown while the product starts. Asks before a large or metered download."
+    },
+    "boot.consent.body": {
+      "value": "{product} needs {size} of new content.",
+      "role": "body",
+      "note": "Boot screen, shown while the product starts. Arguments: {product} = the product's name from ProductIdentity (never translated); {size} = a byte size already formatted by the platform (“38 MB”)."
+    },
+    "boot.consent.bodyMetered": {
+      "value": "{product} needs {size} of new content, and you're on a metered connection.",
+      "role": "body",
+      "note": "Boot screen, shown while the product starts. A metered connection is one that charges by data used. Arguments: {product} = the product's name from ProductIdentity (never translated); {size} = a byte size already formatted by the platform (“38 MB”)."
+    },
+    "boot.consent.download": {
+      "value": "Download",
+      "role": "button",
+      "note": "Boot screen, shown while the product starts."
+    },
+    "boot.error.body": {
+      "value": "{product} couldn't finish starting ({code}).",
+      "role": "body",
+      "note": "Boot screen, shown while the product starts. Generic start failure when no core copy applies. Arguments: {product} = the product's name from ProductIdentity (never translated); {code} = a code shown to the person (a user code or an error code); never split or translated."
+    },
+    "welcome.title": {
+      "value": "Welcome to {product}",
+      "role": "title",
+      "note": "Welcome screen, the gate's first screen. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "welcome.lede": {
+      "value": "Sign in or use a license key to continue.",
+      "role": "body",
+      "note": "Welcome screen, the gate's first screen."
+    },
+    "welcome.ledeKeyOnly": {
+      "value": "Enter a license key to continue.",
+      "role": "body",
+      "note": "Welcome screen, the gate's first screen. Shown when the product only takes license keys."
+    },
+    "welcome.ledeSignInOnly": {
+      "value": "Sign in to use {product}.",
+      "role": "body",
+      "note": "Welcome screen, the gate's first screen. Shown when the product only takes sign-in. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "welcome.signIn": {
+      "value": "Sign in",
+      "role": "button",
+      "note": "Welcome screen, the gate's first screen. Primary button."
+    },
+    "welcome.useKey": {
+      "value": "Use a license key",
+      "role": "button",
+      "note": "Welcome screen, the gate's first screen. Secondary button; reveals the key field."
+    },
+    "welcome.trial": {
+      "value": "Start a free trial",
+      "role": "button",
+      "note": "Welcome screen, the gate's first screen. Quiet link in the extras row."
+    },
+    "welcome.continueFree": {
+      "value": "Continue free",
+      "role": "button",
+      "note": "Welcome screen, the gate's first screen. Quiet link in the extras row; starts the free tier."
+    },
+    "welcome.restore": {
+      "value": "Restore purchase",
+      "role": "button",
+      "note": "Welcome screen, the gate's first screen. Quiet link in the extras row."
+    },
+    "welcome.offline": {
+      "value": "Activate offline",
+      "role": "button",
+      "note": "Welcome screen, the gate's first screen. Quiet link in the extras row; opens offline activation."
+    },
+    "signIn.title": {
+      "value": "Sign in to {product}",
+      "role": "title",
+      "note": "SignIn method sheet title in an app. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signIn.noMethods": {
+      "value": "No sign-in method is available for {product}. Use a license key instead.",
+      "role": "body",
+      "note": "SignIn: shown when the build enables no sign-in method. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signIn.methodError": {
+      "value": "{method} sign-in didn't finish. Try another way.",
+      "role": "body",
+      "note": "SignIn: inline error under the method that failed. Arguments: {method} = a sign-in method's name (Apple, Google, passkey…)."
+    },
+    "signInHandoff.starting": {
+      "value": "Getting a sign-in code…",
+      "role": "label",
+      "note": "SignInHandoff: sign-in continues on another device or in the browser."
+    },
+    "signInHandoff.scan": {
+      "value": "Scan the code with your phone, or go to {url} and enter this code.",
+      "role": "body",
+      "note": "SignInHandoff: sign-in continues on another device or in the browser. TV and console layout. Arguments: {url} = a web address, shown as is."
+    },
+    "signInHandoff.linkCopied": {
+      "value": "Link copied",
+      "role": "label",
+      "note": "SignInHandoff: sign-in continues on another device or in the browser. Confirmation after Copy link."
+    },
+    "signInHandoff.confirm": {
+      "value": "Choose Continue to {product} on the sign-in page to finish.",
+      "role": "body",
+      "note": "SignInHandoff: sign-in continues on another device or in the browser. The hosted page ends with a “Continue to {product}” button. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signInHandoff.ok": {
+      "value": "Signed in",
+      "role": "title",
+      "note": "SignInHandoff: sign-in continues on another device or in the browser. Shown for a moment before the product continues."
+    },
+    "signInHandoff.newCode": {
+      "value": "Get a new code",
+      "role": "button",
+      "note": "SignInHandoff: sign-in continues on another device or in the browser. After the code expired or was refused."
+    },
+    "activate.title": {
+      "value": "Enter your license key",
+      "role": "title",
+      "note": "Activate: license key entry."
+    },
+    "activate.lede": {
+      "value": "You'll find it in your purchase email.",
+      "role": "body",
+      "note": "Activate: license key entry."
+    },
+    "activate.submit": {
+      "value": "Activate license",
+      "role": "button",
+      "note": "Activate: license key entry. Submits the key."
+    },
+    "activate.busy": {
+      "value": "Activating…",
+      "role": "label",
+      "note": "Activate: license key entry."
+    },
+    "offlineActivation.title": {
+      "value": "Offline activation",
+      "role": "title",
+      "note": "OfflineActivation: activation by exchanging a request code and a response file."
+    },
+    "offlineActivation.request": {
+      "value": "Send this request code to whoever gave you your license.",
+      "role": "body",
+      "note": "OfflineActivation: activation by exchanging a request code and a response file."
+    },
+    "offlineActivation.product": {
+      "value": "Product: {product}",
+      "role": "label",
+      "note": "OfflineActivation: activation by exchanging a request code and a response file. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "offlineActivation.copyCode": {
+      "value": "Copy code",
+      "role": "button",
+      "note": "OfflineActivation: activation by exchanging a request code and a response file."
+    },
+    "offlineActivation.codeCopied": {
+      "value": "Code copied",
+      "role": "label",
+      "note": "OfflineActivation: activation by exchanging a request code and a response file."
+    },
+    "offlineActivation.loadHint": {
+      "value": "Then load the activation file you get back, or paste its text.",
+      "role": "body",
+      "note": "OfflineActivation: activation by exchanging a request code and a response file."
+    },
+    "offlineActivation.loadFile": {
+      "value": "Load file…",
+      "role": "button",
+      "note": "OfflineActivation: activation by exchanging a request code and a response file. Opens a file picker."
+    },
+    "offlineActivation.paste": {
+      "value": "Paste the activation text here",
+      "role": "hint",
+      "note": "OfflineActivation: activation by exchanging a request code and a response file. Placeholder of the paste box."
+    },
+    "offlineActivation.submit": {
+      "value": "Activate from file",
+      "role": "button",
+      "note": "OfflineActivation: activation by exchanging a request code and a response file."
+    },
+    "offlineActivation.dropHint": {
+      "value": "You can also drop the file onto this window.",
+      "role": "hint",
+      "note": "OfflineActivation: activation by exchanging a request code and a response file."
+    },
+    "offlineActivation.done": {
+      "value": "Activated from the offline file.",
+      "role": "body",
+      "note": "OfflineActivation: activation by exchanging a request code and a response file."
+    },
+    "offlineActivation.empty": {
+      "value": "Load or paste an activation file first.",
+      "role": "body",
+      "note": "OfflineActivation: activation by exchanging a request code and a response file. Inline error."
+    },
+    "deviceLimit.title": {
+      "value": "Replace a device",
+      "role": "title",
+      "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Screen title."
+    },
+    "deviceLimit.heading": {
+      "value": "Your license is on {used} of {limit, plural, one {# device} other {# devices}}",
+      "role": "title",
+      "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number."
+    },
+    "deviceLimit.lede": {
+      "value": "To use it on {formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}, replace one. You can add it back later.",
+      "role": "body",
+      "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {formFactor} = the device's form factor; each case is a whole phrase."
+    },
+    "deviceLimit.confirmTitle": {
+      "value": "Replace {device}?",
+      "role": "title",
+      "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block under the selected device. On macOS the kit wraps {device} in curly quotes. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "deviceLimit.consequence": {
+      "value": "{device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.",
+      "role": "body",
+      "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Confirm block body. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”)."
+    },
+    "deviceLimit.primary": {
+      "value": "Replace and continue",
+      "role": "button",
+      "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Primary button."
+    },
+    "deviceLimit.removed": {
+      "value": "{device} was replaced. {product} is continuing.",
+      "role": "body",
+      "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "deviceLimit.failed": {
+      "value": "{device} couldn't be replaced. Try again.",
+      "role": "body",
+      "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "deviceLimit.browser": {
+      "value": "Replace a device in your browser. {product} continues when you're done.",
+      "role": "body",
+      "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode: the device list is only in the browser. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "deviceLimit.openBrowser": {
+      "value": "Open in browser",
+      "role": "button",
+      "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode."
+    },
+    "deviceLimit.scan": {
+      "value": "Scan the code to replace a device on your phone.",
+      "role": "body",
+      "note": "DeviceLimit, the Replace a device flow (SIGN-IN.md §3.7): the license is on all its devices. Browser mode on TV and console."
+    },
+    "devices.title": {
+      "value": "Your devices",
+      "role": "title",
+      "note": "Devices: the list of devices using the license."
+    },
+    "devices.lede": {
+      "value": "Devices using this license.",
+      "role": "body",
+      "note": "Devices: the list of devices using the license."
+    },
+    "devices.meta": {
+      "value": "{platform} · last seen {when}",
+      "role": "body",
+      "note": "Devices: the list of devices using the license. Second line of a device row. Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”)."
+    },
+    "devices.count": {
+      "value": "{count, plural, one {# device} other {# devices}}",
+      "role": "label",
+      "note": "Devices: the list of devices using the license. Arguments: {count} = a number of items."
+    },
+    "devices.unnamed": {
+      "value": "Unnamed device",
+      "role": "label",
+      "note": "Devices: the list of devices using the license. A device with no name."
+    },
+    "devices.rename": {
+      "value": "Rename",
+      "role": "button",
+      "note": "Devices: the list of devices using the license."
+    },
+    "devices.renameLabel": {
+      "value": "Device name",
+      "role": "label",
+      "note": "Devices: the list of devices using the license. Label of the inline rename field."
+    },
+    "devices.remove": {
+      "value": "Remove",
+      "role": "button",
+      "note": "Devices: the list of devices using the license."
+    },
+    "devices.removeConfirm": {
+      "value": "Remove {device}? It signs out of {product}.",
+      "role": "body",
+      "note": "Devices: the list of devices using the license. Inline confirm. Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "devices.empty": {
+      "value": "No devices are using this license yet.",
+      "role": "body",
+      "note": "Devices: the list of devices using the license."
+    },
+    "devices.browser": {
+      "value": "Manage your devices in your browser.",
+      "role": "body",
+      "note": "Devices: the list of devices using the license. Browser mode."
+    },
+    "devices.manage": {
+      "value": "Manage devices",
+      "role": "button",
+      "note": "Devices: the list of devices using the license. Browser mode; opens the account in the browser."
+    },
+    "update.title": {
+      "value": "{product} {version}",
+      "role": "title",
+      "note": "UpdatePrompt: an app update. Title: the product and the new version. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1."
+    },
+    "update.availableTitle": {
+      "value": "An update is available",
+      "role": "title",
+      "note": "UpdatePrompt: an app update. Used when the version is unknown."
+    },
+    "update.current": {
+      "value": "You have {version} · {size} download",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Arguments: {version} = a version string such as 2.4.1; {size} = a byte size already formatted by the platform (“38 MB”)."
+    },
+    "update.whatsNew": {
+      "value": "What's new",
+      "role": "label",
+      "note": "UpdatePrompt: an app update. Label over the release notes."
+    },
+    "update.allChanges": {
+      "value": "All changes in {version}",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. Link to the full changelog. Arguments: {version} = a version string such as 2.4.1."
+    },
+    "update.later": {
+      "value": "Later",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. Dismisses the prompt.",
+      "variants": {
+        "macos": "Remind Me Later"
+      }
+    },
+    "update.restartWhenReady": {
+      "value": "Restart when ready",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. Queues the restart after the download.",
+      "variants": {
+        "macos": "Install and Relaunch"
+      }
+    },
+    "update.restartNow": {
+      "value": "Restart now",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. The update is downloaded."
+    },
+    "update.skipVersion": {
+      "value": "Skip this version",
+      "role": "button",
+      "note": "UpdatePrompt: an app update."
+    },
+    "update.install": {
+      "value": "Update now",
+      "role": "button",
+      "note": "UpdatePrompt: an app update."
+    },
+    "update.downloading": {
+      "value": "Downloading · {size} of {total}",
+      "role": "label",
+      "note": "UpdatePrompt: an app update. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”)."
+    },
+    "update.timeLeft": {
+      "value": "About {time} left",
+      "role": "label",
+      "note": "UpdatePrompt: an app update. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”)."
+    },
+    "update.readyTitle": {
+      "value": "{product} {version} is ready",
+      "role": "title",
+      "note": "UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1."
+    },
+    "update.readyBody": {
+      "value": "Restart {product} to finish updating.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "update.mandatoryTitle": {
+      "value": "Update to keep using {product}",
+      "role": "title",
+      "note": "UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "update.mandatoryBody": {
+      "value": "This version is below the minimum supported version. Update to keep using {product}.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Mandatory update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "update.blockedTitle": {
+      "value": "This version is no longer supported",
+      "role": "title",
+      "note": "UpdatePrompt: an app update. No update is available yet."
+    },
+    "update.blockedBody": {
+      "value": "No update is available here yet. You can keep using {product} for now.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "update.critical": {
+      "value": "This update includes an important security fix.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update."
+    },
+    "update.appStore": {
+      "value": "Update on the App Store",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. App Store outlet."
+    },
+    "update.googlePlay": {
+      "value": "Update on Google Play",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. Google Play outlet."
+    },
+    "update.steam": {
+      "value": "Get it on Steam",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. Steam outlet."
+    },
+    "update.openStore": {
+      "value": "Open {store}",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. Other store outlets. Arguments: {store} = a store's name (App Store, Google Play, Steam)."
+    },
+    "update.testflight": {
+      "value": "Open TestFlight",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. TestFlight outlet."
+    },
+    "update.altstore": {
+      "value": "Open AltStore",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. AltStore outlet."
+    },
+    "update.reload": {
+      "value": "Reload",
+      "role": "button",
+      "note": "UpdatePrompt: an app update. Web outlet."
+    },
+    "update.platform.steam": {
+      "value": "Steam installs it. Restart Steam if it hasn't arrived.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Platform-managed update."
+    },
+    "update.platform.itch": {
+      "value": "The itch app installs it.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Platform-managed update."
+    },
+    "update.platform.store": {
+      "value": "Your software center installs it.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Platform-managed update (Linux)."
+    },
+    "update.platform.appInstaller": {
+      "value": "Windows installs it the next time {product} starts.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Platform-managed update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "update.platform.command": {
+      "value": "Run {command} to install it.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Package-manager update (winget, brew). Arguments: {command} = a terminal command, shown as is."
+    },
+    "update.platform.web": {
+      "value": "Reload the page to get it.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Web update."
+    },
+    "update.platform.package": {
+      "value": "Your package manager installs it.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Platform-managed update."
+    },
+    "update.platform.generic": {
+      "value": "It installs through the store or platform you got {product} from.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Platform-managed update. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "update.revokedContent": {
+      "value": "Some of {product}'s content was withdrawn and can't be used. Update {product} to keep going.",
+      "role": "body",
+      "note": "UpdatePrompt: an app update. Required content was withdrawn by the developer. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "update.upToDate": {
+      "value": "You're up to date",
+      "role": "body",
+      "note": "UpdatePrompt: an app update."
+    },
+    "update.checkNow": {
+      "value": "Check for updates",
+      "role": "menu",
+      "note": "UpdatePrompt: an app update. Menu item and settings button.",
+      "variants": {
+        "macos": "Check for Updates…"
+      }
+    },
+    "updateProgress.contentTitle": {
+      "value": "Downloading content",
+      "role": "title",
+      "note": "UpdateProgress: compact progress for an app update or a content pack."
+    },
+    "updateProgress.queued": {
+      "value": "Waiting to download",
+      "role": "label",
+      "note": "UpdateProgress: compact progress for an app update or a content pack."
+    },
+    "updateProgress.downloading": {
+      "value": "{size} of {total} · {time} left",
+      "role": "label",
+      "note": "UpdateProgress: compact progress for an app update or a content pack. Arguments: {size} = a byte size already formatted by the platform (“38 MB”); {total} = a total byte size already formatted by the platform (“61 MB”); {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”)."
+    },
+    "updateProgress.installing": {
+      "value": "Installing…",
+      "role": "label",
+      "note": "UpdateProgress: compact progress for an app update or a content pack."
+    },
+    "updateProgress.paused": {
+      "value": "Paused · waiting for Wi-Fi",
+      "role": "label",
+      "note": "UpdateProgress: compact progress for an app update or a content pack. Paused on a metered connection."
+    },
+    "updateProgress.failed": {
+      "value": "Couldn't download",
+      "role": "label",
+      "note": "UpdateProgress: compact progress for an app update or a content pack."
+    },
+    "updateProgress.done": {
+      "value": "Up to date",
+      "role": "label",
+      "note": "UpdateProgress: compact progress for an app update or a content pack."
+    },
+    "updateProgress.resume": {
+      "value": "Download now",
+      "role": "button",
+      "note": "UpdateProgress: compact progress for an app update or a content pack. Resumes a paused download."
+    },
+    "releaseNotes.title": {
+      "value": "What's new in {product}",
+      "role": "title",
+      "note": "ReleaseNotes: the changelog. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "releaseNotes.version": {
+      "value": "Version {version}",
+      "role": "label",
+      "note": "ReleaseNotes: the changelog. Arguments: {version} = a version string such as 2.4.1."
+    },
+    "releaseNotes.released": {
+      "value": "Released {date}",
+      "role": "label",
+      "note": "ReleaseNotes: the changelog. Arguments: {date} = a date already formatted by the platform."
+    },
+    "releaseNotes.empty": {
+      "value": "No release notes yet.",
+      "role": "body",
+      "note": "ReleaseNotes: the changelog."
+    },
+    "releaseNotes.error": {
+      "value": "Release notes couldn't be loaded.",
+      "role": "body",
+      "note": "ReleaseNotes: the changelog."
+    },
+    "status.renew": {
+      "value": "Renew",
+      "role": "button",
+      "note": "StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Expired license."
+    },
+    "status.update": {
+      "value": "Update",
+      "role": "button",
+      "note": "StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version too old."
+    },
+    "status.switchChannel": {
+      "value": "Switch channel",
+      "role": "button",
+      "note": "StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Channel not included."
+    },
+    "status.allowedRange": {
+      "value": "Allowed versions: {min} to {max}",
+      "role": "body",
+      "note": "StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version."
+    },
+    "status.allowedMin": {
+      "value": "Allowed versions: {min} or later",
+      "role": "body",
+      "note": "StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {min} = the lowest allowed value or version."
+    },
+    "status.allowedMax": {
+      "value": "Allowed versions: up to {max}",
+      "role": "body",
+      "note": "StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Version blocked. Arguments: {max} = the highest allowed value or version."
+    },
+    "status.contact": {
+      "value": "Contact {developer}",
+      "role": "button",
+      "note": "StatusScreen: a blocking state and its fix. Titles and messages come from the core copy. Arguments: {developer} = the developer's name (never translated)."
+    },
+    "grace.daysLeft": {
+      "value": "Offline · {days, plural, one {# day} other {# days}} left to reconnect",
+      "role": "body",
+      "note": "GraceBanner: the product works offline for a limited time. Arguments: {days} = a number of days."
+    },
+    "grace.lastDay": {
+      "value": "Offline · reconnect today to keep using {product}",
+      "role": "body",
+      "note": "GraceBanner: the product works offline for a limited time. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "grace.deadline": {
+      "value": "Reconnect by {date}",
+      "role": "body",
+      "note": "GraceBanner: the product works offline for a limited time. Arguments: {date} = a date already formatted by the platform."
+    },
+    "account.title": {
+      "value": "Account and license",
+      "role": "title",
+      "note": "AccountAndLicense: the settings pane for the license and account."
+    },
+    "account.tier": {
+      "value": "{tier} license",
+      "role": "label",
+      "note": "AccountAndLicense: the settings pane for the license and account. Arguments: {tier} = the tier's name (never translated)."
+    },
+    "account.holder": {
+      "value": "Signed in as {name}",
+      "role": "body",
+      "note": "AccountAndLicense: the settings pane for the license and account. The account signed in on this device. Arguments: {name} = the person's display name."
+    },
+    "account.keyOnly": {
+      "value": "Activated with a license key",
+      "role": "body",
+      "note": "AccountAndLicense: the settings pane for the license and account. No account is signed in on this device."
+    },
+    "account.devices": {
+      "value": "Devices",
+      "role": "label",
+      "note": "AccountAndLicense: the settings pane for the license and account. Row label."
+    },
+    "account.cloudSync": {
+      "value": "Cloud Sync",
+      "role": "label",
+      "note": "AccountAndLicense: the settings pane for the license and account. Row label. Cloud Sync is a feature name; use the glossary term."
+    },
+    "account.updates": {
+      "value": "Updates",
+      "role": "label",
+      "note": "AccountAndLicense: the settings pane for the license and account. Group header."
+    },
+    "account.autoUpdate": {
+      "value": "Update automatically",
+      "role": "label",
+      "note": "AccountAndLicense: the settings pane for the license and account. Switch label."
+    },
+    "account.channel": {
+      "value": "Release channel",
+      "role": "label",
+      "note": "AccountAndLicense: the settings pane for the license and account. Row label."
+    },
+    "account.version": {
+      "value": "Version {version}",
+      "role": "label",
+      "note": "AccountAndLicense: the settings pane for the license and account. Arguments: {version} = a version string such as 2.4.1."
+    },
+    "account.managedSettings": {
+      "value": "Managed settings",
+      "role": "label",
+      "note": "AccountAndLicense: the settings pane for the license and account. Row label."
+    },
+    "account.offline": {
+      "value": "Offline · showing the last saved details",
+      "role": "body",
+      "note": "AccountAndLicense: the settings pane for the license and account."
+    },
+    "settings.title": {
+      "value": "Settings",
+      "role": "windowTitle",
+      "note": "Settings: settings delivered by the developer."
+    },
+    "settings.search": {
+      "value": "Search settings",
+      "role": "hint",
+      "note": "Settings: settings delivered by the developer. Search field placeholder."
+    },
+    "settings.empty": {
+      "value": "There are no settings to show.",
+      "role": "body",
+      "note": "Settings: settings delivered by the developer."
+    },
+    "settings.fromDeveloper": {
+      "value": "From {developer}",
+      "role": "label",
+      "note": "Settings: settings delivered by the developer. Group header for the developer's defaults. Arguments: {developer} = the developer's name (never translated)."
+    },
+    "settings.setBy": {
+      "value": "Set by {org}",
+      "role": "label",
+      "note": "Settings: settings delivered by the developer. A locked row. Arguments: {org} = the organization that set a value."
+    },
+    "settings.setByGuardian": {
+      "value": "Set by your parent or guardian",
+      "role": "label",
+      "note": "Settings: settings delivered by the developer. A locked row on consoles."
+    },
+    "settings.source.local": {
+      "value": "Changed by you",
+      "role": "label",
+      "note": "Settings: settings delivered by the developer. Where a value comes from."
+    },
+    "settings.source.env": {
+      "value": "Set by the environment",
+      "role": "label",
+      "note": "Settings: settings delivered by the developer. Where a value comes from."
+    },
+    "settings.source.default": {
+      "value": "Default",
+      "role": "label",
+      "note": "Settings: settings delivered by the developer. Where a value comes from."
+    },
+    "settings.reset": {
+      "value": "Reset to default",
+      "role": "button",
+      "note": "Settings: settings delivered by the developer."
+    },
+    "settings.advanced": {
+      "value": "Show advanced settings",
+      "role": "button",
+      "note": "Settings: settings delivered by the developer."
+    },
+    "settings.saving": {
+      "value": "Saving…",
+      "role": "label",
+      "note": "Settings: settings delivered by the developer."
+    },
+    "settings.saved": {
+      "value": "Saved",
+      "role": "label",
+      "note": "Settings: settings delivered by the developer."
+    },
+    "settings.unsaved": {
+      "value": "Unsaved changes",
+      "role": "label",
+      "note": "Settings: settings delivered by the developer."
+    },
+    "settings.error": {
+      "value": "Settings couldn't be saved. Try again.",
+      "role": "body",
+      "note": "Settings: settings delivered by the developer."
+    },
+    "settings.range": {
+      "value": "Between {min} and {max}",
+      "role": "hint",
+      "note": "Settings: settings delivered by the developer. Allowed range of a number. Arguments: {min} = the lowest allowed value or version; {max} = the highest allowed value or version."
+    },
+    "settings.on": {
+      "value": "On",
+      "role": "label",
+      "note": "Settings: settings delivered by the developer. A switch's value shown as text."
+    },
+    "settings.off": {
+      "value": "Off",
+      "role": "label",
+      "note": "Settings: settings delivered by the developer. A switch's value shown as text."
+    },
+    "paywall.title": {
+      "value": "Get more with {product} {tier}",
+      "role": "title",
+      "note": "Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated)."
+    },
+    "paywall.includes": {
+      "value": "{tier} includes",
+      "role": "label",
+      "note": "Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated)."
+    },
+    "paywall.upgrade": {
+      "value": "Upgrade to {tier}",
+      "role": "button",
+      "note": "Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated)."
+    },
+    "paywall.redeem": {
+      "value": "Redeem a code",
+      "role": "button",
+      "note": "Paywall: what a tier adds, and how to get it."
+    },
+    "paywall.restore": {
+      "value": "Restore purchases",
+      "role": "button",
+      "note": "Paywall: what a tier adds, and how to get it."
+    },
+    "paywall.purchasing": {
+      "value": "Completing purchase…",
+      "role": "label",
+      "note": "Paywall: what a tier adds, and how to get it."
+    },
+    "paywall.purchased": {
+      "value": "{tier} is unlocked",
+      "role": "title",
+      "note": "Paywall: what a tier adds, and how to get it. Arguments: {tier} = the tier's name (never translated)."
+    },
+    "paywall.notAvailable": {
+      "value": "Purchases aren't available in this version of {product}.",
+      "role": "body",
+      "note": "Paywall: what a tier adds, and how to get it. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "paywall.portal": {
+      "value": "Buy in your browser",
+      "role": "button",
+      "note": "Paywall: what a tier adds, and how to get it."
+    },
+    "entitlement.locked": {
+      "value": "This feature needs {tier}.",
+      "role": "body",
+      "note": "EntitlementGate: shown in place of a locked feature. Arguments: {tier} = the tier's name (never translated)."
+    },
+    "entitlement.unlock": {
+      "value": "Unlock",
+      "role": "button",
+      "note": "EntitlementGate: opens the paywall."
+    },
+    "cloudSync.synced": {
+      "value": "Synced {time}",
+      "role": "label",
+      "note": "CloudSyncStatus: a small sync status. {time} is relative, like “2 min ago”. Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”)."
+    },
+    "cloudSync.syncing": {
+      "value": "Syncing…",
+      "role": "label",
+      "note": "CloudSyncStatus: a small sync status."
+    },
+    "cloudSync.offline": {
+      "value": "Offline · changes sync when you reconnect",
+      "role": "label",
+      "note": "CloudSyncStatus: a small sync status."
+    },
+    "cloudSync.conflict": {
+      "value": "Some changes conflict. Review them.",
+      "role": "body",
+      "note": "CloudSyncStatus: a small sync status."
+    },
+    "cloudSync.error": {
+      "value": "Couldn't sync. Try again later.",
+      "role": "body",
+      "note": "CloudSyncStatus: a small sync status."
+    },
+    "cloudSync.signIn": {
+      "value": "Sign in to sync",
+      "role": "button",
+      "note": "CloudSyncStatus: a small sync status. Cloud Sync needs an account."
+    },
+    "about.title": {
+      "value": "About {product}",
+      "role": "windowTitle",
+      "note": "About: product and build information. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "about.version": {
+      "value": "Version {version}",
+      "role": "label",
+      "note": "About: product and build information. Arguments: {version} = a version string such as 2.4.1."
+    },
+    "about.licenses": {
+      "value": "Open-source licenses",
+      "role": "button",
+      "note": "About: product and build information. Opens the open-source notices."
+    },
+    "about.copyDiagnostics": {
+      "value": "Copy diagnostics",
+      "role": "button",
+      "note": "About: product and build information."
+    },
+    "about.diagnosticsCopied": {
+      "value": "Diagnostics copied",
+      "role": "label",
+      "note": "About: product and build information."
+    },
+    "channel.title": {
+      "value": "Release channel",
+      "role": "title",
+      "note": "ChannelPicker: the release channel choice."
+    },
+    "channel.locked": {
+      "value": "{store} sets the release channel.",
+      "role": "body",
+      "note": "ChannelPicker: the store fixes the channel. Arguments: {store} = a store's name (App Store, Google Play, Steam)."
+    },
+    "toast.undo": {
+      "value": "Undo",
+      "role": "button",
+      "note": "Toast action."
+    },
+    "toast.updateAvailable": {
+      "value": "{product} {version} is available",
+      "role": "body",
+      "note": "Toast: an update is available. Arguments: {product} = the product's name from ProductIdentity (never translated); {version} = a version string such as 2.4.1."
+    },
+    "signin.methods.title": {
+      "value": "Sign in to Polaris Key",
+      "role": "title",
+      "note": "Hosted sign-in card, method chooser (SIGN-IN.md §3.3)."
+    },
+    "signin.methods.titleApp": {
+      "value": "Sign in",
+      "role": "body",
+      "note": "Hosted sign-in card, method chooser (SIGN-IN.md §3.3)."
+    },
+    "signin.methods.ledeApp": {
+      "value": "Use the email you bought {product} with.",
+      "role": "body",
+      "note": "Hosted sign-in card, method chooser (SIGN-IN.md §3.3). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.email.label": {
+      "value": "Email",
+      "role": "label",
+      "note": "Hosted sign-in card, email field (SIGN-IN.md §3.3)."
+    },
+    "signin.email.invalid": {
+      "value": "Enter a full email address, like name@example.com.",
+      "role": "body",
+      "note": "Hosted sign-in card, email field (SIGN-IN.md §3.3)."
+    },
+    "signin.continue": {
+      "value": "Continue",
+      "role": "button",
+      "note": "Hosted sign-in card (SIGN-IN.md)."
+    },
+    "signin.or": {
+      "value": "or",
+      "role": "label",
+      "note": "Hosted sign-in card (SIGN-IN.md)."
+    },
+    "signin.provider.group": {
+      "value": "Or continue with",
+      "role": "label",
+      "note": "Sign-in provider buttons (SIGN-IN.md §3.3)."
+    },
+    "signin.provider.continue": {
+      "value": "Continue with {provider}",
+      "role": "button",
+      "note": "Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam)."
+    },
+    "signin.provider.connect": {
+      "value": "Connect {provider}",
+      "role": "button",
+      "note": "Sign-in provider buttons (SIGN-IN.md §3.3). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam)."
+    },
+    "signin.passkey": {
+      "value": "Sign in with a passkey",
+      "role": "button",
+      "note": "Hosted sign-in card (SIGN-IN.md)."
+    },
+    "signin.email.continue": {
+      "value": "Continue with email",
+      "role": "button",
+      "note": "Hosted sign-in card, email field (SIGN-IN.md §3.3)."
+    },
+    "signin.link.key": {
+      "value": "Have a license key?",
+      "role": "button",
+      "note": "Links at the foot of the sign-in card (SIGN-IN.md §3.3)."
+    },
+    "signin.link.anotherDevice": {
+      "value": "Sign in with another device",
+      "role": "button",
+      "note": "Links at the foot of the sign-in card (SIGN-IN.md §3.3)."
+    },
+    "signin.link.deviceCode": {
+      "value": "Sign in on your phone or computer",
+      "role": "button",
+      "note": "Links at the foot of the sign-in card (SIGN-IN.md §3.3)."
+    },
+    "signin.header.app": {
+      "value": "{app} wants you to sign in",
+      "role": "body",
+      "note": "Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.header.context": {
+      "value": "{product} · {developer}",
+      "role": "body",
+      "note": "Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated)."
+    },
+    "signin.header.contextLine": {
+      "value": "Your license, downloads and devices",
+      "role": "body",
+      "note": "Header of the sign-in card when an app asks (SIGN-IN.md §3.1)."
+    },
+    "signin.header.codePanel": {
+      "value": "Code on the screen · {code} · Check it matches the screen",
+      "role": "body",
+      "note": "Header of the sign-in card when an app asks (SIGN-IN.md §3.1). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated."
+    },
+    "signin.footer": {
+      "value": "Polaris Key signs you in for {app}. {developer} never sees your codes or passkeys.",
+      "role": "body",
+      "note": "Hosted sign-in card (SIGN-IN.md). Arguments: {app} = the requesting app's name (never translated); {developer} = the developer's name (never translated)."
+    },
+    "signin.off.product": {
+      "value": "Sign-in is turned off for {product}. Contact {developer}.",
+      "role": "body",
+      "note": "Sign-in is turned off (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated)."
+    },
+    "signin.off.any": {
+      "value": "Sign-in is unavailable. Try again later.",
+      "role": "body",
+      "note": "Sign-in is turned off (SIGN-IN.md §4.12)."
+    },
+    "signin.rateLimited": {
+      "value": "Too many codes. Try again in {minutes} minutes.",
+      "role": "body",
+      "note": "Hosted sign-in card (SIGN-IN.md). Arguments: {minutes} = a number of minutes."
+    },
+    "signin.emailDown": {
+      "value": "We can't send email right now. Try another way to sign in.",
+      "role": "body",
+      "note": "Hosted sign-in card (SIGN-IN.md)."
+    },
+    "signin.network.title": {
+      "value": "Can't reach Polaris Key",
+      "role": "title",
+      "note": "The card can't reach the service."
+    },
+    "signin.retry": {
+      "value": "Try again",
+      "role": "button",
+      "note": "Hosted sign-in card (SIGN-IN.md)."
+    },
+    "signin.code.title": {
+      "value": "Check your email",
+      "role": "title",
+      "note": "Email code step (SIGN-IN.md §3.4)."
+    },
+    "signin.code.sent": {
+      "value": "We sent a code and a sign-in link to {email}. Both work for 10 minutes.",
+      "role": "body",
+      "note": "Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address."
+    },
+    "signin.code.link": {
+      "value": "Or open the link in the email. Keep this tab open.",
+      "role": "body",
+      "note": "Email code step (SIGN-IN.md §3.4)."
+    },
+    "signin.code.resend": {
+      "value": "Send a new code",
+      "role": "button",
+      "note": "Email code step (SIGN-IN.md §3.4)."
+    },
+    "signin.code.resendIn": {
+      "value": "Send a new code in {time}",
+      "role": "button",
+      "note": "Email code step (SIGN-IN.md §3.4). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”)."
+    },
+    "signin.code.resent": {
+      "value": "We sent a new code and link to {email}.",
+      "role": "body",
+      "note": "Email code step (SIGN-IN.md §3.4). Arguments: {email} = an email address."
+    },
+    "signin.code.triesLeft": {
+      "value": "{n, plural, one {# try left.} other {# tries left.}}",
+      "role": "body",
+      "note": "Email code step (SIGN-IN.md §3.4). Arguments: {n} = a number."
+    },
+    "signin.code.tooMany": {
+      "value": "Too many tries. Send a new code.",
+      "role": "body",
+      "note": "Email code step (SIGN-IN.md §3.4)."
+    },
+    "signin.code.expired": {
+      "value": "That code has expired. Send a new code.",
+      "role": "body",
+      "note": "Email code step (SIGN-IN.md §3.4)."
+    },
+    "signin.code.differentEmail": {
+      "value": "Use a different email",
+      "role": "button",
+      "note": "Email code step (SIGN-IN.md §3.4)."
+    },
+    "signin.email.subject": {
+      "value": "Your Polaris Key code: {code}",
+      "role": "title",
+      "note": "Sign-in email subject (SIGN-IN.md §3.15). Arguments: {code} = a code shown to the person (a user code or an error code); never split or translated."
+    },
+    "signin.email.body": {
+      "value": "Or sign in with the button. The code and the link work once, for 10 minutes.",
+      "role": "body",
+      "note": "Sign-in email body (SIGN-IN.md §3.15)."
+    },
+    "signin.confirmLink.title": {
+      "value": "Confirm sign-in, requested at {time} from {place}",
+      "role": "title",
+      "note": "Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”); {place} = an approximate place (city, country)."
+    },
+    "signin.confirmLink.note": {
+      "value": "The device that asked signs in, not this one.",
+      "role": "body",
+      "note": "Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4)."
+    },
+    "signin.confirmLink.done": {
+      "value": "Sign-in confirmed. Go back to the device where you started. It signs in by itself.",
+      "role": "body",
+      "note": "Page opened from the email's sign-in link on another device (SIGN-IN.md §3.4)."
+    },
+    "signin.hint.welcome": {
+      "value": "Welcome back, {name}",
+      "role": "body",
+      "note": "Returning person hint (SIGN-IN.md §3.4). Arguments: {name} = the person's display name."
+    },
+    "signin.hint.usual": {
+      "value": "You usually sign in with {method}",
+      "role": "body",
+      "note": "Returning person hint (SIGN-IN.md §3.4). Arguments: {method} = a sign-in method's name (Apple, Google, passkey…)."
+    },
+    "signin.hint.other": {
+      "value": "Other ways to sign in",
+      "role": "button",
+      "note": "Returning person hint (SIGN-IN.md §3.4)."
+    },
+    "signin.register.title": {
+      "value": "Create your account",
+      "role": "title",
+      "note": "Create account step (SIGN-IN.md §3.4)."
+    },
+    "signin.register.verified": {
+      "value": "{email} is verified",
+      "role": "body",
+      "note": "Create account step (SIGN-IN.md §3.4). Arguments: {email} = an email address."
+    },
+    "signin.register.submit": {
+      "value": "Create account and continue",
+      "role": "button",
+      "note": "Create account step (SIGN-IN.md §3.4)."
+    },
+    "signin.gate.strip": {
+      "value": "Signed in with {provider} · {identity}",
+      "role": "body",
+      "note": "Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam); {identity} = the provider account's handle or email."
+    },
+    "signin.gate.title": {
+      "value": "Confirm your email",
+      "role": "title",
+      "note": "Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5)."
+    },
+    "signin.gate.ledeApp": {
+      "value": "One step before {app}. We send sign-in codes, receipts and security notices here.",
+      "role": "body",
+      "note": "Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.gate.steam": {
+      "value": "Steam doesn't share an email. Add one so you can get back in without Steam.",
+      "role": "body",
+      "note": "Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5)."
+    },
+    "signin.gate.verify": {
+      "value": "Verify and continue",
+      "role": "button",
+      "note": "Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5)."
+    },
+    "signin.gate.sendCode": {
+      "value": "Send code",
+      "role": "button",
+      "note": "Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5)."
+    },
+    "signin.gate.cancel": {
+      "value": "Cancel sign-in",
+      "role": "button",
+      "note": "Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5)."
+    },
+    "signin.gate.join": {
+      "value": "Join into one account",
+      "role": "button",
+      "note": "Confirm-your-email step after a first provider sign-in (SIGN-IN.md §3.5)."
+    },
+    "signin.profile.source": {
+      "value": "Name and picture from {provider}.",
+      "role": "body",
+      "note": "Profile import (SIGN-IN.md §3.5). Arguments: {provider} = a sign-in provider's name (Apple, Google, Steam)."
+    },
+    "signin.profile.applePicture": {
+      "value": "Apple doesn't share a picture. Add one",
+      "role": "button",
+      "note": "Profile import (SIGN-IN.md §3.5)."
+    },
+    "signin.choice.title": {
+      "value": "Choose a license for this device",
+      "role": "title",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.choice.lede": {
+      "value": "{product} will use it on {device}.",
+      "role": "body",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "signin.choice.ledeBrowser": {
+      "value": "{product} will use it in this browser.",
+      "role": "body",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.choice.ledeNew": {
+      "value": "You don't have a {product} license yet. {developer} gives you this one.",
+      "role": "body",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated); {developer} = the developer's name (never translated)."
+    },
+    "signin.choice.group": {
+      "value": "Licenses for {product}",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.choice.meta": {
+      "value": "{origin} · {term}",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). Arguments: {origin} = where the license came from (one of the signin.choice.origin.* strings); {term} = the license term (one of the signin.term.* strings)."
+    },
+    "signin.choice.devices": {
+      "value": "{used} of {limit, plural, one {# device} other {# devices}}",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). Arguments: {used} = how many devices use the license, as a number; {limit} = the license's device limit, as a number."
+    },
+    "signin.choice.metaNew": {
+      "value": "Created when you continue",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.term.lifetime": {
+      "value": "Lifetime",
+      "role": "label",
+      "note": "A license's term, shown in license rows (SIGN-IN.md §3.6)."
+    },
+    "signin.term.until": {
+      "value": "Until {date}",
+      "role": "label",
+      "note": "A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform."
+    },
+    "signin.term.yearlyUntil": {
+      "value": "Yearly, until {date}",
+      "role": "label",
+      "note": "A license's term, shown in license rows (SIGN-IN.md §3.6). Arguments: {date} = a date already formatted by the platform."
+    },
+    "signin.choice.origin.signIn": {
+      "value": "From signing in",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label)."
+    },
+    "signin.choice.origin.key": {
+      "value": "Key ending {last6}",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label). Arguments: {last6} = the license key's last six characters, shown as is."
+    },
+    "signin.choice.origin.keyAdded": {
+      "value": "Added with a key",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label)."
+    },
+    "signin.choice.origin.storeKey": {
+      "value": "{store} key ending {last6}",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is."
+    },
+    "signin.choice.origin.storeKeyAdded": {
+      "value": "{store} key",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label). Arguments: {store} = a store's name (Steam, App Store)."
+    },
+    "signin.choice.origin.store": {
+      "value": "From {store}",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label). A store license with no key. Arguments: {store} = a store's name (Steam, App Store)."
+    },
+    "signin.choice.origin.developer": {
+      "value": "From {developer}",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label). Arguments: {developer} = the developer's name (never translated)."
+    },
+    "signin.choice.origin.free": {
+      "value": "Free",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label)."
+    },
+    "signin.choice.origin.gift": {
+      "value": "Gift",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label)."
+    },
+    "signin.choice.origin.org": {
+      "value": "Included with {org}",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). A license's origin in plain words on the meta line, \"{origin} · {term}\" (owner, 2026-10-05: no license-type label). Arguments: {org} = the organization that provides the license."
+    },
+    "signin.choice.picker.signIn": {
+      "value": "{tier} · Sign-in",
+      "role": "label",
+      "note": "The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated)."
+    },
+    "signin.choice.picker.key": {
+      "value": "{tier} · Key …{last6}",
+      "role": "label",
+      "note": "The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {last6} = the license key's last six characters, shown as is."
+    },
+    "signin.choice.picker.storeKey": {
+      "value": "{tier} · {store} key …{last6}",
+      "role": "label",
+      "note": "The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store); {last6} = the license key's last six characters, shown as is."
+    },
+    "signin.choice.picker.store": {
+      "value": "{tier} · {store}",
+      "role": "label",
+      "note": "The license picker's short option: the tier, then the origin (owner, 2026-10-05). Arguments: {tier} = the tier's name (never translated); {store} = a store's name (Steam, App Store)."
+    },
+    "signin.choice.tag.current": {
+      "value": "On this device",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.choice.tag.new": {
+      "value": "New",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.choice.tag.full": {
+      "value": "No free devices",
+      "role": "label",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.choice.keep": {
+      "value": "Keep the license this device uses",
+      "role": "button",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.choice.keepMeta": {
+      "value": "{product} keeps running as it does now.",
+      "role": "body",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.choice.create": {
+      "value": "Create a new free license",
+      "role": "button",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.choice.createMeta": {
+      "value": "A separate license · created when you continue",
+      "role": "body",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.choice.allFull": {
+      "value": "Your licenses are on all their devices. Replace a device to use one here.",
+      "role": "body",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.choice.allFullCreate": {
+      "value": "Your licenses are on all their devices. Replace a device, or create a new free license.",
+      "role": "body",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.choice.noneReplaceable": {
+      "value": "{developer} manages devices for these licenses. Ask {developer} to free one, or use another license.",
+      "role": "body",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated)."
+    },
+    "signin.choice.combined": {
+      "value": "Your other {product} items still apply.",
+      "role": "body",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.choice.portalOff": {
+      "value": "{developer} manages devices for this license.",
+      "role": "body",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). Arguments: {developer} = the developer's name (never translated)."
+    },
+    "signin.choice.keyInstead": {
+      "value": "Use a license key instead",
+      "role": "button",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.choice.freeDevice": {
+      "value": "Free a device",
+      "role": "button",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.choice.continue": {
+      "value": "Use this license and continue",
+      "role": "button",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.choice.raced": {
+      "value": "That seat was just taken. Choose again.",
+      "role": "body",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.choice.codeExpired": {
+      "value": "The code on {device} expired. Get a new code there and scan it again.",
+      "role": "body",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "signin.none.title": {
+      "value": "No {product} license in this account",
+      "role": "title",
+      "note": "No license in this account (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.none.body": {
+      "value": "Bought it with another email? Sign in with that account instead.",
+      "role": "body",
+      "note": "No license in this account (SIGN-IN.md §3.6)."
+    },
+    "signin.none.get": {
+      "value": "Get {product}",
+      "role": "button",
+      "note": "No license in this account (SIGN-IN.md §3.6). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.none.otherAccount": {
+      "value": "Use another account",
+      "role": "button",
+      "note": "No license in this account (SIGN-IN.md §3.6)."
+    },
+    "signin.replace.open": {
+      "value": "Replace a device",
+      "role": "button",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
+    },
+    "signin.replace.lede": {
+      "value": "Choose a device to sign out. {thisDevice} takes its seat.",
+      "role": "body",
+      "note": "Replace a device, as a step in the in-app form (SIGN-IN.md §3.7). Arguments: {thisDevice} = the platform phrase for the current device (part.thisDevice)."
+    },
+    "signin.replace.openSystem": {
+      "value": "Replace…",
+      "role": "button",
+      "note": "Replace a device in a system dialog (SIGN-IN.md §3.7)."
+    },
+    "signin.replace.meta": {
+      "value": "{platform} · last used {when}",
+      "role": "label",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {platform} = the device's platform name (macOS, Windows, iPhone…); {when} = a relative time already formatted by the platform (“2 days ago”)."
+    },
+    "signin.replace.leastRecent": {
+      "value": "Least recent",
+      "role": "label",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
+    },
+    "signin.replace.activeNow": {
+      "value": "Active now",
+      "role": "label",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
+    },
+    "signin.replace.thisBrowser": {
+      "value": "This browser",
+      "role": "label",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
+    },
+    "signin.replace.title": {
+      "value": "Replace {device}?",
+      "role": "title",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "signin.replace.consequence": {
+      "value": "{device} signs out of {product} and {thisDevice} takes its seat. {device} can sign in again later if a seat is free. We'll email you about it.",
+      "role": "body",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {product} = the product's name from ProductIdentity (never translated); {thisDevice} = the platform phrase for the current device (part.thisDevice, for example “this iPhone”)."
+    },
+    "signin.replace.inUse": {
+      "value": "{device} is in use right now.",
+      "role": "body",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "signin.replace.confirm": {
+      "value": "Replace and continue",
+      "role": "button",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
+    },
+    "signin.replace.back": {
+      "value": "Back",
+      "role": "button",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
+    },
+    "signin.replace.gone": {
+      "value": "That device was already removed. Choose again.",
+      "role": "body",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
+    },
+    "signin.replace.rateLimited": {
+      "value": "Too many device changes. Try again in {seconds, plural, one {# second} other {# seconds}}.",
+      "role": "body",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {seconds} = a number of seconds."
+    },
+    "signin.replace.raced": {
+      "value": "Someone took that seat first. Choose again.",
+      "role": "body",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
+    },
+    "signin.replace.racedAfterFree": {
+      "value": "{device} was removed, but someone took the seat first. Choose again.",
+      "role": "body",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "signin.consent.title": {
+      "value": "Continue to {app} as {name}?",
+      "role": "title",
+      "note": "Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated); {name} = the person's display name."
+    },
+    "signin.consent.license": {
+      "value": "License for this device",
+      "role": "label",
+      "note": "Consent step before returning to the app (SIGN-IN.md §3.8)."
+    },
+    "signin.consent.licenseLine": {
+      "value": "{license} · {term} · {device} becomes device {position} of {limit}",
+      "role": "body",
+      "note": "Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number."
+    },
+    "signin.consent.replaces": {
+      "value": "{license} · replaces {device}",
+      "role": "body",
+      "note": "Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {license} = the license's name, usually product and tier; {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "signin.consent.licenseInApp": {
+      "value": "You'll choose a license in {app}.",
+      "role": "body",
+      "note": "Consent step before returning to the app (SIGN-IN.md §3.8), when the license is chosen in the app (I-04 §G). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.consent.change": {
+      "value": "Change",
+      "role": "button",
+      "note": "Consent step before returning to the app (SIGN-IN.md §3.8)."
+    },
+    "signin.consent.continue": {
+      "value": "Continue to {app}",
+      "role": "button",
+      "note": "Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.consent.alsoGets": {
+      "value": "{app} will also get",
+      "role": "body",
+      "note": "Consent step before returning to the app (SIGN-IN.md §3.8). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.consent.profile": {
+      "value": "Your profile and email",
+      "role": "body",
+      "note": "Consent step before returning to the app (SIGN-IN.md §3.8)."
+    },
+    "signin.consent.pairwise": {
+      "value": "It gets its own id for you, and won't see your other products or how you sign in.",
+      "role": "body",
+      "note": "Consent step before returning to the app (SIGN-IN.md §3.8)."
+    },
+    "signin.notYou": {
+      "value": "Not you?",
+      "role": "button",
+      "note": "Hosted sign-in card (SIGN-IN.md)."
+    },
+    "signin.cancel": {
+      "value": "Cancel",
+      "role": "button",
+      "note": "Hosted sign-in card (SIGN-IN.md)."
+    },
+    "signin.key.addTitle": {
+      "value": "Add {product} to your account",
+      "role": "title",
+      "note": "License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.key.addAndUse": {
+      "value": "Add and use on this device",
+      "role": "button",
+      "note": "License key step (SIGN-IN.md §3.9)."
+    },
+    "signin.key.keep": {
+      "value": "Keep {product} in an account",
+      "role": "button",
+      "note": "License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.key.entries": {
+      "value": "{left} of {limit} key entries left · This will be entry {n}",
+      "role": "body",
+      "note": "License key step (SIGN-IN.md §3.9). Arguments: {left} = how many are left, as a number; {limit} = the license's device limit, as a number; {n} = a number."
+    },
+    "signin.key.entriesLeftShort": {
+      "value": "{left, plural, one {# key entry left} other {# key entries left}}",
+      "role": "body",
+      "note": "License key step (SIGN-IN.md §3.9). Arguments: {left} = how many are left, as a number."
+    },
+    "signin.key.noEntries": {
+      "value": "This key has no entries left in {product}. Add it to your account and {product} signs you in instead.",
+      "role": "body",
+      "note": "License key step (SIGN-IN.md §3.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.key.skip": {
+      "value": "Skip for now",
+      "role": "button",
+      "note": "License key step (SIGN-IN.md §3.9)."
+    },
+    "signin.key.ownedSignIn": {
+      "value": "Sign in to that account",
+      "role": "button",
+      "note": "License key step (SIGN-IN.md §3.9)."
+    },
+    "signin.key.differentKey": {
+      "value": "Use a different key",
+      "role": "button",
+      "note": "License key step (SIGN-IN.md §3.9)."
+    },
+    "signin.return.yours": {
+      "value": "{product} is yours",
+      "role": "body",
+      "note": "Return step (SIGN-IN.md §3.10). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.return.signedIn": {
+      "value": "You're signed in to {app}",
+      "role": "body",
+      "note": "Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.return.button": {
+      "value": "Return to {app}",
+      "role": "button",
+      "note": "Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.return.timer": {
+      "value": "Returning by itself in {s} s",
+      "role": "body",
+      "note": "Return step (SIGN-IN.md §3.10). Arguments: {s} = a number of seconds."
+    },
+    "signin.return.stay": {
+      "value": "Stay here",
+      "role": "button",
+      "note": "Return step (SIGN-IN.md §3.10)."
+    },
+    "signin.done.start": {
+      "value": "Start using {product}",
+      "role": "button",
+      "note": "Last step of the in-app sign-in form (SIGN-IN.md §3.10). Arguments: {product} = the product's name (never translated)."
+    },
+    "signin.device.title": {
+      "value": "Sign in to finish on {device}",
+      "role": "title",
+      "note": "Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "signin.device.lede": {
+      "value": "Use your phone or computer here. {device} continues by itself when you're done.",
+      "role": "body",
+      "note": "Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "signin.device.cancel": {
+      "value": "Didn't start this yourself? Cancel it. Someone may be trying to use your account.",
+      "role": "body",
+      "note": "Device code approval on a phone or computer (SIGN-IN.md §3.11)."
+    },
+    "signin.device.done": {
+      "value": "{app} is signed in on {device}",
+      "role": "body",
+      "note": "Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {app} = the requesting app's name (never translated); {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "signin.device.doneLede": {
+      "value": "Look at {device}: it continues by itself.",
+      "role": "body",
+      "note": "Device code approval on a phone or computer (SIGN-IN.md §3.11). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "signin.device.signOut": {
+      "value": "Sign the TV out",
+      "role": "button",
+      "note": "Device code approval on a phone or computer (SIGN-IN.md §3.11)."
+    },
+    "signin.handoff.title": {
+      "value": "Finish in your browser",
+      "role": "title",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
+    },
+    "signin.handoff.check": {
+      "value": "Check the code there matches this one.",
+      "role": "body",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
+    },
+    "signin.handoff.url": {
+      "value": "Or go to {url}",
+      "role": "body",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {url} = a web address, shown as is."
+    },
+    "signin.handoff.expires": {
+      "value": "Code expires in {time}",
+      "role": "body",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”)."
+    },
+    "signin.handoff.again": {
+      "value": "Open browser again",
+      "role": "button",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
+    },
+    "signin.handoff.cancelled": {
+      "value": "Sign-in was cancelled. Get a new code",
+      "role": "body",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
+    },
+    "signin.desktop.continue": {
+      "value": "Continue in browser",
+      "role": "button",
+      "note": "Desktop app after sign-in (SIGN-IN.md §3.17)."
+    },
+    "signin.desktop.toast": {
+      "value": "Signed in as {name} · {tier} license",
+      "role": "body",
+      "note": "Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {name} = the person's display name; {tier} = the tier's name (never translated)."
+    },
+    "signin.desktop.notifyTitle": {
+      "value": "You're signed in",
+      "role": "title",
+      "note": "Desktop app after sign-in (SIGN-IN.md §3.17)."
+    },
+    "signin.desktop.notifyBody": {
+      "value": "{app} is ready.",
+      "role": "body",
+      "note": "Desktop app after sign-in (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.desktop.notifyChoose": {
+      "value": "Choose a license · {app} is ready to finish signing in.",
+      "role": "body",
+      "note": "Desktop system notification when the app needs a license choice to finish (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.menu.signIn": {
+      "value": "Sign in…",
+      "role": "menu",
+      "note": "App menu item that opens sign-in (SIGN-IN.md §3.17)."
+    },
+    "signin.handoff.browserBody": {
+      "value": "We opened Polaris Key in your browser. Sign in there and {app} continues by itself.",
+      "role": "body",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.handoff.waiting": {
+      "value": "Waiting for your browser…",
+      "role": "body",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
+    },
+    "signin.handoff.finishing": {
+      "value": "Finishing sign-in…",
+      "role": "body",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
+    },
+    "signin.handoff.useCode": {
+      "value": "Use a code instead",
+      "role": "button",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
+    },
+    "signin.handoff.useBrowser": {
+      "value": "Use browser sign-in",
+      "role": "button",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
+    },
+    "signin.handoff.noBrowser": {
+      "value": "We couldn't open your browser",
+      "role": "body",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
+    },
+    "signin.handoff.noBrowserBody": {
+      "value": "Open this link in a browser on this computer, or use a code instead.",
+      "role": "body",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
+    },
+    "signin.handoff.copyLink": {
+      "value": "Copy link",
+      "role": "button",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
+    },
+    "signin.handoff.tooLong": {
+      "value": "This sign-in took too long.",
+      "role": "body",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
+    },
+    "signin.handoff.codeTitle": {
+      "value": "Sign in with a code",
+      "role": "title",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
+    },
+    "signin.handoff.codeBody": {
+      "value": "On any phone or computer, go to {url} and enter this code.",
+      "role": "body",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17). Arguments: {url} = a web address, shown as is."
+    },
+    "signin.handoff.openBrowser": {
+      "value": "Open browser",
+      "role": "button",
+      "note": "App waiting while sign-in runs in the browser (SIGN-IN.md §3.17)."
+    },
+    "signin.return.closeTab": {
+      "value": "You can close this tab and return to {app}.",
+      "role": "body",
+      "note": "Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.return.chooseInApp": {
+      "value": "Go back to {app} to choose a license. You can close this tab.",
+      "role": "body",
+      "note": "Return step when the license is chosen in the app (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.return.signedInShort": {
+      "value": "You're signed in",
+      "role": "title",
+      "note": "Return step, short form (SIGN-IN.md §3.10)."
+    },
+    "signin.return.cancelled": {
+      "value": "Sign-in was cancelled in {app}. Start again from {app}.",
+      "role": "body",
+      "note": "Return step (SIGN-IN.md §3.10). Arguments: {app} = the requesting app's name (never translated)."
+    },
+    "signin.return.library": {
+      "value": "Open your library",
+      "role": "button",
+      "note": "Return step (SIGN-IN.md §3.10)."
+    },
+    "signin.choice.freed": {
+      "value": "A device is free on this license now.",
+      "role": "body",
+      "note": "Choose a license for this device (SIGN-IN.md §3.6)."
+    },
+    "signin.replace.opensBrowser": {
+      "value": "Opens Polaris Key in your browser",
+      "role": "body",
+      "note": "Replace a device, inline in the license choice (SIGN-IN.md §3.7)."
+    },
+    "signin.cli.opening": {
+      "value": "Opening Polaris Key in your browser…",
+      "role": "body",
+      "note": "Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting."
+    },
+    "signin.cli.ifNotOpened": {
+      "value": "If it didn't open, go to {url}",
+      "role": "body",
+      "note": "Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {url} = a web address, shown as is."
+    },
+    "signin.cli.keys": {
+      "value": "Enter open again · c use a code · Esc cancel",
+      "role": "body",
+      "note": "Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting."
+    },
+    "signin.cli.headless": {
+      "value": "No browser on this computer. Use a code instead:",
+      "role": "body",
+      "note": "Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting."
+    },
+    "signin.cli.signedIn": {
+      "value": "Signed in as {name} ({email})",
+      "role": "body",
+      "note": "Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {name} = the person's display name; {email} = an email address."
+    },
+    "signin.cli.license": {
+      "value": "{license} · {term} · {device} is device {position} of {limit}",
+      "role": "body",
+      "note": "Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {license} = the license's name, usually product and tier; {term} = the license term (one of the signin.term.* strings); {device} = a device's friendly name, for example “Maya's MacBook”; {position} = the device's seat number, as a number; {limit} = the license's device limit, as a number."
+    },
+    "signin.cli.closeTab": {
+      "value": "You can close the browser tab.",
+      "role": "body",
+      "note": "Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting."
+    },
+    "signin.cli.logoutConfirm": {
+      "value": "Sign out of {product} on this device? (y/N)",
+      "role": "body",
+      "note": "Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.cli.signInAgain": {
+      "value": "Run {command} to sign in again.",
+      "role": "body",
+      "note": "Terminal sign-in (SIGN-IN.md §4.15). Plain text, no formatting. Arguments: {command} = a terminal command, shown as is."
+    },
+    "signin.approve.title": {
+      "value": "Sign in with another device",
+      "role": "title",
+      "note": "Sign in with another device (SIGN-IN.md §3.11)."
+    },
+    "signin.approve.works": {
+      "value": "Works for {time}",
+      "role": "body",
+      "note": "Sign in with another device (SIGN-IN.md §3.11). Arguments: {time} = a duration or time already formatted by the platform (“4:12”, “2 min ago”)."
+    },
+    "signin.approve.waiting": {
+      "value": "Waiting for you to approve it on the other device…",
+      "role": "body",
+      "note": "Sign in with another device (SIGN-IN.md §3.11)."
+    },
+    "signin.approve.ask": {
+      "value": "Approve a new device?",
+      "role": "body",
+      "note": "Sign in with another device (SIGN-IN.md §3.11)."
+    },
+    "signin.approve.warning": {
+      "value": "Only approve if you started this yourself, on a device in front of you. Nobody from Polaris Key or a developer will ever ask you for this.",
+      "role": "body",
+      "note": "Sign in with another device (SIGN-IN.md §3.11)."
+    },
+    "signin.approve.approve": {
+      "value": "Approve and sign it in",
+      "role": "button",
+      "note": "Sign in with another device (SIGN-IN.md §3.11)."
+    },
+    "signin.approve.deny": {
+      "value": "Deny",
+      "role": "button",
+      "note": "Sign in with another device (SIGN-IN.md §3.11)."
+    },
+    "signin.approve.denied": {
+      "value": "That request was denied. Use another way to sign in.",
+      "role": "body",
+      "note": "Sign in with another device (SIGN-IN.md §3.11)."
+    },
+    "signin.approve.expired": {
+      "value": "That code expired. Get a new code.",
+      "role": "body",
+      "note": "Sign in with another device (SIGN-IN.md §3.11)."
+    },
+    "signin.console.title": {
+      "value": "Sign in to the console",
+      "role": "title",
+      "note": "Console operator sign-in (SIGN-IN.md §3.12)."
+    },
+    "signin.console.next": {
+      "value": "Next: {idp} at {host}",
+      "role": "body",
+      "note": "Console operator sign-in (SIGN-IN.md §3.12). Arguments: {idp} = the identity provider's name; {host} = a host name."
+    },
+    "signin.console.signedOut": {
+      "value": "You're signed out",
+      "role": "body",
+      "note": "Console operator sign-in (SIGN-IN.md §3.12)."
+    },
+    "signin.console.sessionEnded": {
+      "value": "Your session ended",
+      "role": "body",
+      "note": "Console operator sign-in (SIGN-IN.md §3.12)."
+    },
+    "signin.console.sessionEndedBody": {
+      "value": "Sign in again to carry on. Your unsaved changes stay in this tab.",
+      "role": "body",
+      "note": "Console operator sign-in (SIGN-IN.md §3.12)."
+    },
+    "signin.console.notOperator": {
+      "value": "{email} isn't in the operators group.",
+      "role": "body",
+      "note": "Console operator sign-in (SIGN-IN.md §3.12). Arguments: {email} = an email address."
+    },
+    "signin.console.notConfigured": {
+      "value": "Admin sign-in isn't set up",
+      "role": "body",
+      "note": "Console operator sign-in (SIGN-IN.md §3.12)."
+    },
+    "signin.expired.title": {
+      "value": "That code or link has expired",
+      "role": "title",
+      "note": "Expired code or link page (SIGN-IN.md §4.12)."
+    },
+    "signin.expired.body": {
+      "value": "Codes and links work once, for 10 minutes.",
+      "role": "body",
+      "note": "Expired code or link page (SIGN-IN.md §4.12)."
+    },
+    "signin.again": {
+      "value": "Sign in again",
+      "role": "button",
+      "note": "Expired code or link page (SIGN-IN.md §4.12)."
+    },
+    "signin.identityOff.notice": {
+      "value": "{product} doesn't use Polaris Key sign-in. Open {product} and enter your license key there.",
+      "role": "body",
+      "note": "The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.identityOff.lede": {
+      "value": "Sign in here to see {product} in your library.",
+      "role": "body",
+      "note": "The product doesn't use Polaris Key sign-in (SIGN-IN.md §4.12). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.signout.title": {
+      "value": "Sign out of {product} on this device?",
+      "role": "title",
+      "note": "Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.signout.released": {
+      "value": "{product} stops using your {tier} license here and frees its seat.",
+      "role": "body",
+      "note": "Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {product} = the product's name from ProductIdentity (never translated); {tier} = the tier's name (never translated)."
+    },
+    "signin.signout.unsynced": {
+      "value": "{n, plural, one {# change hasn't synced yet.} other {# changes haven't synced yet.}}",
+      "role": "body",
+      "note": "Sign-out confirmation (SIGN-IN.md §4.9). Arguments: {n} = a number."
+    },
+    "signin.signout.waitSync": {
+      "value": "Wait for sync",
+      "role": "button",
+      "note": "Sign-out confirmation (SIGN-IN.md §4.9)."
+    },
+    "signin.session.toastTitle": {
+      "value": "You were signed out",
+      "role": "title",
+      "note": "Session ended (SIGN-IN.md §4.10)."
+    },
+    "signin.session.toastBody": {
+      "value": "Sign in again to carry on where you were.",
+      "role": "body",
+      "note": "Session ended (SIGN-IN.md §4.10)."
+    },
+    "signin.session.kitEnded": {
+      "value": "Your sign-in ended. Sign in again to keep using {product}.",
+      "role": "body",
+      "note": "Session ended (SIGN-IN.md §4.10). Arguments: {product} = the product's name from ProductIdentity (never translated)."
+    },
+    "signin.provider.manage": {
+      "value": "Manage sign-in methods in Polaris Key",
+      "role": "button",
+      "note": "Sign-in provider buttons (SIGN-IN.md §3.3)."
+    },
+    "signin.profile.changePicture": {
+      "value": "Change picture",
+      "role": "button",
+      "note": "Profile import (SIGN-IN.md §3.5)."
+    },
+    "signin.mail.replaced.subject": {
+      "value": "{product} signed out on {device}",
+      "role": "title",
+      "note": "Security email (SIGN-IN.md §3.15). Arguments: {product} = the product's name from ProductIdentity (never translated); {device} = a device's friendly name, for example “Maya's MacBook”."
+    },
+    "signin.mail.replaced.body": {
+      "value": "{device} was replaced by {newDevice} when you signed in to {product} on {date}. It can sign in again later if a seat is free. If this wasn't you, open Polaris Key and check your devices.",
+      "role": "body",
+      "note": "Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {newDevice} = the new device's friendly name; {product} = the product's name from ProductIdentity (never translated); {date} = a date already formatted by the platform."
+    },
+    "signin.mail.newDevice.subject": {
+      "value": "A new device signed in to your Polaris Key account",
+      "role": "title",
+      "note": "Security email (SIGN-IN.md §3.15)."
+    },
+    "signin.mail.newDevice.body": {
+      "value": "{device} signed in on {date} from {place}. If this wasn't you, sign it out in Polaris Key under Where you're signed in.",
+      "role": "body",
+      "note": "Security email (SIGN-IN.md §3.15). Arguments: {device} = a device's friendly name, for example “Maya's MacBook”; {date} = a date already formatted by the platform; {place} = an approximate place (city, country)."
+    },
+    "signin.mail.open": {
+      "value": "Open Polaris Key",
+      "role": "button",
+      "note": "Security email (SIGN-IN.md §3.15)."
+    },
+    "signin.code.label": {
+      "value": "6-digit code",
+      "role": "label",
+      "note": "Email code step (SIGN-IN.md §3.4)."
+    }
+  }
+}

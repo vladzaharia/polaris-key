@@ -22,6 +22,7 @@ import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import { makeEnv, NOW, seedProduct } from "./seed.js";
 import { enableServices } from "./releaseRoutesFixture.js";
+import { recordRegexRuns, replaySteps } from "./regexReplay.js";
 import type { Db } from "../src/db/types.js";
 import type { Env } from "../src/env.js";
 import { dispatch } from "../src/dispatch.js";
@@ -32,12 +33,7 @@ import {
 } from "../src/core/bytesHost.js";
 import { notFound } from "../src/core/errors.js";
 import { BYTE_ROUTES } from "../src/mount.js";
-import {
-  encodeQr,
-  qrCapacity,
-  qrRows,
-  qrSvg,
-} from "../src/services/distribution/page/qr.js";
+import { encodeQr, qrCapacity, qrRows, qrSvg } from "../src/core/qr.js";
 import { detectPlatform } from "../src/services/distribution/page/detect.js";
 import {
   esc,
@@ -45,6 +41,7 @@ import {
   safeHref,
 } from "../src/services/distribution/page/render.js";
 import {
+  NOTES_SCAN_MAX,
   notesSummary,
   type DownloadModel,
 } from "../src/services/distribution/page/model.js";
@@ -723,6 +720,19 @@ describe("the page on the bytes host", () => {
       expect(html, needle).toContain(needle);
     expect(html).toContain("What&#39;s new in 1.2.0.");
   });
+
+  it("the direct outlet's builds read Polaris Key, never Direct download (S-21 §6.8)", async () => {
+    const w = await setup();
+    for (const ua of [UA.bot, UA.windows, UA.linux]) {
+      const html = await (
+        await onBytes(w, `/${SLUG}`, { headers: { "user-agent": ua } })
+      ).text();
+      expect(html).toContain(
+        '<span class="way-head">Download from Polaris Key</span>',
+      );
+      expect(html).not.toMatch(/direct download/i);
+    }
+  });
 });
 
 // ── Escaping ─────────────────────────────────────────────────────────────────────────────────
@@ -877,27 +887,44 @@ describe("notesSummary", () => {
   // Release notes are repo-writer text (a descriptor allows 20,000 code points, a GitHub release
   // body more) and the summary is built on the public, unauthenticated request path. Each input
   // here took seconds to minutes against the earlier single-pattern implementation.
+  //
+  // Counted work, never a clock, so load cannot fail it: every native regex run the summary makes
+  // is recorded and replayed on a step-counting backtracking engine (test/regexReplay.ts). The
+  // earlier implementation (a lazy body between whitespace-tolerant markers, `\s` at line starts)
+  // costs thousands of steps per character on these inputs; the linear one costs a handful.
+  const adversarial = (n: number): string[] => [
+    `<!-- pkey:summary -->${" ".repeat(n)}`,
+    `<!-- pkey:summary -->${" ".repeat(n)}x`,
+    `<!-- pkey:summary -->${"\n".repeat(n)}`,
+    `<!-- pkey:summary -->x${"\n".repeat(n)}<!-- /pkey:summary -->`,
+    `x${"\n".repeat(n)}`,
+    `${"\n ".repeat(n)}x`,
+    "[".repeat(n),
+    "<!--".repeat(n),
+    `${"<!-- pkey:summary ".repeat(n / 10)}`,
+    `- ${" ".repeat(n)}`,
+    "\t".repeat(n) + "#",
+    "x".repeat(10 * n),
+  ];
+  /** Replayed regex steps to summarise `notes`. */
+  const steps = (notes: string): number =>
+    replaySteps(recordRegexRuns(() => notesSummary(notes)).runs);
+
   it("runs in linear time on adversarial notes", () => {
-    const n = 20_000;
-    const inputs = [
-      `<!-- pkey:summary -->${" ".repeat(n)}`,
-      `<!-- pkey:summary -->${" ".repeat(n)}x`,
-      `<!-- pkey:summary -->${"\n".repeat(n)}`,
-      `<!-- pkey:summary -->x${"\n".repeat(n)}<!-- /pkey:summary -->`,
-      `x${"\n".repeat(n)}`,
-      `${"\n ".repeat(n)}x`,
-      "[".repeat(n),
-      "<!--".repeat(n),
-      `${"<!-- pkey:summary ".repeat(n / 10)}`,
-      `- ${" ".repeat(n)}`,
-      "\t".repeat(n) + "#",
-      "x".repeat(200_000),
-    ];
-    for (const notes of inputs) {
-      const started = performance.now();
-      notesSummary(notes);
-      expect(performance.now() - started).toBeLessThan(250);
-    }
+    // Only the first NOTES_SCAN_MAX characters are read. The bounded link pattern may retry up to
+    // 700 characters (`{1,200}` then `{0,500}`) from each `[`, about three steps each, so a few
+    // thousand steps per character read is the linear ceiling (the `[[[…` input costs 600);
+    // the earlier implementation costs far more, and more again as the input grows.
+    const PER_CHAR = 2048;
+    for (const notes of adversarial(20_000))
+      expect(steps(notes)).toBeLessThanOrEqual(
+        PER_CHAR * Math.min(notes.length, NOTES_SCAN_MAX),
+      );
+    // 4x the input costs at most 4.5x the steps (quadratic would be 16x).
+    const small = adversarial(1000);
+    const large = adversarial(4000);
+    for (let k = 0; k < small.length; k++)
+      expect(steps(large[k]!)).toBeLessThanOrEqual(4.5 * steps(small[k]!));
   });
 });
 

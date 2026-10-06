@@ -1,14 +1,21 @@
 /**
- * State pages (ADMIN.md §3 T8): not found, unknown product, service off and boot. Each one says
- * what is missing and offers the way out, rather than falling back to some other page in silence
- * (SH-8).
+ * State pages (ADMIN.md §3 T8, EXPERIENCE.md §9): not found, unknown product, service off and
+ * boot. Each one says what is missing and offers the way out, rather than falling back to some
+ * other page in silence (SH-8). The first three are the shared `ui/EmptyState` (kinds `not-found`
+ * and `service-off`) under the page's `<h1>`, inside the product chrome.
+ *
+ * Motion (S-23 §6.1; MO-10): a state page and the boot error card enter (`animate-pk-enter`);
+ * they leave with their route, which owns the exit. "Loading console…" waits out the skeleton's
+ * 150 ms grace, so a fast boot never flashes it. All of it is an instant swap under reduced motion.
  */
 
 import * as React from "react";
-import { AlertTriangle, Blocks, Compass, PackageSearch } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import type { ProductRef } from "../../api.js";
 import { Logo } from "../../components/brand/Logo.js";
-import { Button, EmptyState, Spinner } from "../../components/ui/index.js";
+import { Button } from "../../ui/Button.js";
+import { EmptyState } from "../../ui/EmptyState.js";
+import { Spinner } from "../../ui/Spinner.js";
 import type { NavSection } from "../nav.js";
 import { Link } from "../router.js";
 import { r } from "../routes.js";
@@ -72,10 +79,11 @@ export function NotFoundPage({
   onOpenPalette: () => void;
 }): React.ReactElement {
   return (
-    <section className="space-y-6">
+    <section className="space-y-6 animate-pk-enter">
       <StateHeading>Page not found</StateHeading>
       <EmptyState
-        icon={<Compass aria-hidden />}
+        kind="not-found"
+        headingLevel={2}
         title={
           <>
             No page <code className="font-mono">{path || "/"}</code>
@@ -83,15 +91,17 @@ export function NotFoundPage({
           </>
         }
         description="The link may be out of date, or the page may have moved. Search for it, or start from the overview."
-        action={
-          <div className="flex flex-wrap justify-center gap-2">
-            <Button asChild variant="outline">
-              <Link to={slug ? r.overview(slug) : r.home()}>
-                {slug ? "Go to Overview" : "Go to Home"}
-              </Link>
-            </Button>
-            <Button onClick={onOpenPalette}>Search or jump to…</Button>
-          </div>
+        primaryAction={
+          <Button asChild>
+            <Link to={slug ? r.overview(slug) : r.home()}>
+              {slug ? "Go to Overview" : "Go to Home"}
+            </Link>
+          </Button>
+        }
+        secondaryAction={
+          <Button variant="outline" onClick={onOpenPalette}>
+            Search or jump to…
+          </Button>
         }
       />
     </section>
@@ -107,10 +117,11 @@ export function UnknownProductPage({
 }): React.ReactElement {
   const close = closestSlugs(slug, products);
   return (
-    <section className="space-y-6">
+    <section className="space-y-6 animate-pk-enter">
       <StateHeading>Unknown product</StateHeading>
       <EmptyState
-        icon={<PackageSearch aria-hidden />}
+        kind="not-found"
+        headingLevel={2}
         title={
           <>
             No product with the slug <code className="font-mono">{slug}</code>
@@ -137,8 +148,16 @@ export function UnknownProductPage({
             "Products are addressed by their slug. Pick one from the registry."
           )
         }
-        action={
-          <Button asChild variant="outline">
+        primaryAction={
+          // The closest match is the suggestion, so it is the primary (EXPERIENCE.md §9).
+          close[0] ? (
+            <Button asChild>
+              <Link to={r.overview(close[0].slug)}>Open {close[0].name}</Link>
+            </Button>
+          ) : undefined
+        }
+        secondaryAction={
+          <Button asChild variant={close[0] ? "outline" : "primary"}>
             <Link to={r.products()}>All products</Link>
           </Button>
         }
@@ -164,24 +183,23 @@ export function ServiceOffPage({
   productName: string;
 }): React.ReactElement {
   return (
-    <section className="space-y-6" data-service={section.accent}>
+    <section
+      className="space-y-6 animate-pk-enter"
+      data-service={section.accent}
+    >
       <StateHeading>{section.label}</StateHeading>
       <EmptyState
-        icon={<Blocks aria-hidden />}
+        kind="service-off"
+        headingLevel={2}
+        service={section.service ?? undefined}
         title={`The ${section.label} service isn’t enabled for ${productName}.`}
         description={`${productName} doesn’t run ${section.label}, so there is nothing here to manage. Turn it on in Services and this page comes back.`}
-        action={
-          <div className="flex flex-wrap justify-center gap-2">
-            <Button asChild>
-              <Link to={r.services(slug)}>Enable {section.label}</Link>
-            </Button>
-            <Button asChild variant="outline">
-              <a href={section.docs} target="_blank" rel="noreferrer">
-                About {section.label}
-              </a>
-            </Button>
-          </div>
+        primaryAction={
+          <Button asChild>
+            <Link to={r.services(slug)}>Enable {section.label}</Link>
+          </Button>
         }
+        docs={section.docs}
       />
     </section>
   );
@@ -210,7 +228,7 @@ export function BootScreen({
         {error ? (
           <section
             aria-labelledby="boot-error-title"
-            className="w-full rounded-lg border border-border bg-surface-raised p-6 shadow-pk-sm sm:p-8"
+            className="w-full rounded-lg border border-border bg-surface-raised p-6 shadow-pk-sm animate-pk-enter sm:p-8"
           >
             <div className="mb-4 flex size-10 items-center justify-center rounded-full bg-danger-subtle text-danger">
               <AlertTriangle aria-hidden className="size-5" />
@@ -235,7 +253,7 @@ export function BootScreen({
             </div>
           </section>
         ) : (
-          <div className="flex items-center gap-3 text-sm text-fg-muted">
+          <div className="pk-skeleton-group flex items-center gap-3 text-sm text-fg-muted">
             <Spinner className="size-5 text-fg-subtle" />
             <LiveRegion message="Loading console…" />
             <span aria-hidden>Loading console…</span>

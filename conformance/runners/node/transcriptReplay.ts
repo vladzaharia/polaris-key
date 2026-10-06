@@ -71,6 +71,8 @@ export interface Transcript {
     token?: string;
     version: string;
     services?: string[];
+    /** PX-W13: the platform's device name the SDK's default label comes from; absent = none. */
+    deviceName?: string;
   };
   steps: Step[];
 }

@@ -118,6 +118,13 @@ crons = ["17 3 * * *", "*/15 * * * *"]
 # confine that host to the package-feed routes, its landing page and OCI's /v2/ root. It keeps
 # every bytes-host compensation (test/registryHost.test.ts). Its rendered index documents live
 # under registry/ in the same bucket, a prefix that gets NO age lock and NO lifecycle rule.
+#
+# The image host (HA-02; docs/DEPLOYMENT.md "Image host") is the same Worker on a FOURTH custom
+# domain, img*.plrs.im, with IMG_ORIGIN naming it so src/core/imgHost.ts can confine that host to
+# the hosted-image routes (/<p>/a/<sha256>[/<w>.webp] and the /<p>/icon, /<p>/header and
+# /<p>/screenshots/<n> aliases). Public, inline, cookie-less raster images only, read from the
+# same BLOBS bucket under blobs/ (test/imgHost.test.ts). No new bucket and no new Worker: the
+# deploy attaches the route and creates its DNS record.
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
@@ -151,6 +158,9 @@ custom_domain = true
 [[env.prod.routes]]
 pattern = "pkg.plrs.im"
 custom_domain = true
+[[env.prod.routes]]
+pattern = "img.plrs.im"
+custom_domain = true
 [[env.prod.durable_objects.bindings]]
 name = "RL"
 class_name = "RateLimitDO"
@@ -182,16 +192,37 @@ queue = "pkey-deltas-prod"
 [[env.prod.queues.producers]]
 binding = "DELTA_DLQ"
 queue = "pkey-deltas-dlq-prod"
+# HA-05: the hosted-asset pull queue (core/hostedAssetPulls.ts). This Worker is the producer (a
+# register or resync enqueues the pulls its manifest owes; the nightly sweep re-checks failed ones)
+# AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. A
+# delivery that keeps throwing lands in pkey-assets-dlq-prod; a refused pull is recorded on its
+# row and acknowledged, never retried by the queue.
+[[env.prod.queues.producers]]
+binding = "HOSTED_ASSET_QUEUE"
+queue = "pkey-assets-prod"
+[[env.prod.queues.consumers]]
+queue = "pkey-assets-prod"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+max_concurrency = 4
+dead_letter_queue = "pkey-assets-dlq-prod"
 # A-11: the running version's own Cloudflare id, tag and upload time (`env.CF_VERSION_METADATA`).
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.prod.version_metadata]
 binding = "CF_VERSION_METADATA"
+# HA-01: the Cloudflare Images binding (`core/hostedAssets.ts` reads ingested image dimensions
+# with `.info()`; HA-03 builds the variant ladder with it). A binding, so one per env.
+[env.prod.images]
+binding = "IMAGES"
 [env.prod.vars]
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "prod"
 BLOB_ORIGIN = "https://dl.plrs.im"
 # F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
 PKG_ORIGIN = "https://pkg.plrs.im"
+# HA-02: the image host (core/imgHost.ts); it answers only the hosted-image routes.
+IMG_ORIGIN = "https://img.plrs.im"
 # P2b-06: the console host, where the download page on dl.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
@@ -217,6 +248,10 @@ PLATFORM_REPOSITORY_OWNER_ID = "79390"
 # I-18: the deploy-wide daily cap on one product's passthrough mail (default 500 in code; a
 # product's email_product_caps row wins).
 # EMAIL_PRODUCT_DAILY_CAP = "500"
+# I-07: Cloudflare Turnstile on the login card's email start. The site key is public; set it
+# here per environment and the secret with `wrangler secret put TURNSTILE_SECRET_KEY --env <env>`
+# (RUNBOOK "Login card"). Without the secret the card asks for no token.
+TURNSTILE_SITE_KEY = "0x4AAAAAAFPA8Ladne6enDdh"
 # I-18: sign-in and account mail. The binding may send only from these addresses: today's
 # noreply@plrs.im, and the auth sending subdomain's noreply@auth.plrs.im, which the Worker uses
 # once EMAIL_SENDER_ADDRESS above names it (RUNBOOK "Sign-in email").
@@ -233,6 +268,9 @@ pattern = "dl-staging.plrs.im"
 custom_domain = true
 [[env.staging.routes]]
 pattern = "pkg-staging.plrs.im"
+custom_domain = true
+[[env.staging.routes]]
+pattern = "img-staging.plrs.im"
 custom_domain = true
 [[env.staging.durable_objects.bindings]]
 name = "RL"
@@ -265,16 +303,37 @@ queue = "pkey-deltas-staging"
 [[env.staging.queues.producers]]
 binding = "DELTA_DLQ"
 queue = "pkey-deltas-dlq-staging"
+# HA-05: the hosted-asset pull queue (core/hostedAssetPulls.ts). This Worker is the producer (a
+# register or resync enqueues the pulls its manifest owes; the nightly sweep re-checks failed ones)
+# AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. A
+# delivery that keeps throwing lands in pkey-assets-dlq-staging; a refused pull is recorded on its
+# row and acknowledged, never retried by the queue.
+[[env.staging.queues.producers]]
+binding = "HOSTED_ASSET_QUEUE"
+queue = "pkey-assets-staging"
+[[env.staging.queues.consumers]]
+queue = "pkey-assets-staging"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+max_concurrency = 4
+dead_letter_queue = "pkey-assets-dlq-staging"
 # A-11: the running version's own Cloudflare id, tag and upload time (`env.CF_VERSION_METADATA`).
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.staging.version_metadata]
 binding = "CF_VERSION_METADATA"
+# HA-01: the Cloudflare Images binding (`core/hostedAssets.ts` reads ingested image dimensions
+# with `.info()`; HA-03 builds the variant ladder with it). A binding, so one per env.
+[env.staging.images]
+binding = "IMAGES"
 [env.staging.vars]
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "staging"
 BLOB_ORIGIN = "https://dl-staging.plrs.im"
 # F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
 PKG_ORIGIN = "https://pkg-staging.plrs.im"
+# HA-02: the image host (core/imgHost.ts); it answers only the hosted-image routes.
+IMG_ORIGIN = "https://img-staging.plrs.im"
 # P2b-06: the console host, where the download page on dl-staging.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key-staging.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
@@ -287,6 +346,8 @@ LAZY_DELTAS = "runtime"
 # check proves the very records production uses (RUNBOOK "Sign-in email"). Until the owner
 # onboards auth.plrs.im the provider refuses the sender and the Worker answers email_unavailable.
 EMAIL_SENDER_ADDRESS = "noreply@auth.plrs.im"
+# I-07: Turnstile site key (public); the secret stays unset until the portal renders the widget.
+TURNSTILE_SITE_KEY = "0x4AAAAAAFPA8ouKFZ_KIKJO"
 [[env.staging.send_email]]
 name = "EMAIL"
 allowed_sender_addresses = ["noreply@auth.plrs.im"]
@@ -300,6 +361,9 @@ pattern = "dl-dev.plrs.im"
 custom_domain = true
 [[env.dev.routes]]
 pattern = "pkg-dev.plrs.im"
+custom_domain = true
+[[env.dev.routes]]
+pattern = "img-dev.plrs.im"
 custom_domain = true
 [[env.dev.durable_objects.bindings]]
 name = "RL"
@@ -332,16 +396,37 @@ queue = "pkey-deltas-dev"
 [[env.dev.queues.producers]]
 binding = "DELTA_DLQ"
 queue = "pkey-deltas-dlq-dev"
+# HA-05: the hosted-asset pull queue (core/hostedAssetPulls.ts). This Worker is the producer (a
+# register or resync enqueues the pulls its manifest owes; the nightly sweep re-checks failed ones)
+# AND the consumer (`queue()` in src/index.ts): pulls are I/O-bound, so no separate script. A
+# delivery that keeps throwing lands in pkey-assets-dlq-dev; a refused pull is recorded on its
+# row and acknowledged, never retried by the queue.
+[[env.dev.queues.producers]]
+binding = "HOSTED_ASSET_QUEUE"
+queue = "pkey-assets-dev"
+[[env.dev.queues.consumers]]
+queue = "pkey-assets-dev"
+max_batch_size = 10
+max_batch_timeout = 5
+max_retries = 3
+max_concurrency = 4
+dead_letter_queue = "pkey-assets-dlq-dev"
 # A-11: the running version's own Cloudflare id, tag and upload time (`env.CF_VERSION_METADATA`).
 # A binding, so NOT inherited from the top level (`wrangler deploy --dry-run` warns): one per env.
 [env.dev.version_metadata]
 binding = "CF_VERSION_METADATA"
+# HA-01: the Cloudflare Images binding (`core/hostedAssets.ts` reads ingested image dimensions
+# with `.info()`; HA-03 builds the variant ladder with it). A binding, so one per env.
+[env.dev.images]
+binding = "IMAGES"
 [env.dev.vars]
 # ADMIN.md A-1: names the deployment to the console (/manage/api/me `environment`).
 PKEY_ENVIRONMENT = "dev"
 BLOB_ORIGIN = "https://dl-dev.plrs.im"
 # F-02: the registry host (core/registryHost.ts); it answers only the package-feed routes.
 PKG_ORIGIN = "https://pkg-dev.plrs.im"
+# HA-02: the image host (core/imgHost.ts); it answers only the hosted-image routes.
+IMG_ORIGIN = "https://img-dev.plrs.im"
 # P2b-06: the console host, where the download page on dl-dev.plrs.im links the storefront feeds.
 CONSOLE_ORIGIN = "https://key-dev.plrs.im"
 # P2-02: the bucket name the upload tickets' R2 temporary credentials are scoped to (the
@@ -350,6 +435,8 @@ BLOBS_BUCKET_NAME = "polaris-key-blobs-dev"
 # P4-17: lazy hot-pair deltas' kill switch. A-13: "runtime" = the console's platform settings
 # store decides (default off); "off" = a hard off no console value can override.
 LAZY_DELTAS = "runtime"
+# I-07: Turnstile site key (public); the secret stays unset until the portal renders the widget.
+TURNSTILE_SITE_KEY = "0x4AAAAAAFPA80GfFwEcAJOR"
 
 # F-02: the LOCAL registry-client harness only (`wrangler dev --env test`, run by
 # scripts/registry-clients/run.mjs and .github/workflows/registry-clients.yml). It is never
@@ -385,14 +472,46 @@ PKEY_ENVIRONMENT = "test"
 #   KEY_HASH_PEPPER, ADMIN_SESSION_SECRET, GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY,
 #   GITHUB_WEBHOOK_SECRET, PLATFORM_ADMIN_GROUP, PLATFORM_KEK,
 #   PLATFORM_OIDC_ISSUER, PLATFORM_OIDC_CLIENT_ID, PLATFORM_OIDC_CLIENT_SECRET.
+# The KEK keyring (rotation-capable; replaces PLATFORM_KEK, written in ONE `wrangler secret bulk`):
+#   PLATFORM_KEK_KEYS, PLATFORM_KEK_ACTIVE. PLATFORM_KEK_ID stays unset (src/env.ts says why).
+#   A PLATFORM_KEK left beside them is the legacy key, open-only, until the re-seal sweep has
+#   moved every value off it; then delete it (RUNBOOK "Rotating when the old KEK is unknown").
 # Optional portal-specific secret:
 #   PORTAL_SESSION_SECRET (falls back to ADMIN_SESSION_SECRET when omitted).
+# Portal licensed downloads (PX-W3; optional, without it licensed R2-only files stay not_hosted):
+#   DOWNLOAD_TICKET_KEY (32 random bytes, base64), DOWNLOAD_TICKET_KEY_PREVIOUS during a rotation.
+# Login card (I-07): TURNSTILE_SECRET_KEY, with the TURNSTILE_SITE_KEY var above. Account
+#   pictures live in the BLOBS bucket under the `avatars/` prefix (no extra binding; never
+#   age-locked) and are re-encoded by the IMAGES binding above (PX-W16).
 # Console's own Pocket ID client (I-03; set all three in ONE `wrangler secret bulk`):
 #   ADMIN_OIDC_ISSUER, ADMIN_OIDC_CLIENT_ID, ADMIN_OIDC_CLIENT_SECRET. Until they are set the
 #   console signs in through PLATFORM_OIDC_*; the portal never reads them.
+# Manifest identity providers (R9-01; fails closed while unset): OIDC_ISSUER_ALLOWLIST.
+# The registry host's OCI pull tokens (F-21; /v2/token answers 503 while unset):
+#   REGISTRY_TOKEN_KEY, and REGISTRY_TOKEN_KEY_PREVIOUS during a rotation only.
+# Team store credentials and settings (A-16; optional, a console-managed value wins):
+#   PLATFORM_ASC_API_KEY, PLATFORM_APP_STORE_SERVER_KEY, PLATFORM_GOOGLE_SERVICE_ACCOUNT,
+#   PLATFORM_MS_PARTNER_CENTER, PLATFORM_STEAM_PUBLISHER_KEY; PLATFORM_APPLE_TEAM_ID (not secret).
+
+# Login-card providers (I-06, services/identity/providers/config.ts; optional, per environment;
+# a provider is offered only once ALL of its values are set and its sealed secret opens):
+#   Google: SIGNIN_GOOGLE_CLIENT_ID, SIGNIN_GOOGLE_CLIENT_SECRET (sealed).
+#   Apple:  SIGNIN_APPLE_SERVICES_ID, SIGNIN_APPLE_TEAM_ID, SIGNIN_APPLE_KEY_ID,
+#           SIGNIN_APPLE_PRIVATE_KEY (the sealed .p8).
+#   Steam:  SIGNIN_STEAM_WEB_API_KEY (sealed).
+#   The three secrets hold `pnpm --filter @polaris-key/worker signin:seal` blobs sealed under that
+#   environment's PLATFORM_KEK, never the raw credential (RUNBOOK "Login-card providers"). Set one
+#   provider's values in ONE `wrangler secret bulk --env <env>`; the ids are not secret but travel
+#   with them so a provider never comes up half-configured.
 # Sign-in and account email (I-18, core/emailSender.ts, core/emailDelivery.ts):
 #   prod and staging bind Cloudflare Email Service as EMAIL. The display name is never
 #   configurable ("Polaris Key", or "<App> via Polaris Key" for passthrough); EMAIL_SENDER_ADDRESS
 #   picks the address (unset = noreply@plrs.im). PORTAL_EMAIL_FROM is still read for its address
 #   only, while EMAIL_SENDER_ADDRESS is unset.
+# Optional [vars] left unset here, each with a code default (src/env.ts): BLOB_GC_MODE,
+#   BLOB_GC_GRACE_DAYS, LAZY_DELTA_MAX_BYTES, LICENSING_RESERVED_NAMES,
+#   IDENTITY_RESERVED_DISPLAY_NAMES (A-13: the console's Platform → Settings value wins),
+#   PLATFORM_DEPLOY_ENVIRONMENT (default production).
+# Injected at deploy by .github/workflows/deploy.yml (--var): PKEY_RELEASE_TAG, PKEY_GIT_SHA.
 # Product signing keys and product-scoped secrets are sealed in D1 through the admin API.
+# This block is checked against src/env.ts by `pnpm gen:platform-inventory -- --check` (ST-02).

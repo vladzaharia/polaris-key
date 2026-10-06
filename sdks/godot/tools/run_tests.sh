@@ -14,6 +14,9 @@
 #   PKEY_TEST_TIMEOUT seconds per step (default: 300)
 #   PKEY_CONTENT_CORPUS the content corpus directory the packs suite reads (default: the
 #                     checkout's conformance/corpus/v2/content; `content/` is not mirrored)
+#   PKEY_KEYRING_TESTS 1 runs the keyring suite's real-keyring contract (the CI keyring job, SP-27)
+#                     and lets default stores use the OS keyring; otherwise every run exports
+#                     PKEY_DESKTOP_KEYRING=0, so no suite touches the developer's or runner's keyring
 #   Extra arguments are passed to every suite after the selection.
 #
 # Steps: import (retried once on a signal exit), the untracked-.uid check, the f_uid data packs
@@ -75,7 +78,12 @@ trap cleanup EXIT
 trap 'exit 130' INT TERM
 mkdir -p "$RUN_DIR/tmp" "$RUN_DIR/home" "$RUN_DIR/editor"
 export TMPDIR="$RUN_DIR/tmp"
+if [ "${PKEY_KEYRING_TESTS:-}" != 1 ]; then export PKEY_DESKTOP_KEYRING=0; fi
 RUN_HOME="$RUN_DIR/home"
+# The real-keyring run keeps the user's HOME: macOS resolves the login keychain from it, and under
+# a fresh HOME every Keychain add fails with -60006 (no default keychain). That run selects the
+# keyring suite only, whose roots are unique per run.
+if [ "${PKEY_KEYRING_TESTS:-}" = 1 ]; then RUN_HOME="$HOME"; fi
 
 # Resolve symlinks (Homebrew's `godot` links into the .app) without GNU readlink -f.
 resolve() {

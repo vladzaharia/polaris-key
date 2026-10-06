@@ -7,7 +7,7 @@
  */
 
 import * as React from "react";
-import type { DeviceDto, LicenseDetail, TierSummary } from "../../../api.js";
+import type { DeviceDto, LicenseDetail } from "../../../api.js";
 import { mutate } from "../../data/mutations.js";
 import { useTableUrlState } from "../../useTableUrlState.js";
 import { DeviceTable, type DeviceRow } from "../../components/DeviceTable.js";
@@ -18,19 +18,7 @@ import { ConfirmDialog } from "../../../ui/ConfirmDialog.js";
 import { EmptyState } from "../../../ui/EmptyState.js";
 import { toast } from "../../../ui/toast.js";
 import type { RowActionItem } from "../../../ui/data-table/index.js";
-
-/** The seat limit: the license's tier's, else the product's; `null` when unlimited. */
-export function seatLimitOf(
-  license: Pick<LicenseDetail, "tier">,
-  tiers: readonly TierSummary[],
-  productLimit: number | undefined,
-): number | null {
-  const tier = license.tier
-    ? tiers.find((t) => t.id === license.tier)
-    : undefined;
-  const limit = tier?.policyDeviceLimit ?? productLimit;
-  return limit && limit > 0 ? limit : null;
-}
+import { seatLimitText, type SeatLimit } from "./shared.js";
 
 /** Valid only while the device still holds the license. */
 export function isAuthorized(d: Pick<DeviceDto, "status">): boolean {
@@ -56,12 +44,13 @@ export function deviceActions(
 export function LicenseDevices({
   slug,
   license,
-  limit,
+  seats,
 }: {
   slug: string;
   license: LicenseDetail;
-  limit: number | null;
+  seats: SeatLimit;
 }): React.ReactElement {
+  const limit = seats.limit;
   const [state, setState] = useTableUrlState("devices", {
     namespace: true,
     facets: ["status", "platform"],
@@ -76,7 +65,7 @@ export function LicenseDevices({
 
   return (
     <div className="space-y-4">
-      <div className="max-w-sm">
+      <div className="max-w-sm space-y-1">
         {limit === null ? (
           <p className="text-sm text-fg-muted">
             {license.deviceCount}{" "}
@@ -90,6 +79,9 @@ export function LicenseDevices({
             tone={license.deviceCount > limit ? "warning" : "accent"}
           />
         )}
+        <p className="text-xs text-fg-muted" data-testid="seat-limit-source">
+          Device limit: {seatLimitText(seats)}
+        </p>
       </div>
       <DeviceTable
         id="license-devices"

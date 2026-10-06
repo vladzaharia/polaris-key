@@ -1,8 +1,14 @@
 // @polaris-key/react/config — the Config service's UI surface: the managed-settings hook and the
 // prebuilt settings panel over it.
 
-export { useManagedConfig } from "../react/hooks.js";
-export type { UseManagedConfig } from "../react/hooks.js";
+export { useManagedConfig, useConfigSetting } from "../react/hooks.js";
+export type { UseManagedConfig, UseConfigSetting } from "../react/hooks.js";
+export type {
+  ConfigChange,
+  ConfigSetting,
+  ConfigStorage,
+  LocalConfig,
+} from "../core/localConfig.js";
 export {
   ConfigPanel,
   type ConfigPanelProps,

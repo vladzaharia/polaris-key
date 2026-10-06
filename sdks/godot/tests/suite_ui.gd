@@ -1,5 +1,6 @@
 extends RefCounted
 # @pkey-feature ui.kit
+# @pkey-feature ui.kit.manage
 # The UI kit v1 (P1-10), headless. There is no renderer, so the scenes are pinned as structural
 # text: every scene in every state of tests/ui/scenarios.gd against the committed fixtures in
 # tests/ui/snapshots/<scene>.txt (visible controls, texts, disabled flags, focus order). Then, for
@@ -440,6 +441,7 @@ func _activation_copy(t: PKeyTestContext) -> void:
 		PKeyActivationResult.KIND_FINGERPRINT_REQUIRED, PKeyActivationResult.KIND_ENROLL_DISABLED, PKeyActivationResult.KIND_ENROLL_CLAIMED,
 		PKeyActivationResult.KIND_LICENSE_DISABLED, PKeyActivationResult.KIND_HARDWARE_MISMATCH, PKeyActivationResult.KIND_RATE_LIMITED,
 		PKeyActivationResult.KIND_UNSUPPORTED, PKeyActivationResult.KIND_ERROR,
+		PKeyActivationResult.KIND_LICENSE_EXPIRED, PKeyActivationResult.KIND_ATTESTATION_REQUIRED, PKeyActivationResult.KIND_REFUSED,
 	]
 	var keys := {}
 	for k in kinds:
@@ -447,6 +449,26 @@ func _activation_copy(t: PKeyTestContext) -> void:
 		keys[m[0]] = true
 		t.check("activation: %s has its own copy" % k, PKeyUiCopy.DEFAULTS.has(m[0]), m[0])
 	t.check("activation: every kind reads differently", keys.size() == kinds.size())
+	# SDK parity §3.2: a refusal reads by its code, a missing code falls back to a generic line
+	# with the code, never the raw body.
+	var c := PKeyUiCopy.new()
+	var refused := PKeyActivationController.message_for(PKeyActivationResult.of(PKeyActivationResult.KIND_REFUSED, &"registration_closed", "raw body", 403))
+	t.check("copy: refused registration_closed reads its own copy", refused[0] == "error_registration_closed")
+	var unknown := PKeyActivationController.message_for(PKeyActivationResult.of(PKeyActivationResult.KIND_REFUSED, &"key_entry_limit", "raw body", 403))
+	t.check("copy: an unknown code falls back to the generic line with the code", unknown == ["error_generic", "key_entry_limit"] and c.text(unknown[0], unknown[1]).contains("key_entry_limit") and not c.text(unknown[0], unknown[1]).contains("raw body"))
+	for code in ["registration_closed", "attestation_required", "attestation_rejected", "attestation_unavailable", "managed_by_admin", "not_entitled", "license_expired", "catalog_unavailable", "value_not_representable", "document_not_representable", "mint-unavailable", "unavailable", "pack-not-entitled", "pack-not-pinned", "pack-revoked", "pack-type-unsupported", "pack-no-variant", "plan-insufficient-disk", "network-error", "timeout", "no-token"]:
+		t.check("copy: %s has its own message" % code, PKeyUiCopy.code_key(code)[0] == "error_" + code)
+	for code in PKeyConstants.ERROR_CODE_VALUES:
+		if PKeyUiCopy.DEFAULTS.has("error_" + code):
+			continue
+		t.check("copy: %s still reads as words" % code, c.for_code(code) != "" and c.for_code(code) != code)
+	for reason in ["no_license", "binding_mismatch", "bound_elsewhere", "unbound", "not_owned", "test_purchase", "invalid_ticket"]:
+		t.check("copy: commerce reason %s wins over its code" % reason, PKeyUiCopy.code_key("forbidden", reason)[0] == "reason_" + reason)
+	var body := PKeyErrors.read_body('{"error":{"code":"forbidden","reason":"bound_elsewhere"}}'.to_utf8_buffer())
+	var fr := PKeyResult.failure(&"forbidden", "x", {"status": 403, "error": body})
+	t.check("copy: for_result reads the server's reason", c.for_result(fr) == c.text("reason_bound_elsewhere"))
+	var empty := PKeyUiCopy.DEFAULTS.keys().filter(func(k): return String(PKeyUiCopy.DEFAULTS[k]).strip_edges() == "")
+	t.check("copy: no template is empty", empty.is_empty(), str(empty))
 
 
 func _sign_in_copy(t: PKeyTestContext) -> void:
@@ -496,9 +518,37 @@ func _dev_menu(t: PKeyTestContext) -> void:
 
 
 func _controllers(t: PKeyTestContext) -> void:
+	# PX-W8: "Replace a device" — a button where a browser is at hand, a QR code where a joypad is
+	# the only input; the link carries the key fragment (on /activate only) and the game's return.
+	t.check("manage: desktop, web and touch phones get a button", PKeyActivationController.manage_presentation("Windows", false, 1) == "button" and PKeyActivationController.manage_presentation("Web", false, 0) == "button" and PKeyActivationController.manage_presentation("Android", true, 1) == "button")
+	t.check("manage: a TV or console gets a QR code", PKeyActivationController.manage_presentation("Android", false, 1) == "qr" and PKeyActivationController.manage_presentation("Switch", false, 1) == "qr")
+	var limited := PKeyActivationResult.of(PKeyActivationResult.KIND_DEVICE_LIMIT, PKeyErrors.DEVICE_LIMIT, "", 403)
+	limited.manage_url = "https://key.plrs.im/activate?product=djdl&next=free-device"
+	var link := PKeyActivationController.manage_link(limited, "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV", "mygame://done")
+	t.check("manage: the offered link", link == "https://key.plrs.im/activate?product=djdl&next=free-device&return=mygame%3A%2F%2Fdone#key=pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV", link)
+	t.check("manage: a QR link never carries the key", PKeyActivationController.manage_link(limited, "pkey_djdl_ABCDEFGHIJKLMNOPQRSTUV", "mygame://done", true) == "https://key.plrs.im/activate?product=djdl&next=free-device&return=mygame%3A%2F%2Fdone")
+	limited.manage_url = "https://key.plrs.im/#/p/djdl/free-device?license=lic_1"
+	t.check("manage: the key never rides on a free-device link", PKeyActivationController.manage_link(limited, "pkey_x") == "https://key.plrs.im/#/p/djdl/free-device?license=lic_1")
+	limited.manage_url = null
+	t.check("manage: no link, no offer", PKeyActivationController.manage_link(limited, "k") == "" and PKeyActivationController.manage_link(PKeyActivationResult.of(PKeyActivationResult.KIND_UNAUTHORIZED, &"x", ""), "k") == "")
+	var copy := PKeyUiCopy.DEFAULTS
+	t.check("manage: copy", copy.get("free_device") == "Replace a device" and copy.has("free_device_scan"))
 	var caps := PKeyActivationController.capabilities(true, true, true, true)
 	t.check("activation: Continue free is never offered on web", not caps["continue_free"] and caps["key_entry"] and caps["sign_in"] and caps["offline"])
 	t.check("activation: without License there is no key entry, no enrolment, no offline file", PKeyActivationController.capabilities(false, false, true, false) == {"key_entry": false, "sign_in": false, "continue_free": false, "offline": false})
+	# SDK parity §3.18: key entry is hidden on store outlets automatically (App Store 3.1.1, Play).
+	var store := PKeyActivationController.capabilities(true, true, true, false, true)
+	t.check("activation: a store outlet hides key entry and the offline file, keeps sign-in and enrolment", not store["key_entry"] and not store["offline"] and store["sign_in"] and store["continue_free"], str(store))
+	for kind in ["app-store", "testflight", "play", "play-testing"]:
+		t.check("activation: %s hides key entry" % kind, PKeyActivationController.store_hides_key_entry(kind))
+	for kind in ["direct", "steam", "itch", "ms-store", ""]:
+		t.check("activation: %s keeps key entry" % kind, not PKeyActivationController.store_hides_key_entry(kind))
+	var panel := PKeyActivationPanel.new()
+	panel.auto_sdk = false
+	_sc.add(panel)
+	panel.show_result(PKeyActivationResult.of(PKeyActivationResult.KIND_DEVICE_LIMIT, PKeyErrors.DEVICE_LIMIT, "", 403))
+	t.check("activation: device-limit without a served link offers no Replace a device", panel.last_kind == PKeyActivationResult.KIND_DEVICE_LIMIT and not panel._manage.visible)
+	_free(panel)
 	var screens := {}
 	for st in ["ok", "grace", "expired", "revoked", "needs-activation", "version-too-old", "version-too-new", "channel-not-entitled", "not-applicable"]:
 		screens[st] = PKeyGateController.screen_for(st)

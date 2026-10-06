@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature update.check release.changelog release.download update.feed release.record update.decide outlet.detect
+# @pkey-feature update.check release.changelog release.download update.feed update.feeds release.record update.decide outlet.detect
 # The update suite (P1-08, P3-08): PolarisKey.update (the wire v4 decision, feed and release
 # record; the version check, its update_available signal, the appcast URL) and PolarisKey.release (the changelog, the install and download URLs) against
 # PKeyFakeServer, and the URL builders against the vectors sdk-node is held to. Each group is a
@@ -7,7 +7,7 @@ extends RefCounted
 # suite ends with a coverage check that every group ran. The release-changelog transcripts run in
 # the transcripts suite.
 
-const GROUPS := ["check", "release", "urls", "decide", "outlet"]
+const GROUPS := ["check", "release", "urls", "feeds", "decide", "outlet"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

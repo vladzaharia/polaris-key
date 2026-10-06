@@ -35,9 +35,18 @@ static func _apple(p_platform: String, p_native: Object = null) -> PKeyApple:
 
 
 func _stubs(t: PKeyTestContext) -> void:
-	var desktop := _apple("macos")
+	var desktop := _apple("linux")
 	t.check("stubs: the native class is not registered here", not ClassDB.class_exists(PKeyApple.NATIVE_CLASS) or OS.get_name() == "iOS")
 	t.check("stubs: off iOS the reason is runtime", desktop.unsupported_reason() == "runtime" and not desktop.is_available())
+	# SP-27: on macOS the Keychain calls (core.store) run through the desktop build, so without it
+	# they answer `dependency`; everything else stays iOS-only (`runtime`).
+	var mac := _apple("macos")
+	mac.native_class = "PolarisKeyAppleMissingForTests"
+	var mac_kc := mac.keychain_get("diceroll", "device-token", PKeyApple.LOGIN_KEYCHAIN)
+	t.check("stubs: on macOS without the dylib the Keychain calls answer dependency", not mac_kc.ok and mac_kc.detail.get("reason") == "dependency" \
+			and str(mac_kc.message).contains("libpkey_apple.dylib") and not mac.keychain_available())
+	t.check("stubs: on macOS every other call is still runtime", mac.unsupported_reason() == "runtime" and mac.capabilities().detail.get("reason") == "runtime")
+	mac.free()
 	var ios := _apple("ios")
 	ios.native_class = "PolarisKeyAppleMissingForTests"
 	t.check("stubs: on iOS without the GDExtension the reason is dependency", ios.unsupported_reason() == "dependency")
@@ -257,7 +266,7 @@ func _keychain(t: PKeyTestContext) -> void:
 			and fake4.keychain.get("diceroll/token") == "pkeyt_orphan" and FileAccess.file_exists(token_path) \
 			and stuck_errors.any(func(e): return str(e.get("message", "")).contains("retried on the next read")))
 	t.check("keychain: the next read retries the delete and removes the plaintext token", stuck.get_token() == "pkeyt_orphan" and not FileAccess.file_exists(token_path))
-	t.check("keychain: off iOS the preferred store is the file store", PKeyHeaders.platform() == "ios" or PKeyKeychainStore.preferred("diceroll", root) is PKeyFileStore)
+	t.check("keychain: off iOS the preferred store is not the Keychain store", PKeyHeaders.platform() == "ios" or not (PKeyKeychainStore.preferred("diceroll", root) is PKeyKeychainStore))
 	for a in made:
 		a.free()
 

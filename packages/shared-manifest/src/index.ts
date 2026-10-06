@@ -4,6 +4,16 @@ import {
 } from "@polaris-key/catalog";
 import { type SecretDelivery } from "@polaris-key/protocol/config";
 import {
+  DEFAULT_RESERVED_DISPLAY_NAMES_MODE,
+  checkDisplayName,
+  type ReservedDisplayNamesMode,
+} from "./displayName.js";
+import {
+  DEFAULT_RESERVED_NAMES_MODE,
+  reservedNameDeclarations,
+  type ReservedNamesMode,
+} from "./reservedNames.js";
+import {
   CHANNEL_ALIASES,
   CHANNEL_BETA,
   CHANNEL_DEV,
@@ -26,6 +36,8 @@ import {
   type VariantAxis,
 } from "@polaris-key/protocol/packs";
 import { parse as parseYaml } from "yaml";
+import { validateCloudSync } from "./cloudSync.js";
+import { checkSpellings } from "./spellings.js";
 import {
   MAX_RELEASE_KEYS,
   RELEASE_KEY_KID_PATTERN,
@@ -46,6 +58,11 @@ import {
   packageNameNorm,
   type PackageEcosystem,
 } from "./packages.js";
+import {
+  PRODUCT_ROUTE_ACTIONS,
+  PRODUCT_SLUG_RE,
+  RESERVED_PRODUCT_SLUGS,
+} from "./productSlug.js";
 
 import {
   DEFAULT_ENABLED_SERVICES,
@@ -55,11 +72,18 @@ import {
   type ServiceSlug,
 } from "./services.generated.js";
 import {
+  assetRefProblem,
+  isHexColour,
+  normalizeAssetRef,
+  type ManifestAssetRef,
+} from "./assets.js";
+import {
   normalizeDistribution,
   validateDistribution,
   type DistributionDeliverable,
   type ManifestDistribution,
 } from "./distribution.js";
+import { globWork } from "./globWork.js";
 
 /**
  * The opt-in services and the `modules:` vocabulary come from the GENERATED service table
@@ -84,6 +108,29 @@ export {
   type ProductModule,
   type ServiceSlug,
 } from "./services.generated.js";
+
+/**
+ * Cloud Sync's catalog-side checks (the `user` blocks and the catalog `cloudSync` block, rules
+ * shape and 1–11 as they apply to `.pkey/schema`) for a catalog published outside a manifest:
+ * the console's catalog editor through the admin API. The same code the manifest validator runs.
+ */
+export function validateCatalogCloudSync(input: {
+  entries: readonly unknown[];
+  cloudSync: unknown;
+  tierIds: ReadonlySet<string>;
+}): ValidationMessage[] {
+  const errors: ValidationMessage[] = [];
+  validateCloudSync(errors, [], {
+    entries: input.entries,
+    catalogCloudSync: input.cloudSync,
+    productCloudSync: undefined,
+    catalogChecked: true,
+    tierIds: input.tierIds,
+    // Warnings are not reported here; the service toggle is the Services page's concern.
+    syncEnabled: true,
+  });
+  return errors;
+}
 
 /** The enablement set a manifest declares, in the shape `products.services_json` stores. */
 export type ManifestServices = Record<ServiceSlug, { enabled: boolean }>;
@@ -140,6 +187,15 @@ export interface ManifestProduct {
   defaultMaxOfflineDays: number;
   defaultDeviceLimit: number;
   adminGroup: string;
+}
+
+/** `.pkey/product` `presentation`, normalised (HA-04). */
+export interface ManifestPresentation {
+  icon?: ManifestAssetRef;
+  /** `#rrggbb`, as written. */
+  accent?: string;
+  /** `#rrggbb`, as written: the accent on a dark ground. */
+  accentDark?: string;
 }
 
 export interface ManifestOidc {
@@ -476,6 +532,13 @@ export interface ParsedManifest {
    */
   webOrigins: string[];
   /**
+   * `presentation` (HA-04): the product's icon (a normalised asset ref, `kind` url or repo) and
+   * its accent colours. Present only when the manifest declares the block; each member only when
+   * declared. The Worker resolves a repo ref at the synced commit (HA-05), and the listing icon
+   * falls back to this one there, not here.
+   */
+  presentation?: ManifestPresentation;
+  /**
    * `.pkey/distribution` (P2b-02), normalised: outlets with their identities, the resolved
    * transport per (deliverable, outlet), and the listing. Present whenever Distribution is enabled
    * (the absent document is the implicit `direct` outlet by `pkey-cdn`, `declared: false`) or the
@@ -512,7 +575,6 @@ const MODULES = Object.keys(MODULE_SERVICES) as ProductModule[];
 /** What a manifest that declares nothing runs: licensing + settings delivery, which is
  *  today's behaviour for every product (design spec §2.2). The table's `defaultEnabled`. */
 const DEFAULT_ENABLED: readonly ServiceSlug[] = DEFAULT_ENABLED_SERVICES;
-const SLUG_RE = /^[a-z0-9-]{1,64}$/;
 /** Tier, profile and probe ids. Exported (P3-12) so the Worker's admin handlers check the same
  *  values the same way (plans/P3-01.md §2.2's inventory); no rule is added by exporting it. */
 export const ID_RE = /^[A-Za-z0-9._:-]{1,64}$/;
@@ -1093,6 +1155,7 @@ export function matchesArtifactGlob(glob: string, name: string): boolean {
   let star = -1;
   let mark = 0;
   while (si < s.length) {
+    globWork.steps++;
     const c = p[pi];
     if (c !== undefined && c !== "*" && (c === "?" || c === s[si])) {
       pi++;
@@ -1161,32 +1224,6 @@ const OIDC_PROVIDER_VALUES = ["platform", "custom"] as const;
 const FINGERPRINT_MODE_VALUES = ["off", "lenient", "normal", "strict"] as const;
 const AUTO_ISSUE_MODE_VALUES = ["anonymous", "oidcDefault", "both"] as const;
 
-/**
- * Product slugs the platform router reserves ahead of tenant routing. Every one of these is
- * (or fronts) a root path the worker matches before `/<product>/…` — a product registered
- * under such a slug would be permanently shadowed. `validateManifestDocuments` refuses them
- * (`reserved_slug`), and the worker's manual-create admin path checks the same list.
- */
-export const RESERVED_PRODUCT_SLUGS: readonly string[] = [
-  "docs",
-  "manage",
-  "api",
-  "assets",
-  "login",
-  "logout",
-  "callback",
-  "magic",
-  "download",
-  "webhooks",
-  "well-known",
-  // PX-W1: the customer portal's same-origin media proxy, `/media/<product>/<asset>`.
-  "media",
-  // PX-01: the portal's `/activate?key=` deep link.
-  "activate",
-  // PX-W16 (G33): avatars will be served at `/media/avatar/<asset>`, which the media proxy's
-  // `/media/<product>/<asset>` would read as a product slugged `avatar`; reserved now.
-  "avatar",
-];
 const SECRET_DELIVERY_VALUES = [
   "serverOnly",
   "clientScoped",
@@ -1243,10 +1280,25 @@ function registrationPolicy(productRoot: Record<string, unknown>): unknown {
  * resync always require the schema. Anything that means to answer "will this link?" (the CLI's
  * `pkey validate`, `parseManifest`) must call {@link validateIngestDocuments} instead.
  */
+/**
+ * Options the platform supplies at ingest. `reservedNames` is the severity of an incompatible
+ * reserved entitlement-name declaration (S-19 §7.4): the Worker passes its platform setting
+ * `LICENSING_RESERVED_NAMES`; anything else (the CLI, editors) gets the default, `warn`.
+ */
+export interface ValidationOptions {
+  reservedNames?: ReservedNamesMode;
+  /**
+   * PX-W13 (plans/PX-W13.md §3, §8 Q4): the severity of a reserved display name. The Worker passes
+   * its platform setting `identity.reservedDisplayNames`; anything else gets the default, `warn`.
+   */
+  reservedDisplayNames?: ReservedDisplayNamesMode;
+}
+
 export function validateManifestDocuments(
   manifest: ManifestDocuments,
+  opts: ValidationOptions = {},
 ): ValidationResult {
-  return validateDocuments(manifest, false);
+  return validateDocuments(manifest, false, opts);
 }
 
 /**
@@ -1257,6 +1309,7 @@ export function validateManifestDocuments(
  */
 export function validateIngestDocuments(
   manifest: IngestDocuments,
+  opts: ValidationOptions = {},
 ): ValidationResult {
   const product = manifest.product;
   if (product === undefined) {
@@ -1279,7 +1332,7 @@ export function validateIngestDocuments(
       requiredSecrets: [],
     };
   }
-  return validateDocuments({ ...manifest, product }, true);
+  return validateDocuments({ ...manifest, product }, true, opts);
 }
 
 /** True when the schema document is present; otherwise reports `missing_schema`. */
@@ -1298,6 +1351,7 @@ function requireSchema(errors: ValidationMessage[], schema: unknown): boolean {
 function validateDocuments(
   manifest: ManifestDocuments,
   schemaAlwaysRequired: boolean,
+  opts: ValidationOptions,
 ): ValidationResult {
   const errors: ValidationMessage[] = [];
   const warnings: ValidationMessage[] = [];
@@ -1307,6 +1361,9 @@ function validateDocuments(
   const licensing = asRecord(productRoot.licensing);
   const oidc = asRecord(productRoot.oidc);
   const secrets = asRecord(productRoot.secrets);
+
+  // ST-19: duplicate spellings stay valid and keep today's precedence; they only warn.
+  checkSpellings(manifest, warnings);
 
   if (
     productRoot.apiVersion !== undefined &&
@@ -1322,19 +1379,26 @@ function validateDocuments(
   }
   const productSlug =
     typeof productNode.slug === "string" ? productNode.slug : "";
-  if (!productSlug || !SLUG_RE.test(productSlug)) {
+  if (!productSlug || !PRODUCT_SLUG_RE.test(productSlug)) {
+    // The message is a literal (not an interpolation) so the generated validation-codes page
+    // shows the pattern; index.test.ts pins it to PRODUCT_SLUG_PATTERN.
     add(
       errors,
       "product",
       "/product/slug",
       "invalid_slug",
-      "product.slug must match ^[a-z0-9-]{1,64}$.",
+      "product.slug must match ^[a-z0-9][a-z0-9-]{0,63}$.",
     );
-  } else if (RESERVED_PRODUCT_SLUGS.includes(productSlug)) {
+  } else if (
+    RESERVED_PRODUCT_SLUGS.includes(productSlug) ||
+    PRODUCT_ROUTE_ACTIONS.includes(productSlug)
+  ) {
     // The worker's root router reserves these ahead of product slugs (`/manage`, `/docs`,
     // the portal paths, `/.well-known/*`, …) — a product registered under one of them would
-    // be permanently shadowed, its every route unreachable. Refuse at authoring time; the
-    // admin manual-create path enforces the same list.
+    // be permanently shadowed, its every route unreachable. The admin API's one-segment
+    // actions (`kek`, `link-repo`, `slug-check`) would shadow its console record the same way.
+    // Refuse at authoring time; the slug check and manual create apply the same lists
+    // (P0-14). The system product's slug is not refused here: its own manifest carries it.
     add(
       errors,
       "product",
@@ -1432,6 +1496,35 @@ function validateDocuments(
           add(errors, "schema", "/entries", "invalid_catalog_shape", issue);
         }
       }
+    }
+  }
+
+  // S-19 §7.4 (LX-05): a flag named like a system key the Worker injects (`channels`,
+  // `deviceLimit`, `app.*`, `license.*`, `pkey.*`) is valid when compatible; an incompatible one
+  // is reported with the platform's severity, `warn` until LX-05b. Judged whatever the modules:
+  // flags are entitlements, and License reads them with Config off.
+  if (manifest.schema !== undefined) {
+    const mode = opts.reservedNames ?? DEFAULT_RESERVED_NAMES_MODE;
+    // Two literal emit sites (not one with a computed list) so the generated validation-codes
+    // page lists both severities; LX-05b deletes the warning branch.
+    for (const decl of reservedNameDeclarations(manifest.schema)) {
+      if (decl.compatible) continue;
+      if (mode === "error")
+        add(
+          errors,
+          "schema",
+          `/entries/${decl.index}`,
+          "incompatible_reserved_name",
+          `${decl.key} is a reserved entitlement name the platform sets itself: ${decl.problem}. Incompatible reserved-name declarations are refused on this platform.`,
+        );
+      else
+        add(
+          warnings,
+          "schema",
+          `/entries/${decl.index}`,
+          "incompatible_reserved_name",
+          `${decl.key} is a reserved entitlement name the platform sets itself: ${decl.problem}. This is a warning for now; it becomes an error when the platform switches licensing.reservedNames to error.`,
+        );
     }
   }
 
@@ -2363,7 +2456,146 @@ function validateDocuments(
       errors,
       manifest.distribution,
       distributionContext(relDoc),
+      warnings,
     );
+  }
+
+  // Cloud Sync (S-17 §5.3; plans/U-01.md §3): the catalog's `user` and `cloudSync` blocks (the
+  // data shape, judged like the rest of the catalog's content only while Config is on) and
+  // `.pkey/product`'s `cloudSync` block (limits and access policy).
+  {
+    const catalog =
+      manifest.schema === undefined ? null : normalizeCatalog(manifest.schema);
+    validateCloudSync(errors, warnings, {
+      entries: catalog ? (catalog.entries as unknown[]) : null,
+      catalogCloudSync: isRecord(manifest.schema)
+        ? manifest.schema.cloudSync
+        : undefined,
+      productCloudSync: productRoot.cloudSync,
+      catalogChecked: catalog !== null && modules.includes("config"),
+      tierIds,
+      syncEnabled: modules.includes("sync"),
+    });
+  }
+
+  // PX-W13 (plans/PX-W13.md §3): the names the sign-in card shows an app by. Text with a control,
+  // zero-width or bidi code point is always refused; a reserved name is reported with the
+  // platform's severity (`identity.reservedDisplayNames`, `warn` until the lead flips it). The
+  // system product may call itself Polaris Key. Every emit site is literal so the generated
+  // validation-codes page lists each field and severity.
+  {
+    const mode =
+      opts.reservedDisplayNames ?? DEFAULT_RESERVED_DISPLAY_NAMES_MODE;
+    const verdict = (v: unknown): null | "reserved" | "invalid" =>
+      typeof v === "string" && v !== ""
+        ? checkDisplayName(v, { slug: productSlug })
+        : null;
+    const listing = isRecord(manifest.distribution)
+      ? asRecord(manifest.distribution.listing)
+      : {};
+
+    const name = verdict(productNode.name);
+    if (name === "invalid")
+      add(
+        errors,
+        "product",
+        "/product/name",
+        "invalid_display_text",
+        "product.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.",
+      );
+    else if (name === "reserved" && mode === "error")
+      add(
+        errors,
+        "product",
+        "/product/name",
+        "reserved_display_name",
+        "product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); an app may not present itself as one. Rename it, or ask the platform operator to approve it.",
+      );
+    else if (name === "reserved")
+      add(
+        warnings,
+        "product",
+        "/product/name",
+        "reserved_display_name",
+        "product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); the sign-in card shows the product slug instead. This becomes an error once the platform enforces reserved display names.",
+      );
+
+    const listingName = verdict(listing.name);
+    if (listingName === "invalid")
+      add(
+        errors,
+        "distribution",
+        "/listing/name",
+        "invalid_display_text",
+        "listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.",
+      );
+    else if (listingName === "reserved" && mode === "error")
+      add(
+        errors,
+        "distribution",
+        "/listing/name",
+        "reserved_display_name",
+        "listing.name uses a reserved platform or store name; an app may not present itself as one. Rename it, or ask the platform operator to approve it.",
+      );
+    else if (listingName === "reserved")
+      add(
+        warnings,
+        "distribution",
+        "/listing/name",
+        "reserved_display_name",
+        "listing.name uses a reserved platform or store name; the sign-in card shows the product slug instead. This becomes an error once the platform enforces reserved display names.",
+      );
+
+    const developer = verdict(listing.developerName);
+    if (developer === "invalid")
+      add(
+        errors,
+        "distribution",
+        "/listing/developerName",
+        "invalid_display_text",
+        "listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.",
+      );
+    else if (developer === "reserved" && mode === "error")
+      add(
+        errors,
+        "distribution",
+        "/listing/developerName",
+        "reserved_display_name",
+        "listing.developerName uses a reserved platform or store name; a developer may not present itself as one. Rename it, or ask the platform operator to approve it.",
+      );
+    else if (developer === "reserved")
+      add(
+        warnings,
+        "distribution",
+        "/listing/developerName",
+        "reserved_display_name",
+        "listing.developerName uses a reserved platform or store name; the sign-in card leaves the developer out instead. This becomes an error once the platform enforces reserved display names.",
+      );
+
+    // A per-outlet listing is merged over the document's for store pages only, so it is held to
+    // the text rule but not judged as the app's name.
+    const outlets = isRecord(manifest.distribution)
+      ? asRecord(manifest.distribution.outlets)
+      : {};
+    for (const [id, entry] of Object.entries(outlets)) {
+      const l = isRecord(entry) ? asRecord(entry.listing) : {};
+      if (verdict(l.name) === "invalid")
+        add(
+          errors,
+          "distribution",
+          `/outlets/${id}/listing/name`,
+          "invalid_display_text",
+          `outlets.${id}.listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.`,
+        );
+      if (verdict(l.developerName) === "invalid")
+        add(
+          errors,
+          "distribution",
+          `/outlets/${id}/listing/developerName`,
+          "invalid_display_text",
+          `outlets.${id}.listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.`,
+        );
+    }
   }
 
   // Declared secret names are looked up in the product's sealed-secret store.
@@ -2426,6 +2658,26 @@ function validateDocuments(
       "The update service serves a feed over distribution's delivery state, so distribution must be enabled too.",
     );
   }
+  // Cloud Sync (plans/U-01.md §0): user settings are catalog `config` keys, and the Cloud Sync
+  // principal is the account signed in through the product's Identity service.
+  if (modules.includes("sync") && !modules.includes("config")) {
+    add(
+      errors,
+      "product",
+      "/modules/sync",
+      "sync_requires_config",
+      "Cloud Sync syncs catalog config keys, so config must be enabled too.",
+    );
+  }
+  if (modules.includes("sync") && !modules.includes("identity")) {
+    add(
+      errors,
+      "product",
+      "/modules/sync",
+      "sync_requires_identity",
+      "Cloud Sync needs a signed-in person, so identity must be enabled too.",
+    );
+  }
 
   // `devices.registration` decides who may mint a device token (design spec §2.3). An
   // unrecognised value is refused rather than coerced: silently falling back to a default
@@ -2442,6 +2694,51 @@ function validateDocuments(
       "invalid_registration_policy",
       `devices.registration must be one of ${REGISTRATION_POLICIES.join(", ")}.`,
     );
+  }
+
+  // `presentation` (HA-04, notes/S-20 decision 5): the product's own icon and accent, declared
+  // here so a product without the Distribution service still has them. The icon is an asset ref
+  // (`./assets.ts`: an https URL or a repo path, optionally `{ src, sha256 }`); nothing is fetched
+  // at validate time (HA-05 pulls it). The block's shape and its colours are
+  // `invalid_presentation`; the icon's spelling is `invalid_asset_ref`.
+  if (productRoot.presentation !== undefined) {
+    const presentation = productRoot.presentation;
+    if (!isRecord(presentation)) {
+      add(
+        errors,
+        "product",
+        "/presentation",
+        "invalid_presentation",
+        "presentation must be an object { icon, accent, accentDark }.",
+      );
+    } else {
+      if (presentation.icon !== undefined) {
+        const problem = assetRefProblem(presentation.icon);
+        if (problem) {
+          add(
+            errors,
+            "product",
+            "/presentation/icon",
+            "invalid_asset_ref",
+            `presentation.icon ${problem}.`,
+          );
+        }
+      }
+      for (const field of ["accent", "accentDark"] as const) {
+        if (
+          presentation[field] !== undefined &&
+          !isHexColour(presentation[field])
+        ) {
+          add(
+            errors,
+            "product",
+            `/presentation/${field}`,
+            "invalid_presentation",
+            `presentation.${field} must be a #rrggbb colour.`,
+          );
+        }
+      }
+    }
   }
 
   // `web.origins` (P0-05): the browser origins the worker answers CORS for on this product's
@@ -3002,6 +3299,9 @@ const PACKAGE_NAME_RULES: Readonly<Record<PackageEcosystem, string>> = {
   maven: "groupId:artifactId",
   oci: "an OCI repository path of lower-case components joined by '/'",
   godot: "1-64 of a-z, 0-9 and '_'",
+  cargo:
+    "a crate name (an ASCII letter, then letters, digits, '-' and '_', at most 64 characters)",
+  go: "a Go module path (a lower-case host name with a dot, then '/'-separated elements of letters, digits and '-._~')",
 };
 
 /** A `deliverables.<packId>` entry against plans/P4-01.md §3's v1 subset. */
@@ -4021,6 +4321,7 @@ export type ManifestDocumentName = (typeof MANIFEST_DOCUMENTS)[number];
 
 export function parseManifest(
   files: Record<string, string>,
+  opts: ValidationOptions = {},
 ): ParseManifestResult {
   const errors: string[] = [];
   const docs: Record<string, unknown> = {};
@@ -4045,12 +4346,15 @@ export function parseManifest(
   if (!isRecord(docs.product))
     return { ok: false, errors: ["product: must be an object"] };
 
-  const validation = validateIngestDocuments({
-    product: docs.product,
-    schema: docs.schema,
-    release: docs.release,
-    distribution: docs.distribution,
-  });
+  const validation = validateIngestDocuments(
+    {
+      product: docs.product,
+      schema: docs.schema,
+      release: docs.release,
+      distribution: docs.distribution,
+    },
+    opts,
+  );
   if (!validation.ok)
     return { ok: false, errors: validation.errors.map(formatIngestError) };
 
@@ -4136,6 +4440,9 @@ export function parseManifest(
       routedDeliverables(releaseDoc),
     );
   }
+  if (isRecord(productRoot.presentation)) {
+    parsed.presentation = normalizePresentation(productRoot.presentation);
+  }
   if (productRoot.fingerprint !== undefined) {
     parsed.fingerprint = normalizeFingerprint(productRoot.fingerprint);
   }
@@ -4143,6 +4450,18 @@ export function parseManifest(
     parsed.autoIssue = normalizeAutoIssue(productRoot.autoIssue);
   }
   return { ok: true, manifest: parsed };
+}
+
+/** A VALIDATED `presentation` block, normalised (members only when declared). */
+function normalizePresentation(
+  raw: Record<string, unknown>,
+): ManifestPresentation {
+  const out: ManifestPresentation = {};
+  const icon = normalizeAssetRef(raw.icon);
+  if (icon) out.icon = icon;
+  if (isHexColour(raw.accent)) out.accent = raw.accent;
+  if (isHexColour(raw.accentDark)) out.accentDark = raw.accentDark;
+  return out;
 }
 
 function normalizeRelease(rel: Record<string, unknown>): ManifestRelease {
@@ -4876,6 +5195,11 @@ function normalizeCatalog(parsed: unknown): ProductCatalog | null {
     return {
       schemaVersion: Number(parsed.schemaVersion ?? 1),
       entries: parsed.catalog,
+      // The legacy form's top-level `cloudSync` is validated with the rest of the schema
+      // (validateCloudSync reads manifest.schema.cloudSync), so it is kept, not dropped.
+      ...(parsed.cloudSync === undefined
+        ? {}
+        : { cloudSync: parsed.cloudSync }),
     } as unknown as ProductCatalog;
   }
   return null;
@@ -5350,11 +5674,20 @@ function add(
 // The release descriptor (P2-04): its contract, validator and helpers.
 export * from "./descriptor.js";
 export * from "./packages.js";
+// The one product slug rule (P0-14).
+export * from "./productSlug.js";
 export * from "./feedSetup.js";
 // `.pkey/distribution` (P2b-02): outlets, identities, transports and listing.
 export * from "./distribution.js";
+export * from "./assets.js";
 export * from "./releaseKeys.js";
 // Human-readable build and artifact labels: platform and architecture, together.
 export * from "./labels.js";
 // P5-08: the asset-pack ids and Play asset-pack names a pack id maps to on store transports.
 export * from "./transportIds.js";
+// S-19 §7.4 (LX-05): reserved entitlement names and what a compatible declaration is.
+export * from "./reservedNames.js";
+// PX-W13 (plans/PX-W13.md §3): display names on the sign-in card and the reserved-name check.
+export * from "./displayName.js";
+// ST-19: the duplicate manifest spellings, deprecated with warnings.
+export * from "./spellings.js";

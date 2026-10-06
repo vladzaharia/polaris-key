@@ -38,6 +38,12 @@ export interface LoadedManifest {
   /** `.pkey/distribution` (P2b-02), when the repo has one. */
   distributionPath?: string;
   distribution?: unknown;
+  /**
+   * Problems with the files themselves, not their content (ST-19, plans/ST-19.md Q5): today,
+   * one document present under more than one extension. Only the CLI sees the directory, so
+   * these are not validator codes; `pkey validate` prints them as warnings.
+   */
+  fileWarnings?: string[];
 }
 
 export interface ValidationResult {
@@ -130,6 +136,19 @@ export async function loadManifest(cwd: string): Promise<LoadedManifest> {
   const schemaFile = await findExisting(rootDir, SCHEMA_FILES);
   const releaseFile = await findExisting(rootDir, RELEASE_FILES);
   const distributionFile = await findExisting(rootDir, DISTRIBUTION_FILES);
+  const fileWarnings: string[] = [];
+  for (const names of [
+    PRODUCT_FILES,
+    SCHEMA_FILES,
+    RELEASE_FILES,
+    DISTRIBUTION_FILES,
+  ]) {
+    const found = await findAll(rootDir, names);
+    if (found.length > 1)
+      fileWarnings.push(
+        `${found.map((f) => `.pkey/${f}`).join(" and ")} are one document; only .pkey/${found[0]} is read (json, then yaml, then yml), here and on the platform. Keep one file.`,
+      );
+  }
   const product = parseFile(productFile, await readFile(productFile, "utf8"));
   if (!isRecord(product))
     throw new Error(
@@ -139,6 +158,7 @@ export async function loadManifest(cwd: string): Promise<LoadedManifest> {
     rootDir,
     productPath: productFile,
     product,
+    ...(fileWarnings.length ? { fileWarnings } : {}),
     ...(schemaFile
       ? {
           schemaPath: schemaFile,
@@ -304,7 +324,7 @@ licensing:
   tiers:
     - id: standard
       label: Standard
-      profile: standard-defaults
+      profileId: standard-defaults
       policyDeviceLimit: 5
       channels: ["stable"]${oidc}
 
@@ -320,8 +340,8 @@ schemaVersion: 1
 `;
   // Ingest requires the document even for a product with no config; an empty catalog is the
   // valid "nothing to configure yet" state.
-  if (!withExamples) return `${header}catalog: []\n`;
-  return `${header}catalog:
+  if (!withExamples) return `${header}entries: []\n`;
+  return `${header}entries:
   - key: feature.example
     kind: flag
     label: Example feature
@@ -392,6 +412,20 @@ async function findExisting(
     }
   }
   return null;
+}
+
+/** Every one of `names` that exists in `rootDir`, in the order given. */
+async function findAll(rootDir: string, names: string[]): Promise<string[]> {
+  const out: string[] = [];
+  for (const name of names) {
+    try {
+      await stat(path.join(rootDir, name));
+      out.push(name);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+    }
+  }
+  return out;
 }
 
 function parseFile(file: string, raw: string): unknown {

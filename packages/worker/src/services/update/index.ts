@@ -29,9 +29,12 @@ import { getReleaseConfig } from "../release/config.js";
 import { parseManualChannels } from "../release/channels.js";
 import { handleUpdateRoutes } from "./routes.js";
 import { handleUpdateAdmin } from "./admin.js";
+import { UPDATE_SETTINGS_SLICE } from "./settings.js";
 
 export const updateService: ServiceDescriptor = {
   slug: "update",
+  /** ST-03: this service's settings registry slice (`settings.ts`). */
+  settings: UPDATE_SETTINGS_SLICE,
   handle: handleUpdateRoutes,
   adminHandle: (ctx: ServiceContext & { session: AdminSession }) =>
     handleUpdateAdmin(ctx),

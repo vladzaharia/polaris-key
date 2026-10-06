@@ -15,22 +15,22 @@ Every row carries an action string, an optional target (`kind` + `id`), a human 
 verified actor from the session that caused it — never a value the request body could spoof.
 Grouped by what triggers them:
 
-| Group                     | Example actions                                                                                                     |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Registry                  | `product.create`, `product.link`, `product.update`, `product.delete`                                                |
-| Secrets & KEK             | `secret.set`, `kek.reseal`                                                                                          |
-| Services & policy         | `product.services.update`, `product.services.revert`, `product.policy.update`, `product.fingerprint.revert`         |
-| Signing keys              | `key.prepare`, `key.activate` (or `key.activate.break_glass`), `key.retire`, `key.revoke`                           |
-| Licenses                  | `license.create`, `license.update`, `license.tier.change`, `license.overrides`, `license.enable`, `license.disable` |
-| License keys              | `key.create`, `key.revoke` — see the note below                                                                     |
-| Devices (operator-driven) | `device.deauthorize`, `device.fingerprint.reset`                                                                    |
-| Config                    | `schema.publish`, `profile.create`, `profile.update`, `profile.delete`, `profile.overrides`                         |
-| Tiers                     | `tier.create`, `tier.update`, `tier.delete`                                                                         |
-| Release                   | `release.resync`, `release.channel.floor`                                                                           |
-| Update                    | `update.settings.update`                                                                                            |
-| Identity                  | `portal.settings.update`                                                                                            |
-| Offline bundles           | `bundle.minted` — see [Offline bundles](/docs/admin/bundles/#nothing-is-stored-but-the-audit-row)                   |
-| Access                    | `access.denied`                                                                                                     |
+| Group                     | Example actions                                                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Registry                  | `product.create`, `product.link`, `product.update`, `product.delete`                                                                            |
+| Secrets & KEK             | `secret.set`, `kek.reseal`                                                                                                                      |
+| Services & policy         | `product.services.update`, `product.services.revert`, `product.policy.update`, `product.fingerprint.revert`                                     |
+| Signing keys              | `key.prepare`, `key.activate` (or `key.activate.break_glass`), `key.retire`, `key.revoke`                                                       |
+| Licenses                  | `license.create`, `license.update`, `license.tier.change`, `license.device_limit.set`, `license.overrides`, `license.enable`, `license.disable` |
+| License keys              | `key.create`, `key.revoke` — see the note below                                                                                                 |
+| Devices (operator-driven) | `device.deauthorize`, `device.fingerprint.reset`                                                                                                |
+| Config                    | `schema.publish`, `profile.create`, `profile.update`, `profile.delete`, `profile.overrides`                                                     |
+| Tiers                     | `tier.create`, `tier.update`, `tier.delete`                                                                                                     |
+| Release                   | `release.resync`, `release.channel.floor`                                                                                                       |
+| Update                    | `update.settings.update`                                                                                                                        |
+| Identity                  | `portal.settings.update`, `storefront.polarisKey.update`                                                                                        |
+| Offline bundles           | `bundle.minted` — see [Offline bundles](/docs/admin/bundles/#nothing-is-stored-but-the-audit-row)                                               |
+| Access                    | `access.denied`                                                                                                                                 |
 
 :::note[`key.create` / `key.revoke` name two different things]
 Those two action strings are written by **both** the license-key lifecycle and the

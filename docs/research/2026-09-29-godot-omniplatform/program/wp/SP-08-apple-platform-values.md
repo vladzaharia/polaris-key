@@ -5,7 +5,7 @@
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (wire items)                                                                                                 |
 | Size        | 0.4–0.8 engineer-weeks                                                                                                                                      |
 | Depends on  | [P1b-04](P1b-04-headers-config-corpora.md)                                                                                                                  |
-| Unblocks    | none                                                                                                                                                        |
+| Unblocks    | [UK-26](UK-26-visionos-kit.md), [UK-27](UK-27-tvos-kit.md), [UK-33](UK-33-watchos.md), [MO-06](MO-06-portal-device-activation-motion.md)                    |
 | Role        | `pkey-implementer` (the plan is written first by `pkey-wire-planner`)                                                                                       |
 | Plan mode   | yes: `pkey-wire-planner` writes `plans/SP-08.md` first; no code before a human approves it                                                                  |
 | Gates       | plan mode; corpus (`headers.json`, Swift and Godot mirrors, `gen:corpus -- --check`); all SDKs (`parity:check`, `gen:constants -- --check`); `test:workerd` |
@@ -37,12 +37,34 @@ enums, and the compatibility story for old Workers (an unknown value today) and 
 
 ## Steps
 
-1. Plan, then contract and corpus, then Worker, then SDKs.
+1. Plan, then contract and corpus, then Worker, then SDKs: the approved
+   [`plans/SP-08.md`](../plans/SP-08.md) §2–§7. Build targets stay `RELEASE_PLATFORMS` (six
+   values; contract §5.2 rule 5). Acceptance is the plan's §9.
+
+## Corrections found in the code (implementer, 2026-10-05)
+
+- **`headersVersion` goes to 2, not 1.** `PLATFORM_CASES` already held `swift-visionos`
+  (`visionOS` → no value) and `swift-tvos` (`tvOS` → no value). The self-check refuses two rows
+  that fold alike with different expects, so those two rows change in place: `swift-visionos`
+  becomes `swift-godot-visionos` (`visionOS` → `visionos`, Godot's `OS.get_name()` confirmed as
+  `"visionOS"` in `platform/visionos/os_visionos.mm`) and `swift-tvos` expects `tvos`. headers.json's
+  own rule bumps the version for a changed row, so it is 2, and every runner's pin (Node, React,
+  Worker, Python, Swift, Godot, Kotlin) follows. Four rows are appended: `canonical-tvos`,
+  `canonical-visionos`, `canonical-watchos` and `swift-watchos`. `PROTOCOL_VERSION` stays 4.
+- **Migration number is `0079`** (main's highest at the final gate was `0078_hosted_assets`); `LATEST_MIGRATION`
+  follows. The 0040 replay test now applies 0040 and 0079 in order, because it compares against
+  today's normaliser, which maps `tvOS` and `visionOS` now.
+- **Python's rule 5 guard** lives in `update/client.py` as the module-level `update_platform()`.
+- **Portal:** `FreeDevicePage` had a second copy of `DeviceGlyph`. Both use the new
+  `deviceFamily()`, and device rows name the OS (`Apple TV`, `Apple Vision Pro`, `Apple Watch`)
+  through `deviceOsName()`. The download vocabulary (`PlatformKey`) stays six.
+- **Godot:** `devices.gd`'s device report keeps `PKeyHeaders.platform()` (device metadata, like the
+  header). Every build-target call site reads `PKeyHeaders.update_platform()`.
 
 ## Acceptance criteria
 
-- [ ] `gen:corpus -- --check` and `parity:check` pass; the Worker accepts the three values.
-- [ ] The green gate passes (`AGENTS.md`).
+- [x] `gen:corpus -- --check` and `parity:check` pass; the Worker accepts the three values.
+- [x] The green gate passes (`AGENTS.md`).
 
 ## Verify
 

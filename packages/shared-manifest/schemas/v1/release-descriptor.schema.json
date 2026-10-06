@@ -10,7 +10,7 @@
     },
     "product": {
       "type": "string",
-      "pattern": "^[a-z0-9-]{1,64}$"
+      "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
     },
     "deliverable": {
       "type": "string",
@@ -580,12 +580,21 @@
       "required": ["pack", "release"]
     },
     "packageBlock": {
-      "description": "A package release's block (F-03, plans/F-01.md §3.2): the declared ecosystem and name, the files (r2 locations only, role payload, a type from the ecosystem's vocabulary) and the CLI extractor's metadata (at most 16 KiB, its name and version equal to the declaration and the descriptor). The validator additionally requires, which JSON Schema does not express here: each file's type belongs to its ecosystem's vocabulary and the files compose a release of it (one npm tarball, one Swift source archive, one Godot zip, …); a Maven file names its extension and only a Maven file a classifier; an OCI object names its mediaType; names are unique; an npm or Swift version is semver and an OCI version has no '+'; the metadata carries only its ecosystem's keys; and the ecosystem and name equal the deliverable's declaration in .pkey/release.",
+      "description": "A package release's block (F-03, plans/F-01.md §3.2): the declared ecosystem and name, the files (r2 locations only, role payload, a type from the ecosystem's vocabulary) and the CLI extractor's metadata (at most 16 KiB, its name and version equal to the declaration and the descriptor). The validator additionally requires, which JSON Schema does not express here: each file's type belongs to its ecosystem's vocabulary and the files compose a release of it (one npm tarball, one Swift source archive, one Godot zip, one Cargo crate, one Go module zip and its go.mod, …); a Maven file names its extension and only a Maven file a classifier; an OCI object names its mediaType; names are unique; an npm, Swift or Cargo version is semver, a Go version is semver without build metadata whose major agrees with the module path's /vN suffix, and an OCI version has no '+'; the metadata carries only its ecosystem's keys; and the ecosystem and name equal the deliverable's declaration in .pkey/release.",
       "type": "object",
       "required": ["ecosystem", "name", "files", "metadata"],
       "properties": {
         "ecosystem": {
-          "enum": ["npm", "pypi", "swift", "maven", "oci", "godot"]
+          "enum": [
+            "npm",
+            "pypi",
+            "swift",
+            "maven",
+            "oci",
+            "godot",
+            "cargo",
+            "go"
+          ]
         },
         "name": {
           "type": "string",
@@ -650,7 +659,10 @@
             "oci-manifest",
             "oci-index",
             "godot-zip",
-            "godot-icon"
+            "godot-icon",
+            "crate",
+            "go-zip",
+            "go-mod"
           ]
         },
         "sha256": {

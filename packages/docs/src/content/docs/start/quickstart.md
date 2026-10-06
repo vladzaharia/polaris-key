@@ -37,8 +37,9 @@ Activation keys, tiers, entitlements, and device seats — no managed settings, 
 
 ```yaml
 # .pkey/product.yaml
-slug: acme
-name: Acme
+product:
+  slug: acme
+  name: Acme
 modules:
   license:
     enabled: true
@@ -83,8 +84,9 @@ people are surprised is supported.
 
 ```yaml
 # .pkey/product.yaml
-slug: acme
-name: Acme
+product:
+  slug: acme
+  name: Acme
 modules:
   config:
     enabled: true
@@ -149,8 +151,9 @@ settings.
 
 ```yaml
 # .pkey/product.yaml
-slug: acme
-name: Acme
+product:
+  slug: acme
+  name: Acme
 modules:
   release:
     enabled: true
@@ -162,14 +165,16 @@ modules:
 
 ```yaml
 # .pkey/release.yaml — required whenever Release is on
-ghOwner: acme-inc
-ghRepo: acme
-binaryName: acme
+release:
+  provider: { type: github, owner: acme-inc, repo: acme }
+  binaryName: acme
 ```
 
-A nested `provider:` block with `type: github`, `owner:` and `repo:` is the equivalent longer
-spelling. GitHub is the only provider implemented, and `binaryName` is character-class-bounded
-because it is interpolated into the published `install.sh`.
+The older flat `ghOwner:` and `ghRepo:` fields, and a release body without the `release:`
+wrapper, still validate but are deprecated: `pkey validate` warns with `deprecated_spelling`
+(see [Deprecated spellings](/docs/build/manifest/authoring/#deprecated-spellings)). GitHub is the
+only provider implemented, and `binaryName` is character-class-bounded because it is
+interpolated into the published `install.sh`.
 
 Release, Distribution and Update are **three services, not one**: Release is the truth store
 (GitHub sync, channel resolution, artifacts, changelog, install script), Distribution is how
@@ -178,7 +183,8 @@ next (appcast, `/version`, eligibility). They form a chain — Distribution with
 refused as `distribution_requires_release`, Update without Distribution as
 `update_requires_distribution` — because the feed would otherwise answer every client with an
 empty document rather than an error. The legacy `"releases": { "enabled": true }` spelling still
-works and turns on **all three**, which is why it can never trip either rule.
+works and turns on **all three**, which is why it can never trip either rule; it is deprecated,
+so `pkey validate` warns on it.
 
 **Endpoints that light up:**
 
@@ -222,8 +228,9 @@ All six services, the closed registration policy, and the full manifest set. Thi
 
 ```yaml
 # .pkey/product.yaml
-slug: acme
-name: Acme
+product:
+  slug: acme
+  name: Acme
 modules:
   license: { enabled: true }
   config: { enabled: true }

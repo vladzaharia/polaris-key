@@ -1,16 +1,16 @@
 # HA-03 Image variant ladder at ingest through the Images binding (WebP, fixed widths, never upscale), with an original-only fallback
 
-| Field       | Value                                                                                                                 |
-| ----------- | --------------------------------------------------------------------------------------------------------------------- |
-| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 1: substrate)                                 |
-| Size        | 0.5–0.8 engineer-weeks                                                                                                |
-| Depends on  | [HA-01](HA-01-hosted-asset-core.md)                                                                                   |
-| Unblocks    | [HA-07](HA-07-serve-hosted-copies.md)                                                                                 |
-| Role        | `pkey-implementer`                                                                                                    |
-| Plan mode   | no                                                                                                                    |
-| Gates       | wrangler config; workerd lane; THREAT-MODEL                                                                           |
-| Human input | the Images binding enabled for the Worker on the Cloudflare account (free tier: 5,000 unique transformations a month) |
-| Repo        | `vladzaharia/polaris-key`                                                                                             |
+| Field       | Value                                                                                                                                                        |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | HA: Hosted assets: Polaris Key hosts every file it serves (S-20) (phase 1: substrate)                                                                        |
+| Size        | 0.5–0.8 engineer-weeks                                                                                                                                       |
+| Depends on  | [HA-01](HA-01-hosted-asset-core.md)                                                                                                                          |
+| Unblocks    | [HA-07](HA-07-serve-hosted-copies.md)                                                                                                                        |
+| Role        | `pkey-implementer`                                                                                                                                           |
+| Plan mode   | no                                                                                                                                                           |
+| Gates       | wrangler config; workerd lane; THREAT-MODEL                                                                                                                  |
+| Human input | none: done 2026-10-06 (lead): Images is active on the account and image transformations are on for plrs.im (free tier: 5,000 unique transformations a month) |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                    |
 
 ## Goal
 
@@ -44,6 +44,34 @@ Consumers need sized images. Generating them once at ingest bounds the cost, aga
 - Ladder widths are code constants per slot family.
 - Variants inherit the original's slot and are dropped with it.
 
+## Corrections from the code (HA-03, 2026-10-06)
+
+- **The binding was already declared.** HA-01 added `[env.{prod,staging,dev}.images]`
+  (`IMAGES`) to `wrangler.toml` and typed it on `Env`; `env.test` has none. Step 1 needed no
+  change beyond the `Env` comment.
+- **Slot families.** `icon` = `presentation.icon`, `listing.icon`; `header` = `listing.header`;
+  `screenshots` = `listing.screenshot:<1..16>`. A-18 listing slots (`play:icon`, …), notes images,
+  video and release files get no ladder (store-exact art stays with A-18d).
+- **Shape.** `variants_json` entries are `{w, format: "image/webp", sha256, size}`, ascending by
+  `w`. The ladder is all or nothing: any binding error (9422 included), a non-WebP output or a
+  store failure leaves `[]`. A re-ingest of the same bytes reuses its variants (no new
+  transformations), and builds them if it had none.
+
+## Follow-up from the HA-02/HA-03 review (fix/hosted-asset-followups, 2026-10-06)
+
+- **One ladder per (product, original, family).** The same bytes in two slots of one family
+  (`presentation.icon` and `listing.icon`, which falls back to it) used to build the ladder
+  twice. `ingest` now reuses the `variants_json` of a row of the same product holding the same
+  `sha256` in the same family, when that row still holds every variant through its own refs, and
+  adds this slot's own `hosted-asset` refs to the existing variant blobs (the image host checks
+  the ref per `<slot>@<locale>`). The dimensions of the same bytes are reused too, so the second
+  slot makes no binding call at all. Never across products.
+- **An empty ladder is retried.** A transient failure (9422) no longer leaves a copy without
+  sizes until its bytes change: HA-05 retries an owed ladder (`ladderOwedSql`) from the stored
+  original with `rebuildLadder` while the binding is bound, with the pulls' back-off. A slot
+  without a family, a copy narrower than its family's smallest rung, and a Worker without the
+  binding are never retried; the original-only fallback stays.
+
 ## Steps
 
 1. Binding.
@@ -52,9 +80,9 @@ Consumers need sized images. Generating them once at ingest bounds the cost, aga
 
 ## Acceptance criteria
 
-- [ ] A 512 px icon yields the 64, 128, 256 and 512 variants, and no 1024 (test).
-- [ ] With no binding, `variants_json` is `[]` and the ingest succeeds (test).
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] A 512 px icon yields the 64, 128, 256 and 512 variants, and no 1024 (test).
+- [x] With no binding, `variants_json` is `[]` and the ingest succeeds (test).
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 

@@ -13,10 +13,18 @@ import type {
 } from "../../../core/data.js";
 import { parseServices } from "../../../core/services.js";
 import {
+  resolveListing,
+  type GroupLabels,
+  type ListingAudience,
+  type ListingState,
+  type ObtainPathKind,
+} from "../../../core/storefront/polarisKeyListing.js";
+import {
   attachLicenseAccount,
   licenseAccountId,
   subjectFor,
 } from "../../../core/accountSubjects.js";
+import { notAutoAttachBlockedSql } from "../../../core/licenseHolders.js";
 import { catchUpLegacyAccount } from "../accounts/legacy.js";
 import { deleteAccount } from "../accounts/deletion.js";
 import { signIn, type SignInResult } from "../accounts/signIn.js";
@@ -34,6 +42,9 @@ export interface PortalAccountRow {
   status: string;
   display_name: string | null;
   primary_email: string | null;
+  /** I-07, PX-W16: the picture in use, an asset id (`card/avatars.ts`); absent on a legacy
+   *  catch-up row. */
+  avatar_key?: string | null;
   created_at: number;
   modified_at: number;
 }
@@ -53,6 +64,13 @@ export interface PortalProductSettingsRow {
   claim_by_key: number;
   /** PX-W10 (G24): the product may be offered on Discover. Default 1 (migrations/0071). */
   discover_enabled: number;
+  /** PS-02: the Polaris Key listing state (migrations/0085). Read through `resolveListing`. */
+  store_listed: ListingState;
+  store_audience: ListingAudience;
+  /** A JSON array of obtain-path kinds; NULL = every kind. */
+  store_offer_paths_json: string | null;
+  /** A JSON object `{<group>: <label>}`; NULL = no labels. */
+  store_group_labels_json: string | null;
   branding_json: string | null;
   created_at: number;
   modified_at: number;
@@ -68,6 +86,12 @@ export interface PortalProductSettingsView {
   keyReissueEnabled: boolean;
   claimByKey: boolean;
   discoverEnabled: boolean;
+  /** PS-02: the effective listing state (`discoverEnabled: false` reads `unlisted`). */
+  storeListed: ListingState;
+  storeAudience: ListingAudience;
+  /** `null` = every obtain-path kind. */
+  storeOfferPaths: readonly ObtainPathKind[] | null;
+  storeGroupLabels: GroupLabels;
   branding: unknown;
   modifiedAt: number;
 }
@@ -357,6 +381,26 @@ const AUTO_LINK_ENABLED_SQL = `
   ) = 1`;
 
 /**
+ * Whether implicit auto-linking resolves ON for `product`: `AUTO_LINK_ENABLED_SQL` for one
+ * product, so a caller outside the link sweep (the legacy sign-in's licence chooser, I-26)
+ * applies the identical rule rather than a copy of it.
+ */
+export async function autoLinkEnabled(
+  db: Db,
+  product: string,
+): Promise<boolean> {
+  const row = await db.first<{ one: number }>(
+    `SELECT 1 AS one
+       FROM (SELECT ? AS product) l
+       LEFT JOIN portal_product_settings s ON s.product = l.product
+       LEFT JOIN oidc_config o ON o.product = l.product
+      WHERE ${AUTO_LINK_ENABLED_SQL}`,
+    product,
+  );
+  return row !== null;
+}
+
+/**
  * Every address the account verified (a delivered magic link, a platform IdP's
  * `email_verified: true` claim, a verified primary email). Security notices go to all of them
  * (PORTAL.md §6.3).
@@ -368,9 +412,104 @@ export async function listVerifiedAccountEmails(
   return verifiedAccountEmails(db, accountId);
 }
 
+/** How an automatic attach found its licence: the account verified its email, or its `sub`. */
+export type AutoAttachVia = "email" | "oidc";
+
 /**
- * Attach every FLOATING licence this account can prove it owns (I-05: the owner pointer replaced
- * `portal_license_links`). An owned licence is never touched, whoever owns it.
+ * The `account.license.attach` row every attach writes (S-24 §7.4), automatic or not:
+ * `Attached a license (<via>)`. `attachLicense` (`accounts/claim.ts`) writes it for a key, device
+ * or creation-time attach, and the sweep below for an email or OIDC-subject match.
+ */
+export async function auditLicenseAttach(
+  db: Db,
+  input: {
+    accountId: string;
+    product: string;
+    licenseId: string;
+    via: string;
+    now: number;
+  },
+): Promise<void> {
+  await portalAudit(db, {
+    accountId: input.accountId,
+    action: "account.license.attach",
+    product: input.product,
+    targetKind: "license",
+    targetId: input.licenseId,
+    summary: `Attached a license (${input.via})`,
+    now: input.now,
+  });
+}
+
+/** One automatic attach: conditional on the licence still being unattached, then audited. */
+async function attachAutomatically(
+  db: Db,
+  accountId: string,
+  licence: { product: string; id: string },
+  via: AutoAttachVia,
+  now: number,
+): Promise<boolean> {
+  if (
+    !(await attachLicenseAccount(
+      db,
+      licence.product,
+      licence.id,
+      accountId,
+      now,
+    ))
+  )
+    return false;
+  await subjectFor(db, accountId, licence.product, now);
+  await auditLicenseAttach(db, {
+    accountId,
+    product: licence.product,
+    licenseId: licence.id,
+    via,
+    now,
+  });
+  return true;
+}
+
+/**
+ * The email half of the sweep for ONE address the account has verified (LX-26: the body of Core's
+ * `onAccountEmailVerified` hook, registered by `accounts/holders.ts`). Attaches every licence that
+ * names `email`, is in no account, belongs to a product whose auto-link resolves on (R5-01), and
+ * is not blocked for this account (S-24 D19: a licence removed from the library stays out).
+ * The caller guarantees the address is verified on the account. Answers how many joined.
+ *
+ * R11-08: an index SEARCH on `idx_licenses_email_lower`.
+ */
+export async function attachWaitingLicensesByEmail(
+  db: Db,
+  accountId: string,
+  email: string,
+  now: number,
+): Promise<number> {
+  const address = normalizeEmail(email);
+  if (!address) return 0;
+  const rows = await db.all<{ product: string; id: string }>(
+    `SELECT l.product AS product, l.id AS id
+       FROM licenses l
+       LEFT JOIN portal_product_settings s ON s.product = l.product
+       LEFT JOIN oidc_config o ON o.product = l.product
+      WHERE lower(l.email) = ? AND l.account_id IS NULL AND ${AUTO_LINK_ENABLED_SQL}
+        AND ${notAutoAttachBlockedSql("l")}`,
+    address,
+    accountId,
+  );
+  let attached = 0;
+  for (const licence of rows) {
+    if (await attachAutomatically(db, accountId, licence, "email", now))
+      attached++;
+  }
+  return attached;
+}
+
+/**
+ * Attach every licence this account can prove it owns and that is in no account (I-05: the owner
+ * pointer replaced `portal_license_links`). An owned licence is never touched, whoever owns it,
+ * and a licence the account removed from its library is never attached again automatically
+ * (LX-26, S-24 D19: `license_auto_attach_blocks`; the key still adds it back).
  *
  * Cross-product visibility is intentional (one account, every product the person holds a licence
  * for). What was NOT intentional was the join being a bare, unqualified equality on a
@@ -388,6 +527,9 @@ export async function listVerifiedAccountEmails(
  *   A licence's `sub` therefore joins an account only through an existing link (plans/I-04.md
  *   §6.1); legacy `sub`-only licences of custom-issuer products stay floating (§8 Q6).
  *
+ * The email half is the account-email hook's body (`attachWaitingLicensesByEmail`), run for every
+ * address the account verified; every attach is audited (`account.license.attach`).
+ *
  * R11-08: both queries are index SEARCHes (`idx_licenses_email_lower`, `idx_licenses_sub_global`).
  */
 export async function syncAccountLicenseLinks(
@@ -395,39 +537,29 @@ export async function syncAccountLicenseLinks(
   accountId: string,
   now: number,
 ): Promise<void> {
-  const matches: Array<{ product: string; id: string }> = [];
   for (const email of await verifiedAccountEmails(db, accountId)) {
-    matches.push(
-      ...(await db.all<{ product: string; id: string }>(
-        `SELECT l.product AS product, l.id AS id
-           FROM licenses l
-           LEFT JOIN portal_product_settings s ON s.product = l.product
-           LEFT JOIN oidc_config o ON o.product = l.product
-          WHERE lower(l.email) = ? AND l.account_id IS NULL AND ${AUTO_LINK_ENABLED_SQL}`,
-        email,
-      )),
-    );
+    await attachWaitingLicensesByEmail(db, accountId, email, now);
   }
   const subjects = await db.all<{ subject: string }>(
     "SELECT subject FROM account_links WHERE account_id = ? AND kind = 'oidc'",
     accountId,
   );
   for (const link of subjects) {
-    matches.push(
-      ...(await db.all<{ product: string; id: string }>(
-        `SELECT l.product AS product, l.id AS id
-           FROM licenses l
-           LEFT JOIN portal_product_settings s ON s.product = l.product
-           LEFT JOIN oidc_config o ON o.product = l.product
-          WHERE l.sub = ? AND l.account_id IS NULL
-            AND COALESCE(o.provider, 'platform') = 'platform'
-            AND ${AUTO_LINK_ENABLED_SQL}`,
-        link.subject,
-      )),
+    const rows = await db.all<{ product: string; id: string }>(
+      `SELECT l.product AS product, l.id AS id
+         FROM licenses l
+         LEFT JOIN portal_product_settings s ON s.product = l.product
+         LEFT JOIN oidc_config o ON o.product = l.product
+        WHERE l.sub = ? AND l.account_id IS NULL
+          AND COALESCE(o.provider, 'platform') = 'platform'
+          AND ${AUTO_LINK_ENABLED_SQL}
+          AND ${notAutoAttachBlockedSql("l")}`,
+      link.subject,
+      accountId,
     );
-  }
-  for (const license of matches) {
-    await linkLicense(db, accountId, license.product, license.id, "email", now);
+    for (const licence of rows) {
+      await attachAutomatically(db, accountId, licence, "oidc", now);
+    }
   }
 }
 
@@ -512,6 +644,11 @@ export async function getPortalProductSettings(
       claim_by_key: 0,
       // Discover defaults ON, as the migration's column default does (migrations/0071).
       discover_enabled: 1,
+      // The Polaris Key listing defaults, as the migration's column defaults (migrations/0085).
+      store_listed: "auto",
+      store_audience: "eligible",
+      store_offer_paths_json: null,
+      store_group_labels_json: null,
       branding_json: null,
       created_at: 0,
       modified_at: 0,
@@ -533,9 +670,79 @@ export function portalProductSettingsView(
       row.auto_link_enabled == null ? null : row.auto_link_enabled === 1,
     keyReissueEnabled: row.key_reissue_enabled === 1,
     claimByKey: row.claim_by_key === 1,
-    discoverEnabled: row.discover_enabled === 1,
+    ...listingView(row),
     branding: parseJsonUnknown(row.branding_json),
     modifiedAt: row.modified_at,
+  };
+}
+
+function listingView(
+  row: PortalProductSettingsRow,
+): Pick<
+  PortalProductSettingsView,
+  | "discoverEnabled"
+  | "storeListed"
+  | "storeAudience"
+  | "storeOfferPaths"
+  | "storeGroupLabels"
+> {
+  const l = resolveListing(row);
+  return {
+    // Derived from the resolved state, so a deploy-window row (`discover_enabled = 1` written by
+    // a pre-0085 Worker over `store_listed = 'unlisted'`) never reads "Discover on" while hidden.
+    discoverEnabled: l.listed !== "unlisted",
+    storeListed: l.listed,
+    storeAudience: l.audience,
+    storeOfferPaths: l.offerPathsAll ? null : l.offerPaths,
+    storeGroupLabels: l.groupLabels,
+  };
+}
+
+/**
+ * The listing columns after a patch, with `discover_enabled` kept in step (PS-02 dual-write):
+ * a listing state sets `discover_enabled` to 0 exactly when `unlisted`; the Discover switch alone
+ * turned off makes the product `unlisted`, and turned back on returns an `unlisted` product to
+ * `auto` (any other state is kept).
+ */
+function nextListingColumns(
+  current: PortalProductSettingsRow,
+  patch: {
+    discoverEnabled?: boolean;
+    storeListed?: ListingState;
+    storeAudience?: ListingAudience;
+    storeOfferPaths?: readonly ObtainPathKind[] | null;
+    storeGroupLabels?: GroupLabels;
+  },
+): Pick<
+  PortalProductSettingsRow,
+  | "discover_enabled"
+  | "store_listed"
+  | "store_audience"
+  | "store_offer_paths_json"
+  | "store_group_labels_json"
+> {
+  // The effective state today (dual-read), so a pre-0085 Worker's Discover-off is carried.
+  let listed: ListingState = resolveListing(current).listed;
+  if (patch.storeListed !== undefined) listed = patch.storeListed;
+  else if (patch.discoverEnabled === false) listed = "unlisted";
+  else if (patch.discoverEnabled === true && listed === "unlisted")
+    listed = "auto";
+  return {
+    store_listed: listed,
+    discover_enabled: listed === "unlisted" ? 0 : 1,
+    store_audience: patch.storeAudience ?? current.store_audience,
+    store_offer_paths_json:
+      patch.storeOfferPaths === undefined
+        ? current.store_offer_paths_json
+        : patch.storeOfferPaths === null
+          ? null
+          : JSON.stringify(patch.storeOfferPaths),
+    store_group_labels_json:
+      patch.storeGroupLabels === undefined
+        ? current.store_group_labels_json
+        : Object.keys(patch.storeGroupLabels).length === 0
+          ? null
+          : JSON.stringify(patch.storeGroupLabels),
   };
 }
 
@@ -553,11 +760,21 @@ export async function upsertPortalProductSettings(
     keyReissueEnabled: boolean;
     claimByKey: boolean;
     discoverEnabled: boolean;
+    /**
+     * PS-02. Writing the listing state keeps `discover_enabled` in step (0 exactly when
+     * `unlisted`), so a pre-0085 Worker still reading it agrees. It wins over `discoverEnabled`.
+     */
+    storeListed: ListingState;
+    storeAudience: ListingAudience;
+    /** `null` restores "every kind". */
+    storeOfferPaths: readonly ObtainPathKind[] | null;
+    storeGroupLabels: GroupLabels;
     branding: unknown;
   }>,
   now: number,
 ): Promise<PortalProductSettingsRow> {
   const current = await getPortalProductSettings(db, product);
+  const listing = nextListingColumns(current, patch);
   const next = {
     portal_enabled:
       patch.portalEnabled === undefined
@@ -609,12 +826,7 @@ export async function upsertPortalProductSettings(
         : patch.claimByKey
           ? 1
           : 0,
-    discover_enabled:
-      patch.discoverEnabled === undefined
-        ? current.discover_enabled
-        : patch.discoverEnabled
-          ? 1
-          : 0,
+    ...listing,
     branding_json:
       patch.branding === undefined
         ? current.branding_json
@@ -626,9 +838,10 @@ export async function upsertPortalProductSettings(
     `INSERT INTO portal_product_settings
        (product, portal_enabled, oidc_enabled, magic_enabled,
         license_key_claim_enabled, releases_enabled, auto_link_enabled,
-        key_reissue_enabled, claim_by_key, discover_enabled, branding_json, created_at,
+        key_reissue_enabled, claim_by_key, discover_enabled, store_listed, store_audience,
+        store_offer_paths_json, store_group_labels_json, branding_json, created_at,
         modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(product) DO UPDATE SET
        portal_enabled = excluded.portal_enabled,
        oidc_enabled = excluded.oidc_enabled,
@@ -639,6 +852,10 @@ export async function upsertPortalProductSettings(
        key_reissue_enabled = excluded.key_reissue_enabled,
        claim_by_key = excluded.claim_by_key,
        discover_enabled = excluded.discover_enabled,
+       store_listed = excluded.store_listed,
+       store_audience = excluded.store_audience,
+       store_offer_paths_json = excluded.store_offer_paths_json,
+       store_group_labels_json = excluded.store_group_labels_json,
        branding_json = excluded.branding_json,
        modified_at = excluded.modified_at`,
     product,
@@ -651,6 +868,10 @@ export async function upsertPortalProductSettings(
     next.key_reissue_enabled,
     next.claim_by_key,
     next.discover_enabled,
+    next.store_listed,
+    next.store_audience,
+    next.store_offer_paths_json,
+    next.store_group_labels_json,
     next.branding_json,
     current.created_at || now,
     now,
@@ -1163,33 +1384,89 @@ export async function getPlatformIdentity(
 }
 
 /**
- * The products Discover may consider for any account (PX-W10, G24), before the policy runs: live,
- * portal on, Discover on, and authenticating against the PLATFORM issuer with auto-linking on.
- * The last two are exactly `syncAccountLicenseLinks`'s subject predicates, for the same reasons
- * (R5-01/R5-02): a licence keyed by the account's platform subject is only meaningful, and is only
- * linked back into this account, on a product whose own sign-in uses that issuer.
+ * One product the Polaris Key storefront may consider for any account (PS-03, notes/S-21 §6.3
+ * "Candidates"), before any path is evaluated: its listing columns, resolved by the engine through
+ * `resolveListing`, and whether Identity's own paths (`group`, `auto_issue`) may run on it.
  */
-export async function listDiscoverCandidates(
+export interface StorefrontCandidateRow {
+  slug: string;
+  /**
+   * 1 when the product authenticates against the PLATFORM issuer with auto-linking on: exactly
+   * `syncAccountLicenseLinks`'s subject predicates (R5-01/R5-02). A licence keyed by the account's
+   * platform subject is only meaningful, and is only linked back into this account, on a product
+   * whose own sign-in uses that issuer, so the identity paths run only where this is 1.
+   */
+  identity_eligible: number;
+  discover_enabled: number;
+  store_listed: string | null;
+  store_audience: string | null;
+  store_offer_paths_json: string | null;
+  store_group_labels_json: string | null;
+}
+
+/**
+ * The products the storefront engine may consider for any account (PS-03, which rebuilt PX-W10's
+ * Discover candidates on it): live, portal on, and not `unlisted` (PS-02: `discover_enabled = 0`
+ * or `store_listed = 'unlisted'` hides it until PS-11 retires `discover_enabled`). The platform
+ * issuer and auto-link predicate no longer narrows the set: it rides along as
+ * `identity_eligible`, and stays on the identity paths unchanged, because a path that grants no
+ * licence (`open`) does not key anything by a subject. The deployment switch
+ * (`storefront.polarisKey.enabled`) is the caller's, read once per listing.
+ */
+export async function listStorefrontCandidates(
   db: Db,
-  /** Answer for this one product only (the claim's re-evaluation). */
+  /** Answer for this one product only (a claim's re-evaluation). */
   only?: string,
-): Promise<string[]> {
-  const rows = await db.all<{ slug: string }>(
-    `SELECT p.slug AS slug
+): Promise<StorefrontCandidateRow[]> {
+  return db.all<StorefrontCandidateRow>(
+    `SELECT p.slug AS slug,
+            CASE WHEN COALESCE(o.provider, 'platform') = 'platform'
+                  AND ${AUTO_LINK_ENABLED_SQL}
+                 THEN 1 ELSE 0 END AS identity_eligible,
+            COALESCE(s.discover_enabled, 1) AS discover_enabled,
+            s.store_listed AS store_listed,
+            s.store_audience AS store_audience,
+            s.store_offer_paths_json AS store_offer_paths_json,
+            s.store_group_labels_json AS store_group_labels_json
        FROM products p
        LEFT JOIN portal_product_settings s ON s.product = p.slug
        LEFT JOIN oidc_config o ON o.product = p.slug
       WHERE COALESCE(p.status, 'active') = 'active'
         AND COALESCE(s.portal_enabled, 1) = 1
         AND COALESCE(s.discover_enabled, 1) = 1
-        AND COALESCE(o.provider, 'platform') = 'platform'
-        AND ${AUTO_LINK_ENABLED_SQL}
+        AND COALESCE(s.store_listed, 'auto') <> 'unlisted'
         AND (? IS NULL OR p.slug = ?)
       ORDER BY p.name ASC, p.slug ASC`,
     only ?? null,
     only ?? null,
   );
-  return rows.map((r) => r.slug);
+}
+
+/**
+ * The products in the account's library WITHOUT a licence (PS-04's `library_entries`, notes/S-21
+ * §6.4): an open product someone added. The storefront never offers or counts one of these, as
+ * it never offers a held product. PS-03 reads the table only if present: until PS-04's migration
+ * adds it, D1's "no such table" for exactly this table reads as an empty library, and any other
+ * error still throws.
+ */
+export async function listLibraryEntryProducts(
+  db: Db,
+  accountId: string,
+): Promise<Set<string>> {
+  try {
+    const rows = await db.all<{ product: string }>(
+      "SELECT product FROM library_entries WHERE account_id = ?",
+      accountId,
+    );
+    return new Set(rows.map((r) => r.product));
+  } catch (e) {
+    if (
+      e instanceof Error &&
+      /no such table: library_entries\b/i.test(e.message)
+    )
+      return new Set();
+    throw e;
+  }
 }
 
 /**

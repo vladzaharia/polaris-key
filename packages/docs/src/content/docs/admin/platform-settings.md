@@ -1,31 +1,54 @@
 ---
 title: "Platform settings"
-description: "The instance-wide settings: which four can change at runtime, how precedence works, and what the read-only inventory shows."
+description: "The instance-wide settings: which five can change at runtime, how precedence works, and what the read-only inventory shows."
 sidebar:
   order: 13
 ---
 
 Platform settings apply to the whole instance, not to one product. Almost all of them are
 deploy-time: they live in `wrangler.toml` or as Worker secrets and change only with a deploy.
-Four background-job settings can also be changed at runtime, without a deploy, and every change
-is recorded in the [platform trail](/docs/admin/activity/#the-platform-trail).
+Four background-job settings and one licensing setting can also be changed at runtime, without a
+deploy, and every change is recorded in the
+[platform trail](/docs/admin/activity/#the-platform-trail).
 
 In the console this is **Platform → Settings** (`#/platform/settings`; `#/platform` opens it).
 
 ## The runtime settings
 
-| Setting                | What it does                                                                   | Values                                     |
-| ---------------------- | ------------------------------------------------------------------------------ | ------------------------------------------ |
-| `LAZY_DELTAS`          | Turns lazy hot-pair deltas on or off, in both Worker scripts.                  | `on` or `off` (default `off`)              |
-| `LAZY_DELTA_MAX_BYTES` | The largest payload, on either side of a pair, the delta consumer will encode. | 1 MiB to 32 MiB, in bytes (default 32 MiB) |
-| `BLOB_GC_MODE`         | Turns the nightly blob collector on or off.                                    | `on` or `off` (default `on`)               |
-| `BLOB_GC_GRACE_DAYS`   | How long an object stays unreferenced before the collector may delete it.      | 1 to 365 days (default 30)                 |
+| Setting                           | What it does                                                                                        | Values                                     |
+| --------------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `LAZY_DELTAS`                     | Turns lazy hot-pair deltas on or off, in both Worker scripts.                                       | `on` or `off` (default `off`)              |
+| `LAZY_DELTA_MAX_BYTES`            | The largest payload, on either side of a pair, the delta consumer will encode.                      | 1 MiB to 32 MiB, in bytes (default 32 MiB) |
+| `BLOB_GC_MODE`                    | Turns the nightly blob collector on or off.                                                         | `on` or `off` (default `on`)               |
+| `BLOB_GC_GRACE_DAYS`              | How long an object stays unreferenced before the collector may delete it.                           | 1 to 365 days (default 30)                 |
+| `LICENSING_RESERVED_NAMES`        | What happens to a catalog flag that declares a reserved entitlement name with an incompatible type. | `warn` or `error` (default `warn`)         |
+| `IDENTITY_RESERVED_DISPLAY_NAMES` | What happens to a product or listing name that uses a platform or store name.                       | `warn` or `error` (default `warn`)         |
 
 32 MiB is the measured ceiling of the delta consumer, so a runtime size cap can only lower it.
 "Lower" is measured against that 32 MiB ceiling, not against the deploy-time `LAZY_DELTA_MAX_BYTES`
 in `[vars]`: a deploy-time cap of 8 MiB does not stop the console storing 16 MiB, which then wins.
 The collector's grace never bounds deletion on its own: the bucket's 180-day age lock still
 applies.
+
+`LICENSING_RESERVED_NAMES` is S-19's `licensing.reservedNames`. The platform sets a few
+entitlements itself (`channels`, `deviceLimit`, `app.minVersion`, `app.maxVersion`,
+`license.tier`, `license.tierLabel`) and reserves the `license.`, `app.` and `pkey.` prefixes for
+future ones. A product flag that declares one of these names is always valid when it keeps the
+system key's type and only narrows it (see
+[reserved entitlement names](/docs/build/manifest/authoring/#reserved-entitlement-names)). With
+`warn`, an incompatible declaration is accepted and reported; with `error`, link, resync and the
+console's catalog publish refuse it. The setting starts at `warn` for a window of two minor
+releases or 60 days, whichever is later, and then moves to `error`. Neither value changes what a
+device is signed: the platform's own value of a system key always wins.
+
+`IDENTITY_RESERVED_DISPLAY_NAMES` is `identity.reservedDisplayNames`. The sign-in card says
+"<App> wants you to sign in", so a product may not present itself as Polaris Key, Apple, the App
+Store, Google, Google Play, Steam, Valve, Epic Games, Microsoft, Xbox, PlayStation, Nintendo or
+itch.io (see [display names](/docs/build/manifest/authoring/#display-names)). With `warn`, such a
+`product.name`, `listing.name` or `listing.developerName` is accepted and reported; with `error`,
+link, resync and the console's listing edits refuse it. Either way the sign-in card shows the
+product slug in a neutral frame instead of a reserved name. The setting starts at `warn` for two
+minor releases or 60 days, whichever is later. It sits under Identity & access in the console.
 
 Nothing else can become a runtime setting. Origins, the platform admin group, the admin identity
 provider, the issuer allowlist, key material, session lengths, rate limits, retention periods and
@@ -59,8 +82,9 @@ read the settings fresh at the start of each run.
 Platform → Settings has these sections, top to bottom.
 
 - **Warnings.** Each warning the API returns (the console still shares the customer sign-in
-  client, `PLATFORM_KEK_ID` set, `PORTAL_SESSION_SECRET` unset) is shown first.
-- **Background jobs.** The four runtime settings. Each row shows the effective value and a source
+  client, `PLATFORM_KEK_ID` set, `PLATFORM_KEK` kept as a legacy key beside
+  `PLATFORM_KEK_KEYS`, `PORTAL_SESSION_SECRET` unset) is shown first.
+- **Background jobs.** The four background-job settings. Each row shows the effective value and a source
   badge: _Code default_, _Deploy var_ or _Set in console_ (with who set it and when). Each row
   saves on its own:
   - The two switches apply when you flip them. Turning a job **on** asks first and lists what
@@ -76,6 +100,11 @@ Platform → Settings has these sections, top to bottom.
   - A stored value outside the bounds is flagged as not applied.
   - If the settings store cannot be read, the switches show _Off: store unreadable_ and nothing
     can be saved.
+- **Licensing.** The reserved-names setting as a Warn / Refuse choice (switching to Refuse asks
+  first), the reserved keys with the rule the platform applies to each, and every registered
+  product whose catalog declares a reserved name, each declaration marked compatible or not with
+  the reason. Check this list before switching to Refuse: a product marked incompatible would
+  fail its next resync.
 - **Identity & access**, **Delivery** and **Email.** The deploy-time values, read-only. Identity
   shows the console's own client (`ADMIN_OIDC_ISSUER`, `ADMIN_OIDC_CLIENT_ID`) above the platform
   client the portal and products use (`PLATFORM_OIDC_*`).
@@ -84,8 +113,11 @@ Platform → Settings has these sections, top to bottom.
 - **Keyring.** The KEK keyring, read-only: which KEK secrets are set, the `PLATFORM_KEK_ACTIVE`
   and `PLATFORM_KEK_ID` kid names, the active key, every key in the ring with how many values it
   seals, and the re-seal progress. Values under a key that has left the ring are flagged as
-  unopenable. When the ring does not parse, the section says the keyring is unusable. Rotation
-  and the re-seal sweep follow the [KEK runbook](/docs/admin/kek/).
+  unopenable. While `PLATFORM_KEK` is set beside `PLATFORM_KEK_KEYS`, its kid is marked
+  _Legacy, open only_, and a **Legacy key** row says how many values (and which sealed Worker
+  secrets) are still under it, or _Safe to delete PLATFORM_KEK_ once none are. When the ring does
+  not parse, the section says the keyring is unusable. Rotation and the re-seal sweep follow the
+  [KEK runbook](/docs/admin/kek/).
 - **Secrets.** Each platform secret as _Set_ or _Not set_, with what it is for and what being
   unset means.
 - **History.** Each settings change from the platform trail, with who made it and the value
@@ -100,7 +132,7 @@ Discard to keep the current one.
 
 ## The API
 
-All three routes are for platform admins only (403 otherwise), and the two writes need the CSRF
+All four routes are for platform admins only (403 otherwise), and the two writes need the CSRF
 header like every console mutation.
 
 ```http
@@ -124,8 +156,12 @@ Returns:
   retention;
 - `warnings`: `console_oidc_shared` while the console signs in through the platform client
   because `ADMIN_OIDC_ISSUER` or `ADMIN_OIDC_CLIENT_ID` is unset (`names` lists which);
-  `PLATFORM_KEK_ID` is set; or `PORTAL_SESSION_SECRET` is unset, so the portal signs its sessions
-  with the admin secret.
+  `PLATFORM_KEK_ID` is set; `kek_keyring_unusable` while the KEK keyring does not load (the
+  message gives the reason, naming kids only); `kek_legacy_open_only` while `PLATFORM_KEK` is set
+  beside `PLATFORM_KEK_KEYS` and is the only source of its kid, so it is kept as the legacy key,
+  open-only (the message names its kid; a same-bytes copy of a `PLATFORM_KEK_KEYS` entry is not
+  flagged); or `PORTAL_SESSION_SECRET` is unset, so the portal signs its sessions with the admin
+  secret.
 
 ```http
 PATCH /manage/api/platform/settings/<key>
@@ -151,6 +187,16 @@ Removes the runtime value, so the setting reverts to the deploy-time value or th
 It is version-guarded in the same way, and answers `404` when there is no runtime value. The row
 is kept as a tombstone and its version keeps counting up, so a version you loaded before the
 delete can never be accepted afterwards; the next write carries the version the list reports.
+
+```http
+GET /manage/api/platform/reserved-names
+```
+
+Read-only. Returns the `mode` the reserved-names setting resolves to (`warn` or `error`), the
+reserved `keys` (each with its `type` and the `rule` the platform applies), the reserved
+`prefixes`, and `products`: every registered product whose active catalog declares a reserved
+name, with its `catalogVersion` and one `declarations` entry per declared name
+(`{ key, compatible, problem }`, `problem` saying why an incompatible one is incompatible).
 
 ## Reference
 

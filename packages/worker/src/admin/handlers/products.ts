@@ -6,6 +6,14 @@
  *                                             a per-product Ed25519 signing key (sealed under
  *                                             the platform KEK). NO release/minter rows.
  *   - `POST /api/products/link-repo`        — GITHUB-forward create: read a repo's `.pkey/`.
+ *                                             `?dryRun=1` checks and previews it, writing
+ *                                             nothing (UX-72, W23); the create accepts the dry
+ *                                             run's `manifestDigest` and refuses (409) on a
+ *                                             mismatch, and answers the created `product`.
+ *   - `GET  /api/products/slug-check?slug=` — is a slug free for a new product (UX-72, W24):
+ *                                             `available`, or `taken` / `reserved` / `invalid`
+ *                                             with a free suggestion. Any signed-in operator: a
+ *                                             product's slug is public (its discovery document).
  *   - `GET  /api/products/kek`              — platform KEK keyring status: which kid is active
  *                                             and how many sealed rows sit under each kid.
  *   - `POST /api/products/kek`              — re-seal a bounded batch of rows under the active
@@ -21,10 +29,7 @@
  */
 
 import { Catalog } from "@polaris-key/catalog";
-import {
-  RESERVED_PRODUCT_SLUGS,
-  SYSTEM_PRODUCT_SLUG,
-} from "@polaris-key/manifest";
+import { PRODUCT_SLUG_RE, isReservedProductSlug } from "@polaris-key/manifest";
 import { parse as parseYaml } from "yaml";
 import type { Env } from "../../env.js";
 import type { Db } from "../../db/types.js";
@@ -47,15 +52,29 @@ import {
   upsertProductSecret,
 } from "../../repo.js";
 import { deleteTokenRecord } from "../../kv.js";
-import { deleteProduct, listDevicesByProduct, updateProduct } from "../repo.js";
+import {
+  deleteProduct,
+  listDevicesByProduct,
+  stmtUpdateProduct,
+} from "../repo.js";
+import {
+  claimsApply,
+  revertClaim,
+  stmtClaim,
+  systemClaimRefusal,
+  type ClaimKey,
+} from "../../core/settingsClaims.js";
 import {
   describeKeyring,
   generateEd25519,
   open,
   seal,
+  type LegacyKey,
   type Sealed,
 } from "../../keyvault.js";
 import { linkRepo, MAX_MANIFEST_BYTES } from "../../services/release/sync.js";
+import { SIGNIN_ENV } from "../../services/identity/providers/config.js";
+import { checkSlug, prepareCreate } from "../../services/release/linkRepo.js";
 import { manifestIngestFor } from "../../core/registry.js";
 import { SERVICES } from "../../mount.js";
 import {
@@ -75,10 +94,13 @@ import {
   readBody,
 } from "../lib/respond.js";
 import { listProductSecretsView, productView } from "../lib/shape.js";
+import { productIcons } from "../lib/presentation.js";
 import {
   catalogRepresentabilityResponse,
+  reservedNamesResponse,
   WriteChecks,
 } from "../lib/writeChecks.js";
+import { reservedNamesMode } from "../../core/reservedNames.js";
 import { handleOutletCredentials } from "./outletCredentials.js";
 
 /** Compile a schema supplied as a JSON/YAML string or a parsed object. Returns the catalog or
@@ -133,11 +155,27 @@ export async function handleProducts(
   segments: string[],
   now: number,
 ): Promise<Response> {
+  // /api/products/slug-check — W24. Before the platform-admin gate: anyone may fill in the New
+  // Product wizard (F16), and whether a slug is taken is already public (`/<slug>/.well-known/
+  // polaris.json` answers for every product).
+  if (segments.length === 1 && segments[0] === "slug-check") {
+    if (req.method !== "GET")
+      return err(405, ErrorCode.BadRequest, "method not allowed");
+    const slug = (new URL(req.url).searchParams.get("slug") ?? "").trim();
+    if (!slug)
+      return err(422, ErrorCode.BadRequest, "slug is required", {
+        fields: ["slug"],
+      });
+    return adminJson(await checkSlug(db, slug));
+  }
+
   if (!isPlatformAdmin(env, session))
     return forbidden("platform admin required");
 
   // /api/products/kek — the platform KEK keyring. Like `link-repo` below, this is a reserved
-  // one-segment ACTION, not a product slug, and is matched before the slug lookup.
+  // one-segment ACTION, not a product slug, and is matched before the slug lookup. A new action
+  // here adds its segment to `PRODUCT_ROUTE_ACTIONS` in `@polaris-key/manifest` (P0-14), which
+  // reserves it in the manifest validator, the schema, the slug check and manual create at once.
   if (segments.length === 1 && segments[0] === "kek")
     return handleKekKeyring(req, env, db, session, now);
 
@@ -151,6 +189,22 @@ export async function handleProducts(
       return err(422, ErrorCode.BadRequest, "repoUrl is required", {
         fields: ["repoUrl"],
       });
+    // W23: the create dry run. Every check the create runs, the product as it will be, and
+    // every problem with its file and path; nothing is written. A refusal before the manifest
+    // could be read (the URL, the App, the fetch) is a 422 naming that check.
+    if (new URL(req.url).searchParams.get("dryRun") === "1") {
+      const dry = await prepareCreate(env, db, repoUrl, now, fetch);
+      if (!dry.ok)
+        return err(dry.status, ErrorCode.BadRequest, dry.error, {
+          reason: dry.check,
+        });
+      return adminJson({ ...dry, dryRun: true });
+    }
+    const digest = body.manifestDigest;
+    if (digest !== undefined && typeof digest !== "string")
+      return err(422, ErrorCode.BadRequest, "manifestDigest must be a string", {
+        fields: ["manifestDigest"],
+      });
     const result = await linkRepo(
       env,
       db,
@@ -158,8 +212,13 @@ export async function handleProducts(
       now,
       fetch,
       manifestIngestFor(SERVICES),
+      digest === undefined ? {} : { manifestDigest: digest },
     );
     if (!result.ok) {
+      if (result.status === 409)
+        return err(409, ErrorCode.BadRequest, result.error, {
+          reason: "manifest",
+        });
       return err(
         422,
         ErrorCode.BadRequest,
@@ -190,6 +249,12 @@ export async function handleProducts(
         },
         install: result.install,
         remainingSecrets: result.remainingSecrets,
+        // C-2: the created product (its name), which the console's `LinkRepoResult` already
+        // promises, so "<Name> is ready" never has to fall back to the slug.
+        product: await (async () => {
+          const created = await getProduct(db, result.slug);
+          return created ? productView(env, db, created) : null;
+        })(),
       },
       201,
     );
@@ -199,9 +264,11 @@ export async function handleProducts(
   if (segments.length === 0) {
     if (req.method === "GET") {
       const rows = await listProducts(db);
+      // Every product's logo in one statement, not one per product.
+      const icons = await productIcons(env, db);
       return adminJson({
         products: await Promise.all(
-          rows.map((row) => productView(env, db, row)),
+          rows.map((row) => productView(env, db, row, now, icons)),
         ),
       });
     }
@@ -214,7 +281,7 @@ export async function handleProducts(
   const row = await getProduct(db, slug);
   if (!row) return notFound();
   if (req.method === "GET")
-    return adminJson({ product: await productView(env, db, row) });
+    return adminJson({ product: await productView(env, db, row, now) });
   if (req.method === "PATCH") {
     const body = await readBody(req);
     // F-03: the system product keeps its name (it is the platform's, and the feeds and the
@@ -225,6 +292,26 @@ export async function handleProducts(
         ErrorCode.BadRequest,
         "the system product cannot be renamed",
         { fields: ["name"], reason: "system_product" },
+      );
+    // ST-01b (S-18 §4.5 item 8): every other claimable field of the system product is
+    // manifest-authoritative; ST-20 adds its expiring break-glass claims.
+    const systemRefusal = systemClaimRefusal(row);
+    const systemFields = (
+      ["defaultMaxOfflineDays", "defaultDeviceLimit", "adminGroup"] as const
+    ).filter((f) => body[f] !== undefined);
+    if (systemRefusal && systemFields.length > 0)
+      return err(409, ErrorCode.BadRequest, systemRefusal, {
+        fields: systemFields,
+        reason: "manifest_authoritative",
+      });
+    // Owner decision 1 (S-18 D2): the admin group is manifest-only on a repo-linked product. It
+    // is never claimed, so a console value would vanish at the next resync; refusing it says so.
+    if (body.adminGroup !== undefined && claimsApply(row))
+      return err(
+        409,
+        ErrorCode.BadRequest,
+        "the admin group is set by the product's .pkey/product (adminGroup)",
+        { fields: ["adminGroup"], reason: "manifest_only" },
       );
     // plans/P3-01.md §2.2: the default offline-day count becomes `graceUntil`, so it takes the
     // bundle mint's rule, an integer from 1 to 365.
@@ -265,33 +352,45 @@ export async function handleProducts(
         { fields: ["adminGroup"] },
       );
     }
-    await updateProduct(
-      db,
-      slug,
-      {
-        name: typeof body.name === "string" ? body.name.trim() : undefined,
-        // `compatMin`/`compatMax` are NOT accepted here any more. The compatibility window is a
-        // statement about which BUILDS this product supports, so spec §8 relocates it to
-        // `PATCH …/update/settings`. Dropped rather than ignored: an endpoint that quietly
-        // accepts a field it no longer owns lets a console appear to save a value that never
-        // changes, which is a worse failure than a rejected request.
-        default_max_offline_days:
-          typeof body.defaultMaxOfflineDays === "number"
-            ? body.defaultMaxOfflineDays
+    const fields = {
+      name: typeof body.name === "string" ? body.name.trim() : undefined,
+      // `compatMin`/`compatMax` are NOT accepted here any more. The compatibility window is a
+      // statement about which BUILDS this product supports, so spec §8 relocates it to
+      // `PATCH …/update/settings`. Dropped rather than ignored: an endpoint that quietly
+      // accepts a field it no longer owns lets a console appear to save a value that never
+      // changes, which is a worse failure than a rejected request.
+      default_max_offline_days:
+        typeof body.defaultMaxOfflineDays === "number"
+          ? body.defaultMaxOfflineDays
+          : undefined,
+      default_device_limit:
+        typeof body.defaultDeviceLimit === "number"
+          ? body.defaultDeviceLimit
+          : undefined,
+      admin_group:
+        body.adminGroup === null
+          ? null
+          : typeof body.adminGroup === "string"
+            ? body.adminGroup.trim() || null
             : undefined,
-        default_device_limit:
-          typeof body.defaultDeviceLimit === "number"
-            ? body.defaultDeviceLimit
-            : undefined,
-        admin_group:
-          body.adminGroup === null
-            ? null
-            : typeof body.adminGroup === "string"
-              ? body.adminGroup.trim() || null
-              : undefined,
-      },
-      now,
-    );
+    };
+    // ST-01b (model C): on a repo-linked product, each claimable field this write sets is claimed
+    // for the console in the same batch, so the next resync leaves it alone until a Revert.
+    const claimed: ClaimKey[] = claimsApply(row)
+      ? [
+          ...(fields.name !== undefined ? (["core.name"] as const) : []),
+          ...(fields.default_max_offline_days !== undefined
+            ? (["license.defaults.maxOfflineDays"] as const)
+            : []),
+          ...(fields.default_device_limit !== undefined
+            ? (["license.defaults.deviceLimit"] as const)
+            : []),
+        ]
+      : [];
+    await db.batch([
+      stmtUpdateProduct(slug, fields, now),
+      ...claimed.map((key) => stmtClaim(slug, key, session.sub, now)),
+    ]);
     await audit(
       db,
       slug,
@@ -299,9 +398,15 @@ export async function handleProducts(
       now,
       "product.update",
       { kind: "product", id: slug },
-      `Updated product ${slug}`,
+      claimed.length > 0
+        ? `Updated product ${slug}; claimed for the console: ${claimed.join(", ")}`
+        : `Updated product ${slug}`,
     );
-    return adminJson({ ok: true, slug });
+    return adminJson({
+      ok: true,
+      slug,
+      ...(claimed.length ? { claimed } : {}),
+    });
   }
   if (req.method === "DELETE") {
     // F-03: the system product owns the platform packages, whose versions are unique forever.
@@ -352,19 +457,19 @@ async function manualCreate(
 ): Promise<Response> {
   const body = await readBody(req);
   const slug = String(body.slug ?? "").trim();
-  if (!/^[a-z0-9-]+$/.test(slug))
-    return err(422, ErrorCode.BadRequest, "invalid slug", { fields: ["slug"] });
-  // Same list `validateManifestDocuments` enforces (reserved_slug): these are root paths the
-  // router matches before `/<product>/…`, so a product created under one would be permanently
-  // shadowed — every one of its routes unreachable. The link-repo path gets this for free via
-  // manifest validation; manual create must check explicitly.
-  if (RESERVED_PRODUCT_SLUGS.includes(slug))
-    return err(422, ErrorCode.BadRequest, "reserved slug", {
+  // P0-14: the one product slug rule, the same `@polaris-key/manifest` helpers the manifest
+  // validator, link-repo and the slug check apply. The shape (`invalid_slug`) bounds the length
+  // and refuses a leading hyphen. The reservations (`reserved_slug`) are the root paths the
+  // router matches before `/<product>/…` (a product created under one would be permanently
+  // shadowed), the admin API's one-segment actions (`kek`, `link-repo`, `slug-check`, which
+  // would shadow its console record), and the system product, which only the package-feeds
+  // bootstrap (`ensureSystemProduct`) creates (F-03).
+  if (!PRODUCT_SLUG_RE.test(slug))
+    return err(422, ErrorCode.BadRequest, "invalid slug", {
       fields: ["slug"],
+      reason: "invalid_slug",
     });
-  // F-03: the system product is created only by the package-feeds bootstrap
-  // (`ensureSystemProduct`), never by hand.
-  if (slug === SYSTEM_PRODUCT_SLUG)
+  if (isReservedProductSlug(slug))
     return err(422, ErrorCode.BadRequest, "reserved slug", {
       fields: ["slug"],
       reason: "reserved_slug",
@@ -398,6 +503,11 @@ async function manualCreate(
     // it: refuse an unsignable default or key, and a key the manifest's ID_RE would refuse.
     const unrepresentable = catalogRepresentabilityResponse(catalogObj);
     if (unrepresentable) return unrepresentable;
+    const reserved = reservedNamesResponse(
+      catalogObj,
+      await reservedNamesMode(env, db),
+    );
+    if (reserved) return reserved;
   }
 
   // Mint + seal the per-product Ed25519 signing key under the platform KEK.
@@ -689,6 +799,63 @@ function progressOf(
   return { remaining, unopenable };
 }
 
+/**
+ * The Worker secrets that hold a sealed envelope rather than a raw value: the login card's
+ * provider secrets (I-06). The sweep cannot re-seal them (a Worker secret is write-only from
+ * here), so they are reported by name next to the legacy key: each must be re-sealed with
+ * `pnpm --filter @polaris-key/worker signin:seal` and set again BEFORE `PLATFORM_KEK` goes, or
+ * that provider silently drops off the login card (`resolveSignInClient` reads an unopenable
+ * blob as "not configured"). Only the envelope's kid is read; nothing is opened.
+ */
+const SEALED_WORKER_SECRETS: readonly string[] = Object.values(SIGNIN_ENV).map(
+  (spec) => spec.sealed,
+);
+
+/**
+ * The legacy-key progress, present only while `PLATFORM_KEK` sits in a `PLATFORM_KEK_KEYS` ring
+ * (`LegacyKey`). `remaining` is the D1 values still sealed under the legacy kid — the sweep's
+ * job, done when it reaches 0. `workerSecrets` are the sealed Worker secrets still under it —
+ * the operator's job. `safeToDelete` is the gate for `wrangler secret delete PLATFORM_KEK`: both
+ * empty, or the legacy key is a redundant copy of a `PLATFORM_KEK_KEYS` entry anyway.
+ */
+function legacyProgress(
+  env: Env,
+  legacy: LegacyKey | undefined,
+  counts: KekCounts,
+):
+  | {
+      legacy: LegacyKey & {
+        remaining: number;
+        workerSecrets: string[];
+        safeToDelete: boolean;
+      };
+    }
+  | Record<string, never> {
+  if (!legacy) return {};
+  let remaining = 0;
+  // An own-property read: a legacy kid such as `toString` must not pick up an inherited member.
+  for (const perKid of Object.values(counts))
+    if (Object.hasOwn(perKid, legacy.kid)) remaining += perKid[legacy.kid]!;
+  const workerSecrets = SEALED_WORKER_SECRETS.filter((name) => {
+    const value = env[name];
+    // Trimmed as `providers/config.ts` reads it: a blob piped into `wrangler secret put` keeps
+    // the script's trailing newline.
+    return (
+      envelopeKekId(typeof value === "string" ? value.trim() : value) ===
+      legacy.kid
+    );
+  });
+  return {
+    legacy: {
+      ...legacy,
+      remaining,
+      workerSecrets,
+      safeToDelete:
+        !legacy.openOnly || (remaining === 0 && workerSecrets.length === 0),
+    },
+  };
+}
+
 interface ResealFailure {
   table: string;
   product: string;
@@ -898,8 +1065,9 @@ async function handleKekKeyring(
 
   let active: string;
   let kids: string[];
+  let legacy: LegacyKey | undefined;
   try {
-    ({ active, kids } = await describeKeyring(env));
+    ({ active, kids, legacy } = await describeKeyring(env));
   } catch (e) {
     // The keyring is the one piece of configuration whose failure mode is otherwise INVISIBLE:
     // `loadProduct` swallows the `open()` throw and every product route 404s. Report it
@@ -919,6 +1087,7 @@ async function handleKekKeyring(
       kids,
       counts,
       ...progressOf(counts, active, kids),
+      ...legacyProgress(env, legacy, counts),
     });
   }
 
@@ -985,6 +1154,7 @@ async function handleKekKeyring(
     failures: sweep.failures,
     counts,
     ...after,
+    ...legacyProgress(env, legacy, counts),
   });
 }
 
@@ -1016,7 +1186,50 @@ export async function handleProductScopedResource(
     return handleOutletCredentials(req, env, db, session, slug, id, now);
   if (resource === "keys")
     return handleKeys(req, env, db, session, slug, id, now);
+  if (resource === "claims")
+    return handleClaimRevert(req, db, session, slug, id, now);
   return notFound();
+}
+
+/**
+ * DELETE /api/products/<slug>/claims/<key> — Revert to manifest (ST-01b, S-18 §4.5 item 2). Drops
+ * the console claim on one column-backed key and re-applies the manifest snapshot's value at once
+ * (`applied: true`), or, with no snapshot yet, answers `applied: false` with "applies at the next
+ * resync". The claims themselves ride on the product view (`claims`).
+ */
+async function handleClaimRevert(
+  req: Request,
+  db: Db,
+  session: AdminSession,
+  slug: string,
+  key: string | undefined,
+  now: number,
+): Promise<Response> {
+  if (!key) return notFound();
+  if (req.method !== "DELETE")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const product = await getProduct(db, slug);
+  if (!product) return notFound();
+  const result = await revertClaim(
+    db,
+    product,
+    key,
+    {
+      sub: session.sub,
+      name: session.name ?? null,
+      email: session.email ?? null,
+    },
+    now,
+  );
+  if (!result.ok)
+    return err(result.status, ErrorCode.BadRequest, result.message, {
+      reason: result.reason,
+    });
+  return adminJson(
+    result.applied
+      ? { ok: true, key, applied: true, value: result.value }
+      : { ok: true, key, applied: false, message: result.message },
+  );
 }
 
 /**
@@ -1183,6 +1396,67 @@ async function listSigningKeys(
     );
 }
 
+/** How far back a device counts as active for the rotation's refreshed line (EXPERIENCE §0.9). */
+const REFRESH_ACTIVE_WINDOW_SECONDS = 30 * 86_400;
+
+/**
+ * UX-29 (EXPERIENCE.md §0.5 O3, §0.9): after a rotation, how many recently active devices have
+ * been back since the new key went live. Derived, not tracked: there is no per-device trust
+ * fetch record, so the console says "refreshed" (the device reached the server after the
+ * activation time), never that it fetched the new trust. `null` unless the active key replaced
+ * another one within the 30-day window. The count rides `idx_devices_status`
+ * `(product, status, last_seen)` from 0007: no table scan and no migration.
+ */
+interface SigningKeyRefresh {
+  /** The active key the figure is about. */
+  kid: string;
+  /** When it went live, epoch seconds. */
+  activatedAt: number;
+  /** Authorized devices seen within the last `windowDays`. */
+  activeDevices: number;
+  /** Of those, the ones seen at or after `activatedAt`. */
+  refreshedDevices: number;
+  windowDays: number;
+}
+
+async function signingKeyRefresh(
+  db: Db,
+  slug: string,
+  keys: SigningKeyListing[],
+  now: number,
+): Promise<SigningKeyRefresh | null> {
+  const active = keys.find((k) => k.status === "active");
+  if (!active || active.activatedAt === null) return null;
+  // A key the active one REPLACED: retired in the activation's own batch (same timestamp), or
+  // created before the active key (and since revoked). A staged key cancelled before it went live
+  // is retired too, but it was created after the active key and never signed, so cancelling one
+  // is not a rotation and must not read as "refreshed since …".
+  const replacedOne = keys.some(
+    (k) =>
+      (k.status === "retired" || k.status === "revoked") &&
+      (k.retiredAt === active.activatedAt || k.createdAt < active.createdAt),
+  );
+  if (!replacedOne) return null;
+  const since = now - REFRESH_ACTIVE_WINDOW_SECONDS;
+  if (active.activatedAt < since) return null;
+  const row = await db.first<{ active: number; refreshed: number | null }>(
+    `SELECT COUNT(*) AS active,
+            SUM(CASE WHEN last_seen >= ? THEN 1 ELSE 0 END) AS refreshed
+       FROM devices
+      WHERE product = ? AND status = 'authorized' AND last_seen >= ?`,
+    active.activatedAt,
+    slug,
+    since,
+  );
+  return {
+    kid: active.kid,
+    activatedAt: active.activatedAt,
+    activeDevices: row?.active ?? 0,
+    refreshedDevices: row?.refreshed ?? 0,
+    windowDays: REFRESH_ACTIVE_WINDOW_SECONDS / 86_400,
+  };
+}
+
 /** POST /api/products/<slug>/keys/{prepare|activate|retire|revoke}. */
 async function handleKeys(
   req: Request,
@@ -1198,7 +1472,12 @@ async function handleKeys(
   if (!action) {
     if (req.method !== "GET")
       return err(405, ErrorCode.BadRequest, "method not allowed");
-    return adminJson({ keys: await listSigningKeys(db, slug), now });
+    const keys = await listSigningKeys(db, slug);
+    return adminJson({
+      keys,
+      now,
+      refresh: await signingKeyRefresh(db, slug, keys, now),
+    });
   }
   if (req.method !== "POST")
     return err(405, ErrorCode.BadRequest, "method not allowed");

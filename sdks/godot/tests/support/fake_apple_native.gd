@@ -37,6 +37,9 @@ var attest_fail := ""
 var _key_serial := 0
 
 var keychain := {}
+## The `keychain` argument of every kc_* call, in order ("" when absent): SP-27's macOS backend
+## asks for the login keychain.
+var keychain_flavors: Array[String] = []
 var calls: Array[Dictionary] = []
 var finished: Array[String] = []
 var _queue: Array[Dictionary] = []
@@ -110,16 +113,19 @@ func cmd(json: String) -> String:
 				return _later(op, {"ok": true, "keyId": key, "assertion": Marshalls.utf8_to_base64("assertion:%s" % key)})
 			return _later(op, {"ok": true, "keyId": key, "attestation": Marshalls.utf8_to_base64("attestation:%s:%s" % [key, q.get("requestHash")]), "generated": generated, "ms": 1})
 		"kc_get":
+			keychain_flavors.append(str(q.get("keychain", "")))
 			var key := "%s/%s" % [q.get("product"), q.get("account")]
 			if keychain.get("__fail__", false):
 				return JSON.stringify({"ok": false, "error": "keychain", "status": -34018})
 			return JSON.stringify({"ok": true, "value": keychain.get(key)})
 		"kc_set":
+			keychain_flavors.append(str(q.get("keychain", "")))
 			if keychain.get("__fail__", false):
 				return JSON.stringify({"ok": false, "error": "keychain", "status": -34018})
 			keychain["%s/%s" % [q.get("product"), q.get("account")]] = q.get("value")
 			return JSON.stringify({"ok": true, "op": "add"})
 		"kc_delete":
+			keychain_flavors.append(str(q.get("keychain", "")))
 			keychain.erase("%s/%s" % [q.get("product"), q.get("account")])
 			return JSON.stringify({"ok": true})
 		"packs_ensure", "packs_status", "packs_check_updates", "packs_remove", "packs_url", "packs_watch", "packs_unwatch":

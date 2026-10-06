@@ -1,6 +1,7 @@
 /**
  * License → Licenses (ADMIN.md §6.5.1) through the whole console: the computed state (LIC-1),
- * facet tiles, filters in the URL, bulk enable/disable, the stepped Create license dialog
+ * facet tiles, filters in the URL, bulk enable/disable/delete, the cleanup helper, the stepped
+ * Create license dialog
  * (LIC-2 to LIC-6, LIC-10) and the channel picker it shares with the license and tier forms.
  */
 
@@ -14,8 +15,16 @@ import {
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { resetConsole } from "./consoleHarness.js";
-import { API, axe, bootLicense, failing, writes } from "./licenseFixture.js";
+import {
+  API,
+  axe,
+  bootLicense,
+  failing,
+  LICENSES,
+  writes,
+} from "./licenseFixture.js";
 import { endOfLocalDay } from "../src/lib/format.js";
+import { lastAnnouncement } from "../src/ui/LiveRegion.js";
 
 beforeEach(resetConsole);
 afterEach(cleanup);
@@ -161,6 +170,219 @@ describe("Licenses list", () => {
     );
   });
 
+  const BLOCKED = {
+    allowed: false,
+    reasons: [
+      {
+        code: "issued_active",
+        message:
+          "It is active and was issued by the developer. Disable it first.",
+      },
+    ],
+  };
+  const OK = { allowed: true, reasons: [] };
+  const withVerdicts = () => ({
+    [`${API}/license/licenses`]: {
+      licenses: LICENSES.map((l) => ({
+        ...l,
+        ...(l.status === "disabled" ? { origin: "oidc" as const } : {}),
+        deletion: l.status === "disabled" || l.id === "lic_2" ? OK : BLOCKED,
+      })),
+    },
+  });
+
+  it("bulk-deletes the deletable selection after typing the count, listing what it skips", async () => {
+    const log = bootLicense("#/p/djdl/license/licenses", {
+      routes: {
+        ...withVerdicts(),
+        [`POST ${API}/license/deletions`]: {
+          ok: true,
+          deleted: [{ id: "lic_4", devices: 1 }],
+          refused: [],
+          notFound: [],
+        },
+      },
+    });
+    const t = await table();
+    await within(t).findByText("Ada Lovelace");
+    await userEvent.click(within(row(t, "Ada Lovelace")).getByRole("checkbox"));
+    await userEvent.click(
+      within(row(t, "Chargeback Ltd")).getByRole("checkbox"),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Delete…" }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: /Delete 1 license\?/,
+    });
+    expect(
+      within(dialog).getByText(/1 selected license is skipped/),
+    ).toBeTruthy();
+    expect(within(dialog).getByText(/Disable it first/)).toBeTruthy();
+    expect(
+      within(dialog).getByText(
+        /disabled sign-in license: if a holder signs in again/,
+      ),
+    ).toBeTruthy();
+    await userEvent.type(
+      within(dialog).getByRole("textbox"),
+      "delete 1 license",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete 1 license" }),
+    );
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        {
+          path: `${API}/license/deletions`,
+          method: "POST",
+          body: { ids: ["lic_4"], confirm: "delete 1 license" },
+        },
+      ]),
+    );
+  });
+
+  it("keeps bulk Delete unavailable, with the reason, when nothing selected can be deleted", async () => {
+    bootLicense("#/p/djdl/license/licenses", { routes: withVerdicts() });
+    const t = await table();
+    await within(t).findByText("Ada Lovelace");
+    await userEvent.click(within(row(t, "Ada Lovelace")).getByRole("checkbox"));
+    const del = screen.getByRole("button", { name: "Delete…" });
+    expect(del.getAttribute("aria-disabled")).toBe("true");
+    expect(screen.getAllByText(/Disable it first/).length).toBeGreaterThan(0);
+    await userEvent.click(del);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  const candidate = (id: string, over: Record<string, unknown> = {}) => ({
+    id,
+    name: id,
+    email: "",
+    status: "active",
+    tier: "standard",
+    accountSubject: null,
+    deviceCount: 1,
+    lastSeen: null,
+    reason: "duplicate",
+    keeps: "lic_paid",
+    deletion: OK,
+    ...over,
+  });
+  const NONE_FAILED = { ok: true, deleted: [], refused: [], notFound: [] };
+
+  async function openCleanup() {
+    await table();
+    const trigger = screen.queryByRole("button", {
+      name: "Clean up duplicates…",
+    });
+    if (trigger) await userEvent.click(trigger);
+    else {
+      await userEvent.click(
+        screen.getAllByRole("button", { name: "More actions" })[0]!,
+      );
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Clean up duplicates…" }),
+      );
+    }
+    return screen.findByRole("alertdialog", {
+      name: "Clean up duplicate licenses",
+    });
+  }
+
+  it("cleans up duplicates: lists them, warns about reissue, and deletes the allowed ones after typing the count", async () => {
+    const log = bootLicense("#/p/djdl/license/licenses", {
+      routes: {
+        [`${API}/license/deletions/candidates`]: {
+          candidates: [
+            candidate("lic_dup", {
+              name: "Storytime sign-in",
+              status: "disabled",
+              accountSubject: "ps_aaaaaaaaaaaaaaaaaaaaaa",
+            }),
+            candidate("lic_dup2"),
+            candidate("lic_steam", {
+              name: "Bought on Steam",
+              keeps: "lic_x",
+              deletion: {
+                allowed: false,
+                reasons: [
+                  {
+                    code: "store_purchases",
+                    message: "1 store purchase is recorded against it.",
+                  },
+                ],
+              },
+            }),
+          ],
+        },
+        [`POST ${API}/license/deletions`]: {
+          ...NONE_FAILED,
+          deleted: [
+            { id: "lic_dup", devices: 1 },
+            { id: "lic_dup2", devices: 1 },
+          ],
+        },
+      },
+    });
+    const dialog = await openCleanup();
+    expect(
+      await within(dialog).findAllByText(/account keeps lic_paid/),
+    ).toHaveLength(2);
+    expect(within(dialog).getByText(/1 license can't be deleted/)).toBeTruthy();
+    expect(within(dialog).getByText(/store purchase is recorded/)).toBeTruthy();
+    expect(
+      within(dialog).getByText(/signs in again, they get a new license/),
+    ).toBeTruthy();
+    // L3: nothing is sent until the count is typed.
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete 2 licenses" }),
+    );
+    expect(writes(log)).toEqual([]);
+    await userEvent.type(
+      within(dialog).getByRole("textbox"),
+      "delete 2 licenses",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete 2 licenses" }),
+    );
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        {
+          path: `${API}/license/deletions`,
+          method: "POST",
+          body: { ids: ["lic_dup", "lic_dup2"], confirm: "delete 2 licenses" },
+        },
+      ]),
+    );
+  });
+
+  it("sends more than 100 deletions in chunks the Worker accepts, each with its own count", async () => {
+    const ids = Array.from({ length: 101 }, (_, i) => `lic_c${i}`);
+    const log = bootLicense("#/p/djdl/license/licenses", {
+      routes: {
+        [`${API}/license/deletions/candidates`]: {
+          candidates: ids.map((id) => candidate(id)),
+        },
+        [`POST ${API}/license/deletions`]: NONE_FAILED,
+      },
+    });
+    const dialog = await openCleanup();
+    await within(dialog).findAllByText(/account keeps lic_paid/);
+    fireEvent.change(within(dialog).getByRole("textbox"), {
+      target: { value: "delete 101 licenses" },
+    });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete 101 licenses" }),
+    );
+    await waitFor(() => expect(writes(log)).toHaveLength(2));
+    const bodies = writes(log).map(
+      (w) => w.body as { ids: string[]; confirm: string },
+    );
+    expect(bodies.map((b) => b.confirm)).toEqual([
+      "delete 100 licenses",
+      "delete 1 license",
+    ]);
+    expect(bodies.flatMap((b) => b.ids)).toEqual(ids);
+  });
+
   it("passes axe", async () => {
     bootLicense("#/p/djdl/license/licenses");
     const t = await table();
@@ -189,7 +411,9 @@ describe("Create license", () => {
       "Grace Hopper",
     );
     await userEvent.type(within(dialog).getByLabelText(/^Email/), "grace@x.io");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Continue to terms" }),
+    );
     await within(dialog).findByText("Effective policy");
   }
 
@@ -200,18 +424,63 @@ describe("Create license", () => {
 
   it("shows every holder error on Next, so none is unreachable (LIC-10)", async () => {
     const { log, dialog } = await open();
-    await userEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Continue to terms" }),
+    );
     expect(
       await within(dialog).findByText("Enter the holder's name."),
     ).toBeTruthy();
     expect(within(dialog).getByText("Enter the holder's email.")).toBeTruthy();
     await userEvent.type(within(dialog).getByLabelText(/^Name/), "Grace");
     await userEvent.type(within(dialog).getByLabelText(/^Email/), "bad-email");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Continue to terms" }),
+    );
     expect(
       await within(dialog).findByText("Enter a valid email address."),
     ).toBeTruthy();
     expect(writes(log)).toEqual([]);
+  });
+
+  it("moves focus to each step, announces it, and asks before Escape drops the draft (C-17)", async () => {
+    const { dialog } = await open();
+    expect(within(dialog).getByText("Step 1 of 2 for you")).toBeTruthy();
+    await userEvent.type(
+      within(dialog).getByLabelText(/^Name/),
+      "Grace Hopper",
+    );
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect((await within(dialog).findByRole("alert")).textContent).toContain(
+      "Discard your changes?",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Keep editing" }),
+    );
+    expect(within(dialog).getByLabelText(/^Name/)).toHaveProperty(
+      "value",
+      "Grace Hopper",
+    );
+    await userEvent.type(within(dialog).getByLabelText(/^Email/), "grace@x.io");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Continue to terms" }),
+    );
+    const heading = await within(dialog).findByRole("heading", {
+      name: "Set the terms",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(heading));
+    expect(lastAnnouncement()).toBe("Step 2 of 2 for you: Set the terms");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create license" }),
+    );
+    await within(dialog).findByText("PK-NEWKEY-ONESHOT");
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe("License created"),
+    );
+    expect(lastAnnouncement()).toBe("License created for Grace Hopper.");
+    // One "Shown once." line, from the panel.
+    expect(
+      within(dialog).getAllByText(/shown once|shown only once/i),
+    ).toHaveLength(1);
   });
 
   it("creates with every term and profiles in order, and shows the key once (LIC-2, LIC-3, LIC-5)", async () => {
@@ -262,7 +531,7 @@ describe("Create license", () => {
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Keep it open" }),
     );
-    await userEvent.click(within(dialog).getByLabelText(/I've stored this/));
+    await userEvent.click(within(dialog).getByLabelText(/I've stored it/));
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Open license" }),
     );
@@ -280,7 +549,7 @@ describe("Create license", () => {
       name: "Effective policy",
     });
     expect(within(policy).getByText("Device limit")).toBeTruthy();
-    expect(within(policy).getAllByText(/\(tier “Edu”\)/).length).toBe(1);
+    expect(within(policy).getAllByText(/\(from Edu\)/).length).toBe(1);
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Create license" }),
     );
@@ -379,7 +648,9 @@ describe("license channel picker", () => {
     });
     await userEvent.type(within(dialog).getByLabelText(/^Name/), "G");
     await userEvent.type(within(dialog).getByLabelText(/^Email/), "g@x.io");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Next" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Continue to terms" }),
+    );
     // The field's group wraps the picker's own group; both carry the label.
     await within(dialog).findAllByRole("group", { name: "Release channels" });
     return within(dialog)

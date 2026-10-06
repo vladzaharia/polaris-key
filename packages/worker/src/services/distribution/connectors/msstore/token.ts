@@ -40,11 +40,14 @@ import type { Db, Env } from "../../../../core/platform.js";
 import {
   openOutletCredential,
   outletCredentialVersion,
+  type TransientOutletCredential,
 } from "../../../../core/outletCredentials.js";
 import {
+  oauthErrorCode,
   outletTokenSlot,
   outletTokenSlotHash,
   readSealedToken,
+  TokenExchangeError,
   writeSealedToken,
   type FetchImpl,
 } from "../../../../core/outletTokens.js";
@@ -188,8 +191,14 @@ async function entraExchange(
     }).toString(),
   });
   if (!res.ok || isRedirect(res)) {
-    await res.body?.cancel();
-    throw new Error(`entra token exchange failed: ${res.status}`);
+    // The error body's `error` token and first AADSTS number only (UX-69's live check says why).
+    const code = isRedirect(res) ? null : await oauthErrorCode(res);
+    if (isRedirect(res)) await res.body?.cancel();
+    throw new TokenExchangeError(
+      `entra token exchange failed: ${res.status}`,
+      res.status,
+      code,
+    );
   }
   let body: { access_token?: unknown; expires_in?: unknown };
   try {
@@ -274,4 +283,16 @@ export async function platformMsStoreSellerId(
   return typeof seller === "string" && /^[A-Za-z0-9-]{1,64}$/.test(seller)
     ? seller
     : null;
+}
+
+/**
+ * The Store API token for an UNSAVED Partner Center app (UX-69's live check): the same
+ * client-credentials exchange, on the same fixed host, never cached. THROWS a
+ * `TokenExchangeError` (status, `error` token, AADSTS number) when Entra refuses.
+ */
+export async function transientMsStoreToken(
+  cred: TransientOutletCredential<"ms-partner-center">,
+  fetchImpl: FetchImpl,
+): Promise<string> {
+  return (await entraExchange(cred.reveal(), fetchImpl)).token;
 }

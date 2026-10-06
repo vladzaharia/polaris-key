@@ -20,6 +20,8 @@
 // carried over: a compatibility alias for a path nobody can still be calling is a second code
 // path for free.
 
+import { normalizeDeviceLabel } from "@polaris-key/client-core";
+import { createSignInRequest } from "./passthrough/request.js";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import {
   ALLOWED_ID_TOKEN_ALGS,
@@ -61,16 +63,20 @@ import {
 } from "../../core/rateLimit.js";
 import {
   appendAudit,
+  auditStatement,
   claimEnrolledLicense,
   getLicense,
   countActiveDevices,
   getLicenseBySub,
   getTier,
   insertLicense,
-  moveDevices,
   seatActiveSince,
   type LicenseRow,
 } from "../../core/data.js";
+import {
+  mergeLicenseInto,
+  type LicenseMerge,
+} from "../../core/licenseMerge.js";
 import { allowsOidcDefault } from "../../core/fingerprint.js";
 import {
   authorizeDevice,
@@ -80,6 +86,21 @@ import {
 } from "../../core/authz.js";
 import { licenseUsable, validateDeviceToken } from "../../core/devices.js";
 import { createBrowserSession } from "./browserSession.js";
+import type { ServiceHooks } from "../../core/hooks.js";
+import {
+  binderClearCookie,
+  binderSetCookie,
+  chooserBody,
+  choiceAccountStillLinked,
+  legacyChoiceAccount,
+  legacyLicenseChoices,
+  readBinder,
+  replaceConfirmBody,
+  type ChoiceNotice,
+  type LegacyChoiceRow,
+  type LegacyChoiceView,
+} from "./licenseChoice.js";
+import { freeAccountDevice } from "./portal/freeDevice.js";
 import {
   artefactRef,
   consumeArtefact,
@@ -159,6 +180,28 @@ interface FlowRecord {
   /** Stamped the first time `/device/poll` answered `confirm`, i.e. the device was shown the
    *  signed-in identity. An attach decision is honoured only after this (P1-07). */
   identityShownAt?: number;
+  /** I-26: set on a flow of a `provider: platform` product, the only kind the licence chooser
+   *  can apply to. Such a flow gets a browser binder where a browser joins it. */
+  binderEligible?: boolean;
+  /** I-26: the hash of the `__Host-pk_lcb` cookie of the browser that started (`/auth/start`)
+   *  or confirmed (the device page's POST) the flow. The chooser answers only that browser. */
+  binder?: string;
+  /** The label the device-code client sent (`deviceName`), for the chooser and its audit row. */
+  deviceName?: string;
+  /** I-26: the chooser is open. Nothing completes, and the poll answers `pending`, until the
+   *  person's choice is recorded. */
+  choiceOpen?: boolean;
+  /** I-26: the account the chooser lists licences of. Server-side only; never on a page. */
+  choiceAccount?: string;
+  /** I-26: a browser flow's verified identity, kept for the activation a choice of the
+   *  identity's own licence (or a new one) runs. Device-code flows keep theirs in `identity`. */
+  choiceIdentity?: OidcIdentity;
+  /** I-26: the hash of the single-use token the current chooser page carries. */
+  choiceToken?: string;
+  /** I-26: the Replace confirmation pending on the chooser (a licence and one of its devices). */
+  choiceReplace?: { licenseId: string; deviceId: string };
+  /** I-26: a one-line notice the next chooser render shows, then drops. */
+  choiceNotice?: ChoiceNotice;
 }
 
 interface DeviceFlowRecord {
@@ -405,7 +448,7 @@ const USER_CODE_ATTEMPTS = 5;
 
 /** A fresh user code, normalised (no separator). Rejection sampling keeps it unbiased:
  *  240 is the largest multiple of 20 that fits in a byte. */
-function generateUserCode(): string {
+export function generateUserCode(): string {
   let out = "";
   while (out.length < USER_CODE_LENGTH) {
     for (const b of randomBytes(USER_CODE_LENGTH * 2)) {
@@ -418,7 +461,7 @@ function generateUserCode(): string {
 }
 
 /** `WDJBMJHT` → `WDJB-MJHT`, the display (and `userCode` wire) form. */
-function formatUserCode(normalised: string): string {
+export function formatUserCode(normalised: string): string {
   return `${normalised.slice(0, 4)}-${normalised.slice(4)}`;
 }
 
@@ -562,7 +605,95 @@ export async function applyProvisioning(
   payload: ManagedPayload,
   now: number,
 ): Promise<void> {
-  const hooks = await getProvisioning(db, product);
+  applyProvisioningHooks(
+    await getProvisioning(db, product),
+    identity,
+    payload,
+    now,
+  );
+}
+
+/** The override keys a product's provisioning hooks DECLARE, whether or not the identity's
+ *  claims enable them right now: every `entitlement_key` and `secret_key` a hook row names. A
+ *  sign-in on an existing licence owns exactly these keys and nothing else (LX-02, S-19 §7.5):
+ *  it rewrites them, removes one whose claim disappeared (revocation on claim loss), and leaves
+ *  every other override key, an operator's included, alone. */
+export interface ProvisioningDeclaredKeys {
+  entitlements: Set<string>;
+  secrets: Set<string>;
+}
+
+function provisioningDeclaredKeys(
+  hooks: readonly ProvisioningRow[],
+): ProvisioningDeclaredKeys {
+  const declared: ProvisioningDeclaredKeys = {
+    entitlements: new Set(),
+    secrets: new Set(),
+  };
+  for (const h of hooks) {
+    if (h.entitlement_key) declared.entitlements.add(h.entitlement_key);
+    if (h.secret_key) declared.secrets.add(h.secret_key);
+  }
+  return declared;
+}
+
+/**
+ * The surgical provisioning rewrite of an existing licence's `overrides_json` (LX-02, S-19 §4.3
+ * G7, §7.5 Phase A). Pure. `current` is the stored column; `provisioned` is the identity's hooks
+ * applied to an empty payload; `declared` is every key those hooks name. Each declared
+ * entitlement and secret key is removed from `current` and then set again only when
+ * `provisioned` carries it, so a key whose claim disappeared is gone (revocation on claim loss
+ * still works) and every undeclared key (an operator's override of any kind, all of `config`,
+ * any other top-level member) is kept as stored, sealed secret envelopes included.
+ *
+ * A column that does not parse as a JSON object is treated as empty, which is what the previous
+ * whole-column rewrite did to it. LX-08 moves the provisioned entitlement keys to `oidc` grants;
+ * secrets stay here until U-03.
+ */
+export function mergeProvisionedOverrides(
+  current: string | null,
+  provisioned: ManagedPayload,
+  declared: ProvisioningDeclaredKeys,
+): string {
+  const isObject = (v: unknown): v is Record<string, unknown> =>
+    v !== null && typeof v === "object" && !Array.isArray(v);
+  let parsed: Record<string, unknown> = {};
+  if (current) {
+    try {
+      const p: unknown = JSON.parse(current);
+      if (isObject(p)) parsed = p;
+    } catch {
+      // Unparseable: treated as empty (see above).
+    }
+  }
+  const section = (
+    name: "entitlements" | "secrets",
+    keys: Set<string>,
+  ): Record<string, ManagedEntry> => {
+    const raw = parsed[name];
+    const out: Record<string, ManagedEntry> = isObject(raw)
+      ? { ...(raw as Record<string, ManagedEntry>) }
+      : {};
+    for (const k of keys) delete out[k];
+    for (const [k, v] of Object.entries(provisioned[name])) {
+      if (keys.has(k)) out[k] = v;
+    }
+    return out;
+  };
+  return JSON.stringify({
+    ...parsed,
+    config: isObject(parsed.config) ? parsed.config : {},
+    secrets: section("secrets", declared.secrets),
+    entitlements: section("entitlements", declared.entitlements),
+  });
+}
+
+function applyProvisioningHooks(
+  hooks: readonly ProvisioningRow[],
+  identity: OidcIdentity,
+  payload: ManagedPayload,
+  now: number,
+): void {
   for (const h of hooks) {
     const claimVal = identity.claims[h.claim];
     if (!claimEnables(claimVal)) continue;
@@ -715,28 +846,80 @@ async function provisionedOverrides(
   return overrides;
 }
 
+/** The identity's provisioning as a sign-in on an EXISTING licence applies it (LX-02): the hooks
+ *  applied to an empty payload, and every key those hooks declare, from one read of the hooks.
+ *  Read-only; `mergeProvisionedOverrides` turns the pair into the column the update writes. */
+async function signInProvisioning(
+  db: Db,
+  product: Pick<ProductPublic, "slug">,
+  identity: OidcIdentity,
+  now: number,
+): Promise<{
+  provisioned: ManagedPayload;
+  declared: ProvisioningDeclaredKeys;
+}> {
+  const hooks = await getProvisioning(db, product.slug);
+  const provisioned: ManagedPayload = {
+    config: {},
+    secrets: {},
+    entitlements: {},
+  };
+  applyProvisioningHooks(hooks, identity, provisioned, now);
+  return { provisioned, declared: provisioningDeclaredKeys(hooks) };
+}
+
 /** The device limit `row` will carry once `activateFromIdentity` has activated `identity` onto
- *  it. A claim (`claimEnrolledLicense`) and the existing-licence update both rewrite `tier_id`,
- *  `expires_at` and `overrides_json` to the identity's mapped tier and provisioned overrides,
- *  so the limit the row holds NOW (an enroll tier, a stale tier from an earlier sign-in, an
- *  admin `deviceLimit` override) is not the one it will have after the attach. Read-only: the
- *  P1-07 attach measures its seat bound with this (R1-07). */
+ *  it, so the limit the row holds NOW is not mistaken for the one it will have after the attach.
+ *  Read-only: the P1-07 attach measures its seat bound with this (R1-07).
+ *  - `claim` (`claimEnrolledLicense`): the anonymous row is rewritten onto the identity's mapped
+ *    tier, its expiry and the provisioned overrides (an enroll tier and anything stored on the
+ *    row are replaced).
+ *  - `signin` (an existing licence of the identity, the migrate destination): since LX-02 the
+ *    update keeps the row's own `tier_id` and `expires_at` and rewrites only the provisioning's
+ *    declared override keys, so the limit is the stored tier plus the surgically merged
+ *    overrides (an operator `deviceLimit` override survives and counts). */
 async function postActivationDeviceLimit(
   db: Db,
   product: Product,
   identity: OidcIdentity,
   row: LicenseRow,
-  tier: { tierId: string | null; expiresAt: number | null },
+  arm:
+    | {
+        kind: "claim";
+        tier: { tierId: string | null; expiresAt: number | null };
+      }
+    | { kind: "signin" },
   now: number,
 ): Promise<number> {
+  if (arm.kind === "signin") {
+    const { provisioned, declared } = await signInProvisioning(
+      db,
+      product,
+      identity,
+      now,
+    );
+    return licenseDeviceLimit(
+      db,
+      product,
+      {
+        ...row,
+        overrides_json: mergeProvisionedOverrides(
+          row.overrides_json,
+          provisioned,
+          declared,
+        ),
+      },
+      now,
+    );
+  }
   const overrides = await provisionedOverrides(db, product, identity, now);
   return licenseDeviceLimit(
     db,
     product,
     {
       ...row,
-      tier_id: tier.tierId,
-      expires_at: tier.expiresAt,
+      tier_id: arm.tier.tierId,
+      expires_at: arm.tier.expiresAt,
       overrides_json: JSON.stringify(overrides),
     },
     now,
@@ -772,6 +955,61 @@ export async function previewIdentityIssue(
   };
 }
 
+/** Max compare-and-set rounds `updateLicenseOnSignIn` makes before giving up. */
+const SIGNIN_UPDATE_ATTEMPTS = 3;
+
+/**
+ * The sign-in write on an identity's EXISTING licence (LX-02, S-19 §4.3 G7, §7.5 Phase A,
+ * decision 12): `name`, `email` and `groups_json` follow the provider; `tier_id` and
+ * `expires_at` are NOT touched (a time-limited tier used to renew on every sign-in: endless
+ * trials; the tier is changed by an operator, a purchase or, from LX-08, the opt-in
+ * `syncTierOnSignIn`), and `overrides_json` is rewritten only at the provisioning's declared
+ * keys (`mergeProvisionedOverrides`), so operator overrides survive and a declared key whose
+ * claim disappeared is removed.
+ *
+ * The merge reads the column and writes it back, so the write is a compare-and-set on the value
+ * it merged from: an operator edit that lands in between makes it re-read and merge again
+ * instead of being overwritten.
+ */
+async function updateLicenseOnSignIn(
+  db: Db,
+  product: Pick<ProductPublic, "slug">,
+  identity: OidcIdentity,
+  existing: LicenseRow,
+  now: number,
+): Promise<void> {
+  const { provisioned, declared } = await signInProvisioning(
+    db,
+    product,
+    identity,
+    now,
+  );
+  let current = existing.overrides_json;
+  for (let attempt = 0; attempt < SIGNIN_UPDATE_ATTEMPTS; attempt++) {
+    const changed = await db.runChanges(
+      `UPDATE licenses SET name = ?, email = ?, groups_json = ?, overrides_json = ?,
+         modified_by = ?, modified_at = ?
+       WHERE product = ? AND id = ? AND overrides_json IS ?`,
+      identity.name ?? null,
+      identity.email ?? null,
+      JSON.stringify(identity.groups),
+      mergeProvisionedOverrides(current, provisioned, declared),
+      "oidc",
+      now,
+      product.slug,
+      existing.id,
+      current,
+    );
+    if (changed > 0) return;
+    const reread = await getLicense(db, product.slug, existing.id);
+    if (!reread) throw new Error("license not found");
+    current = reread.overrides_json;
+  }
+  throw new Error(
+    "license overrides changed concurrently; sign-in not applied",
+  );
+}
+
 /** Find or mint a license for an identity. Returns the licenseId, or an error if the
  *  identity's groups don't grant entitlement. Idempotent on the OIDC subject. */
 export async function activateFromIdentity(
@@ -787,7 +1025,14 @@ export async function activateFromIdentity(
    *  (P1-06). The one HTTP route that does is `/device/poll`, and only on the device-code
    *  holder's explicit opt-in after the player accepted the signed-in identity on the device,
    *  for the licence the flow's own device holds a token on (P1-07). */
-  opts: { enrolledLicenseId?: string | null } = {},
+  opts: {
+    enrolledLicenseId?: string | null;
+    /** LX-03: Core's licence-merge collector (`ServiceContext.licenseMerge`). The migrate arm
+     *  needs it to carry the enrolled licence's store grants, purchases and binding to the
+     *  identity's licence; without it the migrate is refused (`license-merge-unavailable`)
+     *  rather than strand them on a disabled row. */
+    licenseMerge?: LicenseMerge;
+  } = {},
 ): Promise<
   { licenseId: string; merged?: "claimed" | "migrated" } | { error: string }
 > {
@@ -852,51 +1097,66 @@ export async function activateFromIdentity(
   // Case 2 — a claimable enrolled license AND an existing identity license: migrate the
   // devices onto the identity's license and retire the enrolled row, so the user keeps their
   // machines but ends up on the license that already holds their entitlements.
+  //
+  // LX-03 (notes/S-19 §4.3 G6): one batch (`mergeLicenseInto`) moves the devices SEAT-CHECKED
+  // against the limit the identity's license carries after this activation rewrites its tier and
+  // overrides (below), carries what every service holds for the enrolled license (its store
+  // grants and purchases; its purchase binding stays resolvable as an alias of the identity's
+  // license), retires the enrolled row and writes the audit row — or writes none of it.
   if (claimable && existing && licenseUsable(existing, now)) {
-    await moveDevices(db, product.slug, claimable.id, existing.id);
-    // R3-05: `enroll_hwid` is deliberately NOT cleared. The retired row keeps occupying
-    // `idx_licenses_enroll_hwid`, which is the only guard on "one free license per machine";
-    // clearing it let the same machine enrol again immediately and repeat the merge with a
-    // second identity, without limit.
-    await db.run(
-      `UPDATE licenses SET status = 'disabled', modified_by = 'oidc',
-         modified_at = ? WHERE product = ? AND id = ?`,
+    if (!opts.licenseMerge) return { error: "license-merge-unavailable" };
+    const limit = await licenseDeviceLimit(
+      db,
+      product,
+      {
+        ...existing,
+        tier_id: tierId,
+        expires_at: expiresAt,
+        overrides_json: JSON.stringify(overrides),
+      },
       now,
-      product.slug,
-      claimable.id,
     );
-    await appendAudit(db, {
-      product: product.slug,
-      id: randomId("aud"),
-      at: now,
-      actor_sub: identity.sub,
-      actor_name: identity.name ?? null,
-      actor_email: identity.email ?? null,
-      action: "license.merge",
-      target_kind: "license",
-      target_id: existing.id,
-      parent_id: claimable.id,
-      summary: `Migrated devices from auto-issued license ${claimable.id}`,
-    });
+    const merged = await mergeLicenseInto(
+      db,
+      opts.licenseMerge,
+      {
+        product: product.slug,
+        fromLicenseId: claimable.id,
+        toLicenseId: existing.id,
+        now,
+      },
+      limit,
+      [
+        // R3-05: `enroll_hwid` is deliberately NOT cleared. The retired row keeps occupying
+        // `idx_licenses_enroll_hwid`, which is the only guard on "one free license per machine";
+        // clearing it let the same machine enrol again immediately and repeat the merge with a
+        // second identity, without limit.
+        {
+          sql: `UPDATE licenses SET status = 'disabled', modified_by = 'oidc',
+                  modified_at = ? WHERE product = ? AND id = ?`,
+          params: [now, product.slug, claimable.id],
+        },
+        auditStatement({
+          product: product.slug,
+          id: randomId("aud"),
+          at: now,
+          actor_sub: identity.sub,
+          actor_name: identity.name ?? null,
+          actor_email: identity.email ?? null,
+          action: "license.merge",
+          target_kind: "license",
+          target_id: existing.id,
+          parent_id: claimable.id,
+          summary: `Migrated devices and store purchases from auto-issued license ${claimable.id}`,
+        }),
+      ],
+    );
+    if (merged === "device_limit") return { error: "device-limit" };
   }
 
   if (existing) {
     if (!licenseUsable(existing, now)) return { error: "license-unusable" };
-    await db.run(
-      `UPDATE licenses SET name = ?, email = ?, groups_json = ?, tier_id = ?,
-         expires_at = ?, overrides_json = ?, modified_by = ?, modified_at = ?
-       WHERE product = ? AND id = ?`,
-      identity.name ?? null,
-      identity.email ?? null,
-      JSON.stringify(identity.groups),
-      tierId,
-      expiresAt,
-      JSON.stringify(overrides),
-      "oidc",
-      now,
-      product.slug,
-      existing.id,
-    );
+    await updateLicenseOnSignIn(db, product, identity, existing, now);
     return {
       licenseId: existing.id,
       ...(claimable ? { merged: "migrated" as const } : {}),
@@ -957,12 +1217,19 @@ async function beginAuthFlow(
   returnTo?: string,
   deviceId?: string,
   viaDeviceCode = false,
+  opts: {
+    /** `/auth/start`: the request is the browser that will sign in, so it gets the binder. */
+    browser?: boolean;
+    deviceName?: string;
+  } = {},
 ): Promise<
   | {
       ok: true;
       state: string;
       authorizeUrl: string;
       redirectUri: string;
+      /** I-26: the binder cookie to set on the browser, when one was minted. */
+      binderCookie?: string;
     }
   | Response
 > {
@@ -983,6 +1250,18 @@ async function beginAuthFlow(
   }
   const flow: FlowRecord = { verifier, nonce, redirectUri, returnTo, deviceId };
   if (viaDeviceCode) flow.viaDeviceCode = true;
+  if (opts.deviceName) flow.deviceName = opts.deviceName;
+  // I-26: only a `provider: platform` product can reach the licence chooser, so only its flows
+  // carry a binder; a custom-IdP product's sign-in is byte-identical to before.
+  let binderCookie: string | undefined;
+  if ((oidc.row.provider ?? "platform") === "platform") {
+    flow.binderEligible = true;
+    if (opts.browser) {
+      const binder = b64url(randomBytes(32));
+      flow.binder = await hashKey(binder, env.KEY_HASH_PEPPER);
+      binderCookie = binderSetCookie(binder, FLOW_TTL_SECONDS);
+    }
+  }
   await putArtefact(
     env,
     await flowKey(env, product.slug, state),
@@ -1004,6 +1283,7 @@ async function beginAuthFlow(
     state,
     authorizeUrl: authorize.toString(),
     redirectUri,
+    ...(binderCookie ? { binderCookie } : {}),
   };
 }
 
@@ -1025,12 +1305,20 @@ export async function handleAuthStart(
   const returnTo = safeReturnTo(req, rawReturnTo);
   if (rawReturnTo && !returnTo)
     return errorResponse(400, "bad_request", "return_to not allowed");
-  const flow = await beginAuthFlow(req, env, db, product, returnTo);
+  const flow = await beginAuthFlow(
+    req,
+    env,
+    db,
+    product,
+    returnTo,
+    undefined,
+    false,
+    { browser: true },
+  );
   if (flow instanceof Response) return flow;
-  return new Response(null, {
-    status: 302,
-    headers: { location: flow.authorizeUrl },
-  });
+  const headers = new Headers({ location: flow.authorizeUrl });
+  if (flow.binderCookie) headers.append("set-cookie", flow.binderCookie);
+  return new Response(null, { status: 302, headers });
 }
 
 /** POST /<product>/identity/auth/device/start — begin desktop/CLI sign-in, return a poll handle. */
@@ -1061,10 +1349,9 @@ export async function handleAuthDeviceStart(
     req.headers.get(HEADER_DEVICE) ||
     url.searchParams.get("device");
   if (!deviceId) return errorResponse(400, "bad_request", "missing device id");
-  const deviceName =
-    typeof body.deviceName === "string" && body.deviceName.trim()
-      ? body.deviceName.trim().slice(0, 120)
-      : undefined;
+  // WIRE-CONTRACT-V4 §12.7.1 (PX-W13): display data only, normalised exactly as the SDK
+  // normalised it, never rejected. Absent when nothing is left.
+  const deviceName = normalizeDeviceLabel(body.deviceName) ?? undefined;
   const flow = await beginAuthFlow(
     req,
     env,
@@ -1073,6 +1360,7 @@ export async function handleAuthDeviceStart(
     undefined,
     deviceId,
     true,
+    { deviceName },
   );
   if (flow instanceof Response) return flow;
   const deviceCode = b64url(randomBytes(16));
@@ -1120,6 +1408,8 @@ export async function handleAuthDeviceStart(
     expiresIn: FLOW_TTL_SECONDS,
     interval: DEVICE_POLL_INTERVAL_SECONDS,
     pollUrl: `${new URL(req.url).origin}/${product.slug}/identity/auth/device/poll`,
+    // §12.7.1: the label as stored, so a UI kit shows exactly what the sign-in page will.
+    deviceName: deviceName ?? null,
   });
 }
 
@@ -1166,7 +1456,8 @@ async function confirmDeviceFlow(
   const stateKey = await flowKey(env, product.slug, record.state);
   const deviceKey = await deviceFlowKey(env, product.slug, deviceCode);
   const flowRaw = await getArtefact(env, stateKey);
-  if (!flowRaw || !parseFlowRecord<FlowRecord>(flowRaw))
+  const flowRecord = flowRaw ? parseFlowRecord<FlowRecord>(flowRaw) : null;
+  if (!flowRecord)
     return errorResponse(404, "not_found", "device code expired");
   // Spend the CSRF token atomically (single-use): of two racing POSTs carrying it, one
   // confirms and the other is refused like any stale token.
@@ -1176,8 +1467,16 @@ async function confirmDeviceFlow(
     unset: ["csrf"],
   });
   if (!spent.ok) return errorResponse(403, "forbidden", "confirmation failed");
+  // I-26: the confirming browser is the one the licence chooser will answer (delegated decision
+  // 13). Minted here, never at `/device/start`: that request comes from the device, not from
+  // the browser that signs in.
+  let binder: string | null = null;
+  if (flowRecord.binderEligible) binder = b64url(randomBytes(32));
   const stamped = await updateArtefact(env, stateKey, {
-    set: { confirmedAt: now },
+    set: {
+      confirmedAt: now,
+      ...(binder ? { binder: await hashKey(binder, env.KEY_HASH_PEPPER) } : {}),
+    },
   });
   if (!stamped.ok)
     return errorResponse(404, "not_found", "device code expired");
@@ -1185,16 +1484,16 @@ async function confirmDeviceFlow(
   // photographed QR code, a guess) can re-render the page, re-mint the CSRF token or read the
   // authorize URL after the human has confirmed.
   await deleteUserCodeIndex(env, product.slug, record.userCode);
-  return new Response(null, {
-    status: 303,
-    headers: {
-      location: record.authorizeUrl,
-      // The authorize URL carries `state` and `nonce`: keep it out of the Referer chain and
-      // out of every cache (R8-02).
-      "referrer-policy": "no-referrer",
-      "cache-control": "no-store",
-    },
+  const headers = new Headers({
+    location: record.authorizeUrl,
+    // The authorize URL carries `state` and `nonce`: keep it out of the Referer chain and
+    // out of every cache (R8-02).
+    "referrer-policy": "no-referrer",
+    "cache-control": "no-store",
   });
+  if (binder)
+    headers.append("set-cookie", binderSetCookie(binder, FLOW_TTL_SECONDS));
+  return new Response(null, { status: 303, headers });
 }
 
 /** Refuse a cross-site POST to a device-flow page.
@@ -1255,12 +1554,14 @@ function deviceHtmlHeaders(formTarget?: string): Headers {
  *  the form posts back alongside `csrf` — the user code on `/device`, nothing on `/verify`
  *  (whose action URL already carries the device code). */
 async function renderDeviceConfirmation(
+  req: Request,
   env: Env,
   product: Product,
   deviceCode: string,
   record: DeviceFlowRecord,
   action: string,
   hidden: Record<string, string>,
+  now: number,
 ): Promise<Response> {
   const csrf = b64url(randomBytes(16));
   record.csrf = csrf;
@@ -1273,7 +1574,25 @@ async function renderDeviceConfirmation(
   if (!minted.ok) return errorResponse(404, "not_found", "device code expired");
   // Never the raw device id: with `state` it is half of what `/identity/auth/poll` checks, so
   // the page would hand it to anyone who holds the user code (R8-02, P1-06).
-  const deviceLabel = record.deviceName || "Unnamed device";
+  // §12.7.1: the label is stored normalised at `/device/start`; it is normalised again here so a
+  // record written by an older Worker (sliced, not normalised) renders the same way.
+  const deviceLabel =
+    normalizeDeviceLabel(record.deviceName) ?? "Unnamed device";
+  // PX-W13 (§12.7.2): the request handle the new sign-in card reads this request through, bound
+  // to this browser. PX-14 turns this page into a 303 to `/signin?request=<handle>`; until then
+  // the handle rides on the form, and the page keeps rendering the stored label itself.
+  const signInRequest = await createSignInRequest(
+    env,
+    req,
+    {
+      product: product.slug,
+      kind: "device",
+      deviceLabel: normalizeDeviceLabel(record.deviceName),
+      userCode: record.userCode,
+      flowRef: (await deviceFlowKey(env, product.slug, deviceCode)).id,
+    },
+    now,
+  );
   const hiddenInputs = Object.entries(hidden)
     .map(
       ([name, value]) =>
@@ -1282,21 +1601,20 @@ async function renderDeviceConfirmation(
     .join("");
   const html = renderBrandPage({
     title: `Authorize ${product.name}`,
-    surface: "device",
     heading: `Authorize ${product.name}`,
     body:
       `<p>An app is asking to activate this device. Check that the code and device match what the app shows before signing in.</p>` +
       `<dl><dt>Code</dt><dd class="code">${escapeHtml(record.userCode)}</dd>` +
       `<dt>Device</dt><dd>${escapeHtml(deviceLabel)}</dd>` +
       `<dt>Product</dt><dd>${escapeHtml(product.slug)}</dd></dl>` +
-      `<form method="post" action="${escapeHtml(action)}">${hiddenInputs}` +
+      `<form method="post" action="${escapeHtml(action)}" data-request="${escapeHtml(signInRequest.handle)}">${hiddenInputs}` +
       `<input type="hidden" name="csrf" value="${escapeHtml(csrf)}">` +
       `<button class="button" type="submit">Continue to sign in</button></form>`,
   });
-  return new Response(html, {
-    status: 200,
-    headers: deviceHtmlHeaders(record.authorizeUrl),
-  });
+  const headers = deviceHtmlHeaders(record.authorizeUrl);
+  if (signInRequest.setCookie)
+    headers.append("set-cookie", signInRequest.setCookie);
+  return new Response(html, { status: 200, headers });
 }
 
 /** The code-entry form: one text field, posted back to `/device`. `error` renders the single
@@ -1308,11 +1626,10 @@ function renderDeviceEntry(
 ): Response {
   const error =
     status === 404
-      ? `<p class="alert" role="alert">That code is not valid or has expired. Check the code on your device and try again.</p>`
+      ? `<p class="alert" role="alert">That code isn't valid or has expired. Check the code on your device.</p>` // SIGN-IN.md §3.13
       : "";
   const html = renderBrandPage({
     title: `Connect a device to ${product.name}`,
-    surface: "device",
     heading: `Connect a device to ${product.name}`,
     body:
       `<p class="muted">Enter the code shown on your device.</p>${error}` +
@@ -1430,9 +1747,16 @@ export async function handleAuthDeviceEntry(
 
   if (csrf !== undefined)
     return confirmDeviceFlow(req, env, product, deviceCode, record, csrf, now);
-  return renderDeviceConfirmation(env, product, deviceCode, record, action, {
-    user_code: formatUserCode(userCode),
-  });
+  return renderDeviceConfirmation(
+    req,
+    env,
+    product,
+    deviceCode,
+    record,
+    action,
+    { user_code: formatUserCode(userCode) },
+    now,
+  );
 }
 
 /** GET /<product>/identity/auth/device/verify — render the confirmation page.
@@ -1470,12 +1794,14 @@ export async function handleAuthDeviceVerify(
     return confirmDeviceFlow(req, env, product, deviceCode, record, token, now);
   }
   return renderDeviceConfirmation(
+    req,
     env,
     product,
     deviceCode,
     record,
     url.toString(),
     {},
+    now,
   );
 }
 
@@ -1653,6 +1979,23 @@ export async function handleAuthCallback(
   // for the opt-in (an identity with no licence yet takes over the device's anonymous row in
   // place, instead of being handed a fresh row it would then have to abandon), and it keeps the
   // decision with the only party that holds the device code.
+  // I-26: on a `provider: platform` product, a person whose Polaris Key account already owns a
+  // usable licence chooses which one this device uses; nothing is minted here. Without the
+  // trigger this returns null and the sign-in continues exactly as before.
+  const chooser = await beginLicenseChoice(
+    req,
+    env,
+    db,
+    product,
+    oidc,
+    state,
+    stateKey,
+    flow,
+    identity,
+    now,
+  );
+  if (chooser) return chooser;
+
   if (flow.viaDeviceCode) {
     if (await identityRefusal(db, product, identity, now)) {
       await deleteArtefact(env, stateKey);
@@ -1668,9 +2011,37 @@ export async function handleAuthCallback(
     await deleteArtefact(env, stateKey);
     return errorResponse(403, "forbidden", "not entitled");
   }
-  flow.licenseId = result.licenseId;
+  return completeBrowserFlow(
+    req,
+    env,
+    db,
+    product,
+    stateKey,
+    flow,
+    result.licenseId,
+    now,
+  );
+}
+
+/**
+ * The end of a browser-redirect flow once its licence is known: a `returnTo` flow gets the
+ * browser session and a redirect back; any other gets `licenseId` recorded for the poll and the
+ * "signed in" page. Shared by the callback and the licence chooser's choice (I-26).
+ */
+async function completeBrowserFlow(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  stateKey: ArtefactRef,
+  flow: FlowRecord,
+  licenseId: string,
+  now: number,
+  extraCookies: string[] = [],
+): Promise<Response> {
+  flow.licenseId = licenseId;
   if (flow.returnTo) {
-    const license = await getLicense(db, product.slug, result.licenseId);
+    const license = await getLicense(db, product.slug, licenseId);
     if (!license) {
       await deleteArtefact(env, stateKey);
       return errorResponse(401, "unauthorized", "license unavailable");
@@ -1692,37 +2063,517 @@ export async function handleAuthCallback(
         session.extra,
       );
     }
+    const headers = new Headers({ location: flow.returnTo });
+    headers.append("set-cookie", session.cookie);
+    for (const c of extraCookies) headers.append("set-cookie", c);
+    // 302 from the callback (a GET), as before; the chooser's POST answers 303.
     return new Response(null, {
-      status: 302,
-      headers: {
-        location: flow.returnTo,
-        "set-cookie": session.cookie,
-      },
+      status: req.method === "POST" ? 303 : 302,
+      headers,
     });
   }
-  await updateArtefact(env, stateKey, { set: { licenseId: flow.licenseId } });
-  return signedInPage();
+  await updateArtefact(env, stateKey, { set: { licenseId } });
+  return signedInPage(extraCookies);
 }
 
 /** The callback's "return to the app" page. */
-function signedInPage(): Response {
+function signedInPage(cookies: string[] = []): Response {
+  // R1-09 — see the device-authorization page above: set the policy at the sink as well as in
+  // the dispatcher backstop.
+  const headers = brandedHtmlSecurityHeaders(
+    new Headers({
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+    }),
+  );
+  for (const c of cookies) headers.append("set-cookie", c);
   return new Response(
     renderBrandPage({
       title: "Signed in",
       heading: "You're signed in",
       body: `<p class="muted">You can close this tab and return to the app.</p>`,
     }),
-    {
-      status: 200,
-      // R1-09 — see the device-authorization page above: set the policy at the sink as well
-      // as in the dispatcher backstop.
-      headers: brandedHtmlSecurityHeaders(
-        new Headers({
-          "content-type": "text/html; charset=utf-8",
-          "cache-control": "no-store",
-        }),
-      ),
+    { status: 200, headers },
+  );
+}
+
+// ── the licence chooser (I-26) ───────────────────────────────────────────────
+//
+// See `licenseChoice.ts` for the rule. The page is rendered only by `GET /identity/auth/choose`
+// and changed only by its `POST` (post/redirect/get), so a reload never resubmits. Neither the
+// page nor its URL names the flow: the browser binder (`__Host-pk_lcb`) finds it through the
+// `oidc-choice` index, and each render carries a fresh single-use token stored (hashed) on the
+// flow record.
+
+/** Flow fields the chooser owns, dropped when the choice is recorded. */
+const CHOICE_FIELDS = [
+  "choiceOpen",
+  "choiceToken",
+  "choiceReplace",
+  "choiceNotice",
+  "choiceAccount",
+  "choiceIdentity",
+];
+
+/** Single-use store address of the chooser index: the binder's (peppered) hash → `state`. */
+function choiceKey(product: string, binderHash: string): ArtefactRef {
+  return artefactRef("oidc-choice", `${product}:${binderHash}`);
+}
+
+function choosePath(req: Request, product: Product): string {
+  return `${new URL(req.url).origin}/${product.slug}/identity/auth/choose`;
+}
+
+/** A branded chooser-family page: no caching, no Referer, optional cookies. */
+function choicePage(
+  status: number,
+  opts: { title: string; heading: string; body: string },
+  cookies: string[] = [],
+): Response {
+  const headers = brandedHtmlSecurityHeaders(
+    new Headers({
+      "content-type": "text/html; charset=utf-8",
+      "referrer-policy": "no-referrer",
+      "cache-control": "no-store",
+    }),
+  );
+  for (const c of cookies) headers.append("set-cookie", c);
+  // No surface label or eyebrow on sign-in pages (SIGN-IN.md §3.13, D-32).
+  return new Response(renderBrandPage(opts), {
+    status,
+    headers,
+  });
+}
+
+/** The one answer for a browser the chooser does not belong to, whatever the reason: no binder,
+ *  a different binder, an expired or finished flow. Generic, and nothing is minted. */
+function startAgainPage(): Response {
+  return choicePage(403, {
+    title: "Start again",
+    heading: "Start again on your device",
+    body: `<p class="muted">This sign-in can't be finished in this browser. Go back to the app and sign in again.</p>`,
+  });
+}
+
+function redirectToChooser(req: Request, product: Product): Response {
+  return new Response(null, {
+    status: 303,
+    headers: {
+      location: choosePath(req, product),
+      "referrer-policy": "no-referrer",
+      "cache-control": "no-store",
     },
+  });
+}
+
+/**
+ * The callback's hand-off to the chooser, or `null` when the trigger does not hold (the sign-in
+ * then continues exactly as before). With the trigger, nothing is minted: the browser must carry
+ * the binder this flow stored, or the flow is dropped and the answer is "Start again"; with it,
+ * the flow is marked open (the poll waits) and the browser is sent to the chooser.
+ */
+async function beginLicenseChoice(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  oidc: ResolvedOidcConfig,
+  state: string,
+  stateKey: ArtefactRef,
+  flow: FlowRecord,
+  identity: OidcIdentity,
+  now: number,
+): Promise<Response | null> {
+  const accountId = await legacyChoiceAccount(
+    db,
+    product.slug,
+    oidc.row.provider,
+    oidc.issuer,
+    identity.sub,
+    now,
+  );
+  if (!accountId) return null;
+  const binder = readBinder(req);
+  const binderHash = binder ? await hashKey(binder, env.KEY_HASH_PEPPER) : null;
+  // Delegated decision 13: never fall back to minting. A forwarded authorize URL (R1-07) lands
+  // in a browser without the binder, and must not bind the victim's licence to anybody's device.
+  if (!flow.binder || !binderHash || binderHash !== flow.binder) {
+    await deleteArtefact(env, stateKey);
+    return startAgainPage();
+  }
+  await putArtefact(
+    env,
+    choiceKey(product.slug, binderHash),
+    state,
+    FLOW_TTL_SECONDS,
+  );
+  const opened = await updateArtefact(env, stateKey, {
+    set: {
+      choiceOpen: true,
+      choiceAccount: accountId,
+      ...(flow.viaDeviceCode ? { identity } : { choiceIdentity: identity }),
+    },
+  });
+  if (!opened.ok) return startAgainPage();
+  return redirectToChooser(req, product);
+}
+
+interface ChooserContext {
+  stateKey: ArtefactRef;
+  indexKey: ArtefactRef;
+  flow: FlowRecord;
+  accountId: string;
+  identity: OidcIdentity;
+  deviceLabel: string;
+}
+
+/** Drop the flow and its index, and answer "Start again": nothing is minted. */
+async function endChooser(env: Env, c: ChooserContext): Promise<Response> {
+  await deleteArtefact(env, c.stateKey);
+  await deleteArtefact(env, c.indexKey);
+  return startAgainPage();
+}
+
+async function chooserView(
+  req: Request,
+  db: Db,
+  product: Product,
+  c: ChooserContext,
+  now: number,
+  hooks: ServiceHooks | undefined,
+): Promise<LegacyChoiceView | null> {
+  // The account may have been disabled, deleted or unlinked since the callback: the chooser then
+  // ends rather than offering that account's licences or its Replace.
+  if (!(await choiceAccountStillLinked(db, c.accountId, c.identity.sub)))
+    return null;
+  const grant = await identityTier(db, product, c.identity, now);
+  return legacyLicenseChoices(db, product, {
+    accountId: c.accountId,
+    sub: c.identity.sub,
+    deviceId: c.flow.deviceId ?? null,
+    grantTierId: "error" in grant ? undefined : grant.tierId,
+    hooks,
+    origin: new URL(req.url).origin,
+    deviceLabel: c.deviceLabel,
+    now,
+  });
+}
+
+/**
+ * `GET`/`POST /<product>/identity/auth/choose`: the licence chooser of a legacy sign-in (I-26).
+ *
+ *   - `GET` renders the chooser (or the Replace confirmation) with a fresh single-use token.
+ *   - `POST` (same origin, the token, the binder) records one step and redirects back, or, on
+ *     **Use this licence** / **Replace and continue**, records the choice and completes the
+ *     flow: the device-code poll then mints on the chosen licence; a `returnTo` flow gets its
+ *     browser session; the identity's own licence, or **Create a new free licence**, runs
+ *     `activateFromIdentity` exactly as the sign-in did before.
+ */
+export async function handleAuthChoose(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  now: number,
+  hooks?: ServiceHooks,
+): Promise<Response> {
+  if (req.method !== "GET" && req.method !== "POST") return methodNotAllowed();
+  const limited = await rateLimited(env, product, now, {
+    bucket: "authChoose",
+    id: clientIp(req),
+    limit: 60,
+    windowSec: 60,
+  });
+  if (limited) return limited;
+  if (req.method === "POST" && !sameOriginPost(req)) return startAgainPage();
+
+  const binder = readBinder(req);
+  if (!binder) return startAgainPage();
+  const binderHash = await hashKey(binder, env.KEY_HASH_PEPPER);
+  const indexKey = choiceKey(product.slug, binderHash);
+  const state = await getArtefact(env, indexKey);
+  if (!state) return startAgainPage();
+  const stateKey = await flowKey(env, product.slug, state);
+  const raw = await getArtefact(env, stateKey);
+  const flow = raw ? parseFlowRecord<FlowRecord>(raw) : null;
+  const identity = flow?.viaDeviceCode ? flow.identity : flow?.choiceIdentity;
+  if (
+    !flow ||
+    !flow.choiceOpen ||
+    !flow.choiceAccount ||
+    flow.binder !== binderHash ||
+    !identity
+  ) {
+    await deleteArtefact(env, indexKey);
+    return startAgainPage();
+  }
+  const c: ChooserContext = {
+    stateKey,
+    indexKey,
+    flow,
+    accountId: flow.choiceAccount,
+    identity,
+    deviceLabel: flow.viaDeviceCode
+      ? flow.deviceName || "Unnamed device"
+      : "This browser",
+  };
+
+  if (req.method === "GET")
+    return renderChooser(req, env, db, product, c, now, hooks);
+
+  const form = new URLSearchParams(await req.text().catch(() => ""));
+  const token = form.get("choice") ?? "";
+  // Spend the page's token (single-use): a second submit of the same page, or a page rendered
+  // before another tab's, goes back to a fresh render and changes nothing.
+  const spent = token
+    ? await updateArtefact(env, stateKey, {
+        expect: {
+          choiceOpen: true,
+          choiceToken: await hashKey(token, env.KEY_HASH_PEPPER),
+        },
+        unset: ["choiceToken"],
+      })
+    : { ok: false };
+  if (!spent.ok) return redirectToChooser(req, product);
+
+  const action = form.get("action") ?? "";
+  const notice = async (n: ChoiceNotice): Promise<Response> => {
+    await updateArtefact(env, stateKey, {
+      set: { choiceNotice: n },
+      unset: ["choiceReplace"],
+    });
+    return redirectToChooser(req, product);
+  };
+
+  if (action === "cancel") {
+    await deleteArtefact(env, stateKey);
+    await deleteArtefact(env, indexKey);
+    return choicePage(
+      200,
+      {
+        title: "Sign-in cancelled",
+        heading: "Sign-in cancelled",
+        body: `<p class="muted">Nothing was changed. You can close this tab.</p>`,
+      },
+      [binderClearCookie()],
+    );
+  }
+  if (action === "back") {
+    await updateArtefact(env, stateKey, { unset: ["choiceReplace"] });
+    return redirectToChooser(req, product);
+  }
+
+  const view = await chooserView(req, db, product, c, now, hooks);
+  if (!view) return endChooser(env, c);
+
+  if (action.startsWith("replace:")) {
+    const licenseId = action.slice("replace:".length);
+    const deviceId = form.get(`device:${licenseId}`) ?? "";
+    const row = view.rows.find((r) => r.id === licenseId);
+    if (!row?.replace?.some((d) => d.id === deviceId))
+      return notice({ kind: "unavailable" });
+    await updateArtefact(env, stateKey, {
+      set: { choiceReplace: { licenseId, deviceId } },
+    });
+    return redirectToChooser(req, product);
+  }
+
+  if (action === "replace") {
+    const pending = flow.choiceReplace;
+    if (!pending) return redirectToChooser(req, product);
+    const row = view.rows.find((r) => r.id === pending.licenseId);
+    if (!row) return notice({ kind: "unavailable" });
+    if (row.state !== "free") {
+      if (!row.replace?.some((d) => d.id === pending.deviceId))
+        return notice({ kind: "unavailable" });
+      // The portal's Remove, exactly (`freeAccountDevice`): ownership, the shared rate-limit
+      // budget, the audit row and the security email.
+      const freed = await freeAccountDevice(
+        req,
+        env,
+        db,
+        { accountId: c.accountId, email: identity.email ?? null },
+        product.slug,
+        pending.licenseId,
+        pending.deviceId,
+        now,
+        { forLabel: c.deviceLabel },
+      );
+      if (!freed.ok) {
+        return notice(
+          freed.reason === "rate_limited"
+            ? { kind: "rate_limited", retryAfter: freed.retryAfter }
+            : { kind: "unavailable" },
+        );
+      }
+      // Re-read: someone may have taken the freed seat in between (a race). The freed device
+      // stays freed (audited and emailed), and the person chooses again.
+      const after = await chooserView(req, db, product, c, now, hooks);
+      if (!after) return endChooser(env, c);
+      const fresh = after.rows.find((r) => r.id === pending.licenseId);
+      if (fresh?.state !== "free") return notice({ kind: "unavailable" });
+      return completeChoice(req, env, db, product, c, fresh, now);
+    }
+    return completeChoice(req, env, db, product, c, row, now);
+  }
+
+  if (action === "use") {
+    const picked = form.get("license") ?? "";
+    if (picked === "create" && view.create)
+      return completeChoice(req, env, db, product, c, "create", now);
+    const row = view.rows.find((r) => r.id === picked);
+    if (row?.state !== "free") return notice({ kind: "unavailable" });
+    return completeChoice(req, env, db, product, c, row, now);
+  }
+  return redirectToChooser(req, product);
+}
+
+async function renderChooser(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  c: ChooserContext,
+  now: number,
+  hooks: ServiceHooks | undefined,
+): Promise<Response> {
+  const view = await chooserView(req, db, product, c, now, hooks);
+  if (!view) return endChooser(env, c);
+  const token = b64url(randomBytes(24));
+  const minted = await updateArtefact(env, c.stateKey, {
+    expect: { choiceOpen: true },
+    set: { choiceToken: await hashKey(token, env.KEY_HASH_PEPPER) },
+    unset: ["choiceNotice"],
+  });
+  if (!minted.ok) return startAgainPage();
+  const action = choosePath(req, product);
+  const pending = c.flow.choiceReplace;
+  if (pending) {
+    const row = view.rows.find((r) => r.id === pending.licenseId);
+    const device = row?.replace?.find((d) => d.id === pending.deviceId);
+    if (row && device) {
+      return choicePage(200, {
+        title: `Replace ${device.label}?`,
+        heading: `Replace ${device.label}?`, // signin.replace.title
+        body: replaceConfirmBody({
+          action,
+          token,
+          device: device.label,
+          productName: product.name,
+          thisDevice: c.flow.viaDeviceCode ? c.deviceLabel : "this browser",
+          activeNow: device.activeNow,
+        }),
+      });
+    }
+    await updateArtefact(env, c.stateKey, { unset: ["choiceReplace"] });
+  }
+  // No eyebrow (SIGN-IN.md §3.13, D-32): the lede names the product.
+  return choicePage(200, {
+    title: "Choose a license for this device",
+    heading: "Choose a license for this device", // signin.choice.title
+    body: chooserBody({
+      productName: product.name,
+      deviceLabel: c.deviceLabel,
+      action,
+      token,
+      view,
+      notice: c.flow.choiceNotice ?? null,
+      now,
+      namedByDevice: Boolean(c.flow.viaDeviceCode),
+      developerName: await listingDeveloper(hooks),
+    }),
+  });
+}
+
+/** The developer's name from the product's listing (Distribution's hook), or null. */
+async function listingDeveloper(
+  hooks: ServiceHooks | undefined,
+): Promise<string | null> {
+  try {
+    const listing = (await hooks?.delivery()?.listing()) as
+      | Record<string, unknown>
+      | null
+      | undefined;
+    const name = listing?.developerName;
+    return typeof name === "string" && name.trim() ? name.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Record the person's choice and complete the flow (see `handleAuthChoose`). */
+async function completeChoice(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  c: ChooserContext,
+  choice: LegacyChoiceRow | "create",
+  now: number,
+): Promise<Response> {
+  const { flow, identity } = c;
+  // Through the identity's own activation: a new licence, or the identity's own `sub`-keyed one
+  // (the deferred P1-07 activation, attach opt-in included, stays as it is today).
+  const activate = choice === "create" || choice.own;
+  // The audit row is written only once the choice is actually recorded on the flow.
+  const audit = () =>
+    appendAudit(db, {
+      product: product.slug,
+      id: randomId("aud"),
+      at: now,
+      actor_sub: identity.sub,
+      actor_name: identity.name ?? null,
+      actor_email: identity.email ?? null,
+      action: "identity.signin.license_chosen",
+      target_kind: "license",
+      target_id: choice === "create" ? null : choice.id,
+      parent_id: null,
+      summary:
+        choice === "create"
+          ? `Chose a new free license to sign in ${c.deviceLabel}`
+          : `Chose this license to sign in ${c.deviceLabel}`,
+    });
+  await deleteArtefact(env, c.indexKey);
+  const cookies = [binderClearCookie()];
+
+  if (flow.viaDeviceCode) {
+    // The device-code poll completes it: on the chosen licence (`authorizeAndMint`, seat-checked),
+    // or through the deferred activation when `licenseId` stays unset.
+    const done = await updateArtefact(env, c.stateKey, {
+      ...(activate
+        ? {}
+        : { set: { licenseId: (choice as LegacyChoiceRow).id } }),
+      unset: CHOICE_FIELDS,
+    });
+    if (!done.ok) return startAgainPage();
+    await audit();
+    return signedInPage(cookies);
+  }
+
+  let licenseId: string;
+  if (activate) {
+    const result = await activateFromIdentity(db, product, identity, now);
+    if ("error" in result) {
+      await deleteArtefact(env, c.stateKey);
+      return errorResponse(403, "forbidden", "not entitled");
+    }
+    licenseId = result.licenseId;
+  } else {
+    licenseId = (choice as LegacyChoiceRow).id;
+  }
+  const done = await updateArtefact(env, c.stateKey, { unset: CHOICE_FIELDS });
+  if (!done.ok) return startAgainPage();
+  await audit();
+  return completeBrowserFlow(
+    req,
+    env,
+    db,
+    product,
+    c.stateKey,
+    flow,
+    licenseId,
+    now,
+    cookies,
   );
 }
 
@@ -1738,6 +2589,9 @@ interface DevicePollAsk {
   attachLicense: boolean | null;
   /** The device token the poll carried (`Authorization: Bearer`), naming the licence to attach. */
   token: string | null;
+  /** LX-03: Core's licence-merge collector, which an attach that migrates needs
+   *  (`activateFromIdentity`). */
+  licenseMerge?: LicenseMerge;
 }
 
 const NO_ASK: DevicePollAsk = {
@@ -1769,11 +2623,13 @@ function shownIdentity(identity: OidcIdentity): {
  *    row with every authorized device still on it. It is offered only while those devices
  *    (dormant or not) fit the limit the row will carry AFTER the claim rewrites its tier and
  *    overrides to the identity's.
- *  - migrate (the identity has a usable licence): `moveDevices` re-points EVERY device on the
- *    anonymous licence at it without `authorizeDevice`'s seat check. It is offered only while
- *    the moved devices (dormant or not) plus the destination's seat-holding devices fit the
- *    limit the destination will carry AFTER `activateFromIdentity` rewrites its tier and
- *    overrides to the identity's mapped tier and provisioning.
+ *  - migrate (the identity has a usable licence): `planDeviceMove` re-points EVERY authorized
+ *    device on the anonymous licence at it, each taking a seat ordinal there. It is offered only
+ *    while the moved devices (dormant or not) plus the destination's seat-holding devices fit the
+ *    limit the destination will carry AFTER `activateFromIdentity`'s sign-in write, which since
+ *    LX-02 keeps the destination's own tier and rewrites only the provisioning's declared
+ *    override keys. Since LX-03 the move itself re-checks the same bound inside the merge, so
+ *    this offer is no longer the only guard.
  *  Both limits come from `postActivationDeviceLimit`. The attach can still fill the victim's
  *  free seats (see THREAT-MODEL, R1-07).
  *  Like the pre-count in `authorizeDevice`, this is a read, not a claim. Nothing is attachable
@@ -1801,29 +2657,32 @@ async function attachableLicense(
   // presents no fingerprint, so a `strict` tier always refuses it (`fingerprint_required`): an
   // attach there would claim or retire the anonymous licence while the poll answers `error`,
   // and under R1-07 hand the starter's devices the victim's entitlements on a flow the Worker
-  // refuses. Both a claim and a migrate end on the identity's tier (`activateFromIdentity`
-  // rewrites an existing licence's `tier_id` to it), so that is the tier the mint resolves.
+  // refuses. A claim ends on the identity's mapped tier (`claimEnrolledLicense` rewrites the
+  // anonymous row's `tier_id` to it); a migrate ends on the destination's OWN tier, which the
+  // sign-in write no longer changes (LX-02). That is the tier the mint resolves on each arm.
   const tier = await identityTier(db, product, identity, now);
   if ("error" in tier) return null;
-  if ((await tierFingerprintMode(db, product, tier.tierId)) === "strict")
+  const destination = await getLicenseBySub(db, product.slug, identity.sub);
+  const mintTierId = destination ? destination.tier_id : tier.tierId;
+  if ((await tierFingerprintMode(db, product, mintTierId)) === "strict")
     return null;
   // `moving` has NO dormancy floor. A claim keeps every row on the licence and a migrate
-  // (`moveDevices`) re-points every row, dormant ones included, the latter with
-  // `seat_no = NULL`. A dormant device has given up its ordinal (`releaseDormantSeats`), so the
+  // (`planDeviceMove`) re-points every row, dormant ones included (LX-03: each authorized one
+  // takes an ordinal, and the move counts them the same way). A dormant device has given up its
+  // ordinal (`releaseDormantSeats`), so the
   // starter can fill that seat again with a new device; the dormant one then comes back without
   // claiming a seat (`validateDeviceToken` rebuilds its token record from the device row, and
   // nothing on that path calls `claimDeviceSeat`). Counting only recently seen devices would let
   // a starter stockpile dormant devices on its own anonymous licence and land all of them on the
   // victim's.
   const moving = await countActiveDevices(db, product.slug, license.id);
-  const destination = await getLicenseBySub(db, product.slug, identity.sub);
   if (!destination) {
     const limit = await postActivationDeviceLimit(
       db,
       product,
       identity,
       license,
-      tier,
+      { kind: "claim", tier },
       now,
     );
     if (limit <= 0 || moving > limit) return null;
@@ -1836,7 +2695,7 @@ async function attachableLicense(
     product,
     identity,
     destination,
-    tier,
+    { kind: "signin" },
     now,
   );
   // `held` keeps the floor: the destination's own dormant devices have given up their seats
@@ -1877,6 +2736,9 @@ async function pollAuthFlow(
     return json({ status: "error" });
   // Generic error only — never echo an IdP failure reason a poller could enumerate (D8).
   if (flow.error) return json({ status: "error" });
+  // I-26: the person is choosing a licence in the browser. The poll waits, with the same body
+  // it answers before the callback (no wire change).
+  if (flow.choiceOpen) return json({ status: "pending" });
   if (!flow.licenseId && !flow.identity) return json({ status: "pending" });
   // `state` is a non-secret by construction (it rides on the authorize and callback URLs), so
   // it can never be the sole authorization input: the token is minted for the device that
@@ -1930,6 +2792,7 @@ async function pollAuthFlow(
     }
     const result = await activateFromIdentity(db, product, identity, now, {
       enrolledLicenseId,
+      licenseMerge: ask.licenseMerge,
     });
     if ("error" in result) {
       // The callback checked this; it can still change underneath a waiting flow (the
@@ -2015,6 +2878,8 @@ export async function handleAuthDevicePoll(
   db: Db,
   product: Product,
   now: number,
+  /** LX-03: `ServiceContext.licenseMerge`, for an attach that migrates. */
+  licenseMerge?: LicenseMerge,
 ): Promise<Response> {
   if (req.method !== "POST") return methodNotAllowed();
   let body: Record<string, unknown>;
@@ -2087,6 +2952,7 @@ export async function handleAuthDevicePoll(
       attachLicense:
         typeof body.attachLicense === "boolean" ? body.attachLicense : null,
       token: bearer(req),
+      licenseMerge,
     },
   );
   const bodyOut = (await res

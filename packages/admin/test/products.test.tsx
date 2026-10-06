@@ -73,7 +73,7 @@ describe("Products", () => {
     expect(within(acme).getByText("1 needs attention")).toBeTruthy();
     expect(
       within(acme).getByText(
-        "Runs License, Config, Release, Distribution, Update and Identity",
+        "Runs License, Config, Release, Distribution, Update, Identity and Cloud Sync",
       ),
     ).toBeTruthy();
     const djdl = rows().find((r) => r.textContent?.includes("djdl"))!;
@@ -93,6 +93,46 @@ describe("Products", () => {
     expect(within(djdl).getByText("Setup complete").className).toContain(
       "sr-only",
     );
+  });
+
+  it("shows each product's 24 px logo beside its name, or the monogram when it has none", async () => {
+    const url = "https://img.test/acme/a/" + "b".repeat(64);
+    boot("#/products", {
+      extra: {
+        "/manage/api/products": {
+          products: [
+            {
+              ...productRow("djdl", "DJDL", ALL_ON),
+              presentation: { icon: null },
+            },
+            {
+              ...productRow("acme", "Acme", ALL_ON),
+              presentation: {
+                icon: { url, w64: `${url}/64.webp`, w128: `${url}/128.webp` },
+              },
+            },
+          ],
+        },
+      },
+    });
+    await page();
+    await waitFor(() => expect(rows()).toHaveLength(2));
+    const acme = rows().find((r) => r.textContent?.includes("acme"))!;
+    const link = within(acme).getByRole("link", { name: "Acme" });
+    const img = link.querySelector<HTMLImageElement>("img[data-logo=image]")!;
+    expect(img.getAttribute("sizes")).toBe("24px");
+    expect(img.getAttribute("srcset")).toBe(
+      `${url}/64.webp 64w, ${url}/128.webp 128w`,
+    );
+    // Decorative: the link's name is the product's name alone.
+    expect(img.getAttribute("alt")).toBe("");
+    const djdl = rows().find((r) => r.textContent?.includes("djdl"))!;
+    const mono = within(djdl)
+      .getByRole("link", { name: "DJDL" })
+      .querySelector("[data-logo=monogram]")!;
+    expect(mono.textContent).toBe("D");
+    expect(mono.getAttribute("aria-hidden")).toBe("true");
+    expect(mono.className).toContain("size-6");
   });
 
   it("the product name links to its Overview, never a service page (PRD-1)", async () => {
@@ -275,8 +315,27 @@ describe("Products", () => {
     expect(screen.getByRole("alertdialog")).toBe(dialog);
   });
 
-  it("offers Resync from repo only for repository-linked products, behind a caution confirm", async () => {
-    const log = boot("#/products", { extra: registry() });
+  it("offers Resync from repo only for repository-linked products, behind the plan (UX-78)", async () => {
+    const log = boot("#/products", {
+      extra: {
+        ...registry(),
+        // One path answers both: the dry run (`?dryRun=1`) reads `plan`, the resync `updated`.
+        "/manage/api/products/acme/release/resync": {
+          ok: true,
+          dryRun: true,
+          slug: "acme",
+          repository: "acme/acme",
+          commit: "0123456789abcdef",
+          plan: {
+            apply: [{ area: "tiers", id: "pro", summary: "Tier pro added" }],
+            skipClaimed: [],
+            delete: [],
+            conflicts: [],
+          },
+          updated: ["tiers"],
+        },
+      },
+    });
     await page();
     await waitFor(() => expect(rows()).toHaveLength(2));
     await openRowMenu("DJDL");
@@ -290,19 +349,30 @@ describe("Products", () => {
     await userEvent.click(
       await screen.findByRole("menuitem", { name: "Resync from repo…" }),
     );
-    const dialog = await screen.findByRole("alertdialog");
+    const dialog = await screen.findByRole("alertdialog", {
+      name: /Resync Acme from its repository\?/,
+    });
+    expect(await within(dialog).findByText("Tier pro added")).toBeTruthy();
+    const resyncs = () =>
+      log.calls.filter(
+        (c) =>
+          c.method === "POST" &&
+          c.path === "/manage/api/products/acme/release/resync",
+      );
+    expect(resyncs().map((c) => c.query)).toEqual(["dryRun=1"]);
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Resync from repo" }),
     );
     await waitFor(() =>
-      expect(
-        log.calls.some(
-          (c) =>
-            c.method === "POST" &&
-            c.path === "/manage/api/products/acme/release/resync",
-        ),
-      ).toBe(true),
+      expect(resyncs().map((c) => c.query)).toEqual(["dryRun=1", ""]),
     );
+    // The result is a panel on the page, named for the row's product, not a toast.
+    const panel = await screen.findByTestId("resync-result");
+    expect(
+      within(panel).getByText("Resynced Acme from acme/acme"),
+    ).toBeTruthy();
+    expect(within(panel).getByText("Updated: tiers.")).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(panel));
   });
 
   it("passes axe", async () => {

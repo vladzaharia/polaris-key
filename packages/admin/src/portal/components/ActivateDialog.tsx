@@ -1,18 +1,40 @@
 import * as React from "react";
-import { ArrowRight, Check, Info } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check } from "lucide-react";
+import { cn } from "../../lib/cn.js";
 import { Button } from "../../ui/Button.js";
 import { Dialog, DialogBody, DialogFooter } from "../../ui/Dialog.js";
+import { toast } from "../../ui/toast.js";
 import {
   PortalApiError,
   type PortalKeyPreview,
   type PortalLicenseSummary,
 } from "../api.js";
-import { useClaimKey, useLicenses, usePreviewKey } from "../data.js";
+import { browser } from "../browser.js";
+import {
+  useClaimKey,
+  useLicenses,
+  usePreviewKey,
+  useProduct,
+} from "../data.js";
 import { portalErrorCopy } from "../errors.js";
 import { requestHeadingFocus } from "../focus.js";
-import { checkKey, keyProblem, slugOf } from "../model/key.js";
+import {
+  blocksResend,
+  checkKey,
+  claimVerdict,
+  entriesVerdict,
+  formatVerdict,
+  noEntriesCopy,
+  previewVerdict,
+  productLabel,
+  readEntries,
+  slugOf,
+  type KeyVerdict,
+  type KeyVerdictExtras,
+} from "../model/key.js";
 import { formatDay, normalisePlatform, tierLabel } from "../model/library.js";
-import { href, navigate } from "../router.js";
+import { allowedReturn, cardReturn } from "../model/returnUrl.js";
+import { href, navigate, type ActivateNext } from "../router.js";
 import { PLATFORM_ORDER, PlatformGlyphs, type PlatformKey } from "./Glyphs.js";
 import { KeyField } from "./KeyField.js";
 import { ProductArt } from "./ProductArt.js";
@@ -27,11 +49,23 @@ import { ProductIcon } from "./ProductIcon.js";
  * comes back inline in §4.19's words. The preview and the claim share one evaluator on the
  * Worker, so the confirm step never promises an add the claim refuses. A Worker without the
  * preview (404) adds the key directly, as before. Nothing about the key is sent before
- * Continue: the product is named from the key's own prefix.
+ * Continue: the product is named from the key's own prefix, by its presentation name (the
+ * account's own name for it, else the slug as words), never the slug itself.
+ *
+ * Every verdict (format, refusal, the entries notice) is one `KeyVerdict` from `model/key.ts`,
+ * shown inline under the field with its actions (EXPERIENCE.md §0.6 P1 step 4, UX-05).
+ *
+ * **From an app** (§4.18, PX-17): the link's `product=` names who sent the person and why, as a
+ * notice over the field; `next=free-device` (a floating license at its device limit, PX-W8 Q3)
+ * goes straight to the free-device flow after the add; `return=` goes back to the login card
+ * (`/signin?request=…`, plans/I-04.md) at once, or offers **Back to <product>** on Done for a
+ * target the product declares (PX-10's rule). Nothing is followed that `model/returnUrl.ts`
+ * refuses, and none of it ever carries the key.
  */
-type ConfirmPreview = PortalKeyPreview & {
-  product: NonNullable<PortalKeyPreview["product"]>;
-};
+export type ConfirmPreview = PortalKeyPreview &
+  KeyVerdictExtras & {
+    product: NonNullable<PortalKeyPreview["product"]>;
+  };
 
 type Step =
   | { kind: "enter" }
@@ -45,43 +79,136 @@ type Step =
       product?: ConfirmPreview["product"];
     };
 
+/** Why an app's link sent the person here, from what it carries (§4.18). */
+type LinkContext = "entries" | "free-device" | "card";
+
 export function ActivateDialog({
   open,
   prefill,
   fromProduct,
+  next,
+  forDevice,
+  returnTo,
   onOpenChange,
 }: {
   open: boolean;
-  /** A key from `/activate?key=…`, filled in and checked. */
+  /** A key from `/activate#key=…`, filled in and checked. */
   prefill?: string;
   /** The product slug an app sent along (`&product=`). */
   fromProduct?: string;
+  /** `next=free-device`: after the add, the free-device flow for that license. */
+  next?: ActivateNext;
+  /** `for=`: the device the free-device flow frees a seat for. */
+  forDevice?: string;
+  /** `return=`, as the link carried it; validated before it is followed. */
+  returnTo?: string;
   onOpenChange: (open: boolean) => void;
 }): React.ReactElement {
   const [key, setKey] = React.useState(prefill ?? "");
   const [touched, setTouched] = React.useState(Boolean(prefill));
   const [step, setStep] = React.useState<Step>({ kind: "enter" });
-  const [serverError, setServerError] = React.useState<string | null>(null);
+  const [serverVerdict, setServerVerdict] = React.useState<KeyVerdict | null>(
+    null,
+  );
+  /** Names the Worker has told us (the preview), by slug: they win over everything else. */
+  const [names, setNames] = React.useState<Record<string, string>>({});
   const claim = useClaimKey();
   const preview = usePreviewKey();
   const licenses = useLicenses(open);
   const fieldId = React.useId();
+  const noticeId = React.useId();
+  /** Set while the page leaves for the login card, so the busy state holds until it unloads. */
+  const [leaving, setLeaving] = React.useState(false);
+  const toCard = cardReturn(returnTo, window.location.origin);
+  const linkContext: LinkContext | null = !fromProduct
+    ? null
+    : next === "free-device"
+      ? "free-device"
+      : toCard
+        ? "card"
+        : "entries";
 
   const check = checkKey(key);
   const slug = check.kind === "valid" ? check.slug : slugOf(key);
   const nameFor = (s: string): string =>
-    licenses.data?.find((l) => l.product === s)?.productName ?? s;
+    productLabel(
+      s,
+      names[s] ?? licenses.data?.find((l) => l.product === s)?.productName,
+    );
   const owned = (s: string) =>
     licenses.data?.some((l) => l.product === s) ?? false;
-  const problem = touched || check.kind === "notKey" ? keyProblem(check) : null;
+  const problem =
+    touched || check.kind === "notKey" ? formatVerdict(check) : null;
+  const verdict = serverVerdict ?? problem;
+
+  const focusField = (): void => {
+    document.getElementById(fieldId)?.focus();
+  };
+
+  /*
+   * Focus follows the step (FLOWS.md §2 C18, P-5): a new step's heading takes focus once it has
+   * rendered, so a screen reader hears where it is and focus never stays on the dialog itself;
+   * coming back to the key (Back, Change key, a refused claim) puts it on the field. A refusal
+   * (an inline verdict) also puts focus on the field: Continue is disabled until the key
+   * changes, and a disabled button that held focus would drop it to `body`.
+   */
+  const anchorRef = React.useRef<HTMLSpanElement>(null);
+  const lastStep = React.useRef<Step["kind"]>(step.kind);
+  React.useEffect(() => {
+    if (lastStep.current === step.kind) return;
+    lastStep.current = step.kind;
+    const frame = requestAnimationFrame(() => {
+      if (step.kind === "enter") focusField();
+      else focusDialogHeading(anchorRef.current);
+    });
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step.kind]);
+  React.useEffect(() => {
+    if (!serverVerdict || step.kind !== "enter") return;
+    const frame = requestAnimationFrame(focusField);
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverVerdict]);
 
   const reset = (): void => {
     setKey("");
     setTouched(false);
-    setServerError(null);
+    setServerVerdict(null);
     claim.reset();
     preview.reset();
     setStep({ kind: "enter" });
+  };
+
+  /**
+   * The key's license is in the library now (added, or it already was): go where the link said
+   * (§4.18). `next=free-device` opens the free-device flow for that license, carrying `for=` and
+   * `return=` (the flow checks `return=` against the product's declared targets itself);
+   * a `return=` to the login card goes back to it; anything else shows Done.
+   */
+  const finish = (
+    done: Extract<Step, { kind: "done" }>,
+    licenseId: string | undefined = done.license?.id,
+  ): void => {
+    const name =
+      done.product?.name ?? done.license?.productName ?? nameFor(done.slug);
+    if (next === "free-device") {
+      if (!done.already) toast.success(`${name} is in your library`);
+      const params: Record<string, string> = {};
+      if (licenseId) params.license = licenseId;
+      if (forDevice) params.for = forDevice;
+      if (returnTo) params.return = returnTo;
+      requestHeadingFocus(done.slug);
+      onOpenChange(false);
+      navigate(href.focused(done.slug, "free-device", params));
+      return;
+    }
+    if (toCard) {
+      setLeaving(true);
+      browser.go(toCard);
+      return;
+    }
+    setStep(done);
   };
 
   /** Add the key (the claim); refusals go back to the enter step, inline. */
@@ -95,17 +222,17 @@ export function ActivateDialog({
     claim.mutate(key, {
       onSuccess: (res) => {
         const lic = res.license;
-        setStep({
+        finish({
           kind: "done",
           license: lic,
-          slug: slugToAdd,
+          slug: lic?.product ?? slugToAdd,
           already: lic ? before.has(`${lic.product}:${lic.id}`) : false,
           product,
         });
       },
       onError: (err) => {
         setStep({ kind: "enter" });
-        setServerError(claimError(err, product?.name ?? nameFor(slugToAdd)));
+        setServerVerdict(claimError(err, product?.name ?? nameFor(slugToAdd)));
       },
     });
   };
@@ -114,12 +241,20 @@ export function ActivateDialog({
     e.preventDefault();
     if (check.kind !== "valid") {
       setTouched(true);
+      focusField();
       return;
     }
-    setServerError(null);
+    setServerVerdict(null);
     const slugNow = check.slug;
     preview.mutate(key, {
       onSuccess: (p) => {
+        const named = p.product;
+        if (named?.name)
+          setNames((n) => ({
+            ...n,
+            [named.slug]: named.name,
+            [slugNow]: named.name,
+          }));
         if (p.verdict === "addable" && p.product) {
           setStep({
             kind: "confirm",
@@ -127,21 +262,24 @@ export function ActivateDialog({
             slug: slugNow,
           });
         } else if (p.verdict === "already_yours") {
-          setStep({
-            kind: "done",
-            license: null,
-            slug: p.product?.slug ?? slugNow,
-            already: true,
-            product: p.product ?? undefined,
-          });
+          finish(
+            {
+              kind: "done",
+              license: null,
+              slug: p.product?.slug ?? slugNow,
+              already: true,
+              product: p.product ?? undefined,
+            },
+            p.license?.id,
+          );
         } else {
-          setServerError(previewError(p, nameFor(slugNow)));
+          setServerVerdict(previewVerdict(p, nameFor(slugNow)));
         }
       },
       onError: (err) => {
         // A Worker without the preview: add directly, as before G22.
         if (err instanceof PortalApiError && err.status === 404) add(slugNow);
-        else setServerError(claimError(err, nameFor(slugNow)));
+        else setServerVerdict(claimError(err, nameFor(slugNow)));
       },
     });
   };
@@ -175,84 +313,74 @@ export function ActivateDialog({
       description={
         done || confirm
           ? undefined
-          : "Paste a key from a store, a developer or an email. The product joins your library and stays there, even if you lose the key."
+          : "The product stays in your library even if you lose the key."
+      }
+      describedBy={
+        !done && !confirm && fromProduct && linkContext ? noticeId : undefined
       }
       size="md"
     >
+      <span ref={anchorRef} hidden />
       {confirm ? (
         <ConfirmStep
           preview={confirm.preview}
           licenseKey={key}
-          adding={claim.isPending}
+          adding={claim.isPending || leaving}
           onBack={() => setStep({ kind: "enter" })}
           onAdd={() => add(confirm.slug, confirm.preview.product)}
         />
       ) : done ? (
-        <>
-          <DialogBody className="space-y-4">
-            <ProductArt
-              slug={done.slug}
-              name={doneName}
-              tint={null}
-              src={done.product?.headerUrl}
-              variant="banner"
-              className="h-36 rounded-lg"
-            >
-              <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full border border-success-border bg-surface-overlay px-2.5 py-1 text-xs font-bold text-success shadow-elevation-2">
-                <Check aria-hidden className="size-3.5" />
-                In your library
-              </span>
-            </ProductArt>
-            <p className="text-fg">
-              {done.already
-                ? "This key's license was already linked to your account, so nothing changed."
-                : "Download it, see your license and manage devices on its page. You won't need the key again."}
-            </p>
-          </DialogBody>
-          {/* §8: side by side when both fit, primary last (right); otherwise stacked full
-              width, primary last (bottom, nearest the thumb). */}
-          <DialogFooter className="flex-row flex-wrap border-0 sm:flex-row sm:justify-start [&>*]:flex-[1_1_11rem]">
-            <Button
-              variant="outline"
-              size="lg"
-              className="h-11 font-bold"
-              onClick={reset}
-            >
-              Activate another
-            </Button>
-            <Button
-              size="lg"
-              className="h-11 font-bold"
-              iconEnd={<ArrowRight aria-hidden />}
-              onClick={() => openProduct(done.slug)}
-            >
-              Open {doneName}
-            </Button>
-          </DialogFooter>
-        </>
+        <DoneStep
+          slug={done.slug}
+          name={doneName}
+          headerUrl={done.product?.headerUrl}
+          already={done.already}
+          appReturn={toCard ? undefined : returnTo}
+          onAnother={reset}
+          onOpen={() => openProduct(done.slug)}
+        />
       ) : (
         <form onSubmit={submit} noValidate>
           <DialogBody className="space-y-4">
-            {fromProduct ? (
-              <p className="flex gap-2 rounded-lg border border-info-border bg-info-subtle p-3 text-sm text-fg">
-                <Info
-                  aria-hidden
-                  className="mt-0.5 size-4 shrink-0 text-info"
-                />
-                {nameFor(fromProduct)} sent you here. Add the key to your
-                account and it stays in your library.
-              </p>
+            {fromProduct && linkContext ? (
+              <LinkNotice
+                id={noticeId}
+                slug={fromProduct}
+                name={nameFor(fromProduct)}
+                context={linkContext}
+                forDevice={forDevice}
+              />
             ) : null}
             <KeyField
               id={fieldId}
               value={key}
               autoFocus={!prefill}
-              valid={check.kind === "valid" && !serverError}
-              error={serverError ?? problem}
+              valid={check.kind === "valid" && !serverVerdict}
+              verdict={
+                verdict
+                  ? {
+                      tone: verdict.tone,
+                      message: verdict.message,
+                      actions:
+                        verdict.code === "license_owned" ||
+                        verdict.code === "email_mismatch" ? (
+                          <RefusalActions
+                            signInUrl={verdict.signInUrl}
+                            onDifferentKey={() => {
+                              setKey("");
+                              setTouched(false);
+                              setServerVerdict(null);
+                              focusField();
+                            }}
+                          />
+                        ) : undefined,
+                    }
+                  : null
+              }
               onBlur={() => setTouched(true)}
               onChange={(v, how) => {
                 setKey(v);
-                setServerError(null);
+                setServerVerdict(null);
                 if (how === "paste") setTouched(true);
               }}
               hint={
@@ -277,7 +405,7 @@ export function ActivateDialog({
               help={
                 prefill
                   ? "Filled in from your link. Check it matches the key you have."
-                  : "Paste the whole key. It starts with pkey_ and capital letters matter."
+                  : "Starts with pkey_. Case-sensitive."
               }
             />
           </DialogBody>
@@ -292,8 +420,8 @@ export function ActivateDialog({
             <Button
               type="submit"
               className="font-bold"
-              loading={preview.isPending || claim.isPending}
-              disabled={check.kind !== "valid"}
+              loading={preview.isPending || claim.isPending || leaving}
+              disabled={check.kind === "empty" || blocksResend(serverVerdict)}
             >
               Continue
             </Button>
@@ -305,22 +433,219 @@ export function ActivateDialog({
 }
 
 /**
- * The confirm step (§4.17 step 2): the art with the icon overlapping, "Key recognised", the
- * tier tag, the terms ("Lifetime · up to 5 devices") and platforms, the key echoed with
- * **Change key**, and **Back** / **Add <product>**.
+ * A refused key's way forward (EXPERIENCE.md §0.6 P1 frame 5; SIGN-IN.md §3.9): **Use a
+ * different key** always, for `license_owned` and `email_mismatch`; **Sign in to that account**
+ * once the Worker names where (`license_owned` only, I-09's `signInUrl`).
  */
-function ConfirmStep({
+function RefusalActions({
+  signInUrl,
+  onDifferentKey,
+}: {
+  signInUrl?: string;
+  onDifferentKey: () => void;
+}): React.ReactElement {
+  return (
+    <>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="font-bold"
+        onClick={onDifferentKey}
+      >
+        Use a different key
+      </Button>
+      {signInUrl ? (
+        <Button
+          variant="outline"
+          size="sm"
+          className="font-bold"
+          onClick={() => window.location.assign(signInUrl)}
+        >
+          Sign in to that account
+        </Button>
+      ) : null}
+    </>
+  );
+}
+
+/**
+ * Who sent the person here, and why (§4.18; SIGN-IN.md §3.9), over the field: the product's icon
+ * and "<Product> sent you here." An app at its key-entry limit (`manageUrl` =
+ * `/activate?product=…`) gets `signin.key.noEntries`, a `warning` that never blocks (Q-5); a
+ * floating license at its device limit (`next=free-device`) says the free-device flow follows;
+ * the login card (`return=/signin?…`) says the person goes back to it.
+ */
+function LinkNotice({
+  id,
+  slug,
+  name,
+  context,
+  forDevice,
+}: {
+  /** Named by the dialog's `aria-describedby`, so a screen reader hears it on open. */
+  id: string;
+  slug: string;
+  name: string;
+  context: LinkContext;
+  forDevice?: string;
+}): React.ReactElement {
+  const lead =
+    context === "card" ? `Signing in to ${name}.` : `${name} sent you here.`;
+  const body =
+    context === "entries"
+      ? noEntriesCopy(name)
+      : context === "free-device"
+        ? `This license is on every device it allows. Add it to your account, then free one up${forDevice ? ` for ${forDevice}` : ""}.`
+        : "Add your key here, then you go back to signing in.";
+  return (
+    <div
+      className={cn(
+        "flex gap-3 rounded-lg border p-3 text-sm text-fg",
+        context === "card"
+          ? "border-info-border bg-info-subtle"
+          : "border-warning-border bg-warning-subtle",
+      )}
+    >
+      <ProductIcon
+        slug={slug}
+        name={name}
+        tint={null}
+        size={24}
+        className="mt-0.5 shrink-0"
+      />
+      <p id={id} className="min-w-0 [overflow-wrap:anywhere]">
+        <strong className="font-bold text-fg-strong">{lead}</strong> {body}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Done (§4.17 step 3): the art with **In your library**, then **Activate another** and **Open
+ * <product>**. When the link's `return=` is a target the product declares (`GET
+ * /api/products/<p>` `returnTo`, PX-10's rule), the way forward is the app that sent the person:
+ * **Back to <product>**, with **See it in your library** beside it. An undeclared target is
+ * dropped and Done stays as it is.
+ */
+function DoneStep({
+  slug,
+  name,
+  headerUrl,
+  already,
+  appReturn,
+  onAnother,
+  onOpen,
+}: {
+  slug: string;
+  name: string;
+  headerUrl?: string | null;
+  already: boolean;
+  /** The link's `return=`, not yet validated; absent for the login card (gone to already). */
+  appReturn?: string;
+  onAnother: () => void;
+  onOpen: () => void;
+}): React.ReactElement {
+  const product = useProduct(slug, { enabled: Boolean(appReturn) });
+  const back =
+    appReturn && product.data
+      ? allowedReturn(appReturn, product.data.returnTo)
+      : null;
+  const lede = back
+    ? already
+      ? `It was already in your account. Go back to ${name} and sign in.`
+      : `Go back to ${name} and sign in. You won't need the key again.`
+    : already
+      ? "This key's license was already linked to your account, so nothing changed."
+      : "Download it, see your license and manage devices on its page. You won't need the key again.";
+  return (
+    <>
+      <DialogBody className="space-y-4">
+        <ProductArt
+          slug={slug}
+          name={name}
+          tint={null}
+          src={headerUrl}
+          variant="banner"
+          className="h-36 rounded-lg"
+        >
+          <span className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-full border border-success-border bg-surface-overlay px-2.5 py-1 text-xs font-bold text-success shadow-elevation-2">
+            <Check aria-hidden className="size-3.5" />
+            In your library
+          </span>
+        </ProductArt>
+        <p className="text-fg">{lede}</p>
+      </DialogBody>
+      {/* §8: side by side when both fit, primary last (right); otherwise stacked full
+          width, primary last (bottom, nearest the thumb). */}
+      <DialogFooter className="flex-row flex-wrap border-0 sm:flex-row sm:justify-start [&>*]:flex-[1_1_11rem]">
+        {back ? (
+          <>
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-11 font-bold"
+              onClick={onOpen}
+            >
+              See it in your library
+            </Button>
+            <Button asChild size="lg" className="h-11 font-bold">
+              <a href={back}>Back to {name}</a>
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-11 font-bold"
+              onClick={onAnother}
+            >
+              Activate another
+            </Button>
+            <Button
+              size="lg"
+              className="h-11 font-bold"
+              iconEnd={<ArrowRight aria-hidden />}
+              onClick={onOpen}
+            >
+              Open {name}
+            </Button>
+          </>
+        )}
+      </DialogFooter>
+    </>
+  );
+}
+
+/**
+ * The confirm step (§4.17 step 2): the art with the icon overlapping, "Key recognized", the
+ * tier tag, the terms ("Lifetime · up to 5 devices") and platforms, the key echoed with
+ * **Change key**, the entries notice when the key has used its entries (a warning; Add stays
+ * enabled, Q-5), and **Back** / **Add <product>**.
+ *
+ * The login card's KeyStep (PX-14, SIGN-IN.md §3.9) renders this same step: in passthrough the
+ * primary is **Add and use on this device** (`signin.key.addAndUse`, `primaryLabel`), and the
+ * confirm is the license choice. `notes` sits under the key, beside the entries notice, for
+ * PX-23's "It's on {n} devices already. They keep working and come with it." (S-24 §10).
+ */
+export function ConfirmStep({
   preview,
   licenseKey,
   adding,
   onBack,
   onAdd,
+  primaryLabel,
+  notes,
 }: {
   preview: ConfirmPreview;
   licenseKey: string;
   adding: boolean;
   onBack: () => void;
   onAdd: () => void;
+  /** The primary's words; `Add <product>` by default. */
+  primaryLabel?: string;
+  /** More lines about what adding does, under the key. */
+  notes?: React.ReactNode;
 }): React.ReactElement {
   const p = preview.product;
   const lic = preview.license;
@@ -337,6 +662,7 @@ function ConfirmStep({
         .filter(Boolean)
         .join(" · ")
     : null;
+  const entries = entriesVerdict(readEntries(preview), p.name);
   const platforms = PLATFORM_ORDER.filter((k: PlatformKey) =>
     (preview.platforms ?? []).some((x) => normalisePlatform(x) === k),
   );
@@ -367,7 +693,7 @@ function ConfirmStep({
         <p className="flex items-center gap-2 text-sm text-fg-muted">
           <Check aria-hidden className="size-4 shrink-0 text-success" />
           <span>
-            Key recognised ·{" "}
+            Key recognized ·{" "}
             <span className="font-bold text-fg-strong">{p.name}</span>
             {p.developerName ? ` · ${p.developerName}` : ""}
           </span>
@@ -400,54 +726,56 @@ function ConfirmStep({
             Change key
           </button>
         </div>
+        {entries ? (
+          <p
+            role="status"
+            className="flex gap-2 rounded-lg border border-warning-border bg-warning-subtle p-3 text-sm text-fg"
+          >
+            <AlertTriangle
+              aria-hidden
+              className="mt-0.5 size-4 shrink-0 text-warning"
+            />
+            <span>{entries.message}</span>
+          </p>
+        ) : null}
+        {notes}
       </DialogBody>
       <DialogFooter>
         <Button variant="outline" className="font-bold" onClick={onBack}>
           Back
         </Button>
         <Button className="font-bold" loading={adding} onClick={onAdd}>
-          Add {p.name}
+          {primaryLabel ?? `Add ${p.name}`}
         </Button>
       </DialogFooter>
     </>
   );
 }
 
-/** The preview's refusals in the person's words (§4.19), never a toast. */
-export function previewError(
-  p: PortalKeyPreview,
-  fallbackName: string,
-): string {
-  const name = p.product?.name ?? fallbackName;
-  switch (p.verdict) {
-    case "license_owned":
-      return `This ${name} license is already in another Polaris Key account. A license never moves by its key.`;
-    case "email_mismatch":
-      return `${name} was bought with ${p.maskedEmail ?? "another email"}. It joins only the account with that email verified.`;
-    case "portal_off":
-      return `${p.product?.developerName ?? name} manages this license elsewhere.`;
-    default:
-      return UNKNOWN_KEY;
-  }
+/**
+ * Focus the open dialog's title (`ui/Dialog` renders it as the dialog's one heading), made
+ * programmatically focusable first. `from` is any element inside the dialog.
+ */
+function focusDialogHeading(from: HTMLElement | null): void {
+  const heading = from
+    ?.closest('[role="dialog"], [role="alertdialog"]')
+    ?.querySelector<HTMLElement>("h1, h2");
+  if (!heading) return;
+  if (!heading.hasAttribute("tabindex")) heading.setAttribute("tabindex", "-1");
+  heading.classList.add("outline-none");
+  heading.focus();
 }
 
-const UNKNOWN_KEY =
-  "We couldn't find that key. Capital letters matter, and l, 1, O and 0 are easy to mix up, so paste the key instead of typing it.";
-
-/** The claim's refusals in the person's words (§4.19), never a toast. */
-export function claimError(err: unknown, name: string): string {
+/** A failed preview or claim as a verdict (§4.19), never a toast. */
+function claimError(err: unknown, name: string): KeyVerdict {
   if (err instanceof PortalApiError) {
-    if (err.code === "license_owned")
-      return `This ${name} license is already in another Polaris Key account. A license never moves by its key.`;
-    if (err.code === "email_mismatch")
-      return `${name} joins only the account with the license's email verified.`;
-    if (err.status === 401) return UNKNOWN_KEY;
-    if (err.status === 404) return `${name} manages this license elsewhere.`;
-    if (err.status === 422)
-      return "That isn't a Polaris Key license key. Ours start with pkey_.";
-    if (err.status === 429)
-      return "Too many tries. Wait a minute, then try again.";
+    const v = claimVerdict(err, name);
+    if (v) return v;
   }
   const copy = portalErrorCopy(err);
-  return `${copy.title}. ${copy.description}`;
+  return {
+    code: "failed",
+    tone: "danger",
+    message: `${copy.title}. ${copy.description}`,
+  };
 }

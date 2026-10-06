@@ -56,12 +56,16 @@ public struct ConfigClientOptions: Sendable {
     /// Environment table to read overrides from. Injected rather than read from
     /// `ProcessInfo` here so the precedence rules are testable without mutating the process.
     public let environment: [String: String]?
+    /// Where `config.set` persists the user's own values (SP-S14). Default: UserDefaults.
+    public let local: LocalConfigOptions
 
     public init(
         localOverrides: [String: JSONValue] = [:],
         envPrefix: String = DEFAULT_CONFIG_ENV_PREFIX,
-        environment: [String: String]? = nil
+        environment: [String: String]? = nil,
+        local: LocalConfigOptions = LocalConfigOptions()
     ) {
+        self.local = local
         self.localOverrides = localOverrides
         self.envPrefix = envPrefix
         self.environment = environment
@@ -81,6 +85,15 @@ public actor ConfigClient {
     /// `Mint.swift`).
     private var minted: [String: (deviceToken: String, token: MintedToken)] = [:]
     private var minting: [String: (deviceToken: String, task: Task<MintedToken, Error>)] = [:]
+    /// `config.set` values, persisted in `localStore` (they beat `localOverrides`).
+    private let localStore: any LocalConfigStore
+    private var persisted: [String: JSONValue]
+    /// The catalog, fetched once per process when `set` first needs it.
+    private var catalog: ConfigCatalog?
+    /// `onConfigChange` / `configChanges` registrations (`ConfigSetting.swift`).
+    nonisolated let listeners = ConfigListeners()
+    /// The facade's change observation, when one is installed (`setChangeObserver`).
+    nonisolated let changeObserver = LockedValue<(@Sendable () async -> Void)?>(nil)
 
     /// - Parameter reacquire: the §5 single re-acquire an edge-mint 401 gets — the facade's one
     ///   closure, the same a document 401 uses, so the route (`license/token`, or re-registration
@@ -95,6 +108,9 @@ public actor ConfigClient {
         self.envPrefix = options.envPrefix
         self.environment = options.environment ?? ProcessInfo.processInfo.environment
         self.reacquire = reacquire
+        let store = options.local.store ?? UserDefaultsLocalConfigStore(product: core.product, suiteName: options.local.suiteName)
+        self.localStore = store
+        self.persisted = store.load()
     }
 
     /// Mint a third-party token through the product's edge-mint recipe `recipeId`
@@ -131,8 +147,19 @@ public actor ConfigClient {
         let core = self.core
         let reacquire = self.reacquire
         let task = Task { () async throws -> MintedToken in
-            let (deviceToken, fresh) = try await MintEndpoint.mint(
-                core, recipeId: recipeId, reacquire: reacquire)
+            let deviceToken: String
+            let fresh: MintedToken
+            do {
+                (deviceToken, fresh) = try await MintEndpoint.mint(
+                    core, recipeId: recipeId, reacquire: reacquire)
+            } catch let error as PolarisError
+                where error.code == ErrorCode.attestationRequired
+            {
+                // §3.10: attest once, retry once; otherwise the typed refusal stands.
+                guard await core.attestForRetry() else { throw error }
+                (deviceToken, fresh) = try await MintEndpoint.mint(
+                    core, recipeId: recipeId, reacquire: reacquire)
+            }
             self.store(recipeId, deviceToken: deviceToken, token: fresh)
             return fresh
         }
@@ -168,6 +195,94 @@ public actor ConfigClient {
         await ConfigEndpoints.fetchSchema(core)
     }
 
+    /// The product's catalog, decoded (`fetchSchema()` as `ConfigCatalog`). Nil on any failure.
+    public func fetchCatalog() async -> ConfigCatalog? {
+        guard let data = await fetchSchema(), let decoded = ConfigCatalog.decode(data) else { return nil }
+        catalog = decoded
+        return decoded
+    }
+
+    // ── Persisted local overrides (SP-S14, notes/SDK-PARITY-PASS.md §3.11) ─────────────────
+
+    /// Keep `value` as the user's own value for the `config` key `key`, persisted across launches,
+    /// and raise a `config` event on `client.events`. It beats the environment and a remote `default`, never an
+    /// `enforced` or `hidden` entry.
+    ///
+    /// Throws `PolarisError` `invalid-options` when the key is locked by the signed document, or
+    /// when the catalog (fetched once when first needed) does not list it as a `config` key or
+    /// its schema `type` / `enum` refuses the value. Offline, without a catalog, the value is kept.
+    public func set(_ key: String, _ value: JSONValue) async throws {
+        if let entry = await doc()?.config[key], entry.state == .enforced || entry.state == .hidden {
+            throw PolarisError(
+                code: ErrorCode.invalidOptions,
+                message: "\(key) is managed by the product (\(entry.state.rawValue)); a local value would never apply.")
+        }
+        var known = catalog
+        if known == nil { known = await fetchCatalog() }
+        if let known {
+            guard let entry = known.entry(key), entry.kind == "config" else {
+                throw PolarisError(
+                    code: ErrorCode.invalidOptions, message: "\(key) is not a config key in this product's catalog.")
+            }
+            guard entry.accepts(value) else {
+                throw PolarisError(
+                    code: ErrorCode.invalidOptions,
+                    message: "\(key) takes a \(entry.schemaType ?? "value") the catalog allows; the value given does not match.")
+            }
+        }
+        if persisted[key] == value { return }
+        await writeLocal { $0[key] = value }
+    }
+
+    /// Remove the user's own value for `key` (resolution falls back to the next layer) and raise
+    /// a `config` change when the effective value moved.
+    public func clear(_ key: String) async {
+        guard persisted[key] != nil else { return }
+        await writeLocal { $0.removeValue(forKey: key) }
+    }
+
+    /// Remove every value `set` kept.
+    public func clearAll() async {
+        guard !persisted.isEmpty else { return }
+        await writeLocal { $0.removeAll() }
+    }
+
+    /// Apply `change` to the kept values, persist them and deliver what moved: through the
+    /// facade's observation when installed, else by diffing this client's own snapshot.
+    private func writeLocal(_ change: (inout [String: JSONValue]) -> Void) async {
+        let observer = changeObserver.current
+        let before = observer == nil ? await snapshot() : [:]
+        change(&persisted)
+        localStore.save(persisted)
+        if let observer {
+            await observer()
+            return
+        }
+        let after = await snapshot()
+        for key in Set(before.keys).union(after.keys).sorted() where before[key] != after[key] {
+            deliver(
+                ConfigChange(key: key, value: after[key], previous: before[key], source: await configSource(key)))
+        }
+    }
+
+    /// Whether the operator locked `key`: an `enforced` or `hidden` signed-document entry.
+    public func isLocked(_ key: String) async -> Bool {
+        guard let state = await doc()?.config[key]?.state else { return false }
+        return state == .enforced || state == .hidden
+    }
+
+    /// `key`'s effective value, its source and whether it is locked (`setting(key).current()`).
+    public func settingState(_ key: String) async -> ConfigSettingState {
+        let ctx = await context()
+        let state = ctx.remote?[key]?.state
+        return ConfigSettingState(
+            value: ConfigResolution.resolveValue(ctx, key), source: ConfigResolution.resolveSource(ctx, key),
+            locked: state == .enforced || state == .hidden)
+    }
+
+    /// The values `set` kept, by key.
+    public func localValues() -> [String: JSONValue] { persisted }
+
     /// The product's active catalog version, as the last verified document stated it.
     public func schemaVersion() async -> Int? {
         await doc()?.schemaVersion
@@ -176,7 +291,7 @@ public actor ConfigClient {
     /// The resolution inputs: the last verified document plus this client's override layers.
     private func context() async -> ResolveContext {
         ResolveContext(
-            remote: await doc()?.config, localOverrides: localOverrides, env: environment,
+            remote: await doc()?.config, localOverrides: localOverrides.merging(persisted) { $1 }, env: environment,
             envPrefix: envPrefix)
     }
 
@@ -184,6 +299,36 @@ public actor ConfigClient {
     /// (`ConfigResolution`, WIRE-CONTRACT-V3 §2.2.1).
     public func config(_ key: String, default fallback: JSONValue) async -> JSONValue {
         ConfigResolution.resolveValue(await context(), key) ?? fallback
+    }
+
+    // ── Typed getters (SP-S02) ───────────────────────────────────────────────────────────
+    /// The effective value as a `Bool`, or `fallback` when absent or of another type.
+    public func bool(_ key: String, default fallback: Bool) async -> Bool {
+        await config(key, default: .null).boolValue ?? fallback
+    }
+
+    /// The effective value as an `Int` (an integral JSON number), or `fallback`.
+    public func int(_ key: String, default fallback: Int) async -> Int {
+        await config(key, default: .null).intValue ?? fallback
+    }
+
+    /// The effective value as a `Double` (any JSON number), or `fallback`.
+    public func double(_ key: String, default fallback: Double) async -> Double {
+        await config(key, default: .null).doubleValue ?? fallback
+    }
+
+    /// The effective value as a `String`, or `fallback`.
+    public func string(_ key: String, default fallback: String) async -> String {
+        await config(key, default: .null).stringValue ?? fallback
+    }
+
+    /// The effective value decoded as `T` (an object or array into a `Decodable` struct), or nil
+    /// when absent or when it does not decode.
+    public func decode<T: Decodable>(_ key: String, as type: T.Type = T.self) async -> T? {
+        let value = await config(key, default: .null)
+        if case .null = value { return nil }
+        guard let data = try? JSONEncoder().encode(value) else { return nil }
+        return try? JSONDecoder().decode(T.self, from: data)
     }
 
     /// Where `config(key)` would source its value from (provenance, for settings UIs).
@@ -195,6 +340,19 @@ public actor ConfigClient {
     /// each carrying its effective value and whether it is `enforced`.
     public func listUserConfig() async -> [UserConfigEntry] {
         ConfigResolution.listUserEntries(await context())
+    }
+
+    /// Every known key's effective value (document keys, `localOverrides` and `set` values), for
+    /// change detection: the facade diffs two snapshots into `client.events` `config` events.
+    public func snapshot() async -> [String: JSONValue] {
+        let ctx = await context()
+        var keys = Set(ctx.localOverrides.keys)
+        keys.formUnion((ctx.remote ?? [:]).keys)
+        var out: [String: JSONValue] = [:]
+        for k in keys {
+            if let v = ConfigResolution.resolveValue(ctx, k) { out[k] = v }
+        }
+        return out
     }
 
     /// A managed secret's value (string only), or nil. Secrets are never enumerated.

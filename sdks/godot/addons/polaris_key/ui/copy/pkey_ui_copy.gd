@@ -88,7 +88,12 @@ const DEFAULTS := {
 	"activation_hardware_mismatch": "This device's hardware changed. The previous authorization was released — activate again to re-bind.",
 	"activation_rate_limited": "Too many attempts. Wait a moment and try again.",
 	"activation_unsupported": "This isn't available on this platform.",
+	"activation_license_expired": "This license has expired. Renew it to keep playing.",
+	"activation_attestation_required": "This game needs to confirm it was installed from an official store before it can be activated here.",
+	"activation_manage_devices": "Manage devices",
 	"activation_error": "Activation failed. Check your connection and try again.",
+	"free_device": "Replace a device",
+	"free_device_scan": "Scan with your phone to free a device, then try again.",
 	# ── PKeySignInDialog ────────────────────────────────────────────────────────────────────
 	"sign_in_title": "Sign in",
 	"sign_in_starting": "Starting sign-in…",
@@ -97,6 +102,7 @@ const DEFAULTS := {
 	"sign_in_copy_link": "Copy link",
 	"sign_in_copied": "Link copied.",
 	"sign_in_expires": "The code expires in %s.",
+	"sign_in_device": "The sign-in page will show “%s”.",
 	"sign_in_confirm_title": "Is this you?",
 	"sign_in_confirm_body": "Signed in as %s.",
 	"sign_in_attach": "Also attach this device's license to my account",
@@ -200,6 +206,121 @@ const DEFAULTS := {
 	"dev_force_check": "Force check",
 	"dev_checking": "Checking…",
 	"dev_checked": "Checked: %s",
+	# ── Error copy by code (SDK parity §3.2, core.copy). `PKeyUiCopy.code_key(code, reason)`
+	# picks `reason_<reason>`, then `error_<code>`, then `error_generic` with the code, so a raw
+	# server body is never shown. Codes are the registry's (conformance/parity/errors.json).
+	# In English an `error_<code>` key shows the core copy (PKeyCopy, generated from
+	# copy.en.json); these lines stay as the source strings the kit's .po files translate. ──
+	"error_generic": "Something went wrong (%s).",
+	"error_unauthorized": "You're signed out. Activate or sign in again.",
+	"error_forbidden": "This isn't allowed for your license.",
+	"error_not_found": "That couldn't be found.",
+	"error_bad_request": "The request wasn't accepted. Update the game and try again.",
+	"error_rate_limited": "Too many attempts. Wait a moment and try again.",
+	"error_device_limit": "This license has reached its device limit.",
+	"error_license_disabled": "This license has been disabled.",
+	"error_license_expired": "This license has expired.",
+	"error_not_entitled": "Your license doesn't include this.",
+	"error_version_blocked": "This version is no longer supported. Please update the game.",
+	"error_channel_not_allowed": "Your license doesn't include this release channel.",
+	"error_hardware_mismatch": "This device's hardware changed. Activate again to re-bind it.",
+	"error_fingerprint_required": "This license needs a hardware fingerprint, which couldn't be read on this device.",
+	"error_enroll_disabled": "This game doesn't offer a free tier.",
+	"error_enroll_claimed": "This device's free license belongs to an account now. Sign in to use it.",
+	"error_registration_closed": "New devices can't join right now. Activate with a license key or sign in.",
+	"error_managed_by_admin": "This setting is managed by your organization and can't be changed here.",
+	"error_attestation_required": "This needs a device that was installed from an official store.",
+	"error_attestation_rejected": "This device couldn't be verified as an official store install.",
+	"error_attestation_unavailable": "Device verification isn't set up for this game yet.",
+	"error_catalog_unavailable": "Settings aren't available right now. Try again later.",
+	"error_value_not_representable": "That value couldn't be issued. Try again later.",
+	"error_document_not_representable": "That value couldn't be issued. Try again later.",
+	"error_mint-unavailable": "This value can't be issued on this device.",
+	"error_unavailable": "The store couldn't be reached. Try again later.",
+	"error_download_auth_required": "Sign in or activate to download this.",
+	"error_internal_error": "The service had a problem. Try again later.",
+	"error_network-error": "Couldn't connect. Check your connection and try again.",
+	"error_timeout": "The connection timed out. Try again.",
+	"error_service-unavailable": "This isn't enabled for this game.",
+	"error_no-token": "Activate or sign in first.",
+	"error_local-only": "This copy runs offline only.",
+	"error_unsupported": "This isn't available on this platform.",
+	"error_not-configured": "Polaris Key isn't set up yet.",
+	"error_store-failed": "Your license couldn't be saved on this device.",
+	"error_pack-not-entitled": "Your license doesn't include this content.",
+	"error_pack-not-pinned": "This content isn't part of this build.",
+	"error_pack-revoked": "This content was withdrawn by its developer.",
+	"error_pack-type-unsupported": "This content can't be used on this platform.",
+	"error_pack-no-variant": "This content isn't available for this device.",
+	"error_pack-rolled-back": "The last content update didn't load, so the previous version was restored.",
+	"error_plan-insufficient-disk": "There isn't enough free space for this content.",
+	"error_payload-hash-mismatch": "The download was damaged. Try again.",
+	# Commerce refusals carry a reason (detail.error.reason) that is more specific than the code.
+	"reason_no_license": "Activate this device or continue free before buying.",
+	"reason_binding_mismatch": "This purchase belongs to a different license.",
+	"reason_bound_elsewhere": "This purchase is already linked to another license.",
+	"reason_unbound": "This purchase wasn't linked to your license. Restore purchases to try again.",
+	"reason_not_owned": "This purchase couldn't be found on your store account.",
+	"reason_test_purchase": "Test purchases don't unlock this build.",
+	"reason_invalid_ticket": "The store couldn't confirm your purchase. Try again.",
+	"reason_untrusted_chain": "The store's receipt couldn't be verified.",
+	"reason_wrong_app": "This purchase is for another app.",
+	"reason_environment": "This purchase was made in a different store environment.",
+	# ── PKeyDeviceList ──────────────────────────────────────────────────────────────────────
+	"devices_title": "Devices",
+	"devices_loading": "Loading devices…",
+	"devices_empty": "No devices are using this license.",
+	"devices_this_device": "This device",
+	"devices_last_seen": "Last seen %s",
+	"devices_rename": "Rename",
+	"devices_rename_save": "Save",
+	"devices_remove": "Remove",
+	"devices_remove_confirm": "Remove %s? It will need to be activated again.",
+	"devices_sign_out": "Sign out this device",
+	"devices_unsupported": "Devices can be managed from your account page.",
+	"devices_manage_online": "Manage devices online",
+	"devices_refresh": "Refresh",
+	# ── PKeyAccount ─────────────────────────────────────────────────────────────────────────
+	"account_signed_in_as": "Signed in as %s",
+	"account_key_only": "Activated with a license key",
+	"account_signed_out": "Not activated",
+	"account_tier": "Plan: %s",
+	"account_sign_out": "Sign out",
+	"account_deactivate": "Deactivate this device",
+	"account_sign_out_confirm": "Sign out on this device? You'll need to sign in or activate again.",
+	"account_manage": "Manage account",
+	"account_signed_out_done": "Signed out.",
+	# ── PKeyPackProgress ────────────────────────────────────────────────────────────────────
+	"packs_title": "Downloading content",
+	"packs_queued": "Waiting to download…",
+	"packs_downloading": "Downloading… %d%%",
+	"packs_applying": "Installing…",
+	"packs_ready": "Content ready.",
+	"packs_failed": "The content couldn't be downloaded.",
+	# ── PKeyWhatsNew ────────────────────────────────────────────────────────────────────────
+	"whats_new_title": "What's new",
+	"whats_new_loading": "Loading release notes…",
+	"whats_new_empty": "No release notes yet.",
+	"whats_new_version": "Version %s",
+	"whats_new_refused": "Release notes aren't available right now.",
+	# ── PKeyPurchaseButton ──────────────────────────────────────────────────────────────────
+	"purchase_buy": "Buy",
+	"purchase_buying": "Purchasing…",
+	"purchase_owned": "Purchased",
+	"purchase_restore": "Restore purchases",
+	"purchase_restoring": "Restoring…",
+	"purchase_restored": "Purchases restored.",
+	"purchase_nothing_to_restore": "There were no purchases to restore.",
+	"purchase_not_owned": "The purchase didn't complete.",
+	"purchase_cancelled": "The purchase was cancelled.",
+	"purchase_unsupported": "Purchases aren't available in this version of the game.",
+	# ── PKeyChannelPicker ───────────────────────────────────────────────────────────────────
+	"channel_title": "Release channel",
+	"channel_locked": "This build's channel is set by where you got it (%s).",
+	"channel_restart": "The new channel applies at the next update check.",
+	# ── PKeyUpdatePrompt additions ──────────────────────────────────────────────────────────
+	"update_notes": "What's new",
+	"update_downloading": "Downloading the update… %d%%",
 }
 
 ## key -> replacement English (or already-translated) template.
@@ -217,18 +338,77 @@ static func shared() -> PKeyUiCopy:
 
 ## The English template for `key` (an override first), before translation.
 func template(key: String) -> String:
-	if overrides.get(key) is String:
-		return overrides[key]
-	return String(DEFAULTS.get(key, key))
+	return _resolve(key)[0]
 
 
 ## The string to show: the template translated with `tr()`, then formatted with `args` (a value
-## or an Array) when given.
+## or an Array) when given. A sentence from the core copy has its `{name}` placeholders filled
+## (`{code}` with the code) after translation.
 func text(key: String, args: Variant = null) -> String:
-	var s := tr(template(key))
+	var r := _resolve(key)
+	var s := tr(r[0])
+	if r[1] != "":
+		s = PKeyCopy.fill(s, r[1])
 	if args == null:
 		return s
 	return s % (args if args is Array else [args])
+
+
+## [template, core code] for `key`. An `error_<code>` key reads the core copy (PKeyCopy.shared(),
+## the generated table plus the host's core overrides) where the code exists there, in this
+## order: this object's `overrides`, a core host override, the kit's own line when the running
+## locale translates it (the kit's .po files carry those until the core copy has its own
+## translations), the core copy, the kit's own line. The core code is "" for a kit template.
+func _resolve(key: String) -> Array:
+	if overrides.get(key) is String:
+		return [overrides[key], ""]
+	var own := String(DEFAULTS.get(key, key))
+	if not key.begins_with("error_") or key == "error_generic":
+		return [own, ""]
+	var code := key.substr(6)
+	var core := PKeyCopy.shared()
+	if core.has_override(code):
+		return [core.message_template(code), code]
+	if DEFAULTS.has(key) and tr(own) != own:
+		return [own, ""]
+	if core.has(code):
+		return [core.message_template(code), code]
+	return [own, ""]
+
+
+## [copy key, args] for an error code (and an optional reason, as commerce refusals carry):
+## `reason_<reason>`, then `error_<code>` (a kit line or a core copy entry, see _resolve), then
+## `error_generic` with the code (SDK parity §3.2: a missing code falls back to a generic message
+## plus the code, never the raw body).
+static func code_key(code: Variant, reason: Variant = "") -> Array:
+	var r := str(reason) if reason != null else ""
+	if r != "" and DEFAULTS.has("reason_" + r):
+		return ["reason_" + r, null]
+	var c := str(code) if code != null else ""
+	if c != "" and (DEFAULTS.has("error_" + c) or PKeyCopy.shared().has(c)):
+		return ["error_" + c, null]
+	return ["error_generic", c if c != "" else "unknown"]
+
+
+## The shown message for an error code (see code_key).
+func for_code(code: Variant, reason: Variant = "") -> String:
+	var k := code_key(code, reason)
+	return text(k[0], k[1])
+
+
+## The shown message for a failed PKeyResult: its code, and `detail.error.reason` or
+## `detail.reason` when the server sent one.
+func for_result(r: PKeyResult) -> String:
+	if r == null:
+		return for_code("unknown")
+	var reason := ""
+	if r.detail is Dictionary:
+		var e = r.detail.get("error")
+		if e is Dictionary and e.get("reason") is String:
+			reason = e["reason"]
+		elif r.detail.get("reason") is String:
+			reason = r.detail["reason"]
+	return for_code(r.code, reason)
 
 
 ## A duration in whole days, else hours, else minutes ("3 days", "1 hour"), for the banner.

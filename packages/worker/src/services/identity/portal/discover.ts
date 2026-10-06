@@ -1,20 +1,30 @@
 /**
- * Discover (PX-W10, docs/design/PORTAL.md §4.16, §10.2 G24, G25):
+ * Discover (PX-W10, docs/design/PORTAL.md §4.16, §10.2 G24, G25), rebuilt on the Polaris Key
+ * storefront's obtain-path engine (PS-03, `store/obtain.ts`, notes/S-21 §6.3):
  *
- *   GET  /api/discover                  every product whose licence policy WOULD auto-issue to
- *                                       the signed-in account, evaluated without issuing: the
- *                                       presentation, what the account would get (tier, device
- *                                       limit, expiry) and why (`reason`, always present).
- *   POST /api/discover/<p>/claim        "Add to library": re-evaluate, then mint through the
- *                                       auto-issue path itself. Idempotent per account and
- *                                       product; `409 not_eligible` when the offer is gone.
+ *   GET  /api/discover                  every product the engine shows the signed-in account with
+ *                                       an identity path (`group`, `auto_issue`): what its licence
+ *                                       policy WOULD auto-issue, evaluated without issuing, with
+ *                                       the presentation, what the account would get (tier,
+ *                                       device limit, expiry) and why (`reason`, always present).
+ *   POST /api/discover/<p>/claim        "Add to library": re-evaluate through the engine, then
+ *                                       mint through the auto-issue path itself. Idempotent per
+ *                                       account and product; `409 not_eligible` when the offer is
+ *                                       gone, exactly as for an unknown product.
+ *
+ * In `auto` mode (every product's default) this is PX-W10's Discover, unchanged: the engine's
+ * identity paths are the same policy function, on the same candidates. The listing, the count and
+ * the claim are thin wrappers that serve the IDENTITY paths only, because the claim can add only
+ * what the auto-issue path mints. The `open` path and audience `everyone` link-only listings are
+ * evaluated by the engine (`storefrontOffers`) and served once PS-04 adds the claim by path,
+ * `library_entries` and the additive `paths[]` / `cta` fields.
  *
  * ── WHICH POLICY, AND WHY NO CORE HOOK ──────────────────────────────────────────────────────
  *
  * "First-load auto-issue" for an ACCOUNT is the product sign-in's: `activateFromIdentity` in
  * `../oidc.ts`, which mints on a product's first sign-in from the product's `groupRoleMap` (a
  * group the identity holds) or its `oidcDefault` auto-issue rule. That lives in Identity, the
- * service the portal is part of, so Discover calls it directly: the listing through
+ * service the portal is part of, so the engine calls it directly: the listing through
  * `previewIdentityIssue` (the same policy function, `identityTier`, plus the read-only
  * provisioning step, and nothing written) and the claim through `activateFromIdentity` itself.
  * No other service's internals are read (rule 6): tiers, licences and seats come from Core
@@ -24,33 +34,24 @@
  *
  * ── WHO IS THE ACCOUNT, TO THE POLICY ───────────────────────────────────────────────────────
  *
- * The account's identity at the platform IdP (`getPlatformIdentity`): its subject, verified
- * email, name and the `groups` claim of its last portal sign-in. A `provider: platform` product's
- * own sign-in carries the same subject for the same person, so a licence Discover mints is the
- * licence that product's first sign-in would have minted, and `syncAccountLicenseLinks` links it
- * back by subject. That is also why only platform-issuer products with auto-linking on are
- * candidates (`listDiscoverCandidates`), and why an account with no platform identity (one that
- * has only ever used an email link) is offered nothing: there is no subject for the auto-issue
- * path to key a licence by until the account model of S-16 (I-05, I-06) attaches licences to
- * accounts directly.
+ * The account's identity at the platform IdP (`discoverIdentity`): its subject, verified email,
+ * name and the `groups` claim of its last portal sign-in. A `provider: platform` product's own
+ * sign-in carries the same subject for the same person, so a licence Discover mints is the licence
+ * that product's first sign-in would have minted, and `syncAccountLicenseLinks` links it back by
+ * subject. That is also why the identity paths run only on platform-issuer products with
+ * auto-linking on, and why an account with no platform identity (one that has only ever used an
+ * email link) is offered nothing here: there is no subject for the auto-issue path to key a
+ * licence by until the account model of S-16 (I-05, I-06) attaches licences to accounts directly.
  *
  * Purchase-only and operator-issued products never appear: with no mapped group and no
  * `oidcDefault` rule the policy grants nothing. Neither do products the account already holds,
- * products with the portal off, or products whose developer turned Discover off
- * (`portal_product_settings.discover_enabled`, migrations/0071).
+ * products with the portal off, products whose developer unlisted them
+ * (`storefront.polarisKey.listed`, or `discover_enabled = 0` until PS-11), or any product while
+ * the deployment's `storefront.polarisKey.enabled` is off.
  */
 
-import { representabilityIssue } from "@polaris-key/catalog";
-import {
-  platformOidcConfig,
-  randomId,
-  type Db,
-  type Env,
-} from "../../../core/platform.js";
-import {
-  loadProductPublic,
-  type ProductPublic,
-} from "../../../core/products.js";
+import { randomId, type Db, type Env } from "../../../core/platform.js";
+import type { ProductPublic } from "../../../core/products.js";
 import {
   appendAudit,
   getLicense,
@@ -60,12 +61,7 @@ import {
 } from "../../../core/data.js";
 import { licenseDeviceLimit } from "../../../core/authz.js";
 import { licenseUsable } from "../../../core/devices.js";
-import {
-  activateFromIdentity,
-  previewIdentityIssue,
-  type AutoIssueGrantVia,
-  type OidcIdentity,
-} from "../oidc.js";
+import { activateFromIdentity } from "../oidc.js";
 import {
   err,
   portalJson,
@@ -78,157 +74,49 @@ import {
   CLAIM_LIMIT_PER_MINUTE,
   productPlatforms,
 } from "./selfService.js";
-import {
-  accountHoldsProduct,
-  getPlatformIdentity,
-  linkLicense,
-  listDiscoverCandidates,
-  listHeldProducts,
-  portalIdentityIssuerKey,
-  recordDiscoverClaim,
-} from "./repo.js";
+import { linkLicense, recordDiscoverClaim } from "./repo.js";
 import type { PortalSession } from "./session.js";
+import {
+  evaluateObtain,
+  isIdentityPathKind,
+  storefrontOffers,
+  type DiscoverReason,
+  type DiscoverTerms,
+  type ObtainOptions,
+  type ObtainPath,
+} from "./store/obtain.js";
+
+export {
+  discoverIdentity,
+  discoverReason,
+  type DiscoverReason,
+  type DiscoverTerms,
+} from "./store/obtain.js";
 
 /**
- * Why the account can add the product (owner decision Q-6: always shown, never hideable):
- * `free_with_account` (the product's `oidcDefault` auto-issue rule) or `group:<group>` (a group
- * the account holds at the platform IdP, mapped in the product's `groupRoleMap`). An open set:
- * the email-domain and beta reasons of §4.16 arrive with the policies that can grant them.
+ * What Discover serves today: the identity paths alone (no other source, no link-only listing),
+ * because its claim mints only through the auto-issue path. PS-04 widens it with the claim by path.
  */
-export type DiscoverReason = "free_with_account" | `group:${string}`;
+const DISCOVER: ObtainOptions = { sources: [], links: false };
 
-export function discoverReason(via: AutoIssueGrantVia): DiscoverReason {
-  return via.kind === "group" ? `group:${via.group}` : "free_with_account";
-}
+/** An identity path, with the terms and reason code it always carries. */
+type IdentityPath = ObtainPath & {
+  terms: DiscoverTerms;
+  reason: DiscoverReason;
+};
 
-/** What adding the product would give the account: the tier and its terms, from the policy. */
-export interface DiscoverTerms {
-  tier: string | null;
-  tierLabel: string | null;
-  deviceLimit: number;
-  /** The expiry the licence would carry if it were minted now; `null` = never expires. */
-  expiresAt: number | null;
-  /** The tier's policy length in days (`null` = lifetime), for "Beta · 90 days". */
-  expiryDays: number | null;
-}
-
-type OfferVerdict =
-  | {
-      kind: "offer";
-      product: ProductPublic;
-      reason: DiscoverReason;
-      terms: DiscoverTerms;
-    }
-  /** The account already holds a licence here; `license` is the auto-issue one when it exists. */
-  | { kind: "held"; product: ProductPublic; license: LicenseRow | null }
-  | { kind: "none" };
-
-/** The account as the auto-issue policy sees it, or `null` when it has no platform identity. */
-export async function discoverIdentity(
-  env: Env,
-  db: Db,
-  accountId: string,
-): Promise<OidcIdentity | null> {
-  const cfg = platformOidcConfig(env);
-  if (!cfg) return null;
-  const pi = await getPlatformIdentity(
-    db,
-    accountId,
-    portalIdentityIssuerKey(cfg.issuer),
-  );
-  if (!pi) return null;
-  // The product sign-in's `mapClaims` rules: a verified email only (the portal stores no other),
-  // and nothing a signed document could not carry.
-  const email =
-    pi.email !== null && representabilityIssue(pi.email) === null
-      ? pi.email
-      : undefined;
-  const name =
-    pi.displayName !== null && representabilityIssue(pi.displayName) === null
-      ? pi.displayName
-      : undefined;
-  const groups = pi.groups ?? [];
-  return {
-    sub: pi.subject,
-    email,
-    name,
-    groups,
-    // The claims a provisioning hook can read: what the portal kept from the platform ID token.
-    claims: {
-      sub: pi.subject,
-      ...(email !== undefined ? { email, email_verified: true } : {}),
-      ...(name !== undefined ? { name } : {}),
-      groups,
-    },
-  };
-}
-
-/** Evaluate one candidate product for the account. Reads only. */
-async function evaluateOffer(
-  db: Db,
-  accountId: string,
-  identity: OidcIdentity,
-  slug: string,
-  now: number,
-): Promise<OfferVerdict> {
-  const product = await loadProductPublic(db, slug);
-  // A product that does not run License has no licence to offer.
-  if (!product || !product.services.license.enabled) return { kind: "none" };
-  const preview = await previewIdentityIssue(db, product, identity, now);
-  if (await accountHoldsProduct(db, accountId, slug)) {
-    return {
-      kind: "held",
-      product,
-      license: "error" in preview ? null : preview.existing,
-    };
-  }
-  if ("error" in preview) return { kind: "none" };
-  if (preview.existing) {
-    return { kind: "held", product, license: preview.existing };
-  }
-  const tier = preview.tierId ? await getTier(db, slug, preview.tierId) : null;
-  // The seat limit the minted licence will enforce: `licenseDeviceLimit` over the row
-  // `activateFromIdentity` would insert (its tier and provisioned overrides; no licence
-  // profiles, as a new licence has none).
-  const would: LicenseRow = {
-    product: slug,
-    id: "",
-    status: "active",
-    sub: identity.sub,
-    name: identity.name ?? null,
-    email: identity.email ?? null,
-    groups_json: JSON.stringify(identity.groups),
-    tier_id: preview.tierId,
-    activated_at: now,
-    expires_at: preview.expiresAt,
-    max_offline_days: null,
-    overrides_json: JSON.stringify(preview.overrides),
-    channels_json: null,
-    min_version: null,
-    max_version: null,
-    origin: "oidc",
-    modified_by: "oidc",
-    modified_at: now,
-  };
-  return {
-    kind: "offer",
-    product,
-    reason: discoverReason(preview.via),
-    terms: {
-      tier: preview.tierId,
-      tierLabel: tier?.label ?? null,
-      deviceLimit: await licenseDeviceLimit(db, product, would, now),
-      expiresAt: preview.expiresAt,
-      expiryDays: tier?.policy_expiry_days ?? null,
-    },
-  };
+function identityPath(path: ObtainPath | undefined): IdentityPath | null {
+  return path && isIdentityPathKind(path.kind) && path.terms
+    ? (path as IdentityPath)
+    : null;
 }
 
 /**
- * Every offer for the account, in name order. Reads only: no row is written (G24).
+ * Every offer for the account, in name order: the engine's visible products whose first path is
+ * an identity path. Reads only: no row is written (G24).
  *
- * A product the account already holds is never an offer, whatever its policy would say: the held
- * set is read once up front and those candidates are skipped before any evaluation, and
+ * A product the account already holds is never an offer, whatever its policy would say: the
+ * engine reads the held set once up front and skips those candidates before any evaluation, and
  * `exclude` (the slugs the caller's library view lists) is skipped too, so the count beside the
  * library can never name a product that library already shows.
  */
@@ -245,14 +133,18 @@ export async function discoverOffers(
     terms: DiscoverTerms;
   }>
 > {
-  const identity = await discoverIdentity(env, db, accountId);
-  if (!identity) return [];
-  const held = await listHeldProducts(db, accountId);
   const offers = [];
-  for (const slug of await listDiscoverCandidates(db)) {
-    if (held.has(slug) || exclude.has(slug)) continue;
-    const verdict = await evaluateOffer(db, accountId, identity, slug, now);
-    if (verdict.kind === "offer") offers.push(verdict);
+  for (const o of await storefrontOffers(env, db, accountId, now, {
+    ...DISCOVER,
+    exclude,
+  })) {
+    const first = o.cta === "add" ? identityPath(o.paths[0]) : null;
+    if (first)
+      offers.push({
+        product: o.product,
+        reason: first.reason,
+        terms: first.terms,
+      });
   }
   return offers;
 }
@@ -351,22 +243,29 @@ export async function handleDiscoverClaim(
   );
   if (limited) return limited;
 
-  const identity = await discoverIdentity(env, db, session.accountId);
-  const verdict = identity
-    ? await evaluateOffer(db, session.accountId, identity, slug, now)
-    : ({ kind: "none" } as const);
-  // Not a candidate at all (unknown slug, portal or Discover off, a custom issuer) reads exactly
-  // like a withdrawn offer: Discover never confirms that a product exists beyond what it listed.
-  const candidate =
-    identity !== null &&
-    (await listDiscoverCandidates(db, slug)).includes(slug);
+  // The engine's view of this one product (`null`: not a candidate at all, an unknown slug, the
+  // portal off, unlisted, the storefront switched off). Every refusal below reads exactly like a
+  // withdrawn offer: Discover never confirms that a product exists beyond what it listed.
+  const ev = await evaluateObtain(
+    env,
+    db,
+    session.accountId,
+    slug,
+    now,
+    DISCOVER,
+  );
+  // Set only where the identity paths can run: the platform issuer with auto-linking on, License
+  // on, and an account with a platform identity.
+  const evidence = ev?.identity ?? null;
 
-  if (verdict.kind === "held" && candidate) {
+  if (ev && evidence && ev.held) {
     // Idempotent: the second submit of an add answers the licence the first one minted.
-    let found = verdict.license;
+    let found = evidence.existing;
     // I-05: a licence has one owner. The auto-issue licence keyed by this account's platform
-    // subject is linked here if it is still floating (the next sweep would do the same), and is
-    // never answered when another account owns it.
+    // subject is linked here if it is in no account, and is never answered when another account
+    // owns it. This is the person's own "Add to library", an explicit act, so it links even a
+    // licence this account once removed: an auto-attach block (LX-26, S-24 D19) stops only the
+    // automatic sweep, which skips that pair.
     if (found && (found.account_id ?? null) === null) {
       await linkLicense(
         db,
@@ -380,18 +279,23 @@ export async function handleDiscoverClaim(
     }
     if (found && found.account_id !== session.accountId) found = null;
     const license =
-      found ?? (await heldLicense(db, session.accountId, verdict.product.slug));
+      found ?? (await heldLicense(db, session.accountId, ev.product.slug));
     if (license) {
       return portalJson({
         added: false,
-        product: verdict.product.slug,
-        license: await claimedLicenseView(db, verdict.product, license, now),
+        product: ev.product.slug,
+        license: await claimedLicenseView(db, ev.product, license, now),
       });
     }
   }
-  if (verdict.kind !== "offer" || !candidate || !identity) return notEligible();
+  const offered =
+    ev?.verdict.visible && ev.verdict.cta === "add"
+      ? identityPath(ev.verdict.paths[0])
+      : null;
+  if (!ev || !evidence || !offered) return notEligible();
+  const { identity } = evidence;
 
-  const { product } = verdict;
+  const { product } = ev;
   let licenseId: string;
   try {
     const result = await activateFromIdentity(db, product, identity, now);
@@ -421,7 +325,7 @@ export async function handleDiscoverClaim(
     accountId: session.accountId,
     product: product.slug,
     licenseId,
-    summary: `Added ${product.name} from Discover (source: discover; reason: ${verdict.reason})`,
+    summary: `Added ${product.name} from Discover (source: discover; reason: ${offered.reason})`,
     now,
   });
   if (added) {
@@ -436,7 +340,7 @@ export async function handleDiscoverClaim(
       target_kind: "license",
       target_id: licenseId,
       parent_id: null,
-      summary: `Auto-issued to ${who} from the portal's Discover (source: discover; reason: ${verdict.reason})`,
+      summary: `Auto-issued to ${who} from the portal's Discover (source: discover; reason: ${offered.reason})`,
     });
   }
   return portalJson({

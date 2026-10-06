@@ -38,6 +38,25 @@ export const FINGERPRINT_EXPECT: RequestBody = {
   allowedKeys: ["fingerprint"],
 };
 
+/** The platform device name the recorded client stands in for (`initial.deviceName`, PX-W13). */
+export const TRANSCRIPT_DEVICE_NAME = "Transcript Device";
+
+/** A fingerprint body that also carries the device label (`license/activate` and
+ *  `devices/register`, PX-W13 §8 Q2). */
+export const LABELLED_FINGERPRINT = {
+  ...FINGERPRINT,
+  deviceName: TRANSCRIPT_DEVICE_NAME,
+};
+
+/** What a replaying SDK's activation or registration body is held to: some hashed fingerprint
+ *  and a device label. The label's value is pinned by `device-label.json` and the device-code
+ *  transcripts; here only its presence and type are. */
+export const LABELLED_FINGERPRINT_EXPECT: RequestBody = {
+  json: { fingerprint: { components: {}, hwid: "" }, deviceName: "" },
+  match: "shape",
+  allowedKeys: ["fingerprint", "deviceName"],
+};
+
 /** The report allowlist, straight from the handler that enforces it. A replaying SDK that sends
  *  any other top-level key fails: the Worker would drop it silently, which is exactly the kind
  *  of drift a transcript exists to surface. */
@@ -138,6 +157,68 @@ export async function explicitReport(
       match: "subset",
       allowedKeys: REPORT_ALLOWED_KEYS,
     },
+  });
+}
+
+/** `boot` (SP-00, `ui.boot`) on a fresh install of an open-registration product: discovery, the
+ *  keyless registration (the token is captured), then the sync pass — trust, the config
+ *  document, the report. Each server answer is asserted as it records. */
+export async function boot(s: StepRecorder, product: string): Promise<void> {
+  const disc = await discovery(s, product);
+  expect(disc.status).toBe(200);
+  expect(
+    ((await disc.json()) as { core: { registration: string } }).core
+      .registration,
+  ).toBe("open");
+  const reg = await s.send({
+    method: "POST",
+    path: `/${product}/devices/register`,
+    body: FINGERPRINT,
+    expectBody: FINGERPRINT_EXPECT,
+    capture: { token: "$.token" },
+  });
+  expect(reg.status).toBe(200);
+  await trust(s, product);
+  expect((await document(s, product, "config")).status).toBe(200);
+  expect(
+    (await syncReport(s, product, { config: {}, entitlements: {} })).status,
+  ).toBe(200);
+}
+
+/** `releaseFetch` (SP-00, `release.fetch`): `GET` of one build's payload on the builds route,
+ *  with the device bearer and the metadata headers; resumed from `partial` bytes with `Range`
+ *  and `If-Range: "<sha256>"` (the payload's strong ETag), both asserted by value. */
+export async function releaseFetch(
+  s: StepRecorder,
+  product: string,
+  target: { version: string; build: string; sha256: string },
+  partial?: number,
+): Promise<Response> {
+  return s.send({
+    method: "GET",
+    path: `/${product}/distribution/builds/${encodeURIComponent(target.version)}/${encodeURIComponent(target.build)}`,
+    bearer: "token",
+    ...(partial !== undefined
+      ? {
+          assertHeaders: {
+            range: `bytes=${partial}-`,
+            "if-range": `"${target.sha256}"`,
+          },
+        }
+      : {}),
+  });
+}
+
+/** `downloadModel` (SP-00, `release.distribution`): the public `GET` of the download page's
+ *  model. No credential and no metadata headers: it is the page's own public document. */
+export async function downloadModel(
+  s: StepRecorder,
+  product: string,
+): Promise<Response> {
+  return s.send({
+    method: "GET",
+    path: `/${product}/distribution/download.json`,
+    metadata: false,
   });
 }
 

@@ -7,6 +7,7 @@ package im.plrs.key.ui
 import im.plrs.key.core.AllowedRange
 import im.plrs.key.core.BootEmit
 import im.plrs.key.core.BootStage
+import im.plrs.key.core.Copy
 import im.plrs.key.core.LicenseStatus
 import im.plrs.key.license.ActivationResult
 import java.text.DecimalFormat
@@ -63,7 +64,11 @@ public fun PolarisCopy.graceBody(graceUntilSeconds: Long?, nowSeconds: Long): St
     if (graceUntilSeconds == null || graceUntilSeconds <= nowSeconds) graceBodyNoDeadline
     else format(graceBody, duration(graceUntilSeconds - nowSeconds))
 
-/** The error an activation result shows, or null for success. */
+/**
+ * The error an activation result shows, or null for success: one message per §3.1 kind
+ * (notes/SDK-PARITY-PASS.md), by code. A refusal reads [errorCodeMessage] (the kit's field, else the
+ * core catalog); a code neither knows shows a generic message naming it, never the raw body.
+ */
 public fun PolarisCopy.activationMessage(result: ActivationResult): String? = when (result) {
     is ActivationResult.Ok -> null
     is ActivationResult.DeviceLimit ->
@@ -73,9 +78,44 @@ public fun PolarisCopy.activationMessage(result: ActivationResult): String? = wh
     ActivationResult.FingerprintRequired -> activationFingerprintRequired
     is ActivationResult.HardwareMismatch -> activationHardwareMismatch
     ActivationResult.EnrollDisabled -> activationEnrollDisabled
+    ActivationResult.EnrollClaimed -> activationEnrollClaimed
+    ActivationResult.LicenseDisabled -> activationLicenseDisabled
+    ActivationResult.LicenseExpired -> activationLicenseExpired
+    ActivationResult.AttestationRequired -> activationAttestationRequired
+    is ActivationResult.RateLimited ->
+        result.retryAfterSeconds?.takeIf { it > 0 }?.let { format(activationRateLimitedFor, duration(it)) } ?: activationRateLimited
+    is ActivationResult.Refused -> errorCodeMessage(result.code) ?: format(activationRefused, result.code)
     // The SDK's message is for logs; the player sees the kit's copy.
-    is ActivationResult.Error -> activationError
+    is ActivationResult.Error -> if (result.code == im.plrs.key.core.ErrorCode.network) activationNetwork else activationError
 }
+
+/**
+ * The copy for a registry error code, or null when there is none. The codes the kit has a field for
+ * (the activation refusals and the shared ones) read that field, so a host override or a string
+ * resource still wins; every other code the core catalog knows reads `Copy.message` (core.copy:
+ * the generated tables plus the host's `Copy.registerLocale` layer, in the default locale). Used for
+ * refusals that arrive as a bare code (`ActivationResult.Refused`, a typed N/A).
+ */
+public fun PolarisCopy.errorCodeMessage(code: String): String? = when (code) {
+    im.plrs.key.core.ErrorCode.deviceLimit -> activationDeviceLimit
+    im.plrs.key.core.ErrorCode.unauthorized -> activationUnauthorized
+    im.plrs.key.core.ErrorCode.fingerprintRequired -> activationFingerprintRequired
+    im.plrs.key.core.ErrorCode.hardwareMismatch -> activationHardwareMismatch
+    im.plrs.key.core.ErrorCode.enrollDisabled, im.plrs.key.core.ErrorCode.registrationClosed -> activationEnrollDisabled
+    im.plrs.key.core.ErrorCode.enrollClaimed -> activationEnrollClaimed
+    im.plrs.key.core.ErrorCode.licenseDisabled -> activationLicenseDisabled
+    im.plrs.key.core.ErrorCode.licenseExpired -> activationLicenseExpired
+    im.plrs.key.core.ErrorCode.attestationRequired -> activationAttestationRequired
+    im.plrs.key.core.ErrorCode.rateLimited -> activationRateLimited
+    im.plrs.key.core.ErrorCode.network, im.plrs.key.core.ErrorCode.networkError -> activationNetwork
+    else -> Locale.getDefault().toLanguageTag().let { locale ->
+        // `{product}` names the app when the host named it; otherwise the placeholder drops.
+        val params = if (productName != DEFAULT_PRODUCT_NAME) mapOf("product" to productName) else emptyMap()
+        if (Copy.hasCopy(code, locale)) Copy.message(code, locale = locale, params = params) else null
+    }
+}
+
+private val DEFAULT_PRODUCT_NAME: String = PolarisCopy().productName
 
 /** The label under the progress indicator while the boot runs through [stage]. */
 public fun PolarisCopy.bootStageLabel(stage: BootStage): String = when (stage) {

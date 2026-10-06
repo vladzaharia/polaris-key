@@ -43,6 +43,7 @@ import {
   CSRF_HEADER,
   issueSession,
 } from "../src/admin/session.js";
+import { HEAD_SHA, withDefaultHead } from "./githubHead.js";
 
 // A throwaway 2048-bit RSA private key (PKCS#8 PEM) so the App-JWT signer actually runs; the
 // fetch stub then shortcuts the installation-token exchange. Never a prod key.
@@ -165,7 +166,7 @@ function stubFetch(files: Record<string, string>): {
     }
     return new Response("not found", { status: 404 });
   };
-  return { fetchImpl, calls };
+  return { fetchImpl: withDefaultHead(fetchImpl), calls };
 }
 
 // ── Manifest fixtures ────────────────────────────────────────────────────────
@@ -526,6 +527,130 @@ describe("linkRepo (GitHub-forward product creation)", () => {
   // unsupported keywords, or a `pattern` the validator will not compile — and it is reachable
   // from a repo webhook. The manifest parser only checks `schema.type`'s SHAPE, so this
   // fragment passes `parseManifest` and is caught only by the new screen.
+  // S-19 §7.4 (LX-05): an incompatible reserved entitlement-name declaration links with a
+  // warning by default and is refused once the platform's LICENSING_RESERVED_NAMES says error.
+  it("an incompatible reserved-name declaration links in warn mode and is refused in error mode", async () => {
+    const reserved = JSON.stringify({
+      schemaVersion: 1,
+      entries: [
+        {
+          key: "deviceLimit",
+          kind: "flag",
+          category: "Seats",
+          label: "Seats",
+          description: "",
+          schema: { type: "boolean" },
+        },
+      ],
+    });
+    const files = {
+      ".pkey/schema.json": reserved,
+      ".pkey/product.json": PRODUCT_JSON,
+      ".pkey/release.json": RELEASE_JSON,
+    };
+
+    const strict = envFor();
+    strict.LICENSING_RESERVED_NAMES = "error";
+    const db = makeTestDb();
+    const refused = await linkRepo(
+      strict,
+      db,
+      "acme-org/acme-app",
+      NOW,
+      stubFetch(files).fetchImpl,
+    );
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.errors?.join("\n")).toContain(
+      "deviceLimit is a reserved entitlement name",
+    );
+    expect(
+      (await db.all<{ slug: string }>("SELECT * FROM products")).length,
+    ).toBe(0);
+
+    // Warn (the default): it links, and a strict resync then refuses the same catalog without
+    // replacing the active one.
+    const env = envFor();
+    expect(
+      (
+        await linkRepo(
+          env,
+          db,
+          "acme-org/acme-app",
+          NOW,
+          stubFetch(files).fetchImpl,
+        )
+      ).ok,
+    ).toBe(true);
+    const resync = await resyncRepo(
+      strict,
+      db,
+      "acme",
+      NOW + 1,
+      stubFetch(files).fetchImpl,
+    );
+    expect(resync.ok).toBe(false);
+    if (resync.ok) return;
+    expect(resync.errors?.join("\n")).toContain(
+      "deviceLimit is a reserved entitlement name",
+    );
+    expect((await getActiveSchema(db, "acme"))?.catalog_json).toBe(reserved);
+  });
+
+  // PX-W13 (plans/PX-W13.md §3, §8 Q4 as amended): a product named after a platform or store
+  // links with a warning by default and is refused once identity.reservedDisplayNames says error.
+  // Text with a bidi override is refused in every mode.
+  it("a reserved display name links in warn mode and is refused in error mode", async () => {
+    const spoofed = JSON.stringify({
+      ...JSON.parse(PRODUCT_JSON),
+      name: "Steam Companion",
+    });
+    const files = {
+      ".pkey/schema.json": SCHEMA_JSON,
+      ".pkey/product.json": spoofed,
+      ".pkey/release.json": RELEASE_JSON,
+    };
+    const strict = envFor();
+    strict.IDENTITY_RESERVED_DISPLAY_NAMES = "error";
+    const db = makeTestDb();
+    const refused = await linkRepo(
+      strict,
+      db,
+      "acme-org/acme-app",
+      NOW,
+      stubFetch(files).fetchImpl,
+    );
+    expect(refused.ok).toBe(false);
+    if (refused.ok) return;
+    expect(refused.errors?.join("\n")).toContain(
+      "product.name uses a reserved platform or store name",
+    );
+
+    const linked = await linkRepo(
+      envFor(),
+      db,
+      "acme-org/acme-app",
+      NOW,
+      stubFetch(files).fetchImpl,
+    );
+    expect(linked.ok).toBe(true);
+
+    const bidi = await linkRepo(
+      envFor(),
+      makeTestDb(),
+      "acme-org/acme-app",
+      NOW,
+      stubFetch({
+        ...files,
+        ".pkey/product.json": JSON.stringify({
+          ...JSON.parse(PRODUCT_JSON),
+          name: "Acme \u202eexe.png",
+        }),
+      }).fetchImpl,
+    );
+    expect(bidi.ok).toBe(false);
+  });
+
   it("a catalog the admin API would reject is refused by linkRepo and resyncRepo too", async () => {
     const db = makeTestDb();
     const env = envFor();
@@ -625,6 +750,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         distribution: { enabled: true },
         update: { enabled: true },
         identity: { enabled: true },
+        sync: { enabled: false },
       });
     });
 
@@ -652,6 +778,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         distribution: { enabled: false },
         update: { enabled: false },
         identity: { enabled: false },
+        sync: { enabled: false },
       });
     });
 
@@ -999,11 +1126,14 @@ describe("linkRepo (GitHub-forward product creation)", () => {
         ],
       },
     ]);
-    // R6-05: the manifest is read from the DB-configured repo's default branch (the
-    // Contents API default), NEVER from a payload-supplied `after`/ref.
+    // R6-05: the manifest is read from the DB-configured repo's default branch, pinned to the
+    // head GitHub resolved for it (ST-01a), NEVER from a payload-supplied `after`/ref.
     const contents = calls.filter((url) => url.includes("/contents/"));
     expect(contents.length).toBeGreaterThan(0);
-    expect(contents.every((url) => !url.includes("ref="))).toBe(true);
+    expect(contents.every((url) => url.endsWith(`?ref=${HEAD_SHA}`))).toBe(
+      true,
+    );
+    expect(contents.some((url) => url.includes("abc123"))).toBe(false);
 
     const sync = await getProductSyncState(db, "acme");
     expect(sync).toMatchObject({
@@ -1051,7 +1181,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
     const linked = await linkRepo(env, db, "acme-org/acme-app", NOW, fetchImpl);
     expect(linked.ok).toBe(true);
 
-    const failingFetch: FetchImpl = async (input) => {
+    const failingFetch: FetchImpl = withDefaultHead(async (input) => {
       const url = String(input);
       if (url.includes("/access_tokens")) {
         return new Response(
@@ -1064,7 +1194,7 @@ describe("linkRepo (GitHub-forward product creation)", () => {
       if (url.includes("/contents/"))
         return new Response("forbidden", { status: 403 });
       return new Response("not found", { status: 404 });
-    };
+    });
     const result = await resyncRepo(env, db, "acme", NOW + 1, failingFetch);
     expect(result.ok).toBe(false);
     if (result.ok) return;
@@ -1450,10 +1580,15 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
     expect(await w.mint()).toBe(404);
   });
 
-  it("a push refused half-way still drops the approval its early writes widened", async () => {
+  // ST-01b: the apply is ONE batch, after every check. A push refused by a later check (here an
+  // uncompilable catalog) no longer writes its earlier sections first, so nothing is widened and
+  // the operator's approval stands. (Before ST-01b `services_json` was already written and the
+  // `finally` sweep had to drop the approval.)
+  it("a refused push writes nothing, so it widens nothing and the approval stands", async () => {
     const w = await linked();
     await w.resync([BASE_RECIPE]);
     await approveEdgeMintRecipe(w.db, "acme", "applemusic");
+    const before = (await loadProduct(w.env, w.db, "acme"))!.registration;
     const badSchema = JSON.stringify({
       schemaVersion: 1,
       entries: [
@@ -1482,18 +1617,18 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
       }).fetchImpl,
     );
     expect(res.ok).toBe(false);
-    // `services_json` was written before the catalog was refused.
-    expect((await loadProduct(w.env, w.db, "acme"))!.registration).toBe("open");
-    expect(await approvalCount(w.db)).toBe(0);
-    expect(await invalidations(w.db)).toHaveLength(1);
+    expect(before).not.toBe("open");
+    expect((await loadProduct(w.env, w.db, "acme"))!.registration).toBe(before);
+    expect(await approvalCount(w.db)).toBe(1);
+    expect(await invalidations(w.db)).toHaveLength(0);
+    expect(await w.mint()).toBe(200);
   });
 
-  // A push can also THROW half-way rather than be refused: the manifest validator does not reject
-  // a duplicated `edgeMint[].id`, so the final batch fails on the `edge_mint_config` primary key —
-  // after `setAutoIssuePolicy` has already written anonymous enrolment. The sweep runs in a
-  // `finally`, so a repo writer cannot skip it this way; otherwise an operator's console revert
-  // would make the approval apply again to a stranger enrolled in between.
-  it("a push that throws after widening still drops the approval; a console revert does not restore it", async () => {
+  // A push can also THROW rather than be refused: the manifest validator does not reject a
+  // duplicated `edgeMint[].id`, so the batch fails on the `edge_mint_config` primary key. Since
+  // ST-01b the anonymous-enrolment write rides in that same batch and rolls back with it: the
+  // product never becomes public and the approval stands. The `finally` sweep still runs.
+  it("a push that throws rolls its widening back with it; the approval stands", async () => {
     const w = await linked();
     await w.resync([BASE_RECIPE]);
     await approveEdgeMintRecipe(w.db, "acme", "applemusic");
@@ -1514,66 +1649,10 @@ describe("edge-mint approvals across link and resync (P0-12)", () => {
         ),
       ),
     ).rejects.toThrow(/UNIQUE/);
-    const anon = (await loadProduct(w.env, w.db, "acme"))!;
-    expect(mintIsPublic(anon)).toBe(true);
-    expect(await approvalCount(w.db)).toBe(0);
-    const audited = await invalidations(w.db);
-    expect(audited).toHaveLength(1);
-    expect(audited[0]).toMatchObject({
-      target_id: "applemusic",
-      actor_sub: null,
-    });
-
-    const enrolled = await handleEnroll(
-      mkReq(
-        "POST",
-        { "x-pkey-device": "stranger" },
-        {
-          fingerprint: {
-            components: {
-              machineUuid: "u".repeat(FINGERPRINT_COMPONENT_LENGTH),
-              boardSerial: "b".repeat(FINGERPRINT_COMPONENT_LENGTH),
-              cpuModel: "c".repeat(FINGERPRINT_COMPONENT_LENGTH),
-            },
-            hwid: "ignored",
-          },
-        },
-      ),
-      w.env,
-      w.db,
-      anon,
-      NOW,
-    );
-    expect(enrolled.status).toBe(200);
-    const { token: stranger } = (await enrolled.json()) as { token: string };
-
-    // The operator's obvious fix: turn anonymous enrolment off in the console.
-    await setAutoIssuePolicy(
-      w.db,
-      "acme",
-      JSON.stringify({ enabled: false, tierId: "pro", mode: "anonymous" }),
-      "admin",
-      NOW + 200,
-    );
-    const strangerMint = async () =>
-      (
-        await handleMintToken(
-          mkReq("POST", { authorization: `Bearer ${stranger}` }),
-          w.env,
-          w.db,
-          (await loadProduct(w.env, w.db, "acme"))!,
-          "applemusic",
-          NOW,
-        )
-      ).status;
     expect(mintIsPublic((await loadProduct(w.env, w.db, "acme"))!)).toBe(false);
-    expect(await strangerMint()).toBe(404);
-
-    // A clean push afterwards does not bring it back either.
-    await w.resync([BASE_RECIPE]);
-    expect(await strangerMint()).toBe(404);
-    expect(await w.mint()).toBe(404);
-    expect(await approvalCount(w.db)).toBe(0);
+    expect(await approvalCount(w.db)).toBe(1);
+    expect(await invalidations(w.db)).toHaveLength(0);
+    expect(await w.mint()).toBe(200);
   });
 
   // A `finally` covers a throw, not a Worker that is KILLED after the push's un-batched widening

@@ -32,7 +32,7 @@ import {
   type PageBuild,
   type PagePlatformGroup,
 } from "./model.js";
-import { qrSvg } from "./qr.js";
+import { qrSvg } from "../../../core/qr.js";
 
 /** The deep-link schemes the Worker builds (`model.ts`). Nothing else but `https:` is linked. */
 export const DEEP_LINK_SCHEMES = [
@@ -293,7 +293,9 @@ function primaryBlock(
 /** One entry of "Other ways to get it". */
 function way(a: PageAction, group: PagePlatformGroup): string {
   const parts: string[] = [];
-  const head = a.kind === "download" && a.build ? `Direct download` : a.label;
+  // The `direct` outlet is presented as Polaris Key (S-21 §6.8); its id stays `direct`.
+  const head =
+    a.kind === "download" && a.build ? `Download from Polaris Key` : a.label;
   parts.push(
     `<span class="way-head">${esc(head)}</span>${
       a.version ? ` <span class="meta">Version ${esc(a.version)}</span>` : ""

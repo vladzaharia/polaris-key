@@ -5,7 +5,7 @@
 | Phase       | A: Admin: store provisioning (storefronts)                                                                                                           |
 | Size        | 2–3 engineer-weeks                                                                                                                                   |
 | Depends on  | [A-18a](A-18a-storefront-adapter-layer.md), [A-18b](A-18b-listing-model.md), [F-11](F-11-console-feeds.md)                                           |
-| Unblocks    | [ST-13](ST-13-listing-in-hub.md)                                                                                                                     |
+| Unblocks    | [ST-13](ST-13-listing-in-hub.md), [PS-06](PS-06-console-polaris-key-storefront.md)                                                                   |
 | Role        | `pkey-implementer`                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                   |
 | Gates       | docs help-link drift gate; console CSP parity (`adminCspParity`, the CSP e2e); rule 10 (narrative-only admin routes); THREAT-MODEL (admin mutations) |
@@ -100,15 +100,44 @@ the area. The capability badge is one component used by storefront tiles and fee
 - Imported listing text renders escaped, never as HTML.
 - A pending step survives a closed tab as a `pending` ledger row.
 
+## Corrections from the code (recorded by the implementer)
+
+- **Adapters on main at hand-off:** App Store (A-17), Google Play (A-18e), Microsoft Store (A-18f),
+  itch.io and Snap (A-18h, CI plane). Steam (A-18g) and the PR plane (A-18i) had not landed: they
+  appear by registering, with no console change.
+- **A-17f was dropped before it started**, so it is absorbed: the New app wizard is the App Store
+  flow runtime (`services/distribution/storefronts/appStore.ts`) on A-17b's and A-17c's routes.
+- **Flow runtimes, not adapter logic.** A-18e and A-18f shipped their writes as functions with no
+  routes; the flow binds a subset (Play: listing text, accepted images, testers, typed send for
+  review; Microsoft: staged listing, typed commit). Unbound `api` steps are absent per the owner's
+  rule; Play release and rollout stay on P5-03's Rollouts page.
+- **Crop acceptance needed storage.** A-18d registers outputs but recorded no acceptance, so this
+  package adds migration `0083_dist_listing_asset_acceptance` (renumbered at integration) (`accepted_sha256`, `_at`, `_by` on
+  `dist_listing_assets`) and the slot board routes; pushes send accepted assets only.
+- **Store connections' Set up** needs to know which stores have an adapter: the connections list
+  gains `storefront: boolean`.
+- **The slot board's media host (S-20 note).** The brief says the board renders from HA-02's media
+  host and uploads through HA-06. HA-02 was still todo, and neither HA-02 nor HA-06 is a
+  dependency, so the board previews through its own `storefronts/slots/image` route (magic-byte
+  typed, `nosniff`) and adds no upload path of its own. Whoever lands HA-06 or ST-13 switches the
+  preview to the media host.
+- **Older Play images (decision 6).** A-18e's `playUploadImage` counts the older images and names
+  the `google-play.main-store-listing` row. The image step and the listing push return them as a
+  `followUp` (`{count, text, url, missing}`). The admin route renders the link from the product's
+  facts, just as it does for a deep-linked step. The console shows the count and the link on the
+  step card and in the Push tab. No Play deep link renders a URL yet: the facts carry no Play
+  Console `developerId`, and `appId` is the package name, not the Console's numeric id. Until that
+  changes, the note names the missing ids.
+
 ## Acceptance criteria
 
-- [ ] The flow, the Listing editor and Set up work against fakes for every adapter that has
+- [x] The flow, the Listing editor and Set up work against fakes for every adapter that has
       landed; a new adapter registered in a test appears with no console change.
-- [ ] F-11's feed pages and the storefront tiles render capabilities through the same component.
-- [ ] Submit, release and price steps require the typed phrase; there is no delete control.
-- [ ] No "coming soon" or implementation-status copy (reviewer greps the new strings); no
+- [x] F-11's feed pages and the storefront tiles render capabilities through the same component.
+- [x] Submit, release and price steps require the typed phrase; there is no delete control.
+- [x] No "coming soon" or implementation-status copy (reviewer greps the new strings); no
       redundant subtitles; settings controls right-aligned per T4.
-- [ ] `adminCspParity`, the CSP e2e and `check:links` pass; ADMIN.md amended; the green gate passes
+- [x] `adminCspParity`, the CSP e2e and `check:links` pass; ADMIN.md amended; the green gate passes
       (`AGENTS.md`).
 
 ## Verify
@@ -122,10 +151,20 @@ mise exec node@22 -- pnpm --filter @polaris-key/docs check:links
 ## S-20 note (2026-10-05)
 
 The slot board renders each asset from S-20's media host, built in
-[HA-02](HA-02-media-host.md). Each slot's upload uses
+[HA-02](HA-02-img-host.md). Each slot's upload uses
 [HA-06](HA-06-upload-paths.md)'s `POST /admin/products/:p/assets/:slot`, which writes
 `dist_listing_assets` rows with `source = 'admin'`. Do not add a second upload path
 ([notes/S-20 §6.3](../../notes/S-20-hosted-assets.md#63-ingest-one-path-three-ways-in)).
+
+## S-21 note (2026-10-05)
+
+[S-21](../../notes/S-21-polaris-storefront.md) adds a first-party storefront, `polaris-key`, to `STOREFRONT_ADAPTERS`
+([PS-01](PS-01-polaris-key-adapter.md)). Its operations use a new `Support` mode,
+`first-party`, rendered as "Built in". The tile and the Listing editor must come from the
+registry like every other store, so the Polaris Key tile appears with no store-specific code here.
+Do not add it to Store connections: it has no credential. Its panel, preview and analytics are
+[PS-06](PS-06-console-polaris-key-storefront.md)'s. The `direct` outlet is labelled "Polaris
+Key" ([PS-10](PS-10-direct-shown-as-polaris-key.md)).
 
 ## Hand-off
 

@@ -19,6 +19,10 @@
  */
 
 import type { ServiceRegistry } from "./core/registry.js";
+import {
+  buildSettingsRegistry,
+  type SettingsRegistry,
+} from "./core/settings/registry.js";
 import type { ByteRoute } from "./core/bytesHost.js";
 import type {
   OwnerlessRegistryRoute,
@@ -26,7 +30,11 @@ import type {
 } from "./core/registryHost.js";
 import { licenseService } from "./services/license/index.js";
 import { configService } from "./services/config/index.js";
-import { releaseService } from "./services/release/index.js";
+import {
+  RELEASE_PUBLISH_ROUTES,
+  RELEASE_REGISTRY_ROUTES,
+  releaseService,
+} from "./services/release/index.js";
 import {
   DISTRIBUTION_BYTE_ROUTES,
   DISTRIBUTION_OWNERLESS_ROUTES,
@@ -36,6 +44,7 @@ import {
 } from "./services/distribution/index.js";
 import { updateService } from "./services/update/index.js";
 import { identityService } from "./services/identity/index.js";
+import { syncService } from "./services/sync/index.js";
 
 export const SERVICES: ServiceRegistry = new Map([
   [licenseService.slug, licenseService],
@@ -44,7 +53,17 @@ export const SERVICES: ServiceRegistry = new Map([
   [distributionService.slug, distributionService],
   [updateService.slug, updateService],
   [identityService.slug, identityService],
+  [syncService.slug, syncService],
 ]);
+
+/**
+ * The settings registry (ST-03, `core/settings/`): the platform slice, Core's product slice and
+ * every mounted service's `settings` slice, assembled once from `SERVICES` so Core never names a
+ * service. `test/settings-registry.test.ts` runs the registry rules over exactly this value.
+ */
+export const SETTINGS: SettingsRegistry = buildSettingsRegistry(
+  SERVICES.values(),
+);
 
 /**
  * The bytes-host allowlist (P2-01, `core/bytesHost.ts`): the only routes that can answer on
@@ -71,13 +90,20 @@ export const BYTE_ROUTES: readonly ByteRoute[] = [
 /**
  * The registry-host allowlist (F-02, `core/registryHost.ts`, plans/F-01.md §6.1): the only routes
  * that can answer on `PKG_ORIGIN` (`pkg.plrs.im`), beside the host's landing page and OCI's
- * `/v2/` root. A route not listed here does not exist on that host. Every one is Distribution's
- * (`service: "distribution"`) and belongs to one ecosystem; F-04 to F-09 add theirs to
- * `DISTRIBUTION_REGISTRY_ROUTES`, and `test/routeCoverage.test.ts` checks this list against its
- * `REGISTRY_PATHS` table in both directions (rule 10).
+ * `/v2/` root. A route not listed here does not exist on that host. Each belongs to one
+ * ecosystem. The reads and credential routes are Distribution's (`service: "distribution"`;
+ * F-04 to F-09 add theirs to `DISTRIBUTION_REGISTRY_ROUTES`); the native publish routes (F-22:
+ * `npm publish`, twine, `swift package-registry publish`, Maven `PUT`s) and F-23's OCI push
+ * routes (`RELEASE_REGISTRY_ROUTES`) are Release's (`service: "release"`), because a publish is
+ * Release's ingest. `test/routeCoverage.test.ts` checks this list against its `REGISTRY_PATHS`
+ * table in both directions (rule 10).
  */
 export const REGISTRY_ROUTES: readonly RegistryRoute[] = [
   ...DISTRIBUTION_REGISTRY_ROUTES,
+  ...RELEASE_PUBLISH_ROUTES,
+  // F-23: native `docker push`, Release's (publishing writes release rows, rule 6). Declared
+  // methods only (POST/PATCH/PUT/DELETE and the upload status GET), so no read reaches them.
+  ...RELEASE_REGISTRY_ROUTES,
 ];
 
 /**

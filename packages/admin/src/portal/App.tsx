@@ -29,9 +29,12 @@ import { FreeDevicePage } from "./pages/FreeDevicePage.js";
 import { LibraryPage } from "./pages/LibraryPage.js";
 import { ProductPage } from "./pages/ProductPage.js";
 import { SignInPage } from "./pages/SignInPage.js";
+import { restoreCarriedKey } from "./carriedKey.js";
 import {
+  activateContext,
   rewriteActivatePath,
   setParams,
+  type ActivateContext,
   useDocumentTitle,
   useRoute,
   type PortalRoute,
@@ -47,12 +50,13 @@ import {
 export function PortalApp(): React.ReactElement {
   const [client] = React.useState(() => {
     rewriteActivatePath();
+    restoreCarriedKey();
     return createPortalQueryClient();
   });
   return (
     <ThemeProvider>
       <QueryClientProvider client={client}>
-        <AppToaster />
+        <AppToaster phoneBottom />
         <Announcer />
         <Boot />
       </QueryClientProvider>
@@ -87,6 +91,7 @@ function Boot(): React.ReactElement {
       "downloads",
       "product",
       "registryTokens",
+      "discover",
     ])
       qc.removeQueries({ queryKey: ["portal", key] });
   }, [signedOut, qc]);
@@ -152,20 +157,34 @@ function SignedInShell({
 }): React.ReactElement {
   const activate = useActivate();
 
-  // `#/?activate=<key>` (and `/activate?key=…`, rewritten to it) opens the modal over the
-  // Library with the key filled in; the parameter is consumed so a reload doesn't re-open it.
-  const activateParam =
-    route.kind === "library" ? route.params.get("activate") : null;
-  const productParam =
-    route.kind === "library" ? route.params.get("product") : null;
+  // `#/?activate=<key>` (and `/activate#key=…`, rewritten to it) opens the modal over the
+  // Library with the key filled in, with what the link carried. A hash written by hand goes
+  // through the same sanitiser as the link (`activateContext`). The parameters are consumed so a
+  // reload doesn't re-open it.
+  const linkParams = route.kind === "library" ? route.params : null;
+  const activateParam = linkParams?.get("activate") ?? null;
+  const ctx: ActivateContext = linkParams ? activateContext(linkParams) : {};
+  const productParam = ctx.product ?? null;
+  const nextParam = ctx.next ?? null;
+  const forParam = ctx.for ?? null;
+  const returnParam = ctx.return ?? null;
   React.useEffect(() => {
     if (activateParam === null) return;
     activate.open({
       key: activateParam || undefined,
       product: productParam ?? undefined,
+      next: nextParam ?? undefined,
+      forDevice: forParam ?? undefined,
+      returnTo: returnParam ?? undefined,
     });
-    setParams({ activate: null, product: null });
-  }, [activateParam, productParam, activate]);
+    setParams({
+      activate: null,
+      product: null,
+      next: null,
+      for: null,
+      return: null,
+    });
+  }, [activateParam, productParam, nextParam, forParam, returnParam, activate]);
 
   // ⌘K (§4.27) from 8 products.
   const lib = useLibrary();
@@ -221,7 +240,7 @@ function Page({
     case "library":
       return <LibraryPage account={account} params={route.params} />;
     case "discover":
-      return <DiscoverPage />;
+      return <DiscoverPage params={route.params} />;
     case "product":
       return (
         <ProductPage

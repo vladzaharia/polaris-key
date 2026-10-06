@@ -1,18 +1,26 @@
 /**
- * The report-back of CI-plane store steps (A-18h; notes/S-15 §6.3): `POST /<p>/distribution/report`
- * with `type: "store-step"`, P2-06's ingest, writes the step's row in `store_operations` with
- * `plane = 'ci'`, so the ledger and the console show CI steps beside Worker steps.
+ * The report-back of CI- and PR-plane store steps (A-18h, A-18i; notes/S-15 §6.3):
+ * `POST /<p>/distribution/report` with `type: "store-step"`, P2-06's ingest, writes the step's row
+ * in `store_operations` with `plane = 'ci'` (a vendor CLI command) or `plane = 'pr'` (a pull request
+ * to a winget, Homebrew tap, Scoop bucket or Flathub repository, or its verifier), so the ledger
+ * and the console show CI and PR steps beside Worker steps.
  *
- * The publish action reports each step twice: `pending` BEFORE the vendor CLI starts, which opens
- * the row (and is where a guard can refuse it), and `done` or `failed` after, with the exit code.
- * The Worker re-checks the command against the store's allow-list (`core/storefront/ciPlane.ts`)
- * and, for identity-bound parameters, the outlet's identity, so a row never records a command the
- * allow-list refuses, whatever CI sent. A refused report writes nothing.
+ * The publish action reports each step twice: `pending` BEFORE the vendor CLI starts (or before
+ * anything is written to GitHub), which opens the row (and is where a guard can refuse it), and
+ * `done` or `failed` after, with the exit code. The Worker re-checks the command against the
+ * store's allow-list (`core/storefront/ciPlane.ts`, `core/storefront/prPlane.ts`) and, for
+ * identity-bound parameters, the outlet's identity, so a row never records a command the
+ * allow-list refuses, whatever CI sent. A PR step also names the files it wrote (path and
+ * SHA-256), each of which must be a path the store's PR plane allows, and the pull request
+ * (number, URL on the argv's repository, state, labels), from which the Worker derives the
+ * verifier's verdict itself. A refused report writes nothing.
  *
  *   op_id        sha256(JSON [store, 'product', product, op, natural key, runId]) (`storeOpId`)
- *   op           `ci.<command>` (`ci.push`, `ci.upload_metadata`)
- *   natural key  `<command>:<first 32 hex of sha256(argv)>`; the argv itself is on the row's
- *                `after_json` (allow-listed values only: paths, versions, identity values)
+ *   op           `ci.<command>` (`ci.push`, `ci.upload_metadata`); `pr.pull_request`, `pr.status`
+ *   natural key  CI: `<command>:<first 32 hex of sha256(argv)>`; PR: `pr:<package>:<version>`
+ *                (S-15 §6.3: an open or merged PR for the package version). The argv itself is
+ *                on the row's `after_json` (allow-listed values only: paths, versions, identity
+ *                values, the repository)
  *   runId        the job's attempt (`gh-<run id>-<attempt>`) or a fresh id: the idempotency key
  *
  * A `pending` report of a step already `done` under the same run answers it (`replayed: true`) and
@@ -32,6 +40,18 @@ import {
 } from "../../core/storefront/adapter.js";
 import { checkCiCommand, type CiIdentity } from "../../core/storefront/ci.js";
 import { ciPlaneStore, CI_STORE_IDS } from "../../core/storefront/ciPlane.js";
+import type { CiAllowList } from "../../core/storefront/ci.js";
+import {
+  prNaturalKey,
+  prPathAllowed,
+  prPlaneStore,
+  prRepo,
+  prVerdict,
+  PR_STORE_IDS,
+  PR_TOOL,
+  type PrPlaneStore,
+  type PrVerdict,
+} from "../../core/storefront/prPlane.js";
 import {
   beginStoreOperation,
   finishStoreOperation,
@@ -50,6 +70,10 @@ export const STORE_STEP_STATES = ["pending", "done", "failed"] as const;
 export type StoreStepState = (typeof STORE_STEP_STATES)[number];
 
 const MAX_ARGV = 32;
+/** The most files one PR step may name (winget: version, installer, and up to 50 locales). */
+const MAX_PR_FILES = 64;
+const MAX_LABELS = 50;
+const SHA256_HEX = /^[0-9a-f]{64}$/;
 const MAX_ARG_LENGTH = 1024;
 const MAX_RUN_URL = 512;
 /** The most characters of one projected argv value on the row. */
@@ -61,9 +85,11 @@ export interface StoreStepRecord {
   op: string;
   command: string;
   state: StoreOpState;
-  plane: "ci";
+  plane: "ci" | "pr";
   /** True when the step was already done under this run: CI skips the tool. */
   replayed: boolean;
+  /** A PR step's verdict, derived from the reported pull request (A-18i). */
+  verdict?: PrVerdict;
 }
 
 export type StoreStepResult =
@@ -103,6 +129,26 @@ export function ciStepNaturalKey(
   return `${command}:${sha256(JSON.stringify(argv)).slice(0, 32)}`;
 }
 
+/** The ledger op of a PR command: `pr.<command>` with `-` as `_` (`pr.pull_request`). */
+export function prStepOp(command: string): string {
+  return `pr.${command.replace(/-/g, "_")}`;
+}
+
+/** One file a PR step wrote, as reported. */
+export interface PrStepFile {
+  path: string;
+  sha256: string;
+}
+
+/** The pull request a PR step opened, found or read, as reported. */
+export interface PrStepPull {
+  number: number;
+  url: string;
+  state: "open" | "closed";
+  merged: boolean;
+  labels: string[];
+}
+
 /** The row's before-and-after projection of a CI step (`stores/ciShared.ts`). */
 function stepProjection(
   tool: string,
@@ -121,6 +167,103 @@ function stepProjection(
       ...(exitCode !== null ? { exitCode } : {}),
       ...(runUrl !== null ? { runUrl } : {}),
     },
+  };
+}
+
+/** The row's projection of a PR step (`stores/prShared.ts`). */
+function prProjection(
+  command: string,
+  argv: readonly string[],
+  repo: string,
+  files: readonly PrStepFile[] | null,
+  pr: PrStepPull | null,
+  verdict: PrVerdict | null,
+  existing: boolean | null,
+  exitCode: number | null,
+  runUrl: string | null,
+): StoreProjection {
+  return {
+    type: "pr-step",
+    id: command,
+    attributes: {
+      tool: PR_TOOL,
+      command,
+      argv: argv.map((a) => a.slice(0, MAX_PROJECTED)),
+      repo,
+      ...(files !== null ? { files } : {}),
+      ...(pr !== null ? { pr } : {}),
+      ...(verdict !== null ? { verdict } : {}),
+      ...(existing !== null ? { existing } : {}),
+      ...(exitCode !== null ? { exitCode } : {}),
+      ...(runUrl !== null ? { runUrl } : {}),
+    },
+  };
+}
+
+/** A reported `files` list, or a refusal message. */
+function readPrFiles(
+  store: PrPlaneStore,
+  argv: readonly string[],
+  v: unknown,
+): PrStepFile[] | string {
+  if (
+    !Array.isArray(v) ||
+    v.length === 0 ||
+    v.length > MAX_PR_FILES ||
+    !v.every(
+      (f) =>
+        f !== null &&
+        typeof f === "object" &&
+        typeof (f as PrStepFile).path === "string" &&
+        typeof (f as PrStepFile).sha256 === "string" &&
+        SHA256_HEX.test((f as PrStepFile).sha256),
+    )
+  )
+    return `files must be 1-${MAX_PR_FILES} { path, sha256 } entries (the SHA-256 of each file's content, lower-case hex)`;
+  const files = (v as PrStepFile[]).map((f) => ({
+    path: f.path,
+    sha256: f.sha256,
+  }));
+  const bad = files.find((f) => !prPathAllowed(store, argv, f.path));
+  if (bad)
+    return `${bad.path} is not a path ${store.label}'s PR plane lets this pull request write`;
+  if (new Set(files.map((f) => f.path)).size !== files.length)
+    return "files names a path twice";
+  return files;
+}
+
+/** A reported pull request, or a refusal message. Its URL must be on the argv's repository. */
+function readPrPull(repo: string, v: unknown): PrStepPull | string {
+  const shape =
+    "pr must be { number, url (https://github.com/<repo>/pull/<number>), state (open or closed), merged, labels }";
+  if (!v || typeof v !== "object" || Array.isArray(v)) return shape;
+  const p = v as Record<string, unknown>;
+  if (
+    !Number.isSafeInteger(p.number) ||
+    (p.number as number) < 1 ||
+    typeof p.url !== "string" ||
+    (p.state !== "open" && p.state !== "closed") ||
+    typeof p.merged !== "boolean" ||
+    !Array.isArray(p.labels) ||
+    p.labels.length > MAX_LABELS ||
+    !p.labels.every(
+      (l) => typeof l === "string" && l.length > 0 && l.length <= 100,
+    )
+  )
+    return shape;
+  if (
+    p.url.toLowerCase() !==
+    `https://github.com/${repo}/pull/${p.number}`.toLowerCase()
+  )
+    return `pr.url must be the pull request on ${repo} (https://github.com/${repo}/pull/${p.number})`;
+  if (p.merged && p.state !== "closed")
+    return "a merged pull request is closed";
+  return {
+    number: p.number as number,
+    url: p.url,
+    state: p.state,
+    merged: p.merged,
+    labels: [...(p.labels as string[])].sort(),
   };
 }
 
@@ -167,14 +310,25 @@ export async function reportStoreStep(
   for (const field of ["releaseId", "version", "buildId", "platformRef"])
     if (body[field] !== undefined)
       return invalid(field, `a store-step report takes no ${field}`);
-  const plane =
+  const ciStore =
     typeof body.store === "string" ? ciPlaneStore(body.store) : null;
+  const prStore =
+    typeof body.store === "string" && !ciStore
+      ? prPlaneStore(body.store)
+      : null;
+  const plane: {
+    store: string;
+    label: string;
+    list: CiAllowList;
+    outletKinds: readonly string[];
+  } | null = ciStore ?? prStore;
   if (!plane)
     return invalid(
       "store",
-      `store must be one of ${CI_STORE_IDS.join(", ")} (a CI-plane store)`,
+      `store must be one of ${[...CI_STORE_IDS, ...PR_STORE_IDS].join(", ")} (a CI- or PR-plane store)`,
     );
   const { list } = plane;
+  const planeId: "ci" | "pr" = prStore ? "pr" : "ci";
   const command = body.command;
   if (typeof command !== "string" || !Object.hasOwn(list.commands, command))
     return refuse(
@@ -193,7 +347,13 @@ export async function reportStoreStep(
   const adapter = storefrontAdapter(plane.store);
   if (adapter) {
     const s = adapter.capabilities.ops[op as StorefrontOp];
-    if (s.mode !== "ci" || !s.commands.includes(command))
+    const declared = prStore
+      ? s.mode === "pr" &&
+        (
+          prStore.commandOps[command as keyof PrPlaneStore["commandOps"]] ?? []
+        ).includes(op)
+      : s.mode === "ci" && s.commands.includes(command);
+    if (!declared)
       return refuse(
         422,
         "command_not_allowed",
@@ -296,12 +456,58 @@ export async function reportStoreStep(
     runUrl = body.runUrl;
   }
 
+  // A-18i: a PR step's files, pull request and natural-key hit.
+  let files: PrStepFile[] | null = null;
+  let pr: PrStepPull | null = null;
+  let existing: boolean | null = null;
+  let repo = "";
+  let naturalKey = ciStepNaturalKey(command, args);
+  if (prStore) {
+    repo = prRepo(prStore, command, args) ?? "";
+    naturalKey = prNaturalKey(prStore, command, args) ?? naturalKey;
+    if (body.files !== undefined) {
+      if (command !== "pull-request")
+        return invalid("files", `${command} writes no files`);
+      const read = readPrFiles(prStore, args, body.files);
+      if (typeof read === "string") return invalid("files", read);
+      files = read;
+    }
+    if (body.pr !== undefined) {
+      const read = readPrPull(repo, body.pr);
+      if (typeof read === "string") return invalid("pr", read);
+      pr = read;
+    }
+    if (body.existing !== undefined) {
+      if (typeof body.existing !== "boolean")
+        return invalid("existing", "existing must be a boolean");
+      existing = body.existing;
+    }
+    if (state === "done" && pr === null)
+      return invalid(
+        "pr",
+        `a done ${command} step names its pull request (pr)`,
+      );
+    if (
+      state === "done" &&
+      command === "pull-request" &&
+      files === null &&
+      existing !== true
+    )
+      return invalid(
+        "files",
+        "a done pull-request step names the files it wrote, or existing: true when it found the PR already open or merged",
+      );
+  } else
+    for (const field of ["files", "pr", "existing"])
+      if (body[field] !== undefined)
+        return invalid(field, `a CI-plane step takes no ${field}`);
+
   const key: StoreOpKey<StoreLedgerId> = {
-    store: plane.store,
+    store: plane.store as StoreLedgerId,
     scope: "product",
     product: ctx.product,
-    op: ciStepOp(command),
-    naturalKey: ciStepNaturalKey(command, args),
+    op: prStore ? prStepOp(command) : ciStepOp(command),
+    naturalKey,
     idempotencyKey: runId,
   };
   // The guard reads the ledger before the step opens its row: on the pending report, and on a
@@ -330,8 +536,9 @@ export async function reportStoreStep(
     request,
     actor,
     ctx.now,
-    "ci",
+    planeId,
   );
+  const verdict = prStore && pr ? prVerdict(prStore, pr) : null;
   const record = (
     opId: string,
     rowState: StoreOpState,
@@ -345,8 +552,9 @@ export async function reportStoreStep(
       op,
       command,
       state: rowState,
-      plane: "ci",
+      plane: planeId,
       replayed,
+      ...(verdict !== null ? { verdict } : {}),
     },
   });
   if (begun.kind === "conflict")
@@ -369,7 +577,19 @@ export async function reportStoreStep(
       );
     return record(opId, "pending", false);
   }
-  const projection = stepProjection(list.tool, command, args, exitCode, runUrl);
+  const projection = prStore
+    ? prProjection(
+        command,
+        args,
+        repo,
+        files,
+        pr,
+        verdict,
+        existing,
+        exitCode,
+        runUrl,
+      )
+    : stepProjection(list.tool, command, args, exitCode, runUrl);
   if (state === "done")
     await finishStoreOperation(
       ctx.db,
@@ -400,7 +620,9 @@ export async function reportStoreStep(
     plane.store,
     key.op,
     opId,
-    `${list.tool} ${command} ${state === "done" ? "succeeded" : `failed (exit ${exitCode ?? "unknown"})`}`,
+    prStore && state === "done"
+      ? `${list.tool} ${command} on ${repo}: pull request #${pr!.number} ${verdict}${existing ? " (already open or merged)" : ""}`
+      : `${list.tool} ${command} ${state === "done" ? "succeeded" : `failed (exit ${exitCode ?? "unknown"})`}`,
   );
   const row = await getStoreOperation(ctx.db, opId);
   return record(opId, row?.state ?? (state as StoreOpState), false);

@@ -92,7 +92,7 @@ POST /<product>/distribution/rollouts/<outlet>/<channel>/halt
 POST /<product>/distribution/rollouts/<outlet>/<channel>/complete
 ```
 
-The outlet must be one the product declares (`direct` when it declares none). Answers are
+The outlet must be one the product declares (the Polaris Key outlet, `direct`, when it declares none). Answers are
 `{ "ok": true, "rollout": { … } }`; refusals use the platform's flat shape with a `reason`
 (`unknown_outlet`, `unknown_channel`, `unknown_deliverable`, `unknown_release`, `no_rollout`,
 `invalid_body`, `invalid_transition`, `release_yanked`, `rollout_mirrored`, `stale_release`).

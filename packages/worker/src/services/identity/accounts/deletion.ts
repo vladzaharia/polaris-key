@@ -13,10 +13,12 @@
  * is the "also remove the licence from my Library" choice the removal screen offers.
  */
 
+import { deleteAccountAvatars } from "../card/avatars.js";
 import {
   accountLicenses,
   stmtDetachAccountLicenses,
 } from "../../../core/accountSubjects.js";
+import { stmtDeleteAccountAutoAttachBlocks } from "../../../core/licenseHolders.js";
 import { randomId, type DbStatement } from "../../../core/platform.js";
 import { stmtRevokeAccountRegistryTokens } from "../../../core/registryTokens.js";
 import {
@@ -29,6 +31,7 @@ import { stmtSubjectEvent } from "./events.js";
 import { endLicenseLinks, moveLicenseOwnerEndingLinks } from "./legacy.js";
 import type { AccountContext } from "./links.js";
 import { getAccountRow } from "./repo.js";
+import { stmtDeleteTermsAcceptances } from "./terms.js";
 
 /** Statements that end one (account, product) subject: its aliases, then the row itself. */
 function stmtsEndSubject(
@@ -133,9 +136,10 @@ export async function removeProductData(
  * Erase an account (right to erasure; S-16 §5.5). Stores delete first, every binding is cleared,
  * the developer of each product gets `subject.deleted` with the licence ids, licences detach and
  * their registry tokens are revoked, and every row naming the person goes: links, subjects and
- * aliases, sessions, grants, passkeys, the account, and the pre-I-05 `portal_*` rows (so a Worker
- * rollback cannot resurrect them). What remains is an id-only tombstone (a restore from backup can
- * re-apply the deletion) and one `portal.account.delete` receipt with no email, name or product.
+ * aliases, sessions, grants, terms acceptances, passkeys, the account, and the pre-I-05 `portal_*`
+ * rows (so a Worker rollback cannot resurrect them). What remains is an id-only tombstone (a
+ * restore from backup can re-apply the deletion) and one `portal.account.delete` receipt with no
+ * email, name or product.
  */
 export async function deleteAccount(
   ctx: AccountContext,
@@ -178,6 +182,10 @@ export async function deleteAccount(
       now,
     });
   }
+  // I-07, PX-W16: every picture the account owns or uses (provider copies, uploads, pending ones)
+  // goes before the rows that name them (R2 objects have no foreign key; once the rows are gone
+  // nothing could find them), and its `account_avatars` rows with them.
+  await deleteAccountAvatars(env, db, accountId);
   const stmts: DbStatement[] = [];
   for (const s of subjects) {
     stmts.push(
@@ -222,6 +230,20 @@ export async function deleteAccount(
       sql: "DELETE FROM account_passkeys WHERE account_id = ?",
       params: [accountId],
     },
+    // PX-W15: the record of which terms versions the person accepted goes with them.
+    stmtDeleteTermsAcceptances(accountId),
+    // I-12: the relink history keeps its pairwise subjects (the developer's record) and loses the
+    // account id; undoing a relink away from this account then leaves the licence floating.
+    {
+      sql: "UPDATE license_relinks SET from_account_id = NULL WHERE from_account_id = ?",
+      params: [accountId],
+    },
+    {
+      sql: "UPDATE license_relinks SET to_account_id = NULL WHERE to_account_id = ?",
+      params: [accountId],
+    },
+    // LX-26: the account's auto-attach blocks (its account id) go with it.
+    stmtDeleteAccountAutoAttachBlocks(accountId),
     { sql: "DELETE FROM accounts WHERE id = ?", params: [accountId] },
     {
       sql: `INSERT OR REPLACE INTO account_tombstones (id, email_hash, merged_into, deleted_at)

@@ -20,6 +20,7 @@ import { corsPreflight, isCorsCoveredRoute, withCors } from "./core/cors.js";
 import { handleDiscovery } from "./core/discovery.js";
 import { handleJwks, handleTrustManifest } from "./core/trust.js";
 import { dispatchService } from "./core/registry.js";
+import { identityNavigationRedirect } from "./core/identityGate.js";
 import {
   BYTE_ROUTES,
   REGISTRY_OWNERLESS_ROUTES,
@@ -32,6 +33,10 @@ import { handleDocs } from "./docs.js";
 // account spans every tenant, so there is no product slug to namespace it under and its routes
 // stay reserved ahead of product slugs in `router.ts`. Only the implementation moved (D-14).
 import { handlePortal } from "./services/identity/index.js";
+import {
+  withoutAccountCookies,
+  withoutAccountSetCookies,
+} from "./core/accountCookies.js";
 import { handleGithubWebhook } from "./githubWebhook.js";
 import { handleDeployHook } from "./platformDeploy.js";
 import { notFound } from "./core/errors.js";
@@ -40,6 +45,7 @@ import { handleRegister } from "./core/register.js";
 import { handleAttest, handleAttestChallenge } from "./core/attestation.js";
 import { dispatchBytesHost, isBytesHost } from "./core/bytesHost.js";
 import { dispatchRegistryHost, isRegistryHost } from "./core/registryHost.js";
+import { dispatchImgHost, isImgHost } from "./core/imgHost.js";
 import { drainRenderQueue, watchRenderEnqueues } from "./core/registryQueue.js";
 
 const PRODUCT_ROUTES = new Set<Route["kind"]>([
@@ -116,6 +122,10 @@ export async function dispatchWith(
       exec,
       REGISTRY_OWNERLESS_ROUTES,
     );
+  // The image host (HA-02) reaches ONLY the hosted-image routes (`core/imgHost.ts`). With
+  // `IMG_ORIGIN` unset (or equal to the bytes or registry host, checked above) this is always
+  // false, and routing is exactly what it was before the image host existed.
+  if (isImgHost(url, env)) return dispatchImgHost(req, env, db, now, exec);
   const route = matchRoute(url.pathname);
   // The portal is one account across every product, so it has no product to dispatch on; when
   // it reaches a product's downloads it asks for that product's hooks (P2b-04: the delivery
@@ -127,20 +137,20 @@ export async function dispatchWith(
   if ("product" in route && PRODUCT_ROUTES.has(route.kind)) {
     const product = await loadProduct(env, db, route.product);
     if (!product) return notFound();
-
-    // CORS (P0-05, `core/cors.ts`). Decided from the path SHAPE and the product's own
-    // `web.origins`, before any service runs: a preflight is answered here, so its result can
-    // never depend on whether the service behind the path is enabled; and the headers are
-    // added only after the handler returns, so nothing a handler stores in the edge cache
-    // carries one origin's allow header to the next.
-    if (!isCorsCoveredRoute(route)) {
-      return dispatchProductRoute(req, env, db, product, route, now, exec);
-    }
-    if (req.method === "OPTIONS") return corsPreflight(product, req);
-    return withCors(
-      product,
-      req,
-      await dispatchProductRoute(req, env, db, product, route, now, exec),
+    // I-07 (S-16 §5.4 item 7): no product route receives or sets the account realm's cookies.
+    // The browser sends the host-only account session to every path on this host; it is removed
+    // here, before any product handler runs, and any `Set-Cookie` for it is dropped on the way
+    // out (`core/accountCookies.ts`).
+    return withoutAccountSetCookies(
+      await dispatchProduct(
+        withoutAccountCookies(req),
+        env,
+        db,
+        product,
+        route,
+        now,
+        exec,
+      ),
     );
   }
 
@@ -159,6 +169,7 @@ export async function dispatchWith(
     case "portalSpa":
     case "portalApi":
     case "portalLogin":
+    case "portalProviderSignIn":
     case "portalCallback":
     case "portalLogout":
     case "portalMagicVerify":
@@ -188,6 +199,32 @@ export async function dispatchWith(
   }
 }
 
+/** A product route with the account realm's cookies already removed (`dispatchWith`). */
+async function dispatchProduct(
+  req: Request,
+  env: Env,
+  db: Db,
+  product: Product,
+  route: Route & { product: string },
+  now: number,
+  exec?: DispatchExecution,
+): Promise<Response> {
+  // CORS (P0-05, `core/cors.ts`). Decided from the path SHAPE and the product's own
+  // `web.origins`, before any service runs: a preflight is answered here, so its result can
+  // never depend on whether the service behind the path is enabled; and the headers are
+  // added only after the handler returns, so nothing a handler stores in the edge cache
+  // carries one origin's allow header to the next.
+  if (!isCorsCoveredRoute(route)) {
+    return dispatchProductRoute(req, env, db, product, route, now, exec);
+  }
+  if (req.method === "OPTIONS") return corsPreflight(product, req);
+  return withCors(
+    product,
+    req,
+    await dispatchProductRoute(req, env, db, product, route, now, exec),
+  );
+}
+
 /** A product-scoped route, once its product has loaded. */
 async function dispatchProductRoute(
   req: Request,
@@ -203,6 +240,13 @@ async function dispatchProductRoute(
   // its own code and is indistinguishable from one that does not exist (see
   // `core/registry.ts`). Everything below is a core route — every service is carved.
   if (route.kind === "service") {
+    // PX-W17: a person following a sign-in link of an Identity-off product is sent to the
+    // friendly card instead of a JSON 404. Core code, before dispatch, so no Identity code runs;
+    // every non-navigation caller falls through to `dispatchService`'s `404 not_found`.
+    if (route.slug === "identity") {
+      const redirect = identityNavigationRedirect(req, product, route.rest);
+      if (redirect) return redirect;
+    }
     return dispatchService(SERVICES, route.slug, product.services, {
       req,
       env,

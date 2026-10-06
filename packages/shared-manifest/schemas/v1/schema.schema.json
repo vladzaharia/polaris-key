@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://key.plrs.im/docs/schemas/v1/schema.schema.json",
   "title": "Polaris Key config catalog (.pkey/schema)",
-  "description": "The schema document of a .pkey/ manifest: the product's config catalog — a schemaVersion plus one ConfigEntry per declarable key. Each entry's own `schema` field is a nested JSON-Schema fragment (the Draft-07 subset @polaris-key/catalog validates values against) — do not confuse the two layers. Mirrors validateCatalogShape in @polaris-key/manifest; the TypeScript validator is authoritative. The $id URL is an identifier, not a fetchable locator — this file ships inside the @polaris-key/manifest npm package.",
+  "description": "The schema document of a .pkey/ manifest: the product's config catalog — a schemaVersion plus one ConfigEntry per declarable key. Each entry's own `schema` field is a nested JSON-Schema fragment (the Draft-07 subset @polaris-key/catalog validates values against) — do not confuse the two layers. Mirrors validateCatalogShape and validateCloudSync in @polaris-key/manifest; the TypeScript validator is authoritative. The $id URL is an identifier, not a fetchable locator — this file ships inside the @polaris-key/manifest npm package.",
   "type": "object",
   "properties": {
     "schemaVersion": {
@@ -15,10 +15,14 @@
       "items": { "$ref": "#/$defs/configEntry" }
     },
     "catalog": {
-      "description": "Alias of entries (accepted by normalizeCatalog).",
+      "description": "Deprecated: write entries. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
       "type": "array",
-      "items": { "$ref": "#/$defs/configEntry" }
-    }
+      "items": {
+        "$ref": "#/$defs/configEntry"
+      },
+      "deprecated": true
+    },
+    "cloudSync": { "$ref": "#/$defs/cloudSync" }
   },
   "anyOf": [{ "required": ["entries"] }, { "required": ["catalog"] }],
   "$defs": {
@@ -26,7 +30,7 @@
       "type": "object",
       "properties": {
         "key": {
-          "description": "Dotted identifier, unique within the catalog (e.g. run.concurrency).",
+          "description": "Dotted identifier, unique within the catalog (e.g. run.concurrency). On a flag, the names channels, deviceLimit, app.minVersion, app.maxVersion, license.tier and license.tierLabel, and every name under license., app. and pkey., are reserved entitlement names the platform sets itself: a declaration of one must match the system key's type (channels an array of strings, deviceLimit an integer, app.* and license.* strings) and may only narrow it. The validator reports an incompatible one (incompatible_reserved_name) as a warning or an error, as the platform's licensing.reservedNames setting says; this schema does not check it.",
           "type": "string",
           "pattern": "^[A-Za-z0-9._:-]{1,64}$"
         },
@@ -79,7 +83,7 @@
             "order": { "type": "number" },
             "scopes": {
               "type": "array",
-              "items": { "enum": ["profile", "license", "device"] }
+              "items": { "enum": ["profile", "license", "device", "user"] }
             },
             "advanced": { "type": "boolean" },
             "unit": { "type": "string" },
@@ -105,7 +109,18 @@
           "type": "string"
         },
         "deprecated": { "type": "boolean" },
-        "since": { "type": "string" }
+        "since": { "type": "string" },
+        "user": {
+          "description": "CONFIG kinds only: makes the key a user setting — persisted on the device by the Config SDK and, for a signed-in device with Cloud Sync on, synced. sync: user (roams everywhere) · platform (within desktop, mobile, console or web) · device (per device, never roams) · local (never leaves the device). conflict: lastWrite (default) · max · min (number schemas) · merge (object schemas, per top-level member); never union. listed: shown in settings panels (default true).",
+          "type": "object",
+          "properties": {
+            "sync": { "enum": ["user", "platform", "device", "local"] },
+            "conflict": { "enum": ["lastWrite", "max", "min", "merge"] },
+            "listed": { "type": "boolean" }
+          },
+          "required": ["sync"],
+          "additionalProperties": false
+        }
       },
       "required": ["key", "kind", "category", "label", "description", "schema"],
       "allOf": [
@@ -124,8 +139,122 @@
             "properties": { "kind": { "const": "config" } },
             "required": ["kind"]
           }
+        },
+        {
+          "$comment": "user is only valid on config entries (user_setting_wrong_kind), and never on a key whose managementDefault is enforced or hidden (user_setting_locked_default).",
+          "if": { "required": ["user"] },
+          "then": {
+            "properties": {
+              "kind": { "const": "config" },
+              "managementDefault": { "enum": ["default"] }
+            },
+            "required": ["kind"]
+          }
         }
       ]
+    },
+    "cloudSync": {
+      "description": "The data shape of the product's Cloud Sync data (the Cloud Sync service): collections of records, save slots, and the migrations the server applies to synced values. Limits and access policy are not here: they are settings in .pkey/product's cloudSync block.",
+      "type": "object",
+      "properties": {
+        "collections": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "description": "[A-Za-z0-9._:-], at most 128 characters; a trailing .* makes a pattern matching every collection with that prefix. Names are unique and patterns disjoint.",
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._:-]{1,126}(?:\\.\\*)?$"
+              },
+              "access": {
+                "description": "owner (the signed-in person's devices write) · ownerRead (devices read; the console or the developer backend writes) · server (never delivered to devices).",
+                "enum": ["owner", "ownerRead", "server"]
+              },
+              "conflict": {
+                "description": "revision (compare-and-swap, default) · lastWrite · merge (per top-level field) · union (a set: array schema with uniqueItems).",
+                "enum": ["revision", "lastWrite", "merge", "union"]
+              },
+              "schema": {
+                "description": "A Draft-07-subset schema every record value must satisfy.",
+                "type": "object"
+              },
+              "onAttach": {
+                "description": "What happens to a device's local records at its first sign-in (default prompt). A server collection cannot keepLocal.",
+                "enum": ["keepCloud", "keepLocal", "merge", "prompt"]
+              }
+            },
+            "required": ["name", "access"],
+            "additionalProperties": false
+          }
+        },
+        "open": {
+          "description": "true: undeclared collection names are allowed at default limits (default false).",
+          "type": "boolean"
+        },
+        "saves": {
+          "type": "object",
+          "properties": {
+            "conflict": {
+              "description": "How two divergent saves of a slot resolve, in the SDK (default prompt).",
+              "enum": [
+                "prompt",
+                "mostRecent",
+                "longestPlaytime",
+                "highestProgress"
+              ]
+            },
+            "requiresFlag": {
+              "description": "A catalog flag the person's effective entitlements must grant for saves to be written.",
+              "type": "string"
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {
+                "schema": { "type": "object" },
+                "playtimeField": { "type": "string" },
+                "progressField": { "type": "string" }
+              },
+              "additionalProperties": false
+            },
+            "thumbnail": {
+              "type": "object",
+              "properties": { "maxBytes": { "type": "integer", "minimum": 0 } },
+              "additionalProperties": false
+            },
+            "format": {
+              "type": "object",
+              "properties": { "refuseNewer": { "type": "boolean" } },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "migrations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "toSchemaVersion": { "type": "integer", "minimum": 0 },
+              "rename": {
+                "description": "Old key → new key; every target is a declared key, and no key is both renamed and dropped.",
+                "type": "object",
+                "additionalProperties": { "type": "string" }
+              },
+              "mapValues": {
+                "description": "Per key, an object of old value → new value.",
+                "type": "object",
+                "additionalProperties": { "type": "object" }
+              },
+              "drop": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": ["toSchemaVersion"],
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
     }
   }
 }

@@ -1,6 +1,10 @@
 import * as React from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LogOut, Mail, Trash2 } from "lucide-react";
+import {
+  useMotionPreference,
+  type MotionPreference,
+} from "../../components/motionPreference.js";
 import { useTheme, type ThemePreference } from "../../components/theme.js";
 import { Button } from "../../ui/Button.js";
 import { RadioCards } from "../../ui/RadioCards.js";
@@ -11,7 +15,12 @@ import { Avatar } from "../components/Avatar.js";
 import { SectionCard } from "../components/product/Card.js";
 import { signOutQuietly, useDeleteAccount } from "../data.js";
 import { portalErrorCopy } from "../errors.js";
-import { href, useDocumentTitle, type AccountSection } from "../router.js";
+import {
+  href,
+  scrollBehavior,
+  useDocumentTitle,
+  type AccountSection,
+} from "../router.js";
 
 /**
  * Account v1 (PORTAL.md §4.26, PX-07) on today's API: the sign-in email (the Sign-in methods
@@ -36,17 +45,22 @@ export function AccountPage({
   const [current, setCurrent] = React.useState<AccountSection>(
     SECTIONS.some((s) => s.id === section) ? section! : "methods",
   );
+  // A section deep link scrolls there once, as the page opens; the router scrolls to a section
+  // the URL names later (MO-05), so this does not undo its smooth scroll with an instant one.
   React.useEffect(() => {
     if (!section) return;
     document
       .getElementById(`section-${section}`)
       ?.scrollIntoView?.({ block: "start" });
-  }, [section]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const pick = (s: AccountSection): void => {
     setCurrent(s);
-    document
-      .getElementById(`section-${s}`)
-      ?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    document.getElementById(`section-${s}`)?.scrollIntoView?.({
+      // Smooth scrolling becomes instant under reduced motion (notes/S-23 §6.6).
+      behavior: scrollBehavior(),
+      block: "start",
+    });
     window.history.replaceState(
       null,
       "",
@@ -59,7 +73,11 @@ export function AccountPage({
     <div className="space-y-6 desk:space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-[1.875rem] font-bold leading-tight text-fg-strong desk:text-[2.5rem]">
+          {/* Focus lands here after a navigation (the router, MO-05): no ring on a heading. */}
+          <h1
+            tabIndex={-1}
+            className="text-[1.875rem] font-bold leading-tight text-fg-strong outline-none desk:text-[2.5rem]"
+          >
             Account
           </h1>
           <p className="text-fg-muted">
@@ -181,12 +199,7 @@ function SignInMethods({
             <Mail aria-hidden className="size-5" />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="flex flex-wrap items-center gap-2 font-bold text-fg-strong">
-              <span className="truncate">{account.email}</span>
-              <span className="inline-flex h-5 items-center rounded-full border border-border-strong px-2 text-xs font-normal text-fg-strong">
-                Primary
-              </span>
-            </p>
+            <p className="truncate font-bold text-fg-strong">{account.email}</p>
             <p className="text-sm text-fg-muted">
               Products bought with this email join your library by themselves.
             </p>
@@ -203,22 +216,69 @@ const THEME_OPTIONS: { value: ThemePreference; label: string }[] = [
   { value: "light", label: "Light" },
 ];
 
-/** Appearance (§0.3): Match my device / Dark / Light, persisted and applied before paint. */
+const MOTION_OPTIONS: {
+  value: MotionPreference;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: "system",
+    label: "Match my device",
+    description: "Animates unless your device asks for reduced motion.",
+  },
+  {
+    value: "reduce",
+    label: "Reduced",
+    description: "Changes happen at once, with no animation.",
+  },
+];
+
+/**
+ * Appearance (§0.3): the theme (Match my device / Dark / Light, persisted and applied before
+ * paint) and Motion (notes/S-23 §6.6, MO-12: Match my device / Reduced, stored in this browser).
+ */
 function Appearance(): React.ReactElement {
   const { preference, setPreference } = useTheme();
+  const [motion, setMotion] = useMotionPreference();
   return (
     <SectionCard id="appearance" title="Appearance">
-      <RadioCards
-        aria-label="Theme"
-        columns={3}
-        value={preference}
-        onChange={setPreference}
-        options={THEME_OPTIONS.map((o) => ({
-          value: o.value,
-          label: o.label,
-          description: <ThemeSwatch preference={o.value} />,
-        }))}
-      />
+      <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-2">
+          <h3
+            id="appearance-theme-label"
+            className="text-sm font-bold text-fg-strong"
+          >
+            Theme
+          </h3>
+          <RadioCards
+            aria-labelledby="appearance-theme-label"
+            columns={3}
+            value={preference}
+            onChange={setPreference}
+            options={THEME_OPTIONS.map((o) => ({
+              value: o.value,
+              label: o.label,
+              description: <ThemeSwatch preference={o.value} />,
+            }))}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <h3
+            id="appearance-motion-label"
+            className="text-sm font-bold text-fg-strong"
+          >
+            Motion
+          </h3>
+          <RadioCards
+            id="appearance-motion"
+            aria-labelledby="appearance-motion-label"
+            columns={2}
+            value={motion}
+            onChange={setMotion}
+            options={MOTION_OPTIONS}
+          />
+        </div>
+      </div>
     </SectionCard>
   );
 }

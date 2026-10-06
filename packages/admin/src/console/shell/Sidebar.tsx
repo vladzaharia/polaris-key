@@ -20,7 +20,7 @@ import {
 import { Link } from "../router.js";
 import { globalPage, productPage } from "../routes.js";
 import type { GlobalPageId, ProductPageId } from "../nav.js";
-import { Tooltip } from "../../components/ui/index.js";
+import { Tooltip } from "../../ui/Tooltip.js";
 import { PolarisMark } from "@polaris-key/brand/react";
 
 /**
@@ -111,11 +111,13 @@ export function Sidebar({
   idPrefix,
 }: SidebarProps): React.ReactElement {
   const sections = slug ? visibleSections(services) : [];
+  const swapped = useRailSwap(rail);
   return (
     <nav
       aria-label="Console"
+      data-rail-swap={swapped ? "" : undefined}
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pk-scroll",
+        "group/nav flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pk-scroll",
         rail ? "px-2 py-3" : "p-3",
       )}
     >
@@ -194,12 +196,28 @@ export function Sidebar({
             ) : (
               <PanelLeftClose aria-hidden className="size-4" />
             )}
-            {rail ? null : <span>Collapse</span>}
+            {rail ? null : <span className={RAIL_FADE}>Collapse</span>}
           </button>
         </div>
       ) : null}
     </nav>
   );
+}
+
+/**
+ * The rail toggle (S-23 §6.1; MO-10): the column snaps to its new width (a width animation would
+ * re-lay the whole page every frame) and what the swap mounts, the labels and the section headers
+ * or rules, fades in at `base`. Only once the rail has been toggled: a first render and the
+ * phone drawer draw at once. Token-timed, so under reduced motion it is an instant swap.
+ */
+const RAIL_FADE = "group-data-[rail-swap]/nav:animate-pk-fade-in";
+
+/** True once `rail` has changed since mount. */
+function useRailSwap(rail: boolean): boolean {
+  const initial = React.useRef(rail);
+  const [swapped, setSwapped] = React.useState(false);
+  if (!swapped && rail !== initial.current) setSwapped(true);
+  return swapped;
 }
 
 /** A page is active itself, or as the parent of the page shown (New product → Products). */
@@ -263,7 +281,7 @@ function SidebarGroup({
         <div
           role="separator"
           aria-label={label}
-          className="mx-2 my-2 h-0.5 rounded-full bg-accent"
+          className={cn("mx-2 my-2 h-0.5 rounded-full bg-accent", RAIL_FADE)}
         />
         <ul className="flex flex-col gap-0.5">
           {active || !first ? (
@@ -316,7 +334,7 @@ function SidebarGroup({
             aria-hidden
             className="h-3.5 w-0.5 shrink-0 rounded-full bg-accent"
           />
-          <span className="flex-1 truncate">{label}</span>
+          <span className={cn("flex-1 truncate", RAIL_FADE)}>{label}</span>
           {/* The disclosure indicator, not a section icon: headers carry none (owner, 2026-10-03). */}
           <ChevronDown
             aria-hidden
@@ -388,7 +406,9 @@ export function SidebarItem({
           className={cn("size-4 shrink-0", active && "text-accent")}
         />
       )}
-      {rail ? null : <span className="truncate">{page.label}</span>}
+      {rail ? null : (
+        <span className={cn("truncate", RAIL_FADE)}>{page.label}</span>
+      )}
     </Link>
   );
   return rail ? (

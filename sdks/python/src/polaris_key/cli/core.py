@@ -32,6 +32,7 @@ from typing import Callable, Dict, IO, Iterable, List, Mapping, Optional
 
 from .._version import __version__ as PACKAGE_VERSION
 from ..client import PolarisKeyClient
+from ..copy import message as copy_message
 from ..core.errors import PolarisError
 from ..core.store import StoreStatus
 from ..devices.client import (
@@ -89,9 +90,12 @@ KEY_ENV_VAR = "POLARIS_KEY_ACTIVATION_KEY"
 #: The verb → owning-service grouping the three adapters render in their help output.
 SERVICE_COMMANDS: Dict[str, tuple] = {
     "license": ("activate", "enroll", "deactivate", "status"),
-    "devices": ("register",),
-    "config": ("config",),
-    "core": ("import-bundle",),
+    "identity": ("sign-in", "sign-out"),
+    "devices": ("register", "devices"),
+    "config": ("config", "secret", "mint"),
+    "release": ("changelog",),
+    "update": ("update", "packs"),
+    "core": ("import-bundle", "offline-request", "boot", "doctor"),
 }
 
 
@@ -274,7 +278,11 @@ def _describe_activation_failure(
         detail = ""
         if r.limit is not None:
             detail = f" ({r.deviceCount}/{r.limit} devices in use)"
-        return CommandResult(1, [f"{verb} failed: device limit reached{detail}."])
+        lines = [f"{verb} failed: device limit reached{detail}."]
+        # PX-W8: the portal link that frees a seat, printed without the key (scrollback is a log).
+        if r.manage_url:
+            lines.append(f"Free a device: {r.manage_url}")
+        return CommandResult(1, lines)
     if isinstance(r, ActivationUnauthorized):
         return CommandResult(1, [f"{verb} failed: invalid or revoked credential."])
     if isinstance(r, ActivationFingerprintRequired):
@@ -300,6 +308,13 @@ def _describe_activation_failure(
         return CommandResult(
             1, [f"{verb} failed: this product does not offer keyless enrollment."]
         )
+    code = getattr(r, "code", None)
+    if isinstance(code, str):
+        # Every other kind carries a registry code: say it with the shared copy (§3.2).
+        lines = [f"{verb} failed: {copy_message(code)}"]
+        if getattr(r, "kind", None) in ("refused", "error"):
+            lines[0] += f" ({code})"
+        return CommandResult(1, lines)
     message = getattr(r, "message", "") or "unknown error."
     return CommandResult(1, [f"{verb} failed: {message}"])
 

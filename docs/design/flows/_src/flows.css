@@ -1,0 +1,660 @@
+/* FLOWS.md mockups: the New Product wizard and its ready moment.
+ * Layered on @polaris-key/brand tokens.css, the EXPERIENCE.md mockup styles (portal.css,
+ * console.css, exp.css) and the SETUP.md wizard styles (setup.css), all copied unchanged.
+ * Tokens only: no hex. Static: the motion is described in FLOWS.md §3.6, not run here. */
+
+/* ---- the wizard column (a global page: no product yet) ---- */
+.npwrap {
+  max-width: 1080px;
+}
+.nphd {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.nphd .back {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pk-text-subtle);
+  font-size: 13px;
+  text-decoration: none;
+  margin-bottom: -4px;
+}
+.nphd .back .i {
+  width: 14px;
+  height: 14px;
+}
+.nphd h1 {
+  font-size: 24px;
+  margin: 0;
+}
+.nphd .meta {
+  margin-left: auto;
+  color: var(--pk-text-subtle);
+  font-size: 13px;
+}
+.stepper li.auto .sx {
+  border-style: dashed;
+  border-color: var(--pk-accent);
+  color: var(--pk-accent-fg);
+}
+.stepper li .by {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--pk-text-subtle);
+}
+
+/* ---- start cards ---- */
+.starts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.start {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: var(--pk-radius-lg);
+  border: 1px solid var(--pk-border-subtle);
+  background: var(--pk-surface-sunken);
+}
+.start.on {
+  border-color: var(--pk-accent);
+  background: var(--pk-accent-subtle);
+}
+.start .si {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--pk-surface-raised);
+  color: var(--pk-text-strong);
+  flex: none;
+}
+.start .si .i {
+  width: 20px;
+  height: 20px;
+}
+.start b {
+  display: block;
+  color: var(--pk-text-strong);
+  font-size: 15px;
+}
+.start span.d {
+  display: block;
+  color: var(--pk-text-muted);
+  font-size: 13px;
+  margin-top: 2px;
+}
+.start .rec {
+  margin-top: 6px;
+}
+.start .radio2 {
+  margin-left: auto;
+  margin-top: 2px;
+}
+
+/* ---- repository picker ---- */
+.nppicker {
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-lg);
+  overflow: hidden;
+}
+.nppicker > .ps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 42px;
+  border-bottom: 1px solid var(--pk-border-subtle);
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-subtle);
+  font-size: 14px;
+}
+.nppicker > .ps .i {
+  width: 16px;
+  height: 16px;
+}
+.nppicker > .ps .acct {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pk-text-default);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.rrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--pk-border-subtle);
+}
+.rrow:first-of-type {
+  border-top: 0;
+}
+.rrow.on {
+  background: var(--pk-accent-subtle);
+  box-shadow: inset 3px 0 0 var(--pk-accent);
+}
+.rrow .rk {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-muted);
+  flex: none;
+}
+.rrow .rk .i {
+  width: 16px;
+  height: 16px;
+}
+.rrow .rt {
+  flex: 1;
+  min-width: 0;
+}
+.rrow .rt b {
+  display: block;
+  color: var(--pk-text-strong);
+  font-size: 14px;
+  font-family: var(--pk-font-mono);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rrow .rt span {
+  color: var(--pk-text-subtle);
+  font-size: 12.5px;
+}
+.rrow .rr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+.rrow .plain {
+  font-size: 12px;
+  color: var(--pk-text-subtle);
+  white-space: nowrap;
+}
+.nppicker > footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--pk-border-subtle);
+  font-size: 13px;
+  color: var(--pk-text-subtle);
+}
+.nppicker > footer a {
+  color: var(--pk-accent);
+  text-decoration: none;
+}
+.nppicker > footer .i {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---- product preview card ---- */
+.pcard {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 18px;
+  border-radius: var(--pk-radius-lg);
+  border: 1px solid var(--pk-border-subtle);
+  background: var(--pk-surface-sunken);
+  flex-wrap: wrap;
+}
+.ptile {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  font-weight: 800;
+  font-size: 24px;
+  flex: none;
+  background: var(--pk-service-release);
+  color: var(--pk-service-release-on);
+  box-shadow: var(--pk-elevation-1);
+}
+.ptile svg {
+  width: 34px;
+  height: 34px;
+}
+.ptile.lg {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
+  font-size: 32px;
+}
+.ptile.sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  font-size: 13px;
+  box-shadow: none;
+}
+.pcard .npt {
+  flex: 1;
+  min-width: 200px;
+}
+.pcard .npt b {
+  display: block;
+  font-size: 18px;
+  color: var(--pk-text-strong);
+}
+.pcard .npt .npln {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--pk-text-muted);
+}
+.pcard .npt .npln .mono {
+  color: var(--pk-text-default);
+  white-space: nowrap;
+}
+.pcard .npt .npln > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.okline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--pk-success);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.okline .i {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---- found rows (a PrereqList in its met state) ---- */
+.npfound {
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-lg);
+  overflow: hidden;
+}
+.npfound > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--pk-border-subtle);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pk-text-strong);
+}
+.npfound > header .r {
+  margin-left: auto;
+  font-weight: 400;
+  color: var(--pk-text-subtle);
+}
+.npfound > header .i {
+  width: 15px;
+  height: 15px;
+}
+
+/* ---- accent swatches ---- */
+.swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.npsw {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  box-shadow: inset 0 0 0 1px var(--pk-border-subtle);
+}
+.npsw.on {
+  border-color: var(--pk-text-strong);
+  box-shadow: inset 0 0 0 2px var(--pk-surface-raised);
+}
+.npsw.a-core {
+  background: var(--pk-service-core);
+}
+.npsw.a-license {
+  background: var(--pk-service-license);
+}
+.npsw.a-config {
+  background: var(--pk-service-config);
+}
+.npsw.a-release {
+  background: var(--pk-service-release);
+}
+.npsw.a-distribution {
+  background: var(--pk-service-distribution);
+}
+.npsw.a-update {
+  background: var(--pk-service-update);
+}
+.npsw.a-identity {
+  background: var(--pk-service-identity);
+}
+.idrow {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.idrow .ic {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* ---- goal sub-option (licensing defaults inside the License card) ---- */
+.goal .sub {
+  font-weight: 400;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--pk-text-default);
+}
+.mswitch {
+  width: 30px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--pk-border-strong);
+  position: relative;
+  flex: none;
+}
+.mswitch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--pk-surface-raised);
+}
+.mswitch.on {
+  background: var(--pk-accent);
+}
+.mswitch.on::after {
+  left: 14px;
+}
+.goals.np {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.discl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pk-text-muted);
+  font-size: 13.5px;
+  text-decoration: none;
+}
+.discl .i {
+  width: 15px;
+  height: 15px;
+}
+
+/* ---- problems (a PrereqList with blocking rows) ---- */
+.prob {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 14px;
+  border-top: 1px solid var(--pk-border-subtle);
+  font-size: 13.5px;
+}
+.prob:first-of-type {
+  border-top: 0;
+}
+.prob .pk {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--pk-danger-subtle);
+  color: var(--pk-danger-fg, var(--pk-danger));
+  flex: none;
+  margin-top: 1px;
+}
+.prob .pk .i {
+  width: 12px;
+  height: 12px;
+}
+.prob .pf {
+  font-family: var(--pk-font-mono);
+  font-size: 12.5px;
+  color: var(--pk-text-strong);
+  display: block;
+}
+.prob .pm {
+  color: var(--pk-text-default);
+}
+.npfound.bad > header {
+  color: var(--pk-danger-fg, var(--pk-danger));
+}
+
+/* ---- creating: the AutoList running in place of the footer ---- */
+.qrow.run .qk {
+  border: 2px solid var(--pk-accent-subtle);
+  border-top-color: var(--pk-accent);
+  border-radius: 50%;
+  background: transparent;
+}
+.creating {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.creating .ch {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.creating .ch h2 {
+  font-size: 19px;
+  margin: 0;
+}
+.creating .ch p {
+  margin: 2px 0 0;
+  color: var(--pk-text-subtle);
+  font-size: 14px;
+}
+.meter2 {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--pk-border-subtle);
+  overflow: hidden;
+}
+.meter2 > i {
+  display: block;
+  height: 100%;
+  width: 64%;
+  background: var(--pk-accent);
+  border-radius: 2px;
+}
+
+/* ---- ready: the welcome hero on Overview ---- */
+.hero2 {
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  padding: 24px 26px;
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-surface-raised);
+  border: 1px solid var(--pk-border-subtle);
+}
+[data-theme="light"] .hero2 {
+  box-shadow: var(--pk-elevation-1);
+}
+.hero2 .tilewrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+.hero2 .npspark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  color: var(--pk-service-release);
+}
+.hero2 .npspark svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.hero2 .npspark.s1 {
+  transform: translate(0, -58px);
+}
+.hero2 .npspark.s2 {
+  transform: translate(42px, -42px) scale(0.8);
+}
+.hero2 .npspark.s3 {
+  transform: translate(58px, 0);
+}
+.hero2 .npspark.s4 {
+  transform: translate(42px, 42px) scale(0.8);
+}
+.hero2 .npspark.s5 {
+  transform: translate(0, 58px);
+}
+.hero2 .npspark.s6 {
+  transform: translate(-42px, 42px) scale(0.8);
+}
+.hero2 .npspark.s7 {
+  transform: translate(-58px, 0);
+}
+.hero2 .npspark.s8 {
+  transform: translate(-42px, -42px) scale(0.8);
+}
+.hero2 .npchk {
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--pk-success);
+  color: var(--pk-success-on);
+  box-shadow: 0 0 0 3px var(--pk-surface-raised);
+}
+.hero2 .npchk svg {
+  stroke: var(--pk-success-on);
+  stroke-width: 3;
+}
+.hero2 .npchk .i {
+  width: 15px;
+  height: 15px;
+}
+.hero2 h1 {
+  font-size: 26px;
+  margin: 0;
+}
+.hero2 .facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  margin-top: 8px;
+  font-size: 13.5px;
+  color: var(--pk-text-muted);
+}
+.hero2 .facts > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.hero2 .facts .i {
+  width: 14px;
+  height: 14px;
+}
+.hero2 .facts .mono {
+  color: var(--pk-text-default);
+}
+.hero2 .nexts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+.hero2 .x {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+.nexthint {
+  font-size: 12px;
+  color: var(--pk-text-subtle);
+  text-align: center;
+}
+
+/* ---- storyboard strip in the FLOWS.md page itself is markdown; nothing here ---- */
+
+@media (max-width: 760px) {
+  .starts,
+  .goals.np {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rrow .plain {
+    display: none;
+  }
+  .nppicker > .ps .acct {
+    display: none;
+  }
+  .hero2 {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 20px 18px;
+    gap: 14px;
+    justify-items: start;
+  }
+  .hero2 .nexts {
+    width: 100%;
+  }
+  .hero2 .nexts .btn {
+    justify-content: center;
+  }
+  .hero2 h1 {
+    font-size: 22px;
+  }
+  .nphd .meta {
+    display: none;
+  }
+  .pcard {
+    gap: 12px 14px;
+  }
+  .pcard .npt {
+    min-width: 0;
+    flex: 1 1 calc(100% - 72px);
+  }
+  .pcard > .src {
+    width: 100%;
+  }
+}

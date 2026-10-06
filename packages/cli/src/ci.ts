@@ -18,6 +18,7 @@
  * and `pkey feeds fdroid`.
  */
 
+import { PRODUCT_SLUG_RE } from "@polaris-key/manifest";
 import { DEFAULT_BASE_URL } from "./bundle.js";
 
 export type Out = Pick<NodeJS.WriteStream, "write">;
@@ -112,7 +113,8 @@ export interface CiClient {
 export function ciClient(opts: CiClientOptions): CiClient {
   const baseUrl = normalizeBaseUrl(opts.baseUrl);
   const product = opts.product.trim();
-  if (!/^[a-z0-9-]{1,64}$/.test(product))
+  // The one product slug shape (P0-14); an existing product, so not the reservations.
+  if (!PRODUCT_SLUG_RE.test(product))
     throw new Error(
       `--product must be a product slug (got ${JSON.stringify(opts.product)}).`,
     );

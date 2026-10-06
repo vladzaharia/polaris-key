@@ -90,6 +90,11 @@ export interface EmailContent {
   subject: string;
   /** The heading in the card. */
   heading: string;
+  /**
+   * A one-time code, shown first and large under the heading (SIGN-IN.md §3.4). Plain text
+   * (escaped here).
+   */
+  code?: string;
   /** Body paragraphs, plain text (escaped here; line breaks kept). */
   paragraphs: string[];
   /** One call to action, a URL the Worker built. */
@@ -117,9 +122,9 @@ export function renderEmail(c: EmailContent): string {
   const imgStyle =
     "width:472px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none";
   const brand = c.origin
-    ? lockup("light", `display:block;${imgStyle}`) +
+    ? lockup("light", `display:block;margin:0 auto;${imgStyle}`) +
       // Hidden unless the dark palette applies (`mso-hide` for Outlook on Windows).
-      `<!--[if !mso]><!-->${lockup("dark", `display:none;max-height:0;overflow:hidden;mso-hide:all;${imgStyle}`)}<!--<![endif]-->`
+      `<!--[if !mso]><!-->${lockup("dark", `display:none;margin:0 auto;max-height:0;overflow:hidden;mso-hide:all;${imgStyle}`)}<!--<![endif]-->`
     : `<p class="pk-strong" style="margin:0;font-family:${font};font-size:20px;line-height:28px;font-weight:700;letter-spacing:-0.01em;color:${BRAND.text.light}">Polaris Key</p>`;
   const action = c.action
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0 24px"><tr><td class="pk-btn" bgcolor="${LIGHT.accent.violet.solid}" style="border-radius:6px;background-color:${LIGHT.accent.violet.solid}"><a class="pk-btn-a" href="${escapeHtml(c.action.url)}" style="display:inline-block;padding:12px 24px;font-family:${font};font-size:16px;line-height:20px;font-weight:700;color:${LIGHT.accent.violet.on};text-decoration:none;border-radius:6px">${escapeHtml(c.action.label)}</a></td></tr></table>` +
@@ -149,9 +154,13 @@ export function renderEmail(c: EmailContent): string {
     `<tr><td align="center" style="padding:32px 16px">`,
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:520px">`,
     // The lockup PNG carries its own clear space; the text wordmark needs the gap.
-    `<tr><td style="padding:0 0 ${c.origin ? 0 : 24}px">${brand}</td></tr>`,
+    // The lockup sits centred over the card (SIGN-IN.md §3.15).
+    `<tr><td align="center" style="padding:0 0 ${c.origin ? 0 : 24}px;text-align:center">${brand}</td></tr>`,
     `<tr><td class="pk-card" bgcolor="${LIGHT.surface.raised}" style="padding:32px;background-color:${LIGHT.surface.raised};border:1px solid ${LIGHT.border.subtle};border-radius:10px">`,
     `<h1 class="pk-strong" style="margin:0 0 16px;font-family:${font};font-size:24px;line-height:32px;font-weight:700;letter-spacing:-0.01em;color:${LIGHT.text.strong}">${escapeHtml(c.heading)}</h1>`,
+    c.code
+      ? `<p class="pk-strong" style="margin:0 0 24px;font-family:${mono};font-size:36px;line-height:44px;font-weight:700;letter-spacing:0.12em;color:${LIGHT.text.strong}">${escapeHtml(c.code)}</p>`
+      : "",
     ...c.paragraphs.map((t) => para(t)),
     action,
     secure,
@@ -205,6 +214,77 @@ export async function sendMagicLink(
     now,
   );
   return result.ok || result.reason === "suppressed";
+}
+
+/**
+ * The login card's sign-in email (I-07): one message carrying the 6-digit code and, for a card
+ * sign-in, the magic link, so the person can type the code on the device that asked or open the
+ * link (which confirms that device's sign-in from wherever it is opened). The gate's
+ * confirmation mail carries the code only (`link: null`).
+ *
+ * Answers `"sent"` for a delivered OR suppressed recipient (enumeration safety: a suppressed
+ * address must look exactly like a sent one) and `"unavailable"` only when mail cannot leave at
+ * all (`email_unavailable`).
+ */
+export async function sendSignInEmail(
+  env: Env,
+  db: Db,
+  to: string,
+  content: {
+    code: string;
+    link: string | null;
+    purpose: "signin" | "confirm";
+  },
+  now: number,
+): Promise<"sent" | "unavailable"> {
+  const spaced = `${content.code.slice(0, 3)} ${content.code.slice(3)}`;
+  const confirm = content.purpose === "confirm";
+  // SIGN-IN.md §3.4 / §3.15: the code in the subject, then first and large in the body.
+  const subject = confirm
+    ? "Confirm your email for Polaris Key"
+    : `Your Polaris Key code: ${content.code}`; // signin.email.subject
+  const heading = confirm ? "Confirm your email" : "Your Polaris Key code";
+  const lines = content.link
+    ? [
+        // signin.email.body
+        "Or sign in with the button. The code and the link work once, for 10 minutes.",
+      ]
+    : ["The code works once, for 10 minutes."];
+  const textLines = content.link
+    ? [
+        "Or sign in with this link. The code and the link work once, for 10 minutes.",
+      ]
+    : lines;
+  const footer = confirm
+    ? "If you did not ask for this, you can ignore this email. Nothing changes until it is used."
+    : "If you did not ask to sign in, you can ignore this email. Nothing changes until the link is used.";
+  const result = await deliverEmail(
+    env,
+    db,
+    {
+      sender: { kind: "platform" },
+      to,
+      subject,
+      text:
+        `${heading}: ${spaced}\n\n` +
+        textLines.join("\n\n") +
+        (content.link ? `\n\n${content.link}` : "") +
+        `\n\n${footer}`,
+      html: renderEmail({
+        subject,
+        heading,
+        code: spaced,
+        paragraphs: lines,
+        ...(content.link
+          ? { action: { label: "Sign in", url: content.link } }
+          : {}),
+        footer,
+        origin: emailAssetOrigin(content.link, env.CONSOLE_ORIGIN),
+      }),
+    },
+    now,
+  );
+  return result.ok || result.reason === "suppressed" ? "sent" : "unavailable";
 }
 
 /**

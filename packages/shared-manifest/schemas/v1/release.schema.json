@@ -9,73 +9,111 @@
       "$ref": "#/$defs/releaseBody"
     },
     "provider": {
-      "$ref": "#/$defs/provider"
+      "$ref": "#/$defs/provider",
+      "description": "Deprecated: write release.provider (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "ghOwner": {
-      "$ref": "#/$defs/ghSlug"
+      "$ref": "#/$defs/ghSlug",
+      "description": "Deprecated: write release.provider.owner. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "ghRepo": {
-      "$ref": "#/$defs/ghSlug"
+      "$ref": "#/$defs/ghSlug",
+      "description": "Deprecated: write release.provider.repo. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "binaryName": {
-      "$ref": "#/$defs/binaryName"
+      "$ref": "#/$defs/binaryName",
+      "description": "Deprecated: write release.binaryName (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "channelWorkflow": {
-      "$ref": "#/$defs/channelWorkflow"
+      "$ref": "#/$defs/channelWorkflow",
+      "description": "Deprecated: write release.channelWorkflow (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "betaBranch": {
-      "$ref": "#/$defs/branch"
+      "$ref": "#/$defs/branch",
+      "description": "Deprecated: write release.betaBranch (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "summaryMarker": {
-      "$ref": "#/$defs/summaryMarker"
+      "$ref": "#/$defs/summaryMarker",
+      "description": "Deprecated: write release.summaryMarker (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "sparkleEd25519Pub": {
-      "$ref": "#/$defs/sparklePub"
+      "$ref": "#/$defs/sparklePub",
+      "description": "Deprecated: write release.sparkleEd25519Pub (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "manualChannels": {
-      "$ref": "#/$defs/manualChannels"
+      "$ref": "#/$defs/manualChannels",
+      "description": "Deprecated: write release.manualChannels (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "stableTagPattern": {
-      "$ref": "#/$defs/stableTagPattern"
+      "$ref": "#/$defs/stableTagPattern",
+      "description": "Deprecated: write release.deliverables.app.versioning.stableTagPattern. Still accepted (plans/ST-19.md); declaring both spellings is the error conflicting_versioning.",
+      "deprecated": true
     },
     "ignoreTags": {
-      "$ref": "#/$defs/ignoreTags"
+      "$ref": "#/$defs/ignoreTags",
+      "description": "Deprecated: write release.deliverables.app.versioning.ignoreTags. Still accepted (plans/ST-19.md); declaring both spellings is the error conflicting_versioning.",
+      "deprecated": true
     },
     "artifactPolicy": {
-      "$ref": "#/$defs/artifactPolicy"
+      "$ref": "#/$defs/artifactPolicy",
+      "description": "Deprecated: write release.artifactPolicy (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "access": {
-      "$ref": "#/$defs/access"
+      "$ref": "#/$defs/access",
+      "description": "Deprecated: write release.access (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "deliverables": {
-      "$ref": "#/$defs/deliverables"
+      "$ref": "#/$defs/deliverables",
+      "description": "Deprecated: write release.deliverables (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "edgeMint": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/edgeMintRecipe"
-      }
+      },
+      "description": "Deprecated: write edgeMint in .pkey/product. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "publishing": {
-      "$ref": "#/$defs/publishing"
+      "$ref": "#/$defs/publishing",
+      "description": "Deprecated: write release.publishing (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "releaseKeys": {
-      "$ref": "#/$defs/releaseKeys"
+      "$ref": "#/$defs/releaseKeys",
+      "description": "Deprecated: write release.releaseKeys (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     }
   },
   "$defs": {
     "releaseBody": {
-      "description": "The same fields may be nested under a `release` key instead of flattened at the root.",
+      "description": "The release body. Canonical under the `release:` key; the same fields flattened at the document root are deprecated but still accepted.",
       "type": "object",
       "properties": {
         "provider": {
           "$ref": "#/$defs/provider"
         },
         "ghOwner": {
-          "$ref": "#/$defs/ghSlug"
+          "$ref": "#/$defs/ghSlug",
+          "description": "Deprecated: write provider.owner. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
         },
         "ghRepo": {
-          "$ref": "#/$defs/ghSlug"
+          "$ref": "#/$defs/ghSlug",
+          "description": "Deprecated: write provider.repo. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
         },
         "binaryName": {
           "$ref": "#/$defs/binaryName"
@@ -96,10 +134,14 @@
           "$ref": "#/$defs/manualChannels"
         },
         "stableTagPattern": {
-          "$ref": "#/$defs/stableTagPattern"
+          "$ref": "#/$defs/stableTagPattern",
+          "description": "Deprecated: write deliverables.app.versioning.stableTagPattern. Still accepted (plans/ST-19.md); declaring both spellings is the error conflicting_versioning.",
+          "deprecated": true
         },
         "ignoreTags": {
-          "$ref": "#/$defs/ignoreTags"
+          "$ref": "#/$defs/ignoreTags",
+          "description": "Deprecated: write deliverables.app.versioning.ignoreTags. Still accepted (plans/ST-19.md); declaring both spellings is the error conflicting_versioning.",
+          "deprecated": true
         },
         "artifactPolicy": {
           "$ref": "#/$defs/artifactPolicy"
@@ -114,7 +156,9 @@
           "type": "array",
           "items": {
             "$ref": "#/$defs/edgeMintRecipe"
-          }
+          },
+          "description": "Deprecated: write edgeMint in .pkey/product. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
         },
         "publishing": {
           "$ref": "#/$defs/publishing"
@@ -786,7 +830,7 @@
       }
     },
     "packageDeliverable": {
-      "description": "A package deliverable (F-03, plans/F-01.md §3.1): one package a package feed on pkg.plrs.im serves, in one ecosystem, under a name in that ecosystem's grammar (expressed below per ecosystem). Its artifacts map entry ids to the file-name globs pkey release publish packs. It takes none of the app's or a pack's fields. A product may declare packages without deliverables.app. The validator additionally requires, which JSON Schema does not express here: no two package deliverables share an ecosystem and a normalised name (PEP 503 for PyPI, case-insensitive for npm, Swift and Maven: package_name_collision), and at most 64 package deliverables (too_many_package_deliverables). Declaring a package never enables a feed: feed settings are operator-owned.",
+      "description": "A package deliverable (F-03, plans/F-01.md §3.1): one package a package feed on pkg.plrs.im serves, in one ecosystem, under a name in that ecosystem's grammar (expressed below per ecosystem). Its artifacts map entry ids to the file-name globs pkey release publish packs. It takes none of the app's or a pack's fields. A product may declare packages without deliverables.app. The validator additionally requires, which JSON Schema does not express here: no two package deliverables share an ecosystem and a normalised name (PEP 503 for PyPI, case-insensitive for npm, Swift, Maven and Go, case-insensitive with '-' and '_' equal for Cargo: package_name_collision), and at most 64 package deliverables (too_many_package_deliverables). Declaring a package never enables a feed: feed settings are operator-owned.",
       "type": "object",
       "required": ["kind", "ecosystem", "name", "artifacts"],
       "properties": {
@@ -794,7 +838,16 @@
           "const": "package"
         },
         "ecosystem": {
-          "enum": ["npm", "pypi", "swift", "maven", "oci", "godot"]
+          "enum": [
+            "npm",
+            "pypi",
+            "swift",
+            "maven",
+            "oci",
+            "godot",
+            "cargo",
+            "go"
+          ]
         },
         "name": {
           "type": "string",
@@ -954,6 +1007,42 @@
               "name": {
                 "pattern": "^[a-z0-9_]{1,64}$",
                 "maxLength": 64
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "ecosystem": {
+                "const": "cargo"
+              }
+            },
+            "required": ["ecosystem"]
+          },
+          "then": {
+            "properties": {
+              "name": {
+                "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$",
+                "maxLength": 64
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "ecosystem": {
+                "const": "go"
+              }
+            },
+            "required": ["ecosystem"]
+          },
+          "then": {
+            "properties": {
+              "name": {
+                "pattern": "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+(?:/[A-Za-z0-9_~-](?:[A-Za-z0-9._~-]*[A-Za-z0-9_~-])?)*$",
+                "maxLength": 255
               }
             }
           }

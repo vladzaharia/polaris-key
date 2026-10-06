@@ -27,6 +27,7 @@ import PolarisKeyConfig
 import PolarisKeyCore
 import PolarisKeyIdentity
 import PolarisKeyLicense
+import PolarisKeyPlatform
 import PolarisKeyRelease
 
 public struct PolarisKeyClientOptions: Sendable {
@@ -39,19 +40,33 @@ public struct PolarisKeyClientOptions: Sendable {
     /// traffic and background wakeups to every already-shipped integration. Call `close()` to
     /// stop the timer.
     public let refreshIntervalSeconds: Double?
+    /// The pinned release-signing keys (`update.pinnedReleaseKeys`), for `client.update` (import
+    /// `PolarisKeyUpdate`) and its packs. `PolarisKeyClient.fromBundle()` reads them from
+    /// `PolarisKey.plist`.
+    public let pinnedReleaseKeys: TrustSet
+    /// App Attest seams for `client.devices.attest()`; the defaults are the system's.
+    public let attest: AttestOptions
+    /// StoreKit behind its seam, for `client.commerce`; nil uses StoreKit 2 where available.
+    public let storeClient: (any StoreClient)?
 
     public init(
         core: CoreOptions,
         license: LicenseClientOptions = LicenseClientOptions(),
         config: ConfigClientOptions = ConfigClientOptions(),
         probes: [ProbeDeclaration] = [],
-        refreshIntervalSeconds: Double? = nil
+        refreshIntervalSeconds: Double? = nil,
+        pinnedReleaseKeys: TrustSet = [:],
+        attest: AttestOptions = AttestOptions(),
+        storeClient: (any StoreClient)? = nil
     ) {
         self.core = core
         self.license = license
         self.config = config
         self.probes = probes
         self.refreshIntervalSeconds = refreshIntervalSeconds
+        self.pinnedReleaseKeys = pinnedReleaseKeys
+        self.attest = attest
+        self.storeClient = storeClient
     }
 
     /// The common case, spelled without nesting: one product, one version, one pin set.
@@ -69,15 +84,24 @@ public struct PolarisKeyClientOptions: Sendable {
         fingerprint: Bool = true,
         probes: [ProbeDeclaration] = [],
         refreshIntervalSeconds: Double? = nil,
-        requestTimeoutSeconds: Double = 15
+        requestTimeoutSeconds: Double = 15,
+        pinnedReleaseKeys: TrustSet = [:],
+        attest: AttestOptions = AttestOptions(),
+        storeClient: (any StoreClient)? = nil,
+        keychainAccessGroup: String? = nil,
+        appGroup: String? = nil
     ) {
+        self.pinnedReleaseKeys = pinnedReleaseKeys
+        self.attest = attest
+        self.storeClient = storeClient
         self.core = CoreOptions(
             productSlug: productSlug, baseUrl: baseUrl, version: version, channel: channel,
             pinnedKeys: pinnedKeys, trustRefresh: trustRefresh, store: store,
             transport: transport, requestTimeoutSeconds: requestTimeoutSeconds,
-            expectedServices: expectedServices)
+            expectedServices: expectedServices, keychainAccessGroup: keychainAccessGroup, appGroup: appGroup)
         self.license = LicenseClientOptions(fingerprint: fingerprint)
-        self.config = ConfigClientOptions(localOverrides: localOverrides)
+        self.config = ConfigClientOptions(
+            localOverrides: localOverrides, local: LocalConfigOptions(suiteName: appGroup))
         self.probes = probes
         self.refreshIntervalSeconds = refreshIntervalSeconds
     }
@@ -110,11 +134,20 @@ public struct DeviceInfo: Sendable, Equatable {
     /// Epoch MILLIseconds.
     public let lastVerifiedAt: Int?
     public let label: String?
+    /// The server's view of the device (nil for this device offline).
+    public let platform: String?
+    public let appVersion: String?
+    /// Epoch seconds the server last saw the device.
+    public let lastSeen: Int?
 
     public init(
         id: String, current: Bool, status: LicenseStatus, licenseId: String? = nil,
-        profile: DocProfile? = nil, lastVerifiedAt: Int? = nil, label: String? = nil
+        profile: DocProfile? = nil, lastVerifiedAt: Int? = nil, label: String? = nil,
+        platform: String? = nil, appVersion: String? = nil, lastSeen: Int? = nil
     ) {
+        self.platform = platform
+        self.appVersion = appVersion
+        self.lastSeen = lastSeen
         self.id = id
         self.current = current
         self.status = status
@@ -135,6 +168,23 @@ public actor PolarisKeyClient {
     public nonisolated let release: ReleaseClient
     /// Device-code sign-in. Refuses with `service-unavailable` unless the product runs Identity.
     public nonisolated let identity: IdentityClient
+    /// The device roster and App Attest (`attest()`).
+    public nonisolated let devices: DevicesClient
+    /// Store purchases to licence flags: binding, claim, and the StoreKit one-calls.
+    public nonisolated let commerce: CommerceClient
+    /// The download page's model (`downloadModel()`, `thisPlatform()`).
+    public nonisolated let distribution: DistributionClient
+    /// The pinned release keys this client was built with (`client.update` reads them).
+    public nonisolated let pinnedReleaseKeys: TrustSet
+    /// Per-module state the other targets attach (`client.update` in PolarisKeyUpdate), keyed by
+    /// the attaching type. Internal plumbing for the SDK's own modules.
+    public nonisolated let attachments = LockedValue<[ObjectIdentifier: any Sendable]>([:])
+    /// The fan-out behind `events`.
+    public nonisolated let eventHub: PolarisEventHub
+    /// Diffs observations into `license`, `entitlement` and `config` events.
+    nonisolated let publisher: ChangePublisher
+    var foregroundObserver: ForegroundObserver?
+    var lastForegroundSync: Double?
 
     private let probes: [ProbeDeclaration]
     /// The capability engine `supports()` reads (P1b-10): the generated table, this build's
@@ -149,12 +199,41 @@ public actor PolarisKeyClient {
         self.product = options.core.productSlug
         let core = try CoreContext(options: options.core)
         self.core = core
+        let hub = PolarisEventHub()
+        self.eventHub = hub
         // An edge-mint 401 gets the same single re-acquire a document fetch does, through the
         // same closure, so a registered-without-licence device re-registers there too (§5).
-        self.config = ConfigClient(
+        let config = ConfigClient(
             core: core, options: options.config,
             reacquire: PolarisKeyClient.reacquire(
                 core: core, fingerprintEnabled: options.license.fingerprint))
+        self.config = config
+        // The licence client is built below (its acquisition hook needs the publisher), so the
+        // observation reads it through a box filled before init returns.
+        let licenseBox = LockedValue<LicenseClient?>(nil)
+        let publisher = ChangePublisher(
+            hub: hub,
+            observe: {
+                await PolarisKeyClient.observe(core: core, license: licenseBox.current, config: config)
+            },
+            source: { await config.configSource($0) },
+            deliver: { config.deliver($0) })
+        self.publisher = publisher
+        // A local `config.set` / `clear` is observed by the same publisher, so `events` and
+        // `onConfigChange` listeners see it once each, before `set` returns.
+        config.setChangeObserver { await publisher.publish() }
+        core.setEventSink { event in
+            switch event {
+            case .updateAvailable(let version, let action, let mandatory, let channel):
+                hub.emit(
+                    .updateAvailable(
+                        version: version, action: action, mandatory: mandatory, channel: channel))
+            case .packs(let pack, let phase, let done, let total):
+                hub.emit(.packs(pack: pack, phase: phase, done: done, total: total))
+            case .config:
+                Task { await publisher.publish() }
+            }
+        }
         // A completed device-code sign-in raises the same acquisition event activation does: a
         // signed-in device holds a licensed token exactly as an activated one does.
         // One engine for supports(), caps() and every report's `caps`.
@@ -162,9 +241,18 @@ public actor PolarisKeyClient {
         self.identity = IdentityClient(core: core) {
             await PolarisKeyClient.syncAfterAcquisition(
                 core: core, probes: options.probes, engine: engine,
-                fingerprintEnabled: options.license.fingerprint)
+                fingerprintEnabled: options.license.fingerprint, publisher: publisher)
         }
         self.release = ReleaseClient(core: core)
+        self.distribution = DistributionClient(core: core)
+        self.pinnedReleaseKeys = options.pinnedReleaseKeys
+        self.commerce = CommerceClient(
+            core: core, store: options.storeClient ?? defaultStoreClient()
+        ) {
+            await PolarisKeyClient.syncAfterAcquisition(
+                core: core, probes: options.probes, engine: engine,
+                fingerprintEnabled: options.license.fingerprint, publisher: publisher)
+        }
         self.probes = options.probes
         self.capabilityEngine = engine
         self.fingerprintEnabled = options.license.fingerprint
@@ -178,8 +266,49 @@ public actor PolarisKeyClient {
             // actor; the hop back in is what makes `sync()` the facade's decision.
             await PolarisKeyClient.syncAfterAcquisition(
                 core: core, probes: options.probes, engine: engine,
-                fingerprintEnabled: options.license.fingerprint)
+                fingerprintEnabled: options.license.fingerprint, publisher: publisher)
         }
+        let license = self.license
+        licenseBox.set(license)
+        let devices = DevicesClient(
+            core: core, license: license, attest: options.attest,
+            onLicenseChanged: { await publisher.publish() })
+        self.devices = devices
+        // §3.10: where attestation can run, an `attestation_required` refusal attests once and
+        // retries once. Elsewhere the caller gets the typed refusal.
+        if devices.attestSupport().isSupported {
+            core.setAttestor { await devices.attest().isAttested }
+        }
+        // `identity.signOut()` is the facade's `deactivate()`: seat release, wipe, `license`.
+        identity.installSignOut {
+            try await PolarisKeyClient.deactivate(license: license, publisher: publisher)
+        }
+    }
+
+    /// What the change events are diffed from: the gate status, every entitlement read through
+    /// the gate (nil while it is not usable), every setting's effective value, the last store
+    /// failure.
+    static func observe(
+        core: CoreContext, license: LicenseClient?, config: ConfigClient
+    ) async -> ChangeObservation {
+        let status = await license?.status().status ?? .notApplicable
+        var entitlements: [String: JSONValue] = [:]
+        if let license, isUsable(status) {
+            entitlements = await license.entitlements()
+        }
+        return ChangeObservation(
+            status: status, entitlements: entitlements, config: await config.snapshot(),
+            storeFailure: await core.lastStoreError)
+    }
+
+    static func deactivate(license: LicenseClient, publisher: ChangePublisher) async throws {
+        do {
+            try await license.deactivate()
+        } catch {
+            await publisher.publish()
+            throw error
+        }
+        await publisher.publish()
     }
 
     /// Construct + `start()` (load token/device/cache with NO network) in one step.
@@ -197,6 +326,10 @@ public actor PolarisKeyClient {
     /// Load device id + token + cached documents, re-verifying everything. NO NETWORK.
     public func start() async throws {
         try await core.start()
+        await publisher.baseline()
+        if let degraded = await core.storeStatus()?.degraded {
+            eventHub.emit(.store(reason: degraded.reason.rawValue, detail: degraded.detail))
+        }
         startRefreshLoop()
     }
 
@@ -252,16 +385,17 @@ public actor PolarisKeyClient {
         let afterLicense = await core.etag(.license)
         let afterConfig = await core.etag(.config)
         let changed = afterLicense != before || afterConfig != beforeConfig
-        if let onChange, result.applied, changed {
-            onChange(await license.status())
+        if result.applied, changed {
+            onChange?(await license.status())
         }
+        await publisher.publish()
         return result
     }
 
     /// The post-activation sync, forced so a stale ETag cannot 304 away the very first document.
     private static func syncAfterAcquisition(
         core: CoreContext, probes: [ProbeDeclaration], engine: Capabilities,
-        fingerprintEnabled: Bool
+        fingerprintEnabled: Bool, publisher: ChangePublisher
     ) async {
         _ = await core.sync(
             force: true,
@@ -269,6 +403,23 @@ public actor PolarisKeyClient {
             report: {
                 _ = await PolarisKeyClient.report(core: core, probes: probes, engine: engine)
             })
+        // A fresh credential changes the gate's inputs whatever the documents did.
+        await publisher.publish()
+    }
+
+    /// The gate state straight from Core, for the static event paths that have no
+    /// `LicenseClient` in hand.
+    static func gateState(_ core: CoreContext, licenseOn: Bool) async -> LicenseState {
+        let cache = await core.cache()
+        let activation: ActivationSource? =
+            await core.token != nil
+            ? .token : (cache.importedBundle != nil && cache.license != nil ? .bundle : nil)
+        return licenseState(
+            GateInput(
+                licenseServiceEnabled: licenseOn, activation: activation, doc: cache.license?.doc,
+                now: await core.now(), highWaterMark: await core.highWaterMark,
+                lastSyncUnauthorized: cache.lastSyncUnauthorized,
+                blocked: cache.blocked.map(BlockInfo.init), lastVerifiedAt: cache.lastVerifiedAt))
     }
 
     /// The §5 single re-acquire, injected into `CoreContext.sync` so Core keeps no dependency on
@@ -314,7 +465,8 @@ public actor PolarisKeyClient {
     /// empty report is a truthful one.
     @discardableResult
     private static func report(
-        core: CoreContext, probes: [ProbeDeclaration], engine: Capabilities
+        core: CoreContext, probes: [ProbeDeclaration], engine: Capabilities,
+        extras: [String: JSONValue] = [:]
     ) async -> Bool {
         let cache = await core.cache()
         var config: [String: JSONValue] = [:]
@@ -334,7 +486,42 @@ public actor PolarisKeyClient {
             locale: facts.locale, timezone: facts.timezone, probes: facts.probes,
             config: config, entitlements: entitlements, caps: caps,
             content: packSetId.map { SnapshotContent(packSetId: $0) })
-        return await core.reportSnapshot((try? JSONEncoder().encode(body)) ?? Data("{}".utf8))
+        guard
+            let encoded = try? JSONEncoder().encode(body),
+            case .object(var fields)? = try? JSONDecoder().decode(JSONValue.self, from: encoded)
+        else { return await core.reportSnapshot(Data("{}".utf8)) }
+        // The gate this device renders, the outlet the update client resolved, and the queued
+        // update-health events (P6-03), wherever the SDK knows them (REPORT_KEYS).
+        let licenseOn = await core.enabled(.license)
+        fields["gate"] = .object([
+            "status": .string(await gateState(core, licenseOn: licenseOn).status.rawValue)
+        ])
+        if let outlet = core.journal.outlet.current { fields["outlet"] = .string(outlet) }
+        var updates = await core.journal.pending()
+        // A host's extras fill only the allowlisted keys the SDK left empty; its `updates` ride
+        // after the journal's, within the same cap.
+        for (key, value) in extras where REPORT_EXTRA_KEYS.contains(key) {
+            if key == "updates", case .array(let more) = value {
+                let decoded = more.compactMap { v -> UpdateEventEntry? in
+                    guard let d = try? JSONEncoder().encode(v) else { return nil }
+                    return try? JSONDecoder().decode(UpdateEventEntry.self, from: d)
+                }
+                updates.append(contentsOf: decoded)
+            } else if fields[key] == nil {
+                fields[key] = value
+            }
+        }
+        updates = Array(updates.prefix(MAX_REPORT_UPDATE_EVENTS))
+        if !updates.isEmpty,
+            let d = try? JSONEncoder().encode(updates),
+            let v = try? JSONDecoder().decode(JSONValue.self, from: d)
+        {
+            fields["updates"] = v
+        }
+        let data = (try? JSONEncoder().encode(JSONValue.object(fields))) ?? Data("{}".utf8)
+        let ok = await core.reportSnapshot(data)
+        if ok { await core.journal.markReported(updates.map(\.eventId)) }
+        return ok
     }
 
     // ── Telemetry (§6) ───────────────────────────────────────────────────────────────────
@@ -350,6 +537,15 @@ public actor PolarisKeyClient {
         await PolarisKeyClient.report(core: core, probes: probes, engine: capabilityEngine)
     }
 
+    /// `report()` plus host-supplied keys: only the Worker's allowlisted report keys
+    /// (`REPORT_EXTRA_KEYS`), never overriding what the SDK itself sends; `updates` entries are
+    /// appended to the journal's (a bridged renderer's events), within the 16-event cap.
+    @discardableResult
+    public func report(extras: [String: JSONValue]) async -> Bool {
+        await PolarisKeyClient.report(
+            core: core, probes: probes, engine: capabilityEngine, extras: extras)
+    }
+
     /// The React-bridge contract, assembled from the managers that own each piece.
     public func syncState() async -> SyncState {
         let cache = await core.cache()
@@ -362,12 +558,27 @@ public actor PolarisKeyClient {
             highWaterMark: await core.highWaterMark)
     }
 
+    // ── Crash-report tags (crash.tags, §3.14) ────────────────────────────────────────────
+    /// The crash-reporter tags for this install: `release` (`app@<version>[+<build>]`),
+    /// `environment` (the channel) and `pkey.outlet` (the outlet the update client resolved, left
+    /// out while unknown). Pass them to a Sentry start as `releaseName`, `environment` and a tag;
+    /// the Worker's Sentry hook maps an alert on them to the staged rollout it came from.
+    public nonisolated func crashTags(deliverable: String = "app", build: String? = nil)
+        -> CrashTags
+    {
+        crashTagsFor(
+            version: core.version, channel: core.channel, outlet: core.journal.outlet.current,
+            deliverable: deliverable, build: build)
+    }
+
     // ── Offline bundles (§7) ─────────────────────────────────────────────────────────────
     /// Verify and install an offline activation bundle. All-or-nothing; no token is created.
     /// Throws `PolarisError` carrying the §7 step that refused.
     @discardableResult
     public func importBundle(_ jws: String, now: Int? = nil) async throws -> ImportBundleResult {
-        try await core.importBundle(jws, now: now)
+        let result = try await core.importBundle(jws, now: now)
+        await publisher.publish()
+        return result
     }
 
     // ── Convenience passthroughs ─────────────────────────────────────────────────────────
@@ -385,6 +596,18 @@ public actor PolarisKeyClient {
         await config.config(key, default: fallback)
     }
 
+    /// Whether a catalog `flag` is on for this install. Flags are entitlements and ride the
+    /// licence document only, so this is `license.isEntitled(flag)`: false whenever the gate is
+    /// not usable (S-19 G11).
+    public func isEnabled(flag: String) async -> Bool {
+        await license.isEntitled(flag)
+    }
+
+    /// The verified licence, summarised (`license.licenseInfo()`).
+    public func licenseInfo() async -> LicenseInfo? {
+        await license.licenseInfo()
+    }
+
     @discardableResult
     public func activate(key: String) async -> ActivationResult {
         await license.activate(key: key)
@@ -399,63 +622,35 @@ public actor PolarisKeyClient {
     /// need a credential and have no licence to present.
     @discardableResult
     public func register() async -> RegisterResult {
-        await core.registerDevice(
+        let result = await core.registerDevice(
             fingerprint: PolarisKeyClient.registrationFingerprint(
                 product: product, enabled: fingerprintEnabled))
+        if case .ok = result { await publisher.publish() }
+        return result
     }
 
+    /// Release this device's seat and wipe every local credential, then emit what changed
+    /// (`license`, and `entitlement` for every entitlement it held).
     public func deactivate() async throws {
-        try await license.deactivate()
+        try await PolarisKeyClient.deactivate(license: license, publisher: publisher)
     }
 
     public func currentDevice() async -> DeviceInfo {
-        let cache = await core.cache()
-        return DeviceInfo(
-            id: await core.deviceId,
-            current: true,
-            status: await license.status().status,
-            licenseId: cache.license?.doc.licenseId,
-            profile: cache.license?.doc.profile,
-            lastVerifiedAt: cache.lastVerifiedAt)
+        await devices.current()
     }
 
-    /// The device roster, blended with this device's locally-derived state.
-    ///
-    /// Without a credential there is no roster to fetch, so the answer is THIS DEVICE ALONE —
-    /// which is the honest offline answer, not an error. The same is true in local-only mode.
+    /// The device roster (`devices.list()`).
     public func listDevices() async -> [DeviceInfo] {
-        let current = await currentDevice()
-        guard let roster = try? await core.listDevices(), !roster.isEmpty else {
-            return [current]
-        }
-        return roster.map { device in
-            let isCurrent = device.current ?? (device.id == current.id)
-            return DeviceInfo(
-                id: device.id,
-                current: isCurrent,
-                // Only THIS device's status is derived from a signature we checked; another
-                // device's is the server's opinion, and inventing a gate state for it would be
-                // reporting a decision we did not make.
-                status: isCurrent ? current.status : .ok,
-                licenseId: device.licenseId ?? (isCurrent ? current.licenseId : nil),
-                profile: isCurrent ? current.profile : nil,
-                lastVerifiedAt: isCurrent ? current.lastVerifiedAt : nil,
-                label: device.label)
-        }
+        await devices.list()
     }
 
     public func renameDevice(_ deviceId: String, label: String?) async throws {
-        try await core.renameDevice(deviceId, label: label)
+        try await devices.rename(deviceId, label: label)
     }
 
-    /// Deauthorizing THIS device is a full local deactivation; any other device is a roster
-    /// operation that needs a credential.
+    /// Deauthorizing THIS device is a full local deactivation (`devices.deauthorize`).
     public func deauthorizeDevice(_ deviceId: String) async throws {
-        if deviceId == (await core.deviceId) {
-            try await license.deactivate()
-            return
-        }
-        try await core.deauthorizeDevice(deviceId)
+        try await devices.deauthorize(deviceId)
     }
 
     /// The last persistence failure, for a host that wants to surface it.
@@ -495,6 +690,13 @@ public actor PolarisKeyClient {
         refreshTask = nil
     }
 }
+
+/// The device-report keys a host may add through `report(extras:)`: the Worker's `REPORT_KEYS`.
+public let REPORT_EXTRA_KEYS: Set<String> = [
+    "os", "hardware", "runtime", "locale", "timezone", "probes", "sdk", "sdkVersion",
+    "appVersion", "platform", "arch", "gate", "config", "entitlements", "timestamp", "engine",
+    "outlet", "content", "updates", "caps", "packInstalls",
+]
 
 /// `{...facts, config, entitlements}` — the flat shape the Worker's report allowlist reads.
 private struct SnapshotBody: Encodable {
@@ -544,7 +746,9 @@ extension PolarisKeyClient {
         return try await create(
             options: PolarisKeyClientOptions(
                 core: local, license: options.license, config: options.config,
-                probes: options.probes, refreshIntervalSeconds: nil))
+                probes: options.probes, refreshIntervalSeconds: nil,
+                pinnedReleaseKeys: options.pinnedReleaseKeys, attest: options.attest,
+                storeClient: options.storeClient))
     }
 
     /// A local-only client provisioned from an offline activation bundle in one step.

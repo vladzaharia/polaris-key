@@ -35,18 +35,18 @@ array of at most 16 entries:
 }
 ```
 
-| Field         | Required | Meaning                                                                    |
-| ------------- | -------- | -------------------------------------------------------------------------- |
-| `eventId`     | yes      | unique per event, chosen by the device (`[A-Za-z0-9._:-]`, ≤ 64)           |
-| `event`       | yes      | one of the seven names below                                               |
-| `deliverable` | yes      | `app`, or a pack id                                                        |
-| `release`     | yes      | the release id the event is about (the feed's `releaseId`)                 |
-| `fromRelease` | no       | the release the device moved from                                          |
-| `outlet`      | yes      | the outlet the build came through (its build stamp's outlet id)            |
-| `channel`     | yes      | the release channel                                                        |
-| `packSetId`   | no       | the pack set, for pack events                                              |
-| `at`          | yes      | epoch seconds                                                              |
-| `code`        | no       | a short machine-readable reason (`[A-Za-z0-9._:-]`, ≤ 64), no message text |
+| Field         | Required | Meaning                                                                                       |
+| ------------- | -------- | --------------------------------------------------------------------------------------------- |
+| `eventId`     | yes      | unique per event, chosen by the device (`[A-Za-z0-9._:-]`, ≤ 64)                              |
+| `event`       | yes      | one of the seven names below                                                                  |
+| `deliverable` | yes      | `app`, or a pack id                                                                           |
+| `release`     | yes      | the release id the event is about (the feed's `releaseId`)                                    |
+| `fromRelease` | no       | the release the device moved from                                                             |
+| `outlet`      | yes      | the outlet id the build came through (its build stamp's): `direct` for the Polaris Key outlet |
+| `channel`     | yes      | the release channel                                                                           |
+| `packSetId`   | no       | the pack set, for pack events                                                                 |
+| `at`          | yes      | epoch seconds                                                                                 |
+| `code`        | no       | a short machine-readable reason (`[A-Za-z0-9._:-]`, ≤ 64), no message text                    |
 
 The seven names are fixed for every SDK (the `updateEvent` enum in
 `conformance/parity/enums.json`): `update_offered`, `update_downloaded`, `update_applied`,

@@ -40,6 +40,8 @@ export interface LicenseGateProps {
   /** When in `grace`, render children behind a dismissible banner instead of blocking. */
   allowGrace?: boolean;
   className?: string;
+  /** Passed to the sign-in card's "Replace a device" link as `return=` (PX-W8). */
+  returnUrl?: string;
 }
 
 /** Surface a clearer, remediation-oriented message for the error screen, keyed off the
@@ -140,7 +142,9 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
           aria-modal
           aria-label={theme.copy.signInTitle}
         >
-          <PolarisLogin />
+          <PolarisLogin
+            {...(props.returnUrl ? { returnUrl: props.returnUrl } : {})}
+          />
         </div>
       );
       break;
@@ -166,7 +170,12 @@ export function LicenseGate(props: LicenseGateProps): JSX.Element {
           // The dialog manages focus → don't let the embedded login card steal it.
           extra={
             <div style={{ marginTop: "24px" }}>
-              <PolarisLogin autoFocus={false} logo={null} bare />
+              <PolarisLogin
+                autoFocus={false}
+                logo={null}
+                bare
+                {...(props.returnUrl ? { returnUrl: props.returnUrl } : {})}
+              />
             </div>
           }
         />

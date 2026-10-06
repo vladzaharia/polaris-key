@@ -8,9 +8,15 @@ const NOW = Math.floor(Date.now() / 1000);
 const DAY = 86_400;
 
 const services = Object.fromEntries(
-  ["license", "config", "release", "distribution", "update", "identity"].map(
-    (s) => [s, { enabled: true }],
-  ),
+  [
+    "license",
+    "config",
+    "release",
+    "distribution",
+    "update",
+    "identity",
+    "sync",
+  ].map((s) => [s, { enabled: true }]),
 );
 
 const PUB = "MCowBQYDK2VwAyEAq3Jd9QpX2a7mUf0bWzYbXl4tQ8nV1cR6sE5yH2kP9uA";
@@ -90,6 +96,11 @@ const product = {
     activateUrl: "/djdl/license/activate",
   },
 };
+
+/** Pairwise subjects: `ps_` and 22 base64url characters. */
+const USER_SUBJECTS = ["A", "B", "C", "D", "E"].map(
+  (c) => `ps_${c.repeat(11)}${c.toLowerCase().repeat(11)}`,
+);
 
 const devices = Array.from({ length: 6 }, (_, i) => ({
   deviceId: `dev_${String(i + 1).padStart(28, "0")}`,
@@ -247,6 +258,89 @@ export const CORE_ROUTES: Record<string, unknown> = {
     byAppVersion: [],
   },
   "/manage/api/products/djdl/devices": { devices, nextCursor: null },
+  // I-12: Core → Users, keyed by pairwise subject.
+  "/manage/api/products/djdl/users": {
+    identityOn: true,
+    users: Array.from({ length: 4 }, (_, i) => ({
+      subject: USER_SUBJECTS[i]!,
+      createdAt: NOW - (40 - i) * DAY,
+      contactEmail: i === 3 ? null : `buyer${i + 1}@example.com`,
+      contactSource: i === 3 ? null : i === 2 ? "consented" : "license",
+      licenses: i === 3 ? 0 : 1,
+      devices: i + 1,
+      signedInDevices: i,
+      lastSignInAt: i === 0 ? null : NOW - i * DAY,
+      mergedFrom: i === 1 ? 1 : 0,
+    })),
+    nextCursor: null,
+  },
+  [`/manage/api/products/djdl/users/${USER_SUBJECTS[0]}`]: {
+    user: {
+      subject: USER_SUBJECTS[0],
+      createdAt: NOW - 40 * DAY,
+      identityOn: true,
+      contact: { email: "buyer1@example.com", source: "license" },
+      name: null,
+      mergedFrom: [{ subject: USER_SUBJECTS[4], mergedAt: NOW - 3 * DAY }],
+      licenses: [
+        {
+          id: "lic_1",
+          name: "Studio Pro",
+          email: "buyer1@example.com",
+          tierId: null,
+          status: "active",
+          activatedAt: NOW - 30 * DAY,
+          expiresAt: null,
+        },
+      ],
+      devices: [
+        {
+          deviceId: devices[0]!.deviceId,
+          label: "Booth Mac",
+          status: "authorized",
+          platform: "macos",
+          appVersion: "2.4.0",
+          licenseId: "lic_1",
+          lastSeen: NOW - 3600,
+          signedIn: true,
+        },
+      ],
+      data: {
+        bytes: 2048,
+        stores: [{ name: "config-overrides", bytes: 2048 }],
+      },
+      signIns: [
+        { at: NOW - DAY, method: "steam" },
+        { at: NOW - 5 * DAY, method: "email" },
+      ],
+      events: [],
+      relinks: [
+        {
+          id: "rlk_1",
+          licenseId: "lic_1",
+          direction: "in",
+          otherSubject: USER_SUBJECTS[3],
+          reason: "Lost access to the old account (ticket 42)",
+          actorName: "Ada",
+          createdAt: NOW - 3600,
+          undoUntil: NOW + 70 * 3600,
+          undoneAt: null,
+          undoable: true,
+        },
+      ],
+      audit: [
+        {
+          id: "a1",
+          at: NOW - 3600,
+          action: "user.license.relink",
+          actorName: "Ada",
+          targetKind: "license",
+          targetId: "lic_1",
+          summary: null,
+        },
+      ],
+    },
+  },
   [`/manage/api/products/djdl/devices/${devices[0]!.deviceId}`]: {
     ...devices[0],
     fingerprint: {
@@ -403,7 +497,25 @@ export const CORE_ROUTES: Record<string, unknown> = {
     entries: Array.from({ length: 42 }, (_, i) => ({
       key: `k${i}`,
       kind: "config",
+      // U-04: a few user settings, so Cloud Sync → Data has rows to lay out.
+      ...(i < 3
+        ? {
+            user: {
+              sync: (["user", "platform", "device"] as const)[i],
+              ...(i === 1 ? { listed: false } : {}),
+            },
+          }
+        : {}),
     })),
+    cloudSync: {
+      collections: [
+        { name: "progress", access: "owner", onAttach: "merge" },
+        { name: "unlocks", access: "ownerRead", conflict: "union" },
+        { name: "support_notes", access: "server" },
+      ],
+      saves: { conflict: "mostRecent", requiresFlag: "cloudSaves" },
+      migrations: [{ toSchemaVersion: 8, rename: { k40: "k41" } }],
+    },
   },
   "/manage/api/products/djdl/config/profiles": {
     profiles: Array.from({ length: 6 }, (_, i) => ({
@@ -505,3 +617,4 @@ export const CORE_ROUTES: Record<string, unknown> = {
 };
 
 export const DEVICE_ID = devices[0]!.deviceId;
+export const USER_SUBJECT = USER_SUBJECTS[0]!;

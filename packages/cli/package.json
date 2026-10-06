@@ -12,6 +12,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./mirrors": {
+      "types": "./dist/mirrors.d.ts",
+      "default": "./dist/mirrors.js"
     }
   },
   "files": [
@@ -27,15 +31,19 @@
     "bundle:action": "node scripts/bundle-action.mjs"
   },
   "dependencies": {
+    "@polaris-key/catalog": "workspace:*",
     "@polaris-key/client-core": "workspace:*",
     "@polaris-key/jws": "workspace:*",
     "@polaris-key/manifest": "workspace:*",
     "@polaris-key/protocol": "workspace:*",
     "@polaris-key/zstd-wasm": "workspace:*",
     "sharp": "^0.35.4",
+    "smol-toml": "1.8.0",
     "yaml": "^2.6.1"
   },
   "devDependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "esbuild": "0.28.1"
   }
 }

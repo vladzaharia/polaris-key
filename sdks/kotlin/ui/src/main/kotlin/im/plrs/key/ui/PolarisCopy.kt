@@ -97,6 +97,18 @@ public data class PolarisCopy(
     val activationHardwareMismatch: String = "This device's hardware changed. The previous authorization was released; activate again to re-bind.",
     val activationEnrollDisabled: String = "This app doesn't offer a free tier.",
     val activationError: String = "Activation failed. Check your connection and try again.",
+    val activationEnrollClaimed: String = "This device's free license now belongs to an account. Sign in to use it.",
+    val activationLicenseDisabled: String = "This license has been disabled. Contact support if you think this is a mistake.",
+    val activationLicenseExpired: String = "This license has expired.",
+    val activationAttestationRequired: String = "This app needs a verified store install to activate on this device.",
+    val activationRateLimited: String = "Too many attempts. Wait a moment and try again.",
+    val activationRateLimitedFor: String = "Too many attempts. Try again in %1\$s.",
+    val activationNetwork: String = "Couldn't reach the license server. Check your connection and try again.",
+    val activationRefused: String = "The license server refused this activation (%1\$s).",
+    // PX-W8: the action on a device-limit refusal that carries the portal link.
+    val freeDevice: String = "Replace a device",
+    val freeDeviceScan: String = "Scan with your phone to free a device, then try again.",
+    val freeDeviceQrDescription: String = "QR code that opens your account to free a device",
 
     // ── Sign-in with QR (RFC 8628) ───────────────────────────────────────────────────────────
     val signInTitle: String = "Sign in",
@@ -106,6 +118,8 @@ public data class PolarisCopy(
     val signInCodeDescription: String = "Sign-in code %1\$s",
     val signInOpenBrowser: String = "Open sign-in page",
     val signInExpiresIn: String = "Code expires in %1\$s",
+    /** PX-W13 (WIRE-CONTRACT-V4 §12.7.1): the device label the sign-in page will show. */
+    val signInDeviceLabel: String = "The sign-in page will show “%1\$s”",
     val signInWaiting: String = "Waiting for you to finish signing in…",
     val signInDone: String = "Signed in.",
     val signInExpired: String = "The code expired before sign-in finished.",
@@ -163,6 +177,7 @@ public data class PolarisCopy(
     val updateLater: String = "Later",
     val updateRestart: String = "Restart to update",
     val updateRestartBody: String = "Version %1\$s is ready. Restart to finish updating.",
+    val updateFailed: String = "The update couldn't be installed. Try again later.",
 
     // ── Pack progress ────────────────────────────────────────────────────────────────────────
     val packsTitle: String = "Downloading content",

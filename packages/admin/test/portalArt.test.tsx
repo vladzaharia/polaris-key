@@ -76,24 +76,18 @@ describe("ProductIcon", () => {
 });
 
 describe("library card", () => {
-  const djdl = license({ product: "djdl", productName: "DJDL" });
   const other = license({ product: "ember", productName: "Ember Tactics" });
 
-  it("without art shows the letter once: the tint field and the icon's letter tile", async () => {
-    mockFetch(signedIn([djdl, other]));
-    renderPortal();
-    const card = await screen.findByRole("article", { name: "DJDL" });
-    const fallbacks = card.querySelectorAll("[data-art='fallback']");
-    expect(fallbacks).toHaveLength(2);
-    // The art holds only the status plate, no letter of its own.
-    expect(fallbacks[0]!.textContent).toBe("Active");
-    expect(fallbacks[1]!.textContent).toBe("D");
-  });
-
-  it("names the product without the developer byline, and puts the status on a padded plate", async () => {
+  it("names the product without the developer byline, and puts an issue on a padded plate", async () => {
+    // Healthy is silence on art (UX-03): only an issue gets the plate (owner's padding).
+    const lapsed = license({
+      product: "djdl",
+      productName: "DJDL",
+      expiresAt: Math.floor(Date.now() / 1000) - 3 * 86_400,
+    });
     mockFetch(
-      signedIn([djdl, other], {
-        "/api/library": libraryFor([djdl, other], undefined, {
+      signedIn([lapsed, other], {
+        "/api/library": libraryFor([lapsed, other], undefined, {
           developerName: "Vlad Zaharia",
         }),
       }),
@@ -104,6 +98,10 @@ describe("library card", () => {
     expect(card.textContent).not.toContain("Vlad Zaharia");
     const plate = card.querySelector("[data-art] span.absolute > span")!;
     expect(plate.className).toMatch(/\bh-8\b/);
-    expect(plate.className).toMatch(/px-3\.5/);
+    expect(plate.outerHTML).toMatch(/px-3\.5/);
+    const healthy = await screen.findByRole("article", {
+      name: "Ember Tactics",
+    });
+    expect(within(healthy).queryByText("Active")).toBeNull();
   });
 });

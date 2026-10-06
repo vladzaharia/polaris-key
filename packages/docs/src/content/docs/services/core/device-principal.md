@@ -236,11 +236,12 @@ recreated the record that revocation had purged.
 ```
 
 `platform`, `arch` and `sdkName` are what the device's requests sent as `X-PKey-Platform`,
-`X-PKey-Arch` and `X-PKey-SDK`, stored canonically (WIRE-CONTRACT-V3 §5.2): `macos`, `ios`,
-`android`, `windows`, `linux` or `web`; `arm64`, `x86_64`, `armv7` or `wasm32`; and the SDK id
+`X-PKey-Arch` and `X-PKey-SDK`, stored canonically (WIRE-CONTRACT-V4 §5.2): `macos`, `ios`,
+`tvos`, `visionos`, `watchos`, `android`, `windows`, `linux` or `web`; `arm64`, `x86_64`, `armv7` or `wasm32`; and the SDK id
 (`node`, `react`, `python`, `swift`, `godot`). An older SDK's spelling (`darwin`, `win32`, `x64`,
 `AMD64`, `@polaris-key/node`, `PolarisKeySwift`, …) is mapped to its canonical value when it is
-written, and a migration converged the rows stored before the mapping existed. Any other value
+written, and migrations converged the rows stored before the mapping existed (`0040`, and
+`0075` for `tvOS`, `visionOS` and `watchOS`). Any other value
 is stored as sent, and an empty header leaves the stored value as it was.
 
 What that list contains depends on how the device came to exist. For an **activated** device it

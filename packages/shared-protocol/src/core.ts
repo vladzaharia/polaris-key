@@ -284,7 +284,9 @@ export type PolarisErrorCode =
   | "hardware_mismatch"
   | "fingerprint_required"
   | "enroll_disabled"
-  | "registration_closed";
+  | "registration_closed"
+  /** Human-facing only (PX-W17): a sign-in through a product whose Identity service is off. */
+  | "identity_disabled";
 
 export interface PolarisErrorBody {
   error: {
@@ -343,7 +345,9 @@ export type BuildChannel = "stable" | "beta" | "pr" | "dev";
 
 /** WIRE-CONTRACT-V3 §5.2. Every spelling an OS or runtime reports, ASCII-lowercased, mapped to
  *  its canonical value; each canonical value maps to itself. Anything else has no value, and an
- *  SDK omits `X-PKey-Platform` rather than inventing one. `headers.json` pins the table. */
+ *  SDK omits `X-PKey-Platform` rather than inventing one. `headers.json` pins the table.
+ *  `tvos`, `visionos` and `watchos` are header values only: the build and update vocabularies
+ *  (`RELEASE_PLATFORMS`, `OUTLET_PLATFORMS`) keep six values (WIRE-CONTRACT-V4 §5.2 rule 5). */
 export const PLATFORM_SPELLINGS = {
   macos: "macos",
   darwin: "macos",
@@ -356,6 +360,9 @@ export const PLATFORM_SPELLINGS = {
   linux: "linux",
   web: "web",
   browser: "web",
+  tvos: "tvos",
+  visionos: "visionos",
+  watchos: "watchos",
 } as const;
 export type ClientPlatform =
   (typeof PLATFORM_SPELLINGS)[keyof typeof PLATFORM_SPELLINGS];

@@ -130,6 +130,32 @@ email or payment data) for 30 days, with the connector event log.
 
 Used for: granting and revoking the purchased licence flag, and nothing else.
 
+### The Polaris Key account's sign-in (I-07, the login card on key.plrs.im)
+
+When a person signs in to their Polaris Key account, the Worker keeps, per browser session: when it
+started and was last seen (refreshed at most every five minutes), when it expires, how the person
+signed in (`email`, `google`, …) and a coarse label of the browser family and operating system
+("Firefox on Windows"; no versions, builds or device models). The person
+sees and ends these sessions themselves. A pending sign-in or email confirmation keeps the address
+being confirmed, the provider's identity and what the provider sent about the person, plus the
+city and country Cloudflare attaches to the request that started it (shown back as "requested at
+<time> from <place>" when the link is opened on another device). From an identity provider
+(Google, Apple, Steam) it keeps, per sign-in method: the name and locale the provider sent, and a
+copy of the provider's picture in R2 under an opaque random key (never the provider's URL; a
+peppered hash of it decides when to fetch again). The provider learns nothing about who views the
+copy.
+
+Used for: signing the person in, showing and ending their sessions, and filling their profile.
+
+For each passkey a person adds (I-16), the Worker keeps the credential's public key and id, its
+signature counter, the transports the browser reported, the relying party (`key.plrs.im`), the
+account's random WebAuthn user handle (never the account id), when it was added and last used, and
+for the settings list the authenticator model's AAGUID (when the browser discloses it), whether it
+is synced, and the coarse browser label it was added from. No biometric or private key ever leaves
+the person's device. A pending passkey ceremony is held for 5 minutes: its random challenge and
+the relying party, plus the same-origin return path for a sign-in, or the account id and its user
+handle for adding a passkey.
+
 ### Not collected
 
 Hostname, OS username, IP-derived geolocation, browsing or file activity, a list of installed
@@ -137,19 +163,23 @@ applications, and any raw hardware serial. None of these are read by any SDK.
 
 ## Where it lives, and for how long
 
-| Data                                                                                                                                                                                        | Table                                           | Lifetime                                                                                                                                                                  |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Fingerprint components + hwid                                                                                                                                                               | `device_fingerprints`                           | Deleted with the device                                                                                                                                                   |
-| Software facts + probe results                                                                                                                                                              | `device_facts`                                  | Deleted with the device                                                                                                                                                   |
-| Drift and mismatch events                                                                                                                                                                   | `audit`                                         | Retained with the product's audit log                                                                                                                                     |
-| Update outcome events (latest report's `updates`)                                                                                                                                           | `devices.reported_json`                         | Replaced by the next report; deleted with the device                                                                                                                      |
-| Update outcome counters (per release, outlet, channel, event) and one record per device (its counted event ids, to count distinct devices)                                                  | `UpdateHealthDO` (a Durable Object per release) | 30 days (a device record: 30 days after its last event), then deleted by the object's own sweep                                                                           |
-| Sign-in artefacts: OIDC flow records, device codes, portal magic links (which name the recipient's email), email codes (stored hashed) and wrong-code strikes (keyed by a hashed recipient) | `SingleUseDO` (the sharded single-use store)    | Until used or expired: 10 minutes for a flow, link or code; a strike record at most an hour (a lockout 15 minutes); expired records are deleted by the object's own sweep |
-| Pack install reports (latest report's `packInstalls`)                                                                                                                                       | `devices.reported_json`                         | Replaced by the next report; deleted with the device                                                                                                                      |
-| Lazy-delta demand: one row per device and pack-payload pair (strategy, last time), for products that opted in                                                                               | `delta_demand_devices`                          | 30 days after the device last reported the pair, then deleted by the nightly sweep                                                                                        |
-| Store purchases (hashed key, product, licence, state, re-check ids incl. a Steam ID) and the licence's store grants                                                                         | `dist_purchases`, `license_store_grants`        | Kept while the licence exists; a refund marks them revoked                                                                                                                |
-| Purchase binding (random UUID per licence)                                                                                                                                                  | `dist_purchase_bindings`                        | Kept while the licence exists                                                                                                                                             |
-| Store notifications (as received)                                                                                                                                                           | `dist_connector_events`                         | 30 days                                                                                                                                                                   |
+| Data                                                                                                                                                                                                                                   | Table                                                          | Lifetime                                                                                                                                                                  |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fingerprint components + hwid                                                                                                                                                                                                          | `device_fingerprints`                                          | Deleted with the device                                                                                                                                                   |
+| Software facts + probe results                                                                                                                                                                                                         | `device_facts`                                                 | Deleted with the device                                                                                                                                                   |
+| Drift and mismatch events                                                                                                                                                                                                              | `audit`                                                        | Retained with the product's audit log                                                                                                                                     |
+| Update outcome events (latest report's `updates`)                                                                                                                                                                                      | `devices.reported_json`                                        | Replaced by the next report; deleted with the device                                                                                                                      |
+| Update outcome counters (per release, outlet, channel, event) and one record per device (its counted event ids, to count distinct devices)                                                                                             | `UpdateHealthDO` (a Durable Object per release)                | 30 days (a device record: 30 days after its last event), then deleted by the object's own sweep                                                                           |
+| Sign-in artefacts: OIDC flow records, device codes, portal magic links (which name the recipient's email), email codes (stored hashed) and wrong-code strikes (keyed by a hashed recipient)                                            | `SingleUseDO` (the sharded single-use store)                   | Until used or expired: 10 minutes for a flow, link or code; a strike record at most an hour (a lockout 15 minutes); expired records are deleted by the object's own sweep |
+| Pack install reports (latest report's `packInstalls`)                                                                                                                                                                                  | `devices.reported_json`                                        | Replaced by the next report; deleted with the device                                                                                                                      |
+| Lazy-delta demand: one row per device and pack-payload pair (strategy, last time), for products that opted in                                                                                                                          | `delta_demand_devices`                                         | 30 days after the device last reported the pair, then deleted by the nightly sweep                                                                                        |
+| Store purchases (hashed key, product, licence, state, re-check ids incl. a Steam ID) and the licence's store grants                                                                                                                    | `dist_purchases`, `license_store_grants`                       | Kept while the licence exists; a refund marks them revoked                                                                                                                |
+| Purchase binding (random UUID per licence)                                                                                                                                                                                             | `dist_purchase_bindings`                                       | Kept while the licence exists                                                                                                                                             |
+| Store notifications (as received)                                                                                                                                                                                                      | `dist_connector_events`                                        | 30 days                                                                                                                                                                   |
+| Account sessions (times, sign-in method, browser label)                                                                                                                                                                                | `account_sessions`                                             | 14 days while live; an ended session is pruned 30 days after it ended; deleted with the account                                                                           |
+| Pending email sign-ins, email gates and passkey ceremonies (the address, the provider identity and profile, the requesting city and country; a passkey ceremony's challenge, relying party, return path or account id and user handle) | `SingleUseDO` (the sharded single-use store)                   | Until used or expired: 10 minutes for a sign-in, 15 for an email gate, 5 for a passkey ceremony                                                                           |
+| Provider profile per sign-in method (name, locale, picture reference) and the account's pictures (provider copies and uploads, re-encoded; metadata discarded, originals never kept)                                                   | `account_links.profile_json`, `account_avatars`, R2 `avatars/` | A picture nothing uses is deleted when replaced, or by the nightly sweep after a day (an upload never saved included); everything is deleted with the account             |
+| Passkeys (public key, credential id, counter, transports, user handle, times, AAGUID, synced flag, browser label)                                                                                                                      | `account_passkeys`, `accounts`                                 | Until the person removes the passkey or the account is deleted                                                                                                            |
 
 Deauthorizing a device — from the app, the admin panel, or the customer portal — routes
 through `setDeviceStatus()` in `packages/worker/src/repo.ts`, which purges both tables in the
@@ -206,6 +236,17 @@ hwid, truncated per-component digests, the component count, and the last drift e
 full digest, so a screenshot of the panel cannot be used to correlate a device elsewhere. An
 admin can clear a device's binding, which is audited and lets the device re-bind on its next
 check-in without losing its seat.
+
+A product's **Users** page (Core → Users) shows each person by a random id that exists for that
+product only (`ps_…`); another product's console sees a different id for the same person. It
+shows that product's licences, devices, data size and console audit, and, with Identity on, the
+person's sign-ins to that product by method kind ("Steam") only. It never shows the Polaris Key
+account id, the account's sign-in methods, or anything from another product. The contact email
+is the licence's buyer email; the account's own email appears only when the person agreed to
+share it with that product. An admin can export that product's data for the person as JSON,
+delete it, detach a licence, or move a licence to another person of the same product (a fresh
+admin sign-in, a recorded reason, an email to both people first, and 72 hours to undo). No admin
+can delete, disable, sign out or merge an account, or change its sign-in methods.
 
 ## What an end user can see
 

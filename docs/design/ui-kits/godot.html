@@ -1,0 +1,1297 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>UI kits · Godot (Control nodes)</title>
+    <link rel="stylesheet" href="shared.css" />
+    <script src="shared.js"></script>
+    <style>
+      /* 1280 × 720 game viewport (and 1280 × 800 Steam Deck). Games default to the dark scheme
+         (theme.colorScheme "dark" for Godot); light is opt-in and shown for parity.
+         Drift Kart's accent #ff6a3d is light, so the resolver keeps the orange and flips its label
+         to ink in both schemes rather than darkening it to brick; in light it deepens the solid
+         only to #ec592a, the least move that clears 3:1 on white (resolver output, §3.3). */
+      .shot {
+        width: 1280px;
+        height: 720px;
+        position: relative;
+        overflow: hidden;
+        border-radius: 12px;
+        isolation: isolate;
+        font-size: 18px;
+        line-height: 26px;
+        color: var(--pk-text-default);
+        --kit-accent: #ff6a3d;
+        --kit-accent-on: #060912;
+        --kit-accent-fg: #ff987a;
+        --kit-accent-subtle: #241517;
+        --kit-focus: #ff987a;
+        --g-glass: rgb(14 12 24 / 0.8);
+        --g-tonal: rgb(255 255 255 / 0.1);
+        --g-tonal-2: rgb(255 255 255 / 0.06);
+        --g-scrim: rgb(0 0 0 / 0.42);
+      }
+      [data-theme="light"] .shot {
+        --kit-accent: #ec592a;
+        --kit-accent-fg: #b73500;
+        --kit-focus: #ec592a;
+        --kit-accent-subtle: #f5e8ea;
+        --g-glass: rgb(255 255 255 / 0.86);
+        --g-tonal: rgb(6 9 18 / 0.07);
+        --g-tonal-2: rgb(6 9 18 / 0.04);
+        --g-scrim: rgb(11 10 18 / 0.2);
+      }
+      .deck {
+        height: 800px;
+      }
+      /* Key art: the game's content (a synthwave dusk with a chase-cam kart), drawn here as one SVG.
+         The sun sits low and central so behind any centred glass card it blurs to an even glow,
+         never a clipped smudge; the kart leaves the frame whenever a modal is up. */
+      .art {
+        position: absolute;
+        inset: 0;
+        z-index: -3;
+        overflow: hidden;
+        --sky-0: #0b0a1d;
+        --sky-1: #251240;
+        --sky-2: #6b2247;
+        --sun-0: #ffd166;
+        --sun-1: #ff5a2c;
+        --hill-far: #2b1840;
+        --hill-near: #1b1229;
+        --ground: #100e18;
+        --road: #1a1724;
+        --grid: #ff6a3d;
+        --edge: #ff9a6a;
+        --lane: #ffd08a;
+        --kart: #ff5a2c;
+        --kart-hi: #ff8a5c;
+        --kart-dark: #14111c;
+        --helmet: #f3efe7;
+        --tyre: #2a2433;
+        --tyre-hi: #4a4058;
+      }
+      [data-theme="light"] .art {
+        --sky-0: #8fc6f5;
+        --sky-1: #c9d9f2;
+        --sky-2: #ffc59a;
+        --sun-0: #fff1b8;
+        --sun-1: #ff9a5a;
+        --hill-far: #b48ea6;
+        --hill-near: #8a6f8f;
+        --ground: #4b4f5e;
+        --road: #343745;
+        --grid: #ffffff;
+        --edge: #ffe1c4;
+        --lane: #ffe3a8;
+        --kart: #f2541f;
+        --kart-hi: #ff8250;
+        --kart-dark: #1d1b26;
+        --helmet: #ffffff;
+        --tyre: #24222c;
+        --tyre-hi: #4a4756;
+      }
+      .art svg {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      .shot:has(.scrim:not(.side)) .art .kart {
+        display: none;
+      }
+      /* With the card docked left, the sun moves right so no part of it sits behind the glass. */
+      .shot:has(.scrim.side) .art .sun {
+        transform: translateX(250px);
+      }
+      /* Modals dim the game first, so highlights never bleed through the glass. */
+      .scrim {
+        position: absolute;
+        inset: 0;
+        background: var(--g-scrim);
+        z-index: -1;
+      }
+      .glass {
+        background: var(--g-glass);
+        backdrop-filter: blur(40px) saturate(1.15);
+        border-radius: 28px;
+        box-shadow:
+          inset 0 1px 0 rgb(255 255 255 / 0.12),
+          0 30px 60px -10px rgb(0 0 0 / 0.5);
+        color: var(--pk-text-default);
+      }
+      [data-theme="light"] .glass {
+        box-shadow:
+          inset 0 1px 0 #fff,
+          0 0 0 1px rgb(6 9 18 / 0.05),
+          0 30px 60px -10px rgb(6 9 18 / 0.28);
+      }
+      .panel {
+        position: absolute;
+        padding: 44px;
+        display: grid;
+        gap: 28px;
+      }
+      .center {
+        inset-inline-start: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .gt {
+        font: 600 36px/44px var(--pk-font-sans);
+        letter-spacing: -0.01em;
+        color: var(--pk-text-strong);
+        margin: 0;
+        text-wrap: balance;
+      }
+      .gs {
+        color: var(--pk-text-muted);
+        margin: 0;
+        font-size: 19px;
+        line-height: 28px;
+        text-wrap: pretty;
+      }
+      .phead {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        font: 600 17px/24px var(--pk-font-sans);
+        color: var(--pk-text-muted);
+      }
+      .gb {
+        height: 60px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: 0 24px;
+        font: 500 19px/1 var(--pk-font-sans);
+        color: var(--pk-text-strong);
+        background: var(--g-tonal);
+      }
+      .gb.primary {
+        background: var(--kit-accent);
+        color: var(--kit-accent-on);
+      }
+      /* Console focus: a 3 px ring, 2 px offset, an accent glow; no scale on buttons in a row. */
+      .focus {
+        outline: 3px solid var(--kit-focus);
+        outline-offset: 2px;
+        box-shadow:
+          0 0 0 1px color-mix(in oklab, var(--kit-focus) 40%, transparent),
+          0 8px 28px color-mix(in oklab, var(--kit-focus) 35%, transparent);
+      }
+      .gtext {
+        font: 500 17px/1 var(--pk-font-sans);
+        color: var(--pk-text-muted);
+        justify-self: center;
+        padding: 10px 14px;
+      }
+      /* Input hints: monochrome filled glyphs, switching with the last input device. */
+      .hints {
+        position: absolute;
+        inset-inline-end: 32px;
+        bottom: 28px;
+        display: flex;
+        gap: 22px;
+        font-size: 17px;
+        color: #fff;
+        padding: 8px 18px 8px 10px;
+        border-radius: 999px;
+        background: rgb(12 10 22 / 0.6);
+        backdrop-filter: blur(16px);
+      }
+      [data-theme="light"] .hints {
+        color: #1c1f2a;
+        background: rgb(255 255 255 / 0.8);
+      }
+      .hints span {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .pad {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        font: 700 13px/1 var(--pk-font-sans);
+        font-style: normal;
+        background: rgb(255 255 255 / 0.16);
+        color: #fff;
+      }
+      [data-theme="light"] .pad {
+        background: rgb(6 9 18 / 0.1);
+        color: #1c1f2a;
+      }
+      .pad.sh {
+        border-radius: 8px;
+        width: 34px;
+      }
+      .gfield {
+        min-height: 64px;
+        border-radius: 16px;
+        background: rgb(0 0 0 / 0.3);
+        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+        display: flex;
+        align-items: center;
+        padding: 14px 20px;
+        gap: 12px;
+        color: var(--pk-text-strong);
+      }
+      [data-theme="light"] .gfield {
+        background: rgb(255 255 255 / 0.85);
+        box-shadow: inset 0 0 0 1px rgb(6 9 18 / 0.08);
+      }
+      .grow {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        min-height: 72px;
+        padding: 12px 20px;
+        border-radius: 16px;
+        background: var(--g-tonal-2);
+        color: var(--pk-text-strong);
+      }
+      .grow + .grow {
+        margin-top: 2px;
+      }
+      .grow.focus {
+        background: color-mix(in oklab, var(--g-tonal-2), white 4%);
+      }
+      .grow .t {
+        flex: 1;
+        font-weight: 500;
+      }
+      .grow small {
+        display: block;
+        color: var(--pk-text-subtle);
+        font-size: 16px;
+        line-height: 22px;
+        font-weight: 400;
+      }
+      .rd {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 2.5px var(--pk-text-muted);
+        flex: none;
+      }
+      .rd.on {
+        box-shadow: inset 0 0 0 2.5px var(--kit-accent-fg);
+        background: radial-gradient(
+          circle,
+          var(--kit-accent-fg) 0 6px,
+          transparent 6.5px
+        );
+      }
+      .seats {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .seats i {
+        width: 34px;
+        height: 6px;
+        border-radius: 3px;
+        background: var(--pk-text-muted);
+      }
+      .seats span {
+        margin-inline-start: 10px;
+        font-size: 16px;
+        color: var(--pk-text-muted);
+      }
+      .bar {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--g-tonal);
+        overflow: hidden;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--kit-accent);
+      }
+      .hud {
+        position: absolute;
+        top: 36px;
+        inset-inline-start: 64px;
+        font: 700 28px/1 var(--pk-font-sans);
+        color: #fff;
+        text-shadow: 0 2px 6px rgb(0 0 0 / 0.5);
+        z-index: -1;
+        display: grid;
+        gap: 8px;
+      }
+      .hud small {
+        font: 500 18px/1 var(--pk-font-sans);
+        opacity: 0.85;
+      }
+      .toast {
+        position: absolute;
+        inset-inline-start: 50%;
+        bottom: 96px;
+        translate: -50% 0;
+        width: 520px;
+        padding: 16px 20px;
+        border-radius: 22px;
+        display: flex;
+        gap: 16px;
+        align-items: center;
+      }
+      .tabsg {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .tabsg .t {
+        padding: 10px 22px;
+        border-radius: 999px;
+        font-weight: 500;
+        color: var(--pk-text-muted);
+      }
+      .tabsg .t.on {
+        background: var(--kit-accent-subtle);
+        color: var(--kit-accent-fg);
+        font-weight: 600;
+      }
+      .ghead {
+        font: 600 16px/22px var(--pk-font-sans);
+        color: var(--pk-text-subtle);
+        margin: 20px 4px 8px;
+      }
+      .srow {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        min-height: 64px;
+        padding: 0 22px;
+        border-radius: 14px;
+        background: var(--g-tonal-2);
+        color: var(--pk-text-strong);
+      }
+      .srow + .srow {
+        margin-top: 2px;
+      }
+      .srow .lbl {
+        flex: 1;
+        font-weight: 500;
+      }
+      .srow .lbl small {
+        display: block;
+        color: var(--pk-text-subtle);
+        font-size: 16px;
+        line-height: 22px;
+        font-weight: 400;
+      }
+      .srow .val {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--pk-text-muted);
+      }
+      .gsw {
+        width: 58px;
+        height: 34px;
+        border-radius: 999px;
+        background: var(--kit-accent);
+        position: relative;
+      }
+      .gsw::after {
+        content: "";
+        position: absolute;
+        inset-inline-end: 4px;
+        top: 4px;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+      }
+      .wordmark {
+        display: block;
+      }
+      .k-tag {
+        font-size: 14px;
+        line-height: 22px;
+        padding: 0 10px;
+        margin-inline-start: 10px;
+        vertical-align: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <template id="art"
+      ><div class="art">
+        <svg
+          viewBox="0 0 1280 720"
+          preserveAspectRatio="xMidYMax slice"
+          aria-hidden="true"
+        >
+          <defs>
+            <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" style="stop-color: var(--sky-0)" />
+              <stop offset="0.6" style="stop-color: var(--sky-1)" />
+              <stop offset="1" style="stop-color: var(--sky-2)" />
+            </linearGradient>
+            <linearGradient id="sun" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" style="stop-color: var(--sun-0)" />
+              <stop offset="1" style="stop-color: var(--sun-1)" />
+            </linearGradient>
+            <radialGradient id="haze" cx="0.5" cy="1" r="0.6">
+              <stop
+                offset="0"
+                style="stop-color: var(--sun-1); stop-opacity: 0.45"
+              />
+              <stop
+                offset="1"
+                style="stop-color: var(--sun-1); stop-opacity: 0"
+              />
+            </radialGradient>
+            <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#fff" stop-opacity="0" />
+              <stop offset="1" stop-color="#fff" stop-opacity="0.9" />
+            </linearGradient>
+            <mask id="sunmask">
+              <rect width="1280" height="720" fill="#fff" />
+              <rect x="500" y="268" width="280" height="2" fill="#000" />
+              <rect x="500" y="279" width="280" height="4" fill="#000" />
+              <rect x="500" y="292" width="280" height="5" fill="#000" />
+              <rect x="500" y="306" width="280" height="7" fill="#000" />
+              <rect x="500" y="322" width="280" height="8" fill="#000" />
+              <rect x="500" y="339" width="280" height="10" fill="#000" />
+            </mask>
+            <mask id="gridmask">
+              <rect y="446" width="1280" height="274" fill="url(#fade)" />
+            </mask>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="6" />
+            </filter>
+          </defs>
+          <rect width="1280" height="446" fill="url(#sky)" />
+          <ellipse cx="640" cy="446" rx="640" ry="220" fill="url(#haze)" />
+          <g class="sun">
+            <circle
+              cx="640"
+              cy="330"
+              r="132"
+              fill="url(#sun)"
+              mask="url(#sunmask)"
+            />
+          </g>
+          <path
+            d="M0 446V372C90 352 160 330 250 340S420 380 520 366 700 318 820 334 1020 380 1120 360 1240 336 1280 344V446Z"
+            style="fill: var(--hill-far)"
+          />
+          <path
+            d="M0 446V404C120 392 220 380 330 392S520 420 640 414 860 384 980 394 1180 418 1280 408V446Z"
+            style="fill: var(--hill-near)"
+          />
+          <rect y="446" width="1280" height="274" style="fill: var(--ground)" />
+          <path
+            d="M0 446.4H1280 M0 450.6H1280 M0 459.3H1280 M0 472.3H1280 M0 489.8H1280 M0 511.8H1280 M0 538.2H1280 M0 569.0H1280 M0 604.3H1280 M0 644.0H1280 M0 688.1H1280 M640 446L-800 720 M640 446L-680 720 M640 446L-560 720 M640 446L-440 720 M640 446L-320 720 M640 446L-200 720 M640 446L-80 720 M640 446L40 720 M640 446L160 720 M640 446L280 720 M640 446L400 720 M640 446L520 720 M640 446L640 720 M640 446L760 720 M640 446L880 720 M640 446L1000 720 M640 446L1120 720 M640 446L1240 720 M640 446L1360 720 M640 446L1480 720 M640 446L1600 720 M640 446L1720 720 M640 446L1840 720 M640 446L1960 720 M640 446L2080 720"
+            style="stroke: var(--grid)"
+            stroke-width="1"
+            opacity="0.22"
+            mask="url(#gridmask)"
+            fill="none"
+          />
+          <path d="M626 446H654L1230 720H50Z" style="fill: var(--road)" />
+          <path
+            d="M626 446L50 720M654 446L1230 720"
+            style="stroke: var(--edge)"
+            stroke-width="3"
+            opacity="0.55"
+            fill="none"
+          />
+          <path
+            d="M638.6 452.0H641.4L641.5 458.0H638.5Z M638.3 464.6H641.7L641.9 473.3H638.1Z M637.9 482.9H642.1L642.5 495.5H637.5Z M637.2 509.4H642.8L643.3 527.7H636.7Z M636.2 547.8H643.8L644.5 574.3H635.5Z M634.8 603.5H645.2L646.2 641.9H633.8Z M632.7 684.2H647.3L648.2 720.0H631.8Z"
+            style="fill: var(--lane)"
+            opacity="0.75"
+          />
+          <rect
+            y="445"
+            width="1280"
+            height="1.5"
+            style="fill: var(--edge)"
+            opacity="0.5"
+          />
+          <g class="kart" transform="translate(960 704) scale(0.8)">
+            <ellipse cx="0" cy="2" rx="118" ry="12" fill="#000" opacity="0.4" />
+            <rect
+              x="-112"
+              y="-60"
+              width="44"
+              height="60"
+              rx="12"
+              style="fill: var(--tyre)"
+            />
+            <rect
+              x="68"
+              y="-60"
+              width="44"
+              height="60"
+              rx="12"
+              style="fill: var(--tyre)"
+            />
+            <path
+              d="M-104 -50V-12M76 -50V-12"
+              style="stroke: var(--tyre-hi)"
+              stroke-width="3"
+              stroke-linecap="round"
+            />
+            <circle cx="0" cy="-104" r="22" style="fill: var(--helmet)" />
+            <path
+              d="M-5 -125.4Q0 -126.2 5 -125.4V-92H-5Z"
+              style="fill: var(--kart)"
+            />
+            <path
+              d="M-76 -22L-66 -58C-64 -66 -58 -70 -50 -70H50C58 -70 64 -66 66 -58L76 -22C78 -14 74 -10 66 -10H-66C-74 -10 -78 -14 -76 -22Z"
+              style="fill: var(--kart)"
+            />
+            <path
+              d="M-60 -64H60"
+              style="stroke: var(--kart-hi)"
+              stroke-width="3"
+              stroke-linecap="round"
+            />
+            <rect
+              x="-44"
+              y="-86"
+              width="6"
+              height="18"
+              rx="2"
+              style="fill: var(--kart-dark)"
+            />
+            <rect
+              x="38"
+              y="-86"
+              width="6"
+              height="18"
+              rx="2"
+              style="fill: var(--kart-dark)"
+            />
+            <rect
+              x="-92"
+              y="-94"
+              width="184"
+              height="12"
+              rx="6"
+              style="fill: var(--kart)"
+            />
+            <g filter="url(#glow)" opacity="0.9">
+              <rect
+                x="-56"
+                y="-38"
+                width="30"
+                height="8"
+                rx="4"
+                fill="#ff2d55"
+              />
+              <rect
+                x="26"
+                y="-38"
+                width="30"
+                height="8"
+                rx="4"
+                fill="#ff2d55"
+              />
+            </g>
+            <rect x="-56" y="-38" width="30" height="8" rx="4" fill="#ff4d6d" />
+            <rect x="26" y="-38" width="30" height="8" rx="4" fill="#ff4d6d" />
+            <rect
+              x="-48"
+              y="-20"
+              width="96"
+              height="6"
+              rx="3"
+              style="fill: var(--kart-dark)"
+            />
+          </g>
+        </svg></div
+    ></template>
+    <template id="wm">
+      <!-- product.wordmark: the game's own wordmark texture, drawn here as an image asset -->
+      <svg
+        class="wordmark"
+        width="300"
+        height="72"
+        viewBox="0 0 300 72"
+        aria-label="Drift Kart"
+      >
+        <g transform="skewX(-12)">
+          <text
+            x="18"
+            y="56"
+            font-family="Impact, 'Arial Black', sans-serif"
+            font-size="60"
+            letter-spacing="1"
+            fill="#ff6a3d"
+            stroke="#1a0b06"
+            stroke-width="2"
+            paint-order="stroke"
+          >
+            DRIFT
+          </text>
+          <text
+            x="176"
+            y="56"
+            font-family="Impact, 'Arial Black', sans-serif"
+            font-size="60"
+            letter-spacing="1"
+            fill="#fff3e8"
+            stroke="#1a0b06"
+            stroke-width="2"
+            paint-order="stroke"
+          >
+            KART
+          </text>
+        </g>
+        <path
+          d="M8 66h120"
+          stroke="#ffb347"
+          stroke-width="4"
+          stroke-linecap="round"
+        />
+      </svg>
+    </template>
+    <main class="board">
+      <!-- 1. Gate -->
+      <figure>
+        <figcaption>
+          godot · gate (title screen; B does nothing on the root, Quit only on
+          desktop builds)
+        </figcaption>
+        <div class="shot" data-shot="gate">
+          <div
+            class="scrim side"
+            style="
+              background: linear-gradient(
+                90deg,
+                rgb(0 0 0 / 0.45),
+                transparent 60%
+              );
+            "
+          ></div>
+          <div
+            class="glass panel"
+            style="
+              inset-inline-start: 72px;
+              top: 50%;
+              transform: translateY(-50%);
+              width: 520px;
+            "
+          >
+            <div style="display: flex; gap: 20px; align-items: center">
+              <span
+                class="k-appicon"
+                data-art="driftkart"
+                data-size="72"
+                style="border-radius: 18px"
+              ></span>
+              <span class="wm-slot"></span>
+            </div>
+            <p class="gs">Sign in or add your license to play.</p>
+            <div style="display: grid; gap: 16px">
+              <div class="gb primary focus">Sign in</div>
+              <div class="gb">Use a license key</div>
+            </div>
+            <span class="gtext">Activate offline</span>
+          </div>
+          <div class="hints">
+            <span><i class="pad">A</i>Select</span>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 2. Activate -->
+      <figure>
+        <figcaption>
+          godot · activate (focus on Activate; the field is quiet until edited)
+        </figcaption>
+        <div class="shot" data-shot="activate">
+          <div class="scrim"></div>
+          <div class="glass panel center" style="width: 680px">
+            <div class="phead">
+              <span
+                class="k-appicon"
+                data-art="driftkart"
+                data-size="40"
+                style="border-radius: 10px"
+              ></span
+              >Drift Kart
+            </div>
+            <h1 class="gt">Add your license</h1>
+            <div>
+              <div
+                style="
+                  font: 500 16px/22px var(--pk-font-sans);
+                  color: var(--pk-text-muted);
+                  margin-bottom: 8px;
+                "
+              >
+                License key
+              </div>
+              <div class="gfield">
+                <span class="mono" style="font-size: 17px; line-height: 24px"
+                  ><span class="k-key"
+                    ><span>pkey_driftkart_K7QP2MXDR4TC8HJN</span
+                    ><span>3WPLDA</span></span
+                  ></span
+                >
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 10px;
+                  align-items: center;
+                  margin-top: 12px;
+                  font: 500 16px/22px var(--pk-font-sans);
+                  color: var(--pk-text-default);
+                "
+              >
+                <span
+                  style="color: var(--pk-success)"
+                  data-icon="checkCircle"
+                  data-size="18"
+                ></span
+                ><span style="white-space: nowrap"
+                  >Drift Kart Deluxe
+                  <span style="color: var(--pk-text-muted); font-weight: 400"
+                    >· Lifetime · 2 devices</span
+                  ></span
+                >
+              </div>
+            </div>
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px"
+            >
+              <div class="gb">Back</div>
+              <div class="gb primary focus">Activate</div>
+            </div>
+          </div>
+          <div class="hints">
+            <span><i class="pad">X</i>Edit key</span
+            ><span><i class="pad">A</i>Select</span
+            ><span><i class="pad">B</i>Back</span>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 3. Sign in (TV / console) -->
+      <figure>
+        <figcaption>
+          godot · sign-in (device code for TV and console; the product’s vanity
+          URL)
+        </figcaption>
+        <div class="shot" data-shot="sign-in">
+          <div class="scrim"></div>
+          <div
+            class="glass panel center"
+            style="
+              width: 900px;
+              grid-template-columns: auto 1fr;
+              gap: 44px;
+              align-items: center;
+            "
+          >
+            <div
+              style="
+                padding: 8px;
+                background: rgb(255 255 255 / 0.92);
+                border-radius: 20px;
+                line-height: 0;
+              "
+              data-qr="5"
+              data-size="216"
+            ></div>
+            <div style="display: grid; gap: 18px">
+              <div class="phead">
+                <span
+                  class="k-appicon"
+                  data-art="driftkart"
+                  data-size="40"
+                  style="border-radius: 10px"
+                ></span
+                >Drift Kart
+              </div>
+              <h1 class="gt" style="font-size: 34px; line-height: 42px">
+                Sign in on your phone
+              </h1>
+              <p class="gs">
+                Scan the code, or go to
+                <b style="font-weight: 500; color: var(--pk-text-strong)"
+                  >driftkart.gg/tv</b
+                >
+                and enter
+              </p>
+              <div
+                class="mono"
+                style="
+                  font-size: 52px;
+                  line-height: 1;
+                  font-weight: 600;
+                  letter-spacing: 0.06em;
+                  color: var(--pk-text-strong);
+                "
+              >
+                WDJB-MJHT
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 12px;
+                  align-items: center;
+                  color: var(--pk-text-muted);
+                  font-size: 17px;
+                "
+                class="tnum"
+              >
+                <span data-countdown="0.84" data-size="20"></span>Waiting for
+                you · code expires in 4:12
+              </div>
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: 1fr auto;
+                  gap: 16px;
+                  margin-top: 4px;
+                "
+              >
+                <div class="gb focus">Use a license key instead</div>
+                <div class="gb">Cancel</div>
+              </div>
+            </div>
+          </div>
+          <div class="hints">
+            <span><i class="pad">A</i>Select</span
+            ><span><i class="pad">B</i>Back</span>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 4. Device limit -->
+      <figure>
+        <figcaption>godot · device limit</figcaption>
+        <div class="shot" data-shot="device-limit">
+          <div class="scrim"></div>
+          <div class="glass panel center" style="width: 720px; gap: 22px">
+            <div class="phead">
+              <span
+                class="k-appicon"
+                data-art="driftkart"
+                data-size="40"
+                style="border-radius: 10px"
+              ></span
+              >Drift Kart Deluxe
+            </div>
+            <div style="display: grid; gap: 12px">
+              <h1 class="gt" style="font-size: 32px; line-height: 40px">
+                Your license is on 2 of 2 devices
+              </h1>
+              <p class="gs" style="font-size: 18px">
+                To play on this Steam Deck, remove one. You can add it back
+                later.
+              </p>
+              <div class="seats" role="img" aria-label="2 of 2 devices in use">
+                <i></i><i></i><span>2 of 2 in use</span>
+              </div>
+            </div>
+            <div>
+              <div class="grow focus">
+                <span data-icon="monitor" data-size="24"></span>
+                <div class="t">
+                  Living room PC <em class="k-tag">Least recent</em
+                  ><small>Windows 11 · last used 3 weeks ago</small>
+                </div>
+                <span class="rd on"></span>
+              </div>
+              <div class="grow">
+                <span data-icon="gamepad" data-size="24"></span>
+                <div class="t">
+                  ROG Ally<small>Windows 11 · last used yesterday</small>
+                </div>
+                <span class="rd"></span>
+              </div>
+            </div>
+            <span style="font-size: 16px; color: var(--pk-text-muted)"
+              >Drift Kart signs out on Living room PC.</span
+            >
+            <div
+              style="display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px"
+            >
+              <div class="gb primary">Remove Living room PC</div>
+              <div class="gb">Cancel</div>
+            </div>
+          </div>
+          <div class="hints">
+            <span><i class="pad">A</i>Choose</span
+            ><span><i class="pad">B</i>Back</span>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 5. Update during a race: a toast only -->
+      <figure>
+        <figcaption>
+          godot · update during a race (toast only, bottom centre inside
+          title-safe, never over the HUD)
+        </figcaption>
+        <div class="shot" data-shot="update-toast">
+          <div class="hud">
+            <span>LAP 2/3</span><small>01:12.4 · 3rd</small>
+          </div>
+          <div class="glass toast">
+            <span
+              class="k-appicon"
+              data-art="driftkart"
+              data-size="44"
+              style="border-radius: 11px"
+            ></span>
+            <div style="flex: 1; display: grid; gap: 8px">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  font-size: 17px;
+                "
+              >
+                <b style="font-weight: 500; color: var(--pk-text-strong)"
+                  >Drift Kart 1.8 is downloading</b
+                ><span style="color: var(--pk-text-muted)"
+                  >After this race</span
+                >
+              </div>
+              <div class="bar"><i style="width: 42%"></i></div>
+              <span
+                class="tnum"
+                style="font-size: 16px; color: var(--pk-text-muted)"
+                >38 of 91 MB · 1 min left</span
+              >
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 6. Update at the results screen -->
+      <figure>
+        <figcaption>
+          godot · update on the results screen (default focus on the safe
+          action; input ignored for 250 ms)
+        </figcaption>
+        <div class="shot" data-shot="update">
+          <div class="scrim"></div>
+          <div class="hud" style="z-index: -1">
+            <span>RESULTS</span><small>2nd · 03:41.9</small>
+          </div>
+          <div class="glass panel center" style="width: 640px; gap: 22px">
+            <div style="display: flex; gap: 18px; align-items: center">
+              <span
+                class="k-appicon"
+                data-art="driftkart"
+                data-size="72"
+                style="border-radius: 18px"
+              ></span>
+              <div style="display: grid; gap: 4px">
+                <h1 class="gt" style="font-size: 30px; line-height: 36px">
+                  Drift Kart 1.8 is ready
+                </h1>
+                <span
+                  class="tnum"
+                  style="color: var(--pk-text-muted); font-size: 17px"
+                  >You have 1.7.2</span
+                >
+              </div>
+            </div>
+            <div
+              style="
+                display: grid;
+                gap: 8px;
+                font-size: 18px;
+                line-height: 26px;
+              "
+            >
+              <span>Night Circuit: four new tracks after dark</span>
+              <span>Split-screen for up to four players</span>
+              <span style="color: var(--kit-accent-fg); font-weight: 500"
+                >Release notes</span
+              >
+            </div>
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px"
+            >
+              <div class="gb focus">Later</div>
+              <div class="gb primary">Restart now</div>
+            </div>
+          </div>
+          <div class="hints">
+            <span><i class="pad">A</i>Select</span
+            ><span><i class="pad">B</i>Later</span>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 7. Settings: the Account tab -->
+      <figure>
+        <figcaption>godot · Account tab in the game’s own menu</figcaption>
+        <div class="shot" data-shot="settings">
+          <div class="scrim" style="background: rgb(0 0 0 / 0.5)"></div>
+          <div
+            class="glass panel"
+            style="
+              inset-inline-start: 64px;
+              inset-inline-end: 64px;
+              top: 28px;
+              bottom: 96px;
+              padding: 20px 40px 32px;
+              gap: 0;
+              align-content: start;
+            "
+          >
+            <div
+              class="tabsg"
+              style="justify-content: center; margin-bottom: 14px"
+            >
+              <i class="pad sh">L1</i><span class="t">Controls</span
+              ><span class="t">Audio</span><span class="t">Video</span
+              ><span class="t on">Account</span><i class="pad sh">R1</i>
+            </div>
+            <div style="width: 760px; margin: 0 auto">
+              <div class="srow" style="min-height: 76px">
+                <span
+                  class="k-appicon"
+                  data-art="driftkart"
+                  data-size="48"
+                  style="border-radius: 13px"
+                ></span>
+                <div class="lbl">
+                  <span style="font: 600 22px/28px var(--pk-font-sans)"
+                    >Drift Kart Deluxe</span
+                  ><small>Lifetime · m•••@fennick.studio</small>
+                </div>
+              </div>
+              <div class="ghead">License</div>
+              <div
+                class="srow focus"
+                style="outline: 3px solid var(--kit-focus); outline-offset: 2px"
+              >
+                <div class="lbl">Devices</div>
+                <div class="val tnum">
+                  1 of 2<span data-icon="chevronRight" data-size="20"></span>
+                </div>
+              </div>
+              <div class="srow">
+                <div class="lbl">Cloud saves</div>
+                <div class="val">
+                  <span data-icon="cloudCheck" data-size="20"></span>Synced 2
+                  min ago
+                </div>
+              </div>
+              <div class="ghead">Updates</div>
+              <div class="srow">
+                <div class="lbl">Download content automatically</div>
+                <span class="gsw"></span>
+              </div>
+              <div class="ghead">From Lanternworks</div>
+              <div class="srow">
+                <div class="lbl">
+                  Online play<small>Set by your parent or guardian</small>
+                </div>
+                <div class="val">
+                  <span data-icon="lock" data-size="18"></span>Off
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="hints">
+            <span><i class="pad">A</i>Open</span
+            ><span><i class="pad">B</i>Back</span>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 8. Steam Deck 1280 × 800 -->
+      <figure>
+        <figcaption>godot · gate at 1280 × 800 (Steam Deck, 16:10)</figcaption>
+        <div class="shot deck" data-shot="gate-deck">
+          <div
+            class="scrim side"
+            style="
+              background: linear-gradient(
+                90deg,
+                rgb(0 0 0 / 0.45),
+                transparent 60%
+              );
+            "
+          ></div>
+          <div
+            class="glass panel"
+            style="
+              inset-inline-start: 72px;
+              top: 50%;
+              transform: translateY(-50%);
+              width: 520px;
+            "
+          >
+            <div style="display: flex; gap: 20px; align-items: center">
+              <span
+                class="k-appicon"
+                data-art="driftkart"
+                data-size="72"
+                style="border-radius: 18px"
+              ></span>
+              <span class="wm-slot"></span>
+            </div>
+            <p class="gs">Sign in or add your license to play.</p>
+            <div style="display: grid; gap: 16px">
+              <div class="gb primary focus">Sign in</div>
+              <div class="gb">Use a license key</div>
+            </div>
+            <span class="gtext">Activate offline</span>
+          </div>
+          <div class="hints">
+            <span><i class="pad">A</i>Select</span>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 9. Boot -->
+      <figure>
+        <figcaption>
+          godot · boot (the game's title art, its wordmark, a determinate bar;
+          no modal)
+        </figcaption>
+        <div class="shot" data-shot="boot">
+          <div
+            class="scrim"
+            style="
+              background: linear-gradient(
+                0deg,
+                rgb(0 0 0 / 0.5),
+                transparent 45%
+              );
+            "
+          ></div>
+          <div
+            style="
+              position: absolute;
+              inset-inline-start: 0;
+              inset-inline-end: 0;
+              bottom: 64px;
+              display: grid;
+              justify-items: center;
+              gap: 18px;
+            "
+          >
+            <span class="wm-slot"></span>
+            <div class="bar" style="width: 360px">
+              <i style="width: 45%"></i>
+            </div>
+            <span class="gs" style="font-size: 16px; color: #fff; opacity: 0.8"
+              >Checking your license</span
+            >
+          </div>
+        </div>
+      </figure>
+
+      <!-- 10. Status: blocked -->
+      <figure>
+        <figcaption>
+          godot · status (blocked: the license ended; focus on Renew)
+        </figcaption>
+        <div class="shot" data-shot="status">
+          <div class="scrim"></div>
+          <div
+            class="glass panel center"
+            style="width: 560px; text-align: center"
+          >
+            <span
+              class="k-appicon"
+              data-art="driftkart"
+              data-size="72"
+              style="border-radius: 18px; justify-self: center"
+            ></span>
+            <div style="display: grid; gap: 10px">
+              <h1 class="gt" style="font-size: 32px; line-height: 40px">
+                Your license has ended
+              </h1>
+              <p class="gs">
+                Drift Kart ended on 30 September. Renew to keep racing online
+                and in career.
+              </p>
+            </div>
+            <div style="display: grid; gap: 16px">
+              <div class="gb primary focus">Renew</div>
+              <div class="gb">Use a different key</div>
+            </div>
+          </div>
+          <div class="hints">
+            <span><i class="pad">A</i>Select</span
+            ><span><i class="pad">B</i>Back</span>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 11. Error: offline -->
+      <figure>
+        <figcaption>
+          godot · error (offline; play continues on the cached license)
+        </figcaption>
+        <div class="shot" data-shot="error">
+          <div class="scrim"></div>
+          <div
+            class="glass panel center"
+            style="width: 560px; text-align: center"
+          >
+            <div
+              style="
+                width: 72px;
+                height: 72px;
+                border-radius: 50%;
+                display: grid;
+                place-items: center;
+                justify-self: center;
+                background: var(--g-tonal);
+                color: var(--pk-text-strong);
+              "
+              data-icon="wifiOff"
+              data-size="30"
+            ></div>
+            <div style="display: grid; gap: 10px">
+              <h1 class="gt" style="font-size: 32px; line-height: 40px">
+                Can’t reach Lanternworks
+              </h1>
+              <p class="gs">
+                Check your connection. You can keep playing offline for 3 more
+                days.
+              </p>
+            </div>
+            <div style="display: grid; gap: 16px">
+              <div class="gb primary focus">Try again</div>
+              <div class="gb">Play offline</div>
+            </div>
+          </div>
+          <div class="hints">
+            <span><i class="pad">A</i>Select</span
+            ><span><i class="pad">B</i>Back</span>
+          </div>
+        </div>
+      </figure>
+    </main>
+    <script>
+      document
+        .querySelectorAll(".shot")
+        .forEach((s) =>
+          s.prepend(document.getElementById("art").content.cloneNode(true)),
+        );
+      document
+        .querySelectorAll(".wm-slot")
+        .forEach((s) =>
+          s.replaceWith(document.getElementById("wm").content.cloneNode(true)),
+        );
+    </script>
+  </body>
+</html>

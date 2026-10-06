@@ -24,7 +24,11 @@ is the OAuth device-authorization grant (RFC 8628), spelled in camelCase.
 
 Begins the flow. The caller supplies a device id — from a JSON body field `deviceId`, the
 `X-PKey-Device` header, or a `device` query parameter, checked in that order — and an optional
-`deviceName`, trimmed and capped at 120 characters for display on the confirmation page.
+`deviceName`, the device label the sign-in page shows. The Worker normalises it exactly as every
+SDK does (WIRE-CONTRACT-V4 §12.7.1): whitespace controls become spaces; controls, zero-width and
+bidi characters are removed; spaces collapse and trim; at most 64 code points stay. It never
+rejects one, and echoes the stored label as `deviceName` in the response (`null` when none is
+left). The SDKs send the platform's device name when the host passes none.
 Rate-limited to 60 requests per minute per IP.
 
 The response:
@@ -38,7 +42,8 @@ The response:
   "verificationUriComplete": "https://…/<product>/identity/auth/device?user_code=WDJB-MJHT",
   "expiresIn": 600,
   "interval": 2,
-  "pollUrl": "https://…/<product>/identity/auth/device/poll"
+  "pollUrl": "https://…/<product>/identity/auth/device/poll",
+  "deviceName": "Living room TV"
 }
 ```
 
@@ -55,6 +60,8 @@ What a client does with the response:
   platform can open a browser. It is the entry page with the code filled in, so a scan skips the
   typing.
 - Show `verificationUri` as the short URL to type on a phone. It is the entry page alone.
+- Show `deviceName` ("The sign-in page will show …") so the person can check the page is for this
+  device.
 - Poll `pollUrl` at `interval` (below).
 
 A client that opens `verificationUri` rather than `verificationUriComplete` still works, but the
@@ -91,7 +98,7 @@ request, and an empty, wrong or reused token, all get the same `403`. The same c
 the entry form's `POST`.
 
 An unknown, expired, malformed or already-confirmed code re-renders the entry form with one
-generic line — "That code is not valid or has expired." — and status `404`. The page never says which, so a guesser learns
+generic line — "That code isn't valid or has expired. Check the code on your device." — and status `404`. The page never says which, so a guesser learns
 nothing from the difference. Every page here is script-free HTML under the static-page security
 headers, `Cache-Control: no-store` and `Referrer-Policy: no-referrer`; the confirmation page's
 `form-action` also allows the IdP's origin, because a browser applies `form-action` to the
@@ -203,12 +210,14 @@ code:
    enrolled license. It is also `false` if the attach would take the identity's license past its
    device limit, counting every authorized device on the anonymous license (including devices
    not seen for months, which come along too) plus, when the identity already has a license, that
-   license's seat-holding devices. The limit is the one the license will have after sign-in
-   rewrites it onto the identity's mapped tier and provisioned overrides, not the tier it is on
-   now. It is always
-   `false` when the identity's tier has fingerprint mode `strict`: a device-code poll presents no
-   fingerprint, so the mint would be refused, and the attach is never committed for a mint that
-   cannot succeed.
+   license's seat-holding devices. The limit is the one the license will have after sign-in. A
+   claimed anonymous license is rewritten onto the identity's mapped tier and provisioned
+   overrides, so that tier counts, not the one it is on now. An identity's existing license keeps
+   its own tier and every override sign-in does not provision (an operator's `deviceLimit`
+   included), so those count. It is always `false` when the tier the mint will run on (the
+   mapped tier on a claim, the existing license's own tier otherwise) has fingerprint mode
+   `strict`: a device-code poll presents no fingerprint, so the mint would be refused, and the
+   attach is never committed for a mint that cannot succeed.
 
 2. The device shows the identity. After the player accepts it **on the device**, the next poll
    sends `"attachLicense": true` with the same bearer (or `false` to sign in without attaching).

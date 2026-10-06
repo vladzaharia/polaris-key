@@ -5,7 +5,7 @@ sidebar:
   order: 4
 ---
 
-Which of the six opt-in services a product runs is the single most consequential switch in the
+Which of the seven opt-in services a product runs is the single most consequential switch in the
 console: everything else in [the tour](/docs/admin/console-tour/) — which nav sections exist,
 which routes the worker mounts, what a product's discovery document advertises, what the portal
 offers — is a **projection** of this one setting. It lives on **Core → Services**
@@ -30,7 +30,8 @@ The response, and the shape a `PATCH` body partially updates:
     "release": { "enabled": false },
     "distribution": { "enabled": false },
     "update": { "enabled": false },
-    "identity": { "enabled": false }
+    "identity": { "enabled": false },
+    "sync": { "enabled": false }
   },
   "registration": null,
   "effectiveRegistration": "requires-license",
@@ -48,27 +49,41 @@ The response, and the shape a `PATCH` body partially updates:
   for the full derivation and what each of the three policies allows.
 - `source` — `manifest` or `admin`. See below.
 
-## Why the whole set saves at once
+## Each switch saves on its own
 
-The Services page collects every toggle and the registration policy into one draft, saved from
-the sticky save bar with **Save services**, rather than writing on each flip. Each changed row is
-marked _Changed_ until you save or discard. That's a direct consequence
-of how the server validates: it checks the **set**, not each flag in isolation (see _Coherence
-errors_ below). Turning Distribution off while Update is also on is a coherent two-step change,
-and a page that PATCHed on every flip would reject the first step and never let you reach the
-second. Release, Distribution and Update form a chain — **Release ← Distribution ← Update** — so
-turning the feed on for a product means turning all three on, and turning Release off means
-turning the other two off with it.
+Every service switch on the Services page writes as soon as you flip it; there is no services
+save bar. The services form a chain, **Release ← Distribution ← Update**, and the page applies
+one rule to it, read from the generated `SERVICE_REQUIRES` edges rather than a list kept in the
+console:
 
-The page shows those dependencies before you save: each row says what it requires and what
-requires it, a **Delivery chain** row draws Release → Distribution → Update with each one's state
-in words, and a draft that breaks an edge shows the coherence message beside the row at once,
-with a one-click fix ("Turn on Release", "Turn off Update too").
+- **Turning a service on also turns on what it needs, and nothing more.** Turning on Update with
+  everything off turns on Distribution and Release with it; turning on Release turns on Release
+  alone. Each row says what its service needs before you flip it. The toast that follows names
+  what came on with it ("Also turned on Distribution and Release") and offers **Undo**, which
+  turns off exactly the services that flip turned on.
+- **Turning a service off asks first.** The confirmation lists the dependents that go off with it
+  (turning Release off also turns off Distribution and Update, which need it), what stops working
+  for each (for example "The update feed answers not-configured: clients see no updates"), and
+  that the section leaves the navigation. The service's settings are kept and come back when you
+  turn it on again. Cancelling sends nothing.
 
-Turning any service **off** asks first. The confirmation lists what stops working (for example
-"The update feed answers not-configured: clients see no updates") and that the section leaves the
-navigation; the service's settings are kept and come back when you turn it on again. Cancelling
-saves nothing.
+The `PATCH` carries only the flags the flip changed, so a page that has gone stale can never
+rewrite a service it did not touch, nor the registration policy. The server still validates the
+whole resulting **set** (see _Coherence errors_ below), and the chain keeps the service edges
+whole by construction. What it can't settle is the registration policy: a flip the declared
+policy forbids (turning Identity off while registration is declared `requires-identity`, say) is
+refused before anything is sent, and the message appears beside the controls involved: the
+switch and the registration choice. The registration policy is a choice of four rather than a
+switch, so it keeps its own **Save registration policy** action.
+
+**Turning Identity off** says how many devices it signs out. Before the dialog opens, the page
+sends the same body as a dry run, `PATCH .../services?dryRun=1`, which answers
+`{"changes": [...], "signedInDevicesToClear": n}` and writes nothing. When the save goes through,
+every device signed in through the product loses its sign-in: its install, token, licence and seat
+are untouched, nothing is deauthorized, and the change is audited as
+`services.identity_disabled` with the count. Accounts are not touched either: there is one Polaris
+Key account per person, and its licences of this product stay attached. Turning Identity back on
+asks nobody for consent again, but nobody is signed back in until they sign in.
 
 ## Manifest vs admin ownership
 
@@ -103,6 +118,8 @@ produce the same incoherent state:
 | `update_requires_distribution`   | Update is a feed over what Distribution delivers; Update can't be on with Distribution off. (It replaced `update_requires_release`, which it and the rule above together imply.)     | The Update toggle                         |
 | `registration_requires_identity` | Registration is declared `requires-identity`, but Identity is off — there is no login to stand behind it, so no device could ever register.                                          | Identity toggle + the registration select |
 | `config_without_activation`      | Config is on, License is off, and registration is declared `requires-license` — that closes the only mint path such a product has, so its devices could never obtain a token at all. | Config toggle + the registration select   |
+| `sync_requires_config`           | Cloud Sync syncs Config's user settings; Cloud Sync can't be on with Config off, nor Config go off under it.                                                                         | The Cloud Sync and Config toggles         |
+| `sync_requires_identity`         | Cloud Sync needs people to sign in through the product; Cloud Sync can't be on with Identity off, nor Identity go off under it.                                                      | The Cloud Sync and Identity toggles       |
 
 Leaving `registration` **derived** rather than explicitly declared sidesteps the last two of
 these by construction: a derived value is read off the very enablement set being validated,
@@ -130,7 +147,10 @@ A disabled service's routes 404 exactly like an unregistered slug or a typo'd pa
 indistinguishable, so probing which services a product runs isn't free), its discovery document
 entry becomes `{"enabled": false}` with no endpoint list, its console nav section drops instead
 of greying out (see [the disabled-service page](/docs/admin/console-tour/#when-a-link-goes-nowhere)),
-and the customer portal stops offering whatever that service backed. Read
+and the customer portal stops offering whatever that service backed. Identity has one more
+answer: a person who follows a sign-in link of the product in a browser is sent to the portal's
+sign-in page (`/signin?product=<slug>&error=identity_disabled`) instead of a JSON 404; apps and
+scripts still get the 404. Read
 [The service model](/docs/start/service-model/) for the four projections and the full coherence
 rule set this page's table is drawn from.
 

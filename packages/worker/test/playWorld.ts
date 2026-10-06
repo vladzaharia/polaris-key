@@ -79,6 +79,12 @@ export function rsaKeyPair(): { privatePem: string; publicPem: string } {
   };
 }
 
+/** The service account key every `playWorld` shares, generated on first use. RSA-2048 key
+ *  generation is a random prime search (60-250 ms idle, seconds on a loaded machine), and a test
+ *  that builds three worlds paid it three times; nothing compares two worlds' keys. Tests that
+ *  need a distinct key call {@link rsaKeyPair} themselves. */
+let sharedKeys: { privatePem: string; publicPem: string } | undefined;
+
 export const PLAY_OUTLET_IDENTITY = {
   packageName: PLAY_PACKAGE,
   tracks: { stable: "production", beta: "beta" },
@@ -126,7 +132,7 @@ export async function playWorld(
     await addOutlet(db, "play", "play", PLAY_OUTLET_IDENTITY);
   for (const o of opts.extraOutlets ?? [])
     await addOutlet(db, o.id, o.kind, o.identity);
-  const keys = rsaKeyPair();
+  const keys = (sharedKeys ??= rsaKeyPair());
   if (opts.credential !== false) {
     const r = await putOutletCredential(env, db, {
       product: SLUG,

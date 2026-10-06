@@ -10,6 +10,23 @@
 > §6.10. Settings follow the S-18 hub and licensing follows S-19 (both owner-approved); EXPERIENCE.md
 > §0.8 reconciles its work packages with the `ST`, `LX` and `PX` packages.
 
+> **Setup and storefronts are specified in [SETUP.md](SETUP.md) (2026-10-05).** It supersedes
+> this document's T6 wizard rules where they differ (one wizard pattern with page and drawer
+> hosts, resumable from server-side state, ending in a live verification), §2.3's Distribution rows
+> (Storefronts, Listing, App Store, Commerce, Outlets & feeds and Outlet credentials become one
+> Storefronts catalogue with one page per storefront) and the empty states of every page it lists
+> in its §4.7.
+
+> **Licence holders and the New License wizard are specified in [notes/S-24](../research/2026-09-29-godot-omniplatform/notes/S-24-licence-holders.md) (2026-10-06).** It
+> supersedes §6.5.1's Create license dialog (now the five-step **New license** drawer, single or
+> batch, assigned or floating), adds the **Holder** column and filters to the licences list, and
+> replaces Edit holder with **Assign…**, **Send a new key…**, **Reassign…** and **Make floating…** on
+> the record (§6.5.2). Packages LX-26 to LX-30; mockups [licenses/](licenses/).
+
+> **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05).** It supersedes this document's
+> sign-in parts where they differ: §2.7's Sign in row, T8's Session expired row (the console now
+> renders "Your session ended" in place on the shared card, not a dialog) and §6.10.1.
+
 **Status:** draft for lead approval · **Scope:** `packages/admin` (operator console at `/manage`,
 customer portal at `/`) · **Builds on:** `@polaris-key/brand` and
 [BRAND.md](BRAND.md) (in progress on
@@ -97,6 +114,7 @@ fixes:**
   | distribution | green                   |
   | update       | tangerine               |
   | identity     | orchid                  |
+  | sync         | teal                    |
 
   None is blue, indigo or rose, and none is confusable with gold.
 
@@ -105,8 +123,10 @@ fixes:**
 - **Signed:** `signed.mark` (the kit gold, artwork only), `signed.solid` (the UI indicator),
   `signed.on`, `signed.border`.
 - **Scales:** a 4 px space grid; radius `xs…xl` (controls `md`, cards `lg`); elevation `0–3`; motion
-  `fast` 120 / `base` 200 / `slow` 320 ms with standard, enter and exit easings (all collapse under
-  reduced motion).
+  `micro` 80 / `fast` 120 / `base` 200 / `moderate` 260 / `slow` 320 / `deliberate` 480 ms with
+  standard, enter, exit, emphasized and spring easings, distances, a stagger and two delays (every
+  duration collapses under reduced motion; [notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) §5, MO-01). The motion
+  patterns are §5.12.
 - **Type:** Rubik **400 and 700 only** (`font-synthesis: none`) and a type scale `xs…5xl` where `sm`
   is the console table and form size. The platform mono stack is used for code.
 - **Marks:** `PolarisMark` (Pinned K and Star Cut, optical cuts by displayed size),
@@ -123,7 +143,7 @@ alias layer in admin absorbs the difference:
 | `SectionMark`              | `<SectionMark section={ServiceId} size={28} />`: the Pinned K whose terminal bit is `signed.mark` for `core` and the section's `accent.solid` otherwise, star unchanged                                               | `BrandBlock` (top bar)          |
 | `ServiceGlyph`             | `<ServiceGlyph id size={16 \| 24} />`: the Star Cut service and favicon cuts for distribution; lucide icons for the rest (Update: `CircleArrowUp`)                                                                    | sidebar, badges, empty states   |
 | `SignedGlyph`              | the terminal-bit rhombus as a 10–12 px UI glyph in `signed.solid`                                                                                                                                                     | `SignedBadge`                   |
-| Fonts                      | `@polaris-key/brand/fonts.css` (Rubik 400/700, latin and latin-ext WOFF2), self-hosted through Vite                                                                                                                   | both SPAs                       |
+| Fonts                      | `@polaris-key/brand/fonts.css` (variable Rubik and JetBrains Mono, latin and latin-ext WOFF2), self-hosted through Vite                                                                                               | both SPAs                       |
 | Favicons and PWA           | the kit's `04-web/key` set for `/manage` and `/`                                                                                                                                                                      | `index.html`, `manage.html`     |
 
 **Mapping from today's tokens.** `styles.css` `--pk-*` HSL channels and the
@@ -253,6 +273,7 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
 | **Core** (violet, gold bit)        | Overview               | `` (root)                                                                                | T1 overview              | ProductOverview, rebuilt as the operational overview (§6.2)                                                                                                                                                                                                       |
 |                                    | Services               | `services`                                                                               | T4 settings              | Services, plus the **dependency graph** (Release → Distribution → Update) that replaces Distribution's ChainCard                                                                                                                                                  |
 |                                    | Devices                | `devices`, `devices/:deviceId` (drawer)                                                  | T2 collection            | Devices; drawer routed                                                                                                                                                                                                                                            |
+|                                    | Users                  | `users`, `users/:subject/[overview\|licenses\|devices\|activity\|data]`                  | T2, T3                   | New (I-12): every product, keyed by pairwise subject; sign-in history with Identity on; `data` only with Cloud Sync on                                                                                                                                            |
 |                                    | **Keys & secrets**     | `keys`                                                                                   | T4 settings (sections)   | Secrets, Settings → Signing key, Products → Prepare signing key. Holds signing keys (gold), product secrets and **CI publishing** (trusted publisher and CI tokens, an API with no UI today). Edge mint moves to Config; outlet credentials move to Distribution. |
 |                                    | Activity               | `activity`                                                                               | T2 collection (timeline) | Activity, with filters and target links                                                                                                                                                                                                                           |
 |                                    | Settings               | `settings`                                                                               | T4 settings              | Settings: General, License defaults (when License is on), **Repository** (link state, last sync, Resync from repo), **Storage** (blob GC dry run, API with no UI today), Danger zone                                                                              |
@@ -270,6 +291,8 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
 | **Distribution** (green, Star Cut) | **Matrix**             | `distribution/matrix?deliverable=app`                                                    | T5                       | Matrix; default page of the section                                                                                                                                                                                                                               |
 |                                    | **Rollouts**           | `distribution/rollouts`                                                                  | T2                       | Distribution overview's rollouts table, now live with controls                                                                                                                                                                                                    |
 |                                    | **Outlets & feeds**    | `distribution/outlets`                                                                   | T2 + T3 drawer           | New. Outlets and capabilities (API with no UI today), storefront feed URLs, distribution keys                                                                                                                                                                     |
+|                                    | **Storefronts**        | `distribution/storefronts?flow=add&step=&stores=`                                        | T2 tiles + T6            | A-18j. One tile per storefront adapter, capabilities rendered from its declaration; **Add to storefronts** (T6) provisions the product onto any of them, resumable from the ledger (notes/S-15 §8.1)                                                              |
+|                                    | **Listing**            | `distribution/listing?tab=&locale=&release=`                                             | T3 (tabs)                | A-18j. The shared listing model: text per locale, fit report with overrides, slot board, release notes, "Push listing" per store (notes/S-15 §8.2)                                                                                                                |
 |                                    | **App Store**          | `distribution/app-store?step=&build=&version=`                                           | T6 + aside               | A-17g. The App Store Distribute flow (notes/S-14 §8.2) beside App Store Connect's versions and review submissions                                                                                                                                                 |
 |                                    | **Commerce**           | `distribution/commerce`                                                                  | T2                       | A-17g. App Store products: the `app-store` commerce mappings beside Apple's In-App Purchases (S-14 §8.3)                                                                                                                                                          |
 |                                    | **Access**             | `distribution/access`                                                                    | T4                       | Delivery access moved from UpdateSettings, incl. **per-pack** gates (UPS-5, DLV-3)                                                                                                                                                                                |
@@ -278,6 +301,7 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
 | **Update** (tangerine, Star Cut)   | **Feed**               | `update/feed`                                                                            | T4                       | UpdateSettings minus delivery access: metadata access, compat window, artifact policy, feed **endpoints**                                                                                                                                                         |
 | **Identity** (orchid)              | **Portal**             | `identity/portal`                                                                        | T4                       | Portal module toggles with dependencies, branding read-out                                                                                                                                                                                                        |
 |                                    | **Sign-in**            | `identity/sign-in`                                                                       | T3 read-only             | The OIDC card, now showing the provider, issuer and client (data already returned by `config/mint` → `identity`) and the manifest pointer                                                                                                                         |
+| **Cloud Sync** (teal)              | **Data**               | `sync/data`                                                                              | T3 read-only             | U-04. What the catalog declares: user settings, collections, saves, migrations, and the platform ceilings; the sign-in-only callout                                                                                                                               |
 
 **Global pages**:
 
@@ -292,13 +316,13 @@ re-scoped. A page is shown only when its section is shown, plus the conditions l
 that is not built yet carries `ready: false` in `nav.ts` and redirects to Deployment, with no
 "coming soon" copy:
 
-| Page                  | URL                            | Template       | Contents                                                                                                                                                                                                                                                                                                                                                                                     |
-| --------------------- | ------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Settings**          | `#/platform/settings`          | T4             | Background jobs (the four runtime-editable settings: `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES` lower-only, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`, each with its source; ceiling precedence for kill switches), the read-only inventory, the KEK keyring (re-seal sweep, L3 "type reseal") and secrets presence. Needs A-13                                                                        |
-| **Deployment**        | `#/platform/deployment`        | T1 plus tables | The running build (tag, commit, Cloudflare version, protocol and discovery versions), deploy history (`platform_deploys`, keyset Load more), D1 migrations against the build's newest, required indexes, bindings (presence only), and **Platform activity** (`platform_audit`, A-12). Built in chunk 4                                                                                      |
-| **Operations**        | `#/platform/operations`        | T1             | Self-reported operations data (A-14), built in chunk 4P-3: a health state (Healthy, Degraded, Failed) per section, cron runs by step with recent history, heartbeats and staleness, queue and dead-letter backlog, D1 and R2 size, required indexes, connector aggregates; refreshes on an interval with a pause switch. Cloudflare analytics panels wait for A-15 and are absent until then |
-| **Store connections** | `#/platform/store-connections` | T2             | Instance-wide store connector state                                                                                                                                                                                                                                                                                                                                                          |
-| **Package feeds**     | `#/platform/feeds`             | T2 (S-12)      | S-12 owns the page and its API                                                                                                                                                                                                                                                                                                                                                               |
+| Page                  | URL                            | Template       | Contents                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --------------------- | ------------------------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Settings**          | `#/platform/settings`          | T4             | Background jobs (the four runtime-editable job settings: `LAZY_DELTAS`, `LAZY_DELTA_MAX_BYTES` lower-only, `BLOB_GC_MODE`, `BLOB_GC_GRACE_DAYS`, each with its source; ceiling precedence for kill switches), Licensing (`LICENSING_RESERVED_NAMES` warn/error and the reserved-names list of registered products, LX-05), the read-only inventory, the KEK keyring (re-seal sweep, L3 "type reseal") and secrets presence. Needs A-13 |
+| **Deployment**        | `#/platform/deployment`        | T1 plus tables | The running build (tag, commit, Cloudflare version, protocol and discovery versions), deploy history (`platform_deploys`, keyset Load more), D1 migrations against the build's newest, required indexes, bindings (presence only), and **Platform activity** (`platform_audit`, A-12). Built in chunk 4                                                                                                                                |
+| **Operations**        | `#/platform/operations`        | T1             | Self-reported operations data (A-14), built in chunk 4P-3: a health state (Healthy, Degraded, Failed) per section, cron runs by step with recent history, heartbeats and staleness, queue and dead-letter backlog, D1 and R2 size, required indexes, connector aggregates; refreshes on an interval with a pause switch. Cloudflare analytics panels wait for A-15 and are absent until then                                           |
+| **Store connections** | `#/platform/store-connections` | T2             | Instance-wide store connector state; **Set up** on an assigned app opens that product's Add to storefronts, scoped to the store (A-18j)                                                                                                                                                                                                                                                                                                |
+| **Package feeds**     | `#/platform/feeds`             | T2 (S-12)      | S-12 owns the page and its API                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 **Rejected moves, so they stay rejected:**
 
@@ -323,6 +347,7 @@ that is not built yet carries `ready: false` in `nav.ts` and redirects to Deploy
 | Distribution                                          | `distribution` | green              | **Star Cut**                           | green                          |
 | Update                                                | `update`       | tangerine          | lucide `CircleArrowUp`                 | tangerine                      |
 | Identity                                              | `identity`     | orchid             | lucide `UserRound`                     | orchid                         |
+| Cloud Sync                                            | `sync`         | teal               | lucide `Cloud`                         | teal                           |
 
 **Rules.**
 
@@ -655,13 +680,13 @@ result), create license (in a dialog, as steps).
 
 **For.** Not found, service off, unknown product, session expired, boot.
 
-| State               | Content                                                                                                                                                                                                                                                     |
-| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Service off**     | `EmptyState kind="service-off"` in the service's accent and glyph: "The License service isn't enabled for DJDL." **Enable License** (goes to Services with the row focused and pre-toggled, unsaved) + docs                                                 |
-| **Not found**       | Names the missing thing ("No license `lic_123` in DJDL"), links to its collection and to the palette                                                                                                                                                        |
-| **Unknown product** | Lists the closest slugs (edit distance ≤ 2) + "All products"                                                                                                                                                                                                |
-| **Session expired** | A non-dismissible dialog over the current page: "Your session ended. Sign in again to continue; your unsaved changes stay in this tab." **Sign in** opens `/manage/login?returnTo=<current hash>` in the same tab after stashing drafts in `sessionStorage` |
-| **Boot**            | The brand mark (display cut, 48 px, gold bit), "Loading console…" in a live region; on failure an `ErrorState` with Retry and Sign in                                                                                                                       |
+| State               | Content                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Service off**     | `EmptyState kind="service-off"` in the service's accent and glyph: "The License service isn't enabled for DJDL." **Enable License** (goes to Services with the row focused and pre-toggled, unsaved) + docs                                                                                                                                                                                                  |
+| **Not found**       | Names the missing thing ("No license `lic_123` in DJDL"), links to its collection and to the palette                                                                                                                                                                                                                                                                                                         |
+| **Unknown product** | Lists the closest slugs (edit distance ≤ 2) + "All products"                                                                                                                                                                                                                                                                                                                                                 |
+| **Session expired** | **Superseded by SIGN-IN.md §3.12:** "Your session ended" renders in place on the shared card with the email chip and Continue. As first written: a non-dismissible dialog over the current page: "Your session ended. Sign in again to continue; your unsaved changes stay in this tab." **Sign in** opens `/manage/login?returnTo=<current hash>` in the same tab after stashing drafts in `sessionStorage` |
+| **Boot**            | The brand mark (display cut, 48 px, gold bit), "Loading console…" in a live region; on failure an `ErrorState` with Retry and Sign in                                                                                                                                                                                                                                                                        |
 
 ### 3.9 View → template map
 
@@ -741,12 +766,12 @@ chunk 3. It is cheaper than Storybook, and needs no new tooling.
 Four levels. Every action in the console is assigned one in `lib/actions.ts`, and a test asserts the
 assignment.
 
-| Level                          | Meaning                                              | Confirmation                                                     | Examples                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **L0 · reversible, local**     | No effect outside the console, or trivially undone   | none; toast with **Undo** where an inverse exists                | dismiss an attention item, save viewer preferences, clear filters                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| **L1 · reversible, impactful** | Changes what devices or customers see, can be undone | `ConfirmDialog intent="caution"` with a `consequences` list      | prepare signing key, activate signing key (after its trust window), disable license, pause rollout, resume, unpin, mark or clear critical, set minimum supported, promote, pin, revert to manifest, disable a service, resync from repo, mark Sentry candidate dismissed, set rollout percentage, assign or release a store app (Platform → Store connections); on the App Store page and Commerce (A-17g): create or reuse an App Store version, add a build to TestFlight groups, cancel a review submission, create an In-App Purchase, set its first price, and every other Distribute step that a later step or App Store Connect can change                    |
-| **L2 · irreversible or broad** | Cannot be undone, or affects many devices            | `ConfirmDialog intent="danger"`; confirm button repeats the verb | revoke license key, deauthorize device, confirm Sentry candidate (halts the rollout), yank release, halt rollout, complete rollout, revoke edge-mint approval, delete tier, delete profile, delete outlet credential, revoke CI token, retire signing key, override readiness, publish a catalog that removes keys (with an acknowledgement checkbox listing referencing profiles), answer a build's export compliance (A-17g: it cannot be changed through the API afterwards)                                                                                                                                                                                      |
-| **L3 · catastrophic**          | Destroys a product, an account or the trust root     | `ConfirmDialog intent="danger"` with **`typedConfirmation`**     | delete product (type the slug; this is the value sent as `confirmSlug`, fixing PRD-4), revoke a signing key (type the kid), break-glass activate (type the kid), re-seal KEK sweep on Platform (type "reseal"), delete portal account (customer types `delete`), release a held App Store version (type the app's name as App Store Connect shows it, sent as `confirm`; A-17a), complete an App Store phased release and change an In-App Purchase's availability (the same typed app name; owner decisions, 2026-10-04), submit an App Store version for App Review and change an existing In-App Purchase price (the same typed app name; notes/S-14 §7.1, A-17g) |
+| Level                          | Meaning                                              | Confirmation                                                     | Examples                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------ | ---------------------------------------------------- | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **L0 · reversible, local**     | No effect outside the console, or trivially undone   | none; toast with **Undo** where an inverse exists                | dismiss an attention item, save viewer preferences, clear filters                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| **L1 · reversible, impactful** | Changes what devices or customers see, can be undone | `ConfirmDialog intent="caution"` with a `consequences` list      | prepare signing key, activate signing key (after its trust window), disable license, pause rollout, resume, unpin, mark or clear critical, set minimum supported, promote, pin, revert to manifest, disable a service, resync from repo, mark Sentry candidate dismissed, set rollout percentage, assign or release a store app (Platform → Store connections); on the App Store page and Commerce (A-17g): create or reuse an App Store version, add a build to TestFlight groups, cancel a review submission, create an In-App Purchase, set its first price, and every other Distribute step that a later step or App Store Connect can change, undo a licence relink on Users (I-12, within 72 hours)                                                                                                                                                |
+| **L2 · irreversible or broad** | Cannot be undone, or affects many devices            | `ConfirmDialog intent="danger"`; confirm button repeats the verb | revoke license key, deauthorize device, confirm Sentry candidate (halts the rollout), yank release, halt rollout, complete rollout, revoke edge-mint approval, delete tier, delete profile, delete outlet credential, revoke CI token, retire signing key, override readiness, publish a catalog that removes keys (with an acknowledgement checkbox listing referencing profiles), answer a build's export compliance (A-17g: it cannot be changed through the API afterwards), detach or relink a user's licence on Users (I-12; a relink also needs a fresh sign-in and a reason)                                                                                                                                                                                                                                                                     |
+| **L3 · catastrophic**          | Destroys a product, an account or the trust root     | `ConfirmDialog intent="danger"` with **`typedConfirmation`**     | delete product (type the slug; this is the value sent as `confirmSlug`, fixing PRD-4), revoke a signing key (type the kid), break-glass activate (type the kid), re-seal KEK sweep on Platform (type "reseal"), delete portal account (customer types `delete`), release a held App Store version (type the app's name as App Store Connect shows it, sent as `confirm`; A-17a), complete an App Store phased release and change an In-App Purchase's availability (the same typed app name; owner decisions, 2026-10-04), submit an App Store version for App Review and change an existing In-App Purchase price (the same typed app name; notes/S-14 §7.1, A-17g), delete a license (type `delete <id>`; a bulk deletion types `delete <n> licenses`; owner request, 2026-10-05), delete a user's data of this product on Users (type `delete`; I-12) |
 
 **Rules.**
 
@@ -979,6 +1004,34 @@ A pill (a filled, rounded status shape) is the console's "look here". So (owner,
 - The layout lint enforces the placement (`right-align/pill-right`); `StatusPill` enforces the
   healthy-state rule for every caller.
 
+### 5.12 Motion
+
+The console uses the one motion system of [notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) (shared with the portal, the
+sign-in card and the UI kits; EXPERIENCE §7.2 maps it onto the journeys). Phase MO builds it:
+MO-02 (the layer: `src/ui/motion/`, `src/motion.css`), MO-04 (navigation), MO-08 (overlays and
+controls), MO-09 (data surfaces), MO-10 (shell), MO-11 (moments and counters).
+
+| Template or element      | Motion                                                                                                                                                                             |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shell (top bar, sidebar) | never moves during navigation; the phone nav drawer slides from its edge                                                                                                           |
+| Route change             | sibling pages fade through (`route`); T2 → T3 drill-downs slide forward, Back slides back (`forward` / `back`, by route depth); the record key flies into the header               |
+| T3 Record tabs           | the indicator morphs, the panel fades through (`tab`)                                                                                                                              |
+| T2 Collection            | filters, sorts, creates and deletes move rows (`list`, at most 30 named rows, then only rows on screen); new rows are tinted, then fade; chips pop; the bulk bar enters and leaves |
+| T1 Overview, Home        | tiles and the attention list stagger on first load; headline numbers count up; meters fill; §0.7 moments celebrate once per product                                                |
+| Dialogs, drawers, menus  | enter and exit from the tokens; drawers slide from the edge; phone dialogs rise as sheets; popovers come from their side                                                           |
+| Loading                  | `PageSkeleton` / `Skeleton` with a 150 ms grace and a sheen; never a spinner or "Loading…" for content                                                                             |
+| Status                   | pill colours ease and the word pops; the word always carries the meaning                                                                                                           |
+| Controls                 | buttons, chips and tiles press (0.98); hover colours at `micro`; focus rings never animate                                                                                         |
+
+**Rules.** Optimistic updates (§5.3) apply the new state first and animate it; a rollback is an
+instant swap plus the inline error, never a shake. Only `transform` and `opacity` animate, except
+the expand region, small colour changes and SVG strokes. A transition that blocks input lasts at
+most `slow` plus `micro`. Typing never animates results (the palette, search-as-you-type tables).
+Under reduced motion (OS or the MO-12 preference) every change is an instant swap. Motion values
+reach the DOM only as stylesheet rules, data attributes and CSSOM properties set by the layer, so
+the CSP (`adminCspParity`, `e2e/csp.e2e.test.ts`) does not change. Every e2e suite runs with
+reduced motion; `e2e/motion.e2e.test.ts` runs with it on (MO-03).
+
 ---
 
 ## 6. Redesigns of the key areas
@@ -1011,9 +1064,11 @@ The wireframes are low fidelity. Glyph legend:
 
 **Purpose.** "What needs me across all products?" Fixes DSH-1 to DSH-7 (and relies on chunk 2's SH-1 fix).
 
-**Data.** `useMe` + `useProducts` (`GET /products` carries setup, onboarding, services and signing for
-every product). Per-product attention signals load lazily and are capped at the first 12 products by
-recent activity. **A-8** (summary endpoint) is optional, for scale.
+**Data.** `useMe` + `useProducts` + `useSummary`, and no read of its own per card. `GET /products`
+carries every product's setup, onboarding, services, signing and logo (`presentation.icon`: the
+hosted icon as image-host URLs). `GET /summary` (**A-8**, sliced to what the cards show) carries one
+fact per service for every product, in four grouped queries. The catalog's schema version rides
+`/me`.
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────────┐
@@ -1031,14 +1086,17 @@ recent activity. **A-8** (summary endpoint) is optional, for scale.
 │           │ │ ○ Atlas    No catalog published yet                         [Publish →]│ │
 │           │ └───────────────────────────────────────────────────────────────────────┘ │
 │           │                                                                           │
-│           │ Products                                [ Filter products… ]  Sort: Recent▾│
-│           │ ┌────────────────────────────────┐ ┌────────────────────────────────┐    │
-│           │ │ DJDL                 djdl      │ │ Diceroll             diceroll  │    │
-│           │ │ ◇ ◈ ▣ ★ ★ ◉   (service dots)  │ │ ◇ ◈ ▣                         │    │
-│           │ │ 1,284 active licenses · 3 exp. │ │ 46 active licenses             │    │
-│           │ │ 2.4.0 on stable · rolling 25 % │ │ 0.9.2 on beta                  │    │
-│           │ │ ▲ 2 need attention     Open →  │ │ ▲ 2 need attention     Open →  │    │
-│           │ └────────────────────────────────┘ └────────────────────────────────┘    │
+│           │ Recent products                                     [ All products → ]    │
+│           │ ┌────────────────────────────────┐ ┌────────────────────────────────┐     │
+│           │ │ [logo] DJDL                    │ │  [D]  Diceroll                 │     │
+│           │ │        djdl                    │ │       diceroll                 │     │
+│           │ │ ────────────────────────────── │ │ ────────────────────────────── │     │
+│           │ │ ◇ License         1,284 active │ │ ◇ License            46 active │     │
+│           │ │ ◈ Config      ▲ Needs approval │ │ ◈ Config             Schema v8 │     │
+│           │ │ ◉ Identity    ▲ Secret missing │ │ ▣ Release         0.9.2 · beta │     │
+│           │ │ ▣ ★ ★ ☁                 4 more │ │                                │     │
+│           │ │ Synced 2 hr ago                │ │ Changed yesterday              │     │
+│           │ └────────────────────────────────┘ └────────────────────────────────┘     │
 │           │                                                                           │
 │           │ Recent activity (all products, A-2b)               [View activity →]     │
 │           │  · 14:02  Ada  published catalog v8            DJDL                       │
@@ -1046,12 +1104,44 @@ recent activity. **A-8** (summary endpoint) is optional, for scale.
 └───────────┴───────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Product cards.**
-  - The whole card is **not** a link. The product name is the link, plus an explicit "Open" (DSH-3).
-  - Service dots are `ServiceGlyph`s with an sr-only list ("Runs License, Config, Release,
-    Distribution, Update, Identity").
-  - The card's facts come from cached queries when available. A product never visited shows its
-    setup state only (from `/products`), with no extra fetches.
+- **Recent products.** Home shows the **six most recently changed** products. **All products**
+  opens the Products table, which keeps search, the facets and the sort (EXPERIENCE C17); Home has
+  no filter or sort of its own.
+- **Product cards** (owner request 2026-10-06; the directions and the choice are in
+  [console-product-card](console-product-card/README.md), direction B):
+  - **The name is the card's one link to the product.** Its hit area stretches over the card
+    (`::after`), so a click anywhere opens Overview (DSH-3). Focus on it rings the whole card
+    (`has-[a[data-card-link]:focus-visible]`).
+  - **Header:** the product's logo, its name (up to two lines) and its slug. The logo is the
+    hosted `presentation.icon` copy, else the `listing.icon` copy, as the 64 and 128 px variants.
+    With no copy, or when it fails to load, the logo is a neutral monogram tile, with no spinner.
+  - **Rows:** one per service the product runs, up to four: the glyph, the label and one fact at the
+    right edge. The facts:
+    - License: active licences;
+    - Config: the schema version;
+    - Release: the version a channel serves, and that channel;
+    - Distribution: storefronts;
+    - Identity: users;
+    - Update and Cloud Sync: none.
+
+    Each row links to its service's page. It is a **sibling** of the name link, above its stretched
+    hit area, never nested in it, and it rings on its own focus. Past four services, the card shows
+    three rows (those that need something first) and links to the rest by their glyphs, with "N
+    more". Rows are 44 px tall on phones.
+
+  - **Issues sit where they belong.** A service's issue replaces that row's fact with a pill naming
+    it ("Needs approval"), and the row then links to the fix. Only an issue of the product itself
+    (no signing key, setup not finished) is a pill, at the end of the card header. Healthy draws
+    nothing (§5.11).
+  - **Footer:** "Synced …" for a repository-linked product, "Changed …" for a manual one. It is
+    pinned to the card's bottom, so the cards in a row share one height and one footer edge; a card
+    with fewer rows shows air above its footer.
+  - **Facts never hold the card back.** Each one is a skeleton while `GET /summary` loads. If that
+    read fails, the card renders without them.
+
+- **Figures:** Products, Need attention and Linked to a repository. There is no "Setup complete"
+  figure: healthy is silence (EXPERIENCE C2). Below 1280 px an odd last tile spans its row, so none
+  is left alone beside empty space.
 - **Attention items** are typed (`AttentionItem {product, severity, kind, target, action}`). The
   kinds:
 
@@ -1455,8 +1545,10 @@ Cell drawer (2.4.0 × Google Play) ───────────────
   (`setup.credentialSource`, `platformSource`) and the connectors section links the store
   connections docs. The platform Store connections page itself is A-16's (the Platform section).
 - **Access.** A pack's gate is a catalog-flag `Combobox` while Config is on, a text field
-  otherwise; the app's `entitled` describes Release's channel and version window (the app row's
-  `entitlement` is stored, not enforced, so it is not offered). `?deliverable=<pack>` focuses that
+  otherwise; the app's `entitled` describes Release's channel and version window. A pack's gate is
+  enforced (P4-05: pack blobs and registry reads require the flag); the app row's `entitlement`
+  is stored but never consulted, because app delivery under `entitled` is the window, so it is
+  not offered. `?deliverable=<pack>` focuses that
   pack's section (DLV-3).
 - **Update → Feed** saves metadata access, the compatibility window and the artifact policy as
   three forms (each its own PATCH with only its fields) and lists the endpoint URLs per channel;
@@ -1514,8 +1606,10 @@ built, on A-17d's and A-17e's connector routes:
 **Status.** Computed client-side from `status` + `expiresAt` (LIC-1): Active, Expires in N days
 (≤ 14), Expired, Disabled. The **Expires** column is sortable.
 
-**Seats.** A `Meter` of `deviceCount` over the effective device limit (from the tier; "—" when
-unlimited).
+**Seats.** A `Meter` of `deviceCount` over the effective device limit ("—" when unlimited),
+with its source under it (LX-14a): the licence's own limit, else the tier's, else a `deviceLimit`
+entitlement, else the product default, as the Worker reports it (`effectiveDeviceLimit`,
+`deviceLimitSource`).
 
 **Other columns.** Channels and Sign-in (Manual, Single sign-on) are hidden by default (LIC-8). The
 id moves to the record header.
@@ -1531,20 +1625,29 @@ id moves to the record header.
 
 **Bulk.** Disable and Enable (L1, listing the count and the effect) and Export.
 
-**Create license** is a dialog with steps (T6):
+**New license** (S-24 §8, replacing the Create license dialog) is a drawer wizard over Licenses
+(`?setup=new-license&step=…`, SETUP.md §1.1), five steps, then Done:
 
-1. **Holder:** name, email.
-2. **Terms:**
-   - tier (combobox, showing each tier's policy summary);
-   - expiry (`DateInput`, or "Use tier default (365 days)");
-   - max offline days (nullable);
-   - channels (`ChannelPicker`);
-   - version window (`VersionInput` pair);
-   - **profiles** (`OrderedMultiSelect`, numbered, with order = precedence; LIC-3).
-   - Lookup failures are shown inline, not as "none defined" (LIC-6).
-   - The live "Effective policy" aside names where each value comes from (license, tier, product
-     default), and drops the false per-license device limit (LIC-4).
-3. **Result:** `OneTimeSecretPanel`, with Open license and Create another.
+1. **Product and tier:** the product as context (a picker only from Home or the palette), tier radio
+   cards by rank with each tier's summary, **New tier…**.
+2. **Who it's for:** **Someone specific** (Recommended: email required, name optional; "When
+   ada@example.com signs in with that email, it's in their library", never saying whether an account
+   exists) or **Anyone with the key** (floating; **How many keys**, 1–500, and a **Batch label**).
+3. **Limits:** devices (the tier's or set for this licence, LX-14a), expiry, offline days, **More
+   options** (channels, version window, profiles in order, LIC-3), and the effective-policy aside
+   naming each value's source (LIC-4).
+4. **Delivery:** Email the key and show it once (default for someone specific), Email the key, Show
+   it once; floating: Show it once or Download a CSV.
+5. **Review:** the summary with **Change** per row, the `AutoList` of what Polaris Key will do, and
+   an action-named primary ("Create and email license", "Create 50 keys").
+
+**Done** replaces the body: the `OneTimeSecretPanel` with the delivery result, or **Download CSV**
+for a batch (the drawer stays open until the keys are downloaded or copied), then Open license,
+Open batch, Create another and, for the first licence, Try it.
+
+**Holder column and filters (S-24 §8.8).** The list's Holder cell shows name and email, "Waiting for
+ada@…", or **Floating** (muted) with "anyone with the key"; filters **Holder** (Anyone, In an
+account, Waiting, Floating) and **Batch**.
 
 #### 6.5.2 License record
 
@@ -1552,7 +1655,8 @@ id moves to the record header.
 ┌ Licenses / Studio Pro ─────────────────────────────────────────────────────────────────┐
 │ H1 Studio Pro  [● Active]   Expires 30 Sep 2027 (in 361 days)       [ Mint key ] [⋯]  │
 │ ada@example.com · lic_01J9… ⧉ · Single sign-on · changed 2 h ago by Ada               │
-│ ⋯ = Edit holder… · Mint offline bundle… · View in activity · ─── · Disable license…   │
+│ ⋯ = Edit holder… · Device limit… · Mint offline bundle… · View in activity · ─── ·   │
+│     Disable license…                                                                   │
 ├ Overview · Keys (2) · Devices (3/5) · Config overrides · History ─────────────────────┤
 │ Terms                                     [From tier "Pro" ⓘ]          (T4 form)      │
 │  Tier            [ Pro ▾ ]       ▲ Downgrading to Edu: 3 devices > limit 1, grandfathered│
@@ -1573,10 +1677,25 @@ id moves to the record header.
 - **One "Terms" form** holds every policy field: tier, expiry, max offline, channels, versions and
   **profiles**. This ends the split between the Edit dialog and the Policy tab (LDT-1), and makes
   profiles editable (LDT-3).
-- The holder (name, email) is edited from "Edit holder…".
+- The holder line (S-24): "Ada Lovelace · ada@example.com · In an account", "Waiting for
+  ada@example.com", or "Floating · anyone with the key". **Assign…** on a floating licence; in the
+  overflow **Send a new key…** (assigned), **Reassign…** and **Make floating…** (I-12's relink tool:
+  step-up, reason, notice, 72-hour undo, typed confirmation). Edit holder edits the name only.
 - Cleared values send `null`. This needs **A-3**, the worker accepting `null` for `maxOfflineDays`
   (LDT-2), and the same for tiers (TIR-1).
 - The downgrade warning is a `Callout tone="warning"` using the server's `deviceCount` (LDT-12).
+  A limit set on the license beats any tier, so a tier change then raises no warning.
+
+**Device limit…** (LX-14a; SIGN-IN.md D-53) opens a side sheet for this one license, seat or
+Account-wide: a number field whose placeholder is the inherited value ("Inherits 5 from Pro"),
+**Save** and **Use inherited limit** (sends `deviceLimit: null`). Below the active device count it
+warns "4 devices are signed in. None is signed out; new devices are refused until the count is
+under 3." It never deauthorizes. Precedence: the license's own `device_limit`, else the tier's,
+else a `deviceLimit` entitlement (profiles, store grants, overrides), else the product default;
+the signed document's `deviceLimit` entitlement carries the same number. The header, the
+Effective policy row, the Seats meter and the list show the effective limit with its source
+("3 · set on this license", "5 · from Pro", "5 · product default"). Each change is audited as
+`license.device_limit.set`, old → new.
 
 **Disable license** is a danger-menu action with an L1 confirm, replacing the Switch (LDT-7).
 Enable is the primary action while disabled.
@@ -1886,6 +2005,9 @@ activateAfter, retiredAt).
 
 #### 6.10.1 Sign in
 
+> **Superseded** by [SIGN-IN.md](SIGN-IN.md) §3.3–§3.4 (identifier-first card, email code and link,
+> provider row, passkeys). Kept for history.
+
 ```
 ┌──────────────── centered, max-w 26rem ────────────────┐
 │ [K] Polaris Key                                       │
@@ -2168,7 +2290,7 @@ unchanged; add `me` fields), `main.tsx` (`QueryClientProvider`), and the worker 
   same API and reference counting, the CSS applied through a constructable stylesheet
   (`adoptedStyleSheets`), falling back to `insertRule` on an existing same-origin sheet, never a
   `<style>` element. `test/styleSingleton.test.tsx` covers the shim; `e2e/csp.e2e.test.ts`
-  (`pnpm --filter @polaris-key/admin test:e2e`, run in CI's browser job) opens the palette, the
+  (`pnpm --filter @polaris-key/admin test:e2e`, run in CI's `console` job) opens the palette, the
   account and theme menus, the shortcut sheet, a dialog, the switcher and the mobile drawer in
   Chromium under the Worker's exact policy and requires zero violations and a real scroll lock.
 - **The mobile drawer closes** when the window grows past 1024 px (a `matchMedia` listener), so

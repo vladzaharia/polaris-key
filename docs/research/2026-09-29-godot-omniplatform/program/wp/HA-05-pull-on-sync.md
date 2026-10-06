@@ -41,6 +41,42 @@ This is the owner's "just pull the files". It also retires DJDL's public `djdl-a
 
 - Console upload and CI push (→ HA-06). Release files (→ HA-08).
 
+## Corrections from the code (HA-05, 2026-10-05)
+
+- The admin read route is `GET /manage/api/products/:p/assets` (the console API's real prefix),
+  not `/admin/products/:p/assets`. It is pinned in the OpenAPI spec and `routeCoverage`'s
+  `ADMIN_KIND_PATHS` (rule 10).
+- HA-01's `hosted_assets` has no place to keep what the manifest wants while the old copy keeps
+  serving, nor any back-off state. The migration `0089_hosted_asset_pulls.sql` (numbered 0085 on the branch; renumbered at integration, where ps-1 took 0085) adds `wanted_ref`, `pulled_ref`, `source_blob`, `attempts` and `next_attempt_at`. There is no
+  new table, so `TABLE_OWNERS` is unchanged (`hosted_assets` is already Core's).
+- `asset_unreachable` is a Worker-side warning in the resync result (`warnings[]`), not a code
+  from `@polaris-key/manifest`'s validator. The validator never fetches, so there is no rule-9
+  entry.
+- The system product's deploy-hook apply (`admin/systemProduct.ts`) is not wired. Only link and
+  resync plan pulls.
+
+## Follow-up from the HA-02/HA-03 review (fix/hosted-asset-followups, 2026-10-06)
+
+- **Owed ladders are retryable.** A `ready` row in a ladder slot (icon, header, screenshots:
+  `variantFamily`) whose `variants_json` is `[]` while its width admits a rung, or is unknown,
+  owes its ladder (`ladderOwedSql`): HA-03's ingest hit 9422 or ran without the binding. While the
+  Images binding is bound and no pull is owed, the planner (a declared slot with nothing to
+  pull, console-claimed or not) and the nightly re-check send a ladder message
+  (`{v: 1, kind: "ladder", product, slot, locale, sha256, reason}`), and the consumer runs
+  `processLadderRetry` → `rebuildLadder`, which reads the stored original back and builds only the
+  ladder. The original is never pulled again.
+- **The same back-off and budget.** The retry uses `attempts` and `next_attempt_at` (an owed pull
+  and an owed ladder never share a row: the pull's ingest builds the ladder). Any ingest that
+  installs new bytes in the slot (a pull, a console upload, a CI push) starts a clean back-off:
+  none, or, when it leaves the ladder owed, that failure as the first attempt (`attempts = 1`,
+  next in 15 min); the same bytes keep the row's. Each failed retry doubles the wait up to 24 h;
+  a built ladder clears both. The re-check's 50 per run are shared between pulls and ladder
+  retries, oldest-due first.
+- **Never retried:** without the binding, for slots without a ladder family, or for a copy
+  narrower than its family's smallest rung. A retry records a width it learns, from the same
+  bytes or `.info()`, even when it then fails; a width already known to admit no rung settles the
+  copy without reading it.
+
 ## Design notes
 
 - Exponential back-off per slot, capped at 24 h.
@@ -55,10 +91,10 @@ This is the owner's "just pull the files". It also retires DJDL's public `djdl-a
 
 ## Acceptance criteria
 
-- [ ] Resyncing an unchanged manifest enqueues nothing (test).
-- [ ] Changing the icon URL swaps the copy only after the new ingest is `ready` (test).
-- [ ] A 404 source leaves the old copy serving, with status `stale` (test).
-- [ ] The green gate passes (AGENTS.md), including every drift gate listed in the header.
+- [x] Resyncing an unchanged manifest enqueues nothing (test).
+- [x] Changing the icon URL swaps the copy only after the new ingest is `ready` (test).
+- [x] A 404 source leaves the old copy serving, with status `stale` (test).
+- [x] The green gate passes (AGENTS.md), including every drift gate listed in the header.
 
 ## Verify
 

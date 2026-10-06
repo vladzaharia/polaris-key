@@ -6,7 +6,7 @@ extends RefCounted
 # file under res://tests/build_stamp/ with `func run(t: PKeyTestContext) -> void` (it may await).
 # The export plugin's own end-to-end checks are the export_stamps suite, which run_tests.sh feeds.
 
-const GROUPS := ["stamp", "runtime", "dock"]
+const GROUPS := ["stamp", "runtime", "dock", "tools"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

@@ -12,6 +12,7 @@
  * `Content-Type`.
  */
 
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -87,8 +88,9 @@ async function session(
   email = "mara@fennick.studio",
 ): Promise<{ cookie: string; csrf: string; accountId: string }> {
   const account = await getOrCreateAccountByEmail(db, email, NOW);
-  const { token, session } = await issuePortalSession(
+  const { token, session } = await issuePortalSessionRow(
     env,
+    db,
     {
       accountId: account.id,
       email: account.primary_email,
@@ -119,6 +121,7 @@ async function setProductServices(
         distribution: { enabled: false },
         update: { enabled: false },
         identity: { enabled: false },
+        sync: { enabled: false },
         ...services,
       },
     }),

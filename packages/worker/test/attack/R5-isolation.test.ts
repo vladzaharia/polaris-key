@@ -9,6 +9,7 @@
  * controls) reaching another tenant's data, or a portal account reaching another account's.
  */
 
+import { issuePortalSessionRow } from "../portalSessionRow.js";
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "../helpers.js";
 import { KvMock } from "../kvMock.js";
@@ -120,11 +121,13 @@ function adminReq(
 
 async function portalSessionFor(
   e: Env,
+  db: Db,
   accountId: string,
   email: string,
 ): Promise<{ cookie: string; csrf: string }> {
-  const { token, session } = await issuePortalSession(
+  const { token, session } = await issuePortalSessionRow(
     e,
+    db,
     { accountId, email, name: email },
     NOW,
   );
@@ -246,7 +249,7 @@ describe("R5-01 cross-tenant license injection by unverified email", () => {
 
     // The victim now signs in to the ROOT portal with their own (genuinely owned) inbox.
     const account = await getOrCreateAccountByEmail(db, victimEmail, NOW);
-    const { cookie } = await portalSessionFor(e, account.id, victimEmail);
+    const { cookie } = await portalSessionFor(e, db, account.id, victimEmail);
     const res = await handlePortalApi(
       req("GET", "/api/licenses", { cookie }),
       e,
@@ -411,6 +414,7 @@ describe("R5-03 cross-tenant rate-limit bucket sharing", () => {
     );
     const { cookie, csrf } = await portalSessionFor(
       e,
+      db,
       account.id,
       "user@example.com",
     );
@@ -496,7 +500,8 @@ describe("R5-04 cross-tenant portal capability coupling", () => {
     expect(caps.oidcEnabled).toBe(true);
 
     // And the gate really does open: the handler proceeds past the capability check and
-    // fails later on email config (503) rather than refusing as disabled (404).
+    // fails later on email config (503, I-18's `email_unavailable`) rather than refusing as
+    // disabled (404).
     const res = await handleMagicStart(
       req("POST", "/api/magic/start", { body: { email: "a@b.example" } }),
       e,
@@ -504,7 +509,7 @@ describe("R5-04 cross-tenant portal capability coupling", () => {
     );
     expect(res.status).toBe(503);
     expect((await res.json()) as { error: string }).toEqual(
-      expect.objectContaining({ error: "email_not_configured" }),
+      expect.objectContaining({ error: "email_unavailable" }),
     );
   });
 });
@@ -910,6 +915,7 @@ describe("REFUTED: IDOR sweep — ownership predicates hold", () => {
 
     const { cookie } = await portalSessionFor(
       e,
+      db,
       stranger.id,
       "stranger@example.com",
     );

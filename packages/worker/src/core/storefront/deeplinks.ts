@@ -246,6 +246,57 @@ export const DEEP_LINKS: readonly DeepLinkTemplate[] = [
     params: ["name"],
     verify: "operator-assertion",
   },
+  // ── Steam (A-18g; Steamworks partner pages, undocumented as URL shapes, S-15 §6.5 [I]) ──
+  {
+    // Pay the app fee and create the app; verified when the publisher key lists the new app.
+    id: "steam.new-app",
+    store: "steam",
+    template: "https://partner.steamgames.com/apps/landing",
+    params: [],
+    verify: { read: "/ISteamApps/GetPartnerAppListForWebAPIKey/v2/", ...POLL },
+  },
+  {
+    // The store page: text, capsules, screenshots, trailers, tags, the content survey, review.
+    id: "steam.store-page",
+    store: "steam",
+    template: "https://partner.steamgames.com/admin/game/edit/{appId}",
+    params: ["appId"],
+    verify: "operator-assertion",
+  },
+  {
+    // App Admin's builds page: setting a build live on the default (public) branch (decision 5).
+    id: "steam.app-admin",
+    store: "steam",
+    template: "https://partner.steamgames.com/apps/builds/{appId}",
+    params: ["appId"],
+    verify: { read: "/ISteamApps/GetAppBetas/v1/", ...POLL },
+  },
+  // ── PR-plane outlets (A-18i; S-15 §4.4: each bootstrap is a person's) ──
+  {
+    // Create the `homebrew-<name>` repository the tap is; then set direct.homebrewTap.
+    id: "homebrew.new-tap",
+    store: "homebrew",
+    template: "https://github.com/new",
+    params: [],
+    verify: "operator-assertion",
+  },
+  {
+    // Scoop's bucket template, with its Excavator workflow (checkver and autoupdate).
+    id: "scoop.new-bucket",
+    store: "scoop",
+    template: "https://github.com/ScoopInstaller/BucketTemplate/generate",
+    params: [],
+    verify: "operator-assertion",
+  },
+  {
+    // The first submission: a PR to flathub/flathub against new-pr, opened and shepherded by a
+    // person from `pkey storefront flathub init`'s files.
+    id: "flathub.submission",
+    store: "flathub",
+    template: "https://docs.flathub.org/docs/for-app-authors/submission",
+    params: [],
+    verify: "operator-assertion",
+  },
 ];
 
 /** A row by id, or null. */

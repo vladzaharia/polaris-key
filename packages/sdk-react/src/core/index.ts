@@ -34,7 +34,43 @@ export {
   type DownloadUrlOptions,
   type ImportBundleResult,
   type UpdateDecideOptions,
+  type FeedKind,
+  type FeedUrl,
+  type FeedUrlOptions,
 } from "./types.js";
+export {
+  runBoot,
+  reacquire,
+  bootDecisionOf,
+  type BootDriver,
+  type BootPacks,
+  type BootResult,
+  type BootRunOptions,
+  type BootStep,
+  type ReacquireResult,
+} from "./boot.js";
+// ui.stages: client-core's boot stage machine, which `boot()` drives.
+export {
+  BOOT_CONFIRMATIONS,
+  BOOT_OK_SECONDS,
+  BOOT_OUTCOMES,
+  BOOT_STAGES,
+  bootConfirmation,
+  bootTransition,
+  initialBootState,
+  type BootDecision,
+  type BootEmit,
+  type BootEvent,
+  type BootOptions,
+  type BootState,
+  type BootStage,
+} from "@polaris-key/client-core";
+export {
+  crashTagsFor,
+  type CrashTags,
+  type CrashTagsOptions,
+} from "./crash.js";
+export type { UpdateEventEntry, UpdateEventInput } from "./updateEvents.js";
 export type {
   StagedUpdate,
   UpdateCheck,
@@ -79,6 +115,7 @@ export {
   flattenEntries,
   readConfig,
   readEntitled,
+  readEntitlementValue,
   readEntitledChannels,
   resolveConfig,
   resolveConfigValue,
@@ -87,6 +124,37 @@ export {
   listUserConfig,
   type ProjectFlags,
 } from "./adapter.js";
+
+export {
+  bodyCode,
+  classifyActivation,
+  networkOutcome,
+  retryAfterSeconds,
+  type ActivationKind,
+  type ActivationOutcome,
+} from "./activation.js";
+export { activationError } from "./activationError.js";
+export {
+  activationMessage,
+  activationTitle,
+  copyLocales,
+  copyMessage,
+  copyTitle,
+  describeError,
+  hasCopy,
+  registerCopyLocale,
+  type CopyBundle,
+  type CopyParams,
+} from "./copy.js";
+export {
+  COPY_ACTIVATION,
+  COPY_CODES,
+  COPY_FALLBACK,
+  COPY_GATE,
+  COPY_LOCALE,
+  COPY_VERSION,
+  type CopyEntry,
+} from "../copy.generated.js";
 
 export type { ManagedEntry, JSONValue } from "@polaris-key/protocol/core";
 export type {
@@ -98,3 +166,14 @@ export type {
   LicenseStatus,
 } from "@polaris-key/protocol/license";
 export type { ConfigDoc } from "@polaris-key/protocol/config";
+// config.local: device-local overrides (SDK-PARITY-PASS §3.11).
+export {
+  LocalConfigEngine,
+  browserLocalConfigBackend,
+  localConfigStorageKey,
+  type ConfigChange,
+  type ConfigSetting,
+  type ConfigStorage,
+  type LocalConfig,
+  type LocalConfigBackend,
+} from "./localConfig.js";

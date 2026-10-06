@@ -33,6 +33,19 @@ public struct PolarisCopy: Sendable {
     public var versionTooNewTitle: String
     public var channelNotEntitledTitle: String
     public var versionBlockSubtitle: String
+    /// The gate titles and subtitles above default to the generated gate table (core.copy,
+    /// `ErrorCopy.title/message(status)`); a product's value wins.
+    /// Activation outcomes (§3.1), defaulting to the shared `ErrorCopy` base. A product overrides
+    /// one by code: `copy.activationMessages[ErrorCode.deviceLimit] = "…"`.
+    public var activationMessages: [String: String]
+    /// Shown when a sign-out could not clear the stored licence.
+    public var signOutFailedMessage: String
+    /// Copy for every other kit component (sign-in, settings, devices, …).
+    public var kit = PolarisKitCopy()
+    /// PX-W8: the action that opens the refusal's `manageUrl` (SIGN-IN.md D-49).
+    public var freeDeviceButton: String
+    /// Shown under the QR code on a TV, where the link is scanned on a phone.
+    public var freeDeviceScanCaption: String
 
     public init(
         productName: String = "this app",
@@ -44,17 +57,22 @@ public struct PolarisCopy: Sendable {
         activateButton: String = "Activate",
         retryButton: String = "Retry",
         reconnectButton: String = "Reconnect",
-        graceTitle: String = "Offline grace period",
-        graceSubtitle: String =
-            "We couldn't reach the license server. You can keep working for now.",
-        expiredTitle: String = "License expired",
-        expiredSubtitle: String = "Reconnect to renew your license.",
-        revokedTitle: String = "License revoked",
-        revokedSubtitle: String = "This license is no longer valid on this device.",
-        versionTooOldTitle: String = "Update required",
-        versionTooNewTitle: String = "Version not yet allowed",
-        channelNotEntitledTitle: String = "Channel not entitled",
-        versionBlockSubtitle: String = "Your current version isn't permitted to run."
+        graceTitle: String = ErrorCopy.title(LicenseStatus.grace.rawValue),
+        graceSubtitle: String = ErrorCopy.message(LicenseStatus.grace.rawValue),
+        expiredTitle: String = ErrorCopy.title(LicenseStatus.expired.rawValue),
+        expiredSubtitle: String = ErrorCopy.message(LicenseStatus.expired.rawValue),
+        revokedTitle: String = ErrorCopy.title(LicenseStatus.revoked.rawValue),
+        revokedSubtitle: String = ErrorCopy.message(LicenseStatus.revoked.rawValue),
+        versionTooOldTitle: String = ErrorCopy.title(LicenseStatus.versionTooOld.rawValue),
+        versionTooNewTitle: String = ErrorCopy.title(LicenseStatus.versionTooNew.rawValue),
+        channelNotEntitledTitle: String = ErrorCopy.title(
+            LicenseStatus.channelNotEntitled.rawValue),
+        versionBlockSubtitle: String = "Your current version isn't permitted to run.",
+        activationMessages: [String: String] = [:],
+        signOutFailedMessage: String = "Sign-out couldn't clear the stored license.",
+        freeDeviceButton: String = "Replace a device",
+        freeDeviceScanCaption: String =
+            "Scan with your phone to free a device, then try again."
     ) {
         self.productName = productName
         self.welcomeTitle = welcomeTitle ?? "Welcome to \(productName)"
@@ -75,6 +93,18 @@ public struct PolarisCopy: Sendable {
         self.versionTooNewTitle = versionTooNewTitle
         self.channelNotEntitledTitle = channelNotEntitledTitle
         self.versionBlockSubtitle = versionBlockSubtitle
+        self.freeDeviceButton = freeDeviceButton
+        self.freeDeviceScanCaption = freeDeviceScanCaption
+        self.activationMessages = activationMessages
+        self.signOutFailedMessage = signOutFailedMessage
+    }
+
+    /// The sentence for an activation outcome: the product's override for its code, else the
+    /// shared copy (`ActivationResult.message`); nil for `.ok`. Never the raw server body.
+    public func activationMessage(_ result: ActivationResult) -> String? {
+        if result.isOK { return nil }
+        if let custom = activationMessages[result.code] { return custom }
+        return result.message
     }
 }
 

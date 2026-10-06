@@ -103,6 +103,10 @@ export interface LicenseRow {
    *  global account id never reaches a developer-facing response, so every shaper names the
    *  columns it emits. Written only through `core/accountSubjects.ts`. */
   account_id?: string | null;
+  /** LX-14a (0084): the licence's own seat limit, a positive integer; NULL (or absent on a row
+   *  read before the migration) inherits the tier, a `deviceLimit` entitlement, then the product
+   *  default. Written only by the admin licence PATCH. */
+  device_limit?: number | null;
   modified_by: string | null;
   modified_at: number;
 }
@@ -172,7 +176,15 @@ export interface ProfileRow {
   payload_json: string;
   modified_by: string | null;
   modified_at: number;
+  /** ST-01b (0079): who owns the row. Absent on rows read before the migration ran. */
+  source?: RowSource;
 }
+
+/**
+ * ST-01b (migrations/0079): who owns a tier or profile row. A resync upserts only `manifest` rows
+ * and leaves `console` rows (created or edited in the console) alone.
+ */
+export type RowSource = "manifest" | "console";
 
 export interface TierRow {
   product: string;
@@ -189,6 +201,8 @@ export interface TierRow {
   policy_fingerprint?: string | null;
   modified_by: string | null;
   modified_at: number;
+  /** ST-01b (0079): who owns the row. */
+  source?: RowSource;
 }
 
 // Current hardware fingerprint per device (migrations/0010_fingerprint.sql). One row per
@@ -599,6 +613,72 @@ export function stmtInsertTier(t: TierInput): DbStatement {
   };
 }
 
+/**
+ * ST-01b: the resync's write of one manifest-declared tier. Inserts it as a `manifest` row, or
+ * updates the stored row only while it is still manifest-owned — the guard is the upsert's own
+ * WHERE, so a console edit that lands after the resync's reads is never overwritten.
+ */
+export function stmtUpsertManifestTier(t: TierInput): DbStatement {
+  return {
+    sql: `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
+             channels_json, min_version, max_version, policy_fingerprint, modified_by, modified_at,
+             source)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'manifest')
+          ON CONFLICT(product, id) DO UPDATE SET
+            label = excluded.label, profile_id = excluded.profile_id,
+            policy_expiry_days = excluded.policy_expiry_days,
+            policy_device_limit = excluded.policy_device_limit,
+            channels_json = excluded.channels_json, min_version = excluded.min_version,
+            max_version = excluded.max_version, policy_fingerprint = excluded.policy_fingerprint,
+            modified_by = NULL, modified_at = excluded.modified_at
+          WHERE tiers.source = 'manifest'`,
+    params: stmtInsertTier(t).params,
+  };
+}
+
+/** ST-01b: the resync's write of one manifest-declared profile, under the same guard. */
+export function stmtUpsertManifestProfile(p: ProfileInput): DbStatement {
+  return {
+    sql: `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at, source)
+          VALUES (?, ?, ?, ?, ?, NULL, ?, 'manifest')
+          ON CONFLICT(product, id) DO UPDATE SET
+            name = excluded.name, description = excluded.description,
+            payload_json = excluded.payload_json, modified_by = NULL,
+            modified_at = excluded.modified_at
+          WHERE profiles.source = 'manifest'`,
+    params: [
+      p.product,
+      p.id,
+      p.name,
+      p.description ?? null,
+      p.payloadJson,
+      p.modifiedAt,
+    ],
+  };
+}
+
+/** ST-01b: drop a manifest tier the manifest no longer declares (never a console row). */
+export function stmtDeleteManifestTier(
+  product: string,
+  id: string,
+): DbStatement {
+  return {
+    sql: "DELETE FROM tiers WHERE product = ? AND id = ? AND source = 'manifest'",
+    params: [product, id],
+  };
+}
+
+/** ST-01b: drop a manifest profile the manifest no longer declares (never a console row). */
+export function stmtDeleteManifestProfile(
+  product: string,
+  id: string,
+): DbStatement {
+  return {
+    sql: "DELETE FROM profiles WHERE product = ? AND id = ? AND source = 'manifest'",
+    params: [product, id],
+  };
+}
+
 export interface ProvisioningInput {
   product: string;
   claim: string;
@@ -902,27 +982,107 @@ export async function claimEnrolledLicense(
 }
 
 /**
- * Re-point every device of one license at another — the migrate arm of the merge table.
+ * Plan re-pointing every device of one license at another — the migrate arm of the merge table
+ * (LX-03, notes/S-19 §4.3 G6). Answers the statements, or `null` when the move would take the
+ * destination past `limit` (nothing is written but the dormant-seat release below).
  *
- * The seat ordinal is dropped in the same statement. `idx_devices_seat` is unique per
- * (product, license_id, seat_no), so carrying an ordinal across licenses makes the migrate
- * path throw a UNIQUE violation the moment the destination already holds that ordinal —
- * which, once `licenseCore.authorizeDevice` claims seats, is the ordinary case. The moved
- * device stays `authorized`, so `countActiveDevices` still counts it against the destination's
- * limit; it simply holds no ordinal until its next new authorization.
+ * The move is SEAT-CHECKED, the way `claimDeviceSeat` is, instead of dropping the ordinal:
+ *
+ *   - The destination's dormant seats are released first (`releaseDormantSeats`, as
+ *     `claimDeviceSeat` does), so what is left holding an ordinal there is occupying capacity.
+ *   - Every AUTHORIZED device on the source moves, dormant ones included, and each one counts:
+ *     a dormant device given no ordinal would come back through `validateDeviceToken` without
+ *     ever claiming a seat (THREAT-MODEL, R1-07). Moving `m` of them onto a destination with
+ *     `held` seat-holding devices (the same dormancy floor `authorizeDevice` counts with) is
+ *     refused when `limit <= 0` or `m + held > limit`.
+ *   - Each moved authorized device takes the lowest free ordinal of the destination, in the order
+ *     the devices first appeared. The ordinals are planned here and written by the caller's
+ *     batch, so `idx_devices_seat` is still the arbiter: a concurrent `claimDeviceSeat` that takes
+ *     a planned ordinal first makes the whole batch throw (and roll back), and the caller plans
+ *     again.
+ *   - A device that is not authorized moves without an ordinal (it holds no seat anywhere). An
+ *     authorized device that reaches the source after this read is left on it: it was never
+ *     seat-checked against the destination.
+ */
+export async function planDeviceMove(
+  db: Db,
+  product: string,
+  fromLicenseId: string,
+  toLicenseId: string,
+  limit: number,
+  now: number,
+): Promise<DbStatement[] | null> {
+  if (fromLicenseId === toLicenseId) return [];
+  await releaseDormantSeats(db, product, now, toLicenseId);
+  const moving = await db.all<{ device_id: string }>(
+    `SELECT device_id FROM devices
+      WHERE product = ? AND license_id = ? AND status = 'authorized'
+      ORDER BY first_seen ASC, device_id ASC`,
+    product,
+    fromLicenseId,
+  );
+  const held = await countActiveDevices(
+    db,
+    product,
+    toLicenseId,
+    seatActiveSince(now),
+  );
+  if (!Number.isFinite(limit) || limit <= 0 || moving.length + held > limit)
+    return null;
+  const taken = new Set(
+    (
+      await db.all<{ seat_no: number }>(
+        `SELECT seat_no FROM devices
+          WHERE product = ? AND license_id = ? AND status = 'authorized'
+            AND seat_no IS NOT NULL`,
+        product,
+        toLicenseId,
+      )
+    ).map((r) => r.seat_no),
+  );
+  const free: number[] = [];
+  for (let n = 1; n <= limit && free.length < moving.length; n++)
+    if (!taken.has(n)) free.push(n);
+  // `held` counts every seat-holder (the release above left none dormant), so `limit - held`
+  // ordinals are free and the check above makes that at least `moving.length`.
+  if (free.length < moving.length) return null;
+  return [
+    ...moving.map((d, i) => ({
+      sql: `UPDATE devices SET license_id = ?, seat_no = ?
+             WHERE product = ? AND device_id = ? AND license_id = ? AND status = 'authorized'`,
+      params: [toLicenseId, free[i]!, product, d.device_id, fromLicenseId],
+    })),
+    {
+      sql: `UPDATE devices SET license_id = ?, seat_no = NULL
+             WHERE product = ? AND license_id = ? AND status <> 'authorized'`,
+      params: [toLicenseId, product, fromLicenseId],
+    },
+  ];
+}
+
+/**
+ * {@link planDeviceMove}, applied in one batch. `false` (nothing moved) when the destination's
+ * seats would be exceeded. A batch that loses an ordinal to a concurrent activation throws.
  */
 export async function moveDevices(
   db: Db,
   product: string,
   fromLicenseId: string,
   toLicenseId: string,
-): Promise<void> {
-  await db.run(
-    "UPDATE devices SET license_id = ?, seat_no = NULL WHERE product = ? AND license_id = ?",
-    toLicenseId,
+  limit: number,
+  now: number,
+): Promise<boolean> {
+  const plan = await planDeviceMove(
+    db,
     product,
     fromLicenseId,
+    toLicenseId,
+    limit,
+    now,
   );
+  if (plan === null) return false;
+  if (plan.length > 0) await db.batch(plan);
+  return true;
 }
 
 export async function listLicenseProfiles(
@@ -1297,7 +1457,9 @@ export async function upsertDevice(db: Db, row: DeviceRow): Promise<void> {
   // I-05: `subject` is written on INSERT only (a first-ever bind through a sign-in) and otherwise
   // preserved, like `seat_no`: the binding changes only through `core/accountSubjects.ts`, so a
   // metadata touch or a token rotation can never set or drop it. `bound_by` keeps the stored
-  // value unless the caller names one (a fresh bind does; a touch does not).
+  // value unless the caller names one (a fresh bind does; a touch does not). PX-W13 §8 Q2:
+  // `label` is seeded from the device's reported label only while the row has none, so a
+  // console or portal rename always wins over what the device reports.
   await db.run(
     `INSERT INTO devices (product, device_id, customer_id, license_id, status, first_seen, last_seen, ua, label,
        overrides_json, reported_json, token_hash, platform, arch, app_version, sdk_name, sdk_version,
@@ -1309,7 +1471,8 @@ export async function upsertDevice(db: Db, row: DeviceRow): Promise<void> {
        ua = excluded.ua, token_hash = excluded.token_hash, platform = excluded.platform,
        arch = excluded.arch, app_version = excluded.app_version, sdk_name = excluded.sdk_name,
        sdk_version = excluded.sdk_version,
-       bound_by = COALESCE(excluded.bound_by, devices.bound_by)`,
+       bound_by = COALESCE(excluded.bound_by, devices.bound_by),
+       label = COALESCE(devices.label, excluded.label)`,
     row.product,
     row.device_id,
     row.customer_id,
@@ -1454,23 +1617,28 @@ export async function setFingerprintPolicy(
   source: "manifest" | "admin",
   at: number,
 ): Promise<void> {
-  if (source === "manifest") {
-    await db.run(
-      `UPDATE products SET fingerprint_policy_json = ?, modified_at = ?
+  const stmt = stmtSetFingerprintPolicy(product, policyJson, source, at);
+  await db.run(stmt.sql, ...stmt.params);
+}
+
+/** `setFingerprintPolicy` as a statement, for a batch (ST-01b: the resync applies in one batch). */
+export function stmtSetFingerprintPolicy(
+  product: string,
+  policyJson: string | null,
+  source: "manifest" | "admin",
+  at: number,
+): DbStatement {
+  if (source === "manifest")
+    return {
+      sql: `UPDATE products SET fingerprint_policy_json = ?, modified_at = ?
          WHERE slug = ? AND COALESCE(fingerprint_policy_source, 'manifest') = 'manifest'`,
-      policyJson,
-      at,
-      product,
-    );
-    return;
-  }
-  await db.run(
-    `UPDATE products SET fingerprint_policy_json = ?, fingerprint_policy_source = 'admin',
+      params: [policyJson, at, product],
+    };
+  return {
+    sql: `UPDATE products SET fingerprint_policy_json = ?, fingerprint_policy_source = 'admin',
        modified_at = ? WHERE slug = ?`,
-    policyJson,
-    at,
-    product,
-  );
+    params: [policyJson, at, product],
+  };
 }
 
 /** Hand a product's fingerprint policy back to manifest control (the "revert" action). */
@@ -1496,23 +1664,28 @@ export async function setAutoIssuePolicy(
   source: "manifest" | "admin",
   at: number,
 ): Promise<void> {
-  if (source === "manifest") {
-    await db.run(
-      `UPDATE products SET auto_issue_json = ?, modified_at = ?
+  const stmt = stmtSetAutoIssuePolicy(product, policyJson, source, at);
+  await db.run(stmt.sql, ...stmt.params);
+}
+
+/** `setAutoIssuePolicy` as a statement, for a batch (ST-01b: the resync applies in one batch). */
+export function stmtSetAutoIssuePolicy(
+  product: string,
+  policyJson: string | null,
+  source: "manifest" | "admin",
+  at: number,
+): DbStatement {
+  if (source === "manifest")
+    return {
+      sql: `UPDATE products SET auto_issue_json = ?, modified_at = ?
          WHERE slug = ? AND COALESCE(auto_issue_source, 'manifest') = 'manifest'`,
-      policyJson,
-      at,
-      product,
-    );
-    return;
-  }
-  await db.run(
-    `UPDATE products SET auto_issue_json = ?, auto_issue_source = 'admin',
+      params: [policyJson, at, product],
+    };
+  return {
+    sql: `UPDATE products SET auto_issue_json = ?, auto_issue_source = 'admin',
        modified_at = ? WHERE slug = ?`,
-    policyJson,
-    at,
-    product,
-  );
+    params: [policyJson, at, product],
+  };
 }
 
 /**
@@ -1532,23 +1705,28 @@ export async function setServices(
   source: "manifest" | "admin",
   at: number,
 ): Promise<void> {
-  if (source === "manifest") {
-    await db.run(
-      `UPDATE products SET services_json = ?, modified_at = ?
+  const stmt = stmtSetServices(product, servicesJson, source, at);
+  await db.run(stmt.sql, ...stmt.params);
+}
+
+/** `setServices` as a statement, for a batch (ST-01b: the resync applies in one batch). */
+export function stmtSetServices(
+  product: string,
+  servicesJson: string | null,
+  source: "manifest" | "admin",
+  at: number,
+): DbStatement {
+  if (source === "manifest")
+    return {
+      sql: `UPDATE products SET services_json = ?, modified_at = ?
          WHERE slug = ? AND COALESCE(services_source, 'manifest') = 'manifest'`,
-      servicesJson,
-      at,
-      product,
-    );
-    return;
-  }
-  await db.run(
-    `UPDATE products SET services_json = ?, services_source = 'admin',
+      params: [servicesJson, at, product],
+    };
+  return {
+    sql: `UPDATE products SET services_json = ?, services_source = 'admin',
        modified_at = ? WHERE slug = ?`,
-    servicesJson,
-    at,
-    product,
-  );
+    params: [servicesJson, at, product],
+  };
 }
 
 /**

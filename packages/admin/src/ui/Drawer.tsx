@@ -2,13 +2,21 @@ import * as React from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { ArrowLeft, X } from "lucide-react";
 import { cn } from "../lib/cn.js";
-import { DialogOverlay } from "./Dialog.js";
+import {
+  DialogOverlay,
+  DiscardStrip,
+  DismissGuardContext,
+  useGuardedDismissal,
+  useOverlayFocus,
+} from "./Dialog.js";
 
 /**
  * A side sheet (components.md §4.3) for peek, detail and secondary forms; it replaces the
- * restyled Dialog (DEV-2). Modal, with the same focus contract as `Dialog`: focus moves in, is
- * trapped, Escape closes unless `dismissible` is false, and focus returns to the invoker. The
- * background is scroll-locked through the CSP-safe shim.
+ * restyled Dialog (DEV-2). Modal, with the same focus contract as `Dialog`: first focus on the
+ * first field or the title (never Close or Back), trapped, Escape closes unless `dismissible` is
+ * false, and focus returns to the opener. `unsaved` (or `useDismissGuard` inside) makes Escape,
+ * Close and Back ask "Discard your changes?" first. The background is scroll-locked through the
+ * CSP-safe shim.
  *
  * - **≥ 1024 px:** a panel from the end (or start) side, md 28rem or lg 40rem, with a close
  *   button.
@@ -43,6 +51,8 @@ export interface DrawerProps {
   size?: "md" | "lg";
   /** False while busy: Escape, outside click, Back and close do nothing. Default true. */
   dismissible?: boolean;
+  /** The draft holds unsaved input: dismissing asks first. See also `useDismissGuard`. */
+  unsaved?: boolean;
   children?: React.ReactNode;
   className?: string;
 }
@@ -55,24 +65,35 @@ export function Drawer({
   side = "end",
   size = "md",
   dismissible = true,
+  unsaved = false,
   children,
   className,
 }: DrawerProps): React.ReactElement {
-  const close = (): void => {
-    if (dismissible) onOpenChange(false);
-  };
+  const contentRef = React.useRef<HTMLDivElement>(null);
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
+  const focus = useOverlayFocus(open, contentRef, titleRef);
+  const dismissal = useGuardedDismissal({
+    open,
+    onOpenChange,
+    dismissible,
+    unsaved,
+  });
+  const close = dismissal.requestClose;
   return (
     <DialogPrimitive.Root
       open={open}
       onOpenChange={(next) => {
-        if (!next && !dismissible) return;
-        onOpenChange(next);
+        if (next) return onOpenChange(true);
+        dismissal.requestClose();
       }}
     >
       <DialogPrimitive.Portal>
         <DialogOverlay className="hidden lg:block" />
         <DialogPrimitive.Content
+          ref={contentRef}
           {...(description ? {} : { "aria-describedby": undefined })}
+          onOpenAutoFocus={focus.onOpenAutoFocus}
+          onCloseAutoFocus={focus.onCloseAutoFocus}
           onEscapeKeyDown={(e) => {
             if (!dismissible) e.preventDefault();
           }}
@@ -82,8 +103,10 @@ export function Drawer({
           onInteractOutside={(e) => {
             if (!dismissible) e.preventDefault();
           }}
+          // The panel slides in from its edge and back out (src/motion.css `.pk-drawer`; S-23 §6.1).
+          data-drawer-side={side}
           className={cn(
-            "fixed inset-0 z-50 flex flex-col bg-surface-overlay text-fg outline-hidden animate-pk-in",
+            "pk-drawer fixed inset-0 z-50 flex flex-col bg-surface-overlay text-fg outline-hidden",
             "pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)]",
             "lg:inset-y-0 lg:w-full lg:shadow-elevation-3",
             side === "end"
@@ -93,7 +116,10 @@ export function Drawer({
             className,
           )}
         >
-          <div className="flex shrink-0 items-start gap-3 border-b border-border px-4 py-3 lg:px-6 lg:py-4">
+          <div
+            data-pk-overlay-header=""
+            className="flex shrink-0 items-start gap-3 border-b border-border px-4 py-3 lg:px-6 lg:py-4"
+          >
             <button
               type="button"
               onClick={close}
@@ -104,7 +130,11 @@ export function Drawer({
               Back
             </button>
             <div className="min-w-0 flex-1 space-y-1">
-              <DialogPrimitive.Title className="text-lg font-bold leading-tight text-fg-strong">
+              <DialogPrimitive.Title
+                ref={titleRef}
+                tabIndex={-1}
+                className="text-lg font-bold leading-tight text-fg-strong outline-hidden"
+              >
                 {title}
               </DialogPrimitive.Title>
               {description ? (
@@ -122,7 +152,16 @@ export function Drawer({
               </DialogPrimitive.Close>
             ) : null}
           </div>
-          {children}
+          {dismissal.asking ? (
+            <DiscardStrip
+              className="px-4 lg:px-6"
+              onKeep={dismissal.keepEditing}
+              onDiscard={dismissal.discard}
+            />
+          ) : null}
+          <DismissGuardContext.Provider value={dismissal.register}>
+            {children}
+          </DismissGuardContext.Provider>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

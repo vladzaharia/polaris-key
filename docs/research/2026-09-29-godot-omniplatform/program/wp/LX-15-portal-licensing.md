@@ -5,7 +5,7 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)               |
 | Size        | 0.5–0.7 engineer-weeks                                                                                     |
 | Depends on  | [LX-09](LX-09-entitlement-resolver.md), [LX-10](LX-10-anchor-choice.md), [PX-W6](PX-W6-purchase-source.md) |
-| Unblocks    | none                                                                                                       |
+| Unblocks    | [CM-11](CM-11-portal-billing.md)                                                                           |
 | Role        | `pkey-implementer`                                                                                         |
 | Plan mode   | no                                                                                                         |
 | Gates       | portal e2e                                                                                                 |

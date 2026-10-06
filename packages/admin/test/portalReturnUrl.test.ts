@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   allowedReturn,
+  cardReturn,
+  carriesKey,
   MAX_RETURN_LENGTH,
 } from "../src/portal/model/returnUrl.js";
 
@@ -78,5 +80,81 @@ describe("return-URL allowlist (§3.3, PX-10)", () => {
         schemes: [],
       }),
     ).toBeNull();
+  });
+});
+
+const KEY = "pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w";
+
+describe("a return URL never carries a license key (PX-17)", () => {
+  it("spots a key anywhere in the value", () => {
+    expect(carriesKey(KEY)).toBe(true);
+    expect(carriesKey(`tidewater://back?k=${KEY}`)).toBe(true);
+    expect(carriesKey("tidewater://back?k=pkey_mossgarden_short")).toBe(false);
+    expect(carriesKey("/signin?request=rq_0123456789abcdef")).toBe(false);
+  });
+
+  it("spots a key percent-encoded, once or twice, and refuses what cannot be decoded", () => {
+    const once = KEY.replaceAll("_", "%5F");
+    expect(carriesKey(once)).toBe(true);
+    expect(carriesKey(`tidewater://back?k=${once}`)).toBe(true);
+    expect(
+      carriesKey(`tidewater://back?k=${KEY.replaceAll("_", "%255F")}`),
+    ).toBe(true);
+    expect(carriesKey("pkey%5fmossgarden%5fQ7xZr2Lk9vT3mN8pB1cY4w")).toBe(true);
+    expect(carriesKey("https://app.example/%E0%A4%A")).toBe(true);
+    expect(carriesKey("tidewater://back?q=caf%C3%A9&x=%2Fy")).toBe(false);
+  });
+
+  it("refuses an encoded key in a declared target and in the card's return", () => {
+    const once = KEY.replaceAll("_", "%5F");
+    expect(allowedReturn(`tidewater://back?k=${once}`, DECLARED)).toBeNull();
+    expect(
+      cardReturn(`/signin?request=rq_1&k=${once}`, "https://key.plrs.im"),
+    ).toBeNull();
+  });
+
+  it("refuses a declared target that carries one", () => {
+    expect(allowedReturn(`tidewater://back?k=${KEY}`, DECLARED)).toBeNull();
+    expect(
+      allowedReturn(`https://app.tidewater.example/#${KEY}`, DECLARED),
+    ).toBeNull();
+  });
+});
+
+describe("the login card as a return target (PX-17; plans/I-04.md owner decision)", () => {
+  const ORIGIN = "https://key.plrs.im";
+
+  it.each([
+    [
+      "/signin?request=rq_0123456789abcdef",
+      "/signin?request=rq_0123456789abcdef",
+    ],
+    ["/signin/?request=rq_1", "/signin/?request=rq_1"],
+    ["https://key.plrs.im/signin?request=rq_1", "/signin?request=rq_1"],
+    ["/signin", "/signin"],
+  ])("follows the card on this origin: %s", (raw, expected) => {
+    expect(cardReturn(raw, ORIGIN)).toBe(expected);
+  });
+
+  it.each([
+    ["another origin", "https://evil.example/signin?request=rq_1"],
+    ["protocol-relative", "//evil.example/signin"],
+    ["a backslash", "/\\evil.example/signin"],
+    ["another page on this origin", "/download/tok_1"],
+    ["the Library", "/#/p/mossgarden"],
+    ["a dot-segment out of the card", "/signin/../logout"],
+    ["javascript", "javascript:alert(1)"],
+    ["credentials", "https://u:p@key.plrs.im/signin"],
+    ["a control character", "/signin?\u0000"],
+    ["a space", "/signin?a b"],
+    ["a key", `/signin?request=rq_1&k=${KEY}`],
+    ["too long", `/signin?request=${"a".repeat(MAX_RETURN_LENGTH)}`],
+    ["empty", ""],
+  ])("refuses %s", (_, raw) => {
+    expect(cardReturn(raw, ORIGIN)).toBeNull();
+  });
+
+  it("is not an app target: the declared-target check refuses a path", () => {
+    expect(allowedReturn("/signin?request=rq_1", DECLARED)).toBeNull();
   });
 });

@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "protocolVersion": 4,
+  "schemaVersion": 1,
+  "product": "acme",
+  "slug": "acme",
+  "name": "Acme",
+  "baseUrl": "https://key.plrs.im",
+  "core": { "registration": "requires-license" },
+  "trust": {
+    "pinnedKeys": {
+      "pkey-test-prod-2026": "kDJF6Deuexo91hFZ9TAPr2SmjUEuTXdia67UogTEpkI"
+    }
+  },
+  "services": {
+    "license": { "enabled": true },
+    "config": { "enabled": true },
+    "release": {
+      "enabled": true,
+      "configured": true,
+      "releaseKeyFingerprints": [
+        "c876b96627d1d1b53c0c34ebb479b4eecd44ada49946359cb22fbf40c3f5090c"
+      ]
+    },
+    "distribution": { "enabled": false },
+    "update": { "enabled": true, "configured": true },
+    "identity": { "enabled": false }
+  }
+}

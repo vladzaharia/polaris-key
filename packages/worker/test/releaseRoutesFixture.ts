@@ -211,6 +211,7 @@ export async function enableServices(
         distribution: { enabled: release },
         update: { enabled: release },
         identity: { enabled: false },
+        sync: { enabled: false },
       },
     }),
     "manifest",

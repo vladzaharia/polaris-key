@@ -18,6 +18,14 @@
 package im.plrs.key.release
 
 import im.plrs.key.core.CoreContext
+import im.plrs.key.core.FetchedFile
+import im.plrs.key.core.ReleaseRecordDoc
+import im.plrs.key.core.UpdateDecision
+import im.plrs.key.core.UpdateEvent
+import im.plrs.key.core.attestAndRetry
+import im.plrs.key.core.discoveredEndpoint
+import im.plrs.key.core.expandTemplate
+import im.plrs.key.core.fetchVerified
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.Feature
 import im.plrs.key.core.JsonText
@@ -44,7 +52,76 @@ public data class ChangelogEntry(
     val url: String,
 )
 
-public class ReleaseClient(private val core: CoreContext) {
+/** What `fetch()` downloads: one build of a release, by the record that pins it. */
+public sealed interface ReleaseTarget {
+    /** A `binary` update decision: its release (version and record hash) and build. */
+    public data class FromDecision(val decision: UpdateDecision.Binary) : ReleaseTarget
+
+    /** A build named by version, build id and the lowercase hex SHA-256 of its release record. */
+    public data class Build(val version: String, val buildId: String, val recordSha256: String) : ReleaseTarget
+
+    /** A record the caller already verified, and the build in it. */
+    public data class Record(val record: ReleaseRecordDoc, val buildId: String) : ReleaseTarget
+}
+
+/**
+ * @param records the VERIFIED release record by its SHA-256 (the facade wires
+ *   `update.releaseRecord(sha).record`, which verifies against the app's pinned release keys only).
+ *   Null: `fetch()` takes a [ReleaseTarget.Record] only.
+ */
+public class ReleaseClient(
+    private val core: CoreContext,
+    private val records: (suspend (String) -> ReleaseRecordDoc)? = null,
+    /** §3.10's attest-and-retry for gated delivery; null: an `attestation_required` refusal stands. */
+    private val attest: (suspend () -> Boolean)? = null,
+) {
+    /**
+     * Download one build and verify it (notes/SDK-PARITY-PASS.md §3.6): the verified record names
+     * exactly one `payload` artifact for the build; its bytes stream from discovery's builds
+     * template (Distribution's, else Release's) with the device bearer and the `X-PKey-*` headers
+     * gated delivery reads, resume with `Range`/`If-Range`, and are checked against the artifact's
+     * size and SHA-256 before anything is left at [to]. Journals `update_downloaded`.
+     *
+     * Throws [PolarisException]: `record-mismatch` (no such build, or not one payload),
+     * `service-unavailable` (discovery names no builds route), the Worker's refusal code,
+     * `network-error`, `payload-mismatch`.
+     */
+    public suspend fun fetch(target: ReleaseTarget, to: java.io.File, onProgress: ((Long, Long) -> Unit)? = null): FetchedFile {
+        core.requireService(ServiceSlug.release, Feature.releaseDownload)
+        val (record, buildId, version) = when (target) {
+            is ReleaseTarget.Record -> Triple(target.record, target.buildId, target.record.version)
+            is ReleaseTarget.Build -> Triple(recordOf(target.recordSha256), target.buildId, target.version)
+            is ReleaseTarget.FromDecision -> {
+                val sha = target.decision.release.sha256 ?: throw PolarisException(ErrorCode.recordMismatch, "the decision pins no release record")
+                Triple(recordOf(sha), target.decision.build, target.decision.release.version)
+            }
+        }
+        val artifact = record.builds?.firstOrNull { it.id == buildId }?.artifacts?.filter { it.role == "payload" }?.singleOrNull()
+            ?: throw PolarisException(ErrorCode.recordMismatch, "the verified record has no build '$buildId' with one payload")
+        if (core.discoveryDocument() == null && !core.localOnly) {
+            try {
+                core.discover()
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Falls to the refusal below.
+            }
+        }
+        val template = core.discoveredEndpoint(ServiceSlug.distribution, "builds") ?: core.discoveredEndpoint(ServiceSlug.release, "builds")
+            ?: throw PolarisException(ErrorCode.serviceUnavailable, "discovery names no builds route for this product")
+        val url = expandTemplate(template, core.endpoints.baseUrl, mapOf("selector" to version, "buildId" to buildId))
+            ?: throw PolarisException(ErrorCode.serviceUnavailable, "the builds template does not expand")
+        val fetched = attestAndRetry(attest) { core.fetchVerified(url, to, artifact.size, artifact.sha256.lowercase(), bearer = true, onProgress = onProgress) }
+        // Named by the record's tag when it has one, else the version (the Worker's releaseId).
+        core.updateEvents.record(UpdateEvent.updateDownloaded, im.plrs.key.core.releaseId(version, record.tag), fromRelease = core.version)
+        return fetched
+    }
+
+    private suspend fun recordOf(sha256: String): ReleaseRecordDoc {
+        val r = records ?: throw PolarisException(ErrorCode.notConfigured, "fetch() by hash needs pinned release keys (UpdateClientOptions.pinnedReleaseKeys); pass a verified ReleaseTarget.Record instead.")
+        return r(sha256)
+    }
+
     /**
      * `GET /<p>/release/changelog`: the published release list, newest first.
      *

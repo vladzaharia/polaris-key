@@ -1,0 +1,42 @@
+{
+  "ecosystem": "maven",
+  "name": "im.acme:core",
+  "version": "1.0.0",
+  "deliverable_id": "maven.core",
+  "release_id": "maven.core@1.0.0",
+  "state": "live",
+  "files_json": [
+    {
+      "name": "core-1.0.0.jar",
+      "type": "maven-file",
+      "sha256": "f1b3d0462750ea1f18a00ac1915e6094553bc24784a23b710913c3e1f58eb04b",
+      "size": 31,
+      "extension": "jar",
+      "sha512": "f82125c2684d4b14836cafca0023609a17b3cf44e94c3c9d51a54ade3bc5610df21c6d6ccdbdb15b170bea161bd61a46c147c4068c58af96c4ea9772d1ee2bda",
+      "sha1": "3db47efeb88186e74e979437b557c29aca043bdc",
+      "md5": "061151555028be8ceee3cda230c1b661"
+    },
+    {
+      "name": "core-1.0.0.pom",
+      "type": "maven-file",
+      "sha256": "23235d8ca337d355a020920341fe8b44a11fecfff4a0197ecab3fd90e790041a",
+      "size": 379,
+      "extension": "pom",
+      "sha512": "52f0ea3f8132b60fe4341348cce4dd644224279874c83926a6e9abef6db9a4216627bf5e6182841f549df09af03dc24625b5e541154446e5b764d0bb857ac157",
+      "sha1": "89f5ed593ea129ad3fbcdc01b3187325dff025f7",
+      "md5": "cbd444750145b863e23c921d4e82723c"
+    }
+  ],
+  "metadata_json": {
+    "groupId": "im.acme",
+    "artifactId": "core",
+    "packaging": "jar",
+    "name": "im.acme:core",
+    "version": "1.0.0"
+  },
+  "source_json": {
+    "kind": "registry",
+    "tokenId": "rtok_<id>",
+    "client": "maven"
+  }
+}

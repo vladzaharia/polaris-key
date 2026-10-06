@@ -1,22 +1,37 @@
 # LX-08 Licensing expand, backfill and dual-write: grants and holder tables, `tiers.rank` and `policyOfflineGraceDays`, licence `kind`, `ended_reason`, `superseded_by` and `source`, provisioned keys into `oidc` grants atomically
 
-| Field       | Value                                                                                                                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                                                           |
-| Size        | 0.7–1 engineer-weeks                                                                                                                                                                   |
-| Depends on  | [LX-01](LX-01-licensing-plan.md), [LX-02](LX-02-oidc-signin-fix.md), [LX-06](LX-06-licensing-settings.md)                                                                              |
-| Unblocks    | [LX-09](LX-09-entitlement-resolver.md), [LX-11](LX-11-commerce-rework.md), [LX-12](LX-12-licence-lifecycle.md), [LX-13](LX-13-entitlements-backend.md), [LX-25](LX-25-redeem-codes.md) |
-| Role        | `pkey-implementer`                                                                                                                                                                     |
-| Plan mode   | no                                                                                                                                                                                     |
-| Gates       | D1 migration (replayable, scratch-SQLite rehearsal); `TABLE_OWNERS`; generated docs pages (`docs gen:check`; regenerate, never hand-edit)                                              |
-| Human input | none                                                                                                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                              |
+| Field       | Value                                                                                                                                                                                                                       |
+| ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase B: the model, server-only)                                                                                                                                |
+| Size        | 0.7–1 engineer-weeks                                                                                                                                                                                                        |
+| Depends on  | [LX-01](LX-01-licensing-plan.md), [LX-02](LX-02-oidc-signin-fix.md), [LX-06](LX-06-licensing-settings.md)                                                                                                                   |
+| Unblocks    | [LX-09](LX-09-entitlement-resolver.md), [LX-11](LX-11-commerce-rework.md), [LX-12](LX-12-licence-lifecycle.md), [LX-13](LX-13-entitlements-backend.md), [LX-25](LX-25-redeem-codes.md), [CM-02](CM-02-provider-webhooks.md) |
+| Role        | `pkey-implementer`                                                                                                                                                                                                          |
+| Plan mode   | no                                                                                                                                                                                                                          |
+| Gates       | D1 migration (replayable, scratch-SQLite rehearsal); `TABLE_OWNERS`; generated docs pages (`docs gen:check`; regenerate, never hand-edit)                                                                                   |
+| Human input | none                                                                                                                                                                                                                        |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                   |
 
 ## Amendments from approved plans (2026-10-05)
 
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/LX-01.md`](../plans/LX-01.md):** the exact DDL of §6.1; the Core table `entitlement_events` with a pull cursor (Q4); the triggers; no `dist_commerce_settings` table (Q5); the A3 record; the `addon` column, with nothing writing `addon` until LX-25 (Q8).
+
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- No `tiers.device_access` column. **Owner decision (2026-10-05): sign-in licenses stay device-limited**, so "issued by signing in" is a derived fact shown only as the origin "From signing in" (held by an account, no key; `plans/I-04.md` §F.6, SIGN-IN.md D-53), not a tier policy and never a licence type (owner decision 2026-10-05: no 'Account-wide' label). The console tier editor keeps "Devices: up to N" for every tier.
+
+## Amendments from S-22 (2026-10-05)
+
+The commerce plan [S-22](../../notes/S-22-polaris-key-commerce.md) (its packages are optional and deferred) changes this brief as follows. These amendments win over the text below where they differ.
+
+- **Grant source vocabulary.** As the S-21 amendment below says: `polaris-key` replaces `direct` in the `trg_grants_source_{ins,upd}` vocabulary and in the `licenses.source` values (meaning: bought through Polaris Key checkout; [S-22](../../notes/S-22-polaris-key-commerce.md#101-owner-decisions-delegated-to-claude-2026-10-05) decision D9). There is no `direct` grant source: a sale a developer records through the admin API is a `comp` grant (portal "From <developer>"). Commerce also writes `external_ref_hash` (the provider's payment or subscription id, hashed) and `order_ref` on every grant and licence it creates. Nothing writes `polaris-key` until CM-05.
 
 ## Goal
 
@@ -70,6 +85,15 @@ The licensing model's storage exists and is kept in sync: new tables and columns
 mise exec node@22 -- pnpm --filter @polaris-key/worker test
 mise exec node@22 -- pnpm --filter @polaris-key/docs gen:check
 ```
+
+## S-21 amendment (2026-10-05): grant source `polaris-key`
+
+The owner decided on 2026-10-05 that "`direct` really becomes `Polaris Key`"
+([S-21](../../notes/S-21-polaris-storefront.md) D9, §6.8). In the grant-source vocabulary of [`plans/LX-01.md`](../plans/LX-01.md)
+(`trg_grants_source_{ins,upd}`), write `polaris-key` where the plan says `direct`: the
+source of a sale made through Polaris Key itself. No code writes `direct` yet, so this costs
+nothing. The portal badge reads "Polaris Key". The outlet id `direct` is unrelated and does not
+change.
 
 ## Hand-off
 

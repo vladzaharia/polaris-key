@@ -3,8 +3,9 @@
  *
  * ── WHY THE ROUTES DID NOT MOVE WITH THE FILES ──────────────────────────────────────────────
  *
- * `/login`, `/callback`, `/logout`, `/magic/verify`, `/api/*`, `/download/<token>` and
- * `/media/<product>/<asset>` (PX-W1) are ROOT
+ * `/login`, `/login/<provider>/…` (I-06), `/callback`, `/logout`, `/magic/verify`, `/api/*`
+ * (the login card's `/api/signin/*` among them, I-07), `/download/<token>`,
+ * `/media/<product>/<asset>` (PX-W1) and `/media/avatar/<asset>` (I-07, PX-W16) are ROOT
  * paths, reserved ahead of every product slug by `router.ts`. They stay exactly where they
  * were, and they must: the portal is one account across every tenant on the deployment — an
  * account can hold licences for several products at once — so there is no `<product>` to scope
@@ -32,6 +33,8 @@ import {
 } from "./api.js";
 import { portalSecurityHeaders } from "./headers.js";
 import { handlePortalMedia } from "./media.js";
+import { serveAvatar } from "../card/avatars.js";
+import { handleProviderSignInPath } from "../providers/flow.js";
 
 function portalShell(): Response {
   return new Response(
@@ -63,6 +66,12 @@ async function servePortalAsset(
   // already-normalised path is proxied, and every response carries the security headers.
   const isShell = !isSafeAssetPath(cleanPath) || !cleanPath.includes(".");
   url.pathname = isShell ? "/index.html" : cleanPath;
+  // The shell is the same bytes for every query, and a query can carry a secret: a legacy
+  // `/activate?key=<license key>` link (one of the links already out from before the key moved
+  // into the `#key=` fragment). The query is never passed on, so the key reaches no subrequest;
+  // the shell is `no-store` and `Referrer-Policy: no-referrer`, and nothing here echoes or
+  // records it.
+  if (isShell) url.search = "";
   const res = await env.ASSETS.fetch(new Request(url, req));
   const headers = new Headers(res.headers);
   if (isShell) headers.set("cache-control", "no-store");
@@ -87,14 +96,22 @@ export async function handlePortal(
     path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
 
   if (clean === "/login") return handlePortalLogin(req, env, db);
+  // I-06: Google, Apple and Steam on the login card (`../providers/flow.ts`).
+  if (clean.startsWith("/login/")) {
+    return handleProviderSignInPath(req, env, db, clean, { now });
+  }
   if (clean === "/callback") return handlePortalCallback(req, env, db, now);
-  if (clean === "/logout") return handlePortalLogout(req);
+  if (clean === "/logout") return handlePortalLogout(req, env, db, now);
   if (clean === "/magic/verify") return handleMagicVerify(req, env, db, now);
   if (clean === "/api" || clean.startsWith("/api/")) {
     return handlePortalApi(req, env, db, clean, now, opts.hooksFor);
   }
   // PX-W1: the same-origin media proxy (`media.ts`): `/media/<product>/<asset>`, public. Every
   // other path under `/media` is its not-found, never the SPA shell.
+  // I-07, PX-W16: account pictures, `/media/avatar/<asset>` (`avatar` is a reserved product slug,
+  // so this never shadows a product's art).
+  const avatar = clean.match(/^\/media\/avatar\/([^/]+)$/);
+  if (avatar) return serveAvatar(req, env, avatar[1] ?? "");
   if (clean === "/media" || clean.startsWith("/media/")) {
     const media = clean.match(/^\/media\/([^/]+)\/([^/]+)$/);
     return handlePortalMedia(

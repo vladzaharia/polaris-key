@@ -94,7 +94,7 @@ function isRecord(v: unknown): v is Record<string, unknown> {
 }
 
 /** A service fragment's endpoint template, or null when the fragment lacks it. */
-function endpoint(
+export function endpoint(
   discovery: DiscoveryDocument | null,
   service: "update" | "release" | "distribution",
   name: string,
@@ -108,7 +108,7 @@ function endpoint(
 }
 
 /** Substitute `{name}` placeholders (percent-encoded) and resolve against the control plane. */
-function expand(
+export function expand(
   template: string,
   baseUrl: string,
   values: Record<string, string>,
@@ -120,7 +120,7 @@ function expand(
 }
 
 /** The wire code a refusal body names (`{error: {code}}` or `{error: "code"}`), or null. */
-async function wireCodeOf(res: Response): Promise<string | null> {
+export async function wireCodeOf(res: Response): Promise<string | null> {
   try {
     const body: unknown = await res.json();
     if (!isRecord(body)) return null;

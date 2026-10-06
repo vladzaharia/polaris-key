@@ -77,6 +77,8 @@ import {
   type SystemRepository,
 } from "./admin/systemProduct.js";
 import { MANIFEST_FILE_NAMES } from "./services/release/manifestFiles.js";
+import { reservedNamesMode } from "./core/reservedNames.js";
+import { reservedDisplayNamesMode } from "./core/reservedDisplayNames.js";
 
 export const DEPLOY_HOOK_PATH = "/webhooks/deploy";
 /** The one workflow whose runs may call the hook. */
@@ -224,7 +226,10 @@ export async function handleDeployHook(
       e instanceof Error ? e.message : "unreadable body",
     );
   }
-  const parsed = parseManifest(files);
+  const parsed = parseManifest(files, {
+    reservedNames: await reservedNamesMode(env, db),
+    reservedDisplayNames: await reservedDisplayNamesMode(env, db),
+  });
   if (!parsed.ok)
     return refuse(
       400,
@@ -282,6 +287,9 @@ export async function handleDeployHook(
       repositoryId: policy.repositoryId,
       repositoryOwnerId: policy.repositoryOwnerId,
     },
+    // ST-01a: the snapshot records the documents this body carried, applied at the commit this
+    // deploy built (`PKEY_GIT_SHA`, which deploy.yml sets to the same `GITHUB_SHA` the job ran at).
+    { files, sha: env.PKEY_GIT_SHA ?? null },
     now,
     manifestIngestFor(SERVICES),
   );

@@ -41,11 +41,25 @@ export interface SubjectStore {
     ctx: SubjectStoreContext,
     args: { product: string; subject: string },
   ): Promise<void>;
-  /** The subject's data for one product, for a per-product export (optional until I-11). */
+  /** The subject's data for one product, for a per-product export. Optional in the type until
+   *  I-11 calls it; the registry guard (`test/subjectStores.test.ts`) requires it of every store
+   *  that declares a table or a Durable Object class (plans/U-01.md §6.1). */
   export?(
     ctx: SubjectStoreContext,
     args: { product: string; subject: string },
   ): Promise<unknown>;
+  /** How many bytes the subject's data for one product takes (the console Users page's account ×
+   *  product data size, I-12). Optional: a store without it counts as 0. */
+  size?(
+    ctx: SubjectStoreContext,
+    args: { product: string; subject: string },
+  ): Promise<number>;
+  /** U-02: the D1 tables this store keeps keyed by pairwise subject. The registry guard fails
+   *  for any table with a subject column that no store claims and that is not Identity's own. */
+  tables?: readonly string[];
+  /** U-02: the Durable Object classes this store names by subject (Cloud Sync's
+   *  `idFromName("<product>:<subject>")`). The guard fails for an unclassified class. */
+  durableObjects?: readonly string[];
 }
 
 const STORES = new Map<string, SubjectStore>();
@@ -53,7 +67,8 @@ const STORES = new Map<string, SubjectStore>();
 /**
  * Register a subject-keyed store. Names are unique: registering one twice is a programming error
  * (two modules claiming one table), so it throws rather than silently replacing the first.
- * U-02 adds the guard test that fails when a subject-keyed table has no registration.
+ * `test/subjectStores.test.ts` (U-02) fails when a subject-keyed table or Durable Object class
+ * has no registration, or a registration lacks `merge`, `delete` or `export`.
  */
 export function registerSubjectStore(name: string, store: SubjectStore): void {
   if (STORES.has(name)) {
@@ -65,6 +80,11 @@ export function registerSubjectStore(name: string, store: SubjectStore): void {
 /** Remove a registration (tests only: the registry is module state). */
 export function unregisterSubjectStore(name: string): void {
   STORES.delete(name);
+}
+
+/** The registered stores by name, sorted (for the registry guard test). */
+export function subjectStores(): Array<[string, SubjectStore]> {
+  return subjectStoreNames().map((n) => [n, STORES.get(n)!]);
 }
 
 /** The registered store names, sorted (for the guard test and diagnostics). */
@@ -92,6 +112,39 @@ export async function runSubjectDelete(
   }
 }
 
+/**
+ * Every store's export for one product, keyed by store name (the console's per-subject export,
+ * I-12; the portal's per-product export, I-11). A store without `export` is listed as `null`, so
+ * the export says the store exists and holds nothing it can hand out.
+ */
+export async function runSubjectExport(
+  ctx: SubjectStoreContext,
+  args: { product: string; subject: string },
+): Promise<Record<string, unknown>> {
+  const out: Record<string, unknown> = {};
+  for (const name of subjectStoreNames()) {
+    const store = STORES.get(name)!;
+    out[name] = store.export ? await store.export(ctx, args) : null;
+  }
+  return out;
+}
+
+/** The subject's data size for one product, per store and in total (bytes). */
+export async function subjectDataSize(
+  ctx: SubjectStoreContext,
+  args: { product: string; subject: string },
+): Promise<{ total: number; stores: Array<{ name: string; bytes: number }> }> {
+  const stores: Array<{ name: string; bytes: number }> = [];
+  let total = 0;
+  for (const name of subjectStoreNames()) {
+    const store = STORES.get(name)!;
+    const bytes = store.size ? Math.max(0, await store.size(ctx, args)) : 0;
+    stores.push({ name, bytes });
+    total += bytes;
+  }
+  return { total, stores };
+}
+
 // ── The clearing hook ───────────────────────────────────────────────────────────────────────
 
 /**
@@ -104,14 +157,19 @@ export type ClearReason =
   | "account_disabled"
   | "account_deleted"
   | "product_removed"
-  | "relinked";
+  | "relinked"
+  /** PX-W17: the product's Identity service was turned off. Every binding of the product goes;
+   *  no seat is ever released for this reason, whatever `bound_by` says. */
+  | "identity_disabled";
 
 /** Which devices a clear reaches. */
 export type ClearScope =
   | { kind: "device"; product: string; deviceId: string }
   | { kind: "subject"; product: string; subject: string }
   | { kind: "account"; accountId: string }
-  | { kind: "license"; product: string; licenseId: string };
+  | { kind: "license"; product: string; licenseId: string }
+  /** PX-W17: every bound device of one product (Identity turned off). */
+  | { kind: "product"; product: string };
 
 interface BoundDevice {
   product: string;
@@ -162,6 +220,12 @@ async function boundDevices(db: Db, scope: ClearScope): Promise<BoundDevice[]> {
           WHERE d.product = ? AND d.license_id = ? AND d.subject IS NOT NULL`,
         scope.product,
         scope.licenseId,
+      );
+    case "product":
+      return db.all<BoundDevice>(
+        `SELECT ${cols} FROM devices d
+          WHERE d.product = ? AND d.subject IS NOT NULL`,
+        scope.product,
       );
   }
 }

@@ -54,7 +54,14 @@ const zstdWasmByPath: Plugin = {
 
 export default defineConfig(async () => {
   // Read in Node (workerd has no filesystem) and hand the SQL to the isolate as a binding.
-  const migrations = await readD1Migrations("./migrations");
+  // The pool orders migrations by `parseInt` of the name's prefix, which reads a builder's
+  // `00XX_` placeholder (the lead numbers new migrations at merge, CLAUDE.md) as 0 and applies it
+  // FIRST, before the tables it alters exist. Filename order, which the Node lane
+  // (`test/helpers.ts`), `scripts/record-deploy.mjs` and `LATEST_MIGRATION` already use, is the
+  // same order for every numbered file and puts a placeholder last.
+  const migrations = (await readD1Migrations("./migrations")).sort((a, b) =>
+    a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
+  );
   return {
     plugins: [
       zstdWasmByPath,
@@ -83,6 +90,8 @@ export default defineConfig(async () => {
             BLOB_ORIGIN: "https://dl.workerd.test",
             // F-02: a registry host for its isolation smoke test, likewise.
             PKG_ORIGIN: "https://pkg.workerd.test",
+            // HA-02: an image host for its isolation and serving smoke test, likewise.
+            IMG_ORIGIN: "https://img.workerd.test",
             TEST_MIGRATIONS: migrations,
             // 32 zero bytes, base64 — the same constant the Node lane seeds with.
             PLATFORM_KEK: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",

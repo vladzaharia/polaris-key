@@ -23,12 +23,15 @@ every load. There is no unsigned field left for a local attacker to poison.
 
 from __future__ import annotations
 
+import os
 import threading
+import weakref
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
 import httpx
 
+from .commerce import CommerceClient
 from .config.client import DEFAULT_ENV_PREFIX, ConfigClient
 from .core.bundle import ImportBundleResult, import_bundle
 from .core.cache import CacheManager
@@ -50,7 +53,9 @@ from .core.models import (
 )
 from .core.store import Store, StoreStatus
 from .core.sync import SyncDeps, SyncResult, sync as run_sync
-from .core.telemetry import build_snapshot, report_snapshot
+from .core.events import EventBus
+from .core.local_state import JsonStateFile
+from .core.update_journal import UpdateJournal
 from .core.token import (
     Reacquired,
     TokenManager,
@@ -66,6 +71,7 @@ from .devices.client import (
 )
 from .devices.facts import ProbeDeclaration
 from .identity.client import IdentityClient
+from .distribution import DistributionClient
 from .discovery import (
     DiscoveryOk,
     ServicesMap,
@@ -75,6 +81,7 @@ from .license.client import LicenseClient
 from .license.endpoints import ActivationOk, reacquire_token
 from .license.gate import LicenseState
 from .release.client import ReleaseClient
+from .update.bootguard import BootGuard
 from .update.client import UpdateClient, UpdateClientOptions
 
 __all__ = [
@@ -126,7 +133,7 @@ class DeviceInfo:
 
 class PolarisKeyClient:
     """Core plus ``client.license`` / ``.config`` / ``.devices`` / ``.identity`` /
-    ``.release`` / ``.update``."""
+    ``.release`` / ``.update`` / ``.commerce``."""
 
     def __init__(
         self,
@@ -146,6 +153,9 @@ class PolarisKeyClient:
         request_timeout: Optional[float] = DEFAULT_REQUEST_TIMEOUT_SECONDS,
         expected_services: Optional[Iterable[str]] = None,
         local_only: bool = False,
+        # PX-W13 (WIRE-CONTRACT-V4 §12.7.1): this device's label; None = the platform's
+        # node name, "" = send none.
+        device_name: Optional[str] = None,
         # ── config service inputs (override layers) ──────────────────────────────────
         local_overrides: Optional[Mapping[str, Any]] = None,
         env_prefix: str = DEFAULT_ENV_PREFIX,
@@ -176,6 +186,7 @@ class PolarisKeyClient:
             request_timeout=request_timeout,
             expected_services=expected_services,
             local_only=local_only,
+            device_name=device_name,
         )
         self._trust = TrustManager(self.core)
         self._cache = CacheManager(self.core, self._trust)
@@ -208,6 +219,10 @@ class PolarisKeyClient:
             lambda _source: self._on_license_acquired(),
             fingerprint=fingerprint,
         )
+        #: ``client.events`` (SDK parity pass §3.11): license, entitlement, config,
+        #: updateAvailable, packs and store changes, to any number of subscribers.
+        self.events = EventBus()
+        state_dir = self.core.local_state_dir()
         self.config = ConfigClient(
             self.core,
             self._cache,
@@ -215,12 +230,28 @@ class PolarisKeyClient:
             env_prefix=env_prefix,
             env=env,
             tokens=self._tokens,
+            local_store=JsonStateFile(
+                os.path.join(state_dir, "settings.json") if state_dir else None,
+                lambda: {"overrides": {}},
+            ),
+            events=self.events,
         )
         # Device-code sign-in raises the same acquisition event activation does: a
         # signed-in device holds a licensed token exactly as an activated one does, and
         # syncs the same way.
-        self.identity = IdentityClient(self.core, self._tokens, self._on_license_acquired)
-        self.release = ReleaseClient(self.core, self._tokens)
+        self.identity = IdentityClient(
+            self.core,
+            self._tokens,
+            self._on_license_acquired,
+            deactivate=lambda: self.license.deactivate(),
+            profile=lambda: self.license.get_profile(),
+            on_signed_out=lambda: self._license_changed(),
+        )
+        self.release = ReleaseClient(self.core, self._tokens, lambda: self._discovery_doc)
+        #: The public download model (``distribution/download.json``, SDK parity pass §3.8).
+        self.distribution = DistributionClient(
+            self.core, platform=getattr(update, "platform", None)
+        )
         # Wire v4's signed decision: the pinned release keys, the outlet, the installed build's
         # format and build number, the host's methods. Validated here: a bad value, or a
         # release key that is also a trust pin, raises `invalid-options` from the constructor.
@@ -234,8 +265,42 @@ class PolarisKeyClient:
             options=update,
         )
 
+        # Store purchases → licence flags (P6-01). The one-call claim helpers sync on success.
+        self.commerce = CommerceClient(
+            self.core,
+            self._tokens,
+            sync=lambda: self.sync(force=True),
+            is_entitled=lambda flag: self.license.is_entitled(flag),
+            outlet_kind=lambda: self.update.outlet.kind if self.update.outlet is not None else None,
+        )
+
         # `devices/report` carries the active pack set's id (plans/P4-01.md §2.11).
         self.devices.pack_set_id = self.update.packs.pack_set_id
+
+        # The update-health journal (P6-03; SDK parity pass §3.13): decide, packs, the boot
+        # guard and the install drivers record into it, and every device report carries its
+        # pending events in `updates`, with `gate`, `outlet` and `packInstalls` beside them.
+        self.update_journal = UpdateJournal(self.core.local_state_dir(), self._journal_context)
+        self.update.journal = self.update_journal
+        self.release.update = self.update
+        self.update._client_ref = weakref.ref(self)
+        self.update.events = self.events
+        self.update.packs.on(
+            lambda p: self.events.emit(
+                "packs", pack=p.pack_id, phase=p.phase, done=p.done, total=p.total
+            )
+        )
+        self._observed: Optional[Dict[str, Any]] = None
+        self.config.changed = self._publish
+        # The app build's boot guard (SDK parity pass §3.15), beside the token store.
+        self.update.guard = BootGuard(
+            self.core.local_state_dir(), lambda: self.core.version, journal=self.update_journal
+        )
+        self.update.packs.journal = self.update_journal
+        self.devices.journal = self.update_journal
+        self.devices.gate_status = lambda: self.license.status().status
+        self.devices.outlet_id = self.outlet_id
+        self.devices.pack_installs = self.update.packs.pack_installs
 
         self._discovery_doc: Optional[Dict[str, Any]] = None
         # The detectors behind the table's conditional N/As (P1b-10). Checked against the
@@ -250,10 +315,31 @@ class PolarisKeyClient:
         self._timer: Optional[threading.Thread] = None
 
     @classmethod
-    def create(cls, **opts: Any) -> "PolarisKeyClient":
+    def create(cls, *, auto_discover: Optional[bool] = None, **opts: Any) -> "PolarisKeyClient":
+        """Construct, :meth:`init` (no network) and, with ``auto_discover``, load the product's
+        discovery document so the sub-clients follow the services the product really runs.
+
+        ``auto_discover`` defaults to ``True`` when the host pins no ``expected_services`` (and
+        the client is not local-only): a client that was told nothing should learn the truth
+        rather than guess the suite default. Discovery is best-effort here: unreachable or
+        refused, the client keeps its offline answer (``expected_services``, else the default)
+        and :meth:`discover` can be called again later.
+        """
         c = cls(**opts)
         c.init()
+        if auto_discover is None:
+            auto_discover = opts.get("expected_services") is None and not opts.get("local_only")
+        if auto_discover:
+            c.try_discover()
         return c
+
+    def try_discover(self) -> Any:
+        """:meth:`discover`, but never raising: the result, or ``None`` when the request could
+        not be made (local-only, a transport failure)."""
+        try:
+            return self.discover()
+        except Exception:
+            return None
 
     # ── Lifecycle ───────────────────────────────────────────────────────────────────
     def init(self) -> None:
@@ -266,6 +352,12 @@ class PolarisKeyClient:
         # record is re-verified against what this load trusts, and each channel's `seq` floor
         # comes from the feed that survives.
         self.update.reload()
+        self._observed = self._observe()
+        status = self.store_status()
+        if status is not None and status.degraded is not None:
+            self.events.emit(
+                "store", reason=status.degraded.reason, detail=status.degraded.detail
+            )
         self._start_timer()
 
     def close(self) -> None:
@@ -404,20 +496,106 @@ class PolarisKeyClient:
         )
         if self._on_change is not None and result.applied and changed:
             self._on_change(self.license.status())
+        self._publish()
         return result
 
-    def _report_once(self) -> None:
-        token = self._tokens.current
-        if not token:
+    # ── Change events (SDK parity pass §3.11) ───────────────────────────────────────
+    def subscribe(self, listener: Callable[[Any], None], kinds: Optional[Iterable[str]] = None) -> Callable[[], None]:
+        """``client.events.subscribe``: call ``listener(event)`` for every change (or only
+        ``kinds``). Returns the unsubscribe function."""
+        return self.events.subscribe(listener, kinds)
+
+    def on_config_change(self, key: str, listener: Callable[[Any], None]) -> Callable[[], None]:
+        """Call ``listener(event)`` when ``key``'s effective value changes (``"*"``: any)."""
+        return self.config.on_change(key, listener)
+
+    def _observe(self) -> Dict[str, Any]:
+        try:
+            doc = self.license.doc
+            names = sorted(doc.entitlements) if doc is not None else []
+            return {
+                "status": self.license.status().status,
+                "ents": {n: self.license.entitlement_value(n) for n in names},
+                "config": self.config.snapshot(),
+            }
+        except Exception:
+            return {"status": None, "ents": {}, "config": {}}
+
+    def _publish(self) -> None:
+        """Emit the license, entitlement and config events since the last observation."""
+        before = self._observed
+        after = self._observe()
+        self._observed = after
+        if before is None:
             return
-        report_snapshot(
-            self.core,
-            token,
-            build_snapshot(self._cache, self._probes, self.caps, self.update.packs.pack_set_id),
-        )
+        if before["status"] != after["status"]:
+            self.events.emit("license", status=after["status"], previous=before["status"])
+        for name in sorted(set(before["ents"]) | set(after["ents"])):
+            a, b = after["ents"].get(name), before["ents"].get(name)
+            if a != b:
+                self.events.emit("entitlement", name=name, value=a, previous=b)
+        for key in sorted(set(before["config"]) | set(after["config"])):
+            a, b = after["config"].get(key), before["config"].get(key)
+            if a != b:
+                self.events.emit(
+                    "config", key=key, value=a, previous=b, source=self.config.get_config_source(key)
+                )
+
+    def _report_once(self) -> None:
+        if not self._tokens.current:
+            return
+        self.devices.report()
+
+    def crash_tags(self) -> Dict[str, str]:
+        """Tags for a crash reporter (SDK parity pass §3.14), exactly the convention the
+        Worker's Sentry hook maps to rollouts: ``release`` is ``<deliverable>@<version>[+<build>]``
+        (``app@1.2.0+45``), ``environment`` the channel, ``pkey.outlet`` the outlet (left out
+        when unknown). No crash SDK is imported: pass these to ``sentry_sdk.init(release=…,
+        environment=…)`` and ``sentry_sdk.set_tag("pkey.outlet", …)``."""
+        build = None
+        opts = self.update._configured.opts if self.update._configured is not None else None
+        if opts is not None and opts.build_number:
+            build = opts.build_number
+        tags = {
+            "release": f"app@{self.core.version}{'+' + build if build else ''}",
+            "environment": self.core.channel,
+        }
+        outlet = self.outlet_id()
+        if outlet:
+            tags["pkey.outlet"] = outlet
+        return tags
+
+    def outlet_id(self) -> Optional[str]:
+        """The outlet this install resolved (``client.update.outlet``: its id, else its kind),
+        or ``None`` without update options or when it is ``unknown``. Sent as the report's
+        ``outlet`` and stamped on every update-health event."""
+        try:
+            resolved = self.update.outlet
+        except Exception:
+            return None
+        if resolved is None:
+            return None
+        value = resolved.id or resolved.kind
+        return value if isinstance(value, str) and value and value != "unknown" else None
+
+    def _journal_context(self) -> Dict[str, Optional[str]]:
+        return {
+            "outlet": self.outlet_id(),
+            "channel": self.core.channel,
+            "release": self.core.version,
+        }
 
     def _on_license_acquired(self) -> None:
         self.sync(force=True)
+
+    def _license_changed(self) -> None:
+        """The licence state may have moved without a sync (a sign-out, a deactivation)."""
+        self._publish()
+        if self._on_change is not None:
+            try:
+                self._on_change(self.license.status())
+            except Exception:
+                pass
 
     def get_sync_state(self) -> SyncState:
         state = self._cache.state
@@ -430,11 +608,33 @@ class PolarisKeyClient:
             highWaterMark=self.core.high_water_mark,
         )
 
+    # ── One-call boot (SDK parity pass §3.4) ───────────────────────────────────────────
+    def boot(self, **opts: Any) -> Any:
+        """Discover → guard → sync (registering or enrolling when no player is needed) → gate →
+        decide → required packs → ready, through the shared boot stage machine. Returns a
+        :class:`~polaris_key.boot.BootOutcome`; see :func:`polaris_key.boot.run_boot` for the
+        options (``on_stage``, ``consent``, ``metered``, ``answer``, ``enroll``,
+        ``auto_confirm``, …). A ``needs_activation`` outcome is for the UI to render."""
+        from .boot import run_boot
+
+        return run_boot(self, **opts)
+
+    def ensure_activated(self, *, enroll: bool = False) -> Any:
+        """Register (an ``open`` product without License) or, with ``enroll=True``, enrol
+        keylessly when nothing is held, then sync. Returns an
+        :class:`~polaris_key.boot.ActivationOutcome` whose ``kind`` is ``needs-activation`` when
+        the player must still act."""
+        from .boot import ensure_activated
+
+        return ensure_activated(self, enroll=enroll)
+
     # ── Offline bundles (§7) ────────────────────────────────────────────────────────
     def import_bundle(self, jws: str, now: Optional[int] = None) -> ImportBundleResult:
         """Verify and install an offline activation bundle. All-or-nothing; no token is
         created. Raises :class:`PolarisError` carrying the §7 step that refused."""
-        return import_bundle(self.core, self._cache, jws, now)
+        result = import_bundle(self.core, self._cache, jws, now)
+        self._publish()
+        return result
 
     # ── Convenience passthroughs ────────────────────────────────────────────────────
     # Kept deliberately small. The suite's shape is `client.<service>.<verb>`; these exist
@@ -509,7 +709,7 @@ class PolarisKeyClient:
         """Deauthorizing THIS device is a full local deactivation; any other device is a
         roster operation that needs a credential."""
         if device_id == self.core.device_id:
-            self.license.deactivate()
+            self.deactivate()
             return
         self.devices.deauthorize(device_id)
 
@@ -518,6 +718,7 @@ class PolarisKeyClient:
 
     def deactivate(self) -> None:
         self.license.deactivate()
+        self._license_changed()
 
     def _reacquire(
         self, ctx: CoreContext, current: str, source: Optional[TokenSource]

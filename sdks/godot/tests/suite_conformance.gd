@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature core.verify core.bundle devices.fingerprint license.gate core.headers
+# @pkey-feature core.verify core.bundle devices.fingerprint license.gate core.headers identity.devicelabel
 # @pkey-feature update.feed release.record update.decide outlet.detect
 # @pkey-feature update.content packs.revoke packs.delegation packs.delta.feed
 # The Godot conformance runner: every section of the generator-owned corpus mirror
@@ -69,9 +69,11 @@ const CASES := "res://tests/corpus/v2/cases.json"
 const FINGERPRINT := "res://tests/corpus/v2/fingerprint.json"
 const GATE_MATRIX := "res://tests/corpus/v2/gate-matrix.json"
 const HEADERS := "res://tests/corpus/v2/headers.json"
+## WIRE-CONTRACT-V4 §12.7.1 (PX-W13): the device label, through PKeyDeviceLabel.normalize.
+const DEVICE_LABEL := "res://tests/corpus/v2/device-label.json"
 const UPDATE_MATRIX := "res://tests/corpus/v2/update-matrix.json"
 const OUTLET_MATRIX := "res://tests/corpus/v2/outlet-matrix.json"
-const HEADERS_VERSION := 1
+const HEADERS_VERSION := 2
 const CORPUS_VERSION := 2
 const FLOORS := {
 	"jwsCases": 36,
@@ -141,7 +143,21 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	var headers = _load(t, HEADERS)
 	if headers != null:
 		_header_cases(t, headers)
+	var labels = _load(t, DEVICE_LABEL)
+	if labels != null:
+		_device_label_cases(t, labels)
 	return true
+
+
+## Every device-label.json row through PKeyDeviceLabel.normalize ("" is the corpus's null).
+func _device_label_cases(t: PKeyTestContext, corpus: Dictionary) -> void:
+	t.check("deviceLabelVersion", corpus.get("deviceLabelVersion") is float and int(corpus["deviceLabelVersion"]) == PKeyConstants.DEVICE_LABEL_VERSION, str(corpus.get("deviceLabelVersion")))
+	var rows := _section(t, corpus, "cases")
+	for row in rows:
+		var want: String = "" if row["expect"] == null else String(row["expect"])
+		var got := PKeyDeviceLabel.normalize(String(row["raw"]))
+		t.check("device-label %s" % row["id"], got == want, "%s -> %s, want %s" % [JSON.stringify(row["raw"]), JSON.stringify(got), JSON.stringify(want)])
+	t.check("device-label: at least 20 rows", rows.size() >= 20, str(rows.size()))
 
 
 func _load(t: PKeyTestContext, path: String) -> Variant:
@@ -1134,6 +1150,13 @@ func _header_cases(t: PKeyTestContext, corpus: Dictionary) -> void:
 		var doctored := sample.duplicate()
 		doctored["expect"] = "macos" if sample["expect"] == "linux" else "linux"
 		t.check("%s: a doctored row fails the same comparison" % name, _header_passes(fn, sample) and not _header_passes(fn, doctored))
+	# WIRE-CONTRACT-V4 §5.2 rule 5: the update platform is the header value only for a build
+	# target; tvos, visionos and watchos are header values only (SP-08).
+	for v in ["macos", "ios", "android", "windows", "linux", "web"]:
+		t.check("update_platform_for(%s) is itself" % v, PKeyHeaders.update_platform_for(v) == v, PKeyHeaders.update_platform_for(v))
+	for v in ["tvos", "visionos", "watchos", ""]:
+		t.check("update_platform_for(%s) is none" % JSON.stringify(v), PKeyHeaders.update_platform_for(v) == "", PKeyHeaders.update_platform_for(v))
+	t.check("update_platform() follows platform() on a build target", PKeyHeaders.update_platform() == PKeyHeaders.update_platform_for(PKeyHeaders.platform()), PKeyHeaders.update_platform())
 
 
 # ── gate-matrix (§5, §5.1): the build-gate port and the licence gate ─────────────────────

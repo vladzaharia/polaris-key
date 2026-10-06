@@ -1,301 +1,35 @@
-import { existsSync, mkdirSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { chromium, type Browser, type Page } from "playwright";
-import { preview, type PreviewServer } from "vite";
-import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
-import { mediaResponseHeaders } from "../../worker/src/services/identity/portal/media.js";
+import type { Page } from "playwright";
 import {
-  portalMedia,
-  portalRoutes,
-  type Handler,
-  type PortalScenario,
-} from "./portalFixtures.js";
+  h1,
+  shoot,
+  startPortal,
+  type OpenOptions,
+  type PortalHarness,
+} from "./portalHarness.js";
+import type { PortalScenario } from "./portalFixtures.js";
 
 /**
- * The customer site (PORTAL.md) in real Chromium under the Worker's exact CSP: every main flow
- * loads with zero violations and no horizontal scroll at 360 px, in both themes.
+ * The customer site's main flows (PORTAL.md) in real Chromium under the Worker's exact CSP, driven
+ * end to end: activate, deep links, inline errors, device removal, ⌘K, search, focused flows,
+ * package access, sign-in and theme. Every screen and state is also checked on its own (both
+ * themes, both widths, axe, one h1, 360 px, visual baseline) by portalQuality.e2e.test.ts.
  *
- * Set `PK_SHOTS_DIR` to also save screenshots (dark and light, 1440 and 390 px) there.
+ * Set `PK_SHOTS_DIR` to also save screenshots there.
  */
 
-const here = fileURLToPath(new URL("..", import.meta.url));
-const CSP = appSecurityHeaders().get("content-security-policy")!;
-const SHOTS = process.env.PK_SHOTS_DIR;
-
-let server: PreviewServer;
-let browser: Browser;
-let base: string;
+let portal: PortalHarness;
 
 beforeAll(async () => {
-  if (!existsSync(`${here}dist/index.html`)) {
-    throw new Error(
-      "Build the console first: pnpm --filter @polaris-key/admin build",
-    );
-  }
-  if (SHOTS) mkdirSync(SHOTS, { recursive: true });
-  server = await preview({
-    root: here,
-    configFile: `${here}vite.config.ts`,
-    preview: { port: 0, strictPort: false, host: "127.0.0.1" },
-    logLevel: "silent",
-  });
-  base = server.resolvedUrls!.local[0]!.replace(/\/$/, "");
-  browser = await chromium.launch();
+  portal = await startPortal();
 });
 
 afterAll(async () => {
-  await browser?.close();
-  await new Promise<void>((r) => server?.httpServer.close(() => r()));
+  await portal?.stop();
 });
 
-interface Opened {
-  page: Page;
-  violations: () => Promise<string[]>;
-  requests: string[];
-  /**
-   * Closes the context. The catch-all route passes static assets through, and a font fetch can
-   * still be in flight when a test ends; dropping the routes first (Playwright's own advice)
-   * keeps that callback from rejecting into whichever test runs next.
-   */
-  close: () => Promise<void>;
-}
-
-async function open(
-  scenario: PortalScenario,
-  path: string,
-  opts: {
-    theme?: "dark" | "light";
-    width?: number;
-    height?: number;
-    /** Replies that replace the scenario's own for these routes. */
-    routes?: Record<string, Handler>;
-  } = {},
-): Promise<Opened> {
-  const theme = opts.theme ?? "dark";
-  const ctx = await browser.newContext({
-    viewport: { width: opts.width ?? 1440, height: opts.height ?? 900 },
-    colorScheme: theme,
-  });
-  await ctx.addInitScript((t) => {
-    window.localStorage.setItem("pk-admin-theme", t);
-    (window as unknown as { __v: string[] }).__v = [];
-    document.addEventListener("securitypolicyviolation", (e) =>
-      (window as unknown as { __v: string[] }).__v.push(
-        `${e.violatedDirective} ${e.blockedURI} ${e.sample}`,
-      ),
-    );
-  }, theme);
-  const routes = { ...portalRoutes(scenario), ...opts.routes };
-  const requests: string[] = [];
-  await ctx.route("**/*", async (route) => {
-    const req = route.request();
-    const url = new URL(req.url());
-    if (url.pathname.startsWith("/api/") || url.pathname === "/logout") {
-      requests.push(`${req.method()} ${url.pathname}${url.search}`);
-      const handler =
-        routes[`${req.method()} ${url.pathname}`] ?? routes[url.pathname];
-      if (!handler)
-        return route.fulfill({ status: 404, json: { error: "not_found" } });
-      const res = typeof handler === "function" ? handler(req) : handler;
-      return route.fulfill({ status: res.status ?? 200, json: res.body });
-    }
-    // PX-08: developer art as the media proxy answers it (same origin, its own headers).
-    if (url.pathname.startsWith("/media/")) {
-      requests.push(`${req.method()} ${url.pathname}`);
-      const png = portalMedia(url.pathname);
-      if (!png) return route.fulfill({ status: 404, body: "" });
-      const headers = Object.fromEntries(
-        mediaResponseHeaders({
-          "content-type": "image/png",
-          "content-length": String(png.byteLength),
-          "content-disposition": "inline",
-        }),
-      );
-      return route.fulfill({ status: 200, headers, body: png });
-    }
-    // The Worker serves the SPA shell for `/activate` (router.ts); vite preview does not.
-    const res =
-      url.pathname === "/activate"
-        ? await route.fetch({ url: `${base}/index.html` })
-        : await route.fetch();
-    const headers = { ...res.headers() };
-    if (
-      url.pathname.endsWith(".html") ||
-      url.pathname === "/" ||
-      url.pathname === "/activate"
-    )
-      headers["content-security-policy"] = CSP;
-    return route.fulfill({ response: res, headers });
-  });
-  const page = await ctx.newPage();
-  await page.goto(`${base}${path}`);
-  return {
-    page,
-    requests,
-    close: async () => {
-      await ctx.unrouteAll({ behavior: "ignoreErrors" });
-      await ctx.close();
-    },
-    violations: () =>
-      page.evaluate(() =>
-        (window as unknown as { __v: string[] }).__v.splice(0),
-      ),
-  };
-}
-
-async function noHorizontalScroll(page: Page): Promise<void> {
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - window.innerWidth,
-  );
-  expect(overflow, "horizontal page scroll").toBeLessThanOrEqual(0);
-}
-
-async function shoot(page: Page, name: string): Promise<void> {
-  if (!SHOTS) return;
-  await page.waitForTimeout(150);
-  await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
-}
-
-const h1 = (page: Page, name: string | RegExp) =>
-  page.getByRole("heading", { level: 1, name }).first().waitFor();
-
-/** Each screen at both widths in both themes: zero violations, no 360 px scroll. */
-const SCREENS: {
-  name: string;
-  scenario: PortalScenario;
-  path: string;
-  ready: (page: Page) => Promise<void>;
-  act?: (page: Page) => Promise<void>;
-}[] = [
-  {
-    name: "signin",
-    scenario: "signedOut",
-    path: "/",
-    ready: (p) => h1(p, "Sign in to Polaris Key"),
-  },
-  {
-    name: "library-empty",
-    scenario: "empty",
-    path: "/",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "library-1",
-    scenario: "one",
-    path: "/",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "library-3",
-    scenario: "three",
-    path: "/",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "library-12",
-    scenario: "twelve",
-    // No forced view: the desktop default grid, the phone default list (§8, mockup 21).
-    path: "/",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "library-12-list",
-    scenario: "twelve",
-    path: "/#/?view=list",
-    ready: (p) => h1(p, "Your library"),
-  },
-  {
-    name: "product",
-    scenario: "three",
-    path: "/#/p/nightfall",
-    ready: (p) => h1(p, "Nightfall"),
-  },
-  {
-    // No art at all: the letter tile alone beside the name, no banner.
-    name: "product-no-cover",
-    scenario: "twelve",
-    path: "/#/p/hollow-pines",
-    ready: (p) => h1(p, "Hollow Pines"),
-  },
-  {
-    // Cover art and no icon: the letter tile in front of the cover.
-    name: "product-no-icon",
-    scenario: "twelve",
-    path: "/#/p/glyphsmith",
-    ready: (p) => h1(p, "Glyphsmith"),
-  },
-  {
-    name: "product-not-found",
-    scenario: "three",
-    path: "/#/p/unknown-thing",
-    ready: (p) => h1(p, "That product isn't in your library"),
-  },
-  {
-    name: "account",
-    scenario: "three",
-    path: "/#/account",
-    ready: (p) => h1(p, "Account"),
-  },
-  {
-    name: "product-package",
-    scenario: "three",
-    path: "/#/p/tidewater/package",
-    ready: async (p) => {
-      await h1(p, "Tidewater Studio");
-      await p.getByRole("heading", { name: /Package access/ }).waitFor();
-    },
-  },
-  {
-    name: "device-limit",
-    scenario: "twelve",
-    path: "/#/p/orbit-survey/free-device?for=Mara%E2%80%99s%20Steam%20Deck&return=orbitsurvey%3A%2F%2Fretry",
-    ready: (p) => h1(p, "Your license is on 2 of 2 devices"),
-  },
-  {
-    name: "download-flow",
-    scenario: "three",
-    path: "/#/p/nightfall/download?platform=linux",
-    ready: (p) => h1(p, "Download Nightfall for Linux"),
-  },
-  {
-    name: "discover-empty",
-    scenario: "three",
-    path: "/#/discover",
-    ready: (p) => h1(p, "Nothing to add right now"),
-  },
-];
-
-describe("the customer site under the Worker's CSP", () => {
-  for (const screen of SCREENS) {
-    it(`${screen.name}: both themes, 1440 and 390 px, no violations or 360 px scroll`, async () => {
-      for (const theme of ["dark", "light"] as const) {
-        for (const width of [1440, 390]) {
-          const o = await open(screen.scenario, screen.path, {
-            theme,
-            width,
-            height: width === 390 ? 844 : 900,
-          });
-          await screen.ready(o.page);
-          await shoot(
-            o.page,
-            `${screen.name}-${width === 390 ? "mobile" : "desktop"}-${theme}`,
-          );
-          if (width === 390) {
-            await o.page.setViewportSize({ width: 360, height: 780 });
-            await o.page.waitForTimeout(100);
-            await noHorizontalScroll(o.page);
-          }
-          expect(
-            await o.violations(),
-            `${screen.name} ${theme} ${width}`,
-          ).toEqual([]);
-          await o.close();
-        }
-      }
-    });
-  }
-});
+const open = (scenario: PortalScenario, path: string, opts?: OpenOptions) =>
+  portal.open(scenario, path, opts);
 
 /** What paints at the middle of the icon's top quarter, the part that overlaps the cover. */
 async function iconOnTop(
@@ -439,8 +173,14 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
               (a) => a.getAttribute("aria-labelledby") === "tile-nightfall",
             )!;
             const art = article.querySelector<HTMLElement>("[data-art]")!;
-            const plate = art.querySelector<HTMLElement>("span.absolute")!;
+            // Healthy is silence on art (UX-03): Nightfall has no plate; the issue plate
+            // (owner's padding) is measured on Ember Tactics, which has expired.
+            const emberArt = document.querySelector<HTMLElement>(
+              "article[aria-labelledby='tile-ember-tactics'] [data-art]",
+            )!;
+            const plate = emberArt.querySelector<HTMLElement>("span.absolute")!;
             const a = art.getBoundingClientRect();
+            const e = emberArt.getBoundingClientRect();
             const p = plate.getBoundingClientRect();
             const pill = plate.firstElementChild!.getBoundingClientRect();
             const icon = article.querySelector<HTMLElement>("img[data-art]")!;
@@ -452,8 +192,11 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
             const q = getComputedStyle(square);
             return {
               ratio: a.width / a.height,
-              insetRight: a.right - p.right,
-              insetBottom: a.bottom - p.bottom,
+              healthyPlate:
+                (art.querySelector("span.absolute")?.childElementCount ?? 0) >
+                0,
+              insetRight: e.right - p.right,
+              insetBottom: e.bottom - p.bottom,
               plateHeight: pill.height,
               byline: article.textContent!.includes("Lanternworks"),
               iconFrame: [
@@ -471,6 +214,7 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
             1,
           );
           expect(card.insetRight).toBeGreaterThanOrEqual(16);
+          expect(card.healthyPlate).toBe(false);
           expect(card.insetBottom).toBeGreaterThanOrEqual(16);
           expect(card.insetRight).toBe(card.insetBottom);
           expect(card.plateHeight).toBeGreaterThanOrEqual(32);
@@ -487,31 +231,36 @@ describe("library cards: 16:9 art, the status inset on its plate, no byline", ()
   }
 });
 
-describe("Discover count (G24): never counts what the library holds", () => {
-  it("count 0 hides the nav pill and the phone bar's dot, and the library's Discover line", async () => {
-    const library = (
-      portalRoutes("three")["/api/library"] as () => {
-        body: { products: unknown[] };
-      }
-    )().body;
+describe("Discover count (P6, FLOWS P-13): counts only what the page lists", () => {
+  // PX-16 made the Discover page list `GET /api/discover` (`DISCOVER_LISTS_OFFERS` is true), so
+  // the Worker's count shows in both navs and the page lists exactly the offers it counted.
+  it("the Worker counts 4 offers and the page lists them: Discover in either nav, with the count", async () => {
     for (const width of [1440, 390]) {
-      const o = await open("three", "/", {
-        width,
-        routes: {
-          "/api/library": { body: { ...library, discoverCount: 0 } },
-        },
-      });
+      // The fixture's library carries `discoverCount: 4`, one per offer `GET /api/discover` sends.
+      const o = await open("three", "/", { width });
       await h1(o.page, "Your library");
       const nav = o.page.getByRole("navigation", {
         name: width === 390 ? "Phone" : "Main",
       });
+      await nav.getByRole("link", { name: /Library/ }).waitFor();
       const discover = nav.getByRole("link", { name: /Discover/ });
       await discover.waitFor();
-      expect((await discover.innerText()).trim()).toBe("Discover");
-      expect(await discover.locator("span.rounded-full").count()).toBe(0);
-      expect(await o.page.getByText(/in Discover/).count()).toBe(0);
+      expect(await discover.count()).toBe(1);
+      // The desktop count is visible; the phone bar's dot carries ", 4 offers" for readers.
+      expect(await discover.textContent()).toContain("4");
+      expect(await o.violations()).toEqual([]);
       await o.close();
     }
+  });
+
+  it("a typed #/discover lists the four offers it counted", async () => {
+    const o = await open("three", "/#/discover");
+    await h1(o.page, "Discover");
+    for (const name of ["Quill", "Mossgarden", "Lumen RAW", "Pixel Forge SDK"])
+      await o.page.getByRole("article", { name }).waitFor();
+    expect(await o.page.getByRole("article").count()).toBe(4);
+    expect(await o.violations()).toEqual([]);
+    await o.close();
   });
 });
 
@@ -532,10 +281,10 @@ describe("Library on GET /api/library (PX-08)", () => {
       [...document.images].map((i) => new URL(i.src).pathname),
     );
     expect(srcs.every((s) => s.startsWith("/media/"))).toBe(true);
-    expect(o.requests).toContain("GET /media/nightfall/header");
+    expect(o.requests).toContain("GET /media/nightfall/header?v=1");
     await o.page
       .getByRole("navigation", { name: "Main" })
-      .getByRole("link", { name: /Discover/ })
+      .getByRole("link", { name: /Library/ })
       .waitFor();
     expect(await o.violations()).toEqual([]);
     await o.close();
@@ -555,14 +304,13 @@ describe("focused flows (PX-10)", () => {
         .getByRole("radio", { name: /Work laptop/ })
         .getAttribute("aria-checked"),
     ).toBe("true");
-    await o.page
-      .getByRole("button", { name: "Remove Work laptop and continue" })
-      .click();
+    await o.page.getByRole("button", { name: "Remove Work laptop" }).click();
     await h1(o.page, "Work laptop was removed");
     await shoot(o.page, "device-limit-done-mobile-dark");
     expect(
       await o.page
-        .getByRole("link", { name: "Return to Orbit Survey" })
+        .getByRole("link", { name: "Back to Orbit Survey" })
+        .last()
         .getAttribute("href"),
     ).toBe("orbitsurvey://retry");
     expect(o.requests).toContain(
@@ -580,11 +328,178 @@ describe("focused flows (PX-10)", () => {
     await h1(o.page, "Your license is on 2 of 2 devices");
     expect(
       await o.page
-        .getByRole("link", { name: "Back to Orbit Survey" })
+        .getByRole("link", { name: "See Orbit Survey in your library" })
         .getAttribute("href"),
     ).toBe("#/p/orbit-survey");
     expect(await o.page.content()).not.toContain("evil.example");
     await o.close();
+  });
+});
+
+describe("the Activate link from an app (PX-17)", () => {
+  const KEY = "pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w";
+
+  it("next=free-device: names why, adds the key, then the free-device flow with the app's way back", async () => {
+    const o = await open(
+      "three",
+      `/activate?product=mossgarden&next=free-device&for=macOS+arm64&return=mossgarden%3A%2F%2Fretry#key=${KEY}`,
+      { width: 390, height: 844 },
+    );
+    const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
+    await dialog.getByText(/then free one up for macOS arm64/).waitFor();
+    await dialog.getByRole("button", { name: "Continue" }).click();
+    const confirm = o.page.getByRole("dialog", {
+      name: "Add Mossgarden to your account?",
+    });
+    await confirm.getByRole("button", { name: "Add Mossgarden" }).click();
+    await h1(o.page, "Your license has a free device");
+    expect(await o.page.evaluate(() => location.hash)).toBe(
+      "#/p/mossgarden/free-device?license=lic_mossgarden&for=macOS+arm64&return=mossgarden%3A%2F%2Fretry",
+    );
+    // Focus lands on the flow's heading (§9.4).
+    await expect
+      .poll(() => o.page.evaluate(() => document.activeElement?.tagName))
+      .toBe("H1");
+    expect(
+      await o.page
+        .getByRole("link", { name: "Back to Mossgarden" })
+        .last()
+        .getAttribute("href"),
+    ).toBe("mossgarden://retry");
+    expect(o.requests).toContain("POST /api/claim/license-key");
+    // The key went in the claim's body only: no request line or Referer carries it.
+    expect(o.all.filter((r) => r.includes("pkey_"))).toEqual([]);
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("return= to the login card: back to /signin?request=… after the add, the key in no URL", async () => {
+    const o = await open(
+      "three",
+      `/activate?product=mossgarden&return=%2Fsignin%3Frequest%3Drq_0123456789abcdef#key=${KEY}`,
+    );
+    const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
+    await dialog.getByText(/Signing in to Mossgarden/).waitFor();
+    await dialog.getByRole("button", { name: "Continue" }).click();
+    await o.page
+      .getByRole("dialog", { name: "Add Mossgarden to your account?" })
+      .getByRole("button", { name: "Add Mossgarden" })
+      .click();
+    await o.page.waitForURL(/\/signin\?request=rq_0123456789abcdef$/);
+    expect(o.requests).toContain("POST /api/claim/license-key");
+    expect(o.all.filter((r) => r.includes("pkey_"))).toEqual([]);
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+});
+
+describe("portal flow conformance (UX-79)", () => {
+  it("on a phone, the removal toast sits at the bottom above the phone bar, full width", async () => {
+    for (const theme of ["dark", "light"] as const) {
+      const o = await open("three", "/#/p/nightfall/devices", {
+        width: 390,
+        height: 844,
+        theme,
+      });
+      await h1(o.page, "Nightfall");
+      await o.page
+        .getByRole("button", { name: "Remove Studio PC" })
+        .first()
+        .click();
+      await o.page
+        .getByRole("button", { name: "Remove Studio PC", exact: true })
+        .last()
+        .click();
+      const toast = o.page
+        .locator("[data-sonner-toast]")
+        .filter({ hasText: "Studio PC was removed" });
+      await toast.waitFor();
+      await expect
+        .poll(() => o.page.evaluate(() => document.activeElement?.tagName))
+        .toBe("H1");
+      // Let the toast's enter settle before measuring.
+      await o.page.waitForTimeout(500);
+      const box = await toast.boundingBox();
+      const bar = await o.page
+        .getByRole("navigation", { name: "Phone" })
+        .boundingBox();
+      expect(box && bar).toBeTruthy();
+      expect(box!.y).toBeGreaterThan(844 / 2);
+      expect(box!.y + box!.height).toBeLessThanOrEqual(bar!.y);
+      expect(box!.width).toBeGreaterThan(390 - 48);
+      await shoot(o.page, `device-removed-toast-390-${theme}`);
+      expect(await o.violations()).toEqual([]);
+      await o.close();
+    }
+  });
+
+  it("Free a device: least recent as text, an action-named primary, a back label that fits at 390", async () => {
+    for (const theme of ["dark", "light"] as const) {
+      for (const width of [1440, 390]) {
+        const o = await open(
+          "twelve",
+          "/#/p/orbit-survey/free-device?for=Steam%20Deck",
+          { width, height: width === 390 ? 844 : 900, theme },
+        );
+        await h1(o.page, "Your license is on 2 of 2 devices");
+        const work = o.page.getByRole("radio", { name: /Work laptop/ });
+        expect(await work.innerText()).toMatch(/· least\srecent/);
+        await o.page
+          .getByRole("button", { name: "Remove Work laptop", exact: true })
+          .waitFor();
+        const back = o.page
+          .getByRole("banner")
+          .getByRole("link", { name: /See Orbit Survey/ });
+        const label = back.locator("span.truncate");
+        const clipped = await label.evaluate(
+          (el) => el.scrollWidth > el.clientWidth,
+        );
+        expect(clipped, `${theme} ${width}`).toBe(false);
+        expect((await back.innerText()).trim()).toBe(
+          width === 390
+            ? "See Orbit Survey"
+            : "See Orbit Survey in your library",
+        );
+        await shoot(o.page, `free-device-${width}-${theme}`);
+        expect(await o.violations()).toEqual([]);
+        await o.close();
+      }
+    }
+  });
+
+  it("screens: activate confirm and the library without Discover, both widths and themes", async () => {
+    for (const theme of ["dark", "light"] as const) {
+      for (const width of [1440, 390]) {
+        const o = await open("three", "/", {
+          width,
+          height: width === 390 ? 844 : 900,
+          theme,
+        });
+        await h1(o.page, "Your library");
+        await shoot(o.page, `library-no-discover-${width}-${theme}`);
+        await o.page
+          .getByRole(width === 390 ? "navigation" : "banner", {
+            name: width === 390 ? "Phone" : undefined,
+          })
+          .getByRole("button", { name: /^Activate/ })
+          .click();
+        const dialog = o.page.getByRole("dialog", {
+          name: "Activate a license",
+        });
+        await dialog
+          .getByRole("textbox", { name: "License key" })
+          .fill("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w");
+        await dialog.getByRole("button", { name: "Continue" }).click();
+        await expect
+          .poll(() =>
+            o.page.evaluate(() => document.activeElement?.textContent),
+          )
+          .toBe("Add Mossgarden to your account?");
+        await shoot(o.page, `activate-confirm-${width}-${theme}`);
+        expect(await o.violations()).toEqual([]);
+        await o.close();
+      }
+    }
   });
 });
 
@@ -628,6 +543,10 @@ describe("main flows", () => {
     });
     await confirm.waitFor();
     await confirm.getByText("Lifetime · up to 5 devices").waitFor();
+    // Focus follows the step to its heading (FLOWS.md §2 C18, P-5).
+    await expect
+      .poll(() => o.page.evaluate(() => document.activeElement?.textContent))
+      .toBe("Add Mossgarden to your account?");
     await shoot(o.page, "activate-confirm-desktop-dark");
     expect(o.requests).toContain("POST /api/activate/preview");
     expect(o.requests).not.toContain("POST /api/claim/license-key");
@@ -636,6 +555,9 @@ describe("main flows", () => {
       name: "Mossgarden is in your library",
     });
     await done.waitFor();
+    await expect
+      .poll(() => o.page.evaluate(() => document.activeElement?.textContent))
+      .toBe("Mossgarden is in your library");
     await shoot(o.page, "activate-done-desktop-dark");
     await done.getByRole("button", { name: "Open Mossgarden" }).click();
     await h1(o.page, "Mossgarden");
@@ -647,7 +569,35 @@ describe("main flows", () => {
     await o.close();
   });
 
-  it("opens /activate?key=… as the Library with the modal prefilled", async () => {
+  it("opens /activate#key=… as the Library with the modal prefilled", async () => {
+    const o = await open(
+      "three",
+      "/activate#key=pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w",
+      { width: 390, height: 844 },
+    );
+    const dialog = o.page.getByRole("dialog", { name: "Activate a license" });
+    await dialog.waitFor();
+    expect(
+      await dialog.getByRole("textbox", { name: "License key" }).inputValue(),
+    ).toBe("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w");
+    await dialog.getByText("Filled in from your link").waitFor();
+    expect(await o.page.evaluate(() => location.pathname)).toBe("/");
+    // The fragment is gone from the address bar.
+    await expect
+      .poll(() => o.page.evaluate(() => location.href))
+      .not.toContain("pkey_");
+    await shoot(o.page, "activate-link-mobile-dark");
+    await o.page.keyboard.press("Escape");
+    await h1(o.page, "Your library");
+    // Every request the page made, the document navigation included (a fragment is never sent),
+    // has the key in neither its URL nor its Referer.
+    expect(o.all.length).toBeGreaterThan(1);
+    expect(o.all.filter((r) => r.includes("pkey_"))).toEqual([]);
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("opens a legacy /activate?key=… the same way, and no later request carries the key", async () => {
     const o = await open(
       "three",
       "/activate?key=pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w",
@@ -660,9 +610,21 @@ describe("main flows", () => {
     ).toBe("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w");
     await dialog.getByText("Filled in from your link").waitFor();
     expect(await o.page.evaluate(() => location.pathname)).toBe("/");
-    await shoot(o.page, "activate-link-mobile-dark");
+    // The query is gone from the address bar.
+    await expect
+      .poll(() => o.page.evaluate(() => location.href))
+      .not.toContain("pkey_");
     await o.page.keyboard.press("Escape");
     await h1(o.page, "Your library");
+    // The document navigation is the legacy link itself, so it carries `?key=` by definition:
+    // it is the one request excluded, and only it. Every later request (the shell's own
+    // `/assets/*`, fonts and icons, which start before the rewrite, then the app's API calls)
+    // has the key in neither its URL nor its Referer, because the shell is served with
+    // `Referrer-Policy: no-referrer`.
+    const [navigation, ...later] = o.all;
+    expect(navigation).toMatch(/^GET \S+\/activate\?key=pkey_\S+ referer=$/);
+    expect(later.length).toBeGreaterThan(0);
+    expect(later.filter((r) => r.includes("pkey_"))).toEqual([]);
     expect(await o.violations()).toEqual([]);
     await o.close();
   });
@@ -676,6 +638,14 @@ describe("main flows", () => {
       .fill("pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4z");
     await dialog.getByRole("button", { name: "Continue" }).click();
     await dialog.getByText(/We couldn't find that key/).waitFor();
+    // Continue is disabled until the key changes; focus goes to the field, not body (P-5).
+    await expect
+      .poll(() =>
+        o.page.evaluate(() =>
+          document.activeElement?.getAttribute("aria-invalid"),
+        ),
+      )
+      .toBe("true");
     await shoot(o.page, "activate-errors-desktop-dark");
     expect(await o.violations()).toEqual([]);
     await o.close();
@@ -702,6 +672,59 @@ describe("main flows", () => {
     expect(o.requests.some((r) => r.startsWith("DELETE /api/licenses/"))).toBe(
       true,
     );
+    // The row has gone; focus is on the product's h1, never body (FLOWS.md P-7).
+    await expect
+      .poll(() => o.page.evaluate(() => document.activeElement?.tagName))
+      .toBe("H1");
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("a sign-in licence lists its devices and removes one remotely", async () => {
+    const o = await open("signIn", "/#/p/quill/devices");
+    await h1(o.page, "Quill");
+    await o.page.getByText("From signing in · Lifetime").waitFor();
+    expect(await o.page.getByText(/Account-wide/).count()).toBe(0);
+    await o.page
+      .getByRole("button", { name: "Remove Living room PC" })
+      .first()
+      .click();
+    await o.page
+      .getByRole("heading", { name: "Remove Living room PC?" })
+      .waitFor();
+    await o.page
+      .getByRole("button", { name: "Remove Living room PC", exact: true })
+      .last()
+      .click();
+    await o.page.getByText("Living room PC was removed").first().waitFor();
+    expect(
+      o.requests.some(
+        (r) => r === "DELETE /api/licenses/quill/lic_quill/devices/quill-tv",
+      ),
+    ).toBe(true);
+    expect(await o.violations()).toEqual([]);
+    await o.close();
+  });
+
+  it("with a Steam key and a sign-in licence, the key licence hides its counter", async () => {
+    const o = await open("signIn", "/#/p/drift-kart");
+    await h1(o.page, "Drift Kart");
+    const card = o.page.getByRole("region", { name: "Drift Kart license" });
+    await card.getByText("Activated").waitFor();
+    const picker = card.getByRole("combobox");
+    expect((await picker.locator("option").allTextContents()).sort()).toEqual([
+      "Standard · Sign-in",
+      "Standard · Steam key",
+    ]);
+    await card.getByText("Steam key · Lifetime").waitFor();
+    expect(await card.getByText(/\d+ (of \d+ )?devices?$/).count()).toBe(0);
+    const devices = o.page.getByRole("region", { name: "Devices" });
+    await devices.getByText("Mara's MacBook Pro").waitFor();
+    expect(await devices.getByText(/in use/).count()).toBe(0);
+    await picker.selectOption({ label: "Standard · Sign-in" });
+    await card.getByText("From signing in · Lifetime").waitFor();
+    await card.getByText(/^1 of \d+ devices?$/).waitFor();
+    await devices.getByText("Mara's Steam Deck").waitFor();
     expect(await o.violations()).toEqual([]);
     await o.close();
   });
@@ -709,6 +732,8 @@ describe("main flows", () => {
   it("jumps to a product with ⌘K from 8 products", async () => {
     const o = await open("twelve", "/");
     await h1(o.page, "Your library");
+    // ⌘K listens only once the library has loaded (8+ products), after the h1 shows.
+    await o.page.getByText("Glyphsmith").first().waitFor();
     await o.page.keyboard.press("Control+k");
     const palette = o.page.getByRole("dialog", { name: "Jump to a product" });
     await palette.waitFor();
@@ -716,6 +741,16 @@ describe("main flows", () => {
     await shoot(o.page, "switcher-desktop-dark");
     await o.page.keyboard.press("Enter");
     await h1(o.page, "Glyphsmith");
+    // Focus lands on the product's h1, not body (FLOWS.md P-14).
+    await expect
+      .poll(() =>
+        o.page.evaluate(() =>
+          document.activeElement?.tagName === "H1"
+            ? document.activeElement.textContent
+            : null,
+        ),
+      )
+      .toBe("Glyphsmith");
     expect(await o.violations()).toEqual([]);
     await o.close();
   });
@@ -732,7 +767,7 @@ describe("main flows", () => {
     await o.close();
   });
 
-  it("signs in with an email link: the honest sent screen", async () => {
+  it("signs in with an email code: the six-cell code step", async () => {
     const o = await open("signedOut", "/", { width: 390, height: 844 });
     await h1(o.page, "Sign in to Polaris Key");
     await o.page
@@ -740,8 +775,9 @@ describe("main flows", () => {
       .fill("mara@fennick.studio");
     await o.page.getByRole("button", { name: "Continue" }).click();
     await h1(o.page, "Check your email");
+    await o.page.getByRole("textbox", { name: "6-digit code" }).waitFor();
     await shoot(o.page, "signin-sent-mobile-dark");
-    expect(o.requests).toContain("POST /api/magic/start");
+    expect(o.requests).toContain("POST /api/signin/email/start");
     expect(await o.violations()).toEqual([]);
     await o.close();
   });

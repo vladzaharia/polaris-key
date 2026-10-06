@@ -244,6 +244,23 @@ function feedPayload(
 }
 
 /**
+ * Work counters for building a document to sign, test hooks (P1-13's pattern): every
+ * whole-document serialization here (a size measure, a read-back through `feedContent`, the
+ * self-check) adds one to `serializations` and its length to `chars`. They are the dominant cost
+ * of `documentFor`; the CPU-budget checks diff them around a call instead of reading a clock, so
+ * they hold on a machine of any speed or load.
+ */
+export const feedDocWork = { serializations: 0, chars: 0 };
+
+/** `JSON.stringify(doc)`, counted in {@link feedDocWork}. */
+function serialize(doc: ChannelFeedDoc): string {
+  const text = JSON.stringify(doc);
+  feedDocWork.serializations++;
+  feedDocWork.chars += text.length;
+  return text;
+}
+
+/**
  * The composer's self-check: the claims every v4 SDK runs (with the canonical channel as the
  * requested name), the strict JSON profile, and the payload cap. `false` = never sign it.
  */
@@ -251,7 +268,7 @@ export function feedSelfCheck(
   doc: ChannelFeedDoc,
   platform: string | null,
 ): boolean {
-  const text = JSON.stringify(doc);
+  const text = serialize(doc);
   if (enc.encode(text).byteLength > MAX_FEED_PAYLOAD_BYTES) return false;
   if (!scanStrictJson(text).ok) return false;
   return (
@@ -264,7 +281,7 @@ export function feedSelfCheck(
 }
 
 const fits = (doc: ChannelFeedDoc): boolean =>
-  enc.encode(JSON.stringify(doc)).byteLength <= MAX_FEED_PAYLOAD_BYTES;
+  enc.encode(serialize(doc)).byteLength <= MAX_FEED_PAYLOAD_BYTES;
 
 /** One audit row a signing owes (P4-13's content shedding and omissions). */
 export interface FeedAudit {
@@ -280,7 +297,7 @@ function usableContent(
   doc: ChannelFeedDoc,
   audits: FeedAudit[],
 ): ChannelFeedDoc {
-  const parsed = feedContent(JSON.parse(JSON.stringify(doc)) as unknown);
+  const parsed = feedContent(JSON.parse(serialize(doc)) as unknown);
   const out = { ...doc };
   for (const key of ["packSets", "packFloors", "revocations"] as const)
     if (out[key] !== undefined && parsed[key] === null) {
@@ -341,7 +358,7 @@ function withDeltaMenu(
       summary: `The ${composed.channel} feed${where} lists ${lo} of ${list.length} delta menu entries; the lowest-ranked were left out to stay under ${MAX_FEED_PAYLOAD_BYTES} bytes.`,
     });
   const out = build(lo);
-  if (feedContent(JSON.parse(JSON.stringify(out)) as unknown).deltas === null) {
+  if (feedContent(JSON.parse(serialize(out)) as unknown).deltas === null) {
     audits.push({
       action: "update.feed.deltas_omitted",
       summary: `The ${composed.channel} feed's delta menu would read as unusable (feedContent) and was left out.`,

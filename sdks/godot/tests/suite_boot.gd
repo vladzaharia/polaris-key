@@ -1,5 +1,5 @@
 extends RefCounted
-# @pkey-feature ui.stages
+# @pkey-feature ui.stages ui.boot
 # PKeyBoot and PolarisKey.boot() (P1-10). Two halves:
 #
 #   rows    every stage-matrix.json row through PolarisKey.boot({view, host}) with a scripted host
@@ -450,10 +450,13 @@ func _deadline(t: PKeyTestContext) -> void:
 	var host := PKeyFakeBootHost.new()
 	var first: Array = []
 	_capture(sdk, {"view": view, "host": host, "sync_timeout_seconds": 0.3, "allow_offline": false}, first)
+	# Read before the answer that arms the deadline, so load can only lengthen the measured wait.
+	var started := Time.get_ticks_msec()
 	host.answer({"type": "shell.done"})
 	host.answer({"type": "guard.done", "result": "ok"})
-	var started := Time.get_ticks_msec()
-	while first.is_empty() and Time.get_ticks_msec() - started < 3000:
+	# A hang guard, not a speed budget (a deadline that never fires never answers): long enough
+	# that a loaded machine's slow frames still see the 0.3 s deadline fire.
+	while first.is_empty() and Time.get_ticks_msec() - started < 30000:
 		await (Engine.get_main_loop() as SceneTree).process_frame
 	var took := Time.get_ticks_msec() - started
 	t.check("server: the sync deadline sends sync.timeout (OFFLINE under allow_offline false)", not first.is_empty() and first[0].outcome == PKeyBoot.OFFLINE and took >= 250, "%s after %d ms" % [first, took])

@@ -18,11 +18,15 @@ import type {
 } from "../../core/registry.js";
 import { handleLicenseRoutes } from "./routes.js";
 import { handleLicenseAdmin } from "./admin/index.js";
-import { applyStoreGrant } from "./storeGrants.js";
+import { applyStoreGrant, storeGrantMergeStatements } from "./storeGrants.js";
 import { licenseProvenance } from "./provenance.js";
+import { licenseDeleteContribution } from "./deletion.js";
+import { LICENSE_SETTINGS_SLICE } from "./settings.js";
 
 export const licenseService: ServiceDescriptor = {
   slug: "license",
+  /** ST-03: this service's settings registry slice (`settings.ts`). */
+  settings: LICENSE_SETTINGS_SLICE,
   handle: handleLicenseRoutes,
   /** `license/{licenses,tiers,policy}` on the console API (§R1). */
   adminHandle: handleLicenseAdmin,
@@ -40,6 +44,11 @@ export const licenseService: ServiceDescriptor = {
   }),
   /** P6-01: a verified store purchase's flag on the buyer's licence (`storeGrants.ts`). */
   applyStoreGrant,
+  /** LX-03: a retired licence's store grants move to the survivor (`core/licenseMerge.ts`). */
+  licenseMerge: storeGrantMergeStatements,
+  /** Licence deletion (`core/licenseDelete.ts`): store grants refuse it (and are never deleted);
+   *  otherwise the licence row, its keys and its profile stack go (`deletion.ts`). */
+  licenseDelete: licenseDeleteContribution,
   /** PX-W6 (G8): where each licence came from — store grants and origin (`provenance.ts`). */
   licenseProvenance,
 };

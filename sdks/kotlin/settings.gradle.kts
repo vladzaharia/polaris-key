@@ -17,6 +17,8 @@
 //                   other SDK module, so the Godot binding links it alone (P5-06, P6-09)
 //     :android      the only module that sees both :core and :platform (P6-12)
 //     :ui           the Compose UI kit (P6-11)
+//     :billing      polaris-key-billing: Play Billing purchases and restores as licence flags
+//                   (SP-K05); sees :sdk, never :platform or :android
 //     :godot        the Godot Android plugin (v2) binding :platform, kept with the Godot SDK in
 //                   sdks/godot/native/android (singleton PolarisKeyAndroid)
 //   Build-only:
@@ -54,6 +56,9 @@ include(":update")
 include(":packs")
 include(":sdk")
 include(":conformance")
+// The runnable JVM CLI sample (SP-K14); not published.
+include(":sample-cli")
+project(":sample-cli").projectDir = file("samples/cli")
 
 val jvmOnly = providers.gradleProperty("pkey.jvmOnly").orNull == "true"
 val localSdkDir =
@@ -72,4 +77,5 @@ if (!jvmOnly && androidSdk) {
     project(":godot").projectDir = file("../godot/native/android")
     include(":boundary")
     include(":ui")
+    include(":billing")
 }

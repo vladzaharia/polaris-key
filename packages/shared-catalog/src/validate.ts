@@ -37,6 +37,14 @@ export const MAX_VALIDATION_STEPS = 100_000;
 /** Largest array `uniqueItems` will scan before giving up (fails closed). */
 export const MAX_UNIQUE_ITEMS = 1_000;
 
+/**
+ * Work counters, test hooks (not exported from the package; P1-13's pattern): `prepares` counts
+ * `prepareSchema` runs (a memoised caller prepares a fragment once), `canonicalised` counts the
+ * items `uniqueItems` reduces to their canonical form (none for an array past the scan cap). The
+ * checks diff them around a call instead of reading a clock, so they hold under any load.
+ */
+export const validateWork = { prepares: 0, canonicalised: 0 };
+
 /** A schema fragment this module refuses to interpret. Never treat as "no constraint". */
 export class UnsupportedSchemaError extends Error {
   constructor(message: string) {
@@ -468,6 +476,7 @@ class Preparer {
  * or carrying a `pattern` the linear matcher will not accept.
  */
 export function prepareSchema(schema: unknown): PreparedSchema {
+  validateWork.prepares++;
   return { root: new Preparer().prepare(schema, 0, "") };
 }
 
@@ -630,6 +639,7 @@ function check(
         budget.spend(v.length);
         const seen = new Set<string>();
         for (const item of v) {
+          validateWork.canonicalised++;
           const key = canonical(item);
           if (seen.has(key)) {
             bad("must NOT have duplicate items");

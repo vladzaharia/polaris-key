@@ -24,7 +24,12 @@ import { parse as parseYaml } from "yaml";
 import { matchRoute } from "../src/router.js";
 import { CORS_SERVICE_PATHS, isCorsCoveredRoute } from "../src/core/cors.js";
 import { REGISTRY_OWNERLESS_ROUTES, REGISTRY_ROUTES } from "../src/mount.js";
+import { matchImgPath } from "../src/core/imgHost.js";
 import { FEED_ADAPTERS } from "../src/services/distribution/registry/index.js";
+import {
+  RELEASE_PUBLISH_OPENAPI,
+  RELEASE_REGISTRY_OPENAPI,
+} from "../src/services/release/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const spec = parseYaml(
@@ -43,10 +48,13 @@ const NARRATIVE_ONLY = new Set([
   "portalSpa",
   "portalApi",
   "portalLogin",
+  "portalProviderSignIn",
   "portalCallback",
   "portalLogout",
   "portalMagicVerify",
   "portalDownload",
+  // `adminApi` and `products` stay narrative as kinds: UX-72's create probes are pinned in
+  // ADMIN_KIND_PATHS below; the rest of `/manage/api/*` is documented on the docs site.
   // `portalApi` stays narrative as a kind: its PX-W1 library and product routes are pinned in
   // PORTAL_KIND_PATHS below; the rest of `/api/*` is documented on the docs site.
   "products",
@@ -78,13 +86,77 @@ const CORE_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
  * portal session cookie.
  */
 const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
-  portalMedia: [["/media/{product}/{asset}", ["get"]]],
+  portalMedia: [
+    ["/media/{product}/{asset}", ["get"]],
+    // I-07, PX-W16: account pictures, re-encoded (`avatar` is a reserved product slug).
+    ["/media/avatar/{asset}", ["get"]],
+  ],
   portalApi: [
     ["/api/library", ["get"]],
     ["/api/products/{product}", ["get"]],
     // PX-W10 (G24, G25): Discover's offers and "Add to library".
     ["/api/discover", ["get"]],
     ["/api/discover/{product}/claim", ["post"]],
+    // I-07: the login card's pre-authentication routes and the account sessions.
+    ["/api/signin/email/start", ["post"]],
+    ["/api/signin/email/verify", ["post"]],
+    // PX-W4: the code step's "Send a new code".
+    ["/api/signin/email/resend", ["post"]],
+    ["/api/signin/flow", ["post"]],
+    ["/api/signin/confirm-email", ["get", "post"]],
+    ["/api/signin/confirm-email/verify", ["post"]],
+    ["/api/signin/confirm-email/join", ["post"]],
+    ["/api/signin/confirm-email/cancel", ["post"]],
+    ["/api/signin/confirm-email/picture", ["get"]],
+    ["/api/sessions", ["get"]],
+    ["/api/sessions/{sessionId}", ["delete"]],
+    ["/api/sessions/sign-out-everywhere", ["post"]],
+    // PX-W16 (G32, G33): Account → Profile and picture uploads.
+    ["/api/me/profile", ["get", "patch"]],
+    ["/api/me/profile/picture", ["post"]],
+    // PX-W14 (G29): sign in with another device.
+    ["/api/device-login/start", ["post"]],
+    ["/api/device-login/lookup", ["post"]],
+    ["/api/device-login/approve", ["post"]],
+    ["/api/device-login/{requestId}", ["get"]],
+    // PX-W13 (G28): the sign-in request the card renders, and its app-consent view.
+    ["/api/signin/requests/{request}", ["get"]],
+    ["/api/signin/requests/{request}/consent", ["get"]],
+    // I-16: passkeys on the login card, and the account's passkeys.
+    ["/api/signin/passkey/options", ["post"]],
+    ["/api/signin/passkey/verify", ["post"]],
+    ["/api/me/passkeys", ["get", "post"]],
+    ["/api/me/passkeys/options", ["post"]],
+    ["/api/me/passkeys/{passkeyId}", ["delete"]],
+  ],
+};
+
+/**
+ * Admin API routes the spec documents (UX-72, rule 10): the New Product wizard's create probes
+ * (FLOWS.md §3.11 W22 to W24). `adminApi` and `products` are narrative as kinds, and only the
+ * routes listed here are in the spec, tagged `admin`. None is product-scoped or CORS-covered: they share the console
+ * origin with the admin session cookie.
+ */
+const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
+  adminApi: [
+    ["/manage/api/github/repositories", ["get"]],
+    // Home's product cards: one fact per service for every product (A-8, sliced).
+    ["/manage/api/summary", ["get"]],
+  ],
+  // `/manage/api/products[/…]` routes as its own kind (the product registry), narrative too.
+  products: [
+    // The registry read, with the console logo's `presentation.icon` (console product card).
+    ["/manage/api/products", ["get"]],
+    ["/manage/api/products/link-repo", ["post"]],
+    ["/manage/api/products/slug-check", ["get"]],
+    // HA-05: the hosted-asset status read the console's Presentation page uses.
+    ["/manage/api/products/{product}/assets", ["get"]],
+    // LX-26: the licence reads and writes that carry the derived holder (DELETE stays narrative).
+    ["/manage/api/products/{product}/license/licenses", ["get", "post"]],
+    [
+      "/manage/api/products/{product}/license/licenses/{licenseId}",
+      ["get", "patch"],
+    ],
   ],
 };
 
@@ -108,6 +180,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/release/channels/{channel}/pin", ["post"]],
   ["/{product}/release/channels/{channel}/unpin", ["post"]],
   ["/{product}/release/releases/{releaseId}/yank", ["post"]],
+  // Feed retention: the backfill of the builds of main below each package's stable release.
+  ["/{product}/release/packages/prune", ["post"]],
   // P2-02: trusted publishing.
   ["/{product}/release/publish/token", ["post"]],
   ["/{product}/release/publish/uploads", ["post"]],
@@ -139,6 +213,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/distribution/report", ["post"]],
   // A-18h: a CI-plane store's projection of the listing model.
   ["/{product}/distribution/listing/{store}", ["get"]],
+  // A-18i: a PR-plane generator's inputs.
+  ["/{product}/distribution/pr/{store}", ["get"]],
   // P5-02: the App Store Connect webhook (Apple → Worker, HMAC-signed).
   ["/{product}/distribution/hooks/asc", ["post"]],
   // P6-03: the Sentry alert webhook (Sentry → Worker, HMAC-signed); opens halt candidates.
@@ -187,6 +263,8 @@ const SERVICE_PATHS: Array<[string, string[]]> = [
   ["/{product}/identity/auth/device/start", ["post"]],
   ["/{product}/identity/auth/device/verify", ["get", "post"]],
   ["/{product}/identity/auth/device/poll", ["post"]],
+  // I-26: the legacy sign-in's licence chooser (server-rendered HTML).
+  ["/{product}/identity/auth/choose", ["get", "post"]],
 ];
 
 /**
@@ -217,19 +295,52 @@ const ALIAS_PATHS: Array<[string, string[]]> = [
  * The feed rows are each feed adapter's own `openapi` declaration (`FeedAdapter.openapi`, the
  * feed-adapter contract): a feed adds its paths there, in its own directory, and every check
  * below runs against them unchanged. `test/feedAdapters.test.ts` checks each adapter's rows
- * against its own routes.
+ * against its own routes. F-23's push rows are Release's (`RELEASE_REGISTRY_OPENAPI`), checked
+ * the same way by `test/registryPush.test.ts`.
  */
 const REGISTRY_SERVER = "https://pkg.plrs.im";
-const REGISTRY_PATHS: Array<[string, string[], string]> = [
+/**
+ * F-22: the native publish routes (Release's, `RELEASE_PUBLISH_OPENAPI`) write to paths their
+ * feed also reads (npm's packument, Swift's release, Maven's layout), so the rows are merged by
+ * path: one row per path, with every method and every route answering it.
+ */
+function mergeRegistryRows(
+  rows: readonly (readonly [string, readonly string[], string])[],
+): Array<[string, string[], string[]]> {
+  const byPath = new Map<
+    string,
+    { methods: Set<string>; owners: Set<string> }
+  >();
+  for (const [path, methods, owner] of rows) {
+    const e = byPath.get(path) ?? { methods: new Set(), owners: new Set() };
+    for (const m of methods) e.methods.add(m);
+    e.owners.add(owner);
+    byPath.set(path, e);
+  }
+  return [...byPath].map(([path, e]) => [path, [...e.methods], [...e.owners]]);
+}
+const REGISTRY_PATHS: Array<[string, string[], string[]]> = mergeRegistryRows([
   ["/", ["get", "head"], "host"],
   ["/v2/", ["get", "head"], "host"],
-  ...FEED_ADAPTERS.flatMap((a) =>
-    a.openapi.map(([path, methods, owner]): [string, string[], string] => [
-      path,
-      [...methods],
-      owner,
-    ]),
-  ),
+  ...FEED_ADAPTERS.flatMap((a) => a.openapi),
+  ...RELEASE_PUBLISH_OPENAPI,
+  // F-23: Release's push routes (native `docker push`), declared beside their code.
+  ...RELEASE_REGISTRY_OPENAPI,
+]);
+
+/**
+ * The image host's paths (HA-02, notes/S-20 §6.5): `img.plrs.im` answers only these, each
+ * documented under a path-level `servers` override with tag `img`. They are Core's own routes
+ * (`core/imgHost.ts` `matchImgPath`), not a service's and not a route table's, so the check
+ * runs a concrete request path of each through the host's own parser and pins the parsed kind.
+ */
+const IMG_SERVER = "https://img.plrs.im";
+const IMG_PATHS: Array<[string, string[], "asset" | "alias"]> = [
+  ["/{product}/a/{sha256}", ["get", "head"], "asset"],
+  ["/{product}/a/{sha256}/{w}.webp", ["get", "head"], "asset"],
+  ["/{product}/icon", ["get", "head"], "alias"],
+  ["/{product}/header", ["get", "head"], "alias"],
+  ["/{product}/screenshots/{n}", ["get", "head"], "alias"],
 ];
 
 function specMethods(path: string): string[] {
@@ -249,6 +360,7 @@ describe("router → spec", () => {
     const documented = new Set([
       ...Object.keys(CORE_KIND_PATHS),
       ...Object.keys(PORTAL_KIND_PATHS),
+      ...Object.keys(ADMIN_KIND_PATHS),
       "service",
     ]);
     const unhandled = [...new Set(kinds)].filter(
@@ -286,6 +398,22 @@ describe("router → spec", () => {
     });
   }
 
+  for (const [kind, paths] of Object.entries(ADMIN_KIND_PATHS)) {
+    it(`admin kind "${kind}" routes are documented, tagged admin, and route there`, () => {
+      for (const [path, methods] of paths) {
+        expect(specMethods(path).sort(), path).toEqual([...methods].sort());
+        for (const method of methods) {
+          const op = spec.paths[path]![method] as { tags?: string[] };
+          expect(op.tags, `${method} ${path}`).toEqual(["admin"]);
+        }
+        expect(spec.paths[path]?.options, path).toBeUndefined();
+        const route = matchRoute(concrete(path));
+        expect(route.kind, path).toBe(kind);
+        expect(isCorsCoveredRoute(route), path).toBe(false);
+      }
+    });
+  }
+
   it("every canonical service route is documented", () => {
     for (const [path, methods] of SERVICE_PATHS) {
       for (const method of methods) {
@@ -311,7 +439,9 @@ describe("spec → router", () => {
         ...SERVICE_PATHS,
         ...ALIAS_PATHS,
         ...REGISTRY_PATHS,
+        ...IMG_PATHS,
         ...Object.values(PORTAL_KIND_PATHS).flat(),
+        ...Object.values(ADMIN_KIND_PATHS).flat(),
       ].map(([path]) => path),
     );
     const phantom = Object.keys(spec.paths).filter(
@@ -340,11 +470,19 @@ describe("spec → router", () => {
 
 describe("registry host (F-02, rule 10)", () => {
   it("every registry path is documented on the registry server with tag registry", () => {
+    // One path may have several rows (F-23: the pull manifest route's GET/HEAD and the push
+    // route's PUT): the spec documents exactly their union.
+    const union = new Map<string, Set<string>>();
+    for (const [path, methods] of REGISTRY_PATHS)
+      for (const m of methods)
+        union.set(path, (union.get(path) ?? new Set()).add(m));
     for (const [path, methods] of REGISTRY_PATHS) {
       expect(spec.paths[path]?.servers, path).toEqual([
         expect.objectContaining({ url: REGISTRY_SERVER }),
       ]);
-      expect(specMethods(path).sort(), path).toEqual([...methods].sort());
+      expect(specMethods(path).sort(), path).toEqual(
+        [...union.get(path)!].sort(),
+      );
       for (const method of methods) {
         const op = spec.paths[path]![method] as { tags?: string[] };
         expect(op.tags, `${method} ${path}`).toEqual(["registry"]);
@@ -354,8 +492,17 @@ describe("registry host (F-02, rule 10)", () => {
 
   it("only registry paths carry the registry server or the registry tag", () => {
     const registry = new Set(REGISTRY_PATHS.map(([p]) => p));
+    const img = new Set(IMG_PATHS.map(([p]) => p));
     for (const [path, entry] of Object.entries(spec.paths)) {
       if (registry.has(path)) continue;
+      // The image host's paths carry their own server (checked below), never the registry's.
+      if (img.has(path)) {
+        for (const method of specMethods(path)) {
+          const op = entry[method] as { tags?: string[] };
+          expect(op.tags ?? [], `${method} ${path}`).not.toContain("registry");
+        }
+        continue;
+      }
       expect(entry.servers, path).toBeUndefined();
       for (const method of specMethods(path)) {
         const op = entry[method] as { tags?: string[] };
@@ -370,7 +517,9 @@ describe("registry host (F-02, rule 10)", () => {
       ...REGISTRY_OWNERLESS_ROUTES.map((r) => r.name),
     ];
     const documented = new Set(
-      REGISTRY_PATHS.map(([, , owner]) => owner).filter((o) => o !== "host"),
+      REGISTRY_PATHS.flatMap(([, , owners]) => owners).filter(
+        (o) => o !== "host",
+      ),
     );
     for (const name of routeNames)
       expect(
@@ -389,6 +538,64 @@ describe("registry host (F-02, rule 10)", () => {
   });
 });
 
+describe("image host (HA-02, rule 10)", () => {
+  it("every image path is documented on the image server with tag img and exactly its methods", () => {
+    for (const [path, methods] of IMG_PATHS) {
+      expect(spec.paths[path]?.servers, path).toEqual([
+        expect.objectContaining({ url: IMG_SERVER }),
+      ]);
+      expect(specMethods(path).sort(), path).toEqual([...methods].sort());
+      for (const method of methods) {
+        const op = spec.paths[path]![method] as { tags?: string[] };
+        expect(op.tags, `${method} ${path}`).toEqual(["img"]);
+      }
+      // A public image is a simple GET: no preflight is documented or answered.
+      expect(spec.paths[path]?.options, path).toBeUndefined();
+    }
+  });
+
+  it("only image paths carry the image server or the img tag", () => {
+    const img = new Set(IMG_PATHS.map(([p]) => p));
+    for (const [path, entry] of Object.entries(spec.paths)) {
+      if (img.has(path)) continue;
+      expect(JSON.stringify(entry.servers ?? []), path).not.toContain(
+        IMG_SERVER,
+      );
+      for (const method of specMethods(path)) {
+        const op = entry[method] as { tags?: string[] };
+        expect(op.tags ?? [], `${method} ${path}`).not.toContain("img");
+      }
+    }
+  });
+
+  it("IMG_PATHS and the host's own path parser agree in both directions", () => {
+    const samples: Record<string, string> = {
+      product: "acme",
+      sha256: "a".repeat(64),
+      w: "256",
+      n: "3",
+    };
+    for (const [path, , kind] of IMG_PATHS) {
+      const concretePath = path.replace(
+        /\{(\w+)\}/g,
+        (_, name: string) => samples[name]!,
+      );
+      expect(matchImgPath(concretePath)?.kind, path).toBe(kind);
+    }
+    // Every shape the parser accepts is one of the documented templates: a path one segment
+    // off any of them is refused.
+    for (const path of [
+      "/acme",
+      "/acme/a",
+      `/acme/a/${"a".repeat(64)}/256`,
+      "/acme/screenshots",
+      "/acme/icons",
+      "/acme/a/x/y/z",
+    ])
+      expect(matchImgPath(path), path).toBeNull();
+  });
+});
+
 /**
  * The product routes that must NEVER answer CORS (P0-05): they set or read the per-product
  * browser-session cookie, or they are top-level navigations to the IdP or an HTML page. They stay
@@ -402,12 +609,14 @@ const CORS_EXCLUDED = new Set([
   "/{product}/identity/auth/logout",
   "/{product}/identity/auth/device",
   "/{product}/identity/auth/device/verify",
+  "/{product}/identity/auth/choose",
   "/{product}/config/mint/{mintId}/auth",
   // P2-05: CI routes, authenticated by a `pkeyci_` bearer — never called from a browser page.
   "/{product}/release/channels/{channel}/promote",
   "/{product}/release/channels/{channel}/pin",
   "/{product}/release/channels/{channel}/unpin",
   "/{product}/release/releases/{releaseId}/yank",
+  "/{product}/release/packages/prune",
   // P2-02: the trusted-publishing routes, called by CI with an OIDC or `pkeyci_` credential.
   "/{product}/release/publish/token",
   "/{product}/release/publish/uploads",
@@ -424,6 +633,8 @@ const CORS_EXCLUDED = new Set([
   "/{product}/distribution/report",
   // A-18h: the CI listing read, authenticated by a `pkeyci_` bearer.
   "/{product}/distribution/listing/{store}",
+  // A-18i: the PR-plane inputs read, authenticated by a `pkeyci_` bearer.
+  "/{product}/distribution/pr/{store}",
   // P5-02: a store webhook, called server-to-server by App Store Connect.
   "/{product}/distribution/hooks/asc",
   // P6-02: device attestation — only a native iOS or Android build can attest, never a page.
@@ -431,10 +642,9 @@ const CORS_EXCLUDED = new Set([
   "/{product}/devices/attest",
   // P6-03: the Sentry alert webhook, called server-to-server by Sentry.
   "/{product}/distribution/hooks/sentry",
-  // P6-01: the commerce bridge. The claim and binding routes serve store builds (App Store,
-  // Play, Steam), never a browser page; the two hooks are called server-to-server by the stores.
-  "/{product}/distribution/commerce/binding",
-  "/{product}/distribution/commerce/claim",
+  // P6-01: the commerce bridge's two store hooks, called server-to-server by the stores. (The
+  // binding and claim routes take the device bearer and are covered since SP-16, for a
+  // bearer-mode page.)
   "/{product}/distribution/hooks/app-store",
   "/{product}/distribution/hooks/play-rtdn",
   // P2b-05: the F-Droid CI route, authenticated by a `pkeyci_` bearer.
@@ -482,6 +692,12 @@ function concrete(template: string): string {
     pack: "acme.core",
     variant: "default",
     store: "snap",
+    key: "0123456789abcdef0123456789abcdef",
+    sessionId: "f".repeat(64),
+    requestId: `dl_${"A".repeat(43)}`,
+    request: `rq_${"A".repeat(22)}`,
+    licenseId: "lic_1",
+    passkeyId: "A".repeat(43),
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
     const value = samples[name];

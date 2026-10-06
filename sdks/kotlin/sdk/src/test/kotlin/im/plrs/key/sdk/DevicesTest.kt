@@ -57,6 +57,8 @@ class DevicesTest {
                     core = CoreOptions(
                         productSlug = "djdl", version = "1.0.0", pinnedKeys = signer.trust, trustRefresh = false,
                         store = store, transport = transport, clock = { now },
+                        // PX-W13: a fixed device label, so request bodies do not depend on the host name.
+                        deviceName = "Test Device",
                     ),
                     license = LicenseClientOptions(fingerprint = false),
                     factsSource = { DeviceFacts(DeviceFacts.Os("linux"), DeviceFacts.Hardware(cpuCores = 4), DeviceFacts.Runtime("kotlin", "2.1")) },
@@ -146,7 +148,8 @@ class DevicesTest {
         assertEquals(TokenSource.register, client.core.tokenSource())
         val request = transport.requests().single()
         assertFalse("authorization" in request.headers)
-        assertNull(request.body) // fingerprinting is off here: no body at all
+        // Fingerprinting is off here: the device label (PX-W13 §8 Q2) is the whole body.
+        assertEquals("""{"deviceName":"Test Device"}""", request.body!!.toString(Charsets.UTF_8))
         val (closed, _, _) = client(token = null) { respond(403) }
         assertEquals(RegisterResult.RegistrationClosed, closed.register())
     }
@@ -176,6 +179,30 @@ class DevicesTest {
         assertTrue(body["caps"].toString().contains(Feature.licenseGate))
         assertTrue(client.report())
         assertTrue(client.supports(Feature.devicesReport) is Support.Supported)
+    }
+
+    /** §3.13: the report carries the gate and the pending update events, and marks them sent once accepted. */
+    @Test
+    fun theReportCarriesTheGateAndTheUpdateJournal() = runBlocking {
+        var accept = false
+        val (client, transport, _) = client { r ->
+            when (r.path) {
+                "/djdl/devices/report" -> if (accept) respond(200, """{"ok":true}""") else respond(503)
+                else -> respond(404)
+            }
+        }
+        client.updateEvents.record(im.plrs.key.core.UpdateEvent.updateConfirmed, "1.0.0", fromRelease = "0.9.0")
+        assertFalse(client.report())
+        // A refused report keeps the events.
+        assertEquals(1, client.updateEvents.pending().size)
+        accept = true
+        assertTrue(client.report())
+        val body = JsonText.parse(transport.requests().last { it.path == "/djdl/devices/report" }.body!!.toString(Charsets.UTF_8)).objectValue!!
+        assertEquals("""{"status":"needs-activation"}""", body["gate"].toString())
+        val update = (body["updates"] as kotlinx.serialization.json.JsonArray).single().objectValue!!
+        assertEquals(JsonPrimitive("update_confirmed"), update["event"])
+        assertEquals(JsonPrimitive("0.9.0"), update["fromRelease"])
+        assertTrue(client.updateEvents.pending().isEmpty())
     }
 
     @Test

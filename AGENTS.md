@@ -21,12 +21,17 @@ packages/
   client-core/       @polaris-key/client-core  isomorphic verify/trust/gate/clock floor
   worker/            @polaris-key/worker       the Cloudflare Worker (core/ + services/<slug>/)
   admin/             @polaris-key/admin        the admin SPA + customer portal (React + Vite)
-  cli/               @polaris-key/cli          the `pkey` CLI (manifests, bundle mint, CI publishing)
+  cli/               @polaris-key/cli          the `pkey` CLI (manifests, bundle mint, CI publishing,
+                                               `pkey sdk` per-SDK config, `pkey mirror` catalog mirrors;
+                                               the mirror renderers live in src/mirrors.ts)
   sdk-node/          @polaris-key/node         full client + CLI adapters
   sdk-react/         @polaris-key/react        browser-OIDC + desktop-over-node + login UI
   docs/              @polaris-key/docs         the Astro Starlight docs site served at /docs
   brand/             @polaris-key/brand        design system: tokens, Rubik fonts, marks, launch-kit assets
                                                (spec: docs/design/BRAND.md)
+  ui-qa/             @polaris-key/ui-qa        UI-kit visual QA (private): pnpm ui:lint (the §7.3
+                                               modernity lint, string lint, per-kit source lints),
+                                               pnpm ui:report (spec: docs/design/UI-KITS.md §7)
 sdks/
   python/            polaris-key (PyPI)        full client + CLI adapters
   swift/             PolarisKey (SwiftPM)      native CryptoKit + SwiftUI login
@@ -42,7 +47,7 @@ conformance/         corpus/v2 ONLY (one signer's golden vectors) + the Node and
                      + parity/ (features.json registry, errors.json + enums.json; each SDK
                        keeps its own parity.json)
                      + transcripts/ (HTTP conversations recorded through the Worker router)
-tools/               sign-corpus.ts · gen-mirrors.ts · parity-check.ts · gen-transcripts.mjs ·
+tools/               sign-corpus.ts · gen-mirrors.ts (front end over cli/src/mirrors.ts) · parity-check.ts · gen-transcripts.mjs ·
                      gen-services.ts + services.json · gen-sdk-constants.ts
 actions/publish/     the polaris-key/publish GitHub Action (committed dist/ bundle of the CLI)
 products/            per-product data (catalog.json + product.json) + gen-seed
@@ -70,13 +75,14 @@ browser conformance runners. Python, Swift, Godot and Kotlin are standalone tool
 `sdks/`.
 
 Inside the Worker, `src/core/` is the always-on substrate and each `src/services/<slug>/` is one
-opt-in service (`license`, `config`, `release`, `distribution`, `update`, `identity`). The services
+opt-in service (`license`, `config`, `release`, `distribution`, `update`, `identity`, `sync`). The services
 are declared
 once, as rows of `tools/services.json`; `pnpm gen:services` generates every language's slug
 constants from it. `src/mount.ts` is the composition root; `src/router.ts` builds
 `SERVICE_NAMESPACES` from the generated `SERVICE_SLUGS`. Release, Distribution and Update form a
 chain (release ← distribution ← update, coherence codes `distribution_requires_release` and
-`update_requires_distribution`); services read one another's state only through Core's
+`update_requires_distribution`), and Cloud Sync (`sync`) requires Config and Identity
+(`sync_requires_config`, `sync_requires_identity`); services read one another's state only through Core's
 read-only descriptor hooks in `src/core/hooks.ts` (`releaseCatalog`, `delivery`,
 `outletCapabilities`), which answer `null` while the providing service is off.
 
@@ -103,8 +109,12 @@ pnpm gen:corpus -- --check       # conformance drift gate (must regenerate in pl
 pnpm gen:transcripts -- --check  # HTTP-transcript drift gate (re-records through the Worker router)
 pnpm gen:services -- --check     # service-table drift gate (tools/services.json → every language)
 pnpm gen:constants -- --check    # SDK-constants drift gate (error codes, headers, enums, feature ids)
+pnpm gen:platform-inventory -- --check  # platform-inventory drift gate (Env ↔ inventory ↔ wrangler.toml)
+pnpm gen:settings -- --check     # settings drift gate (registry → settings reference page + console search index)
 pnpm gen:brand -- --check        # brand-token drift gate (packages/brand → CSS, Tailwind, TS, JSON, GDScript, Swift, Kotlin)
 pnpm --filter @polaris-key/cli bundle:action -- --check  # Action-bundle drift gate (after pnpm build)
+pnpm ui:lint                     # UI-kit modernity + string + kit-source lint (needs Chromium; CI job ui-kits)
+pnpm ui:report                   # UI kits side by side per state; fails only on a React/elements pixel drift
 pnpm parity:check                # every SDK's parity.json agrees with the feature registry
 pnpm typecheck
 pnpm test                        # all JS/TS suites (worker, SDKs, admin, conformance, shared)
@@ -150,7 +160,8 @@ The committed `.husky/pre-commit` hook runs a lightweight subset (`pnpm gen:corp
 
 **1. Never hand-edit generated corpus files.** `conformance/corpus/v2/{cases.json,
 gate-matrix.json,fingerprint.json,stage-matrix.json,headers.json,config-matrix.json,
-update-matrix.json,outlet-matrix.json,plan-matrix.json}`, `conformance/corpus/v2/content/cases.json`
+update-matrix.json,outlet-matrix.json,plan-matrix.json,feed-url-matrix.json,
+sync-scenarios.json}`, `conformance/corpus/v2/content/cases.json`
 and the generator-owned mirrors at
 `sdks/swift/Tests/PolarisKeyTests/Resources/v2/` and `sdks/godot/tests/corpus/v2/` are output
 (`content/` is not mirrored: every runner reads it from the checkout).
@@ -180,23 +191,26 @@ a deliberate, all-languages event: contract → catalog → corpus → SDKs, in 
 feature is not done until every implementation passes (client-core, Node, React, Python, Swift,
 Godot, and Kotlin for the features its parity manifest has implemented).
 
-**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Seven families:
+**3. Generated files carry a GENERATED banner — regenerate, never hand-edit.** Ten families:
 
-| File(s)                                                                                                                                                                          | Written by                                                                                                                                          |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/worker/src/docsCsp.generated.ts`                                                                                                                                       | the docs build (`scripts/collect-csp-hashes.mjs`)                                                                                                   |
-| `packages/docs/src/content/docs/reference/*.mdx`                                                                                                                                 | `pnpm --filter @polaris-key/docs gen`                                                                                                               |
-| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift`, `services_generated.gd`, `ServiceSlug.generated.kt`                                                     | `pnpm gen:services` from `tools/services.json`                                                                                                      |
-| `constants.generated.ts`, `constants_generated.py`, `Constants.generated.swift`, `constants_generated.gd`, `Constants.generated.kt`                                              | `pnpm gen:constants` from `conformance/parity/` (errors, enums, features), the service table and `@polaris-key/protocol/core`                       |
-| `actions/publish/dist/index.js`                                                                                                                                                  | `pnpm --filter @polaris-key/cli bundle:action` (esbuild) from `@polaris-key/cli` and the built workspace packages it imports                        |
-| `packages/cli/src/storefronts/ciPlane.generated.ts`                                                                                                                              | `pnpm gen:storefront-ci` from the Worker's CI plane (`packages/worker/src/core/storefront/ciPlane.ts`) and its CI-plane storefront adapters (A-18h) |
-| `packages/brand/{css/tokens.css,css/theme.css,tokens.json,src/generated/*}`, `brand_tokens_generated.gd`, `BrandTokens.generated.swift`, `sdks/godot/addons/polaris_key/brand/*` | `pnpm gen:brand` from `packages/brand/src/tokens/` and the launch-kit copy in `packages/brand/kit/`                                                 |
+| File(s)                                                                                                                                                                                                                                                                                                                                                                                                                  | Written by                                                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/worker/src/docsCsp.generated.ts`                                                                                                                                                                                                                                                                                                                                                                               | the docs build (`scripts/collect-csp-hashes.mjs`)                                                                                                                                                                      |
+| `packages/docs/src/content/docs/reference/*.mdx`                                                                                                                                                                                                                                                                                                                                                                         | `pnpm --filter @polaris-key/docs gen`                                                                                                                                                                                  |
+| `*services.generated.ts`, `_services.py`, `ServiceSlug.generated.swift`, `services_generated.gd`, `ServiceSlug.generated.kt`                                                                                                                                                                                                                                                                                             | `pnpm gen:services` from `tools/services.json`                                                                                                                                                                         |
+| `constants.generated.ts`, `constants_generated.py`, `Constants.generated.swift`, `constants_generated.gd`, `Constants.generated.kt`; the core copy modules `copy.generated.ts`, `copy_generated.py`, `Copy.generated.swift`, `copy_generated.gd`, `Copy.generated.kt`                                                                                                                                                    | `pnpm gen:constants` from `conformance/parity/` (errors, enums, features, `copy.en.json`), the service table and `@polaris-key/protocol/core`                                                                          |
+| `actions/publish/dist/index.js`                                                                                                                                                                                                                                                                                                                                                                                          | `pnpm --filter @polaris-key/cli bundle:action` (esbuild) from `@polaris-key/cli` and the built workspace packages it imports                                                                                           |
+| `packages/cli/src/storefronts/ciPlane.generated.ts`                                                                                                                                                                                                                                                                                                                                                                      | `pnpm gen:storefront-ci` from the Worker's CI plane (`packages/worker/src/core/storefront/ciPlane.ts`), its CI-plane storefront adapters (A-18h) and the PR plane (`prPlane.ts`, A-18i)                                |
+| `packages/worker/src/platformInventory.generated.ts`                                                                                                                                                                                                                                                                                                                                                                     | `pnpm gen:platform-inventory` from the `@inventory` / `@editable` tags on `Env` in `packages/worker/src/env.ts` (ST-02)                                                                                                |
+| `packages/docs/src/content/docs/reference/settings.mdx`, `packages/admin/src/console/settings.generated.ts`                                                                                                                                                                                                                                                                                                              | `pnpm gen:settings` from the settings registry (`packages/worker/src/core/settings/` and each service's `settings.ts`) and `NOT_A_SETTING` (ST-06)                                                                     |
+| `packages/brand/{css/tokens.css,css/theme.css,tokens.json,src/generated/*}`, `brand_tokens_generated.gd`, `BrandTokens.generated.swift`, `sdks/godot/addons/polaris_key/brand/*`; the kit copy tables `packages/brand/src/generated/kit-copy/*`, `kitCopy.generated.ts`, `Localizable.xcstrings`, `composeResources/values*/strings.xml`, `ui/locale/*.po(t)` (Godot and Python), `polaris_key/ui/kit_copy_generated.py` | `pnpm gen:brand` from `packages/brand/src/tokens/`, the launch-kit copy in `packages/brand/kit/`, and the kit copy catalog in `packages/brand/kit-copy/` with `conformance/parity/copy.<locale>.json` (plans/UK-02.md) |
+| `pkey sdk` samples: `conformance/runners/node/sdkConfigSample.ts`, `packages/sdk-react/test/sdkConfigSample.ts`, `sdks/python/tests/sdk_config_sample.py`, `sdks/swift/Tests/PolarisKeyTests/SdkConfigSample.swift`, `sdks/kotlin/sdk/src/test/kotlin/polaris/generated/PolarisConfig.kt`, `sdks/godot/tests/sdk_config/polaris_key_config.gd`                                                                           | `PKEY_UPDATE_SAMPLES=1 pnpm --filter @polaris-key/cli test sdkConfig` from `packages/cli/src/sdkConfig.ts` and the fixture discovery document                                                                          |
 
 All are committed on purpose (reviewable diffs; the site and packages build without running
 generators) and all have a freshness check (`pnpm gen:services -- --check` for the service
 table, `pnpm gen:constants -- --check` for the SDK constants, `pnpm gen:brand -- --check` for the
 brand tokens, `pnpm --filter @polaris-key/cli bundle:action -- --check` for the Action bundle,
-`pnpm gen:storefront-ci -- --check` and the worker suite's `ciPlaneGenerated` test for the CI plane), so a hand edit fails CI rather than shipping. The
+`pnpm gen:storefront-ci -- --check` and the worker suite's `ciPlaneGenerated` test for the CI plane, `pnpm gen:platform-inventory -- --check` and the worker suite's `platformInventory` test for the platform inventory, which also fails when `Env`, `wrangler.toml` and the names `src/` reads disagree, `pnpm gen:settings -- --check` and the worker suite's `settings-generated` test for the settings reference and search index, `packages/cli/test/sdkConfig.test.ts` for the `pkey sdk` samples), so a hand edit fails CI rather than shipping. The
 Action bundle inlines `@polaris-key/manifest`, `@polaris-key/catalog` and `@polaris-key/protocol`
 from their built `dist/`, so a change to any of them, or to the CLI, rebundles after `pnpm build`. A new error code needs an entry in `conformance/parity/errors.json` first: the
 constants generator refuses a Worker code it lacks (and a boot-stage code pinned in

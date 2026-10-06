@@ -56,10 +56,11 @@ const table = (headers, rows) =>
 
 // ── 1. Manifest validation codes ───────────────────────────────────────────────
 function manifestValidationCodes() {
-  // `.pkey/distribution`'s rules (P2b-02) live in their own module of the same validator.
-  // Each module is scanned on its own: the helper regex is lazy across lines, so running it over
-  // concatenated sources lets a match start in one file and end in the next.
-  const sources = ["index.ts", "distribution.ts"].map((f) =>
+  // `.pkey/distribution`'s rules (P2b-02) and the duplicate-spelling pass (ST-19) live in their
+  // own modules of the same validator. Each module is scanned on its own: the helper regex is lazy
+  // across lines, so running it over concatenated sources lets a match start in one file and end
+  // in the next.
+  const sources = ["index.ts", "distribution.ts", "spellings.ts"].map((f) =>
     read("packages", "shared-manifest", "src", f),
   );
   const rows = [];
@@ -322,14 +323,19 @@ const TABLE_OWNERS = {
     "product_secrets",
     "outlet_credentials",
     "devices",
+    "license_refusals",
+    "license_auto_attach_blocks",
     "device_fingerprints",
     "device_facts",
     "audit",
     "product_sync_state",
+    "product_manifest_snapshot",
+    "product_settings",
     "schema_index_assertion",
     "blob_objects",
     "blob_refs",
     "blob_gc_log",
+    "hosted_assets",
     "ci_publishers",
     "ci_tokens",
     "ci_upload_tickets",
@@ -386,6 +392,9 @@ const TABLE_OWNERS = {
     "release_delegated_records",
     "release_lazy_deltas",
     "release_packages",
+    "release_native_uploads",
+    "release_package_prunes",
+    "release_package_retention",
   ],
   distribution: [
     "dist_outlets",
@@ -403,6 +412,7 @@ const TABLE_OWNERS = {
     "dist_readiness",
     "dist_store_products",
     "dist_purchase_bindings",
+    "dist_purchase_binding_aliases",
     "dist_purchases",
     "dist_registry_owners",
     "dist_registry_feeds",
@@ -430,6 +440,12 @@ const TABLE_OWNERS = {
     "account_sessions",
     "account_product_grants",
     "account_passkeys",
+    // PX-W15: terms accepted at the email gate, per account, product and terms version.
+    "account_terms_acceptances",
+    // I-12: the developer relink tool's history and 72-hour undo.
+    "license_relinks",
+    // PX-W16: account pictures, re-encoded and content-addressed (renditions in R2 `avatars/`).
+    "account_avatars",
     "portal_accounts",
     "portal_account_emails",
     "portal_account_identities",
@@ -552,6 +568,12 @@ function corpusInventory() {
   const planMatrix = JSON.parse(
     read("conformance", "corpus", "v2", "plan-matrix.json"),
   );
+  const syncScenarios = JSON.parse(
+    read("conformance", "corpus", "v2", "sync-scenarios.json"),
+  );
+  const deviceLabel = JSON.parse(
+    read("conformance", "corpus", "v2", "device-label.json"),
+  );
   const content = JSON.parse(
     read("conformance", "corpus", "v2", "content", "cases.json"),
   );
@@ -579,7 +601,8 @@ only corpus. \`corpusVersion ${cases.corpusVersion}\`,
 \`stageMatrixVersion ${stages.stageMatrixVersion}\`, \`headersVersion ${headers.headersVersion}\`,
 \`configMatrixVersion ${configMatrix.configMatrixVersion}\`,
 \`updateMatrixVersion ${updateMatrix.updateMatrixVersion}\`, \`outletMatrixVersion ${outletMatrix.outletMatrixVersion}\`,
-\`planMatrixVersion ${planMatrix.planMatrixVersion}\`, \`contentCorpusVersion ${content.contentCorpusVersion}\`.
+\`planMatrixVersion ${planMatrix.planMatrixVersion}\`, \`deviceLabelVersion ${deviceLabel.deviceLabelVersion}\`,
+\`contentCorpusVersion ${content.contentCorpusVersion}\`, \`syncScenariosVersion ${syncScenarios.syncScenariosVersion}\`.
 Wire contract v4 (\`docs/security/WIRE-CONTRACT-V4.md\`) adds the \`feedCases\` and
 \`releaseRecordCases\` families, the strict-verifier \`jwsCases\`, a \`nonWireIntegers\` member
 beside \`expect\` on every case whose payload holds a number that cannot be a wire integer, and the
@@ -623,6 +646,14 @@ runners of SDKs predating packs never read, and the content corpus and \`plan-ma
       "",
       `WIRE-CONTRACT-V4 §11.4: \`plan\` (request weight ${planMatrix.requestWeight ?? "?"}), \`selectVariant\` and \`planTarget\`. Chunk targets are inline, so the planner never parses an index; the \`plan-real-*\` rows are the content set's own menu. The generator recomputes every row and case.`,
       "",
+      `## Cloud Sync scenarios (\`sync-scenarios.json\`): ${syncScenarios.scenarios?.length ?? "?"} scenarios over ${syncScenarios.rules?.length ?? "?"} rules`,
+      "",
+      "WIRE-CONTRACT-V4 §11.5, client behaviour beside the contract: the journal, the debounce, the HLC and pre-contact re-stamping, conflict rebase, one outstanding compare-and-swap per record, the per-subject partitions, the first-sign-in move, sign-out with pending operations, principal changes, `account_required` and a `/sync` 401, each scenario a run of SDK calls, clock moves and scripted server answers. Literal data (`tools/sync-scenarios.ts`), not computed by an implementation; `@polaris-key/client-core/cloud-sync` is checked against it like every SDK, by the Node runner `conformance/runners/node/syncScenarios.test.ts`.",
+      "",
+      `## Device labels (\`device-label.json\`): ${deviceLabel.cases?.length ?? "?"} cases`,
+      "",
+      "WIRE-CONTRACT-V4 §12.7.1 (PX-W13): the one normalisation of the device label every SDK sends as `deviceName` and the Worker stores. Every SDK runs every row, and the Worker runs them through `/identity/auth/device/start`. Non-ASCII code points are written escaped.",
+      "",
       `## Content corpus (\`content/cases.json\`): ${Object.keys(content.blobs ?? {}).length} blobs, ${blobBytes.toLocaleString("en-US")} bytes`,
       "",
       "WIRE-CONTRACT-V4 §2.6: the files index and its path rules, the binary chunk index (`pkey-chunks/1`, `chunkIndexCases`, P4-10), full, `payload`-delta, `file` and `chunk` apply over a real v1 → v2 pair with negatives and counters, `packSetId`, the content stamp and `frameWindow`. `tools/gen-content-corpus.ts` (called by `pnpm gen:corpus`) rebuilds `cases.json` from the committed blobs, which are inputs hash-checked against its `blobs` table and written only by `--rebuild-content-blobs` (zstd 1.5.7), which may only add blobs (`plans/P4-10.md` decision 15). `content/` is source-only and not mirrored: Node and the browser runners read it today, and the Swift and Godot content runners (P4-07, P4-08) read it from the checkout.",
@@ -636,7 +667,8 @@ runners of SDKs predating packs never read, and the content corpus and \`plan-ma
 // Reads the feature registry and every SDK's parity manifest directly (this file stays
 // dependency-free, so it does not import tools/parity-check.ts, which is what GATES them).
 // MDX would read `<p>` in a note as JSX, so prose escapes angle brackets as well as braces.
-const mdxText = (s) => mdxProse(s).replace(/([<>])/g, "\\$1");
+// mdxProse already escapes `<`; escaping it again here wrote `\\<`, a literal backslash then a bare `<`.
+const mdxText = (s) => mdxProse(s).replace(/>/g, "\\>");
 
 function parityMatrix() {
   const registry = JSON.parse(read("conformance", "parity", "features.json"));

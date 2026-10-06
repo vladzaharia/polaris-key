@@ -126,7 +126,25 @@ static func options(base_url: String, store: PKeyStore, clock: Array, product :=
 	o.now_source = func(): return clock[0]
 	# The exported template carries the CI build stamp; these tests must not see it.
 	o.build_stamp_path = ""
+	# PX-W13: a fixed device label, so request bodies do not depend on the host's model name.
+	o.device_name = "Test Device"
+	# The persisted settings layer (SDK parity §3.11) is tested on its own scratch file; suites
+	# that edit settings must not leak into each other through user://pkey_settings.cfg.
+	o.persist_settings = false
 	return o
+
+
+# Timing rule (P1-13): no check reads a clock or a frame count, so none passes or fails with
+# machine load. A complexity claim (linear, not quadratic; linear in the bytes, not the hits)
+# asserts on a work counter the code under test exposes as a static int and the test diffs
+# around the call (`before := X.counter; call(); X.counter - before`): PKeyPck.type_reads,
+# scan_probes and scan_bytes, PKeyJson.path_bytes. Work that leaves the main thread or spans
+# frames asserts on what the code reports it did (PKeyJws.last_mode, last_slices, last_thread),
+# with any time budget driven by an injected clock (PKeyJws.slice_clock, PKeyBoot.clock_msec,
+# like now_source). A wall-clock bound is only a hang guard of at least 30 s, or the floor a real
+# timeout must wait (load can only lengthen the wait, so it cannot fail it: test_download.gd's
+# 0.5 s deadline, suite_boot.gd's 0.3 s sync deadline). Timings and frame counts may still go to
+# INFO lines.
 
 
 ## Lets `frames` frames pass.

@@ -1,0 +1,1848 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>UI kits · iOS 26 (SwiftUI)</title>
+    <link rel="stylesheet" href="shared.css" />
+    <script src="shared.js"></script>
+    <style>
+      /* iPhone 17 Pro, 402 × 874 pt. Liquid Glass approximated with backdrop-filter.
+         iOS grounds are neutral system greys (no Polaris lavender in product chrome). */
+      :root {
+        --ios-page: #000000;
+        --ios-cell: #16181d;
+        --ios-fill: #1f2127;
+        --ios-sep: rgb(255 255 255 / 0.1);
+        --ios-sym: #2a2d34;
+      }
+      [data-theme="light"] {
+        --ios-page: #f2f2f7;
+        --ios-cell: #ffffff;
+        --ios-fill: #e9e9ee;
+        --ios-sep: rgb(60 60 67 / 0.18);
+        --ios-sym: #e5e5ea;
+      }
+      .shot {
+        width: 426px;
+        height: 898px;
+        padding: 12px;
+        border-radius: 68px;
+        background: #1b1c20;
+        box-shadow:
+          0 0 0 1px #3a3b40 inset,
+          0 30px 60px -20px rgb(0 0 0 / 0.5);
+      }
+      [data-theme="light"] .shot {
+        background: #d9dbe2;
+        box-shadow:
+          0 0 0 1px #c3c6cf inset,
+          0 30px 60px -20px rgb(6 9 18 / 0.25);
+      }
+      .screen {
+        position: relative;
+        width: 402px;
+        height: 874px;
+        border-radius: 56px;
+        overflow: hidden;
+        background: var(--ios-page);
+        isolation: isolate;
+        font-size: 17px;
+        line-height: 22px;
+        color: var(--pk-text-strong);
+      }
+      .status {
+        position: absolute;
+        top: 0;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
+        height: 54px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 32px 0 52px;
+        font:
+          600 17px/1 -apple-system,
+          system-ui,
+          sans-serif;
+        color: var(--pk-text-strong);
+        z-index: 40;
+      }
+      .island {
+        position: absolute;
+        top: 11px;
+        inset-inline-start: 50%;
+        transform: translateX(-50%);
+        width: 124px;
+        height: 36px;
+        border-radius: 20px;
+        background: #000;
+        z-index: 41;
+      }
+      .sbi {
+        display: flex;
+        gap: 7px;
+        align-items: center;
+      }
+      .home {
+        position: absolute;
+        bottom: 8px;
+        inset-inline-start: 50%;
+        transform: translateX(-50%);
+        width: 140px;
+        height: 5px;
+        border-radius: 3px;
+        background: var(--pk-text-strong);
+        z-index: 50;
+      }
+
+      /* Product ambient: a mesh from the icon palette over the top 45 %, eased out. */
+      .ambient {
+        position: absolute;
+        inset: 0 0 auto;
+        height: 560px;
+        z-index: -1;
+        background:
+          radial-gradient(60% 50% at 30% 18%, #0f6f7a, transparent 70%),
+          radial-gradient(50% 45% at 78% 14%, #c9a35c, transparent 72%),
+          radial-gradient(70% 60% at 55% 40%, #1aa594, transparent 75%),
+          radial-gradient(90% 70% at 50% 0%, #0b3a48, transparent 80%);
+        opacity: 0.5;
+        mask: linear-gradient(
+          #000 0%,
+          rgb(0 0 0 / 0.75) 40%,
+          rgb(0 0 0 / 0.25) 72%,
+          transparent 100%
+        );
+        filter: blur(20px) saturate(1.2);
+      }
+      [data-theme="light"] .ambient {
+        opacity: 0.22;
+      }
+
+      /* Liquid Glass: no outline stroke, no drop shadow; a top specular edge and backdrop. */
+      .glass {
+        background: rgb(255 255 255 / 0.1);
+        backdrop-filter: blur(24px) saturate(1.8);
+        -webkit-backdrop-filter: blur(24px) saturate(1.8);
+        box-shadow:
+          inset 0 1px 0.5px rgb(255 255 255 / 0.3),
+          inset 0 -0.5px 0.5px rgb(255 255 255 / 0.08);
+        color: var(--pk-text-strong);
+      }
+      [data-theme="light"] .glass {
+        background: rgb(255 255 255 / 0.45);
+        box-shadow:
+          inset 0 1px 0.5px rgb(255 255 255 / 0.95),
+          inset 0 -0.5px 0.5px rgb(0 0 0 / 0.04);
+      }
+      .glass.on-plain {
+        background: rgb(120 120 128 / 0.18);
+      }
+      [data-theme="light"] .glass.on-plain {
+        background: rgb(120 120 128 / 0.12);
+      }
+      /* Glass on a glass sheet: the sheet already samples the backdrop once. Controls on it are
+         a flat fill, so the hero behind cannot bleed through twice as a tinted band. */
+      .sheet .glass {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+      .glass.prominent {
+        background: var(--kit-accent);
+        color: #fff;
+        box-shadow:
+          inset 0 1px 0.5px rgb(255 255 255 / 0.4),
+          inset 0 -1px 1px rgb(0 0 0 / 0.08),
+          0 2px 8px rgb(0 0 0 / 0.12);
+      }
+      .cap {
+        height: 52px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font: 500 17px/1 var(--pk-font-sans);
+        width: 100%;
+      }
+      .circ {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+      }
+      .title-xl {
+        font: 600 34px/40px var(--pk-font-sans);
+        letter-spacing: -0.01em;
+        color: var(--pk-text-strong);
+        margin: 0;
+        text-wrap: balance;
+      }
+      .title-l {
+        font: 600 28px/34px var(--pk-font-sans);
+        letter-spacing: -0.01em;
+        color: var(--pk-text-strong);
+        margin: 0;
+        text-wrap: balance;
+      }
+      .sub {
+        color: var(--pk-text-muted);
+        margin: 0;
+        font-size: 17px;
+        line-height: 22px;
+        text-wrap: pretty;
+      }
+      .foot-note {
+        color: var(--pk-text-muted);
+        font-size: 13px;
+        line-height: 18px;
+        text-align: center;
+        text-wrap: balance;
+      }
+
+      /* Inset grouped lists */
+      .list {
+        background: var(--ios-cell);
+        border-radius: 26px;
+        overflow: hidden;
+      }
+      .cell {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-height: 52px;
+        padding: 10px 18px;
+        position: relative;
+        color: var(--pk-text-strong);
+      }
+      .cell + .cell::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        inset-inline-end: 0;
+        inset-inline-start: 18px;
+        height: 0.5px;
+        background: var(--ios-sep);
+      }
+      .cell.ind + .cell::before {
+        inset-inline-start: 66px;
+      }
+      .cell .t {
+        flex: 1;
+        min-width: 0;
+      }
+      .cell .t small {
+        display: block;
+        color: var(--pk-text-muted);
+        font-size: 15px;
+        line-height: 20px;
+      }
+      .cell .v {
+        color: var(--pk-text-muted);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .cell .v .ic {
+        color: var(--pk-text-subtle);
+      }
+      .sym {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        display: grid;
+        place-items: center;
+        color: var(--pk-text-strong);
+        background: var(--ios-sym);
+        flex: none;
+      }
+      .tog {
+        width: 64px;
+        height: 28px;
+        border-radius: 999px;
+        background: var(--kit-accent);
+        position: relative;
+        flex: none;
+      }
+      .tog::after {
+        content: "";
+        position: absolute;
+        inset-inline-end: 2px;
+        top: 2px;
+        width: 38px;
+        height: 24px;
+        border-radius: 999px;
+        background: #fff;
+        box-shadow: 0 2px 6px rgb(0 0 0 / 0.16);
+      }
+      .sec-h {
+        font: 600 15px/20px var(--pk-font-sans);
+        color: var(--pk-text-strong);
+        margin: 24px 18px 8px;
+      }
+      .sec-f {
+        font-size: 13px;
+        line-height: 18px;
+        color: var(--pk-text-muted);
+        margin: 8px 18px 0;
+        text-wrap: pretty;
+      }
+      .chk {
+        color: var(--kit-accent-fg);
+      }
+      .link {
+        color: var(--kit-accent-fg);
+        font: 500 15px/44px var(--pk-font-sans);
+      }
+
+      /* Sheets (iOS 26: inset, concentric corners, glass at the medium detent) */
+      .dim {
+        position: absolute;
+        inset: 0;
+        background: rgb(0 0 0 / 0.32);
+        z-index: 5;
+      }
+      [data-theme="light"] .dim {
+        background: rgb(0 0 0 / 0.18);
+      }
+      .sheet {
+        position: absolute;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
+        bottom: 0;
+        z-index: 10;
+        border-radius: 40px 40px 0 0;
+        background: var(--ios-cell);
+        padding: 10px 20px 40px;
+      }
+      [data-theme="light"] .sheet {
+        background: #f7f7fa;
+      }
+      .sheet.float {
+        inset-inline-start: 8px;
+        inset-inline-end: 8px;
+        bottom: 8px;
+        border-radius: 40px 40px 48px 48px;
+        background: rgb(28 30 36 / 0.74);
+        backdrop-filter: blur(30px) saturate(1.6);
+        box-shadow:
+          inset 0 1px 0.5px rgb(255 255 255 / 0.22),
+          0 20px 50px rgb(0 0 0 / 0.4);
+        padding-bottom: 34px;
+      }
+      [data-theme="light"] .sheet.float {
+        /* Light sheets read as frosted white: near-opaque and unsaturated, so the product hero
+           behind never leaks through as a coloured band behind one row. */
+        background: rgb(249 249 251 / 0.97);
+        backdrop-filter: blur(40px) saturate(1);
+        box-shadow:
+          inset 0 1px 0.5px #fff,
+          0 20px 50px rgb(6 9 18 / 0.18);
+      }
+      .grab {
+        width: 36px;
+        height: 5px;
+        border-radius: 3px;
+        background: var(--pk-text-subtle);
+        opacity: 0.5;
+        margin: 0 auto 14px;
+      }
+      .sheet-bar {
+        display: grid;
+        grid-template-columns: 44px 1fr 44px;
+        align-items: center;
+        margin: 4px -6px 20px;
+      }
+      .sheet-bar .ttl {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font: 600 17px/1 var(--pk-font-sans);
+      }
+      .flabel {
+        font-size: 13px;
+        line-height: 18px;
+        color: var(--pk-text-subtle);
+        margin: 0 4px 8px;
+      }
+      .field {
+        background: var(--ios-fill);
+        border-radius: 22px;
+        min-height: 56px;
+        display: flex;
+        align-items: center;
+        padding: 10px 8px 10px 18px;
+        gap: 10px;
+        color: var(--pk-text-strong);
+      }
+      [data-theme="light"] .field {
+        background: #fff;
+      }
+      .field .mono {
+        font-size: 16px;
+        line-height: 22px;
+        flex: 1;
+        overflow-wrap: anywhere;
+      }
+      .caret {
+        display: inline-block;
+        width: 2px;
+        height: 20px;
+        background: var(--kit-accent-fg);
+        border-radius: 1px;
+        vertical-align: -4px;
+        margin-inline-start: 1px;
+      }
+      .paste {
+        height: 36px;
+        padding: 0 14px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font:
+          500 15px/1 -apple-system,
+          system-ui;
+        background: rgb(120 120 128 / 0.2);
+        color: var(--pk-text-strong);
+        align-self: start;
+        margin-top: 0;
+      }
+
+      /* Keyboard: iOS 26 (larger rounded keys on a glass plate) */
+      .kb {
+        position: absolute;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
+        bottom: 0;
+        height: 318px;
+        padding: 12px 6px 0;
+        z-index: 15;
+        background: rgb(44 46 52 / 0.78);
+        backdrop-filter: blur(30px) saturate(1.4);
+        border-radius: 36px 36px 0 0;
+        box-shadow: inset 0 1px 0.5px rgb(255 255 255 / 0.18);
+      }
+      [data-theme="light"] .kb {
+        background: rgb(222 224 230 / 0.82);
+        box-shadow: inset 0 1px 0.5px #fff;
+      }
+      .kb .r {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      .kb .k {
+        width: 33px;
+        height: 46px;
+        border-radius: 12px;
+        background: rgb(255 255 255 / 0.2);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font:
+          400 23px/1 -apple-system,
+          system-ui,
+          sans-serif;
+      }
+      [data-theme="light"] .kb .k {
+        background: #fff;
+        color: #000;
+        box-shadow: 0 1px 0 rgb(0 0 0 / 0.16);
+      }
+      .kb .k.w {
+        width: 46px;
+        background: rgb(255 255 255 / 0.1);
+        font-size: 16px;
+      }
+      [data-theme="light"] .kb .k.w {
+        background: rgb(255 255 255 / 0.55);
+      }
+      .kb .k.sp {
+        width: 176px;
+        font-size: 16px;
+      }
+      .kb .k.go {
+        width: 96px;
+        font-size: 17px;
+        font-weight: 600;
+        background: var(--kit-accent);
+        color: #fff;
+      }
+
+      /* Host app behind sheets and banners */
+      .navbar {
+        position: absolute;
+        top: 58px;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
+        padding: 0 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 4;
+      }
+      .hosttitle {
+        position: absolute;
+        top: 112px;
+        inset-inline-start: 20px;
+      }
+      .sessions {
+        position: absolute;
+        top: 170px;
+        inset-inline-start: 16px;
+        inset-inline-end: 16px;
+        display: grid;
+        gap: 12px;
+      }
+      .sess {
+        height: 84px;
+        border-radius: 22px;
+        background: var(--ios-cell);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 0 16px;
+        color: var(--pk-text-strong);
+        font-family: -apple-system, system-ui;
+      }
+      .sess .wave {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        background: #0b3a48;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 2px;
+      }
+      .sess .wave i {
+        width: 2.5px;
+        border-radius: 2px;
+        background: #5fe3cf;
+      }
+      .sess small {
+        display: block;
+        color: var(--pk-text-muted);
+        font-size: 15px;
+      }
+      /* Floats above the home indicator (or the tab bar, as its accessory): never over the nav
+         bar or the large title, so the host's navigation stays usable. */
+      .banner {
+        position: absolute;
+        bottom: 30px;
+        inset-inline-start: 10px;
+        inset-inline-end: 10px;
+        z-index: 30;
+        border-radius: 30px;
+        padding: 12px 12px 12px 14px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: rgb(36 38 44 / 0.7);
+        backdrop-filter: blur(30px) saturate(1.7);
+        box-shadow:
+          inset 0 1px 0.5px rgb(255 255 255 / 0.22),
+          0 12px 30px rgb(0 0 0 / 0.3);
+      }
+      /* A control on a blurred sheet is a flat fill, never a second backdrop-filter (§7.3). */
+      .banner .glass {
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+      }
+      [data-theme="light"] .banner {
+        background: rgb(255 255 255 / 0.72);
+        box-shadow:
+          inset 0 1px 0.5px #fff,
+          0 12px 30px rgb(6 9 18 / 0.14);
+      }
+      .seat {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .seat i {
+        width: 28px;
+        height: 6px;
+        border-radius: 3px;
+        background: color-mix(in oklab, var(--pk-text-strong) 80%, transparent);
+      }
+      .seat span {
+        margin-inline-start: 8px;
+        font-size: 15px;
+        color: var(--pk-text-muted);
+        font-variant-numeric: tabular-nums;
+      }
+      .apple {
+        height: 52px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font:
+          600 17px/1 -apple-system,
+          system-ui;
+        background: #fff;
+        color: #000;
+      }
+      [data-theme="light"] .apple {
+        background: #000;
+        color: #fff;
+      }
+
+      /* Several phones in one reference shot. */
+      .row-shot {
+        display: flex;
+        gap: 40px;
+        align-items: flex-start;
+      }
+      .row-shot > div {
+        display: grid;
+        gap: 10px;
+        justify-items: center;
+      }
+      .row-shot .lbl {
+        font: 500 13px/18px var(--pk-font-sans);
+        color: var(--pk-text-muted);
+      }
+
+      /* iOS 18 and iPadOS 18 fallback (UI-KITS owner decision: the 2024 floor): the same layout
+         on system materials. No Liquid Glass: filled, bordered-prominent buttons with continuous
+         corners, a plain grouped sheet with the system grabber, no specular edges. */
+      .ios18 .glass,
+      .ios18 .glass.on-plain {
+        background: rgb(120 120 128 / 0.24);
+        backdrop-filter: none;
+        -webkit-backdrop-filter: none;
+        box-shadow: none;
+      }
+      [data-theme="light"] .ios18 .glass,
+      [data-theme="light"] .ios18 .glass.on-plain {
+        background: rgb(120 120 128 / 0.12);
+      }
+      .ios18 .glass.prominent {
+        background: var(--kit-accent);
+        color: #fff;
+        box-shadow: none;
+      }
+      .ios18 .cap {
+        border-radius: 14px;
+        height: 50px;
+        font-weight: 600;
+      }
+      .ios18 .sheet {
+        border-radius: 12px 12px 0 0;
+        background: var(--ios-cell);
+      }
+      [data-theme="light"] .ios18 .sheet {
+        background: #f2f2f7;
+      }
+      .ios18 .field {
+        border-radius: 12px;
+        background: var(--ios-cell);
+      }
+      [data-theme="light"] .ios18 .field {
+        background: #fff;
+      }
+      .ios18 .ambient {
+        opacity: 0.38;
+      }
+
+      /* AX3 Dynamic Type: Rubik scaled with UIFontMetrics (body 17 → 40 pt, title 28 → 50 pt);
+         the layout stacks, nothing truncates, and the screen scrolls. */
+      .ax3 .title-xl {
+        font-size: 46px;
+        line-height: 54px;
+      }
+      .ax3 .sub {
+        font-size: 34px;
+        line-height: 42px;
+      }
+      .ax3 .cap {
+        height: auto;
+        min-height: 72px;
+        padding: 14px 20px;
+        font-size: 34px;
+        line-height: 42px;
+        border-radius: 36px;
+      }
+      .ax3 .link {
+        font-size: 30px;
+        line-height: 64px;
+      }
+      .scrollbar {
+        position: absolute;
+        inset-inline-end: 4px;
+        top: 120px;
+        width: 4px;
+        height: 220px;
+        border-radius: 2px;
+        background: var(--pk-text-subtle);
+        opacity: 0.5;
+        z-index: 30;
+      }
+
+      /* StoreKit paywall (SubscriptionStoreView look in the kit's type and the product's accent). */
+      .plan {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 18px;
+        border-radius: 22px;
+        background: var(--ios-cell);
+        box-shadow: inset 0 0 0 1px var(--ios-sep);
+      }
+      .plan.on {
+        box-shadow: inset 0 0 0 2px var(--kit-accent-fg);
+        background: var(--kit-accent-subtle);
+      }
+      .plan .radio {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 2px var(--pk-text-subtle);
+        flex: none;
+      }
+      .plan.on .radio {
+        box-shadow: inset 0 0 0 7px var(--kit-accent-fg);
+      }
+      .plan .t {
+        flex: 1;
+        font: 500 17px/22px var(--pk-font-sans);
+      }
+      .plan .t small {
+        display: block;
+        font: 400 15px/20px var(--pk-font-sans);
+        color: var(--pk-text-muted);
+      }
+      .plan .p {
+        font: 600 17px/22px var(--pk-font-sans);
+        font-variant-numeric: tabular-nums;
+        text-align: end;
+      }
+      .plan .p small {
+        display: block;
+        font: 500 13px/18px var(--pk-font-sans);
+        color: var(--kit-accent-fg);
+      }
+      .feat {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        font-size: 16px;
+        line-height: 21px;
+        color: var(--pk-text-default);
+      }
+      .feat .ic {
+        color: var(--kit-accent-fg);
+        margin-top: 1px;
+      }
+
+      /* Lock screen and the Live Activity for an update download. */
+      .lock {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(80% 50% at 30% 20%, #145a63, transparent 70%),
+          radial-gradient(70% 50% at 80% 70%, #3a2b5e, transparent 70%), #05080e;
+        z-index: -1;
+      }
+      [data-theme="light"] .lock {
+        background:
+          radial-gradient(80% 50% at 30% 20%, #9fd9cf, transparent 70%),
+          radial-gradient(70% 50% at 80% 70%, #d4c7f2, transparent 70%), #eef2f7;
+      }
+      .lock-time {
+        position: absolute;
+        top: 120px;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
+        text-align: center;
+        font:
+          600 96px/1 -apple-system,
+          system-ui;
+        letter-spacing: -0.02em;
+        color: #fff;
+      }
+      .lock-date {
+        position: absolute;
+        top: 92px;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
+        text-align: center;
+        font:
+          600 20px/1 -apple-system,
+          system-ui;
+        color: rgb(255 255 255 / 0.85);
+      }
+      [data-theme="light"] .lock-time,
+      [data-theme="light"] .lock-date {
+        color: #0b1220;
+      }
+      .activity {
+        position: absolute;
+        inset-inline-start: 12px;
+        inset-inline-end: 12px;
+        bottom: 120px;
+        border-radius: 28px;
+        padding: 16px 18px;
+        background: rgb(20 22 28 / 0.62);
+        backdrop-filter: blur(30px) saturate(1.6);
+        color: #fff;
+        display: grid;
+        gap: 12px;
+      }
+      [data-theme="light"] .activity {
+        background: rgb(255 255 255 / 0.66);
+        color: #0b1220;
+      }
+      .activity .bar {
+        height: 6px;
+        border-radius: 3px;
+        background: rgb(255 255 255 / 0.18);
+        overflow: hidden;
+      }
+      [data-theme="light"] .activity .bar {
+        background: rgb(11 18 32 / 0.12);
+      }
+      .activity .bar i {
+        display: block;
+        height: 100%;
+        width: 62%;
+        background: var(--kit-accent-fg);
+        border-radius: inherit;
+      }
+      .island.wide {
+        width: 236px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 10px 0 6px;
+        color: #fff;
+        font:
+          600 13px/1 -apple-system,
+          system-ui;
+      }
+
+      /* Boot, status and error (every kit ships them, UI-KITS §4.1). */
+      .state {
+        position: absolute;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        padding: 0 32px;
+        text-align: center;
+      }
+      .state .stack {
+        display: grid;
+        justify-items: center;
+        gap: 12px;
+      }
+      .state .glyph {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--ios-fill);
+        color: var(--pk-text-strong);
+      }
+      .state .glyph.warn {
+        color: var(--pk-warning);
+      }
+      .state .glyph.err {
+        color: var(--pk-danger);
+      }
+    </style>
+  </head>
+  <body>
+    <template id="chrome">
+      <div class="status">
+        <span>9:41</span>
+        <span class="sbi">
+          <svg
+            width="19"
+            height="12"
+            viewBox="0 0 19 12"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <rect x="0" y="8" width="3.4" height="4" rx="1" />
+            <rect x="5.2" y="5.5" width="3.4" height="6.5" rx="1" />
+            <rect x="10.4" y="3" width="3.4" height="9" rx="1" />
+            <rect x="15.6" y="0" width="3.4" height="12" rx="1" />
+          </svg>
+          <svg
+            width="17"
+            height="12"
+            viewBox="0 0 17 12"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path
+              d="M8.5 2.3c2.4 0 4.6.9 6.2 2.5l1.2-1.2A10.4 10.4 0 0 0 8.5.6 10.4 10.4 0 0 0 1.1 3.6l1.2 1.2a8.7 8.7 0 0 1 6.2-2.5Z"
+            />
+            <path
+              d="M8.5 5.6c1.5 0 2.9.6 3.9 1.6l1.2-1.2a7.2 7.2 0 0 0-10.2 0l1.2 1.2c1-1 2.4-1.6 3.9-1.6Z"
+            />
+            <path
+              d="M8.5 8.9c.6 0 1.2.2 1.6.7L8.5 11.2 6.9 9.6c.4-.5 1-.7 1.6-.7Z"
+            />
+          </svg>
+          <svg width="27" height="13" viewBox="0 0 27 13" aria-hidden="true">
+            <rect
+              x="0.5"
+              y="0.5"
+              width="23"
+              height="12"
+              rx="3.8"
+              fill="none"
+              stroke="currentColor"
+              opacity="0.4"
+            />
+            <rect
+              x="2"
+              y="2"
+              width="20"
+              height="9"
+              rx="2.5"
+              fill="currentColor"
+            />
+            <path
+              d="M25 4.5v4c.8-.3 1.3-1.1 1.3-2s-.5-1.7-1.3-2Z"
+              fill="currentColor"
+              opacity="0.45"
+            />
+          </svg>
+        </span>
+      </div>
+      <div class="island"></div>
+      <div class="home"></div>
+    </template>
+
+    <template id="gate">
+      <div class="ambient"></div>
+      <div
+        style="
+          position: absolute;
+          top: 176px;
+          inset-inline-start: 28px;
+          inset-inline-end: 28px;
+          display: grid;
+          justify-items: center;
+          text-align: center;
+        "
+      >
+        <div
+          class="k-appicon"
+          data-art="tidewater"
+          data-size="120"
+          style="border-radius: 27px"
+        ></div>
+        <h1 class="title-xl" style="margin-top: 28px">
+          Welcome to Tidewater Studio
+        </h1>
+        <span
+          style="font-size: 13px; color: var(--pk-text-subtle); margin-top: 6px"
+          >by Harbor Audio</span
+        >
+        <p class="sub" style="margin-top: 12px">
+          Sign in or add your license to start.
+        </p>
+      </div>
+      <div
+        class="gate-actions"
+        style="
+          position: absolute;
+          inset-inline-start: 24px;
+          inset-inline-end: 24px;
+          bottom: 34px;
+          display: grid;
+          gap: 12px;
+        "
+      >
+        <div class="glass prominent cap">Sign in</div>
+        <div class="glass cap">Use a license key</div>
+        <div
+          style="
+            display: flex;
+            justify-content: center;
+            gap: 28px;
+            margin-top: 2px;
+          "
+        >
+          <span class="link">Restore purchase</span
+          ><span class="link">Activate offline</span>
+        </div>
+      </div>
+    </template>
+
+    <main class="board">
+      <!-- 1. Gate -->
+      <figure>
+        <figcaption>ios · gate</figcaption>
+        <div class="shot" data-shot="gate">
+          <div class="screen" data-tpl="gate"></div>
+        </div>
+      </figure>
+
+      <!-- 2. Activate: sheet with keyboard -->
+      <figure>
+        <figcaption>ios · activate (large-detent sheet, key parsed)</figcaption>
+        <div class="shot" data-shot="activate">
+          <div class="screen" data-tpl="gate">
+            <div class="dim"></div>
+            <div class="sheet" style="top: 214px">
+              <div class="grab" style="margin-bottom: 4px"></div>
+              <div class="sheet-bar">
+                <span
+                  class="glass on-plain circ"
+                  data-icon="x"
+                  data-size="20"
+                  aria-label="Cancel"
+                ></span>
+                <span class="ttl"
+                  ><span
+                    class="k-appicon"
+                    data-art="tidewater"
+                    data-size="28"
+                    style="border-radius: 7px"
+                  ></span
+                  >Tidewater Studio</span
+                >
+                <span
+                  class="glass prominent circ"
+                  data-icon="check"
+                  data-size="20"
+                  aria-label="Activate"
+                ></span>
+              </div>
+              <h2 class="title-l" style="margin: 0 4px 6px">
+                Add your license
+              </h2>
+              <p
+                class="sub"
+                style="margin: 0 4px 22px; font-size: 15px; line-height: 20px"
+              >
+                Your key is in the purchase email from Harbor Audio.
+              </p>
+              <div class="flabel">License key</div>
+              <div class="field">
+                <span class="mono"
+                  ><span class="k-key"
+                    ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                    ><span>3WPLDA</span></span
+                  ><span class="caret"></span
+                ></span>
+                <span class="paste"
+                  ><span data-icon="paste" data-size="15"></span>Paste</span
+                >
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 8px;
+                  align-items: center;
+                  margin: 12px 4px 0;
+                  font-size: 15px;
+                  color: var(--pk-text-muted);
+                "
+              >
+                <span
+                  style="color: var(--pk-success)"
+                  data-icon="badge"
+                  data-size="18"
+                ></span>
+                <span
+                  ><b style="font-weight: 600; color: var(--pk-text-strong)"
+                    >Tidewater Studio Pro</b
+                  >&#8201;·&#8201;Lifetime&#8201;·&#8201;3 devices</span
+                >
+              </div>
+            </div>
+            <div class="kb" id="kb1"></div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 3. Sign in: method sheet over the real gate -->
+      <figure>
+        <figcaption>
+          ios · sign-in (medium detent, floating; swipe to dismiss)
+        </figcaption>
+        <div class="shot" data-shot="sign-in">
+          <div class="screen" data-tpl="gate">
+            <div class="dim"></div>
+            <div class="sheet float" style="padding: 10px 20px 34px">
+              <div class="grab"></div>
+              <h2
+                class="title-l"
+                style="
+                  font-size: 24px;
+                  line-height: 30px;
+                  text-align: center;
+                  margin: 6px 0 22px;
+                "
+              >
+                Sign in to Tidewater Studio
+              </h2>
+              <div style="display: grid; gap: 10px">
+                <div class="apple">
+                  <span data-apple data-size="19"></span>Continue with Apple
+                </div>
+                <div class="glass on-plain cap">
+                  <span data-icon="passkey" data-size="20"></span>Sign in with a
+                  passkey
+                </div>
+                <div class="glass on-plain cap">
+                  <span data-icon="mail" data-size="19"></span>Continue with
+                  email
+                </div>
+                <div class="glass on-plain cap">
+                  <span data-icon="qr" data-size="19"></span>Use another device
+                </div>
+              </div>
+              <p class="foot-note" style="margin: 18px 12px 0">
+                Polaris Key handles sign-in. Harbor Audio never sees your
+                passkeys.
+              </p>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 4. Device limit -->
+      <figure>
+        <figcaption>ios · device limit</figcaption>
+        <div class="shot" data-shot="device-limit">
+          <div class="screen">
+            <div class="navbar">
+              <span
+                class="glass on-plain circ"
+                data-icon="x"
+                data-size="20"
+                aria-label="Cancel"
+              ></span>
+            </div>
+            <div
+              style="position: absolute; top: 120px; inset-inline-start: 16px; inset-inline-end: 16px"
+            >
+              <div
+                style="
+                  display: flex;
+                  gap: 10px;
+                  align-items: center;
+                  margin: 0 4px 14px;
+                  font: 500 15px var(--pk-font-sans);
+                "
+              >
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="32"
+                  style="border-radius: 8px"
+                ></span
+                ><span style="white-space: nowrap"
+                  >Tidewater Studio
+                  <span style="color: var(--pk-text-muted); font-weight: 400"
+                    >· Pro</span
+                  ></span
+                >
+              </div>
+              <h1 class="title-l" style="margin: 0 4px">
+                Your license is on 3 of 3 devices
+              </h1>
+              <p
+                class="sub"
+                style="
+                  margin: 10px 4px 14px;
+                  font-size: 16px;
+                  line-height: 21px;
+                "
+              >
+                To use it on this iPhone, remove one. You can add it back later.
+              </p>
+              <div
+                class="seat"
+                style="margin: 0 4px 22px"
+                role="img"
+                aria-label="3 of 3 devices in use"
+              >
+                <i></i><i></i><i></i><span>3 of 3 in use</span>
+              </div>
+              <div class="list">
+                <div class="cell ind">
+                  <span class="sym" data-icon="laptop" data-size="19"></span>
+                  <div class="t">
+                    Work laptop <em class="k-tag">Least recent</em
+                    ><small>Windows 11 · last used 41 days ago</small>
+                  </div>
+                  <span class="chk" data-icon="check" data-size="22"></span>
+                </div>
+                <div class="cell ind">
+                  <span class="sym" data-icon="tablet" data-size="19"></span>
+                  <div class="t">
+                    Mara’s iPad<small>iPadOS 26 · last used yesterday</small>
+                  </div>
+                </div>
+                <div class="cell ind">
+                  <span class="sym" data-icon="laptop" data-size="19"></span>
+                  <div class="t">
+                    MacBook Pro<small>macOS 26 · last used today</small>
+                  </div>
+                </div>
+              </div>
+              <p class="sec-f">Tidewater Studio signs out on Work laptop.</p>
+            </div>
+            <div
+              style="position: absolute; inset-inline-start: 24px; inset-inline-end: 24px; bottom: 34px"
+            >
+              <div class="glass prominent cap">
+                Remove Work laptop and continue
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 5. Update available: a glass banner, not a sheet -->
+      <figure>
+        <figcaption>ios · update available (non-blocking banner)</figcaption>
+        <div class="shot" data-shot="update">
+          <div class="screen" data-tpl="host">
+            <div class="banner">
+              <span
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="40"
+                style="border-radius: 10px"
+              ></span>
+              <div style="flex: 1; min-width: 0">
+                <div style="font: 600 15px/20px var(--pk-font-sans)">
+                  Tidewater Studio 2.5
+                </div>
+                <div
+                  style="
+                    font-size: 13px;
+                    line-height: 18px;
+                    color: var(--pk-text-muted);
+                  "
+                >
+                  Stem export in one tap, and fixes
+                </div>
+              </div>
+              <span
+                class="glass prominent"
+                style="
+                  height: 36px;
+                  padding: 0 16px;
+                  border-radius: 999px;
+                  display: grid;
+                  place-items: center;
+                  font: 500 15px var(--pk-font-sans);
+                "
+                >Update</span
+              >
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 6. Mandatory update: a sheet with no dismiss -->
+      <figure>
+        <figcaption>ios · update required (no dismiss, says why)</figcaption>
+        <div class="shot" data-shot="update-required">
+          <div class="screen" data-tpl="host">
+            <div class="dim"></div>
+            <div class="sheet float" style="padding: 28px 22px 34px">
+              <div style="display: flex; gap: 16px; align-items: center">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="60"
+                  style="border-radius: 14px"
+                ></div>
+                <div style="flex: 1">
+                  <h2
+                    class="title-l"
+                    style="font-size: 22px; line-height: 28px"
+                  >
+                    Tidewater Studio 2.5
+                  </h2>
+                  <span style="color: var(--pk-text-muted); font-size: 15px"
+                    >You have 2.4.1</span
+                  >
+                </div>
+              </div>
+              <p
+                class="sub"
+                style="
+                  margin: 18px 2px 16px;
+                  font-size: 16px;
+                  line-height: 21px;
+                  color: var(--pk-text-default);
+                "
+              >
+                This update is required. Your library moved to a new format, and
+                2.4.1 can’t open it.
+              </p>
+              <div
+                style="
+                  font: 500 13px/18px var(--pk-font-sans);
+                  color: var(--pk-text-muted);
+                  margin: 0 2px 6px;
+                "
+              >
+                What’s new
+              </div>
+              <div
+                style="
+                  display: grid;
+                  gap: 6px;
+                  font-size: 15px;
+                  line-height: 20px;
+                  margin: 0 2px 6px;
+                "
+              >
+                <span>Stem export in one tap, with loudness matching</span>
+                <span>Track freeze works with every plug-in</span>
+              </div>
+              <span class="link" style="margin: 0 2px">Release notes</span>
+              <div class="glass prominent cap" style="margin-top: 10px">
+                Update on the App Store
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 7. Settings -->
+      <figure>
+        <figcaption>ios · settings (account and license)</figcaption>
+        <div class="shot" data-shot="settings">
+          <div class="screen">
+            <div class="navbar">
+              <span
+                class="glass on-plain circ"
+                data-icon="chevronLeft"
+                data-size="22"
+              ></span>
+            </div>
+            <div
+              style="position: absolute; top: 112px; inset-inline-start: 16px; inset-inline-end: 16px"
+            >
+              <h1 class="title-xl" style="margin: 0 4px 18px">Account</h1>
+              <div class="list">
+                <div class="cell" style="min-height: 80px">
+                  <span
+                    class="k-appicon"
+                    data-art="tidewater"
+                    data-size="52"
+                    style="border-radius: 12px"
+                  ></span>
+                  <div class="t">
+                    <span style="font-weight: 500">Tidewater Studio Pro</span
+                    ><small>Lifetime · mara@fennick.studio</small>
+                  </div>
+                </div>
+                <div class="cell">
+                  <div class="t">Manage license</div>
+                  <div class="v">
+                    <span data-icon="external" data-size="16"></span>
+                  </div>
+                </div>
+                <div class="cell">
+                  <div class="t">Devices</div>
+                  <div class="v tnum">
+                    2 of 3<span data-icon="chevronRight" data-size="16"></span>
+                  </div>
+                </div>
+                <div class="cell">
+                  <div class="t">Cloud Sync</div>
+                  <div class="v">
+                    Synced 2 min ago<span
+                      data-icon="chevronRight"
+                      data-size="16"
+                    ></span>
+                  </div>
+                </div>
+              </div>
+              <div class="sec-h">Updates</div>
+              <div class="list">
+                <div class="cell">
+                  <div class="t">Download automatically</div>
+                  <span class="tog"></span>
+                </div>
+                <div class="cell">
+                  <div class="t">Version</div>
+                  <div class="v tnum">2.4.1 · up to date</div>
+                </div>
+              </div>
+              <div class="sec-h">From Harbor Audio</div>
+              <div class="list">
+                <div class="cell" style="min-height: 64px">
+                  <div class="t">
+                    Share crash reports<small>Set by Fennick Studio</small>
+                  </div>
+                  <span class="v"
+                    ><span data-icon="lock" data-size="15"></span>On</span
+                  >
+                </div>
+              </div>
+              <div class="list" style="margin-top: 24px">
+                <div class="cell">
+                  <div class="t" style="color: var(--pk-text-strong)">
+                    Restore purchase
+                  </div>
+                </div>
+                <div class="cell">
+                  <div class="t" style="color: var(--pk-danger)">Sign out</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 8. iOS 18 fallback -->
+      <figure>
+        <figcaption>
+          ios · iOS 18 fallback (same layout on system materials: no Liquid
+          Glass)
+        </figcaption>
+        <div class="row-shot" data-shot="ios18">
+          <div>
+            <div class="shot ios18">
+              <div class="screen" data-tpl="gate"></div>
+            </div>
+            <span class="lbl">Gate</span>
+          </div>
+          <div>
+            <div class="shot ios18">
+              <div class="screen" data-tpl="gate">
+                <div class="dim"></div>
+                <div class="sheet" style="top: 300px; padding-top: 8px">
+                  <div class="grab" style="margin-bottom: 18px"></div>
+                  <h2 class="title-l" style="margin: 0 4px 6px">
+                    Add your license
+                  </h2>
+                  <p
+                    class="sub"
+                    style="
+                      margin: 0 4px 22px;
+                      font-size: 15px;
+                      line-height: 20px;
+                    "
+                  >
+                    Your key is in the purchase email from Harbor Audio.
+                  </p>
+                  <div class="flabel">License key</div>
+                  <div class="field">
+                    <span class="mono"
+                      ><span class="k-key"
+                        ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                        ><span>3WPLDA</span></span
+                      ></span
+                    >
+                  </div>
+                  <div
+                    class="k-verdict"
+                    style="margin: 10px 4px 0; font-size: 15px"
+                  >
+                    <span data-icon="checkCircle" data-size="16"></span>
+                    <span
+                      ><b style="font-weight: 600; color: var(--pk-text-strong)"
+                        >Tidewater Studio Pro</b
+                      >&#8201;·&#8201;Lifetime&#8201;·&#8201;3 devices</span
+                    >
+                  </div>
+                  <div class="glass prominent cap" style="margin-top: 28px">
+                    Activate
+                  </div>
+                  <div class="glass cap" style="margin-top: 12px">Cancel</div>
+                </div>
+              </div>
+            </div>
+            <span class="lbl">Activate sheet</span>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 9. AX3 Dynamic Type -->
+      <figure>
+        <figcaption>
+          ios · AX3 Dynamic Type (Rubik through UIFontMetrics; stacks, wraps,
+          scrolls)
+        </figcaption>
+        <div class="shot ax3" data-shot="ax3">
+          <div class="screen">
+            <div class="ambient"></div>
+            <div class="scrollbar"></div>
+            <div
+              style="
+                position: absolute;
+                top: 78px;
+                inset-inline-start: 24px;
+                inset-inline-end: 24px;
+                display: grid;
+                justify-items: center;
+                text-align: center;
+                gap: 14px;
+              "
+            >
+              <div
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="88"
+                style="border-radius: 20px"
+              ></div>
+              <h1 class="title-xl">Welcome to Tidewater Studio</h1>
+              <p class="sub">Sign in or add your license to start.</p>
+              <div
+                style="display: grid; gap: 14px; width: 100%; margin-top: 6px"
+              >
+                <div class="glass prominent cap">Sign in</div>
+                <div class="glass cap">Use a license key</div>
+              </div>
+              <div style="display: grid; gap: 0">
+                <span class="link">Restore purchase</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 10. StoreKit paywall -->
+      <figure>
+        <figcaption>
+          ios · StoreKit paywall (plans from the App Store, the product's
+          accent)
+        </figcaption>
+        <div class="shot" data-shot="paywall">
+          <div class="screen">
+            <div class="ambient"></div>
+            <div
+              style="
+                position: absolute;
+                top: 64px;
+                inset-inline-start: 16px;
+                inset-inline-end: 16px;
+                display: flex;
+                justify-content: flex-end;
+              "
+            >
+              <span
+                class="glass on-plain circ"
+                data-icon="x"
+                data-size="20"
+                aria-label="Close"
+              ></span>
+            </div>
+            <div
+              style="
+                position: absolute;
+                top: 112px;
+                inset-inline-start: 24px;
+                inset-inline-end: 24px;
+                display: grid;
+                gap: 20px;
+              "
+            >
+              <div
+                style="
+                  display: grid;
+                  justify-items: center;
+                  gap: 12px;
+                  text-align: center;
+                "
+              >
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="84"
+                  style="border-radius: 19px"
+                ></div>
+                <h1 class="title-l">Tidewater Studio Pro</h1>
+                <p class="sub" style="font-size: 16px; line-height: 21px">
+                  Everything in Tidewater Studio, on all your devices.
+                </p>
+              </div>
+              <div style="display: grid; gap: 10px; padding: 0 6px">
+                <div class="feat">
+                  <span data-icon="check" data-size="18"></span>Stem export with
+                  loudness matching
+                </div>
+                <div class="feat">
+                  <span data-icon="check" data-size="18"></span>Unlimited tracks
+                  and plug-ins
+                </div>
+                <div class="feat">
+                  <span data-icon="check" data-size="18"></span>Three devices on
+                  one license
+                </div>
+              </div>
+              <div style="display: grid; gap: 10px">
+                <div class="plan on">
+                  <span class="radio"></span>
+                  <span class="t"
+                    >Yearly<small>14 days free, then $39.99 a year</small></span
+                  >
+                  <span class="p">$3.33/mo<small>Save 33%</small></span>
+                </div>
+                <div class="plan">
+                  <span class="radio"></span>
+                  <span class="t"
+                    >Monthly<small>Billed every month</small></span
+                  >
+                  <span class="p">$4.99/mo</span>
+                </div>
+              </div>
+            </div>
+            <div
+              style="
+                position: absolute;
+                inset-inline-start: 24px;
+                inset-inline-end: 24px;
+                bottom: 34px;
+                display: grid;
+                gap: 10px;
+              "
+            >
+              <div class="glass prominent cap">Start free trial</div>
+              <div class="foot-note">
+                Cancel anytime in Settings. Renews automatically.
+              </div>
+              <div style="display: flex; justify-content: center; gap: 22px">
+                <span class="link" style="line-height: 28px">Restore</span
+                ><span class="link" style="line-height: 28px">Terms</span
+                ><span class="link" style="line-height: 28px">Privacy</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 11. Live Activity -->
+      <figure>
+        <figcaption>
+          ios · Live Activity (update download on the Lock Screen and in the
+          Dynamic Island)
+        </figcaption>
+        <div class="shot" data-shot="live-activity">
+          <div class="screen">
+            <div class="lock"></div>
+            <div class="lock-date">Monday 5 October</div>
+            <div class="lock-time">9:41</div>
+            <div class="activity">
+              <div style="display: flex; gap: 12px; align-items: center">
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="40"
+                  style="border-radius: 10px"
+                ></span>
+                <div style="flex: 1; min-width: 0">
+                  <div style="font: 600 16px/21px var(--pk-font-sans)">
+                    Tidewater Studio 2.5
+                  </div>
+                  <div
+                    style="font-size: 14px; line-height: 19px; opacity: 0.75"
+                  >
+                    Downloading · 38 of 61 MB
+                  </div>
+                </div>
+                <span
+                  style="
+                    font: 600 16px/1 var(--pk-font-sans);
+                    font-variant-numeric: tabular-nums;
+                  "
+                  >62%</span
+                >
+              </div>
+              <div class="bar"><i></i></div>
+              <div style="font-size: 13px; line-height: 18px; opacity: 0.7">
+                About 20 s left · installs when you next open the app
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 12. Boot, status and error -->
+      <figure>
+        <figcaption>
+          ios · boot, status (blocked) and error (offline)
+        </figcaption>
+        <div class="row-shot" data-shot="states">
+          <div>
+            <div class="shot">
+              <div class="screen">
+                <div class="ambient"></div>
+                <div class="state">
+                  <div class="stack">
+                    <div
+                      class="k-appicon"
+                      data-art="tidewater"
+                      data-size="104"
+                      style="border-radius: 24px"
+                    ></div>
+                    <div
+                      class="k-progress"
+                      style="width: 120px; margin-top: 28px"
+                    >
+                      <i style="width: 45%"></i>
+                    </div>
+                    <span class="foot-note">Checking your license</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span class="lbl">Boot</span>
+          </div>
+          <div>
+            <div class="shot">
+              <div class="screen">
+                <div class="state">
+                  <div class="stack">
+                    <div
+                      class="k-appicon"
+                      data-art="tidewater"
+                      data-size="72"
+                      style="border-radius: 17px"
+                    ></div>
+                    <h1 class="title-l" style="margin-top: 16px">
+                      Your license has ended
+                    </h1>
+                    <p class="sub">
+                      Tidewater Studio Pro ended on 30 September. Renew to keep
+                      working on your sessions.
+                    </p>
+                  </div>
+                </div>
+                <div
+                  style="
+                    position: absolute;
+                    inset-inline-start: 24px;
+                    inset-inline-end: 24px;
+                    bottom: 34px;
+                    display: grid;
+                    gap: 12px;
+                  "
+                >
+                  <div class="glass prominent cap">Renew</div>
+                  <div class="glass on-plain cap">Use a different key</div>
+                </div>
+              </div>
+            </div>
+            <span class="lbl">Status: blocked</span>
+          </div>
+          <div>
+            <div class="shot">
+              <div class="screen">
+                <div class="state">
+                  <div class="stack">
+                    <div class="glyph" data-icon="wifiOff" data-size="26"></div>
+                    <h1 class="title-l" style="margin-top: 12px">
+                      Can’t reach Harbor Audio
+                    </h1>
+                    <p class="sub">
+                      Check your connection. You can keep working offline for 3
+                      more days.
+                    </p>
+                  </div>
+                </div>
+                <div
+                  style="
+                    position: absolute;
+                    inset-inline-start: 24px;
+                    inset-inline-end: 24px;
+                    bottom: 34px;
+                    display: grid;
+                    gap: 12px;
+                  "
+                >
+                  <div class="glass prominent cap">Try again</div>
+                  <div class="glass on-plain cap">Continue offline</div>
+                </div>
+              </div>
+            </div>
+            <span class="lbl">Error: offline</span>
+          </div>
+        </div>
+      </figure>
+    </main>
+
+    <template id="host">
+      <div class="navbar">
+        <span
+          class="glass on-plain circ"
+          data-icon="sliders"
+          data-size="19"
+        ></span>
+        <span
+          class="glass on-plain circ"
+          data-icon="search"
+          data-size="19"
+        ></span>
+      </div>
+      <h1
+        class="title-xl hosttitle"
+        style="font-family: -apple-system, system-ui; font-weight: 700"
+      >
+        Sessions
+      </h1>
+      <div class="sessions"></div>
+    </template>
+
+    <script>
+      document.querySelectorAll("[data-tpl]").forEach((s) => {
+        s.prepend(
+          document.getElementById(s.dataset.tpl).content.cloneNode(true),
+        );
+      });
+      document
+        .querySelectorAll(".screen")
+        .forEach((s) =>
+          s.appendChild(
+            document.getElementById("chrome").content.cloneNode(true),
+          ),
+        );
+      const rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+      document.getElementById("kb1").innerHTML =
+        rows
+          .map((r, i) => {
+            let keys = [...r]
+              .map((c) => `<span class="k">${c}</span>`)
+              .join("");
+            if (i === 2)
+              keys = `<span class="k w">⇧</span>${keys}<span class="k w">⌫</span>`;
+            return `<div class="r">${keys}</div>`;
+          })
+          .join("") +
+        `<div class="r"><span class="k w">123</span><span class="k w">☺</span><span class="k sp">space</span><span class="k go">go</span></div>`;
+      document.querySelectorAll(".sessions").forEach((sess) => {
+        [
+          "Harbor demo · 4 tracks",
+          "Night swim · 9 tracks",
+          "Field notes · 2 tracks",
+          "Lighthouse · 6 tracks",
+          "Low tide · 5 tracks",
+          "Pier 9 · 3 tracks",
+        ].forEach((t, n) => {
+          const [a, b] = t.split(" · ");
+          let w = "";
+          for (let i = 0; i < 11; i++)
+            w += `<i style="height:${(8 + Math.abs(Math.sin(i * 0.9 + n)) * 24).toFixed(0)}px"></i>`;
+          sess.insertAdjacentHTML(
+            "beforeend",
+            `<div class="sess"><span class="wave">${w}</span><div><b style="font-weight:600">${a}</b><small>${b} · edited today</small></div></div>`,
+          );
+        });
+      });
+    </script>
+  </body>
+</html>

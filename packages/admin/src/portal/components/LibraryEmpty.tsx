@@ -10,7 +10,7 @@ const STAR = markPartPath("star", { kind: "key", size: 48, theme: "mono" });
 /**
  * The empty library (§4.12): the signed-in email, Activate a license (the one primary) and the
  * stationary star on the right half (a top strip on phones), and "See N in Discover" once the
- * Worker counts offers (G24). The teaser rows of offers are PX-16's.
+ * Worker counts offers (G24). The "Ready to add" rows under it are `DiscoverTeaser` (PX-16).
  */
 export function LibraryEmpty({
   email,

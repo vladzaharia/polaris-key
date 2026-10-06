@@ -1,8 +1,16 @@
 /**
- * Licenses (`/manage/api/products/<slug>/license/licenses/...`): list/create, detail/patch,
- * enable/disable, catalog-validated override batches, and the keys/devices sub-resources.
+ * Licenses (`/manage/api/products/<slug>/license/licenses/...`): list/create, detail/patch/delete,
+ * enable/disable, catalog-validated override batches, and the keys/devices sub-resources. Every
+ * summary carries its deletion verdict (`deletion.ts`).
  * Creating a license mints its first key (returned ONCE). Override values validate against the
  * active catalog.
+ *
+ * LX-26 (notes/S-24 §5, §6.3): every licence read carries its derived `holder` (floating, or
+ * assigned in an account or waiting) and the list filters on it (`?holder=`). A licence created
+ * with an email, or given one by PATCH while floating, joins the account that verified that
+ * address in the same request (Core's `associateLicenseHolder`, implemented by Identity); the
+ * answer has the same shape whether or not one did (D4). Clearing an assigned licence's email is
+ * refused: making a licence floating is the relink tool's Make floating (LX-30, I-12).
  */
 
 import type { Db } from "../../../core/platform.js";
@@ -51,9 +59,24 @@ import {
   WriteChecks,
 } from "../../../core/adminApi.js";
 import { tierExpiresAt } from "../authz.js";
+import { licenseEmail } from "../../../core/accountSubjects.js";
+import {
+  associateLicenseHolder,
+  describeHolder,
+  HOLDER_FILTERS,
+  isHolderFilter,
+  licenseHolder,
+  type HolderFilter,
+} from "../../../core/licenseHolders.js";
+import {
+  licenseDeviceLimit,
+  licenseDeviceLimitInfo,
+} from "../../../core/authz.js";
+import type { LicenseRow } from "../../../core/data.js";
 import type { LicenseAdminContext } from "./index.js";
 import { handleKeys } from "./keys.js";
 import { handleAdminDevices } from "./devices.js";
+import { deletionVerdicts, handleDeleteLicense } from "./deletion.js";
 
 /** Normalize a request-body `channels` field into a JSON string array column value.
  *  An array (even empty) is stored as JSON; anything else (absent/null) clears the column. */
@@ -61,6 +84,35 @@ function parseChannels(raw: unknown): string | null {
   if (!Array.isArray(raw)) return null;
   const channels = raw.filter((c) => typeof c === "string") as string[];
   return JSON.stringify(channels);
+}
+
+/**
+ * LX-26: the email a create or PATCH body sets, trimmed. `undefined` = not set (absent, or not a
+ * string and not `null`); `null` = none (an explicit `null`, or empty after trimming).
+ */
+function bodyEmail(body: Record<string, unknown>): string | null | undefined {
+  if (!("email" in body)) return undefined;
+  if (body.email === null) return null;
+  if (typeof body.email !== "string") return undefined;
+  const trimmed = body.email.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
+/** LX-26: the list's `?holder=` filter; `"invalid"` for a value outside `HOLDER_FILTERS`. */
+function holderQuery(req: Request): HolderFilter | null | "invalid" {
+  const raw = new URL(req.url).searchParams.get("holder");
+  if (raw === null || raw === "") return null;
+  return isHolderFilter(raw) ? raw : "invalid";
+}
+
+/** The context Core's licence-holder association needs, from this request. */
+function holderContext(ctx: LicenseAdminContext) {
+  return {
+    db: ctx.db,
+    env: ctx.env,
+    now: ctx.now,
+    origin: new URL(ctx.req.url).origin,
+  };
 }
 
 function parseProfiles(body: Record<string, unknown>): string[] {
@@ -84,7 +136,51 @@ function licenseWriteChecks(body: Record<string, unknown>): Response | null {
     .semver("minVersion", body.minVersion)
     .semver("maxVersion", body.maxVersion)
     .offlineDays("maxOfflineDays", body.maxOfflineDays)
+    .wireInteger("deviceLimit", body.deviceLimit)
     .response();
+}
+
+/**
+ * LX-14a: a licence's own `deviceLimit` is a positive integer, or `null` to inherit; absent keeps
+ * it. Anything else (zero, a fraction, a string) is refused rather than silently ignored, the
+ * same rule `invalidDeviceLimit` applies to a tier and 0084's CHECK applies at the database.
+ */
+function invalidLicenseDeviceLimit(body: Record<string, unknown>): boolean {
+  if (!("deviceLimit" in body) || body.deviceLimit === null) return false;
+  const v = body.deviceLimit;
+  return typeof v !== "number" || !Number.isInteger(v) || v <= 0;
+}
+
+/** The device-limit fields every licence read carries (LX-14a): the stored value, the limit
+ *  `authorizeDevice` enforces and where it comes from, and the inherited value the console's
+ *  **Device limit…** sheet offers as its placeholder. */
+async function deviceLimitView(
+  ctx: LicenseAdminContext,
+  license: LicenseRow,
+): Promise<Record<string, unknown>> {
+  const info = await licenseDeviceLimitInfo(
+    ctx.db,
+    ctx.product,
+    license,
+    ctx.now,
+  );
+  return {
+    deviceLimit: license.device_limit ?? null,
+    effectiveDeviceLimit: info.limit,
+    deviceLimitSource: info.source,
+    inheritedDeviceLimit: info.inherited.limit,
+    inheritedDeviceLimitSource: info.inherited.source,
+  };
+}
+
+async function summarize(
+  ctx: LicenseAdminContext,
+  license: LicenseRow,
+): Promise<Record<string, unknown>> {
+  return {
+    ...(await licenseSummary(ctx.db, ctx.product.slug, license)),
+    ...(await deviceLimitView(ctx, license)),
+  };
 }
 
 async function validateRefs(
@@ -117,9 +213,21 @@ export async function handleLicenses(
   // /licenses
   if (!id) {
     if (req.method === "GET") {
-      const rows = await listLicenses(db, slug);
+      const holder = holderQuery(req);
+      if (holder === "invalid")
+        return err(
+          400,
+          ErrorCode.BadRequest,
+          `holder must be one of ${HOLDER_FILTERS.join(", ")}`,
+          { fields: ["holder"] },
+        );
+      const rows = await listLicenses(db, slug, holder ? { holder } : {});
+      const verdicts = await deletionVerdicts(ctx, rows);
       const licenses = await Promise.all(
-        rows.map((r) => licenseSummary(db, slug, r)),
+        rows.map(async (r) => ({
+          ...(await summarize(ctx, r)),
+          deletion: verdicts.get(r.id),
+        })),
       );
       return adminJson({ licenses });
     }
@@ -127,6 +235,15 @@ export async function handleLicenses(
       const body = await readBody(req);
       const refused = licenseWriteChecks(body);
       if (refused) return refused;
+      // LX-14a: a new licence inherits its device limit; its own is set afterwards with PATCH
+      // (audited as `license.device_limit.set`). Refused rather than silently dropped.
+      if ("deviceLimit" in body)
+        return err(
+          422,
+          ErrorCode.BadRequest,
+          "deviceLimit cannot be set when creating a license; create it, then PATCH deviceLimit",
+          { fields: ["deviceLimit"] },
+        );
       const licenseId = randomId("lic");
       const profiles = parseProfiles(body);
       const badRefs = await validateRefs(db, slug, {
@@ -145,13 +262,16 @@ export async function handleLicenses(
         typeof body.tier === "string"
           ? await getTier(db, slug, body.tier)
           : null;
+      // LX-26: an email makes the licence assigned (S-24 D1); none (absent, null or blank) makes
+      // it floating. Stored trimmed, so the email match and the holder rule read the same value.
+      const email = bodyEmail(body) ?? null;
       await insertLicense(db, {
         product: slug,
         id: licenseId,
         status: "active",
         sub: null,
         name: typeof body.name === "string" ? body.name : null,
-        email: typeof body.email === "string" ? body.email : null,
+        email,
         groups_json: null,
         tier_id: typeof body.tier === "string" ? body.tier : null,
         activated_at: now,
@@ -191,6 +311,13 @@ export async function handleLicenses(
         created_by: session.sub,
         last_used_at: null,
       });
+      // LX-26 (S-24 D3): association at creation, in the same request, when an account has
+      // verified the address. Identity runs the account lookup on every create with an email,
+      // whatever the outcome; the answer below has the same shape either way (D4).
+      if (email !== null)
+        await associateLicenseHolder(holderContext(ctx), slug, licenseId);
+      const row = await getLicense(db, slug, licenseId);
+      const holder = licenseHolder(row ?? { account_id: null, email });
       await audit(
         db,
         slug,
@@ -198,14 +325,13 @@ export async function handleLicenses(
         now,
         "license.create",
         { kind: "license", id: licenseId },
-        `Created license for ${body.email ?? body.name ?? licenseId}`,
+        `Created license for ${email ?? (typeof body.name === "string" && body.name ? body.name : licenseId)} (holder: ${describeHolder(holder)})`,
       );
-      const row = await getLicense(db, slug, licenseId);
       return adminJson(
         {
           licenseId,
           key,
-          license: row ? await licenseSummary(db, slug, row) : null,
+          license: row ? await summarize(ctx, row) : null,
         },
         201,
       );
@@ -225,11 +351,20 @@ export async function handleLicenses(
       const profiles = await listLicenseProfiles(db, slug, id);
       const overrides = parsePayload(license.overrides_json);
       return adminJson({
-        ...(await licenseSummary(db, slug, license)),
+        ...(await summarize(ctx, license)),
+        deletion: (await deletionVerdicts(ctx, [license])).get(id),
         // R11-06: guarded reads — a corrupt column degrades to empty/undefined, never a 500.
         groups: parseJsonList(license.groups_json),
         profiles: profiles.map((p) => p.profile_id),
         maxOfflineDays: license.max_offline_days,
+        // LX-14a: the seat-holding devices with the dormancy cutoff `authorizeDevice` and the
+        // PATCH's `overLimit` apply, so the console's Device limit… warning predicts the same.
+        seatDeviceCount: await countActiveDevices(
+          db,
+          slug,
+          id,
+          seatActiveSince(now),
+        ),
         overrides: redactPayload(overrides, catalog),
         keys: keys.map((k) => ({
           hash: k.key_hash,
@@ -252,6 +387,7 @@ export async function handleLicenses(
             appVersion: m.app_version ?? undefined,
             sdkName: m.sdk_name ?? undefined,
             sdkVersion: m.sdk_version ?? undefined,
+            subject: m.subject ?? null,
             reported: parseJsonColumn<unknown>(m.reported_json) ?? undefined,
             fingerprint: shapeFingerprint(
               await getFingerprint(db, slug, m.device_id),
@@ -265,6 +401,29 @@ export async function handleLicenses(
       const body = await readBody(req);
       const refused = licenseWriteChecks(body);
       if (refused) return refused;
+      if (invalidLicenseDeviceLimit(body))
+        return err(
+          422,
+          ErrorCode.BadRequest,
+          "deviceLimit must be a positive integer or null",
+          { fields: ["deviceLimit"] },
+        );
+      // LX-26 (S-24 §6.3): setting an email on a floating licence assigns it; clearing the email
+      // of a licence that has one is refused, because that would make it floating (or drop a
+      // waiting holder) outside the relink tool's Make floating (I-12, LX-30). No new code.
+      const nextEmail = bodyEmail(body);
+      const currentEmail = licenseEmail(license);
+      if (nextEmail === null && currentEmail !== null)
+        return err(
+          400,
+          ErrorCode.BadRequest,
+          "an assigned license's email cannot be cleared; use Make floating to remove its holder",
+          { fields: ["email"] },
+        );
+      const emailChanged =
+        typeof nextEmail === "string" && nextEmail !== currentEmail;
+      const assigns =
+        emailChanged && licenseHolder(license).kind === "floating";
       const profiles = parseProfiles(body);
       const badRefs = await validateRefs(db, slug, {
         tier: body.tier,
@@ -279,6 +438,14 @@ export async function handleLicenses(
       // recording old → new rather than being buried in a generic "Updated license".
       const changedTier =
         "tier" in body && (body.tier ?? null) !== license.tier_id;
+      // LX-14a: the licence's own device limit, audited old → new like a tier change.
+      const nextDeviceLimit =
+        "deviceLimit" in body
+          ? ((body.deviceLimit as number | null) ?? null)
+          : undefined;
+      const changedDeviceLimit =
+        nextDeviceLimit !== undefined &&
+        nextDeviceLimit !== (license.device_limit ?? null);
 
       // R3-06: re-derive the expiry from the NEW tier whenever the tier moves and the operator
       // did not state an expiry explicitly. Without this, trial→paid kept the trial's
@@ -305,7 +472,9 @@ export async function handleLicenses(
         id,
         {
           name: typeof body.name === "string" ? body.name : undefined,
-          email: typeof body.email === "string" ? body.email : undefined,
+          // A string sets it (trimmed); `null` and blank were refused above unless the licence has
+          // no email, where they change nothing.
+          email: typeof nextEmail === "string" ? nextEmail : undefined,
           expires_at: expiresAt,
           // A-3: `null` clears the license's own value, so the tier or product default applies.
           max_offline_days:
@@ -334,12 +503,29 @@ export async function handleLicenses(
               : typeof body.maxVersion === "string"
                 ? body.maxVersion
                 : undefined,
+          device_limit: nextDeviceLimit,
         },
         session.sub,
         now,
       );
       if ("profiles" in body || "profile" in body)
         await setLicenseProfiles(db, slug, id, profiles);
+
+      if (assigns) {
+        await audit(
+          db,
+          slug,
+          session,
+          now,
+          "license.holder.assign",
+          { kind: "license", id },
+          `Assigned ${id} to ${nextEmail}`,
+        );
+      }
+      // S-24 D3: a licence that has an email and no account joins the account that verified the
+      // new address, if one did, as at creation. An in-account licence keeps its account.
+      if (emailChanged && (license.account_id ?? null) === null)
+        await associateLicenseHolder(holderContext(ctx), slug, id);
 
       if (changedTier) {
         await audit(
@@ -354,6 +540,19 @@ export async function handleLicenses(
           }`,
         );
       }
+      if (changedDeviceLimit) {
+        await audit(
+          db,
+          slug,
+          session,
+          now,
+          "license.device_limit.set",
+          { kind: "license", id },
+          `Set device limit for ${id}: ${license.device_limit ?? "inherit"} → ${
+            nextDeviceLimit ?? "inherit"
+          }`,
+        );
+      }
       await audit(
         db,
         slug,
@@ -364,20 +563,19 @@ export async function handleLicenses(
         `Updated license ${id}`,
       );
 
-      // Downgrading below the active device count doesn't evict anyone: authorizeDevice only
-      // checks the limit on a NEW authorization, so existing devices are grandfathered and
+      // Lowering the limit below the active device count doesn't evict anyone: authorizeDevice
+      // only checks the limit on a NEW authorization, so existing devices are grandfathered and
       // new ones are refused until the count drops. Report both numbers so the UI can say so
-      // rather than leaving the operator to discover it.
+      // rather than leaving the operator to discover it. Whatever moved (the tier or the
+      // licence's own limit), the number compared is the EFFECTIVE limit the next activation
+      // will meet (LX-14a), not just the tier's.
       let overLimit: { deviceCount: number; deviceLimit: number } | undefined;
-      if (changedTier) {
-        const nextTierId = (body.tier as string | null) ?? null;
-        const nextTier = nextTierId
-          ? await listTiers(db, slug).then((ts) =>
-              ts.find((t) => t.id === nextTierId),
-            )
-          : undefined;
-        const limit = nextTier?.policy_device_limit;
-        if (typeof limit === "number" && limit > 0) {
+      if (changedTier || changedDeviceLimit) {
+        const updated = await getLicense(db, slug, id);
+        const limit = updated
+          ? await licenseDeviceLimit(db, product, updated, now)
+          : 0;
+        if (limit > 0) {
           // Counted with the SAME dormancy cutoff `authorizeDevice` applies: this warning
           // exists to predict activation outcomes, and a seat the check would reclaim is
           // not one the operator needs warning about.
@@ -394,6 +592,7 @@ export async function handleLicenses(
       }
       return adminJson({ ok: true, id, ...(overLimit ? { overLimit } : {}) });
     }
+    if (req.method === "DELETE") return handleDeleteLicense(ctx, license);
     return err(405, ErrorCode.BadRequest, "method not allowed");
   }
 

@@ -9,6 +9,10 @@ const fns = vi.hoisted(() => ({
   updateProduct: vi.fn(),
   deleteProduct: vi.fn(),
   resyncProduct: vi.fn(),
+  planResync: vi.fn(),
+  revertClaim: vi.fn(),
+  checkRepoLink: vi.fn(),
+  linkProductRepo: vi.fn(),
   blobGc: vi.fn(),
 }));
 
@@ -50,6 +54,7 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
       distribution: { enabled: false },
       update: { enabled: true },
       identity: { enabled: false },
+      sync: { enabled: false },
     },
     setup: { sync: { status: "ok", lastSyncedAt: 1_700_000_000 } },
     ...over,
@@ -77,6 +82,10 @@ describe("Core → Settings", () => {
   it("saves only what changed, sending a cleared admin group as null (A-3, PRD-6)", async () => {
     const user = userEvent.setup();
     fns.updateProduct.mockResolvedValue({ ok: true, slug: "djdl" });
+    // A manual product: on a repo-linked one the admin group is manifest-only (ST-01b).
+    fns.product.mockResolvedValue({
+      product: product({ releaseSource: "manual" }),
+    });
     mount();
     const group = await screen.findByLabelText("Admin group");
     await user.clear(group);
@@ -133,12 +142,33 @@ describe("Core → Settings", () => {
     ).toBeNull();
   });
 
-  it("resyncs after an L1 confirm and lists what it did (RSY-3)", async () => {
+  const RESYNC_PLAN = {
+    ok: true,
+    dryRun: true,
+    slug: "djdl",
+    repository: "acme/djdl",
+    commit: "abcdef0123456789",
+    plan: {
+      apply: [{ area: "tiers", id: "studio", summary: "Tier studio added" }],
+      skipClaimed: [
+        {
+          area: "services",
+          summary:
+            "Services stay as set in the console (the manifest turns on release)",
+        },
+      ],
+      delete: [{ area: "tiers", id: "legacy", summary: "Tier legacy" }],
+      conflicts: [] as { area: string; id?: string; summary: string }[],
+    },
+  };
+
+  it("resyncs after an L1 confirm that shows the plan, then focuses what it did (RSY-3, UX-78)", async () => {
     const user = userEvent.setup();
+    fns.planResync.mockResolvedValue(RESYNC_PLAN);
     fns.resyncProduct.mockResolvedValue({
       ok: true,
       slug: "djdl",
-      updated: ["services", "catalog"],
+      updated: ["services", "schema"],
       refused: [
         {
           code: "release_key_is_product_key",
@@ -152,26 +182,440 @@ describe("Core → Settings", () => {
     await user.click(
       await screen.findByRole("button", { name: "Resync from repo…" }),
     );
+    const dialog = await screen.findByRole("alertdialog", {
+      name: /Resync DJDL from its repository\?/,
+    });
+    expect(fns.planResync).toHaveBeenCalledWith("djdl");
+    expect(await within(dialog).findByText("Tier studio added")).toBeTruthy();
+    expect(within(dialog).getByText("Stays (set in the console)")).toBeTruthy();
+    expect(within(dialog).getByText("Tier legacy")).toBeTruthy();
+    expect(within(dialog).getByText("acme/djdl")).toBeTruthy();
+    expect(within(dialog).getByText("abcdef0")).toBeTruthy();
+    expect(fns.resyncProduct).not.toHaveBeenCalled();
+    await user.click(
+      within(dialog).getByRole("button", { name: "Resync from repo" }),
+    );
+    const panel = await screen.findByTestId("resync-result");
+    expect(
+      within(panel).getByText("Resynced DJDL, with 1 part refused"),
+    ).toBeTruthy();
+    expect(within(panel).getByText("Updated: services, catalog.")).toBeTruthy();
+    expect(within(panel).getByText(/kept the previous keys/)).toBeTruthy();
+    expect(within(panel).getByText("Pack sets resolved: 2.")).toBeTruthy();
+    await waitFor(() => expect(document.activeElement).toBe(panel));
+  });
+
+  it("a plan with conflicts keeps Resync disabled and says how to fix it", async () => {
+    const user = userEvent.setup();
+    fns.planResync.mockResolvedValue({
+      ...RESYNC_PLAN,
+      plan: {
+        ...RESYNC_PLAN.plan,
+        conflicts: [
+          {
+            area: "tiers",
+            id: "pro",
+            summary:
+              "Tier pro is not in the manifest but 3 licenses use it: add it to .pkey/product or move them first",
+          },
+        ],
+      },
+    });
+    mount();
+    await user.click(
+      await screen.findByRole("button", { name: "Resync from repo…" }),
+    );
     const dialog = await screen.findByRole("alertdialog");
+    expect(await within(dialog).findByText("Blocks the resync")).toBeTruthy();
+    expect(
+      within(dialog)
+        .getByRole("button", { name: "Resync from repo" })
+        .getAttribute("aria-disabled") === "true" ||
+        within(dialog)
+          .getByRole("button", { name: "Resync from repo" })
+          .hasAttribute("disabled"),
+    ).toBe(true);
+    await user.click(
+      within(dialog).getByRole("button", { name: "Check again" }),
+    );
+    expect(fns.planResync).toHaveBeenCalledTimes(2);
+    expect(fns.resyncProduct).not.toHaveBeenCalled();
+  });
+
+  it("words a dry-run refusal for the check it failed", async () => {
+    const user = userEvent.setup();
+    fns.planResync.mockRejectedValue(
+      new ApiError(
+        422,
+        undefined,
+        "bad_request",
+        ["product.tiers[0].id: required"],
+        "manifest",
+      ),
+    );
+    mount();
+    await user.click(
+      await screen.findByRole("button", { name: "Resync from repo…" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    expect(await within(dialog).findByText("1 problem in .pkey/")).toBeTruthy();
+    expect(
+      within(dialog).getByText("product.tiers[0].id: required"),
+    ).toBeTruthy();
+    await expectNoAxeViolations(dialog);
+  });
+
+  it("shows the admin group read-only on a repo-linked product (manifest-only, ST-01b)", async () => {
+    mount();
+    expect(await screen.findByText("djdl-admins")).toBeTruthy();
+    expect(screen.queryByLabelText("Admin group")).toBeNull();
+    expect(
+      screen.getByText(/Set by adminGroup in .pkey\/product/),
+    ).toBeTruthy();
+  });
+
+  it("asks before a save claims a manifest-owned value, and sends nothing on cancel (ST-01b)", async () => {
+    const user = userEvent.setup();
+    fns.updateProduct.mockResolvedValue({ ok: true, slug: "djdl" });
+    mount();
+    const name = await screen.findByLabelText(/Display name/);
+    await user.clear(name);
+    await user.type(name, "DJDL Pro");
+    await user.click(screen.getByRole("button", { name: "Save settings" }));
+    let dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(/Saving sets Display name here/),
+    ).toBeTruthy();
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(fns.updateProduct).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Save settings" }));
+    dialog = await screen.findByRole("alertdialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Save and claim" }),
+    );
+    await waitFor(() =>
+      expect(fns.updateProduct).toHaveBeenCalledWith("djdl", {
+        name: "DJDL Pro",
+      }),
+    );
+  });
+
+  it("saves an already-claimed value without asking again", async () => {
+    const user = userEvent.setup();
+    fns.updateProduct.mockResolvedValue({ ok: true, slug: "djdl" });
+    fns.product.mockResolvedValue({
+      product: product({
+        claims: [
+          {
+            key: "license.defaults.deviceLimit",
+            claimedBy: "u1",
+            claimedAt: 1_700_000_050,
+            version: 1,
+          },
+        ],
+      }),
+    });
+    mount();
+    const limit = await screen.findByLabelText(/Default device limit/);
+    await user.clear(limit);
+    await user.type(limit, "8");
+    await user.click(screen.getByRole("button", { name: "Save settings" }));
+    await waitFor(() =>
+      expect(fns.updateProduct).toHaveBeenCalledWith("djdl", {
+        defaultDeviceLimit: 8,
+      }),
+    );
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("reverts a claimed value to the manifest after an L1 confirm (ST-01b)", async () => {
+    const user = userEvent.setup();
+    fns.revertClaim.mockResolvedValue({
+      ok: true,
+      key: "core.name",
+      applied: false,
+      message: "applies at the next resync",
+    });
+    fns.product.mockResolvedValue({
+      product: product({
+        claims: [
+          {
+            key: "core.name",
+            claimedBy: "u1",
+            claimedAt: 1_700_000_050,
+            version: 1,
+          },
+        ],
+      }),
+    });
+    mount();
+    await user.click(
+      await screen.findByRole("button", { name: /Set in console/ }),
+    );
+    await user.click(await screen.findByRole("button", { name: "Revert…" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText("Return display name to the manifest?"),
+    ).toBeTruthy();
+    await user.click(
+      within(dialog).getByRole("button", { name: "Revert to manifest" }),
+    );
+    await waitFor(() =>
+      expect(fns.revertClaim).toHaveBeenCalledWith("djdl", "core.name"),
+    );
+    expect(
+      await screen.findByText(
+        "Display name returns to the manifest at the next resync",
+      ),
+    ).toBeTruthy();
+  });
+
+  it("keeps the system product's settings read-only (manifest-authoritative)", async () => {
+    fns.product.mockResolvedValue({
+      product: product({ system: true }),
+    });
+    mount();
+    const limit = await screen.findByLabelText(/Default device limit/);
+    expect(
+      limit.hasAttribute("disabled") ||
+        limit.getAttribute("aria-disabled") === "true" ||
+        limit.hasAttribute("readonly"),
+    ).toBe(true);
+    expect(screen.queryByRole("button", { name: /From manifest/ })).toBeNull();
+  });
+
+  it("lists what a resync kept as set in the console", async () => {
+    const user = userEvent.setup();
+    fns.planResync.mockResolvedValue(RESYNC_PLAN);
+    fns.resyncProduct.mockResolvedValue({
+      ok: true,
+      slug: "djdl",
+      updated: ["product"],
+      claimed: ["core.name", "tier:gold"],
+      conflicts: [{ path: "/tiers/silver", message: "kept the console tier" }],
+    });
+    mount();
+    await user.click(
+      await screen.findByRole("button", { name: "Resync from repo…" }),
+    );
+    const dialog = await screen.findByRole("alertdialog");
+    // The confirm enables once the dry run's plan is in (UX-78).
+    expect(await within(dialog).findByText("Tier studio added")).toBeTruthy();
     await user.click(
       within(dialog).getByRole("button", { name: "Resync from repo" }),
     );
     expect(
-      await screen.findByText("Re-applied: services, catalog."),
+      await screen.findByText(
+        "Kept as set in the console: Display name, tier gold.",
+      ),
     ).toBeTruthy();
-    expect(screen.getByText(/kept the previous keys/)).toBeTruthy();
-    expect(screen.getByText("Pack sets resolved: 2.")).toBeTruthy();
+    expect(screen.getByText(/kept the console tier/)).toBeTruthy();
   });
 
-  it("explains why a manual product cannot resync", async () => {
-    fns.product.mockResolvedValue({
-      product: product({ releaseSource: "manual" }),
+  describe("Link repository (a manual product, EXPERIENCE.md §0.4 S1)", () => {
+    const PLAN = {
+      apply: [
+        {
+          area: "source",
+          summary:
+            "Source becomes acme/djdl: pushes to its default branch re-apply .pkey/",
+        },
+        { area: "tiers", id: "pro", summary: "Tier pro added" },
+      ],
+      skipClaimed: [
+        {
+          area: "services",
+          summary:
+            "Services stay as set in the console (the manifest turns on release)",
+        },
+      ],
+      delete: [{ area: "tiers", id: "legacy", summary: "Tier legacy" }],
+      conflicts: [] as { area: string; summary: string }[],
+    };
+    const CHECKED = {
+      ok: true,
+      dryRun: true,
+      slug: "djdl",
+      repository: "acme/djdl",
+      manifestDigest: "d".repeat(64),
+      plan: PLAN,
+      remainingSecrets: ["OIDC_SECRET__DJDL"],
+    };
+
+    beforeEach(() => {
+      fns.product.mockResolvedValue({
+        product: product({ releaseSource: "manual", setup: undefined }),
+      });
     });
-    mount();
-    const button = await screen.findByRole("button", {
-      name: /Resync from repo/,
+
+    async function openDrawer(user: ReturnType<typeof userEvent.setup>) {
+      mount();
+      expect(
+        screen.queryByRole("button", { name: /Resync from repo/ }),
+      ).toBeNull();
+      await user.click(
+        await screen.findByRole("button", { name: "Link repository…" }),
+      );
+      return screen.findByRole("dialog", { name: "Link repository" });
+    }
+
+    it("checks, shows the plan, then links with the check's digest and reports what it applied", async () => {
+      const user = userEvent.setup();
+      fns.checkRepoLink.mockResolvedValue(CHECKED);
+      fns.linkProductRepo.mockResolvedValue({
+        ok: true,
+        slug: "djdl",
+        repository: "acme/djdl",
+        plan: PLAN,
+        updated: ["product", "schema", "tiers"],
+        remainingSecrets: [],
+      });
+      const drawer = await openDrawer(user);
+      const link = within(drawer).getByRole("button", {
+        name: /^Link (repository|and remove)/,
+      });
+      expect(link.getAttribute("aria-disabled")).toBe("true");
+
+      await user.type(
+        within(drawer).getByRole("textbox", { name: /Repository/ }),
+        "acme/djdl",
+      );
+      await user.click(within(drawer).getByRole("button", { name: "Check" }));
+      expect(fns.checkRepoLink).toHaveBeenCalledWith("djdl", "acme/djdl");
+      expect(await within(drawer).findByText("Tier pro added")).toBeTruthy();
+      expect(
+        within(drawer).getByText("Stays (set in the console)"),
+      ).toBeTruthy();
+      expect(within(drawer).getByText("Tier legacy")).toBeTruthy();
+      // The plan removes a tier: the button says so.
+      expect(
+        within(drawer).getByRole("button", { name: "Link and remove 1" }),
+      ).toBeTruthy();
+      expect(within(drawer).getByText("OIDC_SECRET__DJDL")).toBeTruthy();
+      await expectNoAxeViolations(drawer);
+
+      await user.click(
+        within(drawer).getByRole("button", {
+          name: /^Link (repository|and remove)/,
+        }),
+      );
+      await waitFor(() =>
+        expect(fns.linkProductRepo).toHaveBeenCalledWith(
+          "djdl",
+          "acme/djdl",
+          "d".repeat(64),
+        ),
+      );
+      const panel = await screen.findByTestId("resync-result");
+      expect(within(panel).getByText("Linked to acme/djdl")).toBeTruthy();
+      expect(
+        within(panel).getByText("Updated: product details, catalog, tiers."),
+      ).toBeTruthy();
     });
-    expect(button.getAttribute("aria-disabled")).toBe("true");
+
+    it("marks the check that failed and words its fix", async () => {
+      const user = userEvent.setup();
+      fns.checkRepoLink.mockRejectedValue(
+        new ApiError(422, undefined, "bad_request", undefined, "app"),
+      );
+      const drawer = await openDrawer(user);
+      await user.type(
+        within(drawer).getByRole("textbox", { name: /Repository/ }),
+        "acme/djdl",
+      );
+      await user.click(within(drawer).getByRole("button", { name: "Check" }));
+      expect(
+        (
+          await within(drawer).findAllByText(
+            "The Polaris Key GitHub App can't read acme/djdl",
+          )
+        ).length,
+      ).toBeGreaterThan(0);
+      const rows = within(drawer)
+        .getByRole("list", { name: "Link checks" })
+        .querySelectorAll("[data-step-state]");
+      expect([...rows].map((r) => r.getAttribute("data-step-state"))).toEqual([
+        "done",
+        "failed",
+        "todo",
+        "todo",
+        "todo",
+      ]);
+      expect(
+        within(drawer).getByRole("button", { name: "Check again" }),
+      ).toBeTruthy();
+    });
+
+    it("a manifest for another product names the slug to set", async () => {
+      const user = userEvent.setup();
+      const e = new ApiError(422, undefined, "bad_request", undefined, "slug");
+      e.message = "manifest slug ghost does not match product djdl";
+      fns.checkRepoLink.mockRejectedValue(e);
+      const drawer = await openDrawer(user);
+      await user.type(
+        within(drawer).getByRole("textbox", { name: /Repository/ }),
+        "acme/ghost",
+      );
+      await user.click(within(drawer).getByRole("button", { name: "Check" }));
+      expect(
+        await within(drawer).findByText(
+          /Set product.slug in .pkey\/product to djdl, push, then check again/,
+        ),
+      ).toBeTruthy();
+    });
+
+    it("a conflict blocks the link, and editing the repository clears the check", async () => {
+      const user = userEvent.setup();
+      fns.checkRepoLink.mockResolvedValue({
+        ...CHECKED,
+        plan: {
+          ...PLAN,
+          conflicts: [
+            {
+              area: "tiers",
+              summary:
+                "Tier legacy is not in the manifest but 3 licenses use it: add it to .pkey/product or move them first",
+            },
+          ],
+        },
+      });
+      const drawer = await openDrawer(user);
+      const field = within(drawer).getByRole("textbox", { name: /Repository/ });
+      await user.type(field, "acme/djdl");
+      await user.click(within(drawer).getByRole("button", { name: "Check" }));
+      expect(await within(drawer).findByText("Blocks the link")).toBeTruthy();
+      const link = within(drawer).getByRole("button", {
+        name: /^Link (repository|and remove)/,
+      });
+      expect(link.getAttribute("aria-disabled")).toBe("true");
+
+      await user.type(field, "x");
+      expect(within(drawer).queryByText("Blocks the link")).toBeNull();
+      expect(fns.linkProductRepo).not.toHaveBeenCalled();
+    });
+
+    it("a push between the check and the link asks for a fresh check", async () => {
+      const user = userEvent.setup();
+      fns.checkRepoLink.mockResolvedValue(CHECKED);
+      fns.linkProductRepo.mockRejectedValue(new ApiError(409));
+      const drawer = await openDrawer(user);
+      await user.type(
+        within(drawer).getByRole("textbox", { name: /Repository/ }),
+        "acme/djdl",
+      );
+      await user.click(within(drawer).getByRole("button", { name: "Check" }));
+      await within(drawer).findByText("Tier pro added");
+      await user.click(
+        within(drawer).getByRole("button", {
+          name: /^Link (repository|and remove)/,
+        }),
+      );
+      expect(
+        await within(drawer).findByText("The manifest changed since the check"),
+      ).toBeTruthy();
+      expect(within(drawer).queryByText("Tier pro added")).toBeNull();
+    });
   });
 
   it("shows the blob collector's dry run", async () => {

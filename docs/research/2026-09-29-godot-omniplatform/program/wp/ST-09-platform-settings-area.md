@@ -36,6 +36,16 @@ Platform-wide values are scattered or invisible ([S-18 §2.2](../../notes/S-18-s
 
 - Live-inheritance fan-out (→ ST-16); SQL-only settings (→ ST-11).
 
+## PENDING entries to remove
+
+ST-06 left a shrinking allow-list in `packages/worker/scripts/settings-coverage.ts`. Its "PENDING owners" decision ([ST-06](ST-06-settings-docs-coverage.md#design-notes)) assigns this package the 5 entries below. Register each one in the settings registry (the note names the intended key, where there is one), then delete it from `PENDING` and lower `PENDING_CEILING` by the same count. `checkCoverage` refuses an entry that is both pending and registered, so the two edits land together.
+
+- `table:dist_registry_policy` (`feeds.<eco>` policy)
+- `table:dist_registry_feeds` (`distribution.feeds.<eco>`)
+- `env:EMAIL_SENDER_ADDRESS` (`email.sender`)
+- `env:PORTAL_EMAIL_FROM`: older spelling of `email.sender`
+- `env:EMAIL_APPLE_RELAY` (`email.appleRelay`)
+
 ## Design notes
 
 - Limits are generated from code, never hand-maintained.
@@ -47,6 +57,7 @@ Platform-wide values are scattered or invisible ([S-18 §2.2](../../notes/S-18-s
 
 ## Acceptance criteria
 
+- [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 5 lower, and `settings-coverage.test.ts` passes.
 - [ ] Limits match the inventory (test).
 - [ ] Console CSP parity passes.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.

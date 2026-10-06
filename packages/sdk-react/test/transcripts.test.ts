@@ -2,6 +2,19 @@
 //
 // @pkey-feature core.discover config.schema release.changelog release.download update.feed release.record update.decide
 // @pkey-feature packs.apply.chunk
+// @pkey-feature core.sync core.cache core.store license.activate license.enroll license.deactivate
+// @pkey-feature license.reregister devices.register devices.report identity.devicecode config.mint
+// @pkey-feature commerce.receipt license.refusals telemetry.updates
+// @pkey-feature ui.boot release.fetch release.distribution
+//
+// BEARER MODE (SDK-PARITY-PASS §3.17, SP-R02). The transcripts that authenticate with a `pkeyt_`
+// device token run through the browser's bearer engine, `BearerSession`
+// (src/browser/bearer/session.ts) — the code `browserAdapter({ auth: "bearer" })` drives —
+// over a store holding the transcript's device id and token. `licenseStatus` is the gate the
+// adapter projects from the session's state (the same `projectState` both adapters run) and
+// `tokenHeld` whether the session holds a token. A browser has no fingerprint; like the Node
+// replayer, this one hands the session a fixed hashed one, because the recordings were made by a
+// host that had one.
 //
 // The React transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/, over the shared TypeScript replay engine
 // in `conformance/runners/node/transcriptReplay.ts`.
@@ -31,10 +44,34 @@
 // the engine), against the blobs template of the last discovery the transcript ran. The browser
 // sends no `X-PKey-*` headers there, which is why the recording asserts none.
 //
+// `boot` (SP-12, ui.boot) is `runBoot` over the bearer engine's driver (`bearerBootDriver`, the one
+// the adapter's `boot()` builds), with discovery through `discoverProduct`. `releaseFetch`
+// (release.fetch) is `fetchReleaseBuild` over a record built from the step's args, the
+// session's headers and bearer, and the last discovery; `args.partial` seeds the held bytes
+// with the payload's first bytes from the transcript's own 200, as the Node replayer seeds its
+// `.part` file. `downloadModel` (release.distribution) is `fetchDownloadModel`, with `current`
+// the platform group of `initial.platform`.
+//
+// `commerceBinding` / `commerceClaim` (commerce.receipt, SP-16) are the bearer engine's
+// `commerceBinding()` and `commerceClaim(store, payload)` — the calls `browserAdapter({ auth:
+// "bearer" })` makes, cross-origin under the product's `web.origins` since the Worker's CORS list
+// covers both routes. The DESKTOP runtime replays the same transcript through the bridge (the
+// describe block "commerce through the desktop bridge" at the end of this file): `DesktopAdapter`
+// over a v4 `PolarisBridge` whose host answers `invoke("commerce", …)` by driving an engine
+// against the recording, so the renderer's verbs, their argument shape and the post-claim state
+// refresh are checked against the same exchanges.
+//
 // `result` is `discoverProduct`'s outcome; React reports a 404 as `{kind:"error",status:404}`,
 // which is the vocabulary's `not-found`. `services` is the map the browser adapter installs from
 // it (BrowserAdapter.loadCapabilities): the document's map on success, otherwise the
 // pre-discovery belief, which with no `expectServices` is `defaultServices()`.
+//
+// `initial.updateJournal` (telemetry.updates, SP-14) is not written into the journal by hand: each
+// entry is RECORDED through `session.recordUpdateEvent(event, input)` — the call the adapters'
+// `recordUpdateEvent` and the update_offered path make — with the clock at the entry's `at`, the
+// session's event-id source answering the entry's `eventId`, and the outlet the entry names, so
+// the replay holds the recording path to the recorded bytes. `updatesPending` is the length of
+// the session's journal.
 
 import { beforeAll, describe, expect, it } from "vitest";
 import { chunkRangeFetch, recordHash } from "@polaris-key/client-core";
@@ -61,6 +98,23 @@ import {
   fetchChangelog,
 } from "../src/browser/release.js";
 import { PolarisError } from "../src/core/types.js";
+import { runBoot } from "../src/core/boot.js";
+import { bearerBootDriver } from "../src/browser/boot.js";
+import { fetchReleaseBuild } from "../src/browser/releaseFetch.js";
+import { fetchDownloadModel } from "../src/browser/distribution.js";
+import { ErrorCode } from "../src/constants.generated.js";
+import type { ReleaseRecordDoc } from "@polaris-key/protocol/release";
+import { projectState } from "../src/core/adapter.js";
+import { DesktopAdapter } from "../src/desktop/desktopAdapter.js";
+import type { PolarisBridge } from "../src/desktop/bridge.js";
+import type { CommerceClaimResult } from "../src/core/types.js";
+import { makeFakeBridge, okBridgeState } from "./fixtures.js";
+import {
+  BearerSession,
+  type SignInPrompt,
+} from "../src/browser/bearer/session.js";
+import type { UpdateEventEntry } from "../src/core/updateEvents.js";
+import type { CacheRecordV3, Store } from "@polaris-key/client-core";
 import {
   copyServices,
   defaultServices,
@@ -109,6 +163,71 @@ function standardDiscovery(t: Transcript): DiscoveryDocument {
   } as unknown as DiscoveryDocument;
 }
 
+/** A fixed hashed fingerprint, as the Node replayer's. */
+const FINGERPRINT = {
+  components: { machineUuid: "REPLAYmachineUuid00000" },
+  hwid: "REPLAYhwid0000000000000000000000",
+};
+
+/** The store the replay starts from: the transcript's device id and token, nothing cached. */
+class TranscriptStore implements Store {
+  private cache: CacheRecordV3 | null = null;
+  token: string | null;
+  constructor(
+    private readonly deviceId: string,
+    token: string | undefined,
+  ) {
+    this.token = token ?? null;
+  }
+  async getToken() {
+    return this.token;
+  }
+  async setToken(t: string) {
+    this.token = t;
+  }
+  async clearToken() {
+    this.token = null;
+  }
+  async getDeviceId() {
+    return this.deviceId;
+  }
+  async readCache() {
+    return this.cache;
+  }
+  async writeCache(rec: CacheRecordV3) {
+    this.cache = rec;
+  }
+  async clearCache() {
+    this.cache = null;
+  }
+}
+
+/** The payload's first `n` bytes, from the transcript's own whole-payload (200) answer on
+ *  `path` (the Node replayer's `payloadPrefix`). */
+function payloadPrefix(t: Transcript, path: string, n: number): Uint8Array {
+  for (const step of t.steps)
+    for (const x of step.exchanges.items)
+      if (
+        x.request.method === "GET" &&
+        x.request.path === path &&
+        x.response.status === 200
+      )
+        return new TextEncoder()
+          .encode(ReplayServer.bodyText(x))
+          .subarray(0, n);
+  throw new Error(`${t.id}: no whole-payload answer for ${path} to seed from`);
+}
+
+/** A commerce claim's outcome in the transcript's vocabulary: `ok` with the granted flag, or
+ *  the refusal's own wire code and reason. Shared by the bearer and the bridge replays. */
+function claimObserved(r: CommerceClaimResult): Record<string, JsonValue> {
+  if (r.kind === "ok")
+    return { result: "ok", flag: r.flag, state: r.state, granted: r.granted };
+  const o: Record<string, JsonValue> = { result: r.code };
+  if ("reason" in r && r.reason) o.reason = r.reason;
+  return o;
+}
+
 async function replay(t: Transcript): Promise<void> {
   const server = new ReplayServer(t);
   let discovered: DiscoveryDocument | null = null;
@@ -122,16 +241,245 @@ async function replay(t: Transcript): Promise<void> {
     product: t.product,
     fetchImpl: server.fetch as typeof fetch,
   };
+  let clock = t.now;
+  const store = new TranscriptStore(t.initial.deviceId, t.initial.token);
+  const journal =
+    (t.initial as { updateJournal?: UpdateEventEntry[] }).updateJournal ?? [];
+  let nextEventId: string | null = null;
+  let outletId: string | null = null;
+  const session = new BearerSession({
+    baseUrl: t.baseUrl,
+    product: t.product,
+    version: t.initial.version,
+    fetchImpl: base.fetchImpl,
+    now: () => clock,
+    pinned: t.trust,
+    store,
+    enabled: (slug) => belief[slug].enabled,
+    fingerprint: () => FINGERPRINT,
+    // PX-W13: `initial.deviceName` stands in for the label a host names; absent = none.
+    deviceName: t.initial.deviceName ?? "",
+    outlet: () => (outletId === null ? null : { id: outletId }),
+    eventId: () => nextEventId ?? "unexpected-event-id",
+  });
+  await session.init();
+  for (const e of journal) {
+    clock = e.at;
+    nextEventId = e.eventId;
+    outletId = e.outlet;
+    const recorded = session.recordUpdateEvent(e.event, {
+      release: e.release,
+      fromRelease: e.fromRelease ?? null,
+      deliverable: e.deliverable,
+      channel: e.channel,
+      packSetId: e.packSetId ?? null,
+      code: e.code ?? null,
+    });
+    expect(recorded, `${t.id}: journal entry ${e.eventId}`).toEqual(e);
+  }
+  clock = t.now;
+  /** The gate the adapter projects from the session's state (`projectState`). */
+  const status = () => {
+    const st = session.syncState();
+    return projectState(
+      "browser",
+      { license: st.doc, config: st.config ?? {} },
+      {
+        activation: st.activation,
+        now: clock,
+        highWaterMark: st.highWaterMark ?? 0,
+        lastSyncUnauthorized: st.lastSyncUnauthorized,
+        blocked: st.blocked ?? null,
+        lastVerifiedAt: st.lastVerifiedAt ?? null,
+      },
+      { capabilities: belief },
+    ).status;
+  };
+  const discover = async () => {
+    const r = await discoverProduct(base);
+    if (r.kind === "ok") {
+      belief = copyServices(r.services);
+      discovered = r.document;
+    }
+    return r;
+  };
+  let prompt: SignInPrompt | null = null;
   for (let i = 0; i < t.steps.length; i += 1) {
     const step = server.beginStep(i);
+    clock = step.now ?? t.now;
     const observed: Record<string, JsonValue> = {};
     switch (step.action) {
-      case "discover": {
-        const r = await discoverProduct(base);
-        if (r.kind === "ok") {
-          belief = copyServices(r.services);
-          discovered = r.document;
+      case "register":
+        observed.result = (await session.register()).kind;
+        break;
+      case "sync": {
+        const r = await session.sync({ force: step.args.force === true });
+        observed.applied = r.applied;
+        observed.unauthorized = r.unauthorized === true;
+        observed.blocked = r.blocked === true;
+        const docs: Record<string, JsonValue> = {};
+        for (const [slice, o] of Object.entries(r.documents))
+          if (o && o.kind !== "skipped") docs[slice] = o.kind;
+        observed.documents = docs;
+        break;
+      }
+      case "activate":
+      case "enroll": {
+        const r =
+          step.action === "activate"
+            ? await session.activate(String(step.args.key))
+            : await session.enroll();
+        // The adapter syncs after an acquisition, as Node's facade does.
+        if (r.kind === "ok") await session.sync();
+        // license.refusals: the §3.1 kind in the shared activationResult vocabulary
+        // (`deviceLimit` → `device-limit`), and the server's code it was classified from.
+        observed.result = r.kind.replace(
+          /[A-Z]/g,
+          (c) => `-${c.toLowerCase()}`,
+        );
+        observed.code = r.code;
+        // PX-W8: the refusal link, validated, or null when the Worker sent none.
+        if (r.kind === "deviceLimit") observed.manageUrl = r.manageUrl ?? null;
+        break;
+      }
+      case "deactivate":
+        await session.deactivate();
+        break;
+      case "report":
+        observed.result = await session.report();
+        observed.updatesPending = session.pendingUpdateEvents().length;
+        break;
+      case "beginSignIn": {
+        const name = step.args.deviceName;
+        prompt = await session.beginSignIn(
+          typeof name === "string" ? { deviceName: name } : {},
+        );
+        observed.prompt = {
+          userCode: prompt.userCode,
+          verificationUri: prompt.verificationUri,
+          verificationUriComplete: prompt.verificationUriComplete,
+          expiresIn: prompt.expiresIn,
+          interval: prompt.interval,
+          deviceName: prompt.deviceName,
+        };
+        break;
+      }
+      case "pollSignIn": {
+        const poll = await session.pollSignIn(prompt!);
+        observed.result = poll.status;
+        if (poll.status === "slow-down") observed.interval = poll.interval;
+        break;
+      }
+      case "waitForSignIn":
+        observed.result = (
+          await session.waitForSignIn(prompt!, { sleep: async () => undefined })
+        ).status;
+        break;
+      case "mintToken":
+        try {
+          const minted = await session.mint(String(step.args.recipeId));
+          observed.result = "ok";
+          observed.token = minted.token;
+          observed.expiresAt = minted.expiresAt;
+        } catch (e) {
+          if (!(e instanceof PolarisError)) throw e;
+          observed.result = e.wireCode ?? e.code;
         }
+        break;
+      case "commerceBinding": {
+        const b = await session.commerceBinding();
+        observed.result = "ok";
+        observed.bindingId = b.bindingId;
+        observed.products = b.products as unknown as JsonValue;
+        break;
+      }
+      case "commerceClaim": {
+        const r = await session.commerceClaim(
+          String(step.args.store) as "steam",
+          step.args.payload as never,
+        );
+        Object.assign(observed, claimObserved(r as CommerceClaimResult));
+        break;
+      }
+      case "boot": {
+        const driver = bearerBootDriver({
+          session,
+          discover: async () => {
+            if (!discovered) await discover();
+          },
+          registrationPolicy: () => {
+            const core = discovered?.core as
+              | { registration?: unknown }
+              | undefined;
+            return typeof core?.registration === "string"
+              ? core.registration
+              : null;
+          },
+          licenseEnabled: () => belief.license.enabled,
+          status,
+        });
+        observed.bootOutcome = (await runBoot(driver)).outcome;
+        break;
+      }
+      case "releaseFetch": {
+        const a = step.args;
+        const build = String(a.build);
+        const sha256 = String(a.sha256);
+        const record = {
+          version: String(a.version),
+          builds: [
+            {
+              id: build,
+              platform: String(a.platform),
+              arch: String(a.arch),
+              artifacts: [{ role: "payload", sha256, size: Number(a.size) }],
+            },
+          ],
+        } as unknown as ReleaseRecordDoc;
+        const parts = new Map<string, Uint8Array>();
+        if (typeof a.partial === "number")
+          parts.set(
+            sha256,
+            payloadPrefix(t, step.exchanges.items[0]!.request.path, a.partial),
+          );
+        try {
+          const r = await fetchReleaseBuild({
+            baseUrl: t.baseUrl,
+            product: t.product,
+            fetchImpl: base.fetchImpl,
+            discovery: discovered,
+            headers: session.headers(),
+            bearer: session.bearer,
+            record,
+            buildId: build,
+            parts,
+          });
+          observed.result = "ok";
+          observed.size = r.size;
+          observed.sha256 = r.sha256;
+          expect(r.blob.size, "the verified payload").toBe(r.size);
+        } catch (e) {
+          if (!(e instanceof PolarisError)) throw e;
+          // The client's own failures; `release-refused` is the server's refusal, its code the
+          // body's (`wireCode`), the code the other SDKs report.
+          observed.result =
+            e.code === ErrorCode.releaseRefused ? "refused" : "error";
+          observed.code = e.wireCode ?? e.code;
+        }
+        break;
+      }
+      case "downloadModel": {
+        const model = await fetchDownloadModel(base);
+        observed.result = "ok";
+        observed.platforms = model.platforms.map((p) => p.platform);
+        const platform = (t.initial as { platform?: unknown }).platform;
+        observed.current = (model.platforms.find(
+          (p) => p.platform === platform,
+        ) ?? null) as unknown as JsonValue;
+        break;
+      }
+      case "discover": {
+        const r = await discover();
         observed.result =
           r.kind === "error" && r.status === 404 ? "not-found" : r.kind;
         break;
@@ -141,7 +489,14 @@ async function replay(t: Transcript): Promise<void> {
         break;
       case "changelog":
         try {
-          observed.entries = (await fetchChangelog(base)) as never;
+          // Bearer mode presents the device token, so an `entitled` changelog answers.
+          const bearer = session.bearer;
+          observed.entries = (await fetchChangelog({
+            ...base,
+            ...(bearer
+              ? { headers: { authorization: `Bearer ${bearer}` } }
+              : {}),
+          })) as never;
           observed.result = "ok";
         } catch (e) {
           if (!(e instanceof PolarisError)) throw e;
@@ -254,23 +609,25 @@ async function replay(t: Transcript): Promise<void> {
     observed.services = Object.fromEntries(
       Object.entries(belief).map(([slug, s]) => [slug, s.enabled]),
     );
+    observed.licenseStatus = status();
+    observed.tokenHeld = session.hasToken;
     for (const [key, want] of Object.entries(step.expect))
       expect(observed[key], `${t.id} step ${i}: ${key}`).toEqual(want);
   }
 }
 
 describe("HTTP transcripts: @polaris-key/react", () => {
-  it("replays what the browser transport does itself, and nothing that needs a device token", () => {
+  it("replays every transcript but the planned features': the cookie-free bearer engine closed the device-token ones", () => {
     const ids = TRANSCRIPTS.filter((t) => applies(t, MANIFEST)).map(
       (t) => t.id,
     );
-    expect(ids.sort()).toEqual([
-      "config-schema-fetch",
-      "discovery-capabilities",
-      "discovery-failure",
-      "packs-chunk-range",
-      "release-changelog",
-    ]);
+    // Planned here, so its transcript does not apply: identity.toggle (PX-W17's identity-disabled
+    // transcript; React's port is I-10a). commerce.receipt is SP-16's, telemetry.updates SP-14's.
+    const plannedHere = ["identity.toggle"];
+    const expected = TRANSCRIPTS.filter(
+      (t) => !t.features.some((f) => plannedHere.includes(f)),
+    ).map((t) => t.id);
+    expect(ids.sort()).toEqual(expected.sort());
   });
 
   for (const t of TRANSCRIPTS) {
@@ -296,6 +653,37 @@ describe("the React replayer's chunkRange mapping fails on a doctored transcript
       })),
     );
     await expect(replay(t)).rejects.toThrow(/step 1: range/);
+  });
+});
+
+// @pkey-feature release.fetch
+describe("the React replayer's releaseFetch mapping fails on a doctored transcript", () => {
+  const base = TRANSCRIPTS.find((t) => t.id === "release-fetch-gated")!;
+
+  it("a resumed body that is not the payload's tail is a mismatch, not ok", async () => {
+    const t = doctor(base, 2, (items) =>
+      items.map((x) => ({
+        ...x,
+        response: {
+          ...x.response,
+          body: "X".repeat(String(x.response.body).length),
+        },
+      })),
+    );
+    await expect(replay(t)).rejects.toThrow(/step 2: result/);
+  });
+
+  it("a whole payload sent without the device bearer is refused by the recording", async () => {
+    const t = doctor(base, 1, (items) =>
+      items.map((x) => ({
+        ...x,
+        request: {
+          ...x.request,
+          requiredHeaders: [...x.request.requiredHeaders, "x-pkey-doctored"],
+        },
+      })),
+    );
+    await expect(replay(t)).rejects.toThrow(/required header x-pkey-doctored/);
   });
 });
 
@@ -494,5 +882,149 @@ describe("the React replayer's updateDecide mapping (a synthetic transcript)", (
     const wrong = structuredClone(t);
     wrong.steps[0]!.expect.channel = "latest";
     await expect(replay(wrong)).rejects.toThrow(/channel/);
+  });
+});
+
+// ── commerce.receipt through the desktop bridge (SP-16) ───────────────────────────────────
+
+/** The transcripts the bridge replay runs: every applicable one made only of commerce steps. */
+const COMMERCE_ACTIONS = new Set(["commerceBinding", "commerceClaim"]);
+const BRIDGE_TRANSCRIPTS = TRANSCRIPTS.filter(
+  (t) =>
+    t.features.includes("commerce.receipt") &&
+    t.steps.every((s) => COMMERCE_ACTIONS.has(s.action)),
+);
+
+/**
+ * Replay a commerce transcript through `DesktopAdapter`. The bridge is a v4 host: its
+ * `invoke("commerce", "binding" | "claim")` is the host SDK's `client.commerce` over the
+ * recording — here the bearer engine against the `ReplayServer`, holding the transcript's device
+ * token as a host's store would (the Node host's own `client.commerce` replays this transcript in
+ * the Node runner). What is under test is the renderer half: the verbs it sends, the argument
+ * shape the host receives, the result it hands back, and the fresh host state it reads after an
+ * `ok` claim.
+ */
+async function replayThroughBridge(t: Transcript): Promise<void> {
+  const server = new ReplayServer(t);
+  const belief = t.initial.services
+    ? servicesFromList(t.initial.services as never)
+    : defaultServices();
+  const host = new BearerSession({
+    baseUrl: t.baseUrl,
+    product: t.product,
+    version: t.initial.version,
+    fetchImpl: server.fetch as typeof fetch,
+    now: () => t.now,
+    pinned: t.trust,
+    store: new TranscriptStore(t.initial.deviceId, t.initial.token),
+    enabled: (slug) => belief[slug].enabled,
+    fingerprint: () => FINGERPRINT,
+  });
+  const invoked: string[] = [];
+  let stateReads = 0;
+  const base = makeFakeBridge(okBridgeState());
+  const bridge: PolarisBridge = {
+    ...base,
+    version: 4,
+    async getSyncState() {
+      stateReads += 1;
+      return base.getSyncState();
+    },
+    async invoke(service: string, method: string, args?: unknown) {
+      invoked.push(`${service}.${method}`);
+      if (service === "commerce" && method === "binding")
+        return host.commerceBinding();
+      if (service === "commerce" && method === "claim") {
+        const a = args as { store: "steam"; payload: never };
+        return host.commerceClaim(a.store, a.payload);
+      }
+      throw new Error(`the test host does not answer ${service}.${method}`);
+    },
+  };
+  const adapter = new DesktopAdapter({ bridge, now: () => t.now });
+  for (let i = 0; i < 50 && adapter.snapshot().phase === "loading"; i++)
+    await new Promise((r) => setTimeout(r, 0));
+  expect(adapter.supports("commerce.receipt")).toMatchObject({
+    supported: true,
+  });
+  for (let i = 0; i < t.steps.length; i += 1) {
+    const step = server.beginStep(i);
+    const observed: Record<string, JsonValue> = {};
+    const readsBefore = stateReads;
+    if (step.action === "commerceBinding") {
+      const b = await adapter.commerceBinding();
+      observed.result = "ok";
+      observed.bindingId = b.bindingId;
+      observed.products = b.products as unknown as JsonValue;
+    } else {
+      const r = await adapter.commerceClaim(
+        String(step.args.store) as "steam",
+        step.args.payload as never,
+      );
+      Object.assign(observed, claimObserved(r));
+      // On `ok` the renderer re-reads the host's state (the flag arrives with it); a refusal
+      // changes nothing, so nothing is re-read.
+      expect(stateReads - readsBefore, `${t.id} step ${i}: state reads`).toBe(
+        r.kind === "ok" ? 1 : 0,
+      );
+    }
+    server.endStep();
+    for (const [key, want] of Object.entries(step.expect))
+      if (key in observed)
+        expect(observed[key], `${t.id} step ${i}: ${key}`).toEqual(want);
+      else
+        throw new Error(
+          `${t.id} step ${i}: the bridge replay does not observe ${key}`,
+        );
+  }
+  expect(invoked).toEqual(
+    t.steps.map((s) =>
+      s.action === "commerceBinding" ? "commerce.binding" : "commerce.claim",
+    ),
+  );
+  adapter.dispose();
+}
+
+// @pkey-feature commerce.receipt
+describe("commerce through the desktop bridge (React desktop-bridge runtime)", () => {
+  it("covers the commerce transcript", () => {
+    expect(BRIDGE_TRANSCRIPTS.map((t) => t.id)).toContain("commerce-claim");
+  });
+
+  for (const t of BRIDGE_TRANSCRIPTS) {
+    const run = applies(t, MANIFEST) ? it : it.skip;
+    run(`${t.id} through a v4 bridge`, async () => {
+      await replayThroughBridge(t);
+    });
+  }
+
+  it("fails when the claim the host forwards is not the recorded one", async () => {
+    const base = TRANSCRIPTS.find((t) => t.id === "commerce-claim")!;
+    const t = doctor(base, 1, (items) =>
+      items.map((x) => ({
+        ...x,
+        request: {
+          ...x.request,
+          body: {
+            json: { store: "steam", ticket: "00", dlcAppId: "1234560" },
+            match: "exact",
+          },
+        },
+      })),
+    );
+    await expect(replayThroughBridge(t)).rejects.toThrow(/step 1/);
+  });
+});
+
+// @pkey-feature commerce.receipt
+describe("the React replayer's commerce mapping fails on a doctored transcript", () => {
+  const base = TRANSCRIPTS.find((t) => t.id === "commerce-claim")!;
+
+  it("a refusal recorded where the transcript expects a grant", async () => {
+    const refusal = base.steps[2]!.exchanges.items[0]!.response;
+    const t = doctor(base, 1, (items) =>
+      items.map((x) => ({ ...x, response: refusal })),
+    );
+    await expect(replay(t)).rejects.toThrow(/step 1: result/);
   });
 });

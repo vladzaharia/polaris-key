@@ -68,7 +68,8 @@ const CHANGED = codecs.oneOf(["0", "1"] as const, "0");
  * - **Form mode** edits one entry at a time from a list grouped by category, with change and
  *   error markers; **JSON mode** edits the whole document in CodeMirror with the catalog
  *   validator as its linter and Format (CAT-4). Both edit one draft.
- * - The draft persists in `sessionStorage` (CAT-6); the bumped version is in the title.
+ * - The draft persists in `sessionStorage` (CAT-6); the header carries one "Draft v9" chip with
+ *   the version publishing creates (EXPERIENCE.md §0.4 S4).
  * - **Review** is a structured diff. Removed keys are cross-checked against what still sets them
  *   (A-7b); a breaking removal needs the acknowledgement (L2). Errors stay inline (CAT-6).
  * - **Publish** sends `expectedVersion` (A-6); a 409 shows what changed on the server.
@@ -290,13 +291,8 @@ function Editor({
         title="Edit catalog"
         aside={
           <span className="inline-flex flex-wrap items-center gap-2">
-            <StatusPill tone="neutral" icon={false} size="sm">
-              {draft.baseVersion > 0
-                ? `v${draft.baseVersion} → v${nextVersion}`
-                : `v${nextVersion}`}
-            </StatusPill>
             <StatusPill tone="accent" icon={false} size="sm">
-              Draft
+              Draft v{nextVersion}
             </StatusPill>
             <SourceBadge source={source} path={CATALOG_PATH} />
           </span>
@@ -537,6 +533,7 @@ function Editor({
                   entry={selected}
                   issues={issuesAt(selectedIndex)}
                   categories={categories}
+                  fresh={!draft.baseEntries.some((e) => e.key === selected.key)}
                   onChange={(next) => updateEntry(selectedIndex, next)}
                 />
               </div>
@@ -790,8 +787,8 @@ function ReviewDrawer({
             <section className="space-y-3" aria-label="Changes on the server">
               <Callout tone="warning" live>
                 v{server.schemaVersion} was published after you started from v
-                {draft.baseVersion}. These are its changes. Publish over it to
-                replace them with your draft, or discard your draft.
+                {draft.baseVersion}. These are its changes. Review your draft
+                against it to publish over them, or discard your draft.
               </Callout>
               <DiffViewer<ConfigEntry>
                 mode="structured"
@@ -841,10 +838,11 @@ function ReviewDrawer({
               ) : null}
               {source === "manifest" ? (
                 <Callout tone="warning" title="This catalog is manifest-owned">
-                  The next resync from the repository re-applies{" "}
-                  <code className="font-mono text-xs">{CATALOG_PATH}</code> over
-                  this publish. Make the same change in the repository to keep
-                  it.
+                  Publishing claims it for the console: resyncs from the
+                  repository stop re-applying{" "}
+                  <code className="font-mono text-xs">{CATALOG_PATH}</code>{" "}
+                  until it is reverted to the manifest. Make the same change in
+                  the repository to keep the two in step.
                 </Callout>
               ) : null}
               {breaking ? (

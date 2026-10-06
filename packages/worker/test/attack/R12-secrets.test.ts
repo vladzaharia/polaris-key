@@ -903,7 +903,7 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
     // The token now reaches only the emailed link.
     const link = /https:\/\/\S+/.exec(sent[0] ?? "")?.[0];
     const token = link ? new URL(link).searchParams.get("token") : null;
-    expect(token).toMatch(/^magic_[A-Za-z0-9_-]+$/);
+    expect(token).toMatch(/^[A-Za-z0-9_-]{32}$/);
 
     const keys = singleUseMock(env)
       .keys()
@@ -915,10 +915,17 @@ describe("R12-04 credentials are KV key names, so a KV LIST is a credential dump
       await artefacts(env).get(await portalMagicKey(env, token!)),
     ).toContain("victim@example.com");
 
+    // I-07: the landing page's POST, from the browser that asked (its flow cookie).
+    const flowCookie = (res.headers.get("set-cookie") ?? "").split(";")[0]!;
     const verified = await handleMagicVerify(
-      new Request(
-        `https://portal.plrs.im/magic/verify?token=${encodeURIComponent(token!)}`,
-      ) as unknown as Request,
+      new Request("https://portal.plrs.im/magic/verify", {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: flowCookie,
+        },
+        body: new URLSearchParams({ token: token! }).toString(),
+      }) as unknown as Request,
       env,
       db,
       NOW,

@@ -138,7 +138,9 @@ them is the most common way to misread a document (spec §9).
 | `updateMatrixVersion`  | `1`   | The update decision (client behaviour, outside this contract), `update-matrix.json`.                         |
 | `outletMatrixVersion`  | `1`   | Outlet capabilities and detection (client behaviour), `outlet-matrix.json`.                                  |
 | `planMatrixVersion`    | `2`   | The install planner, variant selection and target mapping (client behaviour), `plan-matrix.json`.            |
+| `feedUrlMatrixVersion` | `1`   | The native updater feed URLs (client behaviour), `feed-url-matrix.json`.                                     |
 | `contentCorpusVersion` | `2`   | The content corpus, `content/cases.json`: pack byte formats and appliers (spec §2.6).                        |
+| `syncScenariosVersion` | `1`   | The Cloud Sync client state machine (client behaviour), `sync-scenarios.json`.                               |
 
 Two more `schemaVersion` fields exist and neither is a wire version:
 
@@ -169,16 +171,16 @@ deprecated. No verifier, signer or store has ever accepted them.
 The normative spec is repo-only by decision; it is not published on this site. If you are
 reading these pages with a checkout in front of you:
 
-| What                          | Path                                                                                                                                                                                   |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The normative spec            | `docs/security/WIRE-CONTRACT-V4.md`                                                                                                                                                    |
-| Its predecessors (historical) | `docs/security/WIRE-CONTRACT-V3.md`, `docs/security/WIRE-CONTRACT-V2.md`                                                                                                               |
-| The conformance corpus        | `conformance/corpus/v2/` — `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`, `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json` |
-| The corpus generator          | `tools/sign-corpus.ts`                                                                                                                                                                 |
-| Frozen JWS encode/verify      | `packages/shared-jws/src/index.ts`                                                                                                                                                     |
-| Wire types and constants      | `packages/shared-protocol/src/` — `core.ts`, `license.ts`, `config.ts`, `trust.ts`, `update.ts`, `release.ts`, `distribution.ts`                                                       |
-| The reference client          | `packages/client-core/src/` — `verify.ts`, `trust.ts`, `bundle.ts`, `gate.ts`, `clock.ts`, `store.ts`, `stages.ts`                                                                     |
-| The signer                    | `packages/worker/src/core/` — `signing.ts`, `trust.ts`, `bundles.ts`                                                                                                                   |
+| What                          | Path                                                                                                                                                                                                           |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The normative spec            | `docs/security/WIRE-CONTRACT-V4.md`                                                                                                                                                                            |
+| Its predecessors (historical) | `docs/security/WIRE-CONTRACT-V3.md`, `docs/security/WIRE-CONTRACT-V2.md`                                                                                                                                       |
+| The conformance corpus        | `conformance/corpus/v2/` — `cases.json`, `gate-matrix.json`, `fingerprint.json`, `stage-matrix.json`, `headers.json`, `config-matrix.json`, `update-matrix.json`, `outlet-matrix.json`, `feed-url-matrix.json` |
+| The corpus generator          | `tools/sign-corpus.ts`                                                                                                                                                                                         |
+| Frozen JWS encode/verify      | `packages/shared-jws/src/index.ts`                                                                                                                                                                             |
+| Wire types and constants      | `packages/shared-protocol/src/` — `core.ts`, `license.ts`, `config.ts`, `trust.ts`, `update.ts`, `release.ts`, `distribution.ts`                                                                               |
+| The reference client          | `packages/client-core/src/` — `verify.ts`, `trust.ts`, `bundle.ts`, `gate.ts`, `clock.ts`, `store.ts`, `stages.ts`                                                                                             |
+| The signer                    | `packages/worker/src/core/` — `signing.ts`, `trust.ts`, `bundles.ts`                                                                                                                                           |
 
 Case counts for the corpus, generated from the corpus files themselves, are at
 [Conformance corpus v2](/docs/reference/corpus/).

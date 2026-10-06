@@ -61,6 +61,8 @@ import { handleLicenseDocument } from "../../src/services/license/document.js";
 // The latter is the exact behavioural equivalent of the pre-split core function, so it is what
 // these tests assert against.
 import { requireLicensedDevice } from "../../src/services/license/auth.js";
+import { licenseMergeFor } from "../../src/core/licenseMerge.js";
+import { SERVICES } from "../../src/mount.js";
 import { authorizeDevice } from "../../src/core/authz.js";
 import {
   countActiveDevices,
@@ -1259,6 +1261,8 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
       ctx.db,
       ctx.product,
       at,
+      // What `dispatchService` hands Identity (`ServiceContext.licenseMerge`, LX-03).
+      licenseMergeFor(SERVICES),
     );
     return { status: res.status, body: (await res.json()) as PollBody };
   }
@@ -1680,7 +1684,7 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
   it("P1-07 (R1-07 bound, dormant devices): a dormant device on the anonymous licence counts against the destination's limit, because the migrate moves it too", async () => {
     // Two seats: the victim's own device holds one. The starter's anonymous licence holds the
     // flow's device, which fits, plus a device unseen for longer than SEAT_DORMANCY_SECONDS.
-    // A floor on `moving` would leave the dormant one out (1 + 1 <= 2), yet `moveDevices` moves
+    // A floor on `moving` would leave the dormant one out (1 + 1 <= 2), yet `planDeviceMove` moves
     // it onto the victim's licence, where it comes back without ever claiming a seat.
     await ctx.db.run(
       "UPDATE tiers SET policy_device_limit = 2 WHERE product = 'djdl' AND id = 'pro'",
@@ -1864,9 +1868,10 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
 
   // ── P1-07: the seat bound is measured on the licence as the attach will leave it ────────
   //
-  // `activateFromIdentity` rewrites the claimed or destination row's `tier_id` and
-  // `overrides_json` to the identity's mapped tier and provisioning before the mint, so the
-  // bound uses that post-activation limit, on both arms, and counts dormant devices too.
+  // `activateFromIdentity` rewrites a claimed row's `tier_id` and `overrides_json` to the
+  // identity's mapped tier and provisioning before the mint; a migrate destination keeps its own
+  // tier and only its provisioning's declared override keys are rewritten (LX-02). The bound
+  // uses that post-activation limit, on both arms, and counts dormant devices too.
 
   /** Confirm, then force the attach: neither offered nor applied, and no token minted. */
   async function attachRefusedOverSeatLimit(
@@ -1957,27 +1962,57 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
     );
   });
 
-  it("P1-07 (R1-07 bound, migrate): the limit is the identity's mapped tier, not a larger tier the destination licence still stores from an earlier sign-in", async () => {
-    // The victim signed in earlier as a `vip` (50-seat `gold`) and holds one device. Their
-    // groups now map only to `pro`, cut to one seat; the migrate's activation rewrites the
-    // licence onto it, so the starter's device would make 2 devices on 1 seat.
+  it("P1-07 (R1-07 bound, migrate): the limit is the destination licence's own stored tier, which sign-in no longer changes (LX-02), not a larger tier the identity's groups map to now", async () => {
+    // The victim signed in earlier as a `members` user (1-seat `pro`) and holds one device.
+    // Their groups now map to `vip` (50-seat `gold`). Since LX-02 the migrate's activation keeps
+    // the destination on `pro`, so the starter's device would make 2 devices on 1 seat; measuring
+    // on the mapped `gold` would wave it through.
     await goldTier();
     await ctx.db.run(
       "UPDATE tiers SET policy_device_limit = 1 WHERE product = 'djdl' AND id = 'pro'",
     );
-    const pre = await activateFromIdentity(ctx.db, ctx.product, VIP, NOW);
-    const victimLicence = (pre as { licenseId: string }).licenseId;
-    const authorized = await authorizeDevice(
-      ctx.env,
-      ctx.db,
-      ctx.product,
-      (await getLicense(ctx.db, "djdl", victimLicence))!,
-      "victim-own-device",
-      NOW,
-    );
-    expect("error" in authorized).toBe(false);
+    const victimLicence = await victimLicenceWithOwnDevice();
     expect((await getLicense(ctx.db, "djdl", victimLicence))?.tier_id).toBe(
-      "gold",
+      "pro",
+    );
+    const {
+      victimLicense: starterLicence,
+      victimToken: starterToken,
+      deviceCode,
+    } = await confirmVictimFlowAs(VIP);
+    await attachRefusedOverSeatLimit(deviceCode, starterToken);
+    await expectNoMerge(starterLicence);
+    expect(await countActiveDevices(ctx.db, "djdl", victimLicence)).toBe(1);
+    expect((await getLicense(ctx.db, "djdl", victimLicence))?.tier_id).toBe(
+      "pro",
+    );
+    expect((await getDevice(ctx.db, "djdl", "victim-game"))?.license_id).toBe(
+      starterLicence,
+    );
+  });
+
+  it("P1-07 (R1-07 bound, migrate): an operator `deviceLimit` override on the destination survives sign-in (LX-02), so the bound counts it", async () => {
+    // `pro` sets no seat policy, so the victim's licence would get the product default (5), but
+    // an operator cut it to 1 with a licence override. The sign-in write no longer discards
+    // undeclared override keys, so the attach must measure on 1 seat and refuse the starter's
+    // device (the old whole-column rewrite measured on 5 and let it through).
+    await ctx.db.run(
+      "UPDATE tiers SET policy_device_limit = NULL WHERE product = 'djdl' AND id = 'pro'",
+    );
+    const victimLicence = await victimLicenceWithOwnDevice();
+    const stored = JSON.parse(
+      (await getLicense(ctx.db, "djdl", victimLicence))!.overrides_json ?? "{}",
+    ) as { entitlements?: Record<string, unknown> };
+    await ctx.db.run(
+      "UPDATE licenses SET overrides_json = ? WHERE product = 'djdl' AND id = ?",
+      JSON.stringify({
+        ...stored,
+        entitlements: {
+          ...(stored.entitlements ?? {}),
+          deviceLimit: { state: "enforced", value: 1, updatedAt: NOW },
+        },
+      }),
+      victimLicence,
     );
     const {
       victimLicense: starterLicence,
@@ -1987,9 +2022,27 @@ describe("R8-02 / P1-06 a user-code holder cannot claim the device's anonymous l
     await attachRefusedOverSeatLimit(deviceCode, starterToken);
     await expectNoMerge(starterLicence);
     expect(await countActiveDevices(ctx.db, "djdl", victimLicence)).toBe(1);
-    expect((await getDevice(ctx.db, "djdl", "victim-game"))?.license_id).toBe(
-      starterLicence,
+  });
+
+  it("P1-07 (R1-07, migrate onto a strict stored tier): the fingerprint check uses the destination's own tier, which the sign-in keeps, even when the groups map to a non-strict tier", async () => {
+    // The victim's licence is on `gold`, made strict; their groups now map only to `pro`
+    // (`normal`). The migrate would mint on the stored `gold`, which refuses a device-code mint,
+    // so nothing may be attachable.
+    await goldTier();
+    const pre = await activateFromIdentity(ctx.db, ctx.product, VIP, NOW);
+    const victimLicence = (pre as { licenseId: string }).licenseId;
+    expect((await getLicense(ctx.db, "djdl", victimLicence))?.tier_id).toBe(
+      "gold",
     );
+    await makeGoldStrict();
+    const {
+      victimLicense: starterLicence,
+      victimToken: starterToken,
+      deviceCode,
+    } = await confirmVictimFlowAs(PHISHED);
+    await attachRefusedOnStrictTier(deviceCode, starterToken);
+    await expectNoMerge(starterLicence);
+    await expectStarterOnOwnLicence(starterToken, starterLicence);
   });
 });
 
@@ -2717,7 +2770,7 @@ describe("R8-07 redirect-URI allowlist fail-open", () => {
 // R8-08 — magic link: 72-bit token, unhashed KV key (fixed, R12-04), no verify rate limit
 // ═══════════════════════════════════════════════════════════════════════════════
 describe("R8-08 portal magic link", () => {
-  it("ATTACK: the magic token is 72 bits (FIXED R12-04: it is no longer its own KV key name)", async () => {
+  it("FIXED (I-07): the magic token is 192 bits, and (R12-04) no longer its own KV key name", async () => {
     const db = makeTestDb();
     const kv = new KvMock();
     const env = makeEnv(kv, ["djdl"]);
@@ -2744,10 +2797,9 @@ describe("R8-08 portal magic link", () => {
 
     // The secret is in the QUERY STRING of the emailed link.
     const token = new URL(sent.link!).searchParams.get("token")!;
-    expect(token.startsWith("magic_")).toBe(true);
-    // randomId => 9 random bytes = 72 bits (crypto.ts:42-44). Compare: browser-session and
-    // download tokens are 256-bit AND peppered-hashed at rest.
-    expect(token.slice("magic_".length).length).toBe(12); // 9 bytes b64url
+    // FIXED (I-07): the login card mints the link token from 24 random bytes (192 bits), not
+    // `randomId`'s 9 (72 bits); it is still peppered-hashed at rest (below).
+    expect(token).toMatch(/^[A-Za-z0-9_-]{32}$/); // 24 bytes b64url
 
     // FIXED (R12-04): the store key is `portal-magic:<hashKey(token, pepper)>` (I-02 moved it
     // from KV into the single-use store), so a listing no longer yields a working token. The
@@ -2760,11 +2812,18 @@ describe("R8-08 portal magic link", () => {
     );
     expect(await artefacts(env).get(magicKey)).toContain("victim@corp.com");
 
-    // The emailed token itself still signs the holder in.
+    // The emailed token itself still signs the holder in: from the browser that asked (its flow
+    // cookie), by the landing page's POST (I-07; a GET consumes nothing).
+    const flowCookie = (res.headers.get("set-cookie") ?? "").split(";")[0]!;
     const verified = await handleMagicVerify(
-      req(
-        `https://key.plrs.im/magic/verify?token=${encodeURIComponent(token)}`,
-      ),
+      new Request("https://key.plrs.im/magic/verify", {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: flowCookie,
+        },
+        body: new URLSearchParams({ token }).toString(),
+      }) as unknown as Request,
       env,
       db,
       NOW,

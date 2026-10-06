@@ -22,7 +22,21 @@ const ICON: Record<StatusKind, LucideIcon> = {
   active: Check,
 };
 
-/** A product status as icon and word (§5.3); `onArt` sits it on a solid plate. */
+/** The tones that are issues: only these render as pills (EXPERIENCE §7). */
+export function isIssueStatus(status: Status): boolean {
+  return (
+    status.tone === "danger" ||
+    status.tone === "warning" ||
+    status.tone === "info"
+  );
+}
+
+/**
+ * A product status (EXPERIENCE §7, §11.3). Issues render as a pill with icon and word; `onArt`
+ * sits that pill on a solid plate so it reads over the art. A healthy status ("Active") renders
+ * nothing. A neutral fact ("Signed-in app") renders as quiet text, and nothing on art: a plate
+ * is for issues only.
+ */
 export function ProductStatusPill({
   status,
   onArt = false,
@@ -31,7 +45,16 @@ export function ProductStatusPill({
   status: Status;
   onArt?: boolean;
   className?: string;
-}): React.ReactElement {
+}): React.ReactElement | null {
+  if (status.tone === "success") return null;
+  if (!isIssueStatus(status)) {
+    if (onArt) return null;
+    return (
+      <span className={cn("text-sm text-fg-muted", className)}>
+        {status.label}
+      </span>
+    );
+  }
   const pill = (
     <StatusPill
       tone={status.tone}
@@ -42,26 +65,17 @@ export function ProductStatusPill({
     </StatusPill>
   );
   if (!onArt) return pill;
-  // On art: a solid plate with room around the word. A healthy status is quiet text, so the
-  // plate is its frame and carries the padding; an attention pill is its own frame, made as tall.
+  // On art (issues only; healthy is silence, UX-03): a solid plate the pill sits in, made tall
+  // enough to give the word room (owner, fix/portal-discover-dedupe-icon).
   return (
-    <span
-      className={cn(
-        "inline-flex h-8 items-center rounded-full bg-surface-overlay shadow-elevation-2",
-        status.tone === "success" && "px-3.5",
-      )}
-    >
-      {status.tone === "success" ? (
-        pill
-      ) : (
-        <StatusPill
-          tone={status.tone}
-          icon={ICON[status.kind]}
-          className={cn("h-8 px-3.5 font-bold", className)}
-        >
-          {status.label}
-        </StatusPill>
-      )}
+    <span className="inline-flex h-8 items-center rounded-full bg-surface-overlay shadow-elevation-2">
+      <StatusPill
+        tone={status.tone}
+        icon={ICON[status.kind]}
+        className={cn("h-8 px-3.5 font-bold", className)}
+      >
+        {status.label}
+      </StatusPill>
     </span>
   );
 }

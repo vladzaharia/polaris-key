@@ -9,7 +9,8 @@
 // status, the blocked reason, the error code, the consent request, the fetch progress, a rollback),
 // folded by a pure reducer (PolarisBootUi.reduce). A host either sends events itself (`send`) as
 // its own work finishes, or hands a PolarisBootHost to `launch`, which runs each stage's work and
-// sends the result. PolarisKeyClient.bootHost() is a host over the umbrella client.
+// sends the result. The loop is :sdk's BootDriver (SP-20), the same one `client.boot()` runs on the
+// JVM; PolarisKeyClient.bootHost() (also :sdk) is a host over the umbrella client.
 
 package im.plrs.key.ui
 
@@ -55,26 +56,18 @@ import im.plrs.key.core.BootEvent
 import im.plrs.key.core.BootOptions
 import im.plrs.key.core.BootOutcome
 import im.plrs.key.core.BootStage
-import im.plrs.key.core.BootState
 import im.plrs.key.core.BootTransition
-import im.plrs.key.core.DocOutcome
+import im.plrs.key.core.BootState
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.LicenseState
 import im.plrs.key.core.LicenseStatus
-import im.plrs.key.core.PolarisException
-import im.plrs.key.core.bootTransition
 import im.plrs.key.core.initialBootState
-import im.plrs.key.sdk.PolarisKeyClient
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.CompletableDeferred
+import im.plrs.key.sdk.BootDriver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
 
 // ── State ────────────────────────────────────────────────────────────────────────────────────
 
@@ -129,172 +122,37 @@ public data class PolarisBootUi(
     }
 }
 
-/** What a fetch reports back while it runs. */
-public interface PolarisFetchReporter {
-    /** Bytes fetched so far of the total. */
-    public fun progress(done: Long, total: Long)
+/** What a fetch reports back while it runs (`im.plrs.key.sdk.PolarisFetchReporter`). */
+public typealias PolarisFetchReporter = im.plrs.key.sdk.PolarisFetchReporter
 
-    /** Ask the player before fetching [bytes]; true to go ahead. Suspends until they answer. */
-    public suspend fun consent(bytes: Long, metered: Boolean): Boolean
-}
+/** Each stage's work (`im.plrs.key.sdk.PolarisBootHost`); `client.bootHost()` in :sdk is one over the umbrella client. */
+public typealias PolarisBootHost = im.plrs.key.sdk.PolarisBootHost
 
-/** Each stage's work. Every method has the do-nothing answer by default except [sync] and [gate]. */
-public interface PolarisBootHost {
-    public suspend fun shell() {}
-    public suspend fun guard(): BootEvent.GuardResult = BootEvent.GuardResult.ok
-    public suspend fun sync(): BootEvent.SyncResult
-    public suspend fun gate(): LicenseStatus
-    public suspend fun decide(): BootEvent.Decision = BootEvent.Decision.none
-
-    /** Fetch what the boot needs; answers the result and the pack ids installed afterwards. */
-    public suspend fun fetch(reporter: PolarisFetchReporter): Pair<BootEvent.FetchResult, List<String>> =
-        BootEvent.FetchResult.ok to emptyList()
-
-    public suspend fun mount() {}
-}
-
-/**
- * The umbrella client as a boot host: sync is `client.sync()` (offline when every document the
- * product runs failed, or the call threw), the gate is `client.status()`, and decide asks the
- * update client when it is configured (an update client without options decides nothing). Fetch
- * and mount are the product's; pass [fetch] and [mount] to do them here.
- */
-public fun PolarisKeyClient.bootHost(
-    decide: Boolean = true,
-    fetch: (suspend (PolarisFetchReporter) -> Pair<BootEvent.FetchResult, List<String>>)? = null,
-    mount: (suspend () -> Unit)? = null,
-): PolarisBootHost {
-    val client = this
-    return object : PolarisBootHost {
-        override suspend fun sync(): BootEvent.SyncResult {
-            val result = try {
-                client.sync()
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                return BootEvent.SyncResult.offline
-            }
-            val ran = result.documents.values.filter { it != DocOutcome.Skipped }
-            return if (ran.isNotEmpty() && ran.all { it == DocOutcome.Error }) BootEvent.SyncResult.offline else BootEvent.SyncResult.ok
-        }
-
-        override suspend fun gate(): LicenseStatus = client.status().status
-
-        override suspend fun decide(): BootEvent.Decision {
-            if (!decide) return BootEvent.Decision.none
-            return try {
-                client.update.decide().boot
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: PolarisException) {
-                BootEvent.Decision.none
-            }
-        }
-
-        override suspend fun fetch(reporter: PolarisFetchReporter): Pair<BootEvent.FetchResult, List<String>> =
-            fetch?.invoke(reporter) ?: (BootEvent.FetchResult.ok to emptyList())
-
-        override suspend fun mount() {
-            mount?.invoke()
-        }
-    }
-}
-
-/** The boot state holder. */
+/** The boot state holder: :sdk's [BootDriver] with every transition folded into [ui]. */
 public class PolarisBootState(options: BootOptions = BootOptions()) {
     private val _ui = MutableStateFlow(PolarisBootUi(state = initialBootState(options)))
     public val ui: StateFlow<PolarisBootUi> = _ui.asStateFlow()
-    private var consentAnswer: CompletableDeferred<Boolean>? = null
+    private val driver = BootDriver(options) { transition -> _ui.value = _ui.value.reduce(transition) }
 
     /** Send [event] to the machine; answers the emits (empty when the event was ignored). */
-    @Synchronized
-    public fun send(event: BootEvent): List<BootEmit> {
-        val transition = bootTransition(_ui.value.state, event)
-        if (transition.emits.isEmpty()) return emptyList()
-        _ui.value = _ui.value.reduce(transition)
-        return transition.emits
-    }
+    public fun send(event: BootEvent): List<BootEmit> = driver.send(event)
 
     /** Answer a pending consent request (the consent card's buttons). */
-    public fun answerConsent(accept: Boolean) {
-        consentAnswer?.complete(accept)
-    }
+    public fun answerConsent(accept: Boolean): Unit = driver.answerConsent(accept)
 
     /** Retry from a stop or a waiting gate. */
-    public fun retry() {
-        send(BootEvent.Retry)
-    }
+    public fun retry(): Unit = driver.retry()
 
     /** Continue offline from a playable offline stop. */
-    public fun playOffline() {
-        send(BootEvent.PlayOffline)
-    }
+    public fun playOffline(): Unit = driver.playOffline()
 
     /**
-     * Run the boot with [host] in [scope]: start the machine and, at every working stage, do that
-     * stage's work and send its result. Waits at stops and at a waiting gate until a retry (or the
-     * licence becoming usable, for the gate) moves the machine on; returns at `ready`.
+     * Run the boot with [host] in [scope] (`BootDriver.launch`): start the machine and, at every
+     * working stage, do that stage's work and send its result. Waits at stops and at a waiting gate
+     * until a retry (or the licence becoming usable, for the gate) moves the machine on; returns at
+     * `ready`.
      */
-    public fun launch(scope: CoroutineScope, host: PolarisBootHost): Job = scope.launch {
-        send(BootEvent.Start)
-        while (isActive) {
-            val ui = _ui.value
-            val state = ui.state
-            if (state.stage == BootStage.ready || state.stage == BootStage.background) return@launch
-            if (state.outcome != BootOutcome.running) {
-                _ui.first { it.state != state }
-                continue
-            }
-            val event = try {
-                work(state.stage, host)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: PolarisException) {
-                BootEvent.Fail(e.code)
-            } catch (e: Exception) {
-                BootEvent.Fail(ErrorCode.internalError)
-            } ?: return@launch
-            if (send(event).isEmpty()) _ui.first { it.state != state }
-        }
-    }
-
-    private suspend fun work(stage: BootStage, host: PolarisBootHost): BootEvent? = when (stage) {
-        BootStage.idle -> BootEvent.Start
-        BootStage.shell -> {
-            host.shell()
-            BootEvent.ShellDone
-        }
-        BootStage.guard -> BootEvent.GuardDone(host.guard())
-        BootStage.sync -> BootEvent.SyncDone(host.sync())
-        BootStage.gate -> BootEvent.GateStatus(host.gate())
-        BootStage.decide -> BootEvent.DecideDone(host.decide())
-        BootStage.fetch -> {
-            val (result, installed) = host.fetch(reporter)
-            BootEvent.FetchDone(result, installed)
-        }
-        BootStage.mount -> {
-            host.mount()
-            BootEvent.MountDone
-        }
-        BootStage.ready, BootStage.background, BootStage.offline, BootStage.blocked, BootStage.error -> null
-    }
-
-    private val reporter = object : PolarisFetchReporter {
-        override fun progress(done: Long, total: Long) {
-            send(BootEvent.FetchProgress(done, total))
-        }
-
-        override suspend fun consent(bytes: Long, metered: Boolean): Boolean {
-            val answer = CompletableDeferred<Boolean>()
-            consentAnswer = answer
-            if (send(BootEvent.FetchConsent(bytes, metered)).isEmpty()) return true
-            val accepted = answer.await()
-            consentAnswer = null
-            // Back to running: the fetch goes ahead from zero.
-            if (accepted) send(BootEvent.FetchProgress(0, bytes))
-            return accepted
-        }
-    }
+    public fun launch(scope: CoroutineScope, host: PolarisBootHost): Job = driver.launch(scope, host)
 }
 
 // ── Composables ──────────────────────────────────────────────────────────────────────────────

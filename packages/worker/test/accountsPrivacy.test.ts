@@ -22,6 +22,8 @@ import {
   issueSession,
 } from "../src/admin/session.js";
 import { loadProduct } from "../src/core/products.js";
+import { setServices } from "../src/repo.js";
+import { DEFAULT_SERVICES, serializeServices } from "../src/core/services.js";
 import { handleDevices } from "../src/core/devices.js";
 import { setDeviceSubject } from "../src/core/accountSubjects.js";
 import {
@@ -45,6 +47,16 @@ describe("the account id never reaches a developer-facing response (I-05)", () =
     env.ADMIN_SESSION_SECRET = "test-admin-session-secret";
     env.PLATFORM_ADMIN_GROUP = "platform-admins";
     await seedProduct(db, "djdl");
+    // A device binding needs Identity on (PX-W17's bind guard).
+    await setServices(
+      db,
+      "djdl",
+      serializeServices({
+        services: { ...DEFAULT_SERVICES, identity: { enabled: true } },
+      }),
+      "manifest",
+      NOW,
+    );
     const product = (await loadProduct(env, db, "djdl"))!;
     const { key, licenseId } = await seedLicenseWithKey(db, "djdl");
 

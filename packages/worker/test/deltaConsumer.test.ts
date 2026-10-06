@@ -843,7 +843,8 @@ describe("the request Worker cannot encode", () => {
     expect(consumer.match(/^LAZY_DELTAS = "runtime"$/gm)).toHaveLength(3);
     expect(main).not.toMatch(/^LAZY_DELTAS = "on"$/m);
     expect(consumer).not.toMatch(/^LAZY_DELTAS = "on"$/m);
-    expect(main).not.toMatch(/queues\.consumers/);
+    // (HA-05: the request Worker consumes `pkey-assets-<env>` only, never a delta queue.)
+    expect(main).not.toMatch(/queues\.consumers\]\]\nqueue = "pkey-deltas-/);
     expect(consumer).toMatch(/^main = "src\/deltasEntry\.ts"$/m);
     expect(consumer).toMatch(/^cpu_ms = 60000$/m);
     // The deploy job ships the consumer too, with the same environment.

@@ -1,6 +1,9 @@
 /**
  * Tiers (`/manage/api/products/<slug>/license/tiers/...`): named policy bundles (a profile +
  * expiry/device limits) a license can be assigned. List/create, patch, and delete.
+ *
+ * ST-01b: every console create or edit owns the row (`source = 'console'`, `upsertTier`), so a
+ * resync never overwrites or deletes it; a manifest tier edited here is claimed.
  */
 
 import type { Db } from "../../../core/platform.js";
@@ -96,6 +99,8 @@ export async function handleTiers(
           channels: parseJsonList(t.channels_json),
           minVersion: t.min_version,
           maxVersion: t.max_version,
+          // ST-01b: who owns the row; a resync leaves `console` rows alone.
+          source: t.source ?? "manifest",
         })),
       });
     }

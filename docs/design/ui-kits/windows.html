@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>
+      UI kits · Windows 11 (Electron, Tauri, Compose Desktop, Qt Quick)
+    </title>
+    <link rel="stylesheet" href="shared.css" />
+    <script src="shared.js"></script>
+    <style>
+      /* Windows 11, Fluent 2 platform variant (theme.platform "windows"): Mica title bar,
+         caption buttons on the right, 32 px controls with 4 px radius, 8 px overlays,
+         ContentDialog on a smoke layer, the Fluent two-tone focus ring. Same layouts and copy. */
+      :root {
+        --w-mica: #202227;
+        --w-layer: #2b2d33;
+        --w-card: #2f3137;
+        --w-stroke: rgb(255 255 255 / 0.07);
+        --w-text: #ffffff;
+        --w-mute: rgb(255 255 255 / 0.66);
+        --w-ctl: rgb(255 255 255 / 0.07);
+        --w-field: rgb(255 255 255 / 0.05);
+      }
+      [data-theme="light"] {
+        --w-mica: #eef1f4;
+        --w-layer: #f9f9fb;
+        --w-card: #ffffff;
+        --w-stroke: rgb(0 0 0 / 0.07);
+        --w-text: #1b1b1b;
+        --w-mute: rgb(0 0 0 / 0.6);
+        --w-ctl: #ffffff;
+        --w-field: #ffffff;
+      }
+      .shot {
+        position: relative;
+        overflow: hidden;
+        border-radius: 12px;
+        isolation: isolate;
+        display: grid;
+        place-items: center;
+        padding: 48px;
+      }
+      .shot::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -2;
+        background:
+          radial-gradient(80% 90% at 70% 10%, #1f3d63 0%, transparent 60%),
+          radial-gradient(60% 70% at 10% 100%, #12324a 0%, transparent 60%),
+          #0e1622;
+      }
+      [data-theme="light"] .shot::before {
+        background:
+          radial-gradient(80% 90% at 70% 10%, #bcd3ef 0%, transparent 60%),
+          radial-gradient(60% 70% at 10% 100%, #cfe2ef 0%, transparent 60%),
+          #e6edf5;
+      }
+      .win {
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--w-mica);
+        color: var(--w-text);
+        font-size: 14px;
+        line-height: 20px;
+        box-shadow:
+          0 0 0 1px rgb(0 0 0 / 0.4),
+          0 32px 64px rgb(0 0 0 / 0.37),
+          0 2px 21px rgb(0 0 0 / 0.37);
+      }
+      [data-theme="light"] .win {
+        box-shadow:
+          0 0 0 1px rgb(0 0 0 / 0.1),
+          0 32px 64px rgb(0 0 0 / 0.18),
+          0 2px 21px rgb(0 0 0 / 0.14);
+      }
+      .tb {
+        height: 40px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-inline-start: 14px;
+        font-size: 12px;
+      }
+      .caps {
+        margin-inline-start: auto;
+        display: flex;
+        height: 100%;
+      }
+      .caps span {
+        width: 46px;
+        display: grid;
+        place-items: center;
+        color: var(--w-text);
+      }
+      .content {
+        background: var(--w-layer);
+        border-top: 1px solid var(--w-stroke);
+        border-radius: 8px 0 0 0;
+      }
+      .wb {
+        height: 32px;
+        min-width: 120px;
+        padding: 0 12px;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font: 400 14px/1 var(--pk-font-sans);
+        background: var(--w-ctl);
+        color: var(--w-text);
+        box-shadow:
+          inset 0 0 0 1px var(--w-stroke),
+          inset 0 -1px 0 rgb(0 0 0 / 0.1);
+      }
+      .wb.accent {
+        background: var(--kit-accent);
+        color: #fff;
+        box-shadow: inset 0 -1px 0 rgb(0 0 0 / 0.2);
+      }
+      .wb.block {
+        width: 100%;
+      }
+      .wfield {
+        min-height: 32px;
+        border-radius: 4px;
+        background: var(--w-field);
+        box-shadow: inset 0 0 0 1px var(--w-stroke);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 4px 6px 10px;
+        position: relative;
+        overflow: hidden;
+      }
+      .wfield.focus {
+        background: var(--w-card);
+      }
+      .wfield.focus::after {
+        content: "";
+        position: absolute;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
+        bottom: 0;
+        height: 2px;
+        background: var(--kit-accent-fg);
+      }
+      .wfield .mono {
+        flex: 1;
+        font-size: 13px;
+        line-height: 18px;
+        overflow-wrap: anywhere;
+      }
+      .wh {
+        font: 600 20px/28px var(--pk-font-sans);
+        margin: 0;
+        text-wrap: balance;
+      }
+      .wmute {
+        color: var(--w-mute);
+      }
+      /* Fluent smoke (SmokeFillColorDefault): black in both themes, over the whole window
+         including the title bar, so everything behind the dialog dims evenly. */
+      .smoke {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: rgb(0 0 0 / 0.42);
+        z-index: 5;
+      }
+      [data-theme="light"] .smoke {
+        background: rgb(0 0 0 / 0.3);
+      }
+      .dialog {
+        position: absolute;
+        inset-inline-start: 50%;
+        top: 50%;
+        translate: -50% -50%;
+        width: 480px;
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--w-layer);
+        box-shadow:
+          0 0 0 1px rgb(0 0 0 / 0.3),
+          0 32px 64px rgb(0 0 0 / 0.37);
+        z-index: 6;
+      }
+      .dialog .body {
+        padding: 24px;
+        display: grid;
+        gap: 16px;
+      }
+      .dialog .foot {
+        padding: 24px;
+        background: var(--w-mica);
+        border-top: 1px solid var(--w-stroke);
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .whead {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 500;
+      }
+      .wrow {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-height: 64px;
+        padding: 12px 16px;
+        background: var(--w-card);
+        border-radius: 4px;
+        box-shadow: inset 0 0 0 1px var(--w-stroke);
+      }
+      .wrow + .wrow {
+        margin-top: 4px;
+      }
+      .wrow .t {
+        flex: 1;
+      }
+      .wrow small {
+        display: block;
+        font-size: 12px;
+        line-height: 16px;
+        color: var(--w-mute);
+      }
+      .tog {
+        width: 40px;
+        height: 20px;
+        border-radius: 999px;
+        background: var(--kit-accent);
+        position: relative;
+      }
+      .tog::after {
+        content: "";
+        position: absolute;
+        inset-inline-end: 4px;
+        top: 4px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #fff;
+      }
+      .nav span {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 36px;
+        padding: 0 12px;
+        border-radius: 4px;
+        color: var(--w-text);
+        position: relative;
+      }
+      .nav span.on {
+        background: var(--w-ctl);
+      }
+      .nav span.on::before {
+        content: "";
+        position: absolute;
+        inset-inline-start: 0;
+        top: 10px;
+        bottom: 10px;
+        width: 3px;
+        border-radius: 2px;
+        background: var(--kit-accent-fg);
+      }
+      .fluent-focus {
+        outline: 2px solid var(--w-text);
+        outline-offset: 1px;
+        box-shadow: 0 0 0 1px var(--w-layer);
+      }
+
+      .trio {
+        display: flex;
+        gap: 32px;
+        align-items: center;
+      }
+      .swin {
+        width: 440px;
+        display: grid;
+        grid-template-rows: 40px 1fr;
+      }
+      .swin .content {
+        display: grid;
+        align-content: center;
+        justify-items: center;
+        text-align: center;
+        gap: 10px;
+        min-height: 300px;
+        padding: 28px 32px;
+        border-radius: 0;
+      }
+      .swin .foot {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        width: 100%;
+        margin-top: 18px;
+      }
+      .wglyph {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--w-ctl);
+        box-shadow: inset 0 0 0 1px var(--w-stroke);
+      }
+      /* Fluent ProgressBar: 3 px track, accent fill. */
+      .wprog {
+        width: 160px;
+        height: 3px;
+        border-radius: 2px;
+        background: var(--w-stroke);
+        overflow: hidden;
+      }
+      .wprog i {
+        display: block;
+        width: 45%;
+        height: 100%;
+        background: var(--kit-accent-fg);
+      }
+    </style>
+  </head>
+  <body>
+    <template id="caps">
+      <div class="caps">
+        <span
+          ><svg width="10" height="10" viewBox="0 0 10 10">
+            <path d="M0 5h10" stroke="currentColor" /></svg
+        ></span>
+        <span
+          ><svg width="10" height="10" viewBox="0 0 10 10">
+            <rect
+              x=".5"
+              y=".5"
+              width="9"
+              height="9"
+              rx="1.5"
+              fill="none"
+              stroke="currentColor"
+            /></svg
+        ></span>
+        <span
+          ><svg width="10" height="10" viewBox="0 0 10 10">
+            <path d="M0 0l10 10M10 0 0 10" stroke="currentColor" /></svg
+        ></span>
+      </div>
+    </template>
+    <main class="board">
+      <!-- 1. Gate -->
+      <figure>
+        <figcaption>windows · gate (Mica window, 32 px controls)</figcaption>
+        <div class="shot" data-shot="gate">
+          <div
+            class="win"
+            style="
+              width: 760px;
+              height: 520px;
+              display: grid;
+              grid-template-rows: 40px 1fr;
+            "
+          >
+            <div class="tb">
+              <span
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="16"
+                style="border-radius: 4px; box-shadow: none"
+              ></span
+              >Tidewater Studio<span class="cap-slot"></span>
+            </div>
+            <div
+              class="content"
+              style="display: grid; grid-template-columns: 300px 1fr"
+            >
+              <div
+                style="
+                  margin: 16px 0 16px 16px;
+                  border-radius: 8px;
+                  overflow: hidden;
+                  position: relative;
+                "
+                class="art"
+              ></div>
+              <div
+                style="
+                  display: grid;
+                  align-content: center;
+                  padding: 0 56px;
+                  gap: 20px;
+                "
+              >
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="56"
+                  style="border-radius: 12px"
+                ></div>
+                <div style="display: grid; gap: 4px">
+                  <h1 class="wh" style="font-size: 28px; line-height: 36px">
+                    Welcome to Tidewater Studio
+                  </h1>
+                  <span class="wmute" style="font-size: 12px"
+                    >by Harbor Audio</span
+                  >
+                  <p class="wmute" style="margin: 6px 0 0">
+                    Sign in or add your license to start.
+                  </p>
+                </div>
+                <div style="display: grid; gap: 8px; max-width: 320px">
+                  <span class="wb accent block">Sign in</span>
+                  <span class="wb block">Use a license key</span>
+                </div>
+                <div
+                  class="wmute"
+                  style="display: flex; gap: 20px; font-size: 13px"
+                >
+                  <span>Start a 14-day trial</span><span>Activate offline</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 2. Activate ContentDialog -->
+      <figure>
+        <figcaption>
+          windows · activate (ContentDialog on a smoke layer)
+        </figcaption>
+        <div class="shot" data-shot="activate">
+          <div
+            class="win"
+            style="
+              width: 760px;
+              height: 520px;
+              display: grid;
+              grid-template-rows: 40px 1fr;
+            "
+          >
+            <div class="tb">
+              <span
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="16"
+                style="border-radius: 4px; box-shadow: none"
+              ></span
+              >Tidewater Studio<span class="cap-slot"></span>
+            </div>
+            <div
+              class="content"
+              style="display: grid; grid-template-columns: 300px 1fr"
+            >
+              <div
+                style="
+                  margin: 16px 0 16px 16px;
+                  border-radius: 8px;
+                  overflow: hidden;
+                  position: relative;
+                "
+                class="art"
+              ></div>
+              <div></div>
+            </div>
+            <div class="smoke"></div>
+            <div class="dialog">
+              <div class="body">
+                <div class="whead">
+                  <span
+                    class="k-appicon"
+                    data-art="tidewater"
+                    data-size="32"
+                    style="border-radius: 7px"
+                  ></span
+                  ><span style="white-space: nowrap"
+                    >Tidewater Studio
+                    <span class="wmute" style="font-weight: 400"
+                      >· Pro</span
+                    ></span
+                  >
+                </div>
+                <div style="display: grid; gap: 4px">
+                  <h2 class="wh">Add your license</h2>
+                  <span class="wmute"
+                    >Your key is in the purchase email from Harbor Audio.</span
+                  >
+                </div>
+                <div>
+                  <div style="margin-bottom: 8px">License key</div>
+                  <div class="wfield focus">
+                    <span class="mono"
+                      ><span class="k-key"
+                        ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                        ><span>3WPLDA</span></span
+                      ></span
+                    ><span
+                      class="wb"
+                      style="
+                        min-width: 0;
+                        height: 24px;
+                        font-size: 12px;
+                        padding: 0 8px;
+                      "
+                      >Paste</span
+                    >
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      gap: 8px;
+                      align-items: center;
+                      margin-top: 8px;
+                      font-size: 13px;
+                    "
+                    class="wmute"
+                  >
+                    <span
+                      style="color: var(--pk-success)"
+                      data-icon="checkCircle"
+                      data-size="14"
+                    ></span
+                    ><span
+                      ><b style="font-weight: 500; color: var(--w-text)"
+                        >Tidewater Studio Pro</b
+                      >&#8201;·&#8201;Lifetime&#8201;·&#8201;3 devices</span
+                    >
+                  </div>
+                </div>
+              </div>
+              <div class="foot">
+                <span class="wb accent">Activate</span
+                ><span class="wb">Cancel</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 3. Update -->
+      <figure>
+        <figcaption>
+          windows · update (ContentDialog, keyboard focus on the primary)
+        </figcaption>
+        <div class="shot" data-shot="update">
+          <div
+            class="win"
+            style="
+              width: 760px;
+              height: 520px;
+              display: grid;
+              grid-template-rows: 40px 1fr;
+            "
+          >
+            <div class="tb">
+              <span
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="16"
+                style="border-radius: 4px; box-shadow: none"
+              ></span
+              >Tidewater Studio<span class="cap-slot"></span>
+            </div>
+            <div
+              class="content"
+              style="
+                padding: 20px;
+                display: grid;
+                gap: 6px;
+                align-content: start;
+              "
+              id="wtracks"
+            ></div>
+            <div class="smoke"></div>
+            <div class="dialog">
+              <div class="body">
+                <div style="display: flex; gap: 14px; align-items: center">
+                  <div
+                    class="k-appicon"
+                    data-art="tidewater"
+                    data-size="48"
+                    style="border-radius: 10px"
+                  ></div>
+                  <div>
+                    <h2 class="wh">Tidewater Studio 2.5</h2>
+                    <span class="wmute tnum"
+                      >You have 2.4.1 · 61 MB download</span
+                    >
+                  </div>
+                </div>
+                <div style="display: grid; gap: 4px">
+                  <span class="wmute" style="font-size: 12px">What’s new</span>
+                  <span>Stem export in one click, with loudness matching</span>
+                  <span>Track freeze now works with every plug-in</span>
+                  <span style="color: var(--kit-accent-fg)">Release notes</span>
+                </div>
+                <div>
+                  <div
+                    style="
+                      height: 3px;
+                      border-radius: 2px;
+                      background: var(--w-stroke);
+                    "
+                  >
+                    <div
+                      style="
+                        width: 62%;
+                        height: 100%;
+                        border-radius: 2px;
+                        background: var(--kit-accent-fg);
+                      "
+                    ></div>
+                  </div>
+                  <div
+                    class="wmute tnum"
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      font-size: 12px;
+                      margin-top: 6px;
+                    "
+                  >
+                    <span>Downloading · 38 of 61 MB</span
+                    ><span>About 20 seconds left</span>
+                  </div>
+                </div>
+              </div>
+              <div class="foot">
+                <span class="wb accent fluent-focus">Restart when ready</span
+                ><span class="wb">Later</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 4. Settings page -->
+      <figure>
+        <figcaption>
+          windows · account and license (NavigationView settings page)
+        </figcaption>
+        <div class="shot" data-shot="settings">
+          <div
+            class="win"
+            style="
+              width: 860px;
+              height: 600px;
+              display: grid;
+              grid-template-rows: 40px 1fr;
+            "
+          >
+            <div class="tb">
+              <span
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="16"
+                style="border-radius: 4px; box-shadow: none"
+              ></span
+              >Settings<span class="cap-slot"></span>
+            </div>
+            <div style="display: grid; grid-template-columns: 240px 1fr">
+              <div
+                class="nav"
+                style="
+                  padding: 8px;
+                  display: grid;
+                  align-content: start;
+                  gap: 2px;
+                "
+              >
+                <span
+                  ><span data-icon="sliders" data-size="16"></span>General</span
+                >
+                <span><span data-icon="play" data-size="16"></span>Audio</span>
+                <span class="on"
+                  ><span data-icon="user" data-size="16"></span>Account and
+                  license</span
+                >
+              </div>
+              <div
+                class="content"
+                style="
+                  padding: 28px 36px;
+                  display: grid;
+                  align-content: start;
+                  gap: 4px;
+                "
+              >
+                <h1
+                  class="wh"
+                  style="
+                    font-size: 28px;
+                    line-height: 36px;
+                    margin-bottom: 20px;
+                  "
+                >
+                  Account and license
+                </h1>
+                <div class="wrow" style="min-height: 72px">
+                  <span
+                    class="k-appicon"
+                    data-art="tidewater"
+                    data-size="40"
+                    style="border-radius: 8px"
+                  ></span>
+                  <div class="t">
+                    <span style="font-weight: 500">Tidewater Studio Pro</span
+                    ><small>Lifetime · mara@fennick.studio</small>
+                  </div>
+                  <span class="wb" style="min-width: 0"
+                    >Manage<span data-icon="external" data-size="14"></span
+                  ></span>
+                </div>
+                <div class="wrow">
+                  <span data-icon="laptop" data-size="18"></span>
+                  <div class="t">Devices<small>2 of 3 in use</small></div>
+                  <span
+                    data-icon="chevronRight"
+                    data-size="16"
+                    class="wmute"
+                  ></span>
+                </div>
+                <div style="font-weight: 600; margin: 20px 0 6px">Updates</div>
+                <div class="wrow">
+                  <span data-icon="download" data-size="18"></span>
+                  <div class="t">Install updates automatically</div>
+                  <span class="wmute" style="margin-inline-end: 4px">On</span
+                  ><span class="tog"></span>
+                </div>
+                <div class="wrow">
+                  <span data-icon="update" data-size="18"></span>
+                  <div class="t">
+                    Version <span class="tnum">2.4.1</span
+                    ><small>Up to date · checked 2 min ago</small>
+                  </div>
+                  <span class="wb" style="min-width: 0">Check for updates</span>
+                </div>
+                <div style="font-weight: 600; margin: 20px 0 6px">
+                  From Harbor Audio
+                </div>
+                <div class="wrow">
+                  <span data-icon="shield" data-size="18"></span>
+                  <div class="t">
+                    Share crash reports<small>Set by Fennick Studio</small>
+                  </div>
+                  <span
+                    class="wmute"
+                    style="display: flex; gap: 6px; align-items: center"
+                    ><span data-icon="lock" data-size="14"></span>On</span
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 5. Boot, status, error -->
+      <figure>
+        <figcaption>
+          windows · boot, status (blocked) and error (offline)
+        </figcaption>
+        <div class="shot" data-shot="states">
+          <div class="trio">
+            <div class="win swin">
+              <div class="tb">
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="16"
+                  style="border-radius: 4px; box-shadow: none"
+                ></span
+                >Tidewater Studio<span class="cap-slot"></span>
+              </div>
+              <div class="content">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="72"
+                  style="border-radius: 16px"
+                ></div>
+                <div class="wprog" style="margin-top: 18px"><i></i></div>
+                <span class="wmute" style="font-size: 12px"
+                  >Checking your license</span
+                >
+              </div>
+            </div>
+            <div class="win swin">
+              <div class="tb">
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="16"
+                  style="border-radius: 4px; box-shadow: none"
+                ></span
+                >Tidewater Studio<span class="cap-slot"></span>
+              </div>
+              <div class="content">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="52"
+                  style="border-radius: 12px"
+                ></div>
+                <h1 class="wh" style="margin-top: 8px">
+                  Your license has ended
+                </h1>
+                <p class="wmute" style="margin: 0">
+                  Tidewater Studio Pro ended on 30 September. Renew to keep
+                  working on your sessions.
+                </p>
+                <div class="foot">
+                  <span class="wb">Use a different key</span
+                  ><span class="wb accent">Renew</span>
+                </div>
+              </div>
+            </div>
+            <div class="win swin">
+              <div class="tb">
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="16"
+                  style="border-radius: 4px; box-shadow: none"
+                ></span
+                >Tidewater Studio<span class="cap-slot"></span>
+              </div>
+              <div class="content">
+                <div class="wglyph" data-icon="wifiOff" data-size="22"></div>
+                <h1 class="wh" style="margin-top: 8px">
+                  Can’t reach Harbor Audio
+                </h1>
+                <p class="wmute" style="margin: 0">
+                  Check your connection. You can keep working offline for 3 more
+                  days.
+                </p>
+                <div class="foot">
+                  <span class="wb">Continue offline</span
+                  ><span class="wb accent fluent-focus">Try again</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+    </main>
+    <script>
+      document
+        .querySelectorAll(".cap-slot")
+        .forEach((s) =>
+          s.replaceWith(
+            document.getElementById("caps").content.cloneNode(true),
+          ),
+        );
+      const artSvg = `<svg width="100%" height="100%" viewBox="0 0 300 460" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect width="300" height="460" fill="#0b3a48"/><circle cx="210" cy="110" r="30" fill="#f5d38a"/>${[
+        0, 1, 2, 3,
+      ]
+        .map((i) => {
+          const y = 260 + i * 46;
+          let d = `M-20 ${y}`;
+          for (let x = -20; x <= 320; x += 60) d += ` q15 -16 30 0 t30 0`;
+          return `<path d="${d}" stroke="${["#5fe3cf", "#8eeedd", "#bff5ea", "#5fe3cf"][i]}" stroke-width="9" fill="none" stroke-linecap="round" opacity="${(0.95 - i * 0.15).toFixed(2)}"/>`;
+        })
+        .join("")}</svg>`;
+      document.querySelectorAll(".art").forEach((a) => (a.innerHTML = artSvg));
+      const t = document.getElementById("wtracks");
+      // Real host content (tracks with waveforms), so the smoke visibly dims what is behind it.
+      ["Vocals", "Guitar", "Drums", "Keys", "Bass", "Room mics"].forEach(
+        (name, n) => {
+          let w = "";
+          for (let i = 0; i < 104; i++)
+            w += `<i style="display:inline-block;width:3px;margin-inline-end:3px;border-radius:2px;background:var(--kit-accent);height:${(6 + Math.abs(Math.sin(i * 0.55 + n * 1.7)) * 26).toFixed(0)}px"></i>`;
+          t.insertAdjacentHTML(
+            "beforeend",
+            `<div style="height:56px;border-radius:6px;background:var(--w-card);box-shadow:inset 0 0 0 1px var(--w-stroke);display:flex;align-items:center;gap:16px;padding:0 16px;overflow:hidden"><span style="width:96px;flex:none;font-weight:500">${name}</span><span style="display:flex;align-items:center;height:40px;white-space:nowrap">${w}</span></div>`,
+          );
+        },
+      );
+    </script>
+  </body>
+</html>

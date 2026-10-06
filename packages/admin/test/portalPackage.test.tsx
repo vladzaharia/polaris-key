@@ -236,7 +236,7 @@ describe("Package access (PX-11)", () => {
         String((doneBtn as HTMLButtonElement).disabled),
     ).toMatch(/true/);
     await userEvent.click(
-      within(shown).getByRole("checkbox", { name: /I've stored this token/ }),
+      within(shown).getByRole("checkbox", { name: /I've stored it/ }),
     );
     await userEvent.click(within(shown).getByRole("button", { name: "Done" }));
     await waitFor(() =>

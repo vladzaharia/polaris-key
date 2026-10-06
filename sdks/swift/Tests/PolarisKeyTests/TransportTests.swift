@@ -94,10 +94,10 @@ final class TransportTests: XCTestCase {
 
         // Activation surfaces the refusal as a code the host can render, rather than as an
         // indistinguishable transport failure.
-        guard case .error(let message) = await c.activate(key: "PKEY-XXXX") else {
+        guard case .error(let code, _, _) = await c.activate(key: "PKEY-XXXX") else {
             return XCTFail("activation must refuse")
         }
-        XCTAssertTrue(message.contains("local-only"))
+        XCTAssertEqual(code, PolarisError.localOnly)
 
         // Registration and discovery likewise.
         guard case .error = await c.register() else {
@@ -282,7 +282,8 @@ final class TransportTests: XCTestCase {
         let cases: [(Int, String, ActivationResult)] = [
             (200, #"{"token":"pkeyt_x","schemaVersion":4}"#, .ok(token: "pkeyt_x", schemaVersion: 4)),
             (401, "{}", .unauthorized),
-            (404, "{}", .enrollDisabled),
+            // §3.1: an activation 404 without a code is not "enrolment disabled".
+            (404, "{}", .refused(code: "not_found", status: 404, message: nil)),
             (
                 403, #"{"error":"device_limit","limit":3,"deviceCount":5}"#,
                 .deviceLimit(limit: 3, deviceCount: 5)
@@ -313,8 +314,9 @@ final class TransportTests: XCTestCase {
     }
 
     // @pkey-feature license.activate
-    /// A host that opted out of fingerprinting sends a byte-identical request to one that has
-    /// nothing to report: the body is omitted entirely rather than sent as `{}`.
+    /// A host that opted out of fingerprinting and of the device label (`deviceName: ""`,
+    /// §12.7.1) sends a byte-identical request to one that has nothing to report: the body is
+    /// omitted entirely rather than sent as `{}`.
     func testActivationWithoutAFingerprintSendsNoBody() async throws {
         await server.reply(
             "/djdl/license/activate", body: #"{"token":"pkeyt_x","schemaVersion":1}"#)
@@ -322,13 +324,33 @@ final class TransportTests: XCTestCase {
             options: CoreOptions(
                 productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
                 pinnedKeys: [:], store: InMemoryStore(deviceId: "dev"),
-                transport: server.transport))
+                transport: server.transport, deviceName: ""))
         try await core.start()
         _ = await LicenseEndpoints.activate(core, key: "PKEY-KEY", fingerprint: nil)
         let request = await server.requests(forPath: "/djdl/license/activate").last
         XCTAssertNil(request?.body)
         XCTAssertNil(request?.headers["content-type"])
         XCTAssertEqual(request?.headers["authorization"], "Bearer PKEY-KEY")
+    }
+
+    // @pkey-feature identity.devicelabel
+    /// PX-W13 §8 Q2: without a fingerprint, activation still carries the device label, and only it.
+    func testActivationWithoutAFingerprintSendsTheDeviceLabel() async throws {
+        await server.reply(
+            "/djdl/license/activate", body: #"{"token":"pkeyt_x","schemaVersion":1}"#)
+        let core = try CoreContext(
+            options: CoreOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: [:], store: InMemoryStore(deviceId: "dev"),
+                transport: server.transport, deviceName: "Den PC"))
+        try await core.start()
+        _ = await LicenseEndpoints.activate(core, key: "PKEY-KEY", fingerprint: nil)
+        let request = await server.requests(forPath: "/djdl/license/activate").last
+        let body = try XCTUnwrap(request?.body)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        XCTAssertEqual(json["deviceName"] as? String, "Den PC")
+        XCTAssertNil(json["fingerprint"])
+        XCTAssertEqual(request?.headers["content-type"], "application/json")
     }
 
     // @pkey-feature license.activate

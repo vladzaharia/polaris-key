@@ -1,5 +1,13 @@
 import * as React from "react";
-import { Info, Laptop, Monitor, Smartphone } from "lucide-react";
+import {
+  Glasses,
+  Info,
+  Laptop,
+  Monitor,
+  Smartphone,
+  Tv,
+  Watch,
+} from "lucide-react";
 import { Button } from "../../../ui/Button.js";
 import { Skeleton } from "../../../ui/Skeleton.js";
 import { announce } from "../../../ui/LiveRegion.js";
@@ -8,7 +16,12 @@ import { formatRelative } from "../../../lib/format.js";
 import type { PortalDevice, PortalLicenseDetail } from "../../api.js";
 import { useRemoveDevice } from "../../data.js";
 import { portalErrorCopy } from "../../errors.js";
-import { devicesText, normalisePlatform, osName } from "../../model/library.js";
+import {
+  devicesText,
+  deviceFamily,
+  deviceOsName,
+  isSignInLicense,
+} from "../../model/library.js";
 import { ErrorPanel } from "../States.js";
 import { SeatMeter } from "../SeatMeter.js";
 import { SectionCard } from "./Card.js";
@@ -17,18 +30,23 @@ import { SectionCard } from "./Card.js";
  * Devices (§4.20, §4.22): the devices using a seat, each with **Remove**, which expands the row
  * in place into the consequences and the confirm (focus moves to its heading). Devices that no
  * longer use a seat are counted ("+1 not using a seat"). With the seat limit (G5, PX-W1) the
- * count reads "2 of 3 devices in use"; without it the limit is never guessed.
+ * count reads "2 of 3 devices in use"; without it the limit is never guessed. Every licence, from
+ * a key or from signing in, lists its devices with Remove (remote deauthorize); a key licence
+ * drops its counter when a sign-in licence covers the product (owner, 2026-10-05).
  */
 export function DevicesCard({
   productName,
   seatLimit,
   emailConfigured = false,
+  showCount = true,
   detail,
   loading,
   error,
   onRetry,
 }: {
   productName: string;
+  /** False hides the counter and seat meter (the list stays). */
+  showCount?: boolean;
   /** The licence's seat limit as activation enforces it, when the Worker sent it. */
   seatLimit?: number | null;
   /** The Worker can send mail (`capabilities.auth.magic`): only then promise a notice. */
@@ -40,6 +58,7 @@ export function DevicesCard({
 }): React.ReactElement {
   const active = detail?.devices.filter((d) => d.status === "authorized") ?? [];
   const idle = (detail?.devices.length ?? 0) - active.length;
+  const signIn = detail ? isSignInLicense(detail) : false;
   return (
     <SectionCard id="devices" title="Devices">
       {loading ? (
@@ -52,19 +71,21 @@ export function DevicesCard({
         />
       ) : (
         <>
-          <p className="mb-2 text-fg-muted">
-            <span className="text-xl font-bold text-fg-strong">
-              {active.length}
-            </span>{" "}
-            {seatLimit
-              ? `of ${seatLimit} ${seatLimit === 1 ? "device" : "devices"}`
-              : active.length === 1
-                ? "device"
-                : "devices"}{" "}
-            in use
-            {idle > 0 ? ` · +${idle} not using a seat` : ""}
-          </p>
-          {seatLimit ? (
+          {showCount ? (
+            <p className="mb-2 text-fg-muted">
+              <span className="text-xl font-bold text-fg-strong">
+                {active.length}
+              </span>{" "}
+              {seatLimit
+                ? `of ${seatLimit} ${seatLimit === 1 ? "device" : "devices"}`
+                : active.length === 1
+                  ? "device"
+                  : "devices"}{" "}
+              in use
+              {idle > 0 ? ` · +${idle} not using a seat` : ""}
+            </p>
+          ) : null}
+          {seatLimit && showCount ? (
             <SeatMeter
               inUse={active.length}
               limit={seatLimit}
@@ -73,8 +94,9 @@ export function DevicesCard({
           ) : null}
           {active.length === 0 ? (
             <p className="py-3 text-sm text-fg-muted">
-              No device is using this license. Open {productName} on a device to
-              activate it.
+              {signIn
+                ? `No device is signed in with this license. Sign in to ${productName} on a device to use it.`
+                : `No device is using this license. Open ${productName} on a device to activate it.`}
             </p>
           ) : (
             <ul className="divide-y divide-border border-t border-border">
@@ -85,7 +107,8 @@ export function DevicesCard({
                   detail={detail}
                   productName={productName}
                   inUse={active.length}
-                  seatLimit={seatLimit}
+                  seatLimit={showCount ? seatLimit : null}
+                  showCount={showCount}
                   emailConfigured={emailConfigured}
                 />
               ))}
@@ -93,12 +116,23 @@ export function DevicesCard({
           )}
           <p className="mt-3 flex gap-2 text-sm text-fg-muted">
             <Info aria-hidden className="mt-0.5 size-4 shrink-0" />
-            Removing a device frees its seat at once.
+            {signIn
+              ? "Removing a device signs it out of this license at once."
+              : "Removing a device frees its seat at once."}
           </p>
         </>
       )}
     </SectionCard>
   );
+}
+
+/** The page's `h1` (the product header's, focusable with `tabIndex={-1}`), from inside it. */
+function pageHeading(from: HTMLElement | null): HTMLElement | null {
+  const h1 = (from?.closest("main") ?? document).querySelector<HTMLElement>(
+    "h1",
+  );
+  if (h1 && !h1.hasAttribute("tabindex")) h1.setAttribute("tabindex", "-1");
+  return h1;
 }
 
 function deviceName(d: PortalDevice): string {
@@ -110,13 +144,19 @@ function DeviceGlyph({
 }: {
   platform: string | null;
 }): React.ReactElement {
-  const p = normalisePlatform(platform);
+  const k = deviceFamily(platform);
   const Icon =
-    p === "ios" || p === "android"
+    k === "ios" || k === "android"
       ? Smartphone
-      : p === "macos"
+      : k === "macos"
         ? Laptop
-        : Monitor;
+        : k === "tvos"
+          ? Tv
+          : k === "visionos"
+            ? Glasses
+            : k === "watchos"
+              ? Watch
+              : Monitor;
   return <Icon aria-hidden className="size-5" />;
 }
 
@@ -126,6 +166,7 @@ export function DeviceRow({
   productName,
   inUse,
   seatLimit,
+  showCount = true,
   emailConfigured = false,
 }: {
   device: PortalDevice;
@@ -133,19 +174,21 @@ export function DeviceRow({
   productName: string;
   inUse: number;
   seatLimit?: number | null;
+  /** False drops the new count from the consequences (the card shows no counter). */
+  showCount?: boolean;
   emailConfigured?: boolean;
 }): React.ReactElement {
   const [confirming, setConfirming] = React.useState(false);
   const headingRef = React.useRef<HTMLHeadingElement>(null);
   const removeRef = React.useRef<HTMLButtonElement>(null);
+  const rowRef = React.useRef<HTMLLIElement>(null);
   const remove = useRemoveDevice(detail.product, detail.id);
   const name = deviceName(device);
   React.useEffect(() => {
     if (confirming) headingRef.current?.focus();
   }, [confirming]);
-  const platform = normalisePlatform(device.platform);
   const meta = [
-    platform ? osName(platform) : null,
+    deviceOsName(device.platform),
     device.appVersion,
     `last seen ${formatRelative(device.lastSeen * 1000)}`,
   ]
@@ -154,7 +197,7 @@ export function DeviceRow({
   const panelId = `remove-${device.deviceId}`;
 
   return (
-    <li className="py-3">
+    <li ref={rowRef} className="py-3">
       <div className="flex items-center gap-3">
         <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-fg-strong">
           <DeviceGlyph platform={device.platform} />
@@ -192,12 +235,14 @@ export function DeviceRow({
           </h3>
           <ul className="list-disc space-y-1 pl-5 text-sm text-fg">
             <li>
-              Its seat is free straight away:{" "}
-              {devicesText(inUse - 1, seatLimit)} in use.
+              {showCount
+                ? `Its seat is free straight away: ${devicesText(inUse - 1, seatLimit)} in use.`
+                : "Its seat is free straight away."}
             </li>
             <li>
-              {productName} on that device asks to be activated the next time it
-              starts.
+              {isSignInLicense(detail)
+                ? `${productName} on that device asks you to sign in again the next time it starts.`
+                : `${productName} on that device asks to be activated the next time it starts.`}
             </li>
             {emailConfigured ? <li>We'll email you to confirm.</li> : null}
           </ul>
@@ -220,16 +265,23 @@ export function DeviceRow({
             <Button
               variant="danger"
               loading={remove.isPending}
-              onClick={() =>
+              onClick={() => {
+                // The row leaves with the removal; find the page's heading while it is here.
+                const heading = pageHeading(rowRef.current);
                 remove.mutate(device.deviceId, {
                   onSuccess: () => {
                     toast.success(`${name} was removed`, {
                       description: `${productName} has a free seat now.`,
                     });
                     announce(`${name} was removed`);
+                    // Focus never falls to `body` (FLOWS.md P-7): it goes to the product's `h1`
+                    // once the list has re-rendered without the row.
+                    requestAnimationFrame(() => {
+                      if (heading?.isConnected) heading.focus();
+                    });
                   },
-                })
-              }
+                });
+              }}
             >
               Remove {name}
             </Button>

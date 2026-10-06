@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 // Used only to measure the quadratic path we deliberately turned OFF, as a control.
 import { parse as parseYaml } from "yaml";
+import { globWork } from "./globWork.js";
 import {
   APP_DELIVERABLE_ID,
   ARTIFACT_ROLES,
@@ -34,6 +35,12 @@ import {
   MAX_PROVIDES,
   providesListProblem,
   SYSTEM_PRODUCT_SLUG,
+  PRODUCT_ROUTE_ACTIONS,
+  PRODUCT_SLUG_MAX,
+  PRODUCT_SLUG_PATTERN,
+  PRODUCT_SLUG_RE,
+  RESERVED_PRODUCT_SLUGS,
+  isReservedProductSlug,
   isPackageName,
   packageNameNorm,
   parseManifestPackageDeliverable,
@@ -44,8 +51,7 @@ const PRODUCT = { slug: "acme", name: "Acme" };
 
 const release = (access?: unknown): Record<string, unknown> => ({
   release: {
-    ghOwner: "acme",
-    ghRepo: "desktop",
+    provider: { type: "github", owner: "acme", repo: "desktop" },
     binaryName: "acme",
     ...(access === undefined ? {} : { access }),
   },
@@ -891,6 +897,7 @@ describe("parseManifest carries the enablement set", () => {
       distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
+      sync: { enabled: false },
     });
   });
 
@@ -905,6 +912,7 @@ describe("parseManifest carries the enablement set", () => {
       distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
+      sync: { enabled: false },
     });
   });
 
@@ -952,6 +960,27 @@ describe("the release ← distribution ← update chain", () => {
     const got = codes({ config: { enabled: true }, update: { enabled: true } });
     expect(got).toContain("update_requires_distribution");
     expect(got).not.toContain("update_requires_release");
+  });
+
+  it("refuses Cloud Sync without Config or without Identity (U-04)", () => {
+    expect(
+      codes({
+        license: { enabled: true },
+        identity: { enabled: true },
+        sync: { enabled: true },
+      }),
+    ).toContain("sync_requires_config");
+    expect(
+      codes({ config: { enabled: true }, sync: { enabled: true } }),
+    ).toContain("sync_requires_identity");
+    // Identity through its legacy module name satisfies the edge too.
+    expect(
+      codes({
+        config: { enabled: true },
+        oidc: { enabled: true },
+        sync: { enabled: true },
+      }),
+    ).not.toContain("sync_requires_identity");
   });
 
   it("accepts the whole chain", () => {
@@ -1286,6 +1315,57 @@ describe("reserved product slugs", () => {
       }).errors.map((e) => e.code),
     ).toEqual([]);
   });
+
+  // P0-14: one slug rule. The admin API's one-segment actions are reserved like router paths.
+  it("refuses the admin API's route actions (reserved_slug)", () => {
+    expect(PRODUCT_ROUTE_ACTIONS).toEqual(["kek", "link-repo", "slug-check"]);
+    for (const slug of PRODUCT_ROUTE_ACTIONS)
+      expect(
+        validateManifestDocuments({
+          product: { slug, name: "X" },
+          schema: catalogWithSecretDelivery(),
+        }).errors.map((e) => e.code),
+        slug,
+      ).toContain("reserved_slug");
+  });
+});
+
+describe("product slug shape (P0-14)", () => {
+  const codes = (slug: string) =>
+    validateManifestDocuments({
+      product: { slug, name: "X" },
+      schema: catalogWithSecretDelivery(),
+    }).errors.map((e) => e.code);
+
+  it("refuses a leading hyphen and a 65-character slug (invalid_slug), naming the pattern", () => {
+    expect(codes("-acme")).toContain("invalid_slug");
+    expect(codes("a".repeat(PRODUCT_SLUG_MAX + 1))).toContain("invalid_slug");
+    const res = validateManifestDocuments({
+      product: { slug: "-acme", name: "X" },
+      schema: catalogWithSecretDelivery(),
+    });
+    expect(res.errors.find((e) => e.code === "invalid_slug")?.message).toBe(
+      `product.slug must match ${PRODUCT_SLUG_PATTERN}.`,
+    );
+  });
+
+  it("accepts what link-repo accepts: a digit or letter first, hyphens after, up to 64", () => {
+    for (const slug of ["a", "0", "acme-", "a-b-c", "9lives", "a".repeat(64)])
+      expect(codes(slug), slug).toEqual([]);
+  });
+
+  it("exports one shape and one reservation helper", () => {
+    expect(PRODUCT_SLUG_PATTERN).toBe("^[a-z0-9][a-z0-9-]{0,63}$");
+    expect(PRODUCT_SLUG_RE.source).toBe(PRODUCT_SLUG_PATTERN);
+    expect(PRODUCT_SLUG_MAX).toBe(64);
+    for (const slug of [
+      ...RESERVED_PRODUCT_SLUGS,
+      ...PRODUCT_ROUTE_ACTIONS,
+      SYSTEM_PRODUCT_SLUG,
+    ])
+      expect(isReservedProductSlug(slug), slug).toBe(true);
+    expect(isReservedProductSlug("docsy")).toBe(false);
+  });
 });
 
 describe("ingest document presence (validateIngestDocuments)", () => {
@@ -1460,7 +1540,7 @@ describe("channel names (P0-04, WIRE-CONTRACT-V3 §5.1)", () => {
     artifactChannels?: string[];
   }) => ({
     product: {
-      ...PRODUCT,
+      product: PRODUCT,
       licensing: {
         tiers: [
           {
@@ -1470,11 +1550,10 @@ describe("channel names (P0-04, WIRE-CONTRACT-V3 §5.1)", () => {
         ],
       },
     },
-    schema: { schemaVersion: 1, catalog: [] },
+    schema: { schemaVersion: 1, entries: [] },
     release: {
       release: {
-        ghOwner: "acme",
-        ghRepo: "desktop",
+        provider: { type: "github", owner: "acme", repo: "desktop" },
         binaryName: "acme",
         ...(opts.manual
           ? {
@@ -1872,7 +1951,7 @@ describe("deliverables and the artifact map (P2-04)", () => {
 
   it("a pack deliverable is validated and normalised with its v1 defaults (P4-02)", () => {
     const docs = (deliverables: Record<string, unknown>) => ({
-      product: { ...PRODUCT, modules: { releases: true } },
+      product: { product: PRODUCT, modules: { release: true } },
       schema: catalogWithSecretDelivery(),
       release: {
         release: { ...(release().release as object), deliverables },
@@ -2040,11 +2119,19 @@ describe("matchesArtifactGlob", () => {
   });
 
   it("stays linear on a pathological glob", () => {
+    // Counted (globWork.steps), not timed. With one backtrack point the matcher restarts at most
+    // once per name position for each glob position, so it never takes more than
+    // (|glob| + 1) x (|name| + 1) steps, and on this input it is linear (510 steps today); a
+    // matcher that backtracked into every earlier `*` (or a compiled `.*a.*a…` RegExp) grows
+    // exponentially with the stars instead.
     const glob = `${"*a".repeat(60)}b`;
     const name = "a".repeat(255);
-    const t0 = performance.now();
+    const before = globWork.steps;
     expect(matchesArtifactGlob(glob, name)).toBe(false);
-    expect(performance.now() - t0).toBeLessThan(50);
+    const steps = globWork.steps - before;
+    expect(steps).toBeGreaterThan(0);
+    expect(steps).toBeLessThanOrEqual((glob.length + 1) * (name.length + 1));
+    expect(steps).toBeLessThanOrEqual(4 * (glob.length + name.length));
   });
 
   it("validates a glob's shape", () => {

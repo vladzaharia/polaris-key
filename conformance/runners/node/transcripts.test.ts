@@ -4,10 +4,12 @@
 //
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
+// @pkey-feature license.manage
 // @pkey-feature config.schema release.changelog release.download
-// @pkey-feature identity.devicecode config.mint
+// @pkey-feature identity.devicecode identity.devicelabel config.mint
 // @pkey-feature update.feed release.record update.decide
-// @pkey-feature packs.apply.chunk
+// @pkey-feature packs.apply.chunk commerce.receipt
+// @pkey-feature license.refusals ui.boot release.fetch release.distribution telemetry.updates
 //
 // Which transcripts run is DATA: `applies()` reads `packages/sdk-node/parity.json`, so a
 // transcript for a feature Node has not implemented is listed as skipped rather than failing,
@@ -33,11 +35,28 @@
 // client's own object fetch (`client.update.packs`'s `fetchObject`, reached through a typed cast:
 // TypeScript's `private` is compile-time only), against the blobs template the last discover
 // returned. `range` is the fetch's status; `bytes` the body it returned, as a string.
+//
+// SP-00's verbs: `boot` is `client.boot()` (its `outcome` is `bootOutcome`); `releaseFetch` is
+// `client.release.fetch({record, buildId}, {to})` over a record holding exactly the build entry
+// the step's args name (the transcript pins the target, not the record exchange), into a fresh
+// directory, with `partial` seeded as `<to>.part` from the transcript's own whole-payload answer;
+// `downloadModel` is `client.distribution.downloadModel()`, `current` its group for
+// `initial.platform`. `initial.updateJournal` is written as the update journal's file in the
+// client's state directory (`<stateDir>/<product>`) before it starts; `updatesPending` reads
+// `client.update.journal`.
 
-import { readFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import {
+  ErrorCode,
   PolarisError,
   PolarisKeyClient,
   type CacheRecordV3,
@@ -153,6 +172,37 @@ function standardDiscovery(t: Transcript): string {
 /** The replay's memory between steps: the prompt the last `beginSignIn` returned. */
 interface Session {
   prompt: SignInPrompt | null;
+  transcript: Transcript;
+}
+
+/** `initial.platform` (downloadModel, releaseFetch): the device's canonical platform. */
+function initialPlatform(t: Transcript): string | null {
+  const p = (t.initial as { platform?: unknown }).platform;
+  return typeof p === "string" ? p : null;
+}
+
+/** The payload's first `n` bytes, from the transcript's own whole-payload (200) answer on `path`. */
+function payloadPrefix(t: Transcript, path: string, n: number): Buffer {
+  for (const step of t.steps)
+    for (const x of step.exchanges.items)
+      if (
+        x.request.method === "GET" &&
+        x.request.path === path &&
+        x.response.status === 200
+      )
+        return Buffer.from(ReplayServer.bodyText(x), "utf8").subarray(0, n);
+  throw new Error(`${t.id}: no whole-payload answer for ${path} to seed from`);
+}
+
+/** Map an activation/enrolment result onto `result` and, for a refusal, `code`. */
+function activation(
+  out: Observed,
+  r: { kind: string; code?: string; manageUrl?: string },
+): void {
+  out.result = r.kind;
+  if (r.kind !== "ok" && typeof r.code === "string") out.code = r.code;
+  // PX-W8: the refusal link, exactly as served; null when the result carries none.
+  if (r.kind === "device-limit") out.manageUrl = r.manageUrl ?? null;
 }
 
 /** THE mapping from transcript verbs and `expect` keys onto the Node SDK. Kept in one place. */
@@ -176,6 +226,7 @@ async function act(
         verificationUriComplete: p.verificationUriComplete,
         expiresIn: p.expiresIn,
         interval: p.interval,
+        deviceName: p.deviceName,
       };
       break;
     }
@@ -218,12 +269,13 @@ async function act(
       break;
     }
     case "activate":
-      out.result = (
-        await client.license.activateWithKey(String(step.args.key))
-      ).kind;
+      activation(
+        out,
+        await client.license.activateWithKey(String(step.args.key)),
+      );
       break;
     case "enroll":
-      out.result = (await client.license.enroll()).kind;
+      activation(out, await client.license.enroll());
       break;
     case "register":
       out.result = (await client.devices.register()).kind;
@@ -233,7 +285,74 @@ async function act(
       break;
     case "report":
       out.result = await client.devices.report();
+      out.updatesPending = (await client.update.journal.all()).length;
       break;
+    case "boot":
+      out.bootOutcome = (await client.boot({ autoConfirm: false })).outcome;
+      break;
+    case "releaseFetch": {
+      const a = step.args;
+      const build = String(a.build);
+      const record = {
+        version: String(a.version),
+        builds: [
+          {
+            id: build,
+            platform: String(a.platform),
+            arch: String(a.arch),
+            artifacts: [
+              {
+                role: "payload",
+                sha256: String(a.sha256),
+                size: Number(a.size),
+              },
+            ],
+          },
+        ],
+      };
+      const dir = mkdtempSync(join(tmpdir(), "pkey-replay-fetch-"));
+      const to = join(dir, "payload.bin");
+      if (typeof a.partial === "number") {
+        const path = step.exchanges.items[0]!.request.path;
+        writeFileSync(
+          `${to}.part`,
+          payloadPrefix(session.transcript, path, a.partial),
+        );
+      }
+      try {
+        const r = await client.release.fetch(
+          { record: record as never, buildId: build },
+          { to },
+        );
+        out.result = "ok";
+        out.size = r.size;
+        out.sha256 = r.sha256;
+        expect(readFileSync(to).length, "the verified file").toBe(r.size);
+      } catch (e) {
+        if (!(e instanceof PolarisError)) throw e;
+        // The client's own failures; any other code is the server's refusal.
+        const local: string[] = [
+          ErrorCode.networkError,
+          ErrorCode.payloadMismatch,
+          ErrorCode.invalidOptions,
+          ErrorCode.serviceUnavailable,
+          ErrorCode.notConfigured,
+        ];
+        out.result = local.includes(e.code) ? "error" : "refused";
+        out.code = e.code;
+        expect(existsSync(to), "no file is left on a refusal").toBe(false);
+      }
+      break;
+    }
+    case "downloadModel": {
+      const model = await client.distribution.downloadModel();
+      out.result = "ok";
+      out.platforms = model.platforms.map((p) => p.platform);
+      const platform = initialPlatform(session.transcript);
+      out.current = (model.platforms.find((p) => p.platform === platform) ??
+        null) as JsonValue;
+      break;
+    }
     case "fetchSchema":
       out.catalog = (await client.config.fetchSchema()) as JsonValue;
       break;
@@ -289,6 +408,34 @@ async function act(
         out.code = e.code;
       }
       break;
+    case "commerceBinding": {
+      const r = await client.commerce.binding();
+      if (r.kind === "ok") {
+        out.result = "ok";
+        out.bindingId = r.bindingId;
+        out.products = r.products as JsonValue;
+      } else {
+        out.result = r.code;
+        if (r.reason !== undefined) out.reason = r.reason;
+      }
+      break;
+    }
+    case "commerceClaim": {
+      const r = await client.commerce.claim(
+        String(step.args.store) as never,
+        (step.args.payload ?? {}) as Record<string, unknown>,
+      );
+      if (r.kind === "ok") {
+        out.result = "ok";
+        out.flag = r.flag;
+        out.state = r.state;
+        out.granted = r.granted;
+      } else {
+        out.result = r.code;
+        if (r.reason !== undefined) out.reason = r.reason;
+      }
+      break;
+    }
     case "downloadUrl":
       out.url = client.release.downloadUrl(
         String(step.args.version),
@@ -326,6 +473,19 @@ async function replay(t: Transcript): Promise<void> {
         ? { releaseRecords: { ...u.cache.releaseRecords } }
         : {}),
     });
+  // The update-health journal and other persisted state live in a throwaway directory, so a
+  // replay never reads what an earlier one wrote (or writes into the developer's home).
+  const stateDir = mkdtempSync(join(tmpdir(), "pkey-replay-state-"));
+  const journal = (t.initial as { updateJournal?: JsonValue[] }).updateJournal;
+  if (journal) {
+    // The client keeps its state under `<stateDir>/<product>` (src/core/dirs.ts).
+    const productState = join(stateDir, t.product);
+    mkdirSync(productState, { recursive: true });
+    writeFileSync(
+      join(productState, "update-events.json"),
+      JSON.stringify(journal),
+    );
+  }
   let currentStep: Step | null = null;
   // The standard discovery answer, for a transcript that loads discovery nowhere itself.
   let discoverySteps = t.steps.some((s) => s.action === "discover");
@@ -361,6 +521,9 @@ async function replay(t: Transcript): Promise<void> {
     store,
     fetchImpl,
     requestTimeoutMs: 0,
+    // PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
+    deviceName: t.initial.deviceName ?? "",
+    stateDir,
     ...(services ? { expectedServices: services as never } : {}),
     ...(u
       ? {
@@ -382,7 +545,7 @@ async function replay(t: Transcript): Promise<void> {
   });
   client.devices.fingerprint = () => FINGERPRINT;
   await client.init();
-  const session: Session = { prompt: null };
+  const session: Session = { prompt: null, transcript: t };
   for (let i = 0; i < t.steps.length; i += 1) {
     const step = server.beginStep(i);
     currentStep = step;

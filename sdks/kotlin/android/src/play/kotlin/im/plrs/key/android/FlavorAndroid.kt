@@ -7,6 +7,7 @@ import android.app.Activity
 import android.content.Context
 import im.plrs.key.core.BinaryMethod
 import im.plrs.key.core.ReleaseRecordDoc
+import im.plrs.key.core.UpdateEventJournal
 import im.plrs.key.platform.play.AssetPacks
 import im.plrs.key.platform.play.InAppUpdates
 import im.plrs.key.update.InstallDriver
@@ -36,5 +37,7 @@ internal object FlavorAndroid {
         buildUrl: suspend (String, String) -> String?,
         download: () -> BuildDownload,
         play: PlayUpdatePolicy,
-    ): InstallDriver = PlayInstallDriver(InAppUpdates(context), activity, play)
+        events: () -> UpdateEventJournal?,
+        runningVersion: String,
+    ): InstallDriver = PlayInstallDriver(InAppUpdates(context), activity, play, events, runningVersion)
 }

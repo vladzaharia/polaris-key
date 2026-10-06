@@ -1,16 +1,17 @@
 extends RefCounted
-# @pkey-feature config.resolve config.list config.secret config.schema config.mint config.mirror
+# @pkey-feature config.resolve config.list config.secret config.schema config.mint config.mirror config.local
 # The Config unit suite (P1-04): client-core's precedence rules ported case for case, the client
 # wiring (values, sources, the user list, secrets), the ConfigFile override store, the
 # environment layer and `--pkey-config`, the catalog fetch and edge-mint against PKeyFakeServer,
 # `config_changed` and bindings over real recorded documents, and the generated GDScript mirror
 # (tests/config/catalog_generated.gd, written by `tools/gen-mirrors.ts --lang gdscript` from
-# tests/config/catalog.json). Each group is tests/config/test_<name>.gd, like suite_core.
+# tests/config/catalog.json), and the `pkey sdk --lang godot` sample (tests/sdk_config/). Each
+# group is tests/config/test_<name>.gd, like suite_core.
 #
 # Suite arguments: a comma list of groups, and `--pkey-config key=value` pairs, which the env
 # group then checks are read from the real command line.
 
-const GROUPS := ["resolve", "matrix", "client", "store", "env", "fetch", "mint", "changed", "mirror"]
+const GROUPS := ["resolve", "matrix", "client", "store", "local", "env", "fetch", "mint", "changed", "mirror", "sdk_config"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

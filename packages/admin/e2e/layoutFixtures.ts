@@ -9,6 +9,8 @@
  * emptied, so a page's empty state needs no fixture of its own.
  */
 
+import { createHash } from "node:crypto";
+import { artPng, squirclePng } from "./artPng.js";
 import { CORE_ROUTES, DEVICE_ID } from "./coreFixtures.js";
 import { DISTRIBUTION_ROUTES } from "../test/distributionData.js";
 import { feedRoutes } from "../test/feedsFixture.js";
@@ -26,9 +28,15 @@ export const LONG_NAME =
 export const LONG_SLUG = "northwind-broadcast-audio-workstation";
 
 const services = Object.fromEntries(
-  ["license", "config", "release", "distribution", "update", "identity"].map(
-    (s) => [s, { enabled: true }],
-  ),
+  [
+    "license",
+    "config",
+    "release",
+    "distribution",
+    "update",
+    "identity",
+    "sync",
+  ].map((s) => [s, { enabled: true }]),
 );
 
 const baseProduct = (
@@ -47,18 +55,61 @@ const product = (
   ...extra,
 });
 
+/**
+ * The fixture image host. Home's product cards and the Products table load product logos from
+ * the image host (`presentation.icon`); the lint serves these URLs itself (`fixtureImage`) under a
+ * CSP that admits exactly this origin, as the Worker's does for `IMG_ORIGIN`.
+ */
+export const IMG_ORIGIN = "https://img.layout.test";
+
+const iconOf = (slug: string) => {
+  const sha = createHash("sha256").update(slug).digest("hex");
+  const url = `${IMG_ORIGIN}/${slug}/a/${sha}`;
+  return { url, w64: `${url}/64.webp`, w128: `${url}/128.webp` };
+};
+
+/** The bytes for a fixture logo URL: Acme's is a shaped (transparent-cornered) icon. */
+export function fixtureImage(url: URL): Buffer | undefined {
+  if (url.origin !== IMG_ORIGIN) return undefined;
+  const slug = url.pathname.split("/")[1] ?? "";
+  if (slug === "acme")
+    return squirclePng(128, [[255, 106, 61]], [255, 244, 236], [190, 70, 30]);
+  return artPng(
+    128,
+    128,
+    [
+      [47, 131, 120],
+      [36, 104, 96],
+    ],
+    [246, 213, 142],
+  );
+}
+
 const PRODUCTS = [
-  product("djdl", "DJDL"),
+  product("djdl", "DJDL", { presentation: { icon: iconOf("djdl") } }),
   product("acme", "Acme", {
     setup: { status: "ok", healthy: true, nextActions: [] },
+    presentation: { icon: iconOf("acme") },
+    services: {
+      ...services,
+      distribution: { enabled: false },
+      update: { enabled: false },
+      sync: { enabled: false },
+    },
   }),
-  product(LONG_SLUG, LONG_NAME),
+  product(LONG_SLUG, LONG_NAME, { presentation: { icon: null } }),
+  // One service beside six: the worst pairing for equal-height card rows on Home.
   product("diceroll", "Diceroll", {
     setup: { status: "ok", healthy: true, nextActions: [] },
+    presentation: { icon: iconOf("diceroll") },
+    services: Object.fromEntries(
+      Object.keys(services).map((s) => [s, { enabled: s === "license" }]),
+    ),
   }),
   product("empty", "Empty product", {
     setup: { status: "ok", healthy: true, nextActions: [] },
     packageFeeds: true,
+    presentation: { icon: null },
   }),
 ];
 
@@ -128,6 +179,35 @@ const ROUTES: Record<string, unknown> = {
   [`${P}/config/catalog/usage`]: { keys: {} },
   "/manage/api/me": ME,
   "/manage/api/products": { products: PRODUCTS },
+  // Home's product-card facts (`GET /summary`), long figures included.
+  "/manage/api/summary": {
+    products: {
+      djdl: {
+        license: { active: 1_284 },
+        release: { version: "12.40.3-beta.17", channel: "nightly-canary" },
+        distribution: { storefronts: 11 },
+        identity: { users: 128_406 },
+      },
+      acme: {
+        license: { active: 46 },
+        release: { version: "0.9.2", channel: "beta" },
+        identity: { users: 0 },
+      },
+      [LONG_SLUG]: {
+        license: { active: 9_412 },
+        release: null,
+        distribution: { storefronts: 1 },
+        identity: { users: 71 },
+      },
+      diceroll: { license: { active: 12 } },
+      empty: {
+        license: { active: 0 },
+        release: null,
+        distribution: { storefronts: 0 },
+        identity: { users: 0 },
+      },
+    },
+  },
   [P]: { product: PRODUCTS[0] },
 };
 

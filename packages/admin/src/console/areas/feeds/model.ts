@@ -12,9 +12,11 @@ import {
   Bird,
   Braces,
   Coffee,
+  Cog,
   Container,
   Gamepad2,
   Hexagon,
+  Package,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -24,6 +26,7 @@ import {
   type FeedSetupCredential,
   type FeedSnippet,
 } from "@polaris-key/manifest";
+import type { CapabilityItem } from "../../../ui/CapabilityBadge.js";
 import type {
   FeedEcosystem,
   FeedOffReason,
@@ -39,7 +42,7 @@ export const SYSTEM_PRODUCT_SLUG = "polaris-key";
 
 export const PLATFORM_SCOPE: FeedScope = { kind: "platform" };
 
-/** The tier-1 ecosystems, in the console's order. */
+/** The ecosystems, in the console's order (tier 1's, then tier 3's Cargo and Go). */
 export const ECOSYSTEMS: readonly FeedEcosystem[] = [
   "npm",
   "pypi",
@@ -47,6 +50,8 @@ export const ECOSYSTEMS: readonly FeedEcosystem[] = [
   "swift",
   "maven",
   "godot",
+  "cargo",
+  "go",
 ];
 
 export function isEcosystem(v: string | undefined): v is FeedEcosystem {
@@ -60,6 +65,8 @@ export const ECOSYSTEM_LABELS: Record<FeedEcosystem, string> = {
   swift: "Swift",
   maven: "Maven / Gradle",
   godot: "Godot",
+  cargo: "Cargo",
+  go: "Go",
 };
 
 /** The clients each feed answers: its setup declaration's (`@polaris-key/manifest` FEED_SETUP). */
@@ -75,6 +82,8 @@ export const ECOSYSTEM_ICONS: Record<FeedEcosystem, LucideIcon> = {
   swift: Bird,
   maven: Coffee,
   godot: Gamepad2,
+  cargo: Cog,
+  go: Package,
 };
 
 /** Access modes as the Feeds pages name them (a registry client presents a token, not a device). */
@@ -112,6 +121,9 @@ export const YANK_EFFECTS: Record<FeedEcosystem, string> = {
   maven:
     "Maven has no yank. The console marks the version yanked; with Hide yanked versions on, it also leaves maven-metadata.xml.",
   godot: "A yanked version leaves the asset listings.",
+  cargo:
+    "A yanked version stays in the index marked yanked: an existing Cargo.lock still builds, and new resolutions skip it.",
+  go: "A yanked version leaves @v/list, @latest and every channel, so no version query resolves to it. A go.sum that pins it keeps building.",
 };
 
 /** The feed page in this scope (its default tab, or `tab`). */
@@ -257,7 +269,7 @@ export const FEED_EXTENSION_FIELDS: Record<string, FeedExtensionField> = {
   },
   retainUntaggedDays: {
     label: "Untagged manifests",
-    help: "Recorded with the feed: nothing removes an untagged image manifest, so every one is kept whatever this holds. A published version is never removed.",
+    help: "Recorded with the feed: nothing removes an untagged image manifest, so every one is kept whatever this holds. A published version is never removed, except by feed retention's prune of builds of main.",
     input: { kind: "number", min: 0, max: 3650, unit: "days" },
   },
   categoryId: {
@@ -316,4 +328,25 @@ export const FEED_PANEL_TITLES: Record<FeedEcosystem, string> = {
   maven: "Maven",
   oci: "Retention",
   godot: "Asset listing",
+  cargo: "Sparse index",
+  go: "Module proxy",
 };
+
+/**
+ * A feed's version-state operations as capability items (A-18j: the same badge the storefront
+ * tiles use), from the adapter's declared `ops` when the server sends them, else from its booleans.
+ */
+export function feedVersionCapabilities(caps: {
+  yank: boolean;
+  deprecate: boolean;
+  ops?: Record<string, { mode: string; reason?: string }>;
+}): CapabilityItem[] {
+  const op = (id: "yank" | "deprecate", label: string): CapabilityItem => ({
+    op: id,
+    label,
+    support: caps.ops?.[id] ?? {
+      mode: caps[id] ? "api" : "unsupported",
+    },
+  });
+  return [op("yank", "Yank"), op("deprecate", "Deprecate")];
+}

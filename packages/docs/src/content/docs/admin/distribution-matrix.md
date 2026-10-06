@@ -87,7 +87,7 @@ release off every surface, yank it or pin the channel under **Release → Releas
   row's menu has the same moves as the drawer, and **Open in matrix** opens its cell.
 - **Outlets & feeds** lists the declared outlets with their kind, transports and capabilities.
   An outlet's drawer shows its identity, its capabilities against its kind's default, and, for
-  AltStore, AltStore PAL, Obtainium, the F-Droid repository, Scoop (the direct outlet) and
+  AltStore, AltStore PAL, Obtainium, the F-Droid repository, Scoop (the Polaris Key outlet, `direct`) and
   Flathub, the public [feed URL](/docs/services/distribution/feeds/) of each channel with a copy
   button. **Narrow capabilities…** can only narrow below the kind's default; **Revert to
   manifest** (from the source badge) restores it. Below the outlets, **Distribution keys** is the

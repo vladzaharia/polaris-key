@@ -99,7 +99,8 @@ func _register(t: PKeyTestContext) -> void:
 	t.check("register: a JSON body", String(req["headers"].get("content-type", "")).begins_with("application/json"))
 	var body := PKeyJson.parse(_body(req))
 	var expected_fp := PKeyFingerprint.hash_components(F["product"], host.host["expected"])
-	t.check("register: the body is the hashed fingerprint", body["ok"] and body["value"] == {"fingerprint": expected_fp}, _body(req))
+	# PX-W13 §8 Q2: the device label rides along on registration.
+	t.check("register: the body is the hashed fingerprint and the device label", body["ok"] and body["value"] == {"fingerprint": expected_fp, "deviceName": "Test Device"}, _body(req))
 	_no_raw(t, "register", _body(req), host)
 
 	# A held token is never presented: re-registering asks for a FRESH credential.
@@ -109,12 +110,23 @@ func _register(t: PKeyTestContext) -> void:
 	t.check("register: still no bearer while a token is held", r.ok and reqs.size() == 1 and not reqs[0]["headers"].has("authorization"))
 	sdk.queue_free()
 
-	# Fingerprinting off: no body at all.
+	# Fingerprinting off: the label alone.
 	server.requests.clear()
-	var off = await _sdk(PKeyMemoryStore.new(F["device_id"]), PackedStringArray(["config"]), func(o: PKeyOptions): o.fingerprint_enabled = false)
+	var unprinted = await _sdk(PKeyMemoryStore.new(F["device_id"]), PackedStringArray(["config"]), func(o: PKeyOptions): o.fingerprint_enabled = false)
+	r = await unprinted.devices.register()
+	reqs = _requests("POST", "/devices/register")
+	var label_only := PKeyJson.parse(_body(reqs[0])) if reqs.size() == 1 else {"ok": false}
+	t.check("register: fingerprint_enabled = false sends the label alone", r.ok and label_only["ok"] and label_only["value"] == {"deviceName": "Test Device"}, _body(reqs[0]) if reqs.size() == 1 else "")
+	unprinted.queue_free()
+
+	# Fingerprinting and the label off: no body at all.
+	server.requests.clear()
+	var off = await _sdk(PKeyMemoryStore.new(F["device_id"]), PackedStringArray(["config"]), func(o: PKeyOptions):
+		o.fingerprint_enabled = false
+		o.send_device_name = false)
 	r = await off.devices.register()
 	reqs = _requests("POST", "/devices/register")
-	t.check("register: fingerprint_enabled = false sends no body", r.ok and reqs.size() == 1 and (reqs[0]["body"] as PackedByteArray).is_empty() and not reqs[0]["headers"].has("content-type"))
+	t.check("register: fingerprint and label off send no body", r.ok and reqs.size() == 1 and (reqs[0]["body"] as PackedByteArray).is_empty() and not reqs[0]["headers"].has("content-type"))
 	t.check("register: fingerprint() is null when disabled", await off.devices.fingerprint() == null)
 	off.queue_free()
 

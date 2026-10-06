@@ -17,6 +17,7 @@ import type {
 } from "@polaris-key/protocol/update";
 import {
   documentFor,
+  feedDocWork,
   feedSelfCheck,
   MAX_FEED_PAYLOAD_BYTES,
 } from "../src/services/update/feedDoc.js";
@@ -427,9 +428,21 @@ describe("feed content under the payload cap (plans/P4-13.md §6.3)", () => {
         pinnedBy: Object.fromEntries(PLATFORMS.map((p) => [p, recs])),
       },
     };
-    const t0 = performance.now();
+    // Counted work (feedDocWork), not milliseconds, so load cannot move it: building a document
+    // costs its whole-document serializations. Per platform that is at most 2 for the
+    // channel-wide try, 9 for the platform's build and its four shedding steps, 8 for the menu (a
+    // bisection over 64 entries is 7 measures, not 64, then the read-back) and 1 for the
+    // self-check: 20. Today it is 102 for the six (8.4 MB of JSON); a linear menu search would
+    // add 64 a platform.
+    const before = { ...feedDocWork };
     const docs = PLATFORMS.map((platform) => sign(c, platform));
-    expect(performance.now() - t0).toBeLessThan(1000);
+    const serializations = feedDocWork.serializations - before.serializations;
+    expect(serializations).toBeGreaterThan(0);
+    expect(serializations).toBeLessThanOrEqual(PLATFORMS.length * 20);
+    // None is bigger than the channel-wide document, about 3x the cap here.
+    expect(feedDocWork.chars - before.chars).toBeLessThanOrEqual(
+      serializations * 4 * MAX_FEED_PAYLOAD_BYTES,
+    );
     for (const d of docs) {
       expect(d.ok).toBe(true);
       expect(Object.values(d.doc.deltas ?? {}).flat().length).toBe(64);
@@ -682,15 +695,29 @@ describe("the delta menu under the payload cap (plans/P4-29.md §6.2)", () => {
       floors: 8,
       revocations: 8,
     });
-    // An app part that leaves room for some, not all, of 64 entries (about 16 KB).
-    let extra = 0;
-    while (
+    // An app part that leaves room for some, not all, of 64 entries (about 16 KB): the most
+    // mirrors that keep the document within 56,000 bytes. Every mirror adds bytes and nothing is
+    // shed this far under the cap, so the size only grows with the count: a doubling search and a
+    // bisection find it (559 mirrors) in about 20 signings, where a walk one mirror at a time took 560
+    // (half a second idle, past the 20 s test timeout on a loaded machine). The two checks after
+    // the search pin the boundary the walk found.
+    const size = (mirrors: number): number =>
       bytes(
-        sign({ ...base, targets: [target("android", extra + 1)] }, "android")
-          .doc,
-      ) <= 56_000
-    )
-      extra++;
+        sign({ ...base, targets: [target("android", mirrors)] }, "android").doc,
+      );
+    let extra = 0;
+    let over = 1;
+    while (size(over) <= 56_000) {
+      extra = over;
+      over *= 2;
+    }
+    while (over - extra > 1) {
+      const mid = (extra + over) >> 1;
+      if (size(mid) <= 56_000) extra = mid;
+      else over = mid;
+    }
+    expect(size(extra)).toBeLessThanOrEqual(56_000);
+    expect(size(extra + 1)).toBeGreaterThan(56_000);
     const nearCap: ComposedFeed = {
       ...base,
       targets: [target("android", extra)],

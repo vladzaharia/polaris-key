@@ -32,7 +32,7 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	t.check("distribution keeps its green", Brand.service_accent("distribution", true).to_html(false) == "39d075")
 	t.check("update is tangerine", Brand.service_accent("update", true).to_html(false) == "fe8001")
 	t.check("unknown section falls back to core", Brand.service_accent("nope", true) == Brand.KIT_VIOLET_DARK)
-	t.check("every section has an accent", Brand.SERVICE_IDS.size() == 7)
+	t.check("every section has an accent", Brand.SERVICE_IDS.size() == 8 and Brand.SERVICE_IDS.has("sync") and Brand.has_section_bit("sync"))
 	t.check("16 px is the favicon cut", Brand.optical_cut(16) == "favicon")
 	t.check("24 px is the service cut", Brand.optical_cut(24) == "service")
 	t.check("32 px is the service cut", Brand.optical_cut(32) == "service")
@@ -43,7 +43,112 @@ func run(t: PKeyTestContext, _args: PackedStringArray) -> bool:
 	t.check("phrase", Brand.POWERED_BY_PHRASE == "Powered by Polaris Key")
 	_theme(t)
 	await _overrides(t)
+	_accent(t)
+	_kit(t)
 	return true
+
+
+# ── The accent resolver and the kit tokens (UI-KITS.md §2.1, §3.3) ───────────────────────────
+
+const VECTORS_PATH := "res://tests/brand/accent-vectors.json"
+
+
+func _accent(t: PKeyTestContext) -> void:
+	var text := FileAccess.get_file_as_string(VECTORS_PATH)
+	var vectors: Variant = JSON.parse_string(text)
+	t.check("accent: the shared vectors load", vectors is Dictionary, VECTORS_PATH)
+	if not vectors is Dictionary:
+		return
+	t.check("accent: surfaces (dark) are the palette's", PKeyAccent.surfaces(true) == vectors["surfaces"]["dark"], str(PKeyAccent.surfaces(true)))
+	t.check("accent: surfaces (light) are the palette's", PKeyAccent.surfaces(false) == vectors["surfaces"]["light"], str(PKeyAccent.surfaces(false)))
+	for v in vectors["derive"]:
+		var bytes := PackedByteArray()
+		for run in v["pixels"]:
+			for _i in int(run[4]):
+				bytes.append_array(PackedByteArray([int(run[0]), int(run[1]), int(run[2]), int(run[3])]))
+		var want: String = v["expect"] if v["expect"] != null else ""
+		var got := PKeyAccent.derive(bytes)
+		t.check("accent: derive %s" % v["name"], got == want, "%s != %s" % [got, want])
+	var ons := {}
+	for v in vectors["resolve"]:
+		var dark: bool = v["scheme"] == "dark"
+		var got := PKeyAccent.resolve(v["input"], dark)
+		var want: Dictionary = v["expect"]
+		var same := true
+		for key in ["solid", "on", "fg", "subtle", "focus"]:
+			same = same and got.get(key, "") == want[key]
+		t.check("accent: resolve %s (%s)" % [v["name"], v["scheme"]], same, "%s != %s" % [str(got), str(want)])
+		var seen: Array = ons.get(v["name"], [])
+		if not seen.has(got.get("on", "")):
+			seen.append(got.get("on", ""))
+		ons[v["name"]] = seen
+	for name in ons:
+		t.check("accent: on is the same in both schemes (%s)" % name, (ons[name] as Array).size() == 1)
+	for v in vectors["danger"]:
+		var got := PKeyAccent.solid(v["input"], v["scheme"] == "dark", true)
+		t.check("accent: danger solid (%s)" % v["scheme"], got == v["expect"], got)
+	t.check("accent: an invalid colour resolves to nothing", PKeyAccent.resolve("teal", true).is_empty())
+
+
+func _kit(t: PKeyTestContext) -> void:
+	t.check("kit: control height", PKeyKitTokens.CONTROL_HEIGHT == 60.0)
+	t.check("kit: control radius", PKeyKitTokens.RADIUS_CONTROL == 16.0)
+	t.check("kit: panel radius", PKeyKitTokens.RADIUS_PANEL == 28.0)
+	t.check("kit: card padding", PKeyKitTokens.CARD_PAD == 44.0)
+	t.check("kit: focus ring with glow", PKeyKitTokens.FOCUS_WIDTH == 3.0 and PKeyKitTokens.FOCUS_OFFSET == 2.0 and PKeyKitTokens.FOCUS_GLOW > 0.0)
+	t.check("kit: code type", PKeyKitTokens.TYPE_CODE["size"] == 52.0 and PKeyKitTokens.TYPE_CODE["weight"] == 600 and PKeyKitTokens.TYPE_CODE["mono"])
+	for role in [PKeyKitTokens.TYPE_DISPLAY, PKeyKitTokens.TYPE_TITLE, PKeyKitTokens.TYPE_BODY, PKeyKitTokens.TYPE_LABEL, PKeyKitTokens.TYPE_META]:
+		t.check("kit: weights are 400, 500 or 600", [400, 500, 600].has(role["weight"]))
+	t.check("kit: concentric rule", PKeyKitTokens.concentric_radius(28.0, 8.0) == 20.0 and PKeyKitTokens.concentric_radius(10.0, 6.0) == 8.0)
+	t.check("kit: danger solid keeps white", PKeyAccent.contrast("#" + PKeyKitTokens.DANGER_SOLID_DARK.to_html(false), "#ffffff") >= 4.5)
+	t.check("kit: step motion", PKeyKitTokens.MOTION_STEP_MS == 220)
+	# The brand motion tokens (notes/S-23 §5), mirrored from packages/brand by gen:brand.
+	t.check("kit: motion durations", PKeyKitTokens.DURATION_MICRO_MS == 80 and PKeyKitTokens.DURATION_FAST_MS == 120 and PKeyKitTokens.DURATION_BASE_MS == 200 and PKeyKitTokens.DURATION_MODERATE_MS == 260 and PKeyKitTokens.DURATION_SLOW_MS == 320 and PKeyKitTokens.DURATION_DELIBERATE_MS == 480 and PKeyKitTokens.DURATION_SHIMMER_MS == 1600)
+	t.check("kit: motion distances", PKeyKitTokens.MOTION_DISTANCE_XS == 2.0 and PKeyKitTokens.MOTION_DISTANCE_SM == 4.0 and PKeyKitTokens.MOTION_DISTANCE_MD == 8.0 and PKeyKitTokens.MOTION_DISTANCE_LG == 12.0 and PKeyKitTokens.MOTION_DISTANCE_XL == 24.0)
+	# The engine control icons rasterise.
+	for name in PKeyKitIcons.names():
+		var img := Image.new()
+		var err := img.load_svg_from_string(PKeyKitIcons.svg(name, Color.WHITE, Color("#ff6a3d"), Color("#333333")), 2.0)
+		t.check("kit: icon %s rasterises" % name, err == OK and img.get_width() > 0, error_string(err))
+	t.check("kit: icon placeholders are all filled", not PKeyKitIcons.svg("toggle_on", Color.WHITE).contains("{"))
+	# The variable fonts load as MSDF FontFiles with a weight axis.
+	for path in [PKeyKitTokens.RUBIK_VARIABLE_PATH, PKeyKitTokens.JETBRAINS_MONO_VARIABLE_PATH]:
+		var font := load(path) as FontFile
+		t.check("kit: %s loads" % path.get_file(), font != null)
+		if font == null:
+			continue
+		t.check("kit: %s is MSDF" % path.get_file(), font.multichannel_signed_distance_field)
+		var axes := font.get_supported_variation_list()
+		t.check("kit: %s has a weight axis" % path.get_file(), axes.has(TextServerManager.get_primary_interface().name_to_tag("weight")), str(axes))
+	# Each font's licence travels with it (SIL OFL 1.1): PKeyExportPlugin adds the .txt files to an
+	# export that carries the fonts, so these pass from the exported pack as well as the editor.
+	t.check("kit: the JetBrains Mono licence travels with it", FileAccess.get_file_as_string("res://addons/polaris_key/ui/theme/fonts/OFL-JetBrainsMono.txt").contains("JetBrains Mono"))
+	t.check("kit: the Rubik licence travels with it", FileAccess.get_file_as_string("res://addons/polaris_key/ui/theme/fonts/OFL.txt").contains("Rubik"))
+	t.check("kit: the Rubik notice travels with it", FileAccess.get_file_as_string("res://addons/polaris_key/ui/theme/fonts/FONT-NOTICE.txt").contains("Rubik"))
+	for path in [PKeyUiTheme.REGULAR_PATH, PKeyUiTheme.BOLD_PATH, PKeyKitTokens.RUBIK_VARIABLE_PATH, PKeyKitTokens.JETBRAINS_MONO_VARIABLE_PATH]:
+		var licences := PKeyUiTheme.font_licences(path)
+		t.check("kit: %s names its licence files" % path.get_file(), not licences.is_empty())
+		for licence in licences:
+			t.check("kit: %s ships beside %s" % [licence.get_file(), path.get_file()], PKeyUiTheme.is_font_licence(licence) and FileAccess.file_exists(licence))
+	_kit_matches_generator(t)
+
+
+## The committed kit tokens are the generator's: they agree with packages/brand/tokens.json when
+## the addon sits in the monorepo (skipped in an exported pack or a standalone copy).
+func _kit_matches_generator(t: PKeyTestContext) -> void:
+	var json_path := ProjectSettings.globalize_path("res://").path_join("../../packages/brand/tokens.json")
+	if not FileAccess.file_exists(json_path):
+		return
+	var root: Variant = JSON.parse_string(FileAccess.get_file_as_string(json_path))
+	t.check("kit: tokens.json parses", root is Dictionary)
+	if not root is Dictionary:
+		return
+	var godot: Dictionary = root["kit"]["components"]["godot"]
+	t.check("kit: control height is the generator's", PKeyKitTokens.CONTROL_HEIGHT == float(godot["controlHeight"]["default"]))
+	t.check("kit: panel radius is the generator's", PKeyKitTokens.RADIUS_PANEL == float(godot["radiusSurface"]["panel"]))
+	var danger: Dictionary = root["kit"]["danger"]
+	t.check("kit: danger solid is the generator's", "#" + PKeyKitTokens.DANGER_SOLID_DARK.to_html(false) == danger["dark"]["solid"])
+	t.check("kit: title type is the generator's", PKeyKitTokens.TYPE_TITLE["size"] == float(root["kit"]["typeScale"]["godot"]["title"]["size"]))
 
 
 # ── The UI kit theme ─────────────────────────────────────────────────────────────────────

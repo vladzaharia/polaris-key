@@ -3,7 +3,8 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import { X } from "lucide-react";
 import { type Me } from "../../api.js";
 import { AdminProvider } from "../../context.js";
-import { Spinner, TooltipProvider } from "../../components/ui/index.js";
+import { PageSkeleton, type SkeletonTemplate } from "../../ui/Skeleton.js";
+import { TooltipProvider } from "../../ui/Tooltip.js";
 import { usePlatformVersion, useProduct, useProducts } from "../data/hooks.js";
 import {
   accentOf,
@@ -370,7 +371,7 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
                 e.preventDefault();
                 document.getElementById(NAV_BUTTON_ID)?.focus();
               }}
-              className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-pk-lg animate-pk-in lg:hidden"
+              className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r border-border bg-surface-page pt-[env(safe-area-inset-top,0px)] shadow-pk-lg animate-pk-in pk-nav-drawer lg:hidden"
             >
               <div className="flex h-14 shrink-0 items-center justify-between border-b border-border px-4">
                 <DialogPrimitive.Title className="text-sm font-bold text-fg-strong">
@@ -404,11 +405,34 @@ export function AppShell({ me }: { me: Me }): React.ReactElement {
   );
 }
 
-function PageLoading(): React.ReactElement {
+/**
+ * The skeleton template a route's page draws (components.md §5.3): a record, a dashboard, a form
+ * or a list. The lazy chunk's fallback guesses it from the route so the page does not jump when
+ * the chunk lands.
+ */
+export function routeSkeleton(route: Route): SkeletonTemplate {
+  if (route.kind === "not-found") return "table";
+  if (route.id !== undefined || route.child) return "record";
+  if (
+    route.page === "overview" ||
+    route.page === "platform" ||
+    route.page === "platform-deployment" ||
+    route.page === "platform-operations"
+  )
+    return "dashboard";
+  if (route.page === "platform-settings") return "form";
+  return "table";
+}
+
+/**
+ * A lazy section's fallback (S-23 §6.1 skeleton): the page's shape, shown only after the 150 ms
+ * grace (`pk-skeleton-group`, a delay that survives reduced motion), so a cached chunk never
+ * flashes it. No spinner and no visible "Loading…": the skeleton announces itself politely.
+ */
+export function PageLoading({ route }: { route: Route }): React.ReactElement {
   return (
-    <div className="flex items-center gap-3 py-12 text-fg-muted" role="status">
-      <Spinner className="size-5 text-fg-subtle" />
-      Loading…
+    <div aria-busy="true" data-page-loading="" className="pk-skeleton-group">
+      <PageSkeleton template={routeSkeleton(route)} label="the page" />
     </div>
   );
 }
@@ -420,7 +444,7 @@ function globalPageFor(
   const page = route.page;
   if (isPlatformPage(page)) {
     return (
-      <React.Suspense fallback={<PageLoading />}>
+      <React.Suspense fallback={<PageLoading route={route} />}>
         <PlatformPages page={page} route={route} />
       </React.Suspense>
     );
@@ -488,7 +512,7 @@ function PageContent({
   }
   const Pages = sectionPages(section.key);
   return (
-    <React.Suspense fallback={<PageLoading />}>
+    <React.Suspense fallback={<PageLoading route={route} />}>
       <PageErrorBoundary>
         <LegacyPage>
           <Pages route={route} />

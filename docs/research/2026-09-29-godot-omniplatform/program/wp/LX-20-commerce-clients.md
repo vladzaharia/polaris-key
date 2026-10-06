@@ -5,7 +5,7 @@
 | Phase       | LX: Licensing model: licences, grants, entitlements (S-19) (phase C: the wire) |
 | Size        | 1–1.4 engineer-weeks                                                           |
 | Depends on  | [LX-11](LX-11-commerce-rework.md)                                              |
-| Unblocks    | none                                                                           |
+| Unblocks    | [CM-14](CM-14-device-checkout-wire.md)                                         |
 | Role        | `pkey-sdk-porter`                                                              |
 | Plan mode   | no                                                                             |
 | Gates       | all six SDKs (`parity:check`); macOS CI; Android CI                            |
@@ -41,6 +41,8 @@ Only Godot can bind and claim today (G17, [S-19 §4.3](../../notes/S-19-licensin
 **Out** (and where it belongs instead):
 
 - Server changes (→ LX-11).
+- React's `commerce.receipt` row (→ SP-16, 2026-10-05): the bearer engine and the desktop bridge
+  already speak binding and claim, so what remains is the Worker CORS entry and React's replay.
 
 ## Design notes
 

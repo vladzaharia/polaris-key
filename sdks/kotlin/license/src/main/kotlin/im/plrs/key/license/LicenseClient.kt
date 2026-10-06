@@ -33,11 +33,12 @@ import im.plrs.key.core.arrayValue
 import im.plrs.key.core.boolValue
 import im.plrs.key.core.isUsable
 import im.plrs.key.core.licenseState
+import im.plrs.key.core.longValue
 import im.plrs.key.core.stringValue
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonElement
 
-public data class LicenseClientOptions(
+public data class LicenseClientOptions @JvmOverloads constructor(
     /**
      * Collect a hardware fingerprint at activation. Defaults to true; false opts out entirely (the
      * server then records the device as `unverified` rather than refusing it).
@@ -45,6 +46,23 @@ public data class LicenseClientOptions(
     val fingerprint: Boolean = true,
     /** Where the fingerprint comes from; defaults to [JvmFingerprintSource] (Android's is P6-12's). */
     val fingerprintSource: FingerprintSource? = null,
+)
+
+/**
+ * `licenseInfo()`: the licence summary. [deviceCount] and [expiresAt] stay null until the licence
+ * document carries them (licence document v2, LX-17/LX-18; notes/SDK-PARITY-PASS.md §6 W3): the
+ * document's own `expiresAt` is its validity window, not the licence's.
+ */
+public data class LicenseInfo(
+    val licenseId: String,
+    val tier: String?,
+    val tierLabel: String?,
+    val deviceLimit: Long?,
+    val deviceCount: Long?,
+    /** Epoch seconds the licence itself expires; null today (see the class note). */
+    val expiresAt: Long?,
+    val profile: DocProfile?,
+    val entitledChannels: List<String>,
 )
 
 /** Raised after a credential is minted, so the facade can sync. */
@@ -93,11 +111,42 @@ public class LicenseClient(
     // ── Reads off the licence document ───────────────────────────────────────────────────────
     private suspend fun doc(): LicenseDoc? = core.cache().license?.doc
 
-    /** True iff the named entitlement is present and its value is `true`. */
-    public suspend fun isEntitled(name: String): Boolean = doc()?.entitlements?.get(name)?.value.boolValue == true
+    /**
+     * True iff the gate is usable now AND the named entitlement is present with the value `true`
+     * (S-19 G11): a revoked, expired, blocked or never-activated install is entitled to nothing,
+     * whatever its last verified document said. Behaviour change in the SDK parity pass: it used
+     * to read the document alone.
+     */
+    public suspend fun isEntitled(name: String, now: Long? = null): Boolean {
+        if (!isUsable(status(now))) return false
+        return doc()?.entitlements?.get(name)?.value.boolValue == true
+    }
+
+    /** The raw value of the named entitlement (any JSON type), or null when absent. Not gated: a read. */
+    public suspend fun entitlementValue(name: String): JsonElement? = doc()?.entitlements?.get(name)?.value
 
     /** Every entitlement's value, from the verified licence document. */
     public suspend fun entitlements(): Map<String, JsonElement> = doc()?.entitlements?.mapValues { it.value.value } ?: emptyMap()
+
+    /**
+     * The licence summary an account screen shows (notes/SDK-PARITY-PASS.md §3.3), read from the
+     * verified document's enforced entitlements (`license.tier`, `license.tierLabel`, `deviceLimit`,
+     * `channels`); null when no licence document is held.
+     */
+    public suspend fun licenseInfo(): LicenseInfo? {
+        val d = doc() ?: return null
+        val e = d.entitlements
+        return LicenseInfo(
+            licenseId = d.licenseId,
+            tier = e["license.tier"]?.value.stringValue,
+            tierLabel = e["license.tierLabel"]?.value.stringValue,
+            deviceLimit = e["deviceLimit"]?.value.longValue,
+            deviceCount = null,
+            expiresAt = null,
+            profile = d.profile,
+            entitledChannels = entitledChannels(),
+        )
+    }
 
     /** The signed greeting block, or null. Signed so it cannot be spoofed locally. */
     public suspend fun profile(): DocProfile? = doc()?.profile

@@ -35,6 +35,7 @@ const corpus = JSON.parse(
 async function capturedSessionHeaders(): Promise<Record<string, string>> {
   const fetchImpl = vi.fn(makeFakeFetch(makeDoc()));
   const adapter = browserAdapter({
+    auth: "cookie",
     productSlug: "acme",
     fetchImpl: fetchImpl as unknown as typeof fetch,
     now: () => NOW_SEC,
@@ -50,8 +51,8 @@ async function capturedSessionHeaders(): Promise<Record<string, string>> {
 }
 
 describe("React's header values (headers.json)", () => {
-  it("is headersVersion 1", () => {
-    expect(corpus.headersVersion).toBe(1);
+  it("is headersVersion 2", () => {
+    expect(corpus.headersVersion).toBe(2);
     expect(corpus.platformCases.length).toBeGreaterThanOrEqual(31);
   });
 

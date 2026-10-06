@@ -39,9 +39,22 @@ static func canonical_arch(raw: String) -> String:
 	return PKeyConstants.ARCH_SPELLINGS.get(_fold_ascii(raw), "")
 
 
-## This OS's canonical value; "" when it has none.
+## This OS's canonical value; "" when it has none. The `X-PKey-Platform` header and the device
+## metadata; build-target logic reads update_platform().
 static func platform() -> String:
 	return canonical_platform(OS.get_name())
+
+
+## This OS's update platform (WIRE-CONTRACT-V4 §5.2 rule 5): platform() when it is a build target
+## (`PKeyDecision.OUTLET_PLATFORMS["unknown"]`), else "". `tvos`, `visionos` and `watchos` are
+## header values only, so on visionOS every build-target path behaves as it did before SP-08.
+static func update_platform() -> String:
+	return update_platform_for(platform())
+
+
+## update_platform() for a given header value; split out so a test can check every value.
+static func update_platform_for(header: String) -> String:
+	return header if header != "" and PKeyDecision.OUTLET_PLATFORMS["unknown"].has(header) else ""
 
 
 ## This build's canonical architecture; "" when it has none.

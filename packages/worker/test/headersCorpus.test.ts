@@ -39,8 +39,8 @@ const stored = (row: HeaderCase): string | null =>
   row.expect ?? (row.raw === "" ? null : row.raw);
 
 describe("headers.json through the Worker's normaliser", () => {
-  it("is headersVersion 1, with both sections at their floors", () => {
-    expect(corpus.headersVersion).toBe(1);
+  it("is headersVersion 2, with both sections at their floors", () => {
+    expect(corpus.headersVersion).toBe(2);
     expect(corpus.platformCases.length).toBeGreaterThanOrEqual(31);
     expect(corpus.archCases.length).toBeGreaterThanOrEqual(31);
   });

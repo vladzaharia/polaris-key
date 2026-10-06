@@ -2,6 +2,9 @@
  * Distribution → Rollouts (admin chunk 9, ADMIN.md §6.4 T2): every rollout, live, halted first,
  * with linked releases, who changed it and when, facets in the URL and the allowed verbs as row
  * actions. Closes DOV-1 to DOV-4 (the descriptor hooks card is deliberately gone).
+ *
+ * UX-31: the matrix merged in as the Matrix and Readiness views, and whole rows open the
+ * rollout's drawer over the list.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -120,11 +123,84 @@ describe("Distribution → Rollouts", () => {
     );
     const menu = await screen.findByRole("menu");
     expect(
-      within(menu).getByRole("menuitem", { name: "Open in matrix" }),
+      within(menu).getByRole("menuitem", { name: "Open rollout" }),
+    ).toBeTruthy();
+    expect(
+      within(menu).getByRole("menuitem", { name: "Open release" }),
     ).toBeTruthy();
     expect(
       within(menu).queryByRole("menuitem", { name: /Pause|Halt|Complete/ }),
     ).toBeNull();
+  });
+
+  it("opens the rollout's drawer over the list from its row, and Back closes it", async () => {
+    bootWith(HASH);
+    const t = await table();
+    const row = within(t)
+      .getAllByRole("row")
+      .find((r) =>
+        within(r).queryByRole("button", {
+          name: "Actions for 2.4.0 on direct / stable",
+        }),
+      )!;
+    // A click anywhere on the row (not on a control) follows the row's link.
+    await userEvent.click(within(row).getByText("stable"));
+    await waitFor(() =>
+      expect(window.location.hash).toContain("cell=rel_240%3Adirect"),
+    );
+    expect(window.location.hash).toContain("/distribution/rollouts");
+    expect(window.location.hash).not.toContain("view=");
+    const drawer = await screen.findByRole("dialog", {
+      name: "2.4.0 on direct",
+    });
+    expect(
+      within(drawer).getByRole("button", { name: "Halt direct / stable" }),
+    ).toBeTruthy();
+    // The list stays under the (modal) drawer.
+    expect(
+      screen.getByRole("table", { name: "Rollouts", hidden: true }),
+    ).toBeTruthy();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(window.location.hash).not.toContain("cell="));
+  });
+
+  it("switches between List, Matrix and Readiness as route tabs", async () => {
+    bootWith(HASH);
+    await table();
+    const views = screen.getByRole("navigation", { name: "Rollouts views" });
+    expect(
+      within(views)
+        .getByRole("link", { name: "List" })
+        .getAttribute("aria-current"),
+    ).toBe("page");
+    await userEvent.click(within(views).getByRole("link", { name: "Matrix" }));
+    await waitFor(() => expect(window.location.hash).toContain("view=matrix"));
+    const g = await screen.findByRole("grid", {
+      name: /Distribution matrix of the app/,
+    });
+    expect(
+      within(g).getByRole("gridcell", {
+        name: /^2\.4\.0 on direct: Live, Rolling out · 25 %/,
+      }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { level: 1, name: "Rollouts" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("table", { name: "Rollouts" })).toBeNull();
+    await userEvent.click(
+      within(views).getByRole("link", { name: "Readiness" }),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toContain("view=readiness"),
+    );
+    expect(
+      await screen.findByRole("gridcell", {
+        name: /^2\.4\.0 on altstore: Held · 1 blocker/,
+      }),
+    ).toBeTruthy();
+    await userEvent.click(within(views).getByRole("link", { name: "List" }));
+    await waitFor(() => expect(window.location.hash).not.toContain("view="));
+    expect(await screen.findByRole("table", { name: "Rollouts" })).toBeTruthy();
   });
 
   it("explains rollouts when there are none", async () => {

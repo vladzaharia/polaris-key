@@ -7,6 +7,8 @@
 const VERBS: Record<string, string> = {
   "product.create": "created the product",
   "product.link": "linked the product to a repository",
+  "product.link.refused":
+    "had a repository link refused while applying (put back to manual)",
   "product.update": "updated product settings",
   "product.delete": "deleted the product",
   "product.services.update": "changed enabled services",
@@ -26,9 +28,11 @@ const VERBS: Record<string, string> = {
   "license.create": "created license",
   "license.update": "updated license",
   "license.tier.change": "changed the tier of license",
+  "license.device_limit.set": "changed the device limit of license",
   "license.overrides": "changed config overrides of license",
   "license.enable": "enabled license",
   "license.disable": "disabled license",
+  "license.delete": "deleted license",
   "license.enroll": "enrolled a keyless license",
   "device.deauthorize": "deauthorized device",
   "device.fingerprint.reset": "reset the hardware binding of device",
@@ -51,6 +55,7 @@ const VERBS: Record<string, string> = {
   "release.publish": "published release",
   "release.record": "recorded release",
   "license.merge": "merged license",
+  "identity.signin.license_chosen": "chose license to sign in a device",
   "license.tier": "changed the tier of license",
   "device.attest": "attested device",
   "device.attest.rejected": "rejected the attestation of device",
@@ -58,6 +63,7 @@ const VERBS: Record<string, string> = {
   "update.settings.revert": "returned update feed settings to the manifest",
   "update.settings.update": "changed update feed settings",
   "portal.settings.update": "changed customer portal settings",
+  "storefront.polarisKey.update": "changed the Polaris Key listing",
   "bundle.minted": "minted an offline bundle",
   "access.denied": "was refused console access",
   "ci.publisher.claim": "claimed the trusted publisher",
@@ -79,6 +85,10 @@ const VERBS: Record<string, string> = {
   "package.version.unyank": "unyanked package version",
   "package.version.deprecate": "deprecated package version",
   "package.version.undeprecate": "lifted the deprecation of package version",
+  // Feed retention: a stable publish prunes the package's builds of main below it.
+  "package.version.prune": "pruned package version",
+  "package.prune.failed": "failed to prune the builds of main of",
+  "feed.retention.update": "changed the retention of package feeds",
 };
 
 export function verbFor(action: string): string {
@@ -100,6 +110,7 @@ export const ACTION_GROUPS: { value: string; label: string }[] = [
   { value: "release.", label: "Release" },
   { value: "update.", label: "Update" },
   { value: "portal.", label: "Customer portal" },
+  { value: "storefront.", label: "Polaris Key storefront" },
   { value: "outlet_credential.", label: "Outlet credentials" },
   { value: "ci.", label: "CI publishing" },
   { value: "product.", label: "Product and services" },

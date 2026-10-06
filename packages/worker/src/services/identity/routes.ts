@@ -17,6 +17,8 @@
  *                                                 kept for flows started before `/device`)
  *                                           POST  confirm it
  *     /identity/auth/device/poll            POST  poll a confirmed device flow
+ *     /identity/auth/choose                 GET   the legacy sign-in's licence chooser (I-26)
+ *                                           POST  record a step of it, or the choice
  *
  * There are no aliases. The pre-namespace spellings (`/<p>/session`, `/<p>/auth/…`) are deleted
  * outright, unlike the four permanent aliases D-07 keeps for Release/Update: those exist because
@@ -36,6 +38,7 @@
 import type { ServiceContext } from "../../core/registry.js";
 import {
   handleAuthCallback,
+  handleAuthChoose,
   handleAuthDeviceEntry,
   handleAuthDevicePoll,
   handleAuthDeviceStart,
@@ -75,6 +78,8 @@ export async function handleIdentityRoutes(
         return handleBrowserLogout(req, env, db, product);
       case "device":
         return handleAuthDeviceEntry(req, env, product);
+      case "choose":
+        return handleAuthChoose(req, env, db, product, now, ctx.hooks);
       default:
         return null;
     }
@@ -87,7 +92,14 @@ export async function handleIdentityRoutes(
       case "verify":
         return handleAuthDeviceVerify(req, env, product);
       case "poll":
-        return handleAuthDevicePoll(req, env, db, product, now);
+        return handleAuthDevicePoll(
+          req,
+          env,
+          db,
+          product,
+          now,
+          ctx.licenseMerge,
+        );
       default:
         return null;
     }

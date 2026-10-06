@@ -6,7 +6,12 @@
 
 import { stmtRevokeProductCiTokens } from "../core/publisher.js";
 import { stmtRevokeProductRegistryTokens } from "../core/registryTokens.js";
-import type { Db } from "../db/types.js";
+import {
+  holderFilterSql,
+  stmtDeleteProductAutoAttachBlocks,
+  type HolderFilter,
+} from "../core/licenseHolders.js";
+import type { Db, DbStatement } from "../db/types.js";
 import type {
   KeyRow,
   LicenseRow,
@@ -18,23 +23,35 @@ import type {
 } from "../repo.js";
 
 // ── Products (platform registry) ─────────────────────────────────────────────
+export type ProductUpdateFields = Partial<
+  Pick<
+    ProductRow,
+    | "name"
+    | "compat_min"
+    | "compat_max"
+    | "default_max_offline_days"
+    | "default_device_limit"
+    | "admin_group"
+    | "branding_json"
+  >
+>;
+
 export async function updateProduct(
   db: Db,
   slug: string,
-  fields: Partial<
-    Pick<
-      ProductRow,
-      | "name"
-      | "compat_min"
-      | "compat_max"
-      | "default_max_offline_days"
-      | "default_device_limit"
-      | "admin_group"
-      | "branding_json"
-    >
-  >,
+  fields: ProductUpdateFields,
   now: number,
 ): Promise<void> {
+  const stmt = stmtUpdateProduct(slug, fields, now);
+  await db.run(stmt.sql, ...stmt.params);
+}
+
+/** `updateProduct` as a statement, so a console write and its claims (ST-01b) share one batch. */
+export function stmtUpdateProduct(
+  slug: string,
+  fields: ProductUpdateFields,
+  now: number,
+): DbStatement {
   const sets: string[] = [];
   const params: (string | number | null)[] = [];
   for (const [col, val] of Object.entries(fields)) {
@@ -45,10 +62,10 @@ export async function updateProduct(
   sets.push("modified_at = ?");
   params.push(now);
   params.push(slug);
-  await db.run(
-    `UPDATE products SET ${sets.join(", ")} WHERE slug = ?`,
-    ...params,
-  );
+  return {
+    sql: `UPDATE products SET ${sets.join(", ")} WHERE slug = ?`,
+    params,
+  };
 }
 
 /**
@@ -85,6 +102,8 @@ export async function deleteProduct(
       sql: "DELETE FROM portal_license_links WHERE product = ?",
       params: [slug],
     },
+    // LX-26: the auto-attach blocks name accounts; the licences they guarded are erased above.
+    stmtDeleteProductAutoAttachBlocks(slug),
     // I-05: the product's pairwise subjects, their aliases and its "Continue to" grants go with
     // it; no account keeps a link to a product that no longer exists.
     {
@@ -97,6 +116,11 @@ export async function deleteProduct(
     },
     {
       sql: "DELETE FROM account_product_grants WHERE product = ?",
+      params: [slug],
+    },
+    // PX-W15: and every account's acceptance of its terms (a re-created slug asks again).
+    {
+      sql: "DELETE FROM account_terms_acceptances WHERE product = ?",
       params: [slug],
     },
     {
@@ -214,9 +238,14 @@ export async function listSchemaPublishers(
 export async function listLicenses(
   db: Db,
   product: string,
+  filter: { holder?: HolderFilter } = {},
 ): Promise<LicenseRow[]> {
+  // LX-26: the holder filter is the derived rule as SQL (`core/licenseHolders.ts`), never a copy.
+  const holder = filter.holder
+    ? ` AND ${holderFilterSql(filter.holder, "licenses")}`
+    : "";
   return db.all<LicenseRow>(
-    "SELECT * FROM licenses WHERE product = ? ORDER BY activated_at DESC, id DESC",
+    `SELECT * FROM licenses WHERE product = ?${holder} ORDER BY activated_at DESC, id DESC`,
     product,
   );
 }
@@ -255,6 +284,7 @@ export async function patchLicense(
       | "channels_json"
       | "min_version"
       | "max_version"
+      | "device_limit"
     >
   >,
   modifiedBy: string | null,
@@ -454,14 +484,28 @@ export async function listProfiles(
   );
 }
 
-export async function upsertProfile(db: Db, row: ProfileRow): Promise<void> {
+/**
+ * The console's profile write. ST-01b: a console create or edit owns the row (`source =
+ * 'console'`), so a resync leaves it alone from then on — a manifest row edited here is claimed.
+ *
+ * `claim: false` keeps the stored owner: the one console write that is NOT a claim is setting a
+ * managed secret's value, which a manifest cannot express and the resync already carries forward
+ * on a manifest row (R2, `resync.ts` `withStoredSecrets`).
+ */
+export async function upsertProfile(
+  db: Db,
+  row: ProfileRow,
+  opts: { claim?: boolean } = {},
+): Promise<void> {
+  const claim = opts.claim ?? true;
   await db.run(
-    `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO profiles (product, id, name, description, payload_json, modified_by, modified_at,
+       source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'console')
      ON CONFLICT(product, id) DO UPDATE SET
        name = excluded.name, description = excluded.description,
        payload_json = excluded.payload_json, modified_by = excluded.modified_by,
-       modified_at = excluded.modified_at`,
+       modified_at = excluded.modified_at${claim ? ", source = 'console'" : ""}`,
     row.product,
     row.id,
     row.name,
@@ -572,18 +616,20 @@ export async function listTiers(db: Db, product: string): Promise<TierRow[]> {
   );
 }
 
+/** The console's tier write; ST-01b: it owns the row (`source = 'console'`), like `upsertProfile`. */
 export async function upsertTier(db: Db, row: TierRow): Promise<void> {
   await db.run(
     `INSERT INTO tiers (product, id, label, profile_id, policy_expiry_days, policy_device_limit,
-       channels_json, min_version, max_version, modified_by, modified_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       channels_json, min_version, max_version, modified_by, modified_at, source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'console')
      ON CONFLICT(product, id) DO UPDATE SET
        label = excluded.label, profile_id = excluded.profile_id,
        policy_expiry_days = excluded.policy_expiry_days,
        policy_device_limit = excluded.policy_device_limit,
        channels_json = excluded.channels_json, min_version = excluded.min_version,
        max_version = excluded.max_version,
-       modified_by = excluded.modified_by, modified_at = excluded.modified_at`,
+       modified_by = excluded.modified_by, modified_at = excluded.modified_at,
+       source = 'console'`,
     row.product,
     row.id,
     row.label,

@@ -29,7 +29,24 @@ import {
 } from "./client.js";
 import { errorLine } from "./poll.js";
 import { STORE_ID } from "./setup.js";
-import { MSSTORE_PLATFORM_CREDENTIAL, platformMsStoreToken } from "./token.js";
+import {
+  MSSTORE_PLATFORM_CREDENTIAL,
+  platformMsStoreToken,
+  transientMsStoreToken,
+} from "./token.js";
+import { TokenExchangeError } from "../../../../core/outletTokens.js";
+import type {
+  OutletCredentialMeta,
+  TransientOutletCredential,
+} from "../../../../core/outletCredentials.js";
+import {
+  appCount,
+  checked,
+  hiddenAssignedApps,
+  storeUnavailable,
+  type CheckFact,
+  type CredentialCheck,
+} from "../credentialCheck.js";
 import {
   cachedPlatformApps,
   PlatformStoreNotConfigured,
@@ -209,5 +226,192 @@ export async function listPlatformMsStoreApps(
         );
       }
     },
+  );
+}
+
+// ── the live check (UX-69, SETUP.md D42) ────────────────────────────────────────────────────
+
+export interface MsStoreCheckOptions {
+  /** The UNSAVED Partner Center app (tenant, client id and secret, seller id). */
+  cred: TransientOutletCredential<"ms-partner-center">;
+  now: number;
+  /** The Store IDs products are assigned on this connection. */
+  assigned: readonly string[];
+  current: OutletCredentialMeta | null;
+  fetchImpl?: FetchImpl;
+}
+
+/**
+ * Microsoft Entra's refusals the check can name (AADSTS numbers from the token endpoint's
+ * `error_codes`; learn.microsoft.com/entra/identity-platform/reference-error-codes).
+ */
+function entraRefusal(
+  e: TokenExchangeError,
+  facts: CheckFact[],
+): CredentialCheck {
+  const sub = e.code?.subCode ?? null;
+  const status = { status: e.status };
+  if (sub === 7000222)
+    return checked(
+      "invalid",
+      "expired",
+      "This client secret has expired",
+      "Create a new client secret for the app in Microsoft Entra ID → App registrations → Certificates & secrets, and paste its Value.",
+      facts,
+      { ...status, field: "value.clientSecret" },
+    );
+  if (sub === 7000215)
+    return checked(
+      "invalid",
+      "rejected",
+      "Microsoft Entra did not accept this client secret",
+      "Paste the secret's Value, not its Secret ID. Both are shown once, when the secret is created in App registrations → Certificates & secrets.",
+      facts,
+      { ...status, field: "value.clientSecret" },
+    );
+  if (sub === 700016)
+    return checked(
+      "invalid",
+      "wrong-account",
+      "No app with this client ID exists in this tenant",
+      "Check the tenant ID and the client ID (Application ID) on the app's Overview in Microsoft Entra ID: they must be the same app registration.",
+      facts,
+      { ...status, field: "value.clientId" },
+    );
+  if (sub === 90002 || sub === 900023)
+    return checked(
+      "invalid",
+      "not-found",
+      "Microsoft Entra has no such tenant",
+      "Use the Directory (tenant) ID from the app's Overview in Microsoft Entra ID.",
+      facts,
+      { ...status, field: "value.tenantId" },
+    );
+  return checked(
+    "invalid",
+    "rejected",
+    "Microsoft Entra did not accept this app's credentials",
+    "Check the tenant ID, client ID and client secret against the app registration in Microsoft Entra ID.",
+    facts,
+    status,
+  );
+}
+
+/**
+ * Check an unsaved Partner Center app: Entra's client-credentials exchange (which proves the
+ * tenant, app and secret), then ONE read of the Store submission API's `/v1.0/my/applications`
+ * (which proves the app was added to Partner Center with a role, and names what it sees). GET
+ * only; `redirect: "manual"`; capped bodies; fixed hosts.
+ */
+export async function checkMsPartnerCenter(
+  o: MsStoreCheckOptions,
+): Promise<CredentialCheck> {
+  const m = o.cred.meta as {
+    tenantId: string;
+    clientId: string;
+    sellerId: string;
+  };
+  const facts: CheckFact[] = [
+    { label: "Tenant ID", value: m.tenantId },
+    { label: "Client ID", value: m.clientId },
+    { label: "Seller ID", value: m.sellerId },
+  ];
+  const fetchImpl = o.fetchImpl ?? ((u, i) => fetch(u, i));
+  let bearer: string;
+  try {
+    bearer = await transientMsStoreToken(o.cred, fetchImpl);
+  } catch (e) {
+    if (e instanceof TokenExchangeError) {
+      if (e.status >= 400 && e.status < 500) return entraRefusal(e, facts);
+      return storeUnavailable("Microsoft Entra", e.status);
+    }
+    if (e instanceof Error && /tenantId is invalid/.test(e.message))
+      return checked(
+        "invalid",
+        "format",
+        "This is not a tenant ID",
+        "Use the Directory (tenant) ID, a GUID, or the tenant's verified domain (contoso.onmicrosoft.com).",
+        [],
+        { field: "value.tenantId" },
+      );
+    return storeUnavailable("Microsoft Entra", 0);
+  }
+
+  const url = new URL("/v1.0/my/applications", STORE_API_ORIGIN);
+  url.searchParams.set("top", String(APP_PAGE));
+  url.searchParams.set("skip", "0");
+  let res: Response;
+  try {
+    res = await fetchImpl(url.toString(), {
+      method: "GET",
+      redirect: "manual",
+      headers: {
+        authorization: `Bearer ${bearer}`,
+        accept: "application/json",
+      },
+    });
+  } catch {
+    return storeUnavailable("Partner Center", 0);
+  }
+  if (res.status === 401 || res.status === 403) {
+    await res.body?.cancel().catch(() => undefined);
+    return checked(
+      "invalid",
+      "permission",
+      "This app is not added to Partner Center",
+      `Microsoft Entra accepted it, but the Store API did not. In Partner Center → Account settings → User management → Microsoft Entra applications, add ${m.clientId} with the Manager role, then check again.`,
+      facts,
+      { status: res.status },
+    );
+  }
+  if (!res.ok || isRedirect(res)) {
+    await res.body?.cancel().catch(() => undefined);
+    return storeUnavailable("Partner Center", res.status);
+  }
+  let doc: { value?: unknown; totalCount?: unknown };
+  try {
+    doc = JSON.parse(
+      await readCappedText(res, MAX_RESPONSE_BYTES, () => new Error("large")),
+    ) as typeof doc;
+    if (!doc || typeof doc !== "object" || Array.isArray(doc))
+      throw new Error("not an object");
+  } catch {
+    return storeUnavailable("Partner Center", 502);
+  }
+  const value = (Array.isArray(doc.value) ? doc.value : []).filter(
+    (v): v is Record<string, unknown> => !!v && typeof v === "object",
+  );
+  const total =
+    typeof doc.totalCount === "number" && doc.totalCount >= value.length
+      ? doc.totalCount
+      : value.length;
+  facts.push({ label: "Apps", value: String(total) });
+  const names = value
+    .map((a) => (typeof a.primaryName === "string" ? a.primaryName : null))
+    .filter((n): n is string => n !== null)
+    .slice(0, 3)
+    .map((n) => n.slice(0, 80));
+  if (names.length > 0)
+    facts.push({ label: "First apps", value: names.join(", ") });
+  const seen = new Set(
+    value.map((a) => (typeof a.id === "string" ? a.id : "")),
+  );
+  const hidden =
+    total > value.length ? [] : o.assigned.filter((id) => !seen.has(id));
+  if (hidden.length > 0) return hiddenAssignedApps(hidden, facts, "app");
+  if (o.current?.sellerId && o.current.sellerId !== m.sellerId)
+    return checked(
+      "warning",
+      "wrong-account",
+      "This app is for another seller account than the one connected now",
+      `Its seller ID is ${m.sellerId}; the app connected now is for ${o.current.sellerId}. Saving it moves the connection to that seller.`,
+      facts,
+    );
+  return checked(
+    "valid",
+    "ok",
+    `Seller ${m.sellerId} · ${appCount(total)}`,
+    null,
+    facts,
   );
 }

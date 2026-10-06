@@ -88,6 +88,115 @@ describe("license record: header and tabs", () => {
     );
   });
 
+  it("deletes from the danger menu after typing delete <id>, then returns to the list", async () => {
+    const log = bootLicense(REC, {
+      routes: {
+        [LIC]: {
+          ...DETAIL,
+          status: "disabled",
+          origin: "oidc",
+          deletion: { allowed: true, reasons: [] },
+        },
+        [`DELETE ${LIC}`]: { ok: true, id: "lic_1", devices: 2 },
+      },
+    });
+    await header();
+    await more("Delete license…");
+    const dialog = await screen.findByRole("alertdialog", {
+      name: /Delete Ada Lovelace\?/,
+    });
+    expect(
+      within(dialog).getByText(/2 devices stop authenticating/),
+    ).toBeTruthy();
+    expect(within(dialog).getByText(/activity history is kept/)).toBeTruthy();
+    // A disabled sign-in license: deleting it lifts the refusal.
+    expect(
+      within(dialog).getByText(
+        "If its holder signs in again, they get a new license.",
+      ),
+    ).toBeTruthy();
+    const confirm = within(dialog).getByRole("button", {
+      name: "Delete license",
+    });
+    expect(confirm.getAttribute("aria-disabled")).toBe("true");
+    await userEvent.click(confirm);
+    expect(writes(log)).toEqual([]);
+    await userEvent.type(within(dialog).getByRole("textbox"), "delete lic_1");
+    // The soft-disabled button is re-rendered once the text matches: query it again.
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete license" }),
+    );
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        { path: LIC, method: "DELETE", body: { confirm: "delete lic_1" } },
+      ]),
+    );
+    await waitFor(() =>
+      expect(window.location.hash).toBe("#/p/djdl/license/licenses"),
+    );
+  });
+
+  it("keeps Delete license visible but unavailable, with the Worker's reason", async () => {
+    const log = bootLicense(REC, {
+      routes: {
+        [LIC]: {
+          ...DETAIL,
+          deletion: {
+            allowed: false,
+            reasons: [
+              {
+                code: "issued_active",
+                message:
+                  "It is active and was issued by the developer. Disable it first.",
+              },
+            ],
+          },
+        },
+      },
+    });
+    await header();
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "More actions" })[0]!,
+    );
+    const item = await screen.findByRole("menuitem", {
+      name: /Delete license…/,
+    });
+    expect(item.getAttribute("aria-disabled")).toBe("true");
+    expect(within(item).getByText(/Disable it first/)).toBeTruthy();
+    await userEvent.click(item);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(writes(log)).toEqual([]);
+  });
+
+  it("shows the Worker's refusal inline when the license changed since it loaded", async () => {
+    bootLicense(REC, {
+      routes: {
+        [LIC]: { ...DETAIL, deletion: { allowed: true, reasons: [] } },
+        [`DELETE ${LIC}`]: new Response(
+          JSON.stringify({
+            error: {
+              code: "license_not_deletable",
+              message:
+                "License lic_1 can't be deleted: 1 store purchase is recorded against it.",
+            },
+          }),
+          { status: 409, headers: { "content-type": "application/json" } },
+        ),
+      },
+    });
+    await header();
+    await more("Delete license…");
+    const dialog = await screen.findByRole("alertdialog");
+    await userEvent.type(within(dialog).getByRole("textbox"), "delete lic_1");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete license" }),
+    );
+    expect(
+      await within(dialog).findByText("This license can't be deleted"),
+    ).toBeTruthy();
+    expect(within(dialog).getByText(/store purchase is recorded/)).toBeTruthy();
+  });
+
   it("offers Enable as the primary action while disabled", async () => {
     const log = bootLicense(REC, {
       routes: { [LIC]: { ...DETAIL, status: "disabled" } },
@@ -140,6 +249,26 @@ describe("license record: header and tabs", () => {
       expect(writes(log)).toEqual([
         { path: LIC, method: "PATCH", body: { name: "Ada King" } },
       ]),
+    );
+  });
+
+  it("asks before Escape drops unsaved holder changes (C-20)", async () => {
+    bootLicense(REC);
+    await header();
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Edit holder…" })[0]!,
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Edit holder" });
+    await userEvent.type(within(dialog).getByLabelText(/^Name/), " Jr");
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect((await within(dialog).findByRole("alert")).textContent).toContain(
+      "Discard your changes?",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Discard" }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Edit holder" })).toBeNull(),
     );
   });
 
@@ -623,6 +752,32 @@ describe("license record: offline bundle", () => {
     expect(() => download.click()).not.toThrow();
   });
 
+  it("keeps the minted bundle on Escape until it is saved (C-21)", async () => {
+    const { dialog } = await openBundle();
+    await userEvent.type(within(dialog).getByLabelText(/^Device ID/), CODE);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Mint bundle" }),
+    );
+    await within(dialog).findByText("01JBUNDLEID0000000000000A");
+    await waitFor(() =>
+      expect(document.activeElement?.textContent).toBe("Bundle minted"),
+    );
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(
+      await within(dialog).findByText(/Close without copying\?/),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Keep it open" }),
+    );
+    await userEvent.click(within(dialog).getByLabelText(/I've stored it/));
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Bundle minted" }),
+      ).toBeNull(),
+    );
+  });
+
   it("refuses a request code that is not 32 characters", async () => {
     const { log, dialog } = await openBundle();
     await userEvent.type(within(dialog).getByLabelText(/^Device ID/), "short");
@@ -654,6 +809,137 @@ describe("license record: offline bundle", () => {
         graceDays: 365,
         licenseId: "lic_1",
       }),
+    );
+  });
+});
+
+describe("license record: device limit (LX-14a)", () => {
+  const OWN = {
+    ...DETAIL,
+    deviceLimit: 3,
+    effectiveDeviceLimit: 3,
+    deviceLimitSource: "license" as const,
+    inheritedDeviceLimit: 5,
+    inheritedDeviceLimitSource: "tier" as const,
+  };
+
+  it("shows the effective limit and its source on the header, the policy and the meter", async () => {
+    bootLicense(REC, { routes: { [LIC]: OWN } });
+    await header();
+    expect(screen.getByTestId("record-device-limit").textContent).toBe(
+      "Device limit 3 · set on this license",
+    );
+    const tabs = screen.getByRole("navigation", { name: "License sections" });
+    expect(
+      await within(tabs).findByRole("link", { name: /Devices\s*2\/3/ }),
+    ).toBeTruthy();
+    const policy = await screen.findByRole("region", {
+      name: "Effective policy",
+    });
+    expect(within(policy).getByText(/\(set on this license\)/)).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("link", { name: /Devices/ }));
+    expect((await screen.findByTestId("seat-limit-source")).textContent).toBe(
+      "Device limit: 3 · set on this license",
+    );
+  });
+
+  it("names the tier when the limit is inherited", async () => {
+    bootLicense(REC, {
+      routes: {
+        [LIC]: {
+          ...DETAIL,
+          deviceLimit: null,
+          effectiveDeviceLimit: 5,
+          deviceLimitSource: "tier",
+          inheritedDeviceLimit: 5,
+          inheritedDeviceLimitSource: "tier",
+        },
+      },
+    });
+    await header();
+    expect(screen.getByTestId("record-device-limit").textContent).toBe(
+      "Device limit 5 · from Pro",
+    );
+  });
+
+  it("sets a lower limit from the sheet, warning that nobody is signed out", async () => {
+    const log = bootLicense(REC, {
+      routes: {
+        [LIC]: {
+          ...DETAIL,
+          deviceLimit: null,
+          effectiveDeviceLimit: 5,
+          deviceLimitSource: "tier",
+          inheritedDeviceLimit: 5,
+          inheritedDeviceLimitSource: "tier",
+        },
+        [`PATCH ${LIC}`]: {
+          ok: true,
+          id: "lic_1",
+          overLimit: { deviceCount: 2, deviceLimit: 1 },
+        },
+      },
+    });
+    await header();
+    await more("Device limit…");
+    const sheet = await screen.findByRole("dialog", { name: "Device limit" });
+    const field = within(sheet).getByRole("textbox", { name: /Devices/ });
+    expect(field.getAttribute("placeholder")).toBe("Inherits 5 from Pro");
+    expect(
+      within(sheet).getByRole("button", { name: "Use inherited limit" }),
+    ).toHaveProperty("disabled", true);
+    await userEvent.type(field, "1");
+    expect(
+      within(sheet).getByText(
+        "2 devices are signed in. None is signed out; new devices are refused until the count is under 1.",
+      ),
+    ).toBeTruthy();
+    await userEvent.click(within(sheet).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        expect.objectContaining({
+          path: LIC,
+          method: "PATCH",
+          body: { deviceLimit: 1 },
+        }),
+      ]),
+    );
+    const results = await axe(document.body);
+    expect(results.violations.map((v) => v.id)).toEqual([]);
+  });
+
+  it("warns from the server's dormancy-aware seat count", async () => {
+    bootLicense(REC, { routes: { [LIC]: { ...OWN, seatDeviceCount: 1 } } });
+    await header();
+    await more("Device limit…");
+    const sheet = await screen.findByRole("dialog", { name: "Device limit" });
+    const field = within(sheet).getByRole("textbox", { name: /Devices/ });
+    await userEvent.clear(field);
+    await userEvent.type(field, "1");
+    // DETAIL has 2 authorized devices, but only 1 still holds a seat: no warning at 1.
+    expect(within(sheet).queryByText(/None is signed out/)).toBeNull();
+  });
+
+  it("Use inherited limit clears it with null", async () => {
+    const log = bootLicense(REC, { routes: { [LIC]: OWN } });
+    await header();
+    await more("Device limit…");
+    const sheet = await screen.findByRole("dialog", { name: "Device limit" });
+    expect(
+      within(sheet).getByRole("textbox", { name: /Devices/ }),
+    ).toHaveProperty("value", "3");
+    await userEvent.click(
+      within(sheet).getByRole("button", { name: "Use inherited limit" }),
+    );
+    await waitFor(() =>
+      expect(writes(log)).toEqual([
+        expect.objectContaining({
+          path: LIC,
+          method: "PATCH",
+          body: { deviceLimit: null },
+        }),
+      ]),
     );
   });
 });

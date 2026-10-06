@@ -33,12 +33,15 @@ import {
   Box,
   Boxes,
   CircleArrowUp,
+  Cloud,
   CloudUpload,
+  Database,
   FilePen,
   FileStack,
   Fingerprint,
   FlaskConical,
   Gauge,
+  Globe,
   Grid3x3,
   HeartPulse,
   House,
@@ -64,11 +67,13 @@ import {
   Settings,
   ShieldCheck,
   ShoppingBag,
+  SquarePen,
   SlidersHorizontal,
   Stamp,
   Store,
   TrendingUp,
   UserRound,
+  UsersRound,
   Waypoints,
   type LucideIcon,
 } from "lucide-react";
@@ -103,6 +108,7 @@ export type ProductPageId =
   | "overview"
   | "services"
   | "devices"
+  | "users"
   | "keys"
   | "activity"
   | "settings"
@@ -126,6 +132,8 @@ export type ProductPageId =
   | "matrix"
   | "rollouts"
   | "outlets"
+  | "storefronts"
+  | "listing"
   | "app-store"
   | "commerce"
   | "access"
@@ -136,7 +144,9 @@ export type ProductPageId =
   | "feed"
   // identity
   | "portal"
-  | "sign-in";
+  | "sign-in"
+  // sync
+  | "sync-data";
 
 export type PageId = GlobalPageId | ProductPageId;
 
@@ -258,6 +268,23 @@ export const SECTIONS: NavSection[] = [
         ready: true,
         // The routed device drawer (`devices/:deviceId`).
         record: { noun: "Device", ready: true },
+      },
+      {
+        // I-12: every product has users (its licence owners), whatever its Identity toggle.
+        page: "users",
+        label: "Users",
+        path: "users",
+        icon: UsersRound,
+        docs: "/docs/admin/users/",
+        inNav: true,
+        ready: true,
+        // `users/:subject[/:tab]`. `data` is reserved for the Cloud Sync Data tab (U-11a): the
+        // record shows it only while Cloud Sync is on, and answers a deep link with Overview.
+        record: {
+          noun: "User",
+          tabs: ["overview", "licenses", "devices", "activity", "data"],
+          ready: true,
+        },
       },
       {
         page: "keys",
@@ -500,6 +527,28 @@ export const SECTIONS: NavSection[] = [
         ready: true,
       },
       {
+        // A-18j: every storefront's tile, and "Add to storefronts" (T6, resumable from the
+        // ledger) that provisions the product onto them.
+        page: "storefronts",
+        label: "Storefronts",
+        path: "distribution/storefronts",
+        icon: Globe,
+        docs: "/docs/admin/storefronts/",
+        inNav: true,
+        ready: true,
+      },
+      {
+        // A-18j: the shared listing model (T3): locales, fit report, slot board, release notes,
+        // and "Push listing" per store.
+        page: "listing",
+        label: "Listing",
+        path: "distribution/listing",
+        icon: SquarePen,
+        docs: "/docs/admin/storefront-listing/",
+        inNav: true,
+        ready: true,
+      },
+      {
         // A-17g: the App Store Distribute flow (T6) for the product's pinned app.
         page: "app-store",
         label: "App Store",
@@ -613,6 +662,25 @@ export const SECTIONS: NavSection[] = [
         path: "identity/sign-in",
         icon: LogIn,
         docs: "/docs/services/identity/oidc/",
+        inNav: true,
+        ready: true,
+      },
+    ],
+  },
+  {
+    key: "sync",
+    label: "Cloud Sync",
+    service: "sync",
+    accent: "sync",
+    glyph: Cloud,
+    docs: "/docs/services/sync/",
+    items: [
+      {
+        page: "sync-data",
+        label: "Data",
+        path: "sync/data",
+        icon: Database,
+        docs: "/docs/services/sync/",
         inNav: true,
         ready: true,
       },

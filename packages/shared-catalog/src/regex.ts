@@ -535,6 +535,16 @@ function emitNode(p: Program, node: Node): void {
   }
 }
 
+/**
+ * A work counter, a test hook (not exported from the package; the counterpart of the Godot SDK's
+ * `PKeyPck.scan_probes`, P1-13): every NFA instruction `test` visits, in an epsilon closure or
+ * against an input code point, adds one. Per input position that is at most a small multiple of
+ * the program's size, so a linear match costs O(instructions x input) steps and a backtracking
+ * regression would cost exponentially more. The ReDoS checks diff it around a call instead of
+ * reading a clock, so they hold on a machine of any speed or load.
+ */
+export const patternWork = { steps: 0 };
+
 // ── public API ───────────────────────────────────────────────────────────────
 
 export interface LinearPattern {
@@ -564,6 +574,7 @@ class CompiledPattern implements LinearPattern {
     const stack = [pc];
     while (stack.length) {
       const at = stack.pop() as number;
+      patternWork.steps++;
       if (this.mark[at] === this.generation) continue;
       this.mark[at] = this.generation;
       const inst = this.insts[at] as Inst;
@@ -617,6 +628,7 @@ class CompiledPattern implements LinearPattern {
       next = [];
       this.generation++;
       for (const pc of cur) {
+        patternWork.steps++;
         const inst = this.insts[pc] as Inst;
         const hit =
           inst.op === "any"

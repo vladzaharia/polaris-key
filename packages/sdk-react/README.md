@@ -6,13 +6,37 @@ services.
 - **Desktop** (Electron/Tauri): wraps `@polaris-key/node` through an injected
   `PolarisBridge` (default `window.polarisKey`). The privileged process owns the token,
   keyring, and loopback-OIDC; the renderer is a thin proxy.
-- **Browser**: cookie-session OIDC against `key.plrs.im` over `fetch(..., { credentials:
-"include" })`. Online-only — no token/keyring/loopback. Sign-in is a full-page redirect.
+- **Browser**: a first-party page uses the cookie session against `key.plrs.im` over
+  `fetch(..., { credentials: "include" })`, signing in by a full-page redirect. A cross-origin
+  or Tauri page uses bearer mode (a device token in IndexedDB, documents verified in-page against
+  `trust.pinnedKeys`). See "Changes in the SDK parity pass" below.
 
 Both adapters satisfy the **same `PolarisAdapter`** and the hooks return the **same shapes**,
 so a component renders identically in either mode (mode-parity). The gate itself is
 `@polaris-key/client-core`'s — the one implementation every JS SDK and the
 conformance corpus run, clock floor included.
+
+## Changes in the SDK parity pass
+
+Three changes can break an existing integration:
+
+- **Entitlements are false unless the gate is usable (S-19 G11).** `isEntitled()`,
+  `useEntitlement()` and the entitlement-value reads now answer `false` (or `undefined`) when the
+  licence is revoked, expired, blocked or otherwise not usable, even though the snapshot still
+  holds the last verified grants. Before, a lapsed licence's grants kept unlocking features.
+- **The browser auth mode defaults to `"auto"`.** A page on the Worker's own origin keeps the
+  cookie session. A page on another origin (an opaque `"null"` origin counts) or inside Tauri
+  now uses bearer mode: a device token in IndexedDB over the CORS-covered routes, every document
+  verified in-page. Bearer mode needs `trust.pinnedKeys` (a Provider prop or a
+  `browserAdapter()` option); without them an `"auto"` page reports `invalid-options` as its
+  identity error and makes no request. Pass `auth: "cookie"` to keep the old behaviour. The
+  Provider also builds its adapter without I/O and starts it from an effect, so a render
+  (server-side included) makes no request.
+- **`PolarisAdapter` has new required methods.** `enroll`, `beginSignIn`, `mintToken`,
+  `commerceBinding`, `commerceClaim`, `discovery`, `offlineDeviceId` and `storeStatus`. The
+  built-in adapters implement all of them, throwing the typed `UnsupportedError` where a
+  transport cannot serve one. A custom adapter passed through `<PolarisKeyProvider adapter>`
+  must add them.
 
 ## Install
 
@@ -117,7 +141,7 @@ Two axes, and they compose — a **transport** entry says how you talk to the co
 | `@polaris-key/react/browser`  | the browser adapter + discovery client                                                |
 | `@polaris-key/react/desktop`  | the desktop adapter + the `PolarisBridge` IPC contract                                |
 | `@polaris-key/react/license`  | `useLicense`, `useLicenseGate`, `useImportBundle`, `<LicenseGate>`, `<DeviceManager>` |
-| `@polaris-key/react/config`   | `useManagedConfig`, `<ConfigPanel>`                                                   |
+| `@polaris-key/react/config`   | `useManagedConfig`, `useConfigSetting`, `<ConfigPanel>`                               |
 | `@polaris-key/react/identity` | `usePolarisAuth`, `<PolarisLogin>`, `<PolarisLogout>`                                 |
 | `@polaris-key/react/update`   | `useLatestVersion`, `useUpdateDecision`, `<UpdatePrompt>`, `createBrowserPacks`       |
 | `@polaris-key/react/release`  | `useChangelog`                                                                        |
@@ -133,7 +157,9 @@ Two axes, and they compose — a **transport** entry says how you talk to the co
 - **`<ConfigPanel>`** (`./config`) — a settings panel over the shipped
   `listUserConfig`/`getConfigSource` data layer (one row per document entry, `hidden` ones
   excluded), with per-entry provenance badges and an override affordance on `default`-state
-  keys only.
+  keys only. It saves an override itself through `config.set` (and offers a reset for one it
+  set) wherever `supports("config.local")`; a host that keeps its own overrides passes
+  `onOverride`, which takes over the save.
 - **`<DeviceManager>`** (`./license`) — list / rename / disconnect, rendering the
   `device-management-unsupported` refusal as an explanation rather than an error.
 - **`<UpdatePrompt>`** (`./update`) — a polite banner (or a blocking dialog) over
@@ -151,7 +177,8 @@ All five are assembled from the exported primitives (`MessageScreen`, `Button`, 
 | `useLicense()`           | `{ gate, status, usable, loading, enabled, activation, highWaterMark, entitledChannels, … }` |
 | `useImportBundle()`      | `{ importBundle(jws), busy, error, activation }` — offline bundles (§7)                      |
 | `useChangelog(opts)`     | `{ entries, busy, error, enabled, reload }` — the Release changelog                          |
-| `useManagedConfig()`     | `{ config, get(key, fallback), listUserConfig, getConfigSource, enabled }`                   |
+| `useManagedConfig()`     | `{ config, get(key, fallback), listUserConfig, getConfigSource, enabled, set, clear, … }`    |
+| `useConfigSetting(key)`  | `{ value, source, locked, overridden, set, clear }` — one key, re-rendered on change         |
 | `usePolarisAuth()`       | profile + auth actions + `supportsOidcLogin` / `supportsKeyEntry`                            |
 | `useLatestVersion(opts)` | `{ latest, updateAvailable, busy, error, enabled, check }`                                   |
 | `useUpdateDecision(o)`   | `{ check, decision, boot, undismissable, busy, error, enabled, decide }` — wire v4 (below)   |
@@ -163,6 +190,16 @@ All five are assembled from the exported primitives (`MessageScreen`, `Button`, 
 `busy` and `error` are **per service**: a config refresh no longer greys out the sign-out
 button, and an identity failure no longer reads as a license failure. `usePolarisKey()` still
 exposes the aggregates (`busy`, `error`) alongside `busyByService` / `errorByService`.
+
+## When every seat is taken
+
+On a device-limit refusal, `PolarisError.manageUrl` carries the customer-portal link that frees a
+seat (WIRE-CONTRACT-V4 §5.3), validated, and only while the product's portal is on. `<PolarisLogin>`
+(and `<LicenseGate>`, which renders it) shows **Replace a device** under the error: it opens the
+link in a new tab with the key fragment on an `/activate` link and `return=` set to `returnUrl`
+when you pass one. Activate again is the "try again". `openManageUrl(url, { key, returnUrl })` and
+the `withManageReturn` / `withManageKey` helpers are exported for a custom screen. The link is
+never an auth failure: nothing is wiped and nothing retries.
 
 ## Layered config
 
@@ -180,6 +217,22 @@ override supplies is not listed, though it stays in `config` and `get`. The **en
 layer never applies in React: a browser has no environment and a renderer must not inherit the
 privileged process's, so env layering resolves in `@polaris-key/node` on the desktop side and
 nowhere at all in the browser (rule 3; `config-matrix.json` pins it as `expectNoEnv`).
+
+### Device-local overrides (`config.local`)
+
+`adapter.config` is the same API as `@polaris-key/node`'s `client.config`: `set(key, value)`,
+`clear(key)`, `clearAll()`, `setting(key)` and `onConfigChange(key | "*", listener)`. A write is
+validated against the catalog type (`bad_request`; the catalog is the `catalog` option, or
+fetched once on the first write) and refused for a key the operator locked
+(`managed_by_admin`). Every move of a resolved value, a local write or a sync, fires one change.
+
+- **Browser:** `localStorage`, one entry per product (`configStorage` replaces it). Storage that
+  cannot be used keeps the values in memory and `config.persistent()` answers false.
+- **Desktop:** forwarded to the host's `client.config` over bridge v4 (`invoke("config", "set" |
+"clear")`, the stored values on `BridgeState.localConfig`). A v3 host refuses the write with
+  the typed `UnsupportedError` (reason `version`).
+
+Device-local only: Cloud Sync adds sync state under the same names later.
 
 The browser adapter sends `X-PKey-Platform: web`, `X-PKey-SDK: react` and no `X-PKey-Arch`
 (§5.2).
@@ -258,7 +311,8 @@ browserAdapter({
   `updateRevokedContentBody` ("Some of this game's content was withdrawn by its developer and
   can't be used. Update the app to keep playing."), with the offer's button when the answer is an
   offer and none for `blocked`; a content floor uses `updateContentFloorBody`.
-- **Outlet.** A host's `update.outlet` (a kind, or `{id, kind, subkind?}`) wins. Otherwise the
+- **Outlet.** A host's `update.outlet` (a kind such as `"direct"`, the Polaris Key outlet, or
+  `{id, kind, subkind?}`) wins. Otherwise the
   browser adapter detects in-page (`update.detect`, default true): `readOutletSignals()` reads
   the display mode (`matchMedia('(display-mode: standalone)')`, `navigator.standalone`, an
   `android-app://` referrer) and client-core's `detectOutlet` (re-exported here) maps it, with

@@ -5,7 +5,14 @@ import { chromium, firefox, webkit, type Browser, type Page } from "playwright";
 import { preview, type PreviewServer } from "vite";
 import { appSecurityHeaders } from "../../worker/src/securityHeaders.js";
 import { GLOBAL_PAGES, SECTIONS } from "../src/console/nav.js";
-import { DEVICE_ID, LONG_SLUG, PACK_ID, resolve } from "./layoutFixtures.js";
+import {
+  DEVICE_ID,
+  fixtureImage,
+  IMG_ORIGIN,
+  LONG_SLUG,
+  PACK_ID,
+  resolve,
+} from "./layoutFixtures.js";
 import {
   probeLayout,
   type LayoutViolation,
@@ -35,7 +42,10 @@ import {
  */
 
 const here = fileURLToPath(new URL("..", import.meta.url));
-const CSP = appSecurityHeaders().get("content-security-policy")!;
+// The console shell's policy as the Worker sends it with an image host configured.
+const CSP = appSecurityHeaders(new Headers(), {
+  imgOrigin: IMG_ORIGIN,
+}).get("content-security-policy")!;
 const SHOTS = process.env.PK_SHOTS_DIR;
 const REPORT = process.env.PK_LAYOUT_REPORT;
 /** The page wrapper's bottom padding is 24px; 48 allows a card's own padding on top of it. */
@@ -112,8 +122,16 @@ function cases(): Case[] {
   list.push(
     { name: "djdl:activity?table", hash: "#/p/djdl/activity?view=table" },
     {
-      name: "djdl:matrix?cell",
-      hash: "#/p/djdl/distribution/matrix?cell=rel_240:altstore",
+      name: "djdl:rollouts?view=matrix&cell",
+      hash: "#/p/djdl/distribution/rollouts?view=matrix&cell=rel_240:altstore",
+    },
+    {
+      name: "djdl:rollouts?view=readiness",
+      hash: "#/p/djdl/distribution/rollouts?view=readiness",
+    },
+    {
+      name: "djdl:rollouts?cell",
+      hash: "#/p/djdl/distribution/rollouts?cell=rel_240:direct",
     },
     {
       name: "djdl:outlets?outlet",
@@ -246,7 +264,11 @@ async function open(
   theme: "dark" | "light",
   viewport: { width: number; height: number },
 ): Promise<{ page: Page; gaps: string[]; errors: string[] }> {
-  const ctx = await browser.newContext({ viewport, colorScheme: theme });
+  const ctx = await browser.newContext({
+    viewport,
+    colorScheme: theme,
+    reducedMotion: "reduce",
+  });
   await ctx.addInitScript((t) => {
     window.localStorage.setItem("pk-admin-theme", t);
     (window as unknown as { __v: string[] }).__v = [];
@@ -260,6 +282,15 @@ async function open(
   const errors: string[] = [];
   await ctx.route("**/*", async (route) => {
     const url = new URL(route.request().url());
+    const image = fixtureImage(url);
+    if (image)
+      return route.fulfill({
+        body: image,
+        headers: {
+          "content-type": "image/png",
+          "access-control-allow-origin": "*",
+        },
+      });
     if (url.pathname.startsWith("/manage/api/")) {
       if (route.request().method() !== "GET")
         return route.fulfill({ json: { ok: true } });

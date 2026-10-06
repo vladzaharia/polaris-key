@@ -44,7 +44,12 @@ import {
   resolveBuild,
   resolveChannelReleases,
 } from "./resolve.js";
-import { installScript, openSource, parseLocations } from "./source.js";
+import {
+  installScript,
+  openSource,
+  parseLocations,
+  repositoryPublic,
+} from "./source.js";
 import { packCatalog } from "./packs/catalog.js";
 import { packageCatalog } from "./packages/catalog.js";
 import { notPackageReleaseSql } from "./model.js";
@@ -326,6 +331,8 @@ export function releaseCatalog(ctx: HookContext): ReleaseCatalog {
     openSource: (ref, req) => openSource(ctx, ref, req),
 
     installScript: (origin: string) => installScript(db, product, origin),
+
+    repositoryPublic: () => repositoryPublic(ctx),
   };
 }
 

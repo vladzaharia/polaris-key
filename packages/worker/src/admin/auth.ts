@@ -31,6 +31,7 @@ import { brandedHtmlSecurityHeaders } from "../securityHeaders.js";
 import { escapeHtml, renderBrandPage } from "../core/brandHtml.js";
 import { hasAnyAdminGrant } from "./authz.js";
 import {
+  STEP_UP_MAX_AGE_SECONDS,
   buildSessionCookie,
   issueSession,
   type SessionIdentity,
@@ -60,6 +61,8 @@ interface FlowRecord {
   redirectUri: string;
   /** Validated same-origin path to land on after the callback (see `sanitizeReturnTo`). */
   returnTo?: string;
+  /** I-12: a step-up re-authentication (`prompt=login`, `max_age=0`) for the relink tool. */
+  stepUp?: boolean;
 }
 
 /**
@@ -82,12 +85,18 @@ interface FlowRecord {
  */
 const RETURN_TO_MAX_LENGTH = 512;
 const RETURN_TO_RE = /^\/(?:docs|manage)(?:\/[A-Za-z0-9\-._~/]*)?$/;
+/**
+ * I-12: the console routes in its hash (`/manage/#/p/<slug>/users/<subject>`), and a step-up has
+ * to land back on the row it started from. Only `/manage/` may carry one, and the fragment takes
+ * the same conservative charset as the path (no `?`, `%`, `#`, `\\`, whitespace or controls).
+ */
+const RETURN_TO_HASH_RE = /^\/manage\/#\/[A-Za-z0-9\-._~/]*$/;
 
 export function sanitizeReturnTo(raw: string | null): string | null {
   if (!raw || raw.length > RETURN_TO_MAX_LENGTH) return null;
-  if (!RETURN_TO_RE.test(raw)) return null;
+  if (!RETURN_TO_RE.test(raw) && !RETURN_TO_HASH_RE.test(raw)) return null;
   if (raw.includes("//")) return null;
-  if (raw.split("/").some((seg) => seg === "." || seg === "..")) return null;
+  if (raw.split(/[/#]/).some((seg) => seg === "." || seg === "..")) return null;
   return raw;
 }
 
@@ -143,6 +152,10 @@ function mapClaims(payload: Record<string, unknown>): SessionIdentity {
     email: typeof payload.email === "string" ? payload.email : undefined,
     name: name || undefined,
     groups,
+    ...(typeof payload.auth_time === "number" &&
+    Number.isFinite(payload.auth_time)
+      ? { authTime: Math.floor(payload.auth_time) }
+      : {}),
   };
 }
 
@@ -243,11 +256,13 @@ export async function handleAdminLogin(
   const url = new URL(req.url);
   const redirectUri = `${url.origin}/manage/callback`;
   const returnTo = sanitizeReturnTo(url.searchParams.get("returnTo"));
+  const stepUp = url.searchParams.get("stepUp") === "1";
   const flow: FlowRecord = {
     verifier,
     nonce,
     redirectUri,
     ...(returnTo ? { returnTo } : {}),
+    ...(stepUp ? { stepUp: true } : {}),
   };
   await putArtefact(
     env,
@@ -265,6 +280,12 @@ export async function handleAdminLogin(
   authorize.searchParams.set("nonce", nonce);
   authorize.searchParams.set("code_challenge", challenge);
   authorize.searchParams.set("code_challenge_method", "S256");
+  if (stepUp) {
+    // I-12: re-authenticate now, not a silent SSO. The callback checks `auth_time` when the IdP
+    // sends one, so an IdP that ignores these still cannot pass off an old sign-in as fresh.
+    authorize.searchParams.set("prompt", "login");
+    authorize.searchParams.set("max_age", "0");
+  }
   return new Response(null, {
     status: 302,
     headers: { location: authorize.toString() },
@@ -313,6 +334,20 @@ export async function handleAdminCallback(
     return htmlError(
       403,
       "Your account is not an administrator of any product.",
+    );
+  }
+
+  // A step-up must be a fresh authentication. An IdP that answered `prompt=login` with an old
+  // sign-in (its `auth_time` says so) is refused here rather than minting a session that would
+  // fail the relink tool's check a moment later with no explanation.
+  if (
+    flow.stepUp &&
+    typeof identity.authTime === "number" &&
+    now - identity.authTime > STEP_UP_MAX_AGE_SECONDS
+  ) {
+    return htmlError(
+      401,
+      "Your sign-in provider did not ask you to sign in again. Sign out of it, then try again.",
     );
   }
 

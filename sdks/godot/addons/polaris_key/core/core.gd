@@ -45,6 +45,11 @@ var started := false
 var last_store_error: Dictionary = {}
 ## Callables `(core: PKeyCore, result: PKeySyncResult)`, awaited after each sync's write.
 var post_sync_hooks: Array[Callable] = []
+## Attest and retry (SDK parity §3.10): a coroutine `() -> PKeyResult` that runs
+## PolarisKey.devices.attest(). Installed by the autoload; `with_attestation()` and every
+## authenticated request() call it once on a 403 `attestation_required`, then retry once.
+var attest_hook: Callable = Callable()
+var _attesting := false
 ## The update-event queue (PKeyUpdater): pending_events() goes into the device report's `updates`
 ## key (P6-03) and mark_reported(ids) runs once the Worker accepted it. Null: none.
 var update_events: Object = null
@@ -56,6 +61,9 @@ var discovery_manifest = null
 var _expected_services = null
 var _discovered_services = null
 var _caps: PKeyCaps = null
+## The copy API (core.copy): copy.message(code), copy.title(code), copy.activation_message(kind)
+## over the generated English with the host override layer. Shared by every core and the UI kit.
+var copy: PKeyCopy = PKeyCopy.shared()
 
 
 ## Validate `opts` and build a Core. ok with detail = the PKeyCore, or a failure:
@@ -105,7 +113,8 @@ static func create(opts: PKeyOptions, host: Node, p_sdk_version: String) -> PKey
 	core.local_only = opts.local_only
 	core.trust_refresh = opts.trust_refresh
 	# The platform store when its plugin is present (Keychain on iOS, P5-05; Keystore on Android,
-	# P5-06), else the file store.
+	# P5-06); the OS keyring store on the desktops (SP-27; the file store with a recorded reason
+	# when its native piece is missing); else the file store.
 	core.store = opts.store if opts.store != null else PKeyKeychainStore.preferred(opts.product, opts.store_root)
 	core.store.failed.connect(core._on_store_failed)
 	core.transport = PKeyTransport.new(host)
@@ -261,6 +270,36 @@ func url(path: String) -> String:
 ## server's error code (either spelling) or `http-error`, and `detail` always carries
 ## {status, headers, body, error?}. Transport failures keep the transport's code. A coroutine.
 func request(method: String, path: String, body: Variant = null, auth := false, extra_headers: Dictionary = {}) -> PKeyResult:
+	if not auth:
+		return await _request_once(method, path, body, auth, extra_headers)
+	return await with_attestation(func() -> PKeyResult: return await _request_once(method, path, body, auth, extra_headers))
+
+
+## Run `call` (a coroutine `() -> PKeyResult`); when it answers 403 `attestation_required` and
+## this runtime can attest (PKeyOptions.auto_attest on, the hook installed, not already
+## attesting), attest once and retry once (SDK parity §3.10: edge-mint, gated delivery and the
+## commerce claim). A failed attestation leaves the original refusal, with
+## detail.attestation = the attest result's code. A coroutine.
+func with_attestation(call: Callable) -> PKeyResult:
+	var r: PKeyResult = await call.call()
+	if r.ok or String(r.code) != PKeyConstants.ErrorCode.ATTESTATION_REQUIRED:
+		return r
+	if _attesting or not attest_hook.is_valid() or options == null or not options.auto_attest:
+		return r
+	_attesting = true
+	var a: PKeyResult = await attest_hook.call()
+	_attesting = false
+	if not a.ok:
+		if r.detail is Dictionary:
+			r.detail["attestation"] = String(a.code)
+		return r
+	var again: PKeyResult = await call.call()
+	if again.detail is Dictionary:
+		again.detail["attested_retry"] = true
+	return again
+
+
+func _request_once(method: String, path: String, body: Variant, auth: bool, extra_headers: Dictionary) -> PKeyResult:
 	var h := headers(extra_headers)
 	if auth:
 		if not tokens.has_token():
@@ -348,7 +387,7 @@ func build_info() -> Dictionary:
 ## The platform the update decision runs for: the stamp's, else this device's.
 func update_platform() -> String:
 	var p = build_info().get("platform")
-	return p if p is String and p != "" else PKeyHeaders.platform()
+	return p if p is String and p != "" else PKeyHeaders.update_platform()
 
 
 ## The stamped outlet id, or "" for a build without a stamp. What the build says, not what it
@@ -372,7 +411,7 @@ func _stamp_or_tag() -> Variant:
 ## `web` stamp on a web export, else null.
 func detection_stamp() -> Variant:
 	var stamp = _stamp_or_tag()
-	if stamp == null and (outlet_env.platform() if outlet_env != null else PKeyHeaders.platform()) == "web":
+	if stamp == null and (outlet_env.platform() if outlet_env != null else PKeyHeaders.update_platform()) == "web":
 		return PKeyOutlet.WEB_STAMP.duplicate(true)
 	return PKeyOutlet.detection_stamp(stamp)
 

@@ -13,7 +13,7 @@ extends RefCounted
 
 ## The OS family (`windows`, `linux`, `macos`, `ios`, `android`, `web`).
 func platform() -> String:
-	return PKeyHeaders.platform()
+	return PKeyHeaders.update_platform()
 
 
 ## OS.get_executable_path(), `/`-separated on every platform (Windows too).

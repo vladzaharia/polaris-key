@@ -22,7 +22,7 @@ const SINGLETON := "Steam"
 
 ## The GodotSteam object to use instead of the `Steam` singleton (tests).
 var steam: Object = null
-## The platform this answers for ("" means PKeyHeaders.platform()). Tests set it.
+## The platform this answers for ("" means PKeyHeaders.update_platform()). Tests set it.
 var platform := ""
 ## Pack id → DLC app id, for packs shipped as DLC depots.
 var dlc := {}
@@ -57,7 +57,7 @@ func floats() -> bool:
 
 
 func availability() -> PKeyResult:
-	var p := platform if platform != "" else PKeyHeaders.platform()
+	var p := platform if platform != "" else PKeyHeaders.update_platform()
 	if steam == null and p in [PKeyConstants.Platform.ANDROID, PKeyConstants.Platform.IOS, PKeyConstants.Platform.WEB]:
 		return PKeyResult.unsupported(feature(), PKeyConstants.UnsupportedReason.RUNTIME, "Steam does not distribute %s builds." % p)
 	var s := _steam()

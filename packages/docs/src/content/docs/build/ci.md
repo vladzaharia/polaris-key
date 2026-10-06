@@ -375,6 +375,14 @@ Promote, pin and unpin need the `release:promote` scope, which the default grant
 needs `release:yank`, which an operator adds to the product's publisher policy in the console.
 `--deliverable` selects a pack's channel pointers.
 
+`pkey feeds prune --product your-product` is the package feeds' retention backfill. For each
+package, it deletes the builds of main below the package's newest stable release. It is a dry
+run that prints what would go, with counts and bytes, unless you pass `--apply`. With `--apply`
+it lists any version it skipped (a channel took hold of it since the plan, so it was kept) and
+exits non-zero if any version failed. It needs `release:yank` as well. Once the product turned
+retention on (it is off by default), a stable publish runs the same prune for its own package; see
+[Install from the feeds](/docs/build/install-from-feeds/#builds-of-main-are-pruned-once-released).
+
 ## Distribution commands
 
 The same credential reports what a store says and drives outlet rollouts:
@@ -574,6 +582,86 @@ A Steam build script may set a build live only on a named branch, never `default
 `msstore publish` is refused while the console has a Microsoft Store draft staged for the product.
 Epic's `BuildPatchTool` may only `-mode=UploadBinary`, with its secret passed by
 `-ClientSecretEnvVar`.
+
+## Pull-request steps (winget, Homebrew, Scoop and Flathub)
+
+winget, your own Homebrew tap, your own Scoop bucket and Flathub are written through files in a
+GitHub repository. `pkey storefront <store> pr` generates the store's manifest for the channel's
+newest release, from the release and the listing model, and opens a pull request with a GitHub
+token from CI; `pkey storefront <store> status` reads the pull request back. Both are reported to
+Polaris Key, so the store's ledger shows each PR with its state and review labels.
+
+```yaml
+jobs:
+  packages:
+    runs-on: ubuntu-latest
+    environment: package-managers # holds PKEY_PR_TOKEN
+    permissions: { id-token: write, contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          node pkey.mjs storefront homebrew pr --channel stable
+          node pkey.mjs storefront scoop pr --channel stable
+          node pkey.mjs storefront winget pr --channel stable \
+            --portable Dice/dice.exe --command dice
+        env:
+          PKEY_PR_TOKEN: ${{ secrets.PKEY_PR_TOKEN }}
+```
+
+| Store      | Repository                           | What the pull request writes                                                                                                                     |
+| ---------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `winget`   | `microsoft/winget-pkgs`, from a fork | The version's manifests at schema 1.12.0: version, installer (the release's HTTPS download URLs), default locale and one file per further locale |
+| `homebrew` | `direct.homebrewTap`                 | `Casks/<homebrewCask>.rb`: version, sha256, url, name, desc, homepage, livecheck, auto_updates, app                                              |
+| `scoop`    | `direct.scoopBucket`                 | `bucket/<app>.json`: the Scoop feed's manifest, with `checkver` and `autoupdate` pointing at the feed                                            |
+| `flathub`  | `flathub/<appId>`                    | The app repository's manifest with each `extra-data` source moved to the new build, and the MetaInfo                                             |
+
+- **The repositories come from `.pkey/distribution`.** Set `homebrewTap` (`<owner>/homebrew-<name>`)
+  and `scoopBucket` (`<owner>/<repo>`) on the `direct` outlet, `packageIdentifier` on the `winget`
+  outlet and `appId` on the `flathub` outlet (see
+  [Distribution manifest](/docs/build/manifest/distribution/)). A tap or bucket of the `Homebrew` or
+  `ScoopInstaller` organisation is refused: the official `homebrew/cask` has its own rules and
+  needs you, by hand.
+- **One pull request per version.** If a pull request for the package and version is already open
+  or merged, the step records it and opens nothing; re-running a job never opens a second one.
+- **Every winget version is reviewed.** Microsoft's pipeline validates the manifests and then a
+  moderator reviews them, so the console shows the pull request and its labels
+  (`Needs-Author-Feedback`, `Validation-…`), never a date. A `.zip` build needs `--portable`, the
+  executable inside the archive; `--license` sets the `License` field (default `Proprietary`).
+- **The listing model fills the text.** winget's locale files and Flathub's MetaInfo come from the
+  Listing editor; a missing required field or one over the store's limit stops the step with the
+  field named.
+- **MetaInfo screenshots come only from Polaris's image host.** A MetaInfo never names your own
+  screenshot URLs or a download blob. Until hosted copies of your listing images are served, the
+  MetaInfo has no `<screenshots>` and the step warns; Flathub requires at least one, so add them
+  in the pull request yourself for now.
+- **The Scoop manifest's `autoupdate`**: Polaris-hosted builds have content-addressed URLs with
+  no version in them, so `checkver` captures each architecture's SHA-256 from the feed and
+  `autoupdate` builds the URL from it; the bucket's Excavator can follow the feed between pull
+  requests.
+- **The Homebrew cask's `livecheck`** reads the public download page's model, so it follows the
+  stable channel. `--app` names the `.app` bundle in the disk image (default `<name>.app`).
+- **Flathub's first submission is yours.** `pkey storefront flathub init --out flathub` writes the
+  manifest skeleton (its `extra-data` sources carry `x-checker-data` for Flathub's external-data
+  checker) on the current Freedesktop runtime (`25.08`; `--runtime-version` picks another branch,
+  since Flathub refuses an end-of-life one), the MetaInfo and a desktop entry; add the icon, then open the pull request to
+  `flathub/flathub` against `new-pr` and see it through review. After that, the checker or
+  `pkey storefront flathub pr` opens the update pull requests.
+- **`--dry-run`** prints the plan; with `--out <dir>` it also writes the generated files there.
+  It needs no GitHub token (Flathub's manifest update is then shown as the MetaInfo only).
+
+### The GitHub token
+
+`PKEY_PR_TOKEN` is a CI environment secret and never reaches Polaris Key:
+
+- **Tap and bucket:** a fine-grained token limited to those two repositories, with
+  `Contents: Read and write` and `Pull requests: Read and write`.
+- **winget:** a fine-grained token if it can open the pull request; otherwise a classic token with
+  `public_repo`. A classic token reaches every public repository the account can write, so keep it
+  in its own environment with required reviewers.
+- **Flathub:** the maintainer's token, with write access to `flathub/<appId>` (an account with
+  two-factor authentication, invited to the app repository).
+
+The step never merges, closes or deletes anything, and never force-pushes.
 
 ## Other CI systems
 

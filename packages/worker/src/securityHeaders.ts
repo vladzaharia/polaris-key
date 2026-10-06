@@ -30,18 +30,57 @@ import { brandPageStyleSource } from "./core/brandHtml.js";
 /**
  * SPA + JSON policy: the admin/portal bundles execute their own scripts, plus the shells' one
  * inline pre-paint theme script, allowed by its hash.
+ *
+ * `img-src` may add exactly ONE more source: the image host's origin (`IMG_ORIGIN`, HA-02), for
+ * the console's product logos. It is passed per response by the shell that needs it
+ * (`admin/index.ts`), never a wildcard and never a scheme or a path: the host serves only public,
+ * content-addressed raster images under `default-src 'none'; sandbox` (THREAT-MODEL, "The image
+ * host"), so an image from it can run nothing here.
  */
-const APP_CSP = [
-  "default-src 'self'",
-  "base-uri 'none'",
-  "object-src 'none'",
-  "frame-ancestors 'none'",
-  "form-action 'self'",
-  `script-src ${["'self'", ...ADMIN_SCRIPT_HASHES].join(" ")}`,
-  "style-src 'self'",
-  "img-src 'self' data:",
-  "connect-src 'self'",
-].join("; ");
+function appCsp(imgOrigin: string | null): string {
+  return [
+    "default-src 'self'",
+    "base-uri 'none'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    `script-src ${["'self'", ...ADMIN_SCRIPT_HASHES].join(" ")}`,
+    "style-src 'self'",
+    `img-src 'self' data:${imgOrigin ? ` ${imgOrigin}` : ""}`,
+    "connect-src 'self'",
+  ].join("; ");
+}
+
+const APP_CSP = appCsp(null);
+
+/**
+ * A bare `https://host[:port]` origin (lowercase, no path, no wildcard, no whitespace or `;`), or
+ * `null`. `http:` is accepted only for a loopback host, so a local `wrangler dev` image host
+ * works while a deployed one is always HTTPS. Anything else is dropped rather than written into
+ * the policy.
+ */
+export function cspImageOrigin(
+  origin: string | null | undefined,
+): string | null {
+  if (typeof origin !== "string") return null;
+  const m = /^(https?):\/\/([a-z0-9.-]+)(?::(\d{1,5}))?$/.exec(origin);
+  if (!m) return null;
+  const [, scheme, host] = m;
+  if (host!.startsWith(".") || host!.endsWith(".") || host!.includes(".."))
+    return null;
+  const loopback = host === "localhost" || host === "127.0.0.1";
+  if (scheme === "http" && !loopback) return null;
+  return origin;
+}
+
+/** Per-response additions to the SPA policy. */
+export interface AppSecurityOptions {
+  /**
+   * The image host's origin (`imgOrigin(env)`): the console shell's `img-src` adds exactly it.
+   * Omitted, `null` or not a bare origin (`cspImageOrigin`), the policy is unchanged.
+   */
+  imgOrigin?: string | null;
+}
 
 /**
  * Static-page policy: script-free server-rendered HTML. `default-src 'none'` covers
@@ -95,9 +134,13 @@ function commonHeaders(headers: Headers): Headers {
 }
 
 /** Headers for the admin/portal SPA shells and every JSON API response. */
-export function appSecurityHeaders(headers = new Headers()): Headers {
+export function appSecurityHeaders(
+  headers = new Headers(),
+  opts: AppSecurityOptions = {},
+): Headers {
   commonHeaders(headers);
-  headers.set("content-security-policy", APP_CSP);
+  const img = cspImageOrigin(opts.imgOrigin);
+  headers.set("content-security-policy", img ? appCsp(img) : APP_CSP);
   return headers;
 }
 

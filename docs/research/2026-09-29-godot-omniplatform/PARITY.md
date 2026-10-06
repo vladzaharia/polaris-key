@@ -348,7 +348,8 @@ lists (`SP-*`), the shared spec for new helpers, and the items that need a wire 
 13. A design choice, not a runtime limit: Godot web holds a bearer token in IndexedDB. Bearer mode
     (pass §3.17, owner question Q1) would make this ✓ with surfaced degradation.
 14. No keychain access-group or app-group option, and the two keychain classes disagree (Q8).
-15. Android ✓. The JVM writes a 0600 file (allowed `dependency` N/A); OS keyrings are pass SP-K12.
+15. Android ✓. The JVM desktop keeps the token in the OS keyring through `KeyringStore` (UK-40,
+    SP-K12), with the allowed `dependency` N/A where java-keyring or a reachable keyring is absent.
 16. iOS and Android ✓. Desktop writes a 0600 file with no Keychain, DPAPI or libsecret store, and
     no work package owns that (pass SP-G11). On the web, IndexedDB may be cleared.
 
@@ -396,8 +397,7 @@ lists (`SP-*`), the shared spec for new helpers, and the items that need a wire 
 2. Returns raw bytes, with no decoded catalog model.
 3. No verb on either transport. The bridge could forward to the Node host, and bearer mode
    (pass §3.17) enables it on the web.
-4. The generator is the monorepo's `tools/gen-mirrors.ts`. Adopters cannot run it without the
-   repo (pass §3.19, `pkey mirror`). There are no typed accessors over the mirror either.
+4. `pkey mirror` (SP-02) runs the generator outside the monorepo; no typed accessors yet.
 5. `ConfigPanel` reports `onOverride(key, string)`. Persistence and type coercion are left to the
    host.
 6. `set_override_store` exists, but the default store is in memory.
@@ -444,37 +444,40 @@ any SDK. In the meantime, "sign in with browser" is device code opened in the sy
 
 ### 5.5 Release and update
 
-| Id                       | Capability                                                            | Proven by            | Node | React | Python | Swift | Kotlin | Godot | Allowed N/A                     |
-| ------------------------ | --------------------------------------------------------------------- | -------------------- | ---- | ----- | ------ | ----- | ------ | ----- | ------------------------------- |
-| `release.changelog`      | changelog                                                             | transcripts          | ✓    | ◐ ¹   | ✓      | ✓     | ✓      | ✓     | —                               |
-| `release.download`       | download and install URLs                                             | transcripts          | ◐ ²  | ◐ ²   | ◐ ²    | ✓     | ✓      | ✓     | —                               |
-| `release.fetch` ⊕        | verified download: bearer, resume, size and sha256 vs record          | transcripts (new)    | ✗    | ✗     | ✗      | ✗     | ◐ ³    | ✓     | —                               |
-| `release.distribution` ⊕ | `download.json` model, `client.distribution`                          | transcript (new)     | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | —                               |
-| `release.record`         | verify `pkey-release+jws` against pinned release keys                 | `releaseRecordCases` | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                               |
-| `update.check`           | today's version check                                                 | transcripts          | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                               |
-| `update.feed`            | verify `pkey-feed+jws`: freshness, `seq`                              | `feedCases`          | ✓    | ◐ ¹   | ✓      | ✓     | ✓      | ✓     | —                               |
-| `update.feeds` ⊕         | updater feed URLs: appcast, WinSparkle, Velopack, AppInstaller, zsync | discovery transcript | ◐ ⁴  | ✗     | ◐ ⁴    | ◐ ⁴   | ✗      | ✓     | —                               |
-| `update.decide`          | the update decision                                                   | `update-matrix.json` | ✓    | ◐ ⁵   | ✓      | ✓     | ✓      | ✓     | —                               |
-| `update.content`         | content decision, pack floors, revocations                            | content corpus       | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                               |
-| `update.driver`          | hand off to the native updater, or a store link                       | device tests         | ✗    | ✗     | ✗      | ◐ ⁶   | ✓ ⁷    | ◐ ⁸   | iOS: `outlet`; jvm: `runtime` ⁷ |
-| `update.bootguard`       | confirm a boot, roll back after N failures                            | `stage-matrix.json`  | ✗    | ✗     | ✗      | ✗     | ✓ ⁹    | ✓     | —                               |
-| `outlet.detect`          | outlet detection                                                      | `outlet-matrix.json` | ◐ ¹⁰ | ✓     | ✓      | ✓     | ✓      | ◐ ¹⁰  | —                               |
-| `crash.tags` ⊕           | Sentry release, environment and outlet tags for auto-halt             | unit                 | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | —                               |
+| Id                       | Capability                                                            | Proven by            | Node | React | Python | Swift | Kotlin | Godot | Allowed N/A                   |
+| ------------------------ | --------------------------------------------------------------------- | -------------------- | ---- | ----- | ------ | ----- | ------ | ----- | ----------------------------- |
+| `release.changelog`      | changelog                                                             | transcripts          | ✓    | ◐ ¹   | ✓      | ✓     | ✓      | ✓     | —                             |
+| `release.download`       | download and install URLs                                             | transcripts          | ◐ ²  | ◐ ²   | ◐ ²    | ✓     | ✓      | ✓     | —                             |
+| `release.fetch` ⊕        | verified download: bearer, resume, size and sha256 vs record          | transcripts (new)    | ✗    | ✗     | ✗      | ✗     | ◐ ³    | ✓     | —                             |
+| `release.distribution` ⊕ | `download.json` model, `client.distribution`                          | transcript (new)     | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | —                             |
+| `release.record`         | verify `pkey-release+jws` against pinned release keys                 | `releaseRecordCases` | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                             |
+| `update.check`           | today's version check                                                 | transcripts          | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                             |
+| `update.feed`            | verify `pkey-feed+jws`: freshness, `seq`                              | `feedCases`          | ✓    | ◐ ¹   | ✓      | ✓     | ✓      | ✓     | —                             |
+| `update.feeds` ⊕         | updater feed URLs: appcast, WinSparkle, Velopack, AppInstaller, zsync | discovery transcript | ◐ ⁴  | ✗     | ◐ ⁴    | ◐ ⁴   | ✗      | ✓     | —                             |
+| `update.decide`          | the update decision                                                   | `update-matrix.json` | ✓    | ◐ ⁵   | ✓      | ✓     | ✓      | ✓     | —                             |
+| `update.content`         | content decision, pack floors, revocations                            | content corpus       | ✓    | ✓     | ✓      | ✓     | ✓      | ✓     | —                             |
+| `update.driver`          | hand off to the native updater, or a store link                       | device tests         | ✗    | ✗     | ✗      | ◐ ⁶   | ✓ ⁷    | ◐ ⁸   | iOS: `outlet`; jvm: `runtime` |
+| `update.bootguard`       | confirm a boot, roll back after N failures                            | `stage-matrix.json`  | ✗    | ✗     | ✗      | ✗     | ✓ ⁹    | ✓     | —                             |
+| `outlet.detect`          | outlet detection                                                      | `outlet-matrix.json` | ◐ ¹⁰ | ✓     | ✓      | ✓     | ✓      | ◐ ¹⁰  | —                             |
+| `crash.tags` ⊕           | Sentry release, environment and outlet tags for auto-halt             | unit                 | ✗    | ✗     | ✗      | ✗     | ✗      | ✗     | —                             |
 
 1. On the web, entitled or licensed changelogs and feeds are refused because there is no bearer
    (pass §3.17).
 2. The builders use the legacy `release/dl` and `release/install.sh` aliases instead of the
    discovery `distribution.endpoints`.
-3. Android only (`OkHttpBuildDownload` inside the direct driver). There is no JVM helper.
+3. Android (`OkHttpBuildDownload` inside the direct driver) and the JVM desktop
+   (`OkHttpArtifactFetch` inside the desktop driver, UK-40), both minimal until SP-K13 adds the
+   feature id.
 4. `appcastUrl()` (Sparkle) only.
 5. Through the Provider, `decideUpdate` always throws `not-configured`: there is no `update` or
    `trust` prop.
 6. Sparkle on macOS needs many manual steps, and nothing hands off to a store on iOS.
-7. Android Play and direct drivers. The JVM N/A is questioned by pass SP-K12 and Q3, because the
-   server publishes desktop updater feeds.
+7. Android Play and direct drivers, and the JVM desktop driver (UK-40, SP-K12: download, verify,
+   open), so the JVM `runtime` N/A is no longer declared.
 8. The native bridges are not distributed prebuilt (Q5), so they fall back to the download link.
    The Velopack route under licensed delivery is a wire item (W9).
-9. No default `UpdateSlots` on the JVM, and `bootHost()` does not wire it.
+9. The JVM default `UpdateSlots` is `DirUpdateSlots`, wired by `PolarisKeyDesktop.bootGuard`
+   (UK-40).
 10. Node does not read the Windows `SignatureKind` and does not autoload the build stamp. Godot's
     Windows MSIX reader is a stub, and macOS has no `AppTransaction`.
 
@@ -514,12 +517,14 @@ any SDK. In the meantime, "sign in with browser" is device code opened in the sy
 | commerce v2        | AppTransaction, subscriptions, restore `transferred`, redeem codes                 | —                     | ○ ⚑   | ○ ⚑   | ○ ⚑    | ○ ⚑   | ○ ⚑    | ○ ⚑   | LX-11, LX-20, LX-23, LX-25 (pass W7)   |
 | Cloud Sync         | saves, collections, live pokes                                                     | —                     | ○ ⚑   | ○ ⚑   | ○ ⚑    | ○ ⚑   | ○ ⚑    | ○ ⚑   | U-09, U-10, U-13, U-14, U-22 (pass W6) |
 
-1. `parity.json` overclaims: the stage machine lives only in `client-core`. `@polaris-key/node`
-   and `@polaris-key/react` neither re-export nor drive it (pass SP-01, SP-N05, SP-R06).
+1. The stage machine lives only in `client-core`; `@polaris-key/node` and `@polaris-key/react`
+   neither re-export nor drive it. Manifest corrected to planned (SP-01); export and drive in
+   SP-N05/SP-R06.
 2. `bootHost()` leaves `fetch` as a no-op and `guard` always `ok`.
 3. Pass SP-00 proposes replacing the `headless` N/A with a CLI kit (`ui.cli`) for Node and
    Python. Python's optional Tk kit is owner question Q2.
-4. Android Compose only. There is nothing on the JVM, where `parity.json` overclaims (SP-01).
+4. Android Compose only. There is nothing on the JVM; the manifest note says so (SP-01), and a
+   `jvm` except waits on a registry `allowedNa` (SP-00). The desktop kit is SP-K12.
 5. LX-20 plans a Python `allowedNa`. Pass Q7 recommends reversing it.
 6. There is no `purchase()`/`restore()` one-call, no Play Billing or `claim_play()` helper, and
    no StoreKit on macOS.

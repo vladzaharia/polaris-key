@@ -138,6 +138,22 @@ final class LicenseSurfaceTests: XCTestCase {
     }
 
     // @pkey-feature config.schema
+    /// U-04: a catalog carrying Cloud Sync's `user` and `cloudSync` members is still a catalog.
+    func testFetchSchemaAcceptsCloudSyncMembers() async throws {
+        let catalog =
+            #"{"schemaVersion":2,"entries":[{"key":"a","kind":"config","category":"c","label":"A","description":"","schema":{"type":"number"},"user":{"sync":"user","conflict":"max"}}],"cloudSync":{"collections":[{"name":"progress","access":"owner"}]}}"#
+        await server.reply("/djdl/config/schema", body: catalog)
+        let core = try CoreContext(
+            options: CoreOptions(
+                productSlug: "djdl", baseUrl: "https://key.example", version: "1.0.0",
+                pinnedKeys: [:], store: InMemoryStore(deviceId: "dev"),
+                transport: server.transport))
+        try await core.start()
+        let body = await ConfigEndpoints.fetchSchema(core)
+        XCTAssertEqual(body.map { String(decoding: $0, as: UTF8.self) }, catalog)
+    }
+
+    // @pkey-feature config.schema
     /// The client-level `client.config.fetchSchema()` (P1b-07): a body that is not a catalog is
     /// `nil`, and a product without Config is `nil` without a request (D-21).
     func testFetchSchemaRefusesANonCatalogAndNeverProbesADisabledConfig() async throws {

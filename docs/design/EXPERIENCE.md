@@ -12,6 +12,22 @@ usable but a delightful experience for both our users and admins. The customer p
 speaking quite user friendly, but likely could be better as well. The admin console likely needs a
 bit more help."
 
+> **Setup, wizards and storefronts are specified in [SETUP.md](SETUP.md) (2026-10-05).** It adds
+> one wizard pattern for every setup, the unified Storefronts model (one catalogue, one page per
+> storefront, scoped to the platforms the product ships, Homebrew and the other channels as
+> storefronts, one Publish action per release), the Connect your app wizard, per-service setup and
+> the empty state of every console page. Its automation pass (same day) makes Polaris Key do every
+> setup step it can, so each wizard holds only the human steps and typed confirmations. It
+> supersedes §0.4 S5 and the UX-32 package, and adds Wave 5 (UX-50 to UX-71) to §13.3. Where the
+> two disagree on setup, SETUP.md wins.
+
+> **Every flow is audited in [FLOWS.md](FLOWS.md) (2026-10-05).** It inventories every multi-step
+> flow, wizard, dialog flow and guided path in the console, the portal and the Worker's pages (77
+> flows: 13 current, 48 to update, 16 to redesign), sets the rules every flow follows (extending
+> SETUP.md §1 beyond setup), and redesigns **New Product** as a wizard in the shared kit, finishing
+> on Overview with "Tonebox is ready" and the launch path. It supersedes §0.4 S1's one-screen shape
+> (its substance stands) and adds Wave 6 (UX-72 to UX-81) to §13.3.
+
 **What this document is.** The single experience spec for both apps: the console
 (`packages/admin/src/console`) and the customer portal (`packages/admin/src/portal`), plus the pages
 the Worker renders (`packages/worker/src/core/brandHtml.ts`) and the emails. It leads with
@@ -81,7 +97,7 @@ AS 2.2 or PJ B4.
 - [5. Navigation chrome](#5-navigation-chrome)
 - [6. Tables, lists, forms and settings rows](#6-tables-lists-forms-and-settings-rows)
 - [7. Confirmations, status, pills and toasts](#7-confirmations-status-pills-and-toasts) (and
-  [7.1 Accessibility](#71-accessibility-rules-for-the-journeys))
+  [7.1 Accessibility](#71-accessibility-rules-for-the-journeys), [7.2 Motion](#72-motion))
 - [8. The shared sign-in](#8-the-shared-sign-in)
 - [9. Empty, loading and error states](#9-empty-loading-and-error-states)
 - [10. Consolidation list](#10-consolidation-list)
@@ -278,6 +294,12 @@ audit fixtures.
 
 #### S1 · Create a product (AS J1)
 
+> **Superseded in shape by [FLOWS.md §3](FLOWS.md#3-new-product-redesigned) (2026-10-05):** New
+> Product is a wizard in the SETUP.md kit, two steps from a repository and three from scratch, with
+> the repository read before anything is created and the goals and platforms asked inside it. What
+> follows (name first, slug derived and checked, no catalog textarea, no result page, refusals on
+> their field) still holds.
+
 | Before (8 clicks, 6 screens, 1 required field)                                                      | After (3 actions, 1 screen)                                                                                     |
 | --------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Source → Basics (slug before name) → Catalog (raw JSON) → Defaults → Review → Result → Open product | **One screen:** Name → Slug (derived, checked live) → Start from: Nothing / A GitHub repository → Create <Name> |
@@ -372,6 +394,10 @@ Mockup: storyboard frames 3–4.
 
 #### S5 · Storefronts (AS J5)
 
+> **Superseded by [SETUP.md §2](SETUP.md#2-storefronts-one-catalogue-one-page-per-storefront)
+> (2026-10-05):** one catalogue and one page per storefront, scoped to the product's platforms, with
+> A-18j's flow kept as the engine. The text below is kept for history.
+
 A-18j ships this journey's console: Distribution → **Storefronts** (a tile per registered store,
 rendered from the adapter declarations, with the capability strip) and **Add to storefronts**, a
 seven-step flow (Storefronts, Prerequisites, Listing, Assets, Plan, Run, Submit and release) whose
@@ -439,9 +465,11 @@ Mockup: storyboard frame 5 (A-18j's Prerequisites step with the inline app picke
 5. **Add seats…** is how a support exception raises the limit under model OC: it **comps a
    seat-pack grant held by this license** (S-19 §7.2: seat packs are always license-held), with an
    optional expiry ("1 seat for 30 days"), through LX-13's grants API and LX-14's comp action. The
-   Effective policy row reads "Device limit 4 · 3 from Pro + 1 comp until 4 Nov". There is no
-   separate license-level override field. On a product still in `legacy` entitlement mode the
-   action is absent and the fixes are Free a seat or Change tier.
+   Effective policy row reads "Device limit 4 · 3 from Pro + 1 comp until 4 Nov". **Device limit…**
+   sets or clears a license-held limit, raising or lowering it for good; it beats the tier
+   (owner, 2026-10-05: sign-in licenses stay device-limited and operators change the numbers;
+   SIGN-IN.md D-53, LX-14a). On a product still in `legacy` entitlement mode Add seats… is absent;
+   Device limit…, Free a seat and Change tier remain.
 6. **A device opens as a drawer over the license** (`…/licenses/lic_1/devices/dev_9`) and closing it
    returns to the license with focus on the row that opened it (AO J1.6).
 7. **Confirm** states the consequence in two lines; the button repeats the verb.
@@ -565,9 +593,13 @@ refusals into one flow.
 
 #### P1 · First sign-in from an app, through activation and download (PJ A, C)
 
-| Before                                                                                                    | After (one card, the app's header on every step)                                                                                                                     |
-| --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No passthrough: `/authorize` shows "Manage your copy of Saltwind"; the key and the app are separate trips | "**Tidewater Studio** wants you to sign in" → email → code or link (or a provider, then the email gate) → **Add Tidewater Studio** (key, confirm) → It's yours → app |
+> **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05)**, the single source of truth for
+> every sign-in step, license choice and **Replace a device**, the console card, the Worker pages,
+> the emails and the kits. It supersedes this section where they differ.
+
+| Before                                                                                                    | After (one card, the app's header on every step)                                                                                                                                                              |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No passthrough: `/authorize` shows "Manage your copy of Saltwind"; the key and the app are separate trips | "**Tidewater Studio** wants you to sign in" → email → code or link (or a provider, then the email gate) → **Choose a license for this device** (or **Add Tidewater Studio**: key, confirm) → It's yours → app |
 
 The `AuthCard` steps, in order, each under the persistent app header (PORTAL.md §4.7) and the lock
 footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
@@ -582,8 +614,25 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
    provider gives them), the email radio cards, Terms when the product requires them, primary
    "Continue to Tidewater Studio" or **Send code** for a typed address. **No skip path**; Cancel
    abandons the sign-in. A provider-verified address needs no code (frame 3).
-4. **KeyStep**, "Add Tidewater Studio to your account": shown when the account has no license for
-   the requesting app and the product accepts keys. The `KeyField` names the product as soon as the
+4. **LicenseChoiceStep**, "Choose a license for this device" (owner, 2026-10-05; SIGN-IN.md §3.6):
+   shown on every sign-in that binds this installation, even with one license (a one-tap confirm).
+   - Each row reads "Tidewater Studio", then the tier as a neutral pill ("Pro") with "2 of 3
+     devices" for every license, then its origin and term in plain words: "App Store key ending
+     7Q2MXA · Lifetime", "From the App Store · Lifetime", "From signing in · Lifetime" (SIGN-IN.md
+     O-11; owner decision, 2026-10-05: no "Account-wide" label). Sign-in licenses stay
+     device-limited (owner, 2026-10-05; SIGN-IN.md D-53). Key and seat licenses hide the counter
+     when the account also holds a sign-in license (D-54). Rank-first only orders and preselects; the device's
+     current license stays preselected.
+   - A full license shows "No free devices", no radio, **Replace a device** (inline, SIGN-IN.md
+     §3.7: "Replace Work laptop?" with **Replace and continue** and **Back**) and **Free a device**.
+   - The primary is **Use this license and continue**. When first-time consent follows, the consent
+     step shows the chosen license with **Change**.
+   - With no license, a **New** row ("created when you continue") when the product auto-issues;
+     otherwise "No Tidewater Studio license in this account" with the key field (KeyStep).
+5. **KeyStep**, "Add Tidewater Studio to your account": shown when the account has no license for
+   the requesting app, the product does not auto-issue, and it accepts keys (or from "Use a license
+   key instead"). Its confirm is the choice and binds the device ("Add and use on this device"). The
+   `KeyField` names the product as soon as the
    key parses, then the **PX-17 confirm** renders in the same step: art header, product and tier,
    terms ("lifetime · up to 3 devices"), the key echoed with **Change key**, and the entries notice
    when the key has used its entries (frame 4). Verdicts, inline under the field:
@@ -592,18 +641,18 @@ footer ([storyboard](experience/15-story-portal-desktop-dark.png)):
      is already in another Polaris Key account. A license never moves by its key." with **Sign in to
      that account** (the `signInUrl` flow) and **Use a different key** (frame 5);
    - **`key_entry_limit`** (I-09, Identity-on products): the app sends the person here with its
-     `portalUrl` (`/activate?product=<slug>`); the card shows PORTAL.md §4.18's notice ("This key has
+     `manageUrl` (`/activate?product=<slug>`); the card shows PORTAL.md §4.18's notice ("This key has
      no entries left in Tidewater Studio. Add it to your account and the app signs you in
      instead.") and keeps **Add** enabled (Q-5: a warning, not a block);
    - "I bought it with another email" leads to the account-linking path (PORTAL.md §4.11).
-5. **ReturnStep**, "It's yours": one celebration (a star burst under
+6. **ReturnStep**, "It's yours": one celebration (a burst of sparks under
    `prefers-reduced-motion: no-preference`, a static check otherwise), the product row with "In
    your library", **Return to Tidewater Studio**, and "Returning by itself in 3 s · **Stay here**".
    Stay here stops the timer (WCAG 2.2.1); the timer also pauses while focus is inside the card
    (frame 6).
-6. Next time the person opens Polaris Key, the new product is **first in the Library with a ring and
+7. Next time the person opens Polaris Key, the new product is **first in the Library with a ring and
    the quiet text "Added just now"** for 24 hours, its download as the tile's lead (frame 7). No pill.
-7. The product page has **one lead**: Download for this Mac in the header; other platforms below
+8. The product page has **one lead**: Download for this Mac in the header; other platforms below
    with **Change platform**; **What you own** with sources (LX-15); "This device" marked; **Set up
    another device** in Devices (frame 8; [mockup](experience/09-portal-product-desktop-dark.png)).
 
@@ -619,7 +668,7 @@ Done step.
 - **Done** leads with **Download for macOS** (the detected build) and offers Open as secondary; a
   library that was empty gets "Your first product!" once; closing returns to the Library with the new
   tile ringed.
-- Signed out with `/activate?key=…`: the card header shows the product ("Sign in to add
+- Signed out with `/activate#key=…`: the card header shows the product ("Sign in to add
   Mossgarden").
 
 #### P3 · Download for my platform (PJ C, B5)
@@ -670,19 +719,20 @@ Done step.
 - Library load errors name Polaris Key (not "the developer") and give a reference id.
 - An expired or used code or link renders the **same card** server-side ("That code or link has
   expired") with **Send a new code** (POSTs to resend to the same address) and keeps `returnTo` and
-  `/activate?key=` context ([mockup](experience/04-signin-worker-desktop-dark.png)).
+  `/activate#key=` context ([mockup](experience/04-signin-worker-desktop-dark.png)).
 
 ### 0.7 Moments of delight
 
 Each appears **once per product (console) or per account (portal)**, respects
-`prefers-reduced-motion`, and stays quiet afterwards. Motion uses `--pk-duration-slow` and
-`--pk-ease-enter`; the burst is the stationary star scattered, in the section accent, never gold.
-None of them is a pill.
+`prefers-reduced-motion`, and stays quiet afterwards. It is the **success** pattern of §7.2: the
+check draws at `--pk-duration-moderate` and six plain sparks burst in the section accent within
+`--pk-duration-deliberate`, never gold and **never the Polaris mark** (BRAND §7.5: the star never
+moves; S-23 D5). Under reduced motion it is a static check. None of them is a pill.
 
 | Moment                      | App     | What happens                                                                               |
 | --------------------------- | ------- | ------------------------------------------------------------------------------------------ |
 | Product created             | Console | Welcome header with the new signing key and the launch path                                |
-| First license               | Console | Result offers "Try it" with the SDK quick start                                            |
+| First license               | Console | The New license wizard's Done offers "Try it" with the SDK quick start (S-24 §8.5)         |
 | First catalog publish       | Console | "Catalog v1 is live · your app reads it on next launch" with the snippet                   |
 | First release               | Console | Overview banner with version, signer and publish time; Roll it out                         |
 | Store connected / submitted | Console | The tile turns connected; "Submitted for review" with the store's answer later on Overview |
@@ -699,29 +749,29 @@ decision. **Merge** means the work moves into the other package (this document s
 detail named in the last column); **defer** means the UX package waits for and builds on the other;
 **drop** means the UX package no longer exists; **keep** means no overlap after re-scoping.
 
-| UX package                                   | Counterpart                                               | Overlap                                                              | Decision                                                                                                                                                    | This document contributes                                                                    |
-| -------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| UX-06a/06b palette                           | ST-10 (⌘K settings search)                                | Both add palette sources                                             | **Keep**, sequenced: UX-06a ships the source registry; ST-10 adds the settings source to it                                                                 | The source registry, ranking and entity rows (§0.3 J-1)                                      |
-| UX-07 license Status                         | LX-14 (Entitlements, Grants, actions), LX-09              | Tabs of the license record                                           | **Keep**, tab order fixed here: Status · Entitlements · Grants · Keys · Config · Activity                                                                   | Status tab, health line, inline devices, routed drawer; LX-14 adds its two tabs after Status |
-| UX-09 auto-issue in Enrollment               | ST-12 (auto-issue editor), ST-08, LX-02, LX-06            | Auto-issue home, group → tier mapping, sign-in tier sync             | **Drop** the editor; UX-09 becomes the console **dead-end copy sweep**                                                                                      | The live preview row for ST-12; the "every mention links to the row" rule                    |
-| UX-12 attention model                        | ST-27 (alert destinations)                                | Off-console delivery                                                 | **Keep**; UX-37 wires danger kinds to ST-27 once both exist                                                                                                 | Kinds, severities, fix actions, which kinds alert (§0.3 J-2)                                 |
-| UX-14 page anatomy                           | ST-07 (`SettingsRow` v2, save model)                      | Settings rows, save bar                                              | **Narrowed**: UX-14 keeps headers, rail rule, Export, facets; settings rows and saving are ST-07's                                                          | Anatomy rules (§4)                                                                           |
-| UX-22 service chain and Services in Settings | ST-08 (Services & registration area)                      | Where Services lives                                                 | **Narrowed**: UX-22 ships the chain rule and per-switch save on today's page; ST-08 moves it                                                                | The one chain rule (§0.4 S2)                                                                 |
-| UX-24 per-license device-limit override      | LX-13, LX-14 (comp, seat-pack grants)                     | Raising one license's limit                                          | **Merge into LX-14**: "Add seats…" is a comp of a license-held seat-pack grant                                                                              | Entry points: the health line, the palette action, the Effective policy row (§0.5 O1)        |
-| UX-26 IA moves                               | ST-08, ST-12, ST-13, ST-14                                | Registration, Enrollment, Sign-in + Portal, metadata access, Listing | **Mostly drop**: those moves happen by moving settings into the hub. Kept: Content keys → Keys & secrets, Simulator → Compatibility tab, Update feed rename | §0.2 table                                                                                   |
-| UX-27 server-side activity                   | ST-04 (audit before/after), ST-07 history, ST-24          | Diffs and per-setting history                                        | **Defer** diffs to ST-04's columns; UX-27 keeps server search and the global Activity page                                                                  | Global Activity, Product facet, per-record history                                           |
-| UX-28 settings impact preview                | ST-07 (pre-save diff, confirm level), ST-16 (fan-out, L2) | The same preview                                                     | **Drop**                                                                                                                                                    | The impact line inside ST-07's diff for `policyBound` entries (§0.5 O4)                      |
-| UX-30 Platform Status and Settings           | ST-09 (Platform settings area)                            | What Platform → Settings holds                                       | **Narrowed**: UX-30 merges Deployment and Operations only; Platform Settings is ST-09's                                                                     | Status page (§0.5 O5)                                                                        |
-| UX-32 storefronts page                       | A-18j (shipped flow), ST-12, ST-13                        | The Storefronts page itself                                          | **Defer and evolve**: UX-32 builds on A-18j's page and flow                                                                                                 | Launch-path entry, inline app pick, tiles open App Store and Commerce, nav cleanup (§0.4 S5) |
-| UX-34 catalog entry form                     | LX-14 (`combine`, `entitlementKind`)                      | The same form                                                        | **Keep**, first; LX-14 adds its selects under the collapsed group                                                                                           | Progressive disclosure (§0.4 S4)                                                             |
-| UX-36 bulk license actions (new)             | ST-21 (`can()`), LX-14 (comp)                             | Capability checks, a bulk comp                                       | **Keep**; adds Comp in bulk after LX-14                                                                                                                     | §0.5 O8                                                                                      |
-| UX-03 portal pill sweep, UX-46 product page  | LX-15 (portal licensing)                                  | License card and product page                                        | **Keep**, sequenced: UX-03 now; UX-46 before LX-15, which adds What you own and the cards on its layout                                                     | §0.6 P4                                                                                      |
-| UX-05 key verdicts                           | PX-17 (confirm step), I-09 (refusals)                     | `ActivateDialog`, `KeyField`                                         | **Keep**, first; PX-17 builds its confirm on it; I-09's `license_owned` and entries notice join the verdict list                                            | §0.6 P1 step 4                                                                               |
-| UX-40, UX-41 AuthCard and passthrough        | PX-21 (EmailGate), PX-17, PX-22, I-07, I-08, PX-W13       | Login card steps                                                     | **Keep**, sequenced: UX-40 promotes the card first; PX-21 builds `EmailGateStep` inside it                                                                  | The step list (§8)                                                                           |
-| UX-44 email                                  | I-07 (code and link email)                                | The sign-in email                                                    | **Defer** to I-07; UX-44 is the lockup and copy pass on I-07's template                                                                                     | §11.1 copy                                                                                   |
-| UX-47 activation Done                        | PX-17                                                     | `ActivateDialog`                                                     | **Defer**: stacks after PX-17                                                                                                                               | Done step (§0.6 P2)                                                                          |
-| UX-48 account                                | PX-22 (Profile, Avatar), PX-W12/PX-15                     | `AccountPage`, avatar                                                | **Defer** to PX-22 for Avatar; UX-48 keeps theme, Delete, Download my data                                                                                  | §0.6 P5                                                                                      |
-| UX-13 chrome                                 | PX-22 (`Avatar`)                                          | The account chip                                                     | **Keep**; uses PX-22's `Avatar` when it lands, tinted initials before                                                                                       | §5                                                                                           |
+| UX package                                   | Counterpart                                               | Overlap                                                              | Decision                                                                                                                                                                            | This document contributes                                                                    |
+| -------------------------------------------- | --------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| UX-06a/06b palette                           | ST-10 (⌘K settings search)                                | Both add palette sources                                             | **Keep**, sequenced: UX-06a ships the source registry; ST-10 adds the settings source to it                                                                                         | The source registry, ranking and entity rows (§0.3 J-1)                                      |
+| UX-07 license Status                         | LX-14 (Entitlements, Grants, actions), LX-09              | Tabs of the license record                                           | **Keep**, tab order fixed here: Status · Entitlements · Grants · Keys · Config · Activity                                                                                           | Status tab, health line, inline devices, routed drawer; LX-14 adds its two tabs after Status |
+| UX-09 auto-issue in Enrollment               | ST-12 (auto-issue editor), ST-08, LX-02, LX-06            | Auto-issue home, group → tier mapping, sign-in tier sync             | **Drop** the editor; UX-09 becomes the console **dead-end copy sweep**                                                                                                              | The live preview row for ST-12; the "every mention links to the row" rule                    |
+| UX-12 attention model                        | ST-27 (alert destinations)                                | Off-console delivery                                                 | **Keep**; UX-37 wires danger kinds to ST-27 once both exist                                                                                                                         | Kinds, severities, fix actions, which kinds alert (§0.3 J-2)                                 |
+| UX-14 page anatomy                           | ST-07 (`SettingsRow` v2, save model)                      | Settings rows, save bar                                              | **Narrowed**: UX-14 keeps headers, rail rule, Export, facets; settings rows and saving are ST-07's                                                                                  | Anatomy rules (§4)                                                                           |
+| UX-22 service chain and Services in Settings | ST-08 (Services & registration area)                      | Where Services lives                                                 | **Narrowed**: UX-22 ships the chain rule and per-switch save on today's page; ST-08 moves it                                                                                        | The one chain rule (§0.4 S2)                                                                 |
+| UX-24 per-license device-limit override      | LX-13, LX-14 (comp, seat-pack grants)                     | Raising or lowering one license's limit                              | **Merge into LX-14**: "Add seats…" is a comp of a license-held seat-pack grant; "Device limit…" sets a license-held value, split out as LX-14a (owner, 2026-10-05; SIGN-IN.md D-53) | Entry points: the health line, the palette action, the Effective policy row (§0.5 O1)        |
+| UX-26 IA moves                               | ST-08, ST-12, ST-13, ST-14                                | Registration, Enrollment, Sign-in + Portal, metadata access, Listing | **Mostly drop**: those moves happen by moving settings into the hub. Kept: Content keys → Keys & secrets, Simulator → Compatibility tab, Update feed rename                         | §0.2 table                                                                                   |
+| UX-27 server-side activity                   | ST-04 (audit before/after), ST-07 history, ST-24          | Diffs and per-setting history                                        | **Defer** diffs to ST-04's columns; UX-27 keeps server search and the global Activity page                                                                                          | Global Activity, Product facet, per-record history                                           |
+| UX-28 settings impact preview                | ST-07 (pre-save diff, confirm level), ST-16 (fan-out, L2) | The same preview                                                     | **Drop**                                                                                                                                                                            | The impact line inside ST-07's diff for `policyBound` entries (§0.5 O4)                      |
+| UX-30 Platform Status and Settings           | ST-09 (Platform settings area)                            | What Platform → Settings holds                                       | **Narrowed**: UX-30 merges Deployment and Operations only; Platform Settings is ST-09's                                                                                             | Status page (§0.5 O5)                                                                        |
+| UX-32 storefronts page                       | A-18j (shipped flow), ST-12, ST-13                        | The Storefronts page itself                                          | **Superseded** by SETUP.md's UX-52 to UX-58 (2026-10-05), which build on A-18j's routes                                                                                             | Launch-path entry, inline app pick, tiles open App Store and Commerce, nav cleanup (§0.4 S5) |
+| UX-34 catalog entry form                     | LX-14 (`combine`, `entitlementKind`)                      | The same form                                                        | **Keep**, first; LX-14 adds its selects under the collapsed group                                                                                                                   | Progressive disclosure (§0.4 S4)                                                             |
+| UX-36 bulk license actions (new)             | ST-21 (`can()`), LX-14 (comp)                             | Capability checks, a bulk comp                                       | **Keep**; adds Comp in bulk after LX-14                                                                                                                                             | §0.5 O8                                                                                      |
+| UX-03 portal pill sweep, UX-46 product page  | LX-15 (portal licensing)                                  | License card and product page                                        | **Keep**, sequenced: UX-03 now; UX-46 before LX-15, which adds What you own and the cards on its layout                                                                             | §0.6 P4                                                                                      |
+| UX-05 key verdicts                           | PX-17 (confirm step), I-09 (refusals)                     | `ActivateDialog`, `KeyField`                                         | **Keep**, first; PX-17 builds its confirm on it; I-09's `license_owned` and entries notice join the verdict list                                                                    | §0.6 P1 step 4                                                                               |
+| UX-40, UX-41 AuthCard and passthrough        | PX-21 (EmailGate), PX-17, PX-22, I-07, I-08, PX-W13       | Login card steps                                                     | **Keep**, sequenced: UX-40 promotes the card first; PX-21 builds `EmailGateStep` inside it                                                                                          | The step list (§8)                                                                           |
+| UX-44 email                                  | I-07 (code and link email)                                | The sign-in email                                                    | **Defer** to I-07; UX-44 is the lockup and copy pass on I-07's template                                                                                                             | §11.1 copy                                                                                   |
+| UX-47 activation Done                        | PX-17                                                     | `ActivateDialog`                                                     | **Defer**: stacks after PX-17                                                                                                                                                       | Done step (§0.6 P2)                                                                          |
+| UX-48 account                                | PX-22 (Profile, Avatar), PX-W12/PX-15                     | `AccountPage`, avatar                                                | **Defer** to PX-22 for Avatar; UX-48 keeps theme, Delete, Download my data                                                                                                          | §0.6 P5                                                                                      |
+| UX-13 chrome                                 | PX-22 (`Avatar`)                                          | The account chip                                                     | **Keep**; uses PX-22's `Avatar` when it lands, tinted initials before                                                                                                               | §5                                                                                           |
 
 ### 0.9 The data behind the journeys
 
@@ -852,7 +902,7 @@ legacy `src/components/ui/*` kit is deleted (SH 0.4, §2). "Density" is a prop o
 | `SignedBadge`                                                                           | `ui/SignedBadge` (existing)                                                                            | Both apps                                                                             | **A gold seal glyph plus the word "Signed" in muted text; never a plated pill** (gold still means signed, BRAND §4.5)                                             |
 | `PersonDrawer`                                                                          | new in `console/components/`                                                                           | Console (from any holder email)                                                       | Every license and device for one email; links I-04's Users page when the email is an account                                                                      |
 | `HealthLine`                                                                            | new in `ui/` (a callout with one fix action)                                                           | License and release Status tabs, Platform Status                                      | Warning or danger callout when there is an issue; **renders nothing when healthy** (Platform Status may show one muted "All checks passed" line, no box, no icon) |
-| `Celebration`                                                                           | new in `ui/` (star burst + one-shot persistence key)                                                   | §0.7 moments                                                                          | Reduced motion renders a static check                                                                                                                             |
+| `Celebration`                                                                           | `ui/motion` (MO-02: check + sparks, one-shot key)                                                      | §0.7 moments                                                                          | Reduced motion renders a static check                                                                                                                             |
 
 Type scale, defined once in `ui` tokens (SH 1.14): `display` 40/30 px (portal Library and Product
 titles only), `title` 24 px (every other h1, both apps), `section` 16–18 px (panel headers), `row` 14
@@ -999,7 +1049,40 @@ These hold in both apps and are acceptance criteria for the packages that build 
 
 ![Toast](experience/12-console-toast-desktop-dark.png)
 
+### 7.2 Motion
+
+Both apps, the sign-in card and the UI kits use **one motion system**, specified in
+[notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) and built by phase MO. The tokens live in `packages/brand`
+(`--pk-duration-{instant, micro, fast, base, moderate, slow, deliberate}`, `--pk-ease-{standard,
+enter, exit, emphasized, spring}`, `--pk-motion-distance-*`, `--pk-stagger-step`); the patterns live
+in `packages/admin/src/motion.css` and `src/ui/motion/`. This section says where each pattern is
+used; the note owns the numbers.
+
+| Pattern        | Where in these journeys                                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| enter / exit   | every dialog, drawer, popover, menu, tooltip, toast and the palettes (J-1); the drawer slides from its edge, phone sheets rise |
+| morph          | console route changes (fade-through), drill-downs (forward and Back), record tabs, dialog and card steps, the theme switch     |
+| shared-element | Library tile → product hero (P1 step 8), licence row key → licence record (O1)                                                 |
+| stagger-list   | first load of the Library, Overview tiles, the attention list (J-2)                                                            |
+| list           | free a device (P4), deauthorize, create or delete a row, filters and facet chips (O1, O8)                                      |
+| expand         | Remove and Replace inline confirms (`ConfirmPanel`, §7), disclosures, inline notices                                           |
+| success        | the moments of §0.7, once each                                                                                                 |
+| skeleton       | every load (§9); never "Loading…" text                                                                                         |
+| press          | every button, tile and chip; tiles lift under the pointer                                                                      |
+
+**Rules that bind the journeys.** Motion never hides state: the new state is in the DOM first and
+every status is a word. Focus moves when the new state is in place, not when the animation ends.
+The chrome never moves. Typing never animates results. A transition that blocks input lasts at
+most `slow` plus `micro`, because the page takes no input during a View Transition. Under
+`prefers-reduced-motion` (or the Reduce motion preference, MO-12) **every change is an instant
+swap**: no slide, no burst, no shimmer. The CSP stays as it is: motion is stylesheet keyframes and
+`::view-transition-*` rules plus CSSOM properties set by the layer, never `style=""`.
+
 ## 8. The shared sign-in
+
+> **Sign-in is specified in [SIGN-IN.md](SIGN-IN.md) (2026-10-05)**, the single source of truth for
+> every sign-in step, license choice and **Replace a device**, the console card, the Worker pages,
+> the emails and the kits. It supersedes this section where they differ.
 
 **One card for every sign-in surface.** `ui/auth/AuthCard` renders: the brand row above the card,
 an optional **persistent card header** (product context or an app's request), the body (one step,
@@ -1010,13 +1093,20 @@ edge on phones.
 
 **The steps** (each one a component inside the card; the header and footer persist across them):
 
-| Step            | When                                                                                      | Owner                                        |
-| --------------- | ----------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `MethodsStep`   | First: identifier-first email, then the variant's methods                                 | UX-40                                        |
-| `CodeStep`      | After an email: one email with a 6-digit code and a magic link                            | I-07 (Worker), UX-40 (card)                  |
-| `EmailGateStep` | First sign-in through a provider; `ProfileImport`; no skip path                           | PX-21 (built inside the card UX-40 promotes) |
-| `KeyStep`       | "Have a license key?", or the passthrough's "Add <App>"; PX-17's confirm; I-09's verdicts | UX-41, PX-17, UX-05                          |
-| `ReturnStep`    | Passthrough done: "It's yours", Return to <App>, timer with Stay here                     | UX-41                                        |
+| Step                | When                                                                                                                                                                                                                                                                                                                 | Owner                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `MethodsStep`       | First: identifier-first email, then the variant's methods                                                                                                                                                                                                                                                            | UX-40                                                    |
+| `CodeStep`          | After an email: one email with a 6-digit code and a magic link                                                                                                                                                                                                                                                       | I-07 (Worker), UX-40 (card)                              |
+| `EmailGateStep`     | First sign-in through a provider; `ProfileImport`; no skip path                                                                                                                                                                                                                                                      | PX-21 (built inside the card UX-40 promotes)             |
+| `LicenseChoiceStep` | After authentication, every sign-in that binds an installation: "Choose a license for this device"; tier pill with "{n} of {limit} devices" for every license, then "{origin} · {term}" ("From signing in", "Steam key ending 3WPLDA"); full licenses without a radio; `ReplaceDevice` inline (SIGN-IN.md §3.6–§3.7) | UX-41, PX-14 (card), I-08 (routes), I-09 (ranking), I-26 |
+| `ConsentStep`       | First sign-in to an app or a scope change; after LicenseChoiceStep, showing the chosen license with **Change** (SIGN-IN.md §3.8)                                                                                                                                                                                     | PX-14, UX-41                                             |
+| `KeyStep`           | "Have a license key?", "Use a license key instead", or no license without auto-issue; PX-17's confirm, which is itself the choice; I-09's verdicts                                                                                                                                                                   | UX-41, PX-17, UX-05                                      |
+| `ReturnStep`        | Passthrough done: "It's yours", Return to <App>, timer with Stay here                                                                                                                                                                                                                                                | UX-41                                                    |
+
+**`LicenseChoiceStep`, `ReplaceDevice` and `ConsentStep` are specified in SIGN-IN.md §3.6–§3.8**
+(owner decisions 2026-10-05; contract in `plans/I-04.md`, "Owner decision (2026-10-05): licence
+choice at sign-in", §F). Their frames are SIGN-IN.md frames 05–09 and 18–22; this section keeps
+no second copy of their rules.
 
 | Variant         | Brand row                  | Header                                               | Methods                                                                                                                                                                                                                                                                                             |
 | --------------- | -------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1072,7 +1162,7 @@ sign-in email carries the code first and the link second; the copy is §11.1's.
 | Not found             | `EmptyState kind="not-found"`        | One shared description; the suggestion as the primary ("Open DJDL"); product chrome kept                                      |
 | Service off           | `EmptyState kind="service-off"`      | "Turn on <Service> in Settings" with the switch one click away                                                                |
 | Portal library, first | `EmptyState kind="first-run" hero`   | The deliberate hero moment, with Discover offers inline when PX-16 ships                                                      |
-| Loading               | `Skeleton` shaped like the content   | No "Loading…" text beyond the boot screen                                                                                     |
+| Loading               | `Skeleton` shaped like the content   | No "Loading…" text beyond the boot screen; the skeleton pattern of §7.2 (150 ms grace, sheen, none under reduced motion)      |
 | Error                 | `ErrorState` + `errorCopy(err, ctx)` | What happened, the fix, **Try again**, a reference id, Copy details                                                           |
 | Boot                  | `BootScreen`                         | Lockup and spinner; an error becomes the AuthCard state (§8)                                                                  |
 
@@ -1124,7 +1214,7 @@ sign-in email carries the code first and the link second; the copy is §11.1's.
 | P1  | `LoginCard` (portal), `BootScreen` error (console), `renderBrandPage` (Worker) | One `AuthCard` + Worker twin                                             | SH 0.1                      |
 | P2  | Account header Sign out + account menu Sign out                                | Account menu only                                                        | SH 1.3                      |
 | P3  | Appearance section (RadioCards with hex swatches)                              | Theme row in the account menu and Account (`SegmentedControl`)           | SH 1.6, 1.11                |
-| P4  | Status in header pill + "Active" on License card + tier chip ×3                | One issue pill (when there is an issue); tier as text                    | PJ D                        |
+| P4  | Status in header pill + "Active" on License card + tier chip ×3                | One issue pill; tier as text, a neutral pill on the License card         | PJ D                        |
 | P5  | Three Download buttons for one Universal build                                 | Header lead + other platforms list + Change platform                     | PJ C                        |
 | P6  | `ErrorPanel` + `portalErrorCopy`                                               | `ErrorState` + `errorCopy` portal voice table                            | SH 1.8                      |
 | P7  | `SectionCard`, hand-made `<dl>`, tinted box, native `<select>`, raw `<input>`  | `Section`, `DescriptionList`, `Callout`, `Select`, `Input`               | SH 0.5                      |
@@ -1139,35 +1229,35 @@ sign-in email carries the code first and the link second; the copy is §11.1's.
 
 ### 11.1 Sign-in, Worker pages and email
 
-| Where                  | Text                                                                                    | Verdict | Becomes / why                                                                                              |
-| ---------------------- | --------------------------------------------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------------------- |
-| Portal sign-in         | "Your library of games and apps from developers who use Polaris Key."                   | Remove  | Filler under a self-explanatory h1                                                                         |
-| Sign-in (app)          | "Use the email you bought it with."                                                     | Keep    | The one fact a buyer needs                                                                                 |
-| Sign-in (app)          | h1 "Sign in or create an account"                                                       | Rewrite | "Sign in"; the header carries the context                                                                  |
-| Card header            | "Manage your copy of X / dev · downloads, license and devices"                          | Rewrite | "**X** wants you to sign in" / developer · where                                                           |
-| Sign-in loading        | "Getting the ways you can sign in…"                                                     | Remove  | Card skeleton                                                                                              |
-| Sent step h1           | "Check your email"                                                                      | Keep    |                                                                                                            |
-| Sent step              | "We sent a sign-in link to {email}. It works for 10 minutes."                           | Rewrite | "We sent a code and a sign-in link to {email}. Both work for 10 minutes." (I-07 sends one email with both) |
-| Sent step              | "Open it on this device and this page signs you in by itself."                          | Rewrite | "Or open the link in the email. Keep this tab open."                                                       |
-| Resend                 | "We sent a new link. Either one works for 10 minutes."                                  | Rewrite | Button "Send a new code"; status "We sent a new code and link to {email}."                                 |
-| Wrong code             | (new)                                                                                   | New     | "That code isn't right. Check the email and try again."                                                    |
-| Too many tries         | (new)                                                                                   | New     | "Too many tries. Send a new code." (after 5 wrong attempts, I-07)                                          |
-| Link on another device | (new)                                                                                   | New     | "Confirm sign-in, requested at {time} from {place}" + **Confirm** (I-07)                                   |
-| Sign-in off            | "There's no way to sign in to Polaris Key here right now. Try again later."             | Rewrite | "Sign-in is unavailable. Try again later."                                                                 |
-| Footer                 | "Polaris Key · key.plrs.im"                                                             | Remove  | The brand is above                                                                                         |
-| Console boot error     | "The admin session could not be loaded. Retry, or sign in again if your session ended." | Rewrite | "Can't reach Polaris Key" / "Your session ended" (§8 states)                                               |
-| Worker expired         | "This magic link has expired." / "Missing magic-link token."                            | Rewrite | h1 "That code or link has expired" + "Codes and links work once, for 10 minutes." + **Send a new code**    |
-| Worker admin           | "Admin sign-in is not configured."                                                      | Rewrite | "Admin sign-in isn't set up" + docs link                                                                   |
-| Worker buttons         | "Back to sign-in"                                                                       | Rewrite | "Sign in again"                                                                                            |
-| Device confirm         | "An app is asking to activate this device. Check that the code and device match…"       | Rewrite | "Check the code matches the one on your device."                                                           |
-| Device confirm         | "Product nightfall" row                                                                 | Remove  | The header names the product                                                                               |
-| Signed-in page         | "You can close this tab and return to the app."                                         | Keep    |                                                                                                            |
-| Return step            | (new)                                                                                   | New     | "{Product} is yours" · "Returning by itself in 3 s · Stay here"                                            |
-| Console sign-in        | "Continue with Pocket ID" as the only control                                           | Rewrite | Email field (known operator as a chip) + **Continue**; fine print "Next: Pocket ID at {issuer host}"       |
-| Email subject          | (link-only subject)                                                                     | Rewrite | "Your Polaris Key code: {code}"                                                                            |
-| Email body             | "Use the button below to sign in. The link expires in 10 minutes and works once."       | Rewrite | The code large first, then "Or sign in with the button. The code and the link work once, for 10 minutes."  |
-| Email                  | "If the button does not work, paste this link into your browser:"                       | Keep    |                                                                                                            |
-| Email footer           | "…Nothing changes until the link is used."                                              | Keep    |                                                                                                            |
+| Where                  | Text                                                                                    | Verdict | Becomes / why                                                                                                                                            |
+| ---------------------- | --------------------------------------------------------------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Portal sign-in         | "Your library of games and apps from developers who use Polaris Key."                   | Remove  | Filler under a self-explanatory h1                                                                                                                       |
+| Sign-in (app)          | "Use the email you bought it with."                                                     | Keep    | The one fact a buyer needs                                                                                                                               |
+| Sign-in (app)          | h1 "Sign in or create an account"                                                       | Rewrite | "Sign in"; the header carries the context                                                                                                                |
+| Card header            | "Manage your copy of X / dev · downloads, license and devices"                          | Rewrite | Developer link: "**X** · developer" / "Your license, downloads and devices". "**X** wants you to sign in" is only for an app's request (SIGN-IN.md D-11) |
+| Sign-in loading        | "Getting the ways you can sign in…"                                                     | Remove  | Card skeleton                                                                                                                                            |
+| Sent step h1           | "Check your email"                                                                      | Keep    |                                                                                                                                                          |
+| Sent step              | "We sent a sign-in link to {email}. It works for 10 minutes."                           | Rewrite | "We sent a code and a sign-in link to {email}. Both work for 10 minutes." (I-07 sends one email with both)                                               |
+| Sent step              | "Open it on this device and this page signs you in by itself."                          | Rewrite | "Or open the link in the email. Keep this tab open."                                                                                                     |
+| Resend                 | "We sent a new link. Either one works for 10 minutes."                                  | Rewrite | Button "Send a new code"; status "We sent a new code and link to {email}."                                                                               |
+| Wrong code             | (new)                                                                                   | New     | "That code isn't right. Check the email and try again."                                                                                                  |
+| Too many tries         | (new)                                                                                   | New     | "Too many tries. Send a new code." (after 5 wrong attempts, I-07)                                                                                        |
+| Link on another device | (new)                                                                                   | New     | "Confirm sign-in, requested at {time} from {place}" + **Confirm** (I-07)                                                                                 |
+| Sign-in off            | "There's no way to sign in to Polaris Key here right now. Try again later."             | Rewrite | "Sign-in is unavailable. Try again later."                                                                                                               |
+| Footer                 | "Polaris Key · key.plrs.im"                                                             | Remove  | The brand is above                                                                                                                                       |
+| Console boot error     | "The admin session could not be loaded. Retry, or sign in again if your session ended." | Rewrite | "Can't reach Polaris Key" / "Your session ended" (§8 states)                                                                                             |
+| Worker expired         | "This magic link has expired." / "Missing magic-link token."                            | Rewrite | h1 "That code or link has expired" + "Codes and links work once, for 10 minutes." + **Send a new code**                                                  |
+| Worker admin           | "Admin sign-in is not configured."                                                      | Rewrite | "Admin sign-in isn't set up" + docs link                                                                                                                 |
+| Worker buttons         | "Back to sign-in"                                                                       | Rewrite | "Sign in again"                                                                                                                                          |
+| Device confirm         | "An app is asking to activate this device. Check that the code and device match…"       | Rewrite | "Check the code matches the one on your device."                                                                                                         |
+| Device confirm         | "Product nightfall" row                                                                 | Remove  | The header names the product                                                                                                                             |
+| Signed-in page         | "You can close this tab and return to the app."                                         | Keep    |                                                                                                                                                          |
+| Return step            | (new)                                                                                   | New     | "{Product} is yours" · "Returning by itself in 3 s · Stay here"                                                                                          |
+| Console sign-in        | "Continue with Pocket ID" as the only control                                           | Rewrite | Email field (known operator as a chip) + **Continue**; fine print "Next: Pocket ID at {issuer host}"                                                     |
+| Email subject          | (link-only subject)                                                                     | Rewrite | "Your Polaris Key code: {code}"                                                                                                                          |
+| Email body             | "Use the button below to sign in. The link expires in 10 minutes and works once."       | Rewrite | The code large first, then "Or sign in with the button. The code and the link work once, for 10 minutes."                                                |
+| Email                  | "If the button does not work, paste this link into your browser:"                       | Keep    |                                                                                                                                                          |
+| Email footer           | "…Nothing changes until the link is used."                                              | Keep    |                                                                                                                                                          |
 
 ### 11.2 Portal
 
@@ -1259,7 +1349,7 @@ Services delivery-chain pills and "License required"; Enrollment "License requir
 available", "In review", "Pending" and the legend; Health "Rolling out · 25 %"; Rollouts "Rolling
 out", "Yanked" (text); Channels "Pinned" and provenance chips (→ `SourceBadge`); Platform Keyring and
 Secrets "Set"/"Not set" (→ text, "Not set" in warning text only when required); portal "Active" on
-tiles, hero, header and License card; portal "Primary"; portal tier chips and "Included" chips; the gold plated "Signed" pill (→ glyph +
+tiles, hero, header and License card; portal "Primary"; portal tier chips (the License card keeps one neutral tier pill beside its device count, owner 2026-10-05, PORTAL.md §4.20) and "Included" chips; the gold plated "Signed" pill (→ glyph +
 text) and any "Just added" pill (→ ring + quiet text). Also: "Seat limit" is not an issue on its own;
 only a license that is refusing devices gets a pill.
 
@@ -1271,24 +1361,24 @@ and every render: `/private/tmp/claude-501/ux-unify/mockups/` (`_src/build.mjs`,
 frames under `frames/`). Optimised PNGs are in [`experience/`](experience/), named
 `<page>-<desktop|mobile>-<dark|light>.png`.
 
-| #   | Mockup                         | Shows                                                                                                                                                                                                               |
-| --- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 01  | `01-signin-portal`             | Shared AuthCard, portal: identifier-first email, provider row, passkey, quiet links                                                                                                                                 |
-| 02  | `02-signin-console`            | Console variant: "Polaris Key │ Console", identifier-first email with the known-operator chip, Continue (to Pocket ID), passkey                                                                                     |
-| 02b | `02b-signin-console-signedout` | Session ended in place, return to the page, unsaved edits kept                                                                                                                                                      |
-| 03  | `03-signin-passthrough`        | "Tidewater Studio wants you to sign in", product providers, lock footer                                                                                                                                             |
-| 04  | `04-signin-worker`             | Worker no-JS page in the same card: expired link, Send a new link                                                                                                                                                   |
-| 05  | `05-console-overview`          | Overview after consolidation: one attention list (no pill where the title says it), StatStrip, Releases, Services                                                                                                   |
-| 06  | `06-console-licenses`          | List page: search by key, counted facets (Refusing devices), Filters on phones, right-aligned issue pills, a chevron on every phone row                                                                             |
-| 07  | `07-console-settings`          | The S-18 hub's License area: SourceBadges, a claimable row being edited with ST-07's pre-save diff and impact, drift with Revert, inherited value, channels as checkboxes, auto-issue preview, LX-06 licensing rows |
-| 08  | `08-portal-library`            | Library without healthy pills, real quick actions, Discover end note; phone bar with Activate as the approved middle pill                                                                                           |
-| 09  | `09-portal-product`            | One lead, Change platform, What you own with sources (LX-15), facts as text, This device, no section rail, Signed as a glyph                                                                                        |
-| 10  | `10-console-empty`             | Guided empty state: Releases checks, snippet, live waiting row                                                                                                                                                      |
-| 11  | `11-console-confirm`           | Release Status tab with Halt everywhere confirm; the halted outlet disabled; Signed as a glyph                                                                                                                      |
-| 12  | `12-console-toast`             | License Status after the fix (nothing shouted), tabs per LX-14, toast with an action that stays                                                                                                                     |
-| 13  | `13-story-setup`               | Storyboard: console guided product setup (6 frames; frame 5 is A-18j's Add to storefronts)                                                                                                                          |
-| 14  | `14-story-support`             | Storyboard: console device-limit support (5 frames; Refusing devices, Add seats…)                                                                                                                                   |
-| 15  | `15-story-portal`              | Storyboard: portal first sign-in from an app through the email gate, key confirm, `license_owned`, Stay here, library and product (8 frames)                                                                        |
+| #   | Mockup                         | Shows                                                                                                                                                                                                                |
+| --- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 01  | `01-signin-portal`             | Shared AuthCard, portal: identifier-first email, provider row, passkey, quiet links                                                                                                                                  |
+| 02  | `02-signin-console`            | Console variant: "Polaris Key │ Console", identifier-first email with the known-operator chip, Continue (to Pocket ID), passkey                                                                                      |
+| 02b | `02b-signin-console-signedout` | Session ended in place, return to the page, unsaved edits kept                                                                                                                                                       |
+| 03  | `03-signin-passthrough`        | "Tidewater Studio wants you to sign in", product providers, lock footer                                                                                                                                              |
+| 04  | `04-signin-worker`             | Worker no-JS page in the same card: expired link, Send a new link                                                                                                                                                    |
+| 05  | `05-console-overview`          | Overview after consolidation: one attention list (no pill where the title says it), StatStrip, Releases, Services                                                                                                    |
+| 06  | `06-console-licenses`          | List page: search by key, counted facets (Refusing devices), Filters on phones, right-aligned issue pills, a chevron on every phone row                                                                              |
+| 07  | `07-console-settings`          | The S-18 hub's License area: SourceBadges, a claimable row being edited with ST-07's pre-save diff and impact, drift with Revert, inherited value, channels as checkboxes, auto-issue preview, LX-06 licensing rows  |
+| 08  | `08-portal-library`            | Library without healthy pills, real quick actions, Discover end note; phone bar with Activate as the approved middle pill                                                                                            |
+| 09  | `09-portal-product`            | One lead, Change platform, What you own with sources (LX-15), facts as text, This device, no section rail, Signed as a glyph                                                                                         |
+| 10  | `10-console-empty`             | Guided empty state: Releases checks, snippet, live waiting row                                                                                                                                                       |
+| 11  | `11-console-confirm`           | Release Status tab with Halt everywhere confirm; the halted outlet disabled; Signed as a glyph                                                                                                                       |
+| 12  | `12-console-toast`             | License Status after the fix (nothing shouted), tabs per LX-14, toast with an action that stays                                                                                                                      |
+| 13  | `13-story-setup`               | Storyboard: console guided product setup (6 frames; frame 5 is A-18j's Add to storefronts)                                                                                                                           |
+| 14  | `14-story-support`             | Storyboard: console device-limit support (5 frames; Refusing devices, Add seats…)                                                                                                                                    |
+| 15  | `15-story-portal`              | Storyboard: portal first sign-in from an app through the email gate, key confirm, `license_owned`, Stay here, library and product (8 frames; the 2026-10-05 `LicenseChoiceStep` frame is still to be added by PX-14) |
 
 ![Guided product setup storyboard](experience/13-story-setup-desktop-dark.png)
 
@@ -1310,8 +1400,8 @@ The lists are kept in `/private/tmp/claude-501/ux-unify/branchfiles/`.
 | Branch                                     | Files it touches that this plan cares about                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `brand/console-ux-r2` (console rounds 2/3) | `console/nav.ts`; `shell/{ProductSwitcher,Sidebar,StatePages,TopBar}`; `templates/{Dashboard,Settings}`; `components/{DeviceTable,EntityLink,PageHeader}`; pages `core/{Activity,Keys,KeysCi,KeysSecrets,Overview,Services}`, `global/{Home,ProductNew,Products}`, `license/{LicenseKeys,LicensesPage,TierRecord,TiersPage}`, `release/{ChannelLanes,PackRecord,ReleasesPage,SimulatorPage}`, `config/{CatalogEditorPage,ProfilePage,ProfilesPage}`, `platform.tsx`, `platformOperations.tsx`, `platformStores.tsx`; areas `distribution/{Credentials,Health,Rollouts}Page`, `StoreControls`, `feeds/*`, `update/FeedPage`; `ui/{Button,CodeBlock,IconButton,KeyDisplay,OrderedMultiSelect,StatusPill,Switch,Timestamp,form,data-table/*}`; `schema/ManagedField.tsx`; `styles.css`; `e2e/layout*`; tests including `test/ui/statusBadges.test.tsx`; Worker `admin/auth.ts`, `core/brandHtml.ts`, `services/identity/oidc.ts`, `services/identity/portal/auth.ts` |
-| `wp/A-18j-add-to-storefronts`              | `src/api.ts`; `console/{nav,routes}.ts`; `console/data/{queries,mutations}.ts`; `console/areas/storefronts/*` (new: `StorefrontsPage`, `ListingPage`, `StepCard`, `StepDialog`, `SlotBoard`, `FitReport`, `ImportPanel`, `data`); `pages/{distribution,platformStores}.tsx`; `areas/feeds/{FeedSettings,model}`; `ui/CapabilityBadge.tsx`; `e2e/csp.e2e.test.ts`; migration `0072_dist_listing_asset_acceptance.sql`; Worker storefront services and `admin/handlers/platformStoreConnections.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| `wp/I-07-login-card-email-gate`            | `portal/{api,data}.ts`, `portal/pages/SignInPage.tsx`; migrations `0072_a`, `0072_b`; Worker `services/identity/card/*`, `services/identity/portal/{api,auth,email,session,repo,index,accountSessions}.ts`, `dispatch.ts`, `env.ts`, `core/{accountCookies,singleUse,deployIdentity}.ts`; `test/brandPages.test.ts`; OpenAPI; generated SDK constants                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `wp/A-18j-add-to-storefronts`              | `src/api.ts`; `console/{nav,routes}.ts`; `console/data/{queries,mutations}.ts`; `console/areas/storefronts/*` (new: `StorefrontsPage`, `ListingPage`, `StepCard`, `StepDialog`, `SlotBoard`, `FitReport`, `ImportPanel`, `data`); `pages/{distribution,platformStores}.tsx`; `areas/feeds/{FeedSettings,model}`; `ui/CapabilityBadge.tsx`; `e2e/csp.e2e.test.ts`; migration `0083_dist_listing_asset_acceptance.sql`; Worker storefront services and `admin/handlers/platformStoreConnections.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `wp/I-07-login-card-email-gate`            | `portal/{api,data}.ts`, `portal/pages/SignInPage.tsx`; migrations `0079`, `0080`; Worker `services/identity/card/*`, `services/identity/portal/{api,auth,email,session,repo,index,accountSessions}.ts`, `dispatch.ts`, `env.ts`, `core/{accountCookies,singleUse,deployIdentity}.ts`; `test/brandPages.test.ts`; OpenAPI; generated SDK constants                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `wp/PX-16-discover-page`                   | `portal/{App,api,data}.ts`, `portal/pages/{LibraryPage,DiscoverPage}.tsx`, `portal/components/{LibraryEmpty,DiscoverTile,DiscoverTeaser}.tsx`, `portal/model/discover.ts`, `e2e/{portal.e2e.test,portalFixtures}.ts`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `wp/PX-20-portal-quality-bar`              | `portal/components/PortalShell.tsx`, `e2e/portal*` (harness, states, fixtures, quality), `package.json`, `pnpm-lock.yaml`, CI workflow                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
@@ -1378,27 +1468,27 @@ any file it edits (checked against §13.1), not merely that its dependencies are
 
 **Wave 2: shared sign-in**
 
-| Id    | Package                                                                                                                                                         | Size | Deps                                           |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------- |
-| UX-40 | **`AuthCard` in `ui/auth/`**: promote `LoginCard`, `ProviderRow`, `Glyphs`, `KeyField`; the step slots (§8); passkey and "Have a license key?" in `MethodsStep` | M    | PX-20 (`PortalShell`), I-07 (`SignInPage.tsx`) |
-| UX-41 | **Passthrough steps**: persistent app header, `KeyStep` with PX-17's confirm and I-09's verdicts, `ReturnStep` with Stay here, the library ring                 | L    | UX-40, PX-17, I-08 and PX-W13 (broker), I-09   |
-| PX-21 | (approved, existing) **EmailGateStep** with `ProfileImport` inside the promoted card                                                                            | M    | UX-40, PX-12, PX-W15, PX-W16                   |
-| UX-42 | **Console sign-in**: identifier-first card at `/manage/login`, Continue starts PKCE or a passkey, 403 and not-configured states                                 | M    | UX-40, UX-02, r2 (`admin/auth.ts`)             |
-| UX-43 | **Worker twin**: `renderAuthCard()` in `brandHtml.ts`; expired code or link with Send a new code; device pages with the product header; measures test           | M    | UX-40, I-07, r2 (`brandHtml.ts`)               |
-| UX-44 | **Email**: no-bit centred lockup, card radius, the code-and-link copy on I-07's template                                                                        | S    | I-07                                           |
+| Id    | Package                                                                                                                                                                                                                                                                                                                                                              | Size | Deps                                           |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------- |
+| UX-40 | **`AuthCard` in `ui/auth/`**: promote `LoginCard`, `ProviderRow`, `Glyphs`, `KeyField`; the step slots (§8); passkey and "Have a license key?" in `MethodsStep`                                                                                                                                                                                                      | M    | PX-20 (`PortalShell`), I-07 (`SignInPage.tsx`) |
+| UX-41 | **Passthrough steps** (SIGN-IN.md §3.6–§3.10): persistent app header, `LicenseChoiceStep` (every row state, origin vocabulary: no license type label) with inline `ReplaceDevice` (2026-10-05), `ConsentStep` with Change, `KeyStep` with PX-17's confirm ("Add and use on this device") and I-09's verdicts, `ReturnStep` variants with Stay here, the library ring | L    | UX-40, PX-17, I-08 and PX-W13 (broker), I-09   |
+| PX-21 | (approved, existing) **EmailGateStep** with `ProfileImport` inside the promoted card                                                                                                                                                                                                                                                                                 | M    | UX-40, PX-12, PX-W15, PX-W16                   |
+| UX-42 | **Console sign-in**: identifier-first card at `/manage/login`, Continue starts PKCE or a passkey, 403 and not-configured states                                                                                                                                                                                                                                      | M    | UX-40, UX-02, r2 (`admin/auth.ts`)             |
+| UX-43 | **Worker twin**: `renderAuthCard()` in `brandHtml.ts`; expired code or link with Send a new code; device pages with the product header; measures test                                                                                                                                                                                                                | M    | UX-40, I-07, r2 (`brandHtml.ts`)               |
+| UX-44 | **Email**: no-bit centred lockup, card radius, the code-and-link copy on I-07's template                                                                                                                                                                                                                                                                             | S    | I-07                                           |
 
 **Wave 3: console journeys on the shared layer**
 
-| Id    | Package                                                                                                                                                         | Size | Deps                                                                  |
-| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | --------------------------------------------------------------------- |
-| UX-21 | **Launch path**: Worker `setup` model (unifies Home and Overview), `LaunchPath`, step drawers, polling steps with live announcements, launched line             | XL   | UX-12, UX-20; links UX-23's panel and A-18j's flow                    |
-| UX-26 | **Remaining IA moves**: Content keys → Keys & secrets, Simulator → Compatibility tab, Update feed rename, Enrollment retired once ST-08/ST-12 hold its settings | M    | UX-11, ST-08, ST-12; docsLinks                                        |
-| UX-27 | **Server-side activity search** and global Activity with Product facet; diffs from ST-04's audit columns                                                        | L    | r2 (`Activity.tsx`), ST-04 for diffs                                  |
-| UX-30 | **Platform Status** (Deployment + Operations merged)                                                                                                            | M    | r2 (`platform.tsx`, `platformOperations.tsx`), UX-12                  |
-| UX-32 | **Storefronts evolution** on A-18j: launch-path entry, inline app pick in Prerequisites, tiles open App Store and Commerce, nav cleanup                         | M    | A-18j, UX-21; ST-12 (credentials editors), ST-13 (Listing in the hub) |
-| UX-35 | **Moments of delight** (`Celebration` + one-shot keys) for first license, catalog, release, store                                                               | S    | UX-21                                                                 |
-| UX-36 | **Bulk license actions**: Select all matching, Export, Extend, Change tier, Disable (L2 count), server job, result download                                     | L    | UX-07, ST-21; Comp in bulk after LX-14                                |
-| UX-37 | **Alerts from attention**: danger kinds delivered through ST-27's destinations                                                                                  | S    | UX-12, ST-27                                                          |
+| Id    | Package                                                                                                                                                                          | Size | Deps                                                                  |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | --------------------------------------------------------------------- |
+| UX-21 | **Launch path**: Worker `setup` model (unifies Home and Overview), `LaunchPath`, step drawers, polling steps with live announcements, launched line                              | XL   | UX-12, UX-20; links UX-23's panel and A-18j's flow                    |
+| UX-26 | **Remaining IA moves**: Content keys → Keys & secrets, Simulator → Compatibility tab, Update feed rename, Enrollment retired once ST-08/ST-12 hold its settings                  | M    | UX-11, ST-08, ST-12; docsLinks                                        |
+| UX-27 | **Server-side activity search** and global Activity with Product facet; diffs from ST-04's audit columns                                                                         | L    | r2 (`Activity.tsx`), ST-04 for diffs                                  |
+| UX-30 | **Platform Status** (Deployment + Operations merged)                                                                                                                             | M    | r2 (`platform.tsx`, `platformOperations.tsx`), UX-12                  |
+| UX-32 | _Superseded by Wave 5 (SETUP.md §2.14)._ **Storefronts evolution** on A-18j: launch-path entry, inline app pick in Prerequisites, tiles open App Store and Commerce, nav cleanup | M    | A-18j, UX-21; ST-12 (credentials editors), ST-13 (Listing in the hub) |
+| UX-35 | **Moments of delight** (`Celebration` + one-shot keys) for first license, catalog, release, store                                                                                | S    | UX-21                                                                 |
+| UX-36 | **Bulk license actions**: Select all matching, Export, Extend, Change tier, Disable (L2 count), server job, result download                                                      | L    | UX-07, ST-21; Comp in bulk after LX-14                                |
+| UX-37 | **Alerts from attention**: danger kinds delivered through ST-27's destinations                                                                                                   | S    | UX-12, ST-27                                                          |
 
 **Wave 4: portal journeys**
 
@@ -1410,8 +1500,71 @@ any file it edits (checked against §13.1), not merely that its dependencies are
 | UX-48 | **Account**: theme row, `DangerAction` + `ConfirmDialog`, Download my data, header Sign out removed                      | M    | UX-10, UX-13, PX-22 |
 | UX-49 | **Portal on the shared kit**: `Section`, `DescriptionList`, `Callout`, `Select`, `Input`, `ErrorState`, `CommandPalette` | M    | UX-10, PX-20        |
 
-**Dropped or merged** (§0.8): UX-24 (into LX-14 as Add seats…), UX-28 (into ST-07 and ST-16), the
+**Wave 5: setup wizards** ([SETUP.md](SETUP.md) §8, 2026-10-05; the owner request for wizards,
+per-storefront pages scoped to the builds, channels merged into storefronts and easy publishing)
+
+| Id    | Package                                                                                                                                       | Size | Deps                                         |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---- | -------------------------------------------- |
+| UX-50 | **Wizard kit**: `ui/wizard/` (page and drawer hosts, stepper, prerequisites, snippets, deep links, live waiting rows, done)                   | L    | UX-10                                        |
+| UX-51 | **Setup state**: `setup_state` table and `…/setup` routes (choices, skips, assertions, requests); per-wizard step states in the `setup` model | M    | none (UX-21 reads it)                        |
+| UX-52 | **Storefront catalogue declaration**: platforms, artifacts, family and plane per storefront; feed-only and link entries; conformance          | M    | A-18j                                        |
+| UX-53 | **Storefronts read model**: product platforms, scope, state machine, artifact fit; `distribution.intendedPlatforms`                           | L    | UX-52, A-18j, ST-03                          |
+| UX-54 | **Catalogue and storefront page shell**, Distribution nav to four items, legacy redirects                                                     | L    | UX-50, UX-53, A-18j, UX-31                   |
+| UX-55 | **Storefront wizard steps**, human only (Connect, In the vendor console, Merge, Go live) under Polaris Key's `AutoList`                       | XL   | UX-54, UX-51, UX-56, UX-68, UX-69; ST-12     |
+| UX-56 | **`renderOutletBlock`, `pkey storefront add` and `pkey storefronts sync`**                                                                    | M    | UX-52                                        |
+| UX-57 | **Storefront status pages** (Status, Releases, Listing, Commerce, Setup)                                                                      | L    | UX-54, UX-31, A-18m                          |
+| UX-58 | **Publish everywhere**: one dialog and route per release, batch confirmation                                                                  | L    | UX-57, UX-08, A-18j; security review         |
+| UX-59 | **SDK quick-start correctness now**: `pkg.plrs.im` registry line, missing languages, valid Godot resource, staged pins                        | S    | none                                         |
+| UX-60 | **Shared SDK setup generator** `renderSdkSetup` with goldens and per-SDK parse checks                                                         | M    | F-10; SP-02 amended                          |
+| UX-61 | **Connect your app** page, Verify, test license, release keys read, Overview's compact panel                                                  | L    | UX-50, UX-51, UX-60; ST-08                   |
+| UX-62 | **Publish from CI** drawer: two steps for you; environment, ruleset, trust policy and workflow by Polaris Key; `renderCiWorkflow`             | L    | UX-23, UX-50, UX-61                          |
+| UX-63 | **License and Config quick starts**, human steps only                                                                                         | L    | UX-50, UX-34; ST-12                          |
+| UX-64 | **Signing key, Update feed and Access** inline setup, scoped by platform                                                                      | M    | UX-50, UX-53, UX-29                          |
+| UX-65 | **Customer sign-in wizard**                                                                                                                   | M    | UX-50, ST-12, ST-14                          |
+| UX-66 | **Empty-state and service-off sweep** for every console page                                                                                  | L    | UX-50, UX-10, UX-09                          |
+| UX-67 | **Platform ready** checklist                                                                                                                  | M    | UX-50, UX-30, ST-09                          |
+| UX-68 | **Setup runner**: performs each storefront's automated actions after the Set up consent; prepares submissions; fills testing tracks           | L    | UX-51, UX-52, UX-53, A-18j                   |
+| UX-69 | **Live credential check** on paste for store keys and CI secrets                                                                              | M    | none                                         |
+| UX-70 | **GitHub write path**: the setup pull request, repositories, environment, ruleset, CI secrets                                                 | L    | owner action (App permissions); UX-51, UX-56 |
+| UX-71 | **CI installation-token exchange** for tap and bucket pull requests (no personal token)                                                       | M    | UX-70; security review                       |
+
+SETUP.md §8.3 lists the amendments this wave makes to UX-21, UX-23, UX-33, UX-09, PS-06, HA-06,
+ST-08, ST-12, SP-02 and UI-KITS.md §4.2, and §8.5 its sequencing.
+
+**Wave 6: flows** ([FLOWS.md](FLOWS.md) §4, 2026-10-05; the owner request to make New Product as
+friendly as the new flows and to bring every flow up to date)
+
+| Id    | Package                                                                                                                                          | Size | Deps                                |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---- | ----------------------------------- |
+| UX-72 | **Create probes**: repositories the app can read, the create dry run with its digest pin, the slug check; `link-repo` returns the product        | M    | none                                |
+| UX-73 | **Create with defaults**: services, planned platforms, accent, the starter Free tier and the release-workflow trust in create's one batch        | M    | UX-72                               |
+| UX-74 | **New Product wizard**: Where it starts (picker), Check, Name it, What it's for, Creating; a shared `ManifestProblems`                           | L    | UX-50, UX-72, UX-73; UX-70 optional |
+| UX-75 | **Ready moment**: the Overview hero with verified facts and the two next actions, the shared-element tile, the one-shot check and burst          | M    | UX-74, UX-51; UX-21, UX-80          |
+| UX-76 | **Presentation in create**: the derived accent, swatches, the icon from HA-05                                                                    | S    | UX-74, UX-73; HA-05                 |
+| UX-77 | **Console flow conformance**: first focus, focus return, step focus and announcements, action-named primaries, unsaved guards, one "Shown once." | M    | UX-10                               |
+| UX-78 | **One resync flow**: one dialog and one result for five entry points                                                                             | M    | none; ST-17 adopts it               |
+| UX-79 | **Portal flow conformance**: the Discover count fix, focus after steps, refusals, removals and ⌘K                                                | M    | PX-20; PX-16                        |
+| UX-80 | **Flow motion**: S-23's step travel, morph, check draw and burst in the wizard kit, dialogs and the portal                                       | M    | S-23 MO-01, MO-02; UX-50, UX-35     |
+| UX-81 | **Flow lint**: an e2e probe that checks §2's checkable rules on every fixture flow                                                               | M    | UX-77, UX-79, UX-50                 |
+
+FLOWS.md §4.3 lists the amendments this wave makes to §0.4 S1, §0.7, SETUP.md §1.1 and §5.1, UX-21,
+UX-50, UX-51, UX-53, UX-63, UX-35, UX-11, UX-43, SIGN-IN.md §3.18 and S-23, and §4.4 its
+sequencing.
+
+**Licence holders (S-24, [notes/S-24](../research/2026-09-29-godot-omniplatform/notes/S-24-licence-holders.md) §13)** run beside these waves too: LX-26 to LX-31 (the Worker
+holder model, create with a device limit and delivery, bulk floating keys, the **New license**
+wizard that replaces Create license, the holder surfaces, the close-out), PX-W18 ⚑ and UK-44 ⚑ (sign-in
+hints, plan mode), PX-23 (the portal's floating keys) and UK-42 and UK-43 (the kits' Done step after a
+key). LX-29 takes over UX-77's Create license part (FLOWS.md §4.3).
+
+**Dropped or merged** (§0.8): UX-32 (superseded by Wave 5, SETUP.md §2.14), UX-24 (into LX-14 as Add seats…), UX-28 (into ST-07 and ST-16), the
 old UX-09 editor (into ST-12). UX-26 and UX-30 shrank to what S-18 does not cover.
+
+**Motion (phase MO, [notes/S-23](../research/2026-09-29-godot-omniplatform/notes/S-23-motion-system.md) §10)** runs beside these waves, not inside them:
+MO-01 (brand tokens) and MO-02 (the layer) touch no file these packages edit; MO-10 waits for UX-10,
+MO-11 for UX-29 and the `Overview.tsx` packages, MO-12 for UX-10's menus. A UX package that builds a
+pattern of §7.2 (UX-29's countdown, UX-12's attention list, UX-07's routed drawer) uses the MO-02
+layer once it has landed and otherwise leaves the motion to its MO package.
 
 ### 13.4 Sequencing (nothing collides)
 
@@ -1469,6 +1622,10 @@ flowchart LR
   PX22[PX-22 Avatar] --> UX48 & UX13
 ```
 
+- **Wave 6** (flows) is sequenced in [FLOWS.md §4.4](FLOWS.md#44-sequencing): UX-72, UX-77,
+  UX-78 and UX-79's Discover fix start now; New Product follows UX-50; the flow lint lands last.
+- **Wave 5** (setup wizards) is sequenced in [SETUP.md §8.5](SETUP.md#85-sequencing): UX-59, UX-51
+  and UX-60 start now; the storefront packages follow A-18j; the console packages follow UX-50.
 - **Start today, in parallel:** UX-01, UX-03, UX-04, UX-05, UX-06a, UX-08 and UX-15. Each edits
   only files that no in-flight branch touches (§13.3 lists them). UX-06a must stay off `src/api.ts`,
   `data/queries.ts` and `routes.ts`; UX-15 picks its migration number when it merges.
@@ -1487,31 +1644,36 @@ flowchart LR
 
 ## 14. Superseded sections in ADMIN.md and PORTAL.md
 
-| Doc       | Section                                                     | Superseded by                                                       |
-| --------- | ----------------------------------------------------------- | ------------------------------------------------------------------- |
-| ADMIN.md  | §2.2 Global elements                                        | §5.1 (top bar, account menu, palette sources)                       |
-| ADMIN.md  | §2.3 Sections and pages (the page list)                     | §0.2 (sections kept; pages consolidated)                            |
-| ADMIN.md  | T1 Overview, §6.1 Console home, §6.2 Product overview       | §0.3 J-2, J-3; §4; mockup 05                                        |
-| ADMIN.md  | T4 Settings (rail rule, save bar)                           | S-18 §4.9 (hub, `SettingsRow` v2, save model); §4 for the rail rule |
-| ADMIN.md  | T6 Flow (wizard) for product creation                       | §0.4 S1                                                             |
-| ADMIN.md  | T8 State pages                                              | §9                                                                  |
-| ADMIN.md  | §4 Component system (kit split)                             | §3                                                                  |
-| ADMIN.md  | §5.2 Destructive-action policy (patterns)                   | §7 (levels kept, patterns unified)                                  |
-| ADMIN.md  | §5.8 Copy                                                   | §2, §11                                                             |
-| ADMIN.md  | §6.4 Distribution matrix (as a separate page from Rollouts) | §0.2, §10 C7                                                        |
-| ADMIN.md  | §6.5.2 License record (tab order)                           | §0.5 O1 (with S-19 §7.11's Entitlements and Grants tabs)            |
-| ADMIN.md  | §6.7 Keys & secrets (scope)                                 | §10 C10                                                             |
-| ADMIN.md  | §6.8 Activity (client-side search)                          | §0.5 O6                                                             |
-| ADMIN.md  | §6.9 Settings (Services as a page)                          | S-18 §4.9 (product settings hub); §10 C3                            |
-| ADMIN.md  | §2.3 Distribution Storefronts and Listing rows (A-18j)      | §0.4 S5 (A-18j's flow kept, nav evolved)                            |
-| ADMIN.md  | §6.10 Customer portal                                       | PORTAL.md, as amended here                                          |
-| PORTAL.md | §4.1 The login card (component ownership, footer line)      | §8 (measures and steps kept)                                        |
-| PORTAL.md | §4.2 Product context (header copy)                          | §8, §11.1                                                           |
-| PORTAL.md | §4.12 Library empty (footer advice)                         | §11.2                                                               |
-| PORTAL.md | §4.20 Product page (lead, status chips, Get it)             | §0.6 P3–P4, mockup 09                                               |
-| PORTAL.md | §4.26 Account (Appearance, Sign out, Delete)                | §0.6 P5 (Profile and `Avatar` stay PX-22's, §4.30)                  |
-| PORTAL.md | §5.1–5.3 Components and status model                        | §3, §7                                                              |
-| PORTAL.md | §6.1 Copy rules                                             | §2, §11                                                             |
+| Doc       | Section                                                     | Superseded by                                                             |
+| --------- | ----------------------------------------------------------- | ------------------------------------------------------------------------- |
+| ADMIN.md  | §2.2 Global elements                                        | §5.1 (top bar, account menu, palette sources)                             |
+| ADMIN.md  | §2.3 Sections and pages (the page list)                     | §0.2 (sections kept; pages consolidated)                                  |
+| ADMIN.md  | T1 Overview, §6.1 Console home, §6.2 Product overview       | §0.3 J-2, J-3; §4; mockup 05                                              |
+| ADMIN.md  | T4 Settings (rail rule, save bar)                           | S-18 §4.9 (hub, `SettingsRow` v2, save model); §4 for the rail rule       |
+| ADMIN.md  | T6 Flow (wizard) for product creation                       | §0.4 S1                                                                   |
+| ADMIN.md  | T8 State pages                                              | §9                                                                        |
+| ADMIN.md  | §4 Component system (kit split)                             | §3                                                                        |
+| ADMIN.md  | §5.2 Destructive-action policy (patterns)                   | §7 (levels kept, patterns unified)                                        |
+| ADMIN.md  | §5.8 Copy                                                   | §2, §11                                                                   |
+| ADMIN.md  | §6.4 Distribution matrix (as a separate page from Rollouts) | §0.2, §10 C7                                                              |
+| ADMIN.md  | §6.5.2 License record (tab order)                           | §0.5 O1 (with S-19 §7.11's Entitlements and Grants tabs)                  |
+| ADMIN.md  | §6.5.1 Create license dialog (S-24)                         | notes/S-24 §8: the New license wizard (LX-29); holder column §8.8 (LX-30) |
+| ADMIN.md  | §6.7 Keys & secrets (scope)                                 | §10 C10                                                                   |
+| ADMIN.md  | §6.8 Activity (client-side search)                          | §0.5 O6                                                                   |
+| ADMIN.md  | §6.9 Settings (Services as a page)                          | S-18 §4.9 (product settings hub); §10 C3                                  |
+| ADMIN.md  | §2.3 Distribution Storefronts and Listing rows (A-18j)      | §0.4 S5 (A-18j's flow kept, nav evolved)                                  |
+| ADMIN.md  | §6.10 Customer portal                                       | PORTAL.md, as amended here                                                |
+| PORTAL.md | §4.1 The login card (component ownership, footer line)      | §8 (measures and steps kept)                                              |
+| PORTAL.md | §4.2 Product context (header copy)                          | §8, §11.1                                                                 |
+| PORTAL.md | §4.12 Library empty (footer advice)                         | §11.2                                                                     |
+| PORTAL.md | §4.20 Product page (lead, status chips, Get it)             | §0.6 P3–P4, mockup 09                                                     |
+| PORTAL.md | §4.26 Account (Appearance, Sign out, Delete)                | §0.6 P5 (Profile and `Avatar` stay PX-22's, §4.30)                        |
+| PORTAL.md | §4.17 Confirm and Done, §4.20 origins, §4.26 Remove (S-24)  | notes/S-24 §10 (PX-23)                                                    |
+| PORTAL.md | §5.1–5.3 Components and status model                        | §3, §7                                                                    |
+| PORTAL.md | §6.1 Copy rules                                             | §2, §11                                                                   |
+
+**Sign-in:** [SIGN-IN.md](SIGN-IN.md) supersedes §0.6 P1, §8 and §11.1's sign-in rows here, and the
+PORTAL.md and ADMIN.md sign-in sections, where they differ.
 
 **Not superseded:** PORTAL.md §3.2's phone bottom bar (Activate as the middle pill), §4.17–§4.19
 (Activate, PX-17), §4.29 (email gate, PX-21) and §4.30 (Profile, PX-22) stand as approved; this

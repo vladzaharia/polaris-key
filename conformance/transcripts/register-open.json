@@ -1,7 +1,7 @@
 {
   "transcriptVersion": 1,
   "id": "register-open",
-  "description": "Keyless registration under the open policy (a Config-only product, D-08). register() sends no credential, only the device id and a hashed fingerprint, and stores the token it gets back; it does not sync by itself. The next sync fetches the config document alone, and the gate reports not-applicable because the product runs no licence service.",
+  "description": "Keyless registration under the open policy (a Config-only product, D-08). register() sends no credential, only the device id, a hashed fingerprint and the device label (PX-W13), and stores the token it gets back; it does not sync by itself. The next sync fetches the config document alone, and the gate reports not-applicable because the product runs no licence service.",
   "features": ["devices.register"],
   "requires": ["core.store"],
   "product": "djdl",
@@ -13,7 +13,8 @@
   "initial": {
     "deviceId": "TRANSCRIPTDEVICE0000000000000001",
     "version": "1.0.0",
-    "services": ["config"]
+    "services": ["config"],
+    "deviceName": "Transcript Device"
   },
   "steps": [
     {
@@ -41,9 +42,12 @@
                 "content-type"
               ],
               "body": {
-                "json": { "fingerprint": { "components": {}, "hwid": "" } },
+                "json": {
+                  "fingerprint": { "components": {}, "hwid": "" },
+                  "deviceName": ""
+                },
                 "match": "shape",
-                "allowedKeys": ["fingerprint"]
+                "allowedKeys": ["fingerprint", "deviceName"]
               }
             },
             "response": {

@@ -1,6 +1,8 @@
 // polaris-key-update (proposed coordinates im.plrs.key:polaris-key-update): the update client (P6-08):
 // update.check, the signed channel feed and update.decide over :core's feed, record and content
-// decisions, the boot guard, and the InstallDriver port that P6-12 implements on Android.
+// decisions, the boot guard, and the InstallDriver port that P6-12 implements on Android; UK-40 adds
+// the JVM desktop driver (DesktopInstallDriver over OkHttpArtifactFetch) and the default slots
+// (DirUpdateSlots, FileBootGuardStore).
 // A plain Kotlin/JVM library with NO Android dependency, depending on :core only
 // (checkModuleBoundaries), so the same JAR runs on Android API 24+ and on a JVM desktop.
 //
@@ -25,7 +27,11 @@ base { archivesName.set("polaris-key-update") }
 
 dependencies {
     api(project(":core"))
+    // UK-40: the desktop install driver's verified download (OkHttpArtifactFetch); :core's transport
+    // client, so Android and the JVM already carry it.
+    implementation(libs.okhttp)
     testImplementation(testFixtures(project(":core")))
+    testImplementation(libs.okhttp.mockwebserver)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }

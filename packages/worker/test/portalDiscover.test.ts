@@ -11,6 +11,7 @@
  * (tier, limits, entitlements), and the claim is idempotent, double submit included.
  */
 
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -62,9 +63,10 @@ interface Who {
   accountId: string;
 }
 
-async function issue(env: Env, accountId: string): Promise<Who> {
-  const { token, session } = await issuePortalSession(
+async function issue(env: Env, db: Db, accountId: string): Promise<Who> {
+  const { token, session } = await issuePortalSessionRow(
     env,
+    db,
     { accountId, email: EMAIL, name: "Mara" },
     NOW,
   );
@@ -88,7 +90,7 @@ async function platformAccount(
     },
     NOW,
   );
-  return issue(env, account.id);
+  return issue(env, db, account.id);
 }
 
 async function services(
@@ -107,6 +109,7 @@ async function services(
         distribution: { enabled: false },
         update: { enabled: false },
         identity: { enabled: true },
+        sync: { enabled: false },
         ...over,
       },
     }),
@@ -365,6 +368,46 @@ describe("GET /api/discover (G24)", () => {
     ]);
   });
 
+  it("PS-02: auto and listed keep today's offers; unlisted hides them, from either column", async () => {
+    const env = portalEnv();
+    const db = makeTestDb();
+    for (const slug of ["auto", "listed", "unlisted", "legacyoff", "stale"])
+      await freeProduct(db, slug);
+    await upsertPortalProductSettings(
+      db,
+      "listed",
+      { storeListed: "listed" },
+      NOW,
+    );
+    await upsertPortalProductSettings(
+      db,
+      "unlisted",
+      { storeListed: "unlisted" },
+      NOW,
+    );
+    // A pre-0085 Worker turned Discover off: store_listed still says auto (dual-read).
+    await upsertPortalProductSettings(db, "legacyoff", {}, NOW);
+    await db.run(
+      "UPDATE portal_product_settings SET discover_enabled = 0 WHERE product = 'legacyoff'",
+    );
+    // A pre-0085 Worker turned Discover back on for a product the new one had unlisted.
+    await upsertPortalProductSettings(
+      db,
+      "stale",
+      { storeListed: "unlisted" },
+      NOW,
+    );
+    await db.run(
+      "UPDATE portal_product_settings SET discover_enabled = 1 WHERE product = 'stale'",
+    );
+    const who = await platformAccount(env, db);
+    const { body } = await list(env, db, who);
+    expect(body.offers.map((o: { product: string }) => o.product)).toEqual([
+      "auto",
+      "listed",
+    ]);
+  });
+
   it("offers nothing to an account with no platform identity, or with no platform IdP configured", async () => {
     const env = portalEnv();
     const db = makeTestDb();
@@ -375,7 +418,7 @@ describe("GET /api/discover (G24)", () => {
       NOW,
     );
     expect(
-      (await list(env, db, await issue(env, emailOnly.id))).body.offers,
+      (await list(env, db, await issue(env, db, emailOnly.id))).body.offers,
     ).toEqual([]);
 
     const who = await platformAccount(env, db);

@@ -13,6 +13,7 @@
  * `portalEnabled` itself, so a repo-level test could pass while the response still said `true`.
  */
 
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { describe, expect, it } from "vitest";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
@@ -21,7 +22,7 @@ import type { Env } from "../src/env.js";
 import { serializeServices, type ServicesMap } from "../src/core/services.js";
 import { setServices } from "../src/repo.js";
 import { getOrCreateAccountByEmail } from "../src/services/identity/portal/repo.js";
-import { handlePortalApi } from "./portalHarness.js";
+import { handlePortalApi, seedRepositoryVisibility } from "./portalHarness.js";
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
@@ -58,8 +59,9 @@ async function portalSession(
   email = "ada@example.com",
 ): Promise<{ cookie: string; csrf: string; accountId: string }> {
   const account = await getOrCreateAccountByEmail(db, email, NOW);
-  const { token, session } = await issuePortalSession(
+  const { token, session } = await issuePortalSessionRow(
     env,
+    db,
     {
       accountId: account.id,
       email: account.primary_email,
@@ -95,6 +97,7 @@ async function setProductServices(
         distribution: { enabled: services.release?.enabled === true },
         update: { enabled: false },
         identity: { enabled: false },
+        sync: { enabled: false },
         ...services,
       },
     }),
@@ -493,6 +496,8 @@ describe("portal download tokens follow services_json", () => {
       version: "1.2.3",
       artifactId: "art_1",
     });
+    // The file's only source is its GitHub URL, which a browser can follow from a public repo.
+    await seedRepositoryVisibility(env, db, "djdl", "public");
     const session = await portalSession(env, db);
 
     const granted = await mint(env, db, session, "djdl", "rel_1", "art_1");

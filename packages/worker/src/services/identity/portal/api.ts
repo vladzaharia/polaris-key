@@ -2,7 +2,6 @@ import { RELEASE_PLATFORMS, platformFromFileName } from "@polaris-key/manifest";
 import { CHANNEL_STABLE } from "@polaris-key/protocol";
 import type { ReleaseAccess } from "@polaris-key/protocol/release";
 import {
-  deleteTokenRecord,
   isAllowedDownloadRedirectHost,
   isAllowedStorageHost,
   type Db,
@@ -14,10 +13,16 @@ import {
   type ProductPublic,
 } from "../../../core/products.js";
 import { licenseEntitled } from "../../../core/entitledAccess.js";
+import { isBytesHost } from "../../../core/bytesHostname.js";
+import {
+  DOWNLOAD_TICKET_PARAM,
+  downloadTicketsEnabled,
+  mintDownloadTicket,
+} from "../../../core/downloadTicket.js";
 import { ErrorCode } from "../../../core/errors.js";
-import { getDevice, getProduct, setDeviceStatus } from "../../../core/data.js";
+import { getProduct } from "../../../core/data.js";
 import { licenseUsable } from "../../../core/devices.js";
-import { clientIp, rateLimitOk } from "../../../core/rateLimit.js";
+import { rateLimitOk } from "../../../core/rateLimit.js";
 import { registryOrigin } from "../../../core/registryHostname.js";
 import {
   MAX_LIVE_TOKENS_PER_LICENSE,
@@ -59,12 +64,23 @@ import {
 import {
   PORTAL_CSRF_HEADER,
   buildPortalClearCookie,
+  portalSessionAuthenticatedAt,
   portalSessionFromRequest,
   type PortalSession,
 } from "./session.js";
 import { handleMagicStart } from "./auth.js";
-import { entitlementView } from "./entitlements.js";
+import { licenseGrants } from "./entitlements.js";
+import {
+  checkAccountSession,
+  listAccountSessions,
+  revokeAccountSession,
+  revokeAllAccountSessions,
+} from "./accountSessions.js";
+import { avatarUrl, handleCardApi, turnstileSiteKey } from "../card/index.js";
+import { handleAccountPasskeys } from "../passkeys/routes.js";
+import { clearDeviceSubjects } from "../../../core/subjectHooks.js";
 import { libraryView, productView } from "./library.js";
+import { signInConsentView, signInRequestView } from "../passthrough/routes.js";
 import {
   handleActivatePreview,
   handleClaimKey,
@@ -76,11 +92,7 @@ import {
   sendNotice,
   sendSecurityNotice,
 } from "./email.js";
-import {
-  accountDeletedNotice,
-  deviceRemovedNotice,
-  downloadLinkEmail,
-} from "./notices.js";
+import { accountDeletedNotice, downloadLinkEmail } from "./notices.js";
 import { platformOidcConfig } from "../../../core/platform.js";
 import { portalSecurityHeaders } from "./headers.js";
 import { handleProductDownloads } from "./downloads.js";
@@ -89,6 +101,15 @@ import {
   handleDiscover,
   handleDiscoverClaim,
 } from "./discover.js";
+import {
+  DEVICE_LOGIN_APPROVE_LIMIT,
+  handleDeviceLoginApprove,
+  handleDeviceLoginLookup,
+  handleDeviceLoginPoll,
+  handleDeviceLoginStart,
+} from "./deviceLogin.js";
+import { freeAccountDevice, portalActionLimit } from "./freeDevice.js";
+import { handleProfileApi } from "./profile.js";
 
 export function portalJson(
   body: unknown,
@@ -163,9 +184,6 @@ function licenseBase(row: PortalLicenseRow): Record<string, unknown> {
     activatedAt: row.activated_at,
     expiresAt: row.expires_at,
     maxOfflineDays: row.max_offline_days,
-    channels: parseJson<string[]>(row.channels_json, []),
-    minVersion: row.min_version,
-    maxVersion: row.max_version,
     identityProvider: row.sub ? "oidc" : "manual",
   };
 }
@@ -177,13 +195,19 @@ export async function shapeLicenseSummary(
 ): Promise<Record<string, unknown>> {
   const keys = await listVisibleKeys(db, row.product, row.id);
   const devices = await listVisibleDevices(db, row.product, row.id);
+  // `channels`, `minVersion`, `maxVersion` and `entitlements` come from the licence document's
+  // own resolution, not the licence row's columns (LX-04, S-19 G14; see `entitlements.ts`).
+  const grants = await licenseGrants(db, row, now);
   return {
     ...licenseBase(row),
+    channels: grants.channels,
+    minVersion: grants.minVersion,
+    maxVersion: grants.maxVersion,
     usable: licenseUsable(row, now),
     keyCount: keys.length,
     activeKeyCount: keys.filter((k) => k.status === "active").length,
     deviceCount: devices.filter((d) => d.status === "authorized").length,
-    entitlements: await entitlementView(db, row, now),
+    entitlements: grants.entitlements,
   };
 }
 
@@ -224,14 +248,19 @@ async function requireSession(
   env: Env,
   db: Db,
   now: number,
-): Promise<{ session: PortalSession } | Response> {
+): Promise<{ session: PortalSession; sessionIdHash: string } | Response> {
   const session = await portalSessionFromRequest(env, req, now);
   if (!session) return unauthorized();
-  // I-05: the id resolves through a merge tombstone (30 days), so a cookie of an absorbed
-  // account acts as the survivor, and every handler below reads the resolved id.
-  const account = await getPortalAccount(db, session.accountId, now);
-  if (!account || account.status !== "active") return unauthorized();
-  return { session: { ...session, accountId: account.id } };
+  // I-07: the cookie must name a live `account_sessions` row of the account it resolves to. I-05:
+  // the id resolves through a merge tombstone (30 days), so a cookie of an absorbed account acts
+  // as the survivor (the merge moved its session rows), and every handler below reads the
+  // resolved id.
+  const live = await checkAccountSession(env, db, session, now);
+  if (!live) return unauthorized();
+  return {
+    session: { ...session, accountId: live.accountId },
+    sessionIdHash: live.idHash,
+  };
 }
 
 export async function hasLinkedProductLicense(
@@ -266,6 +295,12 @@ export type PortalHooksFor = (
 export interface DeliveryGate {
   product: ProductPublic;
   delivery: Delivery;
+  /**
+   * Is the product's GitHub repository public (Release's `repositoryPublic`, read at most once
+   * per gate)? `false` when Release is off or the answer could not be read. Only a public
+   * repository's stored download URLs may be handed to a browser.
+   */
+  repositoryPublic: () => Promise<boolean>;
 }
 
 /**
@@ -282,8 +317,16 @@ export async function deliveryGate(
   if (!hooksFor) return null;
   const loaded = await loadProductPublic(db, product);
   if (!loaded) return null;
-  const delivery = hooksFor(loaded, now).delivery();
-  return delivery ? { product: loaded, delivery } : null;
+  const hooks = hooksFor(loaded, now);
+  const delivery = hooks.delivery();
+  if (!delivery) return null;
+  let visibility: Promise<boolean> | undefined;
+  const repositoryPublic = (): Promise<boolean> =>
+    (visibility ??= (async () => {
+      const catalog = hooks.releaseCatalog();
+      return catalog ? catalog.repositoryPublic() : false;
+    })());
+  return { product: loaded, delivery, repositoryPublic };
 }
 
 export type ReleaseFacts = Pick<
@@ -319,21 +362,67 @@ export async function accountMayDownload(
 }
 
 /**
- * Where a download redirects (R6-12): the artifact's own GitHub storage URL when it is one;
- * otherwise, for a PUBLIC deliverable only, Distribution's bytes-host URL for the file
- * (`delivery.deliveryUrl`), accepted only when it is `https` on the configured bytes host. A
- * non-public deliverable is never redirected to the bytes host: the browser holds no device
- * token, so the redirect could only end in a refusal.
+ * Where a download goes (R6-12, PX-W3). One of:
+ *
+ *   - `{kind: "redirect", url}`, tried in this order:
+ *       1. For a PUBLIC deliverable, Distribution's bytes-host URL for the file
+ *          (`delivery.deliveryUrl`), accepted only when it is `https` on the configured bytes
+ *          host. Distribution serves every location from there (R2, and GitHub through
+ *          Release's installation token, so a PRIVATE repository's asset downloads too), which
+ *          is why it comes first: a GitHub URL alone only works for a public repository.
+ *       2. Otherwise the artifact's own GitHub storage URL, but only when the repository is
+ *          PUBLIC (`gate.repositoryPublic`). A private repository answers a browser's anonymous
+ *          request with GitHub's 404.
+ *   - `{kind: "ticket", base}`: a NON-public deliverable that no redirect above can serve, whose
+ *     file Distribution serves on the bytes host, with a recorded SHA-256, on a deployment with
+ *     download tickets configured (`DOWNLOAD_TICKET_KEY` and `BLOB_ORIGIN`). That covers files
+ *     held on R2 and, because the bytes host streams a private repository's assets through the
+ *     installation token, licensed files in a PRIVATE GitHub repository too (plans/PX-W3.md Q7,
+ *     reopened at the merge with main's bytes-host-first order; the brief records it). `base`
+ *     is the file's canonical bytes-host URL; only `handlePortalDownload` appends a ticket to it,
+ *     after every check (plans/PX-W3.md §6.2). Device trust does not apply to a portal download
+ *     (the licence-only rule `entitledAccess.ts` names; Q4 (a)), so a product whose trust policy
+ *     enforces `gatedDelivery: attested` is served here exactly like the GitHub branch serves it.
+ *   - `null`: nothing here can hand the bytes to a browser. A non-public deliverable is never
+ *     REDIRECTED to the bytes host (the browser holds no device token), so without tickets
+ *     configured, or without a SHA-256, it stays `null`.
+ *
+ * The listing and the token mint only test for non-null, so they offer exactly what redemption
+ * serves.
  */
+export type DownloadTarget =
+  | { kind: "redirect"; url: string }
+  | { kind: "ticket"; base: string };
+
 export async function downloadTarget(
   env: Env,
   artifact: PortalArtifactRow,
   gate: DeliveryGate,
   mode: ReleaseAccess,
-): Promise<string | null> {
+): Promise<DownloadTarget | null> {
+  if (mode === "public") {
+    const hosted = await bytesHostTarget(env, artifact, gate);
+    if (hosted !== null) return { kind: "redirect", url: hosted.toString() };
+  }
   const source = redirectableSourceUrl(artifact);
-  if (source !== null) return source;
-  if (mode !== "public") return null;
+  if (source !== null && (await gate.repositoryPublic()))
+    return { kind: "redirect", url: source };
+  if (mode === "public") return null;
+  if (!artifact.sha256 || !downloadTicketsEnabled(env)) return null;
+  const hosted = await bytesHostTarget(env, artifact, gate);
+  // A ticket is honoured on the bytes host alone (origin isolation, THREAT-MODEL §3), so the
+  // URL must sit on it and carry no query of its own for the ticket to join.
+  return hosted !== null && isBytesHost(hosted, env) && hosted.search === ""
+    ? { kind: "ticket", base: hosted.toString() }
+    : null;
+}
+
+/** Distribution's bytes-host URL for a file, when it is `https` on the configured bytes host. */
+async function bytesHostTarget(
+  env: Env,
+  artifact: PortalArtifactRow,
+  gate: DeliveryGate,
+): Promise<URL | null> {
   const minted = await gate.delivery.deliveryUrl({
     releaseId: artifact.release_id,
     name: artifact.name,
@@ -346,9 +435,7 @@ export async function downloadTarget(
     return null;
   }
   if (url.protocol !== "https:") return null;
-  return isAllowedDownloadRedirectHost(url.hostname, env)
-    ? url.toString()
-    : null;
+  return isAllowedDownloadRedirectHost(url.hostname, env) ? url : null;
 }
 
 /**
@@ -415,17 +502,15 @@ export async function requireActionRateLimit(
   product?: string,
   windowSec = 60,
 ): Promise<Response | null> {
-  const ok = await rateLimitOk(
-    env,
-    product ?? "_portal",
-    {
-      bucket,
-      id: `${product ?? "_"}:${session.accountId}:${clientIp(req)}`,
-      limit,
-      windowSec,
-    },
-    now,
+  const { shard, rl } = portalActionLimit(
+    req,
+    session.accountId,
+    bucket,
+    limit,
+    product,
+    windowSec,
   );
+  const ok = await rateLimitOk(env, shard, rl, now);
   return ok ? null : err(429, "rate_limited", "too many attempts");
 }
 
@@ -442,6 +527,9 @@ async function handleMe(
       id: account.id,
       name: account.display_name ?? session.name,
       email: account.primary_email ?? session.email,
+      // I-07, PX-W16: the picture in use, re-encoded and served same-origin (256 px; `-96` for
+      // the small one); null shows initials. `GET /api/me/profile` has the rest.
+      avatarUrl: avatarUrl(account.avatar_key ?? null),
     },
     csrf: session.csrf,
   });
@@ -534,7 +622,12 @@ async function handleCapabilities(
         Boolean(platformOidcConfig(env)),
       magic:
         caps.portalEnabled && caps.magicEnabled && portalEmailConfigured(env),
+      // I-16: passkeys are an account sign-in method, platform-level (no product toggle).
+      passkey: caps.portalEnabled,
     },
+    // I-07: the login card renders Cloudflare Turnstile on the email start with this public
+    // site key; null when the deploy has Turnstile off (no token is asked for).
+    turnstileSiteKey: turnstileSiteKey(env),
     modules: {
       licensing: caps.portalEnabled,
       claim: caps.portalEnabled && caps.licenseKeyClaimEnabled,
@@ -778,58 +871,37 @@ async function handleDeviceDelete(
   now: number,
 ): Promise<Response> {
   if (req.method !== "DELETE") return err(405, "method_not_allowed");
-  const settings = await getPortalProductSettings(db, product);
-  if (settings.portal_enabled !== 1) return notFound();
-  const license = await getPortalLicense(
-    db,
-    session.accountId,
-    product,
-    licenseId,
-  );
-  if (!license) return notFound();
-  // R5-05: charged AFTER ownership is proven, so a caller who owns no license on this product
-  // cannot spend a budget at all — and the budget they do spend is scoped to this product.
-  const limited = await requireActionRateLimit(
+  // The shared operation (`freeAccountDevice`): the sign-in chooser's Replace runs the same
+  // checks, audit, email and rate-limit budget (plans/I-04.md, owner decision 2026-10-05 §B).
+  const freed = await freeAccountDevice(
     req,
     env,
-    session,
-    "portalDeviceDisconnect",
-    now,
-    20,
-    product,
-  );
-  if (limited) return limited;
-  const device = await getDevice(db, product, deviceId);
-  if (!device || device.license_id !== licenseId) return notFound();
-  await setDeviceStatus(db, product, deviceId, "deauthorized");
-  if (device.token_hash)
-    await deleteTokenRecord(env, product, device.token_hash);
-  await portalAudit(db, {
-    accountId: session.accountId,
-    action: "portal.device.disconnect",
-    product,
-    targetKind: "device",
-    targetId: deviceId,
-    summary: `Disconnected device ${deviceId}`,
-    now,
-  });
-  // A security notice (PORTAL.md §6.3): every verified address, the device by its label and
-  // the product by its name, never the ids.
-  await sendSecurityNotice(
-    env,
     db,
-    session.accountId,
-    session.email,
-    deviceRemovedNotice({
-      deviceLabel: device.label,
-      productName: (await getProduct(db, product))?.name,
-      productSlug: product,
-      origin: new URL(req.url).origin,
-    }),
+    { accountId: session.accountId, email: session.email },
+    product,
+    licenseId,
+    deviceId,
     now,
   );
+  if (!freed.ok) {
+    if (freed.reason === "rate_limited")
+      return err(429, "rate_limited", "too many attempts");
+    return notFound();
+  }
   return portalJson({ ok: true, deviceId });
 }
+
+/**
+ * The token mint's refusal codes once the caller is known to own the product (a stranger only
+ * ever gets `not_found`). The last three are the downloads listing's `PortalFileReason`s, so a
+ * file the listing marks unavailable and a click the mint refuses say the same thing.
+ */
+export const MINT_REFUSAL = {
+  fileNotFound: "file_not_found",
+  notHosted: "not_hosted",
+  licenseInactive: "license_inactive",
+  notEntitled: "not_entitled",
+} as const;
 
 async function handleReleases(
   req: Request,
@@ -956,24 +1028,8 @@ async function handleReleases(
   ) {
     return notFound();
   }
-  const artifact = await getPortalArtifact(db, product, releaseId, artifactId);
-  const facts = artifact
-    ? await getPortalReleaseFacts(db, product, releaseId)
-    : null;
-  // Byte delivery is Distribution's: with it off (or no hooks to ask), nothing is minted.
-  const gate = facts ? await deliveryGate(db, hooksFor, product, now) : null;
-  const mode =
-    gate && facts ? await gate.delivery.accessMode(facts.deliverable_id) : null;
-  // Refused at MINT time as well as at redemption: a token that could only ever be rejected is
-  // a row written, a rate-limit charge spent and a URL handed to the user for nothing.
-  if (
-    !artifact ||
-    !facts ||
-    !gate ||
-    !mode ||
-    (await downloadTarget(env, artifact, gate, mode)) === null
-  )
-    return notFound();
+  // Ownership first: a caller with no linked licence for the product learns nothing, not even
+  // whether the release or the file exists. Every refusal before this line is the same 404.
   if (!(await hasLinkedProductLicense(db, session.accountId, product))) {
     return notFound();
   }
@@ -990,12 +1046,49 @@ async function handleReleases(
     product,
   );
   if (limited) return limited;
+  // From here the caller owns the product, so a refusal says why, with the downloads listing's
+  // own reason codes (`downloads.ts`), and the portal turns the code into words. Refused at MINT
+  // time as well as at redemption: a token that could only ever be rejected is a row written
+  // and a URL handed to the user for nothing.
+  const artifact = await getPortalArtifact(db, product, releaseId, artifactId);
+  const facts = artifact
+    ? await getPortalReleaseFacts(db, product, releaseId)
+    : null;
+  if (!artifact || !facts)
+    return err(
+      404,
+      MINT_REFUSAL.fileNotFound,
+      "this release or file is no longer offered",
+    );
+  // Byte delivery is Distribution's: with it off (or no hooks to ask), nothing is minted.
+  const gate = await deliveryGate(db, hooksFor, product, now);
+  const mode = gate
+    ? await gate.delivery.accessMode(facts.deliverable_id)
+    : null;
+  if (!gate || !mode)
+    return err(
+      409,
+      MINT_REFUSAL.notHosted,
+      "downloads are not served for this product",
+    );
   // The delivery access every download surface reads (P2b-04): `licensed` needs a usable
   // licence, `entitled` one whose grant holds this release's channel and version.
   if (
     !(await accountMayDownload(db, session.accountId, gate, mode, facts, now))
   )
-    return forbidden(`${mode} release access required`);
+    return err(
+      403,
+      mode === "entitled"
+        ? MINT_REFUSAL.notEntitled
+        : MINT_REFUSAL.licenseInactive,
+      `${mode} release access required`,
+    );
+  if ((await downloadTarget(env, artifact, gate, mode)) === null)
+    return err(
+      409,
+      MINT_REFUSAL.notHosted,
+      "this file cannot be downloaded from the portal yet",
+    );
   const token = await createPortalDownloadToken(env, db, {
     accountId: session.accountId,
     product,
@@ -1048,7 +1141,7 @@ async function handleEmailDownload(
     return notFound();
   }
   if (!portalEmailConfigured(env)) {
-    return err(503, "email_not_configured", "email is not configured");
+    return err(503, "email_unavailable", "email is not configured");
   }
   const limited = await requireActionRateLimit(
     req,
@@ -1077,8 +1170,92 @@ async function handleEmailDownload(
   return portalJson({ ok: true }, 202);
 }
 
+/**
+ * I-07 account sessions (S-16 §5.4 item 7): `GET /api/sessions` lists the account's live
+ * sessions (the current one marked); `DELETE /api/sessions/<id>` ends one; `POST
+ * /api/sessions/sign-out-everywhere` ends every one, this browser's included, and clears its
+ * cookie. Mutations carry the CSRF header (checked by the dispatcher above). I-11 builds the
+ * settings page on these.
+ */
+async function handleSessions(
+  req: Request,
+  env: Env,
+  db: Db,
+  session: PortalSession,
+  currentIdHash: string,
+  rest: string[],
+  now: number,
+): Promise<Response> {
+  if (rest.length === 0) {
+    if (req.method !== "GET") return err(405, "method_not_allowed");
+    return portalJson({
+      sessions: await listAccountSessions(
+        db,
+        session.accountId,
+        currentIdHash,
+        now,
+      ),
+    });
+  }
+  if (rest.length === 1 && rest[0] === "sign-out-everywhere") {
+    if (req.method !== "POST") return err(405, "method_not_allowed");
+    const ended = await revokeAllAccountSessions(db, session.accountId, now);
+    // The apps too (S-17 §5.8 item 2): Core's one clearing hook drops every device's binding to
+    // this account, releasing a seat only where the sign-in itself bound it.
+    const devices = await clearDeviceSubjects(
+      db,
+      env,
+      { kind: "account", accountId: session.accountId },
+      "signout_everywhere",
+    );
+    await portalAudit(db, {
+      accountId: session.accountId,
+      action: "portal.sessions.revoke_all",
+      summary: `Signed out everywhere (${ended} sessions, ${devices.cleared} devices)`,
+      now,
+    });
+    return portalJson({ ok: true, ended, devices: devices.cleared }, 200, {
+      "set-cookie": buildPortalClearCookie(),
+    });
+  }
+  if (rest.length === 1 && rest[0]) {
+    if (req.method !== "DELETE") return err(405, "method_not_allowed");
+    const id = rest[0];
+    if (!/^[A-Za-z0-9_-]{16,128}$/.test(id)) return notFound();
+    const ended = await revokeAccountSession(db, session.accountId, id, now);
+    if (!ended) return notFound();
+    await portalAudit(db, {
+      accountId: session.accountId,
+      action: "portal.sessions.revoke",
+      summary: "Ended a session",
+      now,
+    });
+    const current = id === currentIdHash;
+    return portalJson(
+      { ok: true, current },
+      200,
+      current ? { "set-cookie": buildPortalClearCookie() } : undefined,
+    );
+  }
+  return notFound();
+}
+
 /** "Email me the download" sends per account, per product, per hour. */
 export const EMAIL_DOWNLOAD_PER_HOUR = 5;
+
+/** A path's non-empty segments, each percent-decoded once; `null` when one is malformed. */
+export function decodeSegments(path: string): string[] | null {
+  const out: string[] = [];
+  for (const raw of path.split("/")) {
+    if (!raw) continue;
+    try {
+      out.push(decodeURIComponent(raw));
+    } catch {
+      return null;
+    }
+  }
+  return out;
+}
 
 export async function handlePortalApi(
   req: Request,
@@ -1091,18 +1268,57 @@ export async function handlePortalApi(
 ): Promise<Response> {
   let p = path.startsWith("/api") ? path.slice(4) : path;
   if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
-  const segments = p.split("/").filter(Boolean);
+  // The composition root hands over `url.pathname`, which is still percent-encoded, while the
+  // SPA encodes every segment it sends (`encodeURIComponent`). Ids are compared to stored values
+  // byte for byte, so each segment is decoded once here, after the split (an encoded `/` stays
+  // inside its segment). Without this an artifact id like `file:App-1.0.dmg` arrived as
+  // `file%3AApp-1.0.dmg` and the token mint 404'd a file the downloads listing had offered.
+  const segments = decodeSegments(p);
+  if (segments === null) return notFound();
   if (segments[0] === "capabilities") {
     const requested = new URL(req.url).searchParams.get("product");
     return handleCapabilities(env, db, requested);
   }
   if (segments[0] === "magic" && segments[1] === "start") {
-    return handleMagicStart(req, env, db);
+    return handleMagicStart(req, env, db, now);
+  }
+  // PX-W13 (WIRE-CONTRACT-V4 §12.7.2): the sign-in request the card renders. The binder cookie,
+  // not a session: the card shows it before anyone signs in (`passthrough/routes.ts`).
+  if (
+    segments[0] === "signin" &&
+    segments[1] === "requests" &&
+    segments[2] &&
+    segments.length === 3
+  ) {
+    if (req.method !== "GET") return err(405, "method_not_allowed");
+    const view = await signInRequestView(
+      env,
+      db,
+      req,
+      segments[2],
+      now,
+      hooksFor,
+    );
+    return view.status === 200 ? portalJson(view.body) : notFound();
+  }
+  // I-07: the login card's pre-authentication routes (email code and link, the email gate).
+  // `signin/requests/*` is PX-W13's: the request view above, and its app-consent view below,
+  // which needs the session.
+  if (segments[0] === "signin" && segments[1] !== "requests") {
+    return handleCardApi(req, env, db, segments, now);
+  }
+  // PX-W14 (G29): the new device's half of "Sign in with another device" is pre-auth: it has no
+  // session yet. The signed-in half (`lookup`, `approve`) is dispatched below.
+  if (segments[0] === "device-login" && segments.length === 2) {
+    if (segments[1] === "start")
+      return handleDeviceLoginStart(req, env, db, now);
+    if (segments[1] !== "lookup" && segments[1] !== "approve")
+      return handleDeviceLoginPoll(req, env, db, segments[1]!, now);
   }
 
   const sessionResult = await requireSession(req, env, db, now);
   if (sessionResult instanceof Response) return sessionResult;
-  const { session } = sessionResult;
+  const { session, sessionIdHash } = sessionResult;
   if (isMutation(req.method)) {
     const presented = req.headers.get(PORTAL_CSRF_HEADER);
     if (!presented || presented !== session.csrf) return forbidden("csrf");
@@ -1117,10 +1333,77 @@ export async function handlePortalApi(
   ) {
     return handleMeDelete(req, env, db, session, now);
   }
+  // PX-W14: the approver's half. Rate-limited per ACCOUNT alone (not account and client IP, as
+  // `requireActionRateLimit` keys it) before any code is looked up, so the budget is the bound on
+  // guessing someone else's code however many addresses the guesser rotates through.
+  if (
+    segments[0] === "device-login" &&
+    (segments[1] === "lookup" || segments[1] === "approve") &&
+    segments.length === 2
+  ) {
+    if (req.method !== "POST") return err(405, "method_not_allowed");
+    const allowed = await rateLimitOk(
+      env,
+      "_portal",
+      {
+        bucket: "portalDeviceApprove",
+        id: session.accountId,
+        limit: DEVICE_LOGIN_APPROVE_LIMIT,
+        windowSec: 60,
+      },
+      now,
+    );
+    if (!allowed) return err(429, "rate_limited", "too many attempts");
+    const body = await readBody(req);
+    return segments[1] === "lookup"
+      ? handleDeviceLoginLookup(req, env, session, body, now)
+      : handleDeviceLoginApprove(req, env, db, session, body, now);
+  }
+  // I-16: the account's passkeys (list, add, remove), before the licence-link sweep they never
+  // read. Adding and removing check step-up and the email rule themselves.
+  if (segments[0] === "me" && segments[1] === "passkeys") {
+    return handleAccountPasskeys(
+      req,
+      env,
+      db,
+      {
+        accountId: session.accountId,
+        authenticatedAt: portalSessionAuthenticatedAt(session),
+        sessionIdHash,
+      },
+      segments.slice(2),
+      now,
+    );
+  }
   await syncAccountLicenseLinks(db, session.accountId, now);
 
   const [head, ...rest] = segments;
+  // PX-W16 (G32, G33): Account → Profile, and picture uploads (`profile.ts`).
+  if (head === "me" && rest[0] === "profile")
+    return handleProfileApi(req, env, db, session, rest, now);
   if (head === "me") return handleMe(db, session, now);
+  if (head === "sessions") {
+    return handleSessions(req, env, db, session, sessionIdHash, rest, now);
+  }
+  // PX-W13 (§12.7.3): app consent for a sign-in request, for the signed-in account.
+  if (
+    head === "signin" &&
+    rest[0] === "requests" &&
+    rest[1] &&
+    rest[2] === "consent" &&
+    rest.length === 3
+  ) {
+    if (req.method !== "GET") return err(405, "method_not_allowed");
+    const view = await signInConsentView(
+      env,
+      db,
+      req,
+      rest[1],
+      session.accountId,
+      now,
+    );
+    return view.status === 200 ? portalJson(view.body) : notFound();
+  }
   if (
     head === "licenses" &&
     rest[2] === "devices" &&
@@ -1285,14 +1568,15 @@ export async function handlePortalDownload(
   const mode =
     gate && facts ? await gate.delivery.accessMode(facts.deliverable_id) : null;
   // R6-12: the ONLY value that may become a `Location` header. `null` here means the stored URL
-  // is absent, unparseable, not https, or not a GitHub storage host — and, for a public
-  // deliverable, that Distribution has no bytes-host URL for it either (`downloadTarget`) — all
-  // of which are refusals, never redirects.
-  const location =
+  // is absent, unparseable, not https, not a GitHub storage host or in a private repository —
+  // and that Distribution has no bytes-host URL for it either: for a public deliverable, or
+  // (PX-W3) a ticketable one for a non-public deliverable (`downloadTarget`) — all of which are
+  // refusals, never redirects.
+  const target =
     artifact && gate && mode
       ? await downloadTarget(env, artifact, gate, mode)
       : null;
-  if (!artifact || !facts || !gate || !mode || location === null)
+  if (!artifact || !facts || !gate || !mode || target === null)
     return notFound();
   const settings = await getPortalProductSettings(db, row.product);
   if (settings.portal_enabled !== 1 || settings.releases_enabled !== 1) {
@@ -1307,6 +1591,30 @@ export async function handlePortalDownload(
   }
   if (!(await accountMayDownload(db, account.id, gate, mode, facts, now))) {
     return notFound();
+  }
+  // PX-W3: a licensed file held on R2 goes to its canonical bytes-host URL with a download
+  // ticket, minted only now that every check above has passed (plans/PX-W3.md §6.2). Minted
+  // BEFORE the token is spent, so a failure leaves the user's click usable once the cause is
+  // fixed. The ticket carries no account id; it binds this one file by content.
+  let location: string;
+  if (target.kind === "redirect") location = target.url;
+  else {
+    const ticket = artifact.sha256
+      ? await mintDownloadTicket(
+          env,
+          {
+            product: row.product,
+            releaseId: artifact.release_id,
+            name: artifact.name,
+            sha256: artifact.sha256,
+          },
+          now,
+        )
+      : null;
+    if (ticket === null) return notFound();
+    const url = new URL(target.base);
+    url.searchParams.set(DOWNLOAD_TICKET_PARAM, ticket);
+    location = url.toString();
   }
   // R9-05b: the conditional UPDATE IS the single-use gate. A concurrent redemption of the same
   // token loses here (changes === 0) and gets a 404 instead of a second redirect.

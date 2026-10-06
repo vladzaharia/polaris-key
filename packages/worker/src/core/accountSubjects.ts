@@ -13,9 +13,13 @@
  *   subjectFor(account, product)      the pairwise subject, created on first contact
  *   resolveSubject(product, subject)  follows merge aliases; a deleted subject is `null`
  *   licenseOwnerSubject(licence)      the owner's subject (Config's fallback; never Cloud Sync's)
+ *   resolveSyncPrincipal(device)      the device binding only (Cloud Sync's principal; U-02)
+ *   isFloatingLicense(licence)        no account and no email: no account features (S-24)
  *
  * The tables are Identity's (`TABLE_OWNERS`); Core reads and writes only the subject rows, the
- * owner pointer and the binding, and nothing here reads the product's Identity toggle.
+ * owner pointer and the binding. Subjects and the owner pointer ignore the product's Identity
+ * toggle; the ONE read of it here is the bind guard in `setDeviceSubject` (PX-W17): no device of
+ * an Identity-off product ever carries a binding, so S-19's holder rule can trust the column.
  *
  * ── THE ACCOUNT ID STAYS INSIDE ──────────────────────────────────────────────────────────────
  *
@@ -28,7 +32,8 @@ import { mintPairwiseSubject } from "../crypto.js";
 import type { Db, DbStatement } from "../db/types.js";
 import type { Env } from "../env.js";
 import { getTokenRecord, putTokenRecord } from "../kv.js";
-import { writeDeviceSubject } from "./devices.js";
+import { NO_LICENSE_ID, writeDeviceSubject } from "./devices.js";
+import { assertIdentityBindable } from "./identityGate.js";
 
 /** `ps_` and 22 base64url characters (plans/I-04.md §2; I-09 publishes it in the protocol). */
 export const PAIRWISE_SUBJECT_PATTERN = /^ps_[A-Za-z0-9_-]{22}$/;
@@ -50,6 +55,28 @@ export async function existingSubjectFor(
     product,
   );
   return row?.subject ?? null;
+}
+
+/** {@link existingSubjectFor} for many accounts at once: account id → subject, read-only. */
+export async function existingSubjectsFor(
+  db: Db,
+  accountIds: readonly string[],
+  product: string,
+): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const ids = [...new Set(accountIds)];
+  // D1 binds at most 100 parameters; one is the product.
+  for (let i = 0; i < ids.length; i += 90) {
+    const batch = ids.slice(i, i + 90);
+    for (const r of await db.all<{ account_id: string; subject: string }>(
+      `SELECT account_id, subject FROM account_product_subjects
+        WHERE product = ? AND account_id IN (${batch.map(() => "?").join(", ")})`,
+      product,
+      ...batch,
+    ))
+      out.set(r.account_id, r.subject);
+  }
+  return out;
 }
 
 /**
@@ -128,9 +155,55 @@ export async function accountForSubject(
   return row?.account_id ?? null;
 }
 
+// ── Floating or assigned (S-24) ───────────────────────────────────────────────────────────────
+
+/** The two columns that decide a licence's holder (S-24 D1: derived, never stored). */
+export interface LicenseHolderFacts {
+  account_id?: string | null;
+  email?: string | null;
+}
+
+/**
+ * THE floating-licence rule (S-24 R2, owner 2026-10-06): a licence is floating when it has no
+ * account (`account_id IS NULL`) and no email; otherwise it is assigned (in an account, or waiting
+ * for its email to be verified). A floating licence has no account features: no Cloud Sync
+ * principal (`resolveSyncPrincipal`), no account override fallback (U-03). An email that is empty
+ * or only spaces counts as none, exactly as SQLite's `TRIM(email) = ''` in
+ * {@link floatingLicenseSql}, so a list filter and a read never disagree. Every caller asks this
+ * function (or that fragment); none restates the rule.
+ *
+ * Older comments (I-05) say "floating" for any licence with no account. Since S-24 that is "not
+ * in an account": a licence with an email and no account is assigned and waiting, not floating.
+ */
+export function isFloatingLicense(licence: LicenseHolderFacts): boolean {
+  return (
+    (licence.account_id ?? null) === null && licenseEmail(licence) === null
+  );
+}
+
+/**
+ * The licence's own email as the holder rule reads it: `null` when there is none or it is empty or
+ * only spaces (SQLite's `TRIM(email) = ''`), else the stored value unchanged.
+ */
+export function licenseEmail(licence: LicenseHolderFacts): string | null {
+  const email = licence.email ?? null;
+  return email === null || /^ *$/.test(email) ? null : email;
+}
+
+/**
+ * {@link isFloatingLicense} as a SQL predicate over the `licenses` row aliased `alias` (the list
+ * filter `holder=floating`, LX-26). The same two facts, the same blank rule.
+ */
+export function floatingLicenseSql(alias: string): string {
+  if (!/^[a-z_][a-z0-9_]*$/i.test(alias)) {
+    throw new Error("floatingLicenseSql: bad table alias");
+  }
+  return `(${alias}.account_id IS NULL AND (${alias}.email IS NULL OR TRIM(${alias}.email) = ''))`;
+}
+
 // ── The licence owner pointer ─────────────────────────────────────────────────────────────────
 
-/** `licenses.account_id`, or `null` for a floating (or absent) licence. INTERNAL. */
+/** `licenses.account_id`, or `null` for an unattached (or absent) licence. INTERNAL. */
 export async function licenseAccountId(
   db: Db,
   product: string,
@@ -253,6 +326,65 @@ export async function accountLicenses(
       );
 }
 
+// ── The Cloud Sync principal (U-02) ──────────────────────────────────────────────────────────
+
+/** A device's Cloud Sync principal: the product and the pairwise subject signed in on it. */
+export interface SyncPrincipal {
+  product: string;
+  subject: string;
+}
+
+/**
+ * The Cloud Sync principal of a device (U-02; plans/U-01.md §6.1, S-17 §5.2): the binding
+ * `devices.subject` alone, after one check against the subject table. Cloud Sync needs sign-in
+ * (owner, 2026-10-04, final answers), so there is NO licence-owner fallback: a device with no
+ * binding (key-activated, floating licence, never signed in) has no principal and Cloud Sync
+ * answers `account_required`. A merge alias resolves to the surviving subject (D21); a deleted
+ * subject, a malformed value and a device that is not authorized all resolve to `null`. So does a
+ * device whose licence is floating ({@link isFloatingLicense}; S-24, owner 2026-10-06): a
+ * floating licence has no account features, whatever binding the device carries.
+ *
+ * The licence check runs for every device that names a licence. A device whose `license_id`
+ * names a licence row that does not exist (deleted, or never written) resolves to `null` too: an
+ * unknown licence is not evidence of an assigned one, so the answer fails closed. A device that
+ * names NO licence (`NO_LICENSE_ID`, the empty string) has no licence to be floating, so the
+ * check does not apply: that is a device on a product with License off, and equally a keyless
+ * device registered on a License-on product whose `registration` is `"open"` (S-24 decides
+ * floating from a licence's facts; a licence-less device has none). Its principal is its binding,
+ * like any other device's.
+ *
+ * The caller passes the D1 row `validateDeviceToken` returned, never a KV token record (a cache)
+ * and never anything the request carried: no route accepts a subject or an account id.
+ * `license_id` is required (as on `DeviceRow`), so a partial object cannot skip the floating
+ * check by leaving it out.
+ */
+export async function resolveSyncPrincipal(
+  db: Db,
+  device: {
+    product: string;
+    status: string;
+    license_id: string;
+    subject?: string | null;
+  },
+): Promise<SyncPrincipal | null> {
+  if (device.status !== "authorized") return null;
+  const bound = device.subject ?? null;
+  if (!bound || !PAIRWISE_SUBJECT_PATTERN.test(bound)) return null;
+  // S-24 (owner, 2026-10-06): a floating licence has no account features, Cloud Sync included,
+  // even when a binding survives on the device (a detach keeps it; it is hidden, not cleared).
+  if (device.license_id !== NO_LICENSE_ID) {
+    const licence = await db.first<LicenseHolderFacts>(
+      "SELECT account_id, email FROM licenses WHERE product = ? AND id = ?",
+      device.product,
+      device.license_id,
+    );
+    // A missing licence row fails closed (see above).
+    if (!licence || isFloatingLicense(licence)) return null;
+  }
+  const subject = await resolveSubject(db, device.product, bound);
+  return subject ? { product: device.product, subject } : null;
+}
+
 // ── The device binding ────────────────────────────────────────────────────────────────────────
 
 /**
@@ -260,6 +392,7 @@ export async function accountLicenses(
  * activated some other way (a key, an enrolment). Only an account sign-in through Identity calls
  * this; key entry never does (plans/I-04.md §6.2). `bound_by` is left alone, so a key-bound device
  * that later signs in is not released by a sign-out (§8 Q3). Mirrors the KV token record.
+ * Throws `IdentityDisabledBindError` while the product's Identity is off (PX-W17).
  */
 export async function setDeviceSubject(
   env: Env,
@@ -271,6 +404,7 @@ export async function setDeviceSubject(
   if (!PAIRWISE_SUBJECT_PATTERN.test(subject)) {
     throw new Error("setDeviceSubject: not a pairwise subject");
   }
+  await assertIdentityBindable(db, product);
   const device = await db.first<{ token_hash: string | null; status: string }>(
     "SELECT token_hash, status FROM devices WHERE product = ? AND device_id = ?",
     product,

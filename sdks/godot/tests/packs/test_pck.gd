@@ -9,14 +9,23 @@ extends RefCounted
 
 const S := preload("res://tests/packs/support.gd")
 const DIR := "res://tests/fixtures/packs/check"
-## The rscc-g-run time bound (P4-27 audit GAP 2): measured 751 ms (4.7.2 editor) and 514 ms
-## (4.4.1) on Apple silicon; about 6× the slowest, for slower CI runners. The per-hit scan it
-## replaced spent about 62 ms per MiB of hits (measured on 4 MiB of 'G'), about 4 s on this body
-## for that marker alone, and per entry, with 256 MiB declarable then.
-const G_RUN_BOUND_MS := 5000
-## The GAP D bound (P4-28 audit): 2,001 references to two large app scenes, each typed from its
-## first RSCC block once. Measured in the editor and template runs; see the brief.
-const TYPE_SCALE_BOUND_MS := 3000
+## The scan's complexity checks (P4-27 audit GAP 2) count work, never time, so no machine load
+## can move them (P1-13): PKeyPck.scan_probes (native passes and candidate comparisons) and
+## scan_bytes (the bytes they cover), diffed around each call. A run of 'G' (every byte a marker's
+## first byte) may cost at most G_RUN_HIT_FACTOR times the work of a run of a byte no marker holds,
+## of the same size: the scan is linear in the bytes, not in the hits (the counts are equal; a
+## per-hit loop put back into `first_present` makes one comparison per 'G'). And 4× the bytes may
+## cost at most G_RUN_SCALE_FACTOR times the work: linear is 4× (plus the window overlaps),
+## quadratic 16×.
+const G_RUN_HIT_FACTOR := 2
+const G_RUN_SCALE_FACTOR := 5
+## A hang guard only (wall clock, so a loaded machine still passes): the 64 MiB rscc-g-run fixture
+## checks in 514–751 ms on an idle Apple-silicon machine; a regression back to a per-hit scan is
+## caught by the work counts above, not by this.
+const G_RUN_HANG_MS := 120000
+## GAP D (P4-28 audit): a check reads each app path's type once (`ctx.types`, counted by
+## PKeyPck.type_reads), whatever the number of references. The wall-clock bound is a hang guard.
+const TYPE_SCALE_HANG_MS := 120000
 
 
 func run(t: PKeyTestContext) -> void:
@@ -245,7 +254,7 @@ func _type_probes(t: PKeyTestContext) -> void:
 ## per check. Two engine-compressed app scenes are made available as app files through a helper
 ## pack (res://pkeygen/): one of about 30 MB of incompressible data, one declaring more than the
 ## pack cap (64 MiB). A pack .tres naming the first in 2,000 ext_resource tags typed Resource,
-## and the second once, is admitted, both typed PackedScene, within TYPE_SCALE_BOUND_MS.
+## and the second once, is admitted, both typed PackedScene, reading each scene's type once.
 func _type_scale_probe(t: PKeyTestContext) -> void:
 	var scratch := S.scratch("pck-scale")
 	var zeros := PackedByteArray()
@@ -281,12 +290,15 @@ func _type_scale_probe(t: PKeyTestContext) -> void:
 	var pck := scratch.path_join("many.pck")
 	PKeyPck.write(pck, [{"path": "res://packs/many/x.tres", "bytes": text.to_utf8_buffer()}], ver)
 	var src := PKeyByteSource.file(pck)
+	var reads_before := PKeyPck.type_reads
 	var started := Time.get_ticks_msec()
 	var lines := PKeyPck.lint_lines(src, PKeyPck.read_directory(src), ["res://packs/many/"], null, [])
 	var ms := Time.get_ticks_msec() - started
-	t.info("pck scale: 2,001 references to two large app scenes checked in %d ms" % ms)
+	var reads := PKeyPck.type_reads - reads_before
+	t.info("pck scale: 2,001 references to two large app scenes checked in %d ms (%d type reads)" % [ms, reads])
 	S.check_same(t, "pck scale: 2,000 references to one ~30 MB app scene and one over the cap are admitted", Array(lines), [])
-	t.check("pck scale: …within %d ms" % TYPE_SCALE_BOUND_MS, ms < TYPE_SCALE_BOUND_MS, "%d ms" % ms)
+	t.check("pck scale: …reading each scene's type once (2 reads for 2,001 references)", reads == 2, "%d reads" % reads)
+	t.check("pck scale: …and not hanging (guard %d ms)" % TYPE_SCALE_HANG_MS, ms < TYPE_SCALE_HANG_MS, "%d ms" % ms)
 	S.remove_tree(scratch)
 
 
@@ -373,7 +385,7 @@ func _rscc_probes(t: PKeyTestContext) -> void:
 	t.check("pck rscc: 4 MiB in 1025 blocks decodes", r.has("body") and (r["body"] as PackedByteArray).size() == big.size())
 	t.info("pck rscc: 4 MiB (1025 blocks) decompressed in %d ms" % ((Time.get_ticks_usec() - t0) / 1000.0))
 	# P4-27 audit GAP 2: a 64 MiB body that is a run of 'G' (every byte a first-byte hit for
-	# GDScript) is decompressed and scanned in time linear in its size, not in its hits.
+	# GDScript) is decompressed, scanned and admitted.
 	var gpck := FileAccess.get_file_as_bytes(DIR.path_join("rscc-g-run.pck"))
 	var gsrc := PKeyByteSource.memory(gpck)
 	var gdir := PKeyPck.read_directory(gsrc)
@@ -381,8 +393,38 @@ func _rscc_probes(t: PKeyTestContext) -> void:
 	var gchk := PKeyPck.directory_check(gsrc, gdir, ["res://assets/kaykit/"]) if gdir["ok"] else {}
 	var gms := (Time.get_ticks_usec() - t1) / 1000.0
 	t.info("pck rscc: rscc-g-run (64 MiB body, a run of 'G') checked in %d ms" % gms)
-	t.check("pck rscc: a 64 MiB run of 'G' is admitted within %d ms" % G_RUN_BOUND_MS, gdir["ok"] and gchk.get("ok", false) and gms < G_RUN_BOUND_MS, "%d ms %s" % [gms, S.canon(gchk)])
+	t.check("pck rscc: a 64 MiB run of 'G' is admitted (hang guard %d ms)" % G_RUN_HANG_MS, gdir["ok"] and gchk.get("ok", false) and gms < G_RUN_HANG_MS, "%d ms %s" % [gms, S.canon(gchk)])
+	_scan_scaling(t)
 	S.remove_tree(scratch)
+
+
+## P4-27 audit GAP 2, as complexity rather than wall time: the marker scan's work is linear in the
+## bytes, not in the hits (a run of 'G' costs what a run of 'Z' does) and not quadratic (4× the
+## bytes cost about 4× the work). Counted work, so the checks hold under any load.
+func _scan_scaling(t: PKeyTestContext) -> void:
+	var mib := 1048576
+	var g8 := PackedByteArray()
+	g8.resize(8 * mib)
+	g8.fill(0x47)
+	var z8 := PackedByteArray()
+	z8.resize(8 * mib)
+	z8.fill(0x5A)
+	var g2 := g8.slice(0, 2 * mib)
+	var work := []
+	var clean := true
+	for data in [g8, z8, g2]:
+		var probes := PKeyPck.scan_probes
+		var bytes := PKeyPck.scan_bytes
+		var started := Time.get_ticks_usec()
+		clean = PKeyPck._marker(data) == "" and clean
+		work.append([PKeyPck.scan_probes - probes, PKeyPck.scan_bytes - bytes, (Time.get_ticks_usec() - started) / 1000.0])
+	t.check("pck scan: runs of 'G' and 'Z' name no marker", clean)
+	t.info("pck scan: 8 MiB of 'G' %d probes / %d bytes (%.1f ms), 8 MiB of 'Z' %d / %d (%.1f ms), 2 MiB of 'G' %d / %d (%.1f ms)" % [work[0][0], work[0][1], work[0][2], work[1][0], work[1][1], work[1][2], work[2][0], work[2][1], work[2][2]])
+	var g: Array = work[0]
+	var z: Array = work[1]
+	var g_small: Array = work[2]
+	t.check("pck scan: a run of hits costs at most %d× the work of a run of no hits (linear in bytes, not hits)" % G_RUN_HIT_FACTOR, z[0] > 0 and g[0] <= G_RUN_HIT_FACTOR * z[0] and g[1] <= G_RUN_HIT_FACTOR * z[1], "G %d probes / %d bytes, Z %d / %d" % [g[0], g[1], z[0], z[1]])
+	t.check("pck scan: 4× the bytes cost at most %d× the work (linear 4×, quadratic 16×)" % G_RUN_SCALE_FACTOR, g_small[0] > 0 and g[0] <= G_RUN_SCALE_FACTOR * g_small[0] and g[1] <= G_RUN_SCALE_FACTOR * g_small[1], "8 MiB %d probes / %d bytes, 2 MiB %d / %d" % [g[0], g[1], g_small[0], g_small[1]])
 
 
 ## A loader that claims an extension for `Script`, as a GDExtension language's would.

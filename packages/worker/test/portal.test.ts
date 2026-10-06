@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { makeTestDb } from "./helpers.js";
 import { KvMock } from "./kvMock.js";
 import {
@@ -10,7 +11,8 @@ import {
 } from "./seed.js";
 import type { Env } from "../src/env.js";
 import type { Db } from "../src/db/types.js";
-import { setServices } from "../src/repo.js";
+import { insertLicense, setServices } from "../src/repo.js";
+import { authorizeAndMint } from "../src/services/identity/oidc.js";
 import { serializeServices } from "../src/core/services.js";
 import { handleActivate } from "../src/services/license/activation.js";
 import { loadProduct } from "../src/core/products.js";
@@ -20,7 +22,11 @@ import {
   getOrCreateAccountByEmail,
   upsertPortalProductSettings,
 } from "../src/services/identity/portal/repo.js";
-import { handlePortalApi, handlePortalDownload } from "./portalHarness.js";
+import {
+  handlePortalApi,
+  handlePortalDownload,
+  seedRepositoryVisibility,
+} from "./portalHarness.js";
 import { seedDeliveryAccess } from "./releaseSurface.js";
 import { handleMagicVerify } from "../src/services/identity/portal/auth.js";
 import {
@@ -59,8 +65,9 @@ async function portalSession(
   email = "ada@example.com",
 ): Promise<{ cookie: string; csrf: string; accountId: string }> {
   const account = await getOrCreateAccountByEmail(db, email, NOW);
-  const { token, session } = await issuePortalSession(
+  const { token, session } = await issuePortalSessionRow(
     env,
+    db,
     {
       accountId: account.id,
       email: account.primary_email,
@@ -93,6 +100,7 @@ async function enableReleaseService(db: Db, slug: string): Promise<void> {
         distribution: { enabled: true },
         update: { enabled: false },
         identity: { enabled: false },
+        sync: { enabled: false },
       },
     }),
     "manifest",
@@ -132,8 +140,28 @@ describe("customer portal", () => {
     expect(token).toBeTruthy();
     expect(kv.keys().some((key) => key.includes(token!))).toBe(false);
 
+    // I-07: the landing page (GET) consumes nothing; its button POSTs the token back, from the
+    // browser that asked (its flow cookie), which signs that browser in.
+    const flowCookie = cookieFromSetCookie(start.headers.get("set-cookie"));
+    const landing = await handleMagicVerify(
+      req("GET", `/magic/verify?token=${encodeURIComponent(token!)}`, {
+        cookie: flowCookie,
+      }),
+      env,
+      db,
+      NOW,
+    );
+    expect(landing.status).toBe(200);
+    expect(landing.headers.get("set-cookie")).toBeNull();
     const verified = await handleMagicVerify(
-      req("GET", `/magic/verify?token=${encodeURIComponent(token!)}`),
+      new Request("https://key.plrs.im/magic/verify", {
+        method: "POST",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded",
+          cookie: flowCookie,
+        },
+        body: new URLSearchParams({ token: token! }).toString(),
+      }) as unknown as Request,
       env,
       db,
       NOW,
@@ -294,6 +322,118 @@ describe("customer portal", () => {
     expect(device?.status).toBe("deauthorized");
   });
 
+  it("lists and removes a device of a sign-in (keyless) licence the account owns", async () => {
+    const db = makeTestDb();
+    const kv = new KvMock();
+    const env = portalEnv(kv);
+    const sent: Array<{ to: string; text: string }> = [];
+    env.EMAIL = {
+      send: async (message: { to: string; text: string }) => {
+        sent.push(message);
+      },
+    } as unknown as Env["EMAIL"];
+    await seedProduct(db, "djdl");
+    const product = (await loadProduct(env, db, "djdl"))!;
+    const session = await portalSession(env, db);
+    // The product-OIDC licence: `sub`-keyed, no key, linked to the portal account.
+    await insertLicense(db, {
+      product: "djdl",
+      id: "lic_oidc",
+      status: "active",
+      sub: "sub-ada",
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+      groups_json: null,
+      tier_id: null,
+      activated_at: NOW,
+      expires_at: null,
+      max_offline_days: null,
+      overrides_json: null,
+      channels_json: null,
+      min_version: null,
+      max_version: null,
+      origin: "oidc",
+      modified_by: "oidc",
+      modified_at: NOW,
+    });
+    await db.run(
+      "UPDATE licenses SET account_id = ? WHERE product = ? AND id = ?",
+      session.accountId,
+      "djdl",
+      "lic_oidc",
+    );
+    const token = await authorizeAndMint(
+      env,
+      db,
+      product,
+      "lic_oidc",
+      "dev-oidc",
+      NOW,
+    );
+    const tokenHash = await hashKey(token, env.KEY_HASH_PEPPER);
+    expect(await getTokenRecord(env, "djdl", tokenHash)).not.toBeNull();
+
+    const path = "/api/licenses/djdl/lic_oidc";
+    const listed = await handlePortalApi(
+      req("GET", path, { cookie: session.cookie }),
+      env,
+      db,
+      path,
+      NOW,
+    );
+    expect(listed.status).toBe(200);
+    const detail = (await listed.json()) as {
+      identityProvider: string;
+      keyCount: number;
+      devices: Array<{ deviceId: string; status: string }>;
+    };
+    expect(detail.identityProvider).toBe("oidc");
+    expect(detail.keyCount).toBe(0);
+    expect(detail.devices).toEqual([
+      expect.objectContaining({ deviceId: "dev-oidc", status: "authorized" }),
+    ]);
+
+    const removed = await handlePortalApi(
+      req("DELETE", `${path}/devices/dev-oidc`, {
+        cookie: session.cookie,
+        csrf: session.csrf,
+      }),
+      env,
+      db,
+      `${path}/devices/dev-oidc`,
+      NOW,
+    );
+    expect(removed.status).toBe(200);
+    expect(await getTokenRecord(env, "djdl", tokenHash)).toBeNull();
+    const device = await db.first<{ status: string }>(
+      "SELECT status FROM devices WHERE product = ? AND device_id = ?",
+      "djdl",
+      "dev-oidc",
+    );
+    expect(device?.status).toBe("deauthorized");
+    const audit = await db.first<{ target_id: string }>(
+      "SELECT target_id FROM portal_audit WHERE account_id = ? AND action = ?",
+      session.accountId,
+      "portal.device.disconnect",
+    );
+    expect(audit?.target_id).toBe("dev-oidc");
+    expect(sent.length).toBeGreaterThan(0);
+
+    // Another account cannot touch it: the licence is not theirs.
+    const other = await portalSession(env, db, "eve@example.com");
+    const refused = await handlePortalApi(
+      req("DELETE", `${path}/devices/dev-oidc`, {
+        cookie: other.cookie,
+        csrf: other.csrf,
+      }),
+      env,
+      db,
+      `${path}/devices/dev-oidc`,
+      NOW,
+    );
+    expect(refused.status).toBe(404);
+  });
+
   it("issues short-lived portal download tokens for licensed release artifacts", async () => {
     const db = makeTestDb();
     const env = portalEnv();
@@ -308,6 +448,8 @@ describe("customer portal", () => {
     // The delivery access is Distribution's per-deliverable answer since P2b-04 (it was the
     // per-artifact snapshot below): `licensed`, as the artifact row says.
     await seedDeliveryAccess(db, "djdl", "licensed");
+    // A licensed file reaches a browser through its GitHub URL only from a public repository.
+    await seedRepositoryVisibility(env, db, "djdl", "public");
 
     await db.run(
       `INSERT INTO release_metadata
@@ -556,6 +698,8 @@ describe("customer portal", () => {
     // The delivery access is Distribution's per-deliverable answer since P2b-04 (it was the
     // per-artifact snapshot below): `licensed`, as the artifact row says.
     await seedDeliveryAccess(db, "djdl", "licensed");
+    // A licensed file reaches a browser through its GitHub URL only from a public repository.
+    await seedRepositoryVisibility(env, db, "djdl", "public");
 
     await db.run(
       `INSERT INTO release_metadata

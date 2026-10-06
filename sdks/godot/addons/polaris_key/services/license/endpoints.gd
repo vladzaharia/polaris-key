@@ -37,6 +37,13 @@ static func deauthorize(core: PKeyCore, current: String) -> PKeyResult:
 
 static func _activation_like(core: PKeyCore, path: String, auth: Dictionary, fingerprint: Variant) -> Array:
 	var body = {"fingerprint": fingerprint} if fingerprint is Dictionary else null
+	# PX-W13 §8 Q2: the device label, on activation only (never enroll or token rotation).
+	if path == "license/activate":
+		var label := PKeyDeviceLabel.resolve("", core.options)
+		if label != "":
+			if body == null:
+				body = {}
+			body["deviceName"] = label
 	var r := await core.request("POST", path, body, false, auth)
 	return map_response(r, path == "license/enroll")
 
@@ -77,19 +84,30 @@ static func map_response(r: PKeyResult, is_enroll := false) -> Array:
 					res = _wire(PKeyActivationResult.KIND_ENROLL_CLAIMED, wire, PKeyErrors.ENROLL_CLAIMED, r.message, status)
 				"license_disabled":
 					res = _wire(PKeyActivationResult.KIND_LICENSE_DISABLED, wire, PKeyErrors.LICENSE_DISABLED, r.message, status)
-				"device_limit", "":
+				"license_expired":
+					res = _wire(PKeyActivationResult.KIND_LICENSE_EXPIRED, wire, PKeyErrors.LICENSE_EXPIRED, r.message, status)
+				"attestation_required":
+					res = _wire(PKeyActivationResult.KIND_ATTESTATION_REQUIRED, wire, PKeyErrors.ATTESTATION_REQUIRED, r.message, status)
+				"device_limit":
 					res = _wire(PKeyActivationResult.KIND_DEVICE_LIMIT, wire, PKeyErrors.DEVICE_LIMIT, r.message, status)
 					res.limit = _int_or_null(_field(top, nested, "limit"))
 					res.device_count = _int_or_null(_field(top, nested, "deviceCount"))
+					res.manage_url = PKeyManage.read(top)
 				_:
-					res = _wire(PKeyActivationResult.KIND_ERROR, wire, PKeyErrors.FORBIDDEN, r.message, status)
+					# An unknown or missing 403 code is never device-limit (SDK parity §3.1).
+					res = _wire(PKeyActivationResult.KIND_REFUSED, wire, PKeyErrors.FORBIDDEN, r.message, status)
 		404:
-			var kind := PKeyActivationResult.KIND_ENROLL_DISABLED if is_enroll else PKeyActivationResult.KIND_ERROR
-			res = _wire(kind, wire, PKeyErrors.ENROLL_DISABLED if is_enroll else PKeyErrors.NOT_FOUND, r.message, status)
+			if is_enroll:
+				res = _wire(PKeyActivationResult.KIND_ENROLL_DISABLED, wire, PKeyErrors.ENROLL_DISABLED, r.message, status)
+			else:
+				res = _wire(PKeyActivationResult.KIND_REFUSED if wire != "" else PKeyActivationResult.KIND_ERROR, wire, PKeyErrors.NOT_FOUND, r.message, status)
 		429:
 			res = _wire(PKeyActivationResult.KIND_RATE_LIMITED, wire, PKeyErrors.RATE_LIMITED, r.message, status)
 		_:
-			res = _wire(PKeyActivationResult.KIND_ERROR, wire, PKeyErrors.HTTP_ERROR, r.message, status)
+			# Any other 4xx with a server code is a typed refusal; a 5xx or a code-less answer is
+			# an error.
+			var refused := status >= 400 and status < 500 and wire != ""
+			res = _wire(PKeyActivationResult.KIND_REFUSED if refused else PKeyActivationResult.KIND_ERROR, wire, PKeyErrors.HTTP_ERROR, r.message, status)
 	return [res, ""]
 
 

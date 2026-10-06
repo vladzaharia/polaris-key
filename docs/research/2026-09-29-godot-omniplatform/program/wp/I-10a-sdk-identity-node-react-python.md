@@ -1,26 +1,73 @@
 # I-10a SDK identity v2 for layer 1 in Node, React and Python plus the React activation component: key-entry refusals with deep link and QR, passthrough sign-in (device code; web redirect in React), attach, `subject`, `signOut`, `openAccount`
 
-| Field       | Value                                                                                                                                                                                                                                                  |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                                                                 |
-| Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                                                   |
-| Depends on  | [I-04](I-04-account-contract-plan.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md)                                                                                                                                               |
-| Unblocks    | [I-13](I-13-exchange-endpoint.md), [I-15](I-15-native-redirect.md), [I-19](I-19-identity-docs.md), [I-20](I-20-layer-2-plan.md), [I-24b](I-24b-named-user-seats-sdks.md), [U-06](U-06-sdk-settings-node-python.md), [U-20](U-20-sdk-settings-react.md) |
-| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                   |
-| Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                                                                      |
-| Gates       | plan mode; all six SDKs (`parity:check`); `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; UI kit screenshots                                                                                                                 |
-| Human input | none                                                                                                                                                                                                                                                   |
-| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                              |
+| Field       | Value                                                                                                                                                                                                                                                                                                                                |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Phase       | I: Identity: one Polaris Key account, then per-app identity (S-16) (layer-1, phase-1a)                                                                                                                                                                                                                                               |
+| Size        | 1–1.4 engineer-weeks                                                                                                                                                                                                                                                                                                                 |
+| Depends on  | [I-04](I-04-account-contract-plan.md), [I-08](I-08-app-passthrough.md), [I-09](I-09-key-entry-attach.md)                                                                                                                                                                                                                             |
+| Unblocks    | [I-13](I-13-exchange-endpoint.md), [I-15](I-15-native-redirect.md), [I-19](I-19-identity-docs.md), [I-20](I-20-layer-2-plan.md), [I-24b](I-24b-named-user-seats-sdks.md), [U-06](U-06-sdk-settings-node-python.md), [U-20](U-20-sdk-settings-react.md), [UK-42](UK-42-activation-holders-web.md), [UK-44](UK-44-sdk-signin-hints.md) |
+| Role        | `pkey-sdk-porter` (the plan is written first by `pkey-wire-planner`)                                                                                                                                                                                                                                                                 |
+| Plan mode   | yes: executes the approved [`plans/I-04.md`](../plans/I-04.md) (no separate plan)                                                                                                                                                                                                                                                    |
+| Gates       | plan mode; all six SDKs (`parity:check`); `errors.json` (rule 3), transcripts (rule 1), `gen:constants -- --check`; UI kit screenshots                                                                                                                                                                                               |
+| Human input | none                                                                                                                                                                                                                                                                                                                                 |
+| Repo        | `vladzaharia/polaris-key`                                                                                                                                                                                                                                                                                                            |
 
 ## Amendments from approved plans (2026-10-05)
 
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/I-09.md`](../plans/I-09.md):** the §4 transcript and parity rows, the §5 SDK table, and the Kotlin `ui` path.
-- **[`plans/PX-W8.md`](../plans/PX-W8.md):** the `key-entry-limit` outcome reads `manageUrl` through client-core's `readManageUrl` (not `portalUrl`), and the key-entry screen reuses PX-W8's **Free up a device** component (`ui.kit.account`).
+- **[`plans/PX-W8.md`](../plans/PX-W8.md):** the `key-entry-limit` outcome reads `manageUrl` through client-core's `readManageUrl` (not `portalUrl`), and the key-entry screen reuses PX-W8's **Replace a device** component (`ui.kit.account`).
 - **[`plans/PX-W9.md`](../plans/PX-W9.md):** `keyEntries` on every successful key activation; the `keyentry-*` transcripts are owned by PX-W9.
 - **[`plans/PX-W13.md`](../plans/PX-W13.md):** inherit PX-W13's device-label helper (`deviceName`), which PX-W13 ships in every SDK.
 - **[`plans/PX-W17.md`](../plans/PX-W17.md):** replay the `identity.toggle` transcript, add the `identity.toggle` parity row and the UI-kit "Identity off" snapshot.
+
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a license for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+
+For this package:
+
+- **No new SDK call.** Replay the device steps of `devicecode-choose.json`,
+  `devicecode-replace.json`, `devicecode-choice-required.json` and `devicecode-autoissue.json`.
+  React also replays `redirect-web-choose.json`.
+- **Polling.** Keep polling `pending` until `expires_in`, because choosing on the card can take a
+  while.
+- **After `ready`,** show the bound tier from the licence document ("Signed in · Standard
+  license").
+- **Constants.** `gen:constants` adds `license_choice_required`, and no SDK branches on it.
+- **React kit naming.** The device-limit screen is **Replace a device**; its confirm is
+  "Replace <device>?" with `signin.replace.consequence` and **Replace and continue** (SIGN-IN.md
+  §3.7, `plans/I-04.md` §F.7). **Replace a device** opens `manageUrl`, where "Free up a device"
+  used to lead. There is no in-app device list until I-13.
+
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- Kit and SDK copy to `signin.*` (US "license"; `signin.key.owned` replaces "This licence belongs…"); "{n} key entries left", never "activations" (SIGN-IN.md D-01, D-25).
+- Native LicenseChoice on I-13's `choose` (React: `useLicenseChoice`), with the row anatomy of SIGN-IN.md §3.6; StatusScreen **signed-out** state and the sign-out confirm of §4.9; "Signed in · <Tier> license" after `ready`.
+- Replay `devicecode-sign-in.json` (I-04 §F.6) with no SDK change.
+
+## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
+
+The owner decided on 2026-10-05 that every in-app sign-in step happens in **one form whose body
+morphs in place** (no stacked sheets), that the license is chosen **inside the app** when it can
+show it, that the presentation is configurable with native controls kept, that there are **two
+equal ways to integrate** (the hosted card, and the kit form with headless primitives), and that
+the web flow is one continuous, animated card. The wire is
+[`plans/I-04.md`](../plans/I-04.md) §G (a pending sign-in grant, `licenseChoice: "app" | "card"`);
+the experience is [`SIGN-IN.md`](../../../../design/SIGN-IN.md) §2.4, §3.17, §3.18, §4.16 and
+D-78–D-93. Where this brief differs, they win. **No device-wire version change**
+(`PROTOCOL_VERSION` 4, `DISCOVERY_VERSION` 2, `corpusVersion` 2; no corpus file). New UI copy uses
+the owner's license vocabulary (SIGN-IN.md O-17: the tier pill and "{used} of {limit} devices" on
+every row, no "Account-wide"). For this package:
+
+- **Headless primitives** (I-04 §G.9) in Node (the reference), React over `client-core` and Python: `choice.licenses(grant)`, `choice.devices(grant, licenseId)`, `choice.complete(grant, choice)` (kinds `license` with an optional `replaceDeviceId`, `keep`, `create`, `key`), `choice.cancel(grant)`, and the `choose` answer of `redirect/token` beside the activation response. React's web redirect sends `license_choice=app` when its form runs inline. Fix the per-language names in the PR.
+- Feature-detect the `choice*` discovery endpoints; without them run card mode. Replay `redirect-web-choose-app.json`, `choice-replace-app.json`, `choice-key-app.json`, `choice-grant-errors.json`; parity row `identity.choice`.
 
 ## Goal
 

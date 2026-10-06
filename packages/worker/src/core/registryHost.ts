@@ -27,9 +27,13 @@
  *     `application/octet-stream` attachments; `text/x-swift` always leaves as an attachment;
  *   - error answers are the platform's JSON, `application/problem+json` (Swift) or the OCI
  *     error JSON, never HTML, and a throw becomes the JSON 500;
- *   - `GET` and `HEAD`, plus the one `POST` a route declares (`methods`, F-21: Swift's
- *     `POST /swift/<owner>/login`), decided from the path before any owner loads. Any other
- *     method on a registry path is 405, with OCI's error body under `/v2/`.
+ *   - `GET` and `HEAD`, plus the methods a route declares (`methods`; F-21: Swift's
+ *     `POST /swift/<owner>/login`; F-22: the native publish routes, `PUT` for `npm publish`,
+ *     `swift package-registry publish` and Maven, `POST` for twine's legacy upload; F-23: OCI's
+ *     push, `POST`/`PATCH`/`PUT`/`DELETE` on `/v2/<owner>/<repository>/blobs/uploads/…` and
+ *     `PUT …/manifests/<reference>`), decided
+ *     from the path before any owner loads. Any other method on a registry path is 405, with
+ *     OCI's error body under `/v2/`.
  *
  * CREDENTIALS (F-21, plans/F-20.md §6.4). The host admits one owner-less route,
  * `GET /v2/token` (OCI's token service, `OwnerlessRegistryRoute`), and `GET /v2/` answers the
@@ -37,7 +41,18 @@
  * is set (Q1). The pull token's HMAC lives in Core (`registryTokens.ts`), so this file can check
  * it without importing Distribution.
  *
- * SERVICE AND FEED ENABLEMENT. Every registry route names `service: "distribution"`, and the
+ * NATIVE PUBLISH (F-22). Release's publish routes (`services/release/packages/native/`) name
+ * `service: "release"`, because a publish is Release's ingest, and carry `FEED_PUBLISH_ROUTE`.
+ * They read Distribution's feed settings only through the `delivery.packageFeed` hook, and answer
+ * the not-found while Distribution, `packageFeeds`, the feed or the ecosystem's kill switch is off.
+ *
+ * PUSH (F-23). OCI's push methods are Release's routes (`FEED_PUSH_ROUTE`, `service:
+ * "release"`): publishing writes release rows, which only Release may (rule 6). Each answers only
+ * a request bearing a push-scoped OCI token for its repository, re-resolved through this file's
+ * Core token store, and refuses with the Bearer challenge naming `pull,push`. A push answer is
+ * body-less (201, 202, 204) or the OCI error JSON, so the type rule below holds it unchanged.
+ *
+ * SERVICE AND FEED ENABLEMENT. Every read route names `service: "distribution"`, and the
  * dispatcher refuses a route whose service is off for the owner with the same not-found as an
  * unknown owner. The rest of the ladder (the platform kill switch, the owner's `packageFeeds`,
  * the feed's `enabled` and its access mode) is Distribution's state, so the route runs it
@@ -100,10 +115,9 @@ export const REGISTRY_ECOSYSTEMS = [
 ] as const;
 export type RegistryEcosystem = (typeof REGISTRY_ECOSYSTEMS)[number];
 
-/** Reserved for tier 3 (F-30, F-31, F-32): known names, no routes, so always the not-found. */
+/** Reserved for tier 3 (F-32): known names, no routes, so always the not-found. Cargo (F-30)
+ *  and Go (F-31) left the list when their feeds shipped. */
 export const RESERVED_ECOSYSTEMS: ReadonlySet<RegistryEcosystem> = new Set([
-  "cargo",
-  "go",
   "nuget",
 ]);
 
@@ -227,18 +241,59 @@ export const FEED_AUTH_ROUTE: unique symbol = Symbol.for(
   "polaris-key.registry.feedAuth",
 ) as never;
 
+/**
+ * The mark Release's native publish routes carry (F-22: `npm publish`, twine, `swift
+ * package-registry publish`, Maven `PUT`s). Such a route writes a package version through
+ * Release's ingest, behind `registryPublish.ts`'s credential check and the feed's settings. The
+ * structural test admits exactly these, beside the feed-read, credential and push routes, in
+ * `REGISTRY_ROUTES`.
+ */
+export const FEED_PUBLISH_ROUTE: unique symbol = Symbol.for(
+  "polaris-key.registry.feedPublish",
+) as never;
+
+/**
+ * The mark Release's push routes carry (F-23: OCI's blob upload and manifest `PUT`, the native
+ * `docker push`). Such a route WRITES: it answers only a request bearing an OCI push token for its
+ * repository (`core/registryTokens.ts` `registryPublisher`), and it writes the same release rows
+ * a ticket publish does, through Release's own ingest. The structural test requires every push
+ * route to be Release's.
+ */
+export const FEED_PUSH_ROUTE: unique symbol = Symbol.for(
+  "polaris-key.registry.feedPush",
+) as never;
+
+/** A method a registry route may declare (beyond the implicit GET and HEAD of a read route). */
+export type RegistryMethod =
+  | "GET"
+  | "HEAD"
+  | "POST"
+  | "PUT"
+  | "PATCH"
+  | "DELETE";
+
+/** The write methods F-22's native publish routes declare. */
+export type RegistryWriteMethod = "POST" | "PUT";
+
 /** One route that may answer on the registry host. */
 export interface RegistryRoute {
   /** Set by `feedRoute` only (see {@link FEED_READ_ROUTE}). */
   readonly [FEED_READ_ROUTE]?: true;
   /** Set by Distribution's credential routes only (see {@link FEED_AUTH_ROUTE}). */
   readonly [FEED_AUTH_ROUTE]?: true;
-  /** The methods beyond GET and HEAD the route answers (F-21: Swift's login `POST`). A route
-   *  that declares methods answers only those. */
-  readonly methods?: readonly "POST"[];
+  /** Set by Release's native publish routes only (see {@link FEED_PUBLISH_ROUTE}). */
+  readonly [FEED_PUBLISH_ROUTE]?: true;
+  /** Set by Release's push routes only (see {@link FEED_PUSH_ROUTE}). */
+  readonly [FEED_PUSH_ROUTE]?: true;
+  /** The methods the route answers when it is not a plain read route (F-21: Swift's login
+   *  `POST`; F-22: the native publishes; F-23: OCI's upload `POST`/`PATCH`/`PUT`/`DELETE`, the
+   *  upload status `GET`/`HEAD` and the manifest `PUT`). A route that declares methods answers
+   *  only those. */
+  readonly methods?: readonly RegistryMethod[];
   /** For logs, tests and `routeCoverage`'s `REGISTRY_PATHS`. */
   readonly name: string;
-  /** Every registry route is Distribution's; with it off for the owner the route never runs. */
+  /** Distribution for every read and credential route, Release for a native publish (F-22);
+   *  with it off for the owner the route never runs. */
   readonly service: ServiceSlug;
   /** The ecosystem whose paths it serves. The dispatcher consults it only for those paths. */
   readonly ecosystem: RegistryEcosystem;
@@ -583,8 +638,8 @@ async function answer(
     );
   }
   // GET and HEAD, plus a method a route of this ecosystem declares and whose path it matches
-  // (Swift's login `POST`), decided from the path alone (the lists are public), before any owner
-  // is loaded, so a 405 can never probe an owner.
+  // (Swift's login `POST`, F-23's OCI push methods), decided from the path alone (the lists are
+  // public), before any owner is loaded, so a 405 can never probe an owner.
   const declared = readOnly
     ? null
     : routes.find(
@@ -647,8 +702,14 @@ async function answer(
 
   for (const route of declared ? [declared] : routes) {
     if (route.ecosystem !== ecosystem) continue;
-    // A route that declares methods answers only those; a read route never answers a POST.
-    if (readOnly && route.methods !== undefined) continue;
+    // A route that declares methods answers only those (F-23's upload status route declares
+    // GET and HEAD); a read route never answers a write.
+    if (
+      readOnly &&
+      route.methods !== undefined &&
+      !(route.methods as readonly string[]).includes(req.method)
+    )
+      continue;
     const matched = route.match(pathname);
     if (!matched) continue;
     const ctx = await ownerContext(

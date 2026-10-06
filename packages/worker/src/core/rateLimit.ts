@@ -87,10 +87,21 @@ const FAIL_MODE: Record<string, FailMode> = {
   authPollState: "closed",
   authDevicePoll: "closed",
   authDevicePollCode: "closed",
+  // I-26: the legacy sign-in's licence chooser, a step of the sign-in that binds a licence.
+  authChoose: "closed",
   adminLogin: "closed",
   adminCallback: "closed",
   portalLogin: "closed",
   portalMagic: "closed",
+  // I-06: the login card's Google, Apple and Steam legs (start and callback), and Apple's
+  // server-to-server notifications.
+  portalProviderStart: "closed",
+  portalProviderCallback: "closed",
+  appleNotifications: "closed",
+  // I-16: the login card's passkey sign-in (challenge and assertion, per client address) and the
+  // account's passkey changes (per account). Both open a session or add a sign-in method.
+  portalPasskey: "closed",
+  portalPasskeyChange: "closed",
   portalClaimKey: "closed",
   // P2-02: the trusted-publisher exchange mints a `pkeyci_` token from a GitHub OIDC token —
   // per caller IP (every request), and per product (charged only after the token passes the
@@ -148,11 +159,30 @@ const FAIL_MODE: Record<string, FailMode> = {
   registryLogin: "closed",
   registryCredentialMiss: "closed",
   portalRegistryToken: "closed",
+  // F-22: native-client publishes (`npm publish`, `twine`, `swift package-registry publish`,
+  // Maven PUTs), per publishing token. Each one writes to the blob store, so it fails closed: a
+  // limiter outage must not become unmetered storage writes; a refused publish is a retry.
+  registryPublish: "closed",
+  // PX-W16: an account's picture uploads (`POST /api/me/profile/picture`), per account. Each one
+  // is a re-encode and four writes to the blob store, so an outage refuses rather than becoming
+  // unmetered storage; a refused upload is a retry for one person.
+  portalAvatarUpload: "closed",
+  // UX-69: the live credential check, per operator. Each check sends a value the Worker has never
+  // seen to a store API and spends that store's quota, so an outage refuses (a 429 the form shows
+  // as "check again") rather than letting a loop through.
+  credentialCheck: "closed",
 
   // ── authenticated, non-credential surfaces — fail open ─────────────────────
   adminApi: "open",
   adminAccessDenied: "open",
   portalDeviceDisconnect: "open",
+  // PX-W16: Account → Profile edits. Writes the account's own row only; nothing to guard.
+  portalProfileEdit: "open",
+  // PX-W16: the email gate's picture preview, per client address and per gate. A cost budget (a
+  // provider fetch and a re-encode each), nothing secret behind it; an outage must not blank the
+  // gate.
+  portalGatePicture: "open",
+  portalGatePictureGate: "open",
   portalDownloadToken: "open",
   // PX-W2: the product page's downloads listing. A read charged only after ownership is
   // proven; it mints no URL (the token mint above re-checks everything), so nothing to guard.
@@ -178,6 +208,10 @@ const FAIL_MODE: Record<string, FailMode> = {
   // F-21: credentialed registry reads bypass the Cache API; a per-token cost budget, nothing
   // secret behind it (the read is already authenticated), so an outage must not stop installs.
   registryPrivateRead: "open",
+  // HA-02: the image host's R2 reads, per product and client IP, charged on a cache miss only.
+  // The images are public and nothing secret is behind the limit, so an outage must not blank
+  // every icon on every page.
+  imgHost: "open",
 };
 
 function failModeFor(bucket: string): FailMode {

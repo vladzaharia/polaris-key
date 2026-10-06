@@ -32,9 +32,12 @@
       "status": "implemented"
     },
     "core.store": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P1-02 ships the 0600 file store with surfaced failures and store_status() (file or indexeddb, degraded not-persistent). PKeyCore picks a platform store by default when its plugin is present (Keychain, then Keystore, then the file store): iOS, P5-05's Keychain store (core/store/keychain_store.gd, PKeyKeychainStore over PKeyApple: device id and token AfterFirstUnlockThisDeviceOnly with no access group); Android, P5-06's Keystore store (core/store/keystore_store.gd, PKeyKeystoreStore over PKeyAndroid: one AndroidKeyStore AES-256-GCM key per product, StrongBox where present, blobs in noBackupFilesDir, a lost key surfaced and re-enrolled). Both migrate from the file store and surface failures as keyring-error. No work package owns a desktop keyring, so the desktop runtimes keep the file store."
+      "status": "implemented",
+      "note": "P1-02 ships the 0600 file store with surfaced failures and store_status(); PKeyCore picks a platform store by default (Keychain, then Keystore, then the desktop keyring, else the file store). iOS, P5-05's Keychain store (core/store/keychain_store.gd over PKeyApple: device id and token AfterFirstUnlockThisDeviceOnly, no access group); Android, P5-06's Keystore store (core/store/keystore_store.gd over PKeyAndroid: one AndroidKeyStore AES-256-GCM key per product, StrongBox where present, a lost key surfaced and re-enrolled); both migrate from the file store and surface failures as keyring-error. Desktop, SP-27's PKeyKeyringStore (core/store/keyring_store.gd), a port of UK-40's Kotlin KeyringStore: the token under service pkey:<product>, account device-token, verified writes (set, then read back), a write that cannot be verified kept in the 0600 file and surfaced (failed / store_error, status keyring-error), file-first reads, a file-store token moved into the keyring on the first read that verifies the move; the device id and cache stay in the files. Backends: macOS login keychain through PolarisKeyApple's desktop dylib (native/macos/build_apple.sh; SecureStore's login-keychain flavor, since the data-protection keychain needs an entitlement), Windows Credential Manager through pkey_win.dll's PKeyWinCredentialNative (python-keyring's target layout, LOCAL_MACHINE persistence), Linux Secret Service through secret-tool (secret on stdin, a deadline per call). Without the native piece (or with PKEY_DESKTOP_KEYRING=0) the store is the 0600 file and status() says keyring-unavailable with the reason. Web keeps the IndexedDB file store (degraded not-persistent). tests/suite_keyring.gd runs the contract over a fake backend, each backend over its fake, and, in native-desktop.yml's keyring job (PKEY_KEYRING_TESTS=1), the contract and the migration against the real keyring on macOS, Windows and Linux (Linux may record an N/A without a Secret Service). Shipping the plugins as an addon package is SP-G10."
+    },
+    "core.copy": {
+      "status": "implemented",
+      "note": "PKeyCopy (core/copy.gd, PolarisKey.core.copy, shared by every core) reads the generated PKeyCoreCopy with React's rule: message(code)/title(code) look up the error-code table, then the gate table, then the activation table; activation_message(kind)/activation_title(kind) read the activation table only; an unknown code reads COPY_FALLBACK naming it; {name} placeholders fill from params ({code} defaults to the code, an unfilled one is dropped); set_overrides() is the host layer. The kit's PKeyUiCopy reads it for every error_<code> key, its own overrides and translated kit lines first. tests/core/test_copy.gd covers every table, the fallback, placeholders, overrides and the activation-versus-code split. The .po generation from the catalogs is SP-G13."
     },
     "license.gate": {
       "status": "implemented"
@@ -54,6 +57,10 @@
     "license.deactivate": {
       "status": "implemented"
     },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
     "license.entitlements": {
       "status": "implemented"
     },
@@ -61,6 +68,9 @@
       "status": "implemented"
     },
     "license.reregister": {
+      "status": "implemented"
+    },
+    "license.refusals": {
       "status": "implemented"
     },
     "config.resolve": {
@@ -81,6 +91,10 @@
     },
     "config.mirror": {
       "status": "implemented"
+    },
+    "config.local": {
+      "status": "implemented",
+      "note": "PKeyConfig.set_value/clear/clear_all/setting (S-17 §5.11's Godot names; set is Object's) write through the persisted PKeyConfigFileStore, check the value against the catalog entry's schema (type by value, not Variant: 40.0 is a valid integer), else the document value's JSON type, refuse an enforced or hidden key managed_by_admin, and emit config_changed once per write; setting(key) is a PKeyConfigSetting handle with changed(value, source) (tests/config/test_local.gd)."
     },
     "devices.fingerprint": {
       "status": "implemented",
@@ -105,26 +119,55 @@
       "status": "implemented",
       "note": "The report also carries the Godot keys engine and outlet (the Worker bounds them; outlet is PKeyCore.reported_outlet()), and the updater's queued update events in updates (P6-03, P3-10)."
     },
+    "telemetry.updates": {
+      "status": "implemented"
+    },
     "devices.attest": {
       "status": "implemented",
       "except": [
-        { "runtime": "linux", "reason": "runtime" },
-        { "runtime": "macos", "reason": "runtime" },
-        { "runtime": "windows", "reason": "runtime" },
-        { "runtime": "web", "reason": "runtime" },
-        { "runtime": "ios", "reason": "outlet" },
-        { "runtime": "android", "reason": "outlet" }
+        {
+          "runtime": "linux",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "macos",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "windows",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "web",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "ios",
+          "reason": "outlet"
+        },
+        {
+          "runtime": "android",
+          "reason": "outlet"
+        }
       ],
       "note": "P6-02: PolarisKey.devices.attest() (services/devices.gd) posts devices/attest/challenge, then devices/attest with an App Attest attestation (PKeyApple.app_attest over PolarisKeyPlatform's DCAppAttestService ops, clientDataHash = SHA-256 of the challenge's requestHash; the key id kept in the Keychain, re-attested with a fresh key when a reinstall, migration or restore killed it) or a standard Play Integrity token (PKeyAndroid.integrity_token over polaris-key-platform's play flavour, the requestHash verbatim, the cloud project number from the challenge or PKeyOptions.play_cloud_project_number). Unsupported runtime on desktop and web (and where App Attest does not run, the simulator); outlet on an iOS install that is not App Store or TestFlight, an Android install Google Play did not make or the direct plugin build, and a mobile build without the native plugin. Server codes are surfaced verbatim."
     },
     "identity.oidc": {
       "status": "planned",
-      "unowned": true,
-      "note": "Native Godot has no completion path for the OIDC redirect; see P1-07, which ships device-code sign-in instead."
+      "wp": "I-15",
+      "note": "Native Godot has no completion path for the OIDC redirect: it waits on the native redirect token route (I-15). The deprecated /identity/auth/poll route is not a substitute. Until then P1-07's device-code sign-in is the path, and identity.sign_in_with_browser() opens it in the system browser."
     },
     "identity.devicecode": {
       "status": "implemented",
       "note": "PolarisKey.identity (P1-07): begin_sign_in with background polling on the server's cadence, cancel, the opt-in confirm-identity step and licence attach, and a pure-GDScript QR encoder with PKeyQrRect for verification_uri_complete. On web it runs too (OS.shell_open becomes window.open; Worker CORS needed)."
+    },
+    "identity.devicelabel": {
+      "status": "implemented",
+      "note": "PX-W13: PKeyDeviceLabel.normalize (UTF-32, one character per code point), PKeyOptions.device_name and send_device_name, the model-else-OS default, on begin_sign_in, activation and registration; PKeySignInPrompt.device_name is the echo, and PKeySignInDialog shows it under the code. A per-call name wins; opting out is send_device_name = false (an exported String cannot be null)."
+    },
+    "identity.toggle": {
+      "status": "planned",
+      "wp": "I-10b"
     },
     "release.changelog": {
       "status": "implemented"
@@ -135,11 +178,22 @@
     "release.record": {
       "status": "implemented"
     },
+    "release.fetch": {
+      "status": "implemented",
+      "note": "PolarisKey.release.fetch(target, to) (services/release.gd): a binary decision, a record or a record hash resolves to the verified record's payload artifact; the URL is discovery's distribution builds template; the bearer goes only to the control plane's origin and PKeyDownload drops it on a cross-origin redirect; a resume sends Range and If-Range with the payload's strong ETag; size and SHA-256 are checked before the part is renamed; a refusal surfaces the body's code. The updater's sidecar and APK paths share PKeyRelease.download_artifact. suite_transcripts maps releaseFetch and replays release-fetch-gated.json."
+    },
+    "release.distribution": {
+      "status": "implemented"
+    },
     "update.check": {
       "status": "implemented"
     },
     "update.feed": {
       "status": "implemented"
+    },
+    "update.feeds": {
+      "status": "implemented",
+      "note": "SP-26: PolarisKey.update.feed_url(kind, {channel, velopack_channel, build_id, arch}) (PKeyUpdate.feed_url_for) expands discovery's update.endpoints templates for appcast, winsparkle, velopack (the releases.<velopack_channel> file, or the UpdateManager feed directory without one), appInstaller and zsync; an absent channel is this build's or stable, an alias is rewritten through CHANNEL_ALIASES, each value is encodeURIComponent-encoded, and a missing template answers the typed unsupported (product). PKeyUpdater.feed_url (the native bridges' feeds) delegates to it; every feed-url-matrix.json row on the editor and the release template."
     },
     "update.decide": {
       "status": "implemented"
@@ -156,7 +210,7 @@
           "reason": "outlet"
         }
       ],
-      "note": "P3-10: one adapter per outlet kind (distribution/outlets/, PKeyOutletAdapter): store kinds open the https listing or PKeyOptions.update_page_url, platform kinds stay silent with their own message, web reloads, direct dispatches binary.method to the Sparkle, Velopack, WinSparkle or AppImageUpdate bridge (a missing plugin degrades to the build's download link from distribution.endpoints.builds), stages a verified sidecar .pck (updater/sidecar_swap.gd, Range resume through PKeyDownload) and restarts into it without --main-pack. Inert in the editor, headless runs and debug builds. P5-07: the bridges reach GDScript facades (addons/polaris_key/native/: PKeySparkle, PKeyVelopack, PKeyWinSparkle, PKeyStoreContext) over optional GDExtensions in sdks/godot/native/ (macOS Sparkle bridge; one Windows DLL with Velopack, WinSparkle and StoreContext; the Velopack launcher shim), each unsupported with runtime or dependency when unusable; ms-store hooks StoreContext in a Store MSIX. Velopack needs public delivery for now: the Worker's package route is a cross-origin 302 that drops Authorization (S-11 §5.2), so under licensed or entitled delivery a 401/403 download answers unsupported (product). Suite native_desktop; the native-desktop workflow runs the updates end to end. Android (P5-06): the play and play-testing adapters drive Play In-App Updates through PKeyAndroid (native/pkey_android.gd over the PolarisKeyAndroid plugin and polaris-key-platform's play flavour: flexible or immediate by the decision's urgency, complete a downloaded update, silent while Play stages, the listing on any failure or a non-Play install); direct builds offer binary {method: native} through the apk bridge (available only on a direct-flavour build with the plugin): the direct adapter runs PKeyUpdater.install_apk (updater/apk_update.gd: the record's APK downloaded into user://, checked against the verified record's payload size and SHA-256, then PKeyAndroid.apk_install, the verified PackageInstaller self-update with the outcome journaled for the next launch), opening the download link only when the plugin answers unsupported."
+      "note": "P3-10: one adapter per outlet kind (distribution/outlets/, PKeyOutletAdapter): store kinds open the https listing or PKeyOptions.update_page_url, platform kinds stay silent with their own message, web reloads, direct dispatches binary.method to the Sparkle, Velopack, WinSparkle or AppImageUpdate bridge (a missing plugin degrades to the build's download link from distribution.endpoints.builds), stages a verified sidecar .pck (updater/sidecar_swap.gd, Range resume through PKeyDownload) and restarts into it without --main-pack. Inert in the editor, headless runs and debug builds. P5-07: the bridges reach GDScript facades (addons/polaris_key/native/: PKeySparkle, PKeyVelopack, PKeyWinSparkle, PKeyStoreContext) over optional GDExtensions in sdks/godot/native/ (macOS Sparkle bridge; one Windows DLL with Velopack, WinSparkle and StoreContext; the Velopack launcher shim), each unsupported with runtime or dependency when unusable; ms-store hooks StoreContext in a Store MSIX. Under licensed or entitled delivery the Worker's package route redirects with a short-lived download ticket because Velopack drops Authorization on redirects (SP-09); a 401/403 download is retried once for a fresh ticket, and a second one answers unsupported (product). Suite native_desktop; the native-desktop workflow runs the updates end to end. Android (P5-06): the play and play-testing adapters drive Play In-App Updates through PKeyAndroid (native/pkey_android.gd over the PolarisKeyAndroid plugin and polaris-key-platform's play flavour: flexible or immediate by the decision's urgency, complete a downloaded update, silent while Play stages, the listing on any failure or a non-Play install); direct builds offer binary {method: native} through the apk bridge (available only on a direct-flavour build with the plugin): the direct adapter runs PKeyUpdater.install_apk (updater/apk_update.gd: the record's APK downloaded into user://, checked against the verified record's payload size and SHA-256, then PKeyAndroid.apk_install, the verified PackageInstaller self-update with the outcome journaled for the next launch), opening the download link only when the plugin answers unsupported."
     },
     "update.bootguard": {
       "status": "implemented",
@@ -165,6 +219,9 @@
     "outlet.detect": {
       "status": "implemented",
       "note": "distribution/outlet.gd PKeyOutlet.detect_outlet over distribution/outlet_signals.gd (Flatpak, snap, AppImage, Steam library and environment, itch receipt, macOS receipt and Mach-O leaf, Caskroom, Windows path conventions, Android getInstallSourceInfo through JavaClassWrapper (PKeyAndroid.install_source() reads the same facts, plus the initiator's full signer set, through the P5-06 plugin), web display mode); iOS reads AppDistributor (raced against 2 s, every launch), embedded.mobileprovision and ALTBundleIdentifier through the Apple plugin's facade (native/pkey_apple.gd, P5-05; no evidence without the plugin or before the launch read arrives); the Windows package reader is a hook that answers unavailable until a Windows native reader lands. PKeyCore.update_outlet() feeds the decision and PKeyCore.reported_outlet() the device report; PolarisKey.update.outlet() and detected() expose the result, as client.update.outlet and detected do in Node and Python."
+    },
+    "crash.tags": {
+      "status": "implemented"
     },
     "packs.record": {
       "status": "implemented",
@@ -312,7 +369,7 @@
     },
     "packs.transport.msix": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-30",
       "note": "No work package owns an MSIX transport for Godot (program README §9).",
       "except": [
         {
@@ -339,7 +396,7 @@
     },
     "packs.transport.flatpak": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-30",
       "note": "No work package owns a Flatpak transport for Godot (program README §9).",
       "except": [
         {
@@ -368,9 +425,22 @@
       "status": "implemented",
       "note": "PKeyStages (core/stages.gd) replays every stage-matrix.json row, probe, guard and confirm case; PKeyBoot drives every row through PolarisKey.boot() with a scripted host (suite_boot)."
     },
+    "ui.boot": {
+      "status": "implemented"
+    },
     "ui.kit": {
       "status": "implemented",
       "note": "P1-10's v1 kit: PKeyBoot, gate, activation panel, sign-in dialog with QR, offline activation, settings panel, status banner, update prompt, entitlement badge and dev-menu section, pinned as structural snapshots and centred at five window sizes (suite_ui); a neutral default look over the game's theme, with opt-in Polaris Key branding and an optional Powered-by badge (PKeyOptions.ui_*, PKeyUiTheme; suite_brand). PKeyDeviceList is not in v1 (unowned; needs P1-05) and the pack progress UI is P4-08's."
+    },
+    "ui.kit.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the activation panel shows Replace a device on device-limit, or a QR when a joypad is the only input (suite_ui)."
+    },
+    "ui.cli": {
+      "status": "na",
+      "runtime": ["linux", "macos", "windows", "android", "ios", "web"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
     "commerce.receipt": {
       "status": "implemented",

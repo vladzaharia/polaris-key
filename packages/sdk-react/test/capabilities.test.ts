@@ -47,7 +47,7 @@ async function ready(adapter: {
 }
 
 describe("service map shape mirrors @polaris-key/node's discovery.ts", () => {
-  it("carries exactly the six slugs, in the canonical order", () => {
+  it("carries exactly the seven slugs, in the canonical order", () => {
     // The order is load-bearing: every SDK iterates it rather than a language-native map
     // ordering, so a reorder here silently reorders output everywhere else.
     expect(SERVICE_SLUGS).toEqual([
@@ -57,6 +57,7 @@ describe("service map shape mirrors @polaris-key/node's discovery.ts", () => {
       "distribution",
       "update",
       "identity",
+      "sync",
     ]);
     expect(Object.keys(noServices()).sort()).toEqual([...SERVICE_SLUGS].sort());
   });
@@ -69,6 +70,7 @@ describe("service map shape mirrors @polaris-key/node's discovery.ts", () => {
       distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
+      sync: { enabled: false },
     });
   });
 
@@ -80,6 +82,7 @@ describe("service map shape mirrors @polaris-key/node's discovery.ts", () => {
       distribution: { enabled: false },
       update: { enabled: true },
       identity: { enabled: false },
+      sync: { enabled: false },
     });
     expect(servicesFromList([])).toEqual(noServices());
   });
@@ -155,6 +158,7 @@ describe("parseDiscovery — document-level guards", () => {
 describe("BrowserAdapter capability resolution (D-21)", () => {
   it("discovery success installs the honest map", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(makeDoc(), {
         capabilities: services("license", "config", "update"),
@@ -180,6 +184,7 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
       });
     }) as unknown as typeof fetch;
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl,
       now: () => NOW_SEC,
@@ -213,6 +218,7 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
       });
     }) as unknown as typeof fetch;
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl,
       now: () => NOW_SEC,
@@ -229,6 +235,7 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
     const fetchImpl = (async () =>
       new Response("nope", { status: 500 })) as unknown as typeof fetch;
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl,
       now: () => NOW_SEC,
@@ -240,6 +247,7 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
 
   it("refuses the disabled services' operations instead of calling them", async () => {
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       fetchImpl: makeFakeFetch(null, {
         capabilities: services("license", "config"),
@@ -274,6 +282,7 @@ describe("BrowserAdapter capability resolution (D-21)", () => {
       });
     }) as unknown as typeof fetch;
     const adapter = browserAdapter({
+      auth: "cookie",
       productSlug: "acme",
       baseUrl: "https://example.test",
       fetchImpl,

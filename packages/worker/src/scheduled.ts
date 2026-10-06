@@ -20,7 +20,9 @@
 //    product column at all, so their passes are by age alone, bounded per pass like every other
 //    prune; and `blob_objects` (P4-14's collector) belongs to no
 //    product: its sweep deletes only rows that NO product references
-//    (the `NOT EXISTS` on `blob_refs` is in every statement), bounded per tick.
+//    (the `NOT EXISTS` on `blob_refs` is in every statement), bounded per tick. `account_avatars`
+//    (PX-W16) belongs to an account, not a product: its sweep deletes only assets nothing uses
+//    (the two `NOT EXISTS` are in the statement), bounded per tick.
 // 2. IDEMPOTENT. Every step is a delete-what-is-already-past or a null-what-is-already-dormant,
 //    so a second run on the same clock removes nothing and changes nothing. Cron delivery is
 //    at-least-once; a duplicate tick must be a no-op, not a double-punishment.
@@ -53,11 +55,14 @@ import {
   catchUpLegacyAccounts,
   settleOwnershipConflicts,
 } from "./services/identity/accounts/legacy.js";
+import { sweepAvatars } from "./services/identity/card/avatars.js";
 import { pruneEvents as pruneConnectorEvents } from "./services/distribution/connectors/state.js";
+import { REFUSAL_RETENTION_SECONDS, pruneRefusals } from "./core/refusals.js";
 import { lazyDeltaProducts } from "./core/deltaDemand.js";
 import { refreshPlatformSettings } from "./core/platformSettings.js";
 import { sweepLazyDeltas } from "./services/release/packs/deltas/sweep.js";
 import { buildHooks } from "./core/hooks.js";
+import { recheckHostedAssets } from "./core/hostedAssetPulls.js";
 import {
   JOB_RUN_RETENTION_SECONDS,
   pruneHeartbeats,
@@ -352,6 +357,12 @@ export async function runScheduledMaintenance(
     await step(report, `connectorEvents:${product}`, () =>
       drain((limit) => pruneConnectorEvents(db, product, now, limit)),
     );
+    // UX-15: the refusal log past `REFUSAL_RETENTION_SECONDS` (30 days, `core/refusals.ts`).
+    await step(report, `refusals:${product}`, () =>
+      drain((limit) =>
+        pruneRefusals(db, product, now - REFUSAL_RETENTION_SECONDS, limit),
+      ),
+    );
   }
 
   // `portal_audit.product` is nullable — a magic-link sign-in belongs to no tenant — so without
@@ -398,6 +409,17 @@ export async function runScheduledMaintenance(
   // P4-17: the lazy-delta sweep, for products opted in (none while `LAZY_DELTAS` is off). Before
   // the collector, so a delta marked cold tonight loses its ref before tonight's mark pass.
   if (env) await runLazyDeltaSweep(report, env, db, now);
+
+  // HA-05: owed hosted-asset pulls whose back-off has elapsed (failed, stale, never delivered),
+  // and, with the Images binding, ready copies still owing their variant ladder, re-enqueued to
+  // `pkey-assets-<env>`, at most `RECHECK_MAX_PER_RUN` per night between them. Before the
+  // collector, which never touches a ref a row still holds.
+  if (env)
+    await step(report, "hostedAssets", () => recheckHostedAssets(env, db, now));
+
+  // PX-W16: account pictures nothing has used for a day (a disconnected provider's copy, an
+  // upload never saved, a merged account's leftovers, a write that died half way).
+  if (env) await step(report, "avatars", () => sweepAvatars(env, db, now));
 
   if (env) await runBlobGc(report, env, db, now);
 

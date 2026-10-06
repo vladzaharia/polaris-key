@@ -305,6 +305,12 @@ describe("api — every product-scoped resource is under its owning service", ()
     ],
     ["releaseHealth", () => api.releaseHealth("djdl"), "release/health"],
     ["resyncProduct", () => api.resyncProduct("djdl"), "release/resync"],
+    ["planResync", () => api.planResync("djdl"), "release/resync?dryRun=1"],
+    [
+      "revertClaim",
+      () => api.revertClaim("djdl", "core.name"),
+      "claims/core.name",
+    ],
     ["releases", () => api.releases("djdl"), "release/releases"],
     ["releaseChannels", () => api.releaseChannels("djdl"), "release/channels"],
     [

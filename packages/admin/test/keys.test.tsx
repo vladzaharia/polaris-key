@@ -36,7 +36,8 @@ vi.mock("../src/api.js", async () => {
 });
 
 const { ApiError } = await import("../src/api.js");
-const { KeysPage } = await import("../src/console/pages/core/Keys.js");
+const { KeysPage, refreshedCopy } =
+  await import("../src/console/pages/core/Keys.js");
 
 const NOW = 1_800_000_000;
 
@@ -60,6 +61,7 @@ function product(over: Partial<ProductDetail> = {}): ProductDetail {
       distribution: { enabled: false },
       update: { enabled: false },
       identity: { enabled: false },
+      sync: { enabled: false },
     },
     setup: {
       secrets: [
@@ -174,6 +176,26 @@ describe("Keys & secrets → Secrets", () => {
     ).toBe("OIDC_CLIENT_SECRET");
   });
 
+  it("opens Set secret with the name from ?secret= (C-7)", async () => {
+    renderAt(
+      "#/p/djdl/keys?secret=OIDC_CLIENT_SECRET",
+      <KeysPage slug="djdl" />,
+    );
+    const drawer = await screen.findByRole("dialog", {
+      name: "Set OIDC_CLIENT_SECRET",
+    });
+    expect(
+      (within(drawer).getByLabelText(/^Name/) as HTMLInputElement).value,
+    ).toBe("OIDC_CLIENT_SECRET");
+    // The name is given, so first focus is on the value.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        within(drawer).getByLabelText(/^Value/),
+      ),
+    );
+    expect(within(drawer).getByText("Never shown again.")).toBeTruthy();
+  });
+
   it("sets a write-only secret, sending no usage by default", async () => {
     const user = userEvent.setup();
     fns.putProductSecret.mockResolvedValue({ ok: true, name: "TOKEN" });
@@ -256,15 +278,59 @@ describe("Keys & secrets → Secrets", () => {
 });
 
 describe("Keys & secrets → Signing keys (A-4)", () => {
-  it("lists every key with its state; a staged key counts down to its trust window (SET-1)", async () => {
+  it("lists every key with its state", async () => {
     mount();
-    expect(await screen.findByText("djdl-a")).toBeTruthy();
+    expect((await screen.findAllByText("djdl-a")).length).toBeGreaterThan(0);
     expect(screen.getByText("Active")).toBeTruthy();
     expect(screen.getByText("Staged")).toBeTruthy();
     expect(screen.getAllByText(/^Retired/).length).toBeGreaterThan(0);
-    expect(screen.getByText(/Activatable in 4 min/)).toBeTruthy();
-    // Not yet activatable: the countdown says when, and there is no dead button.
-    expect(screen.queryByRole("button", { name: "Activate…" })).toBeNull();
+  });
+
+  it("a staged key opens the rotation strip: the window counts down and Activate waits with the reason (UX-29)", async () => {
+    mount();
+    const strip = await screen.findByRole("list", { name: "Key rotation" });
+    const steps = within(strip).getAllByRole("listitem");
+    for (const [i, title] of [
+      "Prepared",
+      "Trust window",
+      "Activate",
+      "Old key retires",
+    ].entries()) {
+      expect(steps[i]!.textContent).toContain(title);
+    }
+    expect(steps[0]!.textContent).toContain("(completed)");
+    expect(steps[1]!.getAttribute("aria-current")).toBe("step");
+    expect(within(steps[1]!).getByText("4:00")).toBeTruthy();
+    expect(within(steps[3]!).getByText("djdl-a")).toBeTruthy();
+    const activate = screen.getByRole("button", { name: "Activate djdl-b…" });
+    expect(activate.getAttribute("aria-disabled")).toBe("true");
+    // The staged row carries no controls of its own: the strip owns the rotation.
+    expect(
+      screen.queryByRole("button", { name: "More actions for djdl-b" }),
+    ).toBeNull();
+  });
+
+  it("Prepare is disabled with the reason while a rotation is in progress", async () => {
+    mount();
+    await screen.findByRole("list", { name: "Key rotation" });
+    const prepare = screen.getByRole("button", { name: "Prepare signing key" });
+    expect(prepare.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("with no rotation in progress there is no strip and Prepare is enabled", async () => {
+    const base = keys();
+    fns.productKeys.mockResolvedValue({
+      ...base,
+      keys: base.keys.filter((k) => k.status !== "staged"),
+    });
+    mount();
+    await screen.findAllByText("djdl-a");
+    expect(screen.queryByRole("list", { name: "Key rotation" })).toBeNull();
+    expect(
+      screen
+        .getByRole("button", { name: "Prepare signing key" })
+        .getAttribute("aria-disabled"),
+    ).toBeNull();
   });
 
   it("activates a staged key once its window has ended (L1)", async () => {
@@ -276,7 +342,10 @@ describe("Keys & secrets → Signing keys (A-4)", () => {
       status: "active",
     });
     mount();
-    await user.click(await screen.findByRole("button", { name: "Activate…" }));
+    const strip = await screen.findByRole("list", { name: "Key rotation" });
+    const steps = within(strip).getAllByRole("listitem");
+    expect(steps[2]!.getAttribute("aria-current")).toBe("step");
+    await user.click(screen.getByRole("button", { name: "Activate djdl-b…" }));
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Activate" }));
     await waitFor(() =>
@@ -287,11 +356,11 @@ describe("Keys & secrets → Signing keys (A-4)", () => {
     );
   });
 
-  it("break-glass activation is L3: the kid must be typed", async () => {
+  it("break-glass activation is L3 from the strip's overflow: the kid is typed once", async () => {
     fns.activateProductKey.mockResolvedValue({ ok: true });
     mount();
-    await screen.findByText("djdl-b");
-    const user = await openRowMenu("More actions for djdl-b");
+    await screen.findAllByText("djdl-b");
+    const user = await openRowMenu("More rotation actions");
     await user.click(
       await screen.findByRole("menuitem", { name: /break-glass/ }),
     );
@@ -300,7 +369,12 @@ describe("Keys & secrets → Signing keys (A-4)", () => {
       name: "Activate now",
     });
     expect(confirm.getAttribute("aria-disabled")).toBe("true");
-    await user.type(within(dialog).getByLabelText(/Type djdl-b/), "djdl-b");
+    // The label names the field and the code shows the value: the kid appears once, not twice.
+    const input = within(dialog).getByLabelText(
+      /Type the key id/,
+    ) as HTMLInputElement;
+    expect(input.labels?.[0]?.textContent).toBe("Type the key id djdl-b");
+    await user.type(input, "djdl-b");
     await user.click(
       within(dialog).getByRole("button", { name: "Activate now" }),
     );
@@ -313,6 +387,50 @@ describe("Keys & secrets → Signing keys (A-4)", () => {
     );
   });
 
+  it("cancelling a rotation retires the staged key (L1)", async () => {
+    fns.retireProductKey.mockResolvedValue({ ok: true });
+    mount();
+    await screen.findAllByText("djdl-b");
+    const user = await openRowMenu("More rotation actions");
+    await user.click(
+      await screen.findByRole("menuitem", { name: /Cancel rotation/ }),
+    );
+    const dialog = await screen.findByRole("alertdialog", {
+      name: /Cancel the rotation to djdl-b/,
+    });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Retire djdl-b" }),
+    );
+    await waitFor(() =>
+      expect(fns.retireProductKey).toHaveBeenCalledWith("djdl", "djdl-b"),
+    );
+  });
+
+  it("after a rotation, one line says how many active devices refreshed (UX-29, §0.9)", async () => {
+    const base = keys();
+    fns.productKeys.mockResolvedValue({
+      ...base,
+      keys: base.keys.filter((k) => k.status !== "staged"),
+      refresh: {
+        kid: "djdl-a",
+        activatedAt: NOW - 3 * 86_400,
+        activeDevices: 1310,
+        refreshedDevices: 1204,
+        windowDays: 30,
+      },
+    });
+    mount();
+    expect(
+      await screen.findByText(
+        "91% of active devices have refreshed since djdl-a went live.",
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(/1,204 of 1,310 seen in the last 30 days/),
+    ).toBeTruthy();
+    expect(screen.queryByText(/fetched/)).toBeNull();
+  });
+
   it("revokes a retired key only after the kid is typed (L3)", async () => {
     fns.revokeProductKey.mockResolvedValue({ ok: true });
     mount();
@@ -320,7 +438,7 @@ describe("Keys & secrets → Signing keys (A-4)", () => {
     const user = await openRowMenu("More actions for djdl-z");
     await user.click(await screen.findByRole("menuitem", { name: "Revoke…" }));
     const dialog = await screen.findByRole("alertdialog");
-    await user.type(within(dialog).getByLabelText(/Type djdl-z/), "djdl-z");
+    await user.type(within(dialog).getByLabelText(/Type the key id/), "djdl-z");
     await user.click(within(dialog).getByRole("button", { name: "Revoke" }));
     await waitFor(() =>
       expect(fns.revokeProductKey).toHaveBeenCalledWith("djdl", "djdl-z"),
@@ -329,6 +447,11 @@ describe("Keys & secrets → Signing keys (A-4)", () => {
 
   it("prepares a key (L1) and the list refreshes", async () => {
     const user = userEvent.setup();
+    const base = keys();
+    fns.productKeys.mockResolvedValue({
+      ...base,
+      keys: base.keys.filter((k) => k.status !== "staged"),
+    });
     fns.rotateProductKey.mockResolvedValue({
       ok: true,
       kid: "djdl-c",
@@ -357,7 +480,30 @@ describe("Keys & secrets → Signing keys (A-4)", () => {
     await user.click(
       (await screen.findAllByRole("button", { name: "Retry" }))[0]!,
     );
-    expect(await screen.findByText("djdl-a")).toBeTruthy();
+    expect((await screen.findAllByText("djdl-a")).length).toBeGreaterThan(0);
+  });
+});
+
+describe("refreshedCopy", () => {
+  const r = {
+    kid: "k2",
+    activatedAt: 0,
+    activeDevices: 3,
+    refreshedDevices: 2,
+    windowDays: 30,
+  };
+  it("rounds down, so it never claims every device before every device is back", () => {
+    expect(
+      refreshedCopy({ ...r, activeDevices: 1000, refreshedDevices: 999 }),
+    ).toBe("99% of active devices have refreshed since k2 went live.");
+    expect(refreshedCopy({ ...r, refreshedDevices: 3 })).toBe(
+      "100% of active devices have refreshed since k2 went live.",
+    );
+  });
+  it("says so plainly when no device was active", () => {
+    expect(refreshedCopy({ ...r, activeDevices: 0, refreshedDevices: 0 })).toBe(
+      "No device has been active in the last 30 days, so none has refreshed since k2 went live.",
+    );
   });
 });
 
@@ -459,7 +605,7 @@ describe("Keys & secrets → the page", () => {
       }),
     });
     mount();
-    await screen.findByText("djdl-a");
+    await screen.findAllByText("djdl-a");
     expect(
       screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent),
     ).toEqual(["Signing keys", "Secrets", "CI publishing"]);
@@ -476,7 +622,7 @@ describe("Keys & secrets → the page", () => {
   it("passes axe", async () => {
     const { container } = mount();
     await screen.findByText("EDGE_KEY");
-    await screen.findByText("djdl-a");
+    await screen.findAllByText("djdl-a");
     await expectNoAxeViolations(container);
   });
 });

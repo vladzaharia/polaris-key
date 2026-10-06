@@ -103,6 +103,7 @@ describe("the package-feeds bootstrap (F-03)", () => {
       SYSTEM_PRODUCT_SLUG,
     );
     expect(feeds.map((f) => f.ecosystem)).toEqual([
+      "cargo",
       "godot",
       "maven",
       "npm",
@@ -220,14 +221,15 @@ describe("the package-feeds bootstrap (F-03)", () => {
     expect((await getProduct(db, SYSTEM_PRODUCT_SLUG))?.name).toBe(
       "Polaris Key",
     );
-    // Other fields still save.
-    expect(
-      (
-        await admin("PATCH", `/products/${SYSTEM_PRODUCT_SLUG}`, {
-          defaultDeviceLimit: 7,
-        })
-      ).status,
-    ).toBe(200);
+    // ST-01b (S-18 §4.5 item 8): every other claimable field is manifest-authoritative on the
+    // system product too, until ST-20's break-glass claims.
+    const limit = await admin("PATCH", `/products/${SYSTEM_PRODUCT_SLUG}`, {
+      defaultDeviceLimit: 7,
+    });
+    expect(limit.status).toBe(409);
+    expect(await limit.json()).toMatchObject({
+      reason: "manifest_authoritative",
+    });
     // The products list marks it, so the console can keep it out of the switcher.
     const list = (await (await admin("GET", "/products")).json()) as {
       products: { slug: string; system: boolean }[];

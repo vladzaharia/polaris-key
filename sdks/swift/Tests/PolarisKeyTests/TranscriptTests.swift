@@ -1,9 +1,12 @@
 // @pkey-feature core.discover core.sync core.cache license.activate license.enroll
 // @pkey-feature license.deactivate license.reregister devices.register devices.report
 // @pkey-feature config.schema release.changelog release.download
-// @pkey-feature identity.devicecode config.mint
+// @pkey-feature identity.devicecode identity.devicelabel config.mint
 // @pkey-feature update.feed release.record update.decide
-// @pkey-feature packs.apply.chunk
+// @pkey-feature packs.apply.chunk commerce.receipt
+// @pkey-feature license.refusals ui.boot release.distribution telemetry.updates
+// @pkey-feature license.manage
+// @pkey-feature release.fetch
 //
 // The Swift transcript replayer (P1b-03, PARITY §4.2) for conformance/transcripts/ (read
 // from the generator-owned mirror in Resources/transcripts/): drive `PolarisKeyClient` through every
@@ -23,6 +26,12 @@
 // `installed.version` as `CoreOptions.version` — and its `cache` seeds the store's record. A
 // transcript with `initial.update` and no `initial.services` runs with Release, Distribution and
 // Update expected; one that loads no discovery itself is served the Worker's standard document.
+//
+// The SP-00 verbs: `activate` / `enroll` also report a refusal's wire `code`
+// (`ActivationResult.code`); `boot` is `client.boot()` to its `bootOutcome`; `downloadModel` is
+// `client.distribution.downloadModel()` with `current` chosen by `initial.platform`; `report`
+// also reports `updatesPending`, the journal's length afterwards, with `initial.updateJournal`
+// seeded into the store's `update-events` record before the client starts.
 //
 // `chunkRange` (P4-32, plans/P4-32.md §5) is `chunkRangeFetch` over `PacksClient.fetchObject`
 // (internal, reached through `@testable import PolarisKeyPacks`) with the client's own
@@ -60,6 +69,10 @@ private let registerFingerprint = HardwareFingerprint(
 /// The replay's memory between steps: the prompt the last `beginSignIn` returned.
 final class ReplaySession: @unchecked Sendable {
     var prompt: SignInPrompt?
+    /// `initial.platform`: the device's canonical platform.
+    var platform: String?
+    /// The transcript's steps (`releaseFetch`'s `partial` seeds from the whole-payload answer).
+    var steps: [Transcript.Step] = []
 }
 
 enum SwiftReplay {
@@ -121,6 +134,7 @@ enum SwiftReplay {
                 "verificationUriComplete": .string(p.verificationUriComplete),
                 "expiresIn": .int(p.expiresIn),
                 "interval": .int(p.interval),
+                "deviceName": p.deviceName.map { .string($0) } ?? .null,
             ])
         case "pollSignIn":
             guard let prompt = session.prompt else { throw ReplayError("pollSignIn before beginSignIn") }
@@ -130,6 +144,7 @@ enum SwiftReplay {
                 out["result"] = .string("slow-down")
                 out["interval"] = .int(interval)
             case .ready: out["result"] = .string("ready")
+            case .confirm: out["result"] = .string("confirm")
             case .expired: out["result"] = .string("expired")
             case .error: out["result"] = .string("error")
             }
@@ -137,6 +152,7 @@ enum SwiftReplay {
             guard let prompt = session.prompt else { throw ReplayError("waitForSignIn before beginSignIn") }
             switch try await client.identity.waitForSignIn(prompt) {
             case .ready: out["result"] = .string("ready")
+            case .confirm: out["result"] = .string("confirm")
             case .expired: out["result"] = .string("expired")
             case .error: out["result"] = .string("error")
             }
@@ -149,6 +165,38 @@ enum SwiftReplay {
                 out["expiresAt"] = .int(minted.expiresAt)
             } catch let error as PolarisError {
                 out["result"] = .string(error.code)
+            }
+        case "commerceBinding":
+            do {
+                let b = try await client.commerce.binding()
+                out["result"] = .string("ok")
+                out["bindingId"] = .string(b.bindingId)
+                out["products"] = .array(
+                    b.products.map { p in
+                        var o: [String: JSONValue] = [
+                            "store": .string(p.store), "productId": .string(p.productId),
+                            "flag": .string(p.flag),
+                        ]
+                        if let d = p.deliverable { o["deliverable"] = .string(d) }
+                        return .object(o)
+                    })
+            } catch let e as PolarisError {
+                out["result"] = .string(e.code)
+                if let reason = e.detail { out["reason"] = .string(reason) }
+            }
+        case "commerceClaim":
+            let r = await client.commerce.claim(
+                store: step.args["store"]?.stringValue ?? "",
+                payload: step.args["payload"]?.objectValue ?? [:])
+            switch r {
+            case .ok(let claim):
+                out["result"] = .string("ok")
+                out["flag"] = .string(claim.flag)
+                out["state"] = .string(claim.state)
+                out["granted"] = .bool(claim.granted)
+            default:
+                out["result"] = .string(r.code)
+                if let reason = r.reason { out["reason"] = .string(reason) }
             }
         case "discover":
             switch await client.discover() {
@@ -176,10 +224,19 @@ enum SwiftReplay {
             }
             out["documents"] = .object(docs)
         case "activate":
-            out["result"] = .string(
-                activationKind(await client.activate(key: step.args["key"]?.stringValue ?? "")))
+            activation(await client.activate(key: step.args["key"]?.stringValue ?? ""), into: &out)
         case "enroll":
-            out["result"] = .string(activationKind(await client.enroll()))
+            activation(await client.enroll(), into: &out)
+        case "boot":
+            let run = await client.boot(confirmAfterReady: false)
+            out["bootOutcome"] = .string(run.outcome.rawValue)
+        case "downloadModel":
+            let model = try await client.distribution.downloadModel()
+            out["result"] = .string("ok")
+            out["platforms"] = .array(model.platforms.map { .string($0.platform) })
+            out["current"] = session.platform.flatMap(model.group(for:)).map(groupValue) ?? .null
+        case "releaseFetch":
+            try await releaseFetch(client, step: step, session: session, into: &out)
         case "register":
             switch await client.core.registerDevice(fingerprint: registerFingerprint) {
             case .ok: out["result"] = .string("ok")
@@ -192,6 +249,7 @@ enum SwiftReplay {
             try await client.deactivate()
         case "report":
             out["result"] = .bool(await client.report())
+            out["updatesPending"] = .int(await client.core.journal.all().count)
         case "fetchSchema":
             if let data = await client.config.fetchSchema() {
                 out["catalog"] = try JSONDecoder().decode(JSONValue.self, from: data)
@@ -229,6 +287,61 @@ enum SwiftReplay {
         return out
     }
 
+    /// `releaseFetch` (SP-19) is `client.update.fetch(version:buildId:size:sha256:to:)` into a
+    /// fresh directory; `partial` seeds `<to>.part` with the first that many bytes of the
+    /// transcript's whole-payload answer. A refusal is `refused` with the server's code (the
+    /// client's own failures are `error`), and must leave no file at `to`.
+    static func releaseFetch(
+        _ client: PolarisKeyClient, step: Transcript.Step, session: ReplaySession,
+        into out: inout [String: JSONValue]
+    ) async throws {
+        let a = step.args
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pkey-replay-fetch-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let to = dir.appendingPathComponent("payload.bin")
+        if let n = a["partial"]?.intValue {
+            guard let path = step.exchanges.items.first?.request.path,
+                let whole = payload(of: session.steps, path: path)
+            else { throw ReplayError("releaseFetch: no whole-payload answer to seed from") }
+            try whole.prefix(n).write(to: dir.appendingPathComponent("payload.bin.part"))
+        }
+        do {
+            let r = try await client.update.fetch(
+                version: a["version"]?.stringValue ?? "", buildId: a["build"]?.stringValue ?? "",
+                size: a["size"]?.intValue, sha256: a["sha256"]?.stringValue ?? "", to: to)
+            out["result"] = .string("ok")
+            out["size"] = .int(r.size)
+            out["sha256"] = .string(r.sha256)
+            let written = try Data(contentsOf: to)
+            guard written.count == r.size else {
+                throw ReplayError("releaseFetch: the verified file holds \(written.count) bytes, not \(r.size)")
+            }
+        } catch let e as PolarisError {
+            let local: Set<String> = [
+                ErrorCode.network, ErrorCode.networkError, ErrorCode.payloadMismatch,
+                ErrorCode.invalidOptions, ErrorCode.serviceUnavailable, ErrorCode.notConfigured,
+            ]
+            out["result"] = .string(local.contains(e.code) ? "error" : "refused")
+            out["code"] = .string(e.code)
+            guard !FileManager.default.fileExists(atPath: to.path) else {
+                throw ReplayError("releaseFetch: a refusal left a file at the destination")
+            }
+        }
+    }
+
+    /// The body of the first 200 GET of `path` in `steps`.
+    static func payload(of steps: [Transcript.Step], path: String) -> Data? {
+        for s in steps {
+            for x in s.exchanges.items
+            where x.request.method == "GET" && x.request.path == path && x.response.status == 200 {
+                if case .string(let text) = x.response.body { return Data(text.utf8) }
+            }
+        }
+        return nil
+    }
+
     /// `initial.update.outlet`: a kind, or `{id, kind, subkind?}`.
     static func hostOutlet(_ v: JSONValue?) throws -> HostOutlet? {
         switch v {
@@ -253,16 +366,35 @@ enum SwiftReplay {
         ])
     }
 
-    static func activationKind(_ r: ActivationResult) -> String {
-        switch r {
-        case .ok: return "ok"
-        case .deviceLimit: return "device-limit"
-        case .unauthorized: return "unauthorized"
-        case .fingerprintRequired: return "fingerprint-required"
-        case .hardwareMismatch: return "hardware-mismatch"
-        case .enrollDisabled: return "enroll-disabled"
-        case .error: return "error"
+    /// An activation or enrolment result: its `activationResult` kind and, on a refusal, the
+    /// wire code the body carried.
+    static func activation(_ r: ActivationResult, into out: inout [String: JSONValue]) {
+        out["result"] = .string(r.kind)
+        if case .ok = r { return }
+        out["code"] = .string(r.code)
+        // PX-W8: the refusal link, exactly as served; null when the result carries none.
+        if case .deviceLimit(_, _, let manageURL) = r {
+            out["manageUrl"] = manageURL.map(JSONValue.string) ?? .null
         }
+    }
+
+    /// A download model's platform group in the transcript's JSON vocabulary (nil ⇒ `null`).
+    static func groupValue(_ g: DistributionPlatform) -> JSONValue {
+        func opt(_ s: String?) -> JSONValue { s.map(JSONValue.string) ?? .null }
+        return .object([
+            "platform": .string(g.platform), "label": .string(g.label), "primary": opt(g.primary),
+            "actions": .array(g.actions.map(JSONValue.string)),
+            "builds": .array(
+                g.builds.map { b in
+                    .object([
+                        "releaseId": .string(b.releaseId), "version": .string(b.version),
+                        "buildId": .string(b.buildId), "platform": .string(b.platform),
+                        "arch": .string(b.arch), "format": opt(b.format), "name": .string(b.name),
+                        "size": b.size.map(JSONValue.int) ?? .null, "sha256": opt(b.sha256),
+                        "minOs": opt(b.minOs), "url": .string(b.url), "outletId": .string(b.outletId),
+                    ])
+                }),
+        ])
     }
 
     /// Replay `t` step by step; throws on the first step whose traffic or outcome disagrees.
@@ -271,6 +403,9 @@ enum SwiftReplay {
         let clock = ReplayClock(t.now)
         let store = InMemoryStore(productSlug: t.product, deviceId: t.initial.deviceId)
         if let token = t.initial.token { await store.setToken(token) }
+        if let journal = t.initial.updateJournal {
+            await store.writeRecord(UpdateJournal.recordName, try JSONEncoder().encode(journal))
+        }
         let u = t.initial.update
         if let cache = u?.cache {
             await store.writeCache(
@@ -283,7 +418,9 @@ enum SwiftReplay {
             pinnedKeys: t.trust, store: store, transport: ReplayTransport(server: server),
             requestTimeoutSeconds: 0,
             expectedServices: services?.compactMap(ServiceSlug.init(rawValue:)),
-            clock: { clock.now })
+            clock: { clock.now },
+            // PX-W13: `initial.deviceName` stands in for the platform's device name; absent = none.
+            deviceName: t.initial.deviceName ?? "")
         let client = try await PolarisKeyClient.create(options: PolarisKeyClientOptions(core: core))
         var update: UpdateClient?
         if let u {
@@ -297,6 +434,8 @@ enum SwiftReplay {
                     platform: u.platform, arch: u.arch))
         }
         let session = ReplaySession()
+        session.platform = t.initial.platform
+        session.steps = t.steps
         for i in t.steps.indices {
             let step = await server.beginStep(i)
             clock.now = step.now ?? t.now
@@ -406,5 +545,44 @@ final class TranscriptTests: XCTestCase {
         }
         await assertReplayFails(
             t, matching: "step 1 (chunkRange): bytes: expected string(\"ghijklmnopqrstuvwxyzABCD\"), got nil")
+    }
+
+    // ── release.fetch (SP-19): the cases the recording does not hold ──────────────────
+
+    private func fetchGated() throws -> Transcript {
+        try XCTUnwrap(try transcripts().first { $0.id == "release-fetch-gated" })
+    }
+
+    /// A 200 to the ranged request means the representation changed: the part is discarded
+    /// and the whole payload is taken, still verified.
+    func testA200ToARangedRequestRestarts() async throws {
+        var t = try fetchGated()
+        let whole = t.steps[1].exchanges.items[0].response
+        t.steps[2].exchanges.items[0].response = whole
+        try await SwiftReplay.replay(t)
+    }
+
+    /// The refused code is the body's registered wire code; an unregistered one falls back to
+    /// the status's (`unauthorized` for a 401).
+    func testAnUnregisteredRefusalCodeFallsBackToTheStatus() async throws {
+        var t = try fetchGated()
+        t.steps[3].exchanges.items[0].response.body = .object([
+            "error": .string("not_a_registered_code"), "message": .string("doctored"),
+        ])
+        t.steps[3].expect["code"] = .string(ErrorCode.unauthorized)
+        try await SwiftReplay.replay(t)
+        t.steps[3].exchanges.items[0].response.body = .object([
+            "error": .object(["code": .string(ErrorCode.downloadAuthRequired)])
+        ])
+        t.steps[3].expect["code"] = .string(ErrorCode.downloadAuthRequired)
+        try await SwiftReplay.replay(t)
+    }
+
+    /// Bytes that disagree with the record never reach the destination.
+    func testAPayloadThatDisagreesWithTheRecordIsRefused() async throws {
+        var t = try fetchGated()
+        t.steps[1].args["sha256"] = .string(String(repeating: "0", count: 64))
+        t.steps[1].expect = ["result": .string("error"), "code": .string(ErrorCode.payloadMismatch)]
+        try await SwiftReplay.replay(t)
     }
 }

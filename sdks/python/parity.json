@@ -5,15 +5,33 @@
   "traits": ["headless"],
   "testRoots": ["sdks/python/tests", "tools/gen-mirrors.test.ts"],
   "features": {
-    "core.verify": { "status": "implemented" },
-    "core.cache": { "status": "implemented" },
-    "core.bundle": { "status": "implemented" },
-    "core.discover": { "status": "implemented" },
-    "core.sync": { "status": "implemented" },
-    "core.local": { "status": "implemented" },
-    "core.headers": { "status": "implemented" },
-    "core.errors": { "status": "implemented" },
-    "core.caps": { "status": "implemented" },
+    "core.verify": {
+      "status": "implemented"
+    },
+    "core.cache": {
+      "status": "implemented"
+    },
+    "core.bundle": {
+      "status": "implemented"
+    },
+    "core.discover": {
+      "status": "implemented"
+    },
+    "core.sync": {
+      "status": "implemented"
+    },
+    "core.local": {
+      "status": "implemented"
+    },
+    "core.headers": {
+      "status": "implemented"
+    },
+    "core.errors": {
+      "status": "implemented"
+    },
+    "core.caps": {
+      "status": "implemented"
+    },
     "core.store": {
       "status": "implemented",
       "except": [
@@ -25,27 +43,79 @@
       ],
       "note": "keyring is an optional extra; without it the token is in a 0600 file and store_status() reports keyring-unavailable."
     },
-    "license.gate": { "status": "implemented" },
-    "license.activate": { "status": "implemented" },
-    "license.enroll": { "status": "implemented" },
-    "license.deactivate": { "status": "implemented" },
-    "license.entitlements": { "status": "implemented" },
-    "license.channels": { "status": "implemented" },
-    "license.reregister": { "status": "implemented" },
-    "config.resolve": { "status": "implemented" },
-    "config.list": { "status": "implemented" },
-    "config.secret": { "status": "implemented" },
-    "config.schema": { "status": "implemented" },
-    "config.mint": { "status": "implemented" },
+    "core.copy": {
+      "status": "implemented",
+      "note": "polaris_key.copy serves copy_generated.py (from copy.en.json): message()/title() read the error-code, then gate, then activation table; activation_message()/activation_title() and describe_error() read typed activation results from the activation table only; unknown codes read COPY_FALLBACK naming the code; {name} placeholders fill or drop; register_locale('en', ...) is the host override layer. The hand-kept EN table is gone. tests/test_copy.py checks every table against copy.en.json."
+    },
+    "license.gate": {
+      "status": "implemented"
+    },
+    "license.activate": {
+      "status": "implemented"
+    },
+    "license.enroll": {
+      "status": "implemented"
+    },
+    "license.deactivate": {
+      "status": "implemented"
+    },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
+    "license.entitlements": {
+      "status": "implemented"
+    },
+    "license.channels": {
+      "status": "implemented"
+    },
+    "license.reregister": {
+      "status": "implemented"
+    },
+    "license.refusals": {
+      "status": "implemented"
+    },
+    "config.resolve": {
+      "status": "implemented"
+    },
+    "config.list": {
+      "status": "implemented"
+    },
+    "config.secret": {
+      "status": "implemented"
+    },
+    "config.schema": {
+      "status": "implemented"
+    },
+    "config.mint": {
+      "status": "implemented"
+    },
     "config.mirror": {
       "status": "implemented",
       "note": "The Python mirror is rendered by tools/gen-mirrors.ts."
     },
-    "devices.fingerprint": { "status": "implemented" },
-    "devices.facts": { "status": "implemented" },
-    "devices.register": { "status": "implemented" },
-    "devices.manage": { "status": "implemented" },
-    "devices.report": { "status": "implemented" },
+    "config.local": {
+      "status": "implemented"
+    },
+    "devices.fingerprint": {
+      "status": "implemented"
+    },
+    "devices.facts": {
+      "status": "implemented"
+    },
+    "devices.register": {
+      "status": "implemented"
+    },
+    "devices.manage": {
+      "status": "implemented"
+    },
+    "devices.report": {
+      "status": "implemented"
+    },
+    "telemetry.updates": {
+      "status": "implemented",
+      "note": "core/update_journal.py UpdateJournal: at most 16 queued events ride each devices/report in updates, oldest first, dropped once a 200 delivers them."
+    },
     "devices.attest": {
       "status": "na",
       "runtime": "python",
@@ -54,20 +124,48 @@
     },
     "identity.oidc": {
       "status": "planned",
-      "unowned": true,
-      "note": "No browser sign-in in the Python SDK, and no work package ports it."
+      "wp": "I-15",
+      "note": "Browser redirect sign-in waits on the native redirect-token route (I-15, SDK parity pass wire item W4). Until then identity.sign_in_with_browser() opens the device-code verificationUriComplete in the system browser and polls (identity.devicecode); the deprecated /identity/auth/poll is never used."
     },
-    "identity.devicecode": { "status": "implemented" },
-    "release.changelog": { "status": "implemented" },
-    "release.download": { "status": "implemented" },
+    "identity.devicecode": {
+      "status": "implemented"
+    },
+    "identity.devicelabel": {
+      "status": "implemented",
+      "note": "PX-W13: normalize_device_label (polaris_key.core.device_label), the device_name option and platform.node() without .local/.lan/.home by default, on begin_sign_in, activate_with_key and register; SignInPrompt.deviceName is the Worker's echo."
+    },
+    "identity.toggle": {
+      "status": "planned",
+      "wp": "I-10a"
+    },
+    "release.changelog": {
+      "status": "implemented"
+    },
+    "release.download": {
+      "status": "implemented"
+    },
     "release.record": {
       "status": "implemented",
       "note": "core/release_record.py verify_release_record (hash before signature, pinned release keys only, never a product key); client.update.release_record() and decide() fetch by hash and keep the releaseRecords slice while a committed feed pins it."
     },
-    "update.check": { "status": "implemented" },
+    "release.fetch": {
+      "status": "implemented",
+      "note": "client.release.fetch(target, to=…): discovery's build template, device bearer and metadata headers, Range/If-Range resume, size and SHA-256 checked before the file appears."
+    },
+    "release.distribution": {
+      "status": "implemented",
+      "note": "client.distribution.download_model() and this_platform()."
+    },
+    "update.check": {
+      "status": "implemented"
+    },
     "update.feed": {
       "status": "implemented",
       "note": "core/feed.py verify_feed with floors keyed by the canonical channel; client.update.feed() and decide() fetch, verify and commit the feeds cache slice, re-verified on load."
+    },
+    "update.feeds": {
+      "status": "implemented",
+      "note": "client.update.feed_url(kind) over discovery's update.endpoints (aliases canonicalised, values percent-encoded, velopack without a channel is the UpdateManager directory); tests/test_feed_url_matrix.py drives every feed-url-matrix.json row."
     },
     "update.decide": {
       "status": "implemented",
@@ -78,18 +176,19 @@
       "note": "core/decide.py decide_update with content (feed_content, select_pack_rows, prestage, the content blocks and boot required for revoked required content); client.update.decide() builds content from the content stamp, the pack state, the variant preferences and the stored revocations (run_update_check steps 10-14)."
     },
     "update.driver": {
-      "status": "planned",
-      "unowned": true,
-      "note": "Only appcast_url() today; the Velopack hand-off has no work package (P3-06 excludes it)."
+      "status": "implemented",
+      "note": "update/drivers.py: client.update.install(decision) over VelopackDriver (the velopack package's UpdateManager on discovery's Velopack feed; unsupported dependency without it), SelfReplaceDriver (a frozen single-file executable replaced with the release.fetch-verified build, the old one kept for the boot guard's rollback) and StoreLinkDriver (a store decision's listing); each records update_downloaded and update_applied. tests/test_drivers.py."
     },
     "update.bootguard": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
+      "status": "implemented",
+      "note": "update/bootguard.py BootGuard: update.mark_boot_attempt() at launch (client.boot() calls it) and update.confirm_boot() once healthy (boot() confirms per stage-matrix.json's bootConfirmation), slots in the state directory; after maxFailedBoots unconfirmed launches it rolls back through the install driver when one can (update_reverted, boot_rolled_back), otherwise reports boot_rolled_back with code no-previous once. tests/test_boot.py drives the guardCases."
     },
     "outlet.detect": {
       "status": "implemented",
       "note": "core/detection.py detect_outlet over update/outlet.py read_outlet_signals (environment, sys.executable and script path conventions, product-named markers, GetCurrentPackageFamilyName through ctypes); the update client detects when the host names no outlet. PEP 376 INSTALLER names no v4 signal and is not read."
+    },
+    "crash.tags": {
+      "status": "implemented"
     },
     "packs.record": {
       "status": "implemented",
@@ -183,25 +282,41 @@
     },
     "packs.transport.steam": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-28",
       "note": "P5-08 covers Godot only; Python desktop hosts have no Steam-depot transport owner."
     },
     "packs.transport.msix": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-29",
       "note": "No work package owns the MSIX optional-package transport (P5-08 Out)."
     },
     "packs.transport.flatpak": {
       "status": "planned",
-      "unowned": true,
+      "wp": "SP-29",
       "note": "No work package owns the Flatpak extension transport (P5-08 Out)."
     },
-    "ui.stages": { "status": "implemented" },
-    "ui.kit": { "status": "na", "runtime": "headless", "reason": "runtime" },
+    "ui.stages": {
+      "status": "implemented"
+    },
+    "ui.boot": {
+      "status": "implemented"
+    },
+    "ui.kit": {
+      "status": "na",
+      "runtime": "headless",
+      "reason": "runtime"
+    },
+    "ui.kit.manage": {
+      "status": "na",
+      "runtime": "headless",
+      "reason": "runtime"
+    },
+    "ui.cli": {
+      "status": "implemented"
+    },
     "commerce.receipt": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+      "status": "implemented",
+      "note": "polaris_key.commerce: binding() and claim(store, payload) over the P6-01 bridge, plus claim_steam(ticket_hex, dlc_app_id), claim_play() and claim_app_store(), which sync on success; the host's Steamworks binding supplies the ticket, so there is no store dependency. Refusals keep the server's code and reason (ClaimNotOwned, ClaimAttestationRequired, ClaimRefused). tests/test_commerce.py and the commerce-claim transcript."
     }
   }
 }

@@ -21,10 +21,21 @@
 //                                       and the wire contract v4 limits MAX_WIRE_INTEGER,
 //                                       MAX_JSON_DEPTH and MAX_RECORD_JWS_BYTES, and the
 //                                       PACK_LIMIT_EXPORTS (plans/P4-01.md §2.13)
+//   conformance/parity/copy.en.json     the core copy (core.copy, plans/SP-00.md §4; + copy.schema.json):
+//                                       a title and message per errors.json code, licenseStatus
+//                                       and activationResult, checked key for key against those
+//                                       sources and against the closed placeholder set, and
+//                                       emitted as a separate copy module per SDK (COPY_TARGETS)
+//   conformance/parity/copy.<locale>.json  translated core packs (plans/UK-02.md D4): checked
+//                                       against copy.en.json (keys, placeholders, locale,
+//                                       reviewed) and not emitted here; gen:brand's kit tables
+//                                       carry them
 //   conformance/corpus/v2/*.json        corpusVersion, gateMatrixVersion, fingerprintVersion,
 //                                       stageMatrixVersion, updateMatrixVersion,
-//                                       outletMatrixVersion, planMatrixVersion, and
+//                                       outletMatrixVersion, planMatrixVersion,
+//                                       syncScenariosVersion, deviceLabelVersion, and
 //                                       content/cases.json's contentCorpusVersion
+//   @polaris-key/protocol/identity      the IDENTITY_EXPORTS (WIRE-CONTRACT-V4 §12.7, PX-W13)
 //
 // Outputs, each with a GENERATED banner (TypeScript is prettier-formatted, as sign-corpus.ts
 // does): see TARGETS. The GDScript module is written only while `sdks/godot/addons/polaris_key`
@@ -61,6 +72,7 @@ import {
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as protocolCore from "@polaris-key/protocol/core";
+import * as protocolIdentity from "@polaris-key/protocol/identity";
 import Ajv2020Module from "ajv/dist/2020.js";
 import * as prettier from "prettier";
 import {
@@ -101,6 +113,33 @@ export interface EnumRegistry {
   enums: EnumDef[];
 }
 
+/** One piece of core copy: what a person reads. */
+export interface CopyEntry {
+  title: string;
+  message: string;
+}
+
+/** conformance/parity/copy.<locale>.json (copy.schema.json). */
+export interface CopyDoc {
+  $comment?: string;
+  copyVersion: 1;
+  locale: string;
+  fallback: CopyEntry;
+  codes: Record<string, CopyEntry>;
+  gate: Record<string, CopyEntry>;
+  activation: Record<string, CopyEntry>;
+}
+
+/** The only placeholders core copy may use (plans/SP-00.md §4). */
+export const COPY_PLACEHOLDERS = [
+  "code",
+  "detail",
+  "limit",
+  "deviceCount",
+  "retryAfterSeconds",
+  "product",
+] as const;
+
 /** Everything the renderers need, already read. Tests build one by hand. */
 export interface Sources {
   errors: ErrorEntry[];
@@ -112,6 +151,8 @@ export interface Sources {
   capabilities?: Record<string, SdkCapabilities>;
   /** The `@polaris-key/protocol/core` module namespace (or a stand-in with the same exports). */
   protocol: Record<string, unknown>;
+  /** The core copy (copy.en.json), already checked by validateCopy. */
+  copy?: CopyDoc;
   corpus: {
     corpusVersion: number;
     gateMatrixVersion: number;
@@ -120,6 +161,8 @@ export interface Sources {
     updateMatrixVersion: number;
     outletMatrixVersion: number;
     planMatrixVersion: number;
+    syncScenariosVersion: number;
+    deviceLabelVersion: number;
     contentCorpusVersion: number;
   };
 }
@@ -164,6 +207,128 @@ export function validateEnums(registry: EnumRegistry): string[] {
   for (const def of registry.enums) {
     if (seen.has(def.name)) errors.push(`duplicate enum "${def.name}"`);
     seen.add(def.name);
+  }
+  return errors;
+}
+
+/** Every placeholder-shaped token in one string, and whether its braces are otherwise balanced. */
+function placeholderErrors(where: string, text: string): string[] {
+  const errors: string[] = [];
+  const known = new Set<string>(COPY_PLACEHOLDERS);
+  for (const m of text.matchAll(/\{([^{}]*)\}/g))
+    if (!known.has(m[1]!))
+      errors.push(
+        `${where}: unknown placeholder {${m[1]}} (allowed: ${COPY_PLACEHOLDERS.map((p) => `{${p}}`).join(", ")})`,
+      );
+  if (/[{}]/.test(text.replace(/\{[^{}]*\}/g, "")))
+    errors.push(`${where}: a brace that is not part of a {placeholder}`);
+  return errors;
+}
+
+/** One section's keys against its source, in both directions. */
+function keyErrors(
+  section: string,
+  actual: Record<string, unknown>,
+  expected: readonly string[],
+  source: string,
+): string[] {
+  const want = new Set(expected);
+  return [
+    ...expected
+      .filter((k) => !(k in actual))
+      .map((k) => `${section}: no entry for "${k}" (${source})`),
+    ...Object.keys(actual)
+      .filter((k) => !want.has(k))
+      .map((k) => `${section}: "${k}" is not in ${source}`),
+  ];
+}
+
+/**
+ * The checks the copy schema cannot say (plans/SP-00.md §4): `codes` keys equal the errors.json
+ * codes, `gate` keys equal `licenseStatus`, `activation` keys equal `activationResult`, and every
+ * placeholder is one of COPY_PLACEHOLDERS. Empty = valid.
+ */
+export function validateCopy(
+  copy: CopyDoc,
+  sources: { codes: readonly string[]; enums: readonly EnumDef[] },
+): string[] {
+  const values = (name: string): string[] | undefined =>
+    sources.enums.find((e) => e.name === name)?.values;
+  const errors: string[] = [];
+  errors.push(...keyErrors("codes", copy.codes, sources.codes, "errors.json"));
+  for (const [section, enumName] of [
+    ["gate", "licenseStatus"],
+    ["activation", "activationResult"],
+  ] as const) {
+    const expected = values(enumName);
+    if (!expected) errors.push(`enums.json has no ${enumName} enum`);
+    else
+      errors.push(
+        ...keyErrors(
+          section,
+          copy[section],
+          expected,
+          `enums.json ${enumName}`,
+        ),
+      );
+  }
+  const entries: [string, CopyEntry][] = [
+    ["fallback", copy.fallback],
+    ...(["codes", "gate", "activation"] as const).flatMap((section) =>
+      Object.entries(copy[section]).map(
+        ([k, e]) => [`${section}.${k}`, e] as [string, CopyEntry],
+      ),
+    ),
+  ];
+  for (const [where, entry] of entries)
+    for (const field of ["title", "message"] as const)
+      errors.push(...placeholderErrors(`${where}.${field}`, entry[field]));
+  return errors;
+}
+
+/**
+ * A translated core copy pack, `copy.<locale>.json` (plans/UK-02.md D4): the same sections and
+ * keys as copy.en.json, the same placeholder set in every string, a `locale` matching the file
+ * name and an explicit `reviewed`. The schema and validateCopy's placeholder rules apply too.
+ * Translations are not emitted by this generator; the kit tables (gen:brand) carry them.
+ */
+export function validateCopyLocale(
+  doc: CopyDoc & { reviewed?: boolean },
+  en: CopyDoc,
+  locale: string,
+): string[] {
+  const errors: string[] = [];
+  if (doc.locale !== locale)
+    errors.push(`locale is "${doc.locale}", not "${locale}"`);
+  if (typeof doc.reviewed !== "boolean")
+    errors.push("a translated pack states reviewed: true or false");
+  const names = (text: string) =>
+    [...text.matchAll(/\{([^{}]*)\}/g)]
+      .map((m) => m[1]!)
+      .sort()
+      .join(", ");
+  const compare = (where: string, a: CopyEntry, b: CopyEntry | undefined) => {
+    if (!b) return;
+    for (const field of ["title", "message"] as const) {
+      errors.push(...placeholderErrors(`${where}.${field}`, b[field]));
+      if (names(a[field]) !== names(b[field]))
+        errors.push(
+          `${where}.${field}: placeholders {${names(b[field])}} differ from English {${names(a[field])}}`,
+        );
+    }
+  };
+  compare("fallback", en.fallback, doc.fallback);
+  for (const section of ["codes", "gate", "activation"] as const) {
+    errors.push(
+      ...keyErrors(
+        section,
+        doc[section] ?? {},
+        Object.keys(en[section]),
+        "copy.en.json",
+      ),
+    );
+    for (const [k, e] of Object.entries(en[section]))
+      compare(`${section}.${k}`, e, doc[section]?.[k]);
   }
   return errors;
 }
@@ -390,6 +555,24 @@ export function loadSources(root = ROOT): Sources {
     "enums.schema.json",
     validateEnums,
   );
+  const copy = loadValidated<CopyDoc>(
+    root,
+    "copy.en.json",
+    "copy.schema.json",
+    (doc) =>
+      validateCopy(doc, {
+        codes: errors.codes.map((e) => e.code),
+        enums: enums.enums,
+      }),
+  );
+  // The translated core packs: checked, not emitted (plans/UK-02.md D4).
+  for (const file of readdirSync(join(root, "conformance", "parity")).sort()) {
+    const m = /^copy\.(.+)\.json$/.exec(file);
+    if (!m || m[1] === "en" || m[1] === "schema") continue;
+    loadValidated<CopyDoc>(root, file, "copy.schema.json", (doc) =>
+      validateCopyLocale(doc, copy, m[1]!),
+    );
+  }
   const coverage = [
     ...checkCoverage(errors.codes, scanWorkerSource(readWorkerSource(root))),
     ...checkStageCoverage(
@@ -439,7 +622,9 @@ export function loadSources(root = ROOT): Sources {
     services: loadTable(join(root, "tools", "services.json")).services.map(
       (r) => r.slug,
     ),
-    protocol: { ...protocolCore },
+    // The identity subpath's exports join core's; only the names in IDENTITY_EXPORTS are read.
+    protocol: { ...protocolCore, ...protocolIdentity },
+    copy,
     corpus: {
       corpusVersion: corpus("cases.json", "corpusVersion"),
       gateMatrixVersion: corpus("gate-matrix.json", "gateMatrixVersion"),
@@ -448,6 +633,11 @@ export function loadSources(root = ROOT): Sources {
       updateMatrixVersion: corpus("update-matrix.json", "updateMatrixVersion"),
       outletMatrixVersion: corpus("outlet-matrix.json", "outletMatrixVersion"),
       planMatrixVersion: corpus("plan-matrix.json", "planMatrixVersion"),
+      syncScenariosVersion: corpus(
+        "sync-scenarios.json",
+        "syncScenariosVersion",
+      ),
+      deviceLabelVersion: corpus("device-label.json", "deviceLabelVersion"),
       contentCorpusVersion: corpus(
         "content/cases.json",
         "contentCorpusVersion",
@@ -523,6 +713,9 @@ export interface Group {
   members: Member[];
   /** False where the language already declares the type (Swift's `ServiceSlug`). */
   swift: boolean;
+  /** Emit only the `*_VALUES` list, in every language: the SDKs declare the type natively
+   *  under the same name (see VALUES_ONLY_ENUMS). */
+  valuesOnly?: boolean;
 }
 
 export type ScalarValue = string | number | string[] | Record<string, string>;
@@ -541,6 +734,47 @@ export interface Model {
   scalars: Scalar[];
   /** Each SDK's capability table, keyed by registry SDK id. */
   capabilities: Record<string, SdkCapabilities>;
+  /** The core copy, each section in its source's order; absent when Sources has none. */
+  copy?: CopyModel;
+}
+
+export interface CopyModel {
+  copyVersion: number;
+  locale: string;
+  fallback: CopyEntry;
+  /** errors.json order. */
+  codes: [string, CopyEntry][];
+  /** licenseStatus order. */
+  gate: [string, CopyEntry][];
+  /** activationResult order. */
+  activation: [string, CopyEntry][];
+}
+
+function copyModel(sources: Sources): CopyModel | undefined {
+  const copy = sources.copy;
+  if (!copy) return undefined;
+  const order = (name: string): string[] =>
+    sources.enums.find((e) => e.name === name)?.values ?? [];
+  const pick = (
+    section: Record<string, CopyEntry>,
+    keys: readonly string[],
+  ): [string, CopyEntry][] =>
+    keys.map((k) => {
+      const e = section[k];
+      if (!e) throw new Error(`copy.${copy.locale}.json has no entry "${k}"`);
+      return [k, { title: e.title, message: e.message }];
+    });
+  return {
+    copyVersion: copy.copyVersion,
+    locale: copy.locale,
+    fallback: { title: copy.fallback.title, message: copy.fallback.message },
+    codes: pick(
+      copy.codes,
+      sources.errors.map((e) => e.code),
+    ),
+    gate: pick(copy.gate, order("licenseStatus")),
+    activation: pick(copy.activation, order("activationResult")),
+  };
 }
 
 function group(
@@ -548,6 +782,7 @@ function group(
   doc: string,
   members: Member[],
   swift = true,
+  valuesOnly = false,
 ): Group {
   const camel = new Map<string, string>();
   const upper = new Map<string, string>();
@@ -577,7 +812,9 @@ function group(
       );
     }
   }
-  return { name, doc, members, swift };
+  return valuesOnly
+    ? { name, doc, members, swift, valuesOnly }
+    : { name, doc, members, swift };
 }
 
 const fromValues = (values: readonly string[]): Member[] =>
@@ -628,6 +865,14 @@ export const PACK_LIMIT_EXPORTS = [
   "MAX_CHUNK_BYTES",
 ] as const;
 
+/** The device-label and request-handle constants every SDK carries (WIRE-CONTRACT-V4 §12.7,
+ *  plans/PX-W13.md §2; `@polaris-key/protocol/identity`). */
+export const IDENTITY_EXPORTS = [
+  "DEVICE_LABEL_MAX_CODEPOINTS",
+  "REQUEST_HANDLE_PATTERN",
+  "REQUEST_HANDLE_TTL_SECONDS",
+] as const;
+
 /** The three P4-10 entries of `PACK_LIMIT_EXPORTS`, documented against plans/P4-10.md. */
 const CHUNK_LIMIT_EXPORTS: ReadonlySet<string> = new Set([
   "CHUNKS_FORMAT",
@@ -651,6 +896,18 @@ function scalarValue(name: string, value: unknown): ScalarValue {
     `@polaris-key/protocol/core exports ${name} as a value this generator cannot render (string, integer, string[] or Record<string, string>)`,
   );
 }
+
+/** Enums whose PascalCase name an SDK already uses for its own type, so a generated group of that
+ *  name would clash with it or shadow it at the package root: `LicenseStatus` is a declared enum
+ *  in Swift (PolarisKeyCore/Models.swift) and Kotlin (:core Models.kt), and a type alias in Python
+ *  (core/models.py); `ActivationResult` is the activation sum type in Node (license/endpoints.ts),
+ *  Python (license/endpoints.py), Swift (PolarisKeyLicense/Endpoints.swift) and Kotlin (:license).
+ *  They emit only their `*_VALUES` list, in every language alike, and validateCopy checks the
+ *  copy's `gate` and `activation` keys against them (plans/SP-00.md §4). */
+export const VALUES_ONLY_ENUMS: ReadonlySet<string> = new Set([
+  "licenseStatus",
+  "activationResult",
+]);
 
 /** Build the language-neutral model. Throws on any identifier collision. */
 export function buildModel(sources: Sources): Model {
@@ -694,6 +951,7 @@ export function buildModel(sources: Sources): Model {
         def.description,
         fromValues(def.values),
         !SWIFT_DECLARED.has(name),
+        VALUES_ONLY_ENUMS.has(def.name),
       );
     }),
     group(
@@ -756,6 +1014,16 @@ export function buildModel(sources: Sources): Model {
       value: sources.corpus.planMatrixVersion,
     },
     {
+      name: "SYNC_SCENARIOS_VERSION",
+      doc: "`syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.",
+      value: sources.corpus.syncScenariosVersion,
+    },
+    {
+      name: "DEVICE_LABEL_VERSION",
+      doc: "`deviceLabelVersion` of conformance/corpus/v2/device-label.json.",
+      value: sources.corpus.deviceLabelVersion,
+    },
+    {
       name: "CONTENT_CORPUS_VERSION",
       doc: "`contentCorpusVersion` of conformance/corpus/v2/content/cases.json.",
       value: sources.corpus.contentCorpusVersion,
@@ -787,6 +1055,21 @@ export function buildModel(sources: Sources): Model {
         value,
       };
     }),
+    ...IDENTITY_EXPORTS.map((name) => {
+      const value = protocol[name];
+      if (
+        typeof value !== "string" &&
+        (typeof value !== "number" || !Number.isSafeInteger(value))
+      )
+        throw new Error(
+          `@polaris-key/protocol/identity exports no integer or string ${name}`,
+        );
+      return {
+        name,
+        doc: `Identity passthrough: \`${name}\` (WIRE-CONTRACT-V4 §12.7, \`@polaris-key/protocol/identity\`).`,
+        value,
+      };
+    }),
     ...exportNames
       .filter((name) => CHANNEL_EXPORT.test(name))
       .map((name) => ({
@@ -808,6 +1091,7 @@ export function buildModel(sources: Sources): Model {
     errorKinds: sources.errors.map((e) => [e.code, e.kind]),
     scalars,
     capabilities: sources.capabilities ?? {},
+    ...(sources.copy ? { copy: copyModel(sources)! } : {}),
   };
 }
 
@@ -882,6 +1166,12 @@ export const CAPABILITY_DIGEST = ${q(capabilityDigest(caps))};
 export function renderTs(model: Model, caps?: SdkCapabilities): string {
   const out: string[] = [banner("//")];
   for (const g of model.groups) {
+    if (g.valuesOnly) {
+      out.push(`/** ${g.doc} Every value, in source order. */
+export const ${valuesName(g)}: readonly string[] = [${g.members.map((m) => q(m.value)).join(", ")}];
+`);
+      continue;
+    }
     out.push(`/** ${g.doc} */
 export const ${g.name} = {
 ${g.members.map((m) => `  ${m.camel}: ${q(m.value)},`).join("\n")}
@@ -979,7 +1269,9 @@ const PY_CAPS_EXPORTS = [
 
 export function renderPython(model: Model, caps?: SdkCapabilities): string {
   const exported = [
-    ...model.groups.flatMap((g) => [g.name, valuesName(g)]),
+    ...model.groups.flatMap((g) =>
+      g.valuesOnly ? [valuesName(g)] : [g.name, valuesName(g)],
+    ),
     "ERROR_CODE_KINDS",
     ...model.scalars.map((s) => s.name),
     ...(caps ? PY_CAPS_EXPORTS : []),
@@ -998,6 +1290,14 @@ ${exported.map((n) => `    ${q(n)},`).join("\n")}
 `,
   ];
   for (const g of model.groups) {
+    if (g.valuesOnly) {
+      out.push(`
+
+#: ${g.doc} Every value, in source order.
+${valuesName(g)}: Tuple[str, ...] = ${pyLiteral(g.members.map((m) => m.value))}
+`);
+      continue;
+    }
     out.push(`
 
 class ${g.name}:
@@ -1114,6 +1414,15 @@ export function renderSwift(model: Model, caps?: SdkCapabilities): string {
   ];
   for (const g of model.groups) {
     if (!g.swift) continue;
+    if (g.valuesOnly) {
+      out.push(`
+/// ${g.doc} Every value, in source order.
+public let ${valuesName(g)}: [String] = [
+${g.members.map((m) => `    ${q(m.value)},`).join("\n")}
+]
+`);
+      continue;
+    }
     out.push(`
 /// ${g.doc}
 public enum ${g.name} {
@@ -1190,6 +1499,14 @@ extends RefCounted
 `,
   ];
   for (const g of model.groups) {
+    if (g.valuesOnly) {
+      out.push(`
+
+## ${g.doc} Every value, in source order.
+const ${valuesName(g)} := ${gdLiteral(g.members.map((m) => m.value))}
+`);
+      continue;
+    }
     out.push(`
 
 ## ${g.doc}
@@ -1285,6 +1602,15 @@ package im.plrs.key.core
   ];
   for (const g of model.groups) {
     if (KOTLIN_DECLARED.has(g.name)) continue;
+    if (g.valuesOnly) {
+      out.push(`
+/** ${g.doc} Every value, in source order. */
+public val ${valuesName(g)}: List<String> = listOf(
+${g.members.map((m) => `    ${ktq(m.value)},`).join("\n")}
+)
+`);
+      continue;
+    }
     out.push(`
 /** ${g.doc} */
 public object ${g.name} {
@@ -1309,6 +1635,230 @@ ${model.errorKinds.map(([code, kind]) => `    ${ktq(code)} to ${ktq(kind)},`).jo
     out.push(`\n/** ${s.doc} */\n${kotlinScalar(s)}\n`);
   if (caps) out.push(kotlinCaps(caps));
   return out.join("");
+}
+
+// ── Core copy renderers (core.copy, plans/SP-00.md §4) ────────────────────────────────────
+//
+// One SEPARATE module per SDK, data only: the English copy every SDK's `copy.message(code)` /
+// `copy.title(code)` reads once its SP task wires it in. The names match up to casing (PARITY
+// §2.1): COPY_VERSION, COPY_LOCALE, COPY_PLACEHOLDERS, COPY_FALLBACK, COPY_CODES, COPY_GATE and
+// COPY_ACTIVATION, plus a `CopyEntry` {title, message} type where the language needs one.
+
+function copyBanner(comment: string): string {
+  return [
+    `${comment} GENERATED FILE — do not edit by hand.`,
+    comment,
+    `${comment} Written by \`pnpm gen:constants\` (tools/gen-sdk-constants.ts) from conformance/parity/`,
+    `${comment} copy.en.json, checked against errors.json and enums.json (licenseStatus, activationResult).`,
+    `${comment} \`pnpm gen:constants -- --check\` fails the green gate on any difference. To change a string,`,
+    `${comment} edit copy.en.json and regenerate.`,
+    "",
+  ].join("\n");
+}
+
+const COPY_DOC =
+  "The core copy (core.copy): a title and message per error code, gate status (licenseStatus) and activation result (activationResult). A code missing from COPY_CODES shows COPY_FALLBACK with {code} filled in, never the raw body.";
+
+function requireCopy(model: Model): CopyModel {
+  if (!model.copy) throw new Error("the model carries no core copy");
+  return model.copy;
+}
+
+export function renderCopyTs(model: Model): string {
+  const c = requireCopy(model);
+  const entry = (e: CopyEntry): string =>
+    `{ title: ${q(e.title)}, message: ${q(e.message)} }`;
+  const table = (name: string, doc: string, rows: [string, CopyEntry][]) =>
+    `/** ${doc} */
+export const ${name}: Readonly<Record<string, CopyEntry>> = {
+${rows.map(([k, e]) => `  ${q(k)}: ${entry(e)},`).join("\n")}
+};
+`;
+  return [
+    copyBanner("//"),
+    `// ${COPY_DOC}
+
+/** One piece of core copy. */
+export interface CopyEntry {
+  readonly title: string;
+  readonly message: string;
+}
+
+export const COPY_VERSION = ${c.copyVersion};
+export const COPY_LOCALE = ${q(c.locale)};
+/** The only placeholders a copy string may hold, each written \`{name}\`. */
+export const COPY_PLACEHOLDERS: readonly string[] = [${COPY_PLACEHOLDERS.map(q).join(", ")}];
+/** Shown for a code this table does not know, with {code} filled in. */
+export const COPY_FALLBACK: CopyEntry = ${entry(c.fallback)};
+`,
+    table("COPY_CODES", "Per error code (errors.json order).", c.codes),
+    table("COPY_GATE", "Per licenseStatus.", c.gate),
+    table("COPY_ACTIVATION", "Per activationResult.", c.activation),
+  ].join("\n");
+}
+
+export function renderCopyPython(model: Model): string {
+  const c = requireCopy(model);
+  const entry = (e: CopyEntry): string =>
+    `CopyEntry(${q(e.title)}, ${q(e.message)})`;
+  const table = (name: string, doc: string, rows: [string, CopyEntry][]) =>
+    `
+
+#: ${doc}
+${name}: Mapping[str, CopyEntry] = MappingProxyType(
+    {
+${rows.map(([k, e]) => `        ${q(k)}: ${entry(e)},`).join("\n")}
+    }
+)
+`;
+  return [
+    copyBanner("#"),
+    `"""Polaris Key's core copy (core.copy). ${COPY_DOC}"""
+
+from __future__ import annotations
+
+from types import MappingProxyType
+from typing import Final, Mapping, NamedTuple, Tuple
+
+__all__ = [
+    "CopyEntry",
+    "COPY_VERSION",
+    "COPY_LOCALE",
+    "COPY_PLACEHOLDERS",
+    "COPY_FALLBACK",
+    "COPY_CODES",
+    "COPY_GATE",
+    "COPY_ACTIVATION",
+]
+
+
+class CopyEntry(NamedTuple):
+    """One piece of core copy."""
+
+    title: str
+    message: str
+
+
+COPY_VERSION: Final = ${c.copyVersion}
+COPY_LOCALE: Final = ${q(c.locale)}
+#: The only placeholders a copy string may hold, each written \`\`{name}\`\`.
+COPY_PLACEHOLDERS: Tuple[str, ...] = (${COPY_PLACEHOLDERS.map(q).join(", ")})
+#: Shown for a code this table does not know, with {code} filled in.
+COPY_FALLBACK: Final = ${entry(c.fallback)}`,
+    table("COPY_CODES", "Per error code (errors.json order).", c.codes),
+    table("COPY_GATE", "Per licenseStatus.", c.gate),
+    table("COPY_ACTIVATION", "Per activationResult.", c.activation),
+  ].join("");
+}
+
+export function renderCopySwift(model: Model): string {
+  const c = requireCopy(model);
+  const entry = (e: CopyEntry): string =>
+    `CopyEntry(title: ${q(e.title)}, message: ${q(e.message)})`;
+  const table = (name: string, doc: string, rows: [string, CopyEntry][]) =>
+    `
+/// ${doc}
+public let ${name}: [String: CopyEntry] = [
+${rows.map(([k, e]) => `    ${q(k)}: ${entry(e)},`).join("\n")}
+]
+`;
+  return [
+    copyBanner("//"),
+    `// ${COPY_DOC}
+
+/// One piece of core copy.
+public struct CopyEntry: Sendable, Equatable {
+    public let title: String
+    public let message: String
+
+    public init(title: String, message: String) {
+        self.title = title
+        self.message = message
+    }
+}
+
+public let COPY_VERSION = ${c.copyVersion}
+public let COPY_LOCALE = ${q(c.locale)}
+/// The only placeholders a copy string may hold, each written \`{name}\`.
+public let COPY_PLACEHOLDERS: [String] = [${COPY_PLACEHOLDERS.map(q).join(", ")}]
+/// Shown for a code this table does not know, with {code} filled in.
+public let COPY_FALLBACK = ${entry(c.fallback)}
+`,
+    table("COPY_CODES", "Per error code (errors.json order).", c.codes),
+    table("COPY_GATE", "Per licenseStatus.", c.gate),
+    table("COPY_ACTIVATION", "Per activationResult.", c.activation),
+  ].join("");
+}
+
+/** The GDScript copy module's class name (beside \`PKeyConstants\`). */
+export const GDSCRIPT_COPY_CLASS = "PKeyCoreCopy";
+
+export function renderCopyGdscript(model: Model): string {
+  const c = requireCopy(model);
+  const entry = (e: CopyEntry): string =>
+    `{"title": ${q(e.title)}, "message": ${q(e.message)}}`;
+  const table = (name: string, doc: string, rows: [string, CopyEntry][]) =>
+    `
+## ${doc}
+const ${name} := {
+${rows.map(([k, e]) => `\t${q(k)}: ${entry(e)},`).join("\n")}
+}
+`;
+  return [
+    copyBanner("#"),
+    `class_name ${GDSCRIPT_COPY_CLASS}
+extends RefCounted
+## ${COPY_DOC}
+## Each entry is {"title": String, "message": String}.
+
+const COPY_VERSION := ${c.copyVersion}
+const COPY_LOCALE := ${q(c.locale)}
+## The only placeholders a copy string may hold, each written \`{name}\`.
+const COPY_PLACEHOLDERS := [${COPY_PLACEHOLDERS.map(q).join(", ")}]
+## Shown for a code this table does not know, with {code} filled in.
+const COPY_FALLBACK := ${entry(c.fallback)}
+`,
+    table("COPY_CODES", "Per error code (errors.json order).", c.codes),
+    table("COPY_GATE", "Per licenseStatus.", c.gate),
+    table("COPY_ACTIVATION", "Per activationResult.", c.activation),
+  ].join("");
+}
+
+export function renderCopyKotlin(model: Model): string {
+  const c = requireCopy(model);
+  const entry = (e: CopyEntry): string =>
+    `CopyEntry(${ktq(e.title)}, ${ktq(e.message)})`;
+  const table = (name: string, doc: string, rows: [string, CopyEntry][]) =>
+    `
+/** ${doc} */
+public val ${name}: Map<String, CopyEntry> = mapOf(
+${rows.map(([k, e]) => `    ${ktq(k)} to ${entry(e)},`).join("\n")}
+)
+`;
+  return [
+    copyBanner("//"),
+    `// ${COPY_DOC}
+
+@file:Suppress("unused")
+
+package im.plrs.key.core
+
+/** One piece of core copy. */
+public data class CopyEntry(public val title: String, public val message: String)
+
+public const val COPY_VERSION: Int = ${c.copyVersion}
+public const val COPY_LOCALE: String = ${ktq(c.locale)}
+
+/** The only placeholders a copy string may hold, each written \`{name}\`. */
+public val COPY_PLACEHOLDERS: List<String> = listOf(${COPY_PLACEHOLDERS.map(ktq).join(", ")})
+
+/** Shown for a code this table does not know, with {code} filled in. */
+public val COPY_FALLBACK: CopyEntry = ${entry(c.fallback)}
+`,
+    table("COPY_CODES", "Per error code (errors.json order).", c.codes),
+    table("COPY_GATE", "Per licenseStatus.", c.gate),
+    table("COPY_ACTIVATION", "Per activationResult.", c.activation),
+  ].join("");
 }
 
 // ── Targets ────────────────────────────────────────────────────────────────────────────────
@@ -1361,13 +1911,51 @@ export const TARGETS: readonly Target[] = [
   },
 ];
 
+/** The core copy modules, one per SDK, each separate from its constants module (plans/SP-00.md
+ *  §4). They carry no capability table. */
+export const COPY_TARGETS: readonly Target[] = [
+  {
+    path: "packages/sdk-node/src/copy.generated.ts",
+    sdk: "node",
+    render: renderCopyTs,
+    parser: "typescript",
+  },
+  {
+    path: "packages/sdk-react/src/copy.generated.ts",
+    sdk: "react",
+    render: renderCopyTs,
+    parser: "typescript",
+  },
+  {
+    path: "sdks/python/src/polaris_key/copy_generated.py",
+    sdk: "python",
+    render: renderCopyPython,
+  },
+  {
+    path: "sdks/swift/Sources/PolarisKeyCore/Copy.generated.swift",
+    sdk: "swift",
+    render: renderCopySwift,
+  },
+  {
+    path: "sdks/godot/addons/polaris_key/core/copy_generated.gd",
+    sdk: "godot",
+    render: renderCopyGdscript,
+    onlyIfDir: "sdks/godot/addons/polaris_key",
+  },
+  {
+    path: "sdks/kotlin/core/src/main/kotlin/im/plrs/key/core/Copy.generated.kt",
+    sdk: "kotlin",
+    render: renderCopyKotlin,
+  },
+];
+
 /** Every applicable generated file's content, keyed by repo-relative path. */
 export async function renderAll(
   model: Model,
   root = ROOT,
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
-  for (const target of TARGETS) {
+  for (const target of [...TARGETS, ...(model.copy ? COPY_TARGETS : [])]) {
     if (target.onlyIfDir && !existsSync(join(root, target.onlyIfDir))) continue;
     let content = target.render(model, model.capabilities[target.sdk]);
     if (target.parser) {
@@ -1422,7 +2010,9 @@ async function main(): Promise<void> {
     for (const path of stale)
       console.error(`stale: ${path} — run \`pnpm gen:constants\``);
     if (stale.length > 0) process.exit(1);
-    console.log("up to date: every generated SDK constants module");
+    console.log(
+      "up to date: every generated SDK constants and core copy module",
+    );
     return;
   }
   for (const path of stale) console.log(`wrote ${path}`);

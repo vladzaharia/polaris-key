@@ -20,40 +20,112 @@ import im.plrs.key.core.CoreContext
 import im.plrs.key.core.ErrorCode
 import im.plrs.key.core.HardwareFingerprint
 import im.plrs.key.core.JsonText
+import im.plrs.key.core.ManageLink
+import im.plrs.key.core.PolarisResponse
 import im.plrs.key.core.arrayValue
+import im.plrs.key.core.deviceRequestBody
 import im.plrs.key.core.longValue
 import im.plrs.key.core.objectValue
-import im.plrs.key.core.requestBody
 import im.plrs.key.core.stringValue
 import kotlinx.coroutines.CancellationException
 
-/** The outcome of an activation-like call (`/license/{activate,enroll,token}`). */
+/**
+ * The outcome of an activation-like call (`/license/{activate,enroll,token}`): the shared typed
+ * activation results (notes/SDK-PARITY-PASS.md §3.1). Every refusal carries the server's registry
+ * [code]; the mapping goes by the body's `error` code, never by the status alone, and an unknown 403
+ * is [Refused] with that code, never [DeviceLimit].
+ */
 public sealed interface ActivationResult {
+    /** The registry code of a refusal (`ErrorCode`), `network` or `server-error` for [Error]; null for [Ok]. */
+    public val code: String?
+
     public data class Ok(val token: String, val schemaVersion: Long) : ActivationResult {
+        override val code: String? get() = null
         override fun toString(): String = "Ok(token=[redacted], schemaVersion=$schemaVersion)"
     }
 
-    public data class DeviceLimit(val limit: Long?, val deviceCount: Long?) : ActivationResult
-    public data object Unauthorized : ActivationResult
+    /**
+     * 403 `device_limit`: every seat is taken. Free one (the portal's devices page) or deactivate
+     * elsewhere. [manageUrl] (PX-W8, WIRE-CONTRACT-V4 §5.3) is the customer-portal link that frees
+     * one, present while the product's portal is on and already validated by [ManageLink.read].
+     * Add the app's return with [ManageLink.withReturn] and, on an `/activate` link, the key with
+     * [ManageLink.withKey]. Never an auth failure: open it only behind a user action.
+     */
+    public data class DeviceLimit(
+        val limit: Long?,
+        val deviceCount: Long?,
+        val manageUrl: String? = null,
+    ) : ActivationResult {
+        override val code: String get() = ErrorCode.deviceLimit
+    }
+
+    /** 401: the key (or token) is missing, invalid, or belongs to a licence that is no longer usable. */
+    public data object Unauthorized : ActivationResult {
+        override val code: String get() = ErrorCode.unauthorized
+    }
 
     /** The tier requires a hardware fingerprint this host could not produce. */
-    public data object FingerprintRequired : ActivationResult
+    public data object FingerprintRequired : ActivationResult {
+        override val code: String get() = ErrorCode.fingerprintRequired
+    }
 
     /**
      * Hardware drifted past the tier's tolerance and the binding was retired. Retrying activation
      * re-binds the new hardware and consumes a seat (the Worker answers 409 because it is retryable).
      */
-    public data class HardwareMismatch(val drift: Long?, val changed: List<String>?) : ActivationResult
+    public data class HardwareMismatch(val drift: Long?, val changed: List<String>?) : ActivationResult {
+        override val code: String get() = ErrorCode.hardwareMismatch
+    }
 
     /** The product does not offer keyless enrolment (a 404, which hides the route). */
-    public data object EnrollDisabled : ActivationResult
-    public data class Error(val message: String) : ActivationResult
+    public data object EnrollDisabled : ActivationResult {
+        override val code: String get() = ErrorCode.enrollDisabled
+    }
+
+    /**
+     * 403 `enroll_claimed`: this machine's free licence now belongs to an account. Signing in reaches
+     * it; enrolling again does not.
+     */
+    public data object EnrollClaimed : ActivationResult {
+        override val code: String get() = ErrorCode.enrollClaimed
+    }
+
+    /** 403 `license_disabled`: an operator disabled the licence (or License is off for the product). */
+    public data object LicenseDisabled : ActivationResult {
+        override val code: String get() = ErrorCode.licenseDisabled
+    }
+
+    /** 403 `license_expired`: the licence ran out. */
+    public data object LicenseExpired : ActivationResult {
+        override val code: String get() = ErrorCode.licenseExpired
+    }
+
+    /** 403 `attestation_required`: the product requires an attested device (`devices.attest`). */
+    public data object AttestationRequired : ActivationResult {
+        override val code: String get() = ErrorCode.attestationRequired
+    }
+
+    /** 429 `rate_limited`: retry after [retryAfterSeconds] when the server said. */
+    public data class RateLimited(val retryAfterSeconds: Long?) : ActivationResult {
+        override val code: String get() = ErrorCode.rateLimited
+    }
+
+    /** Any other 4xx: the server's own registry [code] (e.g. `registration_closed`), kept verbatim. */
+    public data class Refused(override val code: String, val status: Int, val message: String?) : ActivationResult
+
+    /**
+     * Transport failure (`code` = `network`), a 5xx or an unreadable answer (`server-error`). Both are
+     * client-kind registry codes (`conformance/parity/errors.json`, `ErrorCode.network` and
+     * `ErrorCode.serverError`). [message] is for logs only: a kit shows copy for [code], never this text.
+     */
+    public data class Error(val message: String, override val code: String = ErrorCode.serverError, val status: Int? = null) : ActivationResult
 }
 
 public object LicenseEndpoints {
     /** `POST /<p>/license/activate`: exchange a licence key for a per-device `pkeyt_` token. */
     public suspend fun activate(core: CoreContext, key: String, fingerprint: HardwareFingerprint? = null): ActivationResult =
-        activationLike(core, core.endpoints.licenseActivate, mapOf("authorization" to "Bearer $key"), fingerprint)
+        // PX-W13 §8 Q2: the label seeds the device's name in the customer's and console's lists.
+        activationLike(core, core.endpoints.licenseActivate, mapOf("authorization" to "Bearer $key"), fingerprint, core.deviceLabel())
 
     /** `POST /<p>/license/enroll`: a licence with no key and no sign-in; the same shape as [activate]. */
     public suspend fun enroll(core: CoreContext, fingerprint: HardwareFingerprint? = null): ActivationResult =
@@ -84,50 +156,71 @@ public object LicenseEndpoints {
         url: String,
         extra: Map<String, String>,
         fingerprint: HardwareFingerprint?,
+        deviceName: String? = null,
     ): ActivationResult {
         val headers = LinkedHashMap(extra)
-        var body: ByteArray? = null
-        // No fingerprint, no body: a host that opted out sends a byte-identical request to one
-        // that has nothing to report.
-        if (fingerprint != null) {
-            headers["content-type"] = "application/json"
-            body = fingerprint.requestBody()
-        }
+        // No fingerprint and no label, no body: a host that opted out sends a byte-identical
+        // request to one that has nothing to report.
+        val body = deviceRequestBody(fingerprint, deviceName)
+        if (body != null) headers["content-type"] = "application/json"
         val response = try {
             core.request(url, method = "POST", headers = headers, body = body)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            return ActivationResult.Error(e.message ?: "transport error")
+            return ActivationResult.Error(e.message ?: "transport error", ErrorCode.network)
         }
+        return activationResult(response)
+    }
+
+    /**
+     * The §3.1 ladder over one answer, by the body's `error` code (flat or nested), the status only
+     * where the body names no code. Public so every SDK's unit table runs the same vectors.
+     */
+    public fun activationResult(response: PolarisResponse): ActivationResult {
         val o = JsonText.parseOrNull(response.text).objectValue
         // `error` is a bare code string in the flat shape and an object in the nested one.
         val nested = o?.get("error").objectValue
-        return when (response.status) {
-            200 -> {
-                val token = o?.get("token").stringValue
-                val schemaVersion = o?.get("schemaVersion").longValue
-                if (token == null || schemaVersion == null) ActivationResult.Error("malformed activation response")
-                else ActivationResult.Ok(token, schemaVersion)
-            }
-            409 -> ActivationResult.HardwareMismatch(
-                drift = o?.get("drift").longValue ?: nested?.get("drift").longValue,
+        val code = (o?.get("error").stringValue ?: nested?.get("code").stringValue)?.takeIf { it.isNotEmpty() }
+        val message = o?.get("message").stringValue ?: nested?.get("message").stringValue
+        fun long(name: String) = o?.get(name).longValue ?: nested?.get(name).longValue
+        val status = response.status
+        if (status == 200) {
+            val token = o?.get("token").stringValue
+            val schemaVersion = o?.get("schemaVersion").longValue
+            return if (token == null || schemaVersion == null) ActivationResult.Error("malformed activation response", ErrorCode.serverError, status)
+            else ActivationResult.Ok(token, schemaVersion)
+        }
+        if (status >= 500 || status < 400) return ActivationResult.Error("activation answered HTTP $status", ErrorCode.serverError, status)
+        return when (code) {
+            ErrorCode.deviceLimit -> ActivationResult.DeviceLimit(
+                long("limit"),
+                long("deviceCount"),
+                manageUrl = ManageLink.read(o?.get("manageUrl").stringValue, nested?.get("manageUrl").stringValue),
+            )
+            ErrorCode.fingerprintRequired -> ActivationResult.FingerprintRequired
+            ErrorCode.hardwareMismatch -> ActivationResult.HardwareMismatch(
+                drift = long("drift"),
                 changed = (o?.get("changed").arrayValue ?: nested?.get("changed").arrayValue)?.mapNotNull { it.stringValue },
             )
-            403 -> {
-                val code = o?.get("error").stringValue ?: nested?.get("code").stringValue
-                if (code == ErrorCode.fingerprintRequired) {
-                    ActivationResult.FingerprintRequired
-                } else {
-                    ActivationResult.DeviceLimit(
-                        limit = o?.get("limit").longValue ?: nested?.get("limit").longValue,
-                        deviceCount = o?.get("deviceCount").longValue ?: nested?.get("deviceCount").longValue,
-                    )
-                }
+            ErrorCode.enrollClaimed -> ActivationResult.EnrollClaimed
+            ErrorCode.licenseDisabled -> ActivationResult.LicenseDisabled
+            ErrorCode.licenseExpired -> ActivationResult.LicenseExpired
+            ErrorCode.attestationRequired -> ActivationResult.AttestationRequired
+            ErrorCode.rateLimited -> ActivationResult.RateLimited(
+                long("retryAfter") ?: response.header("retry-after")?.trim()?.toLongOrNull(),
+            )
+            ErrorCode.unauthorized -> ActivationResult.Unauthorized
+            ErrorCode.enrollDisabled -> ActivationResult.EnrollDisabled
+            null -> when (status) {
+                // A body with no code: the bare statuses this route family answers.
+                401 -> ActivationResult.Unauthorized
+                404 -> ActivationResult.EnrollDisabled
+                409 -> ActivationResult.HardwareMismatch(long("drift"), null)
+                429 -> ActivationResult.RateLimited(response.header("retry-after")?.trim()?.toLongOrNull())
+                else -> ActivationResult.Refused(ErrorCode.unknown, status, message)
             }
-            401 -> ActivationResult.Unauthorized
-            404 -> ActivationResult.EnrollDisabled
-            else -> ActivationResult.Error(response.text)
+            else -> ActivationResult.Refused(code, status, message)
         }
     }
 }

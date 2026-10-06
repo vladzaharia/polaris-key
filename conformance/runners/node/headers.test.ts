@@ -71,8 +71,8 @@ const rowPasses = (
 ): boolean => map(row.raw) === row.expect;
 
 describe("headers.json (WIRE-CONTRACT-V3 §5.2)", () => {
-  it("is headersVersion 1", () => {
-    expect(corpus.headersVersion).toBe(1);
+  it("is headersVersion 2", () => {
+    expect(corpus.headersVersion).toBe(2);
   });
 
   for (const section of SECTIONS) {

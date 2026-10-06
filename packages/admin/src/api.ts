@@ -72,6 +72,10 @@ export interface Me {
   environment?: ConsoleEnvironment | null;
   /** When the admin session ends, epoch seconds (A-1; the session is a hard 8 h). */
   sessionExpiresAt?: number;
+  /** When the operator last signed in interactively (I-12 step-up); `null` on an older session. */
+  authAt?: number | null;
+  /** How recent that sign-in must be for a step-up action (the relink tool). */
+  stepUpMaxAgeSeconds?: number;
 }
 
 // ── platform (A-11 deploy identity, A-12 platform audit) ─────────────────────────
@@ -209,7 +213,45 @@ export interface PlatformIntegerSetting extends PlatformSettingBase {
   confirm: { raise: PlatformConfirmLevel; lower: PlatformConfirmLevel };
 }
 
-export type PlatformSetting = PlatformSwitchSetting | PlatformIntegerSetting;
+/** One of a short, fixed list of values (LX-05: `LICENSING_RESERVED_NAMES`, warn or error). */
+export interface PlatformChoiceSetting extends PlatformSettingBase {
+  kind: "choice";
+  options: { value: string; label: string }[];
+  default: string;
+  value: string;
+  /** The confirm level for changing TO each value. */
+  confirm: Record<string, PlatformConfirmLevel>;
+}
+
+export type PlatformSetting =
+  | PlatformSwitchSetting
+  | PlatformIntegerSetting
+  | PlatformChoiceSetting;
+
+/** `GET /manage/api/platform/reserved-names` (LX-05, worker `admin/handlers/reservedNames.ts`). */
+export interface PlatformReservedNames {
+  /** The platform's severity for an incompatible declaration. */
+  mode: "warn" | "error";
+  /** The system keys the platform sets, with the rule it applies. */
+  keys: {
+    key: string;
+    type: "string" | "integer" | "string-array";
+    rule: string;
+  }[];
+  /** Prefixes reserved for future system keys. */
+  prefixes: string[];
+  /** Registered products whose active catalog declares a reserved name. */
+  products: {
+    slug: string;
+    name: string;
+    catalogVersion: number;
+    declarations: {
+      key: string;
+      compatible: boolean;
+      problem: string | null;
+    }[];
+  }[];
+}
 
 /** A deploy-time value that is not a credential (a list for the parsed issuer allowlist). */
 export interface PlatformDeployValue {
@@ -251,6 +293,21 @@ export interface PlatformKekStatus {
   remaining: number;
   /** Values under a kid that is no longer in the ring. */
   unopenable: number;
+  /**
+   * Present only while `PLATFORM_KEK` is set beside `PLATFORM_KEK_KEYS`: the legacy key, kept for
+   * opening only (RUNBOOK "Rotating when the old KEK is unknown").
+   */
+  legacy?: {
+    kid: string;
+    /** False when `PLATFORM_KEK_KEYS` holds the same key under the same kid. */
+    openOnly: boolean;
+    /** Stored values still sealed under the legacy kid; the sweep brings this to 0. */
+    remaining: number;
+    /** Sealed Worker secrets still under the legacy kid; re-sealed by hand (`signin:seal`). */
+    workerSecrets: string[];
+    /** Whether deleting `PLATFORM_KEK` leaves nothing unopenable. */
+    safeToDelete: boolean;
+  };
 }
 
 // ── platform operations (A-14) ─────────────────────────────────────────────────
@@ -457,6 +514,8 @@ export interface PlatformStoreConnection {
   credentials: PlatformStoreCredential[];
   settings: PlatformStoreSetting[];
   appsListing: boolean;
+  /** A-18j: the store has a storefront adapter, so an assigned app offers "Set up". */
+  storefront?: boolean;
   /** Which product holds which app: credential id → pin. */
   assignments: { product: string; pins: Record<string, string> }[];
 }
@@ -507,6 +566,57 @@ export interface PlatformStoreReleaseResult {
   appId: string;
   product: string;
   cleared: { credential: string; pin: string }[];
+}
+
+/**
+ * The live credential check's answer (UX-69, SETUP.md D42; worker
+ * `services/distribution/connectors/credentialCheck.ts`). What the store found with the unsaved
+ * value, in words; never the value itself.
+ */
+export interface CredentialCheck {
+  verdict: "valid" | "warning" | "invalid" | "unavailable" | "unchecked";
+  reason:
+    | "ok"
+    | "format"
+    | "rejected"
+    | "expired"
+    | "expiring"
+    | "permission"
+    | "wrong-account"
+    | "not-found"
+    | "rate-limited"
+    | "store-down"
+    | "not-checkable";
+  /** One line: what was found ("Team 69a6de7f · 3 apps") or what is wrong. */
+  title: string;
+  /** The fix, or what a warning means. */
+  detail: string | null;
+  /** What the store reported: the account, the app count, scopes, expiry. */
+  facts: { label: string; value: string }[];
+  /** The form field a field-specific failure belongs to (`value.p8`, `value.clientSecret`). */
+  field?: string;
+  /** The store's HTTP status when it refused or failed. */
+  status?: number;
+}
+
+/** `POST …/store-connections/<store>[/credentials/<slot>]/check`. */
+export interface PlatformStoreCheckResult {
+  id: string;
+  check: CredentialCheck;
+}
+
+/** `PUT …/store-connections/<store>[/credentials/<slot>]`: metadata only, never the value. */
+export interface PlatformStoreCredentialSaved {
+  id: string;
+  source: "console";
+  meta: Record<string, string>;
+}
+
+/** `POST …/distribution/storefronts/<id>/ci-secrets/<name>/check`. */
+export interface CiSecretCheckResult {
+  storefront: string;
+  name: string;
+  check: CredentialCheck;
 }
 
 // ── products (platform registry) ──────────────────────────────────────────────
@@ -789,9 +899,44 @@ export interface ProductOnboarding {
   nextActions?: ProductSetupAction[] | string[];
 }
 
+/** A product's hosted icon on the image host (worker `admin/lib/presentation.ts`). */
+export interface ProductIconRef {
+  /** The original, content-addressed. */
+  url: string;
+  /** The 64 px WebP variant, or `null` when the ladder has none. */
+  w64: string | null;
+  /** The 128 px WebP variant, or `null`. */
+  w128: string | null;
+}
+
+/** What the console draws for a product's identity (`ProductLogo`). */
+export interface ProductPresentation {
+  /** The hosted icon, or `null` when there is no copy the image host serves. */
+  icon: ProductIconRef | null;
+  /** HA-12: `presentation.accent` (`#rrggbb`). Not served yet, so always absent today. */
+  accent?: string | null;
+  /** HA-12: the accent on a dark ground. */
+  accentDark?: string | null;
+}
+
+/** One product's facts for Home's card (`GET /manage/api/summary`; a member per service it runs). */
+export interface ProductSummary {
+  license?: { active: number };
+  /** The newest app release a channel serves and that channel; `null` when none is served yet. */
+  release?: { version: string; channel: string } | null;
+  distribution?: { storefronts: number };
+  identity?: { users: number };
+}
+
+export interface AdminSummary {
+  products: Record<string, ProductSummary>;
+}
+
 export interface ProductDetail {
   slug: string;
   name: string;
+  /** The logo (owner request 2026-10-06). Absent from a Worker that predates it. */
+  presentation?: ProductPresentation;
   /** The platform's own product (F-03: the package-feeds owner of our SDKs); kept out of the
    *  product switcher and the Products registry. */
   system?: boolean;
@@ -827,9 +972,150 @@ export interface ProductDetail {
   defaultMaxOfflineDays: number;
   defaultDeviceLimit: number;
   adminGroup: string | null;
+  /**
+   * ST-01b: the manifest-declared settings the console has claimed (a resync leaves each alone
+   * until it is reverted). Empty, or absent from an older Worker, when nothing is claimed.
+   */
+  claims?: ProductClaim[];
   createdAt: number;
   modifiedAt: number;
 }
+
+// ── users (Core; I-12) ───────────────────────────────────────────────────────
+
+/** A row of a product's Users page: one pairwise subject of this product, never the account. */
+export interface ProductUserSummary {
+  subject: string;
+  createdAt: number;
+  contactEmail: string | null;
+  contactSource: "license" | "consented" | null;
+  licenses: number;
+  devices: number;
+  /** Identity on only. */
+  signedInDevices?: number;
+  /** Identity on only. */
+  lastSignInAt?: number | null;
+  mergedFrom: number;
+}
+
+export interface ProductUserQuery {
+  q?: string;
+  limit?: number;
+  cursor?: string | null;
+}
+
+export interface ProductUsersPage {
+  identityOn: boolean;
+  users: ProductUserSummary[];
+  nextCursor: string | null;
+}
+
+export interface ProductUserLicense {
+  id: string;
+  name: string | null;
+  email: string | null;
+  tierId: string | null;
+  status: string;
+  activatedAt: number;
+  expiresAt: number | null;
+}
+
+export interface ProductUserDevice {
+  deviceId: string;
+  label: string | null;
+  status: string;
+  platform: string | null;
+  appVersion: string | null;
+  licenseId: string | null;
+  lastSeen: number;
+  signedIn?: boolean;
+}
+
+export interface ProductUserRelink {
+  id: string;
+  licenseId: string;
+  direction: "in" | "out";
+  otherSubject: string | null;
+  reason: string;
+  actorName: string | null;
+  createdAt: number;
+  undoUntil: number;
+  undoneAt: number | null;
+  undoable: boolean;
+}
+
+export interface ProductUserDetail {
+  subject: string;
+  createdAt: number;
+  identityOn: boolean;
+  contact: { email: string | null; source: "license" | "consented" | null };
+  name: string | null;
+  mergedFrom: Array<{ subject: string; mergedAt: number }>;
+  licenses: ProductUserLicense[];
+  devices: ProductUserDevice[];
+  data: { bytes: number; stores: Array<{ name: string; bytes: number }> };
+  signIns?: Array<{ at: number; method: string | null }>;
+  events: Array<{
+    id: string;
+    type: string;
+    at: number;
+    alias?: string;
+    licenseIds?: string[];
+  }>;
+  relinks: ProductUserRelink[];
+  audit: Array<{
+    id: string;
+    at: number;
+    action: string;
+    actorName: string | null;
+    targetKind: string | null;
+    targetId: string | null;
+    summary: string | null;
+  }>;
+}
+
+/** A row, or (for a subject absorbed by a merge) the survivor's subject. */
+export type ProductUserResponse =
+  | { user: ProductUserDetail; mergedInto?: undefined }
+  | { mergedInto: string; user?: undefined };
+
+export interface RelinkResult {
+  ok: true;
+  relinkId: string;
+  subject: string;
+  undoUntil: number;
+  noticesSent: number;
+  alert: boolean;
+}
+
+/** Identity → Sign-in's editable settings (I-12). */
+export interface SignInSettings {
+  claimByKey: boolean;
+  passthroughName: string | null;
+  effectiveName: string;
+  appReview48Warning: boolean;
+}
+
+/** The column-backed claimable settings (worker `core/settingsClaims.ts` `CLAIM_KEYS`). */
+export type ClaimKey =
+  | "core.name"
+  | "license.defaults.maxOfflineDays"
+  | "license.defaults.deviceLimit"
+  | "core.web.origins"
+  | "config.catalog";
+
+/** One console claim on a manifest-declared setting (ST-01b). */
+export interface ProductClaim {
+  key: ClaimKey;
+  claimedBy: string;
+  claimedAt: number;
+  version: number;
+}
+
+/** What Revert to manifest did: re-applied the snapshot now, or left it to the next resync. */
+export type RevertClaimResult =
+  | { ok: true; key: ClaimKey; applied: true; value: unknown }
+  | { ok: true; key: ClaimKey; applied: false; message: string };
 
 export interface CreateManualProductBody {
   slug: string;
@@ -911,10 +1197,72 @@ export interface ResyncResult {
   updated?: string[];
   /** Parts of the manifest it refused while applying the rest (P3-03). */
   refused?: { code: string; path: string; message: string }[];
+  /**
+   * ST-01b: what it left alone because the console claimed it — setting keys (`core.name`, …)
+   * and console-owned rows (`tier:<id>`, `profile:<id>`).
+   */
+  claimed?: string[];
+  /** ST-01b: console rows holding an id the manifest newly declares; kept, manifest row skipped. */
+  conflicts?: { path: string; message: string }[];
   /** The pack-set re-resolution, when it stored sets or failed (P4-12). */
   packSets?:
     | { ok: true; sets: number }
     | { ok: false; reason: string; message: string };
+}
+
+/** One line of a manifest plan (worker `release/linkExisting.ts`, S-18 §4.5's dry-run shape). */
+export interface ManifestPlanItem {
+  area: string;
+  /** The row it names (a tier, a catalog key), when there is one. */
+  id?: string;
+  summary: string;
+}
+
+/** What applying a repository's `.pkey/` to a product will do. */
+export interface ManifestPlan {
+  apply: ManifestPlanItem[];
+  /** Declared by the manifest but set in the console: they stay. */
+  skipClaimed: ManifestPlanItem[];
+  delete: ManifestPlanItem[];
+  /** What blocks the link. */
+  conflicts: ManifestPlanItem[];
+}
+
+/** `POST …/release/link?dryRun=1`: the checks passed; this is what a link would do. A refusal
+ *  is an `ApiError` whose `reason` names the failed check (`repository`, `app`, `manifest`,
+ *  `slug`, `policy`, `product`). */
+export interface LinkCheckResult {
+  ok: true;
+  dryRun: true;
+  slug: string;
+  repository: string;
+  /** Sent back with the link: a push since the check refuses it (409). */
+  manifestDigest: string;
+  plan: ManifestPlan;
+  /** Secret names the manifest references that the product does not hold yet. */
+  remainingSecrets: string[];
+}
+
+/** `POST …/release/resync?dryRun=1` (UX-78): what a resync would do now. Writes nothing. A
+ *  refusal is an `ApiError` whose `reason` names the failed check (`product`, `app`,
+ *  `manifest`, `slug`); a policy refusal is a `plan.conflicts` item instead. */
+export interface ResyncPlanResult {
+  ok: true;
+  dryRun: true;
+  slug: string;
+  /** `owner/repo`. */
+  repository: string;
+  /** The default-branch commit the manifest was read at. */
+  commit: string;
+  plan: ManifestPlan;
+}
+
+/** `POST …/release/link`: linked and applied. */
+export interface LinkExistingResult extends Omit<ResyncResult, "updated"> {
+  repository: string;
+  plan: ManifestPlan;
+  updated: string[];
+  remainingSecrets: string[];
 }
 
 // ── Core inventories (chunk 5 · A-4, A-5) and CI publishing (P2-02) ─────────────
@@ -933,10 +1281,25 @@ export interface SigningKeyDto {
   revokedAt: number | null;
 }
 
+/**
+ * After a rotation (UX-29): the authorized devices seen in the last `windowDays`, and how many of
+ * them reached the server since the active key went live. Derived from `last_seen`; there is no
+ * per-device trust fetch record, so the console says "refreshed", never "fetched the new trust".
+ */
+export interface SigningKeyRefreshDto {
+  kid: string;
+  activatedAt: number;
+  activeDevices: number;
+  refreshedDevices: number;
+  windowDays: number;
+}
+
 export interface SigningKeysResponse {
   keys: SigningKeyDto[];
   /** The server's clock, epoch seconds: the staged countdown is measured against it. */
   now: number;
+  /** `null` unless the active key replaced another within the window; absent on older Workers. */
+  refresh?: SigningKeyRefreshDto | null;
 }
 
 /** One secret of the inventory (`GET …/secrets`, A-5). Never a value. */
@@ -1068,6 +1431,16 @@ export interface ServicesResponse {
   source: string;
 }
 
+/**
+ * `PATCH …/services?dryRun=1` (PX-W17): what the same PATCH would change, with no write. The
+ * console confirms turning Identity off with `signedInDevicesToClear`: every such device is
+ * signed out (its install and licence keep working).
+ */
+export interface ServicesDryRun {
+  changes: Array<{ field: string; from: unknown; to: unknown }>;
+  signedInDevicesToClear: number;
+}
+
 /** A partial enablement patch: an omitted slug keeps its current value server-side. */
 export interface UpdateServicesBody {
   services?: Partial<Record<ServiceSlug, { enabled: boolean }>>;
@@ -1089,6 +1462,10 @@ export const SERVICE_ERROR_MESSAGES: Record<string, string> = {
     "Registration is set to “requires-identity”, but Identity is off; no device could ever register.",
   config_without_activation:
     "Config is on without License, but registration is set to “requires-license” — those devices could never obtain a token.",
+  sync_requires_config:
+    "Cloud Sync syncs Config’s user settings — enable Config first, or turn Cloud Sync off.",
+  sync_requires_identity:
+    "Cloud Sync needs people to sign in through this product — enable Identity first, or turn Cloud Sync off.",
 };
 
 // ── update settings (feed access + compat window) ─────────────────────────────
@@ -1376,6 +1753,301 @@ export interface ConnectorStatusDto {
    * reports it inside `setup` (with `platformSource`); this top-level field is the fallback.
    */
   credentialSource?: string;
+}
+
+// ── distribution: storefronts and the listing (A-18j; worker `services/distribution/storefronts/`) ──
+
+/** How an adapter performs one operation (`core/adapters/contract.ts` `Support`), as declared. */
+export type SupportDto =
+  | { mode: "api"; plane: "worker"; rules: string[] }
+  | { mode: "ci"; plane: "ci"; tool: string; commands: string[] }
+  | { mode: "pr"; plane: "pr"; repo: string }
+  | {
+      mode: "deep-link";
+      link: string;
+      verify:
+        | { read: string; every: number; until: number }
+        | "operator-assertion";
+    }
+  | { mode: "unsupported"; reason: string };
+
+export type StorefrontStepState =
+  | "todo"
+  | "pending"
+  | "done"
+  | "failed"
+  | "ambiguous";
+
+/** One input a step's request asks for. */
+export interface StorefrontStepField {
+  name: string;
+  label: string;
+  help?: string;
+  value: string;
+  required: boolean;
+  options?: { value: string; label: string }[];
+  maxLength?: number;
+}
+
+/** A console request a step names: an admin route, its body, its fields and its confirmation. */
+export interface StorefrontStepRequest {
+  method: "POST" | "PUT";
+  path: string;
+  body: Record<string, unknown>;
+  fields: StorefrontStepField[];
+  confirm: "plain" | "typed";
+  verb: string;
+  consequences: string[];
+}
+
+export interface StorefrontStepDto {
+  id: string;
+  ops: string[];
+  phase: "setup" | "listing" | "assets" | "store" | "submit";
+  label: string;
+  mode: SupportDto["mode"];
+  typed: boolean;
+  state: StorefrontStepState;
+  stateAt: number | null;
+  writes: string[];
+  link: {
+    url: string | null;
+    verify: "read" | "operator-assertion";
+    every: number | null;
+    until: number | null;
+    missing: string[];
+  } | null;
+  ci: { tool: string; commands: string[] } | null;
+  pr: { repo: string } | null;
+  run: StorefrontStepRequest | null;
+  assert: StorefrontStepRequest | null;
+  next: StorefrontStepRequest | null;
+  handoff: { page: string; label: string } | null;
+  copy: { label: string; value: string }[];
+  detail: string | null;
+  blockedBy: string | null;
+}
+
+export interface StorefrontDto {
+  id: string;
+  label: string;
+  listingStore: string | null;
+  connection: {
+    state: "connected" | "not-configured" | "keyless";
+    credential: string | null;
+    credentialLabel: string | null;
+    source: "console" | "secret" | null;
+    lastError: string | null;
+  };
+  app: { id: string; name: string | null } | null;
+  outlets: string[];
+  readOnly: string | null;
+  capabilities: { op: string; label: string; support: SupportDto }[];
+  prerequisites: {
+    id: string;
+    label: string;
+    state: "met" | "unmet" | "unknown";
+    detail: string;
+    page: string | null;
+  }[];
+  steps: StorefrontStepDto[];
+  pushListing: { stageOnly: boolean } | null;
+  confirmationLabel: string;
+}
+
+/** `GET …/distribution/storefronts`. */
+export interface StorefrontsResponse {
+  stores: StorefrontDto[];
+  listing: {
+    name: string | null;
+    defaultLocale: string;
+    locales: string[];
+  } | null;
+}
+
+/** A step's or a push's outcome: the vendor's re-read, never the request. */
+export interface StorefrontRunResult {
+  ok: true;
+  outcome: "written" | "existing" | "replayed";
+  opId: string;
+  resultIds: Record<string, string>;
+  after: unknown;
+  /** What the operator still finishes in the store's own console (decision 6: the older Play
+   *  images a replaced set leaves, which Polaris Key never deletes). */
+  followUp?: StorefrontFollowUp;
+}
+
+/** A run's follow-up: one sentence with the count, and the store page (or what its link lacks). */
+export interface StorefrontFollowUp {
+  count: number;
+  text: string;
+  url: string | null;
+  missing: string[];
+}
+
+/** `POST …/steps/<op>/check`. */
+export interface StorefrontCheckResult {
+  ok: true;
+  state: StorefrontStepState;
+  satisfied: boolean;
+  resultIds?: Record<string, string>;
+  detail?: string | null;
+}
+
+export interface ListingSlotDto {
+  slot: string;
+  locale: string | null;
+  group: string;
+  kind: "human" | "derived" | "composed";
+  state: "missing" | "review" | "accepted";
+  spec: string | null;
+  textAllowed: string;
+  asset: {
+    sha256: string;
+    width: number | null;
+    height: number | null;
+    alpha: boolean;
+    derivedFrom: string | null;
+    source: string;
+    modifiedAt: number;
+    image: string;
+    acceptedAt: number | null;
+    acceptedBy: string | null;
+  } | null;
+}
+
+export interface ListingLocaleDto {
+  locale: string;
+  name?: string;
+  subtitle?: string;
+  shortDescription?: string;
+  description?: string;
+  keywords?: string[];
+  features?: string[];
+  promotionalText?: string;
+  source: string;
+  provenance: Record<string, string>;
+  modifiedAt: number;
+  modifiedBy: string;
+}
+
+/** `GET …/distribution/listing` (A-18b). */
+export interface ListingResponse {
+  listing: {
+    app: {
+      defaultLocale: string;
+      name?: string;
+      developerName?: string;
+      category?: string;
+      contactEmail?: string;
+      copyright?: string;
+      urls?: Record<string, string>;
+    };
+    source: string;
+    provenance: Record<string, string>;
+    modifiedAt: number;
+    modifiedBy: string;
+  } | null;
+  locales: ListingLocaleDto[];
+  overrides: {
+    store: string;
+    locale: string | null;
+    field: string;
+    value: string | string[];
+  }[];
+  limits: Record<string, number | { maxItems: number; maxItemChars: number }>;
+  stores: { store: string; label: string }[];
+  overrideStores: string[];
+  modelFields: string[];
+}
+
+export interface ListingFitIssue {
+  store: string;
+  field: string;
+  from: string;
+  locale: string | null;
+  issue: string;
+  severity: "warn" | "block";
+  limit: number | null;
+  actual: number | null;
+  unit: string | null;
+  proposal?: string;
+}
+
+/** `GET …/distribution/listing/fit`. */
+export interface ListingFitResponse {
+  exists: boolean;
+  release: string | null;
+  stores: {
+    store: string;
+    label: string;
+    status: "green" | "amber" | "red";
+    issues: ListingFitIssue[];
+    cells: {
+      field: string;
+      from: string;
+      locale: string | null;
+      plane: "api" | "copy" | "manual";
+      status: "green" | "amber" | "red";
+      present: boolean;
+    }[];
+  }[];
+}
+
+/** One field of an import's diff (A-18c `ImportChange`). */
+export interface ListingImportChange {
+  /** `name`, `urls.website`, `locales.de-DE.description`. */
+  field: string;
+  locale: string | null;
+  action: "add" | "replace" | "keep";
+  current: string | string[] | Record<string, unknown> | null;
+  currentSource: string | null;
+  proposed: string | string[] | Record<string, unknown>;
+  proposedSource: string;
+  reason: string | null;
+}
+
+/** The import's preview (or, with `confirm`, what it applied). */
+export interface ListingImportPreview {
+  applied: boolean;
+  digest: string;
+  createsListing: boolean;
+  defaultLocale: string;
+  sources: {
+    source: string;
+    ref: string | null;
+    ok: boolean;
+    reason?: string;
+    message?: string;
+  }[];
+  changes: ListingImportChange[];
+  refused: { field: string; message?: string; [key: string]: unknown }[];
+  skipped: { source: string; field: string; reason: string }[];
+  written: string[];
+}
+
+/** `POST …/distribution/listing/import`: the preview (or result) and the model after it. */
+export type ListingImportResponse = ListingResponse & {
+  import: ListingImportPreview;
+};
+
+/** `GET …/distribution/listing/release-notes/<release>`. */
+export interface ListingReleaseNotesResponse {
+  notes: {
+    releaseId: string;
+    version: string;
+    locales: {
+      locale: string;
+      text: string;
+      short: string | null;
+      /** `default` for the release record's own notes, shown until saved. */
+      source: string;
+      proposedShort: string | null;
+      modifiedAt: number | null;
+      modifiedBy: string | null;
+    }[];
+  };
+  limits: { short: number; text: number };
 }
 
 export interface ConnectorsResponse {
@@ -2202,8 +2874,60 @@ export interface LicenseSummary {
   maxVersion: string | null;
   identityProvider: "manual" | "oidc";
   oidcSubject?: string;
+  /** How the licence was minted: by an operator, a sign-in, or an auto-issue. */
+  origin?: LicenseOrigin;
+  /** Whether it may be deleted, and every reason it may not. */
+  deletion?: LicenseDeletion;
   modifiedBy?: string;
   modifiedAt?: number;
+  /** LX-14a: the licence's own device limit; `null` inherits. */
+  deviceLimit?: number | null;
+  /** The limit the Worker enforces at the next activation (0: no limit), and its source. */
+  effectiveDeviceLimit?: number;
+  deviceLimitSource?: DeviceLimitSource;
+  /** What "Use inherited limit" falls back to: the tier's, an entitlement's or the product's. */
+  inheritedDeviceLimit?: number;
+  inheritedDeviceLimitSource?: Exclude<DeviceLimitSource, "license">;
+}
+
+/** Where a licence's effective device limit comes from, most specific first (LX-14a). */
+export type DeviceLimitSource = "license" | "tier" | "entitlement" | "product";
+
+export type LicenseOrigin = "admin" | "oidc" | "enroll";
+
+/** One reason a licence cannot be deleted (`issued_active`, `store_grants`, `store_purchases`). */
+export interface LicenseDeleteReason {
+  code: string;
+  message: string;
+}
+
+export interface LicenseDeletion {
+  allowed: boolean;
+  reasons: LicenseDeleteReason[];
+}
+
+/** One row of the "Clean up duplicates" list. */
+export interface LicenseCleanupCandidate {
+  id: string;
+  name: string;
+  email: string;
+  status: LicenseStatus;
+  tier: string | null;
+  /** The owner's pairwise subject, when it has one. */
+  accountSubject: string | null;
+  deviceCount: number;
+  lastSeen: number | null;
+  /** Always `duplicate`: the account holds another usable licence (`keeps`), which stays. */
+  reason: "duplicate";
+  keeps: string;
+  deletion: LicenseDeletion;
+}
+
+export interface LicenseBulkDeleteResult {
+  ok: boolean;
+  deleted: { id: string; devices: number }[];
+  refused: { id: string; reasons: LicenseDeleteReason[] }[];
+  notFound: string[];
 }
 
 export interface KeyDto {
@@ -2357,6 +3081,9 @@ export interface FingerprintPolicyResponse {
 export interface LicenseDetail extends LicenseSummary {
   groups?: string[];
   maxOfflineDays?: number | null;
+  /** LX-14a: the devices holding a seat, with the dormancy cutoff the seat check and the
+   *  PATCH's `overLimit` apply (a dormant device's seat is reclaimed at the next activation). */
+  seatDeviceCount?: number;
   overrides: RedactedPayload;
   keys: KeyDto[];
   devices: DeviceDto[];
@@ -2388,6 +3115,8 @@ export interface PatchLicenseBody {
   channels?: string[];
   minVersion?: string | null;
   maxVersion?: string | null;
+  /** LX-14a: the licence's own device limit, a positive integer; `null` inherits again. */
+  deviceLimit?: number | null;
 }
 
 // ── offline bundles ───────────────────────────────────────────────────────────
@@ -2425,6 +3154,8 @@ export interface ProfileSummary {
   description?: string;
   modifiedBy?: string;
   modifiedAt?: number;
+  /** ST-01b: `console` once created or edited in the console; a resync leaves it alone. */
+  source?: "manifest" | "console";
   /** How many tiers (baseline) and licenses (profile stack) point at it. */
   usedBy?: { tiers: number; licenses: number };
 }
@@ -2466,6 +3197,8 @@ export interface TierSummary {
   channels: string[];
   minVersion: string | null;
   maxVersion: string | null;
+  /** ST-01b: `console` once created or edited in the console; a resync leaves it alone. */
+  source?: "manifest" | "console";
 }
 
 /** A tier create or patch. On a patch, `null` clears a nullable field (A-3). */
@@ -2482,14 +3215,17 @@ export interface TierBody {
 
 // ── package feeds (F-11; worker `admin/handlers/feeds.ts`) ───────────────────────────
 
-/** The six tier-1 ecosystems a package feed serves (`@polaris-key/manifest` PACKAGE_ECOSYSTEMS). */
+/** The ecosystems a package feed serves (`@polaris-key/manifest` PACKAGE_ECOSYSTEMS): the six of
+ *  tier 1, then tier 3's Cargo (F-30) and Go (F-31). */
 export type FeedEcosystem =
   | "npm"
   | "pypi"
   | "swift"
   | "maven"
   | "oci"
-  | "godot";
+  | "godot"
+  | "cargo"
+  | "go";
 
 /** Why a feed does not answer, in the order the registry's access ladder checks it. */
 export type FeedOffReason =
@@ -2657,6 +3393,10 @@ export interface RegistryTokensDto {
     urlDefaultDays: number;
     perOwner: number;
     perLicense: number;
+    /** F-22: a publish token's default and longest expiry, and the ecosystems it may name. */
+    publishDefaultDays?: number;
+    publishMaxDays?: number;
+    publishEcosystems?: FeedEcosystem[];
   };
 }
 
@@ -2667,6 +3407,9 @@ export interface MintRegistryTokenBody {
   binding: "owner" | "license";
   licenseId?: string;
   presentation?: "header" | "url";
+  /** `["publish"]` for a publish token (owner-bound, named ecosystems): F-22's native clients and
+   *  F-23's `docker push`. */
+  scopes?: ("read" | "publish")[];
 }
 
 export interface MintedRegistryToken {
@@ -2732,10 +3475,14 @@ export interface FeedPackageVersion {
   stateMessage: string | null;
   publishedAt: number;
   source: {
-    kind: "oidc" | "static" | "console" | "unknown";
+    kind: "oidc" | "static" | "console" | "registry" | "unknown";
     publisher: string | null;
     runUrl: string | null;
     tokenId: string | null;
+    /** F-22: the native client that published (`npm`, `twine`, `swift`, `maven`), or null. */
+    client?: string | null;
+    /** F-23: `oci-push` when the version came through `docker push`. */
+    via?: "oci-push" | null;
   };
   size: number;
   files: FeedPackageFile[];
@@ -2943,6 +3690,9 @@ const rawApi = {
   /** The runtime settings, the read-only inventory, secrets presence and the warnings (A-13). */
   platformSettings: () =>
     call<PlatformSettingsView>("/manage/api/platform/settings"),
+  /** The reserved entitlement names and the products that declare one (LX-05). */
+  platformReservedNames: () =>
+    call<PlatformReservedNames>("/manage/api/platform/reserved-names"),
   /** Store a runtime value; 409 `version_conflict` when the row moved past `expectedVersion`. */
   patchPlatformSetting: (key: string, body: PlatformSettingWrite) =>
     call<PlatformSetting>(`/manage/api/platform/settings/${enc(key)}`, {
@@ -3005,8 +3755,47 @@ const rawApi = {
     );
   },
 
+  /**
+   * The live check (UX-69): the UNSAVED value goes to the store once, through the Worker, and
+   * the answer says what it found. Nothing is stored. `slot` null is the store's primary slot.
+   */
+  checkPlatformStoreCredential: (
+    store: PlatformStore,
+    slot: string | null,
+    value: unknown,
+  ) =>
+    call<PlatformStoreCheckResult>(
+      `/manage/api/platform/store-connections/${enc(store)}${slot ? `/credentials/${enc(slot)}` : ""}/check`,
+      { method: "POST", body: JSON.stringify({ value }) },
+    ),
+  /** Store (or rotate) a slot's console credential. The connect form calls it only after a
+   *  check passed. Answers metadata only. */
+  putPlatformStoreCredential: (
+    store: PlatformStore,
+    slot: string | null,
+    value: unknown,
+  ) =>
+    call<PlatformStoreCredentialSaved>(
+      `/manage/api/platform/store-connections/${enc(store)}${slot ? `/credentials/${enc(slot)}` : ""}`,
+      { method: "PUT", body: JSON.stringify({ value }) },
+    ),
+  /** The live check of a CI secret a storefront needs (UX-69). Nothing is stored; writing the
+   *  secret to GitHub is UX-70's route. */
+  checkCiSecret: (
+    slug: string,
+    storefront: string,
+    name: string,
+    value: string,
+  ) =>
+    call<CiSecretCheckResult>(
+      `${p(slug)}/distribution/storefronts/${enc(storefront)}/ci-secrets/${enc(name)}/check`,
+      { method: "POST", body: JSON.stringify({ value }) },
+    ),
+
   // ── products (platform registry) ──────────────────────────────────────────────
   products: () => call<{ products: ProductDetail[] }>("/manage/api/products"),
+  /** Home's product-card facts, every product in one read (A-8, sliced). */
+  summary: () => call<AdminSummary>("/manage/api/summary"),
   product: (slug: string) => call<{ product: ProductDetail }>(p(slug)),
   createManualProduct: (body: CreateManualProductBody) =>
     call<CreateManualProductResult>("/manage/api/products", {
@@ -3035,6 +3824,28 @@ const rawApi = {
     }),
   resyncProduct: (slug: string) =>
     call<ResyncResult>(`${p(slug)}/release/resync`, { method: "POST" }),
+  /** The resync's dry run: reads the manifest and plans. Writes nothing. */
+  planResync: (slug: string) =>
+    call<ResyncPlanResult>(`${p(slug)}/release/resync?dryRun=1`, {
+      method: "POST",
+    }),
+  /** ST-01b: Revert a console claim to the manifest (`DELETE …/claims/<key>`). */
+  revertClaim: (slug: string, key: ClaimKey) =>
+    call<RevertClaimResult>(`${p(slug)}/claims/${encodeURIComponent(key)}`, {
+      method: "DELETE",
+    }),
+  /** Link repository, step 1: check `repoUrl` and plan the hand-over. Writes nothing. */
+  checkRepoLink: (slug: string, repoUrl: string) =>
+    call<LinkCheckResult>(`${p(slug)}/release/link?dryRun=1`, {
+      method: "POST",
+      body: JSON.stringify({ repoUrl }),
+    }),
+  /** Link repository, step 2: link and apply the manifest the check read. */
+  linkProductRepo: (slug: string, repoUrl: string, manifestDigest: string) =>
+    call<LinkExistingResult>(`${p(slug)}/release/link`, {
+      method: "POST",
+      body: JSON.stringify({ repoUrl, manifestDigest }),
+    }),
   releaseHealth: (slug: string) =>
     call<{ health: ReleaseHealth }>(`${p(slug)}/release/health`),
   /** The release TRUTH STORE (`release_metadata`/`_artifacts`/`_channels`, P2.T2) — what
@@ -3224,6 +4035,12 @@ const rawApi = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+  /** The same PATCH as a dry run: what it would change, and how many devices it signs out. */
+  servicesDryRun: (slug: string, body: UpdateServicesBody) =>
+    call<ServicesDryRun>(`${p(slug)}/services?dryRun=1`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   /** Hand `services_json` back to the manifest. Changes nothing live — the manifest re-applies
    *  on the NEXT resync (worker `core/servicesAdmin.ts`). */
   revertServices: (slug: string) =>
@@ -3370,6 +4187,120 @@ const rawApi = {
     call<DistributionKeysResponse>(
       `${p(slug)}/distribution/keys/${enc(purpose)}/${enc(sha256)}`,
       { method: "DELETE" },
+    ),
+
+  // ── distribution: storefronts and the listing (A-18j) ─────────────────────
+  storefronts: (slug: string) =>
+    call<StorefrontsResponse>(`${p(slug)}/distribution/storefronts`),
+  storefrontSlots: (slug: string) =>
+    call<{ slots: ListingSlotDto[] }>(
+      `${p(slug)}/distribution/storefronts/slots`,
+    ),
+  /** Accept exactly the bytes shown (`sha256`); 409 `asset_changed` when they moved since. */
+  acceptListingAsset: (
+    slug: string,
+    body: { slot: string; locale: string | null; sha256: string },
+  ) =>
+    call<{ ok: true; accepted: boolean }>(
+      `${p(slug)}/distribution/storefronts/slots/accept`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  /**
+   * A flow step's request, as the server's plan names it (`run`, `assert`, `next`): an absolute
+   * console path under `/manage/api/`, or one relative to the product's API. One
+   * `Idempotency-Key` per operator intent.
+   */
+  storefrontRequest: (
+    slug: string,
+    path: string,
+    method: string,
+    body: Record<string, unknown>,
+    opts?: { idempotencyKey?: string } | null,
+  ) => {
+    const absolute = path.startsWith("/");
+    if (absolute && (!path.startsWith("/manage/api/") || path.includes("..")))
+      throw new Error(`a flow step may only call the console API: ${path}`);
+    return call<Record<string, unknown>>(
+      absolute ? path : `${p(slug)}/${path.split("/").map(enc).join("/")}`,
+      {
+        method: method === "PUT" ? "PUT" : "POST",
+        body: JSON.stringify(body ?? {}),
+        ...(opts?.idempotencyKey
+          ? { headers: { "Idempotency-Key": opts.idempotencyKey } }
+          : {}),
+      },
+    );
+  },
+  /** A deep-linked step: `{}` runs its verifier read, `{assert: true}` records it done. */
+  storefrontCheck: (
+    slug: string,
+    store: string,
+    op: string,
+    body: { assert?: boolean; poll?: boolean },
+  ) =>
+    call<StorefrontCheckResult>(
+      `${p(slug)}/distribution/storefronts/${enc(store)}/steps/${enc(op)}/check`,
+      { method: "POST", body: JSON.stringify(body ?? {}) },
+    ),
+  /** "Push listing" (text and accepted images; plain confirm; always staged where the store stages, never sent for review). */
+  pushListing: (
+    slug: string,
+    store: string,
+    body: { stageOnly?: boolean },
+    opts?: { idempotencyKey?: string } | null,
+  ) =>
+    call<StorefrontRunResult>(
+      `${p(slug)}/distribution/storefronts/${enc(store)}/push-listing`,
+      {
+        method: "POST",
+        body: JSON.stringify(body ?? {}),
+        ...(opts?.idempotencyKey
+          ? { headers: { "Idempotency-Key": opts.idempotencyKey } }
+          : {}),
+      },
+    ),
+  listing: (slug: string) =>
+    call<ListingResponse>(`${p(slug)}/distribution/listing`),
+  putListing: (slug: string, body: Record<string, unknown>) =>
+    call<ListingResponse>(`${p(slug)}/distribution/listing`, {
+      method: "PUT",
+      body: JSON.stringify(body ?? {}),
+    }),
+  putListingOverride: (
+    slug: string,
+    body: {
+      store: string;
+      locale?: string | null;
+      field: string;
+      value: string | string[] | null;
+    },
+  ) =>
+    call<Record<string, unknown>>(`${p(slug)}/distribution/listing/overrides`, {
+      method: "PUT",
+      body: JSON.stringify(body ?? {}),
+    }),
+  listingFit: (slug: string, release?: string | null) =>
+    call<ListingFitResponse>(
+      `${p(slug)}/distribution/listing/fit${release ? `?release=${enc(release)}` : ""}`,
+    ),
+  /** Without `confirm`: the field-by-field diff (nothing is written). With the diff's `digest`: apply it. */
+  listingImport: (slug: string, body: Record<string, unknown>) =>
+    call<ListingImportResponse>(`${p(slug)}/distribution/listing/import`, {
+      method: "POST",
+      body: JSON.stringify(body ?? {}),
+    }),
+  listingReleaseNotes: (slug: string, release: string) =>
+    call<ListingReleaseNotesResponse>(
+      `${p(slug)}/distribution/listing/release-notes/${enc(release)}`,
+    ),
+  putListingReleaseNotes: (
+    slug: string,
+    release: string,
+    body: { locale: string; text: string | null; short?: string | null },
+  ) =>
+    call<Record<string, unknown>>(
+      `${p(slug)}/distribution/listing/release-notes/${enc(release)}`,
+      { method: "PUT", body: JSON.stringify(body ?? {}) },
     ),
 
   // ── distribution: store connectors (P5-02 to P5-04) ─────────────────────────
@@ -3534,8 +4465,9 @@ const rawApi = {
     call<{
       ok: true;
       id: string;
-      /** Present when a tier change lands below the active device count. Existing devices
-       *  are grandfathered; new activations are refused until the count drops. */
+      /** Present when a tier or device-limit change lands below the active device count.
+       *  Existing devices are grandfathered; new activations are refused until the count
+       *  drops. */
       overLimit?: { deviceCount: number; deviceLimit: number };
     }>(`${p(slug)}/license/licenses/${enc(id)}`, {
       method: "PATCH",
@@ -3545,6 +4477,22 @@ const rawApi = {
     call<{ ok: true; id: string; status: LicenseStatus }>(
       `${p(slug)}/license/licenses/${enc(id)}/${enabled ? "enable" : "disable"}`,
       { method: "POST" },
+    ),
+  /** Typed confirmation: `confirm` is `delete <id>`. */
+  deleteLicense: (slug: string, id: string, confirm: string) =>
+    call<{ ok: true; id: string; devices: number }>(
+      `${p(slug)}/license/licenses/${enc(id)}`,
+      { method: "DELETE", body: JSON.stringify({ confirm }) },
+    ),
+  /** Typed confirmation: `confirm` is `delete <n> licenses` (`delete 1 license`). */
+  deleteLicenses: (slug: string, ids: string[], confirm: string) =>
+    call<LicenseBulkDeleteResult>(`${p(slug)}/license/deletions`, {
+      method: "POST",
+      body: JSON.stringify({ ids, confirm }),
+    }),
+  licenseCleanupCandidates: (slug: string) =>
+    call<{ candidates: LicenseCleanupCandidate[] }>(
+      `${p(slug)}/license/deletions/candidates`,
     ),
   putLicenseOverrides: (slug: string, id: string, updates: OverrideUpdate[]) =>
     call<{ ok: true; id: string }>(
@@ -3618,6 +4566,62 @@ const rawApi = {
     call<{ ok: true; deviceId: string }>(
       `${p(slug)}/devices/${enc(deviceId)}/fingerprint/reset`,
       { method: "POST" },
+    ),
+
+  // ── users, product-wide (Core; I-12) ───────────────────────────────────────
+  productUsers: (slug: string, query: ProductUserQuery = {}) => {
+    const search = new URLSearchParams();
+    if (query.q) search.set("q", query.q);
+    if (query.limit) search.set("limit", String(query.limit));
+    if (query.cursor) search.set("cursor", query.cursor);
+    const qs = search.toString();
+    return call<ProductUsersPage>(`${p(slug)}/users${qs ? `?${qs}` : ""}`);
+  },
+  productUser: (slug: string, subject: string) =>
+    call<ProductUserResponse>(`${p(slug)}/users/${enc(subject)}`),
+  /** The subject's product data as one JSON document (audited server-side). */
+  productUserExport: (slug: string, subject: string) =>
+    call<Record<string, unknown>>(`${p(slug)}/users/${enc(subject)}/export`),
+  deleteProductUserData: (slug: string, subject: string) =>
+    call<{ ok: true; stores: string[] }>(
+      `${p(slug)}/users/${enc(subject)}/data/delete`,
+      { method: "POST" },
+    ),
+  detachProductUserLicense: (
+    slug: string,
+    subject: string,
+    licenseId: string,
+  ) =>
+    call<{ ok: true }>(
+      `${p(slug)}/users/${enc(subject)}/licenses/${enc(licenseId)}/detach`,
+      { method: "POST" },
+    ),
+  /** Needs a step-up (403 `step_up_required` otherwise). */
+  relinkProductUserLicense: (
+    slug: string,
+    subject: string,
+    licenseId: string,
+    body: { target: string; reason: string },
+  ) =>
+    call<RelinkResult>(
+      `${p(slug)}/users/${enc(subject)}/licenses/${enc(licenseId)}/relink`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  /** Needs a step-up, within 72 hours of the relink. */
+  undoRelink: (slug: string, relinkId: string, body: { reason: string }) =>
+    call<{ ok: true; licenseId: string; subject: string | null }>(
+      `${p(slug)}/users/relinks/${enc(relinkId)}/undo`,
+      { method: "POST", body: JSON.stringify(body) },
+    ),
+  signInSettings: (slug: string) =>
+    call<{ settings: SignInSettings }>(`${p(slug)}/identity/sign-in-settings`),
+  updateSignInSettings: (
+    slug: string,
+    patch: { claimByKey?: boolean; passthroughName?: string | null },
+  ) =>
+    call<{ ok: true; settings: SignInSettings }>(
+      `${p(slug)}/identity/sign-in-settings`,
+      { method: "PATCH", body: JSON.stringify(patch) },
     ),
 
   // ── offline bundles ─────────────────────────────────────────────────────────

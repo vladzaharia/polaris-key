@@ -11,16 +11,23 @@ import { QuickActionButton } from "./QuickAction.js";
  * 72 px rows, the whole row opening the product page. Phones drop the columns and keep the status
  * as a pill under the name (§8). A native table: the console's data-table brings operator chrome
  * (columns menu, density, CSV) this list doesn't have.
+ *
+ * `bodyRef` and `bodyClassName` go on the `tbody`, whose rows are the list's items: the Library's
+ * first-load stagger (MO-07) puts `.pk-stagger` there.
  */
 export function LibraryList({
   products,
   actionFor,
   actionHeader,
+  bodyRef,
+  bodyClassName,
 }: {
   products: readonly LibraryProduct[];
   actionFor: (p: LibraryProduct) => QuickAction;
   /** "Quick action for this Mac". */
   actionHeader: string;
+  bodyRef?: React.Ref<HTMLTableSectionElement>;
+  bodyClassName?: string;
 }): React.ReactElement {
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface-raised shadow-elevation-1">
@@ -57,7 +64,7 @@ export function LibraryList({
             </th>
           </tr>
         </thead>
-        <tbody>
+        <tbody ref={bodyRef} className={bodyClassName}>
           {products.map((p) => (
             <tr
               key={p.slug}
@@ -101,11 +108,9 @@ export function LibraryList({
                     : "hidden px-2 py-3 text-sm text-fg wide:table-cell"
                 }
               >
-                {p.status.kind === "signedInApp"
-                  ? "Any device"
-                  : p.seats
-                    ? `${p.seats.inUse} of ${p.seats.limit}`
-                    : p.deviceCount}
+                {p.seats
+                  ? `${p.seats.inUse} of ${p.seats.limit}`
+                  : p.deviceCount}
               </td>
               <td className="relative hidden px-2 py-3 text-right desk:table-cell">
                 <QuickActionButton

@@ -74,36 +74,103 @@ export interface BridgeState {
   capabilities?: ServicesMap;
   /** The CONFIG document's entries (v3 split them off the license document). */
   config?: Record<string, ManagedEntry>;
+  /** v4 (`config.local`): the host's persisted device-local overrides,
+   *  `client.config.localValues()`. Absent ⇒ the renderer keeps what it last knew. */
+  localConfig?: Record<string, JSONValue>;
 }
 
 /** The result of a desktop OIDC begin — a verification URL/code to render while polling. */
 export interface BridgeOidcBegin {
   /** Opaque handle the bridge uses to correlate the subsequent `pollSignIn`. */
   flowId: string;
-  /** A URL to open in the system browser (device/verification flow). */
+  /** A URL to open in the system browser (device/verification flow). The complete one — with
+   *  the code in it — is the QR payload. */
   verificationUrl?: string;
   /** A user code to display alongside the URL. */
   userCode?: string;
+  /** v4: the bare verification page (the code typed by hand). */
+  verificationUri?: string;
+  /** v4: when the code expires, epoch seconds on the host's clock. */
+  expiresAt?: number;
+  /** v4: the minimum seconds between polls. */
+  interval?: number;
 }
 
-/** The terminal outcome of polling an OIDC flow. */
+/** The terminal outcome of polling an OIDC flow. v4's `ok` may carry the signed-in identity. */
 export type BridgeOidcPoll =
   | { kind: "pending" }
-  | { kind: "ok" }
+  | { kind: "ok"; identity?: { name?: string; email?: string } }
   | { kind: "denied" }
   | { kind: "expired" }
   | { kind: "error"; message: string };
 
-/** The result of submitting a typed key (mirrors @polaris-key/node's ActivationResult). */
+/** The result of submitting a typed key (mirrors @polaris-key/node's ActivationResult). v4 adds
+ *  the kinds Node already returns (`fingerprint-required`, `enroll-disabled`,
+ *  `hardware-mismatch`) and `refused`, which carries the server's own code so a refusal other
+ *  than the device cap is never shown as one (SDK-PARITY-PASS §3.1). */
 export type BridgeActivation =
   | { kind: "ok" }
-  | { kind: "device-limit"; limit?: number; deviceCount?: number }
+  /** `manageUrl` (PX-W8): the portal link the host's Node SDK read off the refusal. */
+  | {
+      kind: "device-limit";
+      limit?: number;
+      deviceCount?: number;
+      manageUrl?: string;
+    }
   | { kind: "unauthorized" }
-  | { kind: "error"; message: string };
+  | { kind: "fingerprint-required" }
+  | { kind: "enroll-disabled" }
+  | { kind: "hardware-mismatch"; drift?: number; changed?: string[] }
+  | { kind: "refused"; code: string; status?: number; message?: string }
+  | { kind: "error"; message: string; code?: string };
 
 /** The bridge protocol revision this package speaks. A host may report its own via
- *  `version`; the adapter treats an absent value as 1 and degrades accordingly. */
-export const BRIDGE_VERSION = 3;
+ *  `version`; the adapter treats an absent value as 1 and degrades accordingly. A v3 host keeps
+ *  working: every v4 verb it does not answer is refused with a typed `UnsupportedError`.
+ *
+ * ── WHAT v4 ADDS (SP-R07; the host side is pending SP-N10) ─────────────────────────────
+ *
+ * The renderer half below is implemented here. The Node Electron host still speaks v3
+ * (`@polaris-key/node`'s bridge reports version 3 and answers none of the v4 `invoke` verbs)
+ * until SP-N10 ships, so against today's host every v4 verb is refused typed.
+ *
+ *   * `beginSignIn({deviceName?})`; the begin result's `verificationUri`, `expiresAt`, `interval`;
+ *     `pollSignIn`'s `ok` carrying `identity`.
+ *   * `submitKey`'s `BridgeActivation` gains `fingerprint-required`, `enroll-disabled`,
+ *     `hardware-mismatch` and `refused{code}`, so the renderer keeps the server's code (§3.1).
+ *   * `invoke` verbs, sent only to a host whose `version` is 4 or later (a v3 host gets a typed
+ *     `UnsupportedError` with reason `version`, or `null` for the nullable reads, without the
+ *     call crossing the bridge): `("config","mint",{recipeId})` → `{token, expiresAt}`;
+ *     `("commerce","binding")` → `{bindingId, products}`; `("commerce","claim",{store,payload})`
+ *     → a `CommerceClaimResult`; `("core","discovery")`; `("core","storeStatus")`;
+ *     `("devices","id")`; `("update","journal",{event, release, fromRelease?, deliverable?,
+ *     channel?, packSetId?, code?})` → the journalled `UpdateEventEntry` or `null` (SP-14: the
+ *     renderer's update-health events, recorded in the host's journal with
+ *     `client.update.journal.record(event, input)`, so its next report drains them).
+ *   * `config.local` (SP-13): `("config","set",{key,value})` and `("config","clear",{key})` →
+ *     the host's `client.config.set`/`clear` (a refusal keeps its `managed_by_admin` or
+ *     `bad_request` code), and `BridgeState.localConfig` = `client.config.localValues()` on
+ *     every state, so the renderer resolves with the host's persisted overrides.
+ *
+ * Reserved, not yet used by this package: pack verbs (`("packs", …)`), telemetry extras and the
+ * `onPackProgress` push below are declared for a later revision; nothing here calls or
+ * subscribes to them.
+ */
+export const BRIDGE_VERSION = 4;
+
+/** The bridge revisions this package accepts: v3 hosts keep working with the v4 verbs refused
+ *  typed; v4 hosts get everything. The v4 gate itself is `version >= BRIDGE_VERSION`. */
+export const BRIDGE_VERSIONS_ACCEPTED = [3, 4] as const;
+
+/** One pushed pack-progress event. Reserved for a later bridge revision: declared, not yet
+ *  subscribed by this package. */
+export interface BridgePackProgress {
+  packId: string;
+  phase: "queued" | "downloading" | "applying" | "ready" | "failed";
+  done?: number;
+  total?: number;
+  code?: string;
+}
 
 /** What `importBundle` landed. `@polaris-key/node`'s `ImportBundleResult`, field for field. */
 export interface BridgeImportBundle {
@@ -124,8 +191,8 @@ export interface PolarisBridge {
   getSyncState(): Promise<BridgeState>;
   /** Re-pull + re-apply the managed documents; resolves to the fresh state. */
   refresh(): Promise<BridgeState>;
-  /** Begin an OIDC sign-in; returns a handle to render + poll. */
-  beginSignIn(): Promise<BridgeOidcBegin>;
+  /** Begin an OIDC sign-in; returns a handle to render + poll. v4 passes `{deviceName}`. */
+  beginSignIn(opts?: { deviceName?: string }): Promise<BridgeOidcBegin>;
   /** Poll an in-flight OIDC sign-in by its `flowId`. */
   pollSignIn(flowId: string): Promise<BridgeOidcPoll>;
   /** Activate with a typed key. */
@@ -155,6 +222,9 @@ export interface PolarisBridge {
   importBundle?(jws: string): Promise<BridgeImportBundle>;
   /** Subscribe to pushed state changes; returns an unsubscribe. */
   on(event: "stateChanged", cb: (state: BridgeState) => void): () => void;
+  /** Reserved (later revision): pushed pack progress; returns an unsubscribe. This package does
+   *  not subscribe to it yet, so a host need not implement it. */
+  onPackProgress?(cb: (p: BridgePackProgress) => void): () => void;
 }
 
 /** The default global the adapter looks for when no bridge is passed explicitly. */

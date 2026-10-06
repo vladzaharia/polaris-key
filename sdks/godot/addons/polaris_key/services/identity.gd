@@ -14,6 +14,13 @@ extends RefCounted
 ##   open_in_browser(prompt), copy_link(prompt)
 ##                                         for the dialog's two buttons
 ##   signed_in_identity()                  who the device is signed in as, for the UI to show
+##   current()                             {name, email, activatedAt} of the signed-in person off
+##                                         the verified licence, or null (SDK parity §3.12)
+##   sign_out()                            cancel any sign-in, forget the identity and release
+##                                         this device (license.deactivate()); a PKeyResult
+##   sign_in_with_browser(device_name)     begin_sign_in, then open the verification page in the
+##                                         system browser (the interim "Sign in with browser"
+##                                         until a native redirect route exists, I-15)
 ##
 ## The pieces underneath, for a host that paces the flow itself (and for the transcript replays):
 ## `request_sign_in(device_name)` (the start alone), `poll_sign_in(prompt)` (exactly one poll)
@@ -111,13 +118,14 @@ func is_signing_in() -> bool:
 ## Start a sign-in and poll in the background. Returns the prompt (also emitted as
 ## `sign_in_pending`); the ending arrives as `sign_in_finished(result)`. A sign-in already
 ## running is cancelled first. `device_name` is what the confirmation page shows the human (the
-## anti-phishing cue); empty: `default_device_name()`. `confirm_identity`: hold at the signed-in
+## anti-phishing cue); empty: `PKeyOptions.device_name`, else `default_device_name()`, unless
+## `PKeyOptions.send_device_name` is off (WIRE-CONTRACT-V4 §12.7.1). `confirm_identity`: hold at the signed-in
 ## identity for the player's acceptance, and offer the licence attach (see the class doc). When
 ## the start fails, the prompt is not ok and `sign_in_finished` reports it too. A coroutine.
 func begin_sign_in(device_name := "", confirm_identity := false) -> PKeySignInPrompt:
 	cancel()
 	var gen := _generation
-	var prompt := await request_sign_in(device_name if device_name.strip_edges() != "" else default_device_name())
+	var prompt := await request_sign_in(device_name)
 	if not prompt.ok:
 		sign_in_finished.emit(_start_failure(prompt))
 		return prompt
@@ -190,19 +198,58 @@ func signed_in_identity() -> Dictionary:
 	return _last_identity.duplicate()
 
 
+## The signed-in person, SDK parity §3.12's `identity.current()`: {name, email, activatedAt} off
+## the verified licence document's profile (a value the profile lacks is null), or null when the
+## device holds no profile naming someone.
+func current() -> Variant:
+	var core := _core()
+	if core == null or core.cache == null or core.cache.license == null:
+		return null
+	var doc = core.cache.license.get("doc")
+	if not (doc is Dictionary) or not (doc.get("profile") is Dictionary):
+		return null
+	var p: Dictionary = doc["profile"]
+	var name = p.get("name") if p.get("name") is String and p["name"] != "" else null
+	var email = p.get("email") if p.get("email") is String and p["email"] != "" else null
+	if name == null and email == null:
+		return null
+	var at = p.get("activatedAt")
+	return {"name": name, "email": email, "activatedAt": int(at) if PKeyClaims.is_number(at) else null}
+
+
+## Sign this device out (SDK parity §3.12's `identity.signOut()`): cancel a sign-in in progress,
+## forget the identity this session saw, and release the seat with license.deactivate() (its
+## best-effort server call, then the mandatory local wipe). The PKeyResult is deactivate()'s;
+## `state_changed` fires as for a deactivation. A coroutine.
+func sign_out() -> PKeyResult:
+	cancel()
+	_last_identity = {}
+	var license = _host.get("license") if _host != null and is_instance_valid(_host) else null
+	if license == null:
+		return PKeyResult.failure(PKeyErrors.NOT_CONFIGURED, "Call configure() and start() first.")
+	return await license.deactivate()
+
+
+## "Sign in with browser" (SDK parity §3.12): begin_sign_in, then open the verification page in
+## the system browser at once; the QR code and the code stay on screen for another device. The
+## prompt as begin_sign_in returns it. A coroutine.
+func sign_in_with_browser(device_name := "", confirm_identity := false) -> PKeySignInPrompt:
+	var prompt := await begin_sign_in(device_name, confirm_identity)
+	if prompt.ok:
+		open_in_browser(prompt)
+	return prompt
+
+
 ## The name a sign-in shows the human when the game gives none: the device model where the OS
 ## reports a real one, else the OS name ("macOS", "Linux", …).
 static func default_device_name() -> String:
-	var model := OS.get_model_name()
-	if model != "" and model != "GenericDevice":
-		return model
-	return OS.get_name()
+	return PKeyDeviceLabel.platform_default()
 
 
 # ── The pieces underneath ────────────────────────────────────────────────────────────────
 
-## `POST /identity/auth/device/start` alone: no polling, no signal. `device_name` is sent as
-## given (trimmed; omitted when empty). A coroutine.
+## `POST /identity/auth/device/start` alone: no polling, no signal. The label is
+## `PKeyDeviceLabel.resolve(device_name, options)`: normalised, omitted when empty. A coroutine.
 func request_sign_in(device_name := "") -> PKeySignInPrompt:
 	var core := _core()
 	if core == null or not core.started:
@@ -214,9 +261,9 @@ func request_sign_in(device_name := "") -> PKeySignInPrompt:
 	if not is_available():
 		return _prompt_failure(PKeyErrors.SERVICE_UNAVAILABLE, "The identity service is not enabled (or not set up) for %s." % core.product)
 	var body := {"deviceId": core.device_id}
-	var name := device_name.strip_edges()
-	if name != "":
-		body["deviceName"] = name
+	var label := PKeyDeviceLabel.resolve(device_name, core.options)
+	if label != "":
+		body["deviceName"] = label
 	var r := await core.request("POST", "identity/auth/device/start", body)
 	if not r.ok:
 		var p := _prompt_failure(r.code, r.message)
@@ -236,6 +283,11 @@ func request_sign_in(device_name := "") -> PKeySignInPrompt:
 	prompt.expires_in = _whole(b["expiresIn"])
 	prompt.interval = _whole(b["interval"])
 	prompt.expires_at = core.clock.system_now() + prompt.expires_in
+	# The echo is what the page shows; an older Worker sends none, so show what was sent.
+	if b.has("deviceName"):
+		prompt.device_name = b["deviceName"] if b["deviceName"] is String else ""
+	else:
+		prompt.device_name = label
 	return prompt
 
 

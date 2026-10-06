@@ -14,8 +14,8 @@
  *
  * Per-product resources are grouped by the SERVICE that owns them (plan §R1, spec §4.2). What is
  * left at the top level here is core/platform — the things a product has whether or not it runs
- * any service: `secrets/*`, `outlet-credentials/*`, `ci-publisher`, `ci-tokens/*`, `keys/rotate`,
- * `activity`, `services[/revert]`, `bundles`, `blob-gc[/bundles]`. Everything
+ * any service: `secrets/*`, `outlet-credentials/*`, `claims/*`, `ci-publisher`, `ci-tokens/*`, `keys/rotate`,
+ * `activity`, `refusals`, `assets`, `services[/revert]`, `bundles`, `blob-gc[/bundles]`, `devices/*`, `users/*`. Everything
  * else is dispatched into a `ServiceDescriptor.adminHandle` with the full remaining path:
  *
  *   license/{licenses…,tiers…,policy[/revert]}   config/{catalog,profiles…}
@@ -66,6 +66,8 @@ import {
   unauthorized,
 } from "./lib/respond.js";
 import { handleMe } from "./handlers/me.js";
+import { handleSummary } from "./handlers/summary.js";
+import { handleGithub } from "./handlers/github.js";
 import { handlePlatformStoreConnections } from "./handlers/platformStoreConnections.js";
 import { handlePlatform } from "./handlers/platform.js";
 import { handleFeedsAdmin } from "./handlers/feeds.js";
@@ -76,6 +78,9 @@ import {
 import { handleActivity } from "./handlers/activity.js";
 import { handleCiPublisher, handleCiTokens } from "./handlers/ciPublishing.js";
 import { handleProductDevices } from "./handlers/devices.js";
+import { handleProductUsers } from "./handlers/users.js";
+import { handleRefusals } from "./handlers/refusals.js";
+import { handleHostedAssets } from "./handlers/hostedAssets.js";
 import { handleTrustPolicy } from "./handlers/trustPolicy.js";
 import { handleServicesAdmin } from "../core/servicesAdmin.js";
 import { handleBundleMint } from "../core/bundles.js";
@@ -83,6 +88,7 @@ import { handleBlobGcAdmin } from "../core/blobGc.js";
 import { loadProduct } from "../core/products.js";
 import { buildHooks } from "../core/hooks.js";
 import { manifestIngestFor } from "../core/registry.js";
+import { licenseDeleteFor } from "../core/licenseDelete.js";
 import { SERVICES } from "../mount.js";
 import type { ServiceSlug } from "../core/services.js";
 
@@ -185,6 +191,8 @@ async function handleProductScoped(
         session,
         // Core's ingest pipeline over the same registry (P2b-02): Release's resync route runs it.
         ingest: manifestIngestFor(SERVICES),
+        // Core's licence-deletion collector (`core/licenseDelete.ts`): License's delete route.
+        licenseDelete: licenseDeleteFor(SERVICES),
         // Same gate as the public path: a hook whose providing service is off answers `null`,
         // even though the admin route itself is reachable while its own service is off.
         hooks: buildHooks(SERVICES, loaded.services, {
@@ -204,10 +212,12 @@ async function handleProductScoped(
   //   PUT  /products/<slug>/secrets/<name>
   //   POST /products/<slug>/keys/rotate
   //   GET|PUT|DELETE /products/<slug>/outlet-credentials[/<id>]   (P5-01)
+  //   DELETE /products/<slug>/claims/<key>   (ST-01b: Revert a console claim to the manifest)
   if (
     resource === "secrets" ||
     resource === "keys" ||
-    resource === "outlet-credentials"
+    resource === "outlet-credentials" ||
+    resource === "claims"
   ) {
     return handleProductScopedResource(
       req,
@@ -269,6 +279,20 @@ async function handleProductScoped(
     return handleActivity(req, db, slug);
   }
 
+  // UX-15: the refusal log (`core/refusals.ts`). CORE, like `activity`: the refusal site is
+  // Core's `authorizeDevice`, whichever service (License, Identity) asked it for a seat.
+  //   GET /products/<slug>/refusals[?refusedSince=&licenseId=&limit=]
+  if (resource === "refusals") {
+    return handleRefusals(req, db, slug, rest.slice(1), now);
+  }
+
+  // HA-05: the product's hosted assets (`core/hostedAssetPulls.ts`). CORE, like `activity`: a
+  // product hosts its presentation icon whether or not it runs Distribution.
+  //   GET /products/<slug>/assets
+  if (resource === "assets") {
+    return handleHostedAssets(req, db, slug, rest.slice(1));
+  }
+
   // Every device of the product, licensed or not. CORE: a product that issues no licenses (open
   // or requires-identity registration) still has devices, and License's per-license route cannot
   // reach them.
@@ -282,6 +306,12 @@ async function handleProductScoped(
       rest.slice(1),
       now,
     );
+  }
+
+  // The product's users, keyed by pairwise subject (I-12). CORE: the account is platform-level,
+  // so a product with Identity off still has users (its licence owners).
+  if (resource === "users") {
+    return handleProductUsers(req, env, db, session, slug, rest.slice(1), now);
   }
 
   return notFound();
@@ -337,6 +367,9 @@ export async function handleAdminApi(
   const [head, ...rest] = segments;
 
   if (head === "me") return handleMe(env, db, session);
+  // Home's product cards: one fact per service for every visible product.
+  if (head === "summary")
+    return handleSummary(req, env, db, session, rest, now);
   if (head === "platform" && rest[0] === "store-connections")
     return handlePlatformStoreConnections(
       req,
@@ -358,6 +391,8 @@ export async function handleAdminApi(
       return err(405, "method_not_allowed", "logout requires POST");
     return adminJson({ ok: true }, 200, { "set-cookie": buildClearCookie() });
   }
+  // UX-72 (W22): the repositories the GitHub App can read, for the New Product picker.
+  if (head === "github") return handleGithub(req, env, db, session, rest, now);
   if (head === "products") {
     // /products, /products/link-repo, or /products/<slug>/...
     // `link-repo` is a single-segment action, NOT a slug — handleProducts special-cases it

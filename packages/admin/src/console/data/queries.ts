@@ -31,12 +31,16 @@ const product = (slug: string, ...rest: (string | number)[]): QueryKey => [
 export const qk = {
   me: (): QueryKey => ["me"],
   products: (): QueryKey => ["products"],
+  /** Home's product-card facts (`GET /summary`); Home's Refresh refetches it with the registry. */
+  summary: (): QueryKey => ["summary"],
 
   // platform (instance-wide; notes/S-13 §9.2)
   platformVersion: (): QueryKey => ["platform", "version"],
   platformDeployment: (): QueryKey => ["platform", "deployment"],
   platformActivity: (): QueryKey => ["platform", "activity"],
   platformSettings: (): QueryKey => ["platform", "settings"],
+  /** Settings → Licensing: the reserved entitlement-name report (LX-05). */
+  platformReservedNames: (): QueryKey => ["platform", "reserved-names"],
   /** The KEK keyring status (`GET /products/kek`): instance-wide, so under `platform`. */
   platformKek: (): QueryKey => ["platform", "kek"],
   /** Settings → History: the settings writes of the platform trail (under `platformActivity`). */
@@ -97,6 +101,10 @@ export const qk = {
   devicesSummary: (slug: string) => product(slug, "core", "devices", "summary"),
   device: (slug: string, id: string) =>
     product(slug, "core", "devices", "record", id),
+  /** I-12: the product's users, keyed by pairwise subject. */
+  users: (slug: string) => product(slug, "core", "users"),
+  user: (slug: string, subject: string) =>
+    product(slug, "core", "users", "record", subject),
   activity: (slug: string) => product(slug, "core", "activity"),
   secrets: (slug: string) => product(slug, "core", "secrets"),
   keys: (slug: string) => product(slug, "core", "keys"),
@@ -108,6 +116,9 @@ export const qk = {
   licenses: (slug: string) => product(slug, "license", "licenses"),
   license: (slug: string, id: string) =>
     product(slug, "license", "licenses", id),
+  /** The "Clean up duplicates" list; under the licenses prefix, so every licence write refreshes it. */
+  licenseCleanup: (slug: string) =>
+    product(slug, "license", "licenses", "_cleanup"),
   tiers: (slug: string) => product(slug, "license", "tiers"),
   fingerprintPolicy: (slug: string) => product(slug, "license", "enrollment"),
 
@@ -191,6 +202,16 @@ export const qk = {
   outlets: (slug: string) => product(slug, "distribution", "outlets"),
   distributionKeys: (slug: string) => product(slug, "distribution", "keys"),
   connectors: (slug: string) => product(slug, "distribution", "connectors"),
+  /** A-18j: the storefront flow (every store's plan); as a prefix, also the slot board. */
+  storefronts: (slug: string) => product(slug, "distribution", "storefronts"),
+  storefrontSlots: (slug: string) =>
+    product(slug, "distribution", "storefronts", "slots"),
+  /** A-18b: the listing model; as a prefix, also its fit report and release notes. */
+  listing: (slug: string) => product(slug, "distribution", "listing"),
+  listingFit: (slug: string, release: string | null) =>
+    product(slug, "distribution", "listing", "fit", release ?? ""),
+  listingNotes: (slug: string, release: string) =>
+    product(slug, "distribution", "listing", "notes", release),
   /**
    * One connector read (A-17g: the App Store Distribute flow and App Store products). Under
    * `connectors`, so every connector control makes it stale.
@@ -206,6 +227,9 @@ export const qk = {
 
   // identity
   portal: (slug: string) => product(slug, "identity", "portal"),
+  /** I-12: sign-in through this product (the passthrough header name, claimByKey, 4.8). */
+  signInSettings: (slug: string) =>
+    product(slug, "identity", "sign-in-settings"),
 };
 
 function qkFeeds(scope: FeedScope): QueryKey {

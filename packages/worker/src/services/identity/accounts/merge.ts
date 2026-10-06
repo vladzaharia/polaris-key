@@ -4,8 +4,9 @@
  * Link-existing-account needs a live sign-in to EACH account in one flow, both fresh (no older
  * than 5 minutes). Never by email match. Then, in one atomic batch:
  *
- *   - links, licences, sessions, product grants, passkeys and registry tokens move to the
- *     survivor; personal details fill in where the survivor has none (I-11 lets the person choose);
+ *   - links, licences, sessions, product grants, terms acceptances, passkeys and registry tokens
+ *     move to the survivor; personal details fill in where the survivor has none (I-11 lets the
+ *     person choose);
  *   - per product both accounts touched, the SURVIVOR's pairwise subject wins and the absorbed
  *     one becomes an alias, so a developer's records still resolve; devices bound to the absorbed
  *     subject are re-keyed; the developer gets `subject.merged` (D21);
@@ -20,6 +21,7 @@
 
 import type { DbStatement } from "../../../core/platform.js";
 import { stmtMoveAccountLicenses } from "../../../core/accountSubjects.js";
+import { stmtsMoveAccountAutoAttachBlocks } from "../../../core/licenseHolders.js";
 import { runSubjectMerge } from "../../../core/subjectHooks.js";
 import { randomId } from "../../../core/platform.js";
 import { sendNotice, securityNoticeRecipients } from "../portal/email.js";
@@ -27,6 +29,7 @@ import { accountsMergedNotice } from "../portal/notices.js";
 import { stmtSubjectEvent } from "./events.js";
 import { isFresh, type AccountContext, type AccountProof } from "./links.js";
 import { getAccountRow } from "./repo.js";
+import { stmtsMoveTermsAcceptances } from "./terms.js";
 
 export type MergeResult =
   | {
@@ -158,11 +161,12 @@ export async function mergeAccounts(
     products.push({ product: row.product, subject: to, alias: row.subject });
   }
   stmts.push(
-    // Grants: the survivor's own consent wins where both gave one.
+    // Grants: the survivor's own consent wins where both gave one. The consented scope (PX-W13,
+    // `scope_hash`) moves with it, so a merge never re-asks for a consent already given.
     {
       sql: `INSERT OR IGNORE INTO account_product_grants
-              (account_id, product, claims_json, granted_at, modified_at)
-            SELECT ?, product, claims_json, granted_at, modified_at
+              (account_id, product, claims_json, granted_at, modified_at, scope_hash)
+            SELECT ?, product, claims_json, granted_at, modified_at, scope_hash
               FROM account_product_grants WHERE account_id = ?`,
       params: [S, A],
     },
@@ -170,6 +174,9 @@ export async function mergeAccounts(
       sql: "DELETE FROM account_product_grants WHERE account_id = ?",
       params: [A],
     },
+    // PX-W15: terms the absorbed account accepted stay accepted; the survivor's row wins for a
+    // version both accepted.
+    ...stmtsMoveTermsAcceptances(S, A),
     {
       sql: "UPDATE account_sessions SET account_id = ? WHERE account_id = ?",
       params: [S, A],
@@ -178,11 +185,30 @@ export async function mergeAccounts(
       sql: "UPDATE account_passkeys SET account_id = ? WHERE account_id = ?",
       params: [S, A],
     },
+    // PX-W16: the absorbed account's pictures move with the links that use them; whatever the
+    // survivor ends up not using goes in the nightly sweep.
+    {
+      sql: "UPDATE account_avatars SET account_id = ? WHERE account_id = ?",
+      params: [S, A],
+    },
     {
       sql: "UPDATE registry_tokens SET portal_account_id = ? WHERE portal_account_id = ?",
       params: [S, A],
     },
-    // Personal details fill in where the survivor has none.
+    // I-12: a relink's undo moves the licence back to the account it came from, which is now S.
+    {
+      sql: "UPDATE license_relinks SET from_account_id = ? WHERE from_account_id = ?",
+      params: [S, A],
+    },
+    {
+      sql: "UPDATE license_relinks SET to_account_id = ? WHERE to_account_id = ?",
+      params: [S, A],
+    },
+    // LX-26 (S-24 D19): a licence the absorbed account removed stays out of the survivor too.
+    ...stmtsMoveAccountAutoAttachBlocks(A, S),
+    // Personal details fill in where the survivor has none. So does the WebAuthn user handle
+    // (I-16): a survivor without one takes the absorbed account's, so the passkeys that moved
+    // over and the next one added share one "Polaris Key" entry in an authenticator.
     {
       sql: `UPDATE accounts SET
               display_name = COALESCE(display_name, (SELECT display_name FROM accounts WHERE id = ?)),
@@ -192,9 +218,10 @@ export async function mergeAccounts(
                 THEN (SELECT primary_email_verified_at FROM accounts WHERE id = ?)
                 ELSE primary_email_verified_at END,
               primary_email = COALESCE(primary_email, (SELECT primary_email FROM accounts WHERE id = ?)),
+              passkey_user_handle = COALESCE(passkey_user_handle, (SELECT passkey_user_handle FROM accounts WHERE id = ?)),
               modified_at = ?
             WHERE id = ?`,
-      params: [A, A, A, A, A, now, S],
+      params: [A, A, A, A, A, A, now, S],
     },
     {
       sql: `INSERT OR REPLACE INTO account_tombstones (id, email_hash, merged_into, deleted_at)

@@ -45,6 +45,7 @@ import { RadioCards } from "../../../ui/RadioCards.js";
 import { SaveBar } from "../../../ui/SaveBar.js";
 import { Select } from "../../../ui/Select.js";
 import { StatusPill } from "../../../ui/StatusPill.js";
+import { CapabilityStrip } from "../../../ui/CapabilityBadge.js";
 import { Switch } from "../../../ui/Switch.js";
 import { Textarea } from "../../../ui/Textarea.js";
 import { toast } from "../../../ui/toast.js";
@@ -62,6 +63,7 @@ import {
   FEED_ACCESS_LABELS,
   YANK_EFFECTS,
   bytesToMiB,
+  feedVersionCapabilities,
   mibToBytes,
   tokensHref,
   type FeedScope,
@@ -421,6 +423,29 @@ const NAMESPACE_COPY: Record<
       placeholder: "acme",
     },
   },
+  cargo: {},
+  go: {
+    modulePrefixes: {
+      row: "Module paths",
+      label: "Module prefixes",
+      help: "Every module path must equal or sit under one of these prefixes, like go.acme.dev. Clients name the same prefixes in GONOSUMDB.",
+      placeholder: "go.acme.dev",
+    },
+  },
+};
+
+/** How the Namespace section names a feed whose namespace is the owner itself (no fields). */
+const OWNER_NAMESPACE_COPY: Partial<
+  Record<FeedEcosystem, { label: string; help: string }>
+> = {
+  oci: {
+    label: "Repositories",
+    help: "Every repository sits under the owner's path; there is nothing else to claim.",
+  },
+  cargo: {
+    label: "Crates",
+    help: "Every crate sits in the owner's own index, and Cargo takes a crate from it only for a dependency that names it with registry =. There is nothing else to claim.",
+  },
 };
 
 /**
@@ -514,8 +539,11 @@ function NamespaceSection({
       >
         {fields.length === 0 ? (
           <SettingsRow
-            label="Repositories"
-            help="Every repository sits under the owner's path; there is nothing else to claim."
+            label={OWNER_NAMESPACE_COPY[eco]?.label ?? "Packages"}
+            help={
+              OWNER_NAMESPACE_COPY[eco]?.help ??
+              "Every package sits under the owner's path; there is nothing else to claim."
+            }
           >
             <span className="font-mono text-sm">{owner}/…</span>
           </SettingsRow>
@@ -679,14 +707,11 @@ function YankSection({
           label="Version states"
           help="Shown on each version of the package record, where they are set."
         >
-          <span className="flex flex-wrap gap-1.5">
-            <StatusPill tone={caps.yank ? "success" : "neutral"} size="sm">
-              {caps.yank ? "Yank" : "No yank"}
-            </StatusPill>
-            <StatusPill tone={caps.deprecate ? "success" : "neutral"} size="sm">
-              {caps.deprecate ? "Deprecate" : "No deprecation"}
-            </StatusPill>
-          </span>
+          <CapabilityStrip
+            label="Version states"
+            className="w-full sm:w-72"
+            items={feedVersionCapabilities(caps)}
+          />
         </SettingsRow>
         {caps.yankPolicy ? (
           <SettingsRow

@@ -215,7 +215,23 @@
                     try Data(contentsOf: url), try Data(contentsOf: kit.appendingPathComponent(source)),
                     "\(bundled) differs from kit/\(source): run tools/sync-brand-assets.sh")
             }
+            let fonts = kit.deletingLastPathComponent().appendingPathComponent("fonts")
+            for (bundled, source) in Self.fontCopies {
+                let url = try XCTUnwrap(brandResourceURL(bundled), "missing resource \(bundled)")
+                XCTAssertEqual(
+                    try Data(contentsOf: url), try Data(contentsOf: fonts.appendingPathComponent(source)),
+                    "\(bundled) differs from packages/brand/fonts/\(source): run tools/sync-brand-assets.sh")
+            }
         }
+
+        /// The variable Rubik and JetBrains Mono (UI-KITS.md §2.1), from packages/brand/fonts. The
+        /// static Rubik above stays until the kit's typography moves to the variable face (UK-07).
+        static let fontCopies: [(String, String)] = [
+            ("fonts/Rubik-Variable.ttf", "ttf/Rubik-Variable.ttf"),
+            ("fonts/JetBrainsMono-Variable.ttf", "ttf/JetBrainsMono-Variable.ttf"),
+            ("fonts/OFL-JetBrainsMono.txt", "OFL-JetBrainsMono.txt"),
+            ("fonts/FONT-NOTICE-VARIABLE.txt", "FONT-NOTICE.txt"),
+        ]
 
         static let kitCopies: [(String, String)] = {
             var copies: [(String, String)] = [

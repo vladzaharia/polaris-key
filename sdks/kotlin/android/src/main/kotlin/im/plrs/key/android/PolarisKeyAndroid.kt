@@ -2,11 +2,13 @@
 // an app goes from the client to a verified update and a mounted pack with SDK modules only.
 //
 //   core.store            AndroidKeystoreStore (unless CoreOptions.store is set)
+//   core.defaultDeviceName  Settings.Global.DEVICE_NAME, else Build.MODEL (unless set; PX-W13)
 //   devices.fingerprint   AndroidFingerprintSource (unless LicenseClientOptions.fingerprintSource is set)
 //   devices.facts         AndroidDeviceFactsSource (unless PolarisKeyClientOptions.factsSource is set)
 //   outlet.detect         AndroidOutletSignalReader (unless UpdateClientOptions.signals is set)
 //   update.driver         this flavour's driver (unless UpdateClientOptions.installDriver is set), with
 //                         `platform: android`, the flavour's format and binary methods
+//   devices.attest       PlayIntegrityAttestation (unless PolarisKeyClientOptions.attestation is set)
 //   packs.transport.play  the carried packs Play holds now join PacksOptions.embedded (re-read at
 //                         every client construction, i.e. every launch); the pack store defaults to
 //                         `noBackupFilesDir/pkey/<product>/packs`
@@ -19,6 +21,7 @@ package im.plrs.key.android
 import android.app.Activity
 import android.content.Context
 import android.os.Build
+import im.plrs.key.core.AttestationProviders
 import im.plrs.key.core.BinaryMethod
 import im.plrs.key.core.Platform
 import im.plrs.key.core.Store
@@ -31,7 +34,7 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicReference
 
 /** The Android-only inputs to [PolarisKeyAndroid.client]. */
-public data class AndroidOptions(
+public data class AndroidOptions @JvmOverloads constructor(
     /** The host's current activity: In-App Updates' flows and Play's pack confirmation start from it. */
     val activity: () -> Activity? = { null },
     /** The pack ids this build ships as Play asset packs (fast-follow or on-demand). */
@@ -42,6 +45,11 @@ public data class AndroidOptions(
     val playUpdates: PlayUpdatePolicy = PlayUpdatePolicy(),
     /** A store an earlier build used (a FileStore); its token and device id move into the Keystore. */
     val legacyStore: Store? = null,
+    /**
+     * The Play Integrity cloud project number `devices.attest()` uses when the Worker's challenge
+     * names none (the operator usually configures it there). Digits only.
+     */
+    val playCloudProjectNumber: String? = null,
 )
 
 /** When Play's own signals make an update urgent (play build; PlayInstallDriver); null turns a signal off. */
@@ -68,7 +76,11 @@ public object PolarisKeyAndroid {
         val self = AtomicReference<PolarisKeyClient>()
         fun client(): PolarisKeyClient = self.get() ?: error("the client is still being constructed")
 
-        val core = options.core.copy(store = options.core.store ?: AndroidKeystoreStore(ctx, product, android.legacyStore))
+        val core = options.core.copy(
+            store = options.core.store ?: AndroidKeystoreStore(ctx, product, android.legacyStore),
+            // PX-W13 (§12.7.1): the device name the user set, else the model.
+            defaultDeviceName = options.core.defaultDeviceName ?: { androidDeviceName(ctx) },
+        )
         val license = options.license.copy(fingerprintSource = options.license.fingerprintSource ?: AndroidFingerprintSource(ctx, product))
         val update = options.update?.let { u ->
             u.copy(
@@ -80,6 +92,8 @@ public object PolarisKeyAndroid {
                         buildUrl = { version, build -> client().update.buildUrl(version, build) },
                         download = { OkHttpBuildDownload(client().core) },
                         play = android.playUpdates,
+                        events = { self.get()?.core?.updateEvents },
+                        runningVersion = options.core.version,
                     )
                 } else {
                     u.installDriver
@@ -101,8 +115,13 @@ public object PolarisKeyAndroid {
             handlers = p.handlers,
             objectTransport = p.objectTransport,
         )
+        // devices.attest (SP-K04): Play Integrity, unless the host brought its own provider. Installed
+        // process-wide too, so supports(devices.attest) answers `outlet` on a build that cannot attest.
+        val attestation = options.attestation ?: PlayIntegrityAttestation.create(ctx, android.playCloudProjectNumber)
+        if (options.attestation == null) AttestationProviders.installed = attestation
         val built = PolarisKeyClient(
             options.copy(
+                attestation = attestation,
                 core = core,
                 license = license,
                 factsSource = options.factsSource ?: AndroidDeviceFactsSource(ctx),
@@ -116,4 +135,15 @@ public object PolarisKeyAndroid {
 
     /** UpdateClientOptions' default methods, which the flavour's replace. */
     private val DEFAULT_METHODS = listOf(BinaryMethod.download)
+}
+
+
+/** The device's user-visible name (`Settings.Global.DEVICE_NAME`), else `Build.MODEL` (PX-W13). */
+internal fun androidDeviceName(context: Context): String? {
+    val named = try {
+        android.provider.Settings.Global.getString(context.contentResolver, android.provider.Settings.Global.DEVICE_NAME)
+    } catch (e: Exception) {
+        null
+    }
+    return named?.takeIf { it.isNotBlank() } ?: Build.MODEL?.takeIf { it.isNotBlank() }
 }

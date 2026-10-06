@@ -18,12 +18,25 @@ import type {
   ConfigSource,
   LicenseState,
   Support,
+  Unsupported,
 } from "@polaris-key/client-core";
 import type { StagedUpdate, UpdateCheck } from "@polaris-key/protocol/update";
 import type { ProductCatalog } from "@polaris-key/catalog";
 // `services.ts` imports only the `PolarisError` TYPE from this module, and `import type` is
 // erased, so this value import creates no runtime cycle.
 import { noBusy, noErrors } from "./services.js";
+import type { ActivationOutcome } from "./activation.js";
+import type { BootResult, BootRunOptions } from "./boot.js";
+import type { CrashTags, CrashTagsOptions } from "./crash.js";
+import type { UpdateEvent } from "../constants.generated.js";
+import type { UpdateEventEntry, UpdateEventInput } from "./updateEvents.js";
+import type {
+  FetchTarget,
+  ReleaseFetchOptions,
+  ReleaseFetchResult,
+} from "../browser/releaseFetch.js";
+import type { DownloadModel, ThisPlatform } from "../browser/distribution.js";
+import type { ErrorCode } from "../constants.generated.js";
 import type {
   ServiceBusyMap,
   ServiceErrorMap,
@@ -71,7 +84,11 @@ export type PolarisErrorCode =
   | "feed-rollback"
   | "record-rejected"
   | "record-mismatch"
-  | "unknown";
+  | "unknown"
+  /** Any other registered code (conformance/parity/errors.json): bearer mode surfaces the
+   *  server's code as-is when the registry holds it (`forbidden`, `rate_limited`, `not_found`,
+   *  `no-token`, `store-failed`, …). Still closed over the registry. */
+  | ErrorCode;
 
 /** One user-facing config row for a settings UI: `hidden` keys are excluded entirely, and
  *  `enforced` flags whether the row should render read-only (server value wins). */
@@ -147,17 +164,35 @@ export class PolarisError extends Error {
   /** The refused step, for `feed-rejected` (`jws`, `claims`, `channel`, `selector`,
    *  `freshness`): the `detail` of WIRE-CONTRACT-V4 §2.5's error map. */
   readonly detail?: string;
+  /** On a device-limit refusal (PX-W8): the customer-portal link that frees a seat, already
+   *  validated (`readManageUrl`). Show it behind a user action; it is not an auth failure. */
+  readonly manageUrl?: string;
+  /** An activation or enrolment refusal, classified (SDK-PARITY-PASS §3.1): the kind, the
+   *  server's code, and `limit`/`deviceCount`/`retryAfterSeconds` where the server sent them.
+   *  Present on the `sign-in-failed` a key submission throws. */
+  readonly activation?: ActivationOutcome;
+  /** The HTTP status behind the refusal, when there was one. */
+  readonly status?: number;
   constructor(
     code: PolarisErrorCode,
     message?: string,
     wireCode?: string,
     detail?: string,
+    extra: {
+      activation?: ActivationOutcome;
+      status?: number;
+      manageUrl?: string;
+    } = {},
   ) {
     super(message ?? code);
     this.name = "PolarisError";
     this.code = code;
     if (wireCode !== undefined) this.wireCode = wireCode;
     if (detail !== undefined) this.detail = detail;
+    if (extra.activation !== undefined) this.activation = extra.activation;
+    if (extra.status !== undefined) this.status = extra.status;
+    const manageUrl = extra.manageUrl ?? extra.activation?.manageUrl;
+    if (manageUrl !== undefined) this.manageUrl = manageUrl;
   }
 }
 
@@ -238,6 +273,98 @@ export interface OidcSignInHandle {
   userCode?: string;
 }
 
+/** A device-code sign-in in progress (identity.devicecode, RFC 8628): what a sign-in screen
+ *  shows, plus the wait that completes it. The poll credential never leaves the adapter. */
+export interface DeviceSignIn {
+  /** What the person types on the verification page, e.g. `WDJB-MJHT`. */
+  userCode: string;
+  /** The page to open and type the code into. */
+  verificationUri: string;
+  /** The same page with the code pre-filled: the QR payload and the "Open" link. */
+  verificationUriComplete: string;
+  /** Epoch seconds the code expires at, on this client's clock. */
+  expiresAt: number;
+  /** The minimum seconds between polls. */
+  interval: number;
+  /** Poll until it settles. `ready` carries the signed-in identity when the server named one.
+   *  Rejects with the signal's reason when `signal` aborts. */
+  wait(opts?: { signal?: AbortSignal }): Promise<DeviceSignInResult>;
+}
+
+export type DeviceSignInResult =
+  | { status: "ready"; identity?: { name?: string; email?: string } }
+  | { status: "expired" }
+  | { status: "denied" }
+  | { status: "error"; message: string };
+
+/** A short-lived token edge-mint signed for a third-party API (config.mint). Memory only. */
+export interface MintedToken {
+  token: string;
+  /** Epoch seconds. */
+  expiresAt: number;
+}
+
+/** One store product a licence's commerce binding sells (commerce.receipt, P6-01). */
+export interface CommerceProduct {
+  store: string;
+  productId: string;
+  flag: string;
+  deliverable: string;
+}
+
+export interface CommerceBinding {
+  /** Hand this to the store BEFORE buying (App Store `appAccountToken`, Play
+   *  `obfuscatedAccountId`, Steam `GetAuthTicketForWebApi` identity). */
+  bindingId: string;
+  products: CommerceProduct[];
+}
+
+/** SDK-PARITY-PASS §3.9's claim result. On `ok` the adapter has already synced. */
+export type CommerceClaimResult =
+  | {
+      kind: "ok";
+      store: string;
+      productId: string;
+      flag: string;
+      deliverable: string;
+      state: string;
+      granted: boolean;
+      changed: boolean;
+    }
+  | { kind: "notOwned"; code: string; reason: string; status: number }
+  | { kind: "attestationRequired"; code: string; status: number }
+  | { kind: "refused"; code: string; reason?: string; status: number };
+
+export type CommerceStore = "app-store" | "play" | "steam";
+
+export type CommercePayload =
+  | { signedTransaction: string }
+  | { productId: string; purchaseToken: string }
+  | { ticket: string; dlcAppId: string | number };
+
+/** The native updater feeds `feedUrl()` names (SDK-PARITY-PASS §3.7). */
+export type FeedKind =
+  | "appcast"
+  | "winsparkle"
+  | "velopack"
+  | "appInstaller"
+  | "zsync";
+
+/** `feedUrl()`'s options: the channel (aliases rewrite to their canonical channel first), the
+ *  Velopack channel (without one the answer is the feed directory) and the AppImage build id. */
+export interface FeedUrlOptions {
+  channel?: string;
+  velopackChannel?: string;
+  buildId?: string;
+  arch?: string;
+}
+
+/** `feedUrl()`'s answer: the URL, or the typed reason there is none (PARITY §2.2). */
+export type FeedUrl = { supported: true; url: string } | Unsupported;
+
+/** How a browser adapter authenticates (SDK-PARITY-PASS §3.17). */
+export type BrowserAuthMode = "cookie" | "bearer";
+
 /** The unified transport contract. The hooks ONLY ever talk to this — they never know
  *  which mode is active. Both `browserAdapter` and `desktopAdapter` implement it. */
 export interface PolarisAdapter {
@@ -290,6 +417,11 @@ export interface PolarisAdapter {
    *  `distribution.endpoints.builds` template (`{selector}` = the version, `{buildId}` = the
    *  build id), or null when discovery has none. Optional: the desktop bridge has no such verb. */
   buildUrl?(version: string, buildId: string): Promise<string | null>;
+  /** Device-local overrides (`config.local`): `set`, `clear`, `clearAll`, `setting`,
+   *  `onConfigChange`. Browser: persisted in `localStorage` per product (memory when storage is
+   *  unusable, which `persistent()` reports). Desktop: forwarded to the host's `client.config`
+   *  over bridge v4; a v3 host refuses writes with the typed `UnsupportedError`. */
+  readonly config: import("./localConfig.js").LocalConfig;
   /** Read a single config value with a fallback, honoring v3 state + local overrides:
    *  `enforced`/`hidden` → remote value (locked); else `localOverrides[key] ?? remote ?? fallback`. */
   getConfig<T = JSONValue>(key: string, fallback: T): T;
@@ -335,6 +467,86 @@ export interface PolarisAdapter {
    *  `invoke("devices", "report")`; a browser holds no device bearer, so it throws
    *  `report-unsupported` (a registered runtime N/A). */
   report(): Promise<boolean>;
+  /**
+   * Journal one update-health event (telemetry.updates, SDK-PARITY-PASS §3.13) for the next
+   * device report, which carries at most 16, oldest first. `event` is a P6-03 name
+   * (`UpdateEvent`); the adapter fills in the id, the outlet, the channel (unless given) and the
+   * time. Resolves to the journalled entry, or null when a value was malformed (the event is not
+   * recorded). Browser: bearer mode's in-page journal; a cookie page holds no device token and
+   * throws the typed `UnsupportedError` (`runtime`). Desktop: forwarded to the host's journal
+   * over bridge v4 (`invoke("update", "journal", {event, ...input})`); an older host answers
+   * the typed `version` N/A.
+   */
+  recordUpdateEvent(
+    event: UpdateEvent,
+    input: UpdateEventInput,
+  ): Promise<UpdateEventEntry | null>;
+  // ── SDK parity pass additions. Every adapter implements every verb; a transport that cannot
+  //    serve one throws the typed `UnsupportedError` (PARITY §2.2), never a missing method. ──
+  /** `POST /<p>/license/enroll`: a free licence with no key, when the product offers one, then a
+   *  sync. Throws `sign-in-failed` with the §3.1 `activation` on a refusal. */
+  enroll(): Promise<void>;
+  /** Begin a device-code sign-in (identity.devicecode). Desktop: the bridge's
+   *  `beginSignIn`/`pollSignIn`; browser bearer mode: the CORS-covered device-code routes. */
+  beginSignIn(opts?: { deviceName?: string }): Promise<DeviceSignIn>;
+  /** Edge-mint a short-lived third-party token (config.mint). Memory-cached per device token. */
+  mintToken(recipeId: string): Promise<MintedToken>;
+  /** The licence's commerce binding (commerce.receipt). */
+  commerceBinding(): Promise<CommerceBinding>;
+  /** Forward one store purchase; on `ok` the flag arrives with the sync the adapter runs. */
+  commerceClaim(
+    store: CommerceStore,
+    payload: CommercePayload,
+  ): Promise<CommerceClaimResult>;
+  /** The verified discovery document, once it answered (null before, or on a failure). */
+  discovery(): Promise<Record<string, unknown> | null>;
+  /** The id an operator mints an offline bundle against (`OfflineActivation`), or null where
+   *  this transport keeps none. */
+  offlineDeviceId(): Promise<string | null>;
+  /** Where the device credential lives, and why if that is weaker than this platform's best
+   *  (core.store). Null where the transport holds no credential (the cookie session). */
+  storeStatus(): Promise<import("@polaris-key/client-core").StoreStatus | null>;
+  // ── SP-12: boot, the verified download, the download model, feed URLs, crash tags ──
+  /**
+   * One-call boot (ui.boot, SDK-PARITY-PASS §3.4): discovery, the keyless registration of a
+   * fresh install on an `open` product, the sync (trust, documents, report), the reacquire per
+   * `core.registration`, the gate, the update decision and the required packs, through
+   * client-core's stage machine to its outcome. Never prompts: a gate that needs the player
+   * ends `waiting`. Browser: in-page (the bearer engine, or the cookie session). Desktop: the
+   * host's `client.boot()` over bridge v4 (`invoke("core", "boot")`), refused typed (`version`)
+   * on an older host.
+   */
+  boot(opts?: BootRunOptions): Promise<BootResult>;
+  /**
+   * The verified download (release.fetch, §3.6): one build's payload with the device bearer,
+   * resumed with `Range`/`If-Range` after an interruption, its size and SHA-256 checked against
+   * the verified release record before it is returned. Browser: a `Blob`, in bearer mode (a
+   * cookie page holds no device bearer; a build that needs none still downloads). Desktop: the
+   * host's `client.release.fetch(target, {to})` over bridge v4, which writes the file in the
+   * privileged process and answers its `path` (no `blob`).
+   */
+  releaseFetch(
+    target: FetchTarget,
+    opts?: ReleaseFetchOptions & { to?: string },
+  ): Promise<ReleaseFetchResult>;
+  /** The public download model (release.distribution, §3.8): `GET /<p>/distribution/
+   *  download.json`. Desktop: the host's `client.distribution.downloadModel()` over bridge v4. */
+  downloadModel(opts?: { channel?: string }): Promise<DownloadModel>;
+  /** This platform's group of the download model, the primary action first (the visitor's OS on
+   *  a page; the host's platform on desktop), unless `platform` is given. */
+  thisPlatform(opts?: {
+    channel?: string;
+    platform?: string;
+  }): Promise<ThisPlatform>;
+  /** A native updater feed URL (update.feeds, §3.7). Desktop: the host's
+   *  `client.update.feedUrl(kind, opts)` over bridge v4. Browser: the typed runtime N/A (a page
+   *  has no native updater; its service worker is update.driver). Never throws for a missing
+   *  feed: the answer is the typed `Unsupported`. */
+  feedUrl(kind: FeedKind, opts?: FeedUrlOptions): Promise<FeedUrl>;
+  /** The crash-reporter tags (crash.tags, §3.14): `release` `<deliverable>@<version>[+<build>]`,
+   *  `environment` the channel, `pkey.outlet` the outlet, as the Worker's Sentry hook parses
+   *  them. Desktop: the host's `client.crashTags()` over bridge v4. */
+  crashTags(opts?: CrashTagsOptions): Promise<CrashTags>;
   /** Dispose any listeners/timers the adapter owns. */
   dispose(): void;
 }

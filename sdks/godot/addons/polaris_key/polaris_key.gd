@@ -25,8 +25,11 @@ extends Node
 ## confirm_boot, the boot guard — the version check, its `update_available(check)` signal, the appcast
 ## URL), `release` (PKeyRelease: the changelog, the install and download URLs) and `commerce`
 ## (PKeyCommerce, P6-01: the purchase binding, claiming a store purchase as a licence flag, and
-## the App Store 3.1.3(b) outlet rule). `config`, `identity`, `update`, `release` and `commerce`
-## exist before `configure()`, so a signal connected early survives it.
+## the App Store 3.1.3(b) outlet rule), `distribution` (PKeyDistribution: the public download
+## model). `crash_tags()` returns the release/environment/outlet tags for a crash reporter.
+## `config`, `identity`, `update`, `release`, `commerce` and `distribution` exist before
+## `configure()`, so a signal
+## connected early survives it.
 
 const SDK_VERSION := "0.1.0"
 
@@ -58,11 +61,14 @@ var config := PKeyConfig.new()
 var identity := PKeyIdentity.new()
 ## The version check and appcast URL (services/update.gd). Refuses until configure().
 var update := PKeyUpdate.new()
-## The changelog and the install and download URLs (services/release.gd). Refuses until
-## configure().
+## The changelog, the install and download URLs and the verified build download, fetch()
+## (services/release.gd). Refuses until configure().
 var release := PKeyRelease.new()
 ## Store purchases as licence flags (services/commerce.gd, P6-01). Refuses until configure().
 var commerce := PKeyCommerce.new()
+## Where the product can be got: the public download model (services/distribution.gd, SDK parity
+## §3.8). Refuses until configure().
+var distribution := PKeyDistribution.new()
 
 ## The PKeyBoot view `boot()` made (on a CanvasLayer under this node), or null.
 var boot_view: Node = null
@@ -98,15 +104,18 @@ func configure(opts: PKeyOptions) -> PKeyResult:
 	core.store_error.connect(_on_store_error)
 	config.attach(core)
 	update.attach(core)
-	release.attach(core)
+	release.attach(core, update)
 	devices = PKeyDevices.new(core)
 	devices.install(core)
 	devices.on_wiped = _emit_state
+	core.attest_hook = devices.attest
 	license = PKeyLicense.new(core, devices)
 	license.install(core)
 	license.on_acquired = _on_license_acquired
 	license.on_changed = _on_license_wiped
 	commerce.attach(core, license)
+	commerce.on_claimed = func() -> void: await sync(true)
+	distribution.attach(core)
 	identity.attach(core, self)
 	identity.on_acquired = func() -> PKeySyncResult: return await sync(true)
 	return PKeyResult.success()
@@ -257,6 +266,28 @@ func build_info() -> Dictionary:
 	return PKeyBuildStamp.fallback(d["channel"], d["product"])
 
 
+## The tags a crash reporter needs so Polaris Key's update health can map a crash to a rollout
+## (SDK parity §3.14; the convention W/services/distribution/sentry.ts reads):
+## {release: "<deliverable>@<version>[+<build>]", environment: <update channel>,
+## "pkey.outlet": <outlet>} ("pkey.outlet" is omitted when the outlet is unknown). No crash SDK is
+## bundled: hand these to yours, e.g. Sentry's `release`, `environment` and a `pkey.outlet` tag.
+func crash_tags(deliverable := "app") -> Dictionary:
+	var info := build_info()
+	var version := String(info.get("version", ""))
+	var build := str(info.get("build", ""))
+	var release_name := "%s@%s" % [deliverable, version]
+	if build != "" and build != "0":
+		release_name += "+" + build
+	var channel := update.get_channel() if core != null else ""
+	if channel == "":
+		channel = String(info.get("channel", ""))
+	var tags := {"release": release_name, "environment": channel}
+	var outlet := core.reported_outlet() if core != null else String(info.get("outlet", "") if info.get("outlet") is String else "")
+	if outlet != "":
+		tags["pkey.outlet"] = outlet
+	return tags
+
+
 ## Where the token lives: {backend, degraded?: {reason, detail?}}.
 func store_status() -> Dictionary:
 	return core.store_status() if core != null else {}
@@ -281,7 +312,7 @@ func _enter_tree() -> void:
 		PKeyJws.progress_listener = _on_verify_progress
 	# iOS: this launch's AppDistributor read starts now (P5-05), so outlet detection usually has
 	# it; it is raced against 2 s and never cached across launches.
-	if name == "PolarisKey" and PKeyHeaders.platform() == PKeyConstants.Platform.IOS:
+	if name == "PolarisKey" and PKeyHeaders.update_platform() == PKeyConstants.Platform.IOS:
 		PKeyApple.start_launch_reads()
 
 

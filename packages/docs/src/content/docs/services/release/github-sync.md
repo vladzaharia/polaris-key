@@ -142,16 +142,28 @@ cadence; bursts are not coalesced.
 
 `resyncRepo` takes **no ref**. Earlier revisions of this pipeline read `payload.after` — an
 attacker- or reviewer-bypassable value inside the webhook body — and applied whatever
-commit it named. Today the Contents API is asked for `.pkey/schema`, `.pkey/product`, and
-`.pkey/release` with no `ref` parameter at all, which makes GitHub itself resolve the
-linked repository's own default branch, server-side, from the coordinates already stored
-in the product's release configuration. Nothing in the request body ever selects which
-commit gets applied — branch protection and required review on `.pkey/` stay meaningful,
-because the only path to "what got applied" runs through GitHub's own branch resolution,
-not through a payload field.
+commit it named. Today the pipeline first asks GitHub which commit the linked repository's
+default branch points at, resolved server-side from the coordinates already stored in the
+product's release configuration.
+It then reads every `.pkey/` document (`schema`, `product`, `release`, `distribution`) at
+**that one commit**. Nothing in the request body ever selects which commit gets applied —
+branch protection and required review on `.pkey/` stay meaningful, because the only path to
+"what got applied" runs through GitHub's own branch resolution, not through a payload field.
+Pinning every read to one commit also means a push landing mid-sync can never mix documents
+from two commits. Linking a repository reads the documents the same way.
 
-The push's commit SHA (`payload.after`) is still recorded — but only as an audit value, in
-the console's sync-state display, never as a fetch parameter.
+The push's commit SHA (`payload.after`) is still recorded — but only as an audit value,
+shown in the console as **Triggered by push**, never as a fetch parameter. It can name a
+feature-branch commit whose `.pkey/` was never applied.
+
+## The applied manifest is recorded
+
+Every apply — a link, a webhook or manual resync, and the platform's own deploy hook for the
+system product — records the manifest it applied in the same atomic write as the apply
+itself: the commit the documents were read at (for the deploy hook, the commit the deploy
+built), when, by which path, a SHA-256 over the raw documents, and the parsed manifest.
+Manifests name secrets but never carry their values, so the record holds none. Only the
+latest apply is kept per product.
 
 ## What a resync touches
 
@@ -160,11 +172,16 @@ state:
 
 - **Always fully replaced** from the manifest, every sync: the release configuration row
   (channel workflow, binary name, Sparkle key, access modes, and the `stableTagPattern` /
-  `ignoreTags` candidate filter), the config catalog (only
-  when its content actually changed, which publishes a new schema version), OIDC
-  configuration, tiers, profiles, provisioning rules, and edge-mint recipes. A tier or
-  profile still referenced by a live license blocks its own removal rather than silently
-  orphaning that license.
+  `ignoreTags` candidate filter), OIDC configuration, provisioning rules, and edge-mint
+  recipes.
+- **Applied unless claimed in the console** (see below): the product name, the default max
+  offline days and device limit, the web origins, and the config catalog (only when its content
+  actually changed, which publishes a new schema version). The admin group is manifest-only and
+  always follows the manifest.
+- **Applied per row**: tiers and profiles the manifest declares are written while the row is
+  still manifest-owned. A tier or profile created or edited in the console is left alone, and
+  one the manifest drops is removed only when nothing references it; otherwise the whole resync
+  is refused rather than orphaning a license.
 - **The release truth store** — refreshed in the same pass, with one paginated release
   listing against the same installation token. It follows GitHub's `Link: rel="next"` for up
   to 10 pages of 100 (1,000 releases), so a busy repository cannot push its last stable release
@@ -189,17 +206,30 @@ undo a change an operator made at 3 a.m. to stop an incident.
 the manifest without changing the live value — the setting stays exactly as the operator
 left it until the next resync re-applies whatever the repository currently says.
 
-Everything else described above has no such flag: release configuration, the catalog,
-OIDC, tiers, profiles, provisioning, and edge-mint recipes are always manifest-owned. There
-is no per-field release API in the admin surface — editing `.pkey/release` and resyncing
-_is_ the edit path.
+The product name, the licence defaults, the web origins and the catalog are **claimed** the
+same way, with one difference: **Revert to manifest** (`DELETE …/claims/<key>`, from the
+setting's source badge in the console) restores the value from the last applied manifest at
+once. A product not applied since the manifest record existed gets it at the next resync
+instead. A tier or profile becomes console-owned when it is created or edited in the console;
+setting only a managed secret's value on a profile does not claim it. A console tier or
+profile that holds the id of a tier or profile the manifest newly declares is kept, and the
+resync reports the conflict. The system product is manifest-authoritative: the console refuses
+claims on it.
+
+Every check runs before the first write, and the apply is one atomic batch: a refused resync
+changes nothing. Each setting, tier or profile a resync changes gets its own audit row.
+
+Everything else described above has no such flag: release configuration, OIDC, provisioning,
+and edge-mint recipes are always manifest-owned. There is no per-field release API in the
+admin surface — editing `.pkey/release` and resyncing _is_ the edit path.
 
 ## Sync state & changed paths in the console
 
 Every resync attempt — manual or webhook-triggered — writes one row recording what
 happened: its source (`manual` from the console button, or `webhook` from a push), whether
 it succeeded, when it was last checked and last actually synced, the commit SHA the push
-named, the changed paths that triggered it, which sections were updated, and any validation
+named (shown as **Triggered by push**; it is the push that started the sync, not the commit
+applied), the changed paths that triggered it, which sections were updated, and any validation
 errors. The **Last sync** section of the Releases page's **Repo sync** drawer is a direct
 read of that row, every list in full — it is how an operator confirms that a push actually
 landed, and reads the validation errors verbatim when it didn't. A `release` delivery never writes this row; its trace is the
@@ -208,10 +238,12 @@ landed, and reads the validation errors verbatim when it didn't. A `release` del
 ## The manual resync action
 
 **Resync from repo** in the console calls the same `resyncRepo` path the webhook does,
-synchronously, and is only enabled for a product whose `release_source` is actually
-`github` — a manually-created product has nothing to resync from and the endpoint answers
-with a clear `422` rather than a confusing failure; the console shows the button disabled
-with that reason. When the resync finishes, the **Repo sync** drawer lists what it updated,
+synchronously, and only for a product whose `release_source` is actually `github`. A
+manually created product has nothing to resync from (the endpoint answers `422`), so its
+Settings page offers **Link repository…** instead: it checks the repository, shows what the
+manifest will apply, keep and remove, then links the product and applies the manifest through
+this same path (see
+[Linking a repository to an existing product](/docs/admin/products/#linking-a-repository-to-an-existing-product)). When the resync finishes, the **Repo sync** drawer lists what it updated,
 any part of the manifest it refused (with the manifest path), and the pack-set
 re-resolution it triggered. Use it after linking a repo whose
 `.pkey/` predates the App installation, or any time an operator wants to confirm a change

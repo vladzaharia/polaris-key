@@ -21,10 +21,11 @@ import {
 } from "./auth.js";
 import { handleAdminApi } from "./api.js";
 import { appSecurityHeaders } from "../securityHeaders.js";
+import { imgOrigin } from "../core/imgHostname.js";
 import { isSafeAssetPath } from "../http.js";
 
 /** Minimal SPA placeholder for tests/local configurations without an assets binding. */
-function spaShell(): Response {
+function spaShell(env: Env): Response {
   return new Response(
     `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Polaris Key — Admin</title></head><body><div id="root"></div><script type="module" src="/manage/assets/manage.js"></script></body></html>`,
     {
@@ -34,6 +35,7 @@ function spaShell(): Response {
           "content-type": "text/html; charset=utf-8",
           "cache-control": "no-store",
         }),
+        { imgOrigin: imgOrigin(env) },
       ),
     },
   );
@@ -44,7 +46,7 @@ async function serveAdminAsset(
   env: Env,
   cleanPath: string,
 ): Promise<Response> {
-  if (!env.ASSETS) return spaShell();
+  if (!env.ASSETS) return spaShell(env);
   const url = new URL(req.url);
   // R1-06: `cleanPath` is user-controlled and was assigned straight into `URL.pathname`,
   // whose parser normalises percent-encoded dot segments — `/manage/%2e%2e/%2e%2e/x.html`
@@ -58,7 +60,9 @@ async function serveAdminAsset(
   // R1-06/R1-09: the security headers are applied to EVERY asset response, not just the
   // shell. Deciding on the resolved pathname was what let the escape above ship CSP-less
   // HTML from the admin origin.
-  appSecurityHeaders(headers);
+  // The console shows product logos from the image host (HA-02): its policy adds exactly that
+  // origin to `img-src` (`securityHeaders.ts`). The portal's shell is HA-07's.
+  appSecurityHeaders(headers, { imgOrigin: imgOrigin(env) });
   return new Response(res.body, { status: res.status, headers });
 }
 

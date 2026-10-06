@@ -5,24 +5,39 @@ Third-party notices for @polaris-key/brand
 software, whose licence requires this notice to accompany copies.
 
 -------------------------------------------------------------------------------
-Rubik 1.100 (https://github.com/googlefonts/rubik), SIL Open Font License 1.1
+Rubik (https://github.com/googlefonts/rubik), SIL Open Font License 1.1
 -------------------------------------------------------------------------------
 
 Files:
   kit/source/fonts/Rubik-Regular.ttf, kit/source/fonts/Rubik-Bold.ttf
-      the launch kit's binaries, unmodified.
-  fonts/rubik-latin-400.woff2, fonts/rubik-latin-ext-400.woff2,
-  fonts/rubik-latin-700.woff2, fonts/rubik-latin-ext-700.woff2
+      the launch kit's binaries (Rubik 1.100), unmodified.
+  fonts/ttf/Rubik-Variable.ttf
+      Rubik[wght].ttf 2.300 from github.com/google/fonts, unmodified.
+  fonts/rubik-var-latin.woff2, fonts/rubik-var-latin-ext.woff2
       Modified Versions (OFL section 1): subset to the latin and latin-ext ranges and converted to
       WOFF2 by scripts/build-fonts.py. Rubik declares no Reserved Font Name, so the family name is
       kept. The fonts are not sold by themselves; they ship inside this package, under the OFL.
+
+-------------------------------------------------------------------------------
+JetBrains Mono (https://github.com/JetBrains/JetBrainsMono), SIL Open Font License 1.1
+-------------------------------------------------------------------------------
+
+Files:
+  fonts/ttf/JetBrainsMono-Variable.ttf
+      JetBrainsMono[wght].ttf 2.211 from github.com/google/fonts, unmodified.
+  fonts/jetbrains-mono-var-latin.woff2, fonts/jetbrains-mono-var-latin-ext.woff2
+      Modified Versions (OFL section 1): limited to wght 400-600, subset to the latin and
+      latin-ext ranges and converted to WOFF2 by scripts/build-fonts.py. JetBrains Mono declares
+      no Reserved Font Name, so the family name is kept.
+
+Its licence text, with its own copyright line, is at fonts/OFL-JetBrainsMono.txt.
 
 Font notice (kit/source/fonts/FONT-NOTICE.txt):
 
 Bundled Rubik font binaries: Copyright (c) 2015 by Hubert & Fischer. Hebrew characters (c) 2016 by Meir Sadan. SIL Open Font License 1.1. Font files are included unchanged. All logo text is outlined in the exported SVGs.
 
 
-The full licence text follows (also at fonts/OFL.txt and kit/source/fonts/OFL.txt).
+The Rubik licence text follows (also at fonts/OFL.txt and kit/source/fonts/OFL.txt).
 
 Copyright 2015 The Rubik Project Authors (https://github.com/googlefonts/rubik)
 

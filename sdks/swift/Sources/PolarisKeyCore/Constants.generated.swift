@@ -42,8 +42,14 @@ public enum ErrorCode {
     public static let disabled = "disabled"
     public static let oidcError = "oidc_error"
     public static let unavailable = "unavailable"
+    public static let identityDisabled = "identity_disabled"
     public static let authMethodDisabled = "auth_method_disabled"
-    public static let emailNotConfigured = "email_not_configured"
+    public static let emailUnavailable = "email_unavailable"
+    public static let turnstileFailed = "turnstile_failed"
+    public static let signinExpired = "signin_expired"
+    public static let invalidCode = "invalid_code"
+    public static let emailInUse = "email_in_use"
+    public static let termsRequired = "terms_required"
     public static let licenseOwned = "license_owned"
     public static let emailMismatch = "email_mismatch"
     public static let linkConflict = "link_conflict"
@@ -57,6 +63,7 @@ public enum ErrorCode {
     public static let internalError = "internal_error"
     public static let releaseRecordRejected = "release_record_rejected"
     public static let releaseTagIsPackRelease = "release_tag_is_pack_release"
+    public static let assetUnreachable = "asset_unreachable"
     public static let feedNotComposable = "feed_not_composable"
     public static let serviceUnavailable = "service-unavailable"
     public static let serviceDisabled = "service-disabled"
@@ -191,8 +198,14 @@ public let ERROR_CODE_VALUES: [String] = [
     "disabled",
     "oidc_error",
     "unavailable",
+    "identity_disabled",
     "auth_method_disabled",
-    "email_not_configured",
+    "email_unavailable",
+    "turnstile_failed",
+    "signin_expired",
+    "invalid_code",
+    "email_in_use",
+    "terms_required",
     "license_owned",
     "email_mismatch",
     "link_conflict",
@@ -206,6 +219,7 @@ public let ERROR_CODE_VALUES: [String] = [
     "internal_error",
     "release_record_rejected",
     "release_tag_is_pack_release",
+    "asset_unreachable",
     "feed_not_composable",
     "service-unavailable",
     "service-disabled",
@@ -340,8 +354,14 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "disabled": "wire",
     "oidc_error": "wire",
     "unavailable": "wire",
+    "identity_disabled": "wire",
     "auth_method_disabled": "wire",
-    "email_not_configured": "wire",
+    "email_unavailable": "wire",
+    "turnstile_failed": "wire",
+    "signin_expired": "wire",
+    "invalid_code": "wire",
+    "email_in_use": "wire",
+    "terms_required": "wire",
     "license_owned": "wire",
     "email_mismatch": "wire",
     "link_conflict": "wire",
@@ -355,6 +375,7 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "internal_error": "wire",
     "release_record_rejected": "wire",
     "release_tag_is_pack_release": "wire",
+    "asset_unreachable": "wire",
     "feed_not_composable": "wire",
     "service-unavailable": "client",
     "service-disabled": "client",
@@ -468,37 +489,48 @@ public enum Feature {
     public static let coreErrors = "core.errors"
     public static let coreCaps = "core.caps"
     public static let coreStore = "core.store"
+    public static let coreCopy = "core.copy"
     public static let licenseGate = "license.gate"
     public static let licenseActivate = "license.activate"
     public static let licenseEnroll = "license.enroll"
     public static let licenseDeactivate = "license.deactivate"
+    public static let licenseManage = "license.manage"
     public static let licenseEntitlements = "license.entitlements"
     public static let licenseChannels = "license.channels"
     public static let licenseReregister = "license.reregister"
+    public static let licenseRefusals = "license.refusals"
     public static let configResolve = "config.resolve"
     public static let configList = "config.list"
     public static let configSecret = "config.secret"
     public static let configSchema = "config.schema"
     public static let configMint = "config.mint"
     public static let configMirror = "config.mirror"
+    public static let configLocal = "config.local"
     public static let devicesFingerprint = "devices.fingerprint"
     public static let devicesFacts = "devices.facts"
     public static let devicesRegister = "devices.register"
     public static let devicesManage = "devices.manage"
     public static let devicesReport = "devices.report"
+    public static let telemetryUpdates = "telemetry.updates"
     public static let devicesAttest = "devices.attest"
     public static let identityOidc = "identity.oidc"
     public static let identityDevicecode = "identity.devicecode"
+    public static let identityDevicelabel = "identity.devicelabel"
+    public static let identityToggle = "identity.toggle"
     public static let releaseChangelog = "release.changelog"
     public static let releaseDownload = "release.download"
     public static let releaseRecord = "release.record"
+    public static let releaseFetch = "release.fetch"
+    public static let releaseDistribution = "release.distribution"
     public static let updateCheck = "update.check"
     public static let updateFeed = "update.feed"
+    public static let updateFeeds = "update.feeds"
     public static let updateDecide = "update.decide"
     public static let updateContent = "update.content"
     public static let updateDriver = "update.driver"
     public static let updateBootguard = "update.bootguard"
     public static let outletDetect = "outlet.detect"
+    public static let crashTags = "crash.tags"
     public static let packsRecord = "packs.record"
     public static let packsRevoke = "packs.revoke"
     public static let packsDelegation = "packs.delegation"
@@ -524,7 +556,10 @@ public enum Feature {
     public static let packsTransportMsix = "packs.transport.msix"
     public static let packsTransportFlatpak = "packs.transport.flatpak"
     public static let uiStages = "ui.stages"
+    public static let uiBoot = "ui.boot"
     public static let uiKit = "ui.kit"
+    public static let uiKitManage = "ui.kit.manage"
+    public static let uiCli = "ui.cli"
     public static let commerceReceipt = "commerce.receipt"
 }
 
@@ -540,37 +575,48 @@ public let FEATURE_VALUES: [String] = [
     "core.errors",
     "core.caps",
     "core.store",
+    "core.copy",
     "license.gate",
     "license.activate",
     "license.enroll",
     "license.deactivate",
+    "license.manage",
     "license.entitlements",
     "license.channels",
     "license.reregister",
+    "license.refusals",
     "config.resolve",
     "config.list",
     "config.secret",
     "config.schema",
     "config.mint",
     "config.mirror",
+    "config.local",
     "devices.fingerprint",
     "devices.facts",
     "devices.register",
     "devices.manage",
     "devices.report",
+    "telemetry.updates",
     "devices.attest",
     "identity.oidc",
     "identity.devicecode",
+    "identity.devicelabel",
+    "identity.toggle",
     "release.changelog",
     "release.download",
     "release.record",
+    "release.fetch",
+    "release.distribution",
     "update.check",
     "update.feed",
+    "update.feeds",
     "update.decide",
     "update.content",
     "update.driver",
     "update.bootguard",
     "outlet.detect",
+    "crash.tags",
     "packs.record",
     "packs.revoke",
     "packs.delegation",
@@ -596,7 +642,10 @@ public let FEATURE_VALUES: [String] = [
     "packs.transport.msix",
     "packs.transport.flatpak",
     "ui.stages",
+    "ui.boot",
     "ui.kit",
+    "ui.kit.manage",
+    "ui.cli",
     "commerce.receipt",
 ]
 
@@ -618,7 +667,7 @@ public let UNSUPPORTED_REASON_VALUES: [String] = [
     "version",
 ]
 
-/// OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`.
+/// OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`. `tvos`, `visionos` and `watchos` are header values only; build targets are `RELEASE_PLATFORMS` (WIRE-CONTRACT-V4 §5.2 rule 5).
 public enum Platform {
     public static let macos = "macos"
     public static let ios = "ios"
@@ -626,6 +675,9 @@ public enum Platform {
     public static let windows = "windows"
     public static let linux = "linux"
     public static let web = "web"
+    public static let tvos = "tvos"
+    public static let visionos = "visionos"
+    public static let watchos = "watchos"
 }
 
 /// Every `Platform` value, in source order.
@@ -636,6 +688,9 @@ public let PLATFORM_VALUES: [String] = [
     "windows",
     "linux",
     "web",
+    "tvos",
+    "visionos",
+    "watchos",
 ]
 
 /// CPU architecture, the canonical `X-PKey-Arch` value (README §3.1). `universal` and `any` are artifact values, not header values, and are not listed.
@@ -1048,6 +1103,36 @@ public let DATA_ONLY_EXTENSION_VALUES: [String] = [
     "otf",
 ]
 
+/// Every gate status a licence evaluates to (`LicenseStatus` in `@polaris-key/protocol/license`, `client-core`'s gate). A tools/gen-sdk-constants.test.ts case keeps them equal; `copy.en.json`'s `gate` keys equal it (plans/SP-00.md §4). Every value, in source order.
+public let LICENSE_STATUS_VALUES: [String] = [
+    "ok",
+    "grace",
+    "expired",
+    "revoked",
+    "needs-activation",
+    "version-too-old",
+    "version-too-new",
+    "channel-not-entitled",
+    "not-applicable",
+]
+
+/// The typed activation results of `license.activate` and `license.enroll` (SDK-PARITY-PASS §3.1), in the transcript (kebab) form; each SDK spells its own kinds in its casing. `copy.en.json`'s `activation` keys equal it (plans/SP-00.md §4). Every value, in source order.
+public let ACTIVATION_RESULT_VALUES: [String] = [
+    "ok",
+    "device-limit",
+    "fingerprint-required",
+    "hardware-mismatch",
+    "enroll-claimed",
+    "license-disabled",
+    "license-expired",
+    "attestation-required",
+    "rate-limited",
+    "unauthorized",
+    "enroll-disabled",
+    "refused",
+    "error",
+]
+
 /// The `X-PKey-*` request header names (wire contract v3 §5).
 public enum HeaderName {
     public static let arch = "X-PKey-Arch"
@@ -1093,6 +1178,12 @@ public let OUTLET_MATRIX_VERSION = 1
 
 /// `planMatrixVersion` of conformance/corpus/v2/plan-matrix.json.
 public let PLAN_MATRIX_VERSION = 2
+
+/// `syncScenariosVersion` of conformance/corpus/v2/sync-scenarios.json.
+public let SYNC_SCENARIOS_VERSION = 1
+
+/// `deviceLabelVersion` of conformance/corpus/v2/device-label.json.
+public let DEVICE_LABEL_VERSION = 1
 
 /// `contentCorpusVersion` of conformance/corpus/v2/content/cases.json.
 public let CONTENT_CORPUS_VERSION = 2
@@ -1178,6 +1269,15 @@ public let MAX_CHUNK_INDEX_BYTES = 16777216
 /// Packs on the wire: `MAX_CHUNK_BYTES` (plans/P4-10.md §2.3, `@polaris-key/protocol/core`).
 public let MAX_CHUNK_BYTES = 4194304
 
+/// Identity passthrough: `DEVICE_LABEL_MAX_CODEPOINTS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+public let DEVICE_LABEL_MAX_CODEPOINTS = 64
+
+/// Identity passthrough: `REQUEST_HANDLE_PATTERN` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+public let REQUEST_HANDLE_PATTERN = "^rq_[A-Za-z0-9_-]{22}$"
+
+/// Identity passthrough: `REQUEST_HANDLE_TTL_SECONDS` (WIRE-CONTRACT-V4 §12.7, `@polaris-key/protocol/identity`).
+public let REQUEST_HANDLE_TTL_SECONDS = 600
+
 /// Channel constant `CHANNEL_ALIASES` (`@polaris-key/protocol/core`).
 public let CHANNEL_ALIASES: [String: String] = [
     "staging": "beta",
@@ -1235,6 +1335,9 @@ public let PLATFORM_SPELLINGS: [String: String] = [
     "linux": "linux",
     "web": "web",
     "browser": "web",
+    "tvos": "tvos",
+    "visionos": "visionos",
+    "watchos": "watchos",
 ]
 
 /// One declared N/A: on `runtime`, the feature is unsupported for `reason`.
@@ -1279,37 +1382,48 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "core.errors": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.caps": CapabilityRow(status: "implemented", service: "core", na: []),
     "core.store": CapabilityRow(status: "implemented", service: "core", na: []),
+    "core.copy": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "license.gate": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.activate": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.enroll": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.deactivate": CapabilityRow(status: "implemented", service: "license", na: []),
+    "license.manage": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.entitlements": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.channels": CapabilityRow(status: "implemented", service: "license", na: []),
     "license.reregister": CapabilityRow(status: "implemented", service: "license", na: []),
+    "license.refusals": CapabilityRow(status: "implemented", service: "license", na: []),
     "config.resolve": CapabilityRow(status: "implemented", service: "config", na: []),
     "config.list": CapabilityRow(status: "implemented", service: "config", na: []),
     "config.secret": CapabilityRow(status: "implemented", service: "config", na: []),
     "config.schema": CapabilityRow(status: "implemented", service: "config", na: []),
     "config.mint": CapabilityRow(status: "implemented", service: "config", na: []),
     "config.mirror": CapabilityRow(status: "implemented", service: "config", na: []),
+    "config.local": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "devices.fingerprint": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.facts": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.register": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.manage": CapabilityRow(status: "implemented", service: "core", na: []),
     "devices.report": CapabilityRow(status: "implemented", service: "core", na: []),
-    "devices.attest": CapabilityRow(status: "planned", service: "core", na: [CapabilityNa(runtime: "macos", reason: "runtime")]),
+    "telemetry.updates": CapabilityRow(status: "implemented", service: "core", na: []),
+    "devices.attest": CapabilityRow(status: "implemented", service: "core", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "outlet")]),
     "identity.oidc": CapabilityRow(status: "planned", service: "identity", na: []),
     "identity.devicecode": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.devicelabel": CapabilityRow(status: "implemented", service: "identity", na: []),
+    "identity.toggle": CapabilityRow(status: "planned", service: "identity", na: []),
     "release.changelog": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.download": CapabilityRow(status: "implemented", service: "release", na: []),
     "release.record": CapabilityRow(status: "implemented", service: "release", na: []),
+    "release.fetch": CapabilityRow(status: "implemented", service: "distribution", na: []),
+    "release.distribution": CapabilityRow(status: "implemented", service: "distribution", na: []),
     "update.check": CapabilityRow(status: "implemented", service: "update", na: []),
     "update.feed": CapabilityRow(status: "implemented", service: "update", na: []),
+    "update.feeds": CapabilityRow(status: "implemented", service: "update", na: []),
     "update.decide": CapabilityRow(status: "implemented", service: "update", na: []),
     "update.content": CapabilityRow(status: "implemented", service: "update", na: []),
     "update.driver": CapabilityRow(status: "implemented", service: "update", na: [CapabilityNa(runtime: "ios", reason: "outlet")]),
-    "update.bootguard": CapabilityRow(status: "planned", service: "update", na: []),
+    "update.bootguard": CapabilityRow(status: "implemented", service: "update", na: []),
     "outlet.detect": CapabilityRow(status: "implemented", service: "update", na: []),
+    "crash.tags": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "packs.record": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.revoke": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.delegation": CapabilityRow(status: "implemented", service: "release", na: []),
@@ -1329,15 +1443,18 @@ public let CAPABILITIES: [String: CapabilityRow] = [
     "packs.type.audio.bank": CapabilityRow(status: "na", service: "release", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "packs.type.ml.model": CapabilityRow(status: "implemented", service: "release", na: []),
     "packs.provides": CapabilityRow(status: "implemented", service: "release", na: []),
-    "packs.transport.apple": CapabilityRow(status: "planned", service: "distribution", na: []),
+    "packs.transport.apple": CapabilityRow(status: "implemented", service: "distribution", na: []),
     "packs.transport.play": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "packs.transport.steam": CapabilityRow(status: "planned", service: "distribution", na: [CapabilityNa(runtime: "ios", reason: "runtime")]),
     "packs.transport.msix": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "packs.transport.flatpak": CapabilityRow(status: "na", service: "distribution", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
     "ui.stages": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.boot": CapabilityRow(status: "implemented", service: "sdk", na: []),
     "ui.kit": CapabilityRow(status: "planned", service: "sdk", na: []),
-    "commerce.receipt": CapabilityRow(status: "planned", service: "license", na: []),
+    "ui.kit.manage": CapabilityRow(status: "implemented", service: "sdk", na: []),
+    "ui.cli": CapabilityRow(status: "na", service: "sdk", na: [CapabilityNa(runtime: "macos", reason: "runtime"), CapabilityNa(runtime: "ios", reason: "runtime")]),
+    "commerce.receipt": CapabilityRow(status: "implemented", service: "license", na: []),
 ]
 
 /// SHA-256 of the canonical table; `pnpm parity:check` recomputes it from the manifest.
-public let CAPABILITY_DIGEST = "f6904f8c6654e0055e1f2b307fde9220c3ac62ac7c7712470dc31823822178fe"
+public let CAPABILITY_DIGEST = "e4c16b65ac58c8994e1da5644a5719b07589b11fed83d0772eee60a9dc956913"

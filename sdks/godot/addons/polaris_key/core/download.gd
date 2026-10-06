@@ -14,7 +14,9 @@ extends RefCounted
 ## Why not HTTPRequest: `download_file` TRUNCATES the target, so it cannot resume, and its body
 ## limit is the API cap. Bytes go to `<dest>.part`; a `.part` that is already there is resumed
 ## with `Range: bytes=<size>-` (a 206 appends, a 200 starts over, a 416 for a complete file is
-## done). The answer is never trusted: the caller verifies size and SHA-256 against the signed
+## done). With the `if_range` option the resume also sends `If-Range: <validator>` (the payload's
+## strong ETag, its quoted SHA-256), so a server holding different bytes answers 200 and the
+## download starts over instead of splicing two payloads (SP-25, release-fetch-gated.json). The answer is never trusted: the caller verifies size and SHA-256 against the signed
 ## record before the file is used (plans/P3-01.md §2.5 step 19). A body longer than
 ## `expected_size` is refused and the `.part` removed.
 ##
@@ -29,11 +31,14 @@ const MAX_REDIRECTS := 5
 const CHUNK := 256 * 1024
 const READ_BUDGET_MSEC := 6
 const DEFAULT_TIMEOUT := 600.0
+## The most of an error answer's body read for its code.
+const ERROR_BODY_LIMIT := 8192
 
 
 ## Download `url` into `dest + ".part"`. Options: expected_size (int >= 0, required), timeout
-## (seconds, one budget for the request; default 600), progress (Callable(received, total)). A
-## coroutine returning a PKeyResult.
+## (seconds, one budget for the request; default 600), progress (Callable(received, total)),
+## if_range (the validator a resume sends as If-Range; none by default). A coroutine returning a
+## PKeyResult.
 static func fetch(transport: PKeyTransport, url: String, dest: String, headers: Dictionary = {}, opts: Dictionary = {}) -> PKeyResult:
 	if transport != null and transport.local_only:
 		return PKeyResult.failure(PKeyErrors.LOCAL_ONLY, "This client is local-only; network calls are refused.")
@@ -45,6 +50,7 @@ static func fetch(transport: PKeyTransport, url: String, dest: String, headers: 
 		return PKeyResult.failure(PKeyErrors.INVALID_OPTIONS, "A download needs the record's expected size.")
 	var timeout := float(opts.get("timeout", DEFAULT_TIMEOUT)) if PKeyClaims.is_number(opts.get("timeout")) else DEFAULT_TIMEOUT
 	var progress: Callable = opts.get("progress", Callable())
+	var if_range: String = opts["if_range"] if opts.get("if_range") is String else ""
 	var origin: String = PKeyTransport.parse_url(url).get("origin", "")
 	if origin == "":
 		return PKeyResult.failure(PKeyErrors.NETWORK, "Not an http(s) URL.")
@@ -94,7 +100,7 @@ static func fetch(transport: PKeyTransport, url: String, dest: String, headers: 
 		var lines := PackedStringArray()
 		var logged := {}
 		for k in h:
-			if String(k).to_lower() in ["range", "accept-encoding"]:
+			if String(k).to_lower() in ["range", "if-range", "accept-encoding"]:
 				continue
 			lines.append("%s: %s" % [k, h[k]])
 			logged[String(k).to_lower()] = "<redacted>" if String(k).to_lower() == "authorization" else h[k]
@@ -103,6 +109,9 @@ static func fetch(transport: PKeyTransport, url: String, dest: String, headers: 
 		if have > 0:
 			lines.append("Range: bytes=%d-" % have)
 			logged["range"] = "bytes=%d-" % have
+			if if_range != "":
+				lines.append("If-Range: %s" % if_range)
+				logged["if-range"] = if_range
 		if transport != null:
 			transport.sent.append({"method": "GET", "url": current, "headers": logged})
 			if transport.sent.size() > 64:
@@ -148,8 +157,13 @@ static func fetch(transport: PKeyTransport, url: String, dest: String, headers: 
 				continue
 			append = true
 		elif status != 200:
+			# Read a small error body so the caller sees the server's code (a gated build's
+			# `attestation_required`, `download_auth_required`, `not_entitled`, …).
+			var err_body := await _small_body(client, tree, deadline, ERROR_BODY_LIMIT)
 			client.close()
-			return PKeyResult.failure(PKeyErrors.HTTP_ERROR, "The download answered %d." % status, {"status": status})
+			var e := PKeyErrors.read_body(err_body)
+			var code: String = e["code"] if e["code"] != "" else String(PKeyErrors.HTTP_ERROR)
+			return PKeyResult.failure(StringName(code), e["message"] if e["message"] != "" else "The download answered %d." % status, {"status": status, "error": e})
 		if not append:
 			have = 0
 			resumed = false
@@ -213,6 +227,21 @@ static func _body(client: HTTPClient, f: FileAccess, tree: SceneTree, deadline: 
 		if client.get_status() == HTTPClient.STATUS_BODY:
 			await tree.process_frame
 	return {"have": have, "error": ""}
+
+
+## Up to `limit` bytes of a (non-2xx) body, in memory.
+static func _small_body(client: HTTPClient, tree: SceneTree, deadline: int, limit: int) -> PackedByteArray:
+	var out := PackedByteArray()
+	while client.get_status() == HTTPClient.STATUS_BODY and out.size() < limit:
+		client.poll()
+		var chunk := client.read_response_body_chunk()
+		if chunk.is_empty():
+			if Time.get_ticks_msec() >= deadline:
+				break
+			await tree.process_frame
+			continue
+		out.append_array(chunk)
+	return out.slice(0, limit) if out.size() > limit else out
 
 
 static func _lower(d: Dictionary) -> Dictionary:

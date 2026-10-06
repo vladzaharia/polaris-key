@@ -1,13 +1,14 @@
 /**
  * License → Licenses (ADMIN.md §6.5.1, T2): facet tiles over the computed state (LIC-1), a
  * client-mode table (search over name, email and id; status, tier, channel and sign-in facets;
- * CSV; virtualized above 200 rows; LIC-7), bulk Disable / Enable / Export, and the stepped Create
- * license dialog. Every filter is in the URL.
+ * CSV; virtualized above 200 rows; LIC-7), bulk Disable / Enable / Export / Delete, the "Clean up
+ * duplicates" helper (`LicenseDelete.tsx`), and the stepped Create license dialog. Every filter is
+ * in the URL.
  */
 
 import * as React from "react";
 import { Plus } from "lucide-react";
-import type { LicenseSummary, TierSummary } from "../../../api.js";
+import type { LicenseSummary } from "../../../api.js";
 import { useProduct } from "../../data/hooks.js";
 import { mutate } from "../../data/mutations.js";
 import { r } from "../../routes.js";
@@ -34,9 +35,17 @@ import {
 } from "../../../ui/data-table/index.js";
 import { CreateLicenseDialog } from "./CreateLicenseDialog.js";
 import {
+  BulkDeleteDialog,
+  CleanupDialog,
+  deletable,
+  deletionBlockedReason,
+} from "./LicenseDelete.js";
+import {
   LICENSE_STATE_LABELS,
   LicenseStatus,
   licenseState,
+  seatLimitOf,
+  seatLimitText,
   useLicenses,
   useTiers,
   type LicenseState,
@@ -46,23 +55,16 @@ const STATES: LicenseState[] = ["active", "expiring", "expired", "disabled"];
 const FACETS = ["status", "tier", "channel", "signin"] as const;
 const NO_TIER = "__none__";
 
-/** The seat limit a license's devices count against: its tier's, else the product's. */
-function seatLimit(
-  l: LicenseSummary,
-  tiers: readonly TierSummary[],
-  productLimit: number | undefined,
-): number | null {
-  const tier = l.tier ? tiers.find((t) => t.id === l.tier) : undefined;
-  const limit = tier?.policyDeviceLimit ?? productLimit;
-  return limit && limit > 0 ? limit : null;
-}
-
 export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
   const licensesQ = useLicenses(slug);
   const tiersQ = useTiers(slug);
   const product = useProduct(slug).data;
   const [state, setState] = useTableUrlState("licenses", { facets: FACETS });
   const [createOpen, setCreateOpen] = React.useState(false);
+  const [cleanupOpen, setCleanupOpen] = React.useState(false);
+  const [bulkDelete, setBulkDelete] = React.useState<LicenseSummary[] | null>(
+    null,
+  );
   const [bulk, setBulk] = React.useState<{
     enable: boolean;
     rows: LicenseSummary[];
@@ -105,7 +107,14 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
           const l = row.original;
           return (
             <span className="flex min-w-0 max-w-[22rem] flex-col">
-              <span className="truncate" title={l.name || undefined}>
+              {/* The name flies into the record's title on a drill-down (S-23 §6.1
+                  shared-element): the router names it for the old page only. Both ends are
+                  fit-content, so the snapshot never stretches. */}
+              <span
+                className="w-fit max-w-full truncate"
+                title={l.name || undefined}
+                data-vt-shared="pk-key"
+              >
                 {l.name || "Unnamed license"}
               </span>
               {l.email ? (
@@ -183,18 +192,26 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         meta: { priority: 2, numeric: true },
         cell: ({ row }) => {
           const l = row.original;
-          const limit = seatLimit(l, tiers, product?.defaultDeviceLimit);
-          return limit === null ? (
-            <span className="tabular-nums">{l.deviceCount}/—</span>
-          ) : (
-            <Meter
-              label="Seats"
-              hideLabel
-              value={l.deviceCount}
-              max={limit}
-              tone={l.deviceCount > limit ? "warning" : "accent"}
-              className="ml-auto w-28"
-            />
+          // LX-14a: the limit the Worker enforces and where it comes from.
+          const seats = seatLimitOf(l, tiers, product?.defaultDeviceLimit);
+          const limit = seats.limit;
+          return (
+            <div className="ml-auto w-28" title={seatLimitText(seats)}>
+              {limit === null ? (
+                <span className="tabular-nums">{l.deviceCount}/—</span>
+              ) : (
+                <Meter
+                  label="Seats"
+                  hideLabel
+                  value={l.deviceCount}
+                  max={limit}
+                  tone={l.deviceCount > limit ? "warning" : "accent"}
+                />
+              )}
+              <span className="block truncate text-xs text-fg-muted">
+                {seats.from}
+              </span>
+            </div>
           );
         },
       },
@@ -322,6 +339,12 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
               Create license
             </Button>
           }
+          secondaryActions={[
+            {
+              label: "Clean up duplicates…",
+              onSelect: () => setCleanupOpen(true),
+            },
+          ]}
           refetching={licensesQ.isFetching && !licensesQ.isPending}
         />
       }
@@ -370,6 +393,17 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
               onSelect: (rows) => setBulk({ enable: true, rows }),
             },
             { label: "Export", onSelect: (rows) => exportRows(rows) },
+            {
+              label: "Delete…",
+              tone: "danger",
+              onSelect: (rows) => setBulkDelete(rows),
+              disabledReason: (rows) =>
+                rows.some(deletable)
+                  ? undefined
+                  : rows.length === 1
+                    ? deletionBlockedReason(rows[0]!.deletion)
+                    : "None of the selected licenses can be deleted: disable them first, and a license with store purchases is never deleted.",
+            },
           ],
         }}
         loading={licensesQ.isPending}
@@ -396,6 +430,17 @@ export function LicensesPage({ slug }: { slug: string }): React.ReactElement {
         slug={slug}
         open={createOpen}
         onOpenChange={setCreateOpen}
+      />
+
+      <BulkDeleteDialog
+        slug={slug}
+        rows={bulkDelete}
+        onOpenChange={(o) => !o && setBulkDelete(null)}
+      />
+      <CleanupDialog
+        slug={slug}
+        open={cleanupOpen}
+        onOpenChange={setCleanupOpen}
       />
 
       <ConfirmDialog

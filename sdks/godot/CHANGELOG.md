@@ -7,6 +7,54 @@ value in four places: `plugin.cfg`'s `version`, `PolarisKey.SDK_VERSION` (also s
 (`.github/workflows/release-godot.yml`) uses the section below whose heading is the tag's version
 as the GitHub Release notes, and the same text is the Asset Store version's changelog.
 
+## Unreleased
+
+The SDK parity pass (`notes/SDK-PARITY-PASS.md` §5.6).
+
+- **Desktop keyring store** (SP-27). On macOS, Windows and Linux the token is kept in the OS
+  keyring by default (`PKeyKeyringStore`): the login keychain, through the new macOS build of
+  `PolarisKeyApple`; Credential Manager, through `pkey_win.dll`; the Secret Service, through
+  `secret-tool`. The names are `pkey:<product>` and `device-token`, as in the Python and Kotlin
+  SDKs. Writes are verified, and a file-store token is migrated into the keyring. A write that
+  falls back to the 0600 file is surfaced as `store_error` and `keyring-error`. **Behaviour
+  change:** without the native piece, desktop `store_status()` is now
+  `{backend: file, degraded: {reason: keyring-unavailable}}`, where it used to be plain
+  `{backend: file}`. `PKEY_DESKTOP_KEYRING=0` keeps the file store.
+- **Behaviour change: `license.is_entitled(name)` answers `false` whenever the gate is not
+  usable** (S-19 G11). A revoked, expired or blocked licence no longer unlocks a grant its last
+  verified document still lists. `get_entitlements()` still reads the raw values.
+- **Typed activation refusals.** A 403 other than `fingerprint_required` and the device limit is
+  `refused` with the server's code, and the copy covers `registration_closed`,
+  `attestation_required`, `managed_by_admin`, `not_entitled`, pack, commerce and mint refusals.
+- **Attest and retry.** Edge-mint, gated downloads and pack objects, and the commerce claim
+  attest once on a 403 `attestation_required` and retry once (`PKeyOptions.auto_attest`).
+- **`update.feed_url(kind, opts)`** (`update.feeds`): the appcast, WinSparkle, Velopack
+  (releases file or feed directory), App Installer and zsync feed URLs from discovery's
+  templates, with the channel-alias rewrite and a typed `unsupported (product)` when the product
+  publishes no template.
+- **Settings persist by default** in `user://pkey_settings.cfg` (`PKeyOptions.settings_path`).
+- **`config.set_value()`, `clear()`, `clear_all()` and `setting(key)`** (`config.local`): device-local
+  writes through the persisted store, checked against the catalog type and refused
+  `managed_by_admin` for an enforced or hidden key, one `config_changed` per write.
+- **`identity.current()`, `identity.sign_out()`**, a persisted `set_channel()` that update
+  checks, decide and the dev menu read, `crash_tags()` and `PolarisKey.distribution`. No
+  portal URLs are built client-side (owner decision Q6): the activation panel's **Manage
+  devices** waits for the server-supplied `manageUrl` (PX-W8) and stays hidden until then.
+- **Commerce one-calls:** `purchase(flag)`, `restore()`, `claim_play()` and `claim_steam()`,
+  returning a typed `PKeyPurchaseResult`. On an App Store outlet a purchase that answered
+  `pending` (Ask to Buy, a slow payment) is claimed when StoreKit delivers it through
+  `transaction_updated`, then synced (`app_store_update_claimed`).
+- **Setup dock tools:** Generate config (`pkey sdk --lang godot --write`, release keys included),
+  Generate catalog mirror (`pkey mirror --lang gdscript`), and `pkey_packs/*` added to every
+  export preset. The dock shows the web CORS step (`web.origins`).
+- **Web: clearing site data can consume a seat**, now documented. Reusing the old token on
+  re-entry of the key (SP-G16) is deferred: `license/token` needs the old bearer and device id,
+  which the clear removes, so it waits for a server-side rebind by key.
+- **Minimal sample project** in `examples/minimal` (boot, gate, config, settings, commerce),
+  compiled against the SDK by the test runner.
+- **Fixed:** the direct-APK download awaited its fetch through a conditional expression, which
+  Godot refuses at run time.
+
 ## 0.1.0
 
 The first published version. Requires Godot 4.4 or later (4.6 or later recommended). Tested on

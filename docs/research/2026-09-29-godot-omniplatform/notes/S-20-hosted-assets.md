@@ -31,8 +31,8 @@
 >    release files and release-note images. Polaris Key keeps its own copy of every file it
 >    serves. A developer's GitHub release or external URL stays a _source_ and a fallback
 >    location, never a requirement.
-> 2. **A separate media host.** It is `img.plrs.im`, with `media-staging` and `media-dev`. It is
->    the same Worker on a fourth custom domain, `MEDIA_ORIGIN`. It serves public, inline,
+> 2. **A separate image host.** It is `img.plrs.im`, with `img-staging` and `img-dev`. It is
+>    the same Worker on a fourth custom domain, `IMG_ORIGIN`. It serves public, inline,
 >    cookie-less, immutable images only. `dl.plrs.im` keeps the downloads (§6.5).
 > 3. **Pull from any public https host.** There is no host allowlist. The guard in §6.3 applies
 >    instead. Repo-relative paths are pulled through the GitHub App installation token. Pulls
@@ -51,7 +51,7 @@
 >    - No signed document changes, because the signed documents carry hashes, not URLs (§4.3).
 >    - Product setting: `assets.releases.mirror`, operator-scope.
 > 7. **Licensed bytes reuse PX-W3's download ticket.** Presentation media are never gated, and
->    the media host refuses anything that is.
+>    the image host refuses anything that is.
 > 8. **Retention.**
 >    - Polaris Key never deletes or modifies a developer's source.
 >    - Its copies are held by `blob_refs` and fall to the existing collector after the 180-day
@@ -277,7 +277,7 @@ All rows are [V] unless marked.
 
    **Fix in HA-07:** make the threat model true by excluding the `listing-asset` and
    `hosted-asset` ref kinds from the app-side blob route. These images are served from the
-   media host instead.
+   image host instead.
 
 3. **Licensed bytes on dl do not reach SDKs.** This is noted, not fixed in HA.
    - Every SDK sends the device Bearer only when the URL's origin equals `baseUrl`'s
@@ -348,7 +348,7 @@ CREATE TABLE hosted_assets (
   size          INTEGER,
   content_type  TEXT,                      -- sniffed, never the declared type
   width         INTEGER, height INTEGER,   -- images only (Images .info, free)
-  variants_json TEXT,                      -- [{w, format, sha256, size}] (HA-03)
+  variants_json TEXT,                      -- [{w, format: "image/webp", sha256, size}] (HA-03)
   status        TEXT NOT NULL,             -- pending | ready | failed | stale (source gone, last good copy kept)
   error         TEXT,                      -- the guard or ingest reason code
   checked_at    INTEGER, modified_at INTEGER NOT NULL,
@@ -357,6 +357,9 @@ CREATE TABLE hosted_assets (
 ```
 
 - The bytes live at `blobs/sha256/<sha256>`, the same content-addressed store P2-01 uses.
+- `variants_json` is `[{w, format: "image/webp", sha256, size}]`. `format` is a MIME type, as
+  `content_type` is, and `"image/webp"` is its only value. HA-03 is the only writer; the image
+  host (HA-02) reads it with the same parser.
 - A `blob_refs` row with `ref_kind = 'hosted-asset'` holds each original and each variant. Its
   `ref_id` is `<slot>@<locale>`.
 - A replaced or removed slot drops its refs in the same batch. The P4-14 collector reclaims the
@@ -468,7 +471,7 @@ today.
 | `dl.plrs.im/<p>/media/...`                   | Exists. Cookie-less (host-only cookies). Already hardened.                                                                                                                                                                                                                                                                      | Its policy is _downloads_: forced `attachment`, licensed tickets and per-deliverable access modes. Adding inline public images either weakens that policy or forks it per route. Putting dl in `img-src` would also allow every byte route as an image source.       |
 | **`img.plrs.im` (chosen)**                   | One policy for one kind of byte: public, immutable, inline image types only, `Access-Control-Allow-Origin: *`, `Cross-Origin-Resource-Policy: cross-origin`, no cookies, a sandbox CSP. CSP `img-src` names exactly this host. CDN cache rules can be aggressive. A separate rate limit. Never gated, so it needs no auth code. | A fourth custom domain in three environments. The Worker creates the DNS records on deploy, so there are no new buckets and no new Worker.                                                                                                                           |
 
-**Media host routes** (HA-02, `core/mediaHost.ts`, confined like `bytesHost.ts`):
+**Image host routes** (HA-02, `core/imgHost.ts`, confined like `bytesHost.ts`):
 
 - **`GET /<p>/a/<sha256>` and `GET /<p>/a/<sha256>/<w>.webp`.** These are content-addressed and
   immutable (`Cache-Control: public, max-age=31536000, immutable`). They are served only when
@@ -500,19 +503,22 @@ today.
 - **Billing.** Binding calls are billed per _unique_ transformation per calendar month, with
   5,000 a month free on the Free plan [V]. Generating at ingest means one charge per asset per
   width, once. A product with an icon, a header and 10 screenshots costs at most 5 + 3 + 30 = 38
-  transformations at each change.
+  transformations at each change. The same bytes in two slots of one family (the listing icon
+  falling back to `presentation.icon`) share one ladder within the product (2026-10-06 follow-up).
 - **Why not on the fly.** Transforming on the fly through `/cdn-cgi/image` would multiply the
   unique transformations by every requested size, and would put Images on the request path.
 - **Fallback.** Without the binding (the test environment, or the account's free allowance used
   up, which returns error 9422 [V]), `variants_json` stays empty and every consumer uses the
-  original. HA-03's tests run without the binding and with a stub.
+  original. HA-03's tests run without the binding and with a stub. While the binding is bound,
+  HA-05 retries an empty ladder from the stored original with the pulls' back-off (2026-10-06
+  follow-up); it never pulls the source again.
 - **Store-exact art.** The CLI's sharp-based derivation (A-18d) stays the tool for store-exact
   art (store sizes, composition, crop proposals). The Worker ladder is for display only.
 
 ### 6.7 Licensed versus public bytes
 
 - **Presentation media and listing art** are always public. HA-07 removes these ref kinds from
-  the app-side `blobs` route (§4.6 #2), so they are served only from the media host.
+  the app-side `blobs` route (§4.6 #2), so they are served only from the image host.
 - **Release files** keep their deliverable's `dist_access` mode:
   - public: anyone, on dl;
   - `authenticated`, `licensed`, `entitled`:
@@ -550,9 +556,9 @@ today.
 - **Optional DJDL simplification.** DJDL can later move its art into its private repo (for
   example `icon: .pkey/art/icon.png`) and retire `djdl-assets` and the publish script.
 - **The `/media/<p>/{icon,header}` portal route** stays during the deprecation window and
-  302s to the media host's stable alias. The SPA switches to the media URLs from
+  302s to the image host's stable alias. The SPA switches to the media URLs from
   `presentationFor` (HA-07).
-- **AltStore and SideStore sources** emit media-host URLs on their next render. Third-party
+- **AltStore and SideStore sources** emit image-host URLs on their next render. Third-party
   copies of an old source keep the developer's URL, which works as long as the developer keeps
   it.
 
@@ -646,7 +652,7 @@ bounds or vendor limits, and S-18 §5.6 keeps those out of settings.
 | Delta                 | What it adds                                                                                                                                                                                                                                                             |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | New outbound fetcher  | Guard §6.3; named only by product operators and manifest authors; never on end-user input; audit row per pull.                                                                                                                                                           |
-| New host              | `media*`, with the isolation in §6.5.                                                                                                                                                                                                                                    |
+| New host              | `img*` (img.plrs.im), with the isolation in §6.5.                                                                                                                                                                                                                        |
 | Content risk          | **Content risk.** No SVG or HTML is accepted, every type is sniffed, CSP is sandboxed, and `nosniff` is set. An operator can host illegal or abusive images. The existing operator terms apply, and HA-06 includes delete-a-copy so an operator can drop a slot at once. |
 | Amplification         | Pulls are queued, deduplicated by ref, and run at most once per resync per slot.                                                                                                                                                                                         |
 | Listing-asset serving | §4.6 #2 fixed.                                                                                                                                                                                                                                                           |
@@ -656,7 +662,7 @@ bounds or vendor limits, and S-18 §5.6 keeps those out of settings.
 | Change                                                                         | Plan mode?                       | Corpus / SDK impact                                                                                                  |
 | ------------------------------------------------------------------------------ | -------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | Mirroring release files, extra `r2` locations                                  | **no**                           | none. The signed docs carry hashes (§4.3 R6); `locations` are excluded from records by design.                       |
-| Media host, `hosted_assets`, ingest, console, CLI                              | no                               | none. Rule 10 (new routes), rule 3 (Action bundle), THREAT-MODEL.                                                    |
+| Image host, `hosted_assets`, ingest, console, CLI                              | no                               | none. Rule 10 (new routes), rule 3 (Action bundle), THREAT-MODEL.                                                    |
 | Manifest `presentation`, listing `icon`/`header`/`screenshots` with repo paths | no (manifest, not wire)          | rule 9 (validator, schemas, mutation table), generated docs reference, Action rebundle.                              |
 | Discovery `core.presentation`                                                  | **yes** (HA-11 → HA-12 to HA-14) | transcripts plus mirrors; the contract text; every SDK's discovery type; UI kits. `PROTOCOL_VERSION` stays 4.        |
 | Release-note images                                                            | no                               | the signed `notes` text is **never rewritten**. Rendering surfaces map URLs to hosted copies at render time (HA-16). |
@@ -669,7 +675,7 @@ bounds or vendor limits, and S-18 §5.6 keeps those out of settings.
   - HA-07 feeds hosted manifest art into `dist_listing_assets` (`source='manifest'`).
   - HA-06 provides the missing `admin` writer.
   - HA-02 gives A-18i (Flathub) its public screenshot URLs.
-  - A-18j's slot board should render media-host URLs and use HA-06's upload. That is a note for
+  - A-18j's slot board should render image-host URLs and use HA-06's upload. That is a note for
     its brief, below.
 - **PX-W3.** HA-09 consumes the ticket; nothing in PX-W3 changes.
 - **PX-W1 / PX-W10 / PX-W16.** The media proxy becomes R2-backed (HA-07). Discover tiles get real
@@ -677,7 +683,7 @@ bounds or vendor limits, and S-18 §5.6 keeps those out of settings.
   is noted for its brief.
 - **S-18.** HA-10 registers four entries once ST-03 lands.
 - **S-19.** No interaction beyond PX-W3.
-- **I-18 (email).** It may add the product icon from the media host's stable alias. This is
+- **I-18 (email).** It may add the product icon from the image host's stable alias. This is
   optional, and not an HA package.
 
 ## 9. Work packages (`HA-`)
@@ -685,7 +691,7 @@ bounds or vendor limits, and S-18 §5.6 keeps those out of settings.
 | ID    | Title (short)                                                                                  | Deps                | Role                | Plan mode | Est. (wk) |
 | ----- | ---------------------------------------------------------------------------------------------- | ------------------- | ------------------- | --------- | --------- |
 | HA-01 | Hosted-asset core: `hosted_assets`, `safeFetch`, ingest, Content-Type on puts                  | none                | pkey-implementer    | no        | 1–1.5     |
-| HA-02 | Media host `media*.plrs.im`                                                                    | HA-01               | pkey-implementer    | no        | 0.6–1     |
+| HA-02 | Image host `img.plrs.im` (`img-staging`, `img-dev`)                                            | HA-01               | pkey-implementer    | no        | 0.6–1     |
 | HA-03 | Image variant ladder via the Images binding                                                    | HA-01               | pkey-implementer    | no        | 0.5–0.8   |
 | HA-04 | Manifest: `presentation`, listing `icon`/`header`/`screenshots` (URL or repo path)             | none                | pkey-implementer    | no        | 0.6–0.9   |
 | HA-05 | Pull on register and resync (queue, URL and repo paths, re-sync, nightly re-check)             | HA-01, HA-04        | pkey-implementer    | no        | 1–1.5     |
@@ -763,10 +769,10 @@ Each question shows the recommendation (adopted) in bold and the alternative con
 - **New:** `P/wp/HA-01…HA-17` briefs. They are registered in `workpackages.json` under the new
   `HA` phase, and the `check.mjs` and schema id patterns now accept `HA-`.
 - **A-18i** (Flathub screenshots need public URLs). Add a hand-off note: the URLs come from
-  HA-02's media host, via HA-07's `source='manifest'` rows or HA-06 uploads. **Edited in this
+  HA-02's image host, via HA-07's `source='manifest'` rows or HA-06 uploads. **Edited in this
   branch.**
 - **A-18j** (console storefronts). Its slot board uses HA-06's upload route and renders
-  media-host URLs. **Edited in this branch.**
+  image-host URLs. **Edited in this branch.**
 - **PX-W16** (avatars). Reuse `core/hostedAssets.ts` (`avatar` slot space) rather than a second
   fetcher. **Edited in this branch.**
 - **PX-W3.** No change. HA-09 depends on it.

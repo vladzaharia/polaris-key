@@ -302,6 +302,53 @@ const SAMPLES: Record<string, RegistryPackage> = {
       ),
     ),
   ),
+  cargo: pkg(
+    "cargo",
+    "acme-sdk",
+    V.map((v) =>
+      version(
+        v,
+        [
+          {
+            name: `acme-sdk-${v}.crate`,
+            type: "crate",
+            sha256: hex(`crate ${v}`),
+            size: 100,
+          },
+        ],
+        {
+          name: "acme-sdk",
+          version: v,
+          deps: [{ name: "serde", req: "^1", kind: "normal", registry: null }],
+          features: { default: ["std"], std: [] },
+        },
+      ),
+    ),
+  ),
+  go: pkg(
+    "go",
+    "go.acme.dev/Sdk",
+    V.map((v) =>
+      version(
+        v,
+        [
+          {
+            name: `v${v}.zip`,
+            type: "go-zip",
+            sha256: hex(`go zip ${v}`),
+            size: 100,
+          },
+          {
+            name: "go.mod",
+            type: "go-mod",
+            sha256: hex(`go mod ${v}`),
+            size: 30,
+          },
+        ],
+        { name: "go.acme.dev/Sdk", version: v, h1: `h1:${v}` },
+      ),
+    ),
+  ),
 };
 
 /** Two feed-settings values a render can be given; a `package`-stamped renderer ignores both. */
@@ -340,6 +387,15 @@ const PARAMS: Record<string, Record<string, string>> = {
     digest: `sha256:${"a".repeat(64)}`,
   },
   godot: { id: "1", publisher: "acme", asset: "acme_tool", file: "a.zip" },
+  cargo: {
+    name: "acme-sdk",
+    first: "a",
+    prefix1: "ac",
+    prefix2: "me",
+    file: "acme-sdk-1.0.0.crate",
+  },
+  // The module path case-encoded as the go command sends it; a canonical version.
+  go: { module: "go.acme.dev/!sdk", version: "v1.0.0" },
 };
 
 /**
@@ -537,6 +593,7 @@ describe.each(FEED_ADAPTERS.map((a) => [a.ecosystem, a] as const))(
               distribution: { enabled: true },
               update: { enabled: false },
               identity: { enabled: false },
+              sync: { enabled: false },
             },
           }),
           "manifest",

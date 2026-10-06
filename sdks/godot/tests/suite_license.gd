@@ -1,6 +1,7 @@
 extends RefCounted
 # @pkey-feature license.gate license.activate license.enroll license.deactivate
 # @pkey-feature license.entitlements license.channels license.reregister
+# @pkey-feature license.manage
 # The licence suite (P1-03): PolarisKey.license against PKeyFakeServer answering like the Worker
 # (both error-body spellings), the §5 re-acquire on both routes with its one-attempt budget, the
 # best-effort deactivation with its mandatory wipe, the grants read off the verified document,
@@ -9,7 +10,7 @@ extends RefCounted
 # `func run(t: PKeyTestContext) -> void` (it may await); the suite ends with a coverage check
 # that every group ran.
 
-const GROUPS := ["channel", "activation", "reregister", "deactivate", "entitlements"]
+const GROUPS := ["channel", "activation", "reregister", "deactivate", "entitlements", "manage", "license_id_refresh"]
 
 
 func run(t: PKeyTestContext, args: PackedStringArray) -> bool:

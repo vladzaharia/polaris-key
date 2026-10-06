@@ -3,11 +3,16 @@
  * connection the platform holds per store, the apps it can see, and which product each app
  * belongs to.
  *
- * - **Credentials are read-only here.** Each slot shows whether a credential is present and
- *   usable, its source (console or Worker secret), its display metadata (key id, issuer id, client
- *   email, …) and the last check's status line. Never key material: the API never sends any. A
- *   store without one says how to add it (a GitHub environment secret, then the Sync Worker
- *   secrets workflow); keys are not typed into the console.
+ * - **Credentials.** Each slot shows whether a credential is present and usable, its source
+ *   (console or Worker secret), its display metadata (key id, issuer id, client email, …) and the
+ *   last check's status line. Never key material: the API never sends any.
+ * - **Connect, checked on paste** (UX-69, SETUP.md D42). `ConnectForm` takes a slot's key and,
+ *   the moment it is pasted (or the field is left complete), sends the UNSAVED value once to the
+ *   Worker's check route, which tries it against the store and answers what it found: "Team
+ *   69a6de7f · 3 apps", which permission is missing, another team, expired, or the store being
+ *   down. Save is enabled only after a pass, and any edit takes the pass away. A store with no
+ *   credential shows the form first and the Worker-secret route (the Sync Worker secrets
+ *   workflow) as the alternative; a stored one offers **Replace key**.
  * - **The apps list** is the store's own (`GET …/<store>/apps`), cached a minute by the Worker.
  *   Re-check reads the store again (`?refresh=1`), which is also what records the credential's
  *   health. Google Play's track status opens and deletes an edit per app, so it is an explicit
@@ -21,10 +26,11 @@
 
 import * as React from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
+import { KeyRound, RefreshCw, Upload } from "lucide-react";
 import {
   ApiError,
   api,
+  type CredentialCheck,
   type PlatformStore,
   type PlatformStoreApp,
   type PlatformStoreApps,
@@ -50,6 +56,10 @@ import {
 import { EmptyState } from "../../ui/EmptyState.js";
 import { ErrorState } from "../../ui/ErrorState.js";
 import { FormField } from "../../ui/form.js";
+import { Input } from "../../ui/Input.js";
+import { SecretInput } from "../../ui/SecretInput.js";
+import { Spinner } from "../../ui/Spinner.js";
+import { Textarea } from "../../ui/Textarea.js";
 import { Select } from "../../ui/Select.js";
 import { StatusPill } from "../../ui/StatusPill.js";
 import { Switch } from "../../ui/Switch.js";
@@ -60,7 +70,8 @@ import { useProducts } from "../data/hooks.js";
 import { mutate } from "../data/mutations.js";
 import { qk } from "../data/queries.js";
 import { queryClient } from "../data/queryClient.js";
-import { Link, useSearchParam } from "../router.js";
+import { Link, navigate, useSearchParam } from "../router.js";
+import { setUpHref } from "../areas/storefronts/StorefrontsPage.js";
 import { codecs, r } from "../routes.js";
 import { CollectionTemplate } from "../templates/Collection.js";
 import { Panel } from "../templates/Dashboard.js";
@@ -345,7 +356,7 @@ export function StoreConnections(): React.ReactElement {
       {stores.isPending ? (
         <div
           aria-hidden
-          className="h-64 animate-pulse rounded-lg bg-surface-sunken motion-reduce:animate-none"
+          className="pk-skeleton-group pk-skeleton h-64 rounded-lg"
         />
       ) : current ? (
         <StoreDetail key={current.store} connection={current} />
@@ -397,10 +408,7 @@ function StoreTiles({
               {s?.label ?? STORE_NAMES[store]}
             </span>
             {loading ? (
-              <span
-                aria-hidden
-                className="h-5 w-24 animate-pulse rounded-md bg-surface-sunken motion-reduce:animate-none"
-              />
+              <span aria-hidden className="pk-skeleton h-5 w-24 rounded-md" />
             ) : health ? (
               <StatusPill tone={health.tone} size="sm">
                 {health.label}
@@ -558,6 +566,7 @@ function CredentialsPanel({
         {s.credentials.map((c) => (
           <li key={c.id} className="space-y-3 py-4 first:pt-0 last:pb-0">
             <CredentialRow
+              connection={s}
               credential={c}
               primary={s.credentials.length > 1 && c.id === s.primary}
             />
@@ -569,12 +578,17 @@ function CredentialsPanel({
 }
 
 function CredentialRow({
+  connection: s,
   credential: c,
   primary,
 }: {
+  connection: PlatformStoreConnection;
   credential: PlatformStoreCredential;
   primary: boolean;
 }): React.ReactElement {
+  const [connecting, setConnecting] = React.useState(false);
+  // A store with no credential at all shows the primary slot's form under Apps (AddCredential).
+  const canConnect = c.configured || s.configured;
   const health = credentialHealth(c);
   const pill = HEALTH[health];
   const meta = c.meta ?? c.console.meta ?? {};
@@ -641,14 +655,34 @@ function CredentialRow({
             </span>
           ) : null}
         </h3>
-        <StatusPill tone={pill.tone} size="sm">
-          {pill.label}
-        </StatusPill>
+        <div className="flex items-center gap-2">
+          <StatusPill tone={pill.tone} size="sm">
+            {pill.label}
+          </StatusPill>
+          {canConnect && !connecting ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConnecting(true)}
+            >
+              <KeyRound aria-hidden />
+              {c.configured ? "Replace key" : "Connect"}
+            </Button>
+          ) : null}
+        </div>
       </div>
       {health === "failing" && c.console.lastError ? (
         <Callout tone="danger" title="The store refused the last check">
           <span className="font-mono text-xs">{c.console.lastError}</span>
         </Callout>
+      ) : null}
+      {connecting ? (
+        <ConnectForm
+          store={s.store}
+          credential={c}
+          onCancel={() => setConnecting(false)}
+          onSaved={() => setConnecting(false)}
+        />
       ) : null}
       {health === "invalid" ? (
         <Callout tone="danger" title={`${c.secret.name} is set but unusable`}>
@@ -669,11 +703,13 @@ function CredentialRow({
         </p>
       ) : null}
       {items.length > 0 ? <DescriptionList columns={2} items={items} /> : null}
-      {!c.configured && health === "missing" ? (
+      {!c.configured && health === "missing" && !connecting ? (
         <p className="text-sm text-fg-muted">
-          Not set. Add it as{" "}
-          <span className="font-mono text-xs text-fg">{c.secret.name}</span>:
-          see Add a credential below.
+          Not set.{" "}
+          {canConnect
+            ? "Connect it here, or add it as "
+            : "Connect it below, or add it as "}
+          <span className="font-mono text-xs text-fg">{c.secret.name}</span>.
         </p>
       ) : null}
     </>
@@ -717,7 +753,10 @@ function SettingsPanel({
   );
 }
 
-/** A store with no team credential: how to add one, without the key passing through here. */
+/**
+ * A store with no team credential: the connect form for its primary slot, checked on paste, and
+ * the Worker-secret route as the alternative for keys that should never pass through a browser.
+ */
 function AddCredential({
   connection: s,
 }: {
@@ -726,27 +765,481 @@ function AddCredential({
   const primary = primaryOf(s);
   const name = primary?.secret.name ?? "PLATFORM_…";
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <EmptyState
         kind="first-run"
         headingLevel={3}
         title={`No ${s.label} credential yet`}
-        description={`Add the team ${primary?.label ?? "credential"} as a Worker secret. Store the key file as a GitHub production environment secret, then run the Sync Worker secrets workflow: the key never passes through a terminal, a chat or this console.`}
+        description={`Paste the team ${primary?.label ?? "credential"} below. Polaris Key checks it with ${STORE_VENDORS[s.store]} the moment it is pasted and saves it only once it works.`}
         docs={docsUrl("storeConnections")}
-        secondaryAction={
-          <Button variant="link" size="sm" asChild>
-            <a href={docsUrl("platformSecrets")}>
-              Secret names and JSON shapes
-            </a>
-          </Button>
-        }
       />
-      <CodeBlock
-        language="sh"
-        filename="From the machine that holds the key file"
-        code={`gh secret set ${name} --env production < key.json\ngh workflow run sync-worker-secrets.yml -f target=prod`}
-      />
+      {primary ? <ConnectForm store={s.store} credential={primary} /> : null}
+      <div className="space-y-3 border-t border-border pt-4">
+        <h4 className="text-sm font-bold text-fg-strong">
+          Or set it as a Worker secret
+        </h4>
+        <p className="text-sm text-fg-muted">
+          Store the key file as a GitHub production environment secret, then run
+          the Sync Worker secrets workflow: the key never passes through a
+          terminal, a chat or this console.{" "}
+          <a className="underline" href={docsUrl("platformSecrets")}>
+            Secret names and JSON shapes
+          </a>
+        </p>
+        <CodeBlock
+          language="sh"
+          filename="From the machine that holds the key file"
+          code={`gh secret set ${name} --env production < key.json\ngh workflow run sync-worker-secrets.yml -f target=prod`}
+        />
+      </div>
     </div>
+  );
+}
+
+// ── connect, checked on paste (UX-69) ────────────────────────────────────────────────────────
+
+/** Who the check talks to, by store ("Checking with App Store Connect…"). */
+const STORE_VENDORS: Record<PlatformStore, string> = {
+  "app-store": "App Store Connect",
+  "google-play": "Google",
+  "microsoft-store": "Microsoft",
+  steam: "Steam",
+};
+
+interface ConnectField {
+  name: string;
+  label: string;
+  control: "text" | "secret" | "textarea";
+  help?: string;
+  placeholder?: string;
+}
+
+interface ConnectShape {
+  fields: ConnectField[];
+  /** A key file the form can read instead of a paste (it never leaves the browser except to the
+   *  check and the save, like a paste). */
+  file?: { accept: string; into: string; label: string };
+  /** The value sent: the fields as an object, or one field's text as is (a Google key file). */
+  wire: "object" | { text: string };
+}
+
+const P8_FIELDS: ConnectField[] = [
+  {
+    name: "keyId",
+    label: "Key ID",
+    control: "text",
+    placeholder: "ABC123DEFG",
+    help: "Filled from the file name when you choose AuthKey_<Key ID>.p8.",
+  },
+  {
+    name: "issuerId",
+    label: "Issuer ID",
+    control: "text",
+    placeholder: "69a6de7f-…",
+    help: "Shown above the key list in Users and Access → Integrations.",
+  },
+  {
+    name: "p8",
+    label: "Private key (.p8)",
+    control: "textarea",
+    placeholder: "-----BEGIN PRIVATE KEY-----",
+  },
+];
+
+/** The fields of each credential kind (the Worker validates the same shape). */
+const CONNECT_SHAPES: Record<string, ConnectShape> = {
+  "asc-api-key": {
+    fields: P8_FIELDS,
+    file: { accept: ".p8", into: "p8", label: "Choose .p8 file" },
+    wire: "object",
+  },
+  "app-store-server-key": {
+    fields: P8_FIELDS,
+    file: { accept: ".p8", into: "p8", label: "Choose .p8 file" },
+    wire: "object",
+  },
+  "google-service-account": {
+    fields: [
+      {
+        name: "json",
+        label: "Service account key (JSON)",
+        control: "textarea",
+        placeholder: '{ "type": "service_account", … }',
+        help: "The whole key file, as Google Cloud downloaded it.",
+      },
+    ],
+    file: {
+      accept: ".json,application/json",
+      into: "json",
+      label: "Choose key file",
+    },
+    wire: { text: "json" },
+  },
+  "ms-partner-center": {
+    fields: [
+      { name: "tenantId", label: "Tenant ID", control: "text" },
+      { name: "clientId", label: "Client ID", control: "text" },
+      {
+        name: "clientSecret",
+        label: "Client secret",
+        control: "secret",
+        help: "The secret's Value, not its Secret ID.",
+      },
+      { name: "sellerId", label: "Seller ID", control: "text" },
+    ],
+    wire: "object",
+  },
+  "steam-publisher-key": {
+    fields: [
+      {
+        name: "key",
+        label: "Publisher Web API key",
+        control: "secret",
+        help: "Steamworks → Users & Permissions → Manage Groups → your group.",
+      },
+    ],
+    wire: "object",
+  },
+};
+
+type CheckState =
+  | { phase: "idle" }
+  | { phase: "checking"; for: string }
+  | { phase: "done"; for: string; check: CredentialCheck }
+  | { phase: "error"; for: string; title: string; description: string };
+
+/** Verdicts that let the form save: it works, it works with a caveat, or it cannot be tried. */
+const SAVABLE = new Set<CredentialCheck["verdict"]>([
+  "valid",
+  "warning",
+  "unchecked",
+]);
+
+/**
+ * One credential slot's connect form (UX-69; reused inline by a storefront's Connect step for
+ * platform admins, SETUP.md §2.12). The value is checked the moment it is pasted, or when a
+ * field is left with every field filled; Save is enabled only after a pass for exactly the value
+ * on screen. Nothing is sent anywhere but the Worker's check and save routes.
+ */
+export function ConnectForm({
+  store,
+  credential: c,
+  onCancel,
+  onSaved,
+}: {
+  store: PlatformStore;
+  credential: PlatformStoreCredential;
+  onCancel?: () => void;
+  onSaved?: () => void;
+}): React.ReactElement | null {
+  const shape = CONNECT_SHAPES[c.kind];
+  const [values, setValues] = React.useState<Record<string, string>>({});
+  const [state, setState] = React.useState<CheckState>({ phase: "idle" });
+  const [saving, setSaving] = React.useState(false);
+  const latest = React.useRef(values);
+  latest.current = values;
+  const run = React.useRef(0);
+  const outcomeId = `${React.useId().replace(/:/g, "")}-check`;
+  if (!shape) return null;
+  const slot = c.slot;
+  const vendor = STORE_VENDORS[store];
+
+  const complete = (v: Record<string, string>) =>
+    shape.fields.every((f) => (v[f.name] ?? "").trim() !== "");
+  const wireOf = (v: Record<string, string>): unknown =>
+    shape.wire === "object"
+      ? Object.fromEntries(shape.fields.map((f) => [f.name, v[f.name] ?? ""]))
+      : (v[shape.wire.text] ?? "");
+  const keyOf = (v: Record<string, string>) => JSON.stringify(wireOf(v));
+  const current = keyOf(values);
+
+  const check = async (v: Record<string, string>, force = false) => {
+    if (!complete(v)) return;
+    const key = keyOf(v);
+    if (!force && state.phase !== "idle" && "for" in state && state.for === key)
+      return;
+    const mine = ++run.current;
+    setState({ phase: "checking", for: key });
+    try {
+      const r = await mutate(
+        "checkPlatformStoreCredential",
+        store,
+        slot,
+        wireOf(v),
+      );
+      if (mine === run.current)
+        setState({ phase: "done", for: key, check: r.check });
+    } catch (e) {
+      if (mine !== run.current) return;
+      const copy =
+        e instanceof ApiError && e.status === 429
+          ? {
+              title: "Too many checks",
+              description: "Wait a few minutes, then check again.",
+            }
+          : errorCopy(e);
+      setState({
+        phase: "error",
+        for: key,
+        title: copy.title,
+        description: copy.description,
+      });
+    }
+  };
+
+  const set = (name: string, value: string) =>
+    setValues((v) => ({ ...v, [name]: value }));
+  /** After a paste lands in state, check what is now on screen. */
+  const afterPaste = () =>
+    window.setTimeout(() => void check(latest.current), 0);
+
+  const readFile = async (file: File) => {
+    const text = await readText(file);
+    const next = { ...latest.current, [shape.file!.into]: text };
+    // App Store Connect names the file AuthKey_<Key ID>.p8: a free, exact default.
+    const fromName = /^AuthKey_([A-Za-z0-9]+)\.p8$/.exec(file.name)?.[1];
+    if (fromName && shape.fields.some((f) => f.name === "keyId") && !next.keyId)
+      next.keyId = fromName;
+    setValues(next);
+    void check(next);
+  };
+
+  const passed =
+    state.phase === "done" &&
+    state.for === current &&
+    SAVABLE.has(state.check.verdict);
+  const result =
+    state.phase === "done" && state.for === current ? state.check : null;
+  const fieldError = (name: string) =>
+    result && result.verdict === "invalid" && result.field === `value.${name}`
+      ? // Short: the callout below carries the reason and is announced; this only points to it.
+        "Refused: see the check below."
+      : undefined;
+  // A warning saves, but it must not look like a pass: a caution button tied to the reason.
+  const warned = passed && result?.verdict === "warning";
+
+  const save = async () => {
+    if (!passed) return;
+    setSaving(true);
+    try {
+      await mutate("putPlatformStoreCredential", store, slot, wireOf(values));
+      toast.success(`${c.label} saved`, {
+        description: "Stored in the console, sealed. It is never shown again.",
+      });
+      setValues({});
+      setState({ phase: "idle" });
+      onSaved?.();
+    } catch (e) {
+      const copy = errorCopy(e);
+      toast.error(copy.title, { description: copy.description });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form
+      aria-label={`Connect ${c.label}`}
+      className="space-y-4 rounded-lg border border-border bg-surface-raised p-4"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void (passed ? save() : check(values, true));
+      }}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h4 className="text-sm font-bold text-fg-strong">
+          {c.configured ? `Replace the ${c.label}` : `Connect the ${c.label}`}
+        </h4>
+        {shape.file ? (
+          <label className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-accent hover:underline focus-within:ring-2 focus-within:ring-focus">
+            <Upload aria-hidden className="size-4" />
+            {shape.file.label}
+            <input
+              type="file"
+              accept={shape.file.accept}
+              className="sr-only"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void readFile(f);
+                e.target.value = "";
+              }}
+            />
+          </label>
+        ) : null}
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {shape.fields.map((f) => (
+          <FormField
+            key={f.name}
+            name={f.name}
+            label={f.label}
+            help={f.help}
+            required
+            value={values[f.name] ?? ""}
+            onChange={(v: string) => set(f.name, v)}
+            error={fieldError(f.name)}
+            className={f.control === "textarea" ? "sm:col-span-2" : undefined}
+          >
+            {(field) =>
+              f.control === "textarea" ? (
+                <Textarea
+                  {...field}
+                  mono
+                  rows={5}
+                  spellCheck={false}
+                  autoComplete="off"
+                  placeholder={f.placeholder}
+                  onPaste={afterPaste}
+                  onBlur={() => void check(latest.current)}
+                />
+              ) : f.control === "secret" ? (
+                <SecretInput
+                  id={field.id}
+                  name={field.name}
+                  value={values[f.name] ?? ""}
+                  onChange={(v) => set(f.name, v)}
+                  aria-describedby={field["aria-describedby"]}
+                  aria-invalid={field["aria-invalid"]}
+                  aria-required
+                  onPaste={afterPaste}
+                  onBlur={() => void check(latest.current)}
+                />
+              ) : (
+                <Input
+                  {...field}
+                  mono
+                  spellCheck={false}
+                  autoComplete="off"
+                  placeholder={f.placeholder}
+                  onPaste={afterPaste}
+                  onBlur={() => void check(latest.current)}
+                />
+              )
+            }
+          </FormField>
+        ))}
+      </div>
+
+      <div id={outcomeId}>
+        <CheckOutcome state={state} current={current} vendor={vendor} />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="submit"
+          loading={saving}
+          disabled={!passed}
+          variant={warned ? "outline" : "primary"}
+          aria-describedby={warned ? outcomeId : undefined}
+        >
+          {warned ? "Save anyway" : "Save key"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!complete(values) || state.phase === "checking"}
+          onClick={() => void check(values, true)}
+        >
+          {result ? "Check again" : "Check"}
+        </Button>
+        {onCancel ? (
+          <Button type="button" variant="ghost" onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : null}
+        {!passed ? (
+          <span className="text-xs text-fg-muted">
+            Saved only after {vendor} accepts it.
+          </span>
+        ) : null}
+      </div>
+    </form>
+  );
+}
+
+/** A chosen key file's text (FileReader: every browser, and the test DOM). */
+function readText(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(typeof r.result === "string" ? r.result : "");
+    r.onerror = () => reject(r.error ?? new Error("unreadable file"));
+    r.readAsText(file);
+  });
+}
+
+const VERDICT_TONE: Record<
+  CredentialCheck["verdict"],
+  "success" | "warning" | "danger" | "info"
+> = {
+  valid: "success",
+  warning: "warning",
+  invalid: "danger",
+  unavailable: "warning",
+  unchecked: "info",
+};
+
+/** The check's state under the form: checking, what was found, or why not. Announced politely. */
+function CheckOutcome({
+  state,
+  current,
+  vendor,
+}: {
+  state: CheckState;
+  current: string;
+  vendor: string;
+}): React.ReactElement | null {
+  if (state.phase === "idle" || state.for !== current) {
+    return state.phase === "idle" ? null : (
+      <p className="text-xs text-fg-muted">
+        Changed since the last check. It is checked again when you paste or
+        leave the field.
+      </p>
+    );
+  }
+  if (state.phase === "checking")
+    return (
+      <div
+        role="status"
+        className="flex items-center gap-2 rounded-lg border border-border bg-surface-sunken px-4 py-3 text-sm text-fg-muted"
+      >
+        <Spinner label="" />
+        Checking with {vendor}…
+      </div>
+    );
+  if (state.phase === "error")
+    return (
+      <Callout tone="danger" title={state.title} live>
+        {state.description}
+      </Callout>
+    );
+  return <CheckResult check={state.check} />;
+}
+
+/** One check's answer: what the store found, the fix, and the facts it reported. */
+export function CheckResult({
+  check,
+}: {
+  check: CredentialCheck;
+}): React.ReactElement {
+  return (
+    <Callout
+      tone={VERDICT_TONE[check.verdict]}
+      title={check.title}
+      live
+      className="[&_dl]:mt-2"
+    >
+      {check.detail ? <p>{check.detail}</p> : null}
+      {check.facts.length > 0 ? (
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
+          {check.facts.map((f) => (
+            <React.Fragment key={f.label}>
+              <dt className="text-fg-muted">{f.label}</dt>
+              <dd className="min-w-0 break-all font-mono text-fg">{f.value}</dd>
+            </React.Fragment>
+          ))}
+        </dl>
+      ) : null}
+    </Callout>
   );
 }
 
@@ -959,6 +1452,16 @@ function AppsTable({
         rowActions={(a) =>
           a.assignedVia === "platform"
             ? [
+                // A-18j: the product's storefront flow, pre-scoped to this store.
+                ...(s.storefront
+                  ? [
+                      {
+                        label: "Set up",
+                        onSelect: () =>
+                          navigate(setUpHref(a.assignedProduct!, s.store)),
+                      },
+                    ]
+                  : []),
                 {
                   label: `Release from ${names.get(a.assignedProduct!) ?? a.assignedProduct}`,
                   onSelect: () => setReleasing(a),

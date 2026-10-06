@@ -105,6 +105,7 @@ async function open(
   const ctx = await browser.newContext({
     viewport: { width: opts.width ?? 1440, height: SHOTS ? 1800 : 900 },
     colorScheme: opts.theme ?? "dark",
+    reducedMotion: "reduce",
   });
   await ctx.addInitScript((theme) => {
     (window as unknown as { __v: string[] }).__v = [];
@@ -169,16 +170,27 @@ async function overlay(
 }
 
 const PAGES: { hash: string; title: string; file: string }[] = [
-  { hash: "#/p/djdl/distribution/matrix", title: "Matrix", file: "matrix" },
+  // UX-31: the matrix is Rollouts' Matrix and Readiness views; the old page redirects.
+  { hash: "#/p/djdl/distribution/matrix", title: "Rollouts", file: "matrix" },
   {
-    hash: "#/p/djdl/distribution/matrix?cell=rel_240:altstore",
-    title: "Matrix",
+    hash: "#/p/djdl/distribution/rollouts?view=matrix&cell=rel_240:altstore",
+    title: "Rollouts",
     file: "matrix-cell",
+  },
+  {
+    hash: "#/p/djdl/distribution/rollouts?view=readiness",
+    title: "Rollouts",
+    file: "readiness",
   },
   {
     hash: "#/p/djdl/distribution/rollouts",
     title: "Rollouts",
     file: "rollouts",
+  },
+  {
+    hash: "#/p/djdl/distribution/rollouts?cell=rel_240:direct",
+    title: "Rollouts",
+    file: "rollout-drawer",
   },
   {
     hash: "#/p/djdl/distribution/outlets",
@@ -251,8 +263,10 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
   }
 
   it("matrix: the cell drawer, a verb confirmation and Start rollout", async () => {
-    const { page, errors } = await open("#/p/djdl/distribution/matrix");
-    await title(page, "Matrix");
+    const { page, errors } = await open(
+      "#/p/djdl/distribution/rollouts?view=matrix",
+    );
+    await title(page, "Rollouts");
     await overlay(page, "cell drawer", async () => {
       await page.getByRole("gridcell", { name: /^2\.4\.0 on direct/ }).click();
       await page.getByRole("dialog", { name: "2.4.0 on direct" }).waitFor();
@@ -274,6 +288,25 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
         .click();
       await page.getByRole("dialog", { name: "Start a rollout" }).waitFor();
     });
+    expect(errors).toEqual([]);
+    await page.context().close();
+  });
+
+  it("rollouts: a whole row opens the rollout's drawer over the list", async () => {
+    const { page, errors } = await open("#/p/djdl/distribution/rollouts");
+    await title(page, "Rollouts");
+    const row = page.getByRole("row").filter({
+      has: page.getByRole("button", {
+        name: "Actions for 2.4.0 on direct / stable",
+      }),
+    });
+    await row.getByText("stable", { exact: true }).click();
+    await page.getByRole("dialog", { name: "2.4.0 on direct" }).waitFor();
+    expect(page.url()).toContain("cell=rel_240%3Adirect");
+    expect(page.url()).not.toContain("view=");
+    await page.waitForTimeout(250);
+    expect(await locked(page)).toBe(true);
+    expect(await violations(page)).toEqual([]);
     expect(errors).toEqual([]);
     await page.context().close();
   });
@@ -367,6 +400,22 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
       title: "Commerce",
       file: "commerce",
     },
+    // UX-31: the phone keeps rollout % and channel on each card; the grid views become cards.
+    {
+      hash: "#/p/djdl/distribution/rollouts",
+      title: "Rollouts",
+      file: "rollouts",
+    },
+    {
+      hash: "#/p/djdl/distribution/rollouts?view=matrix",
+      title: "Rollouts",
+      file: "matrix",
+    },
+    {
+      hash: "#/p/djdl/distribution/rollouts?view=readiness",
+      title: "Rollouts",
+      file: "readiness",
+    },
   ]) {
     it(`${p.file}: is usable at phone width`, async () => {
       for (const theme of ["dark", "light"] as const) {
@@ -391,10 +440,11 @@ describe("Distribution and Update pages under the Worker's CSP", () => {
   }
 
   it("is usable at phone width: the matrix becomes release cards", async () => {
-    const { page, errors } = await open("#/p/djdl/distribution/matrix", {
-      width: 390,
-    });
-    await title(page, "Matrix");
+    const { page, errors } = await open(
+      "#/p/djdl/distribution/rollouts?view=matrix",
+      { width: 390 },
+    );
+    await title(page, "Rollouts");
     await page.getByRole("list", { name: "Releases" }).waitFor();
     expect(
       await page.evaluate(

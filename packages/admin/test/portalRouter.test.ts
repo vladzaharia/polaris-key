@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  activateContext,
+  activateLinkKey,
+  activateLinkParams,
   href,
   resolveHash,
   rewriteActivatePath,
@@ -105,21 +108,155 @@ describe("portal routes (PORTAL.md §3.3)", () => {
 });
 
 describe("the /activate path handler", () => {
-  it("rewrites /activate?key=… to the Library with the key", () => {
+  const KEY = "pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w";
+  const carried = (): URLSearchParams | null => {
+    const r = resolveHash(window.location.hash);
+    return r.route.kind === "library" ? r.route.params : null;
+  };
+
+  it("rewrites /activate#key=… to the Library with the key and drops the fragment", () => {
     window.history.replaceState(
       null,
       "",
-      "/activate?key=pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w&product=mossgarden",
+      `/activate?product=mossgarden#key=${KEY}`,
+    );
+    const before = window.history.length;
+    expect(rewriteActivatePath()).toBe(true);
+    expect(window.location.pathname).toBe("/");
+    expect(window.location.search).toBe("");
+    expect(window.location.hash).not.toContain("key=");
+    expect(window.history.length).toBe(before);
+    expect(carried()?.get("activate")).toBe(KEY);
+    expect(carried()?.get("product")).toBe("mossgarden");
+  });
+
+  it("still reads the legacy /activate?key=… and drops the query", () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/activate?key=${KEY}&product=mossgarden`,
     );
     expect(rewriteActivatePath()).toBe(true);
     expect(window.location.pathname).toBe("/");
-    const r = resolveHash(window.location.hash);
-    expect(r.route.kind).toBe("library");
-    if (r.route.kind !== "library") return;
-    expect(r.route.params.get("activate")).toBe(
-      "pkey_mossgarden_Q7xZr2Lk9vT3mN8pB1cY4w",
+    expect(window.location.search).toBe("");
+    expect(carried()?.get("activate")).toBe(KEY);
+    expect(carried()?.get("product")).toBe("mossgarden");
+  });
+
+  it("reads the link the SDKs build (client-core `withManageKey`, PX-W8) and carries next=, for= and return= (PX-17)", () => {
+    // `manageUrl` from the Worker, plus `return=` in the query and the key as `#key=`, encoded
+    // the way client-core's `manageFormEncode` writes it.
+    window.history.replaceState(
+      null,
+      "",
+      `/activate?product=mossgarden&next=free-device&for=macOS+arm64&return=myapp%3A%2F%2Fback#key=${KEY}`,
     );
-    expect(r.route.params.get("product")).toBe("mossgarden");
+    expect(rewriteActivatePath()).toBe(true);
+    expect(window.location.pathname).toBe("/");
+    expect(window.location.search).toBe("");
+    expect(carried()?.get("activate")).toBe(KEY);
+    expect(carried()?.get("product")).toBe("mossgarden");
+    expect(carried()?.get("next")).toBe("free-device");
+    expect(carried()?.get("for")).toBe("macOS arm64");
+    expect(carried()?.get("return")).toBe("myapp://back");
+    // The key is in `activate` and nowhere else: not the query, not another parameter.
+    const others = [...(carried()?.entries() ?? [])].filter(
+      ([k]) => k !== "activate",
+    );
+    expect(others.map(([, v]) => v).join(" ")).not.toContain("pkey_");
+  });
+
+  it("carries the login card's return (the card's 'You don't have <Product> yet' link)", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/activate?product=mossgarden&return=%2Fsignin%3Frequest%3Drq_0123456789abcdef",
+    );
+    expect(rewriteActivatePath()).toBe(true);
+    expect(carried()?.get("activate")).toBe("");
+    expect(carried()?.get("return")).toBe(
+      "/signin?request=rq_0123456789abcdef",
+    );
+  });
+
+  it("drops what an activate link may not carry", () => {
+    const p = activateLinkParams({
+      search: `?product=Not_A_Slug&next=account&for=${"x".repeat(80)}&return=x&tab=1&key2=y`,
+      hash: "",
+    });
+    expect(p).toEqual({ activate: "", for: "x".repeat(64), return: "x" });
+    // A key in for= or return= never rides along: the hash goes into every sign-in's return URL.
+    expect(
+      activateLinkParams({
+        search: `?for=${KEY}&return=${encodeURIComponent(`myapp://x?k=${KEY}`)}`,
+        hash: "",
+      }),
+    ).toEqual({ activate: "" });
+    expect(
+      activateLinkParams({
+        search: `?return=${"a".repeat(2049)}&for=%00%0A`,
+        hash: "",
+      }),
+    ).toEqual({ activate: "" });
+    // A key past the 64-character cut is found before the cut, never half-kept.
+    expect(
+      activateLinkParams({ search: `?for=${"a".repeat(27)}${KEY}`, hash: "" }),
+    ).toEqual({ activate: "" });
+    // A key percent-encoded (once in the value, so twice in the link) is still a key.
+    const encoded = KEY.replaceAll("_", "%5F");
+    expect(
+      activateLinkParams({
+        search: `?for=${encodeURIComponent(encoded)}&return=${encodeURIComponent(`myapp://x?k=${encoded}`)}`,
+        hash: "",
+      }),
+    ).toEqual({ activate: "" });
+  });
+
+  it("reads a hand-written #/?activate= hash through the same rule (activateContext)", () => {
+    const hand = new URLSearchParams(
+      `activate=&product=mossgarden&next=account&for=${encodeURIComponent(`${"a".repeat(27)}${KEY}`)}&return=${encodeURIComponent(`/signin?k=${KEY.replaceAll("_", "%5F")}`)}`,
+    );
+    expect(activateContext(hand)).toEqual({ product: "mossgarden" });
+    expect(
+      activateContext(
+        new URLSearchParams(
+          "product=mossgarden&next=free-device&for=macOS+arm64&return=%2Fsignin%3Frequest%3Drq_1",
+        ),
+      ),
+    ).toEqual({
+      product: "mossgarden",
+      next: "free-device",
+      for: "macOS arm64",
+      return: "/signin?request=rq_1",
+    });
+  });
+
+  it("prefers the fragment when a link carries both", () => {
+    window.history.replaceState(
+      null,
+      "",
+      `/activate?key=pkey_old_AAAAAAAAAAAAAAAAAAAAAA#key=${KEY}`,
+    );
+    expect(rewriteActivatePath()).toBe(true);
+    expect(window.location.search).toBe("");
+    expect(carried()?.get("activate")).toBe(KEY);
+  });
+
+  it("opens the empty modal for a link with no key", () => {
+    window.history.replaceState(null, "", "/activate/?product=mossgarden");
+    expect(rewriteActivatePath()).toBe(true);
+    expect(carried()?.get("activate")).toBe("");
+    expect(carried()?.get("product")).toBe("mossgarden");
+  });
+
+  it("reads a key only from a key= fragment, never from a hash route", () => {
+    expect(activateLinkKey(`#key=${KEY}`)).toBe(KEY);
+    expect(activateLinkKey(`#key=${encodeURIComponent(KEY)}&x=1`)).toBe(KEY);
+    expect(activateLinkKey("#key=")).toBeNull();
+    expect(activateLinkKey("")).toBeNull();
+    expect(activateLinkKey("#")).toBeNull();
+    expect(activateLinkKey(`#/?key=${KEY}`)).toBeNull();
+    expect(activateLinkKey(`#/p/mossgarden`)).toBeNull();
   });
 
   it("leaves every other path alone", () => {

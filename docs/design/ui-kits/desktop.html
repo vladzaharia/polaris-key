@@ -1,0 +1,1192 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>UI kits · macOS 26 (SwiftUI; Electron and Tauri on macOS)</title>
+    <link rel="stylesheet" href="shared.css" />
+    <script src="shared.js"></script>
+    <style>
+      /* macOS 26 at Mac scale: 13 pt body, 28 pt regular-large controls, sheets float inset
+         below the title-bar row, windows sized to their content. Windows and Linux have their own boards. */
+      :root {
+        --m-win: #1e1f23;
+        --m-sec: #2a2b30;
+        --m-sep: rgb(255 255 255 / 0.08);
+        --m-field: #18191c;
+        --m-bezel: rgb(255 255 255 / 0.12);
+        --m-text: rgb(255 255 255 / 0.88);
+        --m-mute: rgb(235 235 245 / 0.6);
+      }
+      [data-theme="light"] {
+        --m-win: #f5f5f7;
+        --m-sec: #ffffff;
+        --m-sep: rgb(0 0 0 / 0.08);
+        --m-field: #ffffff;
+        --m-bezel: #ffffff;
+        --m-text: rgb(0 0 0 / 0.85);
+        --m-mute: rgb(60 60 67 / 0.62);
+      }
+      .shot {
+        position: relative;
+        overflow: hidden;
+        border-radius: 14px;
+        isolation: isolate;
+        display: grid;
+        place-items: center;
+        padding: 56px;
+      }
+      /* Wallpaper (not part of any kit): neutral, not Polaris violet. */
+      .shot::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -2;
+        background:
+          radial-gradient(70% 90% at 15% 0%, #2c4a5e 0%, transparent 60%),
+          radial-gradient(60% 80% at 100% 100%, #3a3a46 0%, transparent 60%),
+          #15181d;
+      }
+      [data-theme="light"] .shot::before {
+        background:
+          radial-gradient(70% 90% at 15% 0%, #c6d7e3 0%, transparent 60%),
+          radial-gradient(60% 80% at 100% 100%, #dcdce4 0%, transparent 60%),
+          #eceef1;
+      }
+      .win {
+        position: relative;
+        border-radius: 26px;
+        overflow: hidden;
+        background: var(--m-win);
+        color: var(--m-text);
+        font-size: 13px;
+        line-height: 16px;
+        box-shadow:
+          inset 0 0 0 0.5px rgb(255 255 255 / 0.14),
+          0 0 0 0.5px rgb(0 0 0 / 0.6),
+          0 24px 60px -12px rgb(0 0 0 / 0.55);
+        isolation: isolate;
+      }
+      [data-theme="light"] .win {
+        box-shadow:
+          0 0 0 0.5px rgb(0 0 0 / 0.14),
+          0 24px 60px -12px rgb(6 9 18 / 0.28);
+      }
+      .titlebar {
+        height: 52px;
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        position: relative;
+      }
+      .titlebar .name {
+        position: absolute;
+        inset-inline-start: 0;
+        inset-inline-end: 0;
+        text-align: center;
+        font: 600 13px/1 var(--pk-font-sans);
+        color: var(--m-text);
+        pointer-events: none;
+      }
+      .lights {
+        display: flex;
+        gap: 9px;
+        position: relative;
+        z-index: 3;
+      }
+      .lights i {
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: #ff5f57;
+      }
+      .lights i:nth-child(2) {
+        background: #febc2e;
+      }
+      .lights i:nth-child(3) {
+        background: #28c840;
+      }
+      .lights.utility i:nth-child(n + 2) {
+        background: color-mix(in oklab, var(--m-text) 22%, transparent);
+      }
+
+      /* Mac controls */
+      .mb {
+        height: 28px;
+        min-width: 72px;
+        padding: 0 14px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        font: 500 13px/1 var(--pk-font-sans);
+        color: var(--m-text);
+        background: var(--m-bezel);
+        box-shadow:
+          inset 0 0.5px 0 rgb(255 255 255 / 0.18),
+          0 0.5px 1px rgb(0 0 0 / 0.25);
+        white-space: nowrap;
+      }
+      [data-theme="light"] .mb {
+        box-shadow:
+          0 0 0 0.5px rgb(0 0 0 / 0.12),
+          0 0.5px 1.5px rgb(0 0 0 / 0.12);
+      }
+      .mb.default {
+        background: var(--kit-accent);
+        color: #fff;
+        box-shadow:
+          inset 0 0.5px 0 rgb(255 255 255 / 0.3),
+          0 0.5px 1px rgb(0 0 0 / 0.25);
+      }
+      .mb.xl {
+        height: 36px;
+        font-size: 14px;
+        padding: 0 20px;
+      }
+      .mb.block {
+        width: 100%;
+      }
+      .mlink {
+        color: var(--kit-accent-fg);
+        font-size: 13px;
+      }
+      .mfield {
+        min-height: 28px;
+        border-radius: 8px;
+        background: var(--m-field);
+        box-shadow:
+          inset 0 0 0 0.5px var(--m-sep),
+          inset 0 0.5px 1px rgb(0 0 0 / 0.12);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 6px 6px 10px;
+      }
+      .mfield.focus {
+        box-shadow:
+          0 0 0 3.5px color-mix(in oklab, var(--kit-focus) 45%, transparent),
+          inset 0 0 0 0.5px var(--kit-focus);
+      }
+      .mfield .mono {
+        flex: 1;
+        font-size: 13px;
+        line-height: 16px;
+        overflow-wrap: anywhere;
+        color: var(--m-text);
+      }
+      .mlabel {
+        font: 500 13px/16px var(--pk-font-sans);
+        margin-bottom: 6px;
+        display: block;
+      }
+      .mhelp {
+        font-size: 12px;
+        line-height: 15px;
+        color: var(--m-mute);
+      }
+      .mtitle {
+        font: 600 22px/28px var(--pk-font-sans);
+        letter-spacing: -0.01em;
+        margin: 0;
+        color: var(--m-text);
+        text-wrap: balance;
+      }
+      .mhead {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font: 500 13px/16px var(--pk-font-sans);
+      }
+      .mhead small {
+        font-size: 13px;
+        color: var(--m-mute);
+        font-weight: 400;
+      }
+
+      /* Grouped Form */
+      .form {
+        background: var(--m-sec);
+        border-radius: 10px;
+        box-shadow: inset 0 0 0 0.5px var(--m-sep);
+      }
+      [data-theme="light"] .form {
+        box-shadow:
+          0 0 0 0.5px rgb(0 0 0 / 0.06),
+          0 0.5px 1px rgb(0 0 0 / 0.05);
+      }
+      .frow {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 40px;
+        padding: 6px 12px;
+        position: relative;
+      }
+      .frow + .frow::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        inset-inline-start: 12px;
+        inset-inline-end: 12px;
+        height: 0.5px;
+        background: var(--m-sep);
+      }
+      .frow .t {
+        flex: 1;
+        min-width: 0;
+      }
+      .frow .t small {
+        display: block;
+        font-size: 12px;
+        line-height: 15px;
+        color: var(--m-mute);
+      }
+      .frow .v {
+        color: var(--m-mute);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .frow > .ic:first-child {
+        color: var(--m-mute);
+      }
+      .fh {
+        font: 600 13px/16px var(--pk-font-sans);
+        margin: 18px 4px 8px;
+        color: var(--m-text);
+      }
+      .mradio {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--m-field);
+        box-shadow: inset 0 0 0 0.5px rgb(127 127 127 / 0.6);
+        flex: none;
+      }
+      .mradio.on {
+        background: var(--kit-accent);
+        box-shadow: none;
+        position: relative;
+      }
+      .mradio.on::after {
+        content: "";
+        position: absolute;
+        inset: 4.5px;
+        border-radius: 50%;
+        background: #fff;
+      }
+      .msw {
+        width: 32px;
+        height: 18px;
+        border-radius: 999px;
+        background: var(--kit-accent);
+        position: relative;
+        flex: none;
+      }
+      .msw::after {
+        content: "";
+        position: absolute;
+        inset-inline-end: 1.5px;
+        top: 1.5px;
+        width: 24px;
+        height: 15px;
+        border-radius: 999px;
+        background: #fff;
+        box-shadow: 0 0.5px 1.5px rgb(0 0 0 / 0.3);
+      }
+      .mpop {
+        height: 22px;
+        padding: 0 6px 0 10px;
+        border-radius: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--m-bezel);
+        color: var(--m-text);
+        box-shadow: 0 0 0 0.5px var(--m-sep);
+      }
+
+      /* macOS 26 sheet: a floating glass panel inset below the title-bar row, rounded on every
+         side (no drop-down glued to the window edge). The parent is not dimmed. */
+      .sheet {
+        position: absolute;
+        top: 52px;
+        inset-inline-start: 50%;
+        translate: -50% 0;
+        width: 440px;
+        border-radius: 24px;
+        padding: 22px 22px 18px;
+        background: color-mix(in oklab, var(--m-win) 82%, transparent);
+        backdrop-filter: blur(40px) saturate(1.6);
+        box-shadow:
+          inset 0 0 0 0.5px rgb(255 255 255 / 0.1),
+          0 18px 40px -8px rgb(0 0 0 / 0.5);
+        display: grid;
+        gap: 16px;
+        z-index: 20;
+      }
+      [data-theme="light"] .sheet {
+        background: rgb(250 250 252 / 0.86);
+        box-shadow:
+          0 0 0 0.5px rgb(0 0 0 / 0.1),
+          0 18px 40px -8px rgb(6 9 18 / 0.25);
+      }
+      .btnrow {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 4px;
+      }
+
+      /* Gate: split window, product art at full bleed, concentric inner radius 12 */
+      .gatewin {
+        width: 820px;
+        height: 520px;
+        display: grid;
+        grid-template-columns: 360px 1fr;
+      }
+      .art {
+        margin: 14px 0 14px 14px;
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+        background: #0b3a48;
+      }
+      .art svg {
+        position: absolute;
+        inset: 0;
+      }
+      .form-col {
+        display: grid;
+        align-content: center;
+        padding: 0 52px 0 48px;
+        gap: 22px;
+      }
+      .ver {
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* macOS 15 fallback (the 2024 floor): the same layout on system materials. Windows have
+         the 10 pt corner, push buttons are rounded rectangles (not capsules), and the sheet drops
+         from the title bar, attached, on the window material, with the parent dimmed. */
+      .m15 .win {
+        border-radius: 10px;
+      }
+      .m15 .art {
+        border-radius: 0;
+        margin: 0;
+      }
+      .m15 .mb {
+        border-radius: 6px;
+        height: 24px;
+      }
+      .m15 .mb.xl {
+        height: 32px;
+        border-radius: 7px;
+      }
+      .m15 .sheet {
+        top: 52px;
+        border-radius: 0 0 10px 10px;
+        background: var(--m-win);
+        backdrop-filter: none;
+        box-shadow:
+          0 0 0 0.5px rgb(0 0 0 / 0.4),
+          0 12px 30px -6px rgb(0 0 0 / 0.5);
+      }
+      [data-theme="light"] .m15 .sheet {
+        background: #ececec;
+        box-shadow:
+          0 0 0 0.5px rgb(0 0 0 / 0.16),
+          0 12px 30px -6px rgb(0 0 0 / 0.22);
+      }
+      .m15 .mfield {
+        border-radius: 5px;
+      }
+      .m15 .dimwin {
+        position: absolute;
+        inset: 52px 0 0;
+        background: rgb(0 0 0 / 0.18);
+        z-index: 10;
+      }
+
+      /* Boot, status, error: compact windows sized to their content. */
+      .trio {
+        display: flex;
+        gap: 36px;
+        align-items: center;
+      }
+      .swin {
+        width: 440px;
+        min-height: 300px;
+        display: grid;
+        align-content: center;
+        justify-items: center;
+        text-align: center;
+        gap: 10px;
+        padding: 44px 40px 28px;
+      }
+      .swin .lights {
+        position: absolute;
+        top: 18px;
+        inset-inline-start: 18px;
+      }
+      .sglyph {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: var(--m-bezel);
+        color: var(--m-text);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="board">
+      <!-- 1. Gate -->
+      <figure>
+        <figcaption>macos · gate (split window, product art)</figcaption>
+        <div class="shot" data-shot="gate">
+          <div class="win gatewin">
+            <div class="art" id="art1"></div>
+            <div class="form-col">
+              <div style="position: absolute; top: 20px; inset-inline-start: 20px">
+                <div class="lights"><i></i><i></i><i></i></div>
+              </div>
+              <div
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="64"
+                style="border-radius: 15px"
+              ></div>
+              <div style="display: grid; gap: 6px">
+                <h1 class="mtitle" style="font-size: 26px; line-height: 32px">
+                  Welcome to Tidewater Studio
+                </h1>
+                <span class="mhelp">by Harbor Audio</span>
+                <p
+                  style="
+                    margin: 6px 0 0;
+                    color: var(--m-mute);
+                    font-size: 13px;
+                    line-height: 18px;
+                  "
+                >
+                  Sign in or add your license to start.
+                </p>
+              </div>
+              <div style="display: grid; gap: 8px; max-width: 300px">
+                <span class="mb default xl block">Sign in</span>
+                <span class="mb xl block">Use a license key</span>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 18px;
+                  font-size: 13px;
+                  color: var(--m-mute);
+                "
+              >
+                <span>Start a 14-day trial</span><span>Activate offline</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 2. Activate sheet -->
+      <figure>
+        <figcaption>
+          macos · activate (sheet inset below the title-bar row, parent not
+          dimmed)
+        </figcaption>
+        <div class="shot" data-shot="activate">
+          <div class="win gatewin" style="grid-template-columns: 360px 1fr">
+            <div class="art" id="art2"></div>
+            <div class="form-col">
+              <div style="position: absolute; top: 20px; inset-inline-start: 20px">
+                <div class="lights"><i></i><i></i><i></i></div>
+              </div>
+            </div>
+            <div class="sheet">
+              <div class="mhead">
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="32"
+                  style="border-radius: 8px"
+                ></span
+                ><span style="white-space: nowrap"
+                  >Tidewater Studio <small>· Pro</small></span
+                >
+              </div>
+              <div style="display: grid; gap: 4px">
+                <h2 class="mtitle" style="font-size: 17px; line-height: 22px">
+                  Add your license
+                </h2>
+                <span class="mhelp" style="font-size: 13px; line-height: 17px"
+                  >Your key is in the purchase email from Harbor Audio.</span
+                >
+              </div>
+              <div>
+                <label class="mlabel">License key</label>
+                <div class="mfield focus">
+                  <span class="mono"
+                    ><span class="k-key"
+                      ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                      ><span>3WPLDA</span></span
+                    ></span
+                  ><span
+                    class="mb"
+                    style="
+                      height: 22px;
+                      min-width: 0;
+                      padding: 0 8px;
+                      font-size: 12px;
+                    "
+                    >Paste</span
+                  >
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    gap: 6px;
+                    align-items: center;
+                    margin-top: 8px;
+                    font-size: 12px;
+                    color: var(--m-mute);
+                  "
+                >
+                  <span
+                    style="color: var(--pk-success)"
+                    data-icon="checkCircle"
+                    data-size="14"
+                  ></span>
+                  <span
+                    ><b style="font-weight: 500; color: var(--m-text)"
+                      >Tidewater Studio Pro</b
+                    >&#8201;·&#8201;Lifetime&#8201;·&#8201;3 devices</span
+                  >
+                </div>
+              </div>
+              <div class="btnrow">
+                <span class="mb">Cancel</span
+                ><span class="mb default">Activate</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 3. Sign-in hand-off sheet -->
+      <figure>
+        <figcaption>macos · sign-in hand-off (sheet)</figcaption>
+        <div class="shot" data-shot="sign-in">
+          <div class="win gatewin">
+            <div class="art" id="art3"></div>
+            <div class="form-col">
+              <div style="position: absolute; top: 20px; inset-inline-start: 20px">
+                <div class="lights"><i></i><i></i><i></i></div>
+              </div>
+            </div>
+            <div class="sheet" style="width: 520px">
+              <div class="mhead">
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="32"
+                  style="border-radius: 8px"
+                ></span
+                >Tidewater Studio
+              </div>
+              <div style="display: grid; gap: 4px">
+                <h2 class="mtitle" style="font-size: 17px; line-height: 22px">
+                  Finish in your browser
+                </h2>
+                <span class="mhelp" style="font-size: 13px; line-height: 17px"
+                  >We opened the sign-in page. Check the code there matches this
+                  one.</span
+                >
+              </div>
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: 1fr auto;
+                  gap: 18px;
+                  align-items: center;
+                "
+              >
+                <div style="display: grid; gap: 10px">
+                  <div
+                    style="
+                      display: flex;
+                      align-items: center;
+                      justify-content: space-between;
+                      padding: 14px 10px 14px 18px;
+                      border-radius: 12px;
+                      background: color-mix(
+                        in oklab,
+                        var(--m-text) 6%,
+                        transparent
+                      );
+                    "
+                  >
+                    <span
+                      class="mono"
+                      style="
+                        font-size: 28px;
+                        line-height: 1;
+                        font-weight: 600;
+                        letter-spacing: 0.06em;
+                      "
+                      >WDJB-MJHT</span
+                    >
+                    <span class="mb" style="min-width: 0; padding: 0 9px"
+                      ><span data-icon="copy" data-size="14"></span>Copy</span
+                    >
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 8px;
+                      color: var(--m-mute);
+                      font-size: 12px;
+                    "
+                    class="tnum"
+                  >
+                    <span data-countdown="0.84" data-size="14"></span>Waiting ·
+                    code expires in 4:12
+                  </div>
+                </div>
+                <div
+                  style="
+                    display: grid;
+                    justify-items: center;
+                    gap: 6px;
+                    font-size: 12px;
+                    color: var(--m-mute);
+                  "
+                >
+                  <div
+                    style="
+                      padding: 6px;
+                      background: #fff;
+                      border-radius: 10px;
+                      line-height: 0;
+                    "
+                    data-qr="7"
+                    data-size="96"
+                  ></div>
+                  Scan with your phone
+                </div>
+              </div>
+              <div class="btnrow">
+                <span class="mb">Cancel</span
+                ><span class="mb default">Open Browser Again</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 4. Device limit sheet -->
+      <figure>
+        <figcaption>
+          macos · device limit (sheet, grouped list with radio)
+        </figcaption>
+        <div class="shot" data-shot="device-limit">
+          <div class="win" style="width: 760px; height: 560px">
+            <div class="titlebar">
+              <div class="lights"><i></i><i></i><i></i></div>
+              <span class="name">Tidewater Studio</span>
+            </div>
+            <div
+              style="padding: 0 24px; opacity: 0.45; display: grid; gap: 10px"
+            >
+              <div
+                style="
+                  height: 40px;
+                  border-radius: 8px;
+                  background: var(--m-sec);
+                "
+              ></div>
+              <div
+                style="
+                  height: 40px;
+                  border-radius: 8px;
+                  background: var(--m-sec);
+                "
+              ></div>
+              <div
+                style="
+                  height: 40px;
+                  border-radius: 8px;
+                  background: var(--m-sec);
+                "
+              ></div>
+            </div>
+            <div class="sheet" style="width: 460px">
+              <div class="mhead">
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="32"
+                  style="border-radius: 8px"
+                ></span
+                ><span style="white-space: nowrap"
+                  >Tidewater Studio <small>· Pro</small></span
+                >
+              </div>
+              <div style="display: grid; gap: 6px">
+                <h2 class="mtitle" style="font-size: 17px; line-height: 22px">
+                  Your license is on 3 of 3 devices
+                </h2>
+                <span class="mhelp" style="font-size: 13px; line-height: 17px"
+                  >To use it on this Mac, remove one. You can add it back
+                  later.</span
+                >
+              </div>
+              <div class="form">
+                <div class="frow">
+                  <span class="mradio on"></span
+                  ><span data-icon="laptop" data-size="16"></span>
+                  <div class="t">
+                    Work laptop <em class="k-tag">Least recent</em
+                    ><small>Windows 11 · last used 41 days ago</small>
+                  </div>
+                </div>
+                <div class="frow">
+                  <span class="mradio"></span
+                  ><span data-icon="tablet" data-size="16"></span>
+                  <div class="t">
+                    Mara’s iPad<small>iPadOS 26 · last used yesterday</small>
+                  </div>
+                </div>
+                <div class="frow">
+                  <span class="mradio"></span
+                  ><span data-icon="laptop" data-size="16"></span>
+                  <div class="t">
+                    MacBook Pro<small>macOS 26 · last used today</small>
+                  </div>
+                </div>
+              </div>
+              <span class="mhelp"
+                >Tidewater Studio signs out on Work laptop.</span
+              >
+              <div class="btnrow">
+                <span class="mb">Cancel</span
+                ><span class="mb default"
+                  >Remove “Work laptop” and Continue</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 5. Update window -->
+      <figure>
+        <figcaption>
+          macos · update window (replaces Sparkle’s stock UI; utility window,
+          hugs its content)
+        </figcaption>
+        <div class="shot" data-shot="update">
+          <div class="win" style="width: 480px">
+            <div class="titlebar" style="height: 44px">
+              <div class="lights utility"><i></i><i></i><i></i></div>
+            </div>
+            <div style="padding: 0 24px 20px; display: grid; gap: 16px">
+              <div style="display: flex; gap: 14px; align-items: center">
+                <div
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="64"
+                  style="border-radius: 15px"
+                ></div>
+                <div style="display: grid; gap: 2px">
+                  <h2 class="mtitle" style="font-size: 17px; line-height: 22px">
+                    Tidewater Studio 2.5 is available
+                  </h2>
+                  <span class="mhelp" style="font-size: 13px" class="ver"
+                    >You have 2.4.1 · 61 MB download</span
+                  >
+                </div>
+              </div>
+              <div
+                style="
+                  display: grid;
+                  gap: 4px;
+                  font-size: 13px;
+                  line-height: 18px;
+                "
+              >
+                <span>Stem export in one click, with loudness matching</span>
+                <span>Track freeze now works with every plug-in</span>
+                <span>Fixes a crash when unplugging an audio interface</span>
+                <span class="mlink" style="margin-top: 4px">Release Notes</span>
+              </div>
+              <div>
+                <div class="k-progress" style="height: 4px">
+                  <i style="width: 62%"></i>
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    margin-top: 6px;
+                    font-size: 12px;
+                    color: var(--m-mute);
+                  "
+                  class="tnum"
+                >
+                  <span>Downloading · 38 of 61 MB</span
+                  ><span>About 20 seconds left</span>
+                </div>
+              </div>
+              <div
+                style="
+                  display: flex;
+                  gap: 8px;
+                  align-items: center;
+                  margin-top: 2px;
+                "
+              >
+                <span class="mb" style="min-width: 0">Skip This Version</span>
+                <span style="flex: 1"></span>
+                <span class="mb">Remind Me Later</span>
+                <span class="mb default">Install and Relaunch</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 6. Settings pane -->
+      <figure>
+        <figcaption>
+          macos · Settings scene, Account pane (window title is the pane name)
+        </figcaption>
+        <div class="shot" data-shot="settings">
+          <div class="win" style="width: 650px">
+            <div style="padding: 14px 20px 10px; display: grid; gap: 10px">
+              <div style="display: flex; align-items: center">
+                <div class="lights"><i></i><i></i><i></i></div>
+                <span
+                  style="
+                    flex: 1;
+                    text-align: center;
+                    font: 600 13px var(--pk-font-sans);
+                    margin-inline-end: 57px;
+                  "
+                  >Account</span
+                >
+              </div>
+              <div
+                style="
+                  display: flex;
+                  justify-content: center;
+                  gap: 4px;
+                  font-size: 12px;
+                "
+              >
+                <span
+                  style="
+                    display: grid;
+                    justify-items: center;
+                    gap: 3px;
+                    padding: 5px 12px;
+                    border-radius: 8px;
+                    color: var(--m-text);
+                  "
+                  ><span
+                    data-icon="sliders"
+                    data-size="20"
+                    style="color: var(--m-mute)"
+                  ></span
+                  >General</span
+                >
+                <span
+                  style="
+                    display: grid;
+                    justify-items: center;
+                    gap: 3px;
+                    padding: 5px 12px;
+                    border-radius: 8px;
+                    color: var(--m-text);
+                  "
+                  ><span
+                    data-icon="play"
+                    data-size="20"
+                    style="color: var(--m-mute)"
+                  ></span
+                  >Audio</span
+                >
+                <span
+                  style="
+                    display: grid;
+                    justify-items: center;
+                    gap: 3px;
+                    padding: 5px 12px;
+                    border-radius: 8px;
+                    background: color-mix(
+                      in oklab,
+                      var(--m-text) 9%,
+                      transparent
+                    );
+                    color: var(--m-text);
+                  "
+                  ><span
+                    data-icon="user"
+                    data-size="20"
+                    style="color: var(--kit-accent-fg)"
+                  ></span
+                  >Account</span
+                >
+              </div>
+            </div>
+            <div
+              style="
+                padding: 6px 20px 20px;
+                border-top: 0.5px solid var(--m-sep);
+              "
+            >
+              <div class="form" style="margin-top: 14px">
+                <div class="frow" style="min-height: 60px">
+                  <span
+                    class="k-appicon"
+                    data-art="tidewater"
+                    data-size="40"
+                    style="border-radius: 9px"
+                  ></span>
+                  <div class="t">
+                    <span style="font-weight: 600">Tidewater Studio Pro</span
+                    ><small>Lifetime · mara@fennick.studio</small>
+                  </div>
+                  <span class="mb" style="min-width: 0">Manage…</span>
+                </div>
+                <div class="frow">
+                  <div class="t">Devices</div>
+                  <div class="v ver">
+                    This Mac, Mara’s iPad · 2 of 3<span
+                      data-icon="chevronRight"
+                      data-size="13"
+                    ></span>
+                  </div>
+                </div>
+                <div class="frow">
+                  <div class="t">Cloud Sync</div>
+                  <div class="v">
+                    <span data-icon="cloudCheck" data-size="14"></span>Synced 2
+                    min ago
+                  </div>
+                </div>
+              </div>
+              <div class="fh">Updates</div>
+              <div class="form">
+                <div class="frow">
+                  <div class="t">Install updates automatically</div>
+                  <span class="msw"></span>
+                </div>
+                <div class="frow">
+                  <div class="t">Channel</div>
+                  <span class="mpop"
+                    >Stable<span data-icon="chevronDown" data-size="12"></span
+                  ></span>
+                </div>
+                <div class="frow">
+                  <div class="t">
+                    Version <span class="ver">2.4.1</span
+                    ><small>Up to date · checked 2 min ago</small>
+                  </div>
+                  <span class="mb" style="min-width: 0">Check for Updates</span>
+                </div>
+              </div>
+              <div class="fh">From Harbor Audio</div>
+              <div class="form">
+                <div class="frow">
+                  <div class="t">
+                    Share crash reports<small>Set by Fennick Studio</small>
+                  </div>
+                  <span class="v"
+                    ><span data-icon="lock" data-size="12"></span>On</span
+                  >
+                </div>
+              </div>
+              <div
+                class="form"
+                style="
+                  margin-top: 18px;
+                  background: transparent;
+                  box-shadow: none;
+                "
+              >
+                <div class="frow" style="padding: 0; justify-content: flex-end">
+                  <span class="mb">Sign Out…</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 7. macOS 15 fallback -->
+      <figure>
+        <figcaption>
+          macos · macOS 15 fallback (system materials: rounded-rect buttons, the
+          attached sheet)
+        </figcaption>
+        <div class="shot m15" data-shot="macos15">
+          <div class="win gatewin">
+            <div class="art" id="art4"></div>
+            <div class="form-col">
+              <div style="position: absolute; top: 20px; inset-inline-start: 20px">
+                <div class="lights"><i></i><i></i><i></i></div>
+              </div>
+              <div
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="64"
+                style="border-radius: 15px"
+              ></div>
+              <div style="display: grid; gap: 6px">
+                <h1 class="mtitle" style="font-size: 26px; line-height: 32px">
+                  Welcome to Tidewater Studio
+                </h1>
+                <span class="mhelp">by Harbor Audio</span>
+              </div>
+              <div style="display: grid; gap: 8px; max-width: 300px">
+                <span class="mb default xl block">Sign in</span>
+                <span class="mb xl block">Use a license key</span>
+              </div>
+            </div>
+            <div class="dimwin"></div>
+            <div class="sheet" style="width: 460px">
+              <div class="mhead">
+                <span
+                  class="k-appicon"
+                  data-art="tidewater"
+                  data-size="24"
+                  style="border-radius: 6px"
+                ></span
+                >Tidewater Studio <small>· Pro</small>
+              </div>
+              <div style="display: grid; gap: 4px">
+                <h2 class="mtitle">Add your license</h2>
+                <span class="mhelp" style="font-size: 13px; line-height: 18px"
+                  >Your key is in the purchase email from Harbor Audio.</span
+                >
+              </div>
+              <div>
+                <label class="mlabel">License key</label>
+                <div class="mfield focus">
+                  <span class="mono"
+                    ><span class="k-key"
+                      ><span>pkey_tidewater_7Q2MXK9RV4TC8HJN</span
+                      ><span>3WPLDA</span></span
+                    ></span
+                  >
+                </div>
+                <div class="k-verdict" style="font-size: 12px; margin-top: 6px">
+                  <span data-icon="checkCircle" data-size="14"></span>
+                  <span
+                    ><b style="font-weight: 600; color: var(--m-text)"
+                      >Tidewater Studio Pro</b
+                    >&#8201;·&#8201;Lifetime&#8201;·&#8201;3 devices</span
+                  >
+                </div>
+              </div>
+              <div class="btnrow">
+                <span class="mb">Cancel</span
+                ><span class="mb default">Activate</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 8. Boot, status, error -->
+      <figure>
+        <figcaption>
+          macos · boot, status (blocked) and error (offline)
+        </figcaption>
+        <div class="shot" data-shot="states">
+          <div class="trio">
+            <div class="win swin">
+              <div class="lights utility"><i></i><i></i><i></i></div>
+              <div
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="80"
+                style="border-radius: 18px"
+              ></div>
+              <div class="k-progress" style="width: 140px; margin-top: 20px">
+                <i style="width: 45%"></i>
+              </div>
+              <span class="mhelp">Checking your license</span>
+            </div>
+            <div class="win swin">
+              <div class="lights"><i></i><i></i><i></i></div>
+              <div
+                class="k-appicon"
+                data-art="tidewater"
+                data-size="56"
+                style="border-radius: 13px"
+              ></div>
+              <h1 class="mtitle" style="margin-top: 8px">
+                Your license has ended
+              </h1>
+              <p
+                class="mhelp"
+                style="font-size: 13px; line-height: 18px; margin: 0"
+              >
+                Tidewater Studio Pro ended on 30 September. Renew to keep
+                working on your sessions.
+              </p>
+              <div class="btnrow" style="width: 100%; margin-top: 18px">
+                <span class="mb">Use a Different Key…</span
+                ><span class="mb default">Renew…</span>
+              </div>
+            </div>
+            <div class="win swin">
+              <div class="lights"><i></i><i></i><i></i></div>
+              <div class="sglyph" data-icon="wifiOff" data-size="22"></div>
+              <h1 class="mtitle" style="margin-top: 8px">
+                Can’t reach Harbor Audio
+              </h1>
+              <p
+                class="mhelp"
+                style="font-size: 13px; line-height: 18px; margin: 0"
+              >
+                Check your connection. You can keep working offline for 3 more
+                days.
+              </p>
+              <div class="btnrow" style="width: 100%; margin-top: 18px">
+                <span class="mb">Continue Offline</span
+                ><span class="mb default">Try Again</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+    </main>
+    <script>
+      // The product's own art at full bleed (the developer's content, never re-themed).
+      const scene = (w, h) =>
+        `<svg width="100%" height="100%" viewBox="0 0 360 492" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0a2f3c"/><stop offset=".55" stop-color="#0f4a57"/><stop offset="1" stop-color="#0b3a48"/></linearGradient><radialGradient id="glow" cx=".72" cy=".24" r=".5"><stop offset="0" stop-color="#f5d38a" stop-opacity=".45"/><stop offset="1" stop-color="#f5d38a" stop-opacity="0"/></radialGradient></defs><rect width="360" height="492" fill="url(#sky)"/><rect width="360" height="492" fill="url(#glow)"/><circle cx="258" cy="118" r="34" fill="#f5d38a"/>${[
+          0, 1, 2, 3, 4,
+        ]
+          .map((i) => {
+            const y = 270 + i * 46;
+            let d = `M-20 ${y}`;
+            for (let x = -20; x <= 380; x += 60) d += ` q15 -16 30 0 t30 0`;
+            return `<path d="${d}" stroke="${["#5fe3cf", "#8eeedd", "#bff5ea", "#5fe3cf", "#8eeedd"][i]}" stroke-width="9" fill="none" stroke-linecap="round" opacity="${(0.95 - i * 0.14).toFixed(2)}"/>`;
+          })
+          .join("")}</svg>`;
+      ["art1", "art2", "art3", "art4"].forEach(
+        (id) => (document.getElementById(id).innerHTML = scene()),
+      );
+    </script>
+  </body>
+</html>

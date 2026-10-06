@@ -7,78 +7,196 @@
     "tools/gen-mirrors.test.ts"
   ],
   "features": {
-    "core.verify": { "status": "implemented" },
-    "core.cache": { "status": "implemented" },
-    "core.bundle": { "status": "implemented" },
-    "core.discover": { "status": "implemented" },
-    "core.sync": { "status": "implemented" },
-    "core.local": { "status": "implemented" },
-    "core.headers": { "status": "implemented" },
-    "core.errors": { "status": "implemented" },
-    "core.caps": { "status": "implemented" },
+    "core.verify": {
+      "status": "implemented"
+    },
+    "core.cache": {
+      "status": "implemented"
+    },
+    "core.bundle": {
+      "status": "implemented"
+    },
+    "core.discover": {
+      "status": "implemented"
+    },
+    "core.sync": {
+      "status": "implemented"
+    },
+    "core.local": {
+      "status": "implemented"
+    },
+    "core.headers": {
+      "status": "implemented"
+    },
+    "core.errors": {
+      "status": "implemented"
+    },
+    "core.caps": {
+      "status": "implemented"
+    },
     "core.store": {
       "status": "implemented",
       "note": "macOS uses the data-protection keychain where entitled; an unentitled process (an unsigned CLI) keeps the file-based keychain and storeStatus() reports legacy-keychain."
     },
-    "license.gate": { "status": "implemented" },
-    "license.activate": { "status": "implemented" },
-    "license.enroll": { "status": "implemented" },
-    "license.deactivate": { "status": "implemented" },
-    "license.entitlements": { "status": "implemented" },
-    "license.channels": { "status": "implemented" },
-    "license.reregister": { "status": "implemented" },
+    "core.copy": {
+      "status": "implemented",
+      "note": "ErrorCopy serves the generated Copy.generated.swift tables: message(code)/title(code) look a code up in COPY_CODES, then COPY_GATE, then COPY_ACTIVATION; activationMessage/activationTitle (and ActivationResult.message/title) read COPY_ACTIVATION only; an unknown code reads COPY_FALLBACK naming it; {name} placeholders are filled from params or dropped; setOverrides is the host's English layer. The hand-written table is gone; PolarisCopy's gate titles and subtitles default to the gate table (ErrorCopyTests)."
+    },
+    "license.gate": {
+      "status": "implemented"
+    },
+    "license.activate": {
+      "status": "implemented"
+    },
+    "license.enroll": {
+      "status": "implemented"
+    },
+    "license.deactivate": {
+      "status": "implemented"
+    },
+    "license.manage": {
+      "status": "implemented",
+      "note": "PX-W8: the device-limit result exposes manageUrl (validated), plus the return and key helpers."
+    },
+    "license.entitlements": {
+      "status": "implemented"
+    },
+    "license.channels": {
+      "status": "implemented"
+    },
+    "license.reregister": {
+      "status": "implemented"
+    },
+    "license.refusals": {
+      "status": "implemented"
+    },
     "config.resolve": {
       "status": "implemented",
       "note": "Member names compare by scalar value, but JSONValue keeps the first of two canonically equivalent names (WIRE-CONTRACT-V3 §10)."
     },
-    "config.list": { "status": "implemented" },
-    "config.secret": { "status": "implemented" },
-    "config.schema": { "status": "implemented" },
-    "config.mint": { "status": "implemented" },
+    "config.list": {
+      "status": "implemented"
+    },
+    "config.secret": {
+      "status": "implemented"
+    },
+    "config.schema": {
+      "status": "implemented"
+    },
+    "config.mint": {
+      "status": "implemented"
+    },
     "config.mirror": {
       "status": "implemented",
       "note": "The Swift mirror is rendered by tools/gen-mirrors.ts."
     },
-    "devices.fingerprint": { "status": "implemented" },
-    "devices.facts": { "status": "implemented" },
-    "devices.register": { "status": "implemented" },
-    "devices.manage": { "status": "implemented" },
-    "devices.report": { "status": "implemented" },
+    "config.local": {
+      "status": "implemented",
+      "note": "config.set, clear and clearAll persist through a LocalConfigStore (UserDefaults by default), validate against the catalog and raise client.events .config; config.setting(key) returns a handle whose current() gives the effective value, its source and lock, and onConfigChange(key | \"*\", listener) returns a cancellable ConfigSubscription (configChanges(key) is the AsyncStream form), fed by the same change observation as client.events for local writes and syncs (LocalConfigTests)."
+    },
+    "devices.fingerprint": {
+      "status": "implemented"
+    },
+    "devices.facts": {
+      "status": "implemented"
+    },
+    "devices.register": {
+      "status": "implemented"
+    },
+    "devices.manage": {
+      "status": "implemented"
+    },
+    "devices.report": {
+      "status": "implemented"
+    },
+    "telemetry.updates": {
+      "status": "implemented"
+    },
     "devices.attest": {
-      "status": "planned",
-      "unowned": true,
-      "except": [{ "runtime": "macos", "reason": "runtime" }],
-      "note": "P6-02 adds DCAppAttestService (generate, attest, assert) to PolarisKeyPlatform for native hosts; no work package wires attestation into the Swift SDK client."
+      "status": "implemented",
+      "except": [
+        {
+          "runtime": "macos",
+          "reason": "runtime"
+        },
+        {
+          "runtime": "ios",
+          "reason": "outlet"
+        }
+      ],
+      "note": "client.devices.attest() (PolarisKey/DevicesClient.swift): POST devices/attest/challenge, DCAppAttestService.attestKey over SHA-256(UTF-8(requestHash)) through PolarisKeyPlatform's AppAttestClient, POST devices/attest; the key id kept in the Keychain (account app_attest_key) and re-attested with a fresh key when a reinstall, migration or restore killed it. Registered as Core's attestor so a 403 attestation_required edge-mint or commerce claim attests once and retries once. Unsupported runtime on macOS and where App Attest does not run (the simulator); outlet on an iOS build with an embedded provisioning profile."
     },
     "identity.oidc": {
       "status": "planned",
-      "unowned": true,
-      "note": "Only through a host-supplied sign-in closure; no work package gives Swift its own browser sign-in."
+      "wp": "I-15",
+      "note": "No OIDC redirect flow yet: native browser sign-in waits on I-15. The interim is client.identity signInWithBrowser(), which opens the device-code verification URL in ASWebAuthenticationSession and polls identity.devicecode (never the deprecated /identity/auth/poll)."
     },
-    "identity.devicecode": { "status": "implemented" },
-    "release.changelog": { "status": "implemented" },
-    "release.download": { "status": "implemented" },
-    "release.record": { "status": "implemented" },
-    "update.check": { "status": "implemented" },
-    "update.feed": { "status": "implemented" },
-    "update.decide": { "status": "implemented" },
+    "identity.devicecode": {
+      "status": "implemented"
+    },
+    "identity.devicelabel": {
+      "status": "implemented",
+      "note": "PX-W13: normalizeDeviceLabel over Unicode scalars, CoreOptions.deviceName and the platform default (macOS Host.current().localizedName, iOS-family UIDevice.current.name), on beginSignIn, activation and registration; SignInPrompt.deviceName is the Worker's echo. PolarisKeyUI has no device-code sign-in view to show it in (ui.kit is planned and unowned)."
+    },
+    "identity.toggle": {
+      "status": "planned",
+      "wp": "I-10b"
+    },
+    "release.changelog": {
+      "status": "implemented"
+    },
+    "release.download": {
+      "status": "implemented"
+    },
+    "release.record": {
+      "status": "implemented"
+    },
+    "release.fetch": {
+      "status": "implemented",
+      "note": "client.update.fetch(version:buildId:size:sha256:to:) (PolarisKeyUpdate/Install.swift) streams through the client's transport (PolarisTransport.stream) into <to>.part, resumes with Range and If-Range on the payload SHA-256 (206 appends after re-hashing the part, 200 restarts, 416 verifies), maps a refusal to the body's registered wire code, and verifies size and SHA-256 before the file appears at <to>; the replayer runs all three steps of release-fetch-gated.json."
+    },
+    "release.distribution": {
+      "status": "implemented",
+      "note": "client.distribution.downloadModel() (PolarisKey/DistributionClient.swift)."
+    },
+    "update.check": {
+      "status": "implemented"
+    },
+    "update.feed": {
+      "status": "implemented"
+    },
+    "update.feeds": {
+      "status": "implemented",
+      "note": "client.update.feedUrl(_:channel:velopackChannel:buildId:) over updateFeedURL (PolarisKeyUpdate/Install.swift); FeedUrlMatrixTests drives every feed-url-matrix.json row."
+    },
+    "update.decide": {
+      "status": "implemented"
+    },
     "update.content": {
       "status": "implemented",
       "note": "PolarisKeyCore's feedContent, holdsOf (stampHolds) and decideUpdate with UpdateContentInput (selectPackRows, the composition, prestage, contentBlock, packs; bootDecision gives required only for revoked required content); runUpdateCheck runs P4-13 §2.5 steps 10–14. ContentDecisionConformanceTests drives every feedContentCases and contentRows vector; UpdateClient.decide() builds the content input from update.packs."
     },
     "update.driver": {
       "status": "implemented",
-      "except": [{ "runtime": "ios", "reason": "outlet" }],
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "outlet"
+        }
+      ],
       "note": "Sparkle on macOS."
     },
     "update.bootguard": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P1-09 ported the launch decision (bootGuardAction and the guard cases in stage-matrix.json); the slots, the counting and the confirmation rows come from P3-10 and P3-02."
+      "status": "implemented",
+      "note": "PolarisKeyCore AppBootGuard (client.bootGuard, client.markBootAttempt/confirmBoot with PolarisKeyUpdate): bootGuardAction over a launch counter kept beside the credential (Store record boot-guard); an Apple app has no previous build to roll back to, so after MAX_FAILED_BOOTS it journals P6-03 boot_rolled_back (code no-previous) once and answers rollBackUnavailable; the first confirmed launch of a new build journals update_confirmed. client.boot() marks the attempt and confirms BOOT_OK_SECONDS after ready."
     },
     "outlet.detect": {
       "status": "implemented",
       "note": "PolarisKeyCore detectOutlet over PolarisKeyUpdate readOutletSignals: AppDistributor.current behind #available(iOS 17.4) (web from 17.5) raced against the 2 s deadline, AltStore's ALTBundleIdentifier, embedded.mobileprovision, the macOS _MASReceipt and ProductionSandbox, the signing leaf (SecCodeCopySigningInformation) and the product's Caskroom link. UpdateClient detects at its first decision when the host names no outlet."
+    },
+    "crash.tags": {
+      "status": "implemented",
+      "note": "client.crashTags(deliverable:build:) and crashTagsFor(...): release <deliverable>@<version>[+<build>], environment the channel, pkey.outlet the outlet the update client resolved, left out while unknown, over the Worker's Sentry vectors (CrashTagsTests)."
     },
     "packs.record": {
       "status": "implemented",
@@ -132,7 +250,9 @@
       "status": "implemented",
       "note": "update.packs.registerHandler (PackHandler: supports, check over a newly staged payload before the state commit -> pack-type-check-failed, activate with the installed payload, deactivate); files.tree, data.json and l10n.table built in (hot: versioned directory plus pointer swap); ml.model registered by the host; custom.* through registerHandler, under the same path rules."
     },
-    "packs.provides": { "status": "implemented" },
+    "packs.provides": {
+      "status": "implemented"
+    },
     "packs.type.godot.zip": {
       "status": "na",
       "runtime": ["macos", "ios"],
@@ -158,9 +278,8 @@
       "note": "P4-16: MlModelHandler (host-registered): model.json runtime, quantisation and RAM/VRAM needs against the host budget, then the host load test before model(packId) swaps."
     },
     "packs.transport.apple": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P5-05's PolarisKeyPlatform target carries the AssetPackManager client (iOS / macOS 26.4, behind #if compiler(>=6.3)) behind its C surface; P5-08 wires the transport for Godot only, and no package adopts it as a Swift SDK pack transport."
+      "status": "implemented",
+      "note": "SP-S08: PolarisKeyUpdate's AppleAssetPackTransport (a PackPlatformTransport over P5-05's AssetPackClient, set as PacksOptions.platformTransport): the level's asset pack <pack>-c<contentApi> (dots to hyphens), files under pkey/<asset pack>/ resolved with url(for:) on every call and never persisted, ensure with progress forwarded. The engine plans a carried pack only through the platform (plan-transport-unsupported while it is unavailable, never a CDN fallback), verifies the marker and the payload or treeDigest against the signed record, floats to a later unrevoked seq, and never commits the copy to the state. Unsupported version below iOS / macOS 26.4 and outlet without the Background Assets Info.plist keys. Stub-proven in PlatformTransportTests; the TestFlight device run is the owner's, as for Godot's P5-08."
     },
     "packs.transport.play": {
       "status": "na",
@@ -169,8 +288,13 @@
     },
     "packs.transport.steam": {
       "status": "planned",
-      "unowned": true,
-      "except": [{ "runtime": "ios", "reason": "runtime" }],
+      "wp": "SP-28",
+      "except": [
+        {
+          "runtime": "ios",
+          "reason": "runtime"
+        }
+      ],
       "note": "P5-08 covers Godot only; macOS Swift apps have no Steam-depot transport owner."
     },
     "packs.transport.msix": {
@@ -183,16 +307,32 @@
       "runtime": ["macos", "ios"],
       "reason": "runtime"
     },
-    "ui.stages": { "status": "implemented" },
+    "ui.stages": {
+      "status": "implemented",
+      "note": "bootTransition and the stage-matrix replay (StageMatrixTests); client.boot() drives it end to end (discover, guard, sync, keyless reacquire under an open policy, gate, decide and fetch hooks installed by PolarisKeyUpdate, mount)."
+    },
+    "ui.boot": {
+      "status": "implemented",
+      "note": "client.boot() (PolarisKey/Boot.swift): with no token under an open registration policy it registers keylessly before the sync pass; boot-cold-register.json replays through it."
+    },
     "ui.kit": {
       "status": "planned",
-      "unowned": true,
-      "note": "PolarisLoginView only; no work package builds the rest of the Swift kit."
+      "wp": "UK-07",
+      "note": "PolarisLoginView, PolarisGate, PolarisSignIn and PolarisOfflineActivation over the @Observable PolarisKeyModel; the rest of the kit (PARITY §5.9) belongs to the UI-kit program (UK-*)."
+    },
+    "ui.kit.manage": {
+      "status": "implemented",
+      "note": "PX-W8: PolarisLoginView shows Replace a device on device-limit (a button on macOS and iOS, a QR on tvOS)."
+    },
+    "ui.cli": {
+      "status": "na",
+      "runtime": ["macos", "ios"],
+      "reason": "runtime",
+      "note": "This SDK ships a widget kit (ui.kit); the terminal kit is the headless SDKs' expectation."
     },
     "commerce.receipt": {
-      "status": "planned",
-      "unowned": true,
-      "note": "P5-05's PolarisKeyPlatform target carries the StoreKit 2 client (signed JWS, appAccountToken, deduplicated Transaction.updates, finish on demand); P6-01 builds the Worker bridge and leaves the SDK side planned with no owner."
+      "status": "implemented",
+      "note": "client.commerce (PolarisKey/CommerceClient.swift): binding() and claim(store:payload:) with claimAppStore/claimSteam/claimPlay, a forced sync after a granted claim, attest-and-retry on attestation_required; purchase(productID:) runs binding, StoreKit 2 purchase(appAccountToken: bindingId), claim, finish only after the claim, sync; restore() and the Transaction.updates loop claim and finish after the claim. Without StoreKit purchase/restore answer the typed runtime N/A."
     }
   }
 }

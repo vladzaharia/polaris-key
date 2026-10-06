@@ -50,7 +50,7 @@ import { ingestGithubDescriptors, readAppDeliverable } from "./descriptor.js";
 
 export { linkRepo, manifestIssuerRefusal, parseRepoUrl } from "./linkRepo.js";
 export type { LinkRepoResult } from "./linkRepo.js";
-export { resyncRepo } from "./resync.js";
+export { resyncNotes, resyncRepo } from "./resync.js";
 export type { ResyncResult } from "./resync.js";
 export {
   isManifestPath,

@@ -3,6 +3,7 @@
  * the active-catalog loader used for value validation + redaction.
  */
 
+import { listClaims } from "../../core/settingsClaims.js";
 import { Catalog } from "@polaris-key/catalog";
 import type { Db } from "../../db/types.js";
 import type { Env } from "../../env.js";
@@ -27,6 +28,8 @@ import { latestReleaseHasDmg } from "../../services/release/store.js";
 import { readAppDeliverable } from "../../services/release/descriptor.js";
 import { hasArtifactMap } from "../../services/release/artifactMap.js";
 import { countKeysByLicense } from "../repo.js";
+import { licenseHolder } from "../../core/licenseHolders.js";
+import { subjectFor } from "../../core/accountSubjects.js";
 import {
   approvalMismatch,
   listEdgeMintRecipesWithApprovals,
@@ -34,6 +37,11 @@ import {
   type MintPolicyProduct,
 } from "../../services/config/mint.js";
 import { parseAutoIssue } from "../../core/fingerprint.js";
+import {
+  productIcons,
+  type ProductIconView,
+  type ProductPresentationView,
+} from "./presentation.js";
 
 interface RequiredSecretStatus {
   name: string;
@@ -132,6 +140,17 @@ export async function licenseSummary(
   const keyCounts = await countKeysByLicense(db, product, row.id);
   const devices = await listDevicesByLicense(db, product, row.id);
   const profiles = await listLicenseProfiles(db, product, row.id);
+  // PX-W17: the owner as this product sees them — the pairwise subject, never the account id
+  // (S-16 §5.1). Subjects are platform-wide, so this is set for every product whatever its
+  // Identity toggle; `null` for a floating licence.
+  const ownerSubject = row.account_id
+    ? await subjectFor(
+        db,
+        row.account_id,
+        product,
+        Math.floor(Date.now() / 1000),
+      )
+    : null;
   return {
     id: row.id,
     name: row.name ?? "",
@@ -149,7 +168,13 @@ export async function licenseSummary(
     channels: parseJsonList(row.channels_json),
     minVersion: row.min_version,
     maxVersion: row.max_version,
+    ownerSubject,
+    // LX-26 (S-24 D1): floating or assigned, derived from the owner pointer and the licence's own
+    // email; never the account's details.
+    holder: licenseHolder(row),
     identityProvider: row.sub ? "oidc" : "manual",
+    // How the row was minted (`admin`, `oidc`, `enroll`): decides whether it may be deleted.
+    origin: row.origin ?? "admin",
     oidcSubject: row.sub ?? undefined,
     modifiedBy: row.modified_by ?? undefined,
     modifiedAt: row.modified_at,
@@ -161,6 +186,10 @@ export async function productView(
   env: Env,
   db: Db,
   p: ProductRow,
+  now: number = Math.floor(Date.now() / 1000),
+  /** Every product's icon, read once by the list (`productIcons(env, db)`); one product's
+   *  own read otherwise. */
+  icons?: Map<string, ProductIconView>,
 ): Promise<Record<string, unknown>> {
   const activeKey = await loadPublicSigningKey(db, p.slug);
   const signingKid = activeKey?.kid ?? p.signing_kid;
@@ -195,9 +224,14 @@ export async function productView(
     },
   );
   const portalSettings = await getPortalProductSettings(db, p.slug);
+  const icon =
+    (icons ?? (await productIcons(env, db, p.slug))).get(p.slug) ?? null;
+  const presentation: ProductPresentationView = { icon };
   return {
     slug: p.slug,
     name: p.name,
+    // The console's logo (Home, Products): the hosted icon as image-host URLs, or null.
+    presentation,
     // F-03: the platform's own product (the package-feeds owner of our SDKs). The console keeps it
     // out of the product switcher and the Products registry; it is reached from Platform.
     system: p.system === 1,
@@ -233,6 +267,9 @@ export async function productView(
     defaultMaxOfflineDays: p.default_max_offline_days,
     defaultDeviceLimit: p.default_device_limit,
     adminGroup: p.admin_group,
+    // ST-01b: the column-backed settings the console has claimed from the manifest (the resync
+    // leaves these alone until a Revert). Empty for a product with no manifest to claim from.
+    claims: await listClaims(db, p.slug, now),
     createdAt: p.created_at,
     modifiedAt: p.modified_at,
   };

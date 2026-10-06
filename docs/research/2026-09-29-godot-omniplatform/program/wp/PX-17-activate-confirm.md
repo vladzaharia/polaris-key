@@ -5,19 +5,75 @@
 | Phase       | PX: Customer portal (docs/design/PORTAL.md) (phase B: new API, S-16, S-17)                                                                                                               |
 | Size        | 0.1–0.2 engineer-weeks                                                                                                                                                                   |
 | Depends on  | [PX-06](PX-06-activate-modal.md), [PX-W5](PX-W5-rename-newkey-preview.md), [PX-W8](PX-W8-manage-url.md)                                                                                  |
-| Unblocks    | none                                                                                                                                                                                     |
+| Unblocks    | [PX-23](PX-23-portal-floating-keys.md)                                                                                                                                                   |
 | Role        | `pkey-implementer`                                                                                                                                                                       |
 | Plan mode   | no                                                                                                                                                                                       |
 | Gates       | the PORTAL.md §11 green gate; CSP browser test (zero violations); admin build; `pnpm --filter @polaris-key/admin test:e2e` with zero CSP violations; `vitest-axe` on new page components |
 | Human input | none                                                                                                                                                                                     |
 | Repo        | `vladzaharia/polaris-key`                                                                                                                                                                |
 
+## S-24 amendment (2026-10-06)
+
+For a floating key already on devices, the confirm and Done copy ("It's on 2 devices already. They keep working and come with it.") and the licence card's origin wording ("From <Developer>" for a licence a developer assigned) are [PX-23](PX-23-portal-floating-keys.md)'s, which builds on this package; keep the confirm step's copy slots open for them ([S-24](../../notes/S-24-licence-holders.md) §10).
+
 ## Amendments from approved plans (2026-10-05)
 
 The owner approved the plans below on 2026-10-05. These amendments win over the text of this brief where they differ.
 
 - **[`plans/PX-W8.md`](../plans/PX-W8.md):** read `#key=` as well as `?key=`, and handle `next=free-device` from the activate link (PX-10 is done, so PX-17 carries the `next=` hand-off to free-device).
+  - _Already done (fix/keys-out-of-logs, 2026-10-06):_ `rewriteActivatePath` (`packages/admin/src/portal/router.ts`) reads `#key=`, then a legacy `?key=` (the fragment wins), and drops both with `history.replaceState` before the first render. PX-17 still owns `next=` and `return=`, which the rewrite does not carry yet; keep the key out of any URL it adds.
 - **[`plans/PX-W9.md`](../plans/PX-W9.md):** Q2: the Worker never puts the key in the link. The modal opens with the §4.18 notice and an empty field unless the SDK added a `#key=` fragment (PX-W8 Q2).
+
+## Owner decision (2026-10-05): licence choice at sign-in
+
+The owner decided on 2026-10-05 that every sign-in that binds a device asks the person which licence to use (**Choose a license for this device**, with an inline **Replace a device** on full licences), never silently mints a second auto-issued licence, and treats the rank-first rule as the preselected default only. The verbatim decision, the card API and the delegated decisions are in [`plans/I-04.md`](../plans/I-04.md), "Owner decision (2026-10-05): licence choice at sign-in"; that section wins over this brief where they differ. **The device wire does not change** (`PROTOCOL_VERSION` 4, no corpus change).
+
+For this package:
+
+- **A key confirmed in the card's KeyStep is the licence choice.** The added licence is bound
+  without showing `LicenseChoiceStep` again. If that licence is full, the confirm offers
+  **Replace a device**, as the chooser does.
+- **The `/activate?product=<slug>` deep link** from the card's "You don't have <Product> yet"
+  state carries `return=/signin?request=rq_…`. After the confirm, the person goes back to the card,
+  whose chooser now lists the new licence.
+- **Counting** is unchanged: one `portal` key entry (PX-W9).
+
+## Sign-in alignment (2026-10-05): SIGN-IN.md
+
+[`docs/design/SIGN-IN.md`](../../../../design/SIGN-IN.md) is the canonical sign-in experience, and `plans/I-04.md`
+§F (the reconciliation, with delegated decisions 16–24) is its wire counterpart. Where this brief
+differs from either, they win. Copy comes from SIGN-IN.md §5.2 (`signin.*`, US "license").
+**No device-wire change** (`PROTOCOL_VERSION` 4, `corpusVersion` 2). For this package:
+
+- In passthrough the confirm's primary is **Add and use on this device** and binds (it is the license choice; SIGN-IN.md §3.9). The entries notice is `signin.key.noEntries`, naming the product.
+
+## Verified against the code (2026-10-06, the PX-17 build)
+
+Where the brief and the code disagreed, the code was the fact:
+
+- **The confirm step, the entries notice and the §4.19 refusal copy already existed.** PX-06
+  built the modal on PX-W5's preview, and UX-05 and UX-79 added the verdicts, `license_owned`'s
+  actions and step focus. PX-17 adds the link context (§4.18), the `next=` and `return=`
+  hand-offs, the §4.19 tests and quality-bar states, and **Use a different key** on
+  `email_mismatch`.
+- **There is no passthrough card in the SPA yet.** The login card's `KeyStep`,
+  `LicenseChoiceStep` and **Replace a device** are PX-14's (UX-41). PX-17 exports `ConfirmStep`
+  with a `primaryLabel` for **Add and use on this device** and a `notes` slot for PX-23. Binding
+  the device, and offering **Replace a device** when the added license is full, happen in the
+  card.
+- **Nothing links to `/activate?product=…&return=/signin?request=…` yet.** The card's "You don't
+  have <Product> yet" state is PX-14's. The portal now follows that `return=` after the add, and
+  only to `/signin` on its own origin (`cardReturn`).
+- **Two §4.19 actions have no target yet.** **Link an existing account** needs `#/account/link`
+  (PX-15 on PX-W12), and **Add and verify that email** needs add-email (PX-W12, PX-13). Both are
+  left out rather than shown as dead ends, and so is the "If that account is yours too, sign in to
+  it and join the two." notice.
+- **The preview reports `entries: null` until PX-W9 counts entries**, so the confirm step's
+  entries notice shows only once PX-W9 lands. The link's own notice (`signin.key.noEntries`)
+  shows today.
+- **The sign-in return URL dropped `activate=` entirely**, so a keyless link (PX-W9 Q2: the
+  Worker never puts the key in it) lost the modal after a sign-in that navigates away or a magic
+  link opened in another tab. It now keeps an empty `activate=` (`carriedKey.ts`).
 
 ## Goal
 
@@ -58,11 +114,13 @@ Confirm before adding, and arrive from apps with context ([PORTAL.md §4.17](../
 
 ## Acceptance criteria
 
-- [ ] Error-state tests for every §4.19 case.
-- [ ] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations.
-- [ ] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
-- [ ] No horizontal page scroll at 360 px on every screen this package touches (§8).
-- [ ] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
+- [x] Error-state tests for every §4.19 case. (`test/portalActivateLink.test.tsx`; the quality bar's
+      `activate-error-*` and `activate-entries` states.)
+- [x] `pnpm --filter @polaris-key/admin build` passes and `pnpm --filter @polaris-key/admin test:e2e` reports zero CSP violations. (The
+      Activate, device-limit and CSP e2e, filtered; every new state also in Playwright's linux image.)
+- [x] `vitest-axe` passes on every new or changed page component; one `h1` per screen (§9).
+- [x] No horizontal page scroll at 360 px on every screen this package touches (§8).
+- [x] The green gate passes (`AGENTS.md` and PORTAL.md §11), including every drift gate listed in the header.
 
 ## Verify
 

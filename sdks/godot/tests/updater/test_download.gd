@@ -33,6 +33,19 @@ func run(t: PKeyTestContext) -> void:
 	req = sup.requests("/f/")[0] if not sup.requests("/f/").is_empty() else {}
 	t.check("download: a partial file resumes with Range: bytes=100000-", req.get("headers", {}).get("range") == "bytes=100000-", str(req.get("headers")))
 	t.check("download: the 206 is appended and the file is whole", r.ok and r.detail["status"] == 206 and r.detail["resumed"] and S.read(dest + ".part") == body, str(r))
+	t.check("download: no If-Range unless a validator is given", not req.get("headers", {}).has("if-range"), str(req.get("headers")))
+
+	# SP-25: with `if_range` the resume names the payload's strong ETag, so different bytes restart.
+	server.requests.clear()
+	S.write(dest + ".part", body.slice(0, 100000))
+	r = await PKeyDownload.fetch(tr, server.base_url() + "/f/a", dest, auth, {"expected_size": body.size(), "if_range": "\"abc\""})
+	req = sup.requests("/f/")[0] if not sup.requests("/f/").is_empty() else {}
+	t.check("download: a resume with if_range sends Range and If-Range", req.get("headers", {}).get("range") == "bytes=100000-" and req.get("headers", {}).get("if-range") == "\"abc\"" and r.ok and S.read(dest + ".part") == body, str(req.get("headers")))
+	server.requests.clear()
+	DirAccess.remove_absolute(dest + ".part")
+	r = await PKeyDownload.fetch(tr, server.base_url() + "/f/a", dest, auth, {"expected_size": body.size(), "if_range": "\"abc\""})
+	req = sup.requests("/f/")[0] if not sup.requests("/f/").is_empty() else {}
+	t.check("download: a fresh download sends no If-Range", not req.get("headers", {}).has("if-range") and r.ok, str(req.get("headers")))
 
 	# A server that ignores Range: the 200 starts the file over.
 	server.requests.clear()
@@ -88,6 +101,22 @@ func run(t: PKeyTestContext) -> void:
 	sup.plan = {"/f/": [{"status": 404}]}
 	r = await PKeyDownload.fetch(tr, server.base_url() + "/f/a", dest, auth, {"expected_size": 10})
 	t.check("download: a 404 is http-error with its status", not r.ok and r.code == PKeyErrors.HTTP_ERROR and r.detail.get("status") == 404)
+	# SDK parity §3.10: a gated build's refusal keeps the server's code, so the updater can attest
+	# and retry once (PKeyUpdater.with_attestation).
+	sup.plan = {"/f/": [{"status": 403, "headers": {"Content-Type": "application/json"}, "body": "{\"error\":{\"code\":\"attestation_required\",\"message\":\"this operation requires an attested device\"}}"}]}
+	r = await PKeyDownload.fetch(tr, server.base_url() + "/f/a", dest, auth, {"expected_size": 10})
+	t.check("download: a 403 keeps the server's code", not r.ok and r.code == &"attestation_required" and r.detail.get("status") == 403 and r.message == "this operation requires an attested device", str(r))
+	var core_ish := PKeyCore.new()
+	core_ish.options = PKeyOptions.new()
+	var attests := [0]
+	core_ish.attest_hook = func() -> PKeyResult:
+		attests[0] += 1
+		sup.plan = {"/f/": [S.ranged(body)]}
+		return PKeyResult.success({"trust_level": "attested"})
+	DirAccess.remove_absolute(dest + ".part")
+	r = await core_ish.with_attestation(func() -> PKeyResult: return await PKeyDownload.fetch(tr, server.base_url() + "/f/a", dest, auth, {"expected_size": body.size()}))
+	t.check("download: attestation_required attests once and the retry downloads", r.ok and attests[0] == 1 and r.detail.get("attested_retry") == true and S.read(dest + ".part") == body, str(r))
+	DirAccess.remove_absolute(dest + ".part")
 
 	# local-only refuses before dialling.
 	var lo := PKeyTransport.new(server)
@@ -96,13 +125,15 @@ func run(t: PKeyTestContext) -> void:
 	r = await PKeyDownload.fetch(lo, server.base_url() + "/f/a", dest, auth, {"expected_size": 10})
 	t.check("download: local-only refuses without a request", not r.ok and r.code == PKeyErrors.LOCAL_ONLY and server.requests.is_empty())
 
-	# One wall-clock deadline: a server that never answers times out, and a part is kept.
+	# One wall-clock deadline: a server that never answers times out, and a part is kept. The
+	# 0.5 s option, not DEFAULT_TIMEOUT (600 s), ends it: at least 0.5 s, and far under 600 s.
+	# The upper bound is that margin, not a speed budget, so a loaded machine still passes.
 	S.write(dest + ".part", body.slice(0, 1000))
 	sup.plan = {"/f/": [{"hang": true}]}
 	var started := Time.get_ticks_msec()
 	r = await PKeyDownload.fetch(tr, server.base_url() + "/f/a", dest, auth, {"expected_size": body.size(), "timeout": 0.5})
 	var took := Time.get_ticks_msec() - started
-	t.check("download: the request's one deadline ends a hung download (timeout) and keeps the part", not r.ok and r.code == PKeyErrors.TIMEOUT and took < 3000 and S.read(dest + ".part").size() == 1000, "%s in %d ms" % [r, took])
+	t.check("download: the request's one deadline ends a hung download (timeout) and keeps the part", not r.ok and r.code == PKeyErrors.TIMEOUT and took >= 450 and took < 60000 and PKeyDownload.DEFAULT_TIMEOUT >= 600.0 and S.read(dest + ".part").size() == 1000, "%s in %d ms" % [r, took])
 
 	sup.free_server()
 	PKeyTestFixtures.remove_tree(dir)

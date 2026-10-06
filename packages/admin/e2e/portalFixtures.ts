@@ -7,12 +7,25 @@ import { artPng, squirclePng, type Rgb } from "./artPng.js";
  * wave 1's `GET /api/library` (PX-W1), `GET /api/products/<p>/downloads` (PX-W2) and
  * `POST /api/activate/preview` (PX-W5).
  */
-export type PortalScenario = "signedOut" | "empty" | "one" | "three" | "twelve";
+export type PortalScenario =
+  | "signedOut"
+  | "empty"
+  | "one"
+  | "three"
+  | "twelve"
+  /** Sign-in licences: Quill alone, and Drift Kart held by a Steam key and by signing in. */
+  | "signIn";
 
 type Reply = { status?: number; body: unknown };
 export type Handler = Reply | ((req: Request) => Reply);
 
-const NOW = Math.floor(Date.now() / 1000);
+/**
+ * The fixtures' clock, fixed so the visual baselines (PX-20) are reproducible: the harness pins the
+ * page's `Date` to the same instant (portalHarness.ts), so "2 hours ago" and every printed date read
+ * the same on every run.
+ */
+export const FIXTURE_NOW = Date.UTC(2026, 9, 1, 12, 0, 0) / 1000;
+const NOW = FIXTURE_NOW;
 const DAY = 86_400;
 const ACCOUNT = {
   id: "acct_1",
@@ -102,6 +115,29 @@ const MORE = [
   }),
   lic("saltwind", "Saltwind", { activatedAt: NOW - 15 * DAY }),
 ];
+
+/** A sign-in licence (no key) with a device: the License card's "1 of 5 devices", "From signing in". */
+const QUILL_SIGNIN = lic("quill", "Quill", {
+  identityProvider: "oidc",
+  keyCount: 0,
+  activeKeyCount: 0,
+  deviceCount: 1,
+  activatedAt: NOW - 13 * DAY,
+});
+/** Drift Kart held twice: by a Steam key (the best, listed first) and by signing in. */
+const DRIFT_KEY = MORE.find((l) => l.product === "drift-kart")!;
+const DRIFT_SIGNIN = lic("drift-kart", "Drift Kart", {
+  id: "lic_drift-kart-acct",
+  identityProvider: "oidc",
+  keyCount: 0,
+  activeKeyCount: 0,
+  deviceCount: 1,
+  activatedAt: NOW - 3 * DAY,
+});
+const SIGN_IN_DEVICE: Record<string, [string, string, string]> = {
+  lic_quill: ["quill-tv", "Living room PC", "windows"],
+  "lic_drift-kart-acct": ["drift-deck", "Mara's Steam Deck", "linux"],
+};
 
 function art(
   id: string,
@@ -250,7 +286,11 @@ const PRESENTATION: Record<
     support: "https://kiln.example/renew",
   },
   mossgarden: { developerName: "Little Fern", deviceLimit: 5 },
-  // At its limit: the 12-product shelf shows "Free up a device" (§4.15, mockup 35).
+  "lumen-raw": { developerName: "Aperture Seven", deviceLimit: 2 },
+  "pixel-forge": { developerName: "Anvil Labs", deviceLimit: 0 },
+  // At its limit: the 12-product shelf shows "Free a device" (§4.15, mockup 35).
+  quill: { developerName: "Inkwell", deviceLimit: 5 },
+  "drift-kart": { developerName: "Tarmac Toys", deviceLimit: 3 },
   "orbit-survey": {
     developerName: "Parallax Nine",
     deviceLimit: 2,
@@ -314,6 +354,23 @@ const ART: Record<
     disc: [196, 72, 52],
     icon: false,
   },
+  // PX-16: the Discover cast of mockup 23.
+  quill: {
+    bands: [[246, 241, 230]],
+    disc: [40, 38, 46],
+  },
+  mossgarden: {
+    bands: [
+      [232, 238, 214],
+      [150, 184, 96],
+      [92, 140, 64],
+    ],
+    disc: [242, 210, 96],
+  },
+  "lumen-raw": {
+    bands: [[26, 22, 20]],
+    disc: [240, 140, 60],
+  },
 };
 
 /** The media proxy's answer for `/media/<product>/<icon|header>`, or null (404). */
@@ -329,6 +386,12 @@ export function portalMedia(pathname: string): Buffer | null {
 }
 
 type Lic = ReturnType<typeof lic>;
+
+/** The first licence of each product, in order. */
+function firstPerProduct(list: readonly Lic[]): Lic[] {
+  const seen = new Set<string>();
+  return list.filter((l) => !seen.has(l.product) && !!seen.add(l.product));
+}
 
 function libraryItem(l: Lic) {
   const pres = PRESENTATION[l.product];
@@ -669,6 +732,83 @@ function emberDownloads() {
   };
 }
 
+/**
+ * PX-W10's `GET /api/discover` offers (mockup 23): what each would give and why. The empty,
+ * one- and three-product accounts get them; the twelve-product account has nothing to add
+ * (mockup 25).
+ */
+function discoverOffer(
+  product: string,
+  name: string,
+  offer: {
+    tier: string;
+    tierLabel: string;
+    deviceLimit: number;
+    expiryDays: number | null;
+  },
+  reason: string,
+  platforms: string[],
+) {
+  return {
+    product,
+    name,
+    developerName: PRESENTATION[product]?.developerName ?? null,
+    tintColor: product === "pixel-forge" ? "#7a2430" : null,
+    website: null,
+    iconUrl: ART[product] ? `/media/${product}/icon?v=1` : null,
+    headerUrl: ART[product] ? `/media/${product}/header?v=1` : null,
+    support: null,
+    platforms,
+    offer: {
+      ...offer,
+      expiresAt:
+        offer.expiryDays === null ? null : NOW + offer.expiryDays * DAY,
+    },
+    reason,
+  };
+}
+
+const OFFERS = [
+  discoverOffer(
+    "quill",
+    "Quill",
+    {
+      tier: "personal",
+      tierLabel: "Personal",
+      deviceLimit: 0,
+      expiryDays: null,
+    },
+    "free_with_account",
+    ["web", "macos", "ios"],
+  ),
+  discoverOffer(
+    "mossgarden",
+    "Mossgarden",
+    {
+      tier: "lifetime",
+      tierLabel: "Lifetime",
+      deviceLimit: 5,
+      expiryDays: null,
+    },
+    "free_with_account",
+    ["macos", "windows", "ios", "android"],
+  ),
+  discoverOffer(
+    "lumen-raw",
+    "Lumen RAW",
+    { tier: "beta", tierLabel: "Beta", deviceLimit: 2, expiryDays: 90 },
+    "group:Aperture Seven customers",
+    ["macos", "windows"],
+  ),
+  discoverOffer(
+    "pixel-forge",
+    "Pixel Forge SDK",
+    { tier: "indie", tierLabel: "Indie", deviceLimit: 0, expiryDays: null },
+    "group:fennick.studio",
+    ["macos", "windows", "linux"],
+  ),
+];
+
 const CAPS = {
   auth: { oidc: true, magic: true },
   modules: { licensing: true, claim: true, releases: true },
@@ -684,6 +824,8 @@ function licensesFor(s: PortalScenario) {
       return [NIGHTFALL, TIDEWATER, EMBER];
     case "twelve":
       return [NIGHTFALL, TIDEWATER, EMBER, MOSSGARDEN, ...MORE];
+    case "signIn":
+      return [NIGHTFALL, QUILL_SIGNIN, DRIFT_KEY, DRIFT_SIGNIN];
     default:
       return [];
   }
@@ -735,18 +877,36 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
     return {
       "/api/me": { status: 401, body: { error: "unauthorized" } },
       "/api/capabilities": { body: CAPS },
-      "POST /api/magic/start": { body: { ok: true } },
+      // The Worker's answer shape (I-07, PX-W4): the countdown reads `resendIn`.
+      "POST /api/signin/email/start": {
+        body: { ok: true, expiresIn: 600, codeLength: 6, resendIn: 60 },
+      },
+      "POST /api/signin/email/resend": {
+        body: { ok: true, expiresIn: 600, codeLength: 6, resendIn: 60 },
+      },
     };
   }
   let licenses = licensesFor(s);
   const removed = new Set<string>();
+  const openOffers = () =>
+    s === "twelve"
+      ? []
+      : OFFERS.filter((o) => !licenses.some((l) => l.product === o.product));
   const routes: Record<string, Handler> = {
     "/api/me": { body: { account: ACCOUNT, csrf: "csrf" } },
     "/api/capabilities": { body: CAPS },
     "/api/licenses": () => ({ body: { licenses } }),
+    // One item per product (the first licence listed is the best), like the Worker.
     "/api/library": () => ({
-      body: { products: licenses.map(libraryItem), discoverCount: 4 },
+      body: {
+        products: firstPerProduct(licenses).map((l) => ({
+          ...libraryItem(l),
+          licenseCount: licenses.filter((x) => x.product === l.product).length,
+        })),
+        discoverCount: openOffers().length,
+      },
     }),
+    "/api/discover": () => ({ body: { offers: openOffers() } }),
     "/api/products/nightfall/downloads": { body: nightfallDownloads() },
     "/api/products/tidewater/downloads": { body: tidewaterDownloads() },
     "/api/products/ember-tactics/downloads": { body: emberDownloads() },
@@ -798,7 +958,20 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
       return { body: { ok: true, license: MOSSGARDEN } };
     },
   };
-  for (const l of [NIGHTFALL, TIDEWATER, EMBER, MOSSGARDEN, ...MORE]) {
+  const ALL = [
+    NIGHTFALL,
+    TIDEWATER,
+    EMBER,
+    MOSSGARDEN,
+    ...MORE.filter((l) => l.product !== "quill"),
+    QUILL_SIGNIN,
+    DRIFT_SIGNIN,
+  ];
+  // Quill is keyless in every scenario that lists it; only "signIn" gives it a device.
+  const quill =
+    s === "signIn" ? QUILL_SIGNIN : MORE.find((l) => l.product === "quill")!;
+  for (const l of ALL.map((x) => (x.product === "quill" ? quill : x))) {
+    const own = SIGN_IN_DEVICE[l.id];
     routes[`/api/licenses/${l.product}/${l.id}`] = () => ({
       body: {
         ...l,
@@ -826,16 +999,20 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
                   "deauthorized",
                 ),
               ].filter((d) => !removed.has(d.deviceId))
-            : l.deviceCount
-              ? [
-                  device(
-                    `${l.product}-1`,
-                    "Mara's MacBook Pro",
-                    "macos",
-                    NOW - 3 * 3600,
-                  ),
-                ]
-              : [],
+            : own && l.deviceCount
+              ? [device(own[0], own[1], own[2], NOW - 3 * 3600)].filter(
+                  (d) => !removed.has(d.deviceId),
+                )
+              : l.deviceCount
+                ? [
+                    device(
+                      `${l.product}-1`,
+                      "Mara's MacBook Pro",
+                      "macos",
+                      NOW - 3 * 3600,
+                    ),
+                  ]
+                : [],
       },
     });
     routes[`POST /api/releases/${l.product}/rel_142/artifacts/n-mac/token`] = {
@@ -843,11 +1020,18 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
       body: { url: "/download/tok" },
     };
   }
+  // PX-W6: where each licence came from; Drift Kart's key licence was bought on Steam (store
+  // name only, never an order id), so its origin reads "Steam key".
+  const purchaseOf = (id: string) =>
+    id === DRIFT_KEY.id
+      ? { source: "store", store: "steam" }
+      : { source: "developer", store: null };
   // PX-10: the product view for the focused flows (seats, devices, declared return targets).
-  for (const l of [NIGHTFALL, TIDEWATER, EMBER, MOSSGARDEN, ...MORE]) {
-    routes[`/api/products/${l.product}`] = () => {
-      if (!licenses.some((x) => x.product === l.product))
-        return { status: 404, body: { error: "not_found" } };
+  for (const slug of new Set(ALL.map((x) => x.product))) {
+    routes[`/api/products/${slug}`] = () => {
+      const held = licenses.filter((x) => x.product === slug);
+      const l = held[0];
+      if (!l) return { status: 404, body: { error: "not_found" } };
       const item = libraryItem(l);
       const devices =
         l.product === "orbit-survey"
@@ -891,7 +1075,15 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
               deviceCount: seats,
               entitlements: [],
               devices,
+              purchase: purchaseOf(l.id),
             },
+            // The product's other licences, with their own seats.
+            ...held.slice(1).map((x) => ({
+              ...libraryItem(x).license,
+              entitlements: [],
+              devices: [],
+              purchase: purchaseOf(x.id),
+            })),
           ],
         },
       };
@@ -970,6 +1162,53 @@ export function portalRoutes(s: PortalScenario): Record<string, Handler> {
       removed.add("work");
       return { body: { ok: true, deviceId: "work" } };
     };
+  // PX-W10's claim: mints once (idempotent); Lumen RAW's offer ended (409 `not_eligible`).
+  for (const o of OFFERS) {
+    routes[`POST /api/discover/${o.product}/claim`] = () => {
+      if (o.product === "lumen-raw")
+        return {
+          status: 409,
+          body: {
+            error: "not_eligible",
+            message: "this product is no longer offered to your account",
+          },
+        };
+      const added = !licenses.some((l) => l.product === o.product);
+      const l =
+        o.product === "mossgarden"
+          ? MOSSGARDEN
+          : lic(o.product, o.name, {
+              tier: o.offer.tier,
+              identityProvider: "oidc",
+              activatedAt: NOW - 30,
+              deviceCount: 0,
+            });
+      if (added) licenses = [l, ...licenses];
+      return {
+        body: {
+          added,
+          product: o.product,
+          license: {
+            id: l.id,
+            tier: o.offer.tier,
+            tierLabel: o.offer.tierLabel,
+            status: "active",
+            usable: true,
+            expiresAt: o.offer.expiresAt,
+            deviceLimit: o.offer.deviceLimit,
+          },
+        },
+      };
+    };
+  }
+  for (const [id, [deviceId]] of Object.entries(SIGN_IN_DEVICE)) {
+    const product = id === "lic_quill" ? "quill" : "drift-kart";
+    routes[`DELETE /api/licenses/${product}/${id}/devices/${deviceId}`] =
+      () => {
+        removed.add(deviceId);
+        return { body: { ok: true, deviceId } };
+      };
+  }
   routes["DELETE /api/licenses/nightfall/lic_nightfall/devices/d2"] = () => {
     removed.add("d2");
     return { body: { ok: true, deviceId: "d2" } };

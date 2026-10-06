@@ -14,6 +14,7 @@ import {
   useCapabilities,
   useLicense,
   usePackageAccess,
+  useProduct,
 } from "../data.js";
 import { PackageAccessCard } from "../components/product/PackageAccessCard.js";
 import { consumeHeadingFocus } from "../focus.js";
@@ -23,9 +24,21 @@ import {
   tierLabel,
   type LibraryProduct,
 } from "../model/library.js";
-import { presentSections, SECTION_LABEL } from "../model/product.js";
 import {
+  presentSections,
+  readUaHints,
+  resolveDevice,
+  seatLimitFor,
+  SECTION_LABEL,
+  seatsFor,
+  showsDeviceCount,
+  storeFor,
+  withSeats,
+} from "../model/product.js";
+import {
+  focusPageHeading,
   href,
+  scrollBehavior,
   setParams,
   useDocumentTitle,
   type ProductSection,
@@ -102,7 +115,21 @@ function ProductBody({
   const selected =
     product.licenses.find((l) => l.id === requested) ?? product.best;
   const detail = useLicense(product.slug, selected.id);
+  // One device source (§0.6 P4): the seats the free-device flow reads too.
+  const view = useProduct(product.slug);
+  const seats = seatsFor(view.data, selected.id);
+  // One OS source (§0.6 P3): the header's action and Get it work from the same answer.
+  const here = React.useMemo(
+    () => resolveDevice(product.downloads, device, readUaHints()),
+    [product.downloads, device],
+  );
   const pkg = usePackageAccess(product.slug, selected.id);
+  // Per-licence seat limits (PX-W1) from the same product view; the library only carries the
+  // best licence's.
+  const seatLimit = seatLimitFor(product, view.data, selected.id);
+  const showCount = showsDeviceCount(product, selected);
+  // The store of an active purchase on each licence (PX-W6): the origin names it with the key.
+  const storeOf = (id: string): string | null => storeFor(view.data, id);
   const sections = presentSections(product, releasesOn, {
     packageAccess: pkg.data?.available === true,
   });
@@ -111,11 +138,11 @@ function ProductBody({
   );
   const headingRef = React.useRef<HTMLHeadingElement>(null);
 
-  // After adding this product, focus its heading (§9.4).
+  // After adding this product, focus its heading (§9.4): once the dialog has left (through its
+  // exit) and handed focus back to its opener, and without scrolling away from a deep link.
   React.useEffect(() => {
-    // After the dialog has closed and handed focus back to its opener.
     if (consumeHeadingFocus(product.slug))
-      requestAnimationFrame(() => headingRef.current?.focus());
+      focusPageHeading(() => headingRef.current);
   }, [product.slug]);
 
   // A section deep link scrolls there once.
@@ -127,22 +154,32 @@ function ProductBody({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // The nav marks the section on screen.
+  // The nav marks the section on screen: the topmost section inside the band (nav order breaks
+  // a tie, as between the two columns' first cards on desktop). An observer callback carries
+  // only the sections whose intersection changed, so the set in the band is kept across
+  // callbacks; picking from the changed entries alone left the nav on a section that had passed
+  // through the band and out again (a layout shift above a deep link, then a scroll back),
+  // whatever was on screen once the page settled.
   React.useEffect(() => {
     if (typeof IntersectionObserver === "undefined") return;
     const els = sections
       .map((s) => document.getElementById(`section-${s}`))
       .filter((e): e is HTMLElement => e !== null);
+    const inBand = new Set<Element>();
     const io = new IntersectionObserver(
       (entries) => {
-        const top = entries
-          .filter((e) => e.isIntersecting)
-          .sort(
-            (a, b) => a.boundingClientRect.top - b.boundingClientRect.top,
-          )[0];
-        const s = top?.target.getAttribute(
-          "data-section",
-        ) as ProductSection | null;
+        for (const e of entries) {
+          if (e.isIntersecting) inBand.add(e.target);
+          else inBand.delete(e.target);
+        }
+        let top: Element | undefined;
+        let topY = Infinity;
+        for (const el of els) {
+          if (!inBand.has(el)) continue;
+          const y = el.getBoundingClientRect().top;
+          if (y < topY) [top, topY] = [el, y];
+        }
+        const s = top?.getAttribute("data-section") as ProductSection | null;
         if (s) setCurrent(s);
       },
       { rootMargin: "-120px 0px -60% 0px" },
@@ -153,9 +190,10 @@ function ProductBody({
 
   const pick = (s: ProductSection): void => {
     setCurrent(s);
+    // Smooth only when motion is allowed: instant under reduced motion (notes/S-23 §6.6).
     document
       .getElementById(`section-${s}`)
-      ?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      ?.scrollIntoView?.({ behavior: scrollBehavior(), block: "start" });
     window.history.replaceState(
       null,
       "",
@@ -163,11 +201,15 @@ function ProductBody({
     );
   };
 
-  const action = quickAction(product, device, (s) =>
+  const action = quickAction(product, here, (s) =>
     href.product(product.slug, s),
   );
+  const devicesDetail = detail.data ? withSeats(detail.data, seats) : undefined;
+  // The product view is the seat source; an older Worker without it keeps the licence detail.
+  const seatsPending = view.isPending && !view.error;
   const activeDevices =
-    detail.data?.devices.filter((d) => d.status === "authorized").length ??
+    seats?.inUse ??
+    devicesDetail?.devices.filter((d) => d.status === "authorized").length ??
     product.deviceCount;
   const labels: Partial<Record<ProductSection, string>> = {
     devices: `${SECTION_LABEL.devices} ${activeDevices}`,
@@ -183,7 +225,12 @@ function ProductBody({
   const retry = () => void detail.refetch();
 
   return (
-    <div className="space-y-6 desk:space-y-8">
+    // data-first-section: a link to the first section keeps the page at its top, as the deep
+    // link above does (the router reads it, MO-05).
+    <div
+      className="space-y-6 desk:space-y-8"
+      data-first-section={sections[0] ?? undefined}
+    >
       <ProductHeader
         product={product}
         action={action}
@@ -196,7 +243,7 @@ function ProductBody({
           <div className="contents desk:flex desk:flex-col desk:gap-6">
             {has("get") ? (
               <div className="order-1">
-                <GetItPanel product={product} device={device} />
+                <GetItPanel product={product} device={here} />
               </div>
             ) : null}
             {has("new") ? (
@@ -224,7 +271,7 @@ function ProductBody({
             <div className="order-2">
               <LicenseCard
                 product={product}
-                detail={detail.data}
+                detail={devicesDetail}
                 loading={detail.isPending}
                 error={detail.error}
                 onRetry={retry}
@@ -232,6 +279,9 @@ function ProductBody({
                 onSelect={(id) =>
                   setParams({ license: id === product.best.id ? null : id })
                 }
+                seatLimit={seatLimit}
+                showDeviceCount={showCount}
+                storeOf={storeOf}
               />
             </div>
             {has("devices") ? (
@@ -239,13 +289,10 @@ function ProductBody({
                 <DevicesCard
                   productName={product.name}
                   emailConfigured={caps.auth.magic}
-                  seatLimit={
-                    selected.id === product.best.id
-                      ? product.seats?.limit
-                      : null
-                  }
-                  detail={detail.data}
-                  loading={detail.isPending}
+                  seatLimit={seatLimit}
+                  showCount={showCount}
+                  detail={devicesDetail}
+                  loading={detail.isPending || seatsPending}
                   error={detail.error}
                   onRetry={retry}
                 />

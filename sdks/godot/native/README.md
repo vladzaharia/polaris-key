@@ -7,6 +7,10 @@ open the build's download link, so a game never fails to boot for want of a nati
 source lives here; CI builds the binaries (`.github/workflows/native-desktop.yml`), and nothing
 under `dist/`, `bin/`, `.deps/` or `target/` is committed.
 
+SP-27 adds the desktop keyring pieces behind `PKeyKeyringStore`: the macOS build of
+`PolarisKeyApple` (`macos/build_apple.sh`) and `pkey_win.dll`'s `PKeyWinCredentialNative`. Without
+them the token stays in the 0600 file and `store_status()` says `keyring-unavailable`.
+
 The docs page `/docs/services/update/godot-desktop/` is the adopter view. The measurements behind
 every rule are in `docs/research/2026-09-29-godot-omniplatform/notes/S-11-desktop-updaters.md`.
 
@@ -15,8 +19,11 @@ every rule are in `docs/research/2026-09-29-godot-omniplatform/notes/S-11-deskto
 ```
 deps.env, fetch_deps.sh    pinned inputs (godot-cpp commit, Sparkle, velopack_libc, WinSparkle; SHA-256)
 macos/                     PKeySparkleNative (pkey_sparkle.mm), build.sh, pkey_sparkle.gdextension,
-                           sign_and_notarize.sh (inside-out, notarytool, staple, Sparkle zip)
+                           sign_and_notarize.sh (inside-out, notarytool, staple, Sparkle zip);
+                           build_apple.sh, pkey_apple_macos.gdextension (SP-27: PolarisKeyApple's
+                           desktop dylib, the login keychain for PKeyKeyringStore)
 windows/                   pkey_win.dll: velopack/, winsparkle/, storecontext/ (C++/WinRT, C++20),
+                           credman/ (SP-27: Credential Manager for PKeyKeyringStore),
                            src/register.cpp; SConstruct, build.ps1, pkey_win.gdextension;
                            velopack/shim/ (the Rust --mainExe), pack_velopack.ps1, sign.ps1,
                            installer/game.iss
@@ -29,6 +36,7 @@ e2e/                       the probe project, gen_feeds.mts (the Worker's own re
 
 ```sh
 sdks/godot/native/macos/build.sh --install <game project>          # macOS 12+, Xcode CLT, SCons >= 4.11
+GODOT_BIN=godot sdks/godot/native/macos/build_apple.sh --install <game project>   # macOS 14+, Xcode 26 (keyring)
 pwsh sdks/godot/native/windows/build.ps1 -Install <game project>   # VS 2026, SCons >= 4.11, Rust, Git Bash
 ```
 

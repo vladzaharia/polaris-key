@@ -64,6 +64,10 @@ static var _res: Dictionary = {}
 ## The engine's script kinds (P4-08 audit GAP 5), filled on the main thread by `warm()`:
 ## {exts: {extension: true}, markers: PackedStringArray}.
 static var _kinds: Dictionary = {}
+## How many app resources' types have been read from disk (`_remapped_type` misses), for the
+## tests' work count: a check naming one app scene many times reads its type once (P4-28 audit
+## GAP D). Informational only; nothing reads it to decide.
+static var type_reads := 0
 
 
 static func _re(pattern: String) -> RegEx:
@@ -751,6 +755,13 @@ static func has_bytes(hay: PackedByteArray, needle: PackedByteArray) -> bool:
 
 ## The bytes the scan reads per window (P4-27 audit GAP 2).
 const SCAN_WINDOW := 1048576
+## Work counters for `first_present` (P1-13), test hooks like `type_reads`: every native pass
+## the scan makes over a window (the hex encoding, each needle's search, the decimal re-check)
+## adds one to `scan_probes` and the window's size to `scan_bytes`, and so must any candidate
+## comparison a later change adds. The complexity checks diff them around a call, so they hold
+## on a machine of any speed or load.
+static var scan_probes := 0
+static var scan_bytes := 0
 
 
 ## The index of the first of `needles` (list order) that occurs anywhere in `hay`, or -1, in
@@ -776,6 +787,8 @@ static func first_present(hay: PackedByteArray, needles: Array) -> int:
 		var end := mini(hay.size(), start + SCAN_WINDOW + longest - 1)
 		var win := hay.slice(start, end)
 		var h := win.hex_encode()
+		scan_probes += 1
+		scan_bytes += win.size()
 		var d := ""
 		for k in needles.size():
 			if best != -1 and k >= best:
@@ -783,12 +796,16 @@ static func first_present(hay: PackedByteArray, needles: Array) -> int:
 			if hexes[k] == "":
 				continue
 			var at := h.find(hexes[k])
+			scan_probes += 1
+			scan_bytes += win.size()
 			if at == -1:
 				continue
 			if at % 2 == 1:
 				if d == "":
 					var w := str(win)
 					d = ", %s, " % w.substr(1, w.length() - 2)
+				scan_probes += 1
+				scan_bytes += win.size()
 				if d.find(decs[k]) == -1:
 					continue
 			best = k
@@ -965,6 +982,7 @@ static func _app_script_type(p: String, memo: Dictionary = {}) -> bool:
 static func _remapped_type(p: String, memo: Dictionary = {}) -> String:
 	if memo.has(p):
 		return memo[p]
+	type_reads += 1
 	var t := _read_type(p)
 	memo[p] = t
 	return t

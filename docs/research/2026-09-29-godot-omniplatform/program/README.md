@@ -26,6 +26,7 @@ in the same pull request.
 cd docs/research/2026-09-29-godot-omniplatform/program
 node check.mjs              # validate the graph and the index (exit 1 on any problem)
 node check.mjs --ready      # what can start now, most-blocking first
+node check.mjs --ready --optional --deferred  # also optional work and packages waiting for the owner's go (CM-*)
 node check.mjs --summary    # effort and status per phase
 node check.mjs --critical   # the longest remaining dependency chain
 node check.mjs --show P3-02 # one work package with its dependants
@@ -296,12 +297,41 @@ Phase SP (SDK parity pass) follows `notes/SDK-PARITY-PASS.md`, whose owner quest
 on 2026-10-05. Its ids use the two-letter prefix SP, which `check.mjs` accepts. Only the plan-mode
 items are in the graph so far: **SP-00** (the registry and corpus plan, note §5.0); **SP-08**,
 **SP-09** and **SP-10** (the wire items W8, W9 and W10 of note §6, numbered after them); and
-**SP-11** (the product presentation accent colour from the owner's UI-kit answers). The other wire
+**SP-11** (the product presentation accent colour, since dropped in favour of HA-04 and HA-11 to
+HA-14). The other wire
 items map onto existing packages (W1 I-09 and PX-W9, W2 PX-W8, W3 LX-17 to LX-19, W4 I-08, I-10a,
 I-10b, I-13, I-15 and PX-W13, W5 I-13, I-14, I-21 and I-22, W6 phase U, W7 LX-11, LX-20, LX-23 and
 LX-25, W11 I-24a, I-24b and LX-24, W12 LX-13, I-25 and U-16). The note's non-wire task list (SP-01
 to SP-03 and the per-SDK SP-N, SP-R, SP-P, SP-S, SP-K and SP-G tasks) becomes packages when the lead
-schedules its waves (note §7).
+schedules its waves (note §7). SP-K12 (Kotlin JVM desktop) is already in the graph as UK-40.
+**SP-12 to SP-30** (stage "SDK gaps", filed 2026-10-05) own every parity row still `planned` after
+`fix/sdk-parity-followups`, grouped by SDK and capability: React SP-12 to SP-16, Swift SP-17 to
+SP-19, Kotlin SP-20 and SP-21, Python SP-22, Godot SP-23 to SP-27, and the desktop pack transports
+SP-28 (Steam for Node, Python, Swift and Kotlin), SP-29 (MSIX and Flatpak for Node and Python, with
+the build generators) and SP-30 (MSIX and Flatpak for Godot). They take the next free `SP-NN` ids,
+as `plans/SP-00.md` D8 sets (the manifest `wp` pattern refuses the note's `SP-N05` form); each
+brief names the note tasks it absorbs. SP-16 takes React's `commerce.receipt` row from LX-20. **SP-31** (filed 2026-10-06) is the host half of
+bridge v4, which no package owned: the v3 Node Electron host (the note's SP-N10) landed without a
+graph node, and SP-31 moves it to v4 after SP-12.
+`identity.oidc` rows point at I-15 and Swift `ui.kit` at UK-07.
+
+Phase UK (UI kits) follows [`docs/design/UI-KITS.md`](../../../design/UI-KITS.md) §10, approved with
+the owner decisions of 2026-10-05. One package per kit, ordered must → should → could (could items
+are optional). UK-01 (tokens) and UK-02 (the plan for the copy catalog, UI fixtures and `ui.*`
+parity rows, executed by UK-02a and UK-02b) come first, then UK-15 (QA harness and modernity lint)
+and UK-16 (docs scaffold), then UK-03 (ui-core) and the kits. Kits read the product presentation
+only through HA-13/HA-14 via a seam, so they do not wait for them; UK-41 verifies it at the end of
+the must tier. UK-30 (Tk) is dropped.
+
+Phase MO (motion) follows [`notes/S-23-motion-system.md`](../notes/S-23-motion-system.md) §10, with
+the owner decisions delegated to the lead on 2026-10-05 (D1–D10 in the note). It adds motion to
+the existing portal and console through one system shared with the kits and the sign-in card.
+MO-01 (brand tokens) comes first, then MO-02 (the layer in `packages/admin`) and MO-03 (e2e
+determinism and the motion smoke suite), then the area packages in parallel. Several area packages
+share files with in-flight branches that are not graph nodes (`wp/UX-10`, `wp/UX-29`, the
+`Overview.tsx` branches, `feat/license-delete`); each brief's "Files it touches" names the branch
+to wait for or rebase on. MO-06 and MO-07 depend on SP-08 and PX-16 for the same reason. MO-13
+is the closeout and is marked done last.
 
 ---
 
@@ -312,21 +342,21 @@ these into packages when their phase approaches, using the next free id in the p
 
 **SDK parity**
 
-- React `core.local`.
+- React `core.local` (→ SP-15).
 - `identity.oidc` in Node, Python and Swift, and a registry decision on native Godot, which has no
   native completion path.
-- Swift `ui.kit`, React `<PolarisBoot>` and SwiftUI `PolarisBootView` (P1-09 follow-up).
+- Swift `ui.kit` (→ UK-07), React `<PolarisBoot>` and SwiftUI `PolarisBootView` (P1-09 follow-up).
 - Terminal boot renderers (Node `runBoot()`, Python `rich_boot()`) over the stage machine. They need
   the transport status on `DocOutcome.error` and `RegisterResult.error` in Node, Python and Swift
   first (P1-09 plan §8).
 - An adopter-facing docs page on the boot protocol (the stage machine and "What a host sends";
   P1-09 plan §8).
-- `update.driver` in Node, Python and React.
+- `update.driver` in Node, Python and React (React → SP-15).
 - Browser telemetry: `/devices/report` accepts only a bearer token today.
 - React `config.mint`.
 - `Retry-After` back-off in every SDK; the Worker's 429s do not send the header yet.
 - A fingerprint on the device-code path, so strict tiers work.
-- A desktop keyring store for Godot.
+- A desktop keyring store for Godot (→ SP-27).
 - Godot runs on web (headless Chromium) and on real devices. The runner legs on web, Android and
   iOS have no owner (P1-01 and P1-09 hand-offs).
 - Porting the prototype `lowend/sync.sh` to `sdks/godot` (P1-01 follow-up; it still copies the
@@ -353,7 +383,7 @@ these into packages when their phase approaches, using the next free id in the p
 - Microsoft Store add-ons and rollout controls.
 - ASC review-submission creation.
 - A macOS binding of the Apple plugin package, for Mac App Store builds.
-- The `msix-optional` and `flatpak-ext` transports.
+- The `msix-optional` and `flatpak-ext` transports (→ SP-29, SP-30).
 - A Tauri updater feed renderer.
 
 **Packs**

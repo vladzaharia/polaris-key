@@ -3,16 +3,30 @@ import type {
   PortalDownloadFile,
   PortalDownloads,
   PortalLicenseDetail,
+  PortalLicenseSummary,
+  PortalProduct,
+  PortalProductDevice,
   PortalRelease,
   PortalStoreLink,
 } from "../api.js";
 import type { PlatformKey } from "../components/Glyphs.js";
-import type { ProductSection } from "../router.js";
 import {
+  resolveHash,
+  type PortalRoute,
+  type ProductSection,
+} from "../router.js";
+import {
+  devicesText,
   formatSize,
+  isSignInLicense,
   normalisePlatform,
+  shortOrigin,
+  type OriginFacts,
+  tierLabel,
   type DeviceInHand,
   type LibraryProduct,
+  type Presentation,
+  type QuickAction,
 } from "./library.js";
 
 /**
@@ -62,13 +76,13 @@ export function presentSections(
   extra: { packageAccess?: boolean } = {},
 ): ProductSection[] {
   const set = new Set<ProductSection>();
-  const accountBound = p.status.kind === "signedInApp";
   if (releasesOn && p.releases.length > 0) {
     set.add("get");
     set.add("new");
   }
   set.add("license");
-  if (!accountBound) set.add("devices");
+  // Every licence, from a key or from signing in, has devices to remove remotely (owner, 2026-10-05).
+  set.add("devices");
   if (extra.packageAccess) set.add("package");
   const pres = p.presentation;
   if (pres.supportUrl || pres.supportEmail || pres.website) set.add("help");
@@ -86,6 +100,50 @@ export interface FileRowModel {
   meta: string;
   /** Why it can't be downloaded, as visible text; null when it can. */
   notIncluded: string | null;
+  /**
+   * A file that isn't hosted here (`not_hosted`): where to get it instead, "Get it from Steam"
+   * or "Get it from <developer>" (§0.6 P3, §11.2). Never "Not included": the license covers it.
+   */
+  elsewhere: Elsewhere | null;
+}
+
+/** "Get it from Steam" with the store's page, or "Get it from <developer>" with their site. */
+export interface Elsewhere {
+  label: string;
+  /** An https link to follow; null when the developer gave none (the words still say who). */
+  href: string | null;
+}
+
+/** Where a file this site doesn't host comes from (§0.6 P3, §11.2). */
+export interface ElsewhereContext {
+  /** Live store links for the product ("Also yours on"). */
+  stores?: readonly PortalStoreLink[];
+  developer?: string | null;
+  website?: string | null;
+}
+
+function httpsOrNull(url: string | null | undefined): string | null {
+  return typeof url === "string" && /^https:\/\//.test(url) ? url : null;
+}
+
+/**
+ * Where to get a file that isn't hosted here: a live store that carries the file's platform (any
+ * live store for an extra), else the developer's website, else the developer's name alone.
+ */
+export function elsewhereFor(
+  platform: PlatformKey | null,
+  ctx: ElsewhereContext = {},
+): Elsewhere {
+  const live = (ctx.stores ?? []).filter((s) => s.live && httpsOrNull(s.url));
+  const store =
+    live.find((s) =>
+      platform
+        ? s.platforms.some((p) => normalisePlatform(p) === platform)
+        : true,
+    ) ?? null;
+  if (store) return { label: `Get it from ${store.label}`, href: store.url };
+  const who = ctx.developer ?? "the developer";
+  return { label: `Get it from ${who}`, href: httpsOrNull(ctx.website) };
 }
 
 function ext(name: string): string | null {
@@ -137,8 +195,13 @@ export function fileRow(
   a: PortalArtifact,
   release: PortalRelease,
   licenseUsable = true,
+  ctx?: ElsewhereContext,
 ): FileRowModel {
   const platform = normalisePlatform(a.platform);
+  const elsewhere =
+    !a.canDownload && a.reason === "not_hosted"
+      ? elsewhereFor(platform, ctx)
+      : null;
   return {
     artifact: a,
     release,
@@ -147,7 +210,11 @@ export function fileRow(
     meta: [release.version, ext(a.name), formatSize(a.sizeBytes)]
       .filter(Boolean)
       .join(" · "),
-    notIncluded: notIncludedReason(a, licenseUsable),
+    // A `not_hosted` file says where it is instead ("Get it from Steam"), never "here yet".
+    notIncluded: elsewhere
+      ? elsewhere.label
+      : notIncludedReason(a, licenseUsable),
+    elsewhere,
   };
 }
 
@@ -185,8 +252,9 @@ const GROUP_ORDER: readonly PlatformKey[] = [
 export function groupFiles(
   r: PortalRelease,
   licenseUsable = true,
+  ctx?: ElsewhereContext,
 ): PlatformGroup[] {
-  return groupRows(r.artifacts.map((a) => fileRow(a, r, licenseUsable)));
+  return groupRows(r.artifacts.map((a) => fileRow(a, r, licenseUsable, ctx)));
 }
 
 function groupRows(rows: FileRowModel[]): PlatformGroup[] {
@@ -211,7 +279,12 @@ export interface GetItModel {
   newerNotCovered: { version: string } | null;
   /** The channel's newest release, for the subtitle. */
   latest: { version: string; publishedAt: number | null };
-  /** Covered builds for the device in hand (Universal or Apple silicon first). */
+  /**
+   * The one OS the recommendation is for (§0.6 P3): the same value the header's action used, so
+   * the label and the build always agree. Null on a phone or when nothing is known.
+   */
+  os: PlatformKey | null;
+  /** Covered builds for `os` (Universal or Apple silicon first); empty when there's no match. */
   recommended: FileRowModel[];
   groups: PlatformGroup[];
   /** Store outlets reporting a live release (G2, "Also yours on"); empty without PX-W2. */
@@ -223,22 +296,24 @@ export function getItModel(
   device: DeviceInHand,
   /** Whether any of the account's licences for the product is usable (status, expiry). */
   licenseUsable = true,
+  ctx?: ElsewhereContext,
 ): GetItModel | null {
   const newest = releases[0];
   if (!newest) return null;
   const covered = releases.find((r) => r.artifacts.some((a) => a.canDownload));
   const release = covered ?? newest;
-  const groups = groupFiles(release, licenseUsable);
-  const recommended =
-    device.os && !device.phone
-      ? (groups.find((g) => g.platform === device.os)?.rows ?? []).filter(
-          (r) => r.notIncluded === null,
-        )
-      : [];
+  const groups = groupFiles(release, licenseUsable, ctx);
+  const os = device.phone ? null : device.os;
+  const recommended = os
+    ? (groups.find((g) => g.platform === os)?.rows ?? []).filter(
+        (r) => r.notIncluded === null,
+      )
+    : [];
   return {
     release,
     newerNotCovered: covered && covered !== newest ? newest : null,
     latest: { version: newest.version, publishedAt: newest.publishedAt },
+    os,
     recommended,
     groups,
     stores: [],
@@ -248,13 +323,17 @@ export function getItModel(
 /**
  * Get it from the per-product downloads view (PX-W2): the Worker already picked the build for
  * the device (Universal named as such, two Mac builds both offered), the older covered release
- * when the newest isn't (§5.4), and the reason each uncovered file isn't included.
+ * when the newest isn't (§5.4), and the reason each uncovered file isn't included. The Worker's
+ * recommendation is used only when it is for `device.os` (pass `resolveDevice`'s answer), so
+ * the label above it can never name another OS.
  */
 export function getItFromDownloads(
   d: PortalDownloads,
   device: DeviceInHand,
+  ctx: Omit<ElsewhereContext, "stores"> = {},
 ): GetItModel | null {
   if (!d.available || !d.latest) return null;
+  const where: ElsewhereContext = { ...ctx, stores: d.stores };
   const releases = new Map<string, PortalRelease>();
   const releaseOf = (f: PortalDownloadFile): PortalRelease => {
     let r = releases.get(f.releaseId);
@@ -289,10 +368,17 @@ export function getItFromDownloads(
         reason: f.reason,
       },
       releaseOf(f),
+      true,
+      where,
     );
-  const rec = d.recommended;
-  const recommended =
-    rec && !device.phone ? rec.files.filter((f) => f.canDownload).map(row) : [];
+  const os = device.phone ? null : device.os;
+  const rec =
+    d.recommended && os && normalisePlatform(d.recommended.platform) === os
+      ? d.recommended
+      : null;
+  const recommended = rec
+    ? rec.files.filter((f) => f.canDownload).map(row)
+    : [];
   const groups = groupRows([
     ...d.platforms.flatMap((p) => p.files.map(row)),
     ...d.extras.map(row),
@@ -310,12 +396,252 @@ export function getItFromDownloads(
       sourceUrl: null,
       artifacts: [],
     },
-    newerNotCovered: rec && !rec.latest ? { version: d.latest.version } : null,
+    newerNotCovered:
+      d.recommended && !d.recommended.latest
+        ? { version: d.latest.version }
+        : null,
     latest: { version: d.latest.version, publishedAt: d.latest.publishedAt },
+    os,
     recommended,
     groups,
     stores: d.stores.filter((s) => s.live && (s.url || s.command)),
   };
+}
+
+// ── one OS source (§0.6 P3) ───────────────────────────────────────────────────────────────────
+
+/** The low-entropy User-Agent Client Hints a Chromium browser exposes to script. */
+export interface UaHints {
+  platform?: string;
+  mobile?: boolean;
+}
+
+const HINT_OS: Record<string, PlatformKey> = {
+  macos: "macos",
+  windows: "windows",
+  linux: "linux",
+  android: "android",
+  ios: "ios",
+};
+
+/** `navigator.userAgentData`, where the browser has it (Chromium); never the high-entropy calls. */
+export function readUaHints(): UaHints | null {
+  if (typeof navigator === "undefined") return null;
+  const data = (navigator as Navigator & { userAgentData?: UaHints })
+    .userAgentData;
+  return data && typeof data.platform === "string" ? data : null;
+}
+
+/**
+ * The one OS the product page works from (§0.6 P3): the Worker's detection (which already reads
+ * `Sec-CH-UA-Platform`, then the User-Agent), refined in the browser by what only the browser can
+ * tell: the UA-CH platform when the browser exposes it, and an iPad behind a Mac user agent
+ * (`touchAmbiguous` and a touch screen). Without a downloads view it is the browser's own guess.
+ * The header's action and the Get it panel both take this value, so they never disagree.
+ */
+export function resolveDevice(
+  d: PortalDownloads | null | undefined,
+  device: DeviceInHand,
+  hints: UaHints | null = null,
+): DeviceInHand {
+  const hinted = hints?.platform
+    ? (HINT_OS[hints.platform.toLowerCase()] ?? null)
+    : null;
+  if (hinted)
+    return {
+      os: hinted,
+      phone: hints?.mobile === true || hinted === "ios" || hinted === "android",
+    };
+  const server = d ? normalisePlatform(d.detected.platform) : null;
+  if (!server) return device;
+  if (d!.detected.touchAmbiguous && device.os === "ios") return device;
+  return { os: server, phone: server === "ios" || server === "android" };
+}
+
+const DEVICE_NOUN: Record<PlatformKey, string> = {
+  macos: "Mac",
+  windows: "Windows PC",
+  linux: "Linux computer",
+  ios: "iPhone or iPad",
+  android: "Android device",
+  web: "browser",
+};
+
+/** "Recommended for your Mac": the label names the same OS the build is for. */
+export function recommendedLabel(os: PlatformKey): string {
+  return `Recommended for your ${DEVICE_NOUN[os]}`;
+}
+
+// ── the one next action, never pointing at the page you are on (§0.6 P3) ──────────────────────
+
+/**
+ * The quick action as shown. A product with no download offers "Get it from <developer>" with
+ * their site rather than "View details"; on the product's own page a "View details" that would
+ * only point back at that page is dropped (null), so the header shows no lead instead of a
+ * self-link.
+ */
+export function settleAction(
+  p: Pick<LibraryProduct, "slug"> & { presentation: Presentation },
+  action: QuickAction,
+  here: PortalRoute | null,
+): QuickAction | null {
+  if (action.kind !== "link" || action.icon !== "details") return action;
+  const site = httpsOrNull(p.presentation.website);
+  if (site)
+    return {
+      kind: "link",
+      label: `Get it from ${p.presentation.developer ?? "the developer"}`,
+      href: site,
+      icon: "open",
+      external: true,
+    };
+  const target = resolveHash(action.href).route;
+  const onIt =
+    here?.kind === "product" &&
+    target.kind === "product" &&
+    here.product === target.product &&
+    here.product === p.slug;
+  return onIt ? null : action;
+}
+
+// ── one device source (§0.6 P4) ───────────────────────────────────────────────────────────────
+
+type ProductLicense = PortalProduct["licenses"][number];
+
+/** A licence's seats as activation counts them, read the same way on every page. */
+export interface DeviceSeats {
+  /** The seat limit; null when the licence has none. */
+  limit: number | null;
+  /** Devices holding a seat (the Worker's count: authorised and not dormant). */
+  inUse: number;
+  /** Every seat is taken. */
+  full: boolean;
+  /** The devices holding a seat, least recently seen first. */
+  holders: PortalProductDevice[];
+  /** Authorised devices past the dormancy window: they hold no seat. */
+  dormantIds: ReadonlySet<string>;
+}
+
+/**
+ * The one device source (§0.6 P4) for the product page and the free-device flow: the product
+ * view's per-licence seats (`GET /api/products/<p>`), where the Worker has already decided which
+ * devices are dormant. Both pages call this, so "2 of 3 in use" reads the same on each.
+ */
+export function deviceSeats(license: ProductLicense): DeviceSeats {
+  const limit = license.deviceLimit > 0 ? license.deviceLimit : null;
+  const inUse = license.activeSeatCount;
+  const holders = license.devices
+    .filter((d) => !d.dormant)
+    .sort((a, b) => a.lastSeen - b.lastSeen);
+  return {
+    limit,
+    inUse,
+    full: limit !== null && inUse >= limit,
+    holders,
+    dormantIds: new Set(
+      license.devices.filter((d) => d.dormant).map((d) => d.deviceId),
+    ),
+  };
+}
+
+/** The selected licence's seats from the product view, or null while it isn't known. */
+export function seatsFor(
+  product: PortalProduct | undefined,
+  licenseId: string,
+): DeviceSeats | null {
+  const l = product?.licenses.find((x) => x.id === licenseId);
+  return l ? deviceSeats(l) : null;
+}
+
+/**
+ * The licence detail as the Devices card shows it, with the seat source applied: a device the
+ * Worker counts as dormant holds no seat, so it is shown as not using one (not as "in use").
+ */
+export function withSeats(
+  detail: PortalLicenseDetail,
+  seats: DeviceSeats | null,
+): PortalLicenseDetail {
+  if (!seats || seats.dormantIds.size === 0) return detail;
+  return {
+    ...detail,
+    devices: detail.devices.map((d) =>
+      d.status === "authorized" && seats.dormantIds.has(d.deviceId)
+        ? { ...d, status: "dormant" }
+        : d,
+    ),
+  };
+}
+
+/** The tier as the License card's pill names it: a licence with no tier is "Standard". */
+export function tierName(l: Pick<PortalLicenseSummary, "tier">): string {
+  return tierLabel(l.tier) ?? "Standard";
+}
+
+/** The licence picker's option: tier first, then its short origin ("Pro · Key …3WPLDA",
+ * "Standard · Sign-in", "Standard · Steam key"), and the status only when it wants attention
+ * ("Pro · Key · Expired"). Never a licence type: every licence is account-bound (owner,
+ * 2026-10-05). */
+export function licenseOptionLabel(
+  l: PortalLicenseSummary,
+  status: { label: string; attention: boolean },
+  facts: OriginFacts = {},
+): string {
+  return [
+    tierName(l),
+    shortOrigin(l, facts),
+    status.attention ? status.label : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** The store of the active purchase on licence `id` (`purchase.store`, PX-W6), or null. */
+export function storeFor(
+  view: PortalProduct | undefined,
+  id: string,
+): string | null {
+  const p = view?.licenses.find((l) => l.id === id)?.purchase;
+  return p && p.source === "store" ? (p.store ?? null) : null;
+}
+
+/**
+ * The seat limit activation enforces on licence `id`: the product view's per-licence
+ * `deviceLimit` (PX-W1), else the library's seats when `id` is the best licence; `null` when
+ * neither has answered (the limit is never guessed).
+ */
+export function seatLimitFor(
+  p: LibraryProduct,
+  view: PortalProduct | undefined,
+  id: string,
+): number | null {
+  const own = view?.licenses.find((l) => l.id === id);
+  if (own) return own.deviceLimit > 0 ? own.deviceLimit : null;
+  return id === p.best.id ? (p.seats?.limit ?? null) : null;
+}
+
+/**
+ * Whether licence `l`'s device counter is shown. A key or seat licence's counter goes away when
+ * the account also holds a sign-in licence for the product, which covers the devices it signs in
+ * on (owner, 2026-10-05); the device list and Remove stay either way.
+ */
+export function showsDeviceCount(
+  p: Pick<LibraryProduct, "licenses">,
+  l: PortalLicenseSummary,
+): boolean {
+  return isSignInLicense(l) || !p.licenses.some(isSignInLicense);
+}
+
+/**
+ * The words beside the tier pill on the License card: "0 of 5 devices" for every licence (no
+ * licence type beside it; owner, 2026-10-05), "1 device" while the limit is unknown, and null
+ * when the counter is hidden.
+ */
+export function licenseCountLine(
+  inUse: number,
+  limit: number | null,
+  showCount: boolean,
+): string | null {
+  return showCount ? devicesText(inUse, limit) : null;
 }
 
 /** "1.x", "1.0 and later", "Up to 2.0", "All versions" from the license's version bounds. */

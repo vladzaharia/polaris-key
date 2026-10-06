@@ -22,22 +22,36 @@ export type SingleUseKind =
   | "portal-flow"
   /** Portal email magic link, by token. */
   | "portal-magic"
+  /** A login-card provider sign-in (Google, Apple, Steam; I-06), by `state`. */
+  | "provider-flow"
   /** Console (admin) OIDC sign-in, by `state`. */
   | "admin-flow"
   /** Product OIDC sign-in, by `state`. */
   | "oidc-flow"
+  /** The legacy sign-in's licence chooser (I-26): the browser binder's hash → the flow's `state`. */
+  | "oidc-choice"
   /** RFC 8628 device-code flow, by device code. */
   | "device-flow"
   /** RFC 8628 user-code index (user code → device code), by normalised user code. */
   | "device-user"
-  /** An email one-time code (I-08), by (recipient, flow). */
+  /** A portal "sign in with another device" request (PX-W14, G29), by its poll handle. */
+  | "device-login"
+  /** Its code index (code → the request's address), by normalised code. */
+  | "device-login-code"
+  /** An email one-time code (I-07), by (recipient, flow). */
   | "email-code"
-  /** A recipient's wrong-code strikes and lockout (I-08), by recipient. */
+  /** A recipient's wrong-code strikes and lockout (I-07), by recipient. */
   | "email-strikes"
-  /** A WebAuthn challenge (I-14). */
+  /** The login card's pending email sign-in (I-07), by the browser's flow secret. */
+  | "signin-flow"
+  /** A first-provider-sign-in email gate (I-07's interstitial), by the browser's gate secret. */
+  | "signin-gate"
+  /** A passkey (WebAuthn) ceremony's challenge (I-16), by its browser's flow secret or its session. */
   | "webauthn-challenge"
   /** An issuer authorization code (I-16). */
-  | "auth-code";
+  | "auth-code"
+  /** A passthrough sign-in request handle (PX-W13, WIRE-CONTRACT-V4 §12.7.2), by its hash. */
+  | "signin-request";
 
 /** The address of one artefact. */
 export interface ArtefactRef {

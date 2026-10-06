@@ -64,19 +64,24 @@ static func run(android: PKeyAndroid, request: Dictionary) -> PKeyApplyResult:
 	if space_ok.is_valid() and not bool(space_ok.call(dir, size)):
 		return PKeyApplyResult.failed(PKeyErrors.STORE_FAILED, "Not enough free space to download the %d-byte APK." % size, {"reason": "no-space"})
 	var dest := dir.path_join(FILE)
-	var opts := {"expected_size": size, "timeout": float(request.get("timeout", PKeyDownload.DEFAULT_TIMEOUT))}
-	if request.get("progress") is Callable:
-		opts["progress"] = request["progress"]
-	var r := await PKeyDownload.fetch(request.get("transport"), url, dest, request.get("headers", {}), opts)
+	# The shared verified download (PolarisKey.release.fetch's path): Range + If-Range resume,
+	# size and SHA-256 against the record, then the rename into place.
+	var r := await PKeyRelease.download_artifact({
+		"transport": request.get("transport"),
+		"url": url,
+		"headers": request.get("headers", {}),
+		"artifact": art,
+		"to": dest,
+		"timeout": request.get("timeout", PKeyDownload.DEFAULT_TIMEOUT),
+		"progress": request.get("progress", Callable()),
+		"with_attestation": request.get("with_attestation", Callable()),
+	})
+	if not r.ok and r.code == PKeyErrors.PAYLOAD_MISMATCH:
+		return PKeyApplyResult.failed(PKeyErrors.PAYLOAD_MISMATCH, "The downloaded APK does not match the record's size and SHA-256; nothing was installed.")
+	if not r.ok and r.code == PKeyErrors.STORE_FAILED and r.detail is Dictionary and r.detail.get("reason") == "rename":
+		return PKeyApplyResult.failed(PKeyErrors.STORE_FAILED, "The verified APK could not be moved into place.")
 	if not r.ok:
 		return PKeyApplyResult.failed(r.code, r.message, r.detail)
-	var part: String = r.detail["path"]
-	if not await PKeySlots.verify_file(part, size, sha):
-		DirAccess.remove_absolute(part)
-		return PKeyApplyResult.failed(PKeyErrors.PAYLOAD_MISMATCH, "The downloaded APK does not match the record's size and SHA-256; nothing was installed.")
-	DirAccess.remove_absolute(dest)
-	if DirAccess.rename_absolute(part, dest) != OK:
-		return PKeyApplyResult.failed(PKeyErrors.STORE_FAILED, "The verified APK could not be moved into place.")
 	var installed := await android.apk_install(ProjectSettings.globalize_path(dest), sha, -1, {"silent": bool(request.get("silent", true)), "prompt": true})
 	if not installed.ok and installed.code == PKeyErrors.TIMEOUT:
 		return PKeyApplyResult.failed(PKeyErrors.TIMEOUT, "The Android plugin did not answer in time; the install's outcome is unknown and is reported from the journal at the next launch.", {"reason": "outcome-unknown", "bridge": BRIDGE})

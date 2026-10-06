@@ -66,10 +66,15 @@ import { pollConnectors } from "./connectors/index.js";
 import { runAutoHalt, type AutoHaltOutcome } from "./autoHalt.js";
 import { runCommerceTick, type CommerceTick } from "./commerce/recheck.js";
 import {
+  commerceDeleteContribution,
+  commerceMergeStatements,
+} from "./commerce/state.js";
+import {
   getOutlet,
   manifestIngestStatements as outletIngestStatements,
   parseJsonColumn,
 } from "./outlets.js";
+import { DISTRIBUTION_SETTINGS_SLICE } from "./settings.js";
 
 /**
  * `core/hooks.ts` `outletCapabilities`: the capabilities in force for one of this product's live
@@ -178,6 +183,8 @@ async function scheduled(
 
 export const distributionService: ServiceDescriptor = {
   slug: "distribution",
+  /** ST-03: this service's settings registry slice (`settings.ts`). */
+  settings: DISTRIBUTION_SETTINGS_SLICE,
   /** `routes.ts`: the byte routes and the CI rollout routes. `null` = Core's not-found. */
   handle: handleDistributionRoutes,
   /**
@@ -228,6 +235,18 @@ export const distributionService: ServiceDescriptor = {
    * an operator enables Distribution.
    */
   manifestIngestAlways: accessIngestStatements,
+  /**
+   * LX-03: a retired licence's purchases move to the survivor and its purchase binding becomes
+   * an alias of it (`commerce/state.ts`, `core/licenseMerge.ts`), whatever Distribution's
+   * enablement — a purchase left on the retired licence would be stranded when it is turned on.
+   */
+  licenseMerge: commerceMergeStatements,
+  /**
+   * Licence deletion (`core/licenseDelete.ts`): a licence with recorded store purchases is never
+   * deleted; otherwise its purchase binding and the aliases resolving to it go, whatever
+   * Distribution's enablement.
+   */
+  licenseDelete: commerceDeleteContribution,
   /** `/manage/api/products/<slug>/distribution/…` (`admin.ts`). */
   adminHandle: handleDistributionAdmin,
   /** The store-connector poll, on the connector cron (`connectors/`). */

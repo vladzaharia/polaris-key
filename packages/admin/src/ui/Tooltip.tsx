@@ -9,7 +9,58 @@ import { cn } from "../lib/cn.js";
  */
 export const TooltipProvider = TooltipPrimitive.Provider;
 export const TooltipRoot = TooltipPrimitive.Root;
-export const TooltipTrigger = TooltipPrimitive.Trigger;
+
+/**
+ * Whether the last input was a pointer: the `:focus-visible` heuristic, kept by hand because
+ * focus a script moves (a menu or a sheet handing focus back to its opener) carries no modality
+ * of its own, and jsdom matches `:focus-visible` on every focused element. A key press (Tab,
+ * Enter, Escape) clears it, and so does a page with no input yet.
+ */
+let pointerInput = false;
+let listening = false;
+function listenForModality(): void {
+  if (listening || typeof document === "undefined") return;
+  listening = true;
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      if (!e.metaKey && !e.ctrlKey && !e.altKey) pointerInput = false;
+    },
+    true,
+  );
+  const pointer = (): void => {
+    pointerInput = true;
+  };
+  for (const type of ["pointerdown", "mousedown", "touchstart"] as const)
+    document.addEventListener(type, pointer, true);
+}
+
+/**
+ * The trigger opens its tooltip on focus (WCAG 1.4.13) unless the last input was a pointer: a
+ * sheet saved with the mouse hands focus back to its "More actions" opener, and a tooltip opened
+ * then would linger over the page, portaled outside every landmark (LX-14a). Keyboard focus, and
+ * focus on a page with no input yet, open it as before; so does hover.
+ */
+export function TooltipTrigger({
+  onFocus,
+  ref,
+  ...props
+}: React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Trigger> & {
+  ref?: React.Ref<React.ComponentRef<typeof TooltipPrimitive.Trigger>>;
+}): React.ReactElement {
+  React.useEffect(listenForModality, []);
+  return (
+    <TooltipPrimitive.Trigger
+      ref={ref}
+      {...props}
+      onFocus={(e) => {
+        onFocus?.(e);
+        // Radix skips its focus-open for a prevented event.
+        if (pointerInput) e.preventDefault();
+      }}
+    />
+  );
+}
 
 export function TooltipContent({
   className,

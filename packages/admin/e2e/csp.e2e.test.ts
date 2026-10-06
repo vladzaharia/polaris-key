@@ -64,6 +64,35 @@ const ROUTES: Record<string, unknown> = {
   "/manage/api/products/djdl": { product: row("djdl", "DJDL") },
   "/manage/api/products/djdl/license/licenses": { licenses: [] },
   "/manage/api/products/djdl/license/tiers": { tiers: [] },
+  // LX-14a: a licence record for the Device limit… sheet.
+  "/manage/api/products/djdl/license/licenses/lic_1": {
+    id: "lic_1",
+    name: "Ada Lovelace",
+    email: "ada@x.io",
+    status: "active",
+    activatedAt: 1,
+    expiresAt: null,
+    keyCount: 1,
+    activeKeyCount: 1,
+    deviceCount: 4,
+    profile: null,
+    profiles: [],
+    tier: null,
+    channels: [],
+    minVersion: null,
+    maxVersion: null,
+    identityProvider: "oidc",
+    deviceLimit: 5,
+    effectiveDeviceLimit: 5,
+    deviceLimitSource: "license",
+    inheritedDeviceLimit: 3,
+    inheritedDeviceLimitSource: "product",
+    groups: [],
+    maxOfflineDays: null,
+    overrides: { config: {}, secrets: {}, entitlements: {} },
+    keys: [],
+    devices: [],
+  },
   "/manage/api/products/djdl/config/profiles": { profiles: [] },
   "/manage/api/products/djdl/release/releases": { releases: [] },
   "/manage/api/platform/version": {
@@ -95,6 +124,25 @@ const ROUTES: Record<string, unknown> = {
     bindings: { DB: true, HOT: true },
   },
   "/manage/api/platform/activity": { items: [], nextCursor: null },
+  "/manage/api/platform/reserved-names": {
+    mode: "warn",
+    keys: [
+      {
+        key: "deviceLimit",
+        type: "integer",
+        rule: "The license's own device limit, else the tier's, else the license's deviceLimit entitlement, else the product default.",
+      },
+    ],
+    prefixes: ["license.", "app.", "pkey."],
+    products: [
+      {
+        slug: "djdl",
+        name: "djdl",
+        catalogVersion: 1,
+        declarations: [{ key: "deviceLimit", compatible: true, problem: null }],
+      },
+    ],
+  },
   "/manage/api/platform/settings": {
     settings: [
       {
@@ -133,6 +181,27 @@ const ROUTES: Record<string, unknown> = {
         stored: null,
         version: 0,
         confirm: { raise: "L0", lower: "L1" },
+      },
+      {
+        key: "LICENSING_RESERVED_NAMES",
+        area: "licensing",
+        label: "Reserved entitlement names",
+        description: "Incompatible reserved-name declarations.",
+        kind: "choice",
+        options: [
+          { value: "warn", label: "Warn" },
+          { value: "error", label: "Refuse" },
+        ],
+        scripts: ["main"],
+        precedence: "runtime",
+        default: "warn",
+        deployValue: null,
+        value: "warn",
+        source: "default",
+        forcedOff: false,
+        stored: null,
+        version: 0,
+        confirm: { warn: "L0", error: "L1" },
       },
     ],
     storeAvailable: true,
@@ -266,6 +335,113 @@ const ROUTES: Record<string, unknown> = {
       },
     ],
   },
+  // A-18j: Distribution → Storefronts and Listing.
+  "/manage/api/products/djdl/distribution/storefronts": {
+    listing: { name: "DJDL", defaultLocale: "en-US", locales: ["en-US"] },
+    stores: [
+      {
+        id: "google-play",
+        label: "Google Play",
+        listingStore: "play",
+        connection: {
+          state: "connected",
+          credential: "google-play.service-account",
+          credentialLabel: "Google Play service account",
+          source: "console",
+          lastError: null,
+        },
+        app: { id: "gg.djdl.app", name: "DJDL" },
+        outlets: ["android"],
+        readOnly: null,
+        capabilities: [
+          {
+            op: "writeListingText",
+            label: "Listing text",
+            support: { mode: "api", plane: "worker", rules: [] },
+          },
+          {
+            op: "contentRating",
+            label: "Content rating",
+            support: {
+              mode: "deep-link",
+              link: "x",
+              verify: "operator-assertion",
+            },
+          },
+          {
+            op: "uploadBuild",
+            label: "Build upload",
+            support: { mode: "unsupported", reason: "CI only." },
+          },
+        ],
+        prerequisites: [
+          {
+            id: "connection",
+            label: "Team connection",
+            state: "met",
+            detail: "Stored.",
+            page: "platform-stores",
+          },
+        ],
+        steps: [
+          {
+            id: "submit",
+            ops: ["submit"],
+            phase: "submit",
+            label: "Send for review",
+            mode: "api",
+            typed: true,
+            state: "todo",
+            stateAt: null,
+            writes: ["POST commit"],
+            link: null,
+            ci: null,
+            pr: null,
+            run: {
+              method: "POST",
+              path: "/manage/api/products/djdl/distribution/storefronts/google-play/steps/submit",
+              body: {},
+              fields: [],
+              confirm: "typed",
+              verb: "Send the changes for review",
+              consequences: [
+                "Google Play sends every staged change for review.",
+              ],
+            },
+            assert: null,
+            next: null,
+            handoff: null,
+            copy: [],
+            detail: null,
+            blockedBy: null,
+          },
+        ],
+        pushListing: { stageOnly: true },
+        confirmationLabel: "Google Play",
+      },
+    ],
+  },
+  "/manage/api/products/djdl/distribution/storefronts/slots": { slots: [] },
+  "/manage/api/products/djdl/distribution/listing": {
+    listing: {
+      app: { defaultLocale: "en-US", name: "DJDL" },
+      source: "admin",
+      provenance: {},
+      modifiedAt: 1,
+      modifiedBy: "u1",
+    },
+    locales: [],
+    overrides: [],
+    limits: { name: 30 },
+    stores: [],
+    overrideStores: [],
+    modelFields: [],
+  },
+  "/manage/api/products/djdl/distribution/listing/fit": {
+    exists: true,
+    release: null,
+    stores: [],
+  },
 };
 
 let server: PreviewServer;
@@ -293,11 +469,11 @@ afterAll(async () => {
   await new Promise<void>((r) => server?.httpServer.close(() => r()));
 });
 
-async function open(viewport: {
-  width: number;
-  height: number;
-}): Promise<Page> {
-  const ctx = await browser.newContext({ viewport });
+async function open(
+  viewport: { width: number; height: number },
+  reducedMotion: "reduce" | "no-preference" = "reduce",
+): Promise<Page> {
+  const ctx = await browser.newContext({ viewport, reducedMotion });
   await ctx.addInitScript(() => {
     (window as unknown as { __v: string[] }).__v = [];
     document.addEventListener("securitypolicyviolation", (e) =>
@@ -426,6 +602,58 @@ describe("overlays under the Worker's CSP", () => {
     await page.context().close();
   });
 
+  it("Storefronts (A-18j): the tiles, Add to storefronts, the Listing tabs and their dialogs", async () => {
+    const page = await open({ width: 1440, height: 900 });
+    await violations(page);
+    for (const [hash, title] of [
+      ["#/p/djdl/distribution/storefronts", "Storefronts"],
+      [
+        "#/p/djdl/distribution/storefronts?flow=add&stores=google-play&step=prerequisites",
+        "Add to storefronts",
+      ],
+      [
+        "#/p/djdl/distribution/storefronts?flow=add&stores=google-play&step=plan",
+        "Add to storefronts",
+      ],
+      [
+        "#/p/djdl/distribution/storefronts?flow=add&stores=google-play&step=submit",
+        "Add to storefronts",
+      ],
+      ["#/p/djdl/distribution/listing", "Listing"],
+      ["#/p/djdl/distribution/listing?tab=fit", "Listing"],
+      ["#/p/djdl/distribution/listing?tab=images", "Listing"],
+      ["#/p/djdl/distribution/listing?tab=push", "Listing"],
+    ] as const) {
+      await page.evaluate((h) => {
+        location.hash = h;
+      }, hash);
+      await page
+        .locator("[data-page-title]", { hasText: title })
+        .first()
+        .waitFor();
+      await page.waitForTimeout(200);
+      expect(await violations(page), `${hash}: CSP violations`).toEqual([]);
+    }
+    await check(page, "listing push dialog", async () => {
+      await page.getByRole("button", { name: "Push listing" }).click();
+      await page.getByRole("alertdialog").waitFor();
+    });
+    await page.evaluate(() => {
+      location.hash =
+        "#/p/djdl/distribution/storefronts?flow=add&stores=google-play&step=submit";
+    });
+    await page
+      .getByRole("button", { name: "Send the changes for review" })
+      .waitFor();
+    await check(page, "typed submit dialog", async () => {
+      await page
+        .getByRole("button", { name: "Send the changes for review" })
+        .click();
+      await page.getByRole("alertdialog").waitFor();
+    });
+    await page.context().close();
+  });
+
   it("Package feeds in both scopes: the overview, feed pages, a package record and its dialogs", async () => {
     const page = await open({ width: 1440, height: 900 });
     await violations(page);
@@ -513,6 +741,29 @@ describe("overlays under the Worker's CSP", () => {
     await page.context().close();
   });
 
+  it("the licence record's Device limit… sheet (LX-14a)", async () => {
+    const page = await open({ width: 1440, height: 900 });
+    await page.evaluate(() => {
+      location.hash = "#/p/djdl/license/licenses/lic_1";
+    });
+    await page
+      .locator("[data-page-title]", { hasText: "Ada Lovelace" })
+      .first()
+      .waitFor();
+    expect(await violations(page), "licence record: CSP violations").toEqual(
+      [],
+    );
+    await check(page, "device limit sheet", async () => {
+      await page.getByRole("button", { name: "More actions" }).first().click();
+      await page.getByRole("menuitem", { name: "Device limit…" }).click();
+      const sheet = page.getByRole("dialog", { name: "Device limit" });
+      await sheet.waitFor();
+      await sheet.getByRole("textbox", { name: /Devices/ }).fill("2");
+      await sheet.getByText("None is signed out").waitFor();
+    });
+    await page.context().close();
+  });
+
   it("Platform → Settings: a setting's confirmation", async () => {
     const page = await open({ width: 1440, height: 900 });
     await page.evaluate(() => {
@@ -554,5 +805,81 @@ describe("overlays under the Worker's CSP", () => {
     expect(await page.evaluate(() => location.hash)).toBe("#/products");
     await page.context().close();
     process.stdout.write(`CSP overlay report: ${JSON.stringify(report)}\n`);
+  });
+});
+
+describe("the reduce-motion preference (MO-12) under the Worker's CSP", () => {
+  /** Every --pk-duration-* token on <html>, resolved, and Tailwind's motion variants on probes. */
+  const motionState = (page: Page) =>
+    page.evaluate(() => {
+      const names = new Set<string>();
+      for (const sheet of Array.from(document.styleSheets)) {
+        try {
+          for (const rule of Array.from(sheet.cssRules))
+            for (const m of rule.cssText.matchAll(/--pk-duration-[\w-]+/g))
+              names.add(m[0]);
+        } catch {
+          // a cross-origin sheet: none here, but never fatal
+        }
+      }
+      const css = getComputedStyle(document.documentElement);
+      // Probes carry classes only (no style=""), and leave at once.
+      const probe = (cls: string): HTMLElement => {
+        const el = document.createElement("div");
+        el.className = cls;
+        document.body.append(el);
+        return el;
+      };
+      const wide = probe("w-1/3 motion-reduce:w-full");
+      const safe = probe("motion-safe:animate-ping");
+      const state = {
+        attr: document.documentElement.getAttribute("data-motion"),
+        durations: Object.fromEntries(
+          [...names].map((n) => [n, css.getPropertyValue(n).trim()]),
+        ),
+        reduceFullWidth: wide.offsetWidth === document.body.clientWidth,
+        safeAnimation: getComputedStyle(safe).animationName,
+      };
+      wide.remove();
+      safe.remove();
+      return state;
+    });
+
+  /** A CSS time in ms (the bundle minifies 200ms to .2s and 0ms to 0s). */
+  const ms = (v: string): number =>
+    v.endsWith("ms") ? parseFloat(v) : parseFloat(v) * 1000;
+
+  async function expectReduced(page: Page): Promise<void> {
+    const s = await motionState(page);
+    expect(s.attr).toBe("reduce");
+    const values = Object.entries(s.durations);
+    expect(values.length).toBeGreaterThan(4);
+    for (const [name, value] of values) expect(ms(value), name).toBe(0);
+    expect(s.reduceFullWidth, "motion-reduce: under data-motion").toBe(true);
+    expect(s.safeAnimation, "motion-safe: under data-motion").toBe("none");
+  }
+
+  it("Reduced from the theme menu: an instant swap now and after a reload, no violations", async () => {
+    // Motion on at the OS level, so the in-app preference is what reduces it.
+    const page = await open({ width: 1440, height: 900 }, "no-preference");
+    const before = await motionState(page);
+    expect(before.attr).toBeNull();
+    expect(ms(before.durations["--pk-duration-base"]!)).toBe(200);
+    expect(before.reduceFullWidth).toBe(false);
+    expect(before.safeAnimation).toBe("ping");
+
+    await page.getByRole("button", { name: /^Theme: / }).click();
+    await page
+      .getByRole("group", { name: "Motion" })
+      .getByRole("menuitemradio", { name: /^Reduced/ })
+      .click();
+    await expectReduced(page);
+
+    await page.reload();
+    await page.locator("[data-page-title]", { hasText: "Licenses" }).waitFor();
+    await expectReduced(page);
+
+    expect(await violations(page)).toEqual([]);
+    await page.context().close();
   });
 });

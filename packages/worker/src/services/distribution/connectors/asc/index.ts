@@ -10,6 +10,7 @@ import { eventView, listEvents, listObjects, objectView } from "../state.js";
 import { ASC_CONTROLS } from "./controls.js";
 import { ASC_SETUP_CONTROLS, provisioningView } from "./provision.js";
 import { ASC_DISTRIBUTE_CONTROLS, ASC_DISTRIBUTE_READS } from "./distribute.js";
+import { ASC_LISTING_CONTROLS } from "./listingPush.js";
 import {
   ASC_CATALOG_CONTROLS,
   ASC_CATALOG_READS,
@@ -27,14 +28,15 @@ import {
 import { handleAscWebhook } from "./webhook.js";
 
 /**
- * P5-02's controls, A-17c's setup controls, A-17d's Distribute writes and A-17e's IAP writes, one
- * table.
+ * P5-02's controls, A-17c's setup controls, A-17d's Distribute writes, A-17e's IAP writes and
+ * A-18m's listing push, one table.
  */
 const CONTROLS = {
   ...ASC_CONTROLS,
   ...ASC_SETUP_CONTROLS,
   ...ASC_DISTRIBUTE_CONTROLS,
   ...ASC_CATALOG_CONTROLS,
+  ...ASC_LISTING_CONTROLS,
 };
 /** A-17d's Distribute reads and A-17e's IAP reads. */
 const READS = { ...ASC_DISTRIBUTE_READS, ...ASC_CATALOG_READS };

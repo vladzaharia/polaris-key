@@ -42,6 +42,10 @@ export type WriteMethod =
   | "updateProduct"
   | "deleteProduct"
   | "resyncProduct"
+  | "revertClaim"
+  | "checkRepoLink"
+  | "planResync"
+  | "linkProductRepo"
   | "updateReleaseChannel"
   | "revertReleaseChannel"
   | "setChannelFloor"
@@ -60,6 +64,7 @@ export type WriteMethod =
   | "revokeCiToken"
   | "updateServices"
   | "revertServices"
+  | "servicesDryRun"
   | "saveUpdateSettings"
   | "revertUpdateSettings"
   | "saveDeliveryAccess"
@@ -82,12 +87,19 @@ export type WriteMethod =
   | "createLicense"
   | "patchLicense"
   | "setLicenseEnabled"
+  | "deleteLicense"
+  | "deleteLicenses"
   | "putLicenseOverrides"
   | "mintKey"
   | "revokeKey"
   | "deauthorizeDevice"
   | "resetDeviceFingerprint"
   | "deauthorizeProductDevice"
+  | "deleteProductUserData"
+  | "detachProductUserLicense"
+  | "relinkProductUserLicense"
+  | "undoRelink"
+  | "updateSignInSettings"
   | "resetProductDeviceFingerprint"
   | "mintBundle"
   | "updateFingerprintPolicy"
@@ -101,6 +113,9 @@ export type WriteMethod =
   | "deleteTier"
   | "assignPlatformStoreApp"
   | "releasePlatformStoreApp"
+  | "checkPlatformStoreCredential"
+  | "putPlatformStoreCredential"
+  | "checkCiSecret"
   | "saveFeedSettings"
   | "saveFeedPolicy"
   | "feedVersionAction"
@@ -109,7 +124,15 @@ export type WriteMethod =
   | "savePackageFeeds"
   | "mintRegistryToken"
   | "revokeRegistryToken"
-  | "revokeAllRegistryTokens";
+  | "revokeAllRegistryTokens"
+  | "acceptListingAsset"
+  | "storefrontRequest"
+  | "storefrontCheck"
+  | "pushListing"
+  | "putListing"
+  | "putListingOverride"
+  | "listingImport"
+  | "putListingReleaseNotes";
 
 export interface MutationSpec<A extends unknown[]> {
   /** What the write does, for the table's readers (and the test's failure messages). */
@@ -125,7 +148,15 @@ export type MutationTable = {
 };
 
 /** §5.4 "channel policy (promote/pin/…/floor), yank, unyank". */
+/**
+ * Home's product-card facts (`GET /summary`): active licences, the release a channel serves,
+ * storefronts and users, for every product in one read. Every write that can move one of them, or
+ * the registry itself, refreshes it.
+ */
+const summary = (): Target => exact(qk.summary());
+
 const releasePolicy = (slug: string): Target[] => [
+  summary(),
   prefix(qk.releases(slug)),
   prefix(qk.channels(slug)),
   prefix(qk.releaseHealth(slug)),
@@ -154,6 +185,7 @@ const readiness = (slug: string): Target[] => [
 const license = (slug: string): Target[] => [
   prefix(qk.licenses(slug)),
   prefix(qk.devicesSummary(slug)),
+  summary(),
 ];
 
 /**
@@ -168,6 +200,19 @@ const device = (slug: string, licenseId?: string): Target[] =>
         exact(qk.licenses(slug)),
         prefix(qk.license(slug, licenseId)),
       ];
+
+/**
+ * I-12: a Users write. A detach, relink or undo moves a licence's owner (the license list and
+ * record show the holder) and can clear a device's signed-in binding; a data deletion changes the
+ * row's data size. Every user row, since a relink touches two subjects.
+ */
+const users = (slug: string): Target[] => [
+  summary(),
+  prefix(qk.users(slug)),
+  prefix(qk.licenses(slug)),
+  prefix(qk.devices(slug)),
+  prefix(qk.activity(slug)),
+];
 
 /** §5.4 "key mint / revoke": the record, and the list's key counts. */
 const licenseKey = (slug: string, id: string): Target[] => [
@@ -201,6 +246,8 @@ export const MUTATIONS: MutationTable = {
     // write appends to (Settings → History, Deployment → Platform activity).
     invalidates: () => [
       exact(qk.platformSettings()),
+      // The reserved-names report carries the severity the settings row sets (LX-05).
+      exact(qk.platformReservedNames()),
       prefix(qk.platformActivity()),
     ],
   },
@@ -208,16 +255,18 @@ export const MUTATIONS: MutationTable = {
     label: "platform setting revert",
     invalidates: () => [
       exact(qk.platformSettings()),
+      // The reserved-names report carries the severity the settings row sets (LX-05).
+      exact(qk.platformReservedNames()),
       prefix(qk.platformActivity()),
     ],
   },
   createManualProduct: {
     label: "product create (manual)",
-    invalidates: () => [exact(qk.me()), exact(qk.products())],
+    invalidates: () => [exact(qk.me()), exact(qk.products()), summary()],
   },
   linkRepo: {
     label: "product create (link a repository)",
-    invalidates: () => [exact(qk.me()), exact(qk.products())],
+    invalidates: () => [exact(qk.me()), exact(qk.products()), summary()],
   },
   updateProduct: {
     label: "product update",
@@ -230,13 +279,49 @@ export const MUTATIONS: MutationTable = {
   },
   deleteProduct: {
     label: "product delete",
-    invalidates: () => [exact(qk.me()), exact(qk.products())],
+    invalidates: () => [exact(qk.me()), exact(qk.products()), summary()],
   },
   resyncProduct: {
     label: "resync from repo",
     // A resync re-applies channels, catalog, services, tiers, profiles, update settings and
-    // delivery access: everything under the product.
-    invalidates: (slug) => [exact(qk.products()), prefix(qk.product(slug))],
+    // delivery access (outlets included): everything under the product, and its card's facts.
+    invalidates: (slug) => [
+      exact(qk.products()),
+      prefix(qk.product(slug)),
+      summary(),
+    ],
+  },
+  planResync: {
+    label: "resync plan (dry run)",
+    invalidates: () => [],
+    why: "A dry run: it reads the repository and writes nothing.",
+  },
+  revertClaim: {
+    label: "revert a claimed setting to the manifest",
+    // The product row carries the claims and the reverted value; the catalog revert publishes a
+    // new active version, so everything under the product.
+    invalidates: (slug) => [
+      exact(qk.me()),
+      exact(qk.products()),
+      prefix(qk.product(slug)),
+      summary(),
+    ],
+  },
+  checkRepoLink: {
+    label: "link repository check (dry run)",
+    invalidates: () => [],
+    why: "A dry run: it reads the repository and writes nothing.",
+  },
+  linkProductRepo: {
+    label: "link repository",
+    // Linking applies the manifest the way a resync does (everything under the product), and
+    // the registry shows each product's source.
+    invalidates: (slug) => [
+      exact(qk.me()),
+      exact(qk.products()),
+      prefix(qk.product(slug)),
+      summary(),
+    ],
   },
   updateReleaseChannel: {
     label: "channel policy (promote, pin, unpin, minimum, critical)",
@@ -261,6 +346,30 @@ export const MUTATIONS: MutationTable = {
   updatePortalSettings: {
     label: "portal settings",
     invalidates: (slug) => [prefix(qk.portal(slug))],
+  },
+  updateSignInSettings: {
+    label: "sign-in settings",
+    // `claimByKey` is the same column the Portal page edits.
+    invalidates: (slug) => [
+      prefix(qk.signInSettings(slug)),
+      prefix(qk.portal(slug)),
+    ],
+  },
+  deleteProductUserData: {
+    label: "user data delete",
+    invalidates: (slug) => users(slug),
+  },
+  detachProductUserLicense: {
+    label: "user license detach",
+    invalidates: (slug) => users(slug),
+  },
+  relinkProductUserLicense: {
+    label: "user license relink",
+    invalidates: (slug) => users(slug),
+  },
+  undoRelink: {
+    label: "user license relink undo",
+    invalidates: (slug) => users(slug),
   },
   putProductSecret: {
     label: "secret set",
@@ -316,13 +425,26 @@ export const MUTATIONS: MutationTable = {
   },
   updateServices: {
     label: "services update",
-    // Enablement changes which sections and queries exist at all: refresh the whole product, and
-    // the registry's service dots.
-    invalidates: (slug) => [exact(qk.products()), prefix(qk.product(slug))],
+    // Enablement changes which sections and queries exist at all: refresh the whole product, the
+    // registry's service rows, and which facts the card shows.
+    invalidates: (slug) => [
+      exact(qk.products()),
+      prefix(qk.product(slug)),
+      summary(),
+    ],
   },
   revertServices: {
     label: "services revert to manifest",
-    invalidates: (slug) => [exact(qk.products()), prefix(qk.product(slug))],
+    invalidates: (slug) => [
+      exact(qk.products()),
+      prefix(qk.product(slug)),
+      summary(),
+    ],
+  },
+  servicesDryRun: {
+    label: "services change dry run",
+    invalidates: () => [],
+    why: "A dry run (PATCH ?dryRun=1) only counts what the change would do; the Worker writes nothing.",
   },
   saveUpdateSettings: {
     label: "update feed settings save",
@@ -434,6 +556,15 @@ export const MUTATIONS: MutationTable = {
     label: "license enable or disable",
     invalidates: (slug) => license(slug),
   },
+  // A deletion removes the licence's devices and registry tokens too.
+  deleteLicense: {
+    label: "license delete",
+    invalidates: (slug) => [...license(slug), prefix(qk.devices(slug))],
+  },
+  deleteLicenses: {
+    label: "license bulk delete",
+    invalidates: (slug) => [...license(slug), prefix(qk.devices(slug))],
+  },
   putLicenseOverrides: {
     label: "license overrides",
     invalidates: (slug) => license(slug),
@@ -534,6 +665,22 @@ export const MUTATIONS: MutationTable = {
       prefix(qk.health(heldBy)),
     ],
   },
+  checkPlatformStoreCredential: {
+    label: "store credential live check",
+    invalidates: () => [],
+    why: "A POST that stores nothing (UX-69): the unsaved value is tried against the store and the answer is shown in the form.",
+  },
+  putPlatformStoreCredential: {
+    label: "store credential set",
+    // The connection list (presence, source, metadata, health) and every store's apps listing,
+    // which the Worker caches by the credential's version.
+    invalidates: () => [prefix(qk.platformStores())],
+  },
+  checkCiSecret: {
+    label: "CI secret live check",
+    invalidates: () => [],
+    why: "A POST that stores nothing (UX-69): the value is tried against the vendor and never kept.",
+  },
   saveFeedSettings: {
     label: "feed settings save",
     invalidates: (scope) => feeds(scope),
@@ -584,6 +731,49 @@ export const MUTATIONS: MutationTable = {
     label: "registry token revoke all",
     invalidates: (scope) => feeds(scope),
   },
+  acceptListingAsset: {
+    label: "listing asset accept",
+    // The slot board, and the plans whose image steps count accepted assets.
+    invalidates: (slug) => [prefix(qk.storefronts(slug))],
+  },
+  storefrontRequest: {
+    label: "storefront flow step",
+    // A step reaches a store through a reviewed route: A-17b's bundle ids and A-16's assignment
+    // (the store connections and the product's credentials), A-17c's setup controls (the
+    // connectors), or the flow's own runtimes (the plans). Every one of those may move.
+    invalidates: (slug) => [
+      prefix(qk.storefronts(slug)),
+      prefix(qk.connectors(slug)),
+      prefix(qk.credentials(slug)),
+      prefix(qk.platformStores()),
+      summary(),
+    ],
+  },
+  storefrontCheck: {
+    label: "storefront deep-linked step check or assert",
+    invalidates: (slug) => [prefix(qk.storefronts(slug))],
+  },
+  pushListing: {
+    label: "storefront listing push",
+    invalidates: (slug) => [prefix(qk.storefronts(slug))],
+  },
+  putListing: {
+    label: "listing model save",
+    invalidates: (slug) => listingWrite(slug),
+  },
+  putListingOverride: {
+    label: "listing per-store override",
+    invalidates: (slug) => listingWrite(slug),
+  },
+  listingImport: {
+    label: "listing import (diff, or apply with the digest)",
+    // A diff writes nothing, but one method serves both: an apply moves the model.
+    invalidates: (slug) => listingWrite(slug),
+  },
+  putListingReleaseNotes: {
+    label: "listing release notes save",
+    invalidates: (slug) => listingWrite(slug),
+  },
   savePackageFeeds: {
     label: "package feeds switch",
     // The product row carries the switch the sidebar gates Package feeds on.
@@ -595,6 +785,12 @@ export const MUTATIONS: MutationTable = {
     ],
   },
 };
+
+/** A-18j: a listing write moves the model, its fit report and every store's plan. */
+const listingWrite = (slug: string): Target[] => [
+  prefix(qk.listing(slug)),
+  prefix(qk.storefronts(slug)),
+];
 
 /** The targets a write invalidates, or `null` when `method` is not a write (a read). */
 export function invalidationFor(
