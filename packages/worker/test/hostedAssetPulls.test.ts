@@ -586,7 +586,12 @@ function ladderOf(product: string, slot: string, locale = "") {
   return db
     .first<{
       variants_json: string | null;
-    }>("SELECT variants_json FROM hosted_assets WHERE product = ? AND slot = ? AND locale = ?", product, slot, locale)
+    }>(
+      "SELECT variants_json FROM hosted_assets WHERE product = ? AND slot = ? AND locale = ?",
+      product,
+      slot,
+      locale,
+    )
     .then((r) => parseVariants(r?.variants_json ?? null));
 }
 
