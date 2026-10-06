@@ -14,6 +14,15 @@
  *   PUT    /api/platform/store-connections/<store>/credentials/<slot>   `{value}`
  *   DELETE /api/platform/store-connections/<store>/credentials/<slot>
  *          The same for any slot (`app-store` / `in-app-purchase-key`).
+ *   POST   /api/platform/store-connections/<store>/check                     `{value}`
+ *   POST   /api/platform/store-connections/<store>/credentials/<slot>/check  `{value}`
+ *          UX-69 (SETUP.md D42, W20): the live check a connect form runs on paste. The UNSAVED
+ *          value is validated by the same validator as a PUT, then sent once to the store in ONE
+ *          read-only call (`checkAscApiKey`, `checkPlayServiceAccount`, `checkMsPartnerCenter`,
+ *          `checkSteamPublisherKey`) and answered as a `CredentialCheck`: valid, a warning, which
+ *          permission is missing, another team, expired, or the store could not answer. Nothing
+ *          is sealed, stored, cached or audited; the response carries display metadata and what
+ *          the store reported, never the value. Rate-limited per operator (`credentialCheck`).
  *   PUT    /api/platform/store-connections/<store>/settings/<key>   `{value}`
  *   DELETE /api/platform/store-connections/<store>/settings/<key>
  *          A non-secret setting (`app-store` / `teamId`).
@@ -50,7 +59,10 @@ import { randomId } from "../../crypto.js";
 import type { DbStatement } from "../../db/types.js";
 import {
   listOutletCredentialPins,
+  transientOutletCredential,
   validateOutletCredentialPin,
+  type OutletCredentialMeta,
+  type TransientOutletCredential,
 } from "../../core/outletCredentials.js";
 import {
   deletePlatformCredential,
@@ -85,10 +97,28 @@ import {
   PlatformStoreUnavailable,
   type PlatformAppsListing,
 } from "../../services/distribution/connectors/platformApps.js";
-import { listPlatformAscApps } from "../../services/distribution/connectors/asc/platform.js";
-import { listPlatformPlayApps } from "../../services/distribution/connectors/play/platform.js";
-import { listPlatformMsStoreApps } from "../../services/distribution/connectors/msstore/platform.js";
-import { listPlatformSteamApps } from "../../services/distribution/commerce/steam.js";
+import {
+  checkAscApiKey,
+  listPlatformAscApps,
+} from "../../services/distribution/connectors/asc/platform.js";
+import {
+  checkPlayServiceAccount,
+  listPlatformPlayApps,
+} from "../../services/distribution/connectors/play/platform.js";
+import {
+  checkMsPartnerCenter,
+  listPlatformMsStoreApps,
+} from "../../services/distribution/connectors/msstore/platform.js";
+import {
+  checkSteamPublisherKey,
+  listPlatformSteamApps,
+} from "../../services/distribution/commerce/steam.js";
+import {
+  checked,
+  credentialCheckAllowed,
+  formatFailure,
+  type CredentialCheck,
+} from "../../services/distribution/connectors/credentialCheck.js";
 import { storefrontAdapter } from "../../core/storefront/adapter.js";
 import { isPlatformAdmin } from "../authz.js";
 import type { AdminSession } from "../session.js";
@@ -203,10 +233,29 @@ async function route(
       now,
       rest.length === 1,
     );
+  if (sub === "check" && rest.length === 2)
+    return credentialCheck(
+      req,
+      env,
+      db,
+      session,
+      primaryPlatformCredential(store),
+      now,
+    );
   if (sub === "credentials" && a !== undefined && rest.length === 3) {
     const id = platformCredentialBySlot(store, a);
     if (!id) return notFound();
     return credentialWrite(req, env, db, session, id, now, true);
+  }
+  if (
+    sub === "credentials" &&
+    a !== undefined &&
+    b === "check" &&
+    rest.length === 4
+  ) {
+    const id = platformCredentialBySlot(store, a);
+    if (!id) return notFound();
+    return credentialCheck(req, env, db, session, id, now);
   }
   if (sub === "settings" && a !== undefined && rest.length === 3) {
     const id = platformStoreSettingId(store, a);
@@ -318,6 +367,124 @@ async function credentialWrite(
   });
   // NEVER echo the value: the id and its display metadata only.
   return adminJson({ ok: true, id, source: "console", meta: r.meta });
+}
+
+// ── the live check (UX-69) ───────────────────────────────────────────────────────────────────
+
+const META_LABELS: Record<string, string> = {
+  keyId: "Key ID",
+  issuerId: "Issuer ID (team)",
+};
+
+interface CheckInput {
+  env: Env;
+  now: number;
+  /** The pins products hold on this credential (the apps they are assigned). */
+  assigned: string[];
+  /** The display metadata of the credential in use now, if any. */
+  current: OutletCredentialMeta | null;
+}
+
+/** Each kind's check, on the store's own bounded, redirect-free client. */
+const CHECKERS: Partial<
+  Record<
+    string,
+    (cred: TransientOutletCredential, i: CheckInput) => Promise<CredentialCheck>
+  >
+> = {
+  "asc-api-key": (cred, i) =>
+    checkAscApiKey({
+      cred: cred as TransientOutletCredential<"asc-api-key">,
+      now: i.now,
+      assigned: i.assigned,
+      current: i.current,
+    }),
+  "google-service-account": (cred, i) =>
+    checkPlayServiceAccount({
+      cred: cred as TransientOutletCredential<"google-service-account">,
+      now: i.now,
+      assigned: i.assigned,
+      current: i.current,
+    }),
+  "ms-partner-center": (cred, i) =>
+    checkMsPartnerCenter({
+      cred: cred as TransientOutletCredential<"ms-partner-center">,
+      now: i.now,
+      assigned: i.assigned,
+      current: i.current,
+    }),
+  "steam-publisher-key": (cred, i) =>
+    checkSteamPublisherKey({
+      cred: cred as TransientOutletCredential<"steam-publisher-key">,
+      assigned: i.assigned,
+    }),
+};
+
+async function credentialCheck(
+  req: Request,
+  env: Env,
+  db: Db,
+  session: AdminSession,
+  id: PlatformCredentialId,
+  now: number,
+): Promise<Response> {
+  if (req.method !== "POST")
+    return err(405, ErrorCode.BadRequest, "method not allowed");
+  const spec = PLATFORM_CREDENTIALS[id];
+  const body = await readBody(req);
+  // The same forms a PUT accepts: an object, or a key file pasted as its JSON text.
+  let value: unknown = body.value;
+  if (typeof value === "string") {
+    try {
+      value = JSON.parse(value) as unknown;
+    } catch {
+      return adminJson({
+        ok: true,
+        id,
+        check: formatFailure("value", "value must be a JSON object"),
+      });
+    }
+  }
+  const t = await transientOutletCredential(spec.kind, value);
+  if (!t.ok)
+    return adminJson({
+      ok: true,
+      id,
+      check: formatFailure(`value.${t.field}`, t.message),
+    });
+  const run = CHECKERS[spec.kind];
+  if (!run)
+    // The In-App Purchase key: every App Store Server API call names one app's bundle id, so
+    // there is no team-wide read to try it on. Its format passed; the first use checks it.
+    return adminJson({
+      ok: true,
+      id,
+      check: checked(
+        "unchecked",
+        "not-checkable",
+        `The ${spec.label} looks complete`,
+        "It cannot be tried without an app: every App Store Server API call is made for one app's bundle id. It is checked the first time a purchase for an assigned app is verified.",
+        Object.entries(t.credential.meta).map(([field, value]) => ({
+          label: META_LABELS[field] ?? field,
+          value,
+        })),
+      ),
+    });
+  // Counted after the format check (a mistyped field costs nothing), before any store call.
+  if (!(await credentialCheckAllowed(env, session.sub, now)))
+    return err(
+      429,
+      "rate_limited",
+      "too many credential checks: wait a few minutes, then check again",
+    );
+  const check = await run(t.credential, {
+    env,
+    now,
+    assigned: (await listPlatformPins(db, id)).map((p) => p.pin),
+    current: (await resolvePlatformCredential(env, db, id))?.meta ?? null,
+  });
+  // NEVER the value: the credential id, and what the store reported.
+  return adminJson({ ok: true, id, check });
 }
 
 // ── settings ─────────────────────────────────────────────────────────────────────────────────

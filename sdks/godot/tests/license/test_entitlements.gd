@@ -98,6 +98,16 @@ func _shapes(t: PKeyTestContext) -> void:
 	t.check("entitlements: is_entitled is true only for the boolean value true", entitled == ["yes"], str(entitled))
 	var flat: Dictionary = sdk.license.get_entitlements()
 	t.check("entitlements: get_entitlements keeps every value and skips a malformed entry", flat.size() == 7 and flat["str"] == "true" and flat["arr"] == [true] and flat["nul"] == null and not flat.has("bare"), str(flat))
+	# S-19 G11: a grant the last verified document lists is not an entitlement once the gate is
+	# not usable (expired past grace here; revoked reads the same way through is_licensed()).
+	_stage(sdk, {"yes": _ent(true)})
+	t.check("entitlements: G11 a usable gate keeps the grant", sdk.license.is_entitled("yes") and sdk.license.is_licensed())
+	sdk.core.cache.license["doc"]["issuedAt"] = h.F["now"] - 7200
+	sdk.core.cache.license["doc"]["expiresAt"] = h.F["now"] - 3600
+	sdk.core.cache.license["doc"]["graceUntil"] = h.F["now"] - 1800
+	var gone: String = sdk.license.status()["status"]
+	t.check("entitlements: G11 is_entitled is false once the gate is not usable", not sdk.license.is_licensed() and not sdk.license.is_entitled("yes"), gone)
+	t.check("entitlements: G11 get_entitlements still reads the raw grant", sdk.license.get_entitlements() == {"yes": true})
 	_stage(sdk, {"x": _ent(true)})
 	sdk.core.cache.license["doc"]["profile"] = "not a block"
 	t.check("entitlements: a non-object profile reads as null", sdk.license.get_profile() == null and sdk.license.get_license_id() == "lic_staged")

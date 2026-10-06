@@ -13,9 +13,9 @@ extends PKeyUiView
 ## button row, `options` the choices for the channel row. The diagnostics never hold a token, a
 ## key or a secret (PKeyDevMenuController).
 
-## The player picked another channel. The game persists it and applies it at the next configure
-## (PKeyOptions.default_channel); nothing is switched mid-session here, but any staged code from
-## the old channel is dropped at once (PolarisKey.update.drop_staged(), notes/A4 P11).
+## The player picked another channel. The SDK persists it (PolarisKey.update.set_channel(): the
+## next update check uses it, and staged code from the old channel is dropped at once, notes/A4
+## P11); the licence gate keeps this build's channel.
 signal channel_selected(channel: String)
 ## COPY DIAGNOSTICS put this text on the clipboard.
 signal diagnostics_copied(text: String)
@@ -138,9 +138,16 @@ func select_channel(channel: String) -> void:
 	var r := rows()
 	if r[0]["locked"] != "" or channel == r[0]["value"]:
 		return
-	if sdk != null and sdk.get("update") != null and sdk.update.has_method("drop_staged"):
+	if sdk != null and sdk.get("update") != null and sdk.update.has_method("set_channel"):
+		var res: PKeyResult = sdk.update.set_channel(channel)
+		if not res.ok:
+			status_line = c().for_result(res)
+			refresh_view()
+			return
+	elif sdk != null and sdk.get("update") != null and sdk.update.has_method("drop_staged"):
 		sdk.update.drop_staged()
 	channel_selected.emit(channel)
+	refresh_view()
 
 
 ## Put the diagnostics on the clipboard; returns the text.

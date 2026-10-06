@@ -209,6 +209,12 @@ export interface PortalProduct extends PortalPresentation {
     PortalLicenseSeats & {
       entitlements: PortalEntitlement[];
       devices: PortalProductDevice[];
+      /**
+       * Where the licence came from (PX-W6, G8): `source` `store` with the store of the earliest
+       * active purchase, else `developer`, `sign_in` or `free`. Null with License off; absent on
+       * an older Worker. The portal reads only the store name (never order ids).
+       */
+      purchase?: { source: string; store: string | null } | null;
     }
   >;
 }

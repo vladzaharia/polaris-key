@@ -44,7 +44,7 @@ static func facts(sdk: Node) -> Dictionary:
 		"outlet_kind": kind,
 		"outlet_subkind": subkind,
 		"server_caps": server,
-		"channel": String(core.channel) if core != null else String(info.get("channel", "")),
+		"channel": (sdk.update.get_channel() if sdk.get("update") != null and sdk.update.has_method("get_channel") and sdk.update.get_channel() != "" else String(core.channel)) if core != null else String(info.get("channel", "")),
 		"version": String(info.get("version", "")),
 		"build": str(info.get("build", 0)),
 		"sdk": _sdk_version(sdk),

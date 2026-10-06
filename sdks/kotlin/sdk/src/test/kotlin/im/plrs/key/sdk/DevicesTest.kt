@@ -178,6 +178,30 @@ class DevicesTest {
         assertTrue(client.supports(Feature.devicesReport) is Support.Supported)
     }
 
+    /** §3.13: the report carries the gate and the pending update events, and marks them sent once accepted. */
+    @Test
+    fun theReportCarriesTheGateAndTheUpdateJournal() = runBlocking {
+        var accept = false
+        val (client, transport, _) = client { r ->
+            when (r.path) {
+                "/djdl/devices/report" -> if (accept) respond(200, """{"ok":true}""") else respond(503)
+                else -> respond(404)
+            }
+        }
+        client.updateEvents.record(im.plrs.key.core.UpdateEvent.updateConfirmed, "1.0.0", fromRelease = "0.9.0")
+        assertFalse(client.report())
+        // A refused report keeps the events.
+        assertEquals(1, client.updateEvents.pending().size)
+        accept = true
+        assertTrue(client.report())
+        val body = JsonText.parse(transport.requests().last { it.path == "/djdl/devices/report" }.body!!.toString(Charsets.UTF_8)).objectValue!!
+        assertEquals("""{"status":"needs-activation"}""", body["gate"].toString())
+        val update = (body["updates"] as kotlinx.serialization.json.JsonArray).single().objectValue!!
+        assertEquals(JsonPrimitive("update_confirmed"), update["event"])
+        assertEquals(JsonPrimitive("0.9.0"), update["fromRelease"])
+        assertTrue(client.updateEvents.pending().isEmpty())
+    }
+
     @Test
     fun theJvmFactsSourceAnswersDeclaredProbesOnly() {
         val dir = Files.createTempDirectory("pkey-probe").toFile()

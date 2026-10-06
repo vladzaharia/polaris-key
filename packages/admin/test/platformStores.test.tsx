@@ -428,7 +428,7 @@ describe("Store connections: credentials", () => {
     expect(within(creds).getByText("s-1")).toBeTruthy();
   });
 
-  it("explains how to add a credential to a store without one, through the workflow", async () => {
+  it("offers the connect form and, as the alternative, the Worker-secret workflow", async () => {
     const log = boot(`#/platform/store-connections?store=steam`, {
       extra: routes(),
     });
@@ -449,9 +449,16 @@ describe("Store connections: credentials", () => {
           (a) => a.getAttribute("href") === "/docs/admin/store-connections/",
         ),
     ).toBe(true);
-    // No listing is requested for a store with no credential, and there is no key field.
+    // No listing is requested for a store with no credential. UX-69 (SETUP.md D42): the key is
+    // pasted into a connect form that checks it before saving; nothing is checked until then.
     expect(log.calls.some((c) => c.path === `${BASE}/steam/apps`)).toBe(false);
-    expect(within(page).queryByRole("textbox", { name: /key/i })).toBeNull();
+    expect(
+      within(page).getByRole("form", {
+        name: "Connect Steamworks Web API publisher key (group)",
+      }),
+    ).toBeTruthy();
+    expect(within(page).getByText("Or set it as a Worker secret")).toBeTruthy();
+    expect(log.calls.some((c) => c.path.endsWith("/check"))).toBe(false);
   });
 
   it("classifies credential health", () => {
@@ -797,3 +804,276 @@ describe("Store connections: states", () => {
     expect(results.violations.map((v) => v.id)).toEqual([]);
   });
 });
+
+// ── UX-69: the connect form, checked on paste ────────────────────────────────────────────────
+
+const STEAM_CHECK = `${BASE}/steam/credentials/publisher-key/check`;
+const STEAM_PUT = `${BASE}/steam/credentials/publisher-key`;
+const STEAM_KEY = "0123456789ABCDEF0123456789ABCDEF";
+
+function check(over: Record<string, unknown> = {}) {
+  return {
+    ok: true,
+    id: "steam.publisher-key",
+    check: {
+      verdict: "valid",
+      reason: "ok",
+      title: "Publisher key · 2 apps",
+      detail: null,
+      facts: [
+        { label: "Apps", value: "2" },
+        { label: "First apps", value: "Dice" },
+      ],
+      ...over,
+    },
+  };
+}
+
+async function steamForm(): Promise<HTMLElement> {
+  const page = await storesPage();
+  return within(page).findByRole("form", {
+    name: "Connect Steamworks Web API publisher key (group)",
+  });
+}
+
+async function pasteKey(form: HTMLElement, value = STEAM_KEY): Promise<void> {
+  const field = within(form).getByLabelText(/Publisher Web API key/);
+  await userEvent.click(field);
+  await userEvent.paste(value);
+}
+
+describe("Store connections: connect, checked on paste (UX-69)", () => {
+  it("checks the key the moment it is pasted, shows what the store found, then saves", async () => {
+    const log = boot(`#/platform/store-connections?store=steam`, {
+      extra: routes({
+        [`POST ${STEAM_CHECK}`]: check(),
+        [`PUT ${STEAM_PUT}`]: {
+          ok: true,
+          id: "steam.publisher-key",
+          source: "console",
+          meta: {},
+        },
+      }),
+    });
+    const form = await steamForm();
+    const save = within(form).getByRole("button", { name: "Save key" });
+    expect((save as HTMLButtonElement).disabled).toBe(true);
+    await pasteKey(form);
+    expect(
+      await within(form).findByText("Publisher key · 2 apps"),
+    ).toBeTruthy();
+    expect(within(form).getByText("Dice")).toBeTruthy();
+    const sent = log.calls.filter((c) => c.path === STEAM_CHECK);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.method).toBe("POST");
+    expect(sent[0]!.json).toEqual({ value: { key: STEAM_KEY } });
+    await waitFor(() =>
+      expect((save as HTMLButtonElement).disabled).toBe(false),
+    );
+    await userEvent.click(save);
+    await waitFor(() =>
+      expect(
+        log.calls.some((c) => c.method === "PUT" && c.path === STEAM_PUT),
+      ).toBe(true),
+    );
+    const put = log.calls.find((c) => c.method === "PUT")!;
+    expect(put.json).toEqual({ value: { key: STEAM_KEY } });
+  });
+
+  it("never saves a refused key: the reason and the fix are shown, Save stays off", async () => {
+    const log = boot(`#/platform/store-connections?store=steam`, {
+      extra: routes({
+        [`POST ${STEAM_CHECK}`]: check({
+          verdict: "invalid",
+          reason: "rejected",
+          title: "Steam did not accept this as a publisher Web API key",
+          detail: "Use the key from Steamworks → Users & Permissions.",
+          facts: [],
+          status: 403,
+        }),
+      }),
+    });
+    const form = await steamForm();
+    await pasteKey(form);
+    expect(
+      await within(form).findByText(
+        "Steam did not accept this as a publisher Web API key",
+      ),
+    ).toBeTruthy();
+    expect(
+      within(form).getByText(
+        "Use the key from Steamworks → Users & Permissions.",
+      ),
+    ).toBeTruthy();
+    const save = within(form).getByRole("button", { name: "Save key" });
+    expect((save as HTMLButtonElement).disabled).toBe(true);
+    await userEvent.click(save);
+    expect(log.calls.some((c) => c.method === "PUT")).toBe(false);
+  });
+
+  it("an edit after a pass takes the pass away until it is checked again", async () => {
+    boot(`#/platform/store-connections?store=steam`, {
+      extra: routes({ [`POST ${STEAM_CHECK}`]: check() }),
+    });
+    const form = await steamForm();
+    await pasteKey(form);
+    await within(form).findByText("Publisher key · 2 apps");
+    const save = within(form).getByRole("button", { name: "Save key" });
+    await waitFor(() =>
+      expect((save as HTMLButtonElement).disabled).toBe(false),
+    );
+    await userEvent.type(
+      within(form).getByLabelText(/Publisher Web API key/),
+      "0",
+    );
+    expect((save as HTMLButtonElement).disabled).toBe(true);
+    expect(within(form).getByText(/Changed since the last check/)).toBeTruthy();
+  });
+
+  it("shows a warning (another team) and still lets it be saved", async () => {
+    boot(`#/platform/store-connections?store=steam`, {
+      extra: routes({
+        [`POST ${STEAM_CHECK}`]: check({
+          verdict: "warning",
+          reason: "wrong-account",
+          title: "This key cannot see an app a product is assigned: 480",
+          detail: "It may belong to another team or account.",
+        }),
+      }),
+    });
+    const form = await steamForm();
+    await pasteKey(form);
+    const callout = await within(form).findByText(
+      "This key cannot see an app a product is assigned: 480",
+    );
+    expect(callout.closest("[data-tone]")?.getAttribute("data-tone")).toBe(
+      "warning",
+    );
+    // A warning saves, but never looks like a pass: "Save anyway", described by the reason.
+    const save = await within(form).findByRole("button", {
+      name: "Save anyway",
+    });
+    await waitFor(() =>
+      expect((save as HTMLButtonElement).disabled).toBe(false),
+    );
+    expect(save.getAttribute("data-variant")).toBe("outline");
+    const described = save.getAttribute("aria-describedby")!;
+    expect(document.getElementById(described)?.textContent).toContain(
+      "It may belong to another team or account.",
+    );
+    expect(within(form).queryByRole("button", { name: "Save key" })).toBeNull();
+  });
+
+  it("a refused field is marked on that field (Partner Center's expired secret)", async () => {
+    const base = `${BASE}/microsoft-store/credentials/partner-center`;
+    boot(`#/platform/store-connections?store=microsoft-store`, {
+      extra: routes({
+        [`POST ${base}/check`]: {
+          ok: true,
+          id: "microsoft-store.partner-center",
+          check: {
+            verdict: "invalid",
+            reason: "expired",
+            title: "This client secret has expired",
+            detail: "Create a new client secret.",
+            facts: [],
+            field: "value.clientSecret",
+          },
+        },
+      }),
+    });
+    const page = await storesPage();
+    const creds = await within(page).findByRole("region", {
+      name: "Credentials",
+    });
+    await userEvent.click(
+      within(creds).getByRole("button", { name: "Replace key" }),
+    );
+    const form = within(creds).getByRole("form", {
+      name: /Connect Partner Center app/,
+    });
+    await userEvent.type(within(form).getByLabelText(/Tenant ID/), "t");
+    await userEvent.type(within(form).getByLabelText(/Client ID/), "c");
+    await userEvent.type(within(form).getByLabelText(/Seller ID/), "s");
+    await pasteKeyInto(form, /Client secret/, "secret-value");
+    const secret = within(form).getByLabelText(/Client secret/);
+    await waitFor(() =>
+      expect(secret.getAttribute("aria-invalid")).toBe("true"),
+    );
+    // The callout carries the reason; the field only points to it (announced once).
+    expect(
+      within(form).getAllByText("This client secret has expired"),
+    ).toHaveLength(1);
+    expect(
+      within(form).getByText("Refused: see the check below."),
+    ).toBeTruthy();
+  });
+
+  it("a .p8 file fills the key and its Key ID from the file name", async () => {
+    const log = boot(`#/platform/store-connections`, {
+      extra: routes({
+        [`POST ${BASE}/app-store/credentials/api-key/check`]: {
+          ok: true,
+          id: "app-store.api-key",
+          check: {
+            verdict: "valid",
+            reason: "ok",
+            title: "Team 69a6de7f · 2 apps",
+            detail: null,
+            facts: [],
+          },
+        },
+      }),
+    });
+    const page = await storesPage();
+    const creds = await within(page).findByRole("region", {
+      name: "Credentials",
+    });
+    await userEvent.click(
+      within(creds).getAllByRole("button", { name: "Replace key" })[0]!,
+    );
+    const form = within(creds).getByRole("form", {
+      name: /Connect App Store Connect API key/,
+    });
+    await userEvent.type(
+      within(form).getByLabelText(/Issuer ID/),
+      "69a6de7f-1111",
+    );
+    const file = new File(
+      ["-----BEGIN PRIVATE KEY-----\nMIGT\n-----END PRIVATE KEY-----\n"],
+      "AuthKey_ABC123DEFG.p8",
+      { type: "application/octet-stream" },
+    );
+    const input = form.querySelector('input[type="file"]') as HTMLInputElement;
+    await userEvent.upload(input, file);
+    await within(form).findByText("Team 69a6de7f · 2 apps");
+    const sent = log.calls.find((c) => c.path.endsWith("/api-key/check"))!;
+    expect(sent.json).toEqual({
+      value: {
+        keyId: "ABC123DEFG",
+        issuerId: "69a6de7f-1111",
+        p8: "-----BEGIN PRIVATE KEY-----\nMIGT\n-----END PRIVATE KEY-----\n",
+      },
+    });
+  });
+
+  it("the connect form passes axe", async () => {
+    boot(`#/platform/store-connections?store=steam`, {
+      extra: routes({ [`POST ${STEAM_CHECK}`]: check() }),
+    });
+    const form = await steamForm();
+    await pasteKey(form);
+    await within(form).findByText("Publisher key · 2 apps");
+    const results = await axe(main());
+    expect(results.violations.map((v) => v.id)).toEqual([]);
+  });
+});
+
+async function pasteKeyInto(
+  form: HTMLElement,
+  label: RegExp,
+  value: string,
+): Promise<void> {
+  await userEvent.click(within(form).getByLabelText(label));
+  await userEvent.paste(value);
+}

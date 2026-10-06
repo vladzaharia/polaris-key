@@ -1,0 +1,133 @@
+# GENERATED FILE — do not edit by hand.
+#
+# Written by `pnpm --filter @polaris-key/brand gen` (packages/brand/scripts/kit-copy.ts) from
+# packages/brand/kit-copy/ (en.json and the eight locale packs) and the core copy in
+# conformance/parity/copy.<locale>.json. `pnpm gen:brand -- --check` fails the green gate on any
+# difference. To change a string, edit its source and regenerate.
+"""Polaris Key's kit copy (plans/UK-02.md §3.3, D6).
+
+One table per launch locale, holding every kit string and the core copy (``core.*``) as ICU
+MessageFormat-subset text. The Qt and terminal kits look a key up in the locale, then in English,
+and format it with ``polaris_key.ui.core``.
+"""
+
+from __future__ import annotations
+
+from typing import Final, Mapping
+
+__all__ = ["KIT_COPY_LOCALES", "KIT_COPY", "KIT_COPY_VARIANTS", "KIT_COPY_CORE_FALLBACK"]
+
+#: The launch locales, English first.
+KIT_COPY_LOCALES: Final = ("en", "de", "fr", "es", "pt-BR", "it", "ja", "ko", "zh-Hans",)
+
+#: Locales whose core.* strings are English until their core pack lands.
+KIT_COPY_CORE_FALLBACK: Final = ("fr", "es", "pt-BR", "it", "ja", "ko", "zh-Hans",)
+
+#: One table per locale.
+KIT_COPY: Final[Mapping[str, Mapping[str, str]]] = {
+    "en": {
+        "common.signInTo": "Sign in to {product}",
+        "common.restart": "Restart when ready",
+        "part.devices": "{product}: {count, plural, one {# device} other {# devices}}",
+        "part.thisDevice": "{formFactor, select, iphone {this iPhone} ipad {this iPad} mac {this Mac} phone {this phone} tablet {this tablet} computer {this computer} tv {this TV} other {this device}}",
+        "common.quote": "Say \"hi\" & <wave> \\ {name}",
+        "core.fallback.title": "Oops",
+        "core.fallback.message": "Oops ({code}).",
+        "core.codes.not-found.title": "Gone",
+        "core.codes.not-found.message": "It's gone.",
+    },
+    "de": {
+        "common.signInTo": "[de] {product}",
+        "common.restart": "[de] restart",
+        "part.devices": "{product} {count, plural, one {# de-1} other {# de-N}}",
+        "part.thisDevice": "{formFactor, select, iphone {de iPhone} ipad {de iPad} mac {de Mac} phone {de phone} tablet {de tablet} computer {de computer} tv {de TV} other {de device}}",
+        "common.quote": "[de] \"{name}\"",
+        "core.fallback.title": "Hoppla",
+        "core.fallback.message": "Hoppla ({code}).",
+        "core.codes.not-found.title": "Gone",
+        "core.codes.not-found.message": "It's gone.",
+    },
+    "fr": {
+        "common.signInTo": "[fr] {product}",
+        "common.restart": "[fr] restart",
+        "part.devices": "{product} {count, plural, one {# fr-1} many {# fr-M} other {# fr-N}}",
+        "part.thisDevice": "{formFactor, select, iphone {fr iPhone} ipad {fr iPad} mac {fr Mac} phone {fr phone} tablet {fr tablet} computer {fr computer} tv {fr TV} other {fr device}}",
+        "common.quote": "[fr] \"{name}\"",
+        "core.fallback.title": "Oops",
+        "core.fallback.message": "Oops ({code}).",
+        "core.codes.not-found.title": "Gone",
+        "core.codes.not-found.message": "It's gone.",
+    },
+    "es": {
+        "common.signInTo": "[es] {product}",
+        "common.restart": "[es] restart",
+        "part.devices": "{product} {count, plural, one {# es-1} many {# es-M} other {# es-N}}",
+        "part.thisDevice": "{formFactor, select, iphone {es iPhone} ipad {es iPad} mac {es Mac} phone {es phone} tablet {es tablet} computer {es computer} tv {es TV} other {es device}}",
+        "common.quote": "[es] \"{name}\"",
+        "core.fallback.title": "Oops",
+        "core.fallback.message": "Oops ({code}).",
+        "core.codes.not-found.title": "Gone",
+        "core.codes.not-found.message": "It's gone.",
+    },
+    "pt-BR": {
+        "common.signInTo": "[pt-BR] {product}",
+        "common.restart": "[pt-BR] restart",
+        "part.devices": "{product} {count, plural, one {# pt-BR-1} many {# pt-BR-M} other {# pt-BR-N}}",
+        "part.thisDevice": "{formFactor, select, iphone {pt-BR iPhone} ipad {pt-BR iPad} mac {pt-BR Mac} phone {pt-BR phone} tablet {pt-BR tablet} computer {pt-BR computer} tv {pt-BR TV} other {pt-BR device}}",
+        "common.quote": "[pt-BR] \"{name}\"",
+        "core.fallback.title": "Oops",
+        "core.fallback.message": "Oops ({code}).",
+        "core.codes.not-found.title": "Gone",
+        "core.codes.not-found.message": "It's gone.",
+    },
+    "it": {
+        "common.signInTo": "[it] {product}",
+        "common.restart": "[it] restart",
+        "part.devices": "{product} {count, plural, one {# it-1} many {# it-M} other {# it-N}}",
+        "part.thisDevice": "{formFactor, select, iphone {it iPhone} ipad {it iPad} mac {it Mac} phone {it phone} tablet {it tablet} computer {it computer} tv {it TV} other {it device}}",
+        "common.quote": "[it] \"{name}\"",
+        "core.fallback.title": "Oops",
+        "core.fallback.message": "Oops ({code}).",
+        "core.codes.not-found.title": "Gone",
+        "core.codes.not-found.message": "It's gone.",
+    },
+    "ja": {
+        "common.signInTo": "[ja] {product}",
+        "common.restart": "[ja] restart",
+        "part.devices": "{product} {count, plural, other {# ja-N}}",
+        "part.thisDevice": "{formFactor, select, iphone {ja iPhone} ipad {ja iPad} mac {ja Mac} phone {ja phone} tablet {ja tablet} computer {ja computer} tv {ja TV} other {ja device}}",
+        "common.quote": "[ja] \"{name}\"",
+        "core.fallback.title": "Oops",
+        "core.fallback.message": "Oops ({code}).",
+        "core.codes.not-found.title": "Gone",
+        "core.codes.not-found.message": "It's gone.",
+    },
+    "ko": {
+        "common.signInTo": "[ko] {product}",
+        "common.restart": "[ko] restart",
+        "part.devices": "{product} {count, plural, other {# ko-N}}",
+        "part.thisDevice": "{formFactor, select, iphone {ko iPhone} ipad {ko iPad} mac {ko Mac} phone {ko phone} tablet {ko tablet} computer {ko computer} tv {ko TV} other {ko device}}",
+        "common.quote": "[ko] \"{name}\"",
+        "core.fallback.title": "Oops",
+        "core.fallback.message": "Oops ({code}).",
+        "core.codes.not-found.title": "Gone",
+        "core.codes.not-found.message": "It's gone.",
+    },
+    "zh-Hans": {
+        "common.signInTo": "[zh-Hans] {product}",
+        "common.restart": "[zh-Hans] restart",
+        "part.devices": "{product} {count, plural, other {# zh-Hans-N}}",
+        "part.thisDevice": "{formFactor, select, iphone {zh-Hans iPhone} ipad {zh-Hans iPad} mac {zh-Hans Mac} phone {zh-Hans phone} tablet {zh-Hans tablet} computer {zh-Hans computer} tv {zh-Hans TV} other {zh-Hans device}}",
+        "common.quote": "[zh-Hans] \"{name}\"",
+        "core.fallback.title": "Oops",
+        "core.fallback.message": "Oops ({code}).",
+        "core.codes.not-found.title": "Gone",
+        "core.codes.not-found.message": "It's gone.",
+    },
+}
+
+#: English platform variants (D13 title case on macOS and documented verbs).
+KIT_COPY_VARIANTS: Final[Mapping[str, Mapping[str, str]]] = {
+    "common.signInTo": {"macos": "Sign In to {product}"},
+    "common.restart": {"macos": "Install and Relaunch"},
+}

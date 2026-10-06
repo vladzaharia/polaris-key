@@ -39,6 +39,8 @@ import im.plrs.key.core.jsonInt
 import im.plrs.key.core.longValue
 import im.plrs.key.core.objectValue
 import im.plrs.key.core.stringValue
+import im.plrs.key.core.UpdateEvent
+import im.plrs.key.core.UpdateEventJournal
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -52,7 +54,12 @@ public data class SlotMeta(
     val engine: String? = null,
     /** The version scheme the versions compare under. */
     val scheme: String = "semver",
-)
+    /** The release record's `tag`, when it names one. */
+    val tag: String? = null,
+) {
+    /** The update-health release id: [tag] when set, else [version] (the Worker's releaseId). */
+    val releaseId: String get() = im.plrs.key.core.releaseId(version, tag)
+}
 
 /** The host's update slots: what the guard reads and the swaps it asks for. */
 public interface UpdateSlots {
@@ -88,6 +95,10 @@ public data class BootGuardState(
     val skipVersion: String? = null,
     /** The binary's version while no `current` slot is active. */
     val binaryVersion: String? = null,
+    /** The last version a launch confirmed healthy (`update_confirmed` fires once per new version). */
+    val confirmedVersion: String? = null,
+    /** [confirmedVersion]'s release id (its tag when the slot named one), the next confirmation's `fromRelease`. */
+    val confirmedRelease: String? = null,
 ) {
     public fun toJson(): String = buildJsonObject {
         put("v", jsonInt(1))
@@ -95,6 +106,8 @@ public data class BootGuardState(
         put("notice", notice?.let { JsonPrimitive(it) } ?: JsonNull)
         put("skipVersion", skipVersion?.let { JsonPrimitive(it) } ?: JsonNull)
         put("binaryVersion", binaryVersion?.let { JsonPrimitive(it) } ?: JsonNull)
+        put("confirmedVersion", confirmedVersion?.let { JsonPrimitive(it) } ?: JsonNull)
+        confirmedRelease?.let { put("confirmedRelease", JsonPrimitive(it)) }
     }.toString()
 
     public companion object {
@@ -102,7 +115,7 @@ public data class BootGuardState(
         public fun parse(text: String?): BootGuardState {
             val o = text?.let { JsonText.parseOrNull(it) }.objectValue ?: return BootGuardState()
             if (o["v"].longValue != 1L) return BootGuardState()
-            return BootGuardState((o["failedBoots"].longValue ?: 0).coerceAtLeast(0), o["notice"].stringValue, o["skipVersion"].stringValue, o["binaryVersion"].stringValue)
+            return BootGuardState((o["failedBoots"].longValue ?: 0).coerceAtLeast(0), o["notice"].stringValue, o["skipVersion"].stringValue, o["binaryVersion"].stringValue, o["confirmedVersion"].stringValue, o["confirmedRelease"].stringValue)
         }
     }
 }
@@ -127,6 +140,11 @@ public class BootGuard(
     private val runningVersion: String,
     /** This runtime's engine (`godot-<major>.<minor>`), or null. */
     private val engine: String? = null,
+    /**
+     * Where the guard journals `update_applied`, `boot_rolled_back` and `update_confirmed`
+     * (notes/SDK-PARITY-PASS.md §3.13; `client.core.updateEvents`); null journals nothing.
+     */
+    private val events: UpdateEventJournal? = null,
 ) {
     /** The version a rollback refused, for `UpdateClient.decide(skipVersion = …)`. */
     public val skipVersion: String? get() = BootGuardState.parse(store.read()).skipVersion
@@ -161,9 +179,14 @@ public class BootGuard(
         when (action) {
             BootGuardAction.rollBack -> {
                 val bad = cur!!.version
+                // Events name a release by its tag when the slot has one (the Worker's releaseId).
+                val badId = cur.releaseId
+                val restored = s.previous()?.releaseId
                 val ok = s.rollBack()
                 st = st.copy(skipVersion = bad, failedBoots = 0)
+                events?.record(UpdateEvent.bootRolledBack, badId, fromRelease = restored, code = if (ok) "failed-boots" else "no-previous")
                 if (ok) {
+                    events?.record(UpdateEvent.updateReverted, restored ?: badId, fromRelease = badId)
                     store.write(st.copy(notice = "rolled-back").toJson())
                     return GuardOutcome(BootEvent.GuardResult.rolledBack, true, action)
                 }
@@ -172,7 +195,9 @@ public class BootGuard(
                 return GuardOutcome(BootEvent.GuardResult.ok, false, action, "rollback-failed")
             }
             BootGuardAction.applyStaged -> {
+                val from = cur?.releaseId ?: runningVersion
                 if (s.applyStaged()) {
+                    events?.record(UpdateEvent.updateApplied, staged!!.releaseId, fromRelease = from)
                     store.write(st.copy(failedBoots = 0, notice = "applied").toJson())
                     return GuardOutcome(BootEvent.GuardResult.applied, true, action)
                 }
@@ -208,7 +233,16 @@ public class BootGuard(
     /** Mark this launch healthy: failedBoots back to 0. */
     public fun confirmNow() {
         val st = BootGuardState.parse(store.read())
-        if (st.failedBoots != 0L) store.write(st.copy(failedBoots = 0).toJson())
+        val current = slots?.current()
+        val version = current?.version ?: runningVersion
+        val release = current?.releaseId ?: runningVersion
+        val next = st.copy(failedBoots = 0, confirmedVersion = version, confirmedRelease = release)
+        // A first install has nothing to confirm; a version change since the last healthy launch
+        // (a staged swap, or Play / PackageInstaller replacing the app) is one update_confirmed.
+        if (st.confirmedVersion != null && st.confirmedVersion != version) {
+            events?.record(UpdateEvent.updateConfirmed, release, fromRelease = st.confirmedRelease ?: st.confirmedVersion)
+        }
+        if (next != st) store.write(next.toJson())
     }
 
     /** Why staged [meta] no longer applies (null when it does): `engine` or `not-newer`. */

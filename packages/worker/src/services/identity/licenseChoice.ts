@@ -59,6 +59,7 @@ import {
   autoLinkEnabled,
   getPortalProductSettings,
   listVisibleDevices,
+  listVisibleKeys,
   portalIdentityIssuerKey,
 } from "./portal/repo.js";
 
@@ -173,7 +174,11 @@ export interface ReplaceDevice {
 export interface LegacyChoiceRow {
   id: string;
   tierName: string;
-  /** Display only; never authorises anything. Plain words ("From signing in", O-17). */
+  /**
+   * How the licence came to be, in plain words: "From signing in", "Steam key", "From Steam",
+   * "Added with a key", "Free", "From the developer". Display only; never authorises anything.
+   * Every licence is account-bound, so none is labelled by type (owner decision, 2026-10-05).
+   */
   origin: string;
   /** A licence created by signing in (origin `oidc`). Display only: beside one, the other rows
    *  hide their device counter (O-17). */
@@ -208,11 +213,24 @@ const STORE_NAMES: Record<string, string> = {
   steam: "Steam",
 };
 
-/** The origin in plain words on the meta line (O-17, D-90). */
-function originLabel(kind: PurchaseSourceKind, store: string | null): string {
+/**
+ * The row's origin (owner, 2026-10-05): a key bought on a store names the store with the key
+ * ("Steam key"), a store-bound licence with no key reads "From Steam", any other key "Added with
+ * a key". Only the store's name is shown, never an order id or purchase key. The key's last
+ * characters aren't kept (G7), so "ending 3WPLDA" waits for them.
+ */
+export function originLabel(
+  kind: PurchaseSourceKind,
+  store: string | null,
+  hasKey: boolean,
+): string {
+  const storeLabel =
+    kind === "store" ? (store ? (STORE_NAMES[store] ?? store) : null) : null;
+  if (hasKey) return storeLabel ? `${storeLabel} key` : "Added with a key";
   switch (kind) {
     case "store":
-      return `From ${store ? (STORE_NAMES[store] ?? store) : "a store"}`;
+      // "From the App Store", "From Steam", "From Google Play".
+      return `From ${store === "app-store" ? "the App Store" : (storeLabel ?? "a store")}`;
     case "sign_in":
       return "From signing in";
     case "free":
@@ -319,6 +337,7 @@ export async function legacyLicenseChoices(
         : "full";
     const source = sources.get(l.id);
     const kind = source ? source.kind : originKind(l.origin);
+    const hasKey = (await listVisibleKeys(db, product.slug, l.id)).length > 0;
     const owned = l.account_id === input.accountId;
     let replace: ReplaceDevice[] | null = null;
     if (state === "full" && owned && portalOn) {
@@ -339,7 +358,7 @@ export async function legacyLicenseChoices(
     rows.push({
       id: l.id,
       tierName: tier?.label ?? (l.tier_id ? l.tier_id : "License"),
-      origin: originLabel(kind, source?.store ?? null),
+      origin: originLabel(kind, source?.store ?? null, hasKey),
       fromSignIn: kind === "sign_in",
       seats: { used, limit },
       expiresAt: l.expires_at,

@@ -79,6 +79,7 @@ export {
   flattenEntries,
   readConfig,
   readEntitled,
+  readEntitlementValue,
   readEntitledChannels,
   resolveConfig,
   resolveConfigValue,
@@ -87,6 +88,25 @@ export {
   listUserConfig,
   type ProjectFlags,
 } from "./adapter.js";
+
+export {
+  bodyCode,
+  classifyActivation,
+  networkOutcome,
+  retryAfterSeconds,
+  type ActivationKind,
+  type ActivationOutcome,
+} from "./activation.js";
+export { activationError } from "./activationError.js";
+export {
+  copyLocales,
+  copyMessage,
+  copyTitle,
+  describeError,
+  hasCopy,
+  registerCopyLocale,
+  type CopyBundle,
+} from "./copy.js";
 
 export type { ManagedEntry, JSONValue } from "@polaris-key/protocol/core";
 export type {

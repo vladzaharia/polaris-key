@@ -9,7 +9,8 @@ extends RefCounted
 ##                           supersedes a bundle
 ##   status() / is_licensed() the gate (PKeyGate.license_state, contract order); usable means
 ##                           ok, grace or not-applicable
-##   is_entitled(name)       true only when the entitlement's value is the boolean true
+##   is_entitled(name)       true only when the entitlement's value is the boolean true AND the
+##                           gate is usable (S-19 G11: false after a revocation or expiry)
 ##   get_entitlements()      {name: value} off the verified licence document
 ##   get_profile()           the signed greeting block {name?, firstName?, email?,
 ##                           activatedAt?}, or null
@@ -109,7 +110,12 @@ func _entitlements() -> Dictionary:
 	return doc["entitlements"] if doc is Dictionary and doc.get("entitlements") is Dictionary else {}
 
 
+## S-19 G11: an entitlement counts only while the gate is usable (ok, grace, not-applicable). A
+## revoked, expired or blocked licence answers false even though its last verified document still
+## lists the grant; get_entitlements() keeps reading the raw values for diagnostics.
 func is_entitled(name: String) -> bool:
+	if not is_licensed():
+		return false
 	var e = _entitlements().get(name)
 	return e is Dictionary and PKeyClaims.is_true(e.get("value"))
 

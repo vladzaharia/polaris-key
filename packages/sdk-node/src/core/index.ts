@@ -62,3 +62,5 @@ export {
   type DirsHost,
   type ProductDirs,
 } from "./dirs.js";
+
+export { copy, registerCopy, setCopyLocale, type CopyEntry } from "./copy.js";
