@@ -18,7 +18,7 @@
  *   - `groupLabels`: presentation only, `{<group>: <label ≤ 40>}`.
  *
  * Dual-read until PS-11: `discover_enabled = 0` (migration 0071) forces `unlisted`, whatever
- * `store_listed` says, so a Worker from before 0074 that turns Discover off is still obeyed.
+ * `store_listed` says, so a Worker from before 0075 that turns Discover off is still obeyed.
  */
 
 export const LISTING_STATES = ["auto", "listed", "unlisted"] as const;

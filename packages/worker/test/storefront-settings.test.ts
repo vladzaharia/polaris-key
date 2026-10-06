@@ -1,7 +1,7 @@
 /**
  * PS-02 (notes/S-21 §6.2): the Polaris Key listing state.
  *
- *   - migration 0074 backfills `store_listed = 'unlisted'` where `discover_enabled = 0` and leaves
+ *   - migration 0075 backfills `store_listed = 'unlisted'` where `discover_enabled = 0` and leaves
  *     every other product `auto`;
  *   - it is expand-only: a Worker from before it (its exact INSERT/UPSERT and `SELECT *`) reads and
  *     writes `portal_product_settings` unaffected;
@@ -47,7 +47,7 @@ const DIR = join(HERE, "..", "migrations");
 const FILES = readdirSync(DIR)
   .filter((f) => f.endsWith(".sql"))
   .sort();
-const PS02 = "0074_storefront_listing.sql";
+const PS02 = "0075_storefront_listing.sql";
 const BEFORE = FILES.filter((f) => f < PS02);
 const AFTER = FILES.filter((f) => f > PS02);
 const sql = (f: string) => readFileSync(join(DIR, f), "utf8");
@@ -93,7 +93,7 @@ async function beforePs02(): Promise<Database.Database> {
   return raw;
 }
 
-describe("migration 0074 (PS-02)", () => {
+describe("migration 0075 (PS-02)", () => {
   it("backfills unlisted where Discover was off; every other product reads auto", async () => {
     const raw = await beforePs02();
     raw.exec(sql(PS02));

@@ -382,12 +382,12 @@ describe("GET /api/discover (G24)", () => {
       { storeListed: "unlisted" },
       NOW,
     );
-    // A pre-0074 Worker turned Discover off: store_listed still says auto (dual-read).
+    // A pre-0075 Worker turned Discover off: store_listed still says auto (dual-read).
     await upsertPortalProductSettings(db, "legacyoff", {}, NOW);
     await db.run(
       "UPDATE portal_product_settings SET discover_enabled = 0 WHERE product = 'legacyoff'",
     );
-    // A pre-0074 Worker turned Discover back on for a product the new one had unlisted.
+    // A pre-0075 Worker turned Discover back on for a product the new one had unlisted.
     await upsertPortalProductSettings(
       db,
       "stale",

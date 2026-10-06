@@ -330,7 +330,7 @@ with them.
 
 ### Polaris Key listing
 
-Four more fields hold the product's listing in the Polaris Key library (PS-02, migration `0074`).
+Four more fields hold the product's listing in the Polaris Key library (PS-02, migration `0075`).
 They are the settings `storefront.polarisKey.listed`, `.audience`, `.offerPaths` and
 `.groupLabels`, all operator-owned (no manifest field sets them):
 

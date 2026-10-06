@@ -1,6 +1,6 @@
 /**
  * `storefrontListing(db, product)` (PS-02): one product's Polaris Key listing state, resolved from
- * Identity's `portal_product_settings` (migration 0074) with the `discover_enabled` dual-read
+ * Identity's `portal_product_settings` (migration 0075) with the `discover_enabled` dual-read
  * (`core/storefront/polarisKeyListing.ts` holds the values and the resolution). PS-03's obtain-path
  * engine reads it; PS-06's console edits the values through the portal-settings route.
  *

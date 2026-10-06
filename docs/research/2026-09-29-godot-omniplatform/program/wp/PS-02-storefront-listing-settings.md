@@ -70,7 +70,7 @@ delegated to the lead).
   asks for its key.
 - **Dual-write as well as dual-read.** Writing `storeListed` sets `discover_enabled` to 0 exactly
   when `unlisted`; `discoverEnabled: false` alone makes the product `unlisted`, and `true` returns
-  an `unlisted` product to `auto`. The two columns stay coherent for a pre-0074 Worker in the
+  an `unlisted` product to `auto`. The two columns stay coherent for a pre-0075 Worker in the
   deploy window.
 - **Discover's candidate query also skips `store_listed = 'unlisted'`** (one predicate in
   `listDiscoverCandidates`), so either column hides a product. `auto` and `listed` keep today's
