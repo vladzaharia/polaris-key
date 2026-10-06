@@ -184,11 +184,6 @@ class ErrorCode:
     RELEASE_RECORD_REJECTED: Final = "release_record_rejected"
     RELEASE_TAG_IS_PACK_RELEASE: Final = "release_tag_is_pack_release"
     FEED_NOT_COMPOSABLE: Final = "feed_not_composable"
-    STORE_GRANTS: Final = "store_grants"
-    STORE_PURCHASES: Final = "store_purchases"
-    ISSUED_ACTIVE: Final = "issued_active"
-    ENROLL_GUARD: Final = "enroll_guard"
-    CHANGED: Final = "changed"
     SERVICE_UNAVAILABLE: Final = "service-unavailable"
     SERVICE_DISABLED: Final = "service-disabled"
     LOCAL_ONLY: Final = "local-only"
@@ -338,11 +333,6 @@ ERROR_CODE_VALUES: Tuple[str, ...] = (
     "release_record_rejected",
     "release_tag_is_pack_release",
     "feed_not_composable",
-    "store_grants",
-    "store_purchases",
-    "issued_active",
-    "enroll_guard",
-    "changed",
     "service-unavailable",
     "service-disabled",
     "local-only",
@@ -494,11 +484,6 @@ ERROR_CODE_KINDS: Mapping[str, str] = MappingProxyType(
         "release_record_rejected": "wire",
         "release_tag_is_pack_release": "wire",
         "feed_not_composable": "wire",
-        "store_grants": "wire",
-        "store_purchases": "wire",
-        "issued_active": "wire",
-        "enroll_guard": "wire",
-        "changed": "wire",
         "service-unavailable": "client",
         "service-disabled": "client",
         "local-only": "client",

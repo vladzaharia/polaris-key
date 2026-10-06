@@ -58,11 +58,6 @@ public enum ErrorCode {
     public static let releaseRecordRejected = "release_record_rejected"
     public static let releaseTagIsPackRelease = "release_tag_is_pack_release"
     public static let feedNotComposable = "feed_not_composable"
-    public static let storeGrants = "store_grants"
-    public static let storePurchases = "store_purchases"
-    public static let issuedActive = "issued_active"
-    public static let enrollGuard = "enroll_guard"
-    public static let changed = "changed"
     public static let serviceUnavailable = "service-unavailable"
     public static let serviceDisabled = "service-disabled"
     public static let localOnly = "local-only"
@@ -212,11 +207,6 @@ public let ERROR_CODE_VALUES: [String] = [
     "release_record_rejected",
     "release_tag_is_pack_release",
     "feed_not_composable",
-    "store_grants",
-    "store_purchases",
-    "issued_active",
-    "enroll_guard",
-    "changed",
     "service-unavailable",
     "service-disabled",
     "local-only",
@@ -366,11 +356,6 @@ public let ERROR_CODE_KINDS: [String: String] = [
     "release_record_rejected": "wire",
     "release_tag_is_pack_release": "wire",
     "feed_not_composable": "wire",
-    "store_grants": "wire",
-    "store_purchases": "wire",
-    "issued_active": "wire",
-    "enroll_guard": "wire",
-    "changed": "wire",
     "service-unavailable": "client",
     "service-disabled": "client",
     "local-only": "client",

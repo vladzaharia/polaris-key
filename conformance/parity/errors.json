@@ -286,36 +286,6 @@
       "description": "The channel feed could not be composed into a document every v4 SDK accepts (its self-check failed, or a per-platform document is over 65 536 bytes), so the Worker signed nothing. Keep deciding from the committed feed."
     },
     {
-      "code": "store_grants",
-      "kind": "wire",
-      "service": "license",
-      "description": "A licence deletion refusal (console): the licence holds store purchase grants, and commerce history is never deleted."
-    },
-    {
-      "code": "store_purchases",
-      "kind": "wire",
-      "service": "license",
-      "description": "A licence deletion refusal (console): store purchases are recorded against the licence, and commerce history is never deleted."
-    },
-    {
-      "code": "issued_active",
-      "kind": "wire",
-      "service": "license",
-      "description": "A licence deletion refusal (console): an active developer-issued licence must be disabled first."
-    },
-    {
-      "code": "enroll_guard",
-      "kind": "wire",
-      "service": "license",
-      "description": "A licence deletion refusal (console): the disabled licence is its machine's free-licence record, so deleting it would let the machine enroll again."
-    },
-    {
-      "code": "changed",
-      "kind": "wire",
-      "service": "license",
-      "description": "A licence deletion refusal (console): the licence changed while it was being deleted; try again."
-    },
-    {
       "code": "service-unavailable",
       "kind": "client",
       "service": "core",

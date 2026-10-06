@@ -70,11 +70,6 @@ recorded here.
   while it is NULL. A console "clear" stores NULL, so the next activation seeds the reported
   label again; a rename (any non-NULL value) always wins. PX-W5's "rename wins" holds; a
   "cleared stays cleared" rule would need its own marker.
-- **Re-merge with main (2026-10-05, fix round 1).** `license-delete` landed five console refusal
-  codes (`store_grants`, `store_purchases`, `issued_active`, `enroll_guard`, `changed`) after
-  SP-00's error-code scan and core copy, so `pnpm gen:constants` failed on main itself. This
-  branch adds them to `conformance/parity/errors.json` (wire, `license`) and `copy.en.json`, the
-  registry's documented remedy, so the gate can run.
 
 ## One sign-in form (2026-10-05): `plans/I-04.md` §G and SIGN-IN.md §3.17
 

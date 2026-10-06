@@ -60,11 +60,6 @@ public object ErrorCode {
     public const val releaseRecordRejected: String = "release_record_rejected"
     public const val releaseTagIsPackRelease: String = "release_tag_is_pack_release"
     public const val feedNotComposable: String = "feed_not_composable"
-    public const val storeGrants: String = "store_grants"
-    public const val storePurchases: String = "store_purchases"
-    public const val issuedActive: String = "issued_active"
-    public const val enrollGuard: String = "enroll_guard"
-    public const val changed: String = "changed"
     public const val serviceUnavailable: String = "service-unavailable"
     public const val serviceDisabled: String = "service-disabled"
     public const val localOnly: String = "local-only"
@@ -214,11 +209,6 @@ public val ERROR_CODE_VALUES: List<String> = listOf(
     "release_record_rejected",
     "release_tag_is_pack_release",
     "feed_not_composable",
-    "store_grants",
-    "store_purchases",
-    "issued_active",
-    "enroll_guard",
-    "changed",
     "service-unavailable",
     "service-disabled",
     "local-only",
@@ -368,11 +358,6 @@ public val ERROR_CODE_KINDS: Map<String, String> = mapOf(
     "release_record_rejected" to "wire",
     "release_tag_is_pack_release" to "wire",
     "feed_not_composable" to "wire",
-    "store_grants" to "wire",
-    "store_purchases" to "wire",
-    "issued_active" to "wire",
-    "enroll_guard" to "wire",
-    "changed" to "wire",
     "service-unavailable" to "client",
     "service-disabled" to "client",
     "local-only" to "client",
