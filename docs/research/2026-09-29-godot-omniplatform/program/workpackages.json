@@ -5421,7 +5421,7 @@
         "design/PORTAL §11.2 PX-W12"
       ],
       "brief": "wp/PX-W12-sign-in-methods-api.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PX-W13",
@@ -5868,7 +5868,7 @@
       "optional": false,
       "refs": ["design/PORTAL §4.30", "design/PORTAL §11.3 PX-22"],
       "brief": "wp/PX-22-account-profile.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-01a",
@@ -6070,7 +6070,7 @@
         "notes/S-18 §6.2 ST-20"
       ],
       "brief": "wp/ST-20-manifest-authoritative.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-07",
@@ -6380,7 +6380,7 @@
         "wp/ST-06-settings-docs-coverage.md PENDING owners"
       ],
       "brief": "wp/ST-19b-manifest-settings.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "ST-21",
@@ -6644,7 +6644,7 @@
         "notes/S-18 §5.3"
       ],
       "brief": "wp/LX-06-licensing-settings.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LX-07",
@@ -7795,7 +7795,7 @@
       "optional": false,
       "refs": ["notes/S-20 §6.3", "notes/S-20 owner decision 11"],
       "brief": "wp/HA-06-upload-paths.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "HA-07",
@@ -7824,7 +7824,7 @@
         "notes/S-20 §6.8"
       ],
       "brief": "wp/HA-07-serve-hosted-copies.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "HA-08",
@@ -7847,7 +7847,7 @@
         "notes/S-20 owner decision 6"
       ],
       "brief": "wp/HA-08-release-mirroring.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "HA-09",
@@ -8449,7 +8449,7 @@
       "optional": false,
       "refs": ["docs/design/UI-KITS.md §6"],
       "brief": "wp/UK-16-ui-docs-scaffold.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-17",
@@ -9071,7 +9071,7 @@
         "prototype/motion/portal.html"
       ],
       "brief": "wp/MO-06-portal-device-activation-motion.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "MO-07",
@@ -9306,7 +9306,7 @@
         "notes/S-21 §9 PS-04"
       ],
       "brief": "wp/PS-04-storefront-portal-api.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "PS-05",
@@ -9952,7 +9952,7 @@
       "optional": false,
       "refs": ["notes/S-24-licence-holders.md §6.1, §6.3, §7.1, §8.5 (D10)"],
       "brief": "wp/LX-28-bulk-floating-keys.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "LX-29",
@@ -10057,7 +10057,7 @@
         "docs/design/licenses/ frames 80–81"
       ],
       "brief": "wp/PX-23-portal-floating-keys.md",
-      "status": "in-review"
+      "status": "done"
     },
     {
       "id": "UK-42",
