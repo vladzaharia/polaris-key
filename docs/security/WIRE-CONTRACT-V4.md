@@ -728,11 +728,12 @@ architecture it was built for. For example:
 
 - an x86_64 build under Rosetta 2 or Windows-on-Arm emulation sends `x86_64`;
 - a Mac Catalyst build sends `macos`;
-- an iPad app running on a Mac or on visionOS sends `ios`.
+- an iPad app running on a Mac or on visionOS sends `ios`;
+- a native visionOS build sends `visionos`.
 
 | Header               | Value                                                                                                                    |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `X-PKey-Platform`    | `macos`, `ios` (iPadOS too), `android`, `windows`, `linux`, `web`                                                        |
+| `X-PKey-Platform`    | `macos`, `ios` (iPadOS too), `tvos`, `visionos`, `watchos`, `android`, `windows`, `linux`, `web`                         |
 | `X-PKey-Arch`        | `arm64`, `x86_64`, `armv7`, `wasm32`                                                                                     |
 | `X-PKey-SDK`         | the SDK id: `node`, `react`, `python`, `swift`, `godot`; a later SDK registers its id in `conformance/parity/enums.json` |
 | `X-PKey-SDK-Version` | the SDK's package version (unchanged)                                                                                    |
@@ -758,6 +759,14 @@ architecture it was built for. For example:
 4. A `POST /<p>/devices/report` body that carries `platform`, `arch` or `sdk` uses the same
    values. The `engine` object that an engine SDK adds carries an `id` of the form
    `<engine>-<major>.<minor>`, in lowercase ASCII, such as `godot-4.7`.
+5. **Header vocabulary and update vocabulary** (`plans/SP-08.md`). `tvos`, `visionos` and
+   `watchos` are header values only. The build and update vocabularies keep six values:
+   `RELEASE_PLATFORMS`, `OUTLET_PLATFORMS.unknown`, the feed's `?platform=` and
+   `targets[].platform`. An SDK's _update platform_ is its header value when that value is in
+   its mirror of `OUTLET_PLATFORMS.unknown`, and no value otherwise. With no value, the SDK takes
+   today's path for a platform without a canonical value: Swift throws `not_configured` unless
+   `UpdateClientOptions.platform` is set, Python unless `update.platform` is set, and Godot
+   uses `""`. A later package that ships tvOS or visionOS builds widens both vocabularies.
 
 ### 5.3 Refusal links (`manageUrl`) [C]
 
@@ -828,15 +837,15 @@ component is read on the device, omitted when unreadable (never substituted), an
 `base64url(sha256("pkey-hw:<product>:<component>:<raw>"))[0..22]` (`fingerprintVersion` 1).
 The Worker drops unknown names, recomputes `hwid`, and matches component-wise.
 
-| Component              | macOS                             | Windows                                 | Linux                            | iOS                   |
-| ---------------------- | --------------------------------- | --------------------------------------- | -------------------------------- | --------------------- |
-| `machineUuid` (anchor) | `IOPlatformUUID`                  | registry `MachineGuid`                  | rule 2                           | `identifierForVendor` |
-| `boardSerial`          | `IOPlatformSerialNumber`          | `Win32_BaseBoard.SerialNumber` (rule 1) | not read                         | not read              |
-| `cpuModel`             | CPU brand `:` logical cores       | same                                    | same                             | not read              |
-| `primaryMac`           | lowest non-internal, non-zero MAC | same                                    | same                             | not read              |
-| `bootVolumeUuid`       | boot volume UUID                  | `vol C:` serial                         | `findmnt -no UUID /`             | not read              |
-| `ramBucket`            | rule 3                            | rule 3                                  | rule 3                           | rule 3                |
-| `machineModel`         | `hw.model`                        | `Win32_ComputerSystem.Model` (rule 1)   | `/sys/class/dmi/id/product_name` | `hw.machine`          |
+| Component              | macOS                             | Windows                                 | Linux                            | iOS, iPadOS, tvOS, visionOS, watchOS |
+| ---------------------- | --------------------------------- | --------------------------------------- | -------------------------------- | ------------------------------------ |
+| `machineUuid` (anchor) | `IOPlatformUUID`                  | registry `MachineGuid`                  | rule 2                           | `identifierForVendor`                |
+| `boardSerial`          | `IOPlatformSerialNumber`          | `Win32_BaseBoard.SerialNumber` (rule 1) | not read                         | not read                             |
+| `cpuModel`             | CPU brand `:` logical cores       | same                                    | same                             | not read                             |
+| `primaryMac`           | lowest non-internal, non-zero MAC | same                                    | same                             | not read                             |
+| `bootVolumeUuid`       | boot volume UUID                  | `vol C:` serial                         | `findmnt -no UUID /`             | not read                             |
+| `ramBucket`            | rule 3                            | rule 3                                  | rule 3                           | rule 3                               |
+| `machineModel`         | `hw.model`                        | `Win32_ComputerSystem.Model` (rule 1)   | `/sys/class/dmi/id/product_name` | `hw.machine`                         |
 
 The table is informative except where it cites a rule. `cpuModel` and `primaryMac` are read
 differently by different SDKs today; only stability within one SDK is promised for them.
@@ -929,7 +938,7 @@ The outlet kind `direct` is presented as Polaris Key: the console, the download 
 
 ## 9. Rollout & versioning
 
-v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 4` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 1` (§5.2), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 4, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
+v4 is additive on the wire: the four v3 documents keep their shapes and bytes, deployed v3 clients are unaffected (no SDK enforces `protocolVersion`), and v4 SDKs fall back to `update.check()` against a Worker without `update.endpoints.feed`. The stricter verifier (§1.1, §1.2, §3.1) accepts everything the Worker signs once its signer guard and write checks are deployed (P3-12), so no SDK release built on v4 is published before that Worker. Version counters and their owners: `PROTOCOL_VERSION = 4` (this contract), `corpusVersion = 2`, `gateMatrixVersion = 2`, `fingerprintVersion = 1`, `stageMatrixVersion = 3` (client boot behaviour outside this contract, owned by `client-core/src/stages.ts`), `headersVersion = 2` (§5.2; SP-08 turned the `visionOS` and `tvOS` rows from no value into canonical values), `configMatrixVersion = 1` (§2.2.1), `updateMatrixVersion = 1`, `outletMatrixVersion = 1` and `planMatrixVersion = 2` (§11), `contentCorpusVersion = 2` (§2.6, `content/cases.json`), and the per-product catalog `schemaVersion` (orthogonal). `CACHE_VERSION` stays 3. P4-13 changes none of these: it fills reserved slots (§2.4.1, §2.5.3, §2.5.2 holds) with members parsed beside the claims and appends new corpus sections, so `PROTOCOL_VERSION` stays 4, `corpusVersion` 2, `updateMatrixVersion` 1, `contentCorpusVersion` 1 and `PACK_STATE_VERSION` 1. P4-10 fills `variants[].chunks` (three claim checks, two integer paths) inside v4 and appends sections, so `contentCorpusVersion` and `planMatrixVersion` go to 2 (runners must handle or declare planned the new strategy and the optional `chunkIndex`); `PROTOCOL_VERSION`, `corpusVersion` and `CACHE_VERSION` are unchanged. P4-19 fills the reserved kind `delegation` and adds one optional member to a feed `revocations` entry and one to `PackInstall`, appending `delegationCases` and `dataOnlyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it refuses a delegated record at step 13 and ignores the entry `kind` (§2.5.4). P4-29 fills the reserved feed member `deltas` (§2.4.2) with a member parsed beside the claims, appending `feedContentCases` and the new sections `feedDeltaCases` and `feedDeltaApplyCases`: every counter above is unchanged (`PROTOCOL_VERSION` 4, `corpusVersion` 2, `planMatrixVersion` 2, `contentCorpusVersion` 2, `updateMatrixVersion` 1, `CACHE_VERSION` 3, `PACK_STATE_VERSION` 1), because a v4 SDK that predates it ignores the member. The corpus drift gate remains the only automated cross-language enforcement; this document remains the normative source.
 
 ## 10. Divergence & hardening ledger
 

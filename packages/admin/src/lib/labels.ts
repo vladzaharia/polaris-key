@@ -149,6 +149,9 @@ export const PLATFORM_LABELS: Record<string, string> = {
   linux: "Linux",
   android: "Android",
   web: "Web",
+  tvos: "tvOS",
+  visionos: "visionOS",
+  watchos: "watchOS",
 };
 
 /** Environments (`/me.environment`). */

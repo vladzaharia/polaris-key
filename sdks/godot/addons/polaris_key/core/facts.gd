@@ -8,7 +8,7 @@ extends RefCounted
 ## tested, on the desktop only.
 ##
 ##   os        {name, version?, build?, kernel}: name in Node's family form (win32, darwin,
-##             linux, ios, android, web), version `OS.get_version()`, build the Linux
+##             linux, ios, visionos, android, web), version `OS.get_version()`, build the Linux
 ##             distribution (or, on web, the host OS from the feature tags), kernel `OS.get_name()`
 ##   hardware  {cpuModel?, cpuCores, ramMb?, machineModel?}
 ##   runtime   {name: "godot", version: Engine.get_version_info().string}
@@ -30,6 +30,7 @@ const OS_NAMES := {
 	"OpenBSD": "linux",
 	"BSD": "linux",
 	"iOS": "ios",
+	"visionOS": "visionos",
 	"Android": "android",
 	"Web": "web",
 }

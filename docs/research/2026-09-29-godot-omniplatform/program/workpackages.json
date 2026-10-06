@@ -7149,10 +7149,11 @@
       "optional": false,
       "refs": [
         "notes/SDK-PARITY-PASS §6 W8",
-        "notes/SDK-PARITY-PASS owner decisions (2026-10-05)"
+        "notes/SDK-PARITY-PASS owner decisions (2026-10-05)",
+        "plans/SP-08.md (approved 2026-10-05, decisions delegated to the lead)"
       ],
       "brief": "wp/SP-08-apple-platform-values.md",
-      "status": "todo"
+      "status": "in-review"
     },
     {
       "id": "SP-09",

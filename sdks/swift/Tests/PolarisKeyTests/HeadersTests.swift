@@ -47,7 +47,7 @@ final class HeadersTests: XCTestCase {
 
     func testVersionAndFloors() throws {
         let corpus = try load()
-        XCTAssertEqual(corpus.headersVersion, 1)
+        XCTAssertEqual(corpus.headersVersion, 2)
         XCTAssertGreaterThanOrEqual(corpus.platformCases.count, 31)
         XCTAssertGreaterThanOrEqual(corpus.archCases.count, 31)
     }
@@ -92,5 +92,25 @@ final class HeadersTests: XCTestCase {
         XCTAssertEqual(PlatformFamily.headerValue, PlatformFamily.compileTimeToken.flatMap(canonicalPlatform))
         XCTAssertEqual(ArchFamily.headerValue, ArchFamily.compileTimeToken.flatMap(canonicalArch))
         XCTAssertEqual(POLARIS_SDK_NAME, "swift")
+    }
+
+    /// SP-08: the tvOS, visionOS and watchOS compile-time tokens are canonical header values.
+    func testAppleOSTokens() {
+        XCTAssertEqual(canonicalPlatform("tvOS"), "tvos")
+        XCTAssertEqual(canonicalPlatform("visionOS"), "visionos")
+        XCTAssertEqual(canonicalPlatform("watchOS"), "watchos")
+    }
+
+    /// WIRE-CONTRACT-V4 §5.2 rule 5: the update platform is the header value only when it is a
+    /// build target; the three header-only values have none.
+    func testUpdatePlatform() {
+        for value in ["macos", "ios", "android", "windows", "linux", "web"] {
+            XCTAssertEqual(PlatformFamily.updatePlatform(for: value), value)
+        }
+        for value in ["tvos", "visionos", "watchos"] {
+            XCTAssertNil(PlatformFamily.updatePlatform(for: value))
+        }
+        XCTAssertNil(PlatformFamily.updatePlatform(for: nil))
+        XCTAssertEqual(PlatformFamily.updatePlatform, PlatformFamily.headerValue)
     }
 }

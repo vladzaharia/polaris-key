@@ -75,7 +75,7 @@ from ..core.models import (
     UpdateCheckError,
     UpdateOutlet,
 )
-from ..core.outlets import OUTLET_KINDS, OUTLET_SUBKINDS, OUTLET_UNKNOWN
+from ..core.outlets import OUTLET_KINDS, OUTLET_PLATFORMS, OUTLET_SUBKINDS, OUTLET_UNKNOWN
 from ..core.patterns import _full_match
 from ..core.release_record import (
     DELEGATED_KID_PATTERN,
@@ -97,6 +97,14 @@ __all__ = [
     "FeedCheck",
     "ReleaseRecordCheck",
 ]
+
+
+def update_platform(header: Optional[str]) -> Optional[str]:
+    """WIRE-CONTRACT-V4 §5.2 rule 5: a header value is an update platform only when it is a
+    build target (``OUTLET_PLATFORMS["unknown"]``); otherwise there is none."""
+    if header is not None and header in OUTLET_PLATFORMS[OUTLET_UNKNOWN]:
+        return header
+    return None
 
 
 @dataclass(frozen=True)
@@ -927,12 +935,14 @@ class UpdateClient:
         return self._cache, self._trust
 
     def _platform_value(self) -> Optional[str]:
-        """The install's canonical platform, or ``None`` when this OS has none and the host
-        set none."""
+        """The install's update platform, or ``None`` when this OS has none and the host set
+        none. WIRE-CONTRACT-V4 §5.2 rule 5: the header value counts only when it is a build
+        target (``OUTLET_PLATFORMS["unknown"]``); ``tvos``, ``visionos`` and ``watchos`` are
+        header values only."""
         opts = self._configured.opts if self._configured else None
         if opts is not None and opts.platform is not None:
             return opts.platform
-        return canonical_platform(_platform.system())
+        return update_platform(canonical_platform(_platform.system()))
 
     def _installed(self) -> InstalledBuild:
         opts = self._configured.opts if self._configured else UpdateClientOptions()
@@ -942,7 +952,7 @@ class UpdateClient:
             raise UpdateError(
                 ErrorCode.NOT_CONFIGURED,
                 f"This host's platform or arch ({_platform.system()}/{_platform.machine()}) "
-                "has no canonical value; set update.platform and update.arch.",
+                "has no canonical build-target value; set update.platform and update.arch.",
             )
         return InstalledBuild(
             version=self._ctx.version,

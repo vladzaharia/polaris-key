@@ -47,7 +47,7 @@ class HeadersTest : ConformanceSuite() {
     }
 
     @Test
-    fun headersVersion() = assertEquals(1L, corpus["headersVersion"].longValue)
+    fun headersVersion() = assertEquals(2L, corpus["headersVersion"].longValue)
 
     @Test
     fun platformCases() = section("platformCases", ::canonicalPlatform, PLATFORM_SPELLINGS, PLATFORM_VALUES)

@@ -5,6 +5,8 @@ import {
   buildLibrary,
   coverageNote,
   detectDevice,
+  deviceFamily,
+  deviceOsName,
   licenseOrigin,
   licenseStatus,
   shortOrigin,
@@ -684,5 +686,25 @@ describe("PX-08: store-aware quick actions (§5.4)", () => {
     );
     expect(p.stores).toEqual([]);
     expect(quickAction(p, PHONE, ph)).toMatchObject({ label: "View details" });
+  });
+});
+
+describe("deviceFamily and deviceOsName (SP-08)", () => {
+  it("keeps the header-only Apple values for the device row, off the download vocabulary", () => {
+    expect(deviceFamily("tvos")).toBe("tvos");
+    expect(deviceFamily("visionOS")).toBe("visionos");
+    expect(deviceFamily("watchos")).toBe("watchos");
+    expect(deviceFamily("iPadOS")).toBe("ios");
+    expect(deviceFamily("macos")).toBe("macos");
+    expect(deviceFamily("freebsd")).toBeNull();
+    expect(deviceFamily(null)).toBeNull();
+  });
+
+  it("names the OS a device row shows", () => {
+    expect(deviceOsName("tvos")).toBe("Apple TV");
+    expect(deviceOsName("visionos")).toBe("Apple Vision Pro");
+    expect(deviceOsName("watchos")).toBe("Apple Watch");
+    expect(deviceOsName("ios")).toBe("iPhone");
+    expect(deviceOsName("unknown")).toBeNull();
   });
 });

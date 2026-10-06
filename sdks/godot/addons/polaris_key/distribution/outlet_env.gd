@@ -15,7 +15,7 @@ extends RefCounted
 
 ## The report §3.1 platform this runs on (`macos`, `windows`, `linux`, `android`, `ios`, `web`).
 func platform() -> String:
-	return PKeyHeaders.platform()
+	return PKeyHeaders.update_platform()
 
 
 func env(name: String) -> String:

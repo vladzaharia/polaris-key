@@ -1,5 +1,14 @@
 import * as React from "react";
-import { CheckCircle2, Info, Laptop, Monitor, Smartphone } from "lucide-react";
+import {
+  CheckCircle2,
+  Glasses,
+  Info,
+  Laptop,
+  Monitor,
+  Smartphone,
+  Tv,
+  Watch,
+} from "lucide-react";
 import { Button } from "../../ui/Button.js";
 import { RadioCards } from "../../ui/RadioCards.js";
 import { Skeleton } from "../../ui/Skeleton.js";
@@ -21,8 +30,8 @@ import {
 } from "../data.js";
 import { isNotFound, portalErrorCopy } from "../errors.js";
 import {
-  normalisePlatform,
-  osName,
+  deviceFamily,
+  deviceOsName,
   presentationFrom,
 } from "../model/library.js";
 import { deviceSeats } from "../model/product.js";
@@ -127,13 +136,19 @@ function deviceName(d: PortalProductDevice): string {
 }
 
 function DeviceGlyph({ platform }: { platform: string | null }) {
-  const k = normalisePlatform(platform);
+  const k = deviceFamily(platform);
   const Icon =
     k === "ios" || k === "android"
       ? Smartphone
       : k === "macos"
         ? Laptop
-        : Monitor;
+        : k === "tvos"
+          ? Tv
+          : k === "visionos"
+            ? Glasses
+            : k === "watchos"
+              ? Watch
+              : Monitor;
   return <Icon aria-hidden className="size-5" />;
 }
 
@@ -284,9 +299,7 @@ function FreeDevice({
           // "Least recent" is plain text in the meta, not a pill: pills are for issues
           // (FLOWS.md §2 C20, P-6).
           description: [
-            normalisePlatform(d.platform)
-              ? osName(normalisePlatform(d.platform)!)
-              : null,
+            deviceOsName(d.platform),
             d.appVersion,
             lastSeenText(d.lastSeen),
             d.deviceId === leastRecent && holders.length > 1

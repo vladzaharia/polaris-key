@@ -667,7 +667,7 @@ export const UNSUPPORTED_REASON_VALUES: readonly UnsupportedReason[] = [
   "version",
 ];
 
-/** OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`. */
+/** OS family, the canonical `X-PKey-Platform` value (README §3.1). iPadOS is `ios`. `tvos`, `visionos` and `watchos` are header values only; build targets are `RELEASE_PLATFORMS` (WIRE-CONTRACT-V4 §5.2 rule 5). */
 export const Platform = {
   macos: "macos",
   ios: "ios",
@@ -675,6 +675,9 @@ export const Platform = {
   windows: "windows",
   linux: "linux",
   web: "web",
+  tvos: "tvos",
+  visionos: "visionos",
+  watchos: "watchos",
 } as const;
 export type Platform = (typeof Platform)[keyof typeof Platform];
 
@@ -686,6 +689,9 @@ export const PLATFORM_VALUES: readonly Platform[] = [
   "windows",
   "linux",
   "web",
+  "tvos",
+  "visionos",
+  "watchos",
 ];
 
 /** CPU architecture, the canonical `X-PKey-Arch` value (README §3.1). `universal` and `any` are artifact values, not header values, and are not listed. */
@@ -1415,6 +1421,9 @@ export const PLATFORM_SPELLINGS = {
   linux: "linux",
   web: "web",
   browser: "web",
+  tvos: "tvos",
+  visionos: "visionos",
+  watchos: "watchos",
 } as const;
 
 /** The parity-registry id of the SDK this module belongs to. */

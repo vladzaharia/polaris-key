@@ -386,7 +386,7 @@ func build_info() -> Dictionary:
 ## The platform the update decision runs for: the stamp's, else this device's.
 func update_platform() -> String:
 	var p = build_info().get("platform")
-	return p if p is String and p != "" else PKeyHeaders.platform()
+	return p if p is String and p != "" else PKeyHeaders.update_platform()
 
 
 ## The stamped outlet id, or "" for a build without a stamp. What the build says, not what it
@@ -410,7 +410,7 @@ func _stamp_or_tag() -> Variant:
 ## `web` stamp on a web export, else null.
 func detection_stamp() -> Variant:
 	var stamp = _stamp_or_tag()
-	if stamp == null and (outlet_env.platform() if outlet_env != null else PKeyHeaders.platform()) == "web":
+	if stamp == null and (outlet_env.platform() if outlet_env != null else PKeyHeaders.update_platform()) == "web":
 		return PKeyOutlet.WEB_STAMP.duplicate(true)
 	return PKeyOutlet.detection_stamp(stamp)
 

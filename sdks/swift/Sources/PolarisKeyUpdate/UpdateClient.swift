@@ -283,7 +283,7 @@ public actor UpdateClient {
         // plans/P4-29.md §2.4 step 1: before any check this process, the menu of the committed
         // feed of the configured channel, re-verified on the reload path (no freshness: a stale
         // menu only falls back). No cache or no committed feed is no menu.
-        let platform = configured.options.platform ?? PlatformFamily.headerValue
+        let platform = configured.options.platform ?? PlatformFamily.updatePlatform
         self.packs = PacksClient(
             core: core, releaseKeys: configured.releaseKeys, options: options.packs,
             loadFeedDeltas: { [core] in
@@ -514,14 +514,14 @@ extension UpdateClient {
         return configured
     }
 
-    private var platformValue: String? { configured?.options.platform ?? PlatformFamily.headerValue }
+    private var platformValue: String? { configured?.options.platform ?? PlatformFamily.updatePlatform }
 
     private func installed() throws -> InstalledBuild {
         let opts = configured?.options
         guard let platform = platformValue, let arch = opts?.arch ?? ArchFamily.headerValue else {
             throw PolarisError(
                 code: ErrorCode.notConfigured,
-                message: "This host's platform or arch has no canonical value; set UpdateClientOptions.platform and arch.")
+                message: "This host's platform or arch has no canonical build-target value; set UpdateClientOptions.platform and arch.")
         }
         return InstalledBuild(
             version: core.version, binaryVersion: opts?.binaryVersion,

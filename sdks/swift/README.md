@@ -228,9 +228,11 @@ the verdict is the same as everywhere else. Supply `localOverrides` / `envPrefix
 `ConfigResolution`.
 
 Every request carries `X-PKey-Platform` and `X-PKey-Arch` as the canonical §5.2 values of the
-binary's compilation conditions (`macos`, `ios` — a Catalyst build sends `macos` — `linux`,
-`windows`, `android`; `arm64`, `x86_64`, `armv7`, `wasm32`), omitted when there is none, and
-`X-PKey-SDK: swift` (`POLARIS_SDK_NAME`, the generated `SdkId.swift`).
+binary's compilation conditions (`macos`, `ios` — a Catalyst build sends `macos` — `tvos`,
+`visionos`, `watchos`, `linux`, `windows`, `android`; `arm64`, `x86_64`, `armv7`, `wasm32`),
+omitted when there is none, and `X-PKey-SDK: swift` (`POLARIS_SDK_NAME`, the generated
+`SdkId.swift`). `tvos`, `visionos` and `watchos` are header values only (WIRE-CONTRACT-V4 §5.2
+rule 5): on those OSes the update client needs `UpdateClientOptions.platform`.
 
 ### Device-code sign-in
 

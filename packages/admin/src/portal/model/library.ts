@@ -374,6 +374,26 @@ export function normalisePlatform(p: string | null): PlatformKey | null {
     : null;
 }
 
+/** A device's `X-PKey-Platform` value that is a header value only, not a download platform
+ *  (WIRE-CONTRACT-V4 §5.2 rule 5): the device rows show these, the download vocabulary does not. */
+export type HeaderOnlyPlatform = "tvos" | "visionos" | "watchos";
+const HEADER_ONLY_PLATFORMS: readonly HeaderOnlyPlatform[] = [
+  "tvos",
+  "visionos",
+  "watchos",
+];
+
+/** The family a stored device platform belongs to, for its glyph: a download platform, one of
+ *  the header-only Apple values, or null. */
+export function deviceFamily(
+  p: string | null,
+): PlatformKey | HeaderOnlyPlatform | null {
+  const v = p?.toLowerCase() ?? "";
+  if ((HEADER_ONLY_PLATFORMS as readonly string[]).includes(v))
+    return v as HeaderOnlyPlatform;
+  return normalisePlatform(p);
+}
+
 /** The licence summary a library item stands for, when `GET /api/licenses` hasn't listed it. */
 function summaryFromItem(item: PortalLibraryItem): PortalLicenseSummary {
   const l = item.license;
@@ -888,6 +908,17 @@ export function osName(os: PlatformKey): string {
     android: "Android",
     web: "the web",
   }[os];
+}
+
+/** The OS name a device row shows for its stored platform, header-only Apple values included;
+ *  null when the platform is unknown. */
+export function deviceOsName(p: string | null): string | null {
+  const k = deviceFamily(p);
+  if (k === null) return null;
+  if (k === "tvos") return "Apple TV";
+  if (k === "visionos") return "Apple Vision Pro";
+  if (k === "watchos") return "Apple Watch";
+  return osName(k);
 }
 
 /**

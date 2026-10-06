@@ -13433,8 +13433,10 @@ components:
       name: X-PKey-Platform
       in: header
       description: >
-        The OS family of the running binary (WIRE-CONTRACT-V3 §5.2): `macos`, `ios` (iPadOS
-        too), `android`, `windows`, `linux` or `web`. An SDK omits it when its runtime's
+        The OS family of the running binary (WIRE-CONTRACT-V4 §5.2): `macos`, `ios` (iPadOS
+        too), `tvos`, `visionos`, `watchos`, `android`, `windows`, `linux` or `web`. `tvos`,
+        `visionos` and `watchos` are header values only: the feed's `platform` stays one of
+        the six build targets (§5.2 rule 5). An SDK omits it when its runtime's
         spelling has no value. Recorded on the device row and echoed back as `platform`; an
         older spelling (`darwin`, `win32`, `browser`, …) is stored as its canonical value, any
         other value as sent, and an empty value as absent.
