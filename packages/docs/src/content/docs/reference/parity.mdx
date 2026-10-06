@@ -22,7 +22,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | Node | `node` | 68 | 6 | 4 | 0 |
 | React | `web`, `desktop-bridge` | 55 | 12 | 11 | 0 |
 | Python | `python` | 67 | 6 | 5 | 0 |
-| Swift | `macos`, `ios` | 65 | 6 | 7 | 0 |
+| Swift | `macos`, `ios` | 67 | 6 | 5 | 0 |
 | Godot | `linux`, `macos`, `windows`, `android`, `ios`, `web` | 68 | 2 | 8 | 0 |
 | Kotlin | `android`, `jvm` | 68 | 6 | 4 | 0 |
 
@@ -40,7 +40,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `core.errors` | Shared error codes | `pnpm gen:constants -- --check` (P1b-02) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.caps` | supports() and capability telemetry | unit | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
 | `core.store` | Secure token store, surfaced failure, no silent downgrade | unit | ✓; N/A (node: dependency) | ✓; N/A (desktop-bridge: runtime) | ✓; N/A (python: dependency) | ✓ | planned (SP-27) | ✓; N/A (jvm: dependency) | web, desktop-bridge: runtime; node, python, jvm: dependency |
-| `core.copy` | Error, gate and activation copy: copy.message(code), copy.title(code) | `pnpm gen:constants -- --check` + unit | ✓ | ✓ | planned (SP-22) | planned (SP-17) | planned (SP-23) | planned (SP-21) | — |
+| `core.copy` | Error, gate and activation copy: copy.message(code), copy.title(code) | `pnpm gen:constants -- --check` + unit | ✓ | ✓ | planned (SP-22) | ✓ | planned (SP-23) | planned (SP-21) | — |
 
 ## License
 
@@ -98,7 +98,7 @@ owner yet (listed below). A proof marked with a work package does not exist yet;
 | `update.driver` | Hand off to the native updater, or a store link | device tests | ✓ | planned (SP-15) | ✓ | ✓; N/A (ios: outlet) | ✓; N/A (ios: outlet) | ✓ | ios: outlet; jvm: runtime |
 | `update.bootguard` | Confirm a boot, roll back after N failures | `stage-matrix.json` | ✓ | planned (SP-15) | ✓ | ✓ | ✓ | ✓ | — |
 | `outlet.detect` | Outlet detection | `outlet-matrix.json` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — |
-| `crash.tags` | Crash-report tags: release, build, outlet and channel for Sentry | unit | ✓ | planned (SP-12) | ✓ | planned (SP-17) | ✓ | ✓ | — |
+| `crash.tags` | Crash-report tags: release, build, outlet and channel for Sentry | unit | ✓ | planned (SP-12) | ✓ | ✓ | ✓ | ✓ | — |
 
 ## Packs
 

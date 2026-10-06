@@ -33,6 +33,8 @@ public struct PolarisCopy: Sendable {
     public var versionTooNewTitle: String
     public var channelNotEntitledTitle: String
     public var versionBlockSubtitle: String
+    /// The gate titles and subtitles above default to the generated gate table (core.copy,
+    /// `ErrorCopy.title/message(status)`); a product's value wins.
     /// Activation outcomes (§3.1), defaulting to the shared `ErrorCopy` base. A product overrides
     /// one by code: `copy.activationMessages[ErrorCode.deviceLimit] = "…"`.
     public var activationMessages: [String: String]
@@ -51,16 +53,16 @@ public struct PolarisCopy: Sendable {
         activateButton: String = "Activate",
         retryButton: String = "Retry",
         reconnectButton: String = "Reconnect",
-        graceTitle: String = "Offline grace period",
-        graceSubtitle: String =
-            "We couldn't reach the license server. You can keep working for now.",
-        expiredTitle: String = "License expired",
-        expiredSubtitle: String = "Reconnect to renew your license.",
-        revokedTitle: String = "License revoked",
-        revokedSubtitle: String = "This license is no longer valid on this device.",
-        versionTooOldTitle: String = "Update required",
-        versionTooNewTitle: String = "Version not yet allowed",
-        channelNotEntitledTitle: String = "Channel not entitled",
+        graceTitle: String = ErrorCopy.title(LicenseStatus.grace.rawValue),
+        graceSubtitle: String = ErrorCopy.message(LicenseStatus.grace.rawValue),
+        expiredTitle: String = ErrorCopy.title(LicenseStatus.expired.rawValue),
+        expiredSubtitle: String = ErrorCopy.message(LicenseStatus.expired.rawValue),
+        revokedTitle: String = ErrorCopy.title(LicenseStatus.revoked.rawValue),
+        revokedSubtitle: String = ErrorCopy.message(LicenseStatus.revoked.rawValue),
+        versionTooOldTitle: String = ErrorCopy.title(LicenseStatus.versionTooOld.rawValue),
+        versionTooNewTitle: String = ErrorCopy.title(LicenseStatus.versionTooNew.rawValue),
+        channelNotEntitledTitle: String = ErrorCopy.title(
+            LicenseStatus.channelNotEntitled.rawValue),
         versionBlockSubtitle: String = "Your current version isn't permitted to run.",
         activationMessages: [String: String] = [:],
         signOutFailedMessage: String = "Sign-out couldn't clear the stored license."
