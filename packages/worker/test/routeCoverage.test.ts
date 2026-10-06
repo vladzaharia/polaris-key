@@ -157,6 +157,13 @@ const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
       "/manage/api/products/{product}/license/licenses/{licenseId}",
       ["get", "patch"],
     ],
+    // LX-28: bulk floating keys, the batch reads and Disable unused keys.
+    ["/manage/api/products/{product}/license/batches", ["get", "post"]],
+    ["/manage/api/products/{product}/license/batches/{batchId}", ["get"]],
+    [
+      "/manage/api/products/{product}/license/batches/{batchId}/disable-unused",
+      ["post"],
+    ],
   ],
 };
 
@@ -697,6 +704,7 @@ function concrete(template: string): string {
     requestId: `dl_${"A".repeat(43)}`,
     request: `rq_${"A".repeat(22)}`,
     licenseId: "lic_1",
+    batchId: "batch_1",
     passkeyId: "A".repeat(43),
   };
   return template.replace(/\{(\w+)\}/g, (_, name: string) => {
