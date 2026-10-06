@@ -51,8 +51,8 @@ import {
 import {
   PORTAL_COOKIE,
   PORTAL_CSRF_HEADER,
-  issuePortalSession,
 } from "../src/services/identity/portal/session.js";
+import { issuePortalSessionRow } from "./portalSessionRow.js";
 import { rateLimitOk } from "../src/core/rateLimit.js";
 import { hashKey } from "../src/crypto.js";
 import type { Env } from "../src/env.js";
@@ -1016,8 +1016,9 @@ describe("I-26 Replace a device", () => {
     ).toBe("authorized");
 
     // …and the portal's own DELETE is out of budget too: one budget for both surfaces.
-    const { token: portalToken, session } = await issuePortalSession(
+    const { token: portalToken, session } = await issuePortalSessionRow(
       env,
+      db,
       { accountId, email: "ada@example.com", name: "Ada" },
       NOW,
     );
