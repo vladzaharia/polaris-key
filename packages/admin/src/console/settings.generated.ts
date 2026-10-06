@@ -1180,4 +1180,11 @@ export const NOT_A_SETTING_INDEX: readonly NotASettingEntry[] = [
       "The slug is the product's identity and never changes; apiVersion selects a manifest shape; schemaVersion stamps the catalog and is written with it (config.catalog) as one unit.",
     shows: "Core → Overview; pkey validate",
   },
+  {
+    thing: "Deprecated manifest spellings (ST-19)",
+    reason:
+      "A second spelling of a field that has a canonical one (a flat product document, tiers outside licensing:, a release body without the release: wrapper, catalog for entries). Each is still read, with today's precedence, and pkey validate warns with deprecated_spelling; the setting lives at the canonical spelling.",
+    shows:
+      "pkey validate; Docs: Build → Manifest → Authoring (Deprecated spellings)",
+  },
 ];

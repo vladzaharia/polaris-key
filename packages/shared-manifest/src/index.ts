@@ -37,6 +37,7 @@ import {
 } from "@polaris-key/protocol/packs";
 import { parse as parseYaml } from "yaml";
 import { validateCloudSync } from "./cloudSync.js";
+import { checkSpellings } from "./spellings.js";
 import {
   MAX_RELEASE_KEYS,
   RELEASE_KEY_KID_PATTERN,
@@ -1358,6 +1359,9 @@ function validateDocuments(
   const licensing = asRecord(productRoot.licensing);
   const oidc = asRecord(productRoot.oidc);
   const secrets = asRecord(productRoot.secrets);
+
+  // ST-19: duplicate spellings stay valid and keep today's precedence; they only warn.
+  checkSpellings(manifest, warnings);
 
   if (
     productRoot.apiVersion !== undefined &&
@@ -5683,3 +5687,5 @@ export * from "./transportIds.js";
 export * from "./reservedNames.js";
 // PX-W13 (plans/PX-W13.md §3): display names on the sign-in card and the reserved-name check.
 export * from "./displayName.js";
+// ST-19: the duplicate manifest spellings, deprecated with warnings.
+export * from "./spellings.js";

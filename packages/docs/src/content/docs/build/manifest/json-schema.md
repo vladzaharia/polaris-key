@@ -75,7 +75,7 @@ plugin, …) reads the same two schema files; only the settings syntax differs.
 ### The headers `pkey init` emits
 
 Running `pkey init` (`@polaris-key/cli`, `packages/cli/README.md`) scaffolds
-`.pkey/product.yaml` and `schema.yaml` (always written, with `catalog: []` unless the
+`.pkey/product.yaml` and `schema.yaml` (always written, with `entries: []` unless the
 `config` module is selected), plus `release.yaml` when `releases` is selected, each opening with a `yaml-language-server` directive that points straight at the
 package copy with no editor configuration required at all:
 
@@ -111,6 +111,12 @@ is the drift gate, and it pins three properties on every CI run:
    cross-reference like "this tier names an unknown profile" — that JSON Schema's document-local
    validation genuinely cannot express). The `"accepts"` tag is a documented limitation, not a
    silent gap: an editor will not flag that mistake, `pkey validate` and a resync will.
+
+The same suite checks every row of `DEPRECATED_SPELLINGS` (ST-19): the schemas still **accept**
+each old spelling but mark its property `"deprecated": true`, with a description that starts
+"Deprecated: write …", so an editor strikes it through; the validator warns on it at its own
+path; and the parsed value is the one today's precedence picks. See
+[Deprecated spellings](/docs/build/manifest/authoring/#deprecated-spellings).
 
 Because of that guarantee, "the schema didn't catch it" is meaningful information on its own —
 it means the mistake needs a full `pkey validate` or a push to catch, not that the schema is

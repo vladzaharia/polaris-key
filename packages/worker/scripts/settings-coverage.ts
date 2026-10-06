@@ -10,7 +10,10 @@
  *   - `env:<NAME>`: every `Env` member in the platform inventory (ST-02), which its own gate keeps
  *     a superset of every name `src/` reads off the env;
  *   - `manifest:<document>:<field>`: every top-level field of the four `.pkey/` documents
- *     (`product`, `schema`, `release`, `distribution`).
+ *     (`product`, `schema`, `release`, `distribution`). The canonical wrappers (ST-19,
+ *     `MANIFEST_WRAPPERS`: `product:` and `licensing:` in the product document, `release:` in the
+ *     release document) are descended one level, so their fields are targets of their own:
+ *     `manifest:product:licensing.tiers`, `manifest:release:release.provider`.
  *
  * Each must be declared by a registry entry (`declaredByRegistry`), explained by a
  * `NOT_A_SETTING` row, or listed in `PENDING` with the work package that will register it.
@@ -26,6 +29,7 @@
  * them, and only the allowlisted Worker files may name those (`test/outletCredentialReach.test.ts`).
  */
 
+import { DEPRECATED_SPELLINGS, dotted } from "@polaris-key/manifest";
 import type { InventoryKind } from "../src/platformInventory.js";
 import type { SettingDef } from "../src/core/settings/types.js";
 
@@ -122,6 +126,45 @@ export const SOURCE_MARKERS: Readonly<Record<string, string>> = {
   "release_config.access_source": "release_config.metadata_access",
 };
 
+/**
+ * The canonical wrappers (plans/ST-19.md §3.5, owner decision Q2): coverage descends one level
+ * into each, so a field inside one is a target of its own.
+ */
+export const MANIFEST_WRAPPERS: Readonly<Record<string, readonly string[]>> = {
+  product: ["product", "licensing"],
+  release: ["release"],
+};
+
+/**
+ * The coverage target a manifest path falls under: `product:licensing.tiers[].profileId` →
+ * `manifest:product:licensing.tiers`, `product:web.origins` → `manifest:product:web`.
+ */
+export function manifestTargetId(path: string): string {
+  const [doc, rest] = path.split(":") as [string, string];
+  const segs = rest.replace(/\[\]/g, "").split(".");
+  const depth =
+    segs.length > 1 && (MANIFEST_WRAPPERS[doc] ?? []).includes(segs[0]!)
+      ? 2
+      : 1;
+  return `manifest:${doc}:${segs.slice(0, depth).join(".")}`;
+}
+
+/**
+ * The coverage targets that are deprecated spellings (ST-19): every `DEPRECATED_SPELLINGS`
+ * pointer that is itself a target (a top-level field, or a field one level into a wrapper).
+ * Deeper spellings (a tier's `profile`, a legacy `modules:` name) live inside a target that has
+ * a home of its own.
+ */
+export function deprecatedSpellingTargets(): string[] {
+  const out = new Set<string>();
+  for (const s of DEPRECATED_SPELLINGS) {
+    const path = `${s.doc}:${dotted(s.pointer)}`;
+    const id = manifestTargetId(path);
+    if (id === `manifest:${path}`) out.add(id);
+  }
+  return [...out].sort();
+}
+
 /** Every coverage target one registry entry declares. */
 export function declaredByEntry(e: SettingDef): string[] {
   const out: string[] = [];
@@ -133,10 +176,7 @@ export function declaredByEntry(e: SettingDef): string[] {
   }
   if (s.kind === "rich") out.push(`table:${s.adapter}`, `rows:${s.adapter}`);
   if (e.varName) out.push(`env:${e.varName}`);
-  if (e.manifest) {
-    const [doc, dotted] = e.manifest.path.split(":") as [string, string];
-    out.push(`manifest:${doc}:${dotted.split(".")[0]}`);
-  }
+  if (e.manifest) out.push(manifestTargetId(e.manifest.path));
   return out;
 }
 
@@ -346,11 +386,19 @@ export const NOT_A_SETTING: readonly NotASetting[] = [
     covers: {
       ids: [
         "manifest:product:apiVersion",
-        "manifest:product:slug",
+        "manifest:product:product.slug",
         "manifest:schema:schemaVersion",
         "manifest:distribution:apiVersion",
       ],
     },
+  },
+  {
+    thing: "Deprecated manifest spellings (ST-19)",
+    reason:
+      "A second spelling of a field that has a canonical one (a flat product document, tiers outside licensing:, a release body without the release: wrapper, catalog for entries). Each is still read, with today's precedence, and pkey validate warns with deprecated_spelling; the setting lives at the canonical spelling.",
+    shows:
+      "pkey validate; Docs: Build → Manifest → Authoring (Deprecated spellings)",
+    covers: { ids: deprecatedSpellingTargets() },
   },
 ];
 
@@ -419,127 +467,90 @@ export const PENDING: readonly PendingEntry[] = [
     note: "release.channelFloors (packs)",
   },
   { target: "column:release_pack_floors.source", owner: "ST-08" },
-  // Manifest-declared settings with no entry yet: the registry ↔ manifest parity package.
+  // Manifest-declared settings with no entry yet (ST-19 split them out to ST-19b, plans/ST-19.md
+  // Q1). The duplicate spellings ST-06 parked here left with ST-19: the generated NOT_A_SETTING
+  // row "Deprecated manifest spellings" covers them.
   {
     target: "table:ci_publishers",
-    owner: "ST-19",
+    owner: "ST-19b",
     note: "release.publishing.trustedPublisher",
   },
-  { target: "column:ci_publishers.source", owner: "ST-19" },
+  { target: "column:ci_publishers.source", owner: "ST-19b" },
   {
     target: "table:release_channel_policy",
-    owner: "ST-19",
+    owner: "ST-19b",
     note: "release.channelPolicy",
   },
-  { target: "column:release_channel_policy.source", owner: "ST-19" },
+  { target: "column:release_channel_policy.source", owner: "ST-19b" },
   {
     target: "column:release_deliverables.def_source",
-    owner: "ST-19",
+    owner: "ST-19b",
     note: "release.deliverables",
   },
   {
     target: "table:provisioning_config",
-    owner: "ST-19",
+    owner: "ST-19b",
     note: "identity.provisioning",
   },
   {
     target: "table:dist_transports",
-    owner: "ST-19",
+    owner: "ST-19b",
     note: "distribution.transports",
   },
   {
-    target: "manifest:product:product",
-    owner: "ST-19",
-    note: "duplicate spelling (the productCore wrapper)",
-  },
-  {
-    target: "manifest:product:compatMax",
-    owner: "ST-19",
+    target: "manifest:product:product.compatMax",
+    owner: "ST-19b",
     note: "second field of release.compatWindow",
   },
   {
-    target: "manifest:product:defaultDeviceLimit",
-    owner: "ST-19",
-    note: "duplicate spelling of licensing.defaultDeviceLimit",
-  },
-  {
-    target: "manifest:product:defaultMaxOfflineDays",
-    owner: "ST-19",
-    note: "duplicate spelling of licensing.defaultMaxOfflineDays",
-  },
-  {
     target: "manifest:product:devices",
-    owner: "ST-19",
+    owner: "ST-19b",
     note: "core.registration",
   },
   {
     target: "manifest:product:provisioning",
-    owner: "ST-19",
+    owner: "ST-19b",
     note: "identity.provisioning",
   },
   {
     target: "manifest:product:secrets",
-    owner: "ST-19",
+    owner: "ST-19b",
     note: "core.secrets (names only)",
   },
   {
-    target: "manifest:product:release",
-    owner: "ST-19",
-    note: "the release document inlined",
-  },
-  {
-    target: "manifest:schema:catalog",
-    owner: "ST-19",
-    note: "duplicate spelling of entries",
-  },
-  {
-    target: "manifest:release:release",
-    owner: "ST-19",
-    note: "duplicate spelling (the wrapper)",
-  },
-  {
-    target: "manifest:release:provider",
-    owner: "ST-19",
+    target: "manifest:release:release.provider",
+    owner: "ST-19b",
     note: "release.github",
   },
+  { target: "manifest:release:release.binaryName", owner: "ST-19b" },
+  { target: "manifest:release:release.channelWorkflow", owner: "ST-19b" },
+  { target: "manifest:release:release.betaBranch", owner: "ST-19b" },
+  { target: "manifest:release:release.summaryMarker", owner: "ST-19b" },
+  { target: "manifest:release:release.manualChannels", owner: "ST-19b" },
   {
-    target: "manifest:release:ghOwner",
-    owner: "ST-19",
-    note: "release.github",
-  },
-  { target: "manifest:release:ghRepo", owner: "ST-19", note: "release.github" },
-  { target: "manifest:release:binaryName", owner: "ST-19" },
-  { target: "manifest:release:channelWorkflow", owner: "ST-19" },
-  { target: "manifest:release:betaBranch", owner: "ST-19" },
-  { target: "manifest:release:summaryMarker", owner: "ST-19" },
-  { target: "manifest:release:manualChannels", owner: "ST-19" },
-  { target: "manifest:release:stableTagPattern", owner: "ST-19" },
-  { target: "manifest:release:ignoreTags", owner: "ST-19" },
-  {
-    target: "manifest:release:deliverables",
-    owner: "ST-19",
+    target: "manifest:release:release.deliverables",
+    owner: "ST-19b",
     note: "release.deliverables",
   },
-  { target: "manifest:release:edgeMint", owner: "ST-19" },
   {
-    target: "manifest:release:publishing",
-    owner: "ST-19",
+    target: "manifest:release:release.publishing",
+    owner: "ST-19b",
     note: "release.publishing.trustedPublisher",
   },
   {
-    target: "manifest:release:releaseKeys",
-    owner: "ST-19",
+    target: "manifest:release:release.releaseKeys",
+    owner: "ST-19b",
     note: "release.keys",
   },
   {
     target: "manifest:distribution:transports",
-    owner: "ST-19",
+    owner: "ST-19b",
     note: "distribution.transports",
   },
 ];
 
 /** `PENDING.length`, written down: lower it with every removal; raising it needs a review. */
-export const PENDING_CEILING = 58;
+export const PENDING_CEILING = 47;
 
 export interface CoverageInputs {
   targets: readonly CoverageTarget[];

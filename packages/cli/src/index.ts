@@ -588,6 +588,8 @@ async function cmdValidate(
   );
   if (result.requiredSecrets.length)
     stdout.write(`Required secrets: ${result.requiredSecrets.join(", ")}\n`);
+  for (const warning of manifest.fileWarnings ?? [])
+    stdout.write(`warning .pkey/: ${warning}\n`);
   for (const warning of result.warnings) {
     stdout.write(
       `warning ${located(manifest, cwd, warning)}: ${warning.message}\n`,

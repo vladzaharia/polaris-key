@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -72,7 +72,7 @@ describe("@polaris-key/cli", () => {
     expect(productYaml).toContain("apiVersion: pkey.dev/v1");
     expect(
       await readFile(path.join(cwd, ".pkey/schema.yaml"), "utf8"),
-    ).toContain("catalog:");
+    ).toContain("entries:");
 
     const manifest = await loadManifest(cwd);
     const result = validateLoadedManifest(manifest);
@@ -111,6 +111,94 @@ describe("@polaris-key/cli", () => {
       "distribution",
       "update",
     ]);
+  });
+
+  it("scaffolds only canonical spellings: profileId, entries, no deprecated_spelling (ST-19)", async () => {
+    for (const modules of [
+      ["licensing", "config"],
+      ["license", "config", "release", "identity"],
+      ["releases"],
+    ] as const) {
+      const cwd = await tempDir();
+      await initManifest({ cwd, slug: "acme", name: "Acme", modules });
+      const product = await readFile(
+        path.join(cwd, ".pkey/product.yaml"),
+        "utf8",
+      );
+      expect(product).toContain("profileId: standard-defaults");
+      expect(product).not.toMatch(/^\s+profile:/m);
+      expect(
+        await readFile(path.join(cwd, ".pkey/schema.yaml"), "utf8"),
+      ).not.toContain("catalog:");
+      const result = validateLoadedManifest(await loadManifest(cwd));
+      expect(result.ok).toBe(true);
+      expect(result.warnings).toEqual([]);
+    }
+  });
+
+  it("validates a flat, djdl-shaped manifest with deprecation warnings and exit 0 (ST-19)", async () => {
+    const cwd = await tempDir();
+    await mkdir(path.join(cwd, ".pkey"));
+    await writeFile(
+      path.join(cwd, ".pkey/product.json"),
+      JSON.stringify({
+        slug: "djdl",
+        name: "DJDL",
+        compatMin: "0.0.0",
+        defaultDeviceLimit: 5,
+        adminGroup: "admins",
+        profiles: [{ id: "default", name: "Default" }],
+        tiers: [{ id: "standard", profileId: "default" }],
+      }),
+    );
+    await writeFile(
+      path.join(cwd, ".pkey/schema.json"),
+      JSON.stringify({ schemaVersion: 1, entries: [] }),
+    );
+    const io = capture();
+    await expect(runPkey(["validate"], { cwd, ...io })).resolves.toBe(0);
+    expect(io.out()).toContain("Manifest: valid");
+    for (const at of [
+      "/slug",
+      "/name",
+      "/compatMin",
+      "/defaultDeviceLimit",
+      "/adminGroup",
+      "/profiles",
+      "/tiers",
+    ])
+      expect(io.out()).toContain(`warning product${at} (.pkey/product.json): `);
+    expect(io.out()).toContain(
+      "defaultDeviceLimit is a deprecated spelling; write licensing.defaultDeviceLimit.",
+    );
+    expect(io.out()).not.toContain("error ");
+  });
+
+  it("warns when one document exists under two extensions (ST-19, CLI only)", async () => {
+    const cwd = await tempDir();
+    await initManifest({
+      cwd,
+      slug: "acme",
+      name: "Acme",
+      modules: ["license", "config"],
+    });
+    await writeFile(
+      path.join(cwd, ".pkey/product.json"),
+      JSON.stringify({ product: { slug: "acme", name: "Acme" } }),
+    );
+    const manifest = await loadManifest(cwd);
+    expect(manifest.productPath.endsWith("product.json")).toBe(true);
+    expect(manifest.fileWarnings).toEqual([
+      ".pkey/product.json and .pkey/product.yaml are one document; only .pkey/product.json is read (json, then yaml, then yml), here and on the platform. Keep one file.",
+    ]);
+    const io = capture();
+    await expect(runPkey(["validate"], { cwd, ...io })).resolves.toBe(0);
+    expect(io.out()).toContain(
+      "warning .pkey/: .pkey/product.json and .pkey/product.yaml are one document",
+    );
+    // One file per document: nothing to say.
+    await rm(path.join(cwd, ".pkey/product.json"));
+    expect((await loadManifest(cwd)).fileWarnings).toBeUndefined();
   });
 
   it("--modules accepts both vocabularies and returns canonical slugs", () => {
@@ -217,7 +305,7 @@ describe("@polaris-key/cli", () => {
       await readFile(path.join(cwd, `.pkey/${file}.yaml`), "utf8");
     expect(
       await readFile(path.join(cwd, ".pkey/schema.yaml"), "utf8"),
-    ).toContain("catalog: []");
+    ).toContain("entries: []");
 
     const validation = capture();
     await expect(runPkey(["validate"], { cwd, ...validation })).resolves.toBe(

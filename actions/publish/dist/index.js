@@ -1156,13 +1156,41 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "const": "pkey.dev/v1"
     },
     "product": { "$ref": "#/$defs/productCore" },
-    "slug": { "$ref": "#/$defs/slug" },
-    "name": { "$ref": "#/$defs/displayName" },
-    "adminGroup": { "$ref": "#/$defs/groupName" },
-    "compatMin": { "$ref": "#/$defs/semver" },
-    "compatMax": { "$ref": "#/$defs/semver" },
-    "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
-    "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" },
+    "slug": {
+      "$ref": "#/$defs/slug",
+      "description": "Deprecated: write product.slug. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
+    "name": {
+      "$ref": "#/$defs/displayName",
+      "description": "Deprecated: write product.name. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
+    "adminGroup": {
+      "$ref": "#/$defs/groupName",
+      "description": "Deprecated: write product.adminGroup. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
+    "compatMin": {
+      "$ref": "#/$defs/semver",
+      "description": "Deprecated: write product.compatMin. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
+    "compatMax": {
+      "$ref": "#/$defs/semver",
+      "description": "Deprecated: write product.compatMax. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
+    "defaultDeviceLimit": {
+      "$ref": "#/$defs/nonNegativeInteger",
+      "description": "Deprecated: write licensing.defaultDeviceLimit. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
+    "defaultMaxOfflineDays": {
+      "$ref": "#/$defs/nonNegativeInteger",
+      "description": "Deprecated: write licensing.defaultMaxOfflineDays. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
     "modules": { "$ref": "#/$defs/modules" },
     "devices": {
       "type": "object",
@@ -1213,8 +1241,16 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "tiers": { "$ref": "#/$defs/tiers" }
       }
     },
-    "profiles": { "$ref": "#/$defs/profiles" },
-    "tiers": { "$ref": "#/$defs/tiers" },
+    "profiles": {
+      "$ref": "#/$defs/profiles",
+      "description": "Deprecated: write licensing.profiles. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
+    "tiers": {
+      "$ref": "#/$defs/tiers",
+      "description": "Deprecated: write licensing.tiers. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
+    },
     "oidc": { "$ref": "#/$defs/oidc" },
     "provisioning": {
       "type": "array",
@@ -1247,8 +1283,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
     },
     "cloudSync": { "$ref": "#/$defs/cloudSync" },
     "release": {
-      "description": "The release document may be inlined here instead of living in .pkey/release — same shape (see release.schema.json).",
-      "type": "object"
+      "description": "Deprecated: write the release block in .pkey/release. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "type": "object",
+      "deprecated": true
     }
   },
   "anyOf": [
@@ -1516,12 +1553,20 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "adminGroup": { "$ref": "#/$defs/groupName" },
         "compatMin": { "$ref": "#/$defs/semver" },
         "compatMax": { "$ref": "#/$defs/semver" },
-        "defaultDeviceLimit": { "$ref": "#/$defs/nonNegativeInteger" },
-        "defaultMaxOfflineDays": { "$ref": "#/$defs/nonNegativeInteger" }
+        "defaultDeviceLimit": {
+          "$ref": "#/$defs/nonNegativeInteger",
+          "description": "Deprecated: write licensing.defaultDeviceLimit. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
+        },
+        "defaultMaxOfflineDays": {
+          "$ref": "#/$defs/nonNegativeInteger",
+          "description": "Deprecated: write licensing.defaultMaxOfflineDays. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
+        }
       }
     },
     "modules": {
-      "description": "Per-service enablement. Service slugs (license, config, release, distribution, update, identity, sync) are canonical; the legacy module vocabulary (licensing, releases, oidc, edgeMint) is accepted and mapped (releases enables release+distribution+update; edgeMint enables config). Undeclared defaults to license+config.",
+      "description": "Per-service enablement. Service slugs (license, config, release, distribution, update, identity, sync) are canonical. The legacy module names (licensing, releases, oidc, edgeMint) are deprecated but still accepted and mapped (releases enables release+distribution+update; edgeMint enables config). Undeclared defaults to license+config.",
       "type": "object",
       "properties": {
         "license": { "$ref": "#/$defs/moduleFlag" },
@@ -1531,10 +1576,26 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "update": { "$ref": "#/$defs/moduleFlag" },
         "identity": { "$ref": "#/$defs/moduleFlag" },
         "sync": { "$ref": "#/$defs/moduleFlag" },
-        "licensing": { "$ref": "#/$defs/moduleFlag" },
-        "releases": { "$ref": "#/$defs/moduleFlag" },
-        "oidc": { "$ref": "#/$defs/moduleFlag" },
-        "edgeMint": { "$ref": "#/$defs/moduleFlag" }
+        "licensing": {
+          "$ref": "#/$defs/moduleFlag",
+          "description": "Deprecated: write the service slug license. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
+        },
+        "releases": {
+          "$ref": "#/$defs/moduleFlag",
+          "description": "Deprecated: write the service slug release (with distribution and update). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
+        },
+        "oidc": {
+          "$ref": "#/$defs/moduleFlag",
+          "description": "Deprecated: write the service slug identity. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
+        },
+        "edgeMint": {
+          "$ref": "#/$defs/moduleFlag",
+          "description": "Deprecated: write the service slug config. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
+        }
       }
     },
     "moduleFlag": {
@@ -1548,7 +1609,11 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         "properties": {
           "id": { "$ref": "#/$defs/identifier" },
           "name": { "$ref": "#/$defs/label" },
-          "label": { "$ref": "#/$defs/label" },
+          "label": {
+            "$ref": "#/$defs/label",
+            "description": "Deprecated: write name. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+            "deprecated": true
+          },
           "description": { "$ref": "#/$defs/longText" },
           "payload": {
             "description": "Managed-payload baseline: config/secrets/entitlements maps.",
@@ -1569,13 +1634,22 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
             "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]
           },
           "profile": {
-            "description": "Alias of profileId.",
-            "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }]
+            "description": "Deprecated: write profileId. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+            "anyOf": [
+              {
+                "$ref": "#/$defs/identifier"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "deprecated": true
           },
           "policyExpiryDays": { "type": ["number", "null"] },
           "expiryDays": {
-            "description": "Alias of policyExpiryDays.",
-            "type": ["number", "null"]
+            "description": "Deprecated: write policyExpiryDays. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+            "type": ["number", "null"],
+            "deprecated": true
           },
           "policyDeviceLimit": {
             "anyOf": [
@@ -1621,8 +1695,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
         },
         "clientSecretSecret": { "$ref": "#/$defs/secretRef" },
         "clientSecretRef": {
-          "description": "Alias of clientSecretSecret.",
-          "$ref": "#/$defs/secretRef"
+          "description": "Deprecated: write clientSecretSecret. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "$ref": "#/$defs/secretRef",
+          "deprecated": true
         },
         "redirectUris": {
           "type": "array",
@@ -2646,73 +2721,111 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "$ref": "#/$defs/releaseBody"
     },
     "provider": {
-      "$ref": "#/$defs/provider"
+      "$ref": "#/$defs/provider",
+      "description": "Deprecated: write release.provider (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "ghOwner": {
-      "$ref": "#/$defs/ghSlug"
+      "$ref": "#/$defs/ghSlug",
+      "description": "Deprecated: write release.provider.owner. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "ghRepo": {
-      "$ref": "#/$defs/ghSlug"
+      "$ref": "#/$defs/ghSlug",
+      "description": "Deprecated: write release.provider.repo. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "binaryName": {
-      "$ref": "#/$defs/binaryName"
+      "$ref": "#/$defs/binaryName",
+      "description": "Deprecated: write release.binaryName (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "channelWorkflow": {
-      "$ref": "#/$defs/channelWorkflow"
+      "$ref": "#/$defs/channelWorkflow",
+      "description": "Deprecated: write release.channelWorkflow (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "betaBranch": {
-      "$ref": "#/$defs/branch"
+      "$ref": "#/$defs/branch",
+      "description": "Deprecated: write release.betaBranch (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "summaryMarker": {
-      "$ref": "#/$defs/summaryMarker"
+      "$ref": "#/$defs/summaryMarker",
+      "description": "Deprecated: write release.summaryMarker (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "sparkleEd25519Pub": {
-      "$ref": "#/$defs/sparklePub"
+      "$ref": "#/$defs/sparklePub",
+      "description": "Deprecated: write release.sparkleEd25519Pub (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "manualChannels": {
-      "$ref": "#/$defs/manualChannels"
+      "$ref": "#/$defs/manualChannels",
+      "description": "Deprecated: write release.manualChannels (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "stableTagPattern": {
-      "$ref": "#/$defs/stableTagPattern"
+      "$ref": "#/$defs/stableTagPattern",
+      "description": "Deprecated: write release.deliverables.app.versioning.stableTagPattern. Still accepted (plans/ST-19.md); declaring both spellings is the error conflicting_versioning.",
+      "deprecated": true
     },
     "ignoreTags": {
-      "$ref": "#/$defs/ignoreTags"
+      "$ref": "#/$defs/ignoreTags",
+      "description": "Deprecated: write release.deliverables.app.versioning.ignoreTags. Still accepted (plans/ST-19.md); declaring both spellings is the error conflicting_versioning.",
+      "deprecated": true
     },
     "artifactPolicy": {
-      "$ref": "#/$defs/artifactPolicy"
+      "$ref": "#/$defs/artifactPolicy",
+      "description": "Deprecated: write release.artifactPolicy (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "access": {
-      "$ref": "#/$defs/access"
+      "$ref": "#/$defs/access",
+      "description": "Deprecated: write release.access (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "deliverables": {
-      "$ref": "#/$defs/deliverables"
+      "$ref": "#/$defs/deliverables",
+      "description": "Deprecated: write release.deliverables (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "edgeMint": {
       "type": "array",
       "items": {
         "$ref": "#/$defs/edgeMintRecipe"
-      }
+      },
+      "description": "Deprecated: write edgeMint in .pkey/product. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "publishing": {
-      "$ref": "#/$defs/publishing"
+      "$ref": "#/$defs/publishing",
+      "description": "Deprecated: write release.publishing (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     },
     "releaseKeys": {
-      "$ref": "#/$defs/releaseKeys"
+      "$ref": "#/$defs/releaseKeys",
+      "description": "Deprecated: write release.releaseKeys (under the release: wrapper). Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+      "deprecated": true
     }
   },
   "$defs": {
     "releaseBody": {
-      "description": "The same fields may be nested under a \`release\` key instead of flattened at the root.",
+      "description": "The release body. Canonical under the \`release:\` key; the same fields flattened at the document root are deprecated but still accepted.",
       "type": "object",
       "properties": {
         "provider": {
           "$ref": "#/$defs/provider"
         },
         "ghOwner": {
-          "$ref": "#/$defs/ghSlug"
+          "$ref": "#/$defs/ghSlug",
+          "description": "Deprecated: write provider.owner. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
         },
         "ghRepo": {
-          "$ref": "#/$defs/ghSlug"
+          "$ref": "#/$defs/ghSlug",
+          "description": "Deprecated: write provider.repo. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
         },
         "binaryName": {
           "$ref": "#/$defs/binaryName"
@@ -2733,10 +2846,14 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "$ref": "#/$defs/manualChannels"
         },
         "stableTagPattern": {
-          "$ref": "#/$defs/stableTagPattern"
+          "$ref": "#/$defs/stableTagPattern",
+          "description": "Deprecated: write deliverables.app.versioning.stableTagPattern. Still accepted (plans/ST-19.md); declaring both spellings is the error conflicting_versioning.",
+          "deprecated": true
         },
         "ignoreTags": {
-          "$ref": "#/$defs/ignoreTags"
+          "$ref": "#/$defs/ignoreTags",
+          "description": "Deprecated: write deliverables.app.versioning.ignoreTags. Still accepted (plans/ST-19.md); declaring both spellings is the error conflicting_versioning.",
+          "deprecated": true
         },
         "artifactPolicy": {
           "$ref": "#/$defs/artifactPolicy"
@@ -2751,7 +2868,9 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
           "type": "array",
           "items": {
             "$ref": "#/$defs/edgeMintRecipe"
-          }
+          },
+          "description": "Deprecated: write edgeMint in .pkey/product. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
+          "deprecated": true
         },
         "publishing": {
           "$ref": "#/$defs/publishing"
@@ -3661,9 +3780,12 @@ var init_define_PKEY_EMBEDDED_SCHEMAS = __esm({
       "items": { "$ref": "#/$defs/configEntry" }
     },
     "catalog": {
-      "description": "Alias of entries (accepted by normalizeCatalog).",
+      "description": "Deprecated: write entries. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
       "type": "array",
-      "items": { "$ref": "#/$defs/configEntry" }
+      "items": {
+        "$ref": "#/$defs/configEntry"
+      },
+      "deprecated": true
     },
     "cloudSync": { "$ref": "#/$defs/cloudSync" }
   },
@@ -5935,7 +6057,7 @@ var require_YAMLMap = __commonJS({
       static from(schema, obj, ctx) {
         const { keepUndefined, replacer } = ctx;
         const map = new this(schema);
-        const add4 = (key, value) => {
+        const add5 = (key, value) => {
           if (typeof replacer === "function")
             value = replacer.call(obj, key, value);
           else if (Array.isArray(replacer) && !replacer.includes(key))
@@ -5945,10 +6067,10 @@ var require_YAMLMap = __commonJS({
         };
         if (obj instanceof Map) {
           for (const [key, value] of obj)
-            add4(key, value);
+            add5(key, value);
         } else if (obj && typeof obj === "object") {
           for (const key of Object.keys(obj))
-            add4(key, obj[key]);
+            add5(key, obj[key]);
         }
         if (typeof schema.sortMapEntries === "function") {
           map.items.sort(schema.sortMapEntries);
@@ -13387,6 +13509,477 @@ function isRecord2(v) {
 function add(list2, file, path28, code, message) {
   list2.push({ file, path: path28, code, message });
 }
+var P = "product";
+var S = "schema";
+var R = "release";
+var D = "distribution";
+function row(rowNo, doc, pointer, canonical, canonicalPointer, wins, extra = {}) {
+  return {
+    row: rowNo,
+    doc,
+    pointer,
+    canonical,
+    canonicalPointer,
+    wins,
+    code: "deprecated_spelling",
+    conflictCode: canonicalPointer ? "conflicting_spelling" : null,
+    ...extra
+  };
+}
+var RELEASE_BODY_FIELDS = [
+  "provider",
+  "binaryName",
+  "channelWorkflow",
+  "betaBranch",
+  "summaryMarker",
+  "sparkleEd25519Pub",
+  "manualChannels",
+  "artifactPolicy",
+  "access",
+  "deliverables",
+  "publishing",
+  "releaseKeys"
+];
+var DEPRECATED_SPELLINGS = [
+  // 1. A flat product document: identity outside the `product:` wrapper.
+  row(
+    1,
+    P,
+    "/slug",
+    "product:product.slug",
+    { doc: P, pointer: "/product/slug" },
+    "canonical"
+  ),
+  row(
+    1,
+    P,
+    "/name",
+    "product:product.name",
+    { doc: P, pointer: "/product/name" },
+    "canonical"
+  ),
+  // 2. Administration and compatibility outside the wrapper.
+  row(
+    2,
+    P,
+    "/adminGroup",
+    "product:product.adminGroup",
+    { doc: P, pointer: "/product/adminGroup" },
+    "canonical"
+  ),
+  row(
+    2,
+    P,
+    "/compatMin",
+    "product:product.compatMin",
+    { doc: P, pointer: "/product/compatMin" },
+    "canonical"
+  ),
+  row(
+    2,
+    P,
+    "/compatMax",
+    "product:product.compatMax",
+    { doc: P, pointer: "/product/compatMax" },
+    "canonical"
+  ),
+  // 3–4. Licence defaults outside `licensing:`; both old spellings beat the canonical one.
+  row(
+    3,
+    P,
+    "/product/defaultDeviceLimit",
+    "product:licensing.defaultDeviceLimit",
+    { doc: P, pointer: "/licensing/defaultDeviceLimit" },
+    "deprecated"
+  ),
+  row(
+    3,
+    P,
+    "/defaultDeviceLimit",
+    "product:licensing.defaultDeviceLimit",
+    { doc: P, pointer: "/licensing/defaultDeviceLimit" },
+    "deprecated",
+    { shadowedBy: "/product/defaultDeviceLimit" }
+  ),
+  row(
+    4,
+    P,
+    "/product/defaultMaxOfflineDays",
+    "product:licensing.defaultMaxOfflineDays",
+    { doc: P, pointer: "/licensing/defaultMaxOfflineDays" },
+    "deprecated"
+  ),
+  row(
+    4,
+    P,
+    "/defaultMaxOfflineDays",
+    "product:licensing.defaultMaxOfflineDays",
+    { doc: P, pointer: "/licensing/defaultMaxOfflineDays" },
+    "deprecated",
+    { shadowedBy: "/product/defaultMaxOfflineDays" }
+  ),
+  // 5–6. Tiers and profiles at the root.
+  row(
+    5,
+    P,
+    "/tiers",
+    "product:licensing.tiers",
+    { doc: P, pointer: "/licensing/tiers" },
+    "deprecated",
+    { present: "array" }
+  ),
+  row(
+    6,
+    P,
+    "/profiles",
+    "product:licensing.profiles",
+    { doc: P, pointer: "/licensing/profiles" },
+    "deprecated",
+    { present: "array" }
+  ),
+  // 7. Tier `profile` (Q2b: `profileId` is canonical), wherever the tiers are.
+  row(
+    7,
+    P,
+    "/licensing/tiers/*/profile",
+    "product:licensing.tiers[].profileId",
+    { doc: P, pointer: "/licensing/tiers/*/profileId" },
+    "canonical"
+  ),
+  row(
+    7,
+    P,
+    "/tiers/*/profile",
+    "product:licensing.tiers[].profileId",
+    { doc: P, pointer: "/tiers/*/profileId" },
+    "canonical"
+  ),
+  // 8. Tier `expiryDays`.
+  row(
+    8,
+    P,
+    "/licensing/tiers/*/expiryDays",
+    "product:licensing.tiers[].policyExpiryDays",
+    { doc: P, pointer: "/licensing/tiers/*/policyExpiryDays" },
+    "canonical"
+  ),
+  row(
+    8,
+    P,
+    "/tiers/*/expiryDays",
+    "product:licensing.tiers[].policyExpiryDays",
+    { doc: P, pointer: "/tiers/*/policyExpiryDays" },
+    "canonical"
+  ),
+  // 9. Profile `label`.
+  row(
+    9,
+    P,
+    "/licensing/profiles/*/label",
+    "product:licensing.profiles[].name",
+    { doc: P, pointer: "/licensing/profiles/*/name" },
+    "canonical"
+  ),
+  row(
+    9,
+    P,
+    "/profiles/*/label",
+    "product:licensing.profiles[].name",
+    { doc: P, pointer: "/profiles/*/name" },
+    "canonical"
+  ),
+  // 10. The OIDC client secret's name.
+  row(
+    10,
+    P,
+    "/oidc/clientSecretRef",
+    "product:oidc.clientSecretSecret",
+    { doc: P, pointer: "/oidc/clientSecretSecret" },
+    "canonical"
+  ),
+  // 11. The release document inlined in the product document.
+  row(
+    11,
+    P,
+    "/release",
+    "release:release",
+    { doc: R, pointer: "" },
+    "canonical",
+    { present: "record" }
+  ),
+  // 12. Legacy `modules:` names (Q4); both names enable the service, so nothing conflicts.
+  row(12, P, "/modules/licensing", "product:modules.license", null, "merged"),
+  row(12, P, "/modules/releases", "product:modules.release", null, "merged"),
+  row(12, P, "/modules/oidc", "product:modules.identity", null, "merged"),
+  row(12, P, "/modules/edgeMint", "product:modules.config", null, "merged"),
+  // 13. The catalog's old key.
+  row(
+    13,
+    S,
+    "/catalog",
+    "schema:entries",
+    { doc: S, pointer: "/entries" },
+    "canonical",
+    { present: "array" }
+  ),
+  // 14. A release body at the document root, without the `release:` wrapper.
+  ...RELEASE_BODY_FIELDS.map(
+    (field) => row(
+      14,
+      R,
+      `/${field}`,
+      `release:release.${field}`,
+      { doc: R, pointer: `/release/${field}` },
+      "canonical",
+      { unreadWhenWrapped: true }
+    )
+  ),
+  // 15. The GitHub coordinates as two flat fields; they beat `provider` when both are set.
+  row(
+    15,
+    R,
+    "/release/ghOwner",
+    "release:release.provider.owner",
+    { doc: R, pointer: "/release/provider/owner" },
+    "deprecated"
+  ),
+  row(
+    15,
+    R,
+    "/release/ghRepo",
+    "release:release.provider.repo",
+    { doc: R, pointer: "/release/provider/repo" },
+    "deprecated"
+  ),
+  row(
+    15,
+    R,
+    "/ghOwner",
+    "release:release.provider.owner",
+    { doc: R, pointer: "/provider/owner" },
+    "deprecated",
+    { unreadWhenWrapped: true }
+  ),
+  row(
+    15,
+    R,
+    "/ghRepo",
+    "release:release.provider.repo",
+    { doc: R, pointer: "/provider/repo" },
+    "deprecated",
+    { unreadWhenWrapped: true }
+  ),
+  // 16. The tag filters in the release body. P2-04 kept the body spelling valid with no warning
+  //     of its own, and both at once is already the error `conflicting_versioning`, so the pass
+  //     skips the row (plans/ST-19.md §3.2).
+  ...["stableTagPattern", "ignoreTags"].flatMap((field) => [
+    row(
+      16,
+      R,
+      `/release/${field}`,
+      `release:release.deliverables.app.versioning.${field}`,
+      { doc: R, pointer: `/release/deliverables/app/versioning/${field}` },
+      "refused",
+      {
+        code: null,
+        conflictCode: "conflicting_versioning",
+        checkedElsewhere: true
+      }
+    ),
+    row(
+      16,
+      R,
+      `/${field}`,
+      `release:release.deliverables.app.versioning.${field}`,
+      { doc: R, pointer: `/deliverables/app/versioning/${field}` },
+      "refused",
+      {
+        code: null,
+        conflictCode: "conflicting_versioning",
+        checkedElsewhere: true
+      }
+    )
+  ]),
+  // 17. Edge-mint recipes in the release document. At the root they are read when the product
+  //     declares none; under the wrapper they were never read.
+  row(
+    17,
+    R,
+    "/edgeMint",
+    "product:edgeMint",
+    { doc: P, pointer: "/edgeMint" },
+    "canonical",
+    { present: "array" }
+  ),
+  row(17, R, "/release/edgeMint", "product:edgeMint", null, "ignored"),
+  // 18. Listing art URL aliases (`.pkey/distribution`), with their own codes since P2b-02.
+  ...["/listing", "/outlets/*/listing"].flatMap(
+    (at) => [
+      ["iconUrl", "icon"],
+      ["headerUrl", "header"]
+    ].map(
+      ([alias, field]) => row(
+        18,
+        D,
+        `${at}/${alias}`,
+        `distribution:${dotted(at)}.${field}`,
+        { doc: D, pointer: `${at}/${field}` },
+        "refused",
+        {
+          code: "listing_url_field_deprecated",
+          conflictCode: "listing_field_conflict",
+          checkedElsewhere: true
+        }
+      )
+    )
+  )
+];
+function dotted(pointer) {
+  return pointer.split("/").slice(1).map((seg) => seg === "*" ? "[]" : seg).join(".").replace(/\.\[\]/g, "[]");
+}
+function resolve(root, pointer) {
+  let frontier = [{ path: "", indices: [], value: root }];
+  for (const seg of pointer.split("/").slice(1)) {
+    const next = [];
+    for (const at of frontier) {
+      if (seg === "*") {
+        if (!Array.isArray(at.value)) continue;
+        at.value.forEach(
+          (value, i) => next.push({
+            path: `${at.path}/${i}`,
+            indices: [...at.indices, i],
+            value
+          })
+        );
+      } else if (isRecord3(at.value) && seg in at.value) {
+        next.push({
+          path: `${at.path}/${seg}`,
+          indices: at.indices,
+          value: at.value[seg]
+        });
+      }
+    }
+    frontier = next;
+  }
+  return frontier;
+}
+function valueAt(root, pointer, indices) {
+  let node = root;
+  let i = 0;
+  for (const seg of pointer.split("/").slice(1)) {
+    const key = seg === "*" ? indices[i++] : seg;
+    if (Array.isArray(node) && typeof key === "number") node = node[key];
+    else if (isRecord3(node) && typeof key === "string") node = node[key];
+    else return void 0;
+  }
+  return node;
+}
+function isPresent(value, how = "value") {
+  if (how === "array") return Array.isArray(value);
+  if (how === "record") return isRecord3(value);
+  return value !== void 0 && value !== null;
+}
+function show(value) {
+  const text = JSON.stringify(value);
+  if (text === void 0) return String(value);
+  return text.length > 40 ? `${text.slice(0, 37)}...` : text;
+}
+function describeCanonical(s) {
+  const [doc, path28] = s.canonical.split(":");
+  if (s.row === 11) return "the release block in .pkey/release";
+  return doc === s.doc ? path28 : `${path28} in .pkey/${doc}`;
+}
+function checkSpellings(docs, warnings) {
+  for (const s of DEPRECATED_SPELLINGS) {
+    if (s.checkedElsewhere) continue;
+    const root = docs[s.doc];
+    if (root === void 0) continue;
+    for (const hit of resolve(root, s.pointer)) {
+      if (!isPresent(hit.value, s.present)) continue;
+      const old = dotted(hit.path) || s.doc;
+      const write = describeCanonical(s);
+      const other = s.canonicalPointer ? valueAt(
+        docs[s.canonicalPointer.doc],
+        s.canonicalPointer.pointer,
+        hit.indices
+      ) : void 0;
+      const both = s.canonicalPointer !== null && isPresent(other, s.present);
+      if (both && s.conflictCode === "conflicting_spelling") {
+        const shadow = s.shadowedBy ? valueAt(root, s.shadowedBy, []) : void 0;
+        const used = s.wins !== "deprecated" ? `${write} (${show(other)})` : s.shadowedBy && isPresent(shadow) ? `${dotted(s.shadowedBy)} (${show(shadow)})` : `${old} (${show(hit.value)})`;
+        emitConflict(warnings, s.doc, hit.path, old, write, used);
+      } else if (!both) {
+        const ignored = s.wins === "ignored" || s.unreadWhenWrapped === true && isRecord3(valueAt(root, "/release", []));
+        emitDeprecated(
+          warnings,
+          s.doc,
+          hit.path,
+          old,
+          write,
+          ignored ? " and is ignored" : ""
+        );
+      }
+    }
+  }
+}
+function emitDeprecated(warnings, doc, path28, old, write, ignored) {
+  if (doc === "product")
+    add2(
+      warnings,
+      "product",
+      `${path28}`,
+      "deprecated_spelling",
+      `${old} is a deprecated spelling${ignored}; write ${write}.`
+    );
+  else if (doc === "schema")
+    add2(
+      warnings,
+      "schema",
+      `${path28}`,
+      "deprecated_spelling",
+      `${old} is a deprecated spelling${ignored}; write ${write}.`
+    );
+  else
+    add2(
+      warnings,
+      "release",
+      `${path28}`,
+      "deprecated_spelling",
+      `${old} is a deprecated spelling${ignored}; write ${write}.`
+    );
+}
+function emitConflict(warnings, doc, path28, old, write, used) {
+  if (doc === "product")
+    add2(
+      warnings,
+      "product",
+      `${path28}`,
+      "conflicting_spelling",
+      `${old} and ${write} are both set; ${used} is used. Keep only ${write}.`
+    );
+  else if (doc === "schema")
+    add2(
+      warnings,
+      "schema",
+      `${path28}`,
+      "conflicting_spelling",
+      `${old} and ${write} are both set; ${used} is used. Keep only ${write}.`
+    );
+  else
+    add2(
+      warnings,
+      "release",
+      `${path28}`,
+      "conflicting_spelling",
+      `${old} and ${write} are both set; ${used} is used. Keep only ${write}.`
+    );
+}
+function add2(list2, file, path28, code, message) {
+  list2.push({ file, path: path28, code, message });
+}
+function isRecord3(v) {
+  return typeof v === "object" && v !== null && !Array.isArray(v);
+}
 var MAX_RELEASE_KEYS = 4;
 var RELEASE_KEY_KID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 var RELEASE_KEY_PUBLIC_PATTERN = /^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/;
@@ -13952,7 +14545,7 @@ var MAX_SCOOP_ENTRIES = 16;
 var pattern = (re, what, max) => (v) => typeof v === "string" && re.test(v) && (max === void 0 || v.length <= max) ? null : `must be ${what}`;
 var numericId = (v) => typeof v === "number" && Number.isSafeInteger(v) && v > 0 || typeof v === "string" && NUMERIC_ID_PATTERN.test(v) ? null : "must be a positive integer or a string of decimal digits with no leading zero";
 var channelMap = (valueRe, what) => (v) => {
-  if (!isRecord3(v) || Object.keys(v).length > MAX_CHANNEL_MAP_ENTRIES)
+  if (!isRecord4(v) || Object.keys(v).length > MAX_CHANNEL_MAP_ENTRIES)
     return `must be an object of at most ${MAX_CHANNEL_MAP_ENTRIES} channel → ${what} entries`;
   for (const value of Object.values(v)) {
     if (typeof value !== "string" || !valueRe.test(value))
@@ -14063,7 +14656,7 @@ var UPDATE_SETTINGS_KEYS = [
 ];
 var updateSettingsCheck = (v) => {
   const shape2 = "must be { hoursBetweenUpdateChecks?: an integer 0-255, showPrompt?, updateBlocksActivation?, automaticBackgroundTask?: booleans }";
-  if (!isRecord3(v) || Object.keys(v).some((k) => !UPDATE_SETTINGS_KEYS.includes(k)))
+  if (!isRecord4(v) || Object.keys(v).some((k) => !UPDATE_SETTINGS_KEYS.includes(k)))
     return shape2;
   const hours = v.hoursBetweenUpdateChecks;
   if (hours !== void 0 && !(Number.isSafeInteger(hours) && hours >= 0 && hours <= 255))
@@ -14077,7 +14670,7 @@ var updateSettingsCheck = (v) => {
 var scoopPath = (v) => typeof v === "string" && SCOOP_PATH_PATTERN.test(v);
 var scoopCheck = (v) => {
   const shape2 = "must be { bin?: a relative path or a list of at most 16, shortcuts?: at most 16 [target, name] pairs }";
-  if (!isRecord3(v) || Object.keys(v).some((k) => k !== "bin" && k !== "shortcuts"))
+  if (!isRecord4(v) || Object.keys(v).some((k) => k !== "bin" && k !== "shortcuts"))
     return shape2;
   const bin = v.bin;
   if (bin !== void 0 && !scoopPath(bin) && !(Array.isArray(bin) && bin.length > 0 && bin.length <= MAX_SCOOP_ENTRIES && bin.every(scoopPath)))
@@ -14109,7 +14702,7 @@ var PROSE_RE = /^[^\u0000-\u0008\u000b-\u001f\u007f]+$/;
 var MAX_LISTING_EMAIL = 254;
 var LISTING_EMAIL_RE = /^[^\s@<>\u0000-\u001f\u007f]+@[^\s@<>\u0000-\u001f\u007f]+\.[^\s@<>\u0000-\u001f\u007f]+$/;
 function listingProblem(raw) {
-  if (!isRecord3(raw)) return "must be an object";
+  if (!isRecord4(raw)) return "must be an object";
   for (const f of LISTING_TEXT_FIELDS) {
     const v = raw[f];
     if (v !== void 0 && (typeof v !== "string" || v.length > MAX_LISTING_TEXT || !LINE_RE.test(v)))
@@ -14157,7 +14750,7 @@ function listingValid(raw) {
 function reportListing(errors, warnings, raw, at, label) {
   const problem = listingProblem(raw);
   if (problem) {
-    add2(
+    add3(
       errors,
       "distribution",
       `${at}`,
@@ -14165,9 +14758,9 @@ function reportListing(errors, warnings, raw, at, label) {
       `${label} ${problem}.`
     );
   }
-  if (!isRecord3(raw)) return;
+  if (!isRecord4(raw)) return;
   for (const [below, field, refProblem2] of listingRefProblems(raw)) {
-    add2(
+    add3(
       errors,
       "distribution",
       `${at}${below}`,
@@ -14178,7 +14771,7 @@ function reportListing(errors, warnings, raw, at, label) {
   for (const [field, alias] of LISTING_IMAGE_FIELDS) {
     if (raw[alias] === void 0) continue;
     if (raw[field] !== void 0) {
-      add2(
+      add3(
         errors,
         "distribution",
         `${at}/${alias}`,
@@ -14186,7 +14779,7 @@ function reportListing(errors, warnings, raw, at, label) {
         `${label} declares both ${field} and its deprecated alias ${alias}; keep ${field}.`
       );
     } else if (warnings) {
-      add2(
+      add3(
         warnings,
         "distribution",
         `${at}/${alias}`,
@@ -14197,7 +14790,7 @@ function reportListing(errors, warnings, raw, at, label) {
   }
 }
 function outletKindOf(id, entry) {
-  const kind = isRecord3(entry) ? entry.kind : void 0;
+  const kind = isRecord4(entry) ? entry.kind : void 0;
   if (isOutletKind(id)) return kind === void 0 || kind === id ? id : null;
   return isOutletKind(kind) ? kind : null;
 }
@@ -14212,8 +14805,8 @@ function transportAllowed(transport, kind) {
   return kinds === null || kinds.includes(kind);
 }
 function validateDistribution(errors, doc, ctx, warnings) {
-  if (!isRecord3(doc)) {
-    add2(
+  if (!isRecord4(doc)) {
+    add3(
       errors,
       "distribution",
       "/",
@@ -14223,7 +14816,7 @@ function validateDistribution(errors, doc, ctx, warnings) {
     return;
   }
   if (doc.apiVersion !== void 0 && doc.apiVersion !== "pkey.dev/v1") {
-    add2(
+    add3(
       errors,
       "distribution",
       "/apiVersion",
@@ -14232,7 +14825,7 @@ function validateDistribution(errors, doc, ctx, warnings) {
     );
   }
   for (const path28 of capabilityPaths(doc)) {
-    add2(
+    add3(
       errors,
       "distribution",
       path28,
@@ -14243,8 +14836,8 @@ function validateDistribution(errors, doc, ctx, warnings) {
   const kinds = /* @__PURE__ */ new Map();
   const outlets = doc.outlets;
   if (outlets !== void 0) {
-    if (!isRecord3(outlets) || Object.keys(outlets).length > MAX_OUTLETS) {
-      add2(
+    if (!isRecord4(outlets) || Object.keys(outlets).length > MAX_OUTLETS) {
+      add3(
         errors,
         "distribution",
         "/outlets",
@@ -14261,8 +14854,8 @@ function validateDistribution(errors, doc, ctx, warnings) {
   }
   const transports = doc.transports;
   if (transports !== void 0) {
-    if (!isRecord3(transports)) {
-      add2(
+    if (!isRecord4(transports)) {
+      add3(
         errors,
         "distribution",
         "/transports",
@@ -14279,7 +14872,7 @@ function validateDistribution(errors, doc, ctx, warnings) {
 }
 function validateOutlet(errors, warnings, id, entry, ctx, kinds) {
   if (!OUTLET_ID_PATTERN.test(id)) {
-    add2(
+    add3(
       errors,
       "distribution",
       `/outlets/${id}`,
@@ -14288,8 +14881,8 @@ function validateOutlet(errors, warnings, id, entry, ctx, kinds) {
     );
     return;
   }
-  if (!isRecord3(entry)) {
-    add2(
+  if (!isRecord4(entry)) {
+    add3(
       errors,
       "distribution",
       `/outlets/${id}`,
@@ -14299,7 +14892,7 @@ function validateOutlet(errors, warnings, id, entry, ctx, kinds) {
     return;
   }
   if (isOutletKind(id) && entry.kind !== void 0 && entry.kind !== id) {
-    add2(
+    add3(
       errors,
       "distribution",
       `/outlets/${id}/kind`,
@@ -14310,7 +14903,7 @@ function validateOutlet(errors, warnings, id, entry, ctx, kinds) {
   }
   const kind = outletKindOf(id, entry);
   if (!kind) {
-    add2(
+    add3(
       errors,
       "distribution",
       `/outlets/${id}/kind`,
@@ -14325,7 +14918,7 @@ function validateOutlet(errors, warnings, id, entry, ctx, kinds) {
     if (value === void 0) continue;
     const problem = fieldCheck(kind, field)(value);
     if (problem) {
-      add2(
+      add3(
         errors,
         "distribution",
         `/outlets/${id}/${field}`,
@@ -14335,7 +14928,7 @@ function validateOutlet(errors, warnings, id, entry, ctx, kinds) {
       continue;
     }
     if (field === "artifact" && !ctx.artifactIds.has(value)) {
-      add2(
+      add3(
         errors,
         "distribution",
         `/outlets/${id}/artifact`,
@@ -14346,7 +14939,7 @@ function validateOutlet(errors, warnings, id, entry, ctx, kinds) {
     if (field === "tracks" || field === "branches" || field === "flights" || field === "channels") {
       for (const channel of Object.keys(value)) {
         if (!ctx.channels.has(channel)) {
-          add2(
+          add3(
             errors,
             "distribution",
             `/outlets/${id}/${field}/${channel}`,
@@ -14358,7 +14951,7 @@ function validateOutlet(errors, warnings, id, entry, ctx, kinds) {
     }
   }
   if (kind === "direct" && entry.scoop !== void 0 && Array.isArray(entry.platforms) && !entry.platforms.includes("windows")) {
-    add2(
+    add3(
       errors,
       "distribution",
       `/outlets/${id}/scoop`,
@@ -14380,7 +14973,7 @@ function validateTransports(errors, transports, ctx, kinds) {
   const def = transports.default;
   if (def !== void 0) {
     if (!isTransport(def)) {
-      add2(
+      add3(
         errors,
         "distribution",
         "/transports/default",
@@ -14388,7 +14981,7 @@ function validateTransports(errors, transports, ctx, kinds) {
         `transports.default must be one of ${TRANSPORTS.join(", ")}.`
       );
     } else if (TRANSPORT_OUTLET_KINDS[def] !== null) {
-      add2(
+      add3(
         errors,
         "distribution",
         "/transports/default",
@@ -14399,8 +14992,8 @@ function validateTransports(errors, transports, ctx, kinds) {
   }
   const checkMap = (path28, raw) => {
     if (raw === void 0) return;
-    if (!isRecord3(raw)) {
-      add2(
+    if (!isRecord4(raw)) {
+      add3(
         errors,
         "distribution",
         path28,
@@ -14411,7 +15004,7 @@ function validateTransports(errors, transports, ctx, kinds) {
     }
     for (const [outletId, transport] of Object.entries(raw)) {
       if (!isTransport(transport)) {
-        add2(
+        add3(
           errors,
           "distribution",
           `${path28}/${outletId}`,
@@ -14422,7 +15015,7 @@ function validateTransports(errors, transports, ctx, kinds) {
       }
       const kind = kinds.get(outletId);
       if (!kind) {
-        add2(
+        add3(
           errors,
           "distribution",
           `${path28}/${outletId}`,
@@ -14430,7 +15023,7 @@ function validateTransports(errors, transports, ctx, kinds) {
           `transport maps may only name outlets declared under outlets.`
         );
       } else if (!transportAllowed(transport, kind)) {
-        add2(
+        add3(
           errors,
           "distribution",
           `${path28}/${outletId}`,
@@ -14443,8 +15036,8 @@ function validateTransports(errors, transports, ctx, kinds) {
   checkMap("/transports/packs", transports.packs);
   const deliverables = transports.deliverables;
   if (deliverables === void 0) return;
-  if (!isRecord3(deliverables)) {
-    add2(
+  if (!isRecord4(deliverables)) {
+    add3(
       errors,
       "distribution",
       "/transports/deliverables",
@@ -14455,7 +15048,7 @@ function validateTransports(errors, transports, ctx, kinds) {
   }
   for (const [deliverableId, map] of Object.entries(deliverables)) {
     if (ctx.deliverables.get(deliverableId) === "package") {
-      add2(
+      add3(
         errors,
         "distribution",
         `/transports/deliverables/${deliverableId}`,
@@ -14465,7 +15058,7 @@ function validateTransports(errors, transports, ctx, kinds) {
       continue;
     }
     if (!ctx.deliverables.has(deliverableId)) {
-      add2(
+      add3(
         errors,
         "distribution",
         `/transports/deliverables/${deliverableId}`,
@@ -14497,7 +15090,7 @@ function capabilityPaths(doc) {
 function normalizeDistribution(doc, deliverables = [
   { id: "app", kind: "app" }
 ]) {
-  const root = isRecord3(doc) ? doc : {};
+  const root = isRecord4(doc) ? doc : {};
   const outlets = [];
   if (doc === void 0 || root.outlets === void 0) {
     outlets.push({
@@ -14506,9 +15099,9 @@ function normalizeDistribution(doc, deliverables = [
       identity: {},
       listing: null
     });
-  } else if (isRecord3(root.outlets)) {
+  } else if (isRecord4(root.outlets)) {
     for (const [id, entry] of Object.entries(root.outlets)) {
-      if (!OUTLET_ID_PATTERN.test(id) || !isRecord3(entry)) continue;
+      if (!OUTLET_ID_PATTERN.test(id) || !isRecord4(entry)) continue;
       const kind = outletKindOf(id, entry);
       if (!kind) continue;
       outlets.push({
@@ -14521,10 +15114,10 @@ function normalizeDistribution(doc, deliverables = [
   }
   outlets.sort((a, b) => compare(a.id, b.id));
   const kinds = new Map(outlets.map((o) => [o.id, o.kind]));
-  const rawTransports = isRecord3(root.transports) ? root.transports : {};
+  const rawTransports = isRecord4(root.transports) ? root.transports : {};
   const transportMap = (raw) => {
     const out = {};
-    if (!isRecord3(raw)) return out;
+    if (!isRecord4(raw)) return out;
     for (const [outletId, t] of Object.entries(raw)) {
       const kind = kinds.get(outletId);
       if (kind && isTransport(t) && transportAllowed(t, kind))
@@ -14539,7 +15132,7 @@ function normalizeDistribution(doc, deliverables = [
     deliverables: {}
   };
   const known = new Map(deliverables.map((d) => [d.id, d.kind]));
-  if (isRecord3(rawTransports.deliverables)) {
+  if (isRecord4(rawTransports.deliverables)) {
     for (const [id, map] of Object.entries(rawTransports.deliverables)) {
       if (known.has(id) && known.get(id) !== "package")
         transports.deliverables[id] = transportMap(map);
@@ -14574,7 +15167,7 @@ function normalizeIdentity(kind, entry) {
     if (typeof value === "number") out[field] = String(value);
     else if (field === "scoop") out[field] = structuredCloneScoop(value);
     else if (Array.isArray(value)) out[field] = [...value];
-    else if (isRecord3(value)) out[field] = sortedRecord(value);
+    else if (isRecord4(value)) out[field] = sortedRecord(value);
     else out[field] = value;
   }
   return out;
@@ -14639,7 +15232,7 @@ function distributionOutletIds(dist, outletId) {
   );
   return sortedRecord(out);
 }
-function isRecord3(v) {
+function isRecord4(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 function compare(a, b) {
@@ -14650,7 +15243,7 @@ function sortedRecord(v) {
   for (const key of Object.keys(v).sort(compare)) out[key] = v[key];
   return out;
 }
-function add2(list2, file, path28, code, message) {
+function add3(list2, file, path28, code, message) {
   list2.push({ file, path: path28, code, message });
 }
 var DESCRIPTOR_VERSION = 1;
@@ -14676,7 +15269,7 @@ var MAX_VERSION_CODE = 21e8;
 function buildMetadataProblem(platform, m) {
   if (platform !== "ios" && platform !== "android")
     return "only ios and android builds carry metadata";
-  if (!isRecord4(m)) return "metadata must be an object";
+  if (!isRecord5(m)) return "metadata must be an object";
   const allowed = platform === "ios" ? [
     "bundleIdentifier",
     "version",
@@ -14703,13 +15296,13 @@ function buildMetadataProblem(platform, m) {
     if (m.minOSVersion !== void 0 && (typeof m.minOSVersion !== "string" || !MIN_OS_RE.test(m.minOSVersion)))
       return "minOSVersion must be at most 32 version characters";
     const p = m.appPermissions;
-    if (!isRecord4(p) || Object.keys(p).some((k) => k !== "entitlements" && k !== "privacy"))
+    if (!isRecord5(p) || Object.keys(p).some((k) => k !== "entitlements" && k !== "privacy"))
       return "appPermissions must be { entitlements, privacy }";
     const ents = p.entitlements;
     if (!Array.isArray(ents) || ents.length > MAX_ENTITLEMENTS || new Set(ents).size !== ents.length || !ents.every((e) => typeof e === "string" && ENTITLEMENT_RE.test(e)))
       return `appPermissions.entitlements must be at most ${MAX_ENTITLEMENTS} distinct entitlement keys`;
     const priv = p.privacy;
-    if (!isRecord4(priv) || Object.keys(priv).length > MAX_PRIVACY_KEYS || !Object.entries(priv).every(
+    if (!isRecord5(priv) || Object.keys(priv).length > MAX_PRIVACY_KEYS || !Object.entries(priv).every(
       ([k, v]) => PRIVACY_KEY_RE.test(k) && typeof v === "string" && codePoints(v) <= MAX_PRIVACY_TEXT && !v.includes("\0")
     ))
       return `appPermissions.privacy must map at most ${MAX_PRIVACY_KEYS} NS…UsageDescription keys to text`;
@@ -14815,7 +15408,7 @@ var RFC3339_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{
 var MAX_TITLE = 200;
 var MAX_NOTES = 2e4;
 var CONTROL_RE = /[\u0000-\u001f\u007f]/;
-function isRecord4(v) {
+function isRecord5(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 function oneOf2(list2, v) {
@@ -14837,7 +15430,7 @@ function isPackIdString(v) {
   return typeof v === "string" && v !== APP_DELIVERABLE_ID && v.length <= 64 && DELIVERABLE_RE.test(v);
 }
 function descriptorContentProblem(c) {
-  if (!isRecord4(c)) return "content must be an object";
+  if (!isRecord5(c)) return "content must be an object";
   if (!(Number.isSafeInteger(c.contentApi) && c.contentApi >= 1))
     return "content.contentApi must be an integer from 1 to 9007199254740991";
   const pins = c.pins;
@@ -14845,12 +15438,12 @@ function descriptorContentProblem(c) {
     return `content.pins must be an array of at most ${MAX_CONTENT_PINS} pins`;
   const pinned = /* @__PURE__ */ new Set();
   for (const pin of pins) {
-    if (!isRecord4(pin) || !isPackIdString(pin.pack))
+    if (!isRecord5(pin) || !isPackIdString(pin.pack))
       return "each pin is { pack: a pack id, release }";
     if (pinned.has(pin.pack)) return `${pin.pack} is pinned twice`;
     pinned.add(pin.pack);
     const r = pin.release;
-    if (!isRecord4(r) || typeof r.sha256 !== "string" || !SHA256_RE2.test(r.sha256) || !(Number.isSafeInteger(r.seq) && r.seq >= 1) || typeof r.version !== "string" || !VERSION_RE.test(r.version))
+    if (!isRecord5(r) || typeof r.sha256 !== "string" || !SHA256_RE2.test(r.sha256) || !(Number.isSafeInteger(r.seq) && r.seq >= 1) || typeof r.version !== "string" || !VERSION_RE.test(r.version))
       return `the pin of ${pin.pack} needs release { sha256, seq ≥ 1, version }`;
   }
   const expects = c.expects;
@@ -14858,7 +15451,7 @@ function descriptorContentProblem(c) {
     return `content.expects must be an array of at most ${MAX_CONTENT_PINS} entries`;
   const expected = /* @__PURE__ */ new Set();
   for (const e of expects) {
-    if (!isRecord4(e) || !isPackIdString(e.pack))
+    if (!isRecord5(e) || !isPackIdString(e.pack))
       return "each expects entry is { pack: a pack id, required, delivery }";
     if (expected.has(e.pack)) return `${e.pack} is expected twice`;
     expected.add(e.pack);
@@ -14873,14 +15466,14 @@ function descriptorContentProblem(c) {
       return `content.holds must be an array of at most ${MAX_CONTENT_PINS} holds`;
     const held = /* @__PURE__ */ new Set();
     for (const h of holds) {
-      if (!isRecord4(h) || !isPackIdString(h.pack))
+      if (!isRecord5(h) || !isPackIdString(h.pack))
         return "each hold is { pack: a pack id, release, reason? }";
       if (held.has(h.pack)) return `${h.pack} is held twice`;
       if (pinned.has(h.pack))
         return `${h.pack} is both pinned and held; a hold keeps a compatible pack, a pin fixes a pinned one`;
       held.add(h.pack);
       const r = h.release;
-      if (!isRecord4(r) || typeof r.sha256 !== "string" || !SHA256_RE2.test(r.sha256) || !(Number.isSafeInteger(r.seq) && r.seq >= 1) || typeof r.version !== "string" || !VERSION_RE.test(r.version))
+      if (!isRecord5(r) || typeof r.sha256 !== "string" || !SHA256_RE2.test(r.sha256) || !(Number.isSafeInteger(r.seq) && r.seq >= 1) || typeof r.version !== "string" || !VERSION_RE.test(r.version))
         return `the hold of ${h.pack} needs release { sha256, seq ≥ 1, version }`;
       if (h.reason !== void 0 && (typeof h.reason !== "string" || h.reason.length > MAX_HOLD_REASON))
         return `the hold of ${h.pack} has a reason of at most ${MAX_HOLD_REASON} characters`;
@@ -14888,7 +15481,7 @@ function descriptorContentProblem(c) {
   }
   if (c.packChannels !== void 0) {
     const map = c.packChannels;
-    if (!isRecord4(map) || Object.keys(map).length === 0 || Object.keys(map).length > MAX_PACK_CHANNEL_MAP || !Object.entries(map).every(
+    if (!isRecord5(map) || Object.keys(map).length === 0 || Object.keys(map).length > MAX_PACK_CHANNEL_MAP || !Object.entries(map).every(
       ([k, v]) => k.length <= 64 && k !== APP_DELIVERABLE_ID && PACK_CHANNELS_KEY_PATTERN.test(k) && isCanonicalChannelName(v)
     ))
       return `content.packChannels maps 1 to ${MAX_PACK_CHANNEL_MAP} pack ids or prefixes ending in .* to a canonical channel name`;
@@ -14915,7 +15508,7 @@ function versionFitsScheme(version, scheme) {
 function validateReleaseDescriptor(descriptor, manifest) {
   const errors = [];
   const err = (path28, code, message) => errors.push({ path: path28, code, message });
-  if (!isRecord4(descriptor)) {
+  if (!isRecord5(descriptor)) {
     err(
       "/",
       "invalid_descriptor",
@@ -14940,7 +15533,7 @@ function validateReleaseDescriptor(descriptor, manifest) {
   if (!serialized || new TextEncoder().encode(serialized).length > MAX_DESCRIPTOR_BYTES) {
     const contentBytes = jsonBytes(d.content);
     const metadataBytes = Array.isArray(d.builds) ? d.builds.reduce(
-      (n, b) => n + (isRecord4(b) ? jsonBytes(b.metadata) : 0),
+      (n, b) => n + (isRecord5(b) ? jsonBytes(b.metadata) : 0),
       0
     ) : 0;
     err(
@@ -15024,7 +15617,7 @@ function validateReleaseDescriptor(descriptor, manifest) {
   }
   if (d.provenance !== void 0) {
     const p = d.provenance;
-    if (!isRecord4(p) || p.commit !== void 0 && (typeof p.commit !== "string" || !COMMIT_RE.test(p.commit)) || p.workflowRun !== void 0 && !isHttpsUrl(p.workflowRun))
+    if (!isRecord5(p) || p.commit !== void 0 && (typeof p.commit !== "string" || !COMMIT_RE.test(p.commit)) || p.workflowRun !== void 0 && !isHttpsUrl(p.workflowRun))
       err(
         "/provenance",
         "invalid_descriptor_field",
@@ -15035,7 +15628,7 @@ function validateReleaseDescriptor(descriptor, manifest) {
   const buildIds = /* @__PURE__ */ new Set();
   const names = /* @__PURE__ */ new Set();
   for (const [bi, b] of builds.entries()) {
-    if (!isRecord4(b)) {
+    if (!isRecord5(b)) {
       err(
         `/builds/${bi}`,
         "invalid_descriptor_build",
@@ -15086,7 +15679,7 @@ function validateReleaseDescriptor(descriptor, manifest) {
         "invalid_descriptor_build",
         "minOS must be a string of at most 32 version characters."
       );
-    if (b.requires !== void 0 && !isRecord4(b.requires))
+    if (b.requires !== void 0 && !isRecord5(b.requires))
       err(
         `/builds/${bi}/requires`,
         "invalid_descriptor_build",
@@ -15112,7 +15705,7 @@ function validateReleaseDescriptor(descriptor, manifest) {
       continue;
     }
     for (const [ai, a] of b.artifacts.entries()) {
-      if (!isRecord4(a)) {
+      if (!isRecord5(a)) {
         err(
           `/builds/${bi}/artifacts/${ai}`,
           "invalid_descriptor_artifact",
@@ -15181,7 +15774,7 @@ function validateReleaseDescriptor(descriptor, manifest) {
         continue;
       }
       for (const [li, loc] of a.locations.entries()) {
-        if (!isRecord4(loc) || !oneOf2(LOCATION_PROVIDERS, loc.provider)) {
+        if (!isRecord5(loc) || !oneOf2(LOCATION_PROVIDERS, loc.provider)) {
           err(
             `/builds/${bi}/artifacts/${ai}/locations/${li}`,
             "invalid_artifact_location",
@@ -15454,7 +16047,7 @@ function validatePackageDescriptor(d, manifest, errors) {
     );
   if (d.provenance !== void 0) {
     const p = d.provenance;
-    if (!isRecord4(p) || p.commit !== void 0 && (typeof p.commit !== "string" || !COMMIT_RE.test(p.commit)) || p.workflowRun !== void 0 && !isHttpsUrl(p.workflowRun))
+    if (!isRecord5(p) || p.commit !== void 0 && (typeof p.commit !== "string" || !COMMIT_RE.test(p.commit)) || p.workflowRun !== void 0 && !isHttpsUrl(p.workflowRun))
       err(
         "/provenance",
         "invalid_descriptor_field",
@@ -15462,7 +16055,7 @@ function validatePackageDescriptor(d, manifest, errors) {
       );
   }
   const pkg = d.package;
-  if (!isRecord4(pkg)) {
+  if (!isRecord5(pkg)) {
     err(
       "/package",
       "invalid_descriptor",
@@ -15532,7 +16125,7 @@ function validatePackageDescriptor(d, manifest, errors) {
     const vocab = PACKAGE_FILE_TYPES[eco];
     for (const [i, f] of files.entries()) {
       const at = `/package/files/${i}`;
-      if (!isRecord4(f)) {
+      if (!isRecord5(f)) {
         err(at, "invalid_descriptor", "each file must be an object.");
         continue;
       }
@@ -15629,7 +16222,7 @@ function validatePackageDescriptor(d, manifest, errors) {
         continue;
       }
       for (const [li, loc] of f.locations.entries()) {
-        if (!isRecord4(loc) || loc.provider !== "r2" || Object.keys(loc).some((k) => k !== "provider" && k !== "key"))
+        if (!isRecord5(loc) || loc.provider !== "r2" || Object.keys(loc).some((k) => k !== "provider" && k !== "key"))
           err(
             `${at}/locations/${li}`,
             "invalid_descriptor",
@@ -15653,7 +16246,7 @@ function validatePackageDescriptor(d, manifest, errors) {
       );
   }
   const meta = pkg.metadata;
-  if (!isRecord4(meta))
+  if (!isRecord5(meta))
     err(
       "/package/metadata",
       "invalid_descriptor",
@@ -16352,7 +16945,7 @@ function renderFeedSetup(ecosystem, ctx) {
   const decl = FEED_SETUP[ecosystem];
   const declared = new Set(decl.inputs);
   const origin = noSlash(ctx.origin);
-  const resolve = (input) => {
+  const resolve2 = (input) => {
     if (input === "baseUrl")
       return feedSetupBaseUrl(ecosystem, origin, ctx.owner);
     if (input === "registryHost") return hostOf(origin);
@@ -16368,7 +16961,7 @@ function renderFeedSetup(ecosystem, ctx) {
         throw new Error(
           `renderFeedSetup: ${ecosystem} reads "${input}", which its setup does not declare`
         );
-      return resolve(input);
+      return resolve2(input);
     },
     // A Godot feed authenticates only through its URL; the others never through one.
     credential: ecosystem === "godot" === (credential.kind === "godot-url") ? credential : { kind: "none" }
@@ -16866,11 +17459,11 @@ var DEFAULT_RELEASE_ACCESS2 = {
   artifacts: "public"
 };
 function normalizeModules(raw) {
-  if (!isRecord5(raw)) return [...DEFAULT_ENABLED];
+  if (!isRecord6(raw)) return [...DEFAULT_ENABLED];
   const enabled = /* @__PURE__ */ new Set();
   for (const module of MODULES) {
     const cfg = raw[module];
-    if (isRecord5(cfg) && cfg.enabled === true) {
+    if (isRecord6(cfg) && cfg.enabled === true) {
       for (const slug of MODULE_SERVICES[module]) enabled.add(slug);
     }
   }
@@ -16890,7 +17483,7 @@ function validateIngestDocuments(manifest, opts = {}) {
   const product = manifest.product;
   if (product === void 0) {
     const errors = [];
-    add3(
+    add4(
       errors,
       "product",
       "/",
@@ -16910,7 +17503,7 @@ function validateIngestDocuments(manifest, opts = {}) {
 }
 function requireSchema(errors, schema) {
   if (schema !== void 0) return true;
-  add3(
+  add4(
     errors,
     "schema",
     "/",
@@ -16928,8 +17521,9 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   const licensing = asRecord(productRoot.licensing);
   const oidc = asRecord(productRoot.oidc);
   const secrets = asRecord(productRoot.secrets);
+  checkSpellings(manifest, warnings);
   if (productRoot.apiVersion !== void 0 && productRoot.apiVersion !== "pkey.dev/v1") {
-    add3(
+    add4(
       errors,
       "product",
       "/apiVersion",
@@ -16939,7 +17533,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   const productSlug = typeof productNode.slug === "string" ? productNode.slug : "";
   if (!productSlug || !PRODUCT_SLUG_RE.test(productSlug)) {
-    add3(
+    add4(
       errors,
       "product",
       "/product/slug",
@@ -16947,7 +17541,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       "product.slug must match ^[a-z0-9][a-z0-9-]{0,63}$."
     );
   } else if (RESERVED_PRODUCT_SLUGS.includes(productSlug) || PRODUCT_ROUTE_ACTIONS.includes(productSlug)) {
-    add3(
+    add4(
       errors,
       "product",
       "/product/slug",
@@ -16956,7 +17550,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     );
   }
   if (!stringAt(productNode, "name")) {
-    add3(
+    add4(
       errors,
       "product",
       "/product/name",
@@ -16987,7 +17581,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     [productNode.compatMax ?? productRoot.compatMax, "/compatMax"]
   ]) {
     if (key !== void 0 && (typeof key !== "string" || !SEMVER_RE2.test(key))) {
-      add3(
+      add4(
         errors,
         "product",
         path28,
@@ -17007,7 +17601,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     ]
   ]) {
     if (key !== void 0 && !nonNegativeInteger2(key)) {
-      add3(
+      add4(
         errors,
         "product",
         path28,
@@ -17020,7 +17614,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     if (requireSchema(errors, manifest.schema)) {
       const catalog = normalizeCatalog(manifest.schema);
       if (!catalog) {
-        add3(
+        add4(
           errors,
           "schema",
           "/",
@@ -17029,7 +17623,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         );
       } else if (modules.includes("config")) {
         for (const issue of validateCatalogShape(catalog)) {
-          add3(errors, "schema", "/entries", "invalid_catalog_shape", issue);
+          add4(errors, "schema", "/entries", "invalid_catalog_shape", issue);
         }
       }
     }
@@ -17039,7 +17633,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     for (const decl of reservedNameDeclarations(manifest.schema)) {
       if (decl.compatible) continue;
       if (mode === "error")
-        add3(
+        add4(
           errors,
           "schema",
           `/entries/${decl.index}`,
@@ -17047,7 +17641,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           `${decl.key} is a reserved entitlement name the platform sets itself: ${decl.problem}. Incompatible reserved-name declarations are refused on this platform.`
         );
       else
-        add3(
+        add4(
           warnings,
           "schema",
           `/entries/${decl.index}`,
@@ -17059,8 +17653,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   const profiles = arrayAt(productRoot, "profiles") ?? arrayAt(licensing, "profiles") ?? [];
   const profileIds = /* @__PURE__ */ new Set();
   for (const [i, raw] of profiles.entries()) {
-    if (!isRecord5(raw) || typeof raw.id !== "string" || !ID_RE.test(raw.id)) {
-      add3(
+    if (!isRecord6(raw) || typeof raw.id !== "string" || !ID_RE.test(raw.id)) {
+      add4(
         errors,
         "product",
         `/licensing/profiles/${i}/id`,
@@ -17072,7 +17666,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     const record = raw;
     const id = raw.id;
     if (profileIds.has(id)) {
-      add3(
+      add4(
         errors,
         "product",
         `/licensing/profiles/${i}/id`,
@@ -17099,8 +17693,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       MAX_TEXT_LENGTH,
       "Profile description"
     );
-    if (record.payload !== void 0 && !isRecord5(record.payload)) {
-      add3(
+    if (record.payload !== void 0 && !isRecord6(record.payload)) {
+      add4(
         errors,
         "product",
         `/licensing/profiles/${i}/payload`,
@@ -17112,8 +17706,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   const tiers = arrayAt(productRoot, "tiers") ?? arrayAt(licensing, "tiers") ?? [];
   const tierIds = /* @__PURE__ */ new Set();
   for (const [i, raw] of tiers.entries()) {
-    if (!isRecord5(raw) || typeof raw.id !== "string" || !ID_RE.test(raw.id)) {
-      add3(
+    if (!isRecord6(raw) || typeof raw.id !== "string" || !ID_RE.test(raw.id)) {
+      add4(
         errors,
         "product",
         `/licensing/tiers/${i}/id`,
@@ -17125,7 +17719,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     const record = raw;
     const id = raw.id;
     if (tierIds.has(id)) {
-      add3(
+      add4(
         errors,
         "product",
         `/licensing/tiers/${i}/id`,
@@ -17136,7 +17730,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     tierIds.add(id);
     const profile = record.profileId ?? record.profile;
     if (profile !== void 0 && profile !== null && typeof profile !== "string") {
-      add3(
+      add4(
         errors,
         "product",
         `/licensing/tiers/${i}/profile`,
@@ -17144,7 +17738,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "Tier profile must be a string profile id."
       );
     } else if (typeof profile === "string" && !profileIds.has(profile)) {
-      add3(
+      add4(
         errors,
         "product",
         `/licensing/tiers/${i}/profile`,
@@ -17153,7 +17747,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       );
     }
     if (record.policyDeviceLimit !== void 0 && !nonNegativeInteger2(record.policyDeviceLimit)) {
-      add3(
+      add4(
         errors,
         "product",
         `/licensing/tiers/${i}/policyDeviceLimit`,
@@ -17182,7 +17776,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     if (Array.isArray(record.channels)) {
       for (const [j, name] of record.channels.entries()) {
         if (isNoncanonicalChannelName(name) || typeof name === "string" && PR_CHANNEL_RE.test(name) && !name.startsWith("pr-")) {
-          add3(
+          add4(
             warnings,
             "product",
             `/licensing/tiers/${i}/channels/${j}`,
@@ -17204,7 +17798,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       );
     }
     if (record.deviceLimit !== void 0) {
-      add3(
+      add4(
         warnings,
         "product",
         `/licensing/tiers/${i}/deviceLimit`,
@@ -17214,7 +17808,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     }
     if (record.maxOfflineDays !== void 0) {
       if (typeof record.maxOfflineDays !== "number") {
-        add3(
+        add4(
           warnings,
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
@@ -17222,7 +17816,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           "maxOfflineDays on a tier is ignored because it is not a number; use policyExpiryDays for the licence expiry."
         );
       } else if (typeof record.policyExpiryDays === "number" || typeof record.expiryDays === "number") {
-        add3(
+        add4(
           warnings,
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
@@ -17230,7 +17824,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           "maxOfflineDays on a tier is ignored because policyExpiryDays or expiryDays is also set and wins; it is not offline grace."
         );
       } else {
-        add3(
+        add4(
           warnings,
           "product",
           `/licensing/tiers/${i}/maxOfflineDays`,
@@ -17240,7 +17834,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       }
     }
     if (record.policyFingerprint !== void 0 && record.policyFingerprint !== null && !isOneOf2(record.policyFingerprint, FINGERPRINT_MODE_VALUES)) {
-      add3(
+      add4(
         errors,
         "product",
         `/licensing/tiers/${i}/policyFingerprint`,
@@ -17250,8 +17844,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     }
   }
   if (modules.includes("identity") || productRoot.oidc !== void 0) {
-    if (!isRecord5(productRoot.oidc)) {
-      add3(
+    if (!isRecord6(productRoot.oidc)) {
+      add4(
         errors,
         "product",
         "/oidc",
@@ -17261,7 +17855,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     } else {
       const provider = oidc.provider ?? "platform";
       if (!isOneOf2(provider, OIDC_PROVIDER_VALUES)) {
-        add3(
+        add4(
           errors,
           "product",
           "/oidc/provider",
@@ -17272,7 +17866,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       if (provider === "custom") {
         const issuerProblem = issuerUrlProblem(oidc.issuer);
         if (issuerProblem) {
-          add3(
+          add4(
             errors,
             "product",
             "/oidc/issuer",
@@ -17281,7 +17875,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           );
         }
         if (!stringAt(oidc, "clientId")) {
-          add3(
+          add4(
             errors,
             "product",
             "/oidc/clientId",
@@ -17299,10 +17893,10 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         CLIENT_ID_RE,
         "oidc.clientId must match ^[A-Za-z0-9][A-Za-z0-9._:@/~-]{0,255}$."
       );
-      if (isRecord5(oidc.groupRoleMap)) {
+      if (isRecord6(oidc.groupRoleMap)) {
         for (const group of Object.keys(oidc.groupRoleMap)) {
           if (!GROUP_NAME_RE.test(group)) {
-            add3(
+            add4(
               errors,
               "product",
               `/oidc/groupRoleMap/${group}`,
@@ -17314,7 +17908,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       }
       const ref = oidc.clientSecretSecret ?? oidc.clientSecretRef;
       if (ref !== void 0 && (typeof ref !== "string" || !SECRET_RE.test(ref))) {
-        add3(
+        add4(
           errors,
           "product",
           "/oidc/clientSecretRef",
@@ -17324,7 +17918,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       }
       const redirects = arrayAt(oidc, "redirectUris") ?? [];
       if (redirects.length > MAX_REDIRECT_URIS) {
-        add3(
+        add4(
           errors,
           "product",
           "/oidc/redirectUris",
@@ -17335,7 +17929,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       for (const [i, uri] of redirects.entries()) {
         const problem = redirectUriProblem(uri);
         if (problem) {
-          add3(
+          add4(
             errors,
             "product",
             `/oidc/redirectUris/${i}`,
@@ -17350,7 +17944,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   if (modules.includes("release") || relDoc) {
     const relRoot = relDoc;
     if (!relRoot) {
-      add3(
+      add4(
         errors,
         "release",
         "/",
@@ -17362,7 +17956,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       const owner = relRoot.ghOwner ?? provider.owner;
       const repo = relRoot.ghRepo ?? provider.repo;
       if (provider.type !== void 0 && provider.type !== "github") {
-        add3(
+        add4(
           errors,
           "release",
           "/release/provider/type",
@@ -17371,7 +17965,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         );
       }
       if (!stringAt({ owner }, "owner") || !stringAt({ repo }, "repo")) {
-        add3(
+        add4(
           errors,
           "release",
           "/release/provider",
@@ -17448,7 +18042,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       if (Array.isArray(artifactPolicy.channels)) {
         for (const [j, name] of artifactPolicy.channels.entries()) {
           if (isNoncanonicalChannelName(name)) {
-            add3(
+            add4(
               warnings,
               "release",
               `/release/artifactPolicy/channels/${j}`,
@@ -17469,7 +18063,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       );
       if (relRoot.manualChannels !== void 0) {
         if (!Array.isArray(relRoot.manualChannels)) {
-          add3(
+          add4(
             errors,
             "release",
             "/release/manualChannels",
@@ -17479,8 +18073,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         } else {
           for (const [i, raw] of relRoot.manualChannels.entries()) {
             const at = `/release/manualChannels/${i}`;
-            if (!isRecord5(raw)) {
-              add3(
+            if (!isRecord6(raw)) {
+              add4(
                 errors,
                 "release",
                 at,
@@ -17490,7 +18084,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
               continue;
             }
             if (typeof raw.name !== "string" || !CHANNEL_RE.test(raw.name)) {
-              add3(
+              add4(
                 errors,
                 "release",
                 `${at}/name`,
@@ -17498,7 +18092,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
                 "manualChannels[].name must match ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$."
               );
             } else if (isNoncanonicalChannelName(raw.name)) {
-              add3(
+              add4(
                 warnings,
                 "release",
                 `${at}/name`,
@@ -17506,7 +18100,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
                 "Channel names should match ^[a-z0-9][a-z0-9-]{0,63}$; uppercase, . and _ are unreachable on the release routes (WIRE-CONTRACT-V3 §5.1)."
               );
             } else if (isReservedChannelName(raw.name)) {
-              add3(
+              add4(
                 warnings,
                 "release",
                 `${at}/name`,
@@ -17515,7 +18109,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
               );
             }
             if (typeof raw.regex !== "string" || compileManualChannelRegex(raw.regex) === null) {
-              add3(
+              add4(
                 errors,
                 "release",
                 `${at}/regex`,
@@ -17527,7 +18121,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         }
       }
       if (relRoot.stableTagPattern !== void 0 && !isTagPattern(relRoot.stableTagPattern)) {
-        add3(
+        add4(
           errors,
           "release",
           "/release/stableTagPattern",
@@ -17537,7 +18131,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       }
       if (relRoot.ignoreTags !== void 0) {
         if (!isIgnoreTagList(relRoot.ignoreTags)) {
-          add3(
+          add4(
             errors,
             "release",
             "/release/ignoreTags",
@@ -17547,7 +18141,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         } else {
           for (const [i, tag2] of relRoot.ignoreTags.entries()) {
             if (!isIgnoreTag(tag2)) {
-              add3(
+              add4(
                 errors,
                 "release",
                 `/release/ignoreTags/${i}`,
@@ -17566,8 +18160,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       );
       validatePublishing(errors, relRoot);
       validateReleaseKeys(errors, warnings, relRoot);
-      if (relRoot.access !== void 0 && !isRecord5(relRoot.access)) {
-        add3(
+      if (relRoot.access !== void 0 && !isRecord6(relRoot.access)) {
+        add4(
           errors,
           "release",
           "/release/access",
@@ -17579,7 +18173,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         for (const key of ["metadata", "artifacts"]) {
           const value = access[key];
           if (value !== void 0 && !isOneOf2(value, RELEASE_ACCESS_VALUES)) {
-            add3(
+            add4(
               errors,
               "release",
               `/release/access/${key}`,
@@ -17593,8 +18187,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   const provisioning = arrayAt(productRoot, "provisioning") ?? [];
   for (const [i, raw] of provisioning.entries()) {
-    if (!isRecord5(raw) || !stringAt(raw, "claim")) {
-      add3(
+    if (!isRecord6(raw) || !stringAt(raw, "claim")) {
+      add4(
         errors,
         "product",
         `/provisioning/${i}/claim`,
@@ -17602,7 +18196,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "Provisioning hooks require claim."
       );
     }
-    if (!isRecord5(raw)) continue;
+    if (!isRecord6(raw)) continue;
     constrained(
       errors,
       "product",
@@ -17627,7 +18221,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       ["secretKey", "invalid_secret_key"]
     ]) {
       if (typeof raw[field] === "string" && RESERVED_PROPERTY_NAMES.has(raw[field])) {
-        add3(
+        add4(
           errors,
           "product",
           `/provisioning/${i}/${field}`,
@@ -17637,7 +18231,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       }
     }
     if (raw.secretKey !== void 0 && (typeof raw.secretKey !== "string" || !ID_RE.test(raw.secretKey))) {
-      add3(
+      add4(
         errors,
         "product",
         `/provisioning/${i}/secretKey`,
@@ -17648,7 +18242,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     if (raw.secretUrlTemplate !== void 0) {
       const problem = secretUrlTemplateProblem(raw.secretUrlTemplate);
       if (problem) {
-        add3(
+        add4(
           errors,
           "product",
           `/provisioning/${i}/secretUrlTemplate`,
@@ -17669,8 +18263,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   const edgeMint = arrayAt(productRoot, "edgeMint") ?? arrayAt(asRecord(manifest.release), "edgeMint") ?? [];
   for (const [i, raw] of edgeMint.entries()) {
-    if (!isRecord5(raw) || !stringAt(raw, "id")) {
-      add3(
+    if (!isRecord6(raw) || !stringAt(raw, "id")) {
+      add4(
         errors,
         "release",
         `/edgeMint/${i}/id`,
@@ -17707,7 +18301,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       "Edge mint audience"
     );
     if (!["ES256", "RS256", "EdDSA"].includes(String(raw.alg ?? ""))) {
-      add3(
+      add4(
         errors,
         "release",
         `/edgeMint/${i}/alg`,
@@ -17717,7 +18311,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     }
     const ref = raw.signingKeySecret;
     if (typeof ref !== "string" || !SECRET_RE.test(ref)) {
-      add3(
+      add4(
         errors,
         "release",
         `/edgeMint/${i}/signingKeySecret`,
@@ -17726,7 +18320,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       );
     }
     if (raw.ttlSeconds !== void 0 && !positiveInteger(raw.ttlSeconds)) {
-      add3(
+      add4(
         errors,
         "release",
         `/edgeMint/${i}/ttlSeconds`,
@@ -17735,8 +18329,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       );
     }
   }
-  if (productRoot.fingerprint !== void 0 && !isRecord5(productRoot.fingerprint)) {
-    add3(
+  if (productRoot.fingerprint !== void 0 && !isRecord6(productRoot.fingerprint)) {
+    add4(
       errors,
       "product",
       "/fingerprint",
@@ -17746,7 +18340,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   const fingerprint2 = asRecord(productRoot.fingerprint);
   if (fingerprint2.enabled !== void 0 && typeof fingerprint2.enabled !== "boolean") {
-    add3(
+    add4(
       errors,
       "product",
       "/fingerprint/enabled",
@@ -17755,7 +18349,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     );
   }
   if (fingerprint2.defaultMode !== void 0 && !isOneOf2(fingerprint2.defaultMode, FINGERPRINT_MODE_VALUES)) {
-    add3(
+    add4(
       errors,
       "product",
       "/fingerprint/defaultMode",
@@ -17764,7 +18358,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     );
   }
   for (const [i, raw] of (arrayAt(fingerprint2, "probes") ?? []).entries()) {
-    if (!isRecord5(raw)) continue;
+    if (!isRecord6(raw)) continue;
     constrained(
       errors,
       "product",
@@ -17795,8 +18389,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       );
     }
   }
-  if (productRoot.autoIssue !== void 0 && !isRecord5(productRoot.autoIssue)) {
-    add3(
+  if (productRoot.autoIssue !== void 0 && !isRecord6(productRoot.autoIssue)) {
+    add4(
       errors,
       "product",
       "/autoIssue",
@@ -17806,7 +18400,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   const autoIssue = asRecord(productRoot.autoIssue);
   if (autoIssue.enabled !== void 0 && typeof autoIssue.enabled !== "boolean") {
-    add3(
+    add4(
       errors,
       "product",
       "/autoIssue/enabled",
@@ -17815,7 +18409,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     );
   }
   if (autoIssue.mode !== void 0 && !isOneOf2(autoIssue.mode, AUTO_ISSUE_MODE_VALUES)) {
-    add3(
+    add4(
       errors,
       "product",
       "/autoIssue/mode",
@@ -17824,7 +18418,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     );
   }
   if (autoIssue.enabled === true && (typeof autoIssue.tierId !== "string" || autoIssue.tierId.length === 0)) {
-    add3(
+    add4(
       errors,
       "product",
       "/autoIssue/tierId",
@@ -17842,7 +18436,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     "autoIssue.tierId must be a tier identifier."
   );
   if (typeof autoIssue.tierId === "string" && ID_RE.test(autoIssue.tierId) && !tierIds.has(autoIssue.tierId)) {
-    add3(
+    add4(
       errors,
       "product",
       "/autoIssue/tierId",
@@ -17851,7 +18445,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     );
   }
   if (autoIssue.rateLimitPerHour !== void 0 && !nonNegativeInteger2(autoIssue.rateLimitPerHour)) {
-    add3(
+    add4(
       errors,
       "product",
       "/autoIssue/rateLimitPerHour",
@@ -17871,7 +18465,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     const catalog = manifest.schema === void 0 ? null : normalizeCatalog(manifest.schema);
     validateCloudSync(errors, warnings, {
       entries: catalog ? catalog.entries : null,
-      catalogCloudSync: isRecord5(manifest.schema) ? manifest.schema.cloudSync : void 0,
+      catalogCloudSync: isRecord6(manifest.schema) ? manifest.schema.cloudSync : void 0,
       productCloudSync: productRoot.cloudSync,
       catalogChecked: catalog !== null && modules.includes("config"),
       tierIds,
@@ -17881,10 +18475,10 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   {
     const mode = opts.reservedDisplayNames ?? DEFAULT_RESERVED_DISPLAY_NAMES_MODE;
     const verdict = (v) => typeof v === "string" && v !== "" ? checkDisplayName(v, { slug: productSlug }) : null;
-    const listing = isRecord5(manifest.distribution) ? asRecord(manifest.distribution.listing) : {};
+    const listing = isRecord6(manifest.distribution) ? asRecord(manifest.distribution.listing) : {};
     const name = verdict(productNode.name);
     if (name === "invalid")
-      add3(
+      add4(
         errors,
         "product",
         "/product/name",
@@ -17892,7 +18486,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "product.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace."
       );
     else if (name === "reserved" && mode === "error")
-      add3(
+      add4(
         errors,
         "product",
         "/product/name",
@@ -17900,7 +18494,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "product.name uses a reserved platform or store name (Polaris Key, Apple, Google Play, Steam and others); an app may not present itself as one. Rename it, or ask the platform operator to approve it."
       );
     else if (name === "reserved")
-      add3(
+      add4(
         warnings,
         "product",
         "/product/name",
@@ -17909,7 +18503,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       );
     const listingName = verdict(listing.name);
     if (listingName === "invalid")
-      add3(
+      add4(
         errors,
         "distribution",
         "/listing/name",
@@ -17917,7 +18511,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace."
       );
     else if (listingName === "reserved" && mode === "error")
-      add3(
+      add4(
         errors,
         "distribution",
         "/listing/name",
@@ -17925,7 +18519,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "listing.name uses a reserved platform or store name; an app may not present itself as one. Rename it, or ask the platform operator to approve it."
       );
     else if (listingName === "reserved")
-      add3(
+      add4(
         warnings,
         "distribution",
         "/listing/name",
@@ -17934,7 +18528,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       );
     const developer = verdict(listing.developerName);
     if (developer === "invalid")
-      add3(
+      add4(
         errors,
         "distribution",
         "/listing/developerName",
@@ -17942,7 +18536,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "listing.developerName must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace."
       );
     else if (developer === "reserved" && mode === "error")
-      add3(
+      add4(
         errors,
         "distribution",
         "/listing/developerName",
@@ -17950,18 +18544,18 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
         "listing.developerName uses a reserved platform or store name; a developer may not present itself as one. Rename it, or ask the platform operator to approve it."
       );
     else if (developer === "reserved")
-      add3(
+      add4(
         warnings,
         "distribution",
         "/listing/developerName",
         "reserved_display_name",
         "listing.developerName uses a reserved platform or store name; the sign-in card leaves the developer out instead. This becomes an error once the platform enforces reserved display names."
       );
-    const outlets = isRecord5(manifest.distribution) ? asRecord(manifest.distribution.outlets) : {};
+    const outlets = isRecord6(manifest.distribution) ? asRecord(manifest.distribution.outlets) : {};
     for (const [id, entry] of Object.entries(outlets)) {
-      const l = isRecord5(entry) ? asRecord(entry.listing) : {};
+      const l = isRecord6(entry) ? asRecord(entry.listing) : {};
       if (verdict(l.name) === "invalid")
-        add3(
+        add4(
           errors,
           "distribution",
           `/outlets/${id}/listing/name`,
@@ -17969,7 +18563,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
           `outlets.${id}.listing.name must not hold control, zero-width or bidirectional-formatting characters, or start or end with whitespace.`
         );
       if (verdict(l.developerName) === "invalid")
-        add3(
+        add4(
           errors,
           "distribution",
           `/outlets/${id}/listing/developerName`,
@@ -17979,7 +18573,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     }
   }
   for (const [i, item] of (arrayAt(secrets, "required") ?? []).entries()) {
-    const name = isRecord5(item) ? item.name : item;
+    const name = isRecord6(item) ? item.name : item;
     constrained(
       errors,
       "product",
@@ -17996,7 +18590,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     manifest.release
   );
   if (modules.includes("config") && !modules.includes("license") && !modules.includes("identity")) {
-    add3(
+    add4(
       warnings,
       "product",
       "/modules/config",
@@ -18005,7 +18599,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     );
   }
   if (modules.includes("distribution") && !modules.includes("release")) {
-    add3(
+    add4(
       errors,
       "product",
       "/modules/distribution",
@@ -18014,7 +18608,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     );
   }
   if (modules.includes("update") && !modules.includes("distribution")) {
-    add3(
+    add4(
       errors,
       "product",
       "/modules/update",
@@ -18023,7 +18617,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     );
   }
   if (modules.includes("sync") && !modules.includes("config")) {
-    add3(
+    add4(
       errors,
       "product",
       "/modules/sync",
@@ -18032,7 +18626,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
     );
   }
   if (modules.includes("sync") && !modules.includes("identity")) {
-    add3(
+    add4(
       errors,
       "product",
       "/modules/sync",
@@ -18042,7 +18636,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   const registration = registrationPolicy(productRoot);
   if (registration !== void 0 && !isOneOf2(registration, REGISTRATION_POLICIES)) {
-    add3(
+    add4(
       errors,
       "product",
       "/devices/registration",
@@ -18052,8 +18646,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   if (productRoot.presentation !== void 0) {
     const presentation = productRoot.presentation;
-    if (!isRecord5(presentation)) {
-      add3(
+    if (!isRecord6(presentation)) {
+      add4(
         errors,
         "product",
         "/presentation",
@@ -18064,7 +18658,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       if (presentation.icon !== void 0) {
         const problem = assetRefProblem(presentation.icon);
         if (problem) {
-          add3(
+          add4(
             errors,
             "product",
             "/presentation/icon",
@@ -18075,7 +18669,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       }
       for (const field of ["accent", "accentDark"]) {
         if (presentation[field] !== void 0 && !isHexColour(presentation[field])) {
-          add3(
+          add4(
             errors,
             "product",
             `/presentation/${field}`,
@@ -18086,8 +18680,8 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       }
     }
   }
-  if (productRoot.web !== void 0 && !isRecord5(productRoot.web)) {
-    add3(
+  if (productRoot.web !== void 0 && !isRecord6(productRoot.web)) {
+    add4(
       errors,
       "product",
       "/web",
@@ -18098,7 +18692,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   const webOrigins = asRecord(productRoot.web).origins;
   if (webOrigins !== void 0) {
     if (!Array.isArray(webOrigins) || webOrigins.length > MAX_WEB_ORIGINS) {
-      add3(
+      add4(
         errors,
         "product",
         "/web/origins",
@@ -18110,7 +18704,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
       for (const [i, origin] of webOrigins.entries()) {
         const problem = webOriginProblem(origin) ?? (seen.has(origin) ? "must not repeat an earlier entry" : null);
         if (problem) {
-          add3(
+          add4(
             errors,
             "product",
             `/web/origins/${i}`,
@@ -18124,7 +18718,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   const productIssue = representabilityIssue(productRoot);
   if (productIssue) {
-    add3(
+    add4(
       errors,
       "product",
       `${productIssue.path || "/"}`,
@@ -18134,7 +18728,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   const schemaIssue = representabilityIssue(manifest.schema);
   if (schemaIssue) {
-    add3(
+    add4(
       errors,
       "schema",
       `${schemaIssue.path || "/"}`,
@@ -18144,7 +18738,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   const releaseIssue = representabilityIssue(manifest.release);
   if (releaseIssue) {
-    add3(
+    add4(
       errors,
       "release",
       `${releaseIssue.path || "/"}`,
@@ -18154,7 +18748,7 @@ function validateDocuments(manifest, schemaAlwaysRequired, opts) {
   }
   const distributionIssue = representabilityIssue(manifest.distribution);
   if (distributionIssue) {
-    add3(
+    add4(
       errors,
       "distribution",
       `${distributionIssue.path || "/"}`,
@@ -18176,7 +18770,7 @@ function distributionContext(relRoot) {
   const app = asRecord(declared[APP_DELIVERABLE_ID]);
   const artifactIds = /* @__PURE__ */ new Set();
   for (const entry of arrayAt(app, "artifacts") ?? []) {
-    if (isRecord5(entry) && typeof entry.id === "string")
+    if (isRecord6(entry) && typeof entry.id === "string")
       artifactIds.add(entry.id);
   }
   return {
@@ -18204,19 +18798,19 @@ function routedDeliverables(relRoot) {
 }
 function validatePublishing(errors, relRoot) {
   if (relRoot.publishing === void 0) return;
-  const shape2 = () => add3(
+  const shape2 = () => add4(
     errors,
     "release",
     "/release/publishing/trustedPublisher",
     "invalid_trusted_publisher_workflow",
     "publishing.trustedPublisher must be an object with a workflow (.github/workflows/<file>.yml)."
   );
-  if (!isRecord5(relRoot.publishing)) return shape2();
+  if (!isRecord6(relRoot.publishing)) return shape2();
   const tp = relRoot.publishing.trustedPublisher;
   if (tp === void 0) return;
-  if (!isRecord5(tp)) return shape2();
+  if (!isRecord6(tp)) return shape2();
   if (typeof tp.workflow !== "string" || !TRUSTED_PUBLISHER_WORKFLOW_RE.test(tp.workflow)) {
-    add3(
+    add4(
       errors,
       "release",
       "/release/publishing/trustedPublisher/workflow",
@@ -18225,7 +18819,7 @@ function validatePublishing(errors, relRoot) {
     );
   }
   if (tp.environment !== void 0 && (typeof tp.environment !== "string" || !TRUSTED_PUBLISHER_ENVIRONMENT_RE.test(tp.environment))) {
-    add3(
+    add4(
       errors,
       "release",
       "/release/publishing/trustedPublisher/environment",
@@ -18236,7 +18830,7 @@ function validatePublishing(errors, relRoot) {
 }
 function validateReleaseKeys(errors, warnings, relRoot) {
   if (relRoot.contentKeys !== void 0) {
-    add3(
+    add4(
       warnings,
       "release",
       "/release/contentKeys",
@@ -18247,7 +18841,7 @@ function validateReleaseKeys(errors, warnings, relRoot) {
   const raw = relRoot.releaseKeys;
   if (raw === void 0) return;
   if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_RELEASE_KEYS) {
-    add3(
+    add4(
       errors,
       "release",
       "/release/releaseKeys",
@@ -18261,8 +18855,8 @@ function validateReleaseKeys(errors, warnings, relRoot) {
   const keys = [];
   for (const [i, entry] of raw.entries()) {
     const at = `/release/releaseKeys/${i}`;
-    if (!isRecord5(entry)) {
-      add3(
+    if (!isRecord6(entry)) {
+      add4(
         errors,
         "release",
         at,
@@ -18272,7 +18866,7 @@ function validateReleaseKeys(errors, warnings, relRoot) {
       continue;
     }
     if (typeof entry.kid !== "string" || !RELEASE_KEY_KID_PATTERN.test(entry.kid)) {
-      add3(
+      add4(
         errors,
         "release",
         `${at}/kid`,
@@ -18282,7 +18876,7 @@ function validateReleaseKeys(errors, warnings, relRoot) {
     }
     const bytes = releaseKeyBytes(entry.publicKey);
     if (!bytes) {
-      add3(
+      add4(
         errors,
         "release",
         `${at}/publicKey`,
@@ -18290,7 +18884,7 @@ function validateReleaseKeys(errors, warnings, relRoot) {
         "releaseKeys[].publicKey must be a raw 32-byte Ed25519 public key in unpadded base64url (43 characters), as `pkey release keys generate` prints it."
       );
     } else if (isWeakEd25519Key(bytes)) {
-      add3(
+      add4(
         errors,
         "release",
         `${at}/publicKey`,
@@ -18301,7 +18895,7 @@ function validateReleaseKeys(errors, warnings, relRoot) {
     const dupKid = typeof entry.kid === "string" && kids.has(entry.kid);
     const dupKey = bytes !== null && keys.some((k) => sameKeyBytes(k, bytes));
     if (dupKid || dupKey) {
-      add3(
+      add4(
         errors,
         "release",
         at,
@@ -18313,7 +18907,7 @@ function validateReleaseKeys(errors, warnings, relRoot) {
     if (bytes) {
       keys.push(bytes);
       if (sparkle && sameKeyBytes(sparkle, bytes)) {
-        add3(
+        add4(
           errors,
           "release",
           `${at}/publicKey`,
@@ -18334,7 +18928,7 @@ function knownChannelNames(relRoot, declared) {
   const known = new Set(BUILT_IN_CHANNELS);
   if (Array.isArray(relRoot.manualChannels)) {
     for (const m of relRoot.manualChannels) {
-      if (isRecord5(m) && typeof m.name === "string") known.add(m.name);
+      if (isRecord6(m) && typeof m.name === "string") known.add(m.name);
     }
   }
   for (const name of declared) known.add(name);
@@ -18343,8 +18937,8 @@ function knownChannelNames(relRoot, declared) {
 function validateDeliverables(errors, warnings, relRoot, flagKeys) {
   const raw = relRoot.deliverables;
   if (raw === void 0) return;
-  if (!isRecord5(raw)) {
-    add3(
+  if (!isRecord6(raw)) {
+    add4(
       errors,
       "release",
       "/release/deliverables",
@@ -18354,11 +18948,11 @@ function validateDeliverables(errors, warnings, relRoot, flagKeys) {
     return;
   }
   const packCount = Object.entries(raw).filter(
-    ([id, def]) => id !== APP_DELIVERABLE_ID && isRecord5(def) && def.kind === "pack"
+    ([id, def]) => id !== APP_DELIVERABLE_ID && isRecord6(def) && def.kind === "pack"
   ).length;
   const tooManyPacks = packCount > MAX_PACK_DELIVERABLES;
   if (tooManyPacks) {
-    add3(
+    add4(
       errors,
       "release",
       "/release/deliverables",
@@ -18367,11 +18961,11 @@ function validateDeliverables(errors, warnings, relRoot, flagKeys) {
     );
   }
   const packageCount = Object.entries(raw).filter(
-    ([id, def]) => id !== APP_DELIVERABLE_ID && isRecord5(def) && def.kind === "package"
+    ([id, def]) => id !== APP_DELIVERABLE_ID && isRecord6(def) && def.kind === "package"
   ).length;
   const tooManyPackages = packageCount > MAX_PACKAGE_DELIVERABLES;
   if (tooManyPackages) {
-    add3(
+    add4(
       errors,
       "release",
       "/release/deliverables",
@@ -18383,11 +18977,11 @@ function validateDeliverables(errors, warnings, relRoot, flagKeys) {
   const packIds = /* @__PURE__ */ new Set();
   const declaredPacks = /* @__PURE__ */ new Map();
   for (const [id, def] of Object.entries(raw))
-    if (id !== APP_DELIVERABLE_ID && isDeliverableId(id) && isRecord5(def) && def.kind === "pack")
+    if (id !== APP_DELIVERABLE_ID && isDeliverableId(id) && isRecord6(def) && def.kind === "pack")
       declaredPacks.set(id, def.binding ?? "pinned");
   for (const [id, def] of Object.entries(raw)) {
     if (!isDeliverableId(id)) {
-      add3(
+      add4(
         errors,
         "release",
         `/release/deliverables/${id}`,
@@ -18396,9 +18990,9 @@ function validateDeliverables(errors, warnings, relRoot, flagKeys) {
       );
       continue;
     }
-    const kind = isRecord5(def) ? def.kind : void 0;
-    if (!isRecord5(def) || !isOneOf2(kind, DELIVERABLE_KINDS)) {
-      add3(
+    const kind = isRecord6(def) ? def.kind : void 0;
+    if (!isRecord6(def) || !isOneOf2(kind, DELIVERABLE_KINDS)) {
+      add4(
         errors,
         "release",
         `/release/deliverables/${id}/kind`,
@@ -18408,7 +19002,7 @@ function validateDeliverables(errors, warnings, relRoot, flagKeys) {
       continue;
     }
     if (kind === "app" !== (id === APP_DELIVERABLE_ID)) {
-      add3(
+      add4(
         errors,
         "release",
         `/release/deliverables/${id}/kind`,
@@ -18428,7 +19022,7 @@ function validateDeliverables(errors, warnings, relRoot, flagKeys) {
       if (key === null) continue;
       const other = packageKeys.get(key);
       if (other !== void 0)
-        add3(
+        add4(
           errors,
           "release",
           `/release/deliverables/${id}/name`,
@@ -18439,10 +19033,10 @@ function validateDeliverables(errors, warnings, relRoot, flagKeys) {
     }
   }
   const app = raw[APP_DELIVERABLE_ID];
-  if (isRecord5(app) && app.kind === "app")
+  if (isRecord6(app) && app.kind === "app")
     validateAppDeliverable(errors, warnings, relRoot, app, packIds, raw);
   else if (packIds.size > 0) {
-    add3(
+    add4(
       errors,
       "release",
       "/release/deliverables/app/content",
@@ -18455,7 +19049,7 @@ function validatePackageDeliverable(errors, id, def) {
   const at = `/release/deliverables/${id}`;
   for (const field of PACKAGE_REFUSED_FIELDS) {
     if (def[field] !== void 0)
-      add3(
+      add4(
         errors,
         "release",
         `${at}/${field}`,
@@ -18464,10 +19058,10 @@ function validatePackageDeliverable(errors, id, def) {
       );
   }
   const artifacts = def.artifacts;
-  if (!isRecord5(artifacts) || Object.keys(artifacts).length === 0 || Object.keys(artifacts).length > MAX_PACKAGE_ARTIFACT_ENTRIES || !Object.entries(artifacts).every(
-    ([k, v]) => ARTIFACT_ENTRY_ID_PATTERN.test(k) && isRecord5(v) && Object.keys(v).every((f) => f === "match") && isArtifactMatch(v.match)
+  if (!isRecord6(artifacts) || Object.keys(artifacts).length === 0 || Object.keys(artifacts).length > MAX_PACKAGE_ARTIFACT_ENTRIES || !Object.entries(artifacts).every(
+    ([k, v]) => ARTIFACT_ENTRY_ID_PATTERN.test(k) && isRecord6(v) && Object.keys(v).every((f) => f === "match") && isArtifactMatch(v.match)
   ))
-    add3(
+    add4(
       errors,
       "release",
       `${at}/artifacts`,
@@ -18476,7 +19070,7 @@ function validatePackageDeliverable(errors, id, def) {
     );
   const ecosystem = def.ecosystem;
   if (!isPackageEcosystem(ecosystem)) {
-    add3(
+    add4(
       errors,
       "release",
       `${at}/ecosystem`,
@@ -18486,7 +19080,7 @@ function validatePackageDeliverable(errors, id, def) {
     return null;
   }
   if (!isPackageName(ecosystem, def.name)) {
-    add3(
+    add4(
       errors,
       "release",
       `${at}/name`,
@@ -18511,7 +19105,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   const at = `/release/deliverables/${id}`;
   for (const field of PACK_FIELDS_NOT_SUPPORTED) {
     if (def[field] !== void 0)
-      add3(
+      add4(
         errors,
         "release",
         `${at}/${field}`,
@@ -18521,10 +19115,10 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   }
   const provides = def.provides;
   if (provides !== void 0) {
-    const p = isRecord5(provides) ? provides : null;
+    const p = isRecord6(provides) ? provides : null;
     if (!p || // A typo (`requried`) must not silently leave a policy off.
     Object.keys(p).some((k) => k !== "required" && k !== "from") || p.required !== void 0 && typeof p.required !== "boolean" || p.from !== void 0 && (typeof p.from !== "string" || p.from.length > 256 || !PROVIDES_FILE_PATTERN.test(p.from)))
-      add3(
+      add4(
         errors,
         "release",
         `${at}/provides`,
@@ -18534,7 +19128,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   }
   const type = isManifestPackType(def.type) ? def.type : null;
   if (!type)
-    add3(
+    add4(
       errors,
       "release",
       `${at}/type`,
@@ -18543,7 +19137,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
     );
   if (def.formatVersion !== void 0) {
     if (!Number.isSafeInteger(def.formatVersion) || def.formatVersion < 1 || def.formatVersion > MAX_PACK_FORMAT_VERSION)
-      add3(
+      add4(
         errors,
         "release",
         `${at}/formatVersion`,
@@ -18551,7 +19145,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
         `formatVersion is an integer from 1 to ${MAX_PACK_FORMAT_VERSION}: the version of the type's own format the device's handler must list.`
       );
     else if (type !== null && !packTypeTakesFormatVersion(type))
-      add3(
+      add4(
         errors,
         "release",
         `${at}/formatVersion`,
@@ -18559,7 +19153,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
         `a ${type} pack takes no formatVersion: ${type === "godot.pck" ? "it is the PCK header's" : "its format is 1"}.`
       );
   } else if (type === "data.json")
-    add3(
+    add4(
       errors,
       "release",
       `${at}/formatVersion`,
@@ -18567,7 +19161,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       "a data.json pack declares formatVersion, the version of its documents' JSON Schema: a device installs only the versions its handler lists."
     );
   if (def.binding !== void 0 && !isOneOf2(def.binding, PACK_BINDINGS))
-    add3(
+    add4(
       errors,
       "release",
       `${at}/binding`,
@@ -18575,7 +19169,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       `binding must be one of ${PACK_BINDINGS.join(", ")}: pinned (each app release pins the exact pack release), compatible (the newest release whose requires.contentApi range holds the app's contentApi) or standalone (the newest release, whatever the contentApi).`
     );
   if (def.baseline !== void 0 && !isOneOf2(def.baseline, PACK_BASELINES))
-    add3(
+    add4(
       errors,
       "release",
       `${at}/baseline`,
@@ -18583,7 +19177,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       `baseline must be one of ${PACK_BASELINES.join(", ")}.`
     );
   if (def.required !== void 0 && typeof def.required !== "boolean")
-    add3(
+    add4(
       errors,
       "release",
       `${at}/required`,
@@ -18591,7 +19185,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       "required must be a boolean."
     );
   if (def.delivery !== void 0 && !isOneOf2(def.delivery, PACK_DELIVERIES))
-    add3(
+    add4(
       errors,
       "release",
       `${at}/delivery`,
@@ -18600,8 +19194,8 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
     );
   if (def.contentPolicy !== void 0) {
     const cp3 = def.contentPolicy;
-    if (!isRecord5(cp3) || cp3.dataOnly !== void 0 && cp3.dataOnly !== true)
-      add3(
+    if (!isRecord6(cp3) || cp3.dataOnly !== void 0 && cp3.dataOnly !== true)
+      add4(
         errors,
         "release",
         `${at}/contentPolicy`,
@@ -18610,7 +19204,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       );
   }
   if (def.required === true && (def.delivery !== "essential" || def.entitlement !== void 0))
-    add3(
+    add4(
       errors,
       "release",
       `${at}/required`,
@@ -18618,17 +19212,17 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       "a required pack is delivered as essential and carries no entitlement: the app cannot run without it, so nothing may withhold it."
     );
   const handler = def.handler;
-  if (handler !== void 0 && !isRecord5(handler)) {
-    add3(
+  if (handler !== void 0 && !isRecord6(handler)) {
+    add4(
       errors,
       "release",
       `${at}/handler`,
       "invalid_pack_handler",
       "handler must be an object { mountOrder?, prefixes?, activation? }."
     );
-  } else if (isRecord5(handler)) {
+  } else if (isRecord6(handler)) {
     if (handler.mountOrder !== void 0 && !(Number.isSafeInteger(handler.mountOrder) && handler.mountOrder >= 0 && handler.mountOrder <= MAX_PACK_MOUNT_ORDER))
-      add3(
+      add4(
         errors,
         "release",
         `${at}/handler/mountOrder`,
@@ -18636,7 +19230,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
         `handler.mountOrder must be an integer from 0 to ${MAX_PACK_MOUNT_ORDER}.`
       );
     if (handler.prefixes !== void 0 && !isPackPrefixList(handler.prefixes))
-      add3(
+      add4(
         errors,
         "release",
         `${at}/handler/prefixes`,
@@ -18644,7 +19238,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
         `handler.prefixes must be 1 to ${MAX_PACK_PREFIXES} distinct res:// directory prefixes ending in / (${HANDLER_PREFIX_PATTERN.source}), each at most ${MAX_PACK_PREFIX_BYTES} bytes.`
       );
     if (handler.activation !== void 0 && !isOneOf2(handler.activation, PACK_ACTIVATIONS))
-      add3(
+      add4(
         errors,
         "release",
         `${at}/handler/activation`,
@@ -18655,7 +19249,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   const h = asRecord(handler);
   if (type !== null && isMountedPackType(type)) {
     if (h.prefixes === void 0 || h.activation !== void 0 && h.activation !== "restart")
-      add3(
+      add4(
         errors,
         "release",
         `${at}/handler`,
@@ -18664,7 +19258,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       );
   } else if (type !== null) {
     if (h.prefixes !== void 0 || h.mountOrder !== void 0)
-      add3(
+      add4(
         errors,
         "release",
         `${at}/handler`,
@@ -18674,8 +19268,8 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   }
   const variants = def.variants;
   if (variants !== void 0) {
-    if (!isRecord5(variants)) {
-      add3(
+    if (!isRecord6(variants)) {
+      add4(
         errors,
         "release",
         `${at}/variants`,
@@ -18688,7 +19282,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       for (const [axis, values] of Object.entries(variants)) {
         if (!isOneOf2(axis, VARIANT_AXES)) {
           shaped = false;
-          add3(
+          add4(
             errors,
             "release",
             `${at}/variants/${axis}`,
@@ -18701,7 +19295,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
           (v) => typeof v === "string" && VARIANT_VALUE_PATTERN.test(v)
         )) {
           shaped = false;
-          add3(
+          add4(
             errors,
             "release",
             `${at}/variants/${axis}`,
@@ -18713,7 +19307,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
         combinations *= values.length;
       }
       if (shaped && combinations > MAX_PACK_VARIANT_COMBINATIONS)
-        add3(
+        add4(
           errors,
           "release",
           `${at}/variants`,
@@ -18724,10 +19318,10 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   }
   const requires = def.requires;
   if (requires !== void 0) {
-    if (!isRecord5(requires) || Object.keys(requires).some(
+    if (!isRecord6(requires) || Object.keys(requires).some(
       (k) => k !== "engine" && k !== "contentApi" && k !== "packs"
     ) || requires.engine !== void 0 && (typeof requires.engine !== "string" || !ENGINE_PATTERN.test(requires.engine)) || requires.contentApi !== void 0 && !isRangeMap(requires.contentApi, CONTENT_API_RANGE_PATTERN) || requires.packs !== void 0 && !isRangeMap(requires.packs, PACK_VERSION_RANGE_PATTERN))
-      add3(
+      add4(
         errors,
         "release",
         `${at}/requires`,
@@ -18738,7 +19332,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   const req = asRecord(requires);
   const binding = isOneOf2(def.binding, PACK_BINDINGS) ? def.binding : "pinned";
   if (binding === "compatible" && req.contentApi === void 0)
-    add3(
+    add4(
       errors,
       "release",
       `${at}/requires/contentApi`,
@@ -18746,17 +19340,17 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       `a compatible pack declares requires.contentApi (for example { ${APP_DELIVERABLE_ID}: ">=3 <5" }): the contentApi levels its releases support.`
     );
   if (binding === "standalone" && req.contentApi !== void 0)
-    add3(
+    add4(
       errors,
       "release",
       `${at}/requires/contentApi`,
       "standalone_with_content_api",
       "a standalone pack depends only on its type's format, never on the app's contentApi; drop requires.contentApi or make it compatible."
     );
-  if (isRecord5(req.contentApi)) {
+  if (isRecord6(req.contentApi)) {
     for (const key of Object.keys(req.contentApi))
       if (key !== APP_DELIVERABLE_ID)
-        add3(
+        add4(
           errors,
           "release",
           `${at}/requires/contentApi/${key}`,
@@ -18764,11 +19358,11 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
           `requires.contentApi is keyed by app deliverable; ${key} is not one (the product's app deliverable is ${APP_DELIVERABLE_ID}).`
         );
   }
-  if (isRecord5(req.packs))
+  if (isRecord6(req.packs))
     for (const target of Object.keys(req.packs)) {
       const targetBinding = declaredPacks.get(target);
       if (target === id || targetBinding === void 0 || targetBinding !== "compatible" && targetBinding !== "standalone")
-        add3(
+        add4(
           errors,
           "release",
           `${at}/requires/packs/${target}`,
@@ -18779,7 +19373,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   const conflicts = def.conflicts;
   if (conflicts !== void 0) {
     if (!Array.isArray(conflicts) || conflicts.length === 0 || conflicts.length > MAX_PACK_CONFLICTS || new Set(conflicts).size !== conflicts.length || !conflicts.every((c) => isDeliverableId(c) && c !== APP_DELIVERABLE_ID))
-      add3(
+      add4(
         errors,
         "release",
         `${at}/conflicts`,
@@ -18789,7 +19383,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
     else
       for (const [i, c] of conflicts.entries())
         if (c === id || !declaredPacks.has(c))
-          add3(
+          add4(
             errors,
             "release",
             `${at}/conflicts/${i}`,
@@ -18800,7 +19394,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   const channels2 = def.channels;
   if (channels2 !== void 0) {
     if (!Array.isArray(channels2) || channels2.length === 0 || channels2.length > MAX_PACK_CHANNELS || new Set(channels2).size !== channels2.length || !channels2.every(isCanonicalChannelName))
-      add3(
+      add4(
         errors,
         "release",
         `${at}/channels`,
@@ -18809,17 +19403,17 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       );
   }
   if (type !== null && isMountedPackType(type) && asRecord(requires).engine === void 0)
-    add3(
+    add4(
       errors,
       "release",
       `${at}/requires/engine`,
       "invalid_pack_requires",
       `a ${type} pack declares requires.engine (godot-<major>.<minor>): a Godot pack mounts only into the engine version that exported it.`
     );
-  if (type === "l10n.table" && isRecord5(variants)) {
+  if (type === "l10n.table" && isRecord6(variants)) {
     const locales = variants.locale;
     if (Array.isArray(locales) && locales.some((l) => typeof l !== "string" || !BCP47_TAG_PATTERN.test(l)))
-      add3(
+      add4(
         errors,
         "release",
         `${at}/variants/locale`,
@@ -18830,7 +19424,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   const entitlement = def.entitlement;
   if (entitlement !== void 0) {
     if (typeof entitlement !== "string" || !ENTITLEMENT_PATTERN.test(entitlement))
-      add3(
+      add4(
         errors,
         "release",
         `${at}/entitlement`,
@@ -18838,7 +19432,7 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
         `entitlement must be a licence flag key matching ${ENTITLEMENT_PATTERN.source}.`
       );
     else if (!flagKeys.has(entitlement))
-      add3(
+      add4(
         errors,
         "release",
         `${at}/entitlement`,
@@ -18850,8 +19444,8 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
   if (patch !== void 0) {
     const p = asRecord(patch);
     const strategies = p.strategies;
-    if (!isRecord5(patch) || strategies !== void 0 && (!Array.isArray(strategies) || strategies.length === 0 || new Set(strategies).size !== strategies.length || !strategies.every((v) => isOneOf2(v, PACK_PATCH_STRATEGIES))) || p.deltaBases !== void 0 && !(Number.isSafeInteger(p.deltaBases) && p.deltaBases >= 0 && p.deltaBases <= MAX_PACK_DELTA_BASES))
-      add3(
+    if (!isRecord6(patch) || strategies !== void 0 && (!Array.isArray(strategies) || strategies.length === 0 || new Set(strategies).size !== strategies.length || !strategies.every((v) => isOneOf2(v, PACK_PATCH_STRATEGIES))) || p.deltaBases !== void 0 && !(Number.isSafeInteger(p.deltaBases) && p.deltaBases >= 0 && p.deltaBases <= MAX_PACK_DELTA_BASES))
+      add4(
         errors,
         "release",
         `${at}/patch`,
@@ -18860,8 +19454,8 @@ function validatePackDeliverable(errors, id, def, flagKeys, declaredPacks) {
       );
   }
   const versioning = def.versioning;
-  if (versioning !== void 0 && (!isRecord5(versioning) || versioning.scheme !== void 0 && !isOneOf2(versioning.scheme, VERSION_SCHEMES)))
-    add3(
+  if (versioning !== void 0 && (!isRecord6(versioning) || versioning.scheme !== void 0 && !isOneOf2(versioning.scheme, VERSION_SCHEMES)))
+    add4(
       errors,
       "release",
       `${at}/versioning/scheme`,
@@ -18875,7 +19469,7 @@ function sortedRecord2(record) {
   );
 }
 function isRangeMap(value, pattern2) {
-  return isRecord5(value) && Object.keys(value).length > 0 && Object.keys(value).length <= MAX_PACK_DELIVERABLES && Object.entries(value).every(
+  return isRecord6(value) && Object.keys(value).length > 0 && Object.keys(value).length <= MAX_PACK_DELIVERABLES && Object.entries(value).every(
     ([k, v]) => isDeliverableId(k) && typeof v === "string" && pattern2.test(v)
   );
 }
@@ -18939,20 +19533,20 @@ function isAttachableList(value) {
 function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliverables) {
   const content = def.content;
   if (content !== void 0) {
-    if (!isRecord5(content) || !(Number.isSafeInteger(content.contentApi) && content.contentApi >= 1 && content.contentApi <= MAX_CONTENT_API) || content.holds !== void 0)
-      add3(
+    if (!isRecord6(content) || !(Number.isSafeInteger(content.contentApi) && content.contentApi >= 1 && content.contentApi <= MAX_CONTENT_API) || content.holds !== void 0)
+      add4(
         errors,
         "release",
         "/release/deliverables/app/content",
         "invalid_app_content",
         `deliverables.app.content is { contentApi: an integer from 1 to ${MAX_CONTENT_API}, packChannels?, attachable? }; holds are chosen per app release at publish (the content stamp), never declared here.`
       );
-    const map = isRecord5(content) ? content.packChannels : void 0;
+    const map = isRecord6(content) ? content.packChannels : void 0;
     if (map !== void 0) {
-      if (!isRecord5(map) || Object.keys(map).length === 0 || Object.keys(map).length > MAX_PACK_CHANNEL_MAP || !Object.entries(map).every(
+      if (!isRecord6(map) || Object.keys(map).length === 0 || Object.keys(map).length > MAX_PACK_CHANNEL_MAP || !Object.entries(map).every(
         ([k, v]) => k.length <= MAX_DELIVERABLE_ID_LENGTH && PACK_CHANNELS_KEY_PATTERN.test(k) && k !== APP_DELIVERABLE_ID && isCanonicalChannelName(v)
       ))
-        add3(
+        add4(
           errors,
           "release",
           "/release/deliverables/app/content/packChannels",
@@ -18972,7 +19566,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
             ) || own.includes(channel);
           });
           if (matched.length === 0 || reachable.length !== matched.length)
-            add3(
+            add4(
               errors,
               "release",
               `/release/deliverables/app/content/packChannels/${key}`,
@@ -18981,9 +19575,9 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
             );
         }
     }
-    const attachable = isRecord5(content) ? content.attachable : void 0;
+    const attachable = isRecord6(content) ? content.attachable : void 0;
     if (attachable !== void 0 && !isAttachableList(attachable))
-      add3(
+      add4(
         errors,
         "release",
         "/release/deliverables/app/content/attachable",
@@ -18991,7 +19585,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
         `content.attachable is 1 to ${MAX_ATTACHABLE_ENTRIES} distinct entries, each a res:// script path, a res://…/ directory of scripts (already normal: no ., .. or empty segment, printable ASCII without \\ : * ? " < > |) or a canonical uid:// (as Godot writes it), at most ${MAX_ATTACHABLE_ENTRY_BYTES} bytes.`
       );
   } else if (packIds.size > 0) {
-    add3(
+    add4(
       errors,
       "release",
       "/release/deliverables/app/content",
@@ -19000,17 +19594,17 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
     );
   }
   const versioning = def.versioning;
-  if (versioning !== void 0 && !isRecord5(versioning)) {
-    add3(
+  if (versioning !== void 0 && !isRecord6(versioning)) {
+    add4(
       errors,
       "release",
       `/release/deliverables/app/versioning`,
       "invalid_version_scheme",
       "deliverables.app.versioning must be an object."
     );
-  } else if (isRecord5(versioning)) {
+  } else if (isRecord6(versioning)) {
     if (versioning.scheme !== void 0 && !isOneOf2(versioning.scheme, VERSION_SCHEMES)) {
-      add3(
+      add4(
         errors,
         "release",
         `/release/deliverables/app/versioning/scheme`,
@@ -19019,7 +19613,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
       );
     }
     if (versioning.buildNumber !== void 0 && !isOneOf2(versioning.buildNumber, BUILD_NUMBER_SOURCES)) {
-      add3(
+      add4(
         errors,
         "release",
         `/release/deliverables/app/versioning/buildNumber`,
@@ -19028,7 +19622,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
       );
     }
     if (versioning.stableTagPattern !== void 0 && !isTagPattern(versioning.stableTagPattern)) {
-      add3(
+      add4(
         errors,
         "release",
         "/release/deliverables/app/versioning/stableTagPattern",
@@ -19038,7 +19632,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
     }
     if (versioning.ignoreTags !== void 0) {
       if (!isIgnoreTagList(versioning.ignoreTags)) {
-        add3(
+        add4(
           errors,
           "release",
           "/release/deliverables/app/versioning/ignoreTags",
@@ -19048,7 +19642,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
       } else {
         for (const [i, tag2] of versioning.ignoreTags.entries()) {
           if (!isIgnoreTag(tag2)) {
-            add3(
+            add4(
               errors,
               "release",
               `/release/deliverables/app/versioning/ignoreTags/${i}`,
@@ -19062,7 +19656,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
     const nested = versioning.stableTagPattern !== void 0 || versioning.ignoreTags !== void 0;
     const legacy = relRoot.stableTagPattern !== void 0 || relRoot.ignoreTags !== void 0;
     if (nested && legacy) {
-      add3(
+      add4(
         errors,
         "release",
         `/release/deliverables/app/versioning`,
@@ -19073,8 +19667,8 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
   }
   const channels2 = def.channels;
   if (channels2 !== void 0) {
-    if (!isRecord5(channels2) || Object.keys(channels2).length > MAX_DELIVERABLE_CHANNELS) {
-      add3(
+    if (!isRecord6(channels2) || Object.keys(channels2).length > MAX_DELIVERABLE_CHANNELS) {
+      add4(
         errors,
         "release",
         `/release/deliverables/app/channels`,
@@ -19086,7 +19680,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
       const graph = /* @__PURE__ */ new Map();
       for (const [name, decl] of Object.entries(channels2)) {
         if (!isCanonicalChannelName(name)) {
-          add3(
+          add4(
             errors,
             "release",
             `/release/deliverables/app/channels/${name}`,
@@ -19094,8 +19688,8 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
             `deliverables.app.channels names must be canonical (${CANONICAL_CHANNEL_PATTERN.source}, and not an alias such as ${CHANNEL_ALIAS_NAMES.join(" or ")}).`
           );
         }
-        if (!isRecord5(decl)) {
-          add3(
+        if (!isRecord6(decl)) {
+          add4(
             errors,
             "release",
             `/release/deliverables/app/channels/${name}`,
@@ -19106,7 +19700,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
         }
         if (decl.includes === void 0) continue;
         if (!Array.isArray(decl.includes)) {
-          add3(
+          add4(
             errors,
             "release",
             `/release/deliverables/app/channels/${name}/includes`,
@@ -19118,7 +19712,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
         const edges = [];
         for (const [i, inc] of decl.includes.entries()) {
           if (typeof inc !== "string" || !known.has(inc)) {
-            add3(
+            add4(
               errors,
               "release",
               `/release/deliverables/app/channels/${name}/includes/${i}`,
@@ -19126,7 +19720,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
               "includes may only name stable, beta, a manual channel or another declared channel."
             );
           } else if (!isCanonicalChannelName(inc)) {
-            add3(
+            add4(
               errors,
               "release",
               `/release/deliverables/app/channels/${name}/includes/${i}`,
@@ -19139,7 +19733,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
       }
       const cycle = findIncludesCycle(graph);
       if (cycle) {
-        add3(
+        add4(
           errors,
           "release",
           `/release/deliverables/app/channels/${cycle}`,
@@ -19152,7 +19746,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
   const artifacts = def.artifacts;
   if (artifacts === void 0) return;
   if (!Array.isArray(artifacts) || artifacts.length > MAX_ARTIFACT_ENTRIES) {
-    add3(
+    add4(
       errors,
       "release",
       `/release/deliverables/app/artifacts`,
@@ -19163,8 +19757,8 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
   }
   const seen = /* @__PURE__ */ new Set();
   for (const [i, entry] of artifacts.entries()) {
-    if (!isRecord5(entry)) {
-      add3(
+    if (!isRecord6(entry)) {
+      add4(
         errors,
         "release",
         `/release/deliverables/app/artifacts/${i}`,
@@ -19174,7 +19768,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
       continue;
     }
     if (typeof entry.id !== "string" || !ARTIFACT_ENTRY_ID_PATTERN.test(entry.id)) {
-      add3(
+      add4(
         errors,
         "release",
         `/release/deliverables/app/artifacts/${i}/id`,
@@ -19182,7 +19776,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
         `artifacts[].id must match ${ARTIFACT_ENTRY_ID_PATTERN.source}.`
       );
     } else if (seen.has(entry.id)) {
-      add3(
+      add4(
         errors,
         "release",
         `/release/deliverables/app/artifacts/${i}/id`,
@@ -19192,7 +19786,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
     } else {
       seen.add(entry.id);
       if (BARE_ARCH_BUILD_IDS.has(entry.id.toLowerCase())) {
-        add3(
+        add4(
           warnings,
           "release",
           `/release/deliverables/app/artifacts/${i}/id`,
@@ -19202,7 +19796,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
       }
     }
     if (!isOneOf2(entry.platform, RELEASE_PLATFORMS)) {
-      add3(
+      add4(
         errors,
         "release",
         `/release/deliverables/app/artifacts/${i}/platform`,
@@ -19211,7 +19805,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
       );
     }
     if (!isOneOf2(entry.arch, RELEASE_ARCHES)) {
-      add3(
+      add4(
         errors,
         "release",
         `/release/deliverables/app/artifacts/${i}/arch`,
@@ -19220,7 +19814,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
       );
     }
     if (typeof entry.format !== "string" || !ARTIFACT_FORMAT_PATTERN.test(entry.format)) {
-      add3(
+      add4(
         errors,
         "release",
         `/release/deliverables/app/artifacts/${i}/format`,
@@ -19229,7 +19823,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
       );
     }
     if (entry.role !== void 0 && !isOneOf2(entry.role, ARTIFACT_ROLES)) {
-      add3(
+      add4(
         errors,
         "release",
         `/release/deliverables/app/artifacts/${i}/role`,
@@ -19238,7 +19832,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
       );
     }
     if (!isArtifactMatch(entry.match)) {
-      add3(
+      add4(
         errors,
         "release",
         `/release/deliverables/app/artifacts/${i}/match`,
@@ -19249,7 +19843,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
     if (entry.embeds !== void 0) {
       const embeds = entry.embeds;
       if (!Array.isArray(embeds) || embeds.length > MAX_BUILD_EMBEDS || new Set(embeds).size !== embeds.length || !embeds.every((e) => isDeliverableId(e) && e !== APP_DELIVERABLE_ID)) {
-        add3(
+        add4(
           errors,
           "release",
           `/release/deliverables/app/artifacts/${i}/embeds`,
@@ -19259,7 +19853,7 @@ function validateAppDeliverable(errors, warnings, relRoot, def, packIds, deliver
       } else {
         for (const [j, e] of embeds.entries()) {
           if (!packIds.has(e))
-            add3(
+            add4(
               errors,
               "release",
               `/release/deliverables/app/artifacts/${i}/embeds/${j}`,
@@ -19318,7 +19912,7 @@ function parseManifest(files, opts = {}) {
     for (const e of missing.errors) errors.push(formatIngestError(e));
   }
   if (errors.length) return { ok: false, errors };
-  if (!isRecord5(docs.product))
+  if (!isRecord6(docs.product))
     return { ok: false, errors: ["product: must be an object"] };
   const validation = validateIngestDocuments(
     {
@@ -19391,7 +19985,7 @@ function parseManifest(files, opts = {}) {
       routedDeliverables(releaseDoc)
     );
   }
-  if (isRecord5(productRoot.presentation)) {
+  if (isRecord6(productRoot.presentation)) {
     parsed.presentation = normalizePresentation(productRoot.presentation);
   }
   if (productRoot.fingerprint !== void 0) {
@@ -19459,7 +20053,7 @@ function parseManifestPackageDeliverable(raw, id) {
       return null;
     }
   }
-  if (!isRecord5(def) || def.kind !== "package") return null;
+  if (!isRecord6(def) || def.kind !== "package") return null;
   if (!isPackageEcosystem(def.ecosystem)) return null;
   if (!isPackageName(def.ecosystem, def.name)) return null;
   if (PACKAGE_REFUSED_FIELDS.some((f) => def[f] !== void 0)) return null;
@@ -19494,7 +20088,7 @@ function normalizePackDeliverables(raw) {
   return out;
 }
 function normalizePackDeliverable(id, raw) {
-  if (!isRecord5(raw) || raw.kind !== "pack" || !isManifestPackType(raw.type))
+  if (!isRecord6(raw) || raw.kind !== "pack" || !isManifestPackType(raw.type))
     return null;
   const type = raw.type;
   const h = asRecord(raw.handler);
@@ -19555,7 +20149,7 @@ function normalizePackDeliverable(id, raw) {
     versioning: {
       scheme: isOneOf2(asRecord(raw.versioning).scheme, VERSION_SCHEMES) ? asRecord(raw.versioning).scheme : "semver"
     },
-    provides: isRecord5(raw.provides) ? {
+    provides: isRecord6(raw.provides) ? {
       required: raw.provides.required === true,
       from: typeof raw.provides.from === "string" && raw.provides.from.length <= 256 && PROVIDES_FILE_PATTERN.test(raw.provides.from) ? raw.provides.from : DEFAULT_PROVIDES_FILE
     } : null
@@ -19572,11 +20166,11 @@ function normalizeTrustedPublisher(raw) {
 }
 function normalizeAppDeliverable(raw) {
   const def = asRecord(raw)[APP_DELIVERABLE_ID];
-  if (!isRecord5(def) || def.kind !== "app") return null;
+  if (!isRecord6(def) || def.kind !== "app") return null;
   const versioning = asRecord(def.versioning);
   const channels2 = {};
   for (const [name, decl] of Object.entries(asRecord(def.channels))) {
-    if (!isCanonicalChannelName(name) || !isRecord5(decl)) continue;
+    if (!isCanonicalChannelName(name) || !isRecord6(decl)) continue;
     channels2[name] = {
       includes: (arrayAt(decl, "includes") ?? []).filter(
         isCanonicalChannelName
@@ -19585,7 +20179,7 @@ function normalizeAppDeliverable(raw) {
   }
   const artifacts = [];
   for (const entry of arrayAt(def, "artifacts") ?? []) {
-    if (!isRecord5(entry) || typeof entry.id !== "string" || !isOneOf2(entry.platform, RELEASE_PLATFORMS) || !isOneOf2(entry.arch, RELEASE_ARCHES) || typeof entry.format !== "string" || !isArtifactMatch(entry.match))
+    if (!isRecord6(entry) || typeof entry.id !== "string" || !isOneOf2(entry.platform, RELEASE_PLATFORMS) || !isOneOf2(entry.arch, RELEASE_ARCHES) || typeof entry.format !== "string" || !isArtifactMatch(entry.match))
       continue;
     const artifact = {
       id: entry.id,
@@ -19618,7 +20212,7 @@ function normalizeAppDeliverable(raw) {
   if (Number.isSafeInteger(contentApi) && contentApi >= 1) {
     app.content = { contentApi };
     const map = asRecord(def.content).packChannels;
-    if (isRecord5(map) && Object.keys(map).length > 0 && Object.entries(map).every(
+    if (isRecord6(map) && Object.keys(map).length > 0 && Object.entries(map).every(
       ([k, v]) => PACK_CHANNELS_KEY_PATTERN.test(k) && isCanonicalChannelName(v)
     ))
       app.content.packChannels = Object.fromEntries(
@@ -19635,7 +20229,7 @@ function normalizeManualChannels(raw) {
   if (!Array.isArray(raw)) return [];
   const out = [];
   for (const entry of raw) {
-    if (!isRecord5(entry)) continue;
+    if (!isRecord6(entry)) continue;
     const { name, regex } = entry;
     if (typeof name === "string" && CHANNEL_RE.test(name) && typeof regex === "string" && compileManualChannelRegex(regex) !== null) {
       out.push({ name, regex });
@@ -19648,7 +20242,7 @@ function normalizeIgnoreTags(raw) {
   return [...new Set(raw.filter(isIgnoreTag))].slice(0, MAX_IGNORE_TAGS);
 }
 function normalizeReleaseAccess(raw) {
-  if (!isRecord5(raw)) return { ...DEFAULT_RELEASE_ACCESS2 };
+  if (!isRecord6(raw)) return { ...DEFAULT_RELEASE_ACCESS2 };
   return {
     metadata: normalizeReleaseAccessValue(
       raw.metadata,
@@ -19665,7 +20259,7 @@ function normalizeReleaseAccessValue(raw, fallback) {
   return raw;
 }
 function normalizeArtifactPolicy(raw) {
-  if (!isRecord5(raw)) return null;
+  if (!isRecord6(raw)) return null;
   return {
     channels: arrayAt(raw, "channels")?.filter(isString) ?? [],
     architectures: arrayAt(raw, "architectures")?.filter(isString) ?? [],
@@ -19676,7 +20270,7 @@ function normalizeArtifactPolicy(raw) {
   };
 }
 function normalizeProfile(raw) {
-  if (!isRecord5(raw) || typeof raw.id !== "string" || raw.id.length === 0)
+  if (!isRecord6(raw) || typeof raw.id !== "string" || raw.id.length === 0)
     return null;
   const id = raw.id;
   return {
@@ -19687,7 +20281,7 @@ function normalizeProfile(raw) {
   };
 }
 function normalizeTier(raw) {
-  if (!isRecord5(raw) || typeof raw.id !== "string" || raw.id.length === 0)
+  if (!isRecord6(raw) || typeof raw.id !== "string" || raw.id.length === 0)
     return null;
   const id = raw.id;
   return {
@@ -19703,7 +20297,7 @@ function normalizeTier(raw) {
   };
 }
 function normalizeProbe(raw) {
-  if (!isRecord5(raw) || typeof raw.id !== "string" || raw.id.length === 0) {
+  if (!isRecord6(raw) || typeof raw.id !== "string" || raw.id.length === 0) {
     return null;
   }
   const probe = {
@@ -19716,7 +20310,7 @@ function normalizeProbe(raw) {
   return probe;
 }
 function normalizeFingerprint(raw) {
-  const record = isRecord5(raw) ? raw : {};
+  const record = isRecord6(raw) ? raw : {};
   return {
     // Fingerprinting is ON unless a product explicitly opts out.
     enabled: record.enabled === false ? false : true,
@@ -19725,7 +20319,7 @@ function normalizeFingerprint(raw) {
   };
 }
 function normalizeAutoIssue(raw) {
-  const record = isRecord5(raw) ? raw : {};
+  const record = isRecord6(raw) ? raw : {};
   const tierId = typeof record.tierId === "string" && record.tierId ? record.tierId : null;
   const mode = record.mode === void 0 ? "anonymous" : isOneOf2(record.mode, AUTO_ISSUE_MODE_VALUES) ? record.mode : null;
   return {
@@ -19739,7 +20333,7 @@ function normalizeAutoIssue(raw) {
   };
 }
 function normalizeProvisioning(raw) {
-  if (!isRecord5(raw) || typeof raw.claim !== "string" || raw.claim.length === 0) {
+  if (!isRecord6(raw) || typeof raw.claim !== "string" || raw.claim.length === 0) {
     return null;
   }
   const claim = raw.claim;
@@ -19753,7 +20347,7 @@ function normalizeProvisioning(raw) {
   };
 }
 function normalizeEdgeMint(raw) {
-  if (!isRecord5(raw) || typeof raw.id !== "string" || raw.id.length === 0)
+  if (!isRecord6(raw) || typeof raw.id !== "string" || raw.id.length === 0)
     return null;
   const id = raw.id;
   return {
@@ -19770,7 +20364,7 @@ function collectRequiredSecrets(secrets, product, release) {
   const names = /* @__PURE__ */ new Set();
   const required = arrayAt(secrets, "required") ?? [];
   for (const item of required) {
-    if (isRecord5(item) && typeof item.name === "string" && item.name) {
+    if (isRecord6(item) && typeof item.name === "string" && item.name) {
       names.add(item.name);
     } else if (typeof item === "string") names.add(item);
   }
@@ -19781,7 +20375,7 @@ function collectRequiredSecrets(secrets, product, release) {
     names.add(oidcSecret);
   const edgeMint = arrayAt(product, "edgeMint") ?? arrayAt(asRecord(release), "edgeMint") ?? [];
   for (const item of edgeMint) {
-    if (!isRecord5(item)) continue;
+    if (!isRecord6(item)) continue;
     const ref = item.signingKeySecret;
     if (typeof ref === "string" && ref) names.add(ref);
   }
@@ -19839,13 +20433,13 @@ function catalogFlagKeys(schema) {
   const out = /* @__PURE__ */ new Set();
   for (const e of normalizeCatalog(schema)?.entries ?? []) {
     const entry = e;
-    if (isRecord5(entry) && entry.kind === "flag" && typeof entry.key === "string")
+    if (isRecord6(entry) && entry.kind === "flag" && typeof entry.key === "string")
       out.add(entry.key);
   }
   return out;
 }
 function normalizeCatalog(parsed) {
-  if (!isRecord5(parsed)) return null;
+  if (!isRecord6(parsed)) return null;
   if (Array.isArray(parsed.entries)) return parsed;
   if (Array.isArray(parsed.catalog)) {
     return {
@@ -19865,7 +20459,7 @@ function validateCatalogShape(catalog) {
     issues.push("catalog.schemaVersion must be a non-negative integer.");
   }
   for (const [i, raw] of catalog.entries.entries()) {
-    if (!isRecord5(raw)) {
+    if (!isRecord6(raw)) {
       issues.push(`entries[${i}] must be an object.`);
       continue;
     }
@@ -19907,7 +20501,7 @@ function validateCatalogShape(catalog) {
       if (keys.has(entry.key)) issues.push(`entries[${i}].key is duplicated.`);
       keys.add(entry.key);
     }
-    if (!isRecord5(entry.schema)) {
+    if (!isRecord6(entry.schema)) {
       issues.push(`entries[${i}].schema must be an object.`);
       continue;
     }
@@ -19923,7 +20517,7 @@ function validateCatalogShape(catalog) {
 function constrained(errors, file, value, path28, code, re, message) {
   if (value === void 0 || value === null || value === "") return;
   if (typeof value !== "string" || !re.test(value)) {
-    add3(errors, file, path28, code, message);
+    add4(errors, file, path28, code, message);
   }
 }
 function releaseString(errors, value, path28, code, re, message) {
@@ -19932,11 +20526,11 @@ function releaseString(errors, value, path28, code, re, message) {
 function boundedText(errors, file, value, path28, code, max, label) {
   if (value === void 0 || value === null || value === "") return;
   if (typeof value !== "string") {
-    add3(errors, file, path28, code, `${label} must be a string.`);
+    add4(errors, file, path28, code, `${label} must be a string.`);
     return;
   }
   if (value.length > max || CONTROL_CHAR_RE.test(value)) {
-    add3(
+    add4(
       errors,
       file,
       path28,
@@ -19949,21 +20543,21 @@ function constrainedList(errors, file, values, path28, code, re, message) {
   if (!Array.isArray(values)) return;
   for (const [i, value] of values.entries()) {
     if (typeof value !== "string" || !re.test(value)) {
-      add3(errors, file, `${path28}/${i}`, code, message);
+      add4(errors, file, `${path28}/${i}`, code, message);
     }
   }
 }
 function releaseRoot(value) {
-  if (!isRecord5(value)) return null;
-  return isRecord5(value.release) ? value.release : value;
+  if (!isRecord6(value)) return null;
+  return isRecord6(value.release) ? value.release : value;
 }
 function nestedProductDoc(p) {
-  return isRecord5(p.product) ? p.product : p;
+  return isRecord6(p.product) ? p.product : p;
 }
 function asRecord(v) {
-  return isRecord5(v) ? v : {};
+  return isRecord6(v) ? v : {};
 }
-function isRecord5(v) {
+function isRecord6(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 function arrayAt(v, key) {
@@ -20157,7 +20751,7 @@ function isOneOf2(value, allowed) {
 function notNull(v) {
   return v !== null;
 }
-function add3(list2, file, path28, code, message) {
+function add4(list2, file, path28, code, message) {
   list2.push({ file, path: path28, code, message });
 }
 
@@ -20316,8 +20910,8 @@ async function errorDetail(res) {
     const trimmed2 = text.trim();
     return trimmed2 ? { message: clip(trimmed2) } : {};
   }
-  if (!isRecord6(parsed)) return {};
-  const nested = isRecord6(parsed.error) ? parsed.error : {};
+  if (!isRecord7(parsed)) return {};
+  const nested = isRecord7(parsed.error) ? parsed.error : {};
   const detail = {};
   const code = asString(parsed.code) ?? asString(nested.code);
   const message = asString(parsed.message) ?? asString(nested.message);
@@ -20337,7 +20931,7 @@ async function readJson(res, url) {
       `${url} answered ${res.status} with a body that is not JSON: ${clip(text.trim())}`
     );
   }
-  if (!isRecord6(parsed))
+  if (!isRecord7(parsed))
     throw new Error(
       `${url} answered ${res.status} with a non-object JSON body.`
     );
@@ -20368,7 +20962,7 @@ function asStrings(value) {
   const out = value.filter((item) => typeof item === "string");
   return out.length ? out : void 0;
 }
-function isRecord6(value) {
+function isRecord7(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
@@ -20420,8 +21014,21 @@ async function loadManifest(cwd) {
   const schemaFile = await findExisting(rootDir, SCHEMA_FILES);
   const releaseFile = await findExisting(rootDir, RELEASE_FILES);
   const distributionFile = await findExisting(rootDir, DISTRIBUTION_FILES);
+  const fileWarnings = [];
+  for (const names of [
+    PRODUCT_FILES,
+    SCHEMA_FILES,
+    RELEASE_FILES,
+    DISTRIBUTION_FILES
+  ]) {
+    const found = await findAll(rootDir, names);
+    if (found.length > 1)
+      fileWarnings.push(
+        `${found.map((f) => `.pkey/${f}`).join(" and ")} are one document; only .pkey/${found[0]} is read (json, then yaml, then yml), here and on the platform. Keep one file.`
+      );
+  }
   const product = parseFile(productFile, await readFile(productFile, "utf8"));
-  if (!isRecord7(product))
+  if (!isRecord8(product))
     throw new Error(
       `${path2.relative(cwd, productFile)} must parse to an object.`
     );
@@ -20429,6 +21036,7 @@ async function loadManifest(cwd) {
     rootDir,
     productPath: productFile,
     product,
+    ...fileWarnings.length ? { fileWarnings } : {},
     ...schemaFile ? {
       schemaPath: schemaFile,
       schema: parseFile(schemaFile, await readFile(schemaFile, "utf8"))
@@ -20555,7 +21163,7 @@ licensing:
   tiers:
     - id: standard
       label: Standard
-      profile: standard-defaults
+      profileId: standard-defaults
       policyDeviceLimit: 5
       channels: ["stable"]${oidc}
 
@@ -20568,9 +21176,9 @@ function schemaYaml(withExamples) {
 apiVersion: pkey.dev/v1
 schemaVersion: 1
 `;
-  if (!withExamples) return `${header}catalog: []
+  if (!withExamples) return `${header}entries: []
 `;
-  return `${header}catalog:
+  return `${header}entries:
   - key: feature.example
     kind: flag
     label: Example feature
@@ -20632,11 +21240,23 @@ async function findExisting(rootDir, names) {
   }
   return null;
 }
+async function findAll(rootDir, names) {
+  const out = [];
+  for (const name of names) {
+    try {
+      await stat2(path2.join(rootDir, name));
+      out.push(name);
+    } catch (err) {
+      if (err.code !== "ENOENT") throw err;
+    }
+  }
+  return out;
+}
 function parseFile(file, raw) {
   if (file.endsWith(".json")) return JSON.parse(raw);
   return (0, import_yaml2.parse)(raw);
 }
-function isRecord7(value) {
+function isRecord8(value) {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 function isProductModule(value) {
@@ -20652,7 +21272,7 @@ import { appendFile } from "node:fs/promises";
 
 // src/ci.ts
 init_define_PKEY_EMBEDDED_SCHEMAS();
-var defaultSleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+var defaultSleep = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
 var MAX_ATTEMPTS = 4;
 var BASE_BACKOFF_MS = 1e3;
 var MAX_BACKOFF_MS = 3e4;
@@ -26060,7 +26680,7 @@ function parseReleaseKeyFlags(values) {
     return { kid: v.slice(0, eq), publicKey: v.slice(eq + 1) };
   });
 }
-function isRecord8(v) {
+function isRecord9(v) {
   return typeof v === "object" && v !== null && !Array.isArray(v);
 }
 async function resolveSdkFacts(opts) {
@@ -26089,7 +26709,7 @@ async function resolveSdkFacts(opts) {
   } catch {
     throw new Error(`${discoveryUrl} did not answer JSON.`);
   }
-  if (!isRecord8(doc)) throw new Error(`${discoveryUrl} is not an object.`);
+  if (!isRecord9(doc)) throw new Error(`${discoveryUrl} is not an object.`);
   if (doc.product !== opts.product)
     throw new Error(
       `Discovery names product ${JSON.stringify(doc.product)}, not ${opts.product}.`
@@ -26098,8 +26718,8 @@ async function resolveSdkFacts(opts) {
     throw new Error(
       `Discovery speaks protocol ${String(doc.protocolVersion)}; this pkey speaks ${PROTOCOL_VERSION}. Update pkey or the server.`
     );
-  const trust = isRecord8(doc.trust) ? doc.trust : {};
-  const pins = isRecord8(trust.pinnedKeys) ? trust.pinnedKeys : {};
+  const trust = isRecord9(doc.trust) ? doc.trust : {};
+  const pins = isRecord9(trust.pinnedKeys) ? trust.pinnedKeys : {};
   const pinnedKeys = {};
   for (const kid of Object.keys(pins).sort()) {
     const key = pins[kid];
@@ -26118,12 +26738,12 @@ async function resolveSdkFacts(opts) {
         `Discovery does not pin ${kid} with the key you gave (--kid/--public-key); nothing was written. Compare the console's signing keys with ${discoveryUrl}.`
       );
   }
-  const services = isRecord8(doc.services) ? doc.services : {};
+  const services = isRecord9(doc.services) ? doc.services : {};
   const enabled = SERVICE_SLUGS.filter((slug) => {
     const s = services[slug];
-    return isRecord8(s) && s.enabled === true;
+    return isRecord9(s) && s.enabled === true;
   });
-  const release = isRecord8(services.release) ? services.release : {};
+  const release = isRecord9(services.release) ? services.release : {};
   const advertised = Array.isArray(release.releaseKeyFingerprints) ? release.releaseKeyFingerprints.filter(
     (f) => typeof f === "string"
   ) : [];
@@ -35515,7 +36135,7 @@ function toolEnv(env) {
       out[k] = v;
   return out;
 }
-var defaultSpawn = (tool, argv2, cwd) => new Promise((resolve, reject) => {
+var defaultSpawn = (tool, argv2, cwd) => new Promise((resolve2, reject) => {
   const child = spawn(tool, [...argv2], {
     cwd,
     env: toolEnv(process.env),
@@ -35528,7 +36148,7 @@ var defaultSpawn = (tool, argv2, cwd) => new Promise((resolve, reject) => {
       new Error(`Could not start ${tool}: ${e.message}. Is it on PATH?`)
     )
   );
-  child.on("close", (code) => resolve(code ?? -1));
+  child.on("close", (code) => resolve2(code ?? -1));
 });
 function checkToolPath(toolPath, tool) {
   const base = path21.basename(toolPath.replace(/\\/g, "/")).replace(/\.(exe|sh|cmd|bat)$/i, "");
@@ -37917,7 +38537,7 @@ Re-run to review and apply it.`
   });
   return result;
 }
-function show(v) {
+function show2(v) {
   const s = JSON.stringify(v) ?? "null";
   return s.length > 72 ? `${s.slice(0, 71)}…` : s;
 }
@@ -37938,7 +38558,7 @@ function formatImport(r) {
     lines3.push("No changes: the listing already holds what the project has.");
   const width = Math.max(0, ...imp.changes.map((c) => c.field.length));
   for (const c of imp.changes) {
-    const value = c.action === "replace" ? `${show(c.current)} -> ${show(c.proposed)}` : c.action === "keep" ? `${show(c.current)} (kept: ${c.reason ?? "kept"}; godot has ${show(c.proposed)})` : show(c.proposed);
+    const value = c.action === "replace" ? `${show2(c.current)} -> ${show2(c.proposed)}` : c.action === "keep" ? `${show2(c.current)} (kept: ${c.reason ?? "kept"}; godot has ${show2(c.proposed)})` : show2(c.proposed);
     lines3.push(`  ${c.action.padEnd(7)}  ${c.field.padEnd(width)}  ${value}`);
   }
   for (const x of imp.refused) lines3.push(`refused  ${x.field}: ${x.message}`);
@@ -38010,9 +38630,9 @@ function crop(src, rect) {
       `crop ${width}x${height}+${x}+${y} is outside the ${src.width}x${src.height} image`
     );
   const out = makeRaster(width, height);
-  for (let row = 0; row < height; row++) {
-    const from = ((y + row) * src.width + x) * 4;
-    out.data.set(src.data.subarray(from, from + width * 4), row * width * 4);
+  for (let row2 = 0; row2 < height; row2++) {
+    const from = ((y + row2) * src.width + x) * 4;
+    out.data.set(src.data.subarray(from, from + width * 4), row2 * width * 4);
   }
   return out;
 }
@@ -38210,9 +38830,9 @@ function boxPass(src, radius, horizontal) {
       }
       for (let i = 0; i < len; i++) {
         d[base + i * step + c] = Math.floor((sum * 2 + n) / (2 * n));
-        const add4 = Math.min(len - 1, i + radius + 1);
+        const add5 = Math.min(len - 1, i + radius + 1);
         const drop = Math.max(0, i - radius);
-        sum += s[base + add4 * step + c] - s[base + drop * step + c];
+        sum += s[base + add5 * step + c] - s[base + drop * step + c];
       }
     }
   }
@@ -39732,7 +40352,7 @@ function parseArgs(argv2) {
   const multi = {};
   const bare = /* @__PURE__ */ new Set();
   const positional = [];
-  const add4 = (key, value) => {
+  const add5 = (key, value) => {
     flags[key] = value;
     (multi[key] ??= []).push(value);
   };
@@ -39749,12 +40369,12 @@ function parseArgs(argv2) {
     }
     const [rawKey2, inlineValue] = arg.slice(2).split("=", 2);
     if (inlineValue !== void 0) {
-      add4(rawKey2, inlineValue);
+      add5(rawKey2, inlineValue);
       continue;
     }
     const next = rest[i + 1];
     if (next && !next.startsWith("--")) {
-      add4(rawKey2, next);
+      add5(rawKey2, next);
       i += 1;
     } else {
       flags[rawKey2] = true;
@@ -39799,6 +40419,9 @@ async function cmdValidate(cwd, stdout) {
   );
   if (result.requiredSecrets.length)
     stdout.write(`Required secrets: ${result.requiredSecrets.join(", ")}
+`);
+  for (const warning of manifest.fileWarnings ?? [])
+    stdout.write(`warning .pkey/: ${warning}
 `);
   for (const warning of result.warnings) {
     stdout.write(

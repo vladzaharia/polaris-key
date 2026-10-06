@@ -15,9 +15,12 @@
       "items": { "$ref": "#/$defs/configEntry" }
     },
     "catalog": {
-      "description": "Alias of entries (accepted by normalizeCatalog).",
+      "description": "Deprecated: write entries. Still accepted (plans/ST-19.md); pkey validate warns with deprecated_spelling.",
       "type": "array",
-      "items": { "$ref": "#/$defs/configEntry" }
+      "items": {
+        "$ref": "#/$defs/configEntry"
+      },
+      "deprecated": true
     },
     "cloudSync": { "$ref": "#/$defs/cloudSync" }
   },

@@ -435,7 +435,7 @@ modules:
 
 const SCHEMA_YAML = `apiVersion: pkey.dev/v1
 schemaVersion: 1
-catalog:
+entries:
   - key: hd
     kind: flag
     category: Content

@@ -53,6 +53,8 @@ import {
   PACKAGE_NAME_MAX_LENGTH,
   PACKAGE_NAME_PATTERNS,
   PACKAGE_REFUSED_FIELDS,
+  DEPRECATED_SPELLINGS,
+  type DeprecatedSpelling,
   type DescriptorManifest,
   type ParsedManifest,
 } from "../src/index.js";
@@ -110,8 +112,6 @@ function base(): Docs {
         adminGroup: "admins",
         compatMin: "1.0.0",
         compatMax: "99.0.0",
-        defaultDeviceLimit: 5,
-        defaultMaxOfflineDays: 30,
       },
       modules: {
         license: { enabled: true },
@@ -129,7 +129,10 @@ function base(): Docs {
         accent: "#3b1f1f",
         accentDark: "#E8B4B4",
       },
+      // ST-19: the canonical spellings (plans/ST-19.md §3.1); `base()` emits no warning.
       licensing: {
+        defaultDeviceLimit: 5,
+        defaultMaxOfflineDays: 30,
         profiles: [
           { id: "base", name: "Base profile", payload: { config: {} } },
         ],
@@ -193,6 +196,18 @@ function base(): Docs {
         unlicensed: { limits: { totalBytes: 1048576 }, saves: false },
         writes: { requireLicense: false, minTrust: null },
       },
+      // ST-19 row 17: edge-mint recipes belong in `.pkey/product`. The release document's root
+      // copy is the deprecated spelling (and a copy under its `release:` wrapper is never read).
+      edgeMint: [
+        {
+          id: "applemusic",
+          alg: "ES256",
+          signingKeySecret: "APPLE_MUSIC_KEY",
+          kid: "ABC123",
+          claimsTemplate: { iss: "TEAMID" },
+          ttlSeconds: 3600,
+        },
+      ],
     },
     schema: {
       schemaVersion: 1,
@@ -444,19 +459,6 @@ function base(): Docs {
           },
         },
       },
-      // NOTE: at the release-document ROOT, not inside the `release` wrapper — the validator
-      // reads edgeMint from `manifest.release` directly (it does not unwrap through
-      // releaseRoot() for this block), so a nested copy would be silently invisible.
-      edgeMint: [
-        {
-          id: "applemusic",
-          alg: "ES256",
-          signingKeySecret: "APPLE_MUSIC_KEY",
-          kid: "ABC123",
-          claimsTemplate: { iss: "TEAMID" },
-          ttlSeconds: 3600,
-        },
-      ],
     },
     // P2b-02: a Diceroll-shaped `.pkey/distribution` (README §3.12) — every outlet kind, a
     // non-kind id (`altstore-beta`), the three detection-only fields, both numeric-id spellings,
@@ -575,11 +577,13 @@ type Mutation = {
   /** Can JSON Schema express this rule? "accepts" documents validator-only rules. */
   schema: "rejects" | "accepts";
   mutate: (d: Docs) => void;
+  /** ST-19: the `DEPRECATED_SPELLINGS` row (plans/ST-19.md §3.1) this mutation exercises. */
+  row?: number;
 };
 
 const p = (d: Docs) => d.product as Record<string, any>;
 const rel = (d: Docs) => (d.release as Record<string, any>).release;
-const mint = (d: Docs) => (d.release as Record<string, any>).edgeMint[0];
+const mint = (d: Docs) => p(d).edgeMint[0];
 const app = (d: Docs) => rel(d).deliverables.app;
 const core3d = (d: Docs) => rel(d).deliverables["acme.core3d"];
 const l10n = (d: Docs) => rel(d).deliverables["acme.l10n"];
@@ -595,6 +599,15 @@ const csProd = (d: Docs) => p(d).cloudSync;
 const bindings = (d: Docs) =>
   cat(d).entries.find((e: { key: string }) => e.key === "input.bindings");
 const outlet = (d: Docs, id: string) => dist(d).outlets[id];
+/** ST-19: the base product with its `product:` wrapper flattened into the root (rows 1–2). */
+const flatten = (d: Docs) => {
+  Object.assign(p(d), p(d).product);
+  delete p(d).product;
+};
+/** ST-19: the base release document with its `release:` wrapper removed (rows 14–16). */
+const unwrap = (d: Docs) => {
+  d.release = { ...(d.release as Record<string, any>).release };
+};
 
 /** One entry per validator error code (asserted complete against the source below). */
 const MUTATIONS: Mutation[] = [
@@ -735,7 +748,7 @@ const MUTATIONS: Mutation[] = [
     code: "invalid_number",
     file: "product",
     schema: "rejects",
-    mutate: (d) => (p(d).product.defaultDeviceLimit = -1),
+    mutate: (d) => (p(d).licensing.defaultDeviceLimit = -1),
   },
   {
     code: "missing_schema",
@@ -2232,31 +2245,31 @@ const MUTATIONS: Mutation[] = [
   },
   {
     code: "invalid_edge_mint_id",
-    file: "release",
+    file: "product",
     schema: "rejects",
     mutate: (d) => (mint(d).id = "bad id!"),
   },
   {
     code: "invalid_edge_mint_kid",
-    file: "release",
+    file: "product",
     schema: "rejects",
     mutate: (d) => (mint(d).kid = "bad kid!"),
   },
   {
     code: "invalid_edge_mint_audience",
-    file: "release",
+    file: "product",
     schema: "rejects",
     mutate: (d) => (mint(d).audience = "x".repeat(300)),
   },
   {
     code: "invalid_edge_mint_alg",
-    file: "release",
+    file: "product",
     schema: "rejects",
     mutate: (d) => (mint(d).alg = "HS256"),
   },
   {
     code: "invalid_ttl",
-    file: "release",
+    file: "product",
     schema: "rejects",
     mutate: (d) => (mint(d).ttlSeconds = 0),
   },
@@ -2403,7 +2416,7 @@ const MUTATIONS: Mutation[] = [
   },
   {
     code: "value_not_representable",
-    file: "release",
+    file: "product",
     schema: "accepts",
     mutate: (d) => (mint(d).claimsTemplate = { sub: "\udc00" }),
   },
@@ -2895,12 +2908,192 @@ const MUTATIONS: Mutation[] = [
     mutate: (d) =>
       (outlet(d, "altstore-beta").capabilities = { downloadedScripts: true }),
   },
+  // ── ST-19: duplicate spellings (plans/ST-19.md §3.3). Warnings, and the schemas still accept
+  //    every old spelling (they only mark it `deprecated`), so every entry is "accepts". ──
+  {
+    code: "deprecated_spelling",
+    file: "product",
+    schema: "accepts",
+    row: 1,
+    mutate: flatten,
+  },
+  {
+    code: "deprecated_spelling",
+    file: "product",
+    schema: "accepts",
+    row: 2,
+    mutate: (d) => {
+      p(d).adminGroup = p(d).product.adminGroup;
+      delete p(d).product.adminGroup;
+    },
+  },
+  {
+    code: "deprecated_spelling",
+    file: "product",
+    schema: "accepts",
+    row: 3,
+    mutate: (d) => {
+      p(d).product.defaultDeviceLimit = p(d).licensing.defaultDeviceLimit;
+      delete p(d).licensing.defaultDeviceLimit;
+    },
+  },
+  {
+    code: "deprecated_spelling",
+    file: "product",
+    schema: "accepts",
+    row: 4,
+    mutate: (d) => {
+      p(d).defaultMaxOfflineDays = p(d).licensing.defaultMaxOfflineDays;
+      delete p(d).licensing.defaultMaxOfflineDays;
+    },
+  },
+  {
+    code: "deprecated_spelling",
+    file: "product",
+    schema: "accepts",
+    row: 5,
+    mutate: (d) => {
+      p(d).tiers = p(d).licensing.tiers;
+      delete p(d).licensing.tiers;
+    },
+  },
+  {
+    code: "deprecated_spelling",
+    file: "product",
+    schema: "accepts",
+    row: 6,
+    mutate: (d) => {
+      p(d).profiles = p(d).licensing.profiles;
+      delete p(d).licensing.profiles;
+    },
+  },
+  {
+    code: "deprecated_spelling",
+    file: "product",
+    schema: "accepts",
+    row: 7,
+    mutate: (d) => {
+      const tier = p(d).licensing.tiers[0];
+      tier.profile = tier.profileId;
+      delete tier.profileId;
+    },
+  },
+  {
+    code: "deprecated_spelling",
+    file: "product",
+    schema: "accepts",
+    row: 8,
+    mutate: (d) => (p(d).licensing.tiers[0].expiryDays = 30),
+  },
+  {
+    code: "deprecated_spelling",
+    file: "product",
+    schema: "accepts",
+    row: 9,
+    mutate: (d) => {
+      const profile = p(d).licensing.profiles[0];
+      profile.label = profile.name;
+      delete profile.name;
+    },
+  },
+  {
+    code: "deprecated_spelling",
+    file: "product",
+    schema: "accepts",
+    row: 10,
+    mutate: (d) => {
+      p(d).oidc.clientSecretRef = p(d).oidc.clientSecretSecret;
+      delete p(d).oidc.clientSecretSecret;
+    },
+  },
+  {
+    code: "deprecated_spelling",
+    file: "product",
+    schema: "accepts",
+    row: 11,
+    mutate: (d) => {
+      p(d).release = rel(d);
+      delete d.release;
+    },
+  },
+  {
+    code: "deprecated_spelling",
+    file: "product",
+    schema: "accepts",
+    row: 12,
+    mutate: (d) => {
+      p(d).modules.licensing = p(d).modules.license;
+      delete p(d).modules.license;
+    },
+  },
+  {
+    code: "deprecated_spelling",
+    file: "schema",
+    schema: "accepts",
+    row: 13,
+    mutate: (d) => {
+      const schema = d.schema as Record<string, any>;
+      schema.catalog = schema.entries;
+      delete schema.entries;
+    },
+  },
+  {
+    code: "deprecated_spelling",
+    file: "release",
+    schema: "accepts",
+    row: 14,
+    mutate: unwrap,
+  },
+  {
+    code: "deprecated_spelling",
+    file: "release",
+    schema: "accepts",
+    row: 15,
+    mutate: (d) => {
+      rel(d).ghOwner = rel(d).provider.owner;
+      rel(d).ghRepo = rel(d).provider.repo;
+      delete rel(d).provider;
+    },
+  },
+  {
+    code: "deprecated_spelling",
+    file: "release",
+    schema: "accepts",
+    row: 17,
+    mutate: (d) => {
+      (d.release as Record<string, any>).edgeMint = p(d).edgeMint;
+      delete p(d).edgeMint;
+    },
+  },
+  {
+    code: "conflicting_spelling",
+    file: "product",
+    schema: "accepts",
+    row: 3,
+    mutate: (d) => (p(d).defaultDeviceLimit = 9),
+  },
+  {
+    code: "conflicting_spelling",
+    file: "schema",
+    schema: "accepts",
+    row: 13,
+    mutate: (d) => ((d.schema as Record<string, any>).catalog = []),
+  },
+  {
+    code: "conflicting_spelling",
+    file: "release",
+    schema: "accepts",
+    row: 15,
+    mutate: (d) => (rel(d).ghOwner = "acme-org"),
+  },
 ];
 
 describe("valid manifests pass both validators", () => {
   it("the rich base fixture", () => {
     const docs = base();
     expect(tsCodes(docs)).toEqual([]);
+    // ST-19: `base()` is written in the canonical spellings only.
+    expect(tsCodes(docs)).not.toContain("deprecated_spelling");
     expect(schemaAccepts(docs)).toEqual({
       product: true,
       schema: true,
@@ -2924,7 +3117,7 @@ describe("valid manifests pass both validators", () => {
     }
   });
 
-  it("the alias shapes (flattened root, licensing nesting, clientSecretRef, tier.profile)", () => {
+  it("the alias shapes (flattened root, licensing nesting, clientSecretRef, tier.profile) stay valid and warn (ST-19)", () => {
     const docs: Docs = {
       product: {
         slug: "acme",
@@ -2940,7 +3133,26 @@ describe("valid manifests pass both validators", () => {
       },
       schema: { schemaVersion: 1, catalog: [] },
     };
-    expect(tsCodes(docs)).toEqual([]);
+    const res = validateIngestDocuments(docs);
+    expect(res.errors).toEqual([]);
+    expect(
+      res.warnings.map((w) => `${w.code} ${w.file}${w.path}`).sort(),
+    ).toEqual(
+      [
+        "product/slug",
+        "product/name",
+        "product/compatMin",
+        "product/tiers",
+        "product/profiles",
+        "product/tiers/0/profile",
+        "product/tiers/0/expiryDays",
+        "product/profiles/0/label",
+        "product/oidc/clientSecretRef",
+        "schema/catalog",
+      ]
+        .map((at) => `deprecated_spelling ${at}`)
+        .sort(),
+    );
     expect(schemaAccepts(docs)).toEqual({
       product: true,
       schema: true,
@@ -3089,6 +3301,21 @@ describe("valid manifests pass both validators", () => {
     ).toBe(true);
     const res = validateManifestDocuments({ product, schema: catalog });
     expect(res.errors).toEqual([]);
+    // ST-19 (plans/ST-19.md §3.3): the fixture mirrors djdl's flat product.json, so it warns on
+    // exactly the deprecated spellings it uses (rows 1–5 and 11; it declares no profiles).
+    expect(res.warnings.map((w) => `${w.code} ${w.file}${w.path}`)).toEqual(
+      [
+        "/slug",
+        "/name",
+        "/adminGroup",
+        "/compatMin",
+        "/compatMax",
+        "/defaultDeviceLimit",
+        "/defaultMaxOfflineDays",
+        "/tiers",
+        "/release",
+      ].map((at) => `deprecated_spelling product${at}`),
+    );
   });
 });
 
@@ -3211,9 +3438,15 @@ describe("the pack schema's vocabularies are the validator's constants (P4-02)",
 
 describe("every validator code has a mutation, and the schemas catch what they claim", () => {
   it("the mutation table covers every code the validator source emits", () => {
-    // `.pkey/distribution`'s rules (P2b-02) and the Cloud Sync rules (U-04) live in their own
-    // modules but are part of the same validator, so every source is swept.
-    const source = ["index.ts", "distribution.ts", "cloudSync.ts"]
+    // `.pkey/distribution`'s rules (P2b-02), the Cloud Sync rules (U-04) and the duplicate-spelling
+    // pass (ST-19) live in their own modules but are part of the same validator, so every source
+    // is swept.
+    const source = [
+      "index.ts",
+      "distribution.ts",
+      "cloudSync.ts",
+      "spellings.ts",
+    ]
       .map((f) => readFileSync(join(here, "..", "src", f), "utf8"))
       .join("\n");
     // Codes appear as the 4th argument of add(...) and the 5th of the constrained/bounded
@@ -3253,6 +3486,495 @@ describe("every validator code has a mutation, and the schemas catch what they c
       }
     });
   }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// ST-19: every row of DEPRECATED_SPELLINGS (plans/ST-19.md §3.3). For each spelling: its code is
+// emitted at its pointer, its conflict code when the canonical spelling is also set, the parsed
+// value is the side the row says wins, and its row has a hand-written mutation above.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+
+type DocName = DeprecatedSpelling["doc"];
+
+/** A concrete pointer (no `*`) inside `docs[doc]`; `""` is the whole document. */
+function getAt(docs: Docs, doc: DocName, pointer: string): unknown {
+  let node: unknown = docs[doc];
+  for (const seg of pointer.split("/").slice(1))
+    node = (node as Record<string, unknown> | undefined)?.[seg];
+  return node;
+}
+function putAt(docs: Docs, doc: DocName, pointer: string, value: unknown) {
+  if (pointer === "") {
+    (docs as Record<string, unknown>)[doc] = value;
+    return;
+  }
+  const segs = pointer.split("/").slice(1);
+  let node = docs[doc] as Record<string, unknown>;
+  for (const seg of segs.slice(0, -1)) {
+    if (typeof node[seg] !== "object" || node[seg] === null) node[seg] = {};
+    node = node[seg] as Record<string, unknown>;
+  }
+  node[segs.at(-1)!] = structuredClone(value);
+}
+function delAt(docs: Docs, doc: DocName, pointer: string) {
+  if (pointer === "") {
+    delete (docs as Record<string, unknown>)[doc];
+    return;
+  }
+  const segs = pointer.split("/").slice(1);
+  const parent = getAt(
+    docs,
+    doc,
+    `/${segs.slice(0, -1).join("/")}`.replace(/\/$/, ""),
+  );
+  if (parent && typeof parent === "object")
+    delete (parent as Record<string, unknown>)[segs.at(-1)!];
+}
+
+interface SpellingCase {
+  /** Applied in both scenarios, before anything else. */
+  setup?: (d: Docs) => void;
+  /** Applied only when the old spelling stands alone. */
+  setupAlone?: (d: Docs) => void;
+  /** The value written at the old spelling (omitted: leave what the setup wrote). */
+  old?: unknown;
+  /** The value written at the canonical spelling when both are set (omitted: keep base's). */
+  canon?: unknown;
+  /** Where the parsed manifest exposes the value, and what each scenario must yield. */
+  read?: (m: ParsedManifest) => unknown;
+  alone?: unknown;
+  both?: unknown;
+  /** A concrete path for a `*` that is not an array index (row 18's outlet id). */
+  at?: string;
+  canonAt?: string;
+}
+
+const baseRelease = () => rel(base());
+const tiersWithLabel = (label: string) => {
+  const tiers = structuredClone(p(base()).licensing.tiers);
+  tiers[0].label = label;
+  return tiers;
+};
+const profilesWithName = (name: string) => {
+  const profiles = structuredClone(p(base()).licensing.profiles);
+  profiles[0].name = name;
+  return profiles;
+};
+const altProfile = (d: Docs) =>
+  p(d).licensing.profiles.push({ id: "alt", name: "Alt" });
+const rootTiers = (d: Docs) => {
+  altProfile(d);
+  p(d).tiers = p(d).licensing.tiers;
+  delete p(d).licensing.tiers;
+};
+const rootProfiles = (d: Docs) => {
+  p(d).profiles = p(d).licensing.profiles;
+  delete p(d).licensing.profiles;
+};
+const mintAs = (id: string) => [
+  { ...structuredClone(p(base()).edgeMint[0]), id },
+];
+
+const SPELLING_CASES: Record<string, SpellingCase> = {
+  "product/slug": {
+    setupAlone: flatten,
+    old: "acme2",
+    canon: "acme",
+    read: (m) => m.product.slug,
+    alone: "acme2",
+    both: "acme",
+  },
+  "product/name": {
+    setupAlone: flatten,
+    old: "Old",
+    canon: "Acme",
+    read: (m) => m.product.name,
+    alone: "Old",
+    both: "Acme",
+  },
+  "product/adminGroup": {
+    old: "ops",
+    canon: "admins",
+    read: (m) => m.product.adminGroup,
+    alone: "ops",
+    both: "admins",
+  },
+  "product/compatMin": {
+    old: "2.0.0",
+    canon: "1.0.0",
+    read: (m) => m.product.compatMin,
+    alone: "2.0.0",
+    both: "1.0.0",
+  },
+  "product/compatMax": {
+    old: "50.0.0",
+    canon: "99.0.0",
+    read: (m) => m.product.compatMax,
+    alone: "50.0.0",
+    both: "99.0.0",
+  },
+  "product/product/defaultDeviceLimit": {
+    old: 7,
+    canon: 5,
+    read: (m) => m.product.defaultDeviceLimit,
+    alone: 7,
+    both: 7,
+  },
+  "product/defaultDeviceLimit": {
+    old: 8,
+    canon: 5,
+    read: (m) => m.product.defaultDeviceLimit,
+    alone: 8,
+    both: 8,
+  },
+  "product/product/defaultMaxOfflineDays": {
+    old: 40,
+    canon: 30,
+    read: (m) => m.product.defaultMaxOfflineDays,
+    alone: 40,
+    both: 40,
+  },
+  "product/defaultMaxOfflineDays": {
+    old: 45,
+    canon: 30,
+    read: (m) => m.product.defaultMaxOfflineDays,
+    alone: 45,
+    both: 45,
+  },
+  "product/tiers": {
+    old: tiersWithLabel("Old"),
+    read: (m) => m.tiers[0]?.label,
+    alone: "Old",
+    both: "Old",
+  },
+  "product/profiles": {
+    old: profilesWithName("Old"),
+    read: (m) => m.profiles[0]?.name,
+    alone: "Old",
+    both: "Old",
+  },
+  "product/licensing/tiers/*/profile": {
+    setup: altProfile,
+    old: "alt",
+    canon: "base",
+    read: (m) => m.tiers[0]?.profileId,
+    alone: "alt",
+    both: "base",
+  },
+  "product/tiers/*/profile": {
+    setup: rootTiers,
+    old: "alt",
+    canon: "base",
+    read: (m) => m.tiers[0]?.profileId,
+    alone: "alt",
+    both: "base",
+  },
+  "product/licensing/tiers/*/expiryDays": {
+    old: 10,
+    canon: 20,
+    read: (m) => m.tiers[0]?.policyExpiryDays,
+    alone: 10,
+    both: 20,
+  },
+  "product/tiers/*/expiryDays": {
+    setup: rootTiers,
+    old: 10,
+    canon: 20,
+    read: (m) => m.tiers[0]?.policyExpiryDays,
+    alone: 10,
+    both: 20,
+  },
+  "product/licensing/profiles/*/label": {
+    old: "Old",
+    read: (m) => m.profiles[0]?.name,
+    alone: "Old",
+    both: "Base profile",
+  },
+  "product/profiles/*/label": {
+    setup: rootProfiles,
+    old: "Old",
+    read: (m) => m.profiles[0]?.name,
+    alone: "Old",
+    both: "Base profile",
+  },
+  "product/oidc/clientSecretRef": {
+    old: "OTHER_SECRET",
+    read: (m) => m.oidc?.clientSecretSecret,
+    alone: "OTHER_SECRET",
+    both: "OIDC_CLIENT_SECRET",
+  },
+  "product/release": {
+    old: { ...baseRelease(), binaryName: "inline" },
+    read: (m) => m.release?.binaryName,
+    alone: "inline",
+    both: "acme",
+  },
+  "product/modules/licensing": {
+    setupAlone: (d) => delete p(d).modules.license,
+    old: { enabled: true },
+    read: (m) => m.services.license.enabled,
+    alone: true,
+  },
+  "product/modules/releases": {
+    setupAlone: (d) => delete p(d).modules.release,
+    old: { enabled: true },
+    read: (m) => m.services.release.enabled,
+    alone: true,
+  },
+  "product/modules/oidc": {
+    setupAlone: (d) => delete p(d).modules.identity,
+    old: { enabled: true },
+    read: (m) => m.services.identity.enabled,
+    alone: true,
+  },
+  "product/modules/edgeMint": {
+    setupAlone: (d) => delete p(d).modules.config,
+    old: { enabled: true },
+    read: (m) => m.services.config.enabled,
+    alone: true,
+  },
+  "schema/catalog": {
+    old: [...(base().schema as { entries: unknown[] }).entries].reverse(),
+    read: (m) => m.catalog.entries[0]?.key,
+    // The reversed catalog starts with base's last entry (U-04 appended Cloud Sync's flags).
+    alone: (base().schema as { entries: { key: string }[] }).entries.at(-1)!
+      .key,
+    both: "run.concurrency",
+  },
+  "release/release/ghOwner": {
+    old: "acme-org",
+    canon: "acme",
+    read: (m) => m.release?.ghOwner,
+    alone: "acme-org",
+    both: "acme-org",
+  },
+  "release/release/ghRepo": {
+    old: "app",
+    canon: "desktop",
+    read: (m) => m.release?.ghRepo,
+    alone: "app",
+    both: "app",
+  },
+  "release/ghOwner": {
+    setup: unwrap,
+    old: "acme-org",
+    canon: "acme",
+    read: (m) => m.release?.ghOwner,
+    alone: "acme-org",
+    both: "acme-org",
+  },
+  "release/ghRepo": {
+    setup: unwrap,
+    old: "app",
+    canon: "desktop",
+    read: (m) => m.release?.ghRepo,
+    alone: "app",
+    both: "app",
+  },
+  "release/release/stableTagPattern": {
+    canon: "v\\d+",
+    read: (m) => m.release?.stableTagPattern,
+    alone: "v\\d+\\.\\d+\\.\\d+",
+  },
+  "release/stableTagPattern": {
+    setup: unwrap,
+    canon: "v\\d+",
+    read: (m) => m.release?.stableTagPattern,
+    alone: "v\\d+\\.\\d+\\.\\d+",
+  },
+  "release/release/ignoreTags": {
+    canon: ["x"],
+    read: (m) => m.release?.ignoreTags,
+    alone: ["channels", "packs"],
+  },
+  "release/ignoreTags": {
+    setup: unwrap,
+    canon: ["x"],
+    read: (m) => m.release?.ignoreTags,
+    alone: ["channels", "packs"],
+  },
+  "release/edgeMint": {
+    old: mintAs("other"),
+    read: (m) => m.edgeMint.map((e) => e.id),
+    alone: ["other"],
+    both: ["applemusic"],
+  },
+  "release/release/edgeMint": {
+    setupAlone: (d) => delete p(d).edgeMint,
+    old: mintAs("other"),
+    read: (m) => m.edgeMint.map((e) => e.id),
+    alone: [],
+  },
+  "distribution/listing/iconUrl": {
+    old: "https://acme.example/i.png",
+    read: (m) => m.distribution?.listing?.icon?.src,
+    alone: "https://acme.example/i.png",
+  },
+  "distribution/listing/headerUrl": {
+    old: "https://acme.example/h.png",
+    read: (m) => m.distribution?.listing?.header?.src,
+    alone: "https://acme.example/h.png",
+  },
+  "distribution/outlets/*/listing/iconUrl": {
+    at: "/outlets/direct/listing/iconUrl",
+    canonAt: "/outlets/direct/listing/icon",
+    old: "https://acme.example/i.png",
+    canon: "https://acme.example/j.png",
+  },
+  "distribution/outlets/*/listing/headerUrl": {
+    at: "/outlets/direct/listing/headerUrl",
+    canonAt: "/outlets/direct/listing/header",
+    old: "https://acme.example/h.png",
+    canon: "https://acme.example/k.png",
+  },
+};
+// Row 14: a root release field is the base value moved out of the wrapper (alone), or a value
+// next to the wrapper that nothing reads (both). Either way the parsed release is base's.
+for (const s of DEPRECATED_SPELLINGS.filter((s) => s.row === 14))
+  SPELLING_CASES[`release${s.pointer}`] = {
+    setupAlone: unwrap,
+    old: undefined,
+    canon: undefined,
+    read: (m) => m.release,
+  };
+
+function parsedOf(docs: Docs): ParsedManifest {
+  const files: Record<string, string> = {};
+  for (const [k, v] of Object.entries(docs))
+    if (v !== undefined) files[k] = JSON.stringify(v);
+  const res = parseManifest(files);
+  if (!res.ok) throw new Error(res.errors.join("\n"));
+  return res.manifest;
+}
+
+describe("deprecated spellings warn, keep their precedence, and each row has a mutation (ST-19)", () => {
+  const baseParsed = parsedOf(base());
+  for (const s of DEPRECATED_SPELLINGS) {
+    const key = `${s.doc}${s.pointer}`;
+    const c = SPELLING_CASES[key];
+    const at = c?.at ?? s.pointer.replace(/\*/g, "0");
+    const canonAt =
+      c?.canonAt ?? s.canonicalPointer?.pointer.replace(/\*/g, "0");
+
+    it(`row ${s.row}: ${key}`, () => {
+      expect(c, `no SPELLING_CASES entry for ${key}`).toBeDefined();
+      // A row-14 alone case writes nothing new: the unwrap moved base's value to the root.
+      const isRow14 = s.row === 14;
+
+      // The old spelling on its own.
+      const alone = base();
+      c!.setup?.(alone);
+      c!.setupAlone?.(alone);
+      if (c!.old !== undefined) putAt(alone, s.doc, at, c!.old);
+      if (s.canonicalPointer && canonAt !== undefined && !isRow14)
+        delAt(alone, s.canonicalPointer.doc, canonAt);
+      const resAlone = validateIngestDocuments(alone);
+      expect(resAlone.errors, "the old spelling still validates").toEqual([]);
+      const hits = resAlone.warnings.filter((w) => w.path === at);
+      if (s.code === null)
+        expect(hits.map((w) => w.code)).not.toContain("deprecated_spelling");
+      else
+        expect(
+          hits.map((w) => `${w.file} ${w.code}`),
+          "warned at the old pointer",
+        ).toContain(`${s.doc} ${s.code}`);
+      if (s.wins === "ignored")
+        expect(hits.find((w) => w.code === s.code)?.message).toContain(
+          "ignored",
+        );
+      if (c!.read) {
+        const m = parsedOf(alone);
+        if (isRow14) expect(m.release).toEqual(baseParsed.release);
+        else expect(c!.read(m), "the old spelling is read").toEqual(c!.alone);
+      }
+
+      // Both spellings at once.
+      if (!s.canonicalPointer || !s.conflictCode) return;
+      const both = base();
+      c!.setup?.(both);
+      putAt(both, s.doc, at, c!.old ?? (isRow14 ? "IGNORED" : undefined));
+      if (c!.canon !== undefined)
+        putAt(both, s.canonicalPointer.doc, canonAt!, c!.canon);
+      expect(
+        getAt(both, s.canonicalPointer.doc, canonAt!),
+        "the case sets the canonical spelling",
+      ).toBeDefined();
+      const resBoth = validateIngestDocuments(both);
+      if (s.wins === "refused") {
+        expect(resBoth.errors.map((e) => e.code)).toContain(s.conflictCode);
+        return;
+      }
+      expect(resBoth.errors).toEqual([]);
+      const conflict = resBoth.warnings.find(
+        (w) => w.path === at && w.code === s.conflictCode,
+      );
+      expect(conflict, "conflict reported at the old pointer").toBeDefined();
+      if (isRow14) {
+        expect(parsedOf(both).release).toEqual(baseParsed.release);
+      } else if (c!.read) {
+        expect(c!.read(parsedOf(both)), `${s.wins} wins`).toEqual(c!.both);
+      }
+    });
+  }
+
+  it("every row with a warning of its own has a hand-written mutation", () => {
+    const rows = new Set(
+      MUTATIONS.filter((m) => m.code === "deprecated_spelling").map(
+        (m) => m.row,
+      ),
+    );
+    const want = new Set(
+      DEPRECATED_SPELLINGS.filter((s) => s.code === "deprecated_spelling").map(
+        (s) => s.row,
+      ),
+    );
+    expect([...want].filter((r) => !rows.has(r))).toEqual([]);
+    expect([...want].sort((a, b) => a - b)).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17,
+    ]);
+    // Rows 16 and 18 keep the codes they had, which have mutations of their own.
+    for (const code of [
+      "conflicting_versioning",
+      "listing_url_field_deprecated",
+      "listing_field_conflict",
+      "conflicting_spelling",
+    ])
+      expect(
+        MUTATIONS.some((m) => m.code === code),
+        code,
+      ).toBe(true);
+  });
+
+  it("the schemas mark every old spelling the coverage reaches as deprecated", () => {
+    const schemas: Record<string, any> = {
+      product: JSON.parse(
+        readFileSync(join(schemasDir, "product.schema.json"), "utf8"),
+      ),
+      schema: JSON.parse(
+        readFileSync(join(schemasDir, "schema.schema.json"), "utf8"),
+      ),
+      release: JSON.parse(
+        readFileSync(join(schemasDir, "release.schema.json"), "utf8"),
+      ),
+    };
+    // Root properties, and properties one level into a wrapper the schema defines by $ref.
+    const deref = (root: any, node: any) =>
+      node?.$ref
+        ? node.$ref
+            .slice(2)
+            .split("/")
+            .reduce((n: any, k: string) => n[k], root)
+        : node;
+    for (const s of DEPRECATED_SPELLINGS) {
+      if (s.doc === "distribution") continue; // P2b-02 marked these already.
+      const segs = s.pointer.split("/").slice(1);
+      if (segs.includes("*") || segs.length > 2) continue;
+      const root = schemas[s.doc];
+      let node = root.properties[segs[0]!];
+      if (segs.length === 2) node = deref(root, node)?.properties?.[segs[1]!];
+      expect(node?.deprecated, `${s.doc}${s.pointer}`).toBe(true);
+    }
+  });
 });
 
 /** snake_case string literals in the source that are NOT validator error codes. */

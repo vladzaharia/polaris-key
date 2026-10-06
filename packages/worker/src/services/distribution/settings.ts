@@ -26,7 +26,7 @@ export const DISTRIBUTION_SETTINGS_SLICE: ServiceSettingsSlice = {
       allowUnset: true,
       merge: "cascade",
       ownership: "claimable",
-      manifest: { path: "release:access.artifacts" },
+      manifest: { path: "release:release.access.artifacts" },
       securityWidening: true,
       widensWhen: "any",
       critical: true,

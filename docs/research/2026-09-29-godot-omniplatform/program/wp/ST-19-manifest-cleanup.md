@@ -61,10 +61,37 @@ Duplicate manifest spellings are deprecated with warnings, and a parity test kee
 
 ## Acceptance criteria
 
-- [ ] `pkey validate` warns on `djdl` and prints no warning on the monorepo `.pkey/`.
-- [ ] No registry `manifest.path` names a deprecated spelling; no `PENDING` entry is owned by ST-19.
-- [ ] Rule 9 entries exist for each warning.
+- [x] `pkey validate` warns on `djdl` and prints no warning on the monorepo `.pkey/`.
+- [x] No registry `manifest.path` names a deprecated spelling; no `PENDING` entry is owned by ST-19.
+- [x] Rule 9 entries exist for each warning.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
+
+## Implementation notes (2026-10-06, verified against the code)
+
+Where the build refined the plan, the code is the fact:
+
+- **One table entry per spelling, grouped by plan row.** `DEPRECATED_SPELLINGS` has 50 entries
+  that carry the plan's §3.1 row in `row` (rows 2–4, 7–9, 12, 14–18 have more than one pointer).
+  Besides the plan's fields, an entry has `canonicalPointer` (the JSON pointer that decides "both
+  are set", possibly in another document), `present` (value, array or object, matching the
+  reader), `shadowedBy` (row 3–4's root spelling loses to `product.<field>`),
+  `unreadWhenWrapped` (a root release field next to `release:`) and `checkedElsewhere`.
+- **Row 14 is one entry per root release-body field** (`/provider`, `/binaryName`, …), so a field
+  left at the root beside the `release:` wrapper (silently ignored today) is reported: on its own
+  the message says "and is ignored"; with the wrapped copy present it is `conflicting_spelling`.
+  Row 17's `/release/edgeMint` says "ignored" the same way.
+- **Row 16 has no warning of its own** (`code: null`, `checkedElsewhere`), exactly as plan §3.2
+  says: P2-04 kept the body spelling valid and both-at-once is already `conflicting_versioning`.
+  The schemas still mark it `deprecated` (description without the warning sentence).
+- **The `products/djdl` fixture warns on rows 1–5 and 11**, not 1–6: it declares no profiles.
+  The real `vladzaharia/djdl` repo warns on rows 1–6 (checked read-only with the built CLI).
+- **The emit sites are literal per document** (`spellings.ts` has its own `add`), so the docs
+  generator lists them; `packages/docs/scripts/gen-reference.mjs` now scans `spellings.ts` too.
+- **Docs beyond the plan's list**: `start/quickstart.md` and `build/web-cors.md` showed the flat
+  product and the unwrapped `ghOwner` release body in their examples; both now show the canonical
+  layout. CLI test fixtures that used `catalog` (`publishFixture.ts`, `packFixtures.ts`,
+  `publish.test.ts`) moved to `entries`, because publish prints validator warnings.
+- `PENDING_CEILING` 59 → 48.
 
 ## Verify
 

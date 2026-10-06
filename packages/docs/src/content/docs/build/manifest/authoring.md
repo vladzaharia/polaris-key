@@ -52,10 +52,54 @@ JSON-Schema fragments fail during import/resync, not during a client request.
 `pkey init` writes `product.yaml` and `schema.yaml` every time (plus `release.yaml` when releases
 are selected): ingest requires the schema even when Config is off, and `pkey validate` applies the
 same rule as link/resync, reporting a missing one as `missing_schema`. Without the `config`
-module the scaffolded catalog is empty (`schemaVersion: 1`, `catalog: []`). The scaffolded tier
-sets `policyDeviceLimit: 5` and no expiry; a tier `deviceLimit` is ignored and a tier
+module the scaffolded catalog is empty (`schemaVersion: 1`, `entries: []`). The scaffolded tier
+names its profile with `profileId` and sets `policyDeviceLimit: 5` and no expiry; a tier `deviceLimit` is ignored and a tier
 `maxOfflineDays` sets the licence expiry (`policyExpiryDays`), not offline grace, so `pkey
 validate` warns with `tier_ignored_field` for either.
+
+## Deprecated spellings
+
+Some fields have more than one spelling, because the manifest grew in steps. Every spelling below
+still validates and still means what it always meant: when a document sets both the old and the
+canonical spelling, the reader keeps the precedence it has always had. `pkey validate` (and an
+editor that reads the published JSON Schemas, which mark each old spelling `deprecated`) warns
+instead:
+
+- `deprecated_spelling`: the document uses an old spelling. The message names the canonical one.
+- `conflicting_spelling`: the document sets both. The message names the value that is used.
+
+The canonical layout is the one `pkey init` writes: `product:` for identity and compatibility,
+`licensing:` for licence defaults, tiers and profiles, and `release:` in `.pkey/release`. The
+list is `DEPRECATED_SPELLINGS` in `@polaris-key/manifest` (`packages/shared-manifest/src/spellings.ts`),
+and it is what the validator, the schemas and the settings registry's parity test all read.
+
+| Document     | Old spelling                                                  | Write instead                                                                                   | When both are set                                                                |
+| ------------ | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| product      | `slug`, `name` at the root (a flat document)                  | `product.slug`, `product.name`                                                                  | the canonical value is used                                                      |
+| product      | `adminGroup`, `compatMin`, `compatMax` at the root            | `product.adminGroup`, `product.compatMin`, `.compatMax`                                         | the canonical value is used                                                      |
+| product      | `defaultDeviceLimit` at the root or under `product:`          | `licensing.defaultDeviceLimit`                                                                  | the old value is used                                                            |
+| product      | `defaultMaxOfflineDays` at the root or under `product:`       | `licensing.defaultMaxOfflineDays`                                                               | the old value is used                                                            |
+| product      | `tiers` at the root                                           | `licensing.tiers`                                                                               | the old value is used                                                            |
+| product      | `profiles` at the root                                        | `licensing.profiles`                                                                            | the old value is used                                                            |
+| product      | tier `profile`                                                | tier `profileId`                                                                                | the canonical value is used                                                      |
+| product      | tier `expiryDays`                                             | tier `policyExpiryDays`                                                                         | the canonical value is used                                                      |
+| product      | profile `label`                                               | profile `name`                                                                                  | the canonical value is used                                                      |
+| product      | `oidc.clientSecretRef`                                        | `oidc.clientSecretSecret`                                                                       | the canonical value is used                                                      |
+| product      | `release` (the release document inlined)                      | the `.pkey/release` document                                                                    | `.pkey/release` is used                                                          |
+| product      | `modules` names `licensing`, `releases`, `oidc`, `edgeMint`   | the service slugs `license`, `release` (with `distribution` and `update`), `identity`, `config` | both are read                                                                    |
+| schema       | `catalog`                                                     | `entries`                                                                                       | `entries` is used                                                                |
+| release      | the release body at the document root (no `release:` wrapper) | the same fields under `release:`                                                                | the wrapper is used; the root is ignored                                         |
+| release      | `ghOwner`, `ghRepo`                                           | `provider: { type: github, owner, repo }`                                                       | the old value is used                                                            |
+| release      | `stableTagPattern`, `ignoreTags` in the release body          | `deliverables.app.versioning.*`                                                                 | refused: `conflicting_versioning`; no warning on its own yet                     |
+| release      | `edgeMint` in the release document                            | `edgeMint` in `.pkey/product`                                                                   | `.pkey/product`'s is used; under `release:` it is never read                     |
+| distribution | `listing.iconUrl`, `listing.headerUrl`                        | `listing.icon`, `listing.header`                                                                | refused: `listing_field_conflict`; alone it warns `listing_url_field_deprecated` |
+
+The file extension is not a spelling: `product.json`, `product.yaml` and `product.yml` are a
+format preference. Keep one file per document, though: when more than one exists only the first
+of `json`, `yaml`, `yml` is read, and `pkey validate` says so.
+
+Refusing the old spellings is a later, separate decision. Until then a manifest that validated
+before keeps validating, with warnings.
 
 ## The catalog: `ConfigEntry`
 
@@ -192,9 +236,11 @@ undeclared means "derive from the services" (`requires-license` if license is on
 chosen `open`. A product that later turns license off must move to the derived `open`, not stay
 pinned to a value nobody wrote.
 
-**The legacy vocabulary still parses.** The pre-suite module names are translated to service
-slugs at ingest and only slugs are stored, so a manifest in the field does not have to be
-rewritten on the day the server learns the new words, and one block may mix both spellings:
+**The legacy vocabulary still parses, and is deprecated.** The pre-suite module names are
+translated to service slugs at ingest and only slugs are stored, so a manifest in the field does
+not have to be rewritten on the day the server learns the new words, and one block may mix both
+spellings. `pkey validate` warns on each legacy name with `deprecated_spelling` (see
+[Deprecated spellings](#deprecated-spellings)):
 
 | Declared    | Enables                               | Note                                                                                                                                          |
 | ----------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
