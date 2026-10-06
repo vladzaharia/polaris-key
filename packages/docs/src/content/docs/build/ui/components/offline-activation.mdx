@@ -1,0 +1,24 @@
+---
+title: "OfflineActivation"
+description: "Activation without a network: the request code as text and a QR code, then a response file loaded, dropped or pasted."
+sidebar:
+  order: 11
+---
+
+import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+
+Activation without a network: the request code as text and a QR code, then a response file loaded, dropped or pasted. A response whose signature does not verify is rejected with its reason, never silently.
+
+## States and copy
+
+<ComponentStates component="OfflineActivation" />
+
+## Baselines
+
+<KitBaselines component="OfflineActivation" />
+
+## In each kit
+
+No kit documents OfflineActivation here yet. Each kit adds its tab when it ships the component: the drop-in,
+the styled part with its slots and restyle hooks, and the headless model.

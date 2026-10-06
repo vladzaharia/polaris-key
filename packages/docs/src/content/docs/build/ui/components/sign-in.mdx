@@ -1,0 +1,24 @@
+---
+title: "SignIn"
+description: "The one sign-in form. Its body morphs in place through the sign-in methods, the browser hand-off, the license choice and Done, inline, in a sheet or in the browser."
+sidebar:
+  order: 8
+---
+
+import ComponentStates from "../../../../../components/ui/ComponentStates.astro";
+import KitBaselines from "../../../../../components/ui/KitBaselines.astro";
+
+The one sign-in form. Its body morphs in place through the sign-in methods, the browser hand-off, the license choice and Done, inline, in a sheet or in the browser. No sheet or dialog stacks on it; `presentation` and `replace` take the same values in every kit.
+
+## States and copy
+
+<ComponentStates component="SignIn" />
+
+## Baselines
+
+<KitBaselines component="SignIn" />
+
+## In each kit
+
+No kit documents SignIn here yet. Each kit adds its tab when it ships the component: the drop-in,
+the styled part with its slots and restyle hooks, and the headless model.

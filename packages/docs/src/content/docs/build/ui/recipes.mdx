@@ -1,0 +1,38 @@
+---
+title: "Recipes"
+description: "Framework integrations and host design systems for the UI kits: Tailwind v4, Next.js, Nuxt, shadcn/ui, MUI, Mantine, Chakra, and rendering each screen natively over the headless layer."
+sidebar:
+  order: 7
+---
+
+There are no separate kits for host design systems or for every web framework. Instead, the brand
+package publishes presets and theme objects, the web components cover any framework that renders
+HTML, and every screen can be rebuilt with host components over a kit's headless layer. Each recipe
+is written when the piece it uses ships; the list below is the index.
+
+## Tailwind v4: the brand theme
+
+Available today. `@polaris-key/brand` ships a Tailwind v4 theme whose utilities read the live
+brand variables, so the theme and section switches apply to them too:
+
+```css
+@import "tailwindcss";
+@import "@polaris-key/brand/tokens.css";
+@import "@polaris-key/brand/theme.css";
+```
+
+The utilities are named after the tokens (`bg-surface-raised`, `text-fg-muted`, `border-border`,
+`bg-accent`, `ring-focus`, `rounded-lg`, `shadow-elevation-2`); Tailwind's own palette is left
+alone. This docs site is built on it.
+
+## Index
+
+| Recipe                      | What it shows                                                                              | Status                          |
+| --------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------- |
+| Tailwind v4                 | The brand theme above, and a kit preset over it                                            | Theme available; preset to come |
+| Next.js App Router          | The React kit across a `"use client"` boundary, with a settings page                       | With the React kit              |
+| Nuxt                        | The Vue kit's Nuxt module, rendering safely on the server                                  | With the Vue kit                |
+| shadcn/ui                   | A component registry built on the React kit's headless hooks, served by Polaris Key        | Not written yet                 |
+| MUI, Mantine, Chakra        | Theme objects generated from the brand tokens                                              | Not written yet                 |
+| SolidJS, Preact, Qwik, htmx | The web components in each framework, and plain pages                                      | Not written yet                 |
+| Go native                   | Each screen drawn with the host's own components over a kit's headless layer, per platform | With each kit's headless layer  |
