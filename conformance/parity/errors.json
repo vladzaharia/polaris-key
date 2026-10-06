@@ -253,19 +253,19 @@
       "code": "link_conflict",
       "kind": "wire",
       "service": "identity",
-      "description": "409: the sign-in method is already attached to another Polaris Key account. One link belongs to exactly one account; nothing moves, and the caller offers to sign in to that account or to join the two with proof of both (S-16 §5.1; I-05's link engine, surfaced by the portal's sign-in methods, I-11)."
+      "description": "409: the sign-in method is already attached to another Polaris Key account. One link belongs to exactly one account; nothing moves, and the caller offers to sign in to that account or to join the two with proof of both (S-16 §5.1; I-05's link engine, surfaced by the portal's sign-in methods and account linking, PX-W12)."
     },
     {
       "code": "last_link",
       "kind": "wire",
       "service": "identity",
-      "description": "409: removing this sign-in method would leave the account with none, and an account is never orphaned (S-16 §5.1; I-05's link engine, surfaced by the portal's sign-in methods, I-11)."
+      "description": "409: removing this sign-in method would leave the account with none, and an account is never orphaned (S-16 §5.1; I-05's link engine, surfaced by the portal's sign-in methods and account linking, PX-W12)."
     },
     {
       "code": "step_up_required",
       "kind": "wire",
       "service": "identity",
-      "description": "401 from the customer portal's POST /api/licenses/<p>/<id>/keys: minting a new licence key needs a sign-in at most `maxAgeSeconds` old; sign in again and retry."
+      "description": "401 from the customer portal: minting a new licence key (POST /api/licenses/<p>/<id>/keys), adding or removing a passkey, connecting or disconnecting a sign-in method, linking or unlinking accounts (PX-W12) needs a sign-in at most `maxAgeSeconds` old; sign in again and retry."
     },
     {
       "code": "not_eligible",
