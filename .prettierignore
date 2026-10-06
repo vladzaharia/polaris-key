@@ -33,6 +33,10 @@ docs/design/flows/[0-9]*.html
 # The licence-holder mockups (S-24): written by docs/design/licenses/_src/build.mjs (edit _src, then rebuild).
 docs/design/licenses/[0-9]*.html
 
+# The console product card boards: written by docs/design/console-product-card/_src/build.mjs (edit _src, then rebuild).
+docs/design/console-product-card/*.html
+docs/design/console-product-card/_src/accents.generated.css
+
 # Build caches.
 packages/docs/.astro/
 

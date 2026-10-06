@@ -1,0 +1,757 @@
+/*
+ * Console product card mockups (docs/design/console-product-card/README.md). Brand tokens only:
+ * every colour is a --pk-* token from packages/brand/css/tokens.css, a service accent through
+ * [data-service] (which re-points --pk-accent*), or a --product-* role that the generator writes
+ * into accents.generated.css by running the product's presentation accent through the brand's
+ * own resolver (resolveAccent, UI-KITS.md §3.3). The stand-in product icons are developer art
+ * (content), drawn by _src/build.mjs.
+ */
+
+/* ---------- page ---------- */
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+}
+body {
+  background: var(--pk-surface-page);
+  color: var(--pk-text-default);
+  font-family: var(--pk-font-sans);
+  font-size: var(--pk-font-size-sm);
+  line-height: var(--pk-line-height-sm);
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+svg {
+  display: block;
+}
+.mono-text {
+  font-family: var(--pk-font-mono);
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ---------- console chrome (simplified; ADMIN.md §7.6 measures) ---------- */
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-3);
+  padding: 0 var(--pk-space-4);
+  background: var(--pk-surface-raised);
+  border-bottom: 1px solid var(--pk-border-subtle);
+  color: var(--pk-text-strong);
+}
+.top .wm {
+  font-weight: var(--pk-font-weight-bold);
+  font-size: var(--pk-font-size-base);
+}
+.top .grow {
+  flex: 1;
+}
+.top .search {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  height: 36px;
+  width: 260px;
+  padding: 0 var(--pk-space-3);
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-text-subtle);
+}
+.top .search kbd {
+  margin-left: auto;
+  font: inherit;
+  font-size: var(--pk-font-size-xs);
+  color: var(--pk-text-muted);
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-sm);
+  padding: 0 var(--pk-space-1);
+}
+.top .act {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  color: var(--pk-text-default);
+}
+.top .avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--pk-radius-full);
+  display: grid;
+  place-items: center;
+  background: var(--pk-accent);
+  color: var(--pk-accent-on);
+  font-size: var(--pk-font-size-xs);
+  font-weight: var(--pk-font-weight-semibold);
+}
+.top .menu {
+  display: none;
+}
+.side {
+  position: fixed;
+  top: 64px;
+  bottom: 0;
+  left: 0;
+  width: 240px;
+  padding: var(--pk-space-3);
+  border-right: 1px solid var(--pk-border-subtle);
+  background: var(--pk-surface-page);
+}
+.side a {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-3);
+  height: 40px;
+  padding: 0 var(--pk-space-3);
+  border-radius: var(--pk-radius-md);
+  color: var(--pk-text-default);
+}
+.side a[aria-current] {
+  background: var(--pk-accent-subtle);
+  color: var(--pk-text-strong);
+  font-weight: var(--pk-font-weight-medium);
+  box-shadow: inset 3px 0 0 var(--pk-accent);
+}
+.side .group {
+  margin-top: var(--pk-space-4);
+  padding: 0 var(--pk-space-3);
+  font-size: var(--pk-font-size-xs);
+  font-weight: var(--pk-font-weight-semibold);
+  letter-spacing: 0.06em;
+  color: var(--pk-accent-fg);
+}
+#content {
+  margin-left: 240px;
+  padding: var(--pk-space-6) var(--pk-space-8);
+}
+.ph {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pk-space-4);
+  margin-bottom: var(--pk-space-6);
+}
+.ph h1 {
+  font-size: var(--pk-font-size-2xl);
+  line-height: var(--pk-line-height-2xl);
+  font-weight: var(--pk-font-weight-semibold);
+  color: var(--pk-text-strong);
+}
+.ph .sub {
+  color: var(--pk-text-muted);
+}
+.ph .btn {
+  margin-left: auto;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  height: 36px;
+  padding: 0 var(--pk-space-4);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-accent);
+  color: var(--pk-accent-on);
+  font-weight: var(--pk-font-weight-medium);
+}
+.panel {
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-xl);
+  background: var(--pk-surface-raised);
+}
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pk-space-3);
+  padding: var(--pk-space-3) var(--pk-space-5);
+  border-bottom: 1px solid var(--pk-border-subtle);
+}
+.panel-head h2 {
+  font-size: var(--pk-font-size-base);
+  font-weight: var(--pk-font-weight-semibold);
+  color: var(--pk-text-strong);
+}
+.panel-head .ctl {
+  display: flex;
+  gap: var(--pk-space-2);
+}
+.field {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-2);
+  height: 36px;
+  padding: 0 var(--pk-space-3);
+  border: 1px solid var(--pk-border-strong);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface-sunken);
+  color: var(--pk-text-subtle);
+}
+.field.filter {
+  width: 224px;
+}
+.field.sort {
+  width: 176px;
+  color: var(--pk-text-default);
+  justify-content: space-between;
+  white-space: nowrap;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--pk-space-4);
+  padding: var(--pk-space-5);
+}
+.grid > li {
+  display: flex;
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .side,
+  .top .search,
+  .top .wm,
+  .top .act span {
+    display: none;
+  }
+  .top .menu {
+    display: grid;
+  }
+  #content {
+    margin-left: 0;
+    padding: var(--pk-space-5) var(--pk-space-4);
+  }
+  .panel-head {
+    flex-wrap: wrap;
+  }
+  .panel-head .ctl {
+    width: 100%;
+  }
+  .field.filter {
+    flex: 1;
+    width: auto;
+  }
+  .field.sort {
+    width: 144px;
+  }
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- shared card parts ---------- */
+/* Cards also carry `rounded-lg`, the Tailwind class the console's card has: the layout probe groups
+   label/value rows by it, so the mock is measured the way the real card will be. */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  background: var(--pk-surface-raised);
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-lg);
+  box-shadow: var(--pk-elevation-1);
+}
+/* The name is the one link to the product; its hit area covers the card (::after). Service links
+   sit above that layer (position: relative), as siblings, never nested inside it. */
+.stretch::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--pk-radius-lg);
+  z-index: 0;
+}
+.stretch {
+  outline: none;
+}
+.card:hover,
+.card.is-hover {
+  border-color: var(--pk-border-strong);
+}
+.card:has(.stretch:focus-visible),
+.card.is-focus {
+  box-shadow:
+    0 0 0 2px var(--pk-surface-page),
+    0 0 0 4px var(--pk-focus);
+}
+.card .name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: var(--pk-font-size-base);
+  line-height: var(--pk-line-height-base);
+  font-weight: var(--pk-font-weight-semibold);
+  color: var(--pk-text-strong);
+}
+.card .name a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.card .slug {
+  font-family: var(--pk-font-mono);
+  font-size: var(--pk-font-size-xs);
+  line-height: var(--pk-line-height-xs);
+  color: var(--pk-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card .id {
+  min-width: 0;
+  flex: 1;
+}
+.head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pk-space-3);
+}
+.head .pill {
+  align-self: flex-start;
+}
+.meta {
+  font-size: var(--pk-font-size-xs);
+  line-height: var(--pk-line-height-xs);
+  color: var(--pk-text-muted);
+}
+/* Interactive parts lift above the stretched link's layer; a pill is not interactive, so a click on
+   it opens the product like the rest of the card. */
+.card a:not(.stretch) {
+  position: relative;
+  z-index: 1;
+}
+.card a:not(.stretch):focus-visible,
+.card a.is-focus {
+  outline: 2px solid var(--pk-focus);
+  outline-offset: 2px;
+}
+
+/* The service glyph (ServiceGlyph): the service's own accent through data-service. */
+.glyph {
+  display: inline-flex;
+  flex-shrink: 0;
+  color: var(--pk-accent);
+}
+
+/* StatusPill (tone + icon + word), size sm. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pk-space-1);
+  flex-shrink: 0;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid;
+  border-radius: var(--pk-radius-full);
+  font-size: var(--pk-font-size-xs);
+  line-height: 1;
+  white-space: nowrap;
+}
+.pill[data-tone="warning"] {
+  border-color: var(--pk-warning-border);
+  background: var(--pk-warning-subtle);
+  color: var(--pk-warning);
+}
+.pill[data-tone="danger"] {
+  border-color: var(--pk-danger-border);
+  background: var(--pk-danger-subtle);
+  color: var(--pk-danger);
+}
+.pill[data-tone="info"] {
+  border-color: var(--pk-info-border);
+  background: var(--pk-info-subtle);
+  color: var(--pk-info);
+}
+
+/* Loading a fact: a shaped skeleton bar (ui/Skeleton), never "Loading…". */
+.skel {
+  display: inline-block;
+  height: 10px;
+  width: 64px;
+  border-radius: var(--pk-radius-full);
+  background: var(--pk-surface-sunken);
+  border: 1px solid var(--pk-border-subtle);
+}
+
+/* Tooltip (ui/Tooltip), drawn open on the states boards. */
+.tip {
+  position: absolute;
+  z-index: 3;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: var(--pk-space-1) var(--pk-space-2);
+  white-space: nowrap;
+  border: 1px solid var(--pk-border-subtle);
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-surface-overlay);
+  box-shadow: var(--pk-elevation-2);
+  color: var(--pk-text-default);
+  font-size: var(--pk-font-size-xs);
+  line-height: var(--pk-line-height-xs);
+}
+.tip b {
+  color: var(--pk-text-strong);
+  font-weight: var(--pk-font-weight-medium);
+}
+
+/* ---------- the logo: hosted icon, else a monogram tile ---------- */
+.logo {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+}
+.logo[data-size="48"] {
+  width: 48px;
+  height: 48px;
+}
+/* The developer's own shape is the frame (portal ProductIcon): a shaped icon is drawn as is; only a
+   full-bleed square gets the corner mask a store would apply. */
+img.logo.square {
+  border-radius: var(--pk-radius-lg);
+}
+img.logo.square[data-size="48"] {
+  border-radius: 12px;
+}
+.logo.mono {
+  display: grid;
+  place-items: center;
+  border-radius: var(--pk-radius-lg);
+  font-size: var(--pk-font-size-lg);
+  font-weight: var(--pk-font-weight-semibold);
+  background: var(--pk-surface-sunken);
+  border: 1px solid var(--pk-border-subtle);
+  color: var(--pk-text-muted);
+}
+.logo.mono[data-size="48"] {
+  border-radius: 12px;
+  font-size: var(--pk-font-size-xl);
+}
+/* Tinted by presentation.accent: the resolver's solid (>= 3:1 on every surface) and its label
+   colour (>= 4.5:1 on that solid). */
+.logo.mono.tinted {
+  background: var(--product-solid);
+  border-color: transparent;
+  color: var(--product-on);
+}
+
+/* ================= Direction A: Rail ================= */
+.card.a {
+  padding: var(--pk-space-4);
+  gap: var(--pk-space-3);
+}
+.rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pk-space-1);
+  margin: 0 -6px -6px;
+  margin-top: auto;
+}
+.chip {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--pk-radius-md);
+}
+.chip:hover,
+.chip.is-hover {
+  background: var(--pk-accent-subtle);
+}
+.chip .dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--pk-radius-full);
+  box-shadow: 0 0 0 2px var(--pk-surface-raised);
+}
+.dot[data-tone="warning"] {
+  background: var(--pk-warning);
+}
+.dot[data-tone="info"] {
+  background: var(--pk-info);
+}
+.dot[data-tone="danger"] {
+  background: var(--pk-danger);
+}
+.card.a .none {
+  margin-top: auto;
+  padding-top: 6px;
+  min-height: 32px;
+}
+
+/* ================= Direction B: Ledger ================= */
+.card.b {
+  padding: var(--pk-space-4);
+  gap: var(--pk-space-3);
+}
+.card.b:hover,
+.card.b.is-hover {
+  border-color: var(--product-solid, var(--pk-border-strong));
+}
+.ledger {
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--pk-space-2);
+  border-top: 1px solid var(--pk-border-subtle);
+}
+.ledger > li {
+  margin: 0 calc(-1 * var(--pk-space-2));
+}
+.ledger .row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--pk-space-2);
+  height: 32px;
+  padding: 0 var(--pk-space-2);
+  border-radius: var(--pk-radius-md);
+}
+.ledger .row:hover,
+.ledger .row.is-hover {
+  background: var(--pk-surface-sunken);
+}
+.ledger .lbl {
+  color: var(--pk-text-default);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ledger .val {
+  color: var(--pk-text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.ledger .val .mono-text {
+  font-size: var(--pk-font-size-xs);
+  color: var(--pk-text-default);
+}
+.ledger .more {
+  display: flex;
+  align-items: center;
+  gap: var(--pk-space-1);
+  height: 32px;
+  padding: 0 var(--pk-space-1);
+}
+.ledger .more .chip {
+  width: 28px;
+  height: 28px;
+}
+.ledger .more .n {
+  margin-left: auto;
+  padding-right: var(--pk-space-1);
+  font-size: var(--pk-font-size-xs);
+  color: var(--pk-text-muted);
+}
+.ledger .empty {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 var(--pk-space-2);
+  color: var(--pk-text-muted);
+}
+.card.b .meta {
+  margin-top: auto;
+}
+
+/* ================= Direction C: Spectrum ================= */
+.card.c {
+  overflow: hidden;
+}
+.band {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-3);
+  padding: var(--pk-space-4);
+  background: var(--product-subtle, transparent);
+  border-bottom: 1px solid var(--pk-border-subtle);
+}
+.band-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--pk-space-3);
+}
+.figs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--pk-space-3);
+  padding: var(--pk-space-3) var(--pk-space-4) 0;
+  min-height: 52px;
+}
+.fig {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.fig .v {
+  font-size: var(--pk-font-size-base);
+  line-height: var(--pk-line-height-base);
+  font-weight: var(--pk-font-weight-semibold);
+  color: var(--pk-text-strong);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fig .v.mono-text {
+  font-size: var(--pk-font-size-sm);
+}
+.fig .k {
+  font-size: var(--pk-font-size-xs);
+  line-height: var(--pk-line-height-xs);
+  color: var(--pk-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.figs .quiet {
+  grid-column: 1 / -1;
+  align-self: center;
+}
+.spectrum {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--pk-space-1);
+  margin-top: auto;
+  padding: var(--pk-space-3) var(--pk-space-4) var(--pk-space-4);
+}
+.slot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 32px;
+  border-radius: var(--pk-radius-md);
+  background: var(--pk-accent-subtle);
+}
+.slot:hover,
+.slot.is-hover {
+  box-shadow: inset 0 0 0 1px var(--pk-accent);
+}
+.slot.off {
+  background: transparent;
+  border: 1px dashed var(--pk-border-subtle);
+}
+.slot .dot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--pk-radius-full);
+  box-shadow: 0 0 0 2px var(--pk-surface-raised);
+}
+
+/* ---------- states boards ---------- */
+body.states {
+  padding: var(--pk-space-8);
+}
+.states h1 {
+  font-size: var(--pk-font-size-xl);
+  line-height: var(--pk-line-height-xl);
+  font-weight: var(--pk-font-weight-semibold);
+  color: var(--pk-text-strong);
+  margin-bottom: var(--pk-space-1);
+}
+.states .lede {
+  color: var(--pk-text-muted);
+  margin-bottom: var(--pk-space-6);
+}
+.cells {
+  display: grid;
+  grid-template-columns: repeat(3, 301px);
+  gap: var(--pk-space-8) var(--pk-space-6);
+  align-items: start;
+}
+.cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pk-space-2);
+}
+.cell .cap {
+  font-size: var(--pk-font-size-xs);
+  line-height: var(--pk-line-height-xs);
+  color: var(--pk-text-muted);
+}
+.cell .cap b {
+  display: block;
+  font-size: var(--pk-font-size-sm);
+  line-height: var(--pk-line-height-sm);
+  font-weight: var(--pk-font-weight-medium);
+  color: var(--pk-text-strong);
+}
+.cell .frame {
+  display: flex;
+  padding-top: var(--pk-space-8);
+  margin-top: calc(-1 * var(--pk-space-8));
+}
+
+/* The top bar's Pinned K: the kit's dark and light artwork, one per theme. */
+.mark-light {
+  display: none;
+}
+[data-theme="light"] .mark-light {
+  display: block;
+}
+[data-theme="light"] .mark-dark {
+  display: none;
+}
+
+/* The console's app shell: the chrome stays put and main#content is the scroll container (the
+   layout probe measures it there). render.mts sets data-shot to lay the page out in document flow
+   for a full-height screenshot. */
+body.home {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+body.home #content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+[data-shot] body.home {
+  height: auto;
+  overflow: visible;
+  display: block;
+}
+[data-shot] body.home #content {
+  overflow: visible;
+}
+
+/* C's name has the card's full width, so one line keeps the tiles in a row aligned. */
+.card.c .name {
+  -webkit-line-clamp: 1;
+}
