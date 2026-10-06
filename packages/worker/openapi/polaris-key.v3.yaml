@@ -5,7 +5,8 @@
 # namespaces and the four permanent aliases. The admin (/manage/api/*) and portal (/api/*)
 # APIs are session-authenticated browser surfaces and are documented narratively on the docs
 # site instead (they are not "wire" — no SDK speaks them) — except the portal's library, product
-# and media routes (PX-W1, tag `portal`), which rule 10 pins here as they are added. The offline-bundle mint is one of
+# and media routes (PX-W1, tag `portal`) and the admin create probes (UX-72, tag `admin`), which
+# rule 10 pins here as they are added. The offline-bundle mint is one of
 # those admin surfaces (`POST /manage/api/products/<slug>/bundles`), so `pkey-bundle+jws`
 # appears here only as a `typ` value, never as a path.
 #
@@ -34,7 +35,8 @@
 # Every path a browser page on one of the product's `web.origins` may call documents an
 # `options` operation answered by the single shared `CorsPreflight` response. The seven
 # cookie-bearing or navigation-only identity/edge-mint paths document none, because they answer
-# no CORS; neither do the admin, portal, docs or webhook surfaces (not in this file at all).
+# no CORS; neither do the admin, portal, docs or webhook surfaces (the few admin and portal
+# routes this file pins document no `options`).
 # `test/routeCoverage.test.ts` pins both directions against `core/cors.ts`. The generated
 # route table lists get/post/put/patch/delete only, so these operations do not appear there.
 #
@@ -91,6 +93,12 @@ tags:
       The customer portal's library, product and media routes (PX-W1): root paths on the console
       host, authenticated by the portal session cookie (the media proxy is public). The rest of
       the portal API is documented narratively on the docs site.
+  - name: admin
+    description: >
+      The console's admin API routes rule 10 pins here as they are added (UX-72's New Product
+      create probes): paths under `/manage/api/` on the console host, authenticated by the admin
+      session cookie, mutations by the CSRF header. The rest of the admin API is documented
+      narratively on the docs site.
   - name: aliases
     description: >
       The permanent alias spellings: the four pre-namespace paths (SUFeedURL values compiled
@@ -2310,7 +2318,8 @@ paths:
         by SHA-256 on `downloadBlob` alone, under the pack's own delivery access and gate, never
         under the app's version window. Access is the app's delivery access; under `entitled`
         the release's STORED version is checked against the caller's window as a fixed, pinned
-        version (never re-read as a selector).
+        version (never re-read as a selector). On the bytes host a valid portal download ticket
+        (`?ticket=`, PX-W3) stands in for the bearer for exactly this file.
       parameters:
         - { $ref: "#/components/parameters/Product" }
         - name: releaseId
@@ -2326,6 +2335,7 @@ paths:
           in: query
           required: false
           schema: { type: string, enum: ["1"] }
+        - { $ref: "#/components/parameters/DownloadTicket" }
         - { $ref: "#/components/parameters/Range" }
         - { $ref: "#/components/parameters/IfNoneMatch" }
       responses:
@@ -6092,10 +6102,15 @@ paths:
         the feed's: the app's delivery access, the same refusals (`401`/`403`), the same
         `updateFeed` rate limit; `public` caches `public, max-age=300`, every other mode
         `private, no-store`. A `fileName` outside the pattern (a separator, `..`, a leading dot,
-        an escape, any other character, or another extension) is 404 before any read. A client
-        need not resend `Authorization` across the redirect (notes/S-11 §5.2: the measured
-        updaters drop it cross-origin), so under a non-public delivery the second hop may be
-        refused; public delivery is the measured Velopack path.
+        an escape, any other character, or another extension) is 404 before any read. Under a
+        non-public delivery (SP-09) the route also runs the delivery URL's own per-file decision
+        with the caller's bearer (the release's stored version, pinned), so a `401`/`403`
+        (`version_blocked` included) comes from this route, and then appends a short-lived
+        download ticket (`?ticket=`, see `downloadReleaseFile`) bound to that one file on the
+        bytes host: the second hop needs no header, because Velopack drops `Authorization` on
+        every redirect (notes/S-11 §5.2). The `Location` never carries the bearer. With no
+        ticket key or no bytes host configured, the `Location` is the bare URL, whose second
+        hop refuses an anonymous client. Public delivery is unchanged: the bare URL.
       security: [{}, { deviceToken: [] }]
       parameters:
         - { $ref: "#/components/parameters/Product" }
@@ -6115,7 +6130,9 @@ paths:
           schema: { type: string, pattern: "^[a-z][a-z0-9-]{0,63}$" }
       responses:
         "302":
-          description: The package's immutable delivery URL, in `Location`. No body.
+          description: >
+            The package's immutable delivery URL, in `Location`; under a non-public delivery with
+            tickets configured, with `?ticket=` appended. No body.
           headers:
             Location:
               required: true
@@ -7897,6 +7914,7 @@ paths:
             schema: { type: string },
           }
         - { name: name, in: path, required: true, schema: { type: string } }
+        - { $ref: "#/components/parameters/DownloadTicket" }
       responses:
         "200":
           description: Byte-identical to the canonical route's answer (same handler, same headers).
@@ -11221,6 +11239,257 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "429":
           description: Too many upstream fetches for this product from this client (cache misses only).
+  # ── Admin create probes (UX-72, rule 10) ──
+  /manage/api/github/repositories:
+    get:
+      operationId: listAdminGithubRepositories
+      tags: [admin]
+      summary: The repositories the Polaris Key GitHub App can read
+      description: >
+        UX-72 (FLOWS.md W22), the New Product wizard's repository picker. The App (its install
+        page), its installations (account, repository selection, permissions, repository count)
+        and one page of the repositories they can read, newest push first, each with `product`
+        (the slug when a product is linked to it already) and `hasManifest` (a `.pkey/product` on
+        its default branch, probed for the page shown only; `null` when GitHub would not say).
+        Listing uses an installation token with `metadata: read` only; the probe a token narrowed
+        to the page's repositories with `contents: read`. The inventory and each page's probe are
+        cached for 60 seconds. Without App credentials it answers `configured: false` with empty
+        lists. Platform admin; admin session cookie; `cache-control: no-store`.
+      parameters:
+        - {
+            name: q,
+            in: query,
+            required: false,
+            schema: { type: string },
+            description: "Filters by `owner/name` (a substring); a pasted GitHub URL or `owner/repo` matches that repository exactly.",
+          }
+        - {
+            name: cursor,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: "^[0-9]{1,6}$" },
+            description: "The `nextCursor` of the previous page.",
+          }
+        - {
+            name: limit,
+            in: query,
+            required: false,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 30 },
+          }
+      responses:
+        "200":
+          description: The App, its installations and one page of repositories.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminGithubRepositories" }
+              examples:
+                oneInstallation:
+                  summary: One installation on acme, a product already linked
+                  value:
+                    configured: true
+                    app:
+                      slug: polaris-key
+                      installUrl: https://github.com/apps/polaris-key/installations/new
+                    installations:
+                      - id: 11
+                        account: acme
+                        accountType: Organization
+                        repositorySelection: selected
+                        permissions: { contents: read, metadata: read }
+                        repositoryCount: 2
+                        listingError: null
+                    repositories:
+                      - installationId: 11
+                        owner: acme
+                        name: tonebox
+                        fullName: acme/tonebox
+                        language: GDScript
+                        pushedAt: 1790812800
+                        private: true
+                        defaultBranch: main
+                        product: null
+                        hasManifest: true
+                      - installationId: 11
+                        owner: acme
+                        name: beatgrid
+                        fullName: acme/beatgrid
+                        language: null
+                        pushedAt: 1788220800
+                        private: true
+                        defaultBranch: main
+                        product: beatgrid
+                        hasManifest: true
+                    total: 2
+                    nextCursor: null
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "422":
+          description: "A `cursor` or `limit` outside its range."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "502":
+          description: "`reason: github`: GitHub refused the listing."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/link-repo:
+    post:
+      operationId: createAdminProductFromRepository
+      tags: [admin]
+      summary: Create a product from a repository's `.pkey/`, or dry-run it
+      description: >
+        GitHub-forward create. With `?dryRun=1` (UX-72, FLOWS.md W23) it runs every check the
+        create runs, for a product that does not exist yet, and answers the product as it will
+        be: name, slug and presentation, the slug's availability, services, catalog size,
+        platforms with their source, declared secret names, whether
+        `.github/workflows/release.yml` exists, the `manifestDigest`, and every blocking problem
+        with its `.pkey/` file and JSON path. It writes nothing. A refusal before the manifest
+        could be read (the URL, the App installation, the fetch) is a `422` whose `reason` names
+        that check. Without it the product is created: the signing key, catalog, release
+        configuration and the manifest's rows in one batch. `manifestDigest` is the dry run's;
+        when given, a `.pkey/` that changed since refuses with `409` (`reason: manifest`). The
+        create answers the created `product`. Platform admin; admin session cookie and CSRF
+        header.
+      parameters:
+        - {
+            name: dryRun,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ["1"] },
+            description: "`1`: check and preview, write nothing.",
+          }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [repoUrl]
+              properties:
+                repoUrl:
+                  type: string
+                  description: "A GitHub URL (https or git@) or `owner/repo`."
+                manifestDigest:
+                  type: string
+                  pattern: "^[0-9a-f]{64}$"
+                  description: "The dry run's digest; the create refuses (409) when `.pkey/` changed since."
+            examples:
+              dryRun: { value: { repoUrl: "https://github.com/acme/tonebox" } }
+              create:
+                value:
+                  repoUrl: "https://github.com/acme/tonebox"
+                  manifestDigest: 9f2c4e1a7b3d5f6089a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f607
+      responses:
+        "200":
+          description: The dry run (`?dryRun=1`).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminCreateDryRun" }
+              examples:
+                ready:
+                  summary: Nothing blocks the create
+                  value:
+                    ok: true
+                    dryRun: true
+                    repository: acme/tonebox
+                    installationId: 4242
+                    commit: 0123456789abcdef0123456789abcdef01234567
+                    manifestDigest: 9f2c4e1a7b3d5f6089a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f607
+                    ready: true
+                    product:
+                      slug: tonebox
+                      name: Tonebox
+                      presentation: { accent: "#2bb8a4" }
+                    slug: { slug: tonebox, status: available }
+                    registeredAs: null
+                    services: [license, config, release, distribution, update]
+                    catalog: { entries: 2 }
+                    platforms:
+                      { values: [macos, windows], source: artifact-map }
+                    secrets: [OIDC_SECRET]
+                    releaseWorkflow: true
+                    problems: []
+                taken:
+                  summary: The manifest's slug is taken
+                  value:
+                    ok: true
+                    dryRun: true
+                    repository: acme/tonebox
+                    installationId: 4242
+                    commit: 0123456789abcdef0123456789abcdef01234567
+                    manifestDigest: 9f2c4e1a7b3d5f6089a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f607
+                    ready: false
+                    product:
+                      { slug: tonebox, name: Tonebox, presentation: null }
+                    slug:
+                      slug: tonebox
+                      status: taken
+                      message: tonebox is taken.
+                      suggestion: tonebox-app
+                    registeredAs: null
+                    services: [license]
+                    catalog: { entries: 2 }
+                    platforms: { values: [], source: none }
+                    secrets: []
+                    releaseWorkflow: false
+                    problems:
+                      - check: slug
+                        file: product
+                        path: /product/slug
+                        message: "product already exists: tonebox"
+                        suggestion: tonebox-app
+        "201":
+          description: The product was created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminLinkRepoCreated" }
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "403": { $ref: "#/components/responses/AdminForbidden" }
+        "409":
+          description: "`reason: manifest`: the repository's `.pkey/` changed since the dry run; check again. Nothing was written."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+        "422":
+          description: "A refusal. On the dry run `reason` is `repository`, `app` or `manifest`; on the create, the message names the problem (`errors` lists manifest validation failures)."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
+  /manage/api/products/slug-check:
+    get:
+      operationId: checkAdminProductSlug
+      tags: [admin]
+      summary: Is a slug free for a new product
+      description: >
+        UX-72 (FLOWS.md W24). `available`, or `taken` (a product has it), `reserved` (a root route,
+        an admin action or the system product) or `invalid` (not `^[a-z0-9][a-z0-9-]{0,63}$`), each
+        with a message and a free `suggestion` checked against the registry (`-app`, then `-2`,
+        `-3`…; for an invalid slug, the slug its text derives). Reads one prefix of the registry,
+        never all of it. Any signed-in operator (a product's slug is public through its discovery
+        document); admin session cookie.
+      parameters:
+        - { name: slug, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The verdict.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminSlugCheck" }
+              examples:
+                available: { value: { slug: tonebox, status: available } }
+                taken:
+                  value:
+                    slug: tonebox
+                    status: taken
+                    message: tonebox is taken.
+                    suggestion: tonebox-app
+        "401": { $ref: "#/components/responses/AdminUnauthorized" }
+        "422":
+          description: "`slug` is missing."
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminError" }
   # ── Godot tokenised URLs (F-21) ──
   /godot/{owner}/t/{token}/asset-library/api/configure:
     servers:
@@ -12443,6 +12712,24 @@ components:
       required: false
       description: One outlet id, when the product declares several outlets of the feed's kind. Default — the outlet whose id is the kind, else the first by id.
       schema: { type: string }
+    DownloadTicket:
+      name: ticket
+      in: query
+      required: false
+      description: >
+        PX-W3: a download ticket (`v1.<kid>.<exp>.<mac>`) that the customer portal's
+        `/download/<token>` redemption appends to the file's canonical bytes-host URL after
+        every portal check (an owned licence, the deliverable's access, the single-use token).
+        SP-09: the Velopack package route (`getVelopackPackage`) also mints one, after the feed's
+        access check and the file's own per-file check with the caller's device bearer.
+        On the BYTES HOST only, a valid ticket stands in for the device bearer for exactly the
+        file it was minted for (product, release, name and SHA-256); it lives at most 120 s and
+        may be reused inside that window, so `Range`, resume and `HEAD` work. The console host
+        ignores it. An invalid, expired or mismatched ticket is treated as ABSENT: the answer is
+        the same as for a caller with no credential (`401 download_auth_required` flat for
+        `authenticated` and `licensed`, `401 unauthorized` wire for `entitled`), never a
+        ticket-specific error. Devices never send it.
+      schema: { type: string, maxLength: 128 }
     IfNoneMatch:
       name: If-None-Match
       in: header
@@ -12554,6 +12841,16 @@ components:
         one.
       schema: { type: string }
   responses:
+    AdminUnauthorized:
+      description: No admin session.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AdminError" }
+    AdminForbidden:
+      description: "Not a platform admin, or (on a mutation) a missing or wrong CSRF header."
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/AdminError" }
     OciError:
       description: >
         OCI's error JSON (distribution-spec "Error Codes"): `NAME_UNKNOWN`, `MANIFEST_UNKNOWN`,
@@ -12938,6 +13235,249 @@ components:
               minSupported: { type: string }
               modifiedAt: { type: integer }
               modifiedBy: { type: [string, "null"] }
+    AdminError:
+      type: object
+      description: >
+        The admin API's error body (`admin/lib/respond.ts` `err`): `error` is an object carrying
+        `code`, `message` and the extras, which are repeated at the top level (`reason`,
+        `fields`, `errors`).
+      required: [error, code]
+      additionalProperties: true
+      properties:
+        error:
+          type: object
+          required: [code]
+          additionalProperties: true
+          properties:
+            code: { type: string }
+            message: { type: string }
+        code: { type: string }
+        message: { type: string }
+        reason:
+          type: string
+          description: "The check that refused (`repository`, `app`, `manifest`, `github`…)."
+        fields: { type: array, items: { type: string } }
+        errors: { type: array, items: { type: string } }
+    AdminGithubRepository:
+      type: object
+      required:
+        [
+          installationId,
+          owner,
+          name,
+          fullName,
+          language,
+          pushedAt,
+          private,
+          defaultBranch,
+          product,
+          hasManifest,
+        ]
+      properties:
+        installationId: { type: integer }
+        owner: { type: string }
+        name: { type: string }
+        fullName:
+          { type: string, description: "`owner/name` as GitHub spells it." }
+        language: { type: [string, "null"] }
+        pushedAt:
+          type: [integer, "null"]
+          description: Unix seconds of the last push; null for an empty repository.
+        private: { type: boolean }
+        defaultBranch: { type: [string, "null"] }
+        product:
+          type: [string, "null"]
+          description: The slug of the product already linked to this repository.
+        hasManifest:
+          type: [boolean, "null"]
+          description: A `.pkey/product` on the default branch; null when GitHub would not say.
+    AdminGithubRepositories:
+      type: object
+      required:
+        [configured, app, installations, repositories, total, nextCursor]
+      properties:
+        configured:
+          type: boolean
+          description: False when the Worker has no GitHub App credentials.
+        app:
+          type: [object, "null"]
+          required: [slug, installUrl]
+          properties:
+            slug: { type: string }
+            installUrl:
+              type: string
+              description: The page an account installs the App from.
+        installations:
+          type: array
+          items:
+            type: object
+            required:
+              [
+                id,
+                account,
+                accountType,
+                repositorySelection,
+                permissions,
+                repositoryCount,
+                listingError,
+              ]
+            properties:
+              id: { type: integer }
+              account: { type: string }
+              accountType: { type: string }
+              repositorySelection: { type: string, enum: [all, selected] }
+              permissions:
+                type: object
+                additionalProperties: { type: string }
+              repositoryCount:
+                type: [integer, "null"]
+                description: Null when this installation's repositories could not be listed.
+              listingError:
+                type: [string, "null"]
+                description: >-
+                  Why this installation's repositories could not be listed (GitHub refused its
+                  token or its listing); the other installations still list.
+        repositories:
+          type: array
+          items: { $ref: "#/components/schemas/AdminGithubRepository" }
+        total:
+          type: integer
+          description: Repositories matching `q`, across every page.
+        nextCursor: { type: [string, "null"] }
+    AdminSlugCheck:
+      type: object
+      required: [slug, status]
+      properties:
+        slug: { type: string }
+        status: { type: string, enum: [available, taken, reserved, invalid] }
+        message:
+          type: string
+          description: Why the slug is not available (absent when it is).
+        suggestion:
+          type: [string, "null"]
+          description: A free slug (absent when available; null when none could be derived).
+    AdminManifestProblem:
+      type: object
+      required: [check, file, path, message]
+      properties:
+        check:
+          type: string
+          enum: [product, repository, app, manifest, slug, policy]
+          description: The check it belongs to.
+        file:
+          type: [string, "null"]
+          enum: [product, schema, release, distribution, null]
+          description: The `.pkey/` document, or null.
+        path:
+          type: [string, "null"]
+          description: A JSON pointer into that document, or null.
+        message: { type: string }
+        suggestion:
+          type: string
+          description: A free slug, when the problem is the slug.
+    AdminCreateDryRun:
+      type: object
+      required:
+        [
+          ok,
+          dryRun,
+          repository,
+          installationId,
+          commit,
+          manifestDigest,
+          ready,
+          product,
+          slug,
+          registeredAs,
+          services,
+          catalog,
+          platforms,
+          secrets,
+          releaseWorkflow,
+          problems,
+        ]
+      properties:
+        ok: { type: boolean, const: true }
+        dryRun: { type: boolean, const: true }
+        repository: { type: string }
+        installationId: { type: integer }
+        commit:
+          type: string
+          description: The default-branch commit every document was read at.
+        manifestDigest:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          description: Hand it to the create, which refuses (409) when `.pkey/` changed since.
+        ready:
+          type: boolean
+          description: True when `problems` is empty.
+        product:
+          type: [object, "null"]
+          description: Null when the manifest does not parse.
+          required: [slug, name, presentation]
+          properties:
+            slug: { type: string }
+            name: { type: string }
+            presentation:
+              type: [object, "null"]
+              description: "`.pkey/product` `presentation` (HA-04): `icon`, `accent`, `accentDark`."
+              additionalProperties: true
+        slug:
+          oneOf:
+            - { $ref: "#/components/schemas/AdminSlugCheck" }
+            - { type: "null" }
+        registeredAs:
+          type: [string, "null"]
+          description: The product this repository already is; open it instead.
+        services: { type: array, items: { type: string } }
+        catalog:
+          type: [object, "null"]
+          required: [entries]
+          properties:
+            entries: { type: integer }
+        platforms:
+          type: object
+          required: [values, source]
+          properties:
+            values: { type: array, items: { type: string } }
+            source:
+              type: string
+              enum: [artifact-map, none]
+              description: "`artifact-map` is `.pkey/release`'s `deliverables.app.artifacts`."
+        secrets:
+          type: array
+          items: { type: string }
+          description: Secret NAMES the manifest references, set after create. Never values.
+        releaseWorkflow:
+          type: [boolean, "null"]
+          description: Whether `.github/workflows/release.yml` exists at the commit.
+        problems:
+          type: array
+          items: { $ref: "#/components/schemas/AdminManifestProblem" }
+    AdminLinkRepoCreated:
+      type: object
+      required: [ok, slug, kid, signing, install, remainingSecrets, product]
+      properties:
+        ok: { type: boolean, const: true }
+        slug: { type: string }
+        kid: { type: string }
+        signing:
+          type: object
+          required: [kid, alg, publicKey, jwksUrl, trustKeys]
+          properties:
+            kid: { type: string }
+            alg: { type: string, const: Ed25519 }
+            publicKey: { type: string }
+            jwksUrl: { type: string }
+            trustKeys:
+              type: object
+              additionalProperties: { type: string }
+        install: { type: string }
+        remainingSecrets: { type: array, items: { type: string } }
+        product:
+          type: [object, "null"]
+          description: The created product as `GET /manage/api/products/{slug}` shows it (its `name` included).
+          additionalProperties: true
     WireError:
       type: object
       description: >

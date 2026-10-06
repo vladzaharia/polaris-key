@@ -36,6 +36,17 @@ These settings exist only behind admin routes ([S-18 §2.2](../../notes/S-18-set
 
 - Store-product mapping on S-19's many-to-many shape: coordinate with LX-11 (S-18's "LX-07") and LX-14; if LX-11 has landed, build on its shape, not today's single `flag`.
 
+## PENDING entries to remove
+
+ST-06 left a shrinking allow-list in `packages/worker/scripts/settings-coverage.ts`. Its "PENDING owners" decision ([ST-06](ST-06-settings-docs-coverage.md#design-notes)) assigns this package the 6 entries below. Register each one in the settings registry (the note names the intended key, where there is one), then delete it from `PENDING` and lower `PENDING_CEILING` by the same count. `checkCoverage` refuses an entry that is both pending and registered, so the two edits land together.
+
+- `table:platform_store_settings`
+- `table:platform_credentials`
+- `table:outlet_credentials`
+- `table:dist_store_products`
+- `column:dist_store_products.source`
+- `env:PLATFORM_APPLE_TEAM_ID` (`stores.appStore.teamId`)
+
 ## Design notes
 
 - Coordinate the Commerce page with A-17g.
@@ -47,6 +58,7 @@ These settings exist only behind admin routes ([S-18 §2.2](../../notes/S-18-set
 
 ## Acceptance criteria
 
+- [ ] Every `PENDING` entry listed under "PENDING entries to remove" is registered and gone from `settings-coverage.ts`, `PENDING_CEILING` is 6 lower, and `settings-coverage.test.ts` passes.
 - [ ] Relaxing the trust policy needs L2 and tightening L1 (tests).
 - [ ] THREAT-MODEL row added.
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.

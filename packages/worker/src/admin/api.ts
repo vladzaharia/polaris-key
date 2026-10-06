@@ -66,6 +66,7 @@ import {
   unauthorized,
 } from "./lib/respond.js";
 import { handleMe } from "./handlers/me.js";
+import { handleGithub } from "./handlers/github.js";
 import { handlePlatformStoreConnections } from "./handlers/platformStoreConnections.js";
 import { handlePlatform } from "./handlers/platform.js";
 import { handleFeedsAdmin } from "./handlers/feeds.js";
@@ -369,6 +370,8 @@ export async function handleAdminApi(
       return err(405, "method_not_allowed", "logout requires POST");
     return adminJson({ ok: true }, 200, { "set-cookie": buildClearCookie() });
   }
+  // UX-72 (W22): the repositories the GitHub App can read, for the New Product picker.
+  if (head === "github") return handleGithub(req, env, db, session, rest, now);
   if (head === "products") {
     // /products, /products/link-repo, or /products/<slug>/...
     // `link-repo` is a single-segment action, NOT a slug — handleProducts special-cases it

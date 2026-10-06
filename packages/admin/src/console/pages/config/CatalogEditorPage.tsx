@@ -787,8 +787,8 @@ function ReviewDrawer({
             <section className="space-y-3" aria-label="Changes on the server">
               <Callout tone="warning" live>
                 v{server.schemaVersion} was published after you started from v
-                {draft.baseVersion}. These are its changes. Publish over it to
-                replace them with your draft, or discard your draft.
+                {draft.baseVersion}. These are its changes. Review your draft
+                against it to publish over them, or discard your draft.
               </Callout>
               <DiffViewer<ConfigEntry>
                 mode="structured"

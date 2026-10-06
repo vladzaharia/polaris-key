@@ -31,6 +31,10 @@ Model C is safe only if operators can see what a resync will do and where consol
 **In:**
 
 - `POST …/resync?dryRun=1`; plan function shared by the three paths; `plan_json`; drift endpoint and view.
+- The plan carries the validator's `warnings[]` (`validateIngestDocuments`; ST-19's
+  `deprecated_spelling` and `conflicting_spelling` among them), stored in `plan_json` with the rest,
+  and the console's Resync confirm shows them ([`plans/ST-19.md`](../plans/ST-19.md) owner decision
+  Q6). Warnings never block an apply.
 
 **Out** (and where it belongs instead):
 
@@ -50,6 +54,7 @@ Model C is safe only if operators can see what a resync will do and where consol
 
 - [ ] The webhook path records the same plan it applies (test).
 - [ ] Drift lists every claimed field with Revert and Keep (e2e).
+- [ ] A manifest with a deprecated spelling shows its warning in the dry-run plan and the Resync confirm (test).
 - [ ] The green gate passes (`AGENTS.md`), including every drift gate listed in the header.
 
 ## Verify

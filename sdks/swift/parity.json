@@ -39,9 +39,8 @@
       "note": "macOS uses the data-protection keychain where entitled; an unentitled process (an unsigned CLI) keeps the file-based keychain and storeStatus() reports legacy-keychain."
     },
     "core.copy": {
-      "status": "planned",
-      "wp": "SP-17",
-      "note": "SP-S13 has not landed: the generated Copy.generated.swift (COPY_CODES, COPY_GATE, COPY_ACTIVATION, COPY_FALLBACK) is read by nothing; ErrorCopy is still a hand-written table that differs from copy.en.json, with no placeholder filling."
+      "status": "implemented",
+      "note": "ErrorCopy serves the generated Copy.generated.swift tables: message(code)/title(code) look a code up in COPY_CODES, then COPY_GATE, then COPY_ACTIVATION; activationMessage/activationTitle (and ActivationResult.message/title) read COPY_ACTIVATION only; an unknown code reads COPY_FALLBACK naming it; {name} placeholders are filled from params or dropped; setOverrides is the host's English layer. The hand-written table is gone; PolarisCopy's gate titles and subtitles default to the gate table (ErrorCopyTests)."
     },
     "license.gate": {
       "status": "implemented"
@@ -186,9 +185,8 @@
       "note": "PolarisKeyCore detectOutlet over PolarisKeyUpdate readOutletSignals: AppDistributor.current behind #available(iOS 17.4) (web from 17.5) raced against the 2 s deadline, AltStore's ALTBundleIdentifier, embedded.mobileprovision, the macOS _MASReceipt and ProductionSandbox, the signing leaf (SecCodeCopySigningInformation) and the product's Caskroom link. UpdateClient detects at its first decision when the host names no outlet."
     },
     "crash.tags": {
-      "status": "planned",
-      "wp": "SP-17",
-      "note": "No Swift crashTags() exists yet (plans/SP-00.md §5: the lead cuts a Swift task)."
+      "status": "implemented",
+      "note": "client.crashTags(deliverable:build:) and crashTagsFor(...): release <deliverable>@<version>[+<build>], environment the channel, pkey.outlet the outlet the update client resolved, left out while unknown, over the Worker's Sentry vectors (CrashTagsTests)."
     },
     "packs.record": {
       "status": "implemented",

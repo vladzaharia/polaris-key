@@ -10,6 +10,8 @@
  * A product without Config has no config document to ship, so the include box is absent rather
  * than disabled. The bundle is a signed artifact, not a secret, but it is still shown in the
  * one-time panel so the download is reliable and the value can be copied when it fails (LDT-13).
+ * Escape, Close and an outside click ask before the result goes, until it is copied, downloaded
+ * or ticked as stored (FLOWS.md C-21). Edit holder asks before it drops unsaved changes (C-20).
  */
 
 import * as React from "react";
@@ -20,10 +22,16 @@ import { errorCopy } from "../../../lib/errorCopy.js";
 import { Button } from "../../../ui/Button.js";
 import { Callout } from "../../../ui/Callout.js";
 import { Checkbox } from "../../../ui/Checkbox.js";
-import { Dialog, DialogBody, DialogFooter } from "../../../ui/Dialog.js";
+import {
+  Dialog,
+  DialogBody,
+  DialogFooter,
+  useDismissGuard,
+} from "../../../ui/Dialog.js";
 import { diffValues, Form, FormField, useAdminForm } from "../../../ui/form.js";
 import { ValueCopyButton } from "../../../ui/IdChip.js";
 import { Input } from "../../../ui/Input.js";
+import { announce } from "../../../ui/LiveRegion.js";
 import { NumberInput } from "../../../ui/NumberInput.js";
 import { OneTimeSecretPanel } from "../../../ui/OneTimeSecretPanel.js";
 import { toast } from "../../../ui/toast.js";
@@ -97,6 +105,7 @@ function HolderForm({
       onDone();
     },
   });
+  useDismissGuard(form.isDirty && !form.isSubmitting);
   return (
     <Form form={form} aria-label="Holder" className="contents">
       <DialogBody className="space-y-4">
@@ -163,9 +172,14 @@ export function OfflineBundleDialog({
     bundle: string;
     deviceId: string;
   } | null>(null);
+  const [acknowledged, setAcknowledged] = React.useState(false);
+  const [asking, setAsking] = React.useState(false);
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
 
   React.useEffect(() => {
     if (open) {
+      setAcknowledged(false);
+      setAsking(false);
       setDeviceId("");
       setGraceDays(DEFAULT_GRACE_DAYS);
       setIncludeConfig(true);
@@ -202,6 +216,10 @@ export function OfflineBundleDialog({
       if (configOn) body.includeConfig = includeConfig;
       const res = await mutate("mintBundle", slug, body);
       setMinted({ ...res, deviceId: body.deviceId });
+      requestAnimationFrame(() =>
+        titleRef.current?.focus({ preventScroll: true }),
+      );
+      announce("Bundle minted.");
     } catch (err) {
       setError(err);
     } finally {
@@ -212,9 +230,14 @@ export function OfflineBundleDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={(o) => (busy ? undefined : onOpenChange(o))}
+      onOpenChange={(o) => {
+        if (busy) return;
+        if (!o && minted && !acknowledged) return setAsking(true);
+        onOpenChange(o);
+      }}
       dismissible={!busy}
-      title="Mint offline bundle"
+      titleRef={titleRef}
+      title={minted ? "Bundle minted" : "Mint offline bundle"}
       description={
         <>
           {minted
@@ -252,6 +275,14 @@ export function OfflineBundleDialog({
               filename: `${slug}-${minted.deviceId.slice(0, 8)}.pkeybundle`,
               mime: BUNDLE_MIME,
             }}
+            acknowledged={acknowledged}
+            onAcknowledgedChange={(v) => {
+              setAcknowledged(v);
+              if (v) setAsking(false);
+            }}
+            closeRequested={asking}
+            onCancelClose={() => setAsking(false)}
+            onConfirmClose={() => onOpenChange(false)}
             onDone={() => onOpenChange(false)}
           />
         </>

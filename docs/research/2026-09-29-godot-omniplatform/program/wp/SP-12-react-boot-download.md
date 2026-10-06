@@ -5,7 +5,7 @@
 | Phase       | SP: SDK parity pass (notes/SDK-PARITY-PASS.md) (SDK gaps)                                                                                                                           |
 | Size        | 1–1.5 engineer-weeks                                                                                                                                                                |
 | Depends on  | none                                                                                                                                                                                |
-| Unblocks    | [SP-15](SP-15-react-local-update-lifecycle.md)                                                                                                                                      |
+| Unblocks    | [SP-15](SP-15-react-local-update-lifecycle.md), [SP-31](SP-31-node-bridge-v4.md)                                                                                                    |
 | Role        | `pkey-sdk-porter`                                                                                                                                                                   |
 | Plan mode   | no                                                                                                                                                                                  |
 | Gates       | transcript replay (`boot-cold-register.json`, `release-fetch-gated.json`, `distribution-download-model.json`) and `feed-url-matrix.json`; `parity:check`; the generated parity page |
@@ -62,14 +62,14 @@ Five React rows are `planned` and unowned after the parity follow-ups: client-co
 
 ## Acceptance criteria
 
-- [ ] `@pkey-feature ui.boot` tests replay `boot-cold-register.json` and the `stage-matrix.json` outcomes.
-- [ ] `@pkey-feature release.fetch` tests replay all three steps of `release-fetch-gated.json` (200, 206 resume, 401 `download_auth_required`).
-- [ ] `@pkey-feature release.distribution` tests replay `distribution-download-model.json`.
-- [ ] `@pkey-feature update.feeds` tests run every `feed-url-matrix.json` row through the desktop-bridge path; the manifest declares the `web` `runtime` except.
-- [ ] `@pkey-feature crash.tags` unit tests cover the Sentry vectors.
-- [ ] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
-- [ ] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
-- [ ] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
+- [x] `@pkey-feature ui.boot` tests replay `boot-cold-register.json` and the `stage-matrix.json` outcomes.
+- [x] `@pkey-feature release.fetch` tests replay all three steps of `release-fetch-gated.json` (200, 206 resume, 401 `download_auth_required`).
+- [x] `@pkey-feature release.distribution` tests replay `distribution-download-model.json`.
+- [x] `@pkey-feature update.feeds` tests run every `feed-url-matrix.json` row through the desktop-bridge path; the manifest declares the `web` `runtime` except.
+- [x] `@pkey-feature crash.tags` unit tests cover the Sentry vectors.
+- [x] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
+- [x] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
+- [x] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
 
 ## Verify
 

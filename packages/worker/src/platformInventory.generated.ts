@@ -266,6 +266,20 @@ export const PLATFORM_INVENTORY: readonly PlatformInventoryEntry[] = [
     editable: null,
   },
   {
+    name: "DOWNLOAD_TICKET_KEY",
+    kind: "secret",
+    area: "keyring",
+    optional: true,
+    editable: null,
+  },
+  {
+    name: "DOWNLOAD_TICKET_KEY_PREVIOUS",
+    kind: "secret",
+    area: "keyring",
+    optional: true,
+    editable: null,
+  },
+  {
     name: "ADMIN_SESSION_SECRET",
     kind: "secret",
     area: "identity",

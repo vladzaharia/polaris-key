@@ -20,6 +20,7 @@ import {
 
 const product = vi.fn<(slug: string) => Promise<{ product: ProductDetail }>>();
 const resyncProduct = vi.fn<(slug: string) => Promise<ResyncResult>>();
+const planResync = vi.fn();
 const releaseHealth =
   vi.fn<(slug: string) => Promise<{ health: ReleaseHealth }>>();
 const releases = vi.fn<(slug: string) => Promise<ReleaseStoreResponse>>();
@@ -38,6 +39,7 @@ vi.mock("../src/api.js", async (importOriginal) => ({
   api: {
     product: (slug: string) => product(slug),
     resyncProduct: (slug: string) => resyncProduct(slug),
+    planResync: (slug: string) => planResync(slug),
     releaseHealth: (slug: string) => releaseHealth(slug),
     releases: (slug: string) => releases(slug),
     releaseChannels: (slug: string) => releaseChannels(slug),
@@ -184,6 +186,7 @@ beforeEach(() => {
   for (const f of [
     product,
     resyncProduct,
+    planResync,
     releaseHealth,
     releases,
     releaseChannels,
@@ -320,6 +323,24 @@ describe("Releases page (T2, ADMIN.md §6.3.1)", () => {
         },
       ],
     });
+    planResync.mockResolvedValue({
+      ok: true,
+      dryRun: true,
+      slug: "djdl",
+      repository: "acme/djdl",
+      commit: "0123456789abcdef",
+      plan: {
+        apply: [
+          {
+            area: "catalog",
+            summary: "Publishes a new catalog version: adds run.mode",
+          },
+        ],
+        skipClaimed: [],
+        delete: [],
+        conflicts: [],
+      },
+    });
     mountList();
     await rowOf("0.4.2");
     await userEvent.click(
@@ -327,7 +348,9 @@ describe("Releases page (T2, ADMIN.md §6.3.1)", () => {
     );
     const dialog = await screen.findByRole("alertdialog");
     expect(
-      within(dialog).getByText(/re-applied from the manifest/),
+      await within(dialog).findByText(
+        "Publishes a new catalog version: adds run.mode",
+      ),
     ).toBeTruthy();
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Resync from repo" }),
@@ -338,6 +361,9 @@ describe("Releases page (T2, ADMIN.md §6.3.1)", () => {
     expect(
       await within(drawer).findByText("Updated: catalog, channels."),
     ).toBeTruthy();
+    // The panel takes focus inside the drawer once the confirm has gone (UX-78).
+    const panel = within(drawer).getByTestId("resync-result");
+    await waitFor(() => expect(document.activeElement).toBe(panel));
     expect(
       within(drawer).getByText(/the release key is a product key/),
     ).toBeTruthy();

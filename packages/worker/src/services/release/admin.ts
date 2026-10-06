@@ -91,6 +91,7 @@ import {
 import { resyncRepo } from "./resync.js";
 import {
   linkExistingProduct,
+  planResync,
   prepareLink,
   type LinkRefusal,
 } from "./linkExisting.js";
@@ -416,6 +417,20 @@ export async function handleReleaseAdmin(
   if (rest[0] !== "resync") return adminNotFound();
   if (req.method !== "POST")
     return err(405, ErrorCode.BadRequest, "method not allowed");
+  // `?dryRun=1` (S-18 §4.5 item 4, UX-78): the plan the console's Resync confirm renders. It
+  // reads the manifest as the resync would and writes nothing: no sync state, no audit row.
+  if (new URL(req.url).searchParams.get("dryRun") === "1") {
+    const planned = await planResync(env, db, slug, now, fetch);
+    if (!planned.ok) return linkRefusal(planned);
+    return adminJson({
+      ok: true,
+      dryRun: true,
+      slug,
+      repository: planned.repository,
+      commit: planned.commit,
+      plan: planned.plan,
+    });
+  }
   const result = await resyncRepo(env, db, slug, now, fetch, ctx.ingest);
   if (!result.ok) {
     await upsertProductSyncState(db, {

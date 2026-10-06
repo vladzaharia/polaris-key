@@ -2,6 +2,8 @@
  * Link repository for a product that already exists (UX-23, `services/release/linkExisting.ts`):
  * the dry run checks and plans without writing, the link re-checks against the manifest GitHub
  * serves now and applies it through `resyncRepo`, and every refusal names the check it failed.
+ * The resync dry run (UX-78, `planResync`) reads a linked product's manifest the same way and
+ * plans without writing either.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { makeTestDb } from "./helpers.js";
@@ -21,9 +23,11 @@ import type { FetchImpl } from "../src/services/release/githubApp.js";
 import {
   linkExistingProduct,
   planRepoManifest,
+  planResync,
   prepareLink,
 } from "../src/services/release/linkExisting.js";
 import { parseManifest } from "../src/services/release/manifest.js";
+import { resyncRepo } from "../src/services/release/resync.js";
 import { getReleaseConfig } from "../src/services/release/index.js";
 import { getActiveSchema, getProduct, setServices } from "../src/repo.js";
 import { handleAdmin } from "../src/admin/index.js";
@@ -511,6 +515,174 @@ describe("linkExistingProduct rolls back what it wrote", () => {
   });
 });
 
+/** A product linked to acme/tonebox through the real link path, its manifest applied. */
+async function linkedProduct(): Promise<{ db: Db; env: Env }> {
+  const { db, env } = await manualProduct();
+  const fetchImpl = stubFetch(files());
+  const check = await prepareLink(env, db, "tonebox", URL_, NOW, fetchImpl);
+  if (!check.ok) throw new Error(check.error);
+  const res = await linkExistingProduct(
+    env,
+    db,
+    "tonebox",
+    URL_,
+    check.manifestDigest,
+    NOW,
+    fetchImpl,
+  );
+  if (!res.ok) throw new Error(res.error);
+  return { db, env };
+}
+
+describe("planResync (the resync dry run, UX-78)", () => {
+  const withTiers = (tiers: string[]) =>
+    files(
+      productJson("tonebox", {
+        tiers: tiers.map((id) => ({
+          id,
+          label: id,
+          profileId: null,
+          policyExpiryDays: 365,
+          policyDeviceLimit: 5,
+        })),
+      }),
+    );
+
+  it("plans a linked product's next resync without writing anything", async () => {
+    const { db, env } = await linkedProduct();
+    const before = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM audit WHERE product = 'tonebox'",
+    );
+    const res = await planResync(
+      env,
+      db,
+      "tonebox",
+      NOW + 5,
+      stubFetch(withTiers(["pro", "studio"])),
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.repository).toBe("acme/tonebox");
+    expect(res.commit).toBe(HEAD_SHA);
+    expect(res.plan.apply).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ area: "tiers", id: "studio" }),
+      ]),
+    );
+    expect(res.plan.conflicts).toEqual([]);
+    const tiers = await db.all<{ id: string }>(
+      "SELECT id FROM tiers WHERE product = 'tonebox'",
+    );
+    expect(tiers.map((t) => t.id)).toEqual(["pro"]);
+    const after = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM audit WHERE product = 'tonebox'",
+    );
+    expect(after?.n).toBe(before?.n);
+  });
+
+  it("a dropped tier that licences use is what blocks the resync", async () => {
+    const { db, env } = await linkedProduct();
+    await seedLicenseWithKey(db, "tonebox", { tierId: "pro" });
+    const res = await planResync(
+      env,
+      db,
+      "tonebox",
+      NOW + 5,
+      stubFetch(withTiers(["studio"])),
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.plan.conflicts).toEqual([
+      expect.objectContaining({ area: "tiers", id: "pro" }),
+    ]);
+  });
+
+  it("a policy refusal is a conflict too: an issuer outside the allowlist", async () => {
+    const { db, env } = await linkedProduct();
+    const res = await planResync(
+      env,
+      db,
+      "tonebox",
+      NOW + 5,
+      stubFetch(
+        files(
+          productJson("tonebox", {
+            oidc: {
+              provider: "custom",
+              issuer: "https://evil.example.net",
+              clientId: "pk",
+            },
+          }),
+        ),
+      ),
+    );
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.plan.conflicts[0]).toMatchObject({ area: "oidc" });
+  });
+
+  it("a trusted-publisher lookup the resync would refuse on is a conflict, and the resync does refuse", async () => {
+    const { db, env } = await linkedProduct();
+    const publishing = JSON.stringify({
+      release: {
+        ghOwner: "acme",
+        ghRepo: "tonebox",
+        binaryName: "tonebox",
+        publishing: {
+          trustedPublisher: { workflow: ".github/workflows/release.yml" },
+        },
+      },
+    });
+    const fetchImpl = stubFetch(
+      { ...files(), ".pkey/release.json": publishing },
+      { identity: false },
+    );
+    const res = await planResync(env, db, "tonebox", NOW + 5, fetchImpl);
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.plan.conflicts).toEqual([
+      expect.objectContaining({ area: "publisher" }),
+    ]);
+    // The same shared check refuses the real resync, before it writes.
+    const applied = await resyncRepo(env, db, "tonebox", NOW + 6, fetchImpl);
+    expect(applied.ok).toBe(false);
+    if (!applied.ok) expect(applied.error).toBe(res.plan.conflicts[0]!.summary);
+  });
+
+  it("refuses with the check the resync itself would fail", async () => {
+    const manual = await manualProduct();
+    expect(
+      await planResync(
+        manual.env,
+        manual.db,
+        "tonebox",
+        NOW,
+        stubFetch(files()),
+      ),
+    ).toMatchObject({ ok: false, check: "product" });
+
+    const { db, env } = await linkedProduct();
+    expect(
+      await planResync(
+        env,
+        db,
+        "tonebox",
+        NOW + 5,
+        stubFetch(files(productJson("other"))),
+      ),
+    ).toMatchObject({ ok: false, check: "slug" });
+    expect(
+      await planResync(
+        env,
+        db,
+        "tonebox",
+        NOW + 5,
+        stubFetch({ ...files(), ".pkey/product.json": "{" }),
+      ),
+    ).toMatchObject({ ok: false, check: "manifest" });
+  });
+});
+
 describe("POST …/release/link (the console route)", () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -643,5 +815,48 @@ describe("POST …/release/link (the console route)", () => {
     );
     expect(res.status).toBe(422);
     expect(await res.json()).toMatchObject({ reason: "app" });
+  });
+  it("POST …/release/resync?dryRun=1 answers the plan and writes no sync state or audit row", async () => {
+    const { db, env } = await linkedProduct();
+    const syncBefore = await db.first<{ last_checked_at: number }>(
+      "SELECT last_checked_at FROM product_sync_state WHERE product = 'tonebox'",
+    );
+    vi.stubGlobal("fetch", stubFetch(files()));
+    const res = await call(
+      env,
+      db,
+      "/api/products/tonebox/release/resync?dryRun=1",
+      {},
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      ok: true,
+      dryRun: true,
+      slug: "tonebox",
+      repository: "acme/tonebox",
+      commit: HEAD_SHA,
+      plan: { conflicts: [] },
+    });
+    const resynced = await db.first<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM audit WHERE product = 'tonebox' AND action = 'release.resync'",
+    );
+    expect(resynced?.n).toBe(0);
+    const syncAfter = await db.first<{ last_checked_at: number }>(
+      "SELECT last_checked_at FROM product_sync_state WHERE product = 'tonebox'",
+    );
+    expect(syncAfter?.last_checked_at).toBe(syncBefore?.last_checked_at);
+  });
+
+  it("the resync dry run answers a refusal with the failed check", async () => {
+    const { db, env } = await manualProduct();
+    vi.stubGlobal("fetch", stubFetch(files()));
+    const res = await call(
+      env,
+      db,
+      "/api/products/tonebox/release/resync?dryRun=1",
+      {},
+    );
+    expect(res.status).toBe(422);
+    expect(await res.json()).toMatchObject({ reason: "product" });
   });
 });

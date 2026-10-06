@@ -4,8 +4,9 @@ import { StationaryStar } from "../../ui/EmptyState.js";
 import { href, useDocumentTitle } from "../router.js";
 
 /**
- * Discover (PORTAL.md §4.16). The Worker cannot list offers yet (G24, PX-W10), so Discover is
- * hidden from the nav and a typed `#/discover` shows the honest empty state.
+ * Discover (PORTAL.md §4.16). This page does not list offers yet (PX-16 builds the tiles), so
+ * `model/discover.ts` keeps Discover and its count out of the nav and the library (P6: never
+ * count what the page cannot show), and a typed `#/discover` shows the honest empty state.
  */
 export function DiscoverPage(): React.ReactElement {
   useDocumentTitle("Discover");

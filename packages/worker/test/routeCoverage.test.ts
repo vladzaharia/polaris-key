@@ -51,6 +51,8 @@ const NARRATIVE_ONLY = new Set([
   "portalLogout",
   "portalMagicVerify",
   "portalDownload",
+  // `adminApi` and `products` stay narrative as kinds: UX-72's create probes are pinned in
+  // ADMIN_KIND_PATHS below; the rest of `/manage/api/*` is documented on the docs site.
   // `portalApi` stays narrative as a kind: its PX-W1 library and product routes are pinned in
   // PORTAL_KIND_PATHS below; the rest of `/api/*` is documented on the docs site.
   "products",
@@ -89,6 +91,21 @@ const PORTAL_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
     // PX-W10 (G24, G25): Discover's offers and "Add to library".
     ["/api/discover", ["get"]],
     ["/api/discover/{product}/claim", ["post"]],
+  ],
+};
+
+/**
+ * Admin API routes the spec documents (UX-72, rule 10): the New Product wizard's create probes
+ * (FLOWS.md §3.11 W22 to W24). `adminApi` and `products` are narrative as kinds, and only the
+ * routes listed here are in the spec, tagged `admin`. None is product-scoped or CORS-covered: they share the console
+ * origin with the admin session cookie.
+ */
+const ADMIN_KIND_PATHS: Record<string, Array<[string, string[]]>> = {
+  adminApi: [["/manage/api/github/repositories", ["get"]]],
+  // `/manage/api/products[/…]` routes as its own kind (the product registry), narrative too.
+  products: [
+    ["/manage/api/products/link-repo", ["post"]],
+    ["/manage/api/products/slug-check", ["get"]],
   ],
 };
 
@@ -275,6 +292,7 @@ describe("router → spec", () => {
     const documented = new Set([
       ...Object.keys(CORE_KIND_PATHS),
       ...Object.keys(PORTAL_KIND_PATHS),
+      ...Object.keys(ADMIN_KIND_PATHS),
       "service",
     ]);
     const unhandled = [...new Set(kinds)].filter(
@@ -312,6 +330,22 @@ describe("router → spec", () => {
     });
   }
 
+  for (const [kind, paths] of Object.entries(ADMIN_KIND_PATHS)) {
+    it(`admin kind "${kind}" routes are documented, tagged admin, and route there`, () => {
+      for (const [path, methods] of paths) {
+        expect(specMethods(path).sort(), path).toEqual([...methods].sort());
+        for (const method of methods) {
+          const op = spec.paths[path]![method] as { tags?: string[] };
+          expect(op.tags, `${method} ${path}`).toEqual(["admin"]);
+        }
+        expect(spec.paths[path]?.options, path).toBeUndefined();
+        const route = matchRoute(concrete(path));
+        expect(route.kind, path).toBe(kind);
+        expect(isCorsCoveredRoute(route), path).toBe(false);
+      }
+    });
+  }
+
   it("every canonical service route is documented", () => {
     for (const [path, methods] of SERVICE_PATHS) {
       for (const method of methods) {
@@ -338,6 +372,7 @@ describe("spec → router", () => {
         ...ALIAS_PATHS,
         ...REGISTRY_PATHS,
         ...Object.values(PORTAL_KIND_PATHS).flat(),
+        ...Object.values(ADMIN_KIND_PATHS).flat(),
       ].map(([path]) => path),
     );
     const phantom = Object.keys(spec.paths).filter(

@@ -500,6 +500,9 @@ describe("product page on today's data (PX-04)", () => {
       ),
     );
     expect(await screen.findByText("Studio PC was removed")).toBeTruthy();
+    // The row is gone; focus goes to the product's h1, never body (FLOWS.md P-7).
+    const h1 = screen.getByRole("heading", { level: 1, name: "Nightfall" });
+    await waitFor(() => expect(document.activeElement).toBe(h1));
   });
 
   it("promises no confirmation email when the Worker can't send mail", async () => {

@@ -25,10 +25,12 @@
  *     (expired, suspended, past its offline grace).
  *   - `not_entitled`: the deliverable is `entitled` and no licence's grant holds this release's
  *     channel or version (an update window that ended, a beta not included).
- *   - `not_hosted`: covered, but nothing here can hand the bytes to a browser yet: licensed
- *     builds stored only on R2 wait for PX-W3 (gap G3), and licensed builds whose only source is
- *     a PRIVATE GitHub repository are left out (plans/PX-W3.md Q7). A PUBLIC build is served
- *     from the bytes host whatever its location, a private repository's included.
+ *   - `not_hosted`: covered, but nothing here can hand the bytes to a browser: no bytes-host
+ *     copy and no GitHub storage URL in a PUBLIC repository, or, for a non-public deliverable
+ *     (served through a download ticket, PX-W3, wherever the file is held, a private
+ *     repository's included), a deployment without download tickets (`DOWNLOAD_TICKET_KEY`
+ *     unset) or a file with no recorded SHA-256. A PUBLIC build is served from the bytes host
+ *     whatever its location, a private repository's included.
  *
  * The portal UI turns those into the "Not included" text (§4.20); the codes are not copy.
  *

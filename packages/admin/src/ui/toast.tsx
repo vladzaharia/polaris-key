@@ -95,12 +95,22 @@ let mounted = 0;
 
 const ICON_CLASS = "size-4 shrink-0";
 
+/** The bottom inset a page sets while a bar is fixed to the bottom edge (the portal's phone bar). */
+export const TOAST_BOTTOM_INSET_VAR = "--pk-toast-bottom-inset";
+
 /**
  * Mount once near the root. Bottom-end on desktop, top on phones. When the last toaster unmounts
  * (a test tree, a full reload), the toasts still showing are dismissed, so none is replayed into
  * the next toaster.
+ *
+ * `phoneBottom` (the portal, EXPERIENCE.md §7: "full width at the bottom on phones") keeps phone
+ * toasts at the bottom too, lifted above whatever the page reports in `TOAST_BOTTOM_INSET_VAR`.
  */
-export function AppToaster(): React.ReactElement {
+export function AppToaster({
+  phoneBottom = false,
+}: {
+  phoneBottom?: boolean;
+} = {}): React.ReactElement {
   const { theme } = useTheme();
   const phone = usePhone();
   React.useEffect(() => {
@@ -116,7 +126,15 @@ export function AppToaster(): React.ReactElement {
   return (
     <Sonner
       theme={theme}
-      position={phone ? "top-center" : "bottom-right"}
+      position={
+        phone ? (phoneBottom ? "bottom-center" : "top-center") : "bottom-right"
+      }
+      {...(phoneBottom
+        ? {
+            offset: { bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 24px)` },
+            mobileOffset: { bottom: `var(${TOAST_BOTTOM_INSET_VAR}, 16px)` },
+          }
+        : {})}
       visibleToasts={3}
       closeButton
       containerAriaLabel="Notifications"

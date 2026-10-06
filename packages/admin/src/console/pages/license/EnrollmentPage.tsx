@@ -6,7 +6,8 @@
  * 2. **Fingerprint policy**: one mode choice (Off, Lenient, Normal, Strict) replaces the switch
  *    plus mode that overlapped (FPP-1); the section's `SourceBadge` says who owns it; Revert
  *    names both effects, the fingerprint policy and auto-issue (FPP-3).
- * 3. **Probes**: a sortable table, where they come from, and **Resync from repo** (FPP-4).
+ * 3. **Probes**: a sortable table, where they come from, and **Resync from repo** (FPP-4), the
+ *    console's one resync flow (UX-78).
  *
  * The probe list is not editable: `PATCH` replaces the whole array, and an editor that rendered
  * only the fields it knows would delete the per-platform hints it does not.
@@ -28,6 +29,7 @@ import { r } from "../../routes.js";
 import { Link } from "../../router.js";
 import { useTableUrlState } from "../../useTableUrlState.js";
 import { PageHeader } from "../../components/PageHeader.js";
+import { useResyncFlow } from "../../components/ResyncDialog.js";
 import {
   SettingsRow,
   SettingsSection,
@@ -362,7 +364,8 @@ function ProbesSection({
   const product = useProduct(slug).data;
   const linked = product?.releaseSource === "github";
   const [state, setState] = useTableUrlState("probes");
-  const [resyncing, setResyncing] = React.useState(false);
+  // The console's one resync flow (UX-78): the dry run's plan, then a focused result panel.
+  const resync = useResyncFlow();
   const columns = React.useMemo<DataColumn<FingerprintProbeDto>[]>(
     () => [
       {
@@ -414,13 +417,14 @@ function ProbesSection({
           disabledReason={
             linked ? undefined : "This product isn't linked to a repository."
           }
-          onClick={() => setResyncing(true)}
+          onClick={() => resync.start({ slug, name: product?.name ?? slug })}
         >
           Resync from repo
         </Button>
       }
     >
-      <div className="px-5 py-4">
+      <div className="space-y-4 px-5 py-4">
+        {resync.panel}
         <DataTable<FingerprintProbeDto>
           id="probes"
           caption="Probes"
@@ -442,22 +446,7 @@ function ProbesSection({
           mobile="cards"
         />
       </div>
-      <ConfirmDialog
-        open={resyncing}
-        onOpenChange={setResyncing}
-        intent={confirmFor("repo.resync").intent as "caution"}
-        title="Resync from the linked repository?"
-        consequences={[
-          "Polaris Key reads .pkey/ from the linked repository again and applies it, the probe list included.",
-          "Everything the manifest owns for this product is rewritten from the repository.",
-        ]}
-        confirmLabel="Resync from repo"
-        describeError={(e) => errorCopy(e)}
-        onConfirm={async () => {
-          await mutate("resyncProduct", slug);
-          toast.success("Resynced from the repository");
-        }}
-      />
+      {resync.dialog}
     </SettingsSection>
   );
 }

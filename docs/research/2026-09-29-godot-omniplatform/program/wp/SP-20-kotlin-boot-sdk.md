@@ -54,11 +54,11 @@ The one-call boot lives in `sdks/kotlin/ui/src/main/kotlin/im/plrs/key/ui/Polari
 
 ## Acceptance criteria
 
-- [ ] `@pkey-feature ui.boot` tests in `:conformance` replay `boot-cold-register.json` and the stage outcomes on the JVM.
-- [ ] `:ui`'s existing boot tests pass unchanged against the delegating holder.
-- [ ] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
-- [ ] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
-- [ ] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
+- [x] `@pkey-feature ui.boot` tests in `:conformance` replay `boot-cold-register.json` and the stage outcomes on the JVM.
+- [x] `:ui`'s existing boot tests pass unchanged against the delegating holder.
+- [x] Every row this package owns reads `implemented` in its manifest, with `wp` and `unowned` removed and the note rewritten to say what was built (or a typed `except` where the registry allows an N/A for one runtime).
+- [x] `mise exec node@22 -- pnpm parity:check` passes, and the generated parity page is current (`pnpm --filter @polaris-key/docs gen -- --check`).
+- [x] The green gate passes (`AGENTS.md`), scoped to the SDKs this package touches.
 
 ## Verify
 

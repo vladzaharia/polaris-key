@@ -8,9 +8,12 @@ import { Dialog, DialogBody, DialogFooter, type DialogSize } from "./Dialog.js";
  * One-time material: license keys, CI tokens, outlet-generated secrets, minted bundles
  * (components.md §4.4). The value is shown once; the panel will not let it be lost by accident:
  *
- * - Done stays disabled (with its reason) until Copy succeeded or "I've stored this key" is ticked.
+ * - The panel owns the one "Shown once." line (EXPERIENCE.md §2, FLOWS.md C-7, C-9, C-17): callers
+ *   do not repeat it in their titles or descriptions.
+ * - Done stays disabled (with its reason) until Copy or Download succeeded or "I've stored it" is
+ *   ticked.
  * - Through `OneTimeSecretDialog`, Escape, the close button and an outside click ask "Close without
- *   copying? The key cannot be shown again." instead of closing (fixes LIC-2).
+ *   copying? It can't be shown again." instead of closing (fixes LIC-2).
  * - `download` offers the value as a file (an object URL, falling back to a data URL); a failure
  *   says so visibly rather than doing nothing (fixes LDT-13).
  */
@@ -126,7 +129,7 @@ export function OneTimeSecretPanel({
             onChange={(e) => setAck(e.target.checked)}
             className="size-4 accent-(--pk-accent)"
           />
-          I&apos;ve stored this {label.toLowerCase()}
+          I&apos;ve stored it
         </label>
         {details}
         {download ? (
@@ -135,11 +138,16 @@ export function OneTimeSecretPanel({
               variant="outline"
               size="sm"
               iconStart={<Download />}
-              onClick={() =>
-                setDownloadFailed(
-                  !saveAsFile(value, download.filename, download.mime),
-                )
-              }
+              onClick={() => {
+                const saved = saveAsFile(
+                  value,
+                  download.filename,
+                  download.mime,
+                );
+                setDownloadFailed(!saved);
+                // A saved file is as good as a copy.
+                if (saved) setAck(true);
+              }}
             >
               Download {download.filename}
             </Button>
@@ -157,11 +165,15 @@ export function OneTimeSecretPanel({
           >
             <p className="flex items-center gap-2 font-bold text-fg-strong">
               <TriangleAlert aria-hidden className="size-4 text-warning" />
-              Close without copying? The {label.toLowerCase()} cannot be shown
-              again.
+              Close without copying? It can&apos;t be shown again.
             </p>
             <div className="flex flex-wrap gap-2">
-              <Button size="sm" variant="outline" onClick={onCancelClose}>
+              <Button
+                size="sm"
+                variant="outline"
+                autoFocus
+                onClick={onCancelClose}
+              >
                 Keep it open
               </Button>
               <Button size="sm" variant="danger" onClick={onConfirmClose}>
@@ -175,9 +187,7 @@ export function OneTimeSecretPanel({
         {actions}
         <Button
           disabledReason={
-            acknowledged
-              ? undefined
-              : `Copy the ${label.toLowerCase()} or confirm you've stored it first`
+            acknowledged ? undefined : "Copy it or tick “I've stored it” first"
           }
           onClick={onDone}
         >
@@ -218,6 +228,8 @@ export function OneTimeSecretDialog({
 }: OneTimeSecretDialogProps): React.ReactElement {
   const [acknowledged, setAcknowledged] = React.useState(false);
   const [asking, setAsking] = React.useState(false);
+  // First focus on the title: the result is the news, not the acknowledgement box.
+  const titleRef = React.useRef<HTMLHeadingElement>(null);
   React.useEffect(() => {
     if (open) {
       setAcknowledged(false);
@@ -231,6 +243,8 @@ export function OneTimeSecretDialog({
       size={size}
       title={title}
       description={description}
+      titleRef={titleRef}
+      initialFocusRef={titleRef}
       onOpenChange={(next) => {
         if (next) return onOpenChange(true);
         if (acknowledged) return onOpenChange(false);

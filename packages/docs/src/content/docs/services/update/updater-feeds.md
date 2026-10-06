@@ -142,9 +142,21 @@ The package route answers only for a file the feed lists, for any of the Velopac
 `osx` or `linux`, each with x64 or arm64). Anything else is a `404`, as is a name that is not one
 plain `.nupkg` file name: a separator, `..`, a leading dot or an escape. Its access, rate limit
 and caching are the feed's own, so it serves nobody the feed would refuse. The delivery URL it
-points at checks the delivery access again. Under a non-public delivery a client may drop
-`Authorization` on the redirect, as the measured updaters do across origins, and the second hop is
-then refused. Public delivery is the measured Velopack path.
+points at checks the delivery access again.
+
+Velopack's HTTP client drops `Authorization` on every redirect. So under a non-public delivery
+(`authenticated`, `licensed` or `entitled`) the route does two more things before it answers:
+
+1. It runs the delivery URL's own per-file check with the caller's bearer: the release's stored
+   version, pinned. A refusal, `403 version_blocked` included, comes from the route itself.
+2. It appends a [download ticket](/docs/start/concepts/) to the `Location` (`?ticket=`). The
+   ticket opens that one file on the bytes host for at most 120 seconds, so the second hop needs
+   no header.
+
+The `Location` never carries the bearer, and the answer is `private, no-store` with
+`Referrer-Policy: no-referrer`. A deployment with no ticket key or no bytes host answers the bare
+URL, whose second hop refuses an anonymous client. Public delivery is unchanged: the bare URL,
+cached for five minutes.
 
 ## MSIX App Installer
 

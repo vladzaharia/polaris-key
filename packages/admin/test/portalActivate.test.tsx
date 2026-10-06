@@ -522,6 +522,69 @@ describe("Activate license modal (PX-06)", () => {
     }
   });
 
+  it("focus follows the step: the confirm heading, the done heading, and the field on Change key (UX-79)", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": {
+        verdict: "addable",
+        product: PREVIEW_PRODUCT,
+        entries: null,
+      },
+    });
+    renderPortal();
+    await pasteAndContinue(await openFromHeader());
+    const confirm = await screen.findByRole("dialog", {
+      name: "Add Mossgarden to your account?",
+    });
+    const confirmHeading = within(confirm).getByRole("heading", {
+      name: "Add Mossgarden to your account?",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(confirmHeading));
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Change key" }),
+    );
+    const field = await screen.findByRole("textbox", { name: "License key" });
+    await waitFor(() => expect(document.activeElement).toBe(field));
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    const again = await screen.findByRole("dialog", {
+      name: "Add Mossgarden to your account?",
+    });
+    await userEvent.click(
+      within(again).getByRole("button", { name: "Add Mossgarden" }),
+    );
+    const done = await screen.findByRole("dialog", {
+      name: "Mossgarden is in your library",
+    });
+    const doneHeading = within(done).getByRole("heading", {
+      name: "Mossgarden is in your library",
+    });
+    await waitFor(() => expect(document.activeElement).toBe(doneHeading));
+  });
+
+  it("a refused Continue puts focus on the field, never on body (UX-79)", async () => {
+    mockFetch({
+      ...routes(),
+      "POST /api/activate/preview": {
+        verdict: "unknown",
+        product: null,
+        entries: null,
+      },
+    });
+    renderPortal();
+    const dialog = await openFromHeader();
+    await pasteAndContinue(dialog);
+    await within(dialog).findByRole("alert");
+    const field = within(dialog).getByRole("textbox", { name: "License key" });
+    await waitFor(() => expect(document.activeElement).toBe(field));
+    expect(
+      (
+        within(dialog).getByRole("button", {
+          name: "Continue",
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
+  });
+
   it("opens from /activate?key=… as the Library with the key filled in", async () => {
     window.history.replaceState(null, "", `/activate?key=${KEY}`);
     mockFetch(routes());

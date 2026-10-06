@@ -216,12 +216,14 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   license for that product. Minting a token is refused up front when nothing can hand a browser
   the bytes, so nothing is ever minted that could only fail later: a `public` file redirects to
   Distribution's bytes host, which serves every location (R2, and GitHub through the Release
-  installation token, so a private repository's files too); any other file only to its stored
+  installation token, so a private repository's files too); any other file to its stored
   GitHub-storage URL, and only when the repository is public (a private one answers an
-  anonymous browser with 404). An account with no linked license for the product gets the same
-  `404` for every refusal; an owner is told why: `404 file_not_found` (the release or file is
-  gone), `403 license_inactive` or `403 not_entitled`, and `409 not_hosted` (nothing here serves
-  it yet), the same reasons the downloads view gives per file. Path segments are percent-decoded
+  anonymous browser with 404), or, when it has no GitHub-storage URL, to the bytes host with a
+  short-lived download ticket (below) when the deployment has tickets configured and the file a
+  recorded SHA-256. An account with no linked license for the product gets the same `404` for
+  every refusal; an owner is told why: `404 file_not_found` (the release or file is gone),
+  `403 license_inactive` or `403 not_entitled`, and `409 not_hosted` (nothing here serves it
+  yet), the same reasons the downloads view gives per file. Path segments are percent-decoded
   once, so an id such as `file:App-1.0.dmg` matches whether or not the client encoded it. The
   listing itself omits `signature` and `checksum` artifacts (`.sig` and `.sha256` sidecars): they
   are verification material, not downloads. As shipped, a download therefore needs a signed-in
@@ -240,7 +242,9 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   every arch is, Apple silicon first on a Mac and the detected arch first when the browser said.
   Each file carries `canDownload` and, when false, a `reason`: `license_inactive` (no usable
   license), `not_entitled` (the license's channels or update window do not reach the release) or
-  `not_hosted` (covered, but not yet served to a browser). When the newest release is not
+  `not_hosted` (covered, but nothing here can hand the bytes to a browser: no bytes-host copy
+  and no GitHub storage URL in a public repository, or a licensed file on a deployment without
+  download tickets or with no recorded SHA-256). When the newest release is not
   covered, the recommendation falls back to the newest one that is (`latest: false`). The
   product facts come from Distribution's `customerDownloads` hook, read through Core; whether the
   account may download is the same decision the token mint makes, so every file marked
@@ -250,7 +254,18 @@ Everything under `/api/*` except `capabilities` and `magic/start` requires the s
   here, at redemption, not assumed to still hold from mint time — portal enabled, releases
   enabled, account active, license still linked, licensed access still held — and the token is
   spent with a single conditional `UPDATE … WHERE used_at IS NULL`, so two concurrent redemptions
-  of the same token cannot both win; exactly one sees the row change. See
+  of the same token cannot both win; exactly one sees the row change. The redirect goes, for a
+  `public` file, to its bytes-host URL, otherwise to the artifact's GitHub storage URL when the
+  repository is public. Any other non-public file
+  (held on R2, or in a private repository the bytes host streams) goes to its canonical bytes-host URL with a **download ticket** appended
+  (`https://dl.plrs.im/<product>/distribution/files/<releaseId>/<name>?ticket=…`): minted only
+  here, after every check, bound to that one file by name and SHA-256, valid for 120 seconds and
+  reusable inside them, so `Range`, resume and `HEAD` work. The bytes host accepts it in place of
+  a device token and still serves the file as a private, sandboxed attachment; an invalid or
+  expired ticket gets the same answer as no credential. Device trust policy does not apply to a
+  portal download (a browser cannot attest), so a product that enforces attested delivery is
+  served here exactly as its GitHub-hosted files are. Tickets need the Worker secret
+  `DOWNLOAD_TICKET_KEY`; without it such files read `not_hosted` and nothing is minted. See
   the R6 audit findings' `R6-12` for the redirect allowlist, and
   the R9 audit findings' `R9-05b` (the redemption used to be read-then-write, not
   compare-and-swap) for the atomic single-use fix.

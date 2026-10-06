@@ -57,6 +57,10 @@ jobs:
       # @inventory tag, src/platformInventory.generated.ts matches them, wrangler.toml names every
       # var and secret (secrets in its required-secrets comment) and declares nothing Env lacks.
       - run: pnpm gen:platform-inventory -- --check
+      # Settings drift (ST-06): the settings reference page and the console's settings search index
+      # are generated from the settings registry; the worker suite's settings-coverage test is the
+      # other half (every *_source column, settings table, Env member and manifest field has a home).
+      - run: pnpm gen:settings -- --check
       # Brand-token drift: @polaris-key/brand's generated outputs (tokens.css, the Tailwind v4 theme,
       # tokens.json, the TS constants and kit templates, the Godot and Swift token files) must match
       # packages/brand/src/tokens/ and the launch-kit copy (packages/brand/scripts/gen.ts).

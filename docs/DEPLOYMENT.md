@@ -417,6 +417,30 @@ curl -s https://key.plrs.im/<slug>/.well-known/polaris.json | grep -o '"builds":
 # "builds":"https://dl.plrs.im/<slug>/release/builds/{selector}/{buildId}"
 ```
 
+### Licensed portal downloads: `DOWNLOAD_TICKET_KEY` (PX-W3)
+
+Licensed builds served by the bytes host (held on R2, or in a private GitHub repository the
+bytes host streams through the installation token) download from the customer portal through a
+**download ticket**:
+the portal's `/download/<token>` redemption 302s to the file's bytes-host URL with
+`?ticket=<t>`, and the bytes host accepts the ticket in place of a device token
+(plans/PX-W3.md). The ticket is an HMAC under a dedicated Worker secret. Set it per environment,
+in dev, then staging, then prod:
+
+```sh
+cd packages/worker
+openssl rand -base64 32 | npx wrangler secret put DOWNLOAD_TICKET_KEY --env <env>
+```
+
+No code change is needed: the next request reads it. Until it is set, every file answers exactly
+as before (licensed files with no public GitHub URL read `not_hosted` in the portal and the bytes host ignores
+`?ticket=`), so the Worker can ship first. Deleting the secret is the kill switch: live tickets
+stop verifying at once. `DOWNLOAD_TICKET_KEY_PREVIOUS` exists only during a rotation (RUNBOOK,
+"Rotating `DOWNLOAD_TICKET_KEY`"). Check it from outside after setting it, with a licensed
+product and a signed-in portal account that owns it: the portal's "Get it" button for an R2-held
+build should 302 to `https://dl.plrs.im/<slug>/distribution/files/<releaseId>/<name>?ticket=v1.…`
+and the file should download; the same URL without `?ticket=` answers `401`.
+
 ### Registry host and feeds (F-02)
 
 The package feeds (plans/F-01.md §6) answer on a THIRD custom domain of the same Worker, the
@@ -619,6 +643,7 @@ npx wrangler secret put PLATFORM_OIDC_CLIENT_SECRET --env prod
 npx wrangler secret put GITHUB_APP_ID --env prod
 npx wrangler secret put GITHUB_APP_PRIVATE_KEY --env prod
 npx wrangler secret put GITHUB_WEBHOOK_SECRET --env prod
+openssl rand -base64 32 | npx wrangler secret put DOWNLOAD_TICKET_KEY --env prod   # PX-W3, §3
 ```
 
 Set the console client's three secrets (§2, PocketID) in **one** call, so no deployed version
