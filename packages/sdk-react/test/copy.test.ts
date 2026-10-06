@@ -226,9 +226,6 @@ describe("core.copy: English is the generated module", () => {
     expect(activationMessage("device-limit", { locale: "fr" })).toMatch(
       /limite d'appareils/,
     );
-    // English cannot be replaced: it is the generated module.
-    registerCopyLocale("en", { generic: "x", messages: { device_limit: "x" } });
-    expect(copyMessage("device_limit")).toBe(COPY_CODES.device_limit!.message);
   });
 });
 
@@ -284,5 +281,28 @@ describe("activation table (§3.1)", () => {
       classifyActivation(429, { error: "rate_limited" }, "30")
         .retryAfterSeconds,
     ).toBe(30);
+  });
+});
+
+// Last in the file: the English override layer is module-wide.
+describe("host English overrides", () => {
+  it("win per key over the generated text, which stays the default", () => {
+    registerCopyLocale("en", {
+      messages: { rate_limited: "Easy there." },
+      titles: { rate_limited: "Slow down" },
+      generic: "", // empty: keep the generated fallback sentence
+    });
+    expect(copyMessage("rate_limited")).toBe("Easy there.");
+    expect(copyTitle("rate_limited")).toBe("Slow down");
+    expect(hasCopy("rate_limited")).toBe(true);
+    // A key the host did not name keeps the generated English.
+    expect(copyMessage("device_limit")).toBe(COPY_CODES.device_limit!.message);
+    expect(copyTitle("device_limit")).toBe(COPY_CODES.device_limit!.title);
+    // Activation keeps its own table unless the host overrides the kind.
+    expect(
+      describeError({
+        activation: { kind: "unauthorized", code: "unauthorized" },
+      }),
+    ).toBe(COPY_ACTIVATION.unauthorized!.message);
   });
 });

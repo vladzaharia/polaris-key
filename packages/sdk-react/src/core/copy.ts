@@ -65,8 +65,9 @@ function ownEntry(
     : undefined;
 }
 
-/** English as a bundle (for `copyLocales()` and the per-key fallback); the tables above are the
- *  source, this is only their projection. */
+/** English as a bundle. The generated tables above are the default text; this bundle's
+ *  `messages` and `titles` are the host's override layer (`registerCopyLocale("en", ...)`),
+ *  which wins per key and starts empty. */
 const EN: CopyBundle = {
   generic: COPY_FALLBACK.message,
   messages: {},
@@ -277,11 +278,18 @@ export function copyLocales(): string[] {
   return [...LOCALES.keys()];
 }
 
-/** Add or replace a locale's bundle. Entries missing from it fall back to English. English
- *  itself is generated and cannot be replaced. */
+/** Add or replace a locale's bundle. Entries missing from it fall back to English. For `en`
+ *  the bundle is merged into the host override layer: its keys win over the generated text,
+ *  which stays the default for every key the host does not name. */
 export function registerCopyLocale(locale: string, bundle: CopyBundle): void {
   const tag = locale.toLowerCase();
-  if (tag === "en") return;
+  if (tag === "en") {
+    Object.assign(EN.messages, bundle.messages);
+    Object.assign((EN.titles ??= {}), bundle.titles ?? {});
+    // An empty `generic` keeps the generated fallback sentence.
+    if (bundle.generic) EN.generic = bundle.generic;
+    return;
+  }
   LOCALES.set(tag, bundle);
 }
 
@@ -301,12 +309,14 @@ function own(
     : undefined;
 }
 
-/** Whether a locale has its own sentence for `code` (English: the generated tables). */
+/** Whether a locale has its own sentence for `code` (English: a host override or the
+ *  generated tables). */
 export function hasCopy(code: string, locale = "en"): boolean {
   const bundle = bundleFor(locale);
-  return bundle === EN
-    ? englishEntry(code) !== undefined
-    : own(bundle.messages, code) !== undefined;
+  return (
+    own(bundle.messages, code) !== undefined ||
+    (bundle === EN && englishEntry(code) !== undefined)
+  );
 }
 
 /** Placeholder values for a sentence (`copy.en.json`'s `{name}` set). */
@@ -350,7 +360,8 @@ export function copyMessage(
 ): string {
   const bundle = bundleFor(opts.locale);
   const text =
-    (bundle === EN ? undefined : own(bundle.messages, code)) ??
+    own(bundle.messages, code) ??
+    own(EN.messages, code) ??
     englishEntry(code)?.message ??
     (bundle.generic || EN.generic);
   const out = fill(text, opts.codeLabel ?? code, opts.params ?? {});
@@ -361,7 +372,8 @@ export function copyMessage(
 export function copyTitle(code: string, locale?: string): string {
   const bundle = bundleFor(locale);
   return (
-    (bundle === EN ? undefined : own(bundle.titles, code)) ??
+    own(bundle.titles, code) ??
+    own(EN.titles, code) ??
     englishEntry(code)?.title ??
     (bundle === FR ? "Une erreur s'est produite" : COPY_FALLBACK.title)
   );
@@ -377,11 +389,13 @@ function activationText(
   const bundle = bundleFor(locale);
   // A bundle is keyed by the camelCase kind; accept the activationResult spelling too.
   const key = kind.replace(/-(\w)/g, (_m, c: string) => c.toUpperCase());
-  const local =
-    bundle === EN
-      ? undefined
-      : own(field === "message" ? bundle.messages : bundle.titles, key);
-  return local ?? ownEntry(COPY_ACTIVATION, activationResult(kind))?.[field];
+  const pick = (b: CopyBundle) =>
+    own(field === "message" ? b.messages : b.titles, key);
+  return (
+    pick(bundle) ??
+    pick(EN) ??
+    ownEntry(COPY_ACTIVATION, activationResult(kind))?.[field]
+  );
 }
 
 /** The sentence for a typed activation result (`ActivationOutcome.kind`, or its
